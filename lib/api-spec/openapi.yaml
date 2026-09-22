@@ -3,20 +3,26 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Multi-tenant EduPulse school management API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: dashboard
+  - name: schools
+  - name: students
+  - name: parents
+  - name: classes
+  - name: subscriptions
+  - name: cards
+  - name: audit
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +30,675 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /dashboard/platform:
+    get:
+      operationId: getPlatformDashboard
+      tags: [dashboard]
+      summary: Platform owner dashboard
+      responses:
+        "200":
+          description: Platform dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformDashboard"
+  /dashboard/school:
+    get:
+      operationId: getSchoolDashboard
+      tags: [dashboard]
+      summary: School operations dashboard
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: School dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchoolDashboard"
+  /schools:
+    get:
+      operationId: listSchools
+      tags: [schools]
+      summary: List schools
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, suspended, inactive, all]
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Schools
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/School"
+    post:
+      operationId: createSchool
+      tags: [schools]
+      summary: Create school
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SchoolInput"
+      responses:
+        "201":
+          description: Created school
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/School"
+  /schools/{schoolId}:
+    get:
+      operationId: getSchool
+      tags: [schools]
+      summary: Get school
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+      responses:
+        "200":
+          description: School
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/School"
+    patch:
+      operationId: updateSchool
+      tags: [schools]
+      summary: Update school
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SchoolUpdate"
+      responses:
+        "200":
+          description: Updated school
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/School"
+  /students:
+    get:
+      operationId: listStudents
+      tags: [students]
+      summary: List students in a tenant
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/Search"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, archived, all]
+        - name: classId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Students
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Student"
+    post:
+      operationId: createStudent
+      tags: [students]
+      summary: Create a student
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentInput"
+      responses:
+        "201":
+          description: Created student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+  /students/{studentId}:
+    get:
+      operationId: getStudent
+      tags: [students]
+      summary: Get a student
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+    patch:
+      operationId: updateStudent
+      tags: [students]
+      summary: Update a student
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentUpdate"
+      responses:
+        "200":
+          description: Updated student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+  /parents:
+    get:
+      operationId: listParents
+      tags: [parents]
+      summary: List parents
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Parents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Parent"
+    post:
+      operationId: createParent
+      tags: [parents]
+      summary: Create a parent
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParentInput"
+      responses:
+        "201":
+          description: Created parent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Parent"
+  /classes:
+    get:
+      operationId: listClasses
+      tags: [classes]
+      summary: List classes and sections
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Classes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SchoolClass"
+    post:
+      operationId: createClass
+      tags: [classes]
+      summary: Create a class
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClassInput"
+      responses:
+        "201":
+          description: Created class
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchoolClass"
+  /subscriptions:
+    get:
+      operationId: listSubscriptions
+      tags: [subscriptions]
+      summary: List subscription ledger records
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, pending, expired, failed, all]
+      responses:
+        "200":
+          description: Subscriptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Subscription"
+    post:
+      operationId: createSubscription
+      tags: [subscriptions]
+      summary: Create a pending subscription payment
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionInput"
+      responses:
+        "201":
+          description: Pending subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+  /subscriptions/{subscriptionId}/verify:
+    post:
+      operationId: verifySubscription
+      tags: [subscriptions]
+      summary: Verify a provider payment and activate entitlement
+      parameters:
+        - $ref: "#/components/parameters/SubscriptionIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentVerificationInput"
+      responses:
+        "200":
+          description: Verified subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+  /cards:
+    get:
+      operationId: listCards
+      tags: [cards]
+      summary: List NFC cards
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, locked, unassigned, lost, all]
+      responses:
+        "200":
+          description: NFC cards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NfcCard"
+    post:
+      operationId: registerCard
+      tags: [cards]
+      summary: Register an NFC card
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardInput"
+      responses:
+        "201":
+          description: Registered card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NfcCard"
+  /cards/{cardId}/status:
+    patch:
+      operationId: updateCardStatus
+      tags: [cards]
+      summary: Change a card state
+      parameters:
+        - $ref: "#/components/parameters/CardIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardStatusInput"
+      responses:
+        "200":
+          description: Updated card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NfcCard"
+  /audit-logs:
+    get:
+      operationId: listAuditLogs
+      tags: [audit]
+      summary: List audit activity
+      parameters:
+        - name: schoolId
+          in: query
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Audit logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditLog"
 components:
+  parameters:
+    SchoolId:
+      name: schoolId
+      in: query
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    SchoolIdPath:
+      name: schoolId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    StudentIdPath:
+      name: studentId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    SubscriptionIdPath:
+      name: subscriptionId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    CardIdPath:
+      name: cardId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    Search:
+      name: search
+      in: query
+      schema:
+        type: string
   schemas:
     HealthStatus:
       type: object
       properties:
         status:
           type: string
-      required:
-        - status
-
+      required: [status]
+    PlatformDashboard:
+      type: object
+      required: [totalSchools, activeSchools, suspendedSchools, totalStudents, activeSubscriptions, pendingPayments, revenue, schoolAllocation, edupulseAllocation, activeCards, lockedCards, recentActivity]
+      properties:
+        totalSchools: { type: integer }
+        activeSchools: { type: integer }
+        suspendedSchools: { type: integer }
+        totalStudents: { type: integer }
+        activeSubscriptions: { type: integer }
+        pendingPayments: { type: integer }
+        revenue: { type: number }
+        schoolAllocation: { type: number }
+        edupulseAllocation: { type: number }
+        activeCards: { type: integer }
+        lockedCards: { type: integer }
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLog"
+    SchoolDashboard:
+      type: object
+      required: [school, totalStudents, activeStudents, unpaidStudents, attendanceRate, pendingPayments, activeCards, lockedCards, recentActivity]
+      properties:
+        school: { $ref: "#/components/schemas/School" }
+        totalStudents: { type: integer }
+        activeStudents: { type: integer }
+        unpaidStudents: { type: integer }
+        attendanceRate: { type: number }
+        pendingPayments: { type: integer }
+        activeCards: { type: integer }
+        lockedCards: { type: integer }
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLog"
+    School:
+      type: object
+      required: [id, code, name, city, state, status, studentCount, staffCount, subscriptionStatus, createdAt]
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        name: { type: string }
+        city: { type: string }
+        state: { type: string }
+        status:
+          type: string
+          enum: [active, suspended, inactive]
+        studentCount: { type: integer }
+        staffCount: { type: integer }
+        subscriptionStatus:
+          type: string
+          enum: [active, attention, expired]
+        createdAt: { type: string }
+    SchoolInput:
+      type: object
+      required: [name, city, state]
+      properties:
+        name: { type: string, minLength: 2 }
+        city: { type: string, minLength: 2 }
+        state: { type: string, minLength: 2 }
+        status:
+          type: string
+          enum: [active, suspended, inactive]
+    SchoolUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 2 }
+        city: { type: string, minLength: 2 }
+        state: { type: string, minLength: 2 }
+        status:
+          type: string
+          enum: [active, suspended, inactive]
+    Student:
+      type: object
+      required: [id, schoolId, admissionNo, firstName, lastName, gender, className, section, status, subscriptionStatus, cardStatus, joinedAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        admissionNo: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        gender:
+          type: string
+          enum: [female, male, other]
+        className: { type: string }
+        section: { type: string }
+        parentName: { type: ["string", "null"] }
+        parentPhone: { type: ["string", "null"] }
+        status:
+          type: string
+          enum: [active, archived]
+        subscriptionStatus:
+          type: string
+          enum: [active, unpaid, pending, expired]
+        cardStatus:
+          type: string
+          enum: [active, locked, unassigned, lost]
+        joinedAt: { type: string }
+    StudentInput:
+      type: object
+      required: [admissionNo, firstName, lastName, gender, className, section]
+      properties:
+        admissionNo: { type: string, minLength: 1 }
+        firstName: { type: string, minLength: 2 }
+        lastName: { type: string, minLength: 2 }
+        gender:
+          type: string
+          enum: [female, male, other]
+        className: { type: string, minLength: 1 }
+        section: { type: string, minLength: 1 }
+        parentName: { type: string }
+        parentPhone: { type: string }
+    StudentUpdate:
+      type: object
+      properties:
+        firstName: { type: string, minLength: 2 }
+        lastName: { type: string, minLength: 2 }
+        className: { type: string }
+        section: { type: string }
+        status:
+          type: string
+          enum: [active, archived]
+    Parent:
+      type: object
+      required: [id, schoolId, name, email, phone, childrenCount, activeChildren]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        childrenCount: { type: integer }
+        activeChildren: { type: integer }
+    ParentInput:
+      type: object
+      required: [name, email, phone]
+      properties:
+        name: { type: string, minLength: 2 }
+        email: { type: string, format: email }
+        phone: { type: string, minLength: 7 }
+    SchoolClass:
+      type: object
+      required: [id, schoolId, name, section, classTeacher, studentCount, capacity]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        name: { type: string }
+        section: { type: string }
+        classTeacher: { type: ["string", "null"] }
+        studentCount: { type: integer }
+        capacity: { type: integer }
+    ClassInput:
+      type: object
+      required: [name, section, capacity]
+      properties:
+        name: { type: string, minLength: 1 }
+        section: { type: string, minLength: 1 }
+        capacity: { type: integer, minimum: 1 }
+        classTeacher: { type: string }
+    Subscription:
+      type: object
+      required: [id, schoolId, studentId, studentName, amount, schoolShare, edupulseShare, status, verificationStatus, provider, term, expiresAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        studentId: { type: integer }
+        studentName: { type: string }
+        amount: { type: number }
+        schoolShare: { type: number }
+        edupulseShare: { type: number }
+        status:
+          type: string
+          enum: [active, pending, expired, failed]
+        verificationStatus:
+          type: string
+          enum: [verified, pending, unverified]
+        provider: { type: string }
+        term: { type: string }
+        expiresAt: { type: string }
+    SubscriptionInput:
+      type: object
+      required: [studentId, term]
+      properties:
+        studentId: { type: integer, minimum: 1 }
+        term: { type: string, minLength: 1 }
+        provider:
+          type: string
+          enum: [paystack, flutterwave, remita, test]
+    PaymentVerificationInput:
+      type: object
+      required: [providerReference]
+      properties:
+        providerReference: { type: string, minLength: 3 }
+    NfcCard:
+      type: object
+      required: [id, schoolId, uid, studentId, studentName, status, scans, lastScan]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        uid: { type: string }
+        studentId: { type: ["integer", "null"] }
+        studentName: { type: ["string", "null"] }
+        status:
+          type: string
+          enum: [active, locked, unassigned, lost, suspended, replaced]
+        scans: { type: integer }
+        lastScan: { type: ["string", "null"] }
+    CardInput:
+      type: object
+      required: [uid]
+      properties:
+        uid: { type: string, minLength: 4 }
+        studentId: { type: integer, minimum: 1 }
+    CardStatusInput:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [active, locked, unassigned, lost, suspended, replaced]
+    AuditLog:
+      type: object
+      required: [id, user, role, school, action, module, timestamp, severity]
+      properties:
+        id: { type: integer }
+        user: { type: string }
+        role: { type: string }
+        school: { type: ["string", "null"] }
+        action: { type: string }
+        module: { type: string }
+        recordId: { type: ["integer", "null"] }
+        timestamp: { type: string }
+        severity:
+          type: string
+          enum: [info, warning, critical]

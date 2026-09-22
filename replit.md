@@ -1,6 +1,6 @@
-# [Project name]
+# EduPulse School Management
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+EduPulse is a multi-tenant school operations platform for Nigerian private schools, covering platform administration, school master data, subscriptions, NFC cards, and audit activity.
 
 ## Run & Operate
 
@@ -22,15 +22,22 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/edupulse` — the responsive React/Vite application and product shell.
+- `artifacts/api-server/src/routes/edupulse.ts` — API handlers for platform and school operations.
+- `lib/api-spec/openapi.yaml` — source of truth for API contracts and generated hooks.
+- `lib/db/src/schema/edupulse.ts` — tenant-scoped PostgreSQL schema.
+- `artifacts/edupulse/src/index.css` — visual tokens and application theme.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- The app keeps platform-owner views and school operations in the same product shell, with `schoolId` required on tenant-scoped API operations.
+- EduPulse subscription pricing is server-owned: ₦5,000 total, split into ₦2,000 school share and ₦3,000 EduPulse share.
+- Subscription verification activates the subscription and eligible NFC cards; unpaid history remains stored.
+- The API contract is OpenAPI-first; generated React Query hooks are the frontend integration boundary.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+The first slice includes a platform dashboard, school management, school overview, students, parents, classes, subscription ledger, NFC card lifecycle, immutable audit log, and settings. Core list/create/update/verify flows persist to PostgreSQL and refresh through generated query hooks.
 
 ## User preferences
 
@@ -38,7 +45,8 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Re-run `pnpm --filter @workspace/api-spec run codegen` after editing `lib/api-spec/openapi.yaml`.
+- Do not export both `lib/api-zod/src/generated/api` and `lib/api-zod/src/generated/types` from the Zod barrel when Orval emits duplicate parameter names.
 
 ## Pointers
 

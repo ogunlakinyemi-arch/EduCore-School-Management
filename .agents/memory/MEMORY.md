@@ -1,0 +1,1 @@
+- [API Zod codegen collisions](api-zod-codegen.md) — Orval can emit duplicate parameter types; verify the barrel after OpenAPI changes.

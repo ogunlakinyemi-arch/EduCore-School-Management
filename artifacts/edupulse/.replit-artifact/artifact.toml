@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "EduPulse School Management"
+description = "A multi-tenant school management platform for Nigerian private schools, with platform administration, school operations, students, subscriptions, NFC cards, payments, and audit-ready access control."
+version = "1.0.0"
+id = "artifacts/edupulse"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19494
+
+[services.development]
+run = "pnpm --filter @workspace/edupulse run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/edupulse", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/edupulse/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19494"
+BASE_PATH = "/"
