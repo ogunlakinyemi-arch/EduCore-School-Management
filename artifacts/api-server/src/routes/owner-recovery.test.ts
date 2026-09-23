@@ -102,23 +102,45 @@ describe("platform operation transactions", () => {
 });
 
 describe("forward migration safety", () => {
-  it("guards historical mismatches and recreates the exact validated composite FK without DML", async () => {
-    const sql = await readFile(
+  it("prepares tenant keys without rewriting data or adding dependent FKs prematurely", async () => {
+    const repairSql = await readFile(
       new URL("../../../../lib/db/drizzle/0004_platform_operations.sql", import.meta.url),
       "utf8",
     );
-    expect(sql).toContain("mismatch_count");
-    expect(sql).toContain("DROP CONSTRAINT IF EXISTS \"student_class_assignments_class_school_fk\"");
-    expect(sql).toContain("VALIDATE CONSTRAINT \"student_class_assignments_class_school_fk\"");
-    expect(sql).not.toMatch(/\b(DELETE|UPDATE)\s+\"?student_class_assignments/i);
+    const tenantKeySql = await readFile(
+      new URL("../../../../lib/db/drizzle/0005_tenant_reference_keys.sql", import.meta.url),
+      "utf8",
+    );
+    const preparationSql = await readFile(
+      new URL("../../../../lib/db/drizzle/0006_prepare_tenant_keys_publish.sql", import.meta.url),
+      "utf8",
+    );
+    expect(repairSql).toContain("mismatch_count");
+    expect(repairSql).toContain("VALIDATE CONSTRAINT \"student_class_assignments_class_school_fk\"");
+    expect(repairSql).not.toMatch(/\b(DELETE|UPDATE)\s+\"?student_class_assignments/i);
+    expect(tenantKeySql.match(/UNIQUE\("id","school_id"\)/g)?.length ?? 0).toBeGreaterThanOrEqual(6);
+    expect(preparationSql).not.toMatch(/\b(DELETE|UPDATE|TRUNCATE)\b/i);
 
-    const constraint = await pool.query(
-      `SELECT convalidated, pg_get_constraintdef(oid) AS definition
-       FROM pg_constraint WHERE conname='student_class_assignments_class_school_fk'`,
+    const tenantKeys = await pool.query(
+      `SELECT conname, convalidated, pg_get_constraintdef(oid) AS definition
+       FROM pg_constraint
+       WHERE conname LIKE '%_id_school_tenant_key'
+       ORDER BY conname`,
     );
-    expect(constraint.rows[0]?.convalidated).toBe(true);
-    expect(constraint.rows[0]?.definition).toContain(
-      "FOREIGN KEY (school_class_id, school_id) REFERENCES school_classes(id, school_id)",
+    expect(tenantKeys.rowCount).toBe(6);
+    expect(tenantKeys.rows.every((row) =>
+      row.convalidated && row.definition === "UNIQUE (id, school_id)",
+    )).toBe(true);
+
+    const deferredFks = await pool.query(
+      `SELECT conname FROM pg_constraint WHERE conname = ANY($1::text[])`,
+      [[
+        "student_class_assignments_student_school_fk",
+        "student_class_assignments_class_school_fk",
+        "class_subjects_class_school_fk",
+        "teacher_class_assignments_class_school_fk",
+      ]],
     );
+    expect(deferredFks.rowCount).toBe(0);
   });
 });

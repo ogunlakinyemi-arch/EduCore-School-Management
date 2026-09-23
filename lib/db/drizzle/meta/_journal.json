@@ -43,6 +43,13 @@
       "when": 1790164000000,
       "tag": "0005_tenant_reference_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790164600000,
+      "tag": "0006_prepare_tenant_keys_publish",
+      "breakpoints": true
     }
   ]
 }
