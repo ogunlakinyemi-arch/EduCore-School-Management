@@ -63,7 +63,7 @@ function parseName(value: unknown) {
   return { fullName, firstName, lastName: rest.join(" ") || undefined };
 }
 
-async function createOrRecoverBootstrapUser(input: {
+export async function createOrRecoverBootstrapUser(input: {
   email: string;
   password: string;
   firstName: string;

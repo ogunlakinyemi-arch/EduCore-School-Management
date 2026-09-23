@@ -12,6 +12,13 @@ const deviceFields = `d.id,d.serial_number AS "serialNumber",d.name,d.device_typ
   d.status,d.school_id AS "schoolId",s.name AS "schoolName",d.last_seen_at AS "lastSeenAt",
   d.created_at AS "createdAt",d.updated_at AS "updatedAt"`;
 
+type DeviceInput = {
+  serialNumber: string;
+  name: string;
+  deviceType: string;
+  schoolId: number | null;
+};
+
 async function audit(
   req: Request,
   action: string,
@@ -36,6 +43,32 @@ async function audit(
   );
 }
 
+export async function createPlatformDeviceRecord(req: Request, input: DeviceInput) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await client.query(
+      `INSERT INTO platform_devices(serial_number,name,device_type,school_id,status)
+       VALUES($1,$2,$3,$4,'ACTIVE')
+       RETURNING id`,
+      [input.serialNumber, input.name, input.deviceType, input.schoolId],
+    );
+    await audit(req, "Registered platform device", "Devices", result.rows[0].id, client);
+    const device = await client.query(
+      `SELECT ${deviceFields} FROM platform_devices d
+       LEFT JOIN schools s ON s.id=d.school_id WHERE d.id=$1`,
+      [result.rows[0].id],
+    );
+    await client.query("COMMIT");
+    return device.rows[0];
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 router.get("/platform/devices", run(async (req, res) => {
   assertRoles(req, ["PLATFORM_OWNER"]);
   const result = await pool.query(
@@ -57,29 +90,8 @@ router.post("/platform/devices", run(async (req, res) => {
   if (schoolId !== null && (!Number.isInteger(schoolId) || schoolId < 1)) {
     throw new AuthError(400, "A valid schoolId is required");
   }
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    const result = await client.query(
-      `INSERT INTO platform_devices(serial_number,name,device_type,school_id,status)
-       VALUES($1,$2,$3,$4,'ACTIVE')
-       RETURNING id`,
-      [serialNumber, name, deviceType, schoolId],
-    );
-    await audit(req, "Registered platform device", "Devices", result.rows[0].id, client);
-    const device = await client.query(
-      `SELECT ${deviceFields} FROM platform_devices d
-       LEFT JOIN schools s ON s.id=d.school_id WHERE d.id=$1`,
-      [result.rows[0].id],
-    );
-    await client.query("COMMIT");
-    res.status(201).json(device.rows[0]);
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
+  const device = await createPlatformDeviceRecord(req, { serialNumber, name, deviceType, schoolId });
+  res.status(201).json(device);
 }));
 
 router.patch("/platform/devices/:deviceId", run(async (req, res) => {
