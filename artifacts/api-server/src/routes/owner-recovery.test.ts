@@ -102,7 +102,7 @@ describe("platform operation transactions", () => {
 });
 
 describe("forward migration safety", () => {
-  it("prepares tenant keys without rewriting data or adding dependent FKs prematurely", async () => {
+  it("adds validated tenant keys before restoring the deferred composite FKs without DML", async () => {
     const repairSql = await readFile(
       new URL("../../../../lib/db/drizzle/0004_platform_operations.sql", import.meta.url),
       "utf8",
@@ -115,11 +115,20 @@ describe("forward migration safety", () => {
       new URL("../../../../lib/db/drizzle/0006_prepare_tenant_keys_publish.sql", import.meta.url),
       "utf8",
     );
+    const restorationSql = await readFile(
+      new URL("../../../../lib/db/drizzle/0007_restore_tenant_foreign_keys.sql", import.meta.url),
+      "utf8",
+    );
     expect(repairSql).toContain("mismatch_count");
     expect(repairSql).toContain("VALIDATE CONSTRAINT \"student_class_assignments_class_school_fk\"");
     expect(repairSql).not.toMatch(/\b(DELETE|UPDATE)\s+\"?student_class_assignments/i);
     expect(tenantKeySql.match(/UNIQUE\("id","school_id"\)/g)?.length ?? 0).toBeGreaterThanOrEqual(6);
     expect(preparationSql).not.toMatch(/\b(DELETE|UPDATE|TRUNCATE)\b/i);
+    expect(restorationSql).not.toMatch(/\b(DELETE|UPDATE|TRUNCATE|DROP TABLE)\b/i);
+    expect(
+      restorationSql.match(/\bADD CONSTRAINT "[^"]+_school_fk"/g)?.length,
+    ).toBe(4);
+    expect(restorationSql.match(/\bVALIDATE CONSTRAINT\b/g)?.length).toBe(4);
 
     const tenantKeys = await pool.query(
       `SELECT conname, convalidated, pg_get_constraintdef(oid) AS definition
@@ -132,8 +141,11 @@ describe("forward migration safety", () => {
       row.convalidated && row.definition === "UNIQUE (id, school_id)",
     )).toBe(true);
 
-    const deferredFks = await pool.query(
-      `SELECT conname FROM pg_constraint WHERE conname = ANY($1::text[])`,
+    const restoredFks = await pool.query(
+      `SELECT conname, convalidated, pg_get_constraintdef(oid) AS definition
+       FROM pg_constraint
+       WHERE conname = ANY($1::text[])
+       ORDER BY conname`,
       [[
         "student_class_assignments_student_school_fk",
         "student_class_assignments_class_school_fk",
@@ -141,6 +153,19 @@ describe("forward migration safety", () => {
         "teacher_class_assignments_class_school_fk",
       ]],
     );
-    expect(deferredFks.rowCount).toBe(0);
+    expect(restoredFks.rowCount).toBe(4);
+    expect(restoredFks.rows.every((row) => row.convalidated)).toBe(true);
+    expect(restoredFks.rows.find((row) =>
+      row.conname === "student_class_assignments_student_school_fk"
+    )?.definition).toContain(
+      "FOREIGN KEY (student_id, school_id) REFERENCES students(id, school_id)",
+    );
+    expect(restoredFks.rows.filter((row) =>
+      row.conname !== "student_class_assignments_student_school_fk"
+    ).every((row) =>
+      row.definition.includes(
+        "FOREIGN KEY (school_class_id, school_id) REFERENCES school_classes(id, school_id)",
+      )
+    )).toBe(true);
   });
 });

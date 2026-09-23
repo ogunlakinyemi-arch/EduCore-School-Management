@@ -657,8 +657,11 @@ export const studentClassAssignments = pgTable(
       )
       .where(sql`${table.status} = 'ACTIVE'`),
     uniqueIndex("student_class_assignments_id_school_unique").on(table.id, table.schoolId),
-    // Phase 2: restore student_class_assignments_student_school_fk after the
-    // production students tenant key has been added by the preparatory publish.
+    foreignKey({
+      columns: [table.studentId, table.schoolId],
+      foreignColumns: [students.id, students.schoolId],
+      name: "student_class_assignments_student_school_fk",
+    }),
     foreignKey({
       columns: [table.academicSessionId, table.schoolId],
       foreignColumns: [academicSessions.id, academicSessions.schoolId],
@@ -669,8 +672,11 @@ export const studentClassAssignments = pgTable(
       foreignColumns: [academicTerms.id, academicTerms.schoolId],
       name: "student_class_assignments_term_school_fk",
     }),
-    // Phase 2: restore student_class_assignments_class_school_fk after the
-    // production school_classes tenant key has been added.
+    foreignKey({
+      columns: [table.schoolClassId, table.schoolId],
+      foreignColumns: [schoolClasses.id, schoolClasses.schoolId],
+      name: "student_class_assignments_class_school_fk",
+    }),
     index("student_class_assignments_school_current_idx").on(table.schoolId, table.isCurrent),
     index("student_class_assignments_student_history_idx").on(table.studentId, table.startDate),
   ],
@@ -701,8 +707,11 @@ export const classSubjects = pgTable(
         sql`coalesce(${table.section}, '')`,
       )
       .where(sql`${table.status} = 'ACTIVE'`),
-    // Phase 2: restore class_subjects_class_school_fk after the production
-    // school_classes tenant key has been added.
+    foreignKey({
+      columns: [table.schoolClassId, table.schoolId],
+      foreignColumns: [schoolClasses.id, schoolClasses.schoolId],
+      name: "class_subjects_class_school_fk",
+    }),
     foreignKey({
       columns: [table.subjectId, table.schoolId],
       foreignColumns: [subjects.id, subjects.schoolId],
@@ -765,8 +774,11 @@ export const teacherClassAssignments = pgTable(
       foreignColumns: [academicSessions.id, academicSessions.schoolId],
       name: "teacher_class_assignments_session_school_fk",
     }),
-    // Phase 2: restore teacher_class_assignments_class_school_fk after the
-    // production school_classes tenant key has been added.
+    foreignKey({
+      columns: [table.schoolClassId, table.schoolId],
+      foreignColumns: [schoolClasses.id, schoolClasses.schoolId],
+      name: "teacher_class_assignments_class_school_fk",
+    }),
     foreignKey({
       columns: [table.subjectId, table.schoolId],
       foreignColumns: [subjects.id, subjects.schoolId],

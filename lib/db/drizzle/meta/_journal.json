@@ -50,6 +50,13 @@
       "when": 1790164600000,
       "tag": "0006_prepare_tenant_keys_publish",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790165200000,
+      "tag": "0007_restore_tenant_foreign_keys",
+      "breakpoints": true
     }
   ]
 }
