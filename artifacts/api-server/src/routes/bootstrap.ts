@@ -71,25 +71,51 @@ export async function createOrRecoverBootstrapUser(input: {
 }) {
   const marker = "platform-owner-bootstrap";
   try {
-    return await clerkClient.users.createUser({
-      emailAddress: [input.email],
-      password: input.password,
-      firstName: input.firstName,
-      lastName: input.lastName,
-      privateMetadata: { edupulseProvisioning: marker },
-    });
-  } catch (createError) {
-    const users = await clerkClient.users.getUserList({ emailAddress: [input.email], limit: 10 });
-    const orphan = users.data.find(
-      (user) => user.privateMetadata?.edupulseProvisioning === marker,
-    );
-    if (!orphan) throw createError;
-    return clerkClient.users.updateUser(orphan.id, {
-      password: input.password,
-      firstName: input.firstName,
-      lastName: input.lastName,
-      signOutOfOtherSessions: true,
-    });
+    try {
+      return await clerkClient.users.createUser({
+        emailAddress: [input.email],
+        password: input.password,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        privateMetadata: { edupulseProvisioning: marker },
+      });
+    } catch (createError) {
+      const users = await clerkClient.users.getUserList({ emailAddress: [input.email], limit: 10 });
+      const orphan = users.data.find(
+        (user) => user.privateMetadata?.edupulseProvisioning === marker,
+      );
+      if (!orphan) throw createError;
+      return clerkClient.users.updateUser(orphan.id, {
+        password: input.password,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        signOutOfOtherSessions: true,
+      });
+    }
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "status" in error &&
+      error.status === 422
+    ) {
+      const errors = "errors" in error && Array.isArray(error.errors) ? error.errors : [];
+      const first = errors[0];
+      const message =
+        first && typeof first === "object"
+          ? ("longMessage" in first && typeof first.longMessage === "string"
+              ? first.longMessage
+              : "message" in first && typeof first.message === "string"
+                ? first.message
+                : null)
+          : null;
+      throw new AuthError(
+        400,
+        message || "The owner account details were rejected by the identity provider",
+        "BOOTSTRAP_IDENTITY_REJECTED",
+      );
+    }
+    throw error;
   }
 }
 
@@ -122,7 +148,7 @@ router.post("/bootstrap/platform-owner", run(async (req, res) => {
     throw new AuthError(400, "A valid phone number is required");
   }
   if (
-    password.length < 12 ||
+    password.length < 15 ||
     !/[a-z]/.test(password) ||
     !/[A-Z]/.test(password) ||
     !/[0-9]/.test(password) ||
@@ -130,7 +156,7 @@ router.post("/bootstrap/platform-owner", run(async (req, res) => {
   ) {
     throw new AuthError(
       400,
-      "Password must be at least 12 characters and include uppercase, lowercase, number, and symbol",
+      "Password must be at least 15 characters and include uppercase, lowercase, number, and symbol",
     );
   }
 

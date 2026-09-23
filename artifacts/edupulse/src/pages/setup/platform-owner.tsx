@@ -13,7 +13,7 @@ const setupSchema = z.object({
   phone: z.string().min(8, 'Phone number must be at least 8 characters').max(25, 'Phone number is too long'),
   setupKey: z.string().min(16, 'Setup key must be at least 16 characters'),
   password: z.string()
-    .min(12, 'Password must be at least 12 characters')
+    .min(15, 'Password must be at least 15 characters')
     .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
     .regex(/[0-9]/, 'Must contain at least one number')
     .regex(/[^A-Za-z0-9]/, 'Must contain at least one special character'),
@@ -134,7 +134,7 @@ export function PlatformOwnerSetup() {
   }
 
   const passwordVal = form.watch('password');
-  const hasMinLength = passwordVal.length >= 12;
+  const hasMinLength = passwordVal.length >= 15;
   const hasUpper = /[A-Z]/.test(passwordVal);
   const hasNumber = /[0-9]/.test(passwordVal);
   const hasSpecial = /[^A-Za-z0-9]/.test(passwordVal);
@@ -263,7 +263,7 @@ export function PlatformOwnerSetup() {
               />
               <div className="grid grid-cols-2 gap-y-1 mt-2 mb-1 px-1">
                 <div className={`text-[10px] flex items-center gap-1.5 ${hasMinLength ? 'text-[hsl(157_37%_43%)]' : 'text-[hsl(var(--muted-foreground))]'}`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${hasMinLength ? 'bg-current' : 'border border-current'}`} /> 12+ characters
+                  <div className={`w-1.5 h-1.5 rounded-full ${hasMinLength ? 'bg-current' : 'border border-current'}`} /> 15+ characters
                 </div>
                 <div className={`text-[10px] flex items-center gap-1.5 ${hasUpper ? 'text-[hsl(157_37%_43%)]' : 'text-[hsl(var(--muted-foreground))]'}`}>
                   <div className={`w-1.5 h-1.5 rounded-full ${hasUpper ? 'bg-current' : 'border border-current'}`} /> Uppercase

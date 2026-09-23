@@ -177,7 +177,7 @@ vi.mock("@clerk/express", () => ({
   getAuth: vi.fn(() => ({ userId: null })),
 }));
 
-import bootstrapRouter from "./bootstrap";
+import bootstrapRouter, { createOrRecoverBootstrapUser } from "./bootstrap";
 import {
   AuthError,
   isPlatformOwner,
@@ -332,5 +332,31 @@ describe("initial Platform Owner bootstrap lifecycle", () => {
     expect(normalUser.email).toBe("normal@example.test");
     expect(normalContext.roles).toEqual([]);
     expect(isPlatformOwner(normalContext)).toBe(false);
+  });
+
+  it("returns a client error when Clerk rejects bootstrap identity details", async () => {
+    clerkUsers.createUser.mockRejectedValueOnce({
+      status: 422,
+      errors: [
+        {
+          code: "form_password_length_too_short",
+          message: "Passwords must be 15 characters or more.",
+          longMessage: "Passwords must be 15 characters or more.",
+        },
+      ],
+    });
+    clerkUsers.getUserList.mockResolvedValueOnce({ data: [] });
+
+    await expect(
+      createOrRecoverBootstrapUser({
+        email: "rejected-owner@example.test",
+        password: "TooShort1!",
+        firstName: "Rejected",
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      eventType: "BOOTSTRAP_IDENTITY_REJECTED",
+      message: "Passwords must be 15 characters or more.",
+    });
   });
 });

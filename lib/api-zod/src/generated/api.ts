@@ -39,7 +39,7 @@ export const createInitialPlatformOwnerBodyEmailMax = 254;
 export const createInitialPlatformOwnerBodyPhoneMin = 8;
 export const createInitialPlatformOwnerBodyPhoneMax = 25;
 
-export const createInitialPlatformOwnerBodyPasswordMin = 12;
+export const createInitialPlatformOwnerBodyPasswordMin = 15;
 export const createInitialPlatformOwnerBodyPasswordMax = 256;
 
 

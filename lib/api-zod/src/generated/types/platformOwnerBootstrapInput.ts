@@ -25,7 +25,7 @@ export interface PlatformOwnerBootstrapInput {
      */
   phone: string;
   /**
-     * @minLength 12
+     * @minLength 15
      * @maxLength 256
      */
   password: string;
