@@ -11,6 +11,7 @@ import {
   serial,
   text,
   timestamp,
+  unique,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -149,6 +150,7 @@ export const students = pgTable(
     uniqueIndex("students_school_admission_unique").on(table.schoolId, table.admissionNo),
     uniqueIndex("students_user_unique").on(table.userId),
     uniqueIndex("students_id_school_unique").on(table.id, table.schoolId),
+    unique("students_id_school_tenant_key").on(table.id, table.schoolId),
     index("students_school_idx").on(table.schoolId),
   ],
 );
@@ -207,6 +209,7 @@ export const schoolClasses = pgTable(
   (table) => [
     uniqueIndex("school_classes_unique").on(table.schoolId, table.name, table.section),
     uniqueIndex("school_classes_id_school_unique").on(table.id, table.schoolId),
+    unique("school_classes_id_school_tenant_key").on(table.id, table.schoolId),
   ],
 );
 
@@ -543,6 +546,7 @@ export const academicSessions = pgTable(
   (table) => [
     uniqueIndex("academic_sessions_school_name_unique").on(table.schoolId, table.name),
     uniqueIndex("academic_sessions_id_school_unique").on(table.id, table.schoolId),
+    unique("academic_sessions_id_school_tenant_key").on(table.id, table.schoolId),
     index("academic_sessions_school_status_idx").on(table.schoolId, table.status),
   ],
 );
@@ -564,6 +568,7 @@ export const academicTerms = pgTable(
   (table) => [
     uniqueIndex("academic_terms_session_name_unique").on(table.academicSessionId, table.name),
     uniqueIndex("academic_terms_id_school_unique").on(table.id, table.schoolId),
+    unique("academic_terms_id_school_tenant_key").on(table.id, table.schoolId),
     foreignKey({
       columns: [table.academicSessionId, table.schoolId],
       foreignColumns: [academicSessions.id, academicSessions.schoolId],
@@ -599,6 +604,7 @@ export const employees = pgTable(
   (table) => [
     uniqueIndex("employees_school_employee_no_unique").on(table.schoolId, table.employeeNo),
     uniqueIndex("employees_id_school_unique").on(table.id, table.schoolId),
+    unique("employees_id_school_tenant_key").on(table.id, table.schoolId),
     index("employees_school_type_status_idx").on(table.schoolId, table.employeeType, table.employmentStatus),
   ],
 );
@@ -618,6 +624,7 @@ export const subjects = pgTable(
   (table) => [
     uniqueIndex("subjects_school_code_unique").on(table.schoolId, table.code),
     uniqueIndex("subjects_id_school_unique").on(table.id, table.schoolId),
+    unique("subjects_id_school_tenant_key").on(table.id, table.schoolId),
     index("subjects_school_status_idx").on(table.schoolId, table.status),
   ],
 );
