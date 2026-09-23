@@ -108,7 +108,7 @@ export default function RegisterSchool() {
           </div>
           <h1 className="display-font text-3xl font-bold mb-3">School Registered</h1>
           <p className="text-[hsl(var(--muted-foreground))] mb-8 leading-relaxed">
-            Your school has been successfully registered on EduPulse via your partner's referral.
+            Your school has been successfully registered on Yemait EduCore via your partner's referral.
           </p>
           <Button className="w-full" onClick={() => window.location.href = '/sign-in'}>
             Continue to Sign In
@@ -128,7 +128,7 @@ export default function RegisterSchool() {
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]">
                 <Zap size={20} />
               </span>
-              <span className="display-font text-xl font-bold">EduPulse</span>
+              <span className="display-font text-xl font-bold">Yemait EduCore</span>
             </div>
             
             <h1 className="display-font text-4xl font-bold leading-tight mb-4">
@@ -229,7 +229,7 @@ export default function RegisterSchool() {
                     {onboard.isPending ? 'Registering School...' : 'Register School'} <ChevronRight size={18} />
                   </Button>
                   <p className="text-center text-xs text-[hsl(var(--muted-foreground))] mt-4">
-                    By registering, you agree to EduPulse Terms of Service and Privacy Policy.
+                    By registering, you agree to the Yemait Technologies Limited Terms of Service and Privacy Policy.
                   </p>
                 </div>
               </div>

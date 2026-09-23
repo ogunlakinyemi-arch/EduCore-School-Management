@@ -3,7 +3,7 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: Multi-tenant EduPulse school management API
+  description: Multi-tenant Yemait EduCore school management API
 servers:
   - url: /api
     description: Base API path
@@ -78,7 +78,7 @@ paths:
     get:
       operationId: getCurrentUser
       tags: [identity]
-      summary: Get the authenticated EduPulse user
+      summary: Get the authenticated Yemait EduCore user
       responses:
         "200":
           description: Current user and active role assignments
@@ -226,7 +226,7 @@ paths:
     get:
       operationId: listUsers
       tags: [users]
-      summary: List EduPulse users for platform administration
+      summary: List Yemait EduCore users for platform administration
       responses:
         "200":
           description: Users

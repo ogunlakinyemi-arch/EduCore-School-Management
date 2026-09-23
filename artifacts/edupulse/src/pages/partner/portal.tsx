@@ -72,7 +72,7 @@ function PortalHeader() {
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]">
             <Zap size={18} />
           </span>
-          <span className="display-font font-bold">EduPulse Partner</span>
+          <span className="display-font font-bold">Yemait EduCore Partner</span>
         </Link>
         <div className="flex items-center gap-6">
           {isSetup && (
@@ -208,7 +208,7 @@ function Dashboard() {
         <div className="panel p-5 md:p-6 bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))]">
           <div className="flex items-center gap-2 mb-4">
             <Zap size={16} className="text-[hsl(var(--accent))]" />
-            <span className="font-bold">EduPulse Partner Program</span>
+            <span className="font-bold">Yemait EduCore Partner Program</span>
           </div>
           <p className="text-sm leading-relaxed text-[hsl(var(--sidebar-foreground)/.7)] mb-6">
             You earn commission on all eligible subscription payments from your referred schools. Payouts are processed at the start of each academic term.
@@ -569,7 +569,7 @@ function InviteSchool() {
         
         <h2 className="display-font text-2xl font-bold mb-3">Your Unique Referral Link</h2>
         <p className="text-[hsl(var(--muted-foreground))] max-w-md mx-auto mb-8">
-          Share this link with school administrators. When they register their school on EduPulse using this link, they will be permanently attributed to your partner account.
+          Share this link with school administrators. When they register their school on Yemait EduCore using this link, they will be permanently attributed to your partner account.
         </p>
 
         {link.isLoading ? (

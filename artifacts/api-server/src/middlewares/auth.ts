@@ -68,7 +68,7 @@ export async function provisionCurrentUser(clerkUserId: string) {
     clerkUser.primaryEmailAddress?.emailAddress ??
     clerkUser.emailAddresses[0]?.emailAddress;
   if (!email) {
-    throw new AuthError(403, "An email address is required to access EduPulse");
+    throw new AuthError(403, "An email address is required to access Yemait EduCore");
   }
 
   const result = await pool.query(
@@ -108,7 +108,7 @@ export async function loadUserContext(clerkUserId: string): Promise<UserContext>
 
 export function assertUserActive(status: string) {
   if (status !== "ACTIVE") {
-    throw new AuthError(403, "This EduPulse account is inactive");
+    throw new AuthError(403, "This Yemait EduCore account is inactive");
   }
 }
 

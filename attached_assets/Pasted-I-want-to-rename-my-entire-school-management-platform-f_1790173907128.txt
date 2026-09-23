@@ -1,0 +1,159 @@
+I want to rename my entire school management platform from “EduPulse” to “Yemait EduCore”.
+
+This is a branding/name change only. Do NOT redesign, rebuild, remove, or break any existing functionality.
+
+Official company and product naming
+
+Company: Yemait Technologies Limited
+
+Product/Platform: Yemait EduCore
+
+Short product reference: EduCore, where appropriate.
+
+Use this naming hierarchy consistently throughout the application:
+
+Yemait Technologies Limited → Yemait EduCore
+
+Do NOT use “EduPulse” anywhere in the user-facing application after this change.
+
+IMPORTANT
+
+Preserve the entire existing application and all functionality, including:
+
+- Database and existing data
+- Clerk authentication
+- User accounts
+- School accounts
+- Roles and permissions
+- NFC functionality
+- Biometric/fingerprint functionality
+- Attendance
+- Parent notifications
+- Student management
+- Staff management
+- Fees and payments
+- Academic modules
+- Reports
+- Partner/reseller system
+- Referral system
+- APIs
+- Integrations
+- Security controls
+- Existing tests
+- Deployment configuration
+
+Do not make unrelated changes.
+
+Branding replacement
+
+Find every occurrence of:
+
+- EduPulse
+- EDUPULSE
+- edupulse
+- edu-pulse
+- edu_pulse
+
+Review each occurrence individually.
+
+Replace user-facing branding with Yemait EduCore.
+
+Where the company name is required, use:
+
+Yemait Technologies Limited
+
+Update branding in the:
+
+- Browser title
+- Login and registration pages
+- Dashboard
+- Header/sidebar
+- Landing pages
+- Footer
+- Welcome screens
+- Notifications
+- Email templates
+- SMS templates
+- Parent-facing pages
+- School administrator pages
+- Staff pages
+- Student pages
+- Partner/reseller pages
+- Super-admin pages
+- Referral pages
+- Reports/documents
+- SEO metadata
+- Open Graph/social metadata
+- PWA/app manifest
+- About/help pages
+- Terms/privacy pages where applicable
+- Logo/text branding
+
+DO NOT blindly replace technical identifiers
+
+If an EduPulse reference is an internal technical identifier, database field, API identifier, migration name, environment variable, security variable, or other identifier that changing could break existing functionality, leave it unchanged unless there is a compelling technical reason to change it.
+
+In particular, do not modify or expose:
+
+- CLERK_SECRET_KEY
+- authentication secrets
+- production credentials
+- existing secure environment variables
+
+The existing Clerk implementation must continue working exactly as before.
+
+Logo
+
+Update the visible product logo/wordmark from EduPulse to Yemait EduCore where applicable.
+
+Do not unnecessarily redesign the existing interface.
+
+Maintain the current UI, layout, responsiveness, functionality and design.
+
+Domain
+
+Do not change the production domain or deployment configuration yet.
+
+I have not instructed you to purchase or configure a new domain.
+
+Only change visible branding to Yemait EduCore.
+
+Verification
+
+After the rename:
+
+1. Run all existing tests.
+2. Run type checking.
+3. Run production frontend build.
+4. Run backend/API build if applicable.
+5. Start the application and verify it loads.
+6. Test Clerk authentication.
+7. Test dashboard access.
+8. Test major navigation.
+9. Test public routes.
+10. Test API health checks.
+11. Confirm existing database data is intact.
+12. Confirm no secrets are exposed.
+13. Search the entire project again for EduPulse/EDUPULSE/edupulse.
+14. Confirm all remaining occurrences are intentional technical references.
+
+Final report
+
+When finished, report:
+
+- Files changed
+- Branding locations updated
+- Any EduPulse references intentionally retained
+- Tests completed
+- Build results
+- Authentication/security verification
+- Database migration status
+- Remaining EduPulse references, if any
+- Any issues requiring my attention
+
+Do not add new features or make unrelated architectural changes.
+
+The final branding must be:
+
+Yemait Technologies Limited
+Yemait EduCore

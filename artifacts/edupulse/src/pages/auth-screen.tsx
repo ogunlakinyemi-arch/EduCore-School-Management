@@ -15,19 +15,19 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[hsl(var(--sidebar-primary)/.3)] blur-3xl" />
           <div className="relative flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]"><Zap size={21} /></span>
-            <span className="display-font text-xl font-bold">EduPulse</span>
+            <span className="display-font text-xl font-bold">Yemait EduCore</span>
           </div>
           <div className="relative my-auto max-w-lg">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold"><Sparkles size={14} />Secure school operations</div>
             <h1 className="display-font text-4xl font-bold leading-tight lg:text-5xl">One trusted identity for every school role.</h1>
-            <p className="mt-5 max-w-md text-sm leading-6 text-[hsl(var(--sidebar-foreground)/.66)]">Your EduPulse permissions follow your account and school membership. Every request is checked again by the server.</p>
+            <p className="mt-5 max-w-md text-sm leading-6 text-[hsl(var(--sidebar-foreground)/.66)]">Your Yemait EduCore permissions follow your account and school membership. Every request is checked again by the server.</p>
           </div>
           <div className="relative flex items-center gap-2 text-xs text-[hsl(var(--sidebar-foreground)/.62)]"><ShieldCheck size={16} />Tenant isolation and authenticated audit trails</div>
         </section>
         <section className="flex flex-col items-center justify-center p-5 sm:p-10">
           <button onClick={() => navigate('/')} className="mb-7 flex items-center gap-2 md:hidden">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-[hsl(var(--accent))]"><Zap size={17} /></span>
-            <span className="display-font text-lg font-bold">EduPulse</span>
+            <span className="display-font text-lg font-bold">Yemait EduCore</span>
           </button>
           {isSignIn ? (
             <SignIn

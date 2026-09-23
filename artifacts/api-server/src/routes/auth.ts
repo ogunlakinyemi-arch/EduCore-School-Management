@@ -732,7 +732,7 @@ router.patch(
     await auditSecurityEvent(
       req,
       null,
-      `${status === "ACTIVE" ? "Activated" : "Deactivated"} EduPulse user`,
+      `${status === "ACTIVE" ? "Activated" : "Deactivated"} Yemait EduCore user`,
       status === "ACTIVE" ? "USER_ACTIVATED" : "USER_DEACTIVATED",
       userId,
     );

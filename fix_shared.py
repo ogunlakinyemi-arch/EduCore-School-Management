@@ -29,7 +29,7 @@ shell_replacement = """export function Shell({ children }: { children: ReactNode
   if (isPlatformOwner && !roles.includes('PLATFORM_OWNER')) roles.push('PLATFORM_OWNER');
 
   const visibleNav = nav.filter(item => !item.roles || item.roles.some(role => roles.includes(role)));
-  const name = context?.user?.name ?? 'EduPulse user';
+  const name = context?.user?.name ?? 'Yemait EduCore user';
   const roleDisplay = isPlatformOwner ? 'Platform Owner' : (roles[0]?.replaceAll('_', ' ') ?? 'User').toLowerCase();
   const initials = name.split(' ').slice(0, 2).map(part => part[0]).join('').toUpperCase();
   

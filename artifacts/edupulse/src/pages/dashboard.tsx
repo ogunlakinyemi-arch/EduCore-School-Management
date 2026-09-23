@@ -33,7 +33,7 @@ function PlatformDashboard() {
       <PageHeading 
         eyebrow={`Platform overview · ${today}`} 
         title="The whole network, at a glance." 
-        description="A calm operational read on the schools, people and payments moving through EduPulse." 
+        description="A calm operational read on the schools, people and payments moving through Yemait EduCore."
         // We avoid wouter Link here since it's just a UI demo, but wait, wouter Link needs a proper import in shared, actually I'll use native a or wouter Link
         // Need to import Link from wouter directly
         action={
@@ -72,7 +72,7 @@ function PlatformDashboard() {
               <div className="mt-3 text-xs font-medium text-[hsl(var(--muted-foreground))]">Share returning to operators</div>
             </div>
             <div className="rounded-2xl border border-[hsl(var(--border))] p-5 bg-[hsl(var(--card))]">
-              <div className="eyebrow">EduPulse allocation</div>
+              <div className="eyebrow">Yemait EduCore allocation</div>
               <div className="display-font mt-8 text-3xl font-bold">{money(data?.edupulseAllocation)}</div>
               <div className="mt-3 text-xs font-medium text-[hsl(var(--muted-foreground))]">Platform operations share</div>
             </div>

@@ -28,7 +28,7 @@ export function IconLogo({ compact = false }: { compact?: boolean }) {
         <Zap size={18} strokeWidth={2.6} />
         <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-[hsl(var(--sidebar))] bg-[hsl(var(--primary))]" />
       </span>
-      {!compact && <span className="display-font text-xl font-bold tracking-tight text-[hsl(var(--sidebar-foreground))]">EduPulse</span>}
+      {!compact && <span className="display-font text-xl font-bold tracking-tight text-[hsl(var(--sidebar-foreground))]">Yemait EduCore</span>}
     </div>
   );
 }
@@ -67,7 +67,7 @@ export function Shell({ children }: { children: ReactNode }) {
   if (isPlatformOwner && !roles.includes('PLATFORM_OWNER')) roles.push('PLATFORM_OWNER');
 
   const visibleNav = nav.filter(item => !item.roles || item.roles.some(role => roles.includes(role)));
-  const name = context?.user?.name ?? 'EduPulse user';
+  const name = context?.user?.name ?? 'Yemait EduCore user';
   const roleDisplay = isPlatformOwner ? 'Platform Owner' : (roles[0]?.replaceAll('_', ' ') ?? 'User').toLowerCase();
   const initials = name.split(' ').slice(0, 2).map(part => part[0]).join('').toUpperCase();
   
@@ -124,7 +124,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <button className="rounded-lg p-2 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] md:hidden" onClick={() => setOpen(true)} aria-label="Open navigation" data-testid="button-open-navigation"><Menu size={22} /></button>
             <div>
               <div className="eyebrow flex items-center gap-1.5">
-                EduPulse <ChevronDown size={12} className="opacity-50" /> {schoolName}
+                Yemait EduCore <ChevronDown size={12} className="opacity-50" /> {schoolName}
               </div>
               <div className="mt-0.5 text-sm font-bold text-[hsl(var(--foreground))] capitalize">
                 {location === '/' ? `Welcome back, ${name.split(' ')[0]}` : nav.find(item => item.href !== '/' && location.startsWith(item.href))?.label || 'Overview'}

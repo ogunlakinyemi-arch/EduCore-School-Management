@@ -14,7 +14,7 @@ function PortalHeader() {
       <div className="mx-auto flex h-[70px] max-w-6xl items-center justify-between px-5">
         <Link href="/" className="flex items-center gap-2.5">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]"><Zap size={18} /></span>
-          <span className="display-font font-bold">EduPulse Parent</span>
+          <span className="display-font font-bold">Yemait EduCore Parent</span>
         </Link>
         <div className="flex items-center gap-3">
           <span className="hidden text-xs font-semibold text-[hsl(var(--muted-foreground))] sm:block">Protected family access</span>

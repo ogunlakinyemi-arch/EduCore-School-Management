@@ -222,6 +222,20 @@ export default function App() {
         proxyUrl={clerkProxyUrl}
         signInFallbackRedirectUrl={base || '/'}
         signUpFallbackRedirectUrl={base || '/'}
+        localization={{
+          signIn: {
+            start: {
+              title: 'Sign in to Yemait EduCore',
+              subtitle: 'Welcome back. Sign in to continue.',
+            },
+          },
+          signUp: {
+            start: {
+              title: 'Create your Yemait EduCore account',
+              subtitle: 'Join your school community.',
+            },
+          },
+        }}
       >
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>

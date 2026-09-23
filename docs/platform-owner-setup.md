@@ -1,20 +1,20 @@
-# EduPulse Platform Owner Setup
+# Yemait EduCore Platform Owner Setup
 
 ## Before the first deployment
 
-1. Configure production Clerk keys for the EduPulse deployment.
+1. Configure production Clerk keys for the Yemait EduCore deployment.
 2. Add a strong, randomly generated production secret named `EDUPULSE_SETUP_KEY`.
 3. Apply the database migrations. The migrations create tenant-integrity indexes before their composite foreign keys, replace and validate `student_class_assignments_class_school_fk`, and never delete or rewrite assignment data. If mismatched historical rows exist, migration stops with an explicit count so they can be reviewed safely.
-4. Deploy the API and EduPulse web artifacts.
+4. Deploy the API and Yemait EduCore web artifacts.
 
 ## Create the first Platform Owner
 
-1. Open `/setup/platform-owner` on the deployed EduPulse site.
+1. Open `/setup/platform-owner` on the deployed Yemait EduCore site.
 2. Enter the owner’s full name, email, phone number, a strong password, and the exact `EDUPULSE_SETUP_KEY`.
 3. Submit the form once, then sign in with the new owner account.
 4. Confirm the owner can open Schools, Users & Roles, Devices, Notifications, Partners, Subscriptions, Audit Log, and Settings.
 
-The setup endpoint uses a transaction advisory lock and permanently refuses another first-owner setup after any global `PLATFORM_OWNER` membership exists. Inactive historical owner memberships also keep setup disabled. The password is sent only to Clerk and is never written to the EduPulse database or logs.
+The setup endpoint uses a transaction advisory lock and permanently refuses another first-owner setup after any global `PLATFORM_OWNER` membership exists. Inactive historical owner memberships also keep setup disabled. The password is sent only to Clerk and is never written to the Yemait EduCore database or logs.
 
 After confirming the owner can sign in, remove `EDUPULSE_SETUP_KEY` from the production deployment. The existing owner record continues to keep setup disabled, and removing the key reduces unnecessary secret exposure.
 

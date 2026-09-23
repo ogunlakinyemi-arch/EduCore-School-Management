@@ -54,7 +54,7 @@ export default function AcceptInvitation() {
             <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[hsl(157_37%_43%/.15)] text-[hsl(157_37%_43%)] dark:text-[hsl(157_37%_55%)] mb-6">
               <CheckCircle2 size={32} />
             </div>
-            <h1 className="display-font text-3xl font-bold mb-3">Welcome to EduPulse</h1>
+            <h1 className="display-font text-3xl font-bold mb-3">Welcome to Yemait EduCore</h1>
             <p className="text-[hsl(var(--muted-foreground))] mb-8 leading-relaxed">
               Your partner account is ready. You can now start referring schools and managing your commissions.
             </p>
