@@ -7,7 +7,11 @@ import {
   MoreHorizontal, Pencil, Plus, RefreshCw, Search, Settings2, ShieldCheck, SlidersHorizontal, Smartphone, 
   UserRound, UsersRound, WalletCards, X, Zap, Calendar, UserCog, ClipboardList, Briefcase, Handshake
 } from 'lucide-react';
-import { useGetAuthorizedContext, useListSchools, getListSchoolsQueryKey, useGetCurrentUserSchools, getGetCurrentUserSchoolsQueryKey } from '@workspace/api-client-react';
+import {
+  useGetAuthorizedContext, useListSchools, getListSchoolsQueryKey,
+  useGetCurrentUserSchools, getGetCurrentUserSchoolsQueryKey,
+  useListPlatformNotifications, getListPlatformNotificationsQueryKey
+} from '@workspace/api-client-react';
 
 export function cx(...parts: Array<string | false | undefined | null>) { 
   return parts.filter(Boolean).join(' '); 
@@ -34,7 +38,7 @@ type NavItem = { href: string; label: string; icon: typeof Activity; roles?: App
 
 const nav: NavItem[] = [
   { href: '/', label: 'Command centre', icon: LayoutDashboard },
-  { href: '/schools', label: 'Schools', icon: Building2, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
+  { href: '/schools', label: 'Schools', icon: Building2, roles: ['PLATFORM_OWNER'] },
   { href: '/students', label: 'Students', icon: GraduationCap, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
   { href: '/parents', label: 'Parents', icon: UsersRound, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
   { href: '/employees', label: 'Employees', icon: Briefcase, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
@@ -43,6 +47,7 @@ const nav: NavItem[] = [
   { href: '/classes', label: 'Classes', icon: Library, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
   { href: '/users', label: 'Users & Roles', icon: UserCog, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
   { href: '/partners', label: 'Partners', icon: Handshake, roles: ['PLATFORM_OWNER'] },
+  { href: '/devices', label: 'Devices', icon: Smartphone, roles: ['PLATFORM_OWNER'] },
   { href: '/subscriptions', label: 'Subscriptions', icon: WalletCards, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/cards', label: 'NFC Cards', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'STAFF'] },
   { href: '/audit', label: 'Audit Log', icon: FileClock, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
@@ -77,6 +82,9 @@ export function Shell({ children }: { children: ReactNode }) {
       schoolName = userSchoolsQuery.data?.find((s: any) => s.schoolId === schoolId)?.name || 'Authorized School';
     }
   }
+
+  const notificationsQuery = useListPlatformNotifications({ query: { enabled: isPlatformOwner, queryKey: getListPlatformNotificationsQueryKey() } });
+  const hasUnread = notificationsQuery.data?.some((n: any) => !n.isRead) || false;
 
   return (
     <div className="app-shell min-h-[100dvh] text-[hsl(var(--foreground))]">
@@ -124,10 +132,18 @@ export function Shell({ children }: { children: ReactNode }) {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button className="relative grid h-10 w-10 place-items-center rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--primary)/.3)] hover:text-[hsl(var(--primary))]" aria-label="Notifications" data-testid="button-notifications">
-              <Bell size={18} />
-              <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full border-2 border-[hsl(var(--card))] bg-[hsl(var(--destructive))]" />
-            </button>
+            {isPlatformOwner ? (
+              <Link href="/notifications">
+                <button className="relative grid h-10 w-10 place-items-center rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--primary)/.3)] hover:text-[hsl(var(--primary))]" aria-label="Notifications" data-testid="button-notifications">
+                  <Bell size={18} />
+                  {hasUnread && <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full border-2 border-[hsl(var(--card))] bg-[hsl(var(--destructive))]" />}
+                </button>
+              </Link>
+            ) : (
+              <button className="relative grid h-10 w-10 place-items-center rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--primary)/.3)] hover:text-[hsl(var(--primary))]" aria-label="Notifications" data-testid="button-notifications">
+                <Bell size={18} />
+              </button>
+            )}
             <div className="hidden h-8 w-px bg-[hsl(var(--border))] sm:block" />
             <div className="hidden text-right sm:block">
               <div className="text-xs font-bold">{name}</div>
@@ -160,12 +176,13 @@ export function PageHeading({ eyebrow, title, description, action }: { eyebrow: 
   );
 }
 
-export function Button({ children, onClick, variant = 'primary', type = 'button', className, disabled, testId }: { children: ReactNode; onClick?: () => void; variant?: 'primary' | 'outline' | 'quiet' | 'danger'; type?: 'button' | 'submit'; className?: string; disabled?: boolean; testId?: string }) {
+export function Button({ children, onClick, variant = 'primary', type = 'button', className, disabled, testId, title }: { children: ReactNode; onClick?: () => void; variant?: 'primary' | 'outline' | 'quiet' | 'danger'; type?: 'button' | 'submit'; className?: string; disabled?: boolean; testId?: string; title?: string }) {
   return (
     <button 
       type={type} 
       onClick={onClick} 
       disabled={disabled} 
+      title={title}
       className={cx(
         'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all disabled:cursor-not-allowed disabled:opacity-50', 
         variant === 'primary' && 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-[0_4px_14px_hsl(var(--primary)/.25)] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_hsl(var(--primary)/.3)]', 

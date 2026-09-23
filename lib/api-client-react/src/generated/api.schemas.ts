@@ -5,6 +5,41 @@
  * Multi-tenant EduPulse school management API
  * OpenAPI spec version: 0.1.0
  */
+export interface PlatformOwnerBootstrapStatus {
+  available: boolean;
+  configured: boolean;
+}
+
+export interface PlatformOwnerBootstrapInput {
+  /**
+     * @minLength 16
+     * @maxLength 256
+     */
+  setupKey: string;
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  fullName: string;
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 8
+     * @maxLength 25
+     */
+  phone: string;
+  /**
+     * @minLength 12
+     * @maxLength 256
+     */
+  password: string;
+}
+
+export interface PlatformOwnerBootstrapResult {
+  created: true;
+  signInPath: string;
+}
+
 export interface ApiError {
   error: string;
   code?: string;
@@ -535,6 +570,128 @@ export interface RoleAssignment {
   /** @nullable */
   schoolId?: number | null;
   status: RoleAssignmentStatus;
+}
+
+export interface SchoolAdministratorInput {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  fullName: string;
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 8
+     * @maxLength 25
+     */
+  phone: string;
+  /**
+     * @minLength 12
+     * @maxLength 256
+     */
+  password: string;
+}
+
+export interface SchoolAdministratorResult {
+  id: number;
+  email: string;
+  firstName: string;
+  /** @nullable */
+  lastName?: string | null;
+  phone: string;
+  membership: RoleAssignment;
+}
+
+export type PlatformDeviceDeviceType = typeof PlatformDeviceDeviceType[keyof typeof PlatformDeviceDeviceType];
+
+
+export const PlatformDeviceDeviceType = {
+  NFC: 'NFC',
+  BIOMETRIC: 'BIOMETRIC',
+  HYBRID: 'HYBRID',
+} as const;
+
+export type PlatformDeviceStatus = typeof PlatformDeviceStatus[keyof typeof PlatformDeviceStatus];
+
+
+export const PlatformDeviceStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  MAINTENANCE: 'MAINTENANCE',
+} as const;
+
+export interface PlatformDevice {
+  id: number;
+  serialNumber: string;
+  name: string;
+  deviceType: PlatformDeviceDeviceType;
+  status: PlatformDeviceStatus;
+  /** @nullable */
+  schoolId?: number | null;
+  /** @nullable */
+  schoolName?: string | null;
+  /** @nullable */
+  lastSeenAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type PlatformDeviceInputDeviceType = typeof PlatformDeviceInputDeviceType[keyof typeof PlatformDeviceInputDeviceType];
+
+
+export const PlatformDeviceInputDeviceType = {
+  NFC: 'NFC',
+  BIOMETRIC: 'BIOMETRIC',
+  HYBRID: 'HYBRID',
+} as const;
+
+export interface PlatformDeviceInput {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  serialNumber: string;
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name: string;
+  deviceType: PlatformDeviceInputDeviceType;
+  /** @nullable */
+  schoolId?: number | null;
+}
+
+export type PlatformDeviceUpdateStatus = typeof PlatformDeviceUpdateStatus[keyof typeof PlatformDeviceUpdateStatus];
+
+
+export const PlatformDeviceUpdateStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  MAINTENANCE: 'MAINTENANCE',
+} as const;
+
+export interface PlatformDeviceUpdate {
+  /** @nullable */
+  schoolId?: number | null;
+  status?: PlatformDeviceUpdateStatus;
+}
+
+export type PlatformNotificationSeverity = typeof PlatformNotificationSeverity[keyof typeof PlatformNotificationSeverity];
+
+
+export const PlatformNotificationSeverity = {
+  info: 'info',
+  warning: 'warning',
+  critical: 'critical',
+} as const;
+
+export interface PlatformNotification {
+  id: number;
+  title: string;
+  message: string;
+  severity: PlatformNotificationSeverity;
+  isRead: boolean;
+  createdAt: string;
 }
 
 export type CurrentUserStatus = typeof CurrentUserStatus[keyof typeof CurrentUserStatus];

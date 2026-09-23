@@ -42,6 +42,38 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /bootstrap/platform-owner/status:
+    get:
+      security: []
+      operationId: getPlatformOwnerBootstrapStatus
+      tags: [identity]
+      summary: Check whether first-owner setup is available
+      responses:
+        "200":
+          description: Bootstrap availability
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformOwnerBootstrapStatus" }
+  /bootstrap/platform-owner:
+    post:
+      security: []
+      operationId: createInitialPlatformOwner
+      tags: [identity]
+      summary: Securely create the first Platform Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlatformOwnerBootstrapInput" }
+      responses:
+        "201":
+          description: Initial owner created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformOwnerBootstrapResult" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: Setup has already been completed
   /me:
     get:
       operationId: getCurrentUser
@@ -250,6 +282,99 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/RoleAssignment" }
+  /schools/{schoolId}/administrators:
+    post:
+      operationId: createSchoolAdministrator
+      tags: [users]
+      summary: Create a Clerk-backed School Administrator account
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SchoolAdministratorInput" }
+      responses:
+        "201":
+          description: School Administrator created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolAdministratorResult" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /platform/devices:
+    get:
+      operationId: listPlatformDevices
+      tags: [platform]
+      summary: List NFC and biometric devices and school assignments
+      responses:
+        "200":
+          description: Devices
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PlatformDevice" } }
+    post:
+      operationId: createPlatformDevice
+      tags: [platform]
+      summary: Register and optionally assign a device
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlatformDeviceInput" }
+      responses:
+        "201":
+          description: Device created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformDevice" }
+  /platform/devices/{deviceId}:
+    patch:
+      operationId: updatePlatformDevice
+      tags: [platform]
+      summary: Change a device assignment or status
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlatformDeviceUpdate" }
+      responses:
+        "200":
+          description: Device updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformDevice" }
+  /platform/notifications:
+    get:
+      operationId: listPlatformNotifications
+      tags: [platform]
+      summary: List Platform Owner notifications
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PlatformNotification" } }
+  /platform/notifications/{notificationId}/read:
+    patch:
+      operationId: markPlatformNotificationRead
+      tags: [platform]
+      summary: Mark a Platform Owner notification as read
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Notification updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformNotification" }
   /dashboard/platform:
     get:
       operationId: getPlatformDashboard
@@ -1622,6 +1747,27 @@ components:
       required: true
       schema: { type: integer, minimum: 1 }
   schemas:
+    PlatformOwnerBootstrapStatus:
+      type: object
+      required: [available, configured]
+      properties:
+        available: { type: boolean }
+        configured: { type: boolean }
+    PlatformOwnerBootstrapInput:
+      type: object
+      required: [setupKey, fullName, email, phone, password]
+      properties:
+        setupKey: { type: string, minLength: 16, maxLength: 256 }
+        fullName: { type: string, minLength: 2, maxLength: 120 }
+        email: { type: string, format: email, maxLength: 254 }
+        phone: { type: string, minLength: 8, maxLength: 25 }
+        password: { type: string, minLength: 12, maxLength: 256 }
+    PlatformOwnerBootstrapResult:
+      type: object
+      required: [created, signInPath]
+      properties:
+        created: { type: boolean, const: true }
+        signInPath: { type: string }
     ApiError:
       type: object
       required: [error]
@@ -1874,6 +2020,61 @@ components:
         status:
           type: string
           enum: [ACTIVE, INACTIVE]
+    SchoolAdministratorInput:
+      type: object
+      required: [fullName, email, phone, password]
+      properties:
+        fullName: { type: string, minLength: 2, maxLength: 120 }
+        email: { type: string, format: email, maxLength: 254 }
+        phone: { type: string, minLength: 8, maxLength: 25 }
+        password: { type: string, minLength: 12, maxLength: 256 }
+    SchoolAdministratorResult:
+      type: object
+      required: [id, email, firstName, phone, membership]
+      properties:
+        id: { type: integer }
+        email: { type: string, format: email }
+        firstName: { type: string }
+        lastName: { type: ["string", "null"] }
+        phone: { type: string }
+        membership: { $ref: "#/components/schemas/RoleAssignment" }
+    PlatformDevice:
+      type: object
+      required: [id, serialNumber, name, deviceType, status, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        serialNumber: { type: string }
+        name: { type: string }
+        deviceType: { type: string, enum: [NFC, BIOMETRIC, HYBRID] }
+        status: { type: string, enum: [ACTIVE, INACTIVE, MAINTENANCE] }
+        schoolId: { type: ["integer", "null"] }
+        schoolName: { type: ["string", "null"] }
+        lastSeenAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    PlatformDeviceInput:
+      type: object
+      required: [serialNumber, name, deviceType]
+      properties:
+        serialNumber: { type: string, minLength: 2, maxLength: 120 }
+        name: { type: string, minLength: 2, maxLength: 120 }
+        deviceType: { type: string, enum: [NFC, BIOMETRIC, HYBRID] }
+        schoolId: { type: ["integer", "null"] }
+    PlatformDeviceUpdate:
+      type: object
+      properties:
+        schoolId: { type: ["integer", "null"] }
+        status: { type: string, enum: [ACTIVE, INACTIVE, MAINTENANCE] }
+    PlatformNotification:
+      type: object
+      required: [id, title, message, severity, isRead, createdAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        message: { type: string }
+        severity: { type: string, enum: [info, warning, critical] }
+        isRead: { type: boolean }
+        createdAt: { type: string, format: date-time }
     CurrentUser:
       type: object
       required: [id, clerkUserId, email, status, name, roles]

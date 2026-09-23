@@ -1,18 +1,20 @@
 import { useMemo } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ClerkProvider, useAuth } from '@clerk/react';
-import { Route, Switch, Redirect } from 'wouter';
+import { Route, Switch, Redirect, Link } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useGetAuthorizedContext } from '@workspace/api-client-react';
+import { ShieldAlert } from 'lucide-react';
 
 // Layout & Shared
-import { Shell, TenantProvider } from '@/components/shared';
+import { Shell, TenantProvider, Button } from '@/components/shared';
 
 // Pages
 import NotFound from '@/pages/not-found';
 import { AuthScreen } from '@/pages/auth-screen';
+import { PlatformOwnerSetup } from '@/pages/setup/platform-owner';
 import ParentPortal from '@/pages/parent-portal';
 import PartnerPortal from '@/pages/partner/portal';
 import PartnerManagement from '@/pages/partner/management';
@@ -32,10 +34,60 @@ import { SubscriptionsPage } from '@/pages/subscriptions';
 import { CardsPage } from '@/pages/cards';
 import { AuditPage } from '@/pages/audit';
 import { SettingsPage } from '@/pages/settings';
+import { DevicesPage } from '@/pages/devices';
+import { NotificationsPage } from '@/pages/notifications';
 
 import './index.css';
 
 const queryClient = new QueryClient();
+
+function AccessDenied() {
+  return (
+    <div className="flex min-h-[100dvh] items-center justify-center p-8 text-center bg-[hsl(var(--background))]">
+      <div className="panel flex flex-col items-center justify-center p-10 max-w-md w-full border-[hsl(var(--destructive)/.2)] shadow-xl fade-up">
+        <div className="mb-5 grid h-16 w-16 place-items-center rounded-2xl bg-[hsl(var(--destructive)/.1)] text-[hsl(var(--destructive))]">
+          <ShieldAlert size={32} />
+        </div>
+        <h1 className="display-font text-2xl font-bold">Access Denied</h1>
+        <p className="mt-3 text-sm leading-relaxed text-[hsl(var(--muted-foreground))]">
+          You don't have the required permissions to view this module. Ensure your role grants access to this area.
+        </p>
+        <Link href="/">
+          <Button className="mt-8">Return to Dashboard</Button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function RoleGuard({
+  allowedRoles,
+  isPlatformOwnerOnly,
+  children
+}: {
+  allowedRoles?: string[],
+  isPlatformOwnerOnly?: boolean,
+  children: React.ReactNode
+}) {
+  const contextQuery = useGetAuthorizedContext();
+  const context = contextQuery.data;
+  if (contextQuery.isLoading) return <div className="min-h-[100dvh] bg-[hsl(var(--background))]" />;
+  if (!context) return <AccessDenied />;
+
+  const isPlatformOwner = context.isPlatformOwner || false;
+
+  if (isPlatformOwnerOnly && !isPlatformOwner) {
+    return <AccessDenied />;
+  }
+  if (allowedRoles && allowedRoles.length > 0) {
+    if (isPlatformOwner) return <>{children}</>;
+    const roles = context.roles?.map(r => r.role as string) || [];
+    const hasAccess = allowedRoles.some(role => roles.includes(role));
+    if (!hasAccess) return <AccessDenied />;
+  }
+
+  return <>{children}</>;
+}
 
 function ProtectedRoutes() {
   const contextQuery = useGetAuthorizedContext();
@@ -46,9 +98,9 @@ function ProtectedRoutes() {
   if (contextQuery.isError || (!context?.isPlatformOwner && (!context?.roles || context.roles.length === 0))) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center p-8 text-center bg-[hsl(var(--background))]">
-        <div className="panel p-8 max-w-md">
-          <h1 className="text-xl font-bold">Access Pending</h1>
-          <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">
+        <div className="panel p-8 max-w-md shadow-xl fade-up">
+          <h1 className="display-font text-2xl font-bold">Access Pending</h1>
+          <p className="mt-3 text-sm leading-relaxed text-[hsl(var(--muted-foreground))]">
             Your account has not been assigned any roles yet. Please contact your administrator.
           </p>
         </div>
@@ -73,21 +125,57 @@ function ProtectedRoutes() {
       <Shell>
         <Switch>
           <Route path="/" component={Dashboard} />
-          <Route path="/partners*" component={PartnerManagement} />
-          <Route path="/schools" component={SchoolsPage} />
-          <Route path="/schools/:id" component={SchoolOverview} />
-          <Route path="/students" component={StudentsPage} />
-          <Route path="/parents" component={ParentsPage} />
-          <Route path="/employees" component={EmployeesPage} />
-          <Route path="/academics" component={AcademicsPage} />
-          <Route path="/subjects" component={SubjectsPage} />
-          <Route path="/assignments" component={AssignmentsPage} />
-          <Route path="/classes" component={ClassesPage} />
-          <Route path="/users" component={UsersPage} />
-          <Route path="/subscriptions" component={SubscriptionsPage} />
-          <Route path="/cards" component={CardsPage} />
-          <Route path="/audit" component={AuditPage} />
-          <Route path="/settings" component={SettingsPage} />
+          <Route path="/partners*">
+            <RoleGuard isPlatformOwnerOnly><PartnerManagement /></RoleGuard>
+          </Route>
+          <Route path="/schools">
+            <RoleGuard isPlatformOwnerOnly><SchoolsPage /></RoleGuard>
+          </Route>
+          <Route path="/schools/:id">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><SchoolOverview /></RoleGuard>
+          </Route>
+          <Route path="/users">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><UsersPage /></RoleGuard>
+          </Route>
+          <Route path="/audit">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><AuditPage /></RoleGuard>
+          </Route>
+          <Route path="/students">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']}><StudentsPage /></RoleGuard>
+          </Route>
+          <Route path="/parents">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><ParentsPage /></RoleGuard>
+          </Route>
+          <Route path="/employees">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><EmployeesPage /></RoleGuard>
+          </Route>
+          <Route path="/academics">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><AcademicsPage /></RoleGuard>
+          </Route>
+          <Route path="/subjects">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']}><SubjectsPage /></RoleGuard>
+          </Route>
+          <Route path="/assignments">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']}><AssignmentsPage /></RoleGuard>
+          </Route>
+          <Route path="/classes">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']}><ClassesPage /></RoleGuard>
+          </Route>
+          <Route path="/devices">
+            <RoleGuard isPlatformOwnerOnly><DevicesPage /></RoleGuard>
+          </Route>
+          <Route path="/notifications">
+            <RoleGuard isPlatformOwnerOnly><NotificationsPage /></RoleGuard>
+          </Route>
+          <Route path="/subscriptions">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']}><SubscriptionsPage /></RoleGuard>
+          </Route>
+          <Route path="/cards">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'STAFF']}><CardsPage /></RoleGuard>
+          </Route>
+          <Route path="/settings">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><SettingsPage /></RoleGuard>
+          </Route>
 
           <Route path="/parent/children/:studentId" component={ParentPortal} />
 
@@ -111,11 +199,11 @@ export default function App() {
 
   if (!publishableKey) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center p-8 text-center font-sans">
-        <div>
-          <h1 className="text-xl font-bold">Missing Clerk Configuration</h1>
-          <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">
-            Add <code>VITE_CLERK_PUBLISHABLE_KEY</code> to your environment variables.
+      <div className="flex min-h-[100dvh] items-center justify-center p-8 text-center font-sans bg-[hsl(var(--background))]">
+        <div className="panel p-8 max-w-md shadow-xl fade-up">
+          <h1 className="display-font text-2xl font-bold">Missing Clerk Configuration</h1>
+          <p className="mt-3 text-sm leading-relaxed text-[hsl(var(--muted-foreground))]">
+            Add <code>VITE_CLERK_PUBLISHABLE_KEY</code> to your environment variables to enable authentication.
           </p>
         </div>
       </div>
@@ -128,6 +216,7 @@ export default function App() {
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
             <Switch>
+              <Route path="/setup/platform-owner"><PlatformOwnerSetup /></Route>
               <Route path="/sign-in"><AuthScreen mode="sign-in" /></Route>
               <Route path="/sign-up"><AuthScreen mode="sign-up" /></Route>
               <Route path="/school/register"><RegisterSchool /></Route>

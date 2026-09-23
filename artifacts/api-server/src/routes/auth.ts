@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request } from "express";
+import { clerkClient } from "@clerk/express";
 import { pool } from "@workspace/db";
 import {
   AuthError,
@@ -25,6 +26,37 @@ function userName(user: {
   email: string;
 }) {
   return [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
+}
+
+async function createOrRecoverSchoolAdmin(input: {
+  schoolId: number;
+  email: string;
+  password: string;
+  firstName: string;
+  lastName?: string;
+}) {
+  const marker = `school-admin:${input.schoolId}`;
+  try {
+    return await clerkClient.users.createUser({
+      emailAddress: [input.email],
+      password: input.password,
+      firstName: input.firstName,
+      lastName: input.lastName,
+      privateMetadata: { edupulseProvisioning: marker },
+    });
+  } catch (createError) {
+    const users = await clerkClient.users.getUserList({ emailAddress: [input.email], limit: 10 });
+    const orphan = users.data.find(
+      (user) => user.privateMetadata?.edupulseProvisioning === marker,
+    );
+    if (!orphan) throw createError;
+    return clerkClient.users.updateUser(orphan.id, {
+      password: input.password,
+      firstName: input.firstName,
+      lastName: input.lastName,
+      signOutOfOtherSessions: true,
+    });
+  }
 }
 
 async function auditSecurityEvent(
@@ -467,6 +499,113 @@ router.get(
       [schoolId],
     );
     res.json(result.rows);
+  }),
+);
+
+router.post(
+  "/schools/:schoolId/administrators",
+  asyncRoute(async (req, res) => {
+    assertRoles(req, ["PLATFORM_OWNER"]);
+    const schoolId = Number(req.params.schoolId);
+    const fullName = String(req.body?.fullName ?? "").trim().replace(/\s+/g, " ");
+    const email = String(req.body?.email ?? "").trim().toLowerCase();
+    const phone = String(req.body?.phone ?? "").trim();
+    const password = String(req.body?.password ?? "");
+    if (!Number.isInteger(schoolId) || schoolId < 1) throw new AuthError(404, "School not found");
+    if (fullName.length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new AuthError(400, "A valid name and email are required");
+    }
+    if (!/^\+?[0-9][0-9\s()-]{7,24}$/.test(phone)) throw new AuthError(400, "A valid phone is required");
+    if (password.length < 12 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) ||
+        !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      throw new AuthError(400, "Password does not meet security requirements");
+    }
+    const school = await pool.query("SELECT id FROM schools WHERE id=$1", [schoolId]);
+    if (!school.rows[0]) throw new AuthError(404, "School not found");
+    const duplicate = await pool.query("SELECT id FROM app_users WHERE lower(email)=lower($1)", [email]);
+    if (duplicate.rows[0]) throw new AuthError(409, "An account with this email already exists");
+
+    const [firstName, ...lastParts] = fullName.split(" ");
+    let clerkUserId: string | null = null;
+    const client = await pool.connect();
+    let committed = false;
+    let commitAttempted = false;
+    try {
+      const clerkUser = await createOrRecoverSchoolAdmin({
+        schoolId,
+        email,
+        password,
+        firstName,
+        lastName: lastParts.join(" ") || undefined,
+      });
+      clerkUserId = clerkUser.id;
+      await client.query("BEGIN");
+      const user = await client.query(
+        `INSERT INTO app_users(clerk_user_id,email,first_name,last_name,phone,status)
+         VALUES($1,$2,$3,$4,$5,'ACTIVE') RETURNING id`,
+        [clerkUser.id, email, firstName, lastParts.join(" ") || null, phone],
+      );
+      const membership = await client.query(
+        `INSERT INTO school_memberships(user_id,school_id,role,status)
+         VALUES($1,$2,'SCHOOL_ADMIN','ACTIVE')
+         RETURNING id,user_id AS "userId",school_id AS "schoolId",role,status`,
+        [user.rows[0].id, schoolId],
+      );
+      const context = getUserContext(req);
+      await client.query(
+        `INSERT INTO audit_logs
+          ("user",role,actor_user_id,clerk_user_id,school_id,action,module,record_id,event_type,result)
+         VALUES($1,'PLATFORM_OWNER',$2,$3,$4,'Created School Administrator','Security',$5,
+                'SCHOOL_ADMIN_CREATED','SUCCESS')`,
+        [userName(context.user), context.user.id, context.user.clerkUserId, schoolId, membership.rows[0].id],
+      );
+      commitAttempted = true;
+      await client.query("COMMIT");
+      committed = true;
+      res.status(201).json({
+        id: user.rows[0].id,
+        email,
+        firstName,
+        lastName: lastParts.join(" ") || null,
+        phone,
+        membership: membership.rows[0],
+      });
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      if (commitAttempted && clerkUserId) {
+        const persisted = await pool.query(
+          `SELECT u.id,u.email,u.first_name AS "firstName",u.last_name AS "lastName",u.phone,
+                  jsonb_build_object('id',sm.id,'userId',sm.user_id,'schoolId',sm.school_id,
+                    'role',sm.role,'status',sm.status) AS membership
+           FROM app_users u JOIN school_memberships sm ON sm.user_id=u.id
+           WHERE u.clerk_user_id=$1 AND sm.school_id=$2 AND sm.role='SCHOOL_ADMIN'`,
+          [clerkUserId, schoolId],
+        );
+        if (persisted.rows[0]) {
+          committed = true;
+          res.status(201).json(persisted.rows[0]);
+          return;
+        }
+      }
+      if (clerkUserId && !committed) {
+        try {
+          await clerkClient.users.deleteUser(clerkUserId);
+        } catch (cleanupError) {
+          console.error("Clerk School Admin compensation failed", {
+            clerkUserId,
+            error: cleanupError instanceof Error ? cleanupError.message : "Unknown cleanup error",
+          });
+          throw new AuthError(
+            503,
+            "Administrator provisioning did not complete. Retry with the same email to recover.",
+            "ADMIN_PROVISIONING_RECOVERY_REQUIRED",
+          );
+        }
+      }
+      throw error;
+    } finally {
+      client.release();
+    }
   }),
 );
 

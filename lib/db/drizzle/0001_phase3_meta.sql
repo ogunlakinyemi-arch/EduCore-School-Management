@@ -127,6 +127,12 @@ ALTER TABLE "students" ADD COLUMN "emergency_contact_name" text;--> statement-br
 ALTER TABLE "students" ADD COLUMN "emergency_contact_phone" text;--> statement-breakpoint
 ALTER TABLE "students" ADD COLUMN "created_at" timestamp with time zone DEFAULT now() NOT NULL;--> statement-breakpoint
 ALTER TABLE "students" ADD COLUMN "updated_at" timestamp with time zone DEFAULT now() NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "academic_sessions_id_school_unique" ON "academic_sessions" USING btree ("id","school_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "academic_terms_id_school_unique" ON "academic_terms" USING btree ("id","school_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "employees_id_school_unique" ON "employees" USING btree ("id","school_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "school_classes_id_school_unique" ON "school_classes" USING btree ("id","school_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "students_id_school_unique" ON "students" USING btree ("id","school_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "subjects_id_school_unique" ON "subjects" USING btree ("id","school_id");--> statement-breakpoint
 ALTER TABLE "academic_sessions" ADD CONSTRAINT "academic_sessions_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "academic_terms" ADD CONSTRAINT "academic_terms_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "academic_terms" ADD CONSTRAINT "academic_terms_academic_session_id_academic_sessions_id_fk" FOREIGN KEY ("academic_session_id") REFERENCES "public"."academic_sessions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -164,27 +170,21 @@ ALTER TABLE "teacher_class_assignments" ADD CONSTRAINT "teacher_class_assignment
 ALTER TABLE "teacher_class_assignments" ADD CONSTRAINT "teacher_class_assignments_class_school_fk" FOREIGN KEY ("school_class_id","school_id") REFERENCES "public"."school_classes"("id","school_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "teacher_class_assignments" ADD CONSTRAINT "teacher_class_assignments_subject_school_fk" FOREIGN KEY ("subject_id","school_id") REFERENCES "public"."subjects"("id","school_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "academic_sessions_school_name_unique" ON "academic_sessions" USING btree ("school_id","name");--> statement-breakpoint
-CREATE UNIQUE INDEX "academic_sessions_id_school_unique" ON "academic_sessions" USING btree ("id","school_id");--> statement-breakpoint
 CREATE INDEX "academic_sessions_school_status_idx" ON "academic_sessions" USING btree ("school_id","status");--> statement-breakpoint
 CREATE UNIQUE INDEX "academic_terms_session_name_unique" ON "academic_terms" USING btree ("academic_session_id","name");--> statement-breakpoint
-CREATE UNIQUE INDEX "academic_terms_id_school_unique" ON "academic_terms" USING btree ("id","school_id");--> statement-breakpoint
 CREATE INDEX "academic_terms_school_status_idx" ON "academic_terms" USING btree ("school_id","status");--> statement-breakpoint
 CREATE UNIQUE INDEX "class_subjects_unique" ON "class_subjects" USING btree ("school_class_id","subject_id","academic_session_id",coalesce("academic_term_id", 0),coalesce("section", '')) WHERE "class_subjects"."status" = 'ACTIVE';--> statement-breakpoint
 CREATE INDEX "class_subjects_school_status_idx" ON "class_subjects" USING btree ("school_id","status");--> statement-breakpoint
 CREATE UNIQUE INDEX "employees_school_employee_no_unique" ON "employees" USING btree ("school_id","employee_no");--> statement-breakpoint
-CREATE UNIQUE INDEX "employees_id_school_unique" ON "employees" USING btree ("id","school_id");--> statement-breakpoint
 CREATE INDEX "employees_school_type_status_idx" ON "employees" USING btree ("school_id","employee_type","employment_status");--> statement-breakpoint
 CREATE UNIQUE INDEX "student_class_assignments_active_unique" ON "student_class_assignments" USING btree ("student_id","academic_session_id",coalesce("academic_term_id", 0),"school_class_id","section") WHERE "student_class_assignments"."status" = 'ACTIVE';--> statement-breakpoint
 CREATE UNIQUE INDEX "student_class_assignments_id_school_unique" ON "student_class_assignments" USING btree ("id","school_id");--> statement-breakpoint
 CREATE INDEX "student_class_assignments_school_current_idx" ON "student_class_assignments" USING btree ("school_id","is_current");--> statement-breakpoint
 CREATE INDEX "student_class_assignments_student_history_idx" ON "student_class_assignments" USING btree ("student_id","start_date");--> statement-breakpoint
 CREATE UNIQUE INDEX "subjects_school_code_unique" ON "subjects" USING btree ("school_id","code");--> statement-breakpoint
-CREATE UNIQUE INDEX "subjects_id_school_unique" ON "subjects" USING btree ("id","school_id");--> statement-breakpoint
 CREATE INDEX "subjects_school_status_idx" ON "subjects" USING btree ("school_id","status");--> statement-breakpoint
 CREATE UNIQUE INDEX "teacher_class_assignments_unique" ON "teacher_class_assignments" USING btree ("employee_id","academic_session_id","school_class_id","section","assignment_type",coalesce("subject_id", 0)) WHERE "teacher_class_assignments"."status" = 'ACTIVE';--> statement-breakpoint
 CREATE INDEX "teacher_class_assignments_school_status_idx" ON "teacher_class_assignments" USING btree ("school_id","status");--> statement-breakpoint
-CREATE UNIQUE INDEX "school_classes_id_school_unique" ON "school_classes" USING btree ("id","school_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "students_id_school_unique" ON "students" USING btree ("id","school_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "student_class_assignments_current_unique" ON "student_class_assignments" ("student_id") WHERE "is_current" = true;--> statement-breakpoint
 INSERT INTO "academic_sessions" ("school_id", "name", "start_date", "end_date", "status", "is_current")
 SELECT "id", 'LEGACY', CURRENT_DATE, CURRENT_DATE, 'COMPLETED', false

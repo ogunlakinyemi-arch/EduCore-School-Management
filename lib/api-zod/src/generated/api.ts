@@ -17,6 +17,48 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary Check whether first-owner setup is available
+ */
+export const GetPlatformOwnerBootstrapStatusResponse = zod.object({
+  "available": zod.boolean(),
+  "configured": zod.boolean()
+})
+
+
+/**
+ * @summary Securely create the first Platform Owner
+ */
+export const createInitialPlatformOwnerBodySetupKeyMin = 16;
+export const createInitialPlatformOwnerBodySetupKeyMax = 256;
+
+export const createInitialPlatformOwnerBodyFullNameMin = 2;
+export const createInitialPlatformOwnerBodyFullNameMax = 120;
+
+export const createInitialPlatformOwnerBodyEmailMax = 254;
+
+export const createInitialPlatformOwnerBodyPhoneMin = 8;
+export const createInitialPlatformOwnerBodyPhoneMax = 25;
+
+export const createInitialPlatformOwnerBodyPasswordMin = 12;
+export const createInitialPlatformOwnerBodyPasswordMax = 256;
+
+
+
+export const CreateInitialPlatformOwnerBody = zod.object({
+  "setupKey": zod.string().min(createInitialPlatformOwnerBodySetupKeyMin).max(createInitialPlatformOwnerBodySetupKeyMax),
+  "fullName": zod.string().min(createInitialPlatformOwnerBodyFullNameMin).max(createInitialPlatformOwnerBodyFullNameMax),
+  "email": zod.string().email().max(createInitialPlatformOwnerBodyEmailMax),
+  "phone": zod.string().min(createInitialPlatformOwnerBodyPhoneMin).max(createInitialPlatformOwnerBodyPhoneMax),
+  "password": zod.string().min(createInitialPlatformOwnerBodyPasswordMin).max(createInitialPlatformOwnerBodyPasswordMax)
+})
+
+export const CreateInitialPlatformOwnerResponse = zod.object({
+  "created": zod.literal(true),
+  "signInPath": zod.string()
+})
+
+
+/**
  * @summary Get the authenticated EduPulse user
  */
 export const GetCurrentUserResponse = zod.object({
@@ -347,6 +389,158 @@ export const CreateSchoolMembershipResponse = zod.object({
   "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+
+
+/**
+ * @summary Create a Clerk-backed School Administrator account
+ */
+
+
+
+export const CreateSchoolAdministratorParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const createSchoolAdministratorBodyFullNameMin = 2;
+export const createSchoolAdministratorBodyFullNameMax = 120;
+
+export const createSchoolAdministratorBodyEmailMax = 254;
+
+export const createSchoolAdministratorBodyPhoneMin = 8;
+export const createSchoolAdministratorBodyPhoneMax = 25;
+
+export const createSchoolAdministratorBodyPasswordMin = 12;
+export const createSchoolAdministratorBodyPasswordMax = 256;
+
+
+
+export const CreateSchoolAdministratorBody = zod.object({
+  "fullName": zod.string().min(createSchoolAdministratorBodyFullNameMin).max(createSchoolAdministratorBodyFullNameMax),
+  "email": zod.string().email().max(createSchoolAdministratorBodyEmailMax),
+  "phone": zod.string().min(createSchoolAdministratorBodyPhoneMin).max(createSchoolAdministratorBodyPhoneMax),
+  "password": zod.string().min(createSchoolAdministratorBodyPasswordMin).max(createSchoolAdministratorBodyPasswordMax)
+})
+
+export const CreateSchoolAdministratorResponse = zod.object({
+  "id": zod.number().int(),
+  "email": zod.string().email(),
+  "firstName": zod.string(),
+  "lastName": zod.string().nullish(),
+  "phone": zod.string(),
+  "membership": zod.object({
+  "id": zod.number().int(),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
+  "schoolId": zod.number().int().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+})
+
+
+/**
+ * @summary List NFC and biometric devices and school assignments
+ */
+export const ListPlatformDevicesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "serialNumber": zod.string(),
+  "name": zod.string(),
+  "deviceType": zod.enum(['NFC', 'BIOMETRIC', 'HYBRID']),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'MAINTENANCE']),
+  "schoolId": zod.number().int().nullish(),
+  "schoolName": zod.string().nullish(),
+  "lastSeenAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListPlatformDevicesResponse = zod.array(ListPlatformDevicesResponseItem)
+
+
+/**
+ * @summary Register and optionally assign a device
+ */
+export const createPlatformDeviceBodySerialNumberMin = 2;
+export const createPlatformDeviceBodySerialNumberMax = 120;
+
+export const createPlatformDeviceBodyNameMin = 2;
+export const createPlatformDeviceBodyNameMax = 120;
+
+
+
+export const CreatePlatformDeviceBody = zod.object({
+  "serialNumber": zod.string().min(createPlatformDeviceBodySerialNumberMin).max(createPlatformDeviceBodySerialNumberMax),
+  "name": zod.string().min(createPlatformDeviceBodyNameMin).max(createPlatformDeviceBodyNameMax),
+  "deviceType": zod.enum(['NFC', 'BIOMETRIC', 'HYBRID']),
+  "schoolId": zod.number().int().nullish()
+})
+
+export const CreatePlatformDeviceResponse = zod.object({
+  "id": zod.number().int(),
+  "serialNumber": zod.string(),
+  "name": zod.string(),
+  "deviceType": zod.enum(['NFC', 'BIOMETRIC', 'HYBRID']),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'MAINTENANCE']),
+  "schoolId": zod.number().int().nullish(),
+  "schoolName": zod.string().nullish(),
+  "lastSeenAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Change a device assignment or status
+ */
+export const UpdatePlatformDeviceParams = zod.object({
+  "deviceId": zod.coerce.number().int()
+})
+
+export const UpdatePlatformDeviceBody = zod.object({
+  "schoolId": zod.number().int().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'MAINTENANCE']).optional()
+})
+
+export const UpdatePlatformDeviceResponse = zod.object({
+  "id": zod.number().int(),
+  "serialNumber": zod.string(),
+  "name": zod.string(),
+  "deviceType": zod.enum(['NFC', 'BIOMETRIC', 'HYBRID']),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'MAINTENANCE']),
+  "schoolId": zod.number().int().nullish(),
+  "schoolName": zod.string().nullish(),
+  "lastSeenAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List Platform Owner notifications
+ */
+export const ListPlatformNotificationsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "message": zod.string(),
+  "severity": zod.enum(['info', 'warning', 'critical']),
+  "isRead": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListPlatformNotificationsResponse = zod.array(ListPlatformNotificationsResponseItem)
+
+
+/**
+ * @summary Mark a Platform Owner notification as read
+ */
+export const MarkPlatformNotificationReadParams = zod.object({
+  "notificationId": zod.coerce.number().int()
+})
+
+export const MarkPlatformNotificationReadResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "message": zod.string(),
+  "severity": zod.enum(['info', 'warning', 'critical']),
+  "isRead": zod.boolean(),
+  "createdAt": zod.coerce.date()
 })
 
 

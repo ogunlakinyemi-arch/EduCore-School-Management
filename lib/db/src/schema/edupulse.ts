@@ -82,6 +82,40 @@ export const schoolMemberships = pgTable(
   ],
 );
 
+export const platformDevices = pgTable(
+  "platform_devices",
+  {
+    id: serial("id").primaryKey(),
+    serialNumber: text("serial_number").notNull(),
+    name: text("name").notNull(),
+    deviceType: text("device_type").notNull(),
+    schoolId: integer("school_id").references(() => schools.id),
+    status: text("status").notNull().default("ACTIVE"),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("platform_devices_serial_number_unique").on(table.serialNumber),
+    index("platform_devices_school_idx").on(table.schoolId, table.status),
+  ],
+);
+
+export const platformNotifications = pgTable(
+  "platform_notifications",
+  {
+    id: serial("id").primaryKey(),
+    recipientUserId: integer("recipient_user_id").references(() => appUsers.id),
+    title: text("title").notNull(),
+    message: text("message").notNull(),
+    severity: text("severity").notNull().default("info"),
+    isRead: boolean("is_read").notNull().default(false),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("platform_notifications_recipient_idx").on(table.recipientUserId, table.isRead, table.createdAt)],
+);
+
 export const students = pgTable(
   "students",
   {
