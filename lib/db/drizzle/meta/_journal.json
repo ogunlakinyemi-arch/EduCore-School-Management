@@ -8,7 +8,7 @@
       "when": 1790124624275,
       "tag": "0000_brainy_moon_knight",
       "breakpoints": true
-    }
+    },
     {
       "idx": 1,
       "version": "7",
@@ -16,5 +16,12 @@
       "tag": "0001_phase3_meta",
       "breakpoints": true
     },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790145697311,
+      "tag": "0002_overjoyed_sue_storm",
+      "breakpoints": true
+    }
   ]
 }
