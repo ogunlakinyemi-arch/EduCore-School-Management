@@ -119,6 +119,10 @@ describe("forward migration safety", () => {
       new URL("../../../../lib/db/drizzle/0007_restore_tenant_foreign_keys.sql", import.meta.url),
       "utf8",
     );
+    const alignmentSql = await readFile(
+      new URL("../../../../lib/db/drizzle/0008_align_tenant_fk_dependencies.sql", import.meta.url),
+      "utf8",
+    );
     expect(repairSql).toContain("mismatch_count");
     expect(repairSql).toContain("VALIDATE CONSTRAINT \"student_class_assignments_class_school_fk\"");
     expect(repairSql).not.toMatch(/\b(DELETE|UPDATE)\s+\"?student_class_assignments/i);
@@ -129,6 +133,9 @@ describe("forward migration safety", () => {
       restorationSql.match(/\bADD CONSTRAINT "[^"]+_school_fk"/g)?.length,
     ).toBe(4);
     expect(restorationSql.match(/\bVALIDATE CONSTRAINT\b/g)?.length).toBe(4);
+    expect(alignmentSql).not.toMatch(/\b(DELETE|UPDATE|TRUNCATE|DROP TABLE|DROP INDEX)\b/i);
+    expect(alignmentSql.match(/\bADD CONSTRAINT "[^"]+_school_fk"/g)?.length).toBe(4);
+    expect(alignmentSql.match(/\bVALIDATE CONSTRAINT\b/g)?.length).toBe(4);
 
     const tenantKeys = await pool.query(
       `SELECT conname, convalidated, pg_get_constraintdef(oid) AS definition
@@ -167,5 +174,44 @@ describe("forward migration safety", () => {
         "FOREIGN KEY (school_class_id, school_id) REFERENCES school_classes(id, school_id)",
       )
     )).toBe(true);
+
+    const fkIndexDependencies = await pool.query(
+      `SELECT DISTINCT fk.conname, referenced_index.relname AS referenced_index_name
+       FROM pg_constraint fk
+       JOIN pg_depend dependency
+         ON dependency.classid = 'pg_constraint'::regclass
+        AND dependency.objid = fk.oid
+        AND dependency.refclassid = 'pg_class'::regclass
+        AND dependency.deptype = 'n'
+       JOIN pg_class referenced_index
+         ON referenced_index.oid = dependency.refobjid
+        AND referenced_index.relkind = 'i'
+       WHERE fk.conname = ANY($1::text[])
+       ORDER BY fk.conname`,
+      [[
+        "student_class_assignments_student_school_fk",
+        "student_class_assignments_class_school_fk",
+        "class_subjects_class_school_fk",
+        "teacher_class_assignments_class_school_fk",
+      ]],
+    );
+    expect(fkIndexDependencies.rows).toEqual([
+      {
+        conname: "class_subjects_class_school_fk",
+        referenced_index_name: "school_classes_id_school_unique",
+      },
+      {
+        conname: "student_class_assignments_class_school_fk",
+        referenced_index_name: "school_classes_id_school_unique",
+      },
+      {
+        conname: "student_class_assignments_student_school_fk",
+        referenced_index_name: "students_id_school_unique",
+      },
+      {
+        conname: "teacher_class_assignments_class_school_fk",
+        referenced_index_name: "school_classes_id_school_unique",
+      },
+    ]);
   });
 });
