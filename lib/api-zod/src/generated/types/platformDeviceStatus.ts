@@ -12,5 +12,7 @@ export type PlatformDeviceStatus = typeof PlatformDeviceStatus[keyof typeof Plat
 export const PlatformDeviceStatus = {
   ACTIVE: 'ACTIVE',
   INACTIVE: 'INACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  UNASSIGNED: 'UNASSIGNED',
   MAINTENANCE: 'MAINTENANCE',
 } as const;

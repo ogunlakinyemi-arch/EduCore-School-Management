@@ -7,6 +7,7 @@ import edupulseRouter from "./edupulse";
 import partnersRouter, { publicPartnersRouter } from "./partners";
 import bootstrapRouter from "./bootstrap";
 import platformRouter from "./platform";
+import attendanceRouter from "./attendance";
 
 const router: IRouter = Router();
 
@@ -19,5 +20,6 @@ router.use(academicRouter);
 router.use(edupulseRouter);
 router.use(partnersRouter);
 router.use(platformRouter);
+router.use(attendanceRouter);
 
 export default router;

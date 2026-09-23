@@ -445,7 +445,7 @@ export const ListPlatformDevicesResponseItem = zod.object({
   "serialNumber": zod.string(),
   "name": zod.string(),
   "deviceType": zod.enum(['NFC', 'BIOMETRIC', 'HYBRID']),
-  "status": zod.enum(['ACTIVE', 'INACTIVE', 'MAINTENANCE']),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'UNASSIGNED', 'MAINTENANCE']),
   "schoolId": zod.number().int().nullish(),
   "schoolName": zod.string().nullish(),
   "lastSeenAt": zod.coerce.date().nullish(),
@@ -478,7 +478,7 @@ export const CreatePlatformDeviceResponse = zod.object({
   "serialNumber": zod.string(),
   "name": zod.string(),
   "deviceType": zod.enum(['NFC', 'BIOMETRIC', 'HYBRID']),
-  "status": zod.enum(['ACTIVE', 'INACTIVE', 'MAINTENANCE']),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'UNASSIGNED', 'MAINTENANCE']),
   "schoolId": zod.number().int().nullish(),
   "schoolName": zod.string().nullish(),
   "lastSeenAt": zod.coerce.date().nullish(),
@@ -496,7 +496,7 @@ export const UpdatePlatformDeviceParams = zod.object({
 
 export const UpdatePlatformDeviceBody = zod.object({
   "schoolId": zod.number().int().nullish(),
-  "status": zod.enum(['ACTIVE', 'INACTIVE', 'MAINTENANCE']).optional()
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'UNASSIGNED', 'MAINTENANCE']).optional()
 })
 
 export const UpdatePlatformDeviceResponse = zod.object({
@@ -504,12 +504,100 @@ export const UpdatePlatformDeviceResponse = zod.object({
   "serialNumber": zod.string(),
   "name": zod.string(),
   "deviceType": zod.enum(['NFC', 'BIOMETRIC', 'HYBRID']),
-  "status": zod.enum(['ACTIVE', 'INACTIVE', 'MAINTENANCE']),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'UNASSIGNED', 'MAINTENANCE']),
   "schoolId": zod.number().int().nullish(),
   "schoolName": zod.string().nullish(),
   "lastSeenAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Assign a device to a school and location
+ */
+
+
+
+export const AssignPlatformDeviceParams = zod.object({
+  "deviceId": zod.coerce.number().int().min(1)
+})
+
+
+export const assignPlatformDeviceBodyLocationMax = 160;
+
+
+
+
+export const AssignPlatformDeviceBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "location": zod.string().max(assignPlatformDeviceBodyLocationMax).nullish(),
+  "classId": zod.number().int().min(1).nullish()
+})
+
+export const AssignPlatformDeviceResponse = zod.object({
+  "id": zod.number().int(),
+  "serialNumber": zod.string(),
+  "name": zod.string(),
+  "deviceType": zod.enum(['NFC', 'BIOMETRIC', 'HYBRID']),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'UNASSIGNED', 'MAINTENANCE']),
+  "schoolId": zod.number().int().nullish(),
+  "schoolName": zod.string().nullish(),
+  "lastSeenAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Suspend a device and reject its attendance submissions
+ */
+
+
+
+export const SuspendPlatformDeviceParams = zod.object({
+  "deviceId": zod.coerce.number().int().min(1)
+})
+
+export const suspendPlatformDeviceBodyReasonMax = 500;
+
+
+
+export const SuspendPlatformDeviceBody = zod.object({
+  "reason": zod.string().max(suspendPlatformDeviceBodyReasonMax).optional()
+})
+
+export const SuspendPlatformDeviceResponse = zod.object({
+  "id": zod.number().int(),
+  "serialNumber": zod.string(),
+  "name": zod.string(),
+  "deviceType": zod.enum(['NFC', 'BIOMETRIC', 'HYBRID']),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'UNASSIGNED', 'MAINTENANCE']),
+  "schoolId": zod.number().int().nullish(),
+  "schoolName": zod.string().nullish(),
+  "lastSeenAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Rotate a device credential
+ */
+
+
+
+export const RotatePlatformDeviceCredentialParams = zod.object({
+  "deviceId": zod.coerce.number().int().min(1)
+})
+
+export const rotatePlatformDeviceCredentialResponseCredentialMin = 32;
+
+
+
+export const RotatePlatformDeviceCredentialResponse = zod.object({
+  "deviceId": zod.number().int(),
+  "credential": zod.string().min(rotatePlatformDeviceCredentialResponseCredentialMin).describe('Returned only once; never a credential hash')
 })
 
 
@@ -525,6 +613,525 @@ export const ListPlatformNotificationsResponseItem = zod.object({
   "createdAt": zod.coerce.date()
 })
 export const ListPlatformNotificationsResponse = zod.array(ListPlatformNotificationsResponseItem)
+
+
+/**
+ * @summary Get today's attendance summary for an authorized school
+ */
+
+
+
+export const GetSchoolAttendanceTodayQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "date": zod.date().optional()
+})
+
+export const getSchoolAttendanceTodayResponseEntriesMin = 0;
+
+export const getSchoolAttendanceTodayResponseExitsMin = 0;
+
+export const getSchoolAttendanceTodayResponsePresentMin = 0;
+
+export const getSchoolAttendanceTodayResponseAbsentMin = 0;
+
+export const getSchoolAttendanceTodayResponseLateMin = 0;
+
+export const getSchoolAttendanceTodayResponseDiscrepanciesMin = 0;
+
+
+
+export const GetSchoolAttendanceTodayResponse = zod.object({
+  "date": zod.coerce.date(),
+  "entries": zod.number().int().min(getSchoolAttendanceTodayResponseEntriesMin),
+  "exits": zod.number().int().min(getSchoolAttendanceTodayResponseExitsMin),
+  "present": zod.number().int().min(getSchoolAttendanceTodayResponsePresentMin),
+  "absent": zod.number().int().min(getSchoolAttendanceTodayResponseAbsentMin),
+  "late": zod.number().int().min(getSchoolAttendanceTodayResponseLateMin),
+  "discrepancies": zod.number().int().min(getSchoolAttendanceTodayResponseDiscrepanciesMin)
+})
+
+
+/**
+ * @summary List school attendance events
+ */
+
+
+
+
+
+
+export const ListSchoolAttendanceEventsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1).optional(),
+  "employeeId": zod.coerce.number().int().min(1).optional(),
+  "classId": zod.coerce.number().int().min(1).optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional(),
+  "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']).optional(),
+  "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']).optional(),
+  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']).optional()
+})
+
+export const ListSchoolAttendanceEventsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int().nullish(),
+  "employeeId": zod.number().int().nullish(),
+  "deviceId": zod.number().int().nullable(),
+  "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
+  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
+  "occurredAt": zod.coerce.date(),
+  "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
+  "result": zod.enum(['ACCEPTED', 'REJECTED', 'DUPLICATE', 'MISMATCH']).optional(),
+  "failureReason": zod.string().nullish(),
+  "sessionId": zod.number().int().nullish(),
+  "termId": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListSchoolAttendanceEventsResponse = zod.array(ListSchoolAttendanceEventsResponseItem)
+
+
+/**
+ * @summary Get attendance history for a student
+ */
+
+
+
+export const GetStudentAttendanceParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GetStudentAttendanceQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
+export const GetStudentAttendanceResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int().nullish(),
+  "employeeId": zod.number().int().nullish(),
+  "deviceId": zod.number().int().nullable(),
+  "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
+  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
+  "occurredAt": zod.coerce.date(),
+  "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
+  "result": zod.enum(['ACCEPTED', 'REJECTED', 'DUPLICATE', 'MISMATCH']).optional(),
+  "failureReason": zod.string().nullish(),
+  "sessionId": zod.number().int().nullish(),
+  "termId": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const GetStudentAttendanceResponse = zod.array(GetStudentAttendanceResponseItem)
+
+
+/**
+ * @summary Get attendance for a class
+ */
+
+
+
+export const GetClassAttendanceParams = zod.object({
+  "classId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GetClassAttendanceQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "date": zod.date().optional()
+})
+
+export const GetClassAttendanceResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int().nullish(),
+  "employeeId": zod.number().int().nullish(),
+  "deviceId": zod.number().int().nullable(),
+  "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
+  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
+  "occurredAt": zod.coerce.date(),
+  "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
+  "result": zod.enum(['ACCEPTED', 'REJECTED', 'DUPLICATE', 'MISMATCH']).optional(),
+  "failureReason": zod.string().nullish(),
+  "sessionId": zod.number().int().nullish(),
+  "termId": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const GetClassAttendanceResponse = zod.array(GetClassAttendanceResponseItem)
+
+
+/**
+ * @summary List attendance reconciliation discrepancies
+ */
+
+
+
+export const ListAttendanceDiscrepanciesQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "status": zod.enum(['OPEN', 'RESOLVED', 'DISMISSED']).optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
+export const ListAttendanceDiscrepanciesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "kind": zod.enum(['SCHOOL_PRESENT_CLASS_MISSING', 'SCHOOL_ABSENT_CLASS_PRESENT', 'EXIT_WITHOUT_ENTRY', 'INVALID_DEVICE_EVENT', 'DUPLICATE']),
+  "status": zod.enum(['OPEN', 'RESOLVED', 'DISMISSED']),
+  "detectedAt": zod.coerce.date(),
+  "resolvedAt": zod.coerce.date().nullish(),
+  "note": zod.string().nullish()
+})
+export const ListAttendanceDiscrepanciesResponse = zod.array(ListAttendanceDiscrepanciesResponseItem)
+
+
+/**
+ * @summary Record attendance manually with an auditable reason
+ */
+
+
+
+export const createManualAttendanceBodyReasonMin = 3;
+export const createManualAttendanceBodyReasonMax = 500;
+
+export const createManualAttendanceBodyNoteMax = 1000;
+
+
+
+export const CreateManualAttendanceBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "studentId": zod.number().int().min(1).optional(),
+  "employeeId": zod.number().int().min(1).optional(),
+  "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
+  "occurredAt": zod.coerce.date(),
+  "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
+  "reason": zod.string().min(createManualAttendanceBodyReasonMin).max(createManualAttendanceBodyReasonMax),
+  "note": zod.string().max(createManualAttendanceBodyNoteMax).optional()
+}).describe('Exactly one of studentId or employeeId must be provided. Staff attendance supports school entry and exit only.')
+
+export const CreateManualAttendanceResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int().nullish(),
+  "employeeId": zod.number().int().nullish(),
+  "deviceId": zod.number().int().nullable(),
+  "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
+  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
+  "occurredAt": zod.coerce.date(),
+  "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
+  "result": zod.enum(['ACCEPTED', 'REJECTED', 'DUPLICATE', 'MISMATCH']).optional(),
+  "failureReason": zod.string().nullish(),
+  "sessionId": zod.number().int().nullish(),
+  "termId": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Correct attendance without overwriting its history
+ */
+
+
+
+export const CorrectAttendanceParams = zod.object({
+  "attendanceId": zod.coerce.number().int().min(1)
+})
+
+export const correctAttendanceBodyReasonMin = 3;
+export const correctAttendanceBodyReasonMax = 500;
+
+export const correctAttendanceBodyNoteMax = 1000;
+
+
+
+export const CorrectAttendanceBody = zod.object({
+  "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
+  "occurredAt": zod.coerce.date().optional(),
+  "reason": zod.string().min(correctAttendanceBodyReasonMin).max(correctAttendanceBodyReasonMax),
+  "note": zod.string().max(correctAttendanceBodyNoteMax).optional()
+})
+
+export const CorrectAttendanceResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int().nullish(),
+  "employeeId": zod.number().int().nullish(),
+  "deviceId": zod.number().int().nullable(),
+  "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
+  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
+  "occurredAt": zod.coerce.date(),
+  "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
+  "result": zod.enum(['ACCEPTED', 'REJECTED', 'DUPLICATE', 'MISMATCH']).optional(),
+  "failureReason": zod.string().nullish(),
+  "sessionId": zod.number().int().nullish(),
+  "termId": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * Device identity and school binding are derived from the credential, never trusted from the request body. Raw biometric data and credential hashes are not accepted or returned.
+ * @summary Ingest an NFC or provider-resolved biometric attendance event
+ */
+
+export const ingestDeviceAttendanceEventBodyNfcUidMin = 4;
+export const ingestDeviceAttendanceEventBodyNfcUidMax = 128;
+
+export const ingestDeviceAttendanceEventBodyProviderReferenceMax = 256;
+
+export const ingestDeviceAttendanceEventBodyProviderMax = 120;
+
+export const ingestDeviceAttendanceEventBodyConfidenceMin = 0;
+export const ingestDeviceAttendanceEventBodyConfidenceMax = 1;
+
+export const ingestDeviceAttendanceEventBodyIdempotencyKeyMin = 8;
+export const ingestDeviceAttendanceEventBodyIdempotencyKeyMax = 128;
+
+
+
+export const IngestDeviceAttendanceEventBody = zod.object({
+  "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
+  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT']),
+  "occurredAt": zod.coerce.date(),
+  "studentId": zod.number().int().min(1).optional(),
+  "nfcUid": zod.string().min(ingestDeviceAttendanceEventBodyNfcUidMin).max(ingestDeviceAttendanceEventBodyNfcUidMax).optional(),
+  "providerReference": zod.string().max(ingestDeviceAttendanceEventBodyProviderReferenceMax).optional(),
+  "provider": zod.string().max(ingestDeviceAttendanceEventBodyProviderMax).optional(),
+  "matchResult": zod.enum(['MATCH', 'NO_MATCH']).optional(),
+  "confidence": zod.number().min(ingestDeviceAttendanceEventBodyConfidenceMin).max(ingestDeviceAttendanceEventBodyConfidenceMax).optional(),
+  "idempotencyKey": zod.string().min(ingestDeviceAttendanceEventBodyIdempotencyKeyMin).max(ingestDeviceAttendanceEventBodyIdempotencyKeyMax).optional()
+})
+
+export const IngestDeviceAttendanceEventResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int().nullish(),
+  "employeeId": zod.number().int().nullish(),
+  "deviceId": zod.number().int().nullable(),
+  "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
+  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
+  "occurredAt": zod.coerce.date(),
+  "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
+  "result": zod.enum(['ACCEPTED', 'REJECTED', 'DUPLICATE', 'MISMATCH']).optional(),
+  "failureReason": zod.string().nullish(),
+  "sessionId": zod.number().int().nullish(),
+  "termId": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get a student's configured identification policy and references
+ */
+
+
+
+export const ListStudentIdentificationMethodsParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ListStudentIdentificationMethodsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ListStudentIdentificationMethodsResponse = zod.object({
+  "studentId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "policy": zod.enum(['NFC_ONLY', 'BIOMETRIC_ONLY', 'NFC_AND_BIOMETRIC', 'MANUAL_FALLBACK']),
+  "biometricEnrollments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "provider": zod.string(),
+  "deviceReference": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'REVOKED', 'PENDING']),
+  "enrolledAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Configure a student's identification policy
+ */
+
+
+
+export const UpdateStudentIdentificationMethodsParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const UpdateStudentIdentificationMethodsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const UpdateStudentIdentificationMethodsBody = zod.object({
+  "policy": zod.enum(['NFC_ONLY', 'BIOMETRIC_ONLY', 'NFC_AND_BIOMETRIC', 'MANUAL_FALLBACK'])
+})
+
+export const UpdateStudentIdentificationMethodsResponse = zod.object({
+  "studentId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "policy": zod.enum(['NFC_ONLY', 'BIOMETRIC_ONLY', 'NFC_AND_BIOMETRIC', 'MANUAL_FALLBACK']),
+  "biometricEnrollments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "provider": zod.string(),
+  "deviceReference": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'REVOKED', 'PENDING']),
+  "enrolledAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Register a provider enrollment reference without storing biometric data
+ */
+
+
+
+export const CreateBiometricEnrollmentParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const CreateBiometricEnrollmentQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const createBiometricEnrollmentBodyProviderMax = 120;
+
+export const createBiometricEnrollmentBodyEnrollmentReferenceMax = 256;
+
+export const createBiometricEnrollmentBodyDeviceReferenceMax = 256;
+
+
+
+export const CreateBiometricEnrollmentBody = zod.object({
+  "provider": zod.string().min(1).max(createBiometricEnrollmentBodyProviderMax),
+  "enrollmentReference": zod.string().min(1).max(createBiometricEnrollmentBodyEnrollmentReferenceMax),
+  "deviceReference": zod.string().max(createBiometricEnrollmentBodyDeviceReferenceMax).optional()
+})
+
+export const CreateBiometricEnrollmentResponse = zod.object({
+  "id": zod.number().int(),
+  "provider": zod.string(),
+  "deviceReference": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'REVOKED', 'PENDING']),
+  "enrolledAt": zod.coerce.date()
+})
+
+
+/**
+ * Accepts only a provider reference and match result; raw biometric templates and images are never accepted.
+ * @summary Ingest a provider-resolved biometric match
+ */
+export const ingestBiometricProviderEventBodyProviderMax = 120;
+
+export const ingestBiometricProviderEventBodyProviderReferenceMax = 256;
+
+
+export const ingestBiometricProviderEventBodyConfidenceMin = 0;
+export const ingestBiometricProviderEventBodyConfidenceMax = 1;
+
+export const ingestBiometricProviderEventBodyIdempotencyKeyMin = 8;
+export const ingestBiometricProviderEventBodyIdempotencyKeyMax = 128;
+
+
+
+export const IngestBiometricProviderEventBody = zod.object({
+  "provider": zod.string().min(1).max(ingestBiometricProviderEventBodyProviderMax),
+  "providerReference": zod.string().min(1).max(ingestBiometricProviderEventBodyProviderReferenceMax),
+  "matchResult": zod.enum(['MATCH', 'NO_MATCH']),
+  "studentId": zod.number().int().min(1).optional(),
+  "occurredAt": zod.coerce.date(),
+  "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
+  "confidence": zod.number().min(ingestBiometricProviderEventBodyConfidenceMin).max(ingestBiometricProviderEventBodyConfidenceMax).optional(),
+  "idempotencyKey": zod.string().min(ingestBiometricProviderEventBodyIdempotencyKeyMin).max(ingestBiometricProviderEventBodyIdempotencyKeyMax).optional()
+})
+
+export const IngestBiometricProviderEventResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int().nullish(),
+  "employeeId": zod.number().int().nullish(),
+  "deviceId": zod.number().int().nullable(),
+  "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
+  "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
+  "occurredAt": zod.coerce.date(),
+  "status": zod.enum(['PRESENT', 'ABSENT', 'LATE', 'LEFT_EARLY', 'EXCUSED', 'UNKNOWN', 'MISMATCH']),
+  "result": zod.enum(['ACCEPTED', 'REJECTED', 'DUPLICATE', 'MISMATCH']).optional(),
+  "failureReason": zod.string().nullish(),
+  "sessionId": zod.number().int().nullish(),
+  "termId": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary View immutable NFC card lifecycle history
+ */
+
+
+
+export const GetCardHistoryParams = zod.object({
+  "cardId": zod.coerce.number().int().min(1)
+})
+
+export const GetCardHistoryResponseItem = zod.object({
+  "id": zod.number().int(),
+  "cardId": zod.number().int(),
+  "action": zod.enum(['REGISTERED', 'ACTIVATED', 'DEACTIVATED', 'BLOCKED', 'LOST', 'REPLACED', 'REASSIGNED']),
+  "actorId": zod.number().int().nullish(),
+  "occurredAt": zod.coerce.date(),
+  "note": zod.string().nullish()
+})
+export const GetCardHistoryResponse = zod.array(GetCardHistoryResponseItem)
+
+
+/**
+ * @summary Replace a card while preserving the old card record
+ */
+
+
+
+export const ReplaceCardParams = zod.object({
+  "cardId": zod.coerce.number().int().min(1)
+})
+
+export const replaceCardBodyUidMin = 4;
+export const replaceCardBodyUidMax = 128;
+
+export const replaceCardBodyReasonMax = 500;
+
+
+
+export const ReplaceCardBody = zod.object({
+  "uid": zod.string().min(replaceCardBodyUidMin).max(replaceCardBodyUidMax),
+  "reason": zod.string().max(replaceCardBodyReasonMax).optional()
+})
+
+export const ReplaceCardResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "uid": zod.string(),
+  "studentId": zod.number().int().nullable(),
+  "studentName": zod.string().nullable(),
+  "status": zod.enum(['active', 'inactive', 'locked', 'unassigned', 'lost', 'blocked', 'suspended', 'replaced', 'expired']),
+  "scans": zod.number().int(),
+  "lastScan": zod.string().nullable()
+})
 
 
 /**
@@ -2360,7 +2967,7 @@ export const ListCardsResponseItem = zod.object({
   "uid": zod.string(),
   "studentId": zod.number().int().nullable(),
   "studentName": zod.string().nullable(),
-  "status": zod.enum(['active', 'locked', 'unassigned', 'lost', 'suspended', 'replaced']),
+  "status": zod.enum(['active', 'inactive', 'locked', 'unassigned', 'lost', 'blocked', 'suspended', 'replaced', 'expired']),
   "scans": zod.number().int(),
   "lastScan": zod.string().nullable()
 })
@@ -2393,7 +3000,7 @@ export const RegisterCardResponse = zod.object({
   "uid": zod.string(),
   "studentId": zod.number().int().nullable(),
   "studentName": zod.string().nullable(),
-  "status": zod.enum(['active', 'locked', 'unassigned', 'lost', 'suspended', 'replaced']),
+  "status": zod.enum(['active', 'inactive', 'locked', 'unassigned', 'lost', 'blocked', 'suspended', 'replaced', 'expired']),
   "scans": zod.number().int(),
   "lastScan": zod.string().nullable()
 })
@@ -2410,7 +3017,7 @@ export const UpdateCardStatusParams = zod.object({
 })
 
 export const UpdateCardStatusBody = zod.object({
-  "status": zod.enum(['active', 'locked', 'unassigned', 'lost', 'suspended', 'replaced'])
+  "status": zod.enum(['active', 'inactive', 'locked', 'unassigned', 'lost', 'blocked', 'suspended', 'replaced', 'expired'])
 })
 
 export const UpdateCardStatusResponse = zod.object({
@@ -2419,7 +3026,7 @@ export const UpdateCardStatusResponse = zod.object({
   "uid": zod.string(),
   "studentId": zod.number().int().nullable(),
   "studentName": zod.string().nullable(),
-  "status": zod.enum(['active', 'locked', 'unassigned', 'lost', 'suspended', 'replaced']),
+  "status": zod.enum(['active', 'inactive', 'locked', 'unassigned', 'lost', 'blocked', 'suspended', 'replaced', 'expired']),
   "scans": zod.number().int(),
   "lastScan": zod.string().nullable()
 })

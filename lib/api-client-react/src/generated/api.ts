@@ -26,21 +26,33 @@ import type {
   AcademicTerm,
   AcademicTermInput,
   AcademicTermUpdate,
+  ApiBadRequestResponse,
+  ApiError,
   AppUser,
   AssignClassSubjectParams,
   AssignStudentClassParams,
   AssignTeacherClassParams,
+  AttendanceCorrectionInput,
+  AttendanceDiscrepancy,
+  AttendanceEvent,
+  AttendanceToday,
   AttributionConflictResolution,
   AuditLog,
   AuthorizedContext,
   AuthorizedSchool,
+  BiometricEnrollment,
+  BiometricEnrollmentInput,
+  BiometricProviderEventInput,
+  CardHistoryEntry,
   CardInput,
+  CardReplacementInput,
   CardStatusInput,
   ClassInput,
   ClassSubjectAssignment,
   ClassSubjectAssignmentInput,
   CreateAcademicSessionParams,
   CreateAcademicTermParams,
+  CreateBiometricEnrollmentParams,
   CreateClassParams,
   CreateEmployeeParams,
   CreateParentParams,
@@ -48,19 +60,27 @@ import type {
   CreateSubjectParams,
   CreateSubscriptionParams,
   CurrentUser,
+  DeviceAssignmentInput,
+  DeviceAttendanceEventInput,
+  DeviceCredentialRotation,
+  DeviceSuspensionInput,
   Employee,
   EmployeeInput,
   EmployeeStatusUpdate,
   EmployeeUpdate,
   ForbiddenResponse,
+  GetClassAttendanceParams,
   GetEmployeeParams,
   GetParentParams,
+  GetSchoolAttendanceTodayParams,
   GetSchoolDashboardParams,
+  GetStudentAttendanceParams,
   GetStudentParams,
   GetSubjectParams,
   HealthStatus,
   ListAcademicSessionsParams,
   ListAcademicTermsParams,
+  ListAttendanceDiscrepanciesParams,
   ListAuditLogsParams,
   ListCardsParams,
   ListClassSubjectAssignmentsParams,
@@ -69,13 +89,16 @@ import type {
   ListParentStudentRelationshipsParams,
   ListParentsParams,
   ListPartnersParams,
+  ListSchoolAttendanceEventsParams,
   ListSchoolUsersParams,
   ListSchoolsParams,
   ListStudentClassAssignmentsParams,
+  ListStudentIdentificationMethodsParams,
   ListStudentsParams,
   ListSubjectsParams,
   ListSubscriptionsParams,
   ListTeacherClassAssignmentsParams,
+  ManualAttendanceInput,
   NfcCard,
   NotFoundResponse,
   Parent,
@@ -137,6 +160,8 @@ import type {
   Student,
   StudentClassAssignment,
   StudentClassAssignmentInput,
+  StudentIdentificationPolicy,
+  StudentIdentificationPolicyInput,
   StudentInput,
   StudentStatusUpdate,
   StudentUpdate,
@@ -153,6 +178,7 @@ import type {
   UpdateEmployeeParams,
   UpdateEmployeeStatusParams,
   UpdateParentParams,
+  UpdateStudentIdentificationMethodsParams,
   UpdateStudentParams,
   UpdateStudentStatusParams,
   UpdateSubjectParams
@@ -1981,6 +2007,258 @@ export const useUpdatePlatformDevice = <TError = ErrorType<unknown>,
       return useMutation(getUpdatePlatformDeviceMutationOptions(options));
     }
 
+export const getAssignPlatformDeviceUrl = (deviceId: number,) => {
+
+
+
+
+  return `/api/platform/devices/${deviceId}/assign`
+}
+
+/**
+ * @summary Assign a device to a school and location
+ */
+export const assignPlatformDevice = async (deviceId: number,
+    deviceAssignmentInput: DeviceAssignmentInput, options?: Parameters<typeof customFetch>[1]): Promise<PlatformDevice> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PlatformDevice>(getAssignPlatformDeviceUrl(deviceId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(deviceAssignmentInput)
+  }
+);}
+
+
+
+
+
+export const getAssignPlatformDeviceMutationKey = () => ['assignPlatformDevice'] as const;
+
+export const getAssignPlatformDeviceMutationOptions = <TError = ErrorType<ApiBadRequestResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignPlatformDevice>>, TError,AssignPlatformDeviceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assignPlatformDevice>>, TError,AssignPlatformDeviceMutationVariables, TContext> => {
+
+const mutationKey = getAssignPlatformDeviceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assignPlatformDevice>>, AssignPlatformDeviceMutationVariables> = (props) => {
+          const {deviceId,data} = props ?? {};
+
+          return  assignPlatformDevice(deviceId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssignPlatformDeviceMutationResult = NonNullable<Awaited<ReturnType<typeof assignPlatformDevice>>>
+    export type AssignPlatformDeviceMutationBody = BodyType<DeviceAssignmentInput>
+    export type AssignPlatformDeviceMutationError = ErrorType<ApiBadRequestResponse | NotFoundResponse>
+    export type AssignPlatformDeviceMutationVariables = {deviceId: number;data: BodyType<DeviceAssignmentInput>}
+
+    /**
+ * @summary Assign a device to a school and location
+ */
+export const useAssignPlatformDevice = <TError = ErrorType<ApiBadRequestResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignPlatformDevice>>, TError,AssignPlatformDeviceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assignPlatformDevice>>,
+        TError,
+        AssignPlatformDeviceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAssignPlatformDeviceMutationOptions(options));
+    }
+
+export const getSuspendPlatformDeviceUrl = (deviceId: number,) => {
+
+
+
+
+  return `/api/platform/devices/${deviceId}/suspend`
+}
+
+/**
+ * @summary Suspend a device and reject its attendance submissions
+ */
+export const suspendPlatformDevice = async (deviceId: number,
+    deviceSuspensionInput?: DeviceSuspensionInput, options?: Parameters<typeof customFetch>[1]): Promise<PlatformDevice> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PlatformDevice>(getSuspendPlatformDeviceUrl(deviceId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(deviceSuspensionInput)
+  }
+);}
+
+
+
+
+
+export const getSuspendPlatformDeviceMutationKey = () => ['suspendPlatformDevice'] as const;
+
+export const getSuspendPlatformDeviceMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof suspendPlatformDevice>>, TError,SuspendPlatformDeviceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof suspendPlatformDevice>>, TError,SuspendPlatformDeviceMutationVariables, TContext> => {
+
+const mutationKey = getSuspendPlatformDeviceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof suspendPlatformDevice>>, SuspendPlatformDeviceMutationVariables> = (props) => {
+          const {deviceId,data} = props ?? {};
+
+          return  suspendPlatformDevice(deviceId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SuspendPlatformDeviceMutationResult = NonNullable<Awaited<ReturnType<typeof suspendPlatformDevice>>>
+    export type SuspendPlatformDeviceMutationBody = BodyType<DeviceSuspensionInput> | undefined
+    export type SuspendPlatformDeviceMutationError = ErrorType<NotFoundResponse>
+    export type SuspendPlatformDeviceMutationVariables = {deviceId: number;data?: BodyType<DeviceSuspensionInput>}
+
+    /**
+ * @summary Suspend a device and reject its attendance submissions
+ */
+export const useSuspendPlatformDevice = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof suspendPlatformDevice>>, TError,SuspendPlatformDeviceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof suspendPlatformDevice>>,
+        TError,
+        SuspendPlatformDeviceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSuspendPlatformDeviceMutationOptions(options));
+    }
+
+export const getRotatePlatformDeviceCredentialUrl = (deviceId: number,) => {
+
+
+
+
+  return `/api/platform/devices/${deviceId}/credential`
+}
+
+/**
+ * @summary Rotate a device credential
+ */
+export const rotatePlatformDeviceCredential = async (deviceId: number, options?: Parameters<typeof customFetch>[1]): Promise<DeviceCredentialRotation> => {
+
+  return customFetch<DeviceCredentialRotation>(getRotatePlatformDeviceCredentialUrl(deviceId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRotatePlatformDeviceCredentialMutationKey = () => ['rotatePlatformDeviceCredential'] as const;
+
+export const getRotatePlatformDeviceCredentialMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rotatePlatformDeviceCredential>>, TError,RotatePlatformDeviceCredentialMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rotatePlatformDeviceCredential>>, TError,RotatePlatformDeviceCredentialMutationVariables, TContext> => {
+
+const mutationKey = getRotatePlatformDeviceCredentialMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rotatePlatformDeviceCredential>>, RotatePlatformDeviceCredentialMutationVariables> = (props) => {
+          const {deviceId} = props ?? {};
+
+          return  rotatePlatformDeviceCredential(deviceId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RotatePlatformDeviceCredentialMutationResult = NonNullable<Awaited<ReturnType<typeof rotatePlatformDeviceCredential>>>
+
+    export type RotatePlatformDeviceCredentialMutationError = ErrorType<NotFoundResponse>
+    export type RotatePlatformDeviceCredentialMutationVariables = {deviceId: number}
+
+    /**
+ * @summary Rotate a device credential
+ */
+export const useRotatePlatformDeviceCredential = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rotatePlatformDeviceCredential>>, TError,RotatePlatformDeviceCredentialMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rotatePlatformDeviceCredential>>,
+        TError,
+        RotatePlatformDeviceCredentialMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRotatePlatformDeviceCredentialMutationOptions(options));
+    }
+
 export const getListPlatformNotificationsUrl = () => {
 
 
@@ -2057,6 +2335,1242 @@ export function useListPlatformNotifications<TData = Awaited<ReturnType<typeof l
 
 
 
+
+export const getGetSchoolAttendanceTodayUrl = (params: GetSchoolAttendanceTodayParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/attendance/today?${stringifiedParams}` : `/api/school/attendance/today`
+}
+
+/**
+ * @summary Get today's attendance summary for an authorized school
+ */
+export const getSchoolAttendanceToday = async (params: GetSchoolAttendanceTodayParams, options?: Parameters<typeof customFetch>[1]): Promise<AttendanceToday> => {
+
+  return customFetch<AttendanceToday>(getGetSchoolAttendanceTodayUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolAttendanceTodayQueryKey = (params?: GetSchoolAttendanceTodayParams,) => {
+    return [
+    `/api/school/attendance/today`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSchoolAttendanceTodayQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolAttendanceToday>>, TError = ErrorType<unknown>>(params: GetSchoolAttendanceTodayParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolAttendanceToday>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolAttendanceTodayQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolAttendanceToday>>> = ({ signal }) => getSchoolAttendanceToday(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolAttendanceToday>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchoolAttendanceTodayQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolAttendanceToday>>>
+export type GetSchoolAttendanceTodayQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get today's attendance summary for an authorized school
+ */
+
+export function useGetSchoolAttendanceToday<TData = Awaited<ReturnType<typeof getSchoolAttendanceToday>>, TError = ErrorType<unknown>>(
+ params: GetSchoolAttendanceTodayParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolAttendanceToday>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchoolAttendanceTodayQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListSchoolAttendanceEventsUrl = (params: ListSchoolAttendanceEventsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/attendance/events?${stringifiedParams}` : `/api/school/attendance/events`
+}
+
+/**
+ * @summary List school attendance events
+ */
+export const listSchoolAttendanceEvents = async (params: ListSchoolAttendanceEventsParams, options?: Parameters<typeof customFetch>[1]): Promise<AttendanceEvent[]> => {
+
+  return customFetch<AttendanceEvent[]>(getListSchoolAttendanceEventsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSchoolAttendanceEventsQueryKey = (params?: ListSchoolAttendanceEventsParams,) => {
+    return [
+    `/api/school/attendance/events`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSchoolAttendanceEventsQueryOptions = <TData = Awaited<ReturnType<typeof listSchoolAttendanceEvents>>, TError = ErrorType<unknown>>(params: ListSchoolAttendanceEventsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolAttendanceEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSchoolAttendanceEventsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSchoolAttendanceEvents>>> = ({ signal }) => listSchoolAttendanceEvents(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSchoolAttendanceEvents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSchoolAttendanceEventsQueryResult = NonNullable<Awaited<ReturnType<typeof listSchoolAttendanceEvents>>>
+export type ListSchoolAttendanceEventsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List school attendance events
+ */
+
+export function useListSchoolAttendanceEvents<TData = Awaited<ReturnType<typeof listSchoolAttendanceEvents>>, TError = ErrorType<unknown>>(
+ params: ListSchoolAttendanceEventsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolAttendanceEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSchoolAttendanceEventsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetStudentAttendanceUrl = (studentId: number,
+    params: GetStudentAttendanceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/attendance/students/${studentId}?${stringifiedParams}` : `/api/school/attendance/students/${studentId}`
+}
+
+/**
+ * @summary Get attendance history for a student
+ */
+export const getStudentAttendance = async (studentId: number,
+    params: GetStudentAttendanceParams, options?: Parameters<typeof customFetch>[1]): Promise<AttendanceEvent[]> => {
+
+  return customFetch<AttendanceEvent[]>(getGetStudentAttendanceUrl(studentId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStudentAttendanceQueryKey = (studentId: number,
+    params?: GetStudentAttendanceParams,) => {
+    return [
+    `/api/school/attendance/students/${studentId}`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetStudentAttendanceQueryOptions = <TData = Awaited<ReturnType<typeof getStudentAttendance>>, TError = ErrorType<NotFoundResponse>>(studentId: number,
+    params: GetStudentAttendanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStudentAttendance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStudentAttendanceQueryKey(studentId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStudentAttendance>>> = ({ signal }) => getStudentAttendance(studentId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: studentId !== null && studentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStudentAttendance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStudentAttendanceQueryResult = NonNullable<Awaited<ReturnType<typeof getStudentAttendance>>>
+export type GetStudentAttendanceQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Get attendance history for a student
+ */
+
+export function useGetStudentAttendance<TData = Awaited<ReturnType<typeof getStudentAttendance>>, TError = ErrorType<NotFoundResponse>>(
+ studentId: number,
+    params: GetStudentAttendanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStudentAttendance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStudentAttendanceQueryOptions(studentId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetClassAttendanceUrl = (classId: number,
+    params: GetClassAttendanceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/attendance/classes/${classId}?${stringifiedParams}` : `/api/school/attendance/classes/${classId}`
+}
+
+/**
+ * @summary Get attendance for a class
+ */
+export const getClassAttendance = async (classId: number,
+    params: GetClassAttendanceParams, options?: Parameters<typeof customFetch>[1]): Promise<AttendanceEvent[]> => {
+
+  return customFetch<AttendanceEvent[]>(getGetClassAttendanceUrl(classId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetClassAttendanceQueryKey = (classId: number,
+    params?: GetClassAttendanceParams,) => {
+    return [
+    `/api/school/attendance/classes/${classId}`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetClassAttendanceQueryOptions = <TData = Awaited<ReturnType<typeof getClassAttendance>>, TError = ErrorType<unknown>>(classId: number,
+    params: GetClassAttendanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getClassAttendance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetClassAttendanceQueryKey(classId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getClassAttendance>>> = ({ signal }) => getClassAttendance(classId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: classId !== null && classId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getClassAttendance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetClassAttendanceQueryResult = NonNullable<Awaited<ReturnType<typeof getClassAttendance>>>
+export type GetClassAttendanceQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get attendance for a class
+ */
+
+export function useGetClassAttendance<TData = Awaited<ReturnType<typeof getClassAttendance>>, TError = ErrorType<unknown>>(
+ classId: number,
+    params: GetClassAttendanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getClassAttendance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetClassAttendanceQueryOptions(classId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAttendanceDiscrepanciesUrl = (params: ListAttendanceDiscrepanciesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/attendance/discrepancies?${stringifiedParams}` : `/api/school/attendance/discrepancies`
+}
+
+/**
+ * @summary List attendance reconciliation discrepancies
+ */
+export const listAttendanceDiscrepancies = async (params: ListAttendanceDiscrepanciesParams, options?: Parameters<typeof customFetch>[1]): Promise<AttendanceDiscrepancy[]> => {
+
+  return customFetch<AttendanceDiscrepancy[]>(getListAttendanceDiscrepanciesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAttendanceDiscrepanciesQueryKey = (params?: ListAttendanceDiscrepanciesParams,) => {
+    return [
+    `/api/school/attendance/discrepancies`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAttendanceDiscrepanciesQueryOptions = <TData = Awaited<ReturnType<typeof listAttendanceDiscrepancies>>, TError = ErrorType<unknown>>(params: ListAttendanceDiscrepanciesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAttendanceDiscrepancies>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAttendanceDiscrepanciesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAttendanceDiscrepancies>>> = ({ signal }) => listAttendanceDiscrepancies(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAttendanceDiscrepancies>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAttendanceDiscrepanciesQueryResult = NonNullable<Awaited<ReturnType<typeof listAttendanceDiscrepancies>>>
+export type ListAttendanceDiscrepanciesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List attendance reconciliation discrepancies
+ */
+
+export function useListAttendanceDiscrepancies<TData = Awaited<ReturnType<typeof listAttendanceDiscrepancies>>, TError = ErrorType<unknown>>(
+ params: ListAttendanceDiscrepanciesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAttendanceDiscrepancies>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAttendanceDiscrepanciesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateManualAttendanceUrl = () => {
+
+
+
+
+  return `/api/school/attendance/manual`
+}
+
+/**
+ * @summary Record attendance manually with an auditable reason
+ */
+export const createManualAttendance = async (manualAttendanceInput: ManualAttendanceInput, options?: Parameters<typeof customFetch>[1]): Promise<AttendanceEvent> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AttendanceEvent>(getCreateManualAttendanceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(manualAttendanceInput)
+  }
+);}
+
+
+
+
+
+export const getCreateManualAttendanceMutationKey = () => ['createManualAttendance'] as const;
+
+export const getCreateManualAttendanceMutationOptions = <TError = ErrorType<ApiBadRequestResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createManualAttendance>>, TError,CreateManualAttendanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createManualAttendance>>, TError,CreateManualAttendanceMutationVariables, TContext> => {
+
+const mutationKey = getCreateManualAttendanceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createManualAttendance>>, CreateManualAttendanceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createManualAttendance(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateManualAttendanceMutationResult = NonNullable<Awaited<ReturnType<typeof createManualAttendance>>>
+    export type CreateManualAttendanceMutationBody = BodyType<ManualAttendanceInput>
+    export type CreateManualAttendanceMutationError = ErrorType<ApiBadRequestResponse>
+    export type CreateManualAttendanceMutationVariables = {data: BodyType<ManualAttendanceInput>}
+
+    /**
+ * @summary Record attendance manually with an auditable reason
+ */
+export const useCreateManualAttendance = <TError = ErrorType<ApiBadRequestResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createManualAttendance>>, TError,CreateManualAttendanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createManualAttendance>>,
+        TError,
+        CreateManualAttendanceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateManualAttendanceMutationOptions(options));
+    }
+
+export const getCorrectAttendanceUrl = (attendanceId: number,) => {
+
+
+
+
+  return `/api/school/attendance/${attendanceId}/correct`
+}
+
+/**
+ * @summary Correct attendance without overwriting its history
+ */
+export const correctAttendance = async (attendanceId: number,
+    attendanceCorrectionInput: AttendanceCorrectionInput, options?: Parameters<typeof customFetch>[1]): Promise<AttendanceEvent> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AttendanceEvent>(getCorrectAttendanceUrl(attendanceId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(attendanceCorrectionInput)
+  }
+);}
+
+
+
+
+
+export const getCorrectAttendanceMutationKey = () => ['correctAttendance'] as const;
+
+export const getCorrectAttendanceMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof correctAttendance>>, TError,CorrectAttendanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof correctAttendance>>, TError,CorrectAttendanceMutationVariables, TContext> => {
+
+const mutationKey = getCorrectAttendanceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof correctAttendance>>, CorrectAttendanceMutationVariables> = (props) => {
+          const {attendanceId,data} = props ?? {};
+
+          return  correctAttendance(attendanceId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CorrectAttendanceMutationResult = NonNullable<Awaited<ReturnType<typeof correctAttendance>>>
+    export type CorrectAttendanceMutationBody = BodyType<AttendanceCorrectionInput>
+    export type CorrectAttendanceMutationError = ErrorType<NotFoundResponse>
+    export type CorrectAttendanceMutationVariables = {attendanceId: number;data: BodyType<AttendanceCorrectionInput>}
+
+    /**
+ * @summary Correct attendance without overwriting its history
+ */
+export const useCorrectAttendance = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof correctAttendance>>, TError,CorrectAttendanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof correctAttendance>>,
+        TError,
+        CorrectAttendanceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCorrectAttendanceMutationOptions(options));
+    }
+
+export const getIngestDeviceAttendanceEventUrl = () => {
+
+
+
+
+  return `/api/device/attendance/events`
+}
+
+/**
+ * Device identity and school binding are derived from the credential, never trusted from the request body. Raw biometric data and credential hashes are not accepted or returned.
+ * @summary Ingest an NFC or provider-resolved biometric attendance event
+ */
+export const ingestDeviceAttendanceEvent = async (deviceAttendanceEventInput: DeviceAttendanceEventInput, options?: Parameters<typeof customFetch>[1]): Promise<AttendanceEvent> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AttendanceEvent>(getIngestDeviceAttendanceEventUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(deviceAttendanceEventInput)
+  }
+);}
+
+
+
+
+
+export const getIngestDeviceAttendanceEventMutationKey = () => ['ingestDeviceAttendanceEvent'] as const;
+
+export const getIngestDeviceAttendanceEventMutationOptions = <TError = ErrorType<ApiBadRequestResponse | UnauthenticatedResponse | ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestDeviceAttendanceEvent>>, TError,IngestDeviceAttendanceEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof ingestDeviceAttendanceEvent>>, TError,IngestDeviceAttendanceEventMutationVariables, TContext> => {
+
+const mutationKey = getIngestDeviceAttendanceEventMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ingestDeviceAttendanceEvent>>, IngestDeviceAttendanceEventMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  ingestDeviceAttendanceEvent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IngestDeviceAttendanceEventMutationResult = NonNullable<Awaited<ReturnType<typeof ingestDeviceAttendanceEvent>>>
+    export type IngestDeviceAttendanceEventMutationBody = BodyType<DeviceAttendanceEventInput>
+    export type IngestDeviceAttendanceEventMutationError = ErrorType<ApiBadRequestResponse | UnauthenticatedResponse | ApiError>
+    export type IngestDeviceAttendanceEventMutationVariables = {data: BodyType<DeviceAttendanceEventInput>}
+
+    /**
+ * @summary Ingest an NFC or provider-resolved biometric attendance event
+ */
+export const useIngestDeviceAttendanceEvent = <TError = ErrorType<ApiBadRequestResponse | UnauthenticatedResponse | ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestDeviceAttendanceEvent>>, TError,IngestDeviceAttendanceEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof ingestDeviceAttendanceEvent>>,
+        TError,
+        IngestDeviceAttendanceEventMutationVariables,
+        TContext
+      > => {
+      return useMutation(getIngestDeviceAttendanceEventMutationOptions(options));
+    }
+
+export const getListStudentIdentificationMethodsUrl = (studentId: number,
+    params: ListStudentIdentificationMethodsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/students/${studentId}/identification-methods?${stringifiedParams}` : `/api/students/${studentId}/identification-methods`
+}
+
+/**
+ * @summary Get a student's configured identification policy and references
+ */
+export const listStudentIdentificationMethods = async (studentId: number,
+    params: ListStudentIdentificationMethodsParams, options?: Parameters<typeof customFetch>[1]): Promise<StudentIdentificationPolicy> => {
+
+  return customFetch<StudentIdentificationPolicy>(getListStudentIdentificationMethodsUrl(studentId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStudentIdentificationMethodsQueryKey = (studentId: number,
+    params?: ListStudentIdentificationMethodsParams,) => {
+    return [
+    `/api/students/${studentId}/identification-methods`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListStudentIdentificationMethodsQueryOptions = <TData = Awaited<ReturnType<typeof listStudentIdentificationMethods>>, TError = ErrorType<unknown>>(studentId: number,
+    params: ListStudentIdentificationMethodsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStudentIdentificationMethods>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStudentIdentificationMethodsQueryKey(studentId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStudentIdentificationMethods>>> = ({ signal }) => listStudentIdentificationMethods(studentId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: studentId !== null && studentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStudentIdentificationMethods>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListStudentIdentificationMethodsQueryResult = NonNullable<Awaited<ReturnType<typeof listStudentIdentificationMethods>>>
+export type ListStudentIdentificationMethodsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get a student's configured identification policy and references
+ */
+
+export function useListStudentIdentificationMethods<TData = Awaited<ReturnType<typeof listStudentIdentificationMethods>>, TError = ErrorType<unknown>>(
+ studentId: number,
+    params: ListStudentIdentificationMethodsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStudentIdentificationMethods>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListStudentIdentificationMethodsQueryOptions(studentId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateStudentIdentificationMethodsUrl = (studentId: number,
+    params: UpdateStudentIdentificationMethodsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/students/${studentId}/identification-methods?${stringifiedParams}` : `/api/students/${studentId}/identification-methods`
+}
+
+/**
+ * @summary Configure a student's identification policy
+ */
+export const updateStudentIdentificationMethods = async (studentId: number,
+    studentIdentificationPolicyInput: StudentIdentificationPolicyInput,
+    params: UpdateStudentIdentificationMethodsParams, options?: Parameters<typeof customFetch>[1]): Promise<StudentIdentificationPolicy> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<StudentIdentificationPolicy>(getUpdateStudentIdentificationMethodsUrl(studentId,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(studentIdentificationPolicyInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateStudentIdentificationMethodsMutationKey = () => ['updateStudentIdentificationMethods'] as const;
+
+export const getUpdateStudentIdentificationMethodsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateStudentIdentificationMethods>>, TError,UpdateStudentIdentificationMethodsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateStudentIdentificationMethods>>, TError,UpdateStudentIdentificationMethodsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateStudentIdentificationMethodsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateStudentIdentificationMethods>>, UpdateStudentIdentificationMethodsMutationVariables> = (props) => {
+          const {studentId,data,params} = props ?? {};
+
+          return  updateStudentIdentificationMethods(studentId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateStudentIdentificationMethodsMutationResult = NonNullable<Awaited<ReturnType<typeof updateStudentIdentificationMethods>>>
+    export type UpdateStudentIdentificationMethodsMutationBody = BodyType<StudentIdentificationPolicyInput>
+    export type UpdateStudentIdentificationMethodsMutationError = ErrorType<unknown>
+    export type UpdateStudentIdentificationMethodsMutationVariables = {studentId: number;data: BodyType<StudentIdentificationPolicyInput>;params: UpdateStudentIdentificationMethodsParams}
+
+    /**
+ * @summary Configure a student's identification policy
+ */
+export const useUpdateStudentIdentificationMethods = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateStudentIdentificationMethods>>, TError,UpdateStudentIdentificationMethodsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateStudentIdentificationMethods>>,
+        TError,
+        UpdateStudentIdentificationMethodsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateStudentIdentificationMethodsMutationOptions(options));
+    }
+
+export const getCreateBiometricEnrollmentUrl = (studentId: number,
+    params: CreateBiometricEnrollmentParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/students/${studentId}/biometric-enrollments?${stringifiedParams}` : `/api/students/${studentId}/biometric-enrollments`
+}
+
+/**
+ * @summary Register a provider enrollment reference without storing biometric data
+ */
+export const createBiometricEnrollment = async (studentId: number,
+    biometricEnrollmentInput: BiometricEnrollmentInput,
+    params: CreateBiometricEnrollmentParams, options?: Parameters<typeof customFetch>[1]): Promise<BiometricEnrollment> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<BiometricEnrollment>(getCreateBiometricEnrollmentUrl(studentId,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(biometricEnrollmentInput)
+  }
+);}
+
+
+
+
+
+export const getCreateBiometricEnrollmentMutationKey = () => ['createBiometricEnrollment'] as const;
+
+export const getCreateBiometricEnrollmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBiometricEnrollment>>, TError,CreateBiometricEnrollmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBiometricEnrollment>>, TError,CreateBiometricEnrollmentMutationVariables, TContext> => {
+
+const mutationKey = getCreateBiometricEnrollmentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBiometricEnrollment>>, CreateBiometricEnrollmentMutationVariables> = (props) => {
+          const {studentId,data,params} = props ?? {};
+
+          return  createBiometricEnrollment(studentId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBiometricEnrollmentMutationResult = NonNullable<Awaited<ReturnType<typeof createBiometricEnrollment>>>
+    export type CreateBiometricEnrollmentMutationBody = BodyType<BiometricEnrollmentInput>
+    export type CreateBiometricEnrollmentMutationError = ErrorType<unknown>
+    export type CreateBiometricEnrollmentMutationVariables = {studentId: number;data: BodyType<BiometricEnrollmentInput>;params: CreateBiometricEnrollmentParams}
+
+    /**
+ * @summary Register a provider enrollment reference without storing biometric data
+ */
+export const useCreateBiometricEnrollment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBiometricEnrollment>>, TError,CreateBiometricEnrollmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBiometricEnrollment>>,
+        TError,
+        CreateBiometricEnrollmentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateBiometricEnrollmentMutationOptions(options));
+    }
+
+export const getIngestBiometricProviderEventUrl = () => {
+
+
+
+
+  return `/api/biometric/events`
+}
+
+/**
+ * Accepts only a provider reference and match result; raw biometric templates and images are never accepted.
+ * @summary Ingest a provider-resolved biometric match
+ */
+export const ingestBiometricProviderEvent = async (biometricProviderEventInput: BiometricProviderEventInput, options?: Parameters<typeof customFetch>[1]): Promise<AttendanceEvent> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AttendanceEvent>(getIngestBiometricProviderEventUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(biometricProviderEventInput)
+  }
+);}
+
+
+
+
+
+export const getIngestBiometricProviderEventMutationKey = () => ['ingestBiometricProviderEvent'] as const;
+
+export const getIngestBiometricProviderEventMutationOptions = <TError = ErrorType<UnauthenticatedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestBiometricProviderEvent>>, TError,IngestBiometricProviderEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof ingestBiometricProviderEvent>>, TError,IngestBiometricProviderEventMutationVariables, TContext> => {
+
+const mutationKey = getIngestBiometricProviderEventMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ingestBiometricProviderEvent>>, IngestBiometricProviderEventMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  ingestBiometricProviderEvent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IngestBiometricProviderEventMutationResult = NonNullable<Awaited<ReturnType<typeof ingestBiometricProviderEvent>>>
+    export type IngestBiometricProviderEventMutationBody = BodyType<BiometricProviderEventInput>
+    export type IngestBiometricProviderEventMutationError = ErrorType<UnauthenticatedResponse>
+    export type IngestBiometricProviderEventMutationVariables = {data: BodyType<BiometricProviderEventInput>}
+
+    /**
+ * @summary Ingest a provider-resolved biometric match
+ */
+export const useIngestBiometricProviderEvent = <TError = ErrorType<UnauthenticatedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestBiometricProviderEvent>>, TError,IngestBiometricProviderEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof ingestBiometricProviderEvent>>,
+        TError,
+        IngestBiometricProviderEventMutationVariables,
+        TContext
+      > => {
+      return useMutation(getIngestBiometricProviderEventMutationOptions(options));
+    }
+
+export const getGetCardHistoryUrl = (cardId: number,) => {
+
+
+
+
+  return `/api/cards/${cardId}/history`
+}
+
+/**
+ * @summary View immutable NFC card lifecycle history
+ */
+export const getCardHistory = async (cardId: number, options?: Parameters<typeof customFetch>[1]): Promise<CardHistoryEntry[]> => {
+
+  return customFetch<CardHistoryEntry[]>(getGetCardHistoryUrl(cardId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCardHistoryQueryKey = (cardId: number,) => {
+    return [
+    `/api/cards/${cardId}/history`
+    ] as const;
+    }
+
+
+export const getGetCardHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getCardHistory>>, TError = ErrorType<unknown>>(cardId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCardHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCardHistoryQueryKey(cardId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCardHistory>>> = ({ signal }) => getCardHistory(cardId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: cardId !== null && cardId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCardHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCardHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getCardHistory>>>
+export type GetCardHistoryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary View immutable NFC card lifecycle history
+ */
+
+export function useGetCardHistory<TData = Awaited<ReturnType<typeof getCardHistory>>, TError = ErrorType<unknown>>(
+ cardId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCardHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCardHistoryQueryOptions(cardId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReplaceCardUrl = (cardId: number,) => {
+
+
+
+
+  return `/api/cards/${cardId}/replace`
+}
+
+/**
+ * @summary Replace a card while preserving the old card record
+ */
+export const replaceCard = async (cardId: number,
+    cardReplacementInput: CardReplacementInput, options?: Parameters<typeof customFetch>[1]): Promise<NfcCard> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NfcCard>(getReplaceCardUrl(cardId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(cardReplacementInput)
+  }
+);}
+
+
+
+
+
+export const getReplaceCardMutationKey = () => ['replaceCard'] as const;
+
+export const getReplaceCardMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceCard>>, TError,ReplaceCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof replaceCard>>, TError,ReplaceCardMutationVariables, TContext> => {
+
+const mutationKey = getReplaceCardMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof replaceCard>>, ReplaceCardMutationVariables> = (props) => {
+          const {cardId,data} = props ?? {};
+
+          return  replaceCard(cardId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReplaceCardMutationResult = NonNullable<Awaited<ReturnType<typeof replaceCard>>>
+    export type ReplaceCardMutationBody = BodyType<CardReplacementInput>
+    export type ReplaceCardMutationError = ErrorType<unknown>
+    export type ReplaceCardMutationVariables = {cardId: number;data: BodyType<CardReplacementInput>}
+
+    /**
+ * @summary Replace a card while preserving the old card record
+ */
+export const useReplaceCard = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceCard>>, TError,ReplaceCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof replaceCard>>,
+        TError,
+        ReplaceCardMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReplaceCardMutationOptions(options));
+    }
 
 export const getMarkPlatformNotificationReadUrl = (notificationId: number,) => {
 

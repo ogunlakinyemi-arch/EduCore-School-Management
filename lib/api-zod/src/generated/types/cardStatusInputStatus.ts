@@ -11,9 +11,12 @@ export type CardStatusInputStatus = typeof CardStatusInputStatus[keyof typeof Ca
 
 export const CardStatusInputStatus = {
   active: 'active',
+  inactive: 'inactive',
   locked: 'locked',
   unassigned: 'unassigned',
   lost: 'lost',
+  blocked: 'blocked',
   suspended: 'suspended',
   replaced: 'replaced',
+  expired: 'expired',
 } as const;

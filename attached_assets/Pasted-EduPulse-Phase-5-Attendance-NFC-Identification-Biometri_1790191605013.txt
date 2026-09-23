@@ -1,0 +1,1069 @@
+EduPulse Phase 5 — Attendance, NFC Identification & Biometric Architecture
+
+Phase 4 has been completed, merged, and verified.
+
+Continue from the existing EduPulse codebase.
+
+CRITICAL RULES
+
+DO NOT:
+
+- restart the project
+- rebuild the application from scratch
+- reset the database
+- delete existing data
+- remove existing modules
+- weaken Clerk authentication
+- weaken RBAC
+- weaken tenant isolation
+- break Partner/Reseller functionality
+- modify historical subscription records
+- remove existing partner commission records
+- implement unrelated modules
+
+First inspect the current Phase 1–4 architecture and reuse the existing systems.
+
+Use additive database migrations.
+
+The system must remain multi-tenant and school-scoped.
+
+---
+
+1. OBJECTIVE
+
+Build the foundation for EduPulse attendance and student identification.
+
+The system must support:
+
+1. School entry attendance
+2. School exit attendance
+3. Classroom attendance
+4. NFC student identification
+5. Biometric/fingerprint identification architecture
+6. Staff attendance foundation
+7. Attendance reconciliation
+8. Parent notifications foundation
+9. Device registration and school assignment
+10. Device security and school binding
+11. Attendance history
+12. Attendance reporting
+
+The system must distinguish:
+
+Student is physically present at school
+
+from:
+
+Student is present in their assigned classroom
+
+These are NOT the same event.
+
+---
+
+2. ATTENDANCE MODEL
+
+Create separate attendance events.
+
+SCHOOL ENTRY
+
+When a student enters the school:
+
+Student → School Entry Device → Attendance Event
+
+Record:
+
+- Student
+- School
+- Date
+- Time
+- Device
+- Identification method
+- Event type
+- Result
+- Session/term
+- Created timestamp
+
+Event type:
+
+"SCHOOL_ENTRY"
+
+---
+
+3. SCHOOL EXIT
+
+When a student leaves:
+
+Event type:
+
+"SCHOOL_EXIT"
+
+Record:
+
+- Student
+- School
+- Date
+- Time
+- Device
+- Identification method
+- Result
+- Session/term
+
+---
+
+4. CLASSROOM ATTENDANCE
+
+Classroom attendance must be independent of school entry.
+
+Event type:
+
+"CLASSROOM_ENTRY"
+
+or an equivalent attendance representation appropriate to the architecture.
+
+The system should determine:
+
+- Student's current class
+- Student's current section
+- Expected classroom
+- Actual classroom/device
+- Date
+- Time
+- Identification method
+
+This prevents the following problem:
+
+Student enters school at 7:30 AM.
+
+But never enters their classroom.
+
+The system must be capable of identifying:
+
+School present = YES
+
+Class present = NO
+
+---
+
+5. ATTENDANCE STATUS
+
+Create meaningful attendance states.
+
+Examples:
+
+- PRESENT
+- ABSENT
+- LATE
+- LEFT_EARLY
+- EXCUSED
+- UNKNOWN
+- MISMATCH
+
+Do not hard-code attendance percentages.
+
+All attendance metrics must come from real attendance records.
+
+---
+
+6. NFC STUDENT IDENTIFICATION
+
+Use the existing NFC card foundation.
+
+Inspect the current:
+
+- NFC card table
+- NFC status management
+- student relationship
+- subscription eligibility
+- school ownership checks
+
+Extend it safely.
+
+Each NFC card should have:
+
+- NFC UID
+- Student ID
+- School ID
+- Card status
+- Activation date
+- Expiry/renewal information where applicable
+- Issued date
+- Last used timestamp
+- Device/reader information where appropriate
+
+Possible card states:
+
+- ACTIVE
+- INACTIVE
+- LOST
+- BLOCKED
+- REPLACED
+- EXPIRED
+
+Do not allow the same active NFC UID to belong to multiple students.
+
+Do not allow a card belonging to School A to authenticate a student at School B.
+
+---
+
+7. NFC CARD LIFECYCLE
+
+Support:
+
+- Register card
+- Activate card
+- Deactivate card
+- Block card
+- Replace card
+- Reassign card only through authorized workflow
+- View card history
+
+When a card is replaced:
+
+The old card must remain historically recorded.
+
+Do not delete historical NFC records.
+
+---
+
+8. DEVICE MANAGEMENT
+
+Create a proper device-management foundation.
+
+Devices may include:
+
+- NFC reader
+- NFC attendance terminal
+- Fingerprint terminal
+- Combined NFC/biometric terminal
+
+Device fields should include:
+
+- Device ID
+- Device serial number
+- Device type
+- Device name
+- School ID
+- Location
+- Device status
+- Configuration status
+- Authentication/credential identifier where appropriate
+- Last seen
+- Created date
+- Updated date
+
+Device statuses:
+
+- ACTIVE
+- INACTIVE
+- SUSPENDED
+- UNASSIGNED
+- MAINTENANCE
+
+---
+
+9. DEVICE SCHOOL BINDING
+
+This is a critical security requirement.
+
+Once a device is configured for School A:
+
+It must NOT be able to submit attendance events for School B.
+
+The device must be associated with a specific school.
+
+Attendance requests must validate:
+
+Device → School → Student → Attendance event
+
+All four relationships must be valid.
+
+Do not trust school ID supplied by the device alone.
+
+Use secure device authentication/credentials.
+
+---
+
+10. DEVICE REGISTRATION
+
+Platform Owner should be able to:
+
+- Register device
+- Assign device to school
+- Activate device
+- Suspend device
+- Unassign device
+- View device status
+- View device location
+- View last activity
+
+School Admin may view authorized devices according to permissions but should not be able to reassign devices across schools unless explicitly authorized.
+
+---
+
+11. DEVICE CONFIGURATION
+
+Design a configuration system that allows the company to configure a device for a school.
+
+Example:
+
+Device:
+"EDU-NFC-001"
+
+Assigned school:
+"School A"
+
+Location:
+"Main Gate"
+
+Device type:
+"NFC_READER"
+
+Once assigned:
+
+Device can only process authorized attendance events for School A.
+
+If reassignment is required:
+
+Require an explicit authorized reassignment workflow.
+
+Record the reassignment in audit history.
+
+---
+
+12. DEVICE SECURITY
+
+Implement device authentication.
+
+Do NOT rely only on:
+
+- device ID
+- school ID
+- serial number
+
+Use a secure credential/token/key mechanism appropriate to the architecture.
+
+Credentials should be:
+
+- unique
+- revocable
+- rotatable
+- securely stored
+- redacted from logs
+
+Do not store raw device secrets in ordinary audit records.
+
+---
+
+13. BIOMETRIC/FINGERPRINT ARCHITECTURE
+
+Do NOT attempt to build a fake fingerprint scanner using the browser.
+
+Create an integration-ready biometric architecture.
+
+The application should support future external biometric hardware.
+
+Define an abstraction such as:
+
+"BiometricProvider"
+
+or equivalent architecture.
+
+The application should be able to receive:
+
+- device identifier
+- school identifier
+- biometric match result
+- student identifier where securely resolved
+- timestamp
+- confidence/result metadata where provided by hardware
+
+The actual fingerprint matching may be performed:
+
+- on the biometric device
+- through the manufacturer's SDK
+- through a local school gateway
+- through a secure biometric service
+
+Do not assume browser fingerprint access.
+
+---
+
+14. BIOMETRIC PRIVACY
+
+Do NOT store raw fingerprint images/templates unless absolutely required and legally/technically justified.
+
+Prefer storing:
+
+- biometric enrollment reference
+- provider reference
+- device reference
+- status
+- enrollment timestamp
+
+If biometric templates are ever stored, they must use a dedicated secure architecture.
+
+Do not expose biometric data through normal parent/student APIs.
+
+---
+
+15. YOUNGER CHILDREN
+
+The architecture must support students who may not be suitable for fingerprint enrollment.
+
+A student can have an identification policy such as:
+
+- NFC_ONLY
+- BIOMETRIC_ONLY
+- NFC_AND_BIOMETRIC
+- MANUAL_FALLBACK
+
+Do not force fingerprint enrollment for every student.
+
+The school should be able to configure the identification method according to age and school policy.
+
+---
+
+16. IDENTIFICATION EVENT
+
+Create a normalized identification event.
+
+Possible fields:
+
+- Event ID
+- School ID
+- Student ID
+- Device ID
+- Identification method
+- Event type
+- Timestamp
+- Result
+- Failure reason
+- Session
+- Term
+- Created timestamp
+
+Identification methods:
+
+- NFC
+- FINGERPRINT
+- MANUAL
+- DEVICE_API
+- OTHER_SUPPORTED_METHOD
+
+Do not expose sensitive device credentials in event data.
+
+---
+
+17. ATTENDANCE EVENT PROCESSING
+
+Attendance events must pass validation:
+
+1. Device exists
+2. Device is active
+3. Device belongs to the correct school
+4. Identification is valid
+5. Student exists
+6. Student belongs to the school
+7. Student is active/eligible where appropriate
+8. Event type is valid
+9. Timestamp is valid
+10. Duplicate event rules are satisfied
+
+Only then create the attendance event.
+
+---
+
+18. DUPLICATE ATTENDANCE
+
+Prevent accidental duplicate events.
+
+For example:
+
+Student taps NFC five times within a few seconds.
+
+Do not create five separate attendance records unless the event semantics require it.
+
+Implement a configurable duplicate suppression window.
+
+Example:
+
+Same student
+Same device
+Same event type
+Within 30 seconds
+
+→ treat as duplicate/repeat event.
+
+Do not hard-code 30 seconds throughout the system.
+
+Make the setting configurable.
+
+---
+
+19. SCHOOL PRESENCE RECONCILIATION
+
+Create a reconciliation engine.
+
+Example:
+
+Student enters school:
+
+"SCHOOL_ENTRY = PRESENT"
+
+But no classroom attendance is recorded within the expected classroom window.
+
+System should identify:
+
+"CLASSROOM_ATTENDANCE = MISSING"
+
+Potential status:
+
+"MISMATCH"
+
+The system must distinguish between:
+
+- school present/class absent
+- school absent/class present
+- school present/class present
+- school exit without entry
+- duplicate entry
+- invalid device event
+
+Do not automatically accuse a student of wrongdoing.
+
+The system should identify the attendance discrepancy for authorized school staff.
+
+---
+
+20. CLASSROOM ASSIGNMENT
+
+Use the existing Phase 3 class assignment.
+
+Attendance must determine the student's expected class from the current valid assignment.
+
+Do not allow the client to simply claim:
+
+"studentClassId = X"
+
+and bypass the actual student assignment.
+
+---
+
+21. CLASSROOM DEVICE LOCATION
+
+Support device location.
+
+Example:
+
+Device 1:
+Main Gate
+
+Device 2:
+JSS1A Classroom
+
+Device 3:
+JSS1B Classroom
+
+When classroom attendance occurs:
+
+Device → School → Location/Classroom
+
+must be validated.
+
+A device assigned to JSS1A should not silently record a JSS1B classroom attendance event.
+
+---
+
+22. STAFF ATTENDANCE
+
+Create a staff attendance foundation.
+
+Support:
+
+- Teachers
+- Accountants
+- Administrators
+- Other staff
+
+Attendance events should support:
+
+- Entry
+- Exit
+- Late
+- Early departure
+
+Use the existing employee/staff records.
+
+Do not create duplicate employee identities.
+
+---
+
+23. ATTENDANCE DASHBOARD
+
+Replace any remaining placeholder attendance information with real data.
+
+School dashboard may show:
+
+- Today's school entries
+- Today's school exits
+- Students currently present
+- Students absent
+- Late students
+- Classroom mismatches
+- Staff present
+- Staff absent
+
+Platform dashboard should show aggregate information across authorized schools where appropriate.
+
+If there is insufficient data:
+
+Not available
+
+Do not fabricate values.
+
+---
+
+24. ATTENDANCE REPORTS
+
+Create foundation for reports such as:
+
+- Daily attendance
+- Student attendance history
+- Class attendance
+- School attendance
+- Late arrivals
+- Early departures
+- Classroom mismatch
+- Staff attendance
+
+Include filters:
+
+- Date
+- Date range
+- School
+- Class
+- Section
+- Student
+- Attendance status
+- Identification method
+
+---
+
+25. PARENT NOTIFICATION FOUNDATION
+
+Create the backend event foundation for parent notifications.
+
+Examples:
+
+Student enters school:
+
+→ attendance event
+
+Student exits school:
+
+→ attendance event
+
+Student is marked classroom-missing:
+
+→ discrepancy event
+
+Parent notification should eventually support:
+
+- SMS
+- Email
+- WhatsApp
+- In-app notification
+
+Do NOT implement paid SMS/WhatsApp integrations in this phase unless the existing architecture already has the required integration.
+
+Create notification events/queue structures that future communication modules can consume.
+
+---
+
+26. NOTIFICATION RULES
+
+Allow school-level configuration later for events such as:
+
+- School entry
+- School exit
+- Classroom mismatch
+- Late arrival
+
+Do not hard-code communication provider credentials.
+
+---
+
+27. MANUAL ATTENDANCE
+
+Provide authorized school staff with a controlled manual attendance mechanism.
+
+Manual attendance should require:
+
+- authorized actor
+- student
+- attendance type
+- date/time
+- reason
+- optional note
+
+Manual changes must create audit events.
+
+Do not allow parents or students to manually mark themselves present.
+
+---
+
+28. ATTENDANCE CORRECTIONS
+
+Authorized users should be able to correct attendance where necessary.
+
+Corrections must preserve history.
+
+Do not silently overwrite the original event.
+
+Record:
+
+- original value
+- corrected value
+- reason
+- actor
+- timestamp
+
+---
+
+29. AUDIT LOGGING
+
+Use the existing audit infrastructure.
+
+Audit:
+
+- device registered
+- device assigned
+- device reassigned
+- device suspended
+- device activated
+- NFC card registered
+- NFC card activated
+- NFC card blocked
+- NFC card replaced
+- biometric enrollment
+- attendance created
+- attendance manually created
+- attendance corrected
+- attendance overridden
+- attendance discrepancy created/resolved
+- notification event generated
+- unauthorized device attempt
+- invalid school/device combination
+- invalid student/device combination
+
+---
+
+30. API SECURITY
+
+All attendance APIs must use the Phase 2 authorization architecture.
+
+Verify:
+
+- Platform Owner access
+- School Admin access
+- teacher permissions
+- staff permissions
+- parent restrictions
+- student restrictions
+- device authentication
+
+Never trust:
+
+- schoolId
+- studentId
+- classId
+- deviceId
+- teacherId
+
+provided by the client without server-side validation.
+
+---
+
+31. DATABASE DESIGN
+
+Create normalized structures where appropriate.
+
+Potential entities:
+
+- attendance_devices
+- device_credentials
+- student_identification_methods
+- biometric_enrollments
+- attendance_events
+- attendance_corrections
+- attendance_discrepancies
+- attendance_notification_events
+
+Reuse existing NFC tables instead of creating duplicates.
+
+Reuse existing:
+
+- schools
+- students
+- parents
+- classes
+- sections
+- employees
+- academic sessions
+- terms
+
+Use foreign keys and indexes.
+
+---
+
+32. DATA RETENTION
+
+Attendance is historical information.
+
+Do not delete attendance records simply because:
+
+- student leaves
+- student changes class
+- teacher leaves
+- device is replaced
+
+Historical records must remain associated with their original context.
+
+---
+
+33. API DESIGN
+
+Follow the existing API conventions.
+
+Potential endpoints:
+
+Platform:
+
+- GET /platform/attendance/devices
+- POST /platform/attendance/devices
+- PATCH /platform/attendance/devices/:id
+- POST /platform/attendance/devices/:id/assign
+- POST /platform/attendance/devices/:id/suspend
+
+School:
+
+- GET /school/attendance/today
+- GET /school/attendance/events
+- GET /school/attendance/students/:id
+- GET /school/attendance/classes/:id
+- GET /school/attendance/discrepancies
+- POST /school/attendance/manual
+- POST /school/attendance/:id/correct
+
+Device:
+
+- POST /device/attendance/events
+
+Student identification:
+
+- GET /students/:id/identification-methods
+- POST /students/:id/identification-methods
+
+Biometric:
+
+- POST /biometric/events
+- POST /biometric/enrollments
+
+Use the existing route naming conventions if they differ.
+
+Every endpoint must have appropriate authorization.
+
+---
+
+34. OPENAPI
+
+Update OpenAPI for all new endpoints.
+
+Regenerate:
+
+- React Query clients
+- Zod schemas
+- API types
+
+Do not manually duplicate generated schemas.
+
+---
+
+35. TESTING
+
+Create comprehensive automated tests.
+
+Device security
+
+- unauthenticated device request rejected
+- invalid device credential rejected
+- inactive device rejected
+- device assigned to School A cannot submit School B event
+- device reassignment requires authorization
+
+Student security
+
+- School A cannot submit attendance for School B student
+- student cannot access another student's attendance
+- parent cannot modify attendance
+- teacher access is limited to permitted school/class scope
+
+NFC
+
+- active card works
+- blocked card rejected
+- inactive card rejected
+- card belonging to another school rejected
+- duplicate NFC UID rejected
+- duplicate tap suppression works
+
+Attendance
+
+- valid school entry created
+- valid school exit created
+- classroom event created
+- invalid event rejected
+- duplicate event handled
+- manual attendance audited
+- correction preserves history
+
+Reconciliation
+
+Test:
+
+School entry + classroom entry → normal
+
+School entry + no classroom entry → mismatch
+
+School exit without entry → flagged appropriately
+
+Classroom event without valid school presence → flagged appropriately according to configured rules
+
+Biometric
+
+- biometric enrollment authorization
+- biometric event authorization
+- invalid provider/device rejected
+- raw biometric data is not exposed
+
+Tenant isolation
+
+Attempt cross-school access for:
+
+- attendance
+- devices
+- NFC cards
+- biometric records
+- discrepancies
+- reports
+
+All must be blocked.
+
+---
+
+36. PRIVACY AND SECURITY REVIEW
+
+Before completion, inspect:
+
+- biometric data handling
+- device credentials
+- NFC identifiers
+- student attendance history
+- parent visibility
+- audit logs
+- API authorization
+- IDOR protection
+- school isolation
+
+Do not expose unnecessary personal or biometric information.
+
+---
+
+37. VERIFICATION
+
+Run:
+
+- API typecheck
+- shared library typecheck
+- frontend typecheck
+- API production build
+- frontend production build
+- all previous security tests
+- all Phase 3 tests
+- all Phase 4 tests
+- new Phase 5 tests
+- migration verification
+- health check
+- browser verification
+
+Verify that:
+
+- Clerk authentication works
+- PLATFORM_OWNER works
+- SCHOOL_ADMIN works
+- PARTNER works
+- Parent portal works
+- School dashboard works
+- Partner dashboard still works
+- Existing subscriptions remain intact
+- Existing commission records remain intact
+- Existing NFC records remain intact
+- Existing student records remain intact
+- Existing audit records remain intact
+- No database reset occurred
+
+---
+
+38. HARDWARE INTEGRATION BOUNDARY
+
+Do not pretend that hardware integration is complete without actual hardware.
+
+For this phase, implement:
+
+- secure device architecture
+- device registration
+- device authentication
+- NFC event API
+- biometric provider abstraction
+- attendance processing
+- test/simulation endpoints where appropriate
+
+Actual vendor-specific NFC/fingerprint SDK integration can be added once the physical hardware supplier and device API/SDK are confirmed.
+
+Do not invent a vendor API.
+
+---
+
+39. COMPLETION REPORT
+
+When finished, report:
+
+1. Database tables created
+2. Existing tables modified
+3. Migrations
+4. Device architecture
+5. NFC architecture
+6. Biometric architecture
+7. Attendance architecture
+8. Reconciliation architecture
+9. Notification-event architecture
+10. API endpoints
+11. Frontend pages
+12. Security controls
+13. Audit events
+14. Tests added
+15. Test results
+16. Typecheck results
+17. Build results
+18. Migration results
+19. Browser verification
+20. Hardware integration limitations
+21. Remaining issues
+
+STOP after Phase 5.
+
+Do not automatically begin Phase 6.
+
+The next planned phase will be:
+
+Phase 6 — Academic Operations: Assignments, Exams, Results, Report Cards and Timetable.

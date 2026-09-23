@@ -37,6 +37,7 @@ import { AuditPage } from '@/pages/audit';
 import { SettingsPage } from '@/pages/settings';
 import { DevicesPage } from '@/pages/devices';
 import { NotificationsPage } from '@/pages/notifications';
+import { AttendancePage } from '@/pages/attendance';
 
 import './index.css';
 
@@ -161,6 +162,9 @@ function ProtectedRoutes() {
           </Route>
           <Route path="/classes">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']}><ClassesPage /></RoleGuard>
+          </Route>
+          <Route path="/attendance">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']}><AttendancePage /></RoleGuard>
           </Route>
           <Route path="/devices">
             <RoleGuard isPlatformOwnerOnly><DevicesPage /></RoleGuard>

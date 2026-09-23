@@ -16,7 +16,6 @@ import {
   ListSubscriptionsQueryParams,
   RegisterCardBody,
   RegisterCardQueryParams,
-  UpdateCardStatusBody,
   UpdateStudentQueryParams,
   UpdateSchoolBody,
   UpdateSchoolParams,
@@ -48,6 +47,15 @@ const asString = (value: unknown) =>
   typeof value === "string" ? value : undefined;
 const dateString = (value: Date | string | null) =>
   value ? new Date(value).toISOString() : null;
+
+// Cards created before the phase 5 lifecycle was introduced use lower-case
+// `locked`/`unassigned` (and `active`). Keep those values readable while
+// storing the expanded lifecycle in the same lower-case representation.
+const cardStatuses = new Set([
+  "active", "inactive", "lost", "blocked", "replaced", "expired", "suspended",
+  "locked", "unassigned",
+]);
+const terminalCardStatuses = new Set(["replaced", "expired"]);
 
 const schoolFields = `
   s.id, s.code, s.name, s.city, s.state, s.registration_number AS "registrationNumber",
@@ -206,7 +214,13 @@ router.get("/dashboard/school", async (req, res) => {
           (SELECT COUNT(*)::int FROM students st WHERE school_id = $1 AND NOT EXISTS (
             SELECT 1 FROM subscriptions sub WHERE sub.student_id = st.id AND LOWER(sub.status) = 'active'
           )) AS "unpaidStudents",
-          NULL::float AS "attendanceRate",
+          (SELECT CASE WHEN COUNT(*) = 0 THEN NULL::float
+                 ELSE ROUND(100.0 * (
+                   SELECT COUNT(DISTINCT e.student_id) FROM attendance_events e
+                   WHERE e.school_id=$1 AND e.event_date=CURRENT_DATE AND e.event_type='SCHOOL_ENTRY'
+                     AND e.attendance_status IN ('PRESENT','LATE')
+                 ) / COUNT(*), 1)::float END
+           FROM students st WHERE st.school_id=$1 AND UPPER(st.status)='ACTIVE') AS "attendanceRate",
            (SELECT COUNT(*)::int FROM subscriptions WHERE school_id = $1 AND LOWER(status) = 'pending') AS "pendingPayments",
           (SELECT COUNT(*)::int FROM nfc_cards WHERE school_id = $1 AND status = 'active') AS "activeCards",
            (SELECT COUNT(*)::int FROM nfc_cards WHERE school_id = $1 AND status = 'locked') AS "lockedCards",
@@ -810,50 +824,118 @@ router.get("/cards", async (req, res) => {
 });
 
 router.post("/cards", async (req, res) => {
+  const client = await pool.connect();
   try {
     const schoolId = tenantId(req, ["SCHOOL_ADMIN", "STAFF"]);
     const body = RegisterCardBody.parse(req.body);
     RegisterCardQueryParams.parse(req.query);
     const studentId = body.studentId ?? null;
+    await client.query("BEGIN");
+    // UID is a physical-card identity, not a school-scoped identity. Lock
+    // matching rows so two simultaneous registrations cannot claim it.
+    await client.query(`SELECT pg_advisory_xact_lock(hashtext(LOWER($1)))`, [body.uid]);
+    const duplicate = await client.query(
+      `SELECT id FROM nfc_cards WHERE LOWER(uid) = LOWER($1) FOR UPDATE`,
+      [body.uid],
+    );
+    if (duplicate.rows[0]) {
+      throw new AuthError(409, "NFC card UID is already registered");
+    }
     if (studentId) {
-      const student = await pool.query(`SELECT id FROM students WHERE id = $1 AND school_id = $2`, [studentId, schoolId]);
-      if (!student.rows[0]) return res.status(404).json({ error: "Student not found in school" });
+      const student = await client.query(`SELECT id FROM students WHERE id = $1 AND school_id = $2`, [studentId, schoolId]);
+      if (!student.rows[0]) {
+        await client.query("ROLLBACK");
+        res.status(404).json({ error: "Student not found in school" });
+        return;
+      }
     }
     const status = studentId ? "locked" : "unassigned";
-    const result = await pool.query(`
-      INSERT INTO nfc_cards (school_id, uid, student_id, status) VALUES ($1, $2, $3, $4)
+    const result = await client.query(`
+      INSERT INTO nfc_cards (school_id, uid, student_id, status, issued_at)
+      VALUES ($1, $2, $3, $4, NOW())
       RETURNING id, school_id AS "schoolId", uid, student_id AS "studentId", status, scans, last_scan AS "lastScan"
     `, [schoolId, body.uid, studentId, status]);
-    await audit(req, schoolId, "Registered NFC card", "NFC Cards", result.rows[0].id, "info", "NFC_CARD_REGISTERED");
+    await client.query(
+      `INSERT INTO nfc_card_history
+       (school_id, nfc_card_id, student_id, action, previous_status, new_status, actor_user_id)
+       VALUES ($1, $2, $3, 'REGISTERED', NULL, $4, $5)`,
+      [schoolId, result.rows[0].id, studentId, status, getUserContext(req).user.id],
+    );
+    await audit(req, schoolId, "Registered NFC card", "NFC Cards", result.rows[0].id, "info", "NFC_CARD_REGISTERED", "SUCCESS", null, client);
+    await client.query("COMMIT");
     res.status(201).json({ ...result.rows[0], studentName: null, lastScan: null });
   } catch (error) {
+    await client.query("ROLLBACK");
     fail(req, res, error);
+  } finally {
+    client.release();
   }
 });
 
 router.patch("/cards/:cardId/status", async (req, res) => {
+  const client = await pool.connect();
   try {
     const cardId = asNumber(req.params.cardId);
-    const body = UpdateCardStatusBody.parse(req.body);
-    const card = await pool.query(
+    const rawStatus = req.body?.status;
+    if (typeof rawStatus !== "string") {
+      throw new AuthError(400, "A valid card status is required");
+    }
+    const status = rawStatus.toLowerCase();
+    if (!cardStatuses.has(status)) {
+      throw new AuthError(400, "Invalid NFC card status");
+    }
+    await client.query("BEGIN");
+    const card = await client.query(
       `SELECT nc.school_id AS "schoolId"
+             , nc.status AS "status", nc.student_id AS "studentId"
        FROM nfc_cards nc
        LEFT JOIN students st ON st.id = nc.student_id
        WHERE nc.id = $1
-         AND (nc.student_id IS NULL OR st.school_id = nc.school_id)`,
+          AND (nc.student_id IS NULL OR st.school_id = nc.school_id)
+       FOR UPDATE OF nc`,
       [cardId],
     );
-    if (!card.rows[0]) return res.status(404).json({ error: "Card not found" });
+    if (!card.rows[0]) {
+      await client.query("ROLLBACK");
+      res.status(404).json({ error: "Card not found" });
+      return;
+    }
     assertSchoolAccess(req, card.rows[0].schoolId, ["SCHOOL_ADMIN", "STAFF"]);
-    const result = await pool.query(`
-      UPDATE nfc_cards SET status = $1 WHERE id = $2
+    const previousStatus = String(card.rows[0].status).toLowerCase();
+    if (terminalCardStatuses.has(previousStatus) && status !== previousStatus) {
+      throw new AuthError(409, `A ${previousStatus} card cannot change status`);
+    }
+    const result = await client.query(`
+      UPDATE nfc_cards
+      SET status = $1,
+          activated_at = CASE WHEN $1 = 'active' AND activated_at IS NULL THEN NOW() ELSE activated_at END,
+          deactivated_at = CASE WHEN $1 IN ('inactive','lost','blocked','replaced','expired','suspended') THEN COALESCE(deactivated_at, NOW()) ELSE deactivated_at END,
+          replaced_at = CASE WHEN $1 = 'replaced' THEN COALESCE(replaced_at, NOW()) ELSE replaced_at END
+      WHERE id = $2
       RETURNING id, school_id AS "schoolId", uid, student_id AS "studentId", status, scans, last_scan AS "lastScan"
-    `, [body.status, cardId]);
-    if (!result.rows[0]) return res.status(404).json({ error: "Card not found" });
-    await audit(req, result.rows[0].schoolId, `Changed NFC status to ${body.status}`, "NFC Cards", cardId, "info", "NFC_STATUS_CHANGED");
+    `, [status, cardId]);
+    if (!result.rows[0]) {
+      await client.query("ROLLBACK");
+      res.status(404).json({ error: "Card not found" });
+      return;
+    }
+    await client.query(
+      `INSERT INTO nfc_card_history
+       (school_id, nfc_card_id, student_id, action, previous_status, new_status, actor_user_id)
+       VALUES ($1, $2, $3, 'STATUS_CHANGED', $4, $5, $6)`,
+      [result.rows[0].schoolId, cardId, result.rows[0].studentId, previousStatus, status, getUserContext(req).user.id],
+    );
+    await audit(req, result.rows[0].schoolId, `Changed NFC status to ${status}`, "NFC Cards", cardId, "info", "NFC_STATUS_CHANGED", "SUCCESS", {
+      previousStatus,
+      newStatus: status,
+    }, client);
+    await client.query("COMMIT");
     res.json({ ...result.rows[0], studentName: null, lastScan: dateString(result.rows[0].lastScan) });
   } catch (error) {
+    await client.query("ROLLBACK");
     fail(req, res, error);
+  } finally {
+    client.release();
   }
 });
 

@@ -617,6 +617,8 @@ export type PlatformDeviceStatus = typeof PlatformDeviceStatus[keyof typeof Plat
 export const PlatformDeviceStatus = {
   ACTIVE: 'ACTIVE',
   INACTIVE: 'INACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  UNASSIGNED: 'UNASSIGNED',
   MAINTENANCE: 'MAINTENANCE',
 } as const;
 
@@ -667,6 +669,8 @@ export type PlatformDeviceUpdateStatus = typeof PlatformDeviceUpdateStatus[keyof
 export const PlatformDeviceUpdateStatus = {
   ACTIVE: 'ACTIVE',
   INACTIVE: 'INACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  UNASSIGNED: 'UNASSIGNED',
   MAINTENANCE: 'MAINTENANCE',
 } as const;
 
@@ -1409,11 +1413,14 @@ export type NfcCardStatus = typeof NfcCardStatus[keyof typeof NfcCardStatus];
 
 export const NfcCardStatus = {
   active: 'active',
+  inactive: 'inactive',
   locked: 'locked',
   unassigned: 'unassigned',
   lost: 'lost',
+  blocked: 'blocked',
   suspended: 'suspended',
   replaced: 'replaced',
+  expired: 'expired',
 } as const;
 
 export interface NfcCard {
@@ -1442,11 +1449,14 @@ export type CardStatusInputStatus = typeof CardStatusInputStatus[keyof typeof Ca
 
 export const CardStatusInputStatus = {
   active: 'active',
+  inactive: 'inactive',
   locked: 'locked',
   unassigned: 'unassigned',
   lost: 'lost',
+  blocked: 'blocked',
   suspended: 'suspended',
   replaced: 'replaced',
+  expired: 'expired',
 } as const;
 
 export interface CardStatusInput {
@@ -1985,6 +1995,368 @@ export interface PartnerOnboardingResult {
   conflictId?: number | null;
 }
 
+export interface DeviceAssignmentInput {
+  /** @minimum 1 */
+  schoolId: number;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  location?: string | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  classId?: number | null;
+}
+
+export interface DeviceSuspensionInput {
+  /** @maxLength 500 */
+  reason?: string;
+}
+
+export interface DeviceCredentialRotation {
+  deviceId: number;
+  /**
+     * Returned only once; never a credential hash
+     * @minLength 32
+     */
+  credential: string;
+}
+
+export type AttendanceEventType = typeof AttendanceEventType[keyof typeof AttendanceEventType];
+
+
+export const AttendanceEventType = {
+  SCHOOL_ENTRY: 'SCHOOL_ENTRY',
+  SCHOOL_EXIT: 'SCHOOL_EXIT',
+  CLASSROOM_ENTRY: 'CLASSROOM_ENTRY',
+  CLASSROOM_EXIT: 'CLASSROOM_EXIT',
+} as const;
+
+export type AttendanceStatus = typeof AttendanceStatus[keyof typeof AttendanceStatus];
+
+
+export const AttendanceStatus = {
+  PRESENT: 'PRESENT',
+  ABSENT: 'ABSENT',
+  LATE: 'LATE',
+  LEFT_EARLY: 'LEFT_EARLY',
+  EXCUSED: 'EXCUSED',
+  UNKNOWN: 'UNKNOWN',
+  MISMATCH: 'MISMATCH',
+} as const;
+
+export type IdentificationMethod = typeof IdentificationMethod[keyof typeof IdentificationMethod];
+
+
+export const IdentificationMethod = {
+  NFC: 'NFC',
+  FINGERPRINT: 'FINGERPRINT',
+  MANUAL: 'MANUAL',
+  DEVICE_API: 'DEVICE_API',
+  OTHER_SUPPORTED_METHOD: 'OTHER_SUPPORTED_METHOD',
+} as const;
+
+export type AttendanceEventResult = typeof AttendanceEventResult[keyof typeof AttendanceEventResult];
+
+
+export const AttendanceEventResult = {
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+  DUPLICATE: 'DUPLICATE',
+  MISMATCH: 'MISMATCH',
+} as const;
+
+export interface AttendanceEvent {
+  id: number;
+  schoolId: number;
+  /** @nullable */
+  studentId?: number | null;
+  /** @nullable */
+  employeeId?: number | null;
+  /** @nullable */
+  deviceId: number | null;
+  eventType: AttendanceEventType;
+  identificationMethod: IdentificationMethod;
+  occurredAt: string;
+  status: AttendanceStatus;
+  result?: AttendanceEventResult;
+  /** @nullable */
+  failureReason?: string | null;
+  /** @nullable */
+  sessionId?: number | null;
+  /** @nullable */
+  termId?: number | null;
+  createdAt: string;
+}
+
+export interface AttendanceToday {
+  date: string;
+  /** @minimum 0 */
+  entries: number;
+  /** @minimum 0 */
+  exits: number;
+  /** @minimum 0 */
+  present: number;
+  /** @minimum 0 */
+  absent: number;
+  /** @minimum 0 */
+  late: number;
+  /** @minimum 0 */
+  discrepancies: number;
+}
+
+export type AttendanceDiscrepancyKind = typeof AttendanceDiscrepancyKind[keyof typeof AttendanceDiscrepancyKind];
+
+
+export const AttendanceDiscrepancyKind = {
+  SCHOOL_PRESENT_CLASS_MISSING: 'SCHOOL_PRESENT_CLASS_MISSING',
+  SCHOOL_ABSENT_CLASS_PRESENT: 'SCHOOL_ABSENT_CLASS_PRESENT',
+  EXIT_WITHOUT_ENTRY: 'EXIT_WITHOUT_ENTRY',
+  INVALID_DEVICE_EVENT: 'INVALID_DEVICE_EVENT',
+  DUPLICATE: 'DUPLICATE',
+} as const;
+
+export type AttendanceDiscrepancyStatus = typeof AttendanceDiscrepancyStatus[keyof typeof AttendanceDiscrepancyStatus];
+
+
+export const AttendanceDiscrepancyStatus = {
+  OPEN: 'OPEN',
+  RESOLVED: 'RESOLVED',
+  DISMISSED: 'DISMISSED',
+} as const;
+
+export interface AttendanceDiscrepancy {
+  id: number;
+  schoolId: number;
+  studentId: number;
+  kind: AttendanceDiscrepancyKind;
+  status: AttendanceDiscrepancyStatus;
+  detectedAt: string;
+  /** @nullable */
+  resolvedAt?: string | null;
+  /** @nullable */
+  note?: string | null;
+}
+
+/**
+ * Exactly one of studentId or employeeId must be provided. Staff attendance supports school entry and exit only.
+ */
+export interface ManualAttendanceInput {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  studentId?: number;
+  /** @minimum 1 */
+  employeeId?: number;
+  eventType: AttendanceEventType;
+  occurredAt: string;
+  status: AttendanceStatus;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+  /** @maxLength 1000 */
+  note?: string;
+}
+
+export interface AttendanceCorrectionInput {
+  status: AttendanceStatus;
+  occurredAt?: string;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+  /** @maxLength 1000 */
+  note?: string;
+}
+
+export type DeviceAttendanceEventInputIdentificationMethod = typeof DeviceAttendanceEventInputIdentificationMethod[keyof typeof DeviceAttendanceEventInputIdentificationMethod];
+
+
+export const DeviceAttendanceEventInputIdentificationMethod = {
+  NFC: 'NFC',
+  FINGERPRINT: 'FINGERPRINT',
+} as const;
+
+export type DeviceAttendanceEventInputMatchResult = typeof DeviceAttendanceEventInputMatchResult[keyof typeof DeviceAttendanceEventInputMatchResult];
+
+
+export const DeviceAttendanceEventInputMatchResult = {
+  MATCH: 'MATCH',
+  NO_MATCH: 'NO_MATCH',
+} as const;
+
+export interface DeviceAttendanceEventInput {
+  eventType: AttendanceEventType;
+  identificationMethod: DeviceAttendanceEventInputIdentificationMethod;
+  occurredAt: string;
+  /** @minimum 1 */
+  studentId?: number;
+  /**
+     * @minLength 4
+     * @maxLength 128
+     */
+  nfcUid?: string;
+  /** @maxLength 256 */
+  providerReference?: string;
+  /** @maxLength 120 */
+  provider?: string;
+  matchResult?: DeviceAttendanceEventInputMatchResult;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  confidence?: number;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey?: string;
+}
+
+export type StudentIdentificationPolicyPolicy = typeof StudentIdentificationPolicyPolicy[keyof typeof StudentIdentificationPolicyPolicy];
+
+
+export const StudentIdentificationPolicyPolicy = {
+  NFC_ONLY: 'NFC_ONLY',
+  BIOMETRIC_ONLY: 'BIOMETRIC_ONLY',
+  NFC_AND_BIOMETRIC: 'NFC_AND_BIOMETRIC',
+  MANUAL_FALLBACK: 'MANUAL_FALLBACK',
+} as const;
+
+export type BiometricEnrollmentStatus = typeof BiometricEnrollmentStatus[keyof typeof BiometricEnrollmentStatus];
+
+
+export const BiometricEnrollmentStatus = {
+  ACTIVE: 'ACTIVE',
+  REVOKED: 'REVOKED',
+  PENDING: 'PENDING',
+} as const;
+
+export interface BiometricEnrollment {
+  id: number;
+  provider: string;
+  /** @nullable */
+  deviceReference?: string | null;
+  status: BiometricEnrollmentStatus;
+  enrolledAt: string;
+}
+
+export interface StudentIdentificationPolicy {
+  studentId: number;
+  schoolId: number;
+  policy: StudentIdentificationPolicyPolicy;
+  biometricEnrollments: BiometricEnrollment[];
+}
+
+export type StudentIdentificationPolicyInputPolicy = typeof StudentIdentificationPolicyInputPolicy[keyof typeof StudentIdentificationPolicyInputPolicy];
+
+
+export const StudentIdentificationPolicyInputPolicy = {
+  NFC_ONLY: 'NFC_ONLY',
+  BIOMETRIC_ONLY: 'BIOMETRIC_ONLY',
+  NFC_AND_BIOMETRIC: 'NFC_AND_BIOMETRIC',
+  MANUAL_FALLBACK: 'MANUAL_FALLBACK',
+} as const;
+
+export interface StudentIdentificationPolicyInput {
+  policy: StudentIdentificationPolicyInputPolicy;
+}
+
+export interface BiometricEnrollmentInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  provider: string;
+  /**
+     * @minLength 1
+     * @maxLength 256
+     */
+  enrollmentReference: string;
+  /** @maxLength 256 */
+  deviceReference?: string;
+}
+
+export type BiometricProviderEventInputMatchResult = typeof BiometricProviderEventInputMatchResult[keyof typeof BiometricProviderEventInputMatchResult];
+
+
+export const BiometricProviderEventInputMatchResult = {
+  MATCH: 'MATCH',
+  NO_MATCH: 'NO_MATCH',
+} as const;
+
+export interface BiometricProviderEventInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  provider: string;
+  /**
+     * @minLength 1
+     * @maxLength 256
+     */
+  providerReference: string;
+  matchResult: BiometricProviderEventInputMatchResult;
+  /** @minimum 1 */
+  studentId?: number;
+  occurredAt: string;
+  eventType: AttendanceEventType;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  confidence?: number;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey?: string;
+}
+
+export interface CardReplacementInput {
+  /**
+     * @minLength 4
+     * @maxLength 128
+     */
+  uid: string;
+  /** @maxLength 500 */
+  reason?: string;
+}
+
+export type CardHistoryEntryAction = typeof CardHistoryEntryAction[keyof typeof CardHistoryEntryAction];
+
+
+export const CardHistoryEntryAction = {
+  REGISTERED: 'REGISTERED',
+  ACTIVATED: 'ACTIVATED',
+  DEACTIVATED: 'DEACTIVATED',
+  BLOCKED: 'BLOCKED',
+  LOST: 'LOST',
+  REPLACED: 'REPLACED',
+  REASSIGNED: 'REASSIGNED',
+} as const;
+
+export interface CardHistoryEntry {
+  id: number;
+  cardId: number;
+  action: CardHistoryEntryAction;
+  /** @nullable */
+  actorId?: number | null;
+  occurredAt: string;
+  /** @nullable */
+  note?: string | null;
+}
+
+/**
+ * Invalid request or rejected school/device/student relationship
+ */
+export type ApiBadRequestResponse = ApiError;
+
 /**
  * Authentication required
  */
@@ -2023,6 +2395,95 @@ schoolId?: number;
 };
 
 export type ListSchoolUsersParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type GetSchoolAttendanceTodayParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+date?: string;
+};
+
+export type ListSchoolAttendanceEventsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+/**
+ * @minimum 1
+ */
+studentId?: number;
+/**
+ * @minimum 1
+ */
+employeeId?: number;
+/**
+ * @minimum 1
+ */
+classId?: number;
+from?: string;
+to?: string;
+eventType?: AttendanceEventType;
+status?: AttendanceStatus;
+identificationMethod?: IdentificationMethod;
+};
+
+export type GetStudentAttendanceParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+from?: string;
+to?: string;
+};
+
+export type GetClassAttendanceParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+date?: string;
+};
+
+export type ListAttendanceDiscrepanciesParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+status?: ListAttendanceDiscrepanciesStatus;
+from?: string;
+to?: string;
+};
+
+export type ListAttendanceDiscrepanciesStatus = typeof ListAttendanceDiscrepanciesStatus[keyof typeof ListAttendanceDiscrepanciesStatus];
+
+
+export const ListAttendanceDiscrepanciesStatus = {
+  OPEN: 'OPEN',
+  RESOLVED: 'RESOLVED',
+  DISMISSED: 'DISMISSED',
+} as const;
+
+export type ListStudentIdentificationMethodsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type UpdateStudentIdentificationMethodsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type CreateBiometricEnrollmentParams = {
 /**
  * @minimum 1
  */

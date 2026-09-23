@@ -12,5 +12,7 @@ export type PlatformDeviceUpdateStatus = typeof PlatformDeviceUpdateStatus[keyof
 export const PlatformDeviceUpdateStatus = {
   ACTIVE: 'ACTIVE',
   INACTIVE: 'INACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  UNASSIGNED: 'UNASSIGNED',
   MAINTENANCE: 'MAINTENANCE',
 } as const;

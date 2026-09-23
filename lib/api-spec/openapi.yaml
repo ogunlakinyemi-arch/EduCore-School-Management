@@ -28,6 +28,8 @@ tags:
   - name: platform-partners
   - name: partner
   - name: partner-onboarding
+  - name: platform
+  - name: attendance
 paths:
   /healthz:
     get:
@@ -348,6 +350,68 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PlatformDevice" }
+  /platform/devices/{deviceId}/assign:
+    post:
+      operationId: assignPlatformDevice
+      tags: [platform]
+      summary: Assign a device to a school and location
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeviceAssignmentInput" }
+      responses:
+        "200":
+          description: Device assignment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformDevice" }
+        "400": { $ref: "#/components/responses/ApiBadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /platform/devices/{deviceId}/suspend:
+    post:
+      operationId: suspendPlatformDevice
+      tags: [platform]
+      summary: Suspend a device and reject its attendance submissions
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeviceSuspensionInput" }
+      responses:
+        "200":
+          description: Suspended device
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformDevice" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /platform/devices/{deviceId}/credential:
+    post:
+      operationId: rotatePlatformDeviceCredential
+      tags: [platform]
+      summary: Rotate a device credential
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: New credential; the raw value is returned once and is never persisted or returned again
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeviceCredentialRotation" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /platform/notifications:
     get:
       operationId: listPlatformNotifications
@@ -359,6 +423,285 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/PlatformNotification" } }
+  /school/attendance/today:
+    get:
+      operationId: getSchoolAttendanceToday
+      tags: [attendance]
+      summary: Get today's attendance summary for an authorized school
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - name: date
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Attendance summary
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttendanceToday" }
+  /school/attendance/events:
+    get:
+      operationId: listSchoolAttendanceEvents
+      tags: [attendance]
+      summary: List school attendance events
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - name: studentId
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: employeeId
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: classId
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+        - name: eventType
+          in: query
+          schema: { $ref: "#/components/schemas/AttendanceEventType" }
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/AttendanceStatus" }
+        - name: identificationMethod
+          in: query
+          schema: { $ref: "#/components/schemas/IdentificationMethod" }
+      responses:
+        "200":
+          description: Attendance events
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AttendanceEvent" } }
+  /school/attendance/students/{studentId}:
+    get:
+      operationId: getStudentAttendance
+      tags: [attendance]
+      summary: Get attendance history for a student
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Student attendance
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AttendanceEvent" } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /school/attendance/classes/{classId}:
+    get:
+      operationId: getClassAttendance
+      tags: [attendance]
+      summary: Get attendance for a class
+      parameters:
+        - name: classId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - $ref: "#/components/parameters/SchoolId"
+        - name: date
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Class attendance
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AttendanceEvent" } }
+  /school/attendance/discrepancies:
+    get:
+      operationId: listAttendanceDiscrepancies
+      tags: [attendance]
+      summary: List attendance reconciliation discrepancies
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - name: status
+          in: query
+          schema: { type: string, enum: [OPEN, RESOLVED, DISMISSED] }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Discrepancies
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AttendanceDiscrepancy" } }
+  /school/attendance/manual:
+    post:
+      operationId: createManualAttendance
+      tags: [attendance]
+      summary: Record attendance manually with an auditable reason
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ManualAttendanceInput" }
+      responses:
+        "201":
+          description: Manual attendance event
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttendanceEvent" }
+        "400": { $ref: "#/components/responses/ApiBadRequest" }
+  /school/attendance/{attendanceId}/correct:
+    post:
+      operationId: correctAttendance
+      tags: [attendance]
+      summary: Correct attendance without overwriting its history
+      parameters:
+        - name: attendanceId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AttendanceCorrectionInput" }
+      responses:
+        "200":
+          description: Corrected attendance event
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttendanceEvent" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /device/attendance/events:
+    post:
+      operationId: ingestDeviceAttendanceEvent
+      tags: [attendance]
+      security:
+        - DeviceCredential: []
+      summary: Ingest an NFC or provider-resolved biometric attendance event
+      description: Device identity and school binding are derived from the credential, never trusted from the request body. Raw biometric data and credential hashes are not accepted or returned.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeviceAttendanceEventInput" }
+      responses:
+        "201":
+          description: Attendance event accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttendanceEvent" }
+        "400": { $ref: "#/components/responses/ApiBadRequest" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { description: Duplicate or rejected event, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+  /students/{studentId}/identification-methods:
+    get:
+      operationId: listStudentIdentificationMethods
+      tags: [students]
+      summary: Get a student's configured identification policy and references
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Identification methods (no biometric material)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentIdentificationPolicy" }
+    post:
+      operationId: updateStudentIdentificationMethods
+      tags: [students]
+      summary: Configure a student's identification policy
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentIdentificationPolicyInput" }
+      responses:
+        "200":
+          description: Updated identification policy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentIdentificationPolicy" }
+  /students/{studentId}/biometric-enrollments:
+    post:
+      operationId: createBiometricEnrollment
+      tags: [students]
+      summary: Register a provider enrollment reference without storing biometric data
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BiometricEnrollmentInput" }
+      responses:
+        "201":
+          description: Biometric enrollment reference
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BiometricEnrollment" }
+  /biometric/events:
+    post:
+      operationId: ingestBiometricProviderEvent
+      tags: [attendance]
+      security:
+        - DeviceCredential: []
+      summary: Ingest a provider-resolved biometric match
+      description: Accepts only a provider reference and match result; raw biometric templates and images are never accepted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BiometricProviderEventInput" }
+      responses:
+        "201":
+          description: Attendance event created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttendanceEvent" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+  /cards/{cardId}/history:
+    get:
+      operationId: getCardHistory
+      tags: [cards]
+      summary: View immutable NFC card lifecycle history
+      parameters:
+        - $ref: "#/components/parameters/CardIdPath"
+      responses:
+        "200":
+          description: Card history
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/CardHistoryEntry" } }
+  /cards/{cardId}/replace:
+    post:
+      operationId: replaceCard
+      tags: [cards]
+      summary: Replace a card while preserving the old card record
+      parameters:
+        - $ref: "#/components/parameters/CardIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CardReplacementInput" }
+      responses:
+        "201":
+          description: Replacement card
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NfcCard" }
   /platform/notifications/{notificationId}/read:
     patch:
       operationId: markPlatformNotificationRead
@@ -1613,7 +1956,17 @@ components:
       scheme: bearer
       bearerFormat: Clerk session token
       description: Clerk session cookie or bearer token validated by the API
+    DeviceCredential:
+      type: apiKey
+      in: header
+      name: X-Device-Credential
+      description: Revocable device credential; the raw value is write-only and must never be logged or returned after rotation
   responses:
+    ApiBadRequest:
+      description: Invalid request or rejected school/device/student relationship
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
     Unauthenticated:
       description: Authentication required
       content:
@@ -2046,7 +2399,7 @@ components:
         serialNumber: { type: string }
         name: { type: string }
         deviceType: { type: string, enum: [NFC, BIOMETRIC, HYBRID] }
-        status: { type: string, enum: [ACTIVE, INACTIVE, MAINTENANCE] }
+        status: { type: string, enum: [ACTIVE, INACTIVE, SUSPENDED, UNASSIGNED, MAINTENANCE] }
         schoolId: { type: ["integer", "null"] }
         schoolName: { type: ["string", "null"] }
         lastSeenAt: { type: ["string", "null"], format: date-time }
@@ -2064,7 +2417,7 @@ components:
       type: object
       properties:
         schoolId: { type: ["integer", "null"] }
-        status: { type: string, enum: [ACTIVE, INACTIVE, MAINTENANCE] }
+        status: { type: string, enum: [ACTIVE, INACTIVE, SUSPENDED, UNASSIGNED, MAINTENANCE] }
     PlatformNotification:
       type: object
       required: [id, title, message, severity, isRead, createdAt]
@@ -2547,7 +2900,7 @@ components:
         studentName: { type: ["string", "null"] }
         status:
           type: string
-          enum: [active, locked, unassigned, lost, suspended, replaced]
+          enum: [active, inactive, locked, unassigned, lost, blocked, suspended, replaced, expired]
         scans: { type: integer }
         lastScan: { type: ["string", "null"] }
     CardInput:
@@ -2562,7 +2915,7 @@ components:
       properties:
         status:
           type: string
-          enum: [active, locked, unassigned, lost, suspended, replaced]
+          enum: [active, inactive, locked, unassigned, lost, blocked, suspended, replaced, expired]
     AuditLog:
       type: object
       required: [id, user, role, school, action, module, timestamp, severity]
@@ -2855,3 +3208,168 @@ components:
         school: { $ref: "#/components/schemas/School" }
         attributionStatus: { type: string, enum: [CREATED, CONFLICT] }
         conflictId: { type: ["integer", "null"] }
+    DeviceAssignmentInput:
+      type: object
+      required: [schoolId]
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        location: { type: ["string", "null"], maxLength: 160 }
+        classId: { type: ["integer", "null"], minimum: 1 }
+    DeviceSuspensionInput:
+      type: object
+      properties:
+        reason: { type: string, maxLength: 500 }
+    DeviceCredentialRotation:
+      type: object
+      required: [deviceId, credential]
+      properties:
+        deviceId: { type: integer }
+        credential:
+          type: string
+          writeOnly: true
+          minLength: 32
+          description: Returned only once; never a credential hash
+    AttendanceEventType:
+      type: string
+      enum: [SCHOOL_ENTRY, SCHOOL_EXIT, CLASSROOM_ENTRY, CLASSROOM_EXIT]
+    AttendanceStatus:
+      type: string
+      enum: [PRESENT, ABSENT, LATE, LEFT_EARLY, EXCUSED, UNKNOWN, MISMATCH]
+    IdentificationMethod:
+      type: string
+      enum: [NFC, FINGERPRINT, MANUAL, DEVICE_API, OTHER_SUPPORTED_METHOD]
+    AttendanceEvent:
+      type: object
+      required: [id, schoolId, deviceId, eventType, identificationMethod, occurredAt, status, createdAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        studentId: { type: ["integer", "null"] }
+        employeeId: { type: ["integer", "null"] }
+        deviceId: { type: ["integer", "null"] }
+        eventType: { $ref: "#/components/schemas/AttendanceEventType" }
+        identificationMethod: { $ref: "#/components/schemas/IdentificationMethod" }
+        occurredAt: { type: string, format: date-time }
+        status: { $ref: "#/components/schemas/AttendanceStatus" }
+        result: { type: string, enum: [ACCEPTED, REJECTED, DUPLICATE, MISMATCH] }
+        failureReason: { type: ["string", "null"] }
+        sessionId: { type: ["integer", "null"] }
+        termId: { type: ["integer", "null"] }
+        createdAt: { type: string, format: date-time }
+    AttendanceToday:
+      type: object
+      required: [date, entries, exits, present, absent, late, discrepancies]
+      properties:
+        date: { type: string, format: date }
+        entries: { type: integer, minimum: 0 }
+        exits: { type: integer, minimum: 0 }
+        present: { type: integer, minimum: 0 }
+        absent: { type: integer, minimum: 0 }
+        late: { type: integer, minimum: 0 }
+        discrepancies: { type: integer, minimum: 0 }
+    AttendanceDiscrepancy:
+      type: object
+      required: [id, schoolId, studentId, kind, status, detectedAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        studentId: { type: integer }
+        kind: { type: string, enum: [SCHOOL_PRESENT_CLASS_MISSING, SCHOOL_ABSENT_CLASS_PRESENT, EXIT_WITHOUT_ENTRY, INVALID_DEVICE_EVENT, DUPLICATE] }
+        status: { type: string, enum: [OPEN, RESOLVED, DISMISSED] }
+        detectedAt: { type: string, format: date-time }
+        resolvedAt: { type: ["string", "null"], format: date-time }
+        note: { type: ["string", "null"] }
+    ManualAttendanceInput:
+      type: object
+      description: Exactly one of studentId or employeeId must be provided. Staff attendance supports school entry and exit only.
+      required: [schoolId, eventType, occurredAt, status, reason]
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        studentId: { type: integer, minimum: 1 }
+        employeeId: { type: integer, minimum: 1 }
+        eventType: { $ref: "#/components/schemas/AttendanceEventType" }
+        occurredAt: { type: string, format: date-time }
+        status: { $ref: "#/components/schemas/AttendanceStatus" }
+        reason: { type: string, minLength: 3, maxLength: 500 }
+        note: { type: string, maxLength: 1000 }
+    AttendanceCorrectionInput:
+      type: object
+      required: [status, reason]
+      properties:
+        status: { $ref: "#/components/schemas/AttendanceStatus" }
+        occurredAt: { type: string, format: date-time }
+        reason: { type: string, minLength: 3, maxLength: 500 }
+        note: { type: string, maxLength: 1000 }
+    DeviceAttendanceEventInput:
+      type: object
+      required: [eventType, identificationMethod, occurredAt]
+      properties:
+        eventType: { $ref: "#/components/schemas/AttendanceEventType" }
+        identificationMethod: { type: string, enum: [NFC, FINGERPRINT] }
+        occurredAt: { type: string, format: date-time }
+        studentId: { type: integer, minimum: 1 }
+        nfcUid: { type: string, minLength: 4, maxLength: 128, writeOnly: true }
+        providerReference: { type: string, maxLength: 256 }
+        provider: { type: string, maxLength: 120 }
+        matchResult: { type: string, enum: [MATCH, NO_MATCH] }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+    StudentIdentificationPolicy:
+      type: object
+      required: [studentId, schoolId, policy, biometricEnrollments]
+      properties:
+        studentId: { type: integer }
+        schoolId: { type: integer }
+        policy: { type: string, enum: [NFC_ONLY, BIOMETRIC_ONLY, NFC_AND_BIOMETRIC, MANUAL_FALLBACK] }
+        biometricEnrollments:
+          type: array
+          items: { $ref: "#/components/schemas/BiometricEnrollment" }
+    StudentIdentificationPolicyInput:
+      type: object
+      required: [policy]
+      properties:
+        policy: { type: string, enum: [NFC_ONLY, BIOMETRIC_ONLY, NFC_AND_BIOMETRIC, MANUAL_FALLBACK] }
+    BiometricEnrollmentInput:
+      type: object
+      required: [provider, enrollmentReference]
+      properties:
+        provider: { type: string, minLength: 1, maxLength: 120 }
+        enrollmentReference: { type: string, minLength: 1, maxLength: 256, writeOnly: true }
+        deviceReference: { type: string, maxLength: 256 }
+    BiometricEnrollment:
+      type: object
+      required: [id, provider, status, enrolledAt]
+      properties:
+        id: { type: integer }
+        provider: { type: string }
+        deviceReference: { type: ["string", "null"] }
+        status: { type: string, enum: [ACTIVE, REVOKED, PENDING] }
+        enrolledAt: { type: string, format: date-time }
+    BiometricProviderEventInput:
+      type: object
+      required: [provider, providerReference, matchResult, occurredAt, eventType]
+      properties:
+        provider: { type: string, minLength: 1, maxLength: 120 }
+        providerReference: { type: string, minLength: 1, maxLength: 256 }
+        matchResult: { type: string, enum: [MATCH, NO_MATCH] }
+        studentId: { type: integer, minimum: 1 }
+        occurredAt: { type: string, format: date-time }
+        eventType: { $ref: "#/components/schemas/AttendanceEventType" }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+    CardReplacementInput:
+      type: object
+      required: [uid]
+      properties:
+        uid: { type: string, minLength: 4, maxLength: 128 }
+        reason: { type: string, maxLength: 500 }
+    CardHistoryEntry:
+      type: object
+      required: [id, cardId, action, occurredAt]
+      properties:
+        id: { type: integer }
+        cardId: { type: integer }
+        action: { type: string, enum: [REGISTERED, ACTIVATED, DEACTIVATED, BLOCKED, LOST, REPLACED, REASSIGNED] }
+        actorId: { type: ["integer", "null"] }
+        occurredAt: { type: string, format: date-time }
+        note: { type: ["string", "null"] }

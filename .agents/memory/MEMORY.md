@@ -1,1 +1,2 @@
 - [Tenant-key publish ordering](tenant-key-publish-ordering.md) — publish parent tenant uniqueness before dependent composite foreign keys when existing tables are involved.
+- [Device reassignment history](device-reassignment-history.md) — historical device credentials and assignments must retain their original school even after a device moves.

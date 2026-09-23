@@ -10,6 +10,7 @@ import {
   pgTable,
   serial,
   text,
+  time,
   timestamp,
   unique,
   uniqueIndex,
@@ -91,6 +92,9 @@ export const platformDevices = pgTable(
     name: text("name").notNull(),
     deviceType: text("device_type").notNull(),
     schoolId: integer("school_id").references(() => schools.id),
+    location: text("location"),
+    schoolClassId: integer("school_class_id").references(() => schoolClasses.id),
+    configurationStatus: text("configuration_status").notNull().default("PENDING"),
     status: text("status").notNull().default("ACTIVE"),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -98,7 +102,13 @@ export const platformDevices = pgTable(
   },
   (table) => [
     uniqueIndex("platform_devices_serial_number_unique").on(table.serialNumber),
+    uniqueIndex("platform_devices_id_school_unique").on(table.id, table.schoolId),
     index("platform_devices_school_idx").on(table.schoolId, table.status),
+    foreignKey({
+      columns: [table.schoolClassId, table.schoolId],
+      foreignColumns: [schoolClasses.id, schoolClasses.schoolId],
+      name: "platform_devices_class_school_fk",
+    }),
   ],
 );
 
@@ -502,10 +512,40 @@ export const nfcCards = pgTable(
     status: text("status").notNull().default("unassigned"),
     scans: integer("scans").notNull().default(0),
     lastScan: timestamp("last_scan", { withTimezone: true }),
+    issuedAt: timestamp("issued_at", { withTimezone: true }),
+    activatedAt: timestamp("activated_at", { withTimezone: true }),
+    deactivatedAt: timestamp("deactivated_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    replacedAt: timestamp("replaced_at", { withTimezone: true }),
+    replacedByCardId: integer("replaced_by_card_id"),
+    replacedBySchoolId: integer("replaced_by_school_id"),
+    lastDeviceId: integer("last_device_id"),
   },
   (table) => [
     uniqueIndex("nfc_cards_uid_unique").on(table.uid),
+    uniqueIndex("nfc_cards_id_school_unique").on(table.id, table.schoolId),
     index("nfc_cards_school_idx").on(table.schoolId),
+    foreignKey({
+      columns: [table.studentId, table.schoolId],
+      foreignColumns: [students.id, students.schoolId],
+      name: "nfc_cards_student_school_fk",
+    }),
+    foreignKey({
+      columns: [table.replacedByCardId],
+      foreignColumns: [table.id],
+      name: "nfc_cards_replaced_by_id_fk",
+    }),
+    foreignKey({
+      columns: [table.replacedByCardId, table.replacedBySchoolId],
+      foreignColumns: [table.id, table.schoolId],
+      name: "nfc_cards_replaced_by_school_fk",
+    }),
+    foreignKey({
+      columns: [table.lastDeviceId, table.schoolId],
+      foreignColumns: [platformDevices.id, platformDevices.schoolId],
+      name: "nfc_cards_last_device_school_fk",
+    }),
+    index("nfc_cards_last_device_idx").on(table.lastDeviceId),
   ],
 );
 
@@ -785,5 +825,256 @@ export const teacherClassAssignments = pgTable(
       name: "teacher_class_assignments_subject_school_fk",
     }),
     index("teacher_class_assignments_school_status_idx").on(table.schoolId, table.status),
+  ],
+);
+
+export const deviceCredentials = pgTable(
+  "device_credentials",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    deviceId: integer("device_id").notNull().references(() => platformDevices.id),
+    credentialIdentifier: text("credential_identifier").notNull(),
+    secretHash: text("secret_hash").notNull(),
+    status: text("status").notNull().default("ACTIVE"),
+    issuedAt: timestamp("issued_at", { withTimezone: true }).notNull().defaultNow(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("device_credentials_identifier_unique").on(table.credentialIdentifier),
+    index("device_credentials_device_status_idx").on(table.deviceId, table.status),
+  ],
+);
+
+export const deviceAssignmentHistory = pgTable(
+  "device_assignment_history",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    deviceId: integer("device_id").notNull().references(() => platformDevices.id),
+    previousSchoolId: integer("previous_school_id").references(() => schools.id),
+    previousLocation: text("previous_location"),
+    location: text("location"),
+    action: text("action").notNull(),
+    reason: text("reason"),
+    actorUserId: integer("actor_user_id").references(() => appUsers.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("device_assignment_history_school_idx").on(table.schoolId, table.createdAt),
+    index("device_assignment_history_device_idx").on(table.deviceId, table.createdAt),
+  ],
+);
+
+export const studentIdentificationPolicies = pgTable(
+  "student_identification_policies",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    studentId: integer("student_id").notNull().references(() => students.id),
+    policy: text("policy").notNull().default("NFC_ONLY"),
+    effectiveFrom: date("effective_from", { mode: "string" }),
+    effectiveTo: date("effective_to", { mode: "string" }),
+    status: text("status").notNull().default("ACTIVE"),
+    createdBy: integer("created_by").references(() => appUsers.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("student_identification_policies_student_unique").on(table.studentId),
+    foreignKey({
+      columns: [table.studentId, table.schoolId],
+      foreignColumns: [students.id, students.schoolId],
+      name: "student_identification_policies_student_school_fk",
+    }),
+    index("student_identification_policies_school_idx").on(table.schoolId, table.status),
+  ],
+);
+
+export const biometricEnrollments = pgTable(
+  "biometric_enrollments",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    studentId: integer("student_id").references(() => students.id),
+    employeeId: integer("employee_id").references(() => employees.id),
+    deviceId: integer("device_id").references(() => platformDevices.id),
+    provider: text("provider").notNull(),
+    providerReference: text("provider_reference").notNull(),
+    status: text("status").notNull().default("ACTIVE"),
+    enrolledAt: timestamp("enrolled_at", { withTimezone: true }).notNull().defaultNow(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    metadata: jsonb("metadata"),
+  },
+  (table) => [
+    uniqueIndex("biometric_enrollments_provider_reference_unique").on(table.provider, table.providerReference),
+    foreignKey({
+      columns: [table.studentId, table.schoolId],
+      foreignColumns: [students.id, students.schoolId],
+      name: "biometric_enrollments_student_school_fk",
+    }),
+    foreignKey({
+      columns: [table.employeeId, table.schoolId],
+      foreignColumns: [employees.id, employees.schoolId],
+      name: "biometric_enrollments_employee_school_fk",
+    }),
+    foreignKey({
+      columns: [table.deviceId, table.schoolId],
+      foreignColumns: [platformDevices.id, platformDevices.schoolId],
+      name: "biometric_enrollments_device_school_fk",
+    }),
+    check("biometric_enrollments_subject_check", sql`(("student_id" IS NOT NULL)::int + ("employee_id" IS NOT NULL)::int = 1`),
+    index("biometric_enrollments_school_status_idx").on(table.schoolId, table.status),
+  ],
+);
+
+export const attendanceSettings = pgTable(
+  "attendance_settings",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    entryWindowStart: time("entry_window_start"),
+    entryWindowEnd: time("entry_window_end"),
+    exitWindowStart: time("exit_window_start"),
+    exitWindowEnd: time("exit_window_end"),
+    classroomWindowStart: time("classroom_window_start"),
+    classroomWindowEnd: time("classroom_window_end"),
+    duplicateSuppressionSeconds: integer("duplicate_suppression_seconds").notNull().default(30),
+    notifyOnEntry: boolean("notify_on_entry").notNull().default(true),
+    notifyOnExit: boolean("notify_on_exit").notNull().default(true),
+    notifyOnDiscrepancy: boolean("notify_on_discrepancy").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("attendance_settings_school_unique").on(table.schoolId)],
+);
+
+export const attendanceEvents = pgTable(
+  "attendance_events",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    studentId: integer("student_id").references(() => students.id),
+    employeeId: integer("employee_id").references(() => employees.id),
+    deviceId: integer("device_id").references(() => platformDevices.id),
+    nfcCardId: integer("nfc_card_id").references(() => nfcCards.id),
+    identificationMethod: text("identification_method").notNull(),
+    eventType: text("event_type").notNull(),
+    result: text("result").notNull(),
+    attendanceStatus: text("attendance_status").notNull().default("PRESENT"),
+    eventDate: date("event_date", { mode: "string" }).notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    academicSessionId: integer("academic_session_id").references(() => academicSessions.id),
+    academicTermId: integer("academic_term_id").references(() => academicTerms.id),
+    schoolClassId: integer("school_class_id").references(() => schoolClasses.id),
+    classNameSnapshot: text("class_name_snapshot"),
+    sectionSnapshot: text("section_snapshot"),
+    reason: text("reason"),
+    actorUserId: integer("actor_user_id").references(() => appUsers.id),
+    failureReason: text("failure_reason"),
+    dedupeKey: text("dedupe_key").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("attendance_events_school_dedupe_unique").on(table.schoolId, table.dedupeKey),
+    uniqueIndex("attendance_events_id_school_unique").on(table.id, table.schoolId),
+    foreignKey({ columns: [table.studentId, table.schoolId], foreignColumns: [students.id, students.schoolId], name: "attendance_events_student_school_fk" }),
+    foreignKey({ columns: [table.employeeId, table.schoolId], foreignColumns: [employees.id, employees.schoolId], name: "attendance_events_employee_school_fk" }),
+    foreignKey({ columns: [table.deviceId, table.schoolId], foreignColumns: [platformDevices.id, platformDevices.schoolId], name: "attendance_events_device_school_fk" }),
+    foreignKey({ columns: [table.academicSessionId, table.schoolId], foreignColumns: [academicSessions.id, academicSessions.schoolId], name: "attendance_events_session_school_fk" }),
+    foreignKey({ columns: [table.academicTermId, table.schoolId], foreignColumns: [academicTerms.id, academicTerms.schoolId], name: "attendance_events_term_school_fk" }),
+    foreignKey({ columns: [table.schoolClassId, table.schoolId], foreignColumns: [schoolClasses.id, schoolClasses.schoolId], name: "attendance_events_class_school_fk" }),
+    check("attendance_events_subject_check", sql`(("student_id" IS NOT NULL)::int + ("employee_id" IS NOT NULL)::int = 1`),
+    index("attendance_events_school_date_idx").on(table.schoolId, table.eventDate, table.occurredAt),
+    index("attendance_events_student_idx").on(table.studentId, table.occurredAt),
+    index("attendance_events_employee_idx").on(table.employeeId, table.occurredAt),
+  ],
+);
+
+export const attendanceCorrections = pgTable(
+  "attendance_corrections",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    attendanceEventId: integer("attendance_event_id").notNull().references(() => attendanceEvents.id),
+    originalValue: jsonb("original_value").notNull(),
+    correctedValue: jsonb("corrected_value").notNull(),
+    reason: text("reason").notNull(),
+    actorUserId: integer("actor_user_id").notNull().references(() => appUsers.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    foreignKey({ columns: [table.attendanceEventId, table.schoolId], foreignColumns: [attendanceEvents.id, attendanceEvents.schoolId], name: "attendance_corrections_event_school_fk" }),
+    index("attendance_corrections_school_idx").on(table.schoolId, table.createdAt),
+  ],
+);
+
+export const attendanceDiscrepancies = pgTable(
+  "attendance_discrepancies",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    studentId: integer("student_id").notNull().references(() => students.id),
+    attendanceEventId: integer("attendance_event_id").references(() => attendanceEvents.id),
+    discrepancyType: text("discrepancy_type").notNull(),
+    status: text("status").notNull().default("OPEN"),
+    details: jsonb("details"),
+    resolvedBy: integer("resolved_by").references(() => appUsers.id),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    foreignKey({ columns: [table.studentId, table.schoolId], foreignColumns: [students.id, students.schoolId], name: "attendance_discrepancies_student_school_fk" }),
+    foreignKey({ columns: [table.attendanceEventId, table.schoolId], foreignColumns: [attendanceEvents.id, attendanceEvents.schoolId], name: "attendance_discrepancies_event_school_fk" }),
+    index("attendance_discrepancies_school_status_idx").on(table.schoolId, table.status, table.createdAt),
+    uniqueIndex("attendance_discrepancies_id_school_unique").on(table.id, table.schoolId),
+  ],
+);
+
+export const attendanceNotificationEvents = pgTable(
+  "attendance_notification_events",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    attendanceEventId: integer("attendance_event_id").references(() => attendanceEvents.id),
+    discrepancyId: integer("discrepancy_id").references(() => attendanceDiscrepancies.id),
+    notificationType: text("notification_type").notNull(),
+    channel: text("channel").notNull(),
+    status: text("status").notNull().default("PENDING"),
+    recipientUserId: integer("recipient_user_id").references(() => appUsers.id),
+    payload: jsonb("payload"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    foreignKey({ columns: [table.attendanceEventId, table.schoolId], foreignColumns: [attendanceEvents.id, attendanceEvents.schoolId], name: "attendance_notification_events_event_school_fk" }),
+    foreignKey({ columns: [table.discrepancyId, table.schoolId], foreignColumns: [attendanceDiscrepancies.id, attendanceDiscrepancies.schoolId], name: "attendance_notification_events_discrepancy_school_fk" }),
+    index("attendance_notification_events_queue_idx").on(table.schoolId, table.status, table.createdAt),
+  ],
+);
+
+export const nfcCardHistory = pgTable(
+  "nfc_card_history",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    nfcCardId: integer("nfc_card_id").notNull().references(() => nfcCards.id),
+    studentId: integer("student_id").references(() => students.id),
+    action: text("action").notNull(),
+    previousStatus: text("previous_status"),
+    newStatus: text("new_status"),
+    replacedByCardId: integer("replaced_by_card_id").references(() => nfcCards.id),
+    reason: text("reason"),
+    actorUserId: integer("actor_user_id").references(() => appUsers.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    foreignKey({ columns: [table.nfcCardId, table.schoolId], foreignColumns: [nfcCards.id, nfcCards.schoolId], name: "nfc_card_history_card_school_fk" }),
+    foreignKey({ columns: [table.studentId, table.schoolId], foreignColumns: [students.id, students.schoolId], name: "nfc_card_history_student_school_fk" }),
+    index("nfc_card_history_school_idx").on(table.schoolId, table.createdAt),
+    index("nfc_card_history_card_idx").on(table.nfcCardId, table.createdAt),
   ],
 );

@@ -11,9 +11,12 @@ export type NfcCardStatus = typeof NfcCardStatus[keyof typeof NfcCardStatus];
 
 export const NfcCardStatus = {
   active: 'active',
+  inactive: 'inactive',
   locked: 'locked',
   unassigned: 'unassigned',
   lost: 'lost',
+  blocked: 'blocked',
   suspended: 'suspended',
   replaced: 'replaced',
+  expired: 'expired',
 } as const;
