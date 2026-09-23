@@ -241,7 +241,7 @@ export default function App() {
           <TooltipProvider>
             <Switch>
               <Route path="/setup/platform-owner"><PlatformOwnerSetup /></Route>
-              <Route path="/sign-in"><AuthScreen mode="sign-in" /></Route>
+              <Route path="/sign-in/*?"><AuthScreen mode="sign-in" /></Route>
               <Route path="/sign-up"><AuthScreen mode="sign-up" /></Route>
               <Route path="/school/register"><RegisterSchool /></Route>
               <Route>

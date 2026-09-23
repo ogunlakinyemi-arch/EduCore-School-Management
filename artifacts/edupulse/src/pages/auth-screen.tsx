@@ -1,8 +1,68 @@
-import { SignIn, SignUp } from '@clerk/react';
+import { useEffect, useRef, useState } from 'react';
+import { SignIn, SignUp, useAuth, useClerk } from '@clerk/react';
 import { Link, useLocation } from 'wouter';
 import { ShieldCheck, Sparkles, Zap } from 'lucide-react';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+function SignInSessionGate() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const { signOut } = useClerk();
+  const signOutStarted = useRef(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || signOutStarted.current || signOutError) return;
+
+    signOutStarted.current = true;
+    const signInUrl = `${window.location.origin}${base}/sign-in`;
+
+    void signOut()
+      .then(() => {
+        window.location.replace(signInUrl);
+      })
+      .catch(() => {
+        signOutStarted.current = false;
+        setSignOutError('We could not end the previous session. Please try again.');
+      });
+  }, [isLoaded, isSignedIn, signOut, signOutError]);
+
+  if (signOutError) {
+    return (
+      <div className="w-full max-w-sm rounded-2xl border border-[hsl(var(--destructive)/.25)] p-6 text-center">
+        <p className="text-sm text-[hsl(var(--destructive))]">{signOutError}</p>
+        <button
+          type="button"
+          className="mt-4 rounded-xl bg-[hsl(var(--primary))] px-4 py-2 text-sm font-bold text-[hsl(var(--primary-foreground))]"
+          onClick={() => {
+            setSignOutError(null);
+            window.location.reload();
+          }}
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (!isLoaded || isSignedIn || signOutStarted.current) {
+    return (
+      <div className="flex min-h-44 w-full items-center justify-center text-sm text-[hsl(var(--muted-foreground))]">
+        Preparing a secure sign-in…
+      </div>
+    );
+  }
+
+  return (
+    <SignIn
+      routing="path"
+      path={`${base}/sign-in`}
+      signUpUrl={`${base}/sign-up`}
+      fallbackRedirectUrl={`${base}/`}
+      appearance={{ elements: { rootBox: 'w-full', cardBox: 'w-full shadow-none', card: 'shadow-none border-0' } }}
+    />
+  );
+}
 
 export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const [, navigate] = useLocation();
@@ -30,13 +90,7 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
             <span className="display-font text-lg font-bold">Yemait EduCore</span>
           </button>
           {isSignIn ? (
-            <SignIn
-              routing="path"
-              path={`${base}/sign-in`}
-              signUpUrl={`${base}/sign-up`}
-              fallbackRedirectUrl={`${base}/`}
-              appearance={{ elements: { rootBox: 'w-full', cardBox: 'w-full shadow-none', card: 'shadow-none border-0' } }}
-            />
+            <SignInSessionGate />
           ) : (
             <SignUp
               routing="path"
