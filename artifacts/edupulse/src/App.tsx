@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ClerkProvider, useAuth } from '@clerk/react';
+import { publishableKeyFromHost } from '@clerk/react/internal';
 import { Route, Switch, Redirect, Link } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -195,7 +196,11 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-  const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+  const publishableKey = publishableKeyFromHost(
+    window.location.hostname,
+    import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+  );
+  const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 
   if (!publishableKey) {
     return (
@@ -212,7 +217,12 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <ClerkProvider publishableKey={publishableKey} signInFallbackRedirectUrl={base || '/'} signUpFallbackRedirectUrl={base || '/'}>
+      <ClerkProvider
+        publishableKey={publishableKey}
+        proxyUrl={clerkProxyUrl}
+        signInFallbackRedirectUrl={base || '/'}
+        signUpFallbackRedirectUrl={base || '/'}
+      >
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
             <Switch>
