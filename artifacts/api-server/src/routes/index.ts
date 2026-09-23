@@ -4,11 +4,12 @@ import authRouter from "./auth";
 import peopleRouter from "./people";
 import academicRouter from "./academic";
 import edupulseRouter from "./edupulse";
-import partnersRouter from "./partners";
+import partnersRouter, { publicPartnersRouter } from "./partners";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(publicPartnersRouter);
 router.use(authRouter);
 router.use(peopleRouter);
 router.use(academicRouter);

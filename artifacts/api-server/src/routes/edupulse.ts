@@ -89,6 +89,7 @@ async function audit(
   eventType = "APPLICATION_EVENT",
   result = "SUCCESS",
   metadata: Record<string, unknown> | null = null,
+  db: { query: (text: string, values?: unknown[]) => Promise<any> } = pool,
 ) {
   const context = getUserContext(req);
   const actor = [context.user.firstName, context.user.lastName]
@@ -97,7 +98,7 @@ async function audit(
   const role = context.roles.find((assignment) =>
     assignment.schoolId === null || assignment.schoolId === schoolId,
   )?.role ?? "AUTHENTICATED";
-  await pool.query(
+  await db.query(
     `INSERT INTO audit_logs
       ("user", role, actor_user_id, clerk_user_id, school_id, action, module,
        record_id, severity, event_type, result, metadata)
@@ -621,69 +622,170 @@ router.post("/subscriptions", async (req, res) => {
 });
 
 router.post("/subscriptions/:subscriptionId/verify", async (req, res) => {
+  const client = await pool.connect();
   try {
     const params = VerifySubscriptionParams.parse(req.params);
     const body = VerifySubscriptionBody.parse(req.body);
-    const existing = await pool.query(
-      `SELECT sub.*
+    await client.query("BEGIN");
+    const existing = await client.query(
+      `SELECT sub.*, st.status AS student_status
        FROM subscriptions sub
        JOIN students st ON st.id = sub.student_id AND st.school_id = sub.school_id
-       WHERE sub.id = $1`,
+       WHERE sub.id = $1
+       FOR UPDATE OF sub, st`,
       [params.subscriptionId],
     );
-    if (!existing.rows[0]) return res.status(404).json({ error: "Subscription not found" });
+    if (!existing.rows[0]) throw new AuthError(404, "Subscription not found");
     assertSchoolAccess(req, existing.rows[0].school_id, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
+    if (String(existing.rows[0].student_status).toUpperCase() !== "ACTIVE") {
+      throw new AuthError(409, "Only active students are eligible for partner commission");
+    }
     if (existing.rows[0].verification_status === "verified") {
       throw new AuthError(409, "Subscription is already verified");
     }
-    const result = await pool.query(`
-      UPDATE subscriptions SET status = 'active', verification_status = 'verified', provider_reference = $1
-      WHERE id = $2
-      RETURNING id, school_id AS "schoolId", student_id AS "studentId", amount::float,
-        school_share::float AS "schoolShare", edupulse_share::float AS "edupulseShare",
-        status, verification_status AS "verificationStatus", provider, term, expires_at AS "expiresAt"
-    `, [body.providerReference, params.subscriptionId]);
-    // Attribution and commission generation are derived from the school at verification
-    // time.  The unique ledger key makes retries harmless and the allocation snapshot
-    // preserves the historical rule for this subscription.
-    const attributed = await pool.query(`
+    const attributed = await client.query(`
       SELECT a.partner_profile_id AS "partnerProfileId"
       FROM school_partner_attributions a JOIN partner_profiles p ON p.id=a.partner_profile_id
       WHERE a.school_id=$1 AND a.is_current=true AND a.status='ACTIVE' AND p.status='ACTIVE'
       LIMIT 1`, [existing.rows[0].school_id]);
+    let allocation: {
+      partnerProfileId: number | null;
+      partnerAmount: string | null;
+      schoolAmount: string;
+      edupulseAmount: string;
+      ruleId: number | null;
+      currency: string | null;
+      rate: string | null;
+    } = {
+      partnerProfileId: null,
+      partnerAmount: null,
+      schoolAmount: existing.rows[0].school_share,
+      edupulseAmount: existing.rows[0].edupulse_share,
+      ruleId: null,
+      currency: null,
+      rate: null,
+    };
     if (attributed.rows[0]) {
-      const rule = await pool.query(`
-        INSERT INTO commission_rules(name,status,term,partner_amount,school_amount,edupulse_amount)
-        SELECT 'Default partner referral','ACTIVE',$1,100,2000,2900
-        WHERE NOT EXISTS (SELECT 1 FROM commission_rules WHERE status='ACTIVE' AND (term=$1 OR term IS NULL))
-        RETURNING id,partner_amount,school_amount,edupulse_amount`, [existing.rows[0].term]);
-      const activeRule = rule.rows[0] ?? (await pool.query(`
-        SELECT id,partner_amount,school_amount,edupulse_amount FROM commission_rules
-        WHERE status='ACTIVE' AND (term=$1 OR term IS NULL)
-        ORDER BY term NULLS LAST, starts_at DESC LIMIT 1`, [existing.rows[0].term])).rows[0];
-      if (activeRule) {
-        await pool.query(`
-          UPDATE subscriptions SET partner_profile_id=$1, partner_share=$2,
-            school_share=$3, edupulse_share=$4,
-            allocation_snapshot=jsonb_build_object('amount',amount::numeric,'school', $3::numeric,
-              'partner',$2::numeric,'edupulse',$4::numeric,'ruleId',$5::int)
-          WHERE id=$6 AND status='active' AND verification_status='verified'`,
-          [attributed.rows[0].partnerProfileId, activeRule.partner_amount, activeRule.school_amount,
-            activeRule.edupulse_amount, activeRule.id, params.subscriptionId]);
-        await pool.query(`
-          INSERT INTO commission_ledger(partner_profile_id,subscription_id,commission_rule_id,term,amount,status)
-          VALUES($1,$2,$3,$4,$5,'EARNED')
-          ON CONFLICT (subscription_id,commission_rule_id,term) DO NOTHING`,
-          [attributed.rows[0].partnerProfileId, params.subscriptionId, activeRule.id,
-            existing.rows[0].term, activeRule.partner_amount]);
+      const rule = await client.query(`
+        SELECT id, currency, partner_rate, partner_amount, school_amount, edupulse_amount
+        FROM commission_rules
+        WHERE status='ACTIVE'
+          AND (term=$1 OR term IS NULL)
+          AND effective_at <= NOW()
+          AND (ends_at IS NULL OR ends_at > NOW())
+          AND allocation_total = $2::numeric
+        ORDER BY (term=$1) DESC, effective_at DESC, id DESC
+        LIMIT 1
+        FOR UPDATE`,
+        [existing.rows[0].term, existing.rows[0].amount],
+      );
+      const activeRule = rule.rows[0];
+      if (!activeRule) {
+        throw new AuthError(
+          409,
+          "No active commission rule matches this subscription amount and term",
+          "COMMISSION_RULE_REQUIRED",
+        );
       }
+      allocation = {
+        partnerProfileId: attributed.rows[0].partnerProfileId,
+        partnerAmount: activeRule.partner_amount,
+        schoolAmount: activeRule.school_amount,
+        edupulseAmount: activeRule.edupulse_amount,
+        ruleId: activeRule.id,
+        currency: activeRule.currency,
+        rate: activeRule.partner_rate,
+      };
     }
-    await pool.query(`UPDATE nfc_cards SET status = 'active' WHERE student_id = $1 AND status IN ('locked', 'unassigned')`, [existing.rows[0].student_id]);
-    await audit(req, existing.rows[0].school_id, "Verified subscription payment", "Subscriptions", params.subscriptionId, "info", "SUBSCRIPTION_VERIFIED");
+    const result = await client.query(`
+      UPDATE subscriptions SET
+        status = 'active',
+        verification_status = 'verified',
+        provider_reference = $1,
+        partner_profile_id = $2,
+        partner_share = $3,
+        school_share = $4,
+        edupulse_share = $5,
+        allocation_snapshot = CASE WHEN $2::int IS NULL THEN NULL ELSE
+          jsonb_build_object(
+            'subscriptionAmount', amount::numeric,
+            'schoolAmount', $4::numeric,
+            'partnerAmount', $3::numeric,
+            'edupulseAmount', $5::numeric,
+            'commissionRuleId', $6::int,
+            'currency', $7::text,
+            'term', term
+          ) END
+      WHERE id = $8
+      RETURNING id, school_id AS "schoolId", student_id AS "studentId", amount::float,
+        school_share::float AS "schoolShare", edupulse_share::float AS "edupulseShare",
+        partner_share::float AS "partnerShare", status,
+        verification_status AS "verificationStatus", provider, term, expires_at AS "expiresAt"
+    `, [
+      body.providerReference,
+      allocation.partnerProfileId,
+      allocation.partnerAmount,
+      allocation.schoolAmount,
+      allocation.edupulseAmount,
+      allocation.ruleId,
+      allocation.currency,
+      params.subscriptionId,
+    ]);
+    if (allocation.partnerProfileId && allocation.ruleId && allocation.partnerAmount && allocation.rate) {
+      await client.query(`
+        INSERT INTO commission_ledger (
+          partner_profile_id, school_id, student_id, subscription_id,
+          commission_rule_id, academic_session_id, term, rate, count, amount,
+          currency, status, created_by
+        )
+        VALUES (
+          $1,$2,$3,$4,$5,
+          (SELECT id FROM academic_sessions
+           WHERE school_id=$2 AND (is_current OR status='ACTIVE')
+           ORDER BY is_current DESC, id DESC LIMIT 1),
+          $6,$7,1,$8,$9,'PENDING',$10
+        )
+        ON CONFLICT (subscription_id,term) DO NOTHING`,
+        [
+          allocation.partnerProfileId,
+          existing.rows[0].school_id,
+          existing.rows[0].student_id,
+          params.subscriptionId,
+          allocation.ruleId,
+          existing.rows[0].term,
+          allocation.rate,
+          allocation.partnerAmount,
+          allocation.currency,
+          getUserContext(req).user.id,
+        ],
+      );
+    }
+    await client.query(
+      `UPDATE nfc_cards SET status = 'active'
+       WHERE student_id = $1 AND status IN ('locked', 'unassigned')`,
+      [existing.rows[0].student_id],
+    );
+    await audit(req, existing.rows[0].school_id, "Verified subscription payment", "Subscriptions", params.subscriptionId, "info", "SUBSCRIPTION_VERIFIED", "SUCCESS", {
+      partnerProfileId: allocation.partnerProfileId,
+      commissionRuleId: allocation.ruleId,
+      commissionGenerated: Boolean(allocation.partnerProfileId && allocation.ruleId),
+    }, client);
+    if (allocation.partnerProfileId && allocation.ruleId) {
+      await audit(req, existing.rows[0].school_id, "Generated partner commission", "Commissions", params.subscriptionId, "info", "PARTNER_COMMISSION_GENERATED", "SUCCESS", {
+        partnerProfileId: allocation.partnerProfileId,
+        commissionRuleId: allocation.ruleId,
+        amount: allocation.partnerAmount,
+        currency: allocation.currency,
+      }, client);
+    }
+    await client.query("COMMIT");
     const student = await pool.query(`SELECT first_name || ' ' || last_name AS name FROM students WHERE id = $1`, [existing.rows[0].student_id]);
     res.json({ ...result.rows[0], studentName: student.rows[0]?.name ?? "Student", expiresAt: dateString(result.rows[0].expiresAt) });
   } catch (error) {
+    await client.query("ROLLBACK");
     fail(req, res, error);
+  } finally {
+    client.release();
   }
 });
 

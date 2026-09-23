@@ -1568,8 +1568,6 @@ export const PartnerCommissionRuleUpdateStatus = {
 } as const;
 
 export interface PartnerCommissionRuleUpdate {
-  /** @minimum 0 */
-  rate?: number;
   endDate?: string;
   status?: PartnerCommissionRuleUpdateStatus;
 }
@@ -1614,6 +1612,20 @@ export interface PartnerCommission {
   paidAt?: string | null;
   /** @nullable */
   paymentReference?: string | null;
+}
+
+export type PartnerCommissionStatusUpdateStatus = typeof PartnerCommissionStatusUpdateStatus[keyof typeof PartnerCommissionStatusUpdateStatus];
+
+
+export const PartnerCommissionStatusUpdateStatus = {
+  APPROVED: 'APPROVED',
+  PAYABLE: 'PAYABLE',
+  HELD: 'HELD',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export interface PartnerCommissionStatusUpdate {
+  status: PartnerCommissionStatusUpdateStatus;
 }
 
 export type PartnerPayoutStatus = typeof PartnerPayoutStatus[keyof typeof PartnerPayoutStatus];
@@ -1663,7 +1675,6 @@ export type PartnerPayoutUpdateStatus = typeof PartnerPayoutUpdateStatus[keyof t
 
 
 export const PartnerPayoutUpdateStatus = {
-  PENDING: 'PENDING',
   PROCESSING: 'PROCESSING',
   PAID: 'PAID',
   FAILED: 'FAILED',
@@ -1671,7 +1682,7 @@ export const PartnerPayoutUpdateStatus = {
 } as const;
 
 export interface PartnerPayoutUpdate {
-  status?: PartnerPayoutUpdateStatus;
+  status: PartnerPayoutUpdateStatus;
   paymentReference?: string;
 }
 
@@ -1724,6 +1735,27 @@ export interface PartnerPayoutInformationMasked {
      * @nullable
      */
   maskedAccountNumber: string | null;
+  /** @nullable */
+  bankCode?: string | null;
+  updatedAt: string;
+}
+
+export type PartnerPayoutInformationPrivatePayoutMethod = typeof PartnerPayoutInformationPrivatePayoutMethod[keyof typeof PartnerPayoutInformationPrivatePayoutMethod];
+
+
+export const PartnerPayoutInformationPrivatePayoutMethod = {
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  MOBILE_MONEY: 'MOBILE_MONEY',
+  OTHER: 'OTHER',
+} as const;
+
+export interface PartnerPayoutInformationPrivate {
+  id: number;
+  partnerId: number;
+  payoutMethod: PartnerPayoutInformationPrivatePayoutMethod;
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
   /** @nullable */
   bankCode?: string | null;
   updatedAt: string;

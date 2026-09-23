@@ -1225,6 +1225,18 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/PartnerPayout" } }
+  /platform/partners/{partnerId}/payout-information:
+    get:
+      operationId: getPartnerPayoutInformationForOwner
+      tags: [platform-partners]
+      summary: Retrieve decrypted payout instructions with audited owner access
+      parameters: [{ $ref: "#/components/parameters/PartnerIdPath" }]
+      responses:
+        "200":
+          description: Decrypted payout instructions
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerPayoutInformationPrivate" }
   /platform/partner-attribution-conflicts:
     get:
       operationId: listPartnerAttributionConflicts
@@ -1296,6 +1308,23 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PartnerCommissionRule" }
+  /platform/partner-commissions/{commissionId}/status:
+    patch:
+      operationId: updatePartnerCommissionStatus
+      tags: [platform-partners]
+      summary: Move a commission through the controlled approval lifecycle
+      parameters: [{ $ref: "#/components/parameters/CommissionIdPath" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerCommissionStatusUpdate" }
+      responses:
+        "200":
+          description: Updated commission
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerCommission" }
   /platform/partner-payouts:
     get:
       operationId: listPlatformPartnerPayouts
@@ -1443,6 +1472,7 @@ paths:
     post:
       operationId: onboardSchoolThroughPartnerReferral
       tags: [partner-onboarding]
+      security: []
       summary: Start school onboarding using a validated referral
       requestBody:
         required: true
@@ -1583,6 +1613,11 @@ components:
       schema: { type: integer, minimum: 1 }
     PayoutIdPath:
       name: payoutId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    CommissionIdPath:
+      name: commissionId
       in: path
       required: true
       schema: { type: integer, minimum: 1 }
@@ -2484,7 +2519,6 @@ components:
     PartnerCommissionRuleUpdate:
       type: object
       properties:
-        rate: { type: number, minimum: 0 }
         endDate: { type: string, format: date-time }
         status: { type: string, enum: [ACTIVE, INACTIVE] }
     PartnerCommission:
@@ -2509,6 +2543,11 @@ components:
         payableAt: { type: ["string", "null"], format: date-time }
         paidAt: { type: ["string", "null"], format: date-time }
         paymentReference: { type: ["string", "null"] }
+    PartnerCommissionStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [APPROVED, PAYABLE, HELD, CANCELLED] }
     PartnerPayout:
       type: object
       required: [id, partnerId, amount, currency, status, createdAt]
@@ -2534,8 +2573,9 @@ components:
         periodEnd: { type: string, format: date }
     PartnerPayoutUpdate:
       type: object
+      required: [status]
       properties:
-        status: { type: string, enum: [PENDING, PROCESSING, PAID, FAILED, REVERSED] }
+        status: { type: string, enum: [PROCESSING, PAID, FAILED, REVERSED] }
         paymentReference: { type: string }
     PartnerDashboard:
       type: object
@@ -2564,6 +2604,18 @@ components:
         bankName: { type: ["string", "null"] }
         accountName: { type: ["string", "null"] }
         maskedAccountNumber: { type: ["string", "null"], description: "Masked value only, for example ****1234" }
+        bankCode: { type: ["string", "null"] }
+        updatedAt: { type: string, format: date-time }
+    PartnerPayoutInformationPrivate:
+      type: object
+      required: [id, partnerId, payoutMethod, bankName, accountName, accountNumber, updatedAt]
+      properties:
+        id: { type: integer }
+        partnerId: { type: integer }
+        payoutMethod: { type: string, enum: [BANK_TRANSFER, MOBILE_MONEY, OTHER] }
+        bankName: { type: string }
+        accountName: { type: string }
+        accountNumber: { type: string }
         bankCode: { type: ["string", "null"] }
         updatedAt: { type: string, format: date-time }
     PartnerPayoutInformationInput:

@@ -2537,6 +2537,28 @@ export const ListPartnerPayoutsResponse = zod.array(ListPartnerPayoutsResponseIt
 
 
 /**
+ * @summary Retrieve decrypted payout instructions with audited owner access
+ */
+
+
+
+export const GetPartnerPayoutInformationForOwnerParams = zod.object({
+  "partnerId": zod.coerce.number().int().min(1)
+})
+
+export const GetPartnerPayoutInformationForOwnerResponse = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "payoutMethod": zod.enum(['BANK_TRANSFER', 'MOBILE_MONEY', 'OTHER']),
+  "bankName": zod.string(),
+  "accountName": zod.string(),
+  "accountNumber": zod.string(),
+  "bankCode": zod.string().nullish(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Review partner attribution conflicts
  */
 export const ListPartnerAttributionConflictsResponseItem = zod.object({
@@ -2650,12 +2672,7 @@ export const UpdatePartnerCommissionRuleParams = zod.object({
   "ruleId": zod.coerce.number().int().min(1)
 })
 
-export const updatePartnerCommissionRuleBodyRateMin = 0;
-
-
-
 export const UpdatePartnerCommissionRuleBody = zod.object({
-  "rate": zod.number().min(updatePartnerCommissionRuleBodyRateMin).optional(),
   "endDate": zod.coerce.date().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']).optional()
 })
@@ -2676,6 +2693,42 @@ export const UpdatePartnerCommissionRuleResponse = zod.object({
   "endDate": zod.coerce.date().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "createdAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Move a commission through the controlled approval lifecycle
+ */
+
+
+
+export const UpdatePartnerCommissionStatusParams = zod.object({
+  "commissionId": zod.coerce.number().int().min(1)
+})
+
+export const UpdatePartnerCommissionStatusBody = zod.object({
+  "status": zod.enum(['APPROVED', 'PAYABLE', 'HELD', 'CANCELLED'])
+})
+
+export const UpdatePartnerCommissionStatusResponse = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int().nullish(),
+  "subscriptionId": zod.number().int().nullish(),
+  "academicSession": zod.string().nullish(),
+  "term": zod.string().nullish(),
+  "commissionRuleId": zod.number().int(),
+  "rate": zod.number(),
+  "eligibleStudentCount": zod.number().int(),
+  "amount": zod.number(),
+  "currency": zod.string(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'PAYABLE', 'PAID', 'HELD', 'REVERSED', 'CANCELLED']),
+  "generatedAt": zod.coerce.date(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "payableAt": zod.coerce.date().nullish(),
+  "paidAt": zod.coerce.date().nullish(),
+  "paymentReference": zod.string().nullish()
 })
 
 
@@ -2749,7 +2802,7 @@ export const UpdatePartnerPayoutParams = zod.object({
 })
 
 export const UpdatePartnerPayoutBody = zod.object({
-  "status": zod.enum(['PENDING', 'PROCESSING', 'PAID', 'FAILED', 'REVERSED']).optional(),
+  "status": zod.enum(['PROCESSING', 'PAID', 'FAILED', 'REVERSED']),
   "paymentReference": zod.string().optional()
 })
 

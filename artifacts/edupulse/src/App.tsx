@@ -134,7 +134,7 @@ export default function App() {
               <Route>
                 <AuthGuard>
                   <Switch>
-                    <Route path="/partner/invitations/:invitationId"><AcceptInvitation /></Route>
+                    <Route path="/partner/invitations/:invitationToken/accept"><AcceptInvitation /></Route>
                     <Route path="/parent*"><ParentPortal /></Route>
                     <Route path="/partner*"><PartnerPortal /></Route>
                     <Route><ProtectedRoutes /></Route>

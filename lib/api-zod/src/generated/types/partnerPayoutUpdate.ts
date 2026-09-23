@@ -8,6 +8,6 @@
 import type { PartnerPayoutUpdateStatus } from './partnerPayoutUpdateStatus';
 
 export interface PartnerPayoutUpdate {
-  status?: PartnerPayoutUpdateStatus;
+  status: PartnerPayoutUpdateStatus;
   paymentReference?: string;
 }

@@ -93,6 +93,7 @@ import type {
   PartnerCommissionRule,
   PartnerCommissionRuleInput,
   PartnerCommissionRuleUpdate,
+  PartnerCommissionStatusUpdate,
   PartnerDashboard,
   PartnerInvitation,
   PartnerInvitationInput,
@@ -100,6 +101,7 @@ import type {
   PartnerPayout,
   PartnerPayoutInformationInput,
   PartnerPayoutInformationMasked,
+  PartnerPayoutInformationPrivate,
   PartnerPayoutInput,
   PartnerPayoutUpdate,
   PartnerReferralLink,
@@ -6438,6 +6440,83 @@ export function useListPartnerPayouts<TData = Awaited<ReturnType<typeof listPart
 
 
 
+export const getGetPartnerPayoutInformationForOwnerUrl = (partnerId: number,) => {
+
+
+
+
+  return `/api/platform/partners/${partnerId}/payout-information`
+}
+
+/**
+ * @summary Retrieve decrypted payout instructions with audited owner access
+ */
+export const getPartnerPayoutInformationForOwner = async (partnerId: number, options?: Parameters<typeof customFetch>[1]): Promise<PartnerPayoutInformationPrivate> => {
+
+  return customFetch<PartnerPayoutInformationPrivate>(getGetPartnerPayoutInformationForOwnerUrl(partnerId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPartnerPayoutInformationForOwnerQueryKey = (partnerId: number,) => {
+    return [
+    `/api/platform/partners/${partnerId}/payout-information`
+    ] as const;
+    }
+
+
+export const getGetPartnerPayoutInformationForOwnerQueryOptions = <TData = Awaited<ReturnType<typeof getPartnerPayoutInformationForOwner>>, TError = ErrorType<unknown>>(partnerId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPartnerPayoutInformationForOwner>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPartnerPayoutInformationForOwnerQueryKey(partnerId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPartnerPayoutInformationForOwner>>> = ({ signal }) => getPartnerPayoutInformationForOwner(partnerId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: partnerId !== null && partnerId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPartnerPayoutInformationForOwner>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPartnerPayoutInformationForOwnerQueryResult = NonNullable<Awaited<ReturnType<typeof getPartnerPayoutInformationForOwner>>>
+export type GetPartnerPayoutInformationForOwnerQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Retrieve decrypted payout instructions with audited owner access
+ */
+
+export function useGetPartnerPayoutInformationForOwner<TData = Awaited<ReturnType<typeof getPartnerPayoutInformationForOwner>>, TError = ErrorType<unknown>>(
+ partnerId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPartnerPayoutInformationForOwner>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPartnerPayoutInformationForOwnerQueryOptions(partnerId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getListPartnerAttributionConflictsUrl = () => {
 
 
@@ -6856,6 +6935,95 @@ export const useUpdatePartnerCommissionRule = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdatePartnerCommissionRuleMutationOptions(options));
+    }
+
+export const getUpdatePartnerCommissionStatusUrl = (commissionId: number,) => {
+
+
+
+
+  return `/api/platform/partner-commissions/${commissionId}/status`
+}
+
+/**
+ * @summary Move a commission through the controlled approval lifecycle
+ */
+export const updatePartnerCommissionStatus = async (commissionId: number,
+    partnerCommissionStatusUpdate: PartnerCommissionStatusUpdate, options?: Parameters<typeof customFetch>[1]): Promise<PartnerCommission> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PartnerCommission>(getUpdatePartnerCommissionStatusUrl(commissionId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(partnerCommissionStatusUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdatePartnerCommissionStatusMutationKey = () => ['updatePartnerCommissionStatus'] as const;
+
+export const getUpdatePartnerCommissionStatusMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePartnerCommissionStatus>>, TError,UpdatePartnerCommissionStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePartnerCommissionStatus>>, TError,UpdatePartnerCommissionStatusMutationVariables, TContext> => {
+
+const mutationKey = getUpdatePartnerCommissionStatusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePartnerCommissionStatus>>, UpdatePartnerCommissionStatusMutationVariables> = (props) => {
+          const {commissionId,data} = props ?? {};
+
+          return  updatePartnerCommissionStatus(commissionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePartnerCommissionStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updatePartnerCommissionStatus>>>
+    export type UpdatePartnerCommissionStatusMutationBody = BodyType<PartnerCommissionStatusUpdate>
+    export type UpdatePartnerCommissionStatusMutationError = ErrorType<unknown>
+    export type UpdatePartnerCommissionStatusMutationVariables = {commissionId: number;data: BodyType<PartnerCommissionStatusUpdate>}
+
+    /**
+ * @summary Move a commission through the controlled approval lifecycle
+ */
+export const useUpdatePartnerCommissionStatus = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePartnerCommissionStatus>>, TError,UpdatePartnerCommissionStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePartnerCommissionStatus>>,
+        TError,
+        UpdatePartnerCommissionStatusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdatePartnerCommissionStatusMutationOptions(options));
     }
 
 export const getListPlatformPartnerPayoutsUrl = () => {

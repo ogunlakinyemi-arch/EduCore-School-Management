@@ -380,7 +380,7 @@ export const commissionLedger = pgTable(
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
     currency: text("currency").notNull().default("NGN"),
     status: text("status").notNull().default("PENDING"),
-    payoutId: integer("payout_id"),
+    payoutId: integer("payout_id").references(() => partnerPayouts.id),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     payableAt: timestamp("payable_at", { withTimezone: true }),
     paidAt: timestamp("paid_at", { withTimezone: true }),
@@ -429,6 +429,7 @@ export const partnerPayouts = pgTable(
     uniqueIndex("partner_payouts_provider_reference_unique").on(table.providerReference),
     index("partner_payouts_partner_status_idx").on(table.partnerProfileId, table.status),
     check("partner_payouts_amount_nonnegative", sql`${table.amount} >= 0`),
+    check("partner_payouts_status_check", sql`${table.status} IN ('PENDING','PROCESSING','PAID','FAILED','REVERSED')`),
   ],
 );
 

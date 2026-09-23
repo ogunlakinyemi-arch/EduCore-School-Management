@@ -9,6 +9,8 @@ import {
   useListPartnerCommissions,
   useListPartnerPayouts,
   useListPlatformPartnerPayouts,
+  useUpdatePartnerCommissionStatus,
+  useUpdatePartnerPayout,
   useListPartnerAttributionConflicts,
   useResolvePartnerAttributionConflict,
   useCreatePartnerPayout
@@ -300,6 +302,21 @@ function PartnerSchoolsList({ partnerId }: { partnerId: number }) {
 
 function PartnerCommissionsList({ partnerId }: { partnerId: number }) {
   const query = useListPartnerCommissions(partnerId);
+  const updateStatus = useUpdatePartnerCommissionStatus();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const transition = (commissionId: number, status: 'APPROVED' | 'PAYABLE' | 'HELD' | 'CANCELLED') => {
+    updateStatus.mutate({ commissionId, data: { status } }, {
+      onSuccess: () => {
+        toast({ title: 'Commission updated', description: `Commission moved to ${status.toLowerCase()}.` });
+        queryClient.invalidateQueries({ queryKey: ['listPartnerCommissions', partnerId] });
+      },
+      onError: (err: any) => {
+        toast({ title: 'Update failed', description: err.error || 'The commission could not be updated.', variant: 'destructive' });
+      },
+    });
+  };
   
   return (
     <div className="panel p-6">
@@ -327,6 +344,12 @@ function PartnerCommissionsList({ partnerId }: { partnerId: number }) {
               <div className="text-right">
                 <StatusPill value={comm.status} />
                 <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">{date(comm.createdAt)}</div>
+                <div className="mt-2 flex justify-end gap-1">
+                  {comm.status === 'PENDING' && <Button className="h-7 px-2 text-xs" onClick={() => transition(comm.id, 'APPROVED')}>Approve</Button>}
+                  {comm.status === 'APPROVED' && <Button className="h-7 px-2 text-xs" onClick={() => transition(comm.id, 'PAYABLE')}>Make payable</Button>}
+                  {comm.status === 'HELD' && <Button className="h-7 px-2 text-xs" onClick={() => transition(comm.id, 'APPROVED')}>Release</Button>}
+                  {['PENDING', 'APPROVED', 'PAYABLE'].includes(comm.status) && <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => transition(comm.id, 'HELD')}>Hold</Button>}
+                </div>
               </div>
             </div>
           ))}
@@ -345,11 +368,54 @@ function PartnerCommissionsList({ partnerId }: { partnerId: number }) {
 
 function PayoutsOverview() {
   const query = useListPlatformPartnerPayouts();
+  const createPayout = useCreatePartnerPayout();
+  const updatePayout = useUpdatePartnerPayout();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [partnerId, setPartnerId] = useState('');
+  const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState('NGN');
   
   if (query.isLoading) return <SkeletonPage />;
   if (query.isError) return <ErrorState retry={() => query.refetch()} />;
 
   const payouts = query.data ?? [];
+
+  const create = () => {
+    const parsedPartnerId = Number(partnerId);
+    const parsedAmount = Number(amount);
+    if (!Number.isInteger(parsedPartnerId) || parsedPartnerId < 1 || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      toast({ title: 'Invalid payout', description: 'Enter a valid partner ID and positive amount.', variant: 'destructive' });
+      return;
+    }
+    createPayout.mutate({ data: { partnerId: parsedPartnerId, amount: parsedAmount, currency } }, {
+      onSuccess: () => {
+        toast({ title: 'Payout created', description: 'The payable commission entries are now reserved.' });
+        setPartnerId('');
+        setAmount('');
+        queryClient.invalidateQueries({ queryKey: ['listPlatformPartnerPayouts'] });
+      },
+      onError: (err: any) => {
+        toast({ title: 'Payout creation failed', description: err.error || 'Use an amount matching whole payable commission entries.', variant: 'destructive' });
+      },
+    });
+  };
+
+  const transition = (payoutId: number, status: 'PROCESSING' | 'PAID' | 'FAILED' | 'REVERSED') => {
+    const paymentReference = status === 'PAID'
+      ? window.prompt('Enter the payment reference')
+      : undefined;
+    if (status === 'PAID' && !paymentReference?.trim()) return;
+    updatePayout.mutate({ payoutId, data: { status, paymentReference: paymentReference?.trim() } }, {
+      onSuccess: () => {
+        toast({ title: 'Payout updated', description: `Payout moved to ${status.toLowerCase()}.` });
+        queryClient.invalidateQueries({ queryKey: ['listPlatformPartnerPayouts'] });
+      },
+      onError: (err: any) => {
+        toast({ title: 'Payout update failed', description: err.error || 'The payout could not be updated.', variant: 'destructive' });
+      },
+    });
+  };
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -358,6 +424,19 @@ function PayoutsOverview() {
         title="Partner Payouts" 
         description="Review and process platform-wide commission payouts."
       />
+
+      <div className="panel mb-6 grid gap-4 p-5 md:grid-cols-[1fr_1fr_140px_auto] md:items-end">
+        <Field label="Partner ID">
+          <input inputMode="numeric" value={partnerId} onChange={(event) => setPartnerId(event.target.value)} placeholder="e.g. 12" />
+        </Field>
+        <Field label="Exact payable amount">
+          <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="e.g. 5000" />
+        </Field>
+        <Field label="Currency">
+          <input maxLength={3} value={currency} onChange={(event) => setCurrency(event.target.value.toUpperCase())} />
+        </Field>
+        <Button onClick={create} disabled={createPayout.isPending}>{createPayout.isPending ? 'Creating…' : 'Create payout'}</Button>
+      </div>
 
       <div className="panel overflow-hidden">
         <div className="overflow-x-auto">
@@ -369,6 +448,7 @@ function PayoutsOverview() {
                 <th className="p-4">Amount</th>
                 <th className="p-4">Status</th>
                 <th className="p-4">Ref</th>
+                <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[hsl(var(--border))]">
@@ -379,11 +459,24 @@ function PayoutsOverview() {
                   <td className="p-4 font-bold text-[hsl(var(--foreground))]">{payout.currency} {payout.amount.toLocaleString()}</td>
                   <td className="p-4"><StatusPill value={payout.status} /></td>
                   <td className="p-4 text-[hsl(var(--muted-foreground))] font-mono text-xs">{payout.paymentReference || '—'}</td>
+                  <td className="p-4">
+                    <div className="flex justify-end gap-2">
+                      {payout.status === 'PENDING' && <>
+                        <Button className="h-8 px-3 text-xs" onClick={() => transition(payout.id, 'PROCESSING')}>Process</Button>
+                        <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => transition(payout.id, 'FAILED')}>Fail</Button>
+                      </>}
+                      {payout.status === 'PROCESSING' && <>
+                        <Button className="h-8 px-3 text-xs" onClick={() => transition(payout.id, 'PAID')}>Mark paid</Button>
+                        <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => transition(payout.id, 'FAILED')}>Fail</Button>
+                      </>}
+                      {payout.status === 'PAID' && <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => transition(payout.id, 'REVERSED')}>Reverse</Button>}
+                    </div>
+                  </td>
                 </tr>
               ))}
               {payouts.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-[hsl(var(--muted-foreground))]">
+                  <td colSpan={6} className="p-8 text-center text-[hsl(var(--muted-foreground))]">
                     No payouts found.
                   </td>
                 </tr>

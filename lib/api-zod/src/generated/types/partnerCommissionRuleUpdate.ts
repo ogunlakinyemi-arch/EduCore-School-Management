@@ -8,8 +8,6 @@
 import type { PartnerCommissionRuleUpdateStatus } from './partnerCommissionRuleUpdateStatus';
 
 export interface PartnerCommissionRuleUpdate {
-  /** @minimum 0 */
-  rate?: number;
   endDate?: Date;
   status?: PartnerCommissionRuleUpdateStatus;
 }

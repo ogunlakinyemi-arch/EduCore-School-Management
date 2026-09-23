@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { useAcceptPartnerInvitation } from '@workspace/api-client-react';
 import { Button } from '@/components/shared';
-import { CheckCircle2, XCircle, Loader2, Handshake } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 export default function AcceptInvitation() {
-  const [match, params] = useRoute('/partner/invitations/:invitationId');
+  const [match, params] = useRoute('/partner/invitations/:invitationToken/accept');
   const [, setLocation] = useLocation();
   const accept = useAcceptPartnerInvitation();
   
@@ -13,15 +13,15 @@ export default function AcceptInvitation() {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    if (match && params.invitationId) {
-      const invitationId = Number(params.invitationId);
-      if (isNaN(invitationId)) {
+    if (match && params.invitationToken) {
+      const invitationToken = params.invitationToken;
+      if (!/^[A-Za-z0-9_-]{32,}$/.test(invitationToken)) {
         setStatus('error');
         setErrorMessage('Invalid invitation link format.');
         return;
       }
 
-      accept.mutate({ invitationId }, {
+      accept.mutate({ invitationToken }, {
         onSuccess: () => {
           setStatus('success');
         },
@@ -35,7 +35,7 @@ export default function AcceptInvitation() {
       setErrorMessage('Invalid invitation link.');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [match, params?.invitationId]);
+  }, [match, params?.invitationToken]);
 
   return (
     <main className="min-h-[100dvh] bg-[hsl(var(--background))] p-4 flex items-center justify-center">

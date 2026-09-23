@@ -10,7 +10,6 @@ export type PartnerPayoutUpdateStatus = typeof PartnerPayoutUpdateStatus[keyof t
 
 
 export const PartnerPayoutUpdateStatus = {
-  PENDING: 'PENDING',
   PROCESSING: 'PROCESSING',
   PAID: 'PAID',
   FAILED: 'FAILED',
