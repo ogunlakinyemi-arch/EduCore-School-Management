@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AuditLog } from './auditLog';
+import type { PlatformDashboardSubscriptionSummary } from './platformDashboardSubscriptionSummary';
 
 export interface PlatformDashboard {
   totalSchools: number;
@@ -19,5 +20,9 @@ export interface PlatformDashboard {
   edupulseAllocation: number;
   activeCards: number;
   lockedCards: number;
+  inactiveSchools?: number;
+  totalTeachers?: number;
+  totalParents?: number;
+  subscriptionSummary?: PlatformDashboardSubscriptionSummary;
   recentActivity: AuditLog[];
 }

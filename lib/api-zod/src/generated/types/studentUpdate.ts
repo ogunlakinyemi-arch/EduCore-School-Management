@@ -5,6 +5,7 @@
  * Multi-tenant EduPulse school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { StudentUpdateAdmissionStatus } from './studentUpdateAdmissionStatus';
 import type { StudentUpdateStatus } from './studentUpdateStatus';
 
 export interface StudentUpdate {
@@ -14,5 +15,14 @@ export interface StudentUpdate {
   lastName?: string;
   className?: string;
   section?: string;
+  middleName?: string;
+  dateOfBirth?: Date;
+  passportUrl?: string;
+  admissionStatus?: StudentUpdateAdmissionStatus;
+  address?: string;
+  previousSchool?: string;
+  medicalInformation?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
   status?: StudentUpdateStatus;
 }

@@ -14,6 +14,8 @@ export interface HealthStatus {
   status: string;
 }
 
+export type PlatformDashboardSubscriptionSummary = {[key: string]: number};
+
 export type AuditLogSeverity = typeof AuditLogSeverity[keyof typeof AuditLogSeverity];
 
 
@@ -49,7 +51,27 @@ export interface PlatformDashboard {
   edupulseAllocation: number;
   activeCards: number;
   lockedCards: number;
+  inactiveSchools?: number;
+  totalTeachers?: number;
+  totalParents?: number;
+  subscriptionSummary?: PlatformDashboardSubscriptionSummary;
   recentActivity: AuditLog[];
+}
+
+export interface SchoolUser {
+  id: number;
+  email: string;
+  /** @nullable */
+  firstName?: string | null;
+  /** @nullable */
+  lastName?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  userStatus: string;
+  membershipId: number;
+  role: string;
+  membershipStatus: string;
+  schoolId: number;
 }
 
 export type SchoolStatus = typeof SchoolStatus[keyof typeof SchoolStatus];
@@ -76,11 +98,77 @@ export interface School {
   name: string;
   city: string;
   state: string;
+  /** @nullable */
+  registrationNumber?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  lga?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  logoUrl?: string | null;
+  /** @nullable */
+  schoolType?: string | null;
+  administrators?: SchoolUser[];
+  /** @nullable */
+  academicSetupStatus?: string | null;
   status: SchoolStatus;
   studentCount: number;
   staffCount: number;
   subscriptionStatus: SchoolSubscriptionStatus;
   createdAt: string;
+}
+
+export type AcademicSessionStatus = typeof AcademicSessionStatus[keyof typeof AcademicSessionStatus];
+
+
+export const AcademicSessionStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export interface AcademicSession {
+  id: number;
+  schoolId: number;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: AcademicSessionStatus;
+  isCurrent?: boolean;
+}
+
+export type AcademicTermName = typeof AcademicTermName[keyof typeof AcademicTermName];
+
+
+export const AcademicTermName = {
+  FIRST: 'FIRST',
+  SECOND: 'SECOND',
+  THIRD: 'THIRD',
+} as const;
+
+export type AcademicTermStatus = typeof AcademicTermStatus[keyof typeof AcademicTermStatus];
+
+
+export const AcademicTermStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export interface AcademicTerm {
+  id: number;
+  sessionId: number;
+  name: AcademicTermName;
+  startDate: string;
+  endDate: string;
+  status: AcademicTermStatus;
+  isCurrent?: boolean;
 }
 
 export interface SchoolDashboard {
@@ -93,6 +181,16 @@ export interface SchoolDashboard {
   pendingPayments: number;
   activeCards: number;
   lockedCards: number;
+  totalParents?: number;
+  activeTeachers?: number;
+  otherStaff?: number;
+  totalClasses?: number;
+  totalSections?: number;
+  totalSubjects?: number;
+  currentAcademicSession?: AcademicSession;
+  currentTerm?: AcademicTerm;
+  /** @nullable */
+  subscriptionStatus?: string | null;
   recentActivity: AuditLog[];
 }
 
@@ -106,12 +204,22 @@ export const SchoolInputStatus = {
 } as const;
 
 export interface SchoolInput {
+  /** @minLength 1 */
+  code: string;
   /** @minLength 2 */
   name: string;
   /** @minLength 2 */
   city: string;
   /** @minLength 2 */
   state: string;
+  registrationNumber?: string;
+  address?: string;
+  lga?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  logoUrl?: string;
+  schoolType?: string;
   status?: SchoolInputStatus;
 }
 
@@ -131,8 +239,43 @@ export interface SchoolUpdate {
   city?: string;
   /** @minLength 2 */
   state?: string;
+  /** @minLength 1 */
+  code?: string;
+  registrationNumber?: string;
+  address?: string;
+  lga?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  logoUrl?: string;
+  schoolType?: string;
   status?: SchoolUpdateStatus;
 }
+
+export type SchoolStatusUpdateStatus = typeof SchoolStatusUpdateStatus[keyof typeof SchoolStatusUpdateStatus];
+
+
+export const SchoolStatusUpdateStatus = {
+  active: 'active',
+  suspended: 'suspended',
+  inactive: 'inactive',
+} as const;
+
+export interface SchoolStatusUpdate {
+  status: SchoolStatusUpdateStatus;
+}
+
+/**
+ * @nullable
+ */
+export type StudentAdmissionStatus = typeof StudentAdmissionStatus[keyof typeof StudentAdmissionStatus] | null;
+
+
+export const StudentAdmissionStatus = {
+  pending: 'pending',
+  admitted: 'admitted',
+  rejected: 'rejected',
+} as const;
 
 export type StudentGender = typeof StudentGender[keyof typeof StudentGender];
 
@@ -147,8 +290,11 @@ export type StudentStatus = typeof StudentStatus[keyof typeof StudentStatus];
 
 
 export const StudentStatus = {
-  active: 'active',
-  archived: 'archived',
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  GRADUATED: 'GRADUATED',
+  TRANSFERRED: 'TRANSFERRED',
+  WITHDRAWN: 'WITHDRAWN',
 } as const;
 
 export type StudentSubscriptionStatus = typeof StudentSubscriptionStatus[keyof typeof StudentSubscriptionStatus];
@@ -177,6 +323,36 @@ export interface Student {
   admissionNo: string;
   firstName: string;
   lastName: string;
+  /** @nullable */
+  middleName?: string | null;
+  /** @nullable */
+  dateOfBirth?: string | null;
+  /** @nullable */
+  passportUrl?: string | null;
+  /** @nullable */
+  admissionDate?: string | null;
+  /** @nullable */
+  admissionStatus?: StudentAdmissionStatus;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  previousSchool?: string | null;
+  /** @nullable */
+  medicalInformation?: string | null;
+  /** @nullable */
+  emergencyContactName?: string | null;
+  /** @nullable */
+  emergencyContactPhone?: string | null;
+  /** @nullable */
+  currentClassId?: number | null;
+  /** @nullable */
+  currentSessionId?: number | null;
+  /** @nullable */
+  currentTermId?: number | null;
+  /** @nullable */
+  createdAt?: string | null;
+  /** @nullable */
+  updatedAt?: string | null;
   gender: StudentGender;
   className: string;
   section: string;
@@ -189,6 +365,15 @@ export interface Student {
   cardStatus: StudentCardStatus;
   joinedAt: string;
 }
+
+export type StudentInputAdmissionStatus = typeof StudentInputAdmissionStatus[keyof typeof StudentInputAdmissionStatus];
+
+
+export const StudentInputAdmissionStatus = {
+  pending: 'pending',
+  admitted: 'admitted',
+  rejected: 'rejected',
+} as const;
 
 export type StudentInputGender = typeof StudentInputGender[keyof typeof StudentInputGender];
 
@@ -206,6 +391,16 @@ export interface StudentInput {
   firstName: string;
   /** @minLength 2 */
   lastName: string;
+  middleName?: string;
+  dateOfBirth?: string;
+  passportUrl?: string;
+  admissionDate?: string;
+  admissionStatus?: StudentInputAdmissionStatus;
+  address?: string;
+  previousSchool?: string;
+  medicalInformation?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
   gender: StudentInputGender;
   /** @minLength 1 */
   className: string;
@@ -215,12 +410,24 @@ export interface StudentInput {
   parentPhone?: string;
 }
 
+export type StudentUpdateAdmissionStatus = typeof StudentUpdateAdmissionStatus[keyof typeof StudentUpdateAdmissionStatus];
+
+
+export const StudentUpdateAdmissionStatus = {
+  pending: 'pending',
+  admitted: 'admitted',
+  rejected: 'rejected',
+} as const;
+
 export type StudentUpdateStatus = typeof StudentUpdateStatus[keyof typeof StudentUpdateStatus];
 
 
 export const StudentUpdateStatus = {
-  active: 'active',
-  archived: 'archived',
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  GRADUATED: 'GRADUATED',
+  TRANSFERRED: 'TRANSFERRED',
+  WITHDRAWN: 'WITHDRAWN',
 } as const;
 
 export interface StudentUpdate {
@@ -230,8 +437,54 @@ export interface StudentUpdate {
   lastName?: string;
   className?: string;
   section?: string;
+  middleName?: string;
+  dateOfBirth?: string;
+  passportUrl?: string;
+  admissionStatus?: StudentUpdateAdmissionStatus;
+  address?: string;
+  previousSchool?: string;
+  medicalInformation?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
   status?: StudentUpdateStatus;
 }
+
+export type StudentStatusUpdateStatus = typeof StudentStatusUpdateStatus[keyof typeof StudentStatusUpdateStatus];
+
+
+export const StudentStatusUpdateStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  GRADUATED: 'GRADUATED',
+  TRANSFERRED: 'TRANSFERRED',
+  WITHDRAWN: 'WITHDRAWN',
+} as const;
+
+export interface StudentStatusUpdate {
+  status: StudentStatusUpdateStatus;
+}
+
+/**
+ * @nullable
+ */
+export type ParentRelationshipType = typeof ParentRelationshipType[keyof typeof ParentRelationshipType] | null;
+
+
+export const ParentRelationshipType = {
+  Father: 'Father',
+  Mother: 'Mother',
+  Guardian: 'Guardian',
+  Grandparent: 'Grandparent',
+  Other: 'Other',
+} as const;
+
+export type ParentStatus = typeof ParentStatus[keyof typeof ParentStatus];
+
+
+export const ParentStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
 
 export interface Parent {
   id: number;
@@ -239,6 +492,17 @@ export interface Parent {
   name: string;
   email: string;
   phone: string;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  relationshipType?: ParentRelationshipType;
+  status?: ParentStatus;
+  /** @nullable */
+  clerkUserId?: string | null;
+  /** @nullable */
+  emergencyContactName?: string | null;
+  /** @nullable */
+  emergencyContactPhone?: string | null;
   childrenCount: number;
   activeChildren: number;
 }
@@ -319,12 +583,41 @@ export interface AuthorizedContext {
   roles: RoleAssignment[];
 }
 
+export type ParentProfileRelationshipTypesItem = typeof ParentProfileRelationshipTypesItem[keyof typeof ParentProfileRelationshipTypesItem];
+
+
+export const ParentProfileRelationshipTypesItem = {
+  Father: 'Father',
+  Mother: 'Mother',
+  Guardian: 'Guardian',
+  Grandparent: 'Grandparent',
+  Other: 'Other',
+} as const;
+
+export type ParentProfileStatus = typeof ParentProfileStatus[keyof typeof ParentProfileStatus];
+
+
+export const ParentProfileStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
 export interface ParentProfile {
   id: number;
   schoolId: number;
   name: string;
   email: string;
   phone: string;
+  /** @nullable */
+  address?: string | null;
+  relationshipTypes?: ParentProfileRelationshipTypesItem[];
+  status?: ParentProfileStatus;
+  /** @nullable */
+  clerkUserId?: string | null;
+  /** @nullable */
+  emergencyContactName?: string | null;
+  /** @nullable */
+  emergencyContactPhone?: string | null;
 }
 
 export interface ParentChild {
@@ -434,22 +727,6 @@ export interface AppUser {
   memberships: RoleAssignment[];
 }
 
-export interface SchoolUser {
-  id: number;
-  email: string;
-  /** @nullable */
-  firstName?: string | null;
-  /** @nullable */
-  lastName?: string | null;
-  /** @nullable */
-  phone?: string | null;
-  userStatus: string;
-  membershipId: number;
-  role: string;
-  membershipStatus: string;
-  schoolId: number;
-}
-
 export type SchoolMembershipInputRole = typeof SchoolMembershipInputRole[keyof typeof SchoolMembershipInputRole];
 
 
@@ -483,12 +760,412 @@ export interface PlatformMembershipInput {
   role: PlatformMembershipInputRole;
 }
 
+export type ParentInputRelationshipType = typeof ParentInputRelationshipType[keyof typeof ParentInputRelationshipType];
+
+
+export const ParentInputRelationshipType = {
+  Father: 'Father',
+  Mother: 'Mother',
+  Guardian: 'Guardian',
+  Grandparent: 'Grandparent',
+  Other: 'Other',
+} as const;
+
 export interface ParentInput {
   /** @minLength 2 */
   name: string;
   email: string;
   /** @minLength 7 */
   phone: string;
+  address?: string;
+  relationshipType?: ParentInputRelationshipType;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+}
+
+export type ParentUpdateStatus = typeof ParentUpdateStatus[keyof typeof ParentUpdateStatus];
+
+
+export const ParentUpdateStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface ParentUpdate {
+  /** @minLength 2 */
+  name?: string;
+  email?: string;
+  /** @minLength 7 */
+  phone?: string;
+  address?: string;
+  status?: ParentUpdateStatus;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+}
+
+export type EmployeeStatus = typeof EmployeeStatus[keyof typeof EmployeeStatus];
+
+
+export const EmployeeStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  RESIGNED: 'RESIGNED',
+  TERMINATED: 'TERMINATED',
+} as const;
+
+export type EmployeeType = typeof EmployeeType[keyof typeof EmployeeType];
+
+
+export const EmployeeType = {
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+} as const;
+
+/**
+ * @nullable
+ */
+export type EmployeeGender = typeof EmployeeGender[keyof typeof EmployeeGender] | null;
+
+
+export const EmployeeGender = {
+  female: 'female',
+  male: 'male',
+  other: 'other',
+} as const;
+
+export interface Employee {
+  id: number;
+  schoolId: number;
+  employeeId: string;
+  firstName: string;
+  /** @nullable */
+  middleName?: string | null;
+  lastName: string;
+  type: EmployeeType;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  photoUrl?: string | null;
+  /** @nullable */
+  gender?: EmployeeGender;
+  status: EmployeeStatus;
+  /** @nullable */
+  dateEmployed?: string | null;
+  /** @nullable */
+  department?: string | null;
+  /** @nullable */
+  qualification?: string | null;
+  /** @nullable */
+  userId?: number | null;
+}
+
+export type EmployeeInputGender = typeof EmployeeInputGender[keyof typeof EmployeeInputGender];
+
+
+export const EmployeeInputGender = {
+  female: 'female',
+  male: 'male',
+  other: 'other',
+} as const;
+
+export interface EmployeeInput {
+  /** @minLength 1 */
+  employeeId: string;
+  /** @minLength 2 */
+  firstName: string;
+  middleName?: string;
+  /** @minLength 2 */
+  lastName: string;
+  type: EmployeeType;
+  phone?: string;
+  email?: string;
+  address?: string;
+  photoUrl?: string;
+  gender?: EmployeeInputGender;
+  dateEmployed?: string;
+  department?: string;
+  qualification?: string;
+  /** @minimum 1 */
+  userId?: number;
+}
+
+export type EmployeeUpdateGender = typeof EmployeeUpdateGender[keyof typeof EmployeeUpdateGender];
+
+
+export const EmployeeUpdateGender = {
+  female: 'female',
+  male: 'male',
+  other: 'other',
+} as const;
+
+export interface EmployeeUpdate {
+  /** @minLength 2 */
+  firstName?: string;
+  middleName?: string;
+  /** @minLength 2 */
+  lastName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  photoUrl?: string;
+  gender?: EmployeeUpdateGender;
+  dateEmployed?: string;
+  department?: string;
+  qualification?: string;
+  /** @minimum 1 */
+  userId?: number;
+}
+
+export interface EmployeeStatusUpdate {
+  status: EmployeeStatus;
+}
+
+export type AcademicSessionInputStatus = typeof AcademicSessionInputStatus[keyof typeof AcademicSessionInputStatus];
+
+
+export const AcademicSessionInputStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export interface AcademicSessionInput {
+  name: string;
+  startDate: string;
+  endDate: string;
+  status?: AcademicSessionInputStatus;
+  isCurrent?: boolean;
+}
+
+export type AcademicSessionUpdateStatus = typeof AcademicSessionUpdateStatus[keyof typeof AcademicSessionUpdateStatus];
+
+
+export const AcademicSessionUpdateStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export interface AcademicSessionUpdate {
+  name?: string;
+  startDate?: string;
+  endDate?: string;
+  status?: AcademicSessionUpdateStatus;
+  isCurrent?: boolean;
+}
+
+export type AcademicTermInputName = typeof AcademicTermInputName[keyof typeof AcademicTermInputName];
+
+
+export const AcademicTermInputName = {
+  FIRST: 'FIRST',
+  SECOND: 'SECOND',
+  THIRD: 'THIRD',
+} as const;
+
+export type AcademicTermInputStatus = typeof AcademicTermInputStatus[keyof typeof AcademicTermInputStatus];
+
+
+export const AcademicTermInputStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export interface AcademicTermInput {
+  name: AcademicTermInputName;
+  startDate: string;
+  endDate: string;
+  status?: AcademicTermInputStatus;
+  isCurrent?: boolean;
+}
+
+export type AcademicTermUpdateName = typeof AcademicTermUpdateName[keyof typeof AcademicTermUpdateName];
+
+
+export const AcademicTermUpdateName = {
+  FIRST: 'FIRST',
+  SECOND: 'SECOND',
+  THIRD: 'THIRD',
+} as const;
+
+export type AcademicTermUpdateStatus = typeof AcademicTermUpdateStatus[keyof typeof AcademicTermUpdateStatus];
+
+
+export const AcademicTermUpdateStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export interface AcademicTermUpdate {
+  name?: AcademicTermUpdateName;
+  startDate?: string;
+  endDate?: string;
+  status?: AcademicTermUpdateStatus;
+  isCurrent?: boolean;
+}
+
+export type StudentClassAssignmentStatus = typeof StudentClassAssignmentStatus[keyof typeof StudentClassAssignmentStatus];
+
+
+export const StudentClassAssignmentStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface StudentClassAssignment {
+  id: number;
+  studentId: number;
+  schoolId: number;
+  sessionId: number;
+  /** @nullable */
+  termId?: number | null;
+  classId: number;
+  className?: string;
+  section: string;
+  startDate?: string;
+  /** @nullable */
+  endDate?: string | null;
+  status: StudentClassAssignmentStatus;
+}
+
+export interface StudentClassAssignmentInput {
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  termId?: number;
+  /** @minimum 1 */
+  classId: number;
+  section: string;
+  startDate?: string;
+}
+
+export type SubjectStatus = typeof SubjectStatus[keyof typeof SubjectStatus];
+
+
+export const SubjectStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface Subject {
+  id: number;
+  schoolId: number;
+  name: string;
+  code: string;
+  /** @nullable */
+  description?: string | null;
+  status: SubjectStatus;
+}
+
+export interface SubjectInput {
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  code: string;
+  description?: string;
+  status?: SubjectStatus;
+}
+
+export interface SubjectUpdate {
+  /** @minLength 1 */
+  name?: string;
+  /** @minLength 1 */
+  code?: string;
+  description?: string;
+  status?: SubjectStatus;
+}
+
+export interface ClassSubjectAssignment {
+  id: number;
+  schoolId: number;
+  classId: number;
+  subjectId: number;
+  sessionId: number;
+  /** @nullable */
+  termId?: number | null;
+  /** @nullable */
+  teacherId?: number | null;
+  /** @nullable */
+  section?: string | null;
+  status: SubjectStatus;
+}
+
+export interface ClassSubjectAssignmentInput {
+  /** @minimum 1 */
+  classId: number;
+  /** @minimum 1 */
+  subjectId: number;
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  termId?: number;
+  /** @minimum 1 */
+  teacherId?: number;
+  section?: string;
+}
+
+export type TeacherClassAssignmentAssignmentType = typeof TeacherClassAssignmentAssignmentType[keyof typeof TeacherClassAssignmentAssignmentType];
+
+
+export const TeacherClassAssignmentAssignmentType = {
+  CLASS_TEACHER: 'CLASS_TEACHER',
+  SUBJECT_TEACHER: 'SUBJECT_TEACHER',
+  ASSISTANT_TEACHER: 'ASSISTANT_TEACHER',
+} as const;
+
+export type TeacherClassAssignmentStatus = typeof TeacherClassAssignmentStatus[keyof typeof TeacherClassAssignmentStatus];
+
+
+export const TeacherClassAssignmentStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface TeacherClassAssignment {
+  id: number;
+  schoolId: number;
+  teacherId: number;
+  sessionId: number;
+  classId: number;
+  /** @nullable */
+  section?: string | null;
+  assignmentType: TeacherClassAssignmentAssignmentType;
+  /** @nullable */
+  subjectId?: number | null;
+  startDate: string;
+  /** @nullable */
+  endDate?: string | null;
+  status: TeacherClassAssignmentStatus;
+}
+
+export type TeacherClassAssignmentInputAssignmentType = typeof TeacherClassAssignmentInputAssignmentType[keyof typeof TeacherClassAssignmentInputAssignmentType];
+
+
+export const TeacherClassAssignmentInputAssignmentType = {
+  CLASS_TEACHER: 'CLASS_TEACHER',
+  SUBJECT_TEACHER: 'SUBJECT_TEACHER',
+  ASSISTANT_TEACHER: 'ASSISTANT_TEACHER',
+} as const;
+
+export interface TeacherClassAssignmentInput {
+  /** @minimum 1 */
+  teacherId: number;
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  classId: number;
+  section?: string;
+  assignmentType: TeacherClassAssignmentInputAssignmentType;
+  /** @minimum 1 */
+  subjectId?: number;
+  startDate: string;
 }
 
 export interface SchoolClass {
@@ -635,6 +1312,17 @@ export type NotFoundResponse = ApiError;
 
 export type SchoolIdParameter = number;
 
+export type SessionIdParameter = number;
+
+export type StatusFilterParameter = typeof StatusFilterParameter[keyof typeof StatusFilterParameter];
+
+
+export const StatusFilterParameter = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  all: 'all',
+} as const;
+
 export type SearchParameter = string;
 
 export type ListParentStudentRelationshipsParams = {
@@ -687,8 +1375,11 @@ export type ListStudentsStatus = typeof ListStudentsStatus[keyof typeof ListStud
 
 
 export const ListStudentsStatus = {
-  active: 'active',
-  archived: 'archived',
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  GRADUATED: 'GRADUATED',
+  TRANSFERRED: 'TRANSFERRED',
+  WITHDRAWN: 'WITHDRAWN',
   all: 'all',
 } as const;
 
@@ -713,6 +1404,32 @@ export type UpdateStudentParams = {
 schoolId: SchoolIdParameter;
 };
 
+export type UpdateStudentStatusParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ListStudentClassAssignmentsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+/**
+ * @minimum 1
+ */
+sessionId?: SessionIdParameter;
+status?: StatusFilterParameter;
+};
+
+export type AssignStudentClassParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
 export type ListParentsParams = {
 /**
  * @minimum 1
@@ -728,6 +1445,60 @@ export type CreateParentParams = {
 schoolId: SchoolIdParameter;
 };
 
+export type GetParentParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type UpdateParentParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ListEmployeesParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+search?: SearchParameter;
+employeeId?: string;
+department?: string;
+role?: EmployeeType;
+status?: EmployeeStatus;
+};
+
+export type CreateEmployeeParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type GetEmployeeParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type UpdateEmployeeParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type UpdateEmployeeStatusParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
 export type ListClassesParams = {
 /**
  * @minimum 1
@@ -736,6 +1507,128 @@ schoolId: SchoolIdParameter;
 };
 
 export type CreateClassParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ListAcademicSessionsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+status?: StatusFilterParameter;
+};
+
+export type CreateAcademicSessionParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ListAcademicTermsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type CreateAcademicTermParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type UpdateAcademicSessionParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type UpdateAcademicTermParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ListSubjectsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+search?: SearchParameter;
+status?: SubjectStatus;
+};
+
+export type CreateSubjectParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type GetSubjectParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type UpdateSubjectParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ListClassSubjectAssignmentsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+/**
+ * @minimum 1
+ */
+classId?: number;
+/**
+ * @minimum 1
+ */
+subjectId?: number;
+/**
+ * @minimum 1
+ */
+sessionId?: SessionIdParameter;
+};
+
+export type AssignClassSubjectParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ListTeacherClassAssignmentsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+/**
+ * @minimum 1
+ */
+employeeId?: number;
+/**
+ * @minimum 1
+ */
+sessionId?: SessionIdParameter;
+status?: StatusFilterParameter;
+};
+
+export type AssignTeacherClassParams = {
 /**
  * @minimum 1
  */

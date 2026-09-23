@@ -93,7 +93,13 @@ export const GetParentProfileResponse = zod.object({
   "schoolId": zod.number().int(),
   "name": zod.string(),
   "email": zod.string(),
-  "phone": zod.string()
+  "phone": zod.string(),
+  "address": zod.string().nullish(),
+  "relationshipTypes": zod.array(zod.enum(['Father', 'Mother', 'Guardian', 'Grandparent', 'Other'])).optional(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']).optional(),
+  "clerkUserId": zod.string().nullish(),
+  "emergencyContactName": zod.string().nullish(),
+  "emergencyContactPhone": zod.string().nullish()
 })
 
 
@@ -359,6 +365,10 @@ export const GetPlatformDashboardResponse = zod.object({
   "edupulseAllocation": zod.number(),
   "activeCards": zod.number().int(),
   "lockedCards": zod.number().int(),
+  "inactiveSchools": zod.number().int().optional(),
+  "totalTeachers": zod.number().int().optional(),
+  "totalParents": zod.number().int().optional(),
+  "subscriptionSummary": zod.record(zod.string(), zod.number().int()).optional(),
   "recentActivity": zod.array(zod.object({
   "id": zod.number().int(),
   "user": zod.string(),
@@ -390,6 +400,27 @@ export const GetSchoolDashboardResponse = zod.object({
   "name": zod.string(),
   "city": zod.string(),
   "state": zod.string(),
+  "registrationNumber": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "lga": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().email().nullish(),
+  "website": zod.string().url().nullish(),
+  "logoUrl": zod.string().url().nullish(),
+  "schoolType": zod.string().nullish(),
+  "administrators": zod.array(zod.object({
+  "id": zod.number().int(),
+  "email": zod.string(),
+  "firstName": zod.string().nullish(),
+  "lastName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "userStatus": zod.string(),
+  "membershipId": zod.number().int(),
+  "role": zod.string(),
+  "membershipStatus": zod.string(),
+  "schoolId": zod.number().int()
+})).optional(),
+  "academicSetupStatus": zod.string().nullish(),
   "status": zod.enum(['active', 'suspended', 'inactive']),
   "studentCount": zod.number().int(),
   "staffCount": zod.number().int(),
@@ -403,6 +434,31 @@ export const GetSchoolDashboardResponse = zod.object({
   "pendingPayments": zod.number().int(),
   "activeCards": zod.number().int(),
   "lockedCards": zod.number().int(),
+  "totalParents": zod.number().int().optional(),
+  "activeTeachers": zod.number().int().optional(),
+  "otherStaff": zod.number().int().optional(),
+  "totalClasses": zod.number().int().optional(),
+  "totalSections": zod.number().int().optional(),
+  "totalSubjects": zod.number().int().optional(),
+  "currentAcademicSession": zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "name": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']),
+  "isCurrent": zod.boolean().optional()
+}).optional(),
+  "currentTerm": zod.object({
+  "id": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "name": zod.enum(['FIRST', 'SECOND', 'THIRD']),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']),
+  "isCurrent": zod.boolean().optional()
+}).optional(),
+  "subscriptionStatus": zod.string().nullish(),
   "recentActivity": zod.array(zod.object({
   "id": zod.number().int(),
   "user": zod.string(),
@@ -431,6 +487,27 @@ export const ListSchoolsResponseItem = zod.object({
   "name": zod.string(),
   "city": zod.string(),
   "state": zod.string(),
+  "registrationNumber": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "lga": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().email().nullish(),
+  "website": zod.string().url().nullish(),
+  "logoUrl": zod.string().url().nullish(),
+  "schoolType": zod.string().nullish(),
+  "administrators": zod.array(zod.object({
+  "id": zod.number().int(),
+  "email": zod.string(),
+  "firstName": zod.string().nullish(),
+  "lastName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "userStatus": zod.string(),
+  "membershipId": zod.number().int(),
+  "role": zod.string(),
+  "membershipStatus": zod.string(),
+  "schoolId": zod.number().int()
+})).optional(),
+  "academicSetupStatus": zod.string().nullish(),
   "status": zod.enum(['active', 'suspended', 'inactive']),
   "studentCount": zod.number().int(),
   "staffCount": zod.number().int(),
@@ -443,6 +520,7 @@ export const ListSchoolsResponse = zod.array(ListSchoolsResponseItem)
 /**
  * @summary Create school
  */
+
 export const createSchoolBodyNameMin = 2;
 
 export const createSchoolBodyCityMin = 2;
@@ -452,9 +530,18 @@ export const createSchoolBodyStateMin = 2;
 
 
 export const CreateSchoolBody = zod.object({
+  "code": zod.string().min(1),
   "name": zod.string().min(createSchoolBodyNameMin),
   "city": zod.string().min(createSchoolBodyCityMin),
   "state": zod.string().min(createSchoolBodyStateMin),
+  "registrationNumber": zod.string().optional(),
+  "address": zod.string().optional(),
+  "lga": zod.string().optional(),
+  "phone": zod.string().optional(),
+  "email": zod.string().email().optional(),
+  "website": zod.string().url().optional(),
+  "logoUrl": zod.string().url().optional(),
+  "schoolType": zod.string().optional(),
   "status": zod.enum(['active', 'suspended', 'inactive']).optional()
 })
 
@@ -464,6 +551,27 @@ export const CreateSchoolResponse = zod.object({
   "name": zod.string(),
   "city": zod.string(),
   "state": zod.string(),
+  "registrationNumber": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "lga": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().email().nullish(),
+  "website": zod.string().url().nullish(),
+  "logoUrl": zod.string().url().nullish(),
+  "schoolType": zod.string().nullish(),
+  "administrators": zod.array(zod.object({
+  "id": zod.number().int(),
+  "email": zod.string(),
+  "firstName": zod.string().nullish(),
+  "lastName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "userStatus": zod.string(),
+  "membershipId": zod.number().int(),
+  "role": zod.string(),
+  "membershipStatus": zod.string(),
+  "schoolId": zod.number().int()
+})).optional(),
+  "academicSetupStatus": zod.string().nullish(),
   "status": zod.enum(['active', 'suspended', 'inactive']),
   "studentCount": zod.number().int(),
   "staffCount": zod.number().int(),
@@ -488,6 +596,27 @@ export const GetSchoolResponse = zod.object({
   "name": zod.string(),
   "city": zod.string(),
   "state": zod.string(),
+  "registrationNumber": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "lga": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().email().nullish(),
+  "website": zod.string().url().nullish(),
+  "logoUrl": zod.string().url().nullish(),
+  "schoolType": zod.string().nullish(),
+  "administrators": zod.array(zod.object({
+  "id": zod.number().int(),
+  "email": zod.string(),
+  "firstName": zod.string().nullish(),
+  "lastName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "userStatus": zod.string(),
+  "membershipId": zod.number().int(),
+  "role": zod.string(),
+  "membershipStatus": zod.string(),
+  "schoolId": zod.number().int()
+})).optional(),
+  "academicSetupStatus": zod.string().nullish(),
   "status": zod.enum(['active', 'suspended', 'inactive']),
   "studentCount": zod.number().int(),
   "staffCount": zod.number().int(),
@@ -514,10 +643,20 @@ export const updateSchoolBodyStateMin = 2;
 
 
 
+
 export const UpdateSchoolBody = zod.object({
   "name": zod.string().min(updateSchoolBodyNameMin).optional(),
   "city": zod.string().min(updateSchoolBodyCityMin).optional(),
   "state": zod.string().min(updateSchoolBodyStateMin).optional(),
+  "code": zod.string().min(1).optional(),
+  "registrationNumber": zod.string().optional(),
+  "address": zod.string().optional(),
+  "lga": zod.string().optional(),
+  "phone": zod.string().optional(),
+  "email": zod.string().email().optional(),
+  "website": zod.string().url().optional(),
+  "logoUrl": zod.string().url().optional(),
+  "schoolType": zod.string().optional(),
   "status": zod.enum(['active', 'suspended', 'inactive']).optional()
 })
 
@@ -527,6 +666,76 @@ export const UpdateSchoolResponse = zod.object({
   "name": zod.string(),
   "city": zod.string(),
   "state": zod.string(),
+  "registrationNumber": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "lga": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().email().nullish(),
+  "website": zod.string().url().nullish(),
+  "logoUrl": zod.string().url().nullish(),
+  "schoolType": zod.string().nullish(),
+  "administrators": zod.array(zod.object({
+  "id": zod.number().int(),
+  "email": zod.string(),
+  "firstName": zod.string().nullish(),
+  "lastName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "userStatus": zod.string(),
+  "membershipId": zod.number().int(),
+  "role": zod.string(),
+  "membershipStatus": zod.string(),
+  "schoolId": zod.number().int()
+})).optional(),
+  "academicSetupStatus": zod.string().nullish(),
+  "status": zod.enum(['active', 'suspended', 'inactive']),
+  "studentCount": zod.number().int(),
+  "staffCount": zod.number().int(),
+  "subscriptionStatus": zod.enum(['active', 'attention', 'expired']),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Activate or deactivate a school
+ */
+
+
+
+export const UpdateSchoolStatusParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const UpdateSchoolStatusBody = zod.object({
+  "status": zod.enum(['active', 'suspended', 'inactive'])
+})
+
+export const UpdateSchoolStatusResponse = zod.object({
+  "id": zod.number().int(),
+  "code": zod.string(),
+  "name": zod.string(),
+  "city": zod.string(),
+  "state": zod.string(),
+  "registrationNumber": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "lga": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().email().nullish(),
+  "website": zod.string().url().nullish(),
+  "logoUrl": zod.string().url().nullish(),
+  "schoolType": zod.string().nullish(),
+  "administrators": zod.array(zod.object({
+  "id": zod.number().int(),
+  "email": zod.string(),
+  "firstName": zod.string().nullish(),
+  "lastName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "userStatus": zod.string(),
+  "membershipId": zod.number().int(),
+  "role": zod.string(),
+  "membershipStatus": zod.string(),
+  "schoolId": zod.number().int()
+})).optional(),
+  "academicSetupStatus": zod.string().nullish(),
   "status": zod.enum(['active', 'suspended', 'inactive']),
   "studentCount": zod.number().int(),
   "staffCount": zod.number().int(),
@@ -544,7 +753,7 @@ export const UpdateSchoolResponse = zod.object({
 export const ListStudentsQueryParams = zod.object({
   "schoolId": zod.coerce.number().int().min(1),
   "search": zod.coerce.string().optional(),
-  "status": zod.enum(['active', 'archived', 'all']).optional(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'GRADUATED', 'TRANSFERRED', 'WITHDRAWN', 'all']).optional(),
   "classId": zod.coerce.number().int().optional()
 })
 
@@ -554,12 +763,27 @@ export const ListStudentsResponseItem = zod.object({
   "admissionNo": zod.string(),
   "firstName": zod.string(),
   "lastName": zod.string(),
+  "middleName": zod.string().nullish(),
+  "dateOfBirth": zod.coerce.date().nullish(),
+  "passportUrl": zod.string().url().nullish(),
+  "admissionDate": zod.coerce.date().nullish(),
+  "admissionStatus": zod.enum(['pending', 'admitted', 'rejected']).nullish(),
+  "address": zod.string().nullish(),
+  "previousSchool": zod.string().nullish(),
+  "medicalInformation": zod.string().nullish(),
+  "emergencyContactName": zod.string().nullish(),
+  "emergencyContactPhone": zod.string().nullish(),
+  "currentClassId": zod.number().int().nullish(),
+  "currentSessionId": zod.number().int().nullish(),
+  "currentTermId": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date().nullish(),
+  "updatedAt": zod.coerce.date().nullish(),
   "gender": zod.enum(['female', 'male', 'other']),
   "className": zod.string(),
   "section": zod.string(),
   "parentName": zod.string().nullish(),
   "parentPhone": zod.string().nullish(),
-  "status": zod.enum(['active', 'archived']),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'GRADUATED', 'TRANSFERRED', 'WITHDRAWN']),
   "subscriptionStatus": zod.enum(['active', 'unpaid', 'pending', 'expired']),
   "cardStatus": zod.enum(['active', 'locked', 'unassigned', 'lost']),
   "joinedAt": zod.string()
@@ -590,6 +814,16 @@ export const CreateStudentBody = zod.object({
   "admissionNo": zod.string().min(1),
   "firstName": zod.string().min(createStudentBodyFirstNameMin),
   "lastName": zod.string().min(createStudentBodyLastNameMin),
+  "middleName": zod.string().optional(),
+  "dateOfBirth": zod.coerce.date().optional(),
+  "passportUrl": zod.string().url().optional(),
+  "admissionDate": zod.coerce.date().optional(),
+  "admissionStatus": zod.enum(['pending', 'admitted', 'rejected']).optional(),
+  "address": zod.string().optional(),
+  "previousSchool": zod.string().optional(),
+  "medicalInformation": zod.string().optional(),
+  "emergencyContactName": zod.string().optional(),
+  "emergencyContactPhone": zod.string().optional(),
   "gender": zod.enum(['female', 'male', 'other']),
   "className": zod.string().min(1),
   "section": zod.string().min(1),
@@ -603,12 +837,27 @@ export const CreateStudentResponse = zod.object({
   "admissionNo": zod.string(),
   "firstName": zod.string(),
   "lastName": zod.string(),
+  "middleName": zod.string().nullish(),
+  "dateOfBirth": zod.coerce.date().nullish(),
+  "passportUrl": zod.string().url().nullish(),
+  "admissionDate": zod.coerce.date().nullish(),
+  "admissionStatus": zod.enum(['pending', 'admitted', 'rejected']).nullish(),
+  "address": zod.string().nullish(),
+  "previousSchool": zod.string().nullish(),
+  "medicalInformation": zod.string().nullish(),
+  "emergencyContactName": zod.string().nullish(),
+  "emergencyContactPhone": zod.string().nullish(),
+  "currentClassId": zod.number().int().nullish(),
+  "currentSessionId": zod.number().int().nullish(),
+  "currentTermId": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date().nullish(),
+  "updatedAt": zod.coerce.date().nullish(),
   "gender": zod.enum(['female', 'male', 'other']),
   "className": zod.string(),
   "section": zod.string(),
   "parentName": zod.string().nullish(),
   "parentPhone": zod.string().nullish(),
-  "status": zod.enum(['active', 'archived']),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'GRADUATED', 'TRANSFERRED', 'WITHDRAWN']),
   "subscriptionStatus": zod.enum(['active', 'unpaid', 'pending', 'expired']),
   "cardStatus": zod.enum(['active', 'locked', 'unassigned', 'lost']),
   "joinedAt": zod.string()
@@ -638,12 +887,27 @@ export const GetStudentResponse = zod.object({
   "admissionNo": zod.string(),
   "firstName": zod.string(),
   "lastName": zod.string(),
+  "middleName": zod.string().nullish(),
+  "dateOfBirth": zod.coerce.date().nullish(),
+  "passportUrl": zod.string().url().nullish(),
+  "admissionDate": zod.coerce.date().nullish(),
+  "admissionStatus": zod.enum(['pending', 'admitted', 'rejected']).nullish(),
+  "address": zod.string().nullish(),
+  "previousSchool": zod.string().nullish(),
+  "medicalInformation": zod.string().nullish(),
+  "emergencyContactName": zod.string().nullish(),
+  "emergencyContactPhone": zod.string().nullish(),
+  "currentClassId": zod.number().int().nullish(),
+  "currentSessionId": zod.number().int().nullish(),
+  "currentTermId": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date().nullish(),
+  "updatedAt": zod.coerce.date().nullish(),
   "gender": zod.enum(['female', 'male', 'other']),
   "className": zod.string(),
   "section": zod.string(),
   "parentName": zod.string().nullish(),
   "parentPhone": zod.string().nullish(),
-  "status": zod.enum(['active', 'archived']),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'GRADUATED', 'TRANSFERRED', 'WITHDRAWN']),
   "subscriptionStatus": zod.enum(['active', 'unpaid', 'pending', 'expired']),
   "cardStatus": zod.enum(['active', 'locked', 'unassigned', 'lost']),
   "joinedAt": zod.string()
@@ -678,7 +942,16 @@ export const UpdateStudentBody = zod.object({
   "lastName": zod.string().min(updateStudentBodyLastNameMin).optional(),
   "className": zod.string().optional(),
   "section": zod.string().optional(),
-  "status": zod.enum(['active', 'archived']).optional()
+  "middleName": zod.string().optional(),
+  "dateOfBirth": zod.coerce.date().optional(),
+  "passportUrl": zod.string().url().optional(),
+  "admissionStatus": zod.enum(['pending', 'admitted', 'rejected']).optional(),
+  "address": zod.string().optional(),
+  "previousSchool": zod.string().optional(),
+  "medicalInformation": zod.string().optional(),
+  "emergencyContactName": zod.string().optional(),
+  "emergencyContactPhone": zod.string().optional(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'GRADUATED', 'TRANSFERRED', 'WITHDRAWN']).optional()
 })
 
 export const UpdateStudentResponse = zod.object({
@@ -687,15 +960,165 @@ export const UpdateStudentResponse = zod.object({
   "admissionNo": zod.string(),
   "firstName": zod.string(),
   "lastName": zod.string(),
+  "middleName": zod.string().nullish(),
+  "dateOfBirth": zod.coerce.date().nullish(),
+  "passportUrl": zod.string().url().nullish(),
+  "admissionDate": zod.coerce.date().nullish(),
+  "admissionStatus": zod.enum(['pending', 'admitted', 'rejected']).nullish(),
+  "address": zod.string().nullish(),
+  "previousSchool": zod.string().nullish(),
+  "medicalInformation": zod.string().nullish(),
+  "emergencyContactName": zod.string().nullish(),
+  "emergencyContactPhone": zod.string().nullish(),
+  "currentClassId": zod.number().int().nullish(),
+  "currentSessionId": zod.number().int().nullish(),
+  "currentTermId": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date().nullish(),
+  "updatedAt": zod.coerce.date().nullish(),
   "gender": zod.enum(['female', 'male', 'other']),
   "className": zod.string(),
   "section": zod.string(),
   "parentName": zod.string().nullish(),
   "parentPhone": zod.string().nullish(),
-  "status": zod.enum(['active', 'archived']),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'GRADUATED', 'TRANSFERRED', 'WITHDRAWN']),
   "subscriptionStatus": zod.enum(['active', 'unpaid', 'pending', 'expired']),
   "cardStatus": zod.enum(['active', 'locked', 'unassigned', 'lost']),
   "joinedAt": zod.string()
+})
+
+
+/**
+ * @summary Change a student's status
+ */
+
+
+
+export const UpdateStudentStatusParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const UpdateStudentStatusQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const UpdateStudentStatusBody = zod.object({
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'GRADUATED', 'TRANSFERRED', 'WITHDRAWN'])
+})
+
+export const UpdateStudentStatusResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "admissionNo": zod.string(),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "middleName": zod.string().nullish(),
+  "dateOfBirth": zod.coerce.date().nullish(),
+  "passportUrl": zod.string().url().nullish(),
+  "admissionDate": zod.coerce.date().nullish(),
+  "admissionStatus": zod.enum(['pending', 'admitted', 'rejected']).nullish(),
+  "address": zod.string().nullish(),
+  "previousSchool": zod.string().nullish(),
+  "medicalInformation": zod.string().nullish(),
+  "emergencyContactName": zod.string().nullish(),
+  "emergencyContactPhone": zod.string().nullish(),
+  "currentClassId": zod.number().int().nullish(),
+  "currentSessionId": zod.number().int().nullish(),
+  "currentTermId": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date().nullish(),
+  "updatedAt": zod.coerce.date().nullish(),
+  "gender": zod.enum(['female', 'male', 'other']),
+  "className": zod.string(),
+  "section": zod.string(),
+  "parentName": zod.string().nullish(),
+  "parentPhone": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'GRADUATED', 'TRANSFERRED', 'WITHDRAWN']),
+  "subscriptionStatus": zod.enum(['active', 'unpaid', 'pending', 'expired']),
+  "cardStatus": zod.enum(['active', 'locked', 'unassigned', 'lost']),
+  "joinedAt": zod.string()
+})
+
+
+/**
+ * @summary List current and historical class assignments
+ */
+
+
+
+export const ListStudentClassAssignmentsParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+export const ListStudentClassAssignmentsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "sessionId": zod.coerce.number().int().min(1).optional(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'all']).optional()
+})
+
+export const ListStudentClassAssignmentsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "studentId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int().nullish(),
+  "classId": zod.number().int(),
+  "className": zod.string().optional(),
+  "section": zod.string(),
+  "startDate": zod.coerce.date().optional(),
+  "endDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+export const ListStudentClassAssignmentsResponse = zod.array(ListStudentClassAssignmentsResponseItem)
+
+
+/**
+ * @summary Assign a student to a class without deleting history
+ */
+
+
+
+export const AssignStudentClassParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const AssignStudentClassQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+
+export const AssignStudentClassBody = zod.object({
+  "sessionId": zod.number().int().min(1),
+  "termId": zod.number().int().min(1).optional(),
+  "classId": zod.number().int().min(1),
+  "section": zod.string(),
+  "startDate": zod.coerce.date().optional()
+})
+
+export const AssignStudentClassResponse = zod.object({
+  "id": zod.number().int(),
+  "studentId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int().nullish(),
+  "classId": zod.number().int(),
+  "className": zod.string().optional(),
+  "section": zod.string(),
+  "startDate": zod.coerce.date().optional(),
+  "endDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
 })
 
 
@@ -716,6 +1139,12 @@ export const ListParentsResponseItem = zod.object({
   "name": zod.string(),
   "email": zod.string(),
   "phone": zod.string(),
+  "address": zod.string().nullish(),
+  "relationshipType": zod.union([zod.literal('Father'),zod.literal('Mother'),zod.literal('Guardian'),zod.literal('Grandparent'),zod.literal('Other'),zod.literal(null)]).nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']).optional(),
+  "clerkUserId": zod.string().nullish(),
+  "emergencyContactName": zod.string().nullish(),
+  "emergencyContactPhone": zod.string().nullish(),
   "childrenCount": zod.number().int(),
   "activeChildren": zod.number().int()
 })
@@ -741,7 +1170,11 @@ export const createParentBodyPhoneMin = 7;
 export const CreateParentBody = zod.object({
   "name": zod.string().min(createParentBodyNameMin),
   "email": zod.string().email(),
-  "phone": zod.string().min(createParentBodyPhoneMin)
+  "phone": zod.string().min(createParentBodyPhoneMin),
+  "address": zod.string().optional(),
+  "relationshipType": zod.enum(['Father', 'Mother', 'Guardian', 'Grandparent', 'Other']).optional(),
+  "emergencyContactName": zod.string().optional(),
+  "emergencyContactPhone": zod.string().optional()
 })
 
 export const CreateParentResponse = zod.object({
@@ -750,8 +1183,331 @@ export const CreateParentResponse = zod.object({
   "name": zod.string(),
   "email": zod.string(),
   "phone": zod.string(),
+  "address": zod.string().nullish(),
+  "relationshipType": zod.union([zod.literal('Father'),zod.literal('Mother'),zod.literal('Guardian'),zod.literal('Grandparent'),zod.literal('Other'),zod.literal(null)]).nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']).optional(),
+  "clerkUserId": zod.string().nullish(),
+  "emergencyContactName": zod.string().nullish(),
+  "emergencyContactPhone": zod.string().nullish(),
   "childrenCount": zod.number().int(),
   "activeChildren": zod.number().int()
+})
+
+
+/**
+ * @summary Get a parent profile
+ */
+
+
+
+export const GetParentParams = zod.object({
+  "parentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GetParentQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const GetParentResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string(),
+  "address": zod.string().nullish(),
+  "relationshipType": zod.union([zod.literal('Father'),zod.literal('Mother'),zod.literal('Guardian'),zod.literal('Grandparent'),zod.literal('Other'),zod.literal(null)]).nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']).optional(),
+  "clerkUserId": zod.string().nullish(),
+  "emergencyContactName": zod.string().nullish(),
+  "emergencyContactPhone": zod.string().nullish(),
+  "childrenCount": zod.number().int(),
+  "activeChildren": zod.number().int()
+})
+
+
+/**
+ * @summary Update a parent profile
+ */
+
+
+
+export const UpdateParentParams = zod.object({
+  "parentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const UpdateParentQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const updateParentBodyNameMin = 2;
+
+export const updateParentBodyPhoneMin = 7;
+
+
+
+export const UpdateParentBody = zod.object({
+  "name": zod.string().min(updateParentBodyNameMin).optional(),
+  "email": zod.string().email().optional(),
+  "phone": zod.string().min(updateParentBodyPhoneMin).optional(),
+  "address": zod.string().optional(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']).optional(),
+  "emergencyContactName": zod.string().optional(),
+  "emergencyContactPhone": zod.string().optional()
+})
+
+export const UpdateParentResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string(),
+  "address": zod.string().nullish(),
+  "relationshipType": zod.union([zod.literal('Father'),zod.literal('Mother'),zod.literal('Guardian'),zod.literal('Grandparent'),zod.literal('Other'),zod.literal(null)]).nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']).optional(),
+  "clerkUserId": zod.string().nullish(),
+  "emergencyContactName": zod.string().nullish(),
+  "emergencyContactPhone": zod.string().nullish(),
+  "childrenCount": zod.number().int(),
+  "activeChildren": zod.number().int()
+})
+
+
+/**
+ * @summary Search teachers and non-teaching staff
+ */
+
+
+
+export const ListEmployeesQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "search": zod.coerce.string().optional(),
+  "employeeId": zod.coerce.string().optional(),
+  "department": zod.coerce.string().optional(),
+  "role": zod.enum(['TEACHER', 'STAFF']).optional(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']).optional()
+})
+
+export const ListEmployeesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "employeeId": zod.string(),
+  "firstName": zod.string(),
+  "middleName": zod.string().nullish(),
+  "lastName": zod.string(),
+  "type": zod.enum(['TEACHER', 'STAFF']),
+  "phone": zod.string().nullish(),
+  "email": zod.string().email().nullish(),
+  "address": zod.string().nullish(),
+  "photoUrl": zod.string().url().nullish(),
+  "gender": zod.union([zod.literal('female'),zod.literal('male'),zod.literal('other'),zod.literal(null)]).nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']),
+  "dateEmployed": zod.coerce.date().nullish(),
+  "department": zod.string().nullish(),
+  "qualification": zod.string().nullish(),
+  "userId": zod.number().int().nullish()
+})
+export const ListEmployeesResponse = zod.array(ListEmployeesResponseItem)
+
+
+/**
+ * @summary Create a teacher or staff member
+ */
+
+
+
+export const CreateEmployeeQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+export const createEmployeeBodyFirstNameMin = 2;
+
+export const createEmployeeBodyLastNameMin = 2;
+
+
+
+
+export const CreateEmployeeBody = zod.object({
+  "employeeId": zod.string().min(1),
+  "firstName": zod.string().min(createEmployeeBodyFirstNameMin),
+  "middleName": zod.string().optional(),
+  "lastName": zod.string().min(createEmployeeBodyLastNameMin),
+  "type": zod.enum(['TEACHER', 'STAFF']),
+  "phone": zod.string().optional(),
+  "email": zod.string().email().optional(),
+  "address": zod.string().optional(),
+  "photoUrl": zod.string().url().optional(),
+  "gender": zod.enum(['female', 'male', 'other']).optional(),
+  "dateEmployed": zod.coerce.date().optional(),
+  "department": zod.string().optional(),
+  "qualification": zod.string().optional(),
+  "userId": zod.number().int().min(1).optional()
+})
+
+export const CreateEmployeeResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "employeeId": zod.string(),
+  "firstName": zod.string(),
+  "middleName": zod.string().nullish(),
+  "lastName": zod.string(),
+  "type": zod.enum(['TEACHER', 'STAFF']),
+  "phone": zod.string().nullish(),
+  "email": zod.string().email().nullish(),
+  "address": zod.string().nullish(),
+  "photoUrl": zod.string().url().nullish(),
+  "gender": zod.union([zod.literal('female'),zod.literal('male'),zod.literal('other'),zod.literal(null)]).nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']),
+  "dateEmployed": zod.coerce.date().nullish(),
+  "department": zod.string().nullish(),
+  "qualification": zod.string().nullish(),
+  "userId": zod.number().int().nullish()
+})
+
+
+/**
+ * @summary Get an employee profile
+ */
+
+
+
+export const GetEmployeeParams = zod.object({
+  "employeeId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GetEmployeeQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const GetEmployeeResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "employeeId": zod.string(),
+  "firstName": zod.string(),
+  "middleName": zod.string().nullish(),
+  "lastName": zod.string(),
+  "type": zod.enum(['TEACHER', 'STAFF']),
+  "phone": zod.string().nullish(),
+  "email": zod.string().email().nullish(),
+  "address": zod.string().nullish(),
+  "photoUrl": zod.string().url().nullish(),
+  "gender": zod.union([zod.literal('female'),zod.literal('male'),zod.literal('other'),zod.literal(null)]).nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']),
+  "dateEmployed": zod.coerce.date().nullish(),
+  "department": zod.string().nullish(),
+  "qualification": zod.string().nullish(),
+  "userId": zod.number().int().nullish()
+})
+
+
+/**
+ * @summary Update an employee profile
+ */
+
+
+
+export const UpdateEmployeeParams = zod.object({
+  "employeeId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const UpdateEmployeeQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const updateEmployeeBodyFirstNameMin = 2;
+
+export const updateEmployeeBodyLastNameMin = 2;
+
+
+
+
+export const UpdateEmployeeBody = zod.object({
+  "firstName": zod.string().min(updateEmployeeBodyFirstNameMin).optional(),
+  "middleName": zod.string().optional(),
+  "lastName": zod.string().min(updateEmployeeBodyLastNameMin).optional(),
+  "phone": zod.string().optional(),
+  "email": zod.string().email().optional(),
+  "address": zod.string().optional(),
+  "photoUrl": zod.string().url().optional(),
+  "gender": zod.enum(['female', 'male', 'other']).optional(),
+  "dateEmployed": zod.coerce.date().optional(),
+  "department": zod.string().optional(),
+  "qualification": zod.string().optional(),
+  "userId": zod.number().int().min(1).optional()
+})
+
+export const UpdateEmployeeResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "employeeId": zod.string(),
+  "firstName": zod.string(),
+  "middleName": zod.string().nullish(),
+  "lastName": zod.string(),
+  "type": zod.enum(['TEACHER', 'STAFF']),
+  "phone": zod.string().nullish(),
+  "email": zod.string().email().nullish(),
+  "address": zod.string().nullish(),
+  "photoUrl": zod.string().url().nullish(),
+  "gender": zod.union([zod.literal('female'),zod.literal('male'),zod.literal('other'),zod.literal(null)]).nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']),
+  "dateEmployed": zod.coerce.date().nullish(),
+  "department": zod.string().nullish(),
+  "qualification": zod.string().nullish(),
+  "userId": zod.number().int().nullish()
+})
+
+
+/**
+ * @summary Change employee status
+ */
+
+
+
+export const UpdateEmployeeStatusParams = zod.object({
+  "employeeId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const UpdateEmployeeStatusQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const UpdateEmployeeStatusBody = zod.object({
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED'])
+})
+
+export const UpdateEmployeeStatusResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "employeeId": zod.string(),
+  "firstName": zod.string(),
+  "middleName": zod.string().nullish(),
+  "lastName": zod.string(),
+  "type": zod.enum(['TEACHER', 'STAFF']),
+  "phone": zod.string().nullish(),
+  "email": zod.string().email().nullish(),
+  "address": zod.string().nullish(),
+  "photoUrl": zod.string().url().nullish(),
+  "gender": zod.union([zod.literal('female'),zod.literal('male'),zod.literal('other'),zod.literal(null)]).nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']),
+  "dateEmployed": zod.coerce.date().nullish(),
+  "department": zod.string().nullish(),
+  "qualification": zod.string().nullish(),
+  "userId": zod.number().int().nullish()
 })
 
 
@@ -807,6 +1563,491 @@ export const CreateClassResponse = zod.object({
   "classTeacher": zod.string().nullable(),
   "studentCount": zod.number().int(),
   "capacity": zod.number().int()
+})
+
+
+/**
+ * @summary List academic sessions
+ */
+
+
+
+export const ListAcademicSessionsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'all']).optional()
+})
+
+export const ListAcademicSessionsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "name": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']),
+  "isCurrent": zod.boolean().optional()
+})
+export const ListAcademicSessionsResponse = zod.array(ListAcademicSessionsResponseItem)
+
+
+/**
+ * @summary Create an academic session
+ */
+
+
+
+export const CreateAcademicSessionQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const CreateAcademicSessionBody = zod.object({
+  "name": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']).optional(),
+  "isCurrent": zod.boolean().optional()
+})
+
+export const CreateAcademicSessionResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "name": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']),
+  "isCurrent": zod.boolean().optional()
+})
+
+
+/**
+ * @summary List terms in an academic session
+ */
+
+
+
+export const ListAcademicTermsParams = zod.object({
+  "sessionId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ListAcademicTermsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ListAcademicTermsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "name": zod.enum(['FIRST', 'SECOND', 'THIRD']),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']),
+  "isCurrent": zod.boolean().optional()
+})
+export const ListAcademicTermsResponse = zod.array(ListAcademicTermsResponseItem)
+
+
+/**
+ * @summary Create an academic term
+ */
+
+
+
+export const CreateAcademicTermParams = zod.object({
+  "sessionId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const CreateAcademicTermQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const CreateAcademicTermBody = zod.object({
+  "name": zod.enum(['FIRST', 'SECOND', 'THIRD']),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']).optional(),
+  "isCurrent": zod.boolean().optional()
+})
+
+export const CreateAcademicTermResponse = zod.object({
+  "id": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "name": zod.enum(['FIRST', 'SECOND', 'THIRD']),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']),
+  "isCurrent": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Update an academic session
+ */
+
+
+
+export const UpdateAcademicSessionParams = zod.object({
+  "sessionId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const UpdateAcademicSessionQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const UpdateAcademicSessionBody = zod.object({
+  "name": zod.string().optional(),
+  "startDate": zod.coerce.date().optional(),
+  "endDate": zod.coerce.date().optional(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']).optional(),
+  "isCurrent": zod.boolean().optional()
+})
+
+export const UpdateAcademicSessionResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "name": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']),
+  "isCurrent": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Update an academic term
+ */
+
+
+
+export const UpdateAcademicTermParams = zod.object({
+  "termId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const UpdateAcademicTermQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const UpdateAcademicTermBody = zod.object({
+  "name": zod.enum(['FIRST', 'SECOND', 'THIRD']).optional(),
+  "startDate": zod.coerce.date().optional(),
+  "endDate": zod.coerce.date().optional(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']).optional(),
+  "isCurrent": zod.boolean().optional()
+})
+
+export const UpdateAcademicTermResponse = zod.object({
+  "id": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "name": zod.enum(['FIRST', 'SECOND', 'THIRD']),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']),
+  "isCurrent": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Search school subjects
+ */
+
+
+
+export const ListSubjectsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "search": zod.coerce.string().optional(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']).optional()
+})
+
+export const ListSubjectsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "name": zod.string(),
+  "code": zod.string(),
+  "description": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+export const ListSubjectsResponse = zod.array(ListSubjectsResponseItem)
+
+
+/**
+ * @summary Create a subject
+ */
+
+
+
+export const CreateSubjectQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+export const CreateSubjectBody = zod.object({
+  "name": zod.string().min(1),
+  "code": zod.string().min(1),
+  "description": zod.string().optional(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']).optional()
+})
+
+export const CreateSubjectResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "name": zod.string(),
+  "code": zod.string(),
+  "description": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+
+
+/**
+ * @summary Get a subject
+ */
+
+
+
+export const GetSubjectParams = zod.object({
+  "subjectId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GetSubjectQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const GetSubjectResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "name": zod.string(),
+  "code": zod.string(),
+  "description": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+
+
+/**
+ * @summary Update a subject
+ */
+
+
+
+export const UpdateSubjectParams = zod.object({
+  "subjectId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const UpdateSubjectQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+export const UpdateSubjectBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "code": zod.string().min(1).optional(),
+  "description": zod.string().optional(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']).optional()
+})
+
+export const UpdateSubjectResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "name": zod.string(),
+  "code": zod.string(),
+  "description": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+
+
+/**
+ * @summary List subjects assigned to classes
+ */
+
+
+
+
+
+
+export const ListClassSubjectAssignmentsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "classId": zod.coerce.number().int().min(1).optional(),
+  "subjectId": zod.coerce.number().int().min(1).optional(),
+  "sessionId": zod.coerce.number().int().min(1).optional()
+})
+
+export const ListClassSubjectAssignmentsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "classId": zod.number().int(),
+  "subjectId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int().nullish(),
+  "teacherId": zod.number().int().nullish(),
+  "section": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+export const ListClassSubjectAssignmentsResponse = zod.array(ListClassSubjectAssignmentsResponseItem)
+
+
+/**
+ * @summary Assign a subject to a class
+ */
+
+
+
+export const AssignClassSubjectQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+
+
+
+export const AssignClassSubjectBody = zod.object({
+  "classId": zod.number().int().min(1),
+  "subjectId": zod.number().int().min(1),
+  "sessionId": zod.number().int().min(1),
+  "termId": zod.number().int().min(1).optional(),
+  "teacherId": zod.number().int().min(1).optional(),
+  "section": zod.string().optional()
+})
+
+export const AssignClassSubjectResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "classId": zod.number().int(),
+  "subjectId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int().nullish(),
+  "teacherId": zod.number().int().nullish(),
+  "section": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+
+
+/**
+ * @summary List current and historical teacher class assignments
+ */
+
+
+
+
+
+export const ListTeacherClassAssignmentsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "employeeId": zod.coerce.number().int().min(1).optional(),
+  "sessionId": zod.coerce.number().int().min(1).optional(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'all']).optional()
+})
+
+export const ListTeacherClassAssignmentsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string().nullish(),
+  "assignmentType": zod.enum(['CLASS_TEACHER', 'SUBJECT_TEACHER', 'ASSISTANT_TEACHER']),
+  "subjectId": zod.number().int().nullish(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+export const ListTeacherClassAssignmentsResponse = zod.array(ListTeacherClassAssignmentsResponseItem)
+
+
+/**
+ * @summary Assign a teacher to a class
+ */
+
+
+
+export const AssignTeacherClassQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+
+
+export const AssignTeacherClassBody = zod.object({
+  "teacherId": zod.number().int().min(1),
+  "sessionId": zod.number().int().min(1),
+  "classId": zod.number().int().min(1),
+  "section": zod.string().optional(),
+  "assignmentType": zod.enum(['CLASS_TEACHER', 'SUBJECT_TEACHER', 'ASSISTANT_TEACHER']),
+  "subjectId": zod.number().int().min(1).optional(),
+  "startDate": zod.coerce.date()
+})
+
+export const AssignTeacherClassResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string().nullish(),
+  "assignmentType": zod.enum(['CLASS_TEACHER', 'SUBJECT_TEACHER', 'ASSISTANT_TEACHER']),
+  "subjectId": zod.number().int().nullish(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+
+
+/**
+ * @summary Get the authenticated student's own profile
+ */
+export const GetStudentSelfProfileResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "admissionNo": zod.string(),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "middleName": zod.string().nullish(),
+  "dateOfBirth": zod.coerce.date().nullish(),
+  "passportUrl": zod.string().url().nullish(),
+  "admissionDate": zod.coerce.date().nullish(),
+  "admissionStatus": zod.enum(['pending', 'admitted', 'rejected']).nullish(),
+  "address": zod.string().nullish(),
+  "previousSchool": zod.string().nullish(),
+  "medicalInformation": zod.string().nullish(),
+  "emergencyContactName": zod.string().nullish(),
+  "emergencyContactPhone": zod.string().nullish(),
+  "currentClassId": zod.number().int().nullish(),
+  "currentSessionId": zod.number().int().nullish(),
+  "currentTermId": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date().nullish(),
+  "updatedAt": zod.coerce.date().nullish(),
+  "gender": zod.enum(['female', 'male', 'other']),
+  "className": zod.string(),
+  "section": zod.string(),
+  "parentName": zod.string().nullish(),
+  "parentPhone": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'GRADUATED', 'TRANSFERRED', 'WITHDRAWN']),
+  "subscriptionStatus": zod.enum(['active', 'unpaid', 'pending', 'expired']),
+  "cardStatus": zod.enum(['active', 'locked', 'unassigned', 'lost']),
+  "joinedAt": zod.string()
 })
 
 

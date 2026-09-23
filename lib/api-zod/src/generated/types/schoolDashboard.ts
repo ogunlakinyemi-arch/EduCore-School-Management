@@ -5,6 +5,8 @@
  * Multi-tenant EduPulse school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { AcademicSession } from './academicSession';
+import type { AcademicTerm } from './academicTerm';
 import type { AuditLog } from './auditLog';
 import type { School } from './school';
 
@@ -18,5 +20,15 @@ export interface SchoolDashboard {
   pendingPayments: number;
   activeCards: number;
   lockedCards: number;
+  totalParents?: number;
+  activeTeachers?: number;
+  otherStaff?: number;
+  totalClasses?: number;
+  totalSections?: number;
+  totalSubjects?: number;
+  currentAcademicSession?: AcademicSession;
+  currentTerm?: AcademicTerm;
+  /** @nullable */
+  subscriptionStatus?: string | null;
   recentActivity: AuditLog[];
 }

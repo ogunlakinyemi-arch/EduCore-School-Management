@@ -7,6 +7,7 @@
  */
 import type { SchoolStatus } from './schoolStatus';
 import type { SchoolSubscriptionStatus } from './schoolSubscriptionStatus';
+import type { SchoolUser } from './schoolUser';
 
 export interface School {
   id: number;
@@ -14,6 +15,25 @@ export interface School {
   name: string;
   city: string;
   state: string;
+  /** @nullable */
+  registrationNumber?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  lga?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  logoUrl?: string | null;
+  /** @nullable */
+  schoolType?: string | null;
+  administrators?: SchoolUser[];
+  /** @nullable */
+  academicSetupStatus?: string | null;
   status: SchoolStatus;
   studentCount: number;
   staffCount: number;

@@ -1,5 +1,7 @@
 import {
   boolean,
+  date,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -41,6 +43,15 @@ export const schools = pgTable(
     state: text("state").notNull(),
     status: text("status").notNull().default("active"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    registrationNumber: text("registration_number"),
+    address: text("address"),
+    lga: text("lga"),
+    phone: text("phone"),
+    email: text("email"),
+    website: text("website"),
+    logo: text("logo"),
+    schoolType: text("school_type"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [uniqueIndex("schools_code_unique").on(table.code)],
 );
@@ -86,10 +97,23 @@ export const students = pgTable(
     parentPhone: text("parent_phone"),
     status: text("status").notNull().default("active"),
     joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+    middleName: text("middle_name"),
+    dateOfBirth: date("date_of_birth", { mode: "string" }),
+    photo: text("photo"),
+    admissionDate: date("admission_date", { mode: "string" }),
+    admissionStatus: text("admission_status").notNull().default("ADMITTED"),
+    previousSchool: text("previous_school"),
+    address: text("address"),
+    medicalInfo: text("medical_info"),
+    emergencyContactName: text("emergency_contact_name"),
+    emergencyContactPhone: text("emergency_contact_phone"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("students_school_admission_unique").on(table.schoolId, table.admissionNo),
     uniqueIndex("students_user_unique").on(table.userId),
+    uniqueIndex("students_id_school_unique").on(table.id, table.schoolId),
     index("students_school_idx").on(table.schoolId),
   ],
 );
@@ -103,6 +127,10 @@ export const parents = pgTable(
     name: text("name").notNull(),
     email: text("email").notNull(),
     phone: text("phone").notNull(),
+    address: text("address"),
+    status: text("status").notNull().default("ACTIVE"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("parents_user_unique").on(table.userId),
@@ -141,7 +169,10 @@ export const schoolClasses = pgTable(
     classTeacher: text("class_teacher"),
     capacity: integer("capacity").notNull().default(30),
   },
-  (table) => [uniqueIndex("school_classes_unique").on(table.schoolId, table.name, table.section)],
+  (table) => [
+    uniqueIndex("school_classes_unique").on(table.schoolId, table.name, table.section),
+    uniqueIndex("school_classes_id_school_unique").on(table.id, table.schoolId),
+  ],
 );
 
 export const subscriptions = pgTable(
@@ -203,4 +234,258 @@ export const auditLogs = pgTable(
     metadata: jsonb("metadata"),
   },
   (table) => [index("audit_logs_school_idx").on(table.schoolId, table.timestamp)],
+);
+
+export const academicSessions = pgTable(
+  "academic_sessions",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    name: text("name").notNull(),
+    startDate: date("start_date", { mode: "string" }).notNull(),
+    endDate: date("end_date", { mode: "string" }).notNull(),
+    status: text("status").notNull().default("PLANNED"),
+    isCurrent: boolean("is_current").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("academic_sessions_school_name_unique").on(table.schoolId, table.name),
+    uniqueIndex("academic_sessions_id_school_unique").on(table.id, table.schoolId),
+    index("academic_sessions_school_status_idx").on(table.schoolId, table.status),
+  ],
+);
+
+export const academicTerms = pgTable(
+  "academic_terms",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    academicSessionId: integer("academic_session_id").notNull().references(() => academicSessions.id),
+    name: text("name").notNull(),
+    startDate: date("start_date", { mode: "string" }).notNull(),
+    endDate: date("end_date", { mode: "string" }).notNull(),
+    status: text("status").notNull().default("PLANNED"),
+    isCurrent: boolean("is_current").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("academic_terms_session_name_unique").on(table.academicSessionId, table.name),
+    uniqueIndex("academic_terms_id_school_unique").on(table.id, table.schoolId),
+    foreignKey({
+      columns: [table.academicSessionId, table.schoolId],
+      foreignColumns: [academicSessions.id, academicSessions.schoolId],
+      name: "academic_terms_session_school_fk",
+    }),
+    index("academic_terms_school_status_idx").on(table.schoolId, table.status),
+  ],
+);
+
+export const employees = pgTable(
+  "employees",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    userId: integer("user_id").references(() => appUsers.id),
+    employeeNo: text("employee_no").notNull(),
+    firstName: text("first_name").notNull(),
+    middleName: text("middle_name"),
+    lastName: text("last_name").notNull(),
+    phone: text("phone"),
+    email: text("email"),
+    address: text("address"),
+    photo: text("photo"),
+    gender: text("gender"),
+    employeeType: text("employee_type").notNull().default("TEACHER"),
+    employmentStatus: text("employment_status").notNull().default("ACTIVE"),
+    dateEmployed: date("date_employed", { mode: "string" }),
+    department: text("department"),
+    qualification: text("qualification"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("employees_school_employee_no_unique").on(table.schoolId, table.employeeNo),
+    uniqueIndex("employees_id_school_unique").on(table.id, table.schoolId),
+    index("employees_school_type_status_idx").on(table.schoolId, table.employeeType, table.employmentStatus),
+  ],
+);
+
+export const subjects = pgTable(
+  "subjects",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    name: text("name").notNull(),
+    code: text("code").notNull(),
+    description: text("description"),
+    status: text("status").notNull().default("ACTIVE"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("subjects_school_code_unique").on(table.schoolId, table.code),
+    uniqueIndex("subjects_id_school_unique").on(table.id, table.schoolId),
+    index("subjects_school_status_idx").on(table.schoolId, table.status),
+  ],
+);
+
+export const studentClassAssignments = pgTable(
+  "student_class_assignments",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    studentId: integer("student_id").notNull().references(() => students.id),
+    academicSessionId: integer("academic_session_id").notNull().references(() => academicSessions.id),
+    academicTermId: integer("academic_term_id").references(() => academicTerms.id),
+    schoolClassId: integer("school_class_id").notNull().references(() => schoolClasses.id),
+    section: text("section").notNull(),
+    status: text("status").notNull().default("ACTIVE"),
+    isCurrent: boolean("is_current").notNull().default(false),
+    startDate: date("start_date", { mode: "string" }),
+    endDate: date("end_date", { mode: "string" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("student_class_assignments_active_unique")
+      .on(
+        table.studentId,
+        table.academicSessionId,
+        sql`coalesce(${table.academicTermId}, 0)`,
+        table.schoolClassId,
+        table.section,
+      )
+      .where(sql`${table.status} = 'ACTIVE'`),
+    uniqueIndex("student_class_assignments_id_school_unique").on(table.id, table.schoolId),
+    foreignKey({
+      columns: [table.studentId, table.schoolId],
+      foreignColumns: [students.id, students.schoolId],
+      name: "student_class_assignments_student_school_fk",
+    }),
+    foreignKey({
+      columns: [table.academicSessionId, table.schoolId],
+      foreignColumns: [academicSessions.id, academicSessions.schoolId],
+      name: "student_class_assignments_session_school_fk",
+    }),
+    foreignKey({
+      columns: [table.academicTermId, table.schoolId],
+      foreignColumns: [academicTerms.id, academicTerms.schoolId],
+      name: "student_class_assignments_term_school_fk",
+    }),
+    foreignKey({
+      columns: [table.schoolClassId, table.schoolId],
+      foreignColumns: [schoolClasses.id, schoolClasses.schoolId],
+      name: "student_class_assignments_class_school_fk",
+    }),
+    index("student_class_assignments_school_current_idx").on(table.schoolId, table.isCurrent),
+    index("student_class_assignments_student_history_idx").on(table.studentId, table.startDate),
+  ],
+);
+
+export const classSubjects = pgTable(
+  "class_subjects",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    schoolClassId: integer("school_class_id").notNull().references(() => schoolClasses.id),
+    subjectId: integer("subject_id").notNull().references(() => subjects.id),
+    academicSessionId: integer("academic_session_id").notNull().references(() => academicSessions.id),
+    academicTermId: integer("academic_term_id").references(() => academicTerms.id),
+    employeeId: integer("employee_id").references(() => employees.id),
+    section: text("section"),
+    status: text("status").notNull().default("ACTIVE"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("class_subjects_unique")
+      .on(
+        table.schoolClassId,
+        table.subjectId,
+        table.academicSessionId,
+        sql`coalesce(${table.academicTermId}, 0)`,
+        sql`coalesce(${table.section}, '')`,
+      )
+      .where(sql`${table.status} = 'ACTIVE'`),
+    foreignKey({
+      columns: [table.schoolClassId, table.schoolId],
+      foreignColumns: [schoolClasses.id, schoolClasses.schoolId],
+      name: "class_subjects_class_school_fk",
+    }),
+    foreignKey({
+      columns: [table.subjectId, table.schoolId],
+      foreignColumns: [subjects.id, subjects.schoolId],
+      name: "class_subjects_subject_school_fk",
+    }),
+    foreignKey({
+      columns: [table.academicSessionId, table.schoolId],
+      foreignColumns: [academicSessions.id, academicSessions.schoolId],
+      name: "class_subjects_session_school_fk",
+    }),
+    foreignKey({
+      columns: [table.academicTermId, table.schoolId],
+      foreignColumns: [academicTerms.id, academicTerms.schoolId],
+      name: "class_subjects_term_school_fk",
+    }),
+    foreignKey({
+      columns: [table.employeeId, table.schoolId],
+      foreignColumns: [employees.id, employees.schoolId],
+      name: "class_subjects_employee_school_fk",
+    }),
+    index("class_subjects_school_status_idx").on(table.schoolId, table.status),
+  ],
+);
+
+export const teacherClassAssignments = pgTable(
+  "teacher_class_assignments",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    employeeId: integer("employee_id").notNull().references(() => employees.id),
+    academicSessionId: integer("academic_session_id").notNull().references(() => academicSessions.id),
+    schoolClassId: integer("school_class_id").notNull().references(() => schoolClasses.id),
+    subjectId: integer("subject_id").references(() => subjects.id),
+    section: text("section").notNull(),
+    assignmentType: text("assignment_type").notNull().default("CLASS_TEACHER"),
+    status: text("status").notNull().default("ACTIVE"),
+    startDate: date("start_date"),
+    endDate: date("end_date"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("teacher_class_assignments_unique")
+      .on(
+        table.employeeId,
+        table.academicSessionId,
+        table.schoolClassId,
+        table.section,
+        table.assignmentType,
+        sql`coalesce(${table.subjectId}, 0)`,
+      )
+      .where(sql`${table.status} = 'ACTIVE'`),
+    foreignKey({
+      columns: [table.employeeId, table.schoolId],
+      foreignColumns: [employees.id, employees.schoolId],
+      name: "teacher_class_assignments_employee_school_fk",
+    }),
+    foreignKey({
+      columns: [table.academicSessionId, table.schoolId],
+      foreignColumns: [academicSessions.id, academicSessions.schoolId],
+      name: "teacher_class_assignments_session_school_fk",
+    }),
+    foreignKey({
+      columns: [table.schoolClassId, table.schoolId],
+      foreignColumns: [schoolClasses.id, schoolClasses.schoolId],
+      name: "teacher_class_assignments_class_school_fk",
+    }),
+    foreignKey({
+      columns: [table.subjectId, table.schoolId],
+      foreignColumns: [subjects.id, subjects.schoolId],
+      name: "teacher_class_assignments_subject_school_fk",
+    }),
+    index("teacher_class_assignments_school_status_idx").on(table.schoolId, table.status),
+  ],
 );

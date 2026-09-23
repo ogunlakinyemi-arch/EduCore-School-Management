@@ -10,6 +10,9 @@ export type StudentStatus = typeof StudentStatus[keyof typeof StudentStatus];
 
 
 export const StudentStatus = {
-  active: 'active',
-  archived: 'archived',
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  GRADUATED: 'GRADUATED',
+  TRANSFERRED: 'TRANSFERRED',
+  WITHDRAWN: 'WITHDRAWN',
 } as const;

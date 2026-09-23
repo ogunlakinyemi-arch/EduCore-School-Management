@@ -5,6 +5,7 @@
  * Multi-tenant EduPulse school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { StudentAdmissionStatus } from './studentAdmissionStatus';
 import type { StudentCardStatus } from './studentCardStatus';
 import type { StudentGender } from './studentGender';
 import type { StudentStatus } from './studentStatus';
@@ -16,6 +17,36 @@ export interface Student {
   admissionNo: string;
   firstName: string;
   lastName: string;
+  /** @nullable */
+  middleName?: string | null;
+  /** @nullable */
+  dateOfBirth?: Date | null;
+  /** @nullable */
+  passportUrl?: string | null;
+  /** @nullable */
+  admissionDate?: Date | null;
+  /** @nullable */
+  admissionStatus?: StudentAdmissionStatus;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  previousSchool?: string | null;
+  /** @nullable */
+  medicalInformation?: string | null;
+  /** @nullable */
+  emergencyContactName?: string | null;
+  /** @nullable */
+  emergencyContactPhone?: string | null;
+  /** @nullable */
+  currentClassId?: number | null;
+  /** @nullable */
+  currentSessionId?: number | null;
+  /** @nullable */
+  currentTermId?: number | null;
+  /** @nullable */
+  createdAt?: Date | null;
+  /** @nullable */
+  updatedAt?: Date | null;
   gender: StudentGender;
   className: string;
   section: string;

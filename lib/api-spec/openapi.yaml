@@ -19,6 +19,9 @@ tags:
   - name: students
   - name: parents
   - name: classes
+  - name: academics
+  - name: employees
+  - name: subjects
   - name: subscriptions
   - name: cards
   - name: audit
@@ -341,6 +344,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/School"
+  /schools/{schoolId}/status:
+    patch:
+      operationId: updateSchoolStatus
+      tags: [schools]
+      summary: Activate or deactivate a school
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SchoolStatusUpdate" }
+      responses:
+        "200":
+          description: Updated school
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/School" }
   /students:
     get:
       operationId: listStudents
@@ -353,7 +374,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [active, archived, all]
+            enum: [ACTIVE, INACTIVE, GRADUATED, TRANSFERRED, WITHDRAWN, all]
         - name: classId
           in: query
           schema:
@@ -421,6 +442,61 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Student"
+  /students/{studentId}/status:
+    patch:
+      operationId: updateStudentStatus
+      tags: [students]
+      summary: Change a student's status
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentStatusUpdate" }
+      responses:
+        "200":
+          description: Updated student
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Student" }
+  /students/{studentId}/class-assignments:
+    get:
+      operationId: listStudentClassAssignments
+      tags: [students]
+      summary: List current and historical class assignments
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/SessionId"
+        - $ref: "#/components/parameters/StatusFilter"
+      responses:
+        "200":
+          description: Class assignment history
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/StudentClassAssignment" }
+    post:
+      operationId: assignStudentClass
+      tags: [students]
+      summary: Assign a student to a class without deleting history
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentClassAssignmentInput" }
+      responses:
+        "201":
+          description: Assignment created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentClassAssignment" }
   /parents:
     get:
       operationId: listParents
@@ -457,6 +533,135 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Parent"
+  /parents/{parentId}:
+    get:
+      operationId: getParent
+      tags: [parents]
+      summary: Get a parent profile
+      parameters:
+        - $ref: "#/components/parameters/ParentIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Parent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Parent" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      operationId: updateParent
+      tags: [parents]
+      summary: Update a parent profile
+      parameters:
+        - $ref: "#/components/parameters/ParentIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ParentUpdate" }
+      responses:
+        "200":
+          description: Updated parent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Parent" }
+  /employees:
+    get:
+      operationId: listEmployees
+      tags: [employees]
+      summary: Search teachers and non-teaching staff
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/Search"
+        - name: employeeId
+          in: query
+          schema: { type: string }
+        - name: department
+          in: query
+          schema: { type: string }
+        - name: role
+          in: query
+          schema: { $ref: "#/components/schemas/EmployeeType" }
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/EmployeeStatus" }
+      responses:
+        "200":
+          description: Employees
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Employee" }
+    post:
+      operationId: createEmployee
+      tags: [employees]
+      summary: Create a teacher or staff member
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmployeeInput" }
+      responses:
+        "201":
+          description: Employee created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Employee" }
+  /employees/{employeeId}:
+    get:
+      operationId: getEmployee
+      tags: [employees]
+      summary: Get an employee profile
+      parameters:
+        - $ref: "#/components/parameters/EmployeeIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Employee
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Employee" }
+    patch:
+      operationId: updateEmployee
+      tags: [employees]
+      summary: Update an employee profile
+      parameters:
+        - $ref: "#/components/parameters/EmployeeIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmployeeUpdate" }
+      responses:
+        "200":
+          description: Updated employee
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Employee" }
+  /employees/{employeeId}/status:
+    patch:
+      operationId: updateEmployeeStatus
+      tags: [employees]
+      summary: Change employee status
+      parameters:
+        - $ref: "#/components/parameters/EmployeeIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmployeeStatusUpdate" }
+      responses:
+        "200":
+          description: Updated employee
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Employee" }
   /classes:
     get:
       operationId: listClasses
@@ -492,6 +697,266 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SchoolClass"
+  /academic-sessions:
+    get:
+      operationId: listAcademicSessions
+      tags: [academics]
+      summary: List academic sessions
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/StatusFilter"
+      responses:
+        "200":
+          description: Academic sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AcademicSession" }
+    post:
+      operationId: createAcademicSession
+      tags: [academics]
+      summary: Create an academic session
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcademicSessionInput" }
+      responses:
+        "201":
+          description: Academic session created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicSession" }
+  /academic-sessions/{sessionId}/terms:
+    get:
+      operationId: listAcademicTerms
+      tags: [academics]
+      summary: List terms in an academic session
+      parameters:
+        - $ref: "#/components/parameters/SessionIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Academic terms
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AcademicTerm" }
+    post:
+      operationId: createAcademicTerm
+      tags: [academics]
+      summary: Create an academic term
+      parameters:
+        - $ref: "#/components/parameters/SessionIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcademicTermInput" }
+      responses:
+        "201":
+          description: Academic term created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicTerm" }
+  /academic-sessions/{sessionId}:
+    patch:
+      operationId: updateAcademicSession
+      tags: [academics]
+      summary: Update an academic session
+      parameters:
+        - $ref: "#/components/parameters/SessionIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcademicSessionUpdate" }
+      responses:
+        "200":
+          description: Updated academic session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicSession" }
+  /academic-terms/{termId}:
+    patch:
+      operationId: updateAcademicTerm
+      tags: [academics]
+      summary: Update an academic term
+      parameters:
+        - $ref: "#/components/parameters/TermIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcademicTermUpdate" }
+      responses:
+        "200":
+          description: Updated academic term
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicTerm" }
+  /subjects:
+    get:
+      operationId: listSubjects
+      tags: [subjects]
+      summary: Search school subjects
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/Search"
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/SubjectStatus" }
+      responses:
+        "200":
+          description: Subjects
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Subject" }
+    post:
+      operationId: createSubject
+      tags: [subjects]
+      summary: Create a subject
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SubjectInput" }
+      responses:
+        "201":
+          description: Subject created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Subject" }
+  /subjects/{subjectId}:
+    get:
+      operationId: getSubject
+      tags: [subjects]
+      summary: Get a subject
+      parameters:
+        - $ref: "#/components/parameters/SubjectIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Subject
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Subject" }
+    patch:
+      operationId: updateSubject
+      tags: [subjects]
+      summary: Update a subject
+      parameters:
+        - $ref: "#/components/parameters/SubjectIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SubjectUpdate" }
+      responses:
+        "200":
+          description: Updated subject
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Subject" }
+  /class-subject-assignments:
+    get:
+      operationId: listClassSubjectAssignments
+      tags: [subjects]
+      summary: List subjects assigned to classes
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - name: classId
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: subjectId
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Class subject assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ClassSubjectAssignment" }
+    post:
+      operationId: assignClassSubject
+      tags: [subjects]
+      summary: Assign a subject to a class
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClassSubjectAssignmentInput" }
+      responses:
+        "201":
+          description: Assignment created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClassSubjectAssignment" }
+  /teacher-class-assignments:
+    get:
+      operationId: listTeacherClassAssignments
+      tags: [employees]
+      summary: List current and historical teacher class assignments
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - name: employeeId
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - $ref: "#/components/parameters/SessionId"
+        - $ref: "#/components/parameters/StatusFilter"
+      responses:
+        "200":
+          description: Teacher assignment history
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TeacherClassAssignment" }
+    post:
+      operationId: assignTeacherClass
+      tags: [employees]
+      summary: Assign a teacher to a class
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TeacherClassAssignmentInput" }
+      responses:
+        "201":
+          description: Assignment created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TeacherClassAssignment" }
+  /student/profile:
+    get:
+      operationId: getStudentSelfProfile
+      tags: [students]
+      summary: Get the authenticated student's own profile
+      responses:
+        "200":
+          description: Student self profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Student" }
   /subscriptions:
     get:
       operationId: listSubscriptions
@@ -698,6 +1163,41 @@ components:
       schema:
         type: integer
         minimum: 1
+    ParentIdPath:
+      name: parentId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    EmployeeIdPath:
+      name: employeeId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    SubjectIdPath:
+      name: subjectId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    SessionIdPath:
+      name: sessionId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    SessionId:
+      name: sessionId
+      in: query
+      schema: { type: integer, minimum: 1 }
+    TermIdPath:
+      name: termId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    StatusFilter:
+      name: status
+      in: query
+      schema:
+        type: string
+        enum: [ACTIVE, INACTIVE, all]
     Search:
       name: search
       in: query
@@ -731,6 +1231,12 @@ components:
         edupulseAllocation: { type: number }
         activeCards: { type: integer }
         lockedCards: { type: integer }
+        inactiveSchools: { type: integer }
+        totalTeachers: { type: integer }
+        totalParents: { type: integer }
+        subscriptionSummary:
+          type: object
+          additionalProperties: { type: integer }
         recentActivity:
           type: array
           items:
@@ -747,6 +1253,15 @@ components:
         pendingPayments: { type: integer }
         activeCards: { type: integer }
         lockedCards: { type: integer }
+        totalParents: { type: integer }
+        activeTeachers: { type: integer }
+        otherStaff: { type: integer }
+        totalClasses: { type: integer }
+        totalSections: { type: integer }
+        totalSubjects: { type: integer }
+        currentAcademicSession: { $ref: "#/components/schemas/AcademicSession" }
+        currentTerm: { $ref: "#/components/schemas/AcademicTerm" }
+        subscriptionStatus: { type: ["string", "null"] }
         recentActivity:
           type: array
           items:
@@ -760,6 +1275,18 @@ components:
         name: { type: string }
         city: { type: string }
         state: { type: string }
+        registrationNumber: { type: ["string", "null"] }
+        address: { type: ["string", "null"] }
+        lga: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        email: { type: ["string", "null"], format: email }
+        website: { type: ["string", "null"], format: uri }
+        logoUrl: { type: ["string", "null"], format: uri }
+        schoolType: { type: ["string", "null"] }
+        administrators:
+          type: array
+          items: { $ref: "#/components/schemas/SchoolUser" }
+        academicSetupStatus: { type: ["string", "null"] }
         status:
           type: string
           enum: [active, suspended, inactive]
@@ -771,11 +1298,20 @@ components:
         createdAt: { type: string }
     SchoolInput:
       type: object
-      required: [name, city, state]
+      required: [name, city, state, code]
       properties:
+        code: { type: string, minLength: 1 }
         name: { type: string, minLength: 2 }
         city: { type: string, minLength: 2 }
         state: { type: string, minLength: 2 }
+        registrationNumber: { type: string }
+        address: { type: string }
+        lga: { type: string }
+        phone: { type: string }
+        email: { type: string, format: email }
+        website: { type: string, format: uri }
+        logoUrl: { type: string, format: uri }
+        schoolType: { type: string }
         status:
           type: string
           enum: [active, suspended, inactive]
@@ -785,9 +1321,23 @@ components:
         name: { type: string, minLength: 2 }
         city: { type: string, minLength: 2 }
         state: { type: string, minLength: 2 }
+        code: { type: string, minLength: 1 }
+        registrationNumber: { type: string }
+        address: { type: string }
+        lga: { type: string }
+        phone: { type: string }
+        email: { type: string, format: email }
+        website: { type: string, format: uri }
+        logoUrl: { type: string, format: uri }
+        schoolType: { type: string }
         status:
           type: string
           enum: [active, suspended, inactive]
+    SchoolStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [active, suspended, inactive] }
     Student:
       type: object
       required: [id, schoolId, admissionNo, firstName, lastName, gender, className, section, status, subscriptionStatus, cardStatus, joinedAt]
@@ -797,6 +1347,21 @@ components:
         admissionNo: { type: string }
         firstName: { type: string }
         lastName: { type: string }
+        middleName: { type: ["string", "null"] }
+        dateOfBirth: { type: ["string", "null"], format: date }
+        passportUrl: { type: ["string", "null"], format: uri }
+        admissionDate: { type: ["string", "null"], format: date }
+        admissionStatus: { type: ["string", "null"], enum: [pending, admitted, rejected] }
+        address: { type: ["string", "null"] }
+        previousSchool: { type: ["string", "null"] }
+        medicalInformation: { type: ["string", "null"] }
+        emergencyContactName: { type: ["string", "null"] }
+        emergencyContactPhone: { type: ["string", "null"] }
+        currentClassId: { type: ["integer", "null"] }
+        currentSessionId: { type: ["integer", "null"] }
+        currentTermId: { type: ["integer", "null"] }
+        createdAt: { type: ["string", "null"], format: date-time }
+        updatedAt: { type: ["string", "null"], format: date-time }
         gender:
           type: string
           enum: [female, male, other]
@@ -806,7 +1371,7 @@ components:
         parentPhone: { type: ["string", "null"] }
         status:
           type: string
-          enum: [active, archived]
+          enum: [ACTIVE, INACTIVE, GRADUATED, TRANSFERRED, WITHDRAWN]
         subscriptionStatus:
           type: string
           enum: [active, unpaid, pending, expired]
@@ -821,6 +1386,16 @@ components:
         admissionNo: { type: string, minLength: 1 }
         firstName: { type: string, minLength: 2 }
         lastName: { type: string, minLength: 2 }
+        middleName: { type: string }
+        dateOfBirth: { type: string, format: date }
+        passportUrl: { type: string, format: uri }
+        admissionDate: { type: string, format: date }
+        admissionStatus: { type: string, enum: [pending, admitted, rejected] }
+        address: { type: string }
+        previousSchool: { type: string }
+        medicalInformation: { type: string }
+        emergencyContactName: { type: string }
+        emergencyContactPhone: { type: string }
         gender:
           type: string
           enum: [female, male, other]
@@ -835,9 +1410,23 @@ components:
         lastName: { type: string, minLength: 2 }
         className: { type: string }
         section: { type: string }
+        middleName: { type: string }
+        dateOfBirth: { type: string, format: date }
+        passportUrl: { type: string, format: uri }
+        admissionStatus: { type: string, enum: [pending, admitted, rejected] }
+        address: { type: string }
+        previousSchool: { type: string }
+        medicalInformation: { type: string }
+        emergencyContactName: { type: string }
+        emergencyContactPhone: { type: string }
         status:
           type: string
-          enum: [active, archived]
+          enum: [ACTIVE, INACTIVE, GRADUATED, TRANSFERRED, WITHDRAWN]
+    StudentStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [ACTIVE, INACTIVE, GRADUATED, TRANSFERRED, WITHDRAWN] }
     Parent:
       type: object
       required: [id, schoolId, name, email, phone, childrenCount, activeChildren]
@@ -847,6 +1436,12 @@ components:
         name: { type: string }
         email: { type: string }
         phone: { type: string }
+        address: { type: ["string", "null"] }
+        relationshipType: { type: ["string", "null"], enum: [Father, Mother, Guardian, Grandparent, Other, null] }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        clerkUserId: { type: ["string", "null"] }
+        emergencyContactName: { type: ["string", "null"] }
+        emergencyContactPhone: { type: ["string", "null"] }
         childrenCount: { type: integer }
         activeChildren: { type: integer }
     RoleAssignment:
@@ -915,6 +1510,14 @@ components:
         name: { type: string }
         email: { type: string }
         phone: { type: string }
+        address: { type: ["string", "null"] }
+        relationshipTypes:
+          type: array
+          items: { type: string, enum: [Father, Mother, Guardian, Grandparent, Other] }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        clerkUserId: { type: ["string", "null"] }
+        emergencyContactName: { type: ["string", "null"] }
+        emergencyContactPhone: { type: ["string", "null"] }
     ParentChild:
       type: object
       required: [id, schoolId, admissionNo, firstName, lastName, className, section, status, schoolName]
@@ -1025,6 +1628,242 @@ components:
         name: { type: string, minLength: 2 }
         email: { type: string, format: email }
         phone: { type: string, minLength: 7 }
+        address: { type: string }
+        relationshipType: { type: string, enum: [Father, Mother, Guardian, Grandparent, Other] }
+        emergencyContactName: { type: string }
+        emergencyContactPhone: { type: string }
+    ParentUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 2 }
+        email: { type: string, format: email }
+        phone: { type: string, minLength: 7 }
+        address: { type: string }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        emergencyContactName: { type: string }
+        emergencyContactPhone: { type: string }
+    EmployeeStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE, SUSPENDED, RESIGNED, TERMINATED]
+    EmployeeType:
+      type: string
+      enum: [TEACHER, STAFF]
+    Employee:
+      type: object
+      required: [id, schoolId, employeeId, firstName, lastName, type, status]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        employeeId: { type: string }
+        firstName: { type: string }
+        middleName: { type: ["string", "null"] }
+        lastName: { type: string }
+        type: { $ref: "#/components/schemas/EmployeeType" }
+        phone: { type: ["string", "null"] }
+        email: { type: ["string", "null"], format: email }
+        address: { type: ["string", "null"] }
+        photoUrl: { type: ["string", "null"], format: uri }
+        gender: { type: ["string", "null"], enum: [female, male, other, null] }
+        status: { $ref: "#/components/schemas/EmployeeStatus" }
+        dateEmployed: { type: ["string", "null"], format: date }
+        department: { type: ["string", "null"] }
+        qualification: { type: ["string", "null"] }
+        userId: { type: ["integer", "null"] }
+    EmployeeInput:
+      type: object
+      required: [employeeId, firstName, lastName, type]
+      properties:
+        employeeId: { type: string, minLength: 1 }
+        firstName: { type: string, minLength: 2 }
+        middleName: { type: string }
+        lastName: { type: string, minLength: 2 }
+        type: { $ref: "#/components/schemas/EmployeeType" }
+        phone: { type: string }
+        email: { type: string, format: email }
+        address: { type: string }
+        photoUrl: { type: string, format: uri }
+        gender: { type: string, enum: [female, male, other] }
+        dateEmployed: { type: string, format: date }
+        department: { type: string }
+        qualification: { type: string }
+        userId: { type: integer, minimum: 1 }
+    EmployeeUpdate:
+      type: object
+      properties:
+        firstName: { type: string, minLength: 2 }
+        middleName: { type: string }
+        lastName: { type: string, minLength: 2 }
+        phone: { type: string }
+        email: { type: string, format: email }
+        address: { type: string }
+        photoUrl: { type: string, format: uri }
+        gender: { type: string, enum: [female, male, other] }
+        dateEmployed: { type: string, format: date }
+        department: { type: string }
+        qualification: { type: string }
+        userId: { type: integer, minimum: 1 }
+    EmployeeStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: "#/components/schemas/EmployeeStatus" }
+    AcademicSession:
+      type: object
+      required: [id, schoolId, name, startDate, endDate, status]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        name: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        status: { type: string, enum: [ACTIVE, INACTIVE, COMPLETED] }
+        isCurrent: { type: boolean }
+    AcademicSessionInput:
+      type: object
+      required: [name, startDate, endDate]
+      properties:
+        name: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        status: { type: string, enum: [ACTIVE, INACTIVE, COMPLETED] }
+        isCurrent: { type: boolean }
+    AcademicSessionUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        status: { type: string, enum: [ACTIVE, INACTIVE, COMPLETED] }
+        isCurrent: { type: boolean }
+    AcademicTerm:
+      type: object
+      required: [id, sessionId, name, startDate, endDate, status]
+      properties:
+        id: { type: integer }
+        sessionId: { type: integer }
+        name: { type: string, enum: [FIRST, SECOND, THIRD] }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        status: { type: string, enum: [ACTIVE, INACTIVE, COMPLETED] }
+        isCurrent: { type: boolean }
+    AcademicTermInput:
+      type: object
+      required: [name, startDate, endDate]
+      properties:
+        name: { type: string, enum: [FIRST, SECOND, THIRD] }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        status: { type: string, enum: [ACTIVE, INACTIVE, COMPLETED] }
+        isCurrent: { type: boolean }
+    AcademicTermUpdate:
+      type: object
+      properties:
+        name: { type: string, enum: [FIRST, SECOND, THIRD] }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        status: { type: string, enum: [ACTIVE, INACTIVE, COMPLETED] }
+        isCurrent: { type: boolean }
+    StudentClassAssignment:
+      type: object
+      required: [id, studentId, schoolId, sessionId, classId, section, status]
+      properties:
+        id: { type: integer }
+        studentId: { type: integer }
+        schoolId: { type: integer }
+        sessionId: { type: integer }
+        termId: { type: ["integer", "null"] }
+        classId: { type: integer }
+        className: { type: string }
+        section: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: ["string", "null"], format: date }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+    StudentClassAssignmentInput:
+      type: object
+      required: [sessionId, classId, section]
+      properties:
+        sessionId: { type: integer, minimum: 1 }
+        termId: { type: integer, minimum: 1 }
+        classId: { type: integer, minimum: 1 }
+        section: { type: string }
+        startDate: { type: string, format: date }
+    SubjectStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE]
+    Subject:
+      type: object
+      required: [id, schoolId, name, code, status]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        name: { type: string }
+        code: { type: string }
+        description: { type: ["string", "null"] }
+        status: { $ref: "#/components/schemas/SubjectStatus" }
+    SubjectInput:
+      type: object
+      required: [name, code]
+      properties:
+        name: { type: string, minLength: 1 }
+        code: { type: string, minLength: 1 }
+        description: { type: string }
+        status: { $ref: "#/components/schemas/SubjectStatus" }
+    SubjectUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        code: { type: string, minLength: 1 }
+        description: { type: string }
+        status: { $ref: "#/components/schemas/SubjectStatus" }
+    ClassSubjectAssignment:
+      type: object
+      required: [id, schoolId, classId, subjectId, sessionId, status]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        classId: { type: integer }
+        subjectId: { type: integer }
+        sessionId: { type: integer }
+        termId: { type: ["integer", "null"] }
+        teacherId: { type: ["integer", "null"] }
+        section: { type: ["string", "null"] }
+        status: { $ref: "#/components/schemas/SubjectStatus" }
+    ClassSubjectAssignmentInput:
+      type: object
+      required: [classId, subjectId, sessionId]
+      properties:
+        classId: { type: integer, minimum: 1 }
+        subjectId: { type: integer, minimum: 1 }
+        sessionId: { type: integer, minimum: 1 }
+        termId: { type: integer, minimum: 1 }
+        teacherId: { type: integer, minimum: 1 }
+        section: { type: string }
+    TeacherClassAssignment:
+      type: object
+      required: [id, schoolId, teacherId, sessionId, classId, assignmentType, startDate, status]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        teacherId: { type: integer }
+        sessionId: { type: integer }
+        classId: { type: integer }
+        section: { type: ["string", "null"] }
+        assignmentType: { type: string, enum: [CLASS_TEACHER, SUBJECT_TEACHER, ASSISTANT_TEACHER] }
+        subjectId: { type: ["integer", "null"] }
+        startDate: { type: string, format: date }
+        endDate: { type: ["string", "null"], format: date }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+    TeacherClassAssignmentInput:
+      type: object
+      required: [teacherId, sessionId, classId, assignmentType, startDate]
+      properties:
+        teacherId: { type: integer, minimum: 1 }
+        sessionId: { type: integer, minimum: 1 }
+        classId: { type: integer, minimum: 1 }
+        section: { type: string }
+        assignmentType: { type: string, enum: [CLASS_TEACHER, SUBJECT_TEACHER, ASSISTANT_TEACHER] }
+        subjectId: { type: integer, minimum: 1 }
+        startDate: { type: string, format: date }
     SchoolClass:
       type: object
       required: [id, schoolId, name, section, classTeacher, studentCount, capacity]

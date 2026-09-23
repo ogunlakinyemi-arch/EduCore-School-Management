@@ -5,6 +5,7 @@
  * Multi-tenant EduPulse school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { ParentInputRelationshipType } from './parentInputRelationshipType';
 
 export interface ParentInput {
   /** @minLength 2 */
@@ -12,4 +13,8 @@ export interface ParentInput {
   email: string;
   /** @minLength 7 */
   phone: string;
+  address?: string;
+  relationshipType?: ParentInputRelationshipType;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
 }

@@ -1,0 +1,721 @@
+EduPulse Phase 3 — School & People Management
+
+Phase 2 is complete and verified. Continue from the existing EduPulse codebase.
+
+IMPORTANT
+
+DO NOT:
+
+- restart the project
+- delete the existing database
+- reset existing data
+- replace the current architecture unnecessarily
+- recreate modules that already work
+- remove existing seed records
+- break Clerk authentication
+- weaken the RBAC or tenant-isolation implemented in Phase 2
+- implement the Partner/Reseller system yet
+
+Before changing anything, inspect the current implementation and database schema and reuse existing structures wherever possible.
+
+The goal of this phase is to build a complete, secure School & People Management foundation on top of the Phase 2 authentication/RBAC architecture.
+
+---
+
+1. SCHOOL MANAGEMENT
+
+Improve the existing school management module.
+
+Platform Owner should be able to:
+
+- Create school
+- View schools
+- Search schools
+- Filter schools
+- View school details
+- Edit school information
+- Activate/deactivate a school
+- View school status
+- View school administrator(s)
+- View school statistics
+- View subscription status
+- View academic setup status
+
+School information should support:
+
+- School name
+- School code
+- Registration number where applicable
+- Address
+- State
+- LGA
+- Phone
+- Email
+- Website
+- Logo
+- School type
+- School status
+- Date created
+- Other appropriate institutional information
+
+School codes must remain unique.
+
+School Admin should only see and manage their authorized school(s).
+
+Do not allow users to access another school's data by changing a school ID in the URL, query string, request body, or API call.
+
+Continue deriving authorization from the authenticated user's membership.
+
+---
+
+2. STUDENT MANAGEMENT
+
+Build out the student module into a production-ready foundation.
+
+Student profile should support:
+
+- Student ID
+- Admission number
+- First name
+- Middle name
+- Last name
+- Date of birth
+- Gender
+- Passport/photo
+- Admission date
+- Admission status
+- Student status
+- Current school
+- Current class
+- Current section
+- Previous school where applicable
+- Address
+- Medical/emergency information where appropriate
+- Parent/guardian relationships
+- NFC card association where applicable
+- Created date
+- Updated date
+
+Support student statuses such as:
+
+- ACTIVE
+- INACTIVE
+- GRADUATED
+- TRANSFERRED
+- WITHDRAWN
+
+Do not delete students merely because they leave a school.
+
+Use historical status where appropriate.
+
+Admission number must remain unique within a school.
+
+---
+
+3. STUDENT CLASS ASSIGNMENT
+
+Students must be assignable to:
+
+- Academic session
+- Term where appropriate
+- Class
+- Section
+
+Do not simply overwrite historical class information.
+
+Design the data model so that the system can preserve historical class assignments.
+
+For example:
+
+Student A:
+
+- 2025/2026 → JSS1 → A
+- 2026/2027 → JSS2 → B
+
+Historical records must remain available.
+
+A student's current class should be clearly identifiable.
+
+Prevent invalid cross-school class assignments.
+
+---
+
+4. PARENT/GUARDIAN MANAGEMENT
+
+Continue using the normalized parent-student relationship created in Phase 2.
+
+Parent profile should support:
+
+- Name
+- Phone
+- Email
+- Address
+- Relationship information
+- Status
+- User account relationship where applicable
+- Emergency contact information where appropriate
+
+A parent may have multiple children.
+
+A student may have multiple parents/guardians.
+
+Relationships must support:
+
+- Father
+- Mother
+- Guardian
+- Grandparent
+- Other
+
+And relationship metadata such as:
+
+- Primary guardian
+- Secondary guardian
+- Emergency contact
+- Contact priority
+- Active/inactive
+
+Do not remove historical relationships.
+
+---
+
+5. TEACHER MANAGEMENT
+
+Introduce a proper teacher/staff foundation.
+
+Create appropriate entities for employees/staff rather than treating every teacher as a generic text field.
+
+Teacher profile should support:
+
+- Employee ID
+- First name
+- Middle name
+- Last name
+- Phone
+- Email
+- Address
+- Photo
+- Gender where appropriate
+- Employment status
+- Date employed
+- Department
+- Qualification information where appropriate
+- User account relationship
+- School membership
+
+Teacher statuses can include:
+
+- ACTIVE
+- INACTIVE
+- SUSPENDED
+- RESIGNED
+- TERMINATED
+
+Do not delete historical employee records.
+
+---
+
+6. STAFF MANAGEMENT
+
+Support non-teaching staff.
+
+Examples:
+
+- Accountant
+- Secretary
+- Librarian
+- Receptionist
+- Cleaner
+- Security personnel
+- ICT staff
+- Administrator
+- Other staff
+
+Use the existing RBAC architecture for access control.
+
+Do not create unnecessary duplicate authentication systems.
+
+A staff member who requires system access should map to the existing authenticated EduPulse user.
+
+---
+
+7. TEACHER CLASS ASSIGNMENTS
+
+Create a secure structure for assigning teachers to classes/sections.
+
+Support:
+
+- Teacher
+- School
+- Academic session
+- Class
+- Section
+- Assignment type
+- Start date
+- End date
+- Active/inactive
+
+Assignment types may include:
+
+- CLASS_TEACHER
+- SUBJECT_TEACHER
+- ASSISTANT_TEACHER
+
+Do not destroy historical assignments when teachers change classes.
+
+---
+
+8. SUBJECT FOUNDATION
+
+Create the foundation for school subjects.
+
+Support:
+
+- Subject name
+- Subject code
+- Description
+- School
+- Status
+
+Allow subjects to be assigned to:
+
+- Class
+- Section where applicable
+- Teacher
+
+Do not build the complete examination/result engine yet.
+
+This phase only establishes the subject structure required by later academic modules.
+
+---
+
+9. SCHOOL USER MANAGEMENT
+
+Extend the existing Phase 2 school user-management functionality.
+
+School Admin should be able to:
+
+- View authorized school users
+- Invite users where supported
+- Assign permitted school roles
+- Activate/deactivate authorized users
+- View user status
+- View assigned school
+- View role
+
+School Admin must NOT be able to:
+
+- create PLATFORM_OWNER
+- assign PLATFORM_OWNER
+- modify another school's users
+- change platform-level permissions
+- bypass tenant isolation
+- modify their own privileges beyond permitted rules
+
+Platform Owner retains platform-level control.
+
+---
+
+10. ROLE STRUCTURE
+
+Preserve the existing roles:
+
+- PLATFORM_OWNER
+- SCHOOL_ADMIN
+- TEACHER
+- ACCOUNTANT
+- PARENT
+- STUDENT
+- STAFF
+
+Do not create duplicate role systems.
+
+Use the existing Phase 2 authorization helpers/middleware.
+
+School-scoped roles must remain school-scoped.
+
+A user may belong to different schools with different roles if the existing architecture supports it.
+
+---
+
+11. SCHOOL DASHBOARD
+
+Improve the school dashboard with real database values.
+
+Include appropriate metrics such as:
+
+- Total students
+- Active students
+- Total parents/guardians
+- Active teachers
+- Other staff
+- Number of classes
+- Number of sections
+- Number of subjects
+- Current academic session
+- Current term
+- Subscription status
+
+Do not create fake statistics.
+
+If a metric does not yet have a reliable backend source, display:
+
+Not available
+
+instead of fabricated values.
+
+---
+
+12. PLATFORM DASHBOARD
+
+Improve the Platform Owner dashboard using real persisted data.
+
+Potential metrics:
+
+- Total schools
+- Active schools
+- Inactive schools
+- Total students
+- Active students
+- Total teachers
+- Total parents
+- Subscription status summary
+
+Again, do not fabricate numbers.
+
+All platform metrics must be calculated from authorized database queries.
+
+---
+
+13. SEARCH AND FILTERING
+
+Add secure search/filter support where appropriate.
+
+Examples:
+
+Students:
+
+- Name
+- Admission number
+- Class
+- Section
+- Status
+
+Parents:
+
+- Name
+- Phone
+- Email
+- Linked child
+
+Teachers:
+
+- Name
+- Employee ID
+- Department
+- Status
+
+Schools:
+
+- Name
+- School code
+- State
+- Status
+
+Ensure search queries remain parameterized and tenant-scoped.
+
+---
+
+14. AUDIT LOGGING
+
+Use the existing Phase 2 audit system.
+
+Audit important administrative actions including:
+
+- School created
+- School updated
+- School activated/deactivated
+- Student created
+- Student updated
+- Student status changed
+- Parent created
+- Parent updated
+- Parent-student relationship created
+- Parent-student relationship deactivated
+- Teacher created
+- Teacher updated
+- Teacher status changed
+- Staff created/updated
+- Class assignment changed
+- Teacher assignment changed
+- Subject created/updated
+- User invited
+- User activated/deactivated
+- Role assignment changes
+
+The audit event must identify the authenticated actor.
+
+Do not allow normal users to edit or delete audit records.
+
+---
+
+15. DATA INTEGRITY
+
+Use database constraints where appropriate.
+
+Examples:
+
+- unique school code
+- unique admission number per school
+- unique employee ID per school
+- unique subject code per school where applicable
+- valid school/class relationships
+- valid school/student relationships
+- valid teacher/class relationships
+- valid parent/student relationships
+- no duplicate active assignment where prohibited
+
+Use foreign keys and indexes appropriately.
+
+Use additive database migrations.
+
+Do not reset the database.
+
+---
+
+16. API SECURITY
+
+Every new endpoint must use the Phase 2 authorization architecture.
+
+Verify:
+
+- unauthenticated → 401
+- authenticated but unauthorized → 403
+- resource outside authorized tenant → appropriate scoped response
+- inactive user → denied
+- school membership required where applicable
+- platform-only operations protected
+
+Never trust:
+
+- schoolId from client
+- userId from client
+- role from client
+- parentId from client
+- teacherId from client
+
+Validate that the authenticated user actually has access to the requested resource.
+
+---
+
+17. PARENT PORTAL
+
+Extend the Phase 2 parent portal foundation.
+
+A parent should be able to see only their authorized children.
+
+For each child, show appropriate available information such as:
+
+- Student name
+- Admission number
+- School
+- Class
+- Section
+- Student status
+- Parent relationship
+
+Do NOT expose another parent's children.
+
+Do NOT allow parents to modify academic records.
+
+Do NOT allow parents to assign themselves to students.
+
+Parent-child relationships must be controlled by authorized school/platform users.
+
+---
+
+18. STUDENT PORTAL FOUNDATION
+
+Create only the foundation needed for future student access.
+
+A student account, where enabled, should only access their own authorized student record.
+
+Do not build the complete student academic portal yet.
+
+Prevent a student from accessing another student's record.
+
+---
+
+19. FRONTEND
+
+Keep the existing UI architecture.
+
+Improve:
+
+- School management pages
+- Student management pages
+- Parent management pages
+- Teacher management
+- Staff management
+- Class assignment
+- Subject management
+- User management
+- School dashboard
+- Platform dashboard
+
+Use existing generated React Query/Zod clients.
+
+Do not bypass the API with direct database access from the frontend.
+
+Keep the UI responsive.
+
+---
+
+20. OPENAPI
+
+Update OpenAPI for every new or changed endpoint.
+
+Regenerate:
+
+- React Query hooks
+- Zod schemas
+- API types
+
+Do not manually create duplicate API types if generated types already exist.
+
+---
+
+21. TESTING
+
+Add automated tests for at least:
+
+Authentication
+
+- unauthenticated request → 401
+- inactive user → denied
+
+Tenant isolation
+
+- School A cannot access School B students
+- School A cannot access School B parents
+- School A cannot access School B teachers
+- School A cannot access School B classes
+- School A cannot access School B subjects
+
+RBAC
+
+- School Admin cannot create PLATFORM_OWNER
+- Teacher cannot manage school users
+- Parent cannot modify student records
+- Student cannot access another student
+- Staff cannot access unauthorized administrative endpoints
+
+Data integrity
+
+- duplicate admission number rejected
+- duplicate employee ID rejected
+- invalid school/class relationship rejected
+- invalid teacher/class relationship rejected
+- duplicate parent/student relationship rejected
+
+Historical records
+
+- deactivated parent relationship remains historically available
+- previous class assignment remains historically available
+- previous teacher assignment remains historically available
+- inactive students are not deleted
+
+Audit
+
+- administrative changes create audit records
+- authenticated actor is recorded
+- unauthorized attempts generate appropriate security events where applicable
+
+---
+
+22. REGRESSION REQUIREMENTS
+
+Before declaring Phase 3 complete:
+
+Run:
+
+- API typecheck
+- frontend typecheck
+- shared-library typecheck
+- API build
+- frontend build
+- existing security tests
+- new Phase 3 tests
+- database migration verification
+- API health check
+- browser verification of major workflows
+
+Confirm:
+
+- Clerk authentication still works
+- PLATFORM_OWNER still works
+- School Admin still works
+- Parent portal still works
+- existing parent relationships remain intact
+- existing schools remain intact
+- existing students remain intact
+- existing subscriptions remain intact
+- existing NFC records remain intact
+- existing audit records remain intact
+- no database reset occurred
+- no tenant-isolation regression occurred
+
+---
+
+23. DO NOT IMPLEMENT YET
+
+Do NOT implement these in Phase 3:
+
+- Partner/Reseller system
+- Partner commission
+- Partner referral links
+- Partner payouts
+- Attendance
+- Fingerprint integration
+- NFC attendance workflows
+- Fees/payment collection
+- Exams
+- Results/report cards
+- Assignments
+- Timetable
+- Library
+- Notifications
+- SMS
+- WhatsApp integration
+- advanced reporting
+- payment-provider integration
+
+Those will be implemented in later phases.
+
+---
+
+24. REQUIRED COMPLETION REPORT
+
+When finished, report:
+
+1. Database tables created/modified
+2. Migrations created
+3. API endpoints added/changed
+4. Frontend pages/components added/changed
+5. RBAC rules implemented
+6. Audit events added
+7. Tests added and results
+8. Typecheck results
+9. Build results
+10. API health result
+11. Browser verification result
+12. Any remaining limitations
+13. Any items that should be addressed before Phase 4
+
+STOP after Phase 3.
+
+Do not automatically begin Phase 4.
+
+The next planned phase after successful Phase 3 is:
+
+Phase 4 — Partner/Reseller Management and Commission System.

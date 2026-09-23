@@ -14,5 +14,15 @@ export interface SchoolUpdate {
   city?: string;
   /** @minLength 2 */
   state?: string;
+  /** @minLength 1 */
+  code?: string;
+  registrationNumber?: string;
+  address?: string;
+  lga?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  logoUrl?: string;
+  schoolType?: string;
   status?: SchoolUpdateStatus;
 }
