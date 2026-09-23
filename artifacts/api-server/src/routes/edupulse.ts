@@ -643,6 +643,41 @@ router.post("/subscriptions/:subscriptionId/verify", async (req, res) => {
         school_share::float AS "schoolShare", edupulse_share::float AS "edupulseShare",
         status, verification_status AS "verificationStatus", provider, term, expires_at AS "expiresAt"
     `, [body.providerReference, params.subscriptionId]);
+    // Attribution and commission generation are derived from the school at verification
+    // time.  The unique ledger key makes retries harmless and the allocation snapshot
+    // preserves the historical rule for this subscription.
+    const attributed = await pool.query(`
+      SELECT a.partner_profile_id AS "partnerProfileId"
+      FROM school_partner_attributions a JOIN partner_profiles p ON p.id=a.partner_profile_id
+      WHERE a.school_id=$1 AND a.is_current=true AND a.status='ACTIVE' AND p.status='ACTIVE'
+      LIMIT 1`, [existing.rows[0].school_id]);
+    if (attributed.rows[0]) {
+      const rule = await pool.query(`
+        INSERT INTO commission_rules(name,status,term,partner_amount,school_amount,edupulse_amount)
+        SELECT 'Default partner referral','ACTIVE',$1,100,2000,2900
+        WHERE NOT EXISTS (SELECT 1 FROM commission_rules WHERE status='ACTIVE' AND (term=$1 OR term IS NULL))
+        RETURNING id,partner_amount,school_amount,edupulse_amount`, [existing.rows[0].term]);
+      const activeRule = rule.rows[0] ?? (await pool.query(`
+        SELECT id,partner_amount,school_amount,edupulse_amount FROM commission_rules
+        WHERE status='ACTIVE' AND (term=$1 OR term IS NULL)
+        ORDER BY term NULLS LAST, starts_at DESC LIMIT 1`, [existing.rows[0].term])).rows[0];
+      if (activeRule) {
+        await pool.query(`
+          UPDATE subscriptions SET partner_profile_id=$1, partner_share=$2,
+            school_share=$3, edupulse_share=$4,
+            allocation_snapshot=jsonb_build_object('amount',amount::numeric,'school', $3::numeric,
+              'partner',$2::numeric,'edupulse',$4::numeric,'ruleId',$5::int)
+          WHERE id=$6 AND status='active' AND verification_status='verified'`,
+          [attributed.rows[0].partnerProfileId, activeRule.partner_amount, activeRule.school_amount,
+            activeRule.edupulse_amount, activeRule.id, params.subscriptionId]);
+        await pool.query(`
+          INSERT INTO commission_ledger(partner_profile_id,subscription_id,commission_rule_id,term,amount,status)
+          VALUES($1,$2,$3,$4,$5,'EARNED')
+          ON CONFLICT (subscription_id,commission_rule_id,term) DO NOTHING`,
+          [attributed.rows[0].partnerProfileId, params.subscriptionId, activeRule.id,
+            existing.rows[0].term, activeRule.partner_amount]);
+      }
+    }
     await pool.query(`UPDATE nfc_cards SET status = 'active' WHERE student_id = $1 AND status IN ('locked', 'unassigned')`, [existing.rows[0].student_id]);
     await audit(req, existing.rows[0].school_id, "Verified subscription payment", "Subscriptions", params.subscriptionId, "info", "SUBSCRIPTION_VERIFIED");
     const student = await pool.query(`SELECT first_name || ' ' || last_name AS name FROM students WHERE id = $1`, [existing.rows[0].student_id]);

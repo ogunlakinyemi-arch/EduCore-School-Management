@@ -518,6 +518,7 @@ export const RoleAssignmentRole = {
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
   STAFF: 'STAFF',
+  PARTNER: 'PARTNER',
 } as const;
 
 export type RoleAssignmentStatus = typeof RoleAssignmentStatus[keyof typeof RoleAssignmentStatus];
@@ -1295,6 +1296,506 @@ export interface CardStatusInput {
   status: CardStatusInputStatus;
 }
 
+export type PartnerStatus = typeof PartnerStatus[keyof typeof PartnerStatus];
+
+
+export const PartnerStatus = {
+  INVITED: 'INVITED',
+  ACTIVE: 'ACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  DEACTIVATED: 'DEACTIVATED',
+} as const;
+
+export type PartnerType = typeof PartnerType[keyof typeof PartnerType];
+
+
+export const PartnerType = {
+  INDIVIDUAL: 'INDIVIDUAL',
+  BUSINESS: 'BUSINESS',
+} as const;
+
+export interface Partner {
+  id: number;
+  partnerCode: string;
+  partnerType: PartnerType;
+  fullName: string;
+  /** @nullable */
+  businessName?: string | null;
+  email: string;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  state?: string | null;
+  /** @nullable */
+  lga?: string | null;
+  status: PartnerStatus;
+  /** @nullable */
+  clerkUserId?: string | null;
+  /** @nullable */
+  userId?: number | null;
+  /** @nullable */
+  registrationDate?: string | null;
+  /** @nullable */
+  activationDate?: string | null;
+  /** @nullable */
+  deactivationDate?: string | null;
+  createdAt: string;
+  /** @nullable */
+  updatedAt?: string | null;
+}
+
+export interface PartnerInvitationInput {
+  email: string;
+  /** @minLength 2 */
+  fullName: string;
+  businessName?: string;
+  phone?: string;
+  partnerType?: PartnerType;
+}
+
+export type PartnerInvitationStatus = typeof PartnerInvitationStatus[keyof typeof PartnerInvitationStatus];
+
+
+export const PartnerInvitationStatus = {
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  EXPIRED: 'EXPIRED',
+  REVOKED: 'REVOKED',
+} as const;
+
+export interface PartnerInvitation {
+  id: number;
+  partnerId: number;
+  email: string;
+  status: PartnerInvitationStatus;
+  /** Copyable single-use invitation URL; returned exactly once at creation and never persisted or returned again */
+  invitationUrl: string;
+  expiresAt: string;
+  /** @nullable */
+  acceptedAt?: string | null;
+  createdAt: string;
+}
+
+export interface PartnerUpdate {
+  /** @minLength 2 */
+  fullName?: string;
+  businessName?: string;
+  phone?: string;
+  address?: string;
+  state?: string;
+  lga?: string;
+  status?: PartnerStatus;
+}
+
+export interface PartnerSelfUpdate {
+  /** @minLength 2 */
+  fullName?: string;
+  businessName?: string;
+  phone?: string;
+  address?: string;
+  state?: string;
+  lga?: string;
+}
+
+export interface PartnerStatusUpdate {
+  status: PartnerStatus;
+}
+
+export type PartnerSchoolAttributionStatus = typeof PartnerSchoolAttributionStatus[keyof typeof PartnerSchoolAttributionStatus];
+
+
+export const PartnerSchoolAttributionStatus = {
+  ACTIVE: 'ACTIVE',
+  ENDED: 'ENDED',
+  PENDING: 'PENDING',
+} as const;
+
+export type PartnerSchoolAttributionSource = typeof PartnerSchoolAttributionSource[keyof typeof PartnerSchoolAttributionSource];
+
+
+export const PartnerSchoolAttributionSource = {
+  REFERRAL: 'REFERRAL',
+  PLATFORM_ASSIGNED: 'PLATFORM_ASSIGNED',
+  DIRECT: 'DIRECT',
+} as const;
+
+export interface PartnerSchool {
+  schoolId: number;
+  schoolName: string;
+  /** @nullable */
+  schoolCode?: string | null;
+  attributionStatus: PartnerSchoolAttributionStatus;
+  attributionSource: PartnerSchoolAttributionSource;
+  /** @nullable */
+  referralLinkId?: number | null;
+  startDate: string;
+  /** @nullable */
+  endDate?: string | null;
+  eligibleStudentCount?: number;
+}
+
+export type PartnerAttributionConflictStatus = typeof PartnerAttributionConflictStatus[keyof typeof PartnerAttributionConflictStatus];
+
+
+export const PartnerAttributionConflictStatus = {
+  OPEN: 'OPEN',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface PartnerAttributionConflict {
+  id: number;
+  schoolId: number;
+  /** @nullable */
+  existingPartnerId?: number | null;
+  attemptedPartnerId: number;
+  attemptedAttributionSource?: string;
+  status: PartnerAttributionConflictStatus;
+  /** @nullable */
+  resolutionNote?: string | null;
+  createdAt: string;
+  /** @nullable */
+  resolvedAt?: string | null;
+}
+
+export type PartnerAttributionHistoryAttributionStatus = typeof PartnerAttributionHistoryAttributionStatus[keyof typeof PartnerAttributionHistoryAttributionStatus];
+
+
+export const PartnerAttributionHistoryAttributionStatus = {
+  ACTIVE: 'ACTIVE',
+  ENDED: 'ENDED',
+  PENDING: 'PENDING',
+} as const;
+
+export type PartnerAttributionHistoryAttributionSource = typeof PartnerAttributionHistoryAttributionSource[keyof typeof PartnerAttributionHistoryAttributionSource];
+
+
+export const PartnerAttributionHistoryAttributionSource = {
+  REFERRAL: 'REFERRAL',
+  PLATFORM_ASSIGNED: 'PLATFORM_ASSIGNED',
+  DIRECT: 'DIRECT',
+} as const;
+
+export interface PartnerAttributionHistory {
+  id: number;
+  partnerId: number;
+  schoolId: number;
+  attributionStatus: PartnerAttributionHistoryAttributionStatus;
+  attributionSource: PartnerAttributionHistoryAttributionSource;
+  /** @nullable */
+  referralLinkId?: number | null;
+  startDate: string;
+  /** @nullable */
+  endDate?: string | null;
+  /** @nullable */
+  changedBy?: number | null;
+  /** @nullable */
+  changeReason?: string | null;
+}
+
+export type AttributionConflictResolutionDecision = typeof AttributionConflictResolutionDecision[keyof typeof AttributionConflictResolutionDecision];
+
+
+export const AttributionConflictResolutionDecision = {
+  ACCEPT: 'ACCEPT',
+  REJECT: 'REJECT',
+} as const;
+
+export interface AttributionConflictResolution {
+  decision: AttributionConflictResolutionDecision;
+  note?: string;
+}
+
+export type PartnerCommissionRuleCalculationBasis = typeof PartnerCommissionRuleCalculationBasis[keyof typeof PartnerCommissionRuleCalculationBasis];
+
+
+export const PartnerCommissionRuleCalculationBasis = {
+  PER_ELIGIBLE_STUDENT_PER_TERM: 'PER_ELIGIBLE_STUDENT_PER_TERM',
+} as const;
+
+export type PartnerCommissionRuleStatus = typeof PartnerCommissionRuleStatus[keyof typeof PartnerCommissionRuleStatus];
+
+
+export const PartnerCommissionRuleStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface PartnerCommissionRule {
+  id: number;
+  /** @minimum 0 */
+  rate: number;
+  /**
+     * @minLength 3
+     * @maxLength 3
+     */
+  currency: string;
+  calculationBasis: PartnerCommissionRuleCalculationBasis;
+  effectiveDate: string;
+  /** @nullable */
+  endDate?: string | null;
+  status: PartnerCommissionRuleStatus;
+  createdAt?: string;
+}
+
+export type PartnerCommissionRuleInputCalculationBasis = typeof PartnerCommissionRuleInputCalculationBasis[keyof typeof PartnerCommissionRuleInputCalculationBasis];
+
+
+export const PartnerCommissionRuleInputCalculationBasis = {
+  PER_ELIGIBLE_STUDENT_PER_TERM: 'PER_ELIGIBLE_STUDENT_PER_TERM',
+} as const;
+
+export interface PartnerCommissionRuleInput {
+  /** @minimum 0 */
+  rate: number;
+  /**
+     * @minLength 3
+     * @maxLength 3
+     */
+  currency: string;
+  calculationBasis: PartnerCommissionRuleInputCalculationBasis;
+  effectiveDate: string;
+}
+
+export type PartnerCommissionRuleUpdateStatus = typeof PartnerCommissionRuleUpdateStatus[keyof typeof PartnerCommissionRuleUpdateStatus];
+
+
+export const PartnerCommissionRuleUpdateStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface PartnerCommissionRuleUpdate {
+  /** @minimum 0 */
+  rate?: number;
+  endDate?: string;
+  status?: PartnerCommissionRuleUpdateStatus;
+}
+
+export type PartnerCommissionStatus = typeof PartnerCommissionStatus[keyof typeof PartnerCommissionStatus];
+
+
+export const PartnerCommissionStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  PAYABLE: 'PAYABLE',
+  PAID: 'PAID',
+  HELD: 'HELD',
+  REVERSED: 'REVERSED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export interface PartnerCommission {
+  id: number;
+  partnerId: number;
+  schoolId: number;
+  /** @nullable */
+  studentId?: number | null;
+  /** @nullable */
+  subscriptionId?: number | null;
+  /** @nullable */
+  academicSession?: string | null;
+  /** @nullable */
+  term?: string | null;
+  commissionRuleId: number;
+  rate: number;
+  eligibleStudentCount: number;
+  amount: number;
+  currency: string;
+  status: PartnerCommissionStatus;
+  generatedAt: string;
+  /** @nullable */
+  approvedAt?: string | null;
+  /** @nullable */
+  payableAt?: string | null;
+  /** @nullable */
+  paidAt?: string | null;
+  /** @nullable */
+  paymentReference?: string | null;
+}
+
+export type PartnerPayoutStatus = typeof PartnerPayoutStatus[keyof typeof PartnerPayoutStatus];
+
+
+export const PartnerPayoutStatus = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  REVERSED: 'REVERSED',
+} as const;
+
+export interface PartnerPayout {
+  id: number;
+  partnerId: number;
+  /** @minimum 0 */
+  amount: number;
+  currency: string;
+  status: PartnerPayoutStatus;
+  /** @nullable */
+  paymentReference?: string | null;
+  /** @nullable */
+  periodStart?: string | null;
+  /** @nullable */
+  periodEnd?: string | null;
+  createdAt: string;
+  /** @nullable */
+  paidAt?: string | null;
+}
+
+export interface PartnerPayoutInput {
+  /** @minimum 1 */
+  partnerId: number;
+  /** @minimum 0 */
+  amount: number;
+  /**
+     * @minLength 3
+     * @maxLength 3
+     */
+  currency: string;
+  periodStart?: string;
+  periodEnd?: string;
+}
+
+export type PartnerPayoutUpdateStatus = typeof PartnerPayoutUpdateStatus[keyof typeof PartnerPayoutUpdateStatus];
+
+
+export const PartnerPayoutUpdateStatus = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  REVERSED: 'REVERSED',
+} as const;
+
+export interface PartnerPayoutUpdate {
+  status?: PartnerPayoutUpdateStatus;
+  paymentReference?: string;
+}
+
+export interface PartnerDashboard {
+  referredSchools: number;
+  eligibleStudents: number;
+  currentTermCommission: number;
+  lifetimeCommission: number;
+  paidCommission: number;
+  outstandingCommission: number;
+}
+
+export type PartnerReferralLinkStatus = typeof PartnerReferralLinkStatus[keyof typeof PartnerReferralLinkStatus];
+
+
+export const PartnerReferralLinkStatus = {
+  ACTIVE: 'ACTIVE',
+  REVOKED: 'REVOKED',
+} as const;
+
+export interface PartnerReferralLink {
+  id: number;
+  /**
+     * Stable indefinite referral URL in the form /school/register?ref=<opaque-token>; token is not returned as a separate field
+     * @pattern ^/school/register\?ref=[A-Za-z0-9_-]{32,}$
+     */
+  url: string;
+  status: PartnerReferralLinkStatus;
+  createdAt?: string;
+}
+
+export type PartnerPayoutInformationMaskedPayoutMethod = typeof PartnerPayoutInformationMaskedPayoutMethod[keyof typeof PartnerPayoutInformationMaskedPayoutMethod];
+
+
+export const PartnerPayoutInformationMaskedPayoutMethod = {
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  MOBILE_MONEY: 'MOBILE_MONEY',
+  OTHER: 'OTHER',
+} as const;
+
+export interface PartnerPayoutInformationMasked {
+  id: number;
+  payoutMethod: PartnerPayoutInformationMaskedPayoutMethod;
+  /** @nullable */
+  bankName: string | null;
+  /** @nullable */
+  accountName: string | null;
+  /**
+     * Masked value only, for example ****1234
+     * @nullable
+     */
+  maskedAccountNumber: string | null;
+  /** @nullable */
+  bankCode?: string | null;
+  updatedAt: string;
+}
+
+export type PartnerPayoutInformationInputPayoutMethod = typeof PartnerPayoutInformationInputPayoutMethod[keyof typeof PartnerPayoutInformationInputPayoutMethod];
+
+
+export const PartnerPayoutInformationInputPayoutMethod = {
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  MOBILE_MONEY: 'MOBILE_MONEY',
+  OTHER: 'OTHER',
+} as const;
+
+export interface PartnerPayoutInformationInput {
+  payoutMethod: PartnerPayoutInformationInputPayoutMethod;
+  bankName?: string;
+  accountName: string;
+  /**
+     * Write-only; never returned by the API
+     * @minLength 4
+     */
+  accountNumber?: string;
+  bankCode?: string;
+  otherDetails?: string;
+}
+
+export interface ReferralValidationInput {
+  /** @minLength 16 */
+  referralToken: string;
+}
+
+export type ReferralValidationStatus = typeof ReferralValidationStatus[keyof typeof ReferralValidationStatus];
+
+
+export const ReferralValidationStatus = {
+  VALID: 'VALID',
+  INVALID: 'INVALID',
+  EXPIRED: 'EXPIRED',
+  REVOKED: 'REVOKED',
+} as const;
+
+export interface ReferralValidation {
+  valid: boolean;
+  status: ReferralValidationStatus;
+  /** @nullable */
+  partnerCode?: string | null;
+  /** @nullable */
+  referralLinkId?: number | null;
+}
+
+export interface PartnerSchoolOnboardingInput {
+  /** @minLength 16 */
+  referralToken: string;
+  school: SchoolInput;
+}
+
+export type PartnerOnboardingResultAttributionStatus = typeof PartnerOnboardingResultAttributionStatus[keyof typeof PartnerOnboardingResultAttributionStatus];
+
+
+export const PartnerOnboardingResultAttributionStatus = {
+  CREATED: 'CREATED',
+  CONFLICT: 'CONFLICT',
+} as const;
+
+export interface PartnerOnboardingResult {
+  school: School;
+  attributionStatus: PartnerOnboardingResultAttributionStatus;
+  /** @nullable */
+  conflictId?: number | null;
+}
+
 /**
  * Authentication required
  */
@@ -1689,6 +2190,11 @@ schoolId: SchoolIdParameter;
 
 export type ListAuditLogsParams = {
 schoolId?: number;
+search?: SearchParameter;
+};
+
+export type ListPartnersParams = {
+status?: PartnerStatus;
 search?: SearchParameter;
 };
 

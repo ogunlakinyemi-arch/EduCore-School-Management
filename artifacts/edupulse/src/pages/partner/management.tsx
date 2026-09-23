@@ -1,0 +1,516 @@
+import { useState } from 'react';
+import { Route, Switch, Link, useLocation } from 'wouter';
+import { 
+  useListPartners, 
+  useCreatePartnerInvitation,
+  useGetPartner,
+  useUpdatePartnerStatus,
+  useListPartnerSchools,
+  useListPartnerCommissions,
+  useListPartnerPayouts,
+  useListPlatformPartnerPayouts,
+  useListPartnerAttributionConflicts,
+  useResolvePartnerAttributionConflict,
+  useCreatePartnerPayout
+} from '@workspace/api-client-react';
+import { 
+  PageHeading, 
+  Button, 
+  StatusPill, 
+  money, 
+  date, 
+  SkeletonPage, 
+  EmptyState,
+  ErrorState,
+  Modal,
+  Field,
+  cx,
+  Metric
+} from '@/components/shared';
+import { Handshake, UserPlus, FileCheck, CheckCircle2, XCircle, Search, ExternalLink, RefreshCw, HandCoins, AlertTriangle, AlertCircle } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
+import NotFound from '@/pages/not-found';
+
+const inviteSchema = z.object({
+  email: z.string().email(),
+  fullName: z.string().min(2),
+  businessName: z.string().optional(),
+  phone: z.string().optional(),
+  partnerType: z.enum(['INDIVIDUAL', 'BUSINESS']).default('BUSINESS'),
+});
+
+function PartnersOverview() {
+  const query = useListPartners();
+  const [showInvite, setShowInvite] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  if (query.isLoading) return <SkeletonPage />;
+  if (query.isError) return <ErrorState retry={() => query.refetch()} />;
+
+  const partners = query.data ?? [];
+  const filtered = partners.filter(p => 
+    p.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.businessName && p.businessName.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <PageHeading 
+        eyebrow="Ecosystem" 
+        title="Partners & Resellers" 
+        description="Manage your network of affiliates, resellers, and consultants."
+        action={<Button onClick={() => setShowInvite(true)}><UserPlus size={16} />Invite partner</Button>}
+      />
+      
+      <div className="mb-6 flex gap-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={16} />
+          <input 
+            type="text" 
+            placeholder="Search partners by name, email or business..." 
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="panel overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-[hsl(var(--muted)/.4)] font-bold text-[hsl(var(--muted-foreground))]">
+              <tr>
+                <th className="p-4">Partner</th>
+                <th className="p-4">Type</th>
+                <th className="p-4">Contact</th>
+                <th className="p-4">Status</th>
+                <th className="p-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[hsl(var(--border))]">
+              {filtered.map(partner => (
+                <tr key={partner.id} className="transition-colors hover:bg-[hsl(var(--muted)/.2)]">
+                  <td className="p-4">
+                    <div className="font-bold text-[hsl(var(--foreground))]">{partner.fullName}</div>
+                    {partner.businessName && <div className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))]">{partner.businessName}</div>}
+                    <div className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))] uppercase font-mono tracking-wider">{partner.partnerCode}</div>
+                  </td>
+                  <td className="p-4">
+                    <span className="inline-flex items-center rounded-md bg-[hsl(var(--primary)/.1)] px-2 py-1 text-xs font-semibold text-[hsl(var(--primary))] dark:text-[hsl(var(--primary-foreground))]">
+                      {partner.partnerType}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <div className="text-[hsl(var(--foreground))]">{partner.email}</div>
+                    {partner.phone && <div className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))]">{partner.phone}</div>}
+                  </td>
+                  <td className="p-4"><StatusPill value={partner.status} /></td>
+                  <td className="p-4 text-right">
+                    <Link href={`/partners/${partner.id}`}>
+                      <Button variant="outline" className="h-8 text-xs py-0 px-3">View details</Button>
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-[hsl(var(--muted-foreground))]">
+                    No partners found matching your search.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {showInvite && <InvitePartnerModal onClose={() => setShowInvite(false)} />}
+    </div>
+  );
+}
+
+function InvitePartnerModal({ onClose }: { onClose: () => void }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const invite = useCreatePartnerInvitation();
+  const form = useForm<z.infer<typeof inviteSchema>>({
+    resolver: zodResolver(inviteSchema),
+    defaultValues: { email: '', fullName: '', businessName: '', phone: '', partnerType: 'BUSINESS' }
+  });
+
+  const onSubmit = form.handleSubmit((data) => {
+    invite.mutate({ data: data as any }, {
+      onSuccess: () => {
+        toast({ title: 'Invitation sent', description: `An invitation has been sent to ${data.email}` });
+        queryClient.invalidateQueries({ queryKey: ['listPartners'] });
+        onClose();
+      },
+      onError: (err: any) => {
+        toast({ title: 'Error', description: err.error || 'Failed to send invitation', variant: 'destructive' });
+      }
+    });
+  });
+
+  return (
+    <Modal title="Invite a Partner" eyebrow="Ecosystem" onClose={onClose}>
+      <form onSubmit={onSubmit} className="space-y-5">
+        <div className="grid gap-5 md:grid-cols-2">
+          <Field label="Full Name" error={form.formState.errors.fullName?.message}>
+            <input {...form.register('fullName')} placeholder="e.g. Jane Doe" />
+          </Field>
+          <Field label="Email Address" error={form.formState.errors.email?.message}>
+            <input type="email" {...form.register('email')} placeholder="partner@example.com" />
+          </Field>
+        </div>
+        <div className="grid gap-5 md:grid-cols-2">
+          <Field label="Business Name (Optional)" error={form.formState.errors.businessName?.message}>
+            <input {...form.register('businessName')} placeholder="e.g. EduConsulting Ltd" />
+          </Field>
+          <Field label="Phone Number (Optional)" error={form.formState.errors.phone?.message}>
+            <input {...form.register('phone')} placeholder="+234..." />
+          </Field>
+        </div>
+        <Field label="Partner Type" error={form.formState.errors.partnerType?.message}>
+          <select {...form.register('partnerType')}>
+            <option value="BUSINESS">Business</option>
+            <option value="INDIVIDUAL">Individual</option>
+          </select>
+        </Field>
+        <div className="pt-2 flex justify-end gap-3">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={invite.isPending}>
+            {invite.isPending ? 'Sending...' : 'Send Invitation'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function PartnerDetail({ id }: { id: number }) {
+  const query = useGetPartner(id);
+  const [, setLocation] = useLocation();
+  const updateStatus = useUpdatePartnerStatus();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  if (query.isLoading) return <SkeletonPage />;
+  if (query.isError || !query.data) return <ErrorState retry={() => query.refetch()} />;
+  
+  const partner = query.data;
+
+  const handleStatusChange = (newStatus: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED') => {
+    updateStatus.mutate({ partnerId: id, data: { status: newStatus as any } }, {
+      onSuccess: () => {
+        toast({ title: 'Status updated', description: `Partner status changed to ${newStatus}` });
+        queryClient.invalidateQueries({ queryKey: ['getPartner', id] });
+      }
+    });
+  };
+
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="mb-6 flex items-center gap-3">
+        <Button variant="quiet" className="h-8 w-8 p-0 rounded-full" onClick={() => setLocation('/partners')}>
+          <XCircle size={18} className="rotate-45" />
+        </Button>
+        <div className="text-sm font-bold text-[hsl(var(--muted-foreground))]">Back to Partners</div>
+      </div>
+      
+      <div className="panel p-6 md:p-8 mb-8 flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <span className="inline-flex items-center rounded-md bg-[hsl(var(--primary)/.1)] px-2.5 py-1 text-xs font-bold text-[hsl(var(--primary))] dark:text-[hsl(var(--primary-foreground))] uppercase tracking-wider">
+              {partner.partnerType}
+            </span>
+            <StatusPill value={partner.status} />
+            <span className="font-mono text-sm text-[hsl(var(--muted-foreground))] bg-[hsl(var(--muted))] px-2 py-0.5 rounded-md">
+              {partner.partnerCode}
+            </span>
+          </div>
+          <h1 className="display-font text-3xl font-bold">{partner.fullName}</h1>
+          {partner.businessName && <div className="mt-1 text-lg text-[hsl(var(--muted-foreground))]">{partner.businessName}</div>}
+          <div className="mt-4 flex flex-wrap gap-4 text-sm text-[hsl(var(--muted-foreground))]">
+            <div><strong>Email:</strong> {partner.email}</div>
+            {partner.phone && <div><strong>Phone:</strong> {partner.phone}</div>}
+            <div><strong>Joined:</strong> {date(partner.createdAt)}</div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 shrink-0 w-full md:w-auto">
+          {partner.status === 'ACTIVE' ? (
+            <Button variant="danger" onClick={() => handleStatusChange('SUSPENDED')}>Suspend Partner</Button>
+          ) : (
+            <Button variant="primary" onClick={() => handleStatusChange('ACTIVE')}>Activate Partner</Button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <PartnerSchoolsList partnerId={id} />
+        <PartnerCommissionsList partnerId={id} />
+      </div>
+    </div>
+  );
+}
+
+function PartnerSchoolsList({ partnerId }: { partnerId: number }) {
+  const query = useListPartnerSchools(partnerId);
+  
+  return (
+    <div className="panel p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="display-font text-xl font-bold">Attributed Schools</h2>
+        <span className="text-sm font-bold bg-[hsl(var(--muted))] px-2.5 py-1 rounded-full">
+          {query.data?.length || 0}
+        </span>
+      </div>
+      
+      {query.isLoading ? (
+        <div className="space-y-3"><div className="skeleton h-12 rounded-xl"/><div className="skeleton h-12 rounded-xl"/></div>
+      ) : query.isError ? (
+        <div className="text-sm text-[hsl(var(--destructive))]">Failed to load schools.</div>
+      ) : query.data?.length ? (
+        <div className="space-y-3">
+          {query.data.map((school: any) => (
+            <div key={school.schoolId} className="flex items-center justify-between p-3 rounded-xl border border-[hsl(var(--border))]">
+              <div>
+                <div className="font-bold">{school.schoolName}</div>
+                <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5 font-mono">{school.schoolCode}</div>
+              </div>
+              <div className="text-right">
+                <StatusPill value={school.attributionStatus} />
+                <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Since {date(school.startDate)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center p-6 text-[hsl(var(--muted-foreground))] text-sm">
+          No schools attributed yet.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PartnerCommissionsList({ partnerId }: { partnerId: number }) {
+  const query = useListPartnerCommissions(partnerId);
+  
+  return (
+    <div className="panel p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="display-font text-xl font-bold">Recent Commissions</h2>
+        <span className="text-sm font-bold bg-[hsl(var(--muted))] px-2.5 py-1 rounded-full">
+          {query.data?.length || 0}
+        </span>
+      </div>
+      
+      {query.isLoading ? (
+        <div className="space-y-3"><div className="skeleton h-12 rounded-xl"/><div className="skeleton h-12 rounded-xl"/></div>
+      ) : query.isError ? (
+        <div className="text-sm text-[hsl(var(--destructive))]">Failed to load commissions.</div>
+      ) : query.data?.length ? (
+        <div className="space-y-3">
+          {query.data.slice(0, 5).map((comm: any) => (
+            <div key={comm.id} className="flex items-center justify-between p-3 rounded-xl border border-[hsl(var(--border))]">
+              <div>
+                <div className="font-bold text-[hsl(157_37%_43%)] dark:text-[hsl(157_37%_55%)]">
+                  {comm.currency} {comm.amount.toLocaleString()}
+                </div>
+                <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">School ID: {comm.schoolId}</div>
+              </div>
+              <div className="text-right">
+                <StatusPill value={comm.status} />
+                <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">{date(comm.createdAt)}</div>
+              </div>
+            </div>
+          ))}
+          {query.data.length > 5 && (
+            <Button variant="quiet" className="w-full text-xs">View all {query.data.length} records</Button>
+          )}
+        </div>
+      ) : (
+        <div className="text-center p-6 text-[hsl(var(--muted-foreground))] text-sm">
+          No commissions earned yet.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PayoutsOverview() {
+  const query = useListPlatformPartnerPayouts();
+  
+  if (query.isLoading) return <SkeletonPage />;
+  if (query.isError) return <ErrorState retry={() => query.refetch()} />;
+
+  const payouts = query.data ?? [];
+
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <PageHeading 
+        eyebrow="Financials" 
+        title="Partner Payouts" 
+        description="Review and process platform-wide commission payouts."
+      />
+
+      <div className="panel overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-[hsl(var(--muted)/.4)] font-bold text-[hsl(var(--muted-foreground))]">
+              <tr>
+                <th className="p-4">Date</th>
+                <th className="p-4">Partner ID</th>
+                <th className="p-4">Amount</th>
+                <th className="p-4">Status</th>
+                <th className="p-4">Ref</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[hsl(var(--border))]">
+              {payouts.map(payout => (
+                <tr key={payout.id} className="transition-colors hover:bg-[hsl(var(--muted)/.2)]">
+                  <td className="p-4">{date(payout.createdAt)}</td>
+                  <td className="p-4 font-mono text-xs">{payout.partnerId}</td>
+                  <td className="p-4 font-bold text-[hsl(var(--foreground))]">{payout.currency} {payout.amount.toLocaleString()}</td>
+                  <td className="p-4"><StatusPill value={payout.status} /></td>
+                  <td className="p-4 text-[hsl(var(--muted-foreground))] font-mono text-xs">{payout.paymentReference || '—'}</td>
+                </tr>
+              ))}
+              {payouts.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-[hsl(var(--muted-foreground))]">
+                    No payouts found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AttributionConflicts() {
+  const query = useListPartnerAttributionConflicts();
+  const resolve = useResolvePartnerAttributionConflict();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  if (query.isLoading) return <SkeletonPage />;
+  if (query.isError) return <ErrorState retry={() => query.refetch()} />;
+
+  const conflicts = query.data ?? [];
+
+  const handleResolve = (id: number, partnerId: number, decision: 'ACCEPT' | 'REJECT', note: string) => {
+    resolve.mutate({ conflictId: id, data: { decision, note } }, {
+      onSuccess: () => {
+        toast({ title: 'Conflict resolved', description: 'Attribution has been awarded.' });
+        queryClient.invalidateQueries({ queryKey: ['listPartnerAttributionConflicts'] });
+      }
+    });
+  };
+
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <PageHeading 
+        eyebrow="Ecosystem" 
+        title="Attribution Conflicts" 
+        description="Resolve disputes when multiple partners claim the same school referral."
+      />
+
+      <div className="grid gap-5">
+        {conflicts.map(conflict => (
+          <div key={conflict.id} className="panel p-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertCircle size={16} className={conflict.status === 'OPEN' ? 'text-[hsl(var(--accent))]' : 'text-[hsl(var(--muted-foreground))]'} />
+                  <span className="font-bold">Conflict #{conflict.id}</span>
+                  <StatusPill value={conflict.status} />
+                </div>
+                <div className="text-sm text-[hsl(var(--muted-foreground))]">
+                  School ID: <strong>{conflict.schoolId}</strong> · Raised: {date(conflict.createdAt)}
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-[hsl(var(--border))] p-4 bg-[hsl(var(--card))]">
+                <div className="eyebrow mb-2">Existing Claim</div>
+                <div className="font-bold">{conflict.existingPartnerId ? `Partner ID: ${conflict.existingPartnerId}` : 'None'}</div>
+              </div>
+              <div className="rounded-xl border border-[hsl(var(--border))] p-4 bg-[hsl(var(--card))]">
+                <div className="eyebrow mb-2">Attempted Claim</div>
+                <div className="font-bold">Partner ID: {conflict.attemptedPartnerId}</div>
+                <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Source: {conflict.attemptedAttributionSource || 'Unknown'}</div>
+              </div>
+            </div>
+
+            {conflict.status === 'OPEN' && (
+              <div className="mt-5 flex gap-3 justify-end pt-5 border-t border-[hsl(var(--border))]">
+                <Button variant="outline" onClick={() => handleResolve(conflict.id, conflict.attemptedPartnerId, 'ACCEPT', 'Awarded to new claimant')}>
+                  Award to New Claimant
+                </Button>
+                {conflict.existingPartnerId && (
+                  <Button variant="primary" onClick={() => handleResolve(conflict.id, conflict.existingPartnerId!, 'REJECT', 'Maintained existing attribution')}>
+                    Keep Existing
+                  </Button>
+                )}
+              </div>
+            )}
+            
+            {conflict.resolutionNote && (
+              <div className="mt-4 text-sm bg-[hsl(var(--muted)/.5)] p-3 rounded-lg">
+                <strong>Resolution Note:</strong> {conflict.resolutionNote}
+              </div>
+            )}
+          </div>
+        ))}
+        {conflicts.length === 0 && (
+          <EmptyState icon={CheckCircle2} title="No conflicts" description="All attributions are currently undisputed." />
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function PartnerManagement() {
+  const [location] = useLocation();
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      <div className="mb-8 flex gap-2 border-b border-[hsl(var(--border))] pb-2 overflow-x-auto">
+        <Link href="/partners">
+          <button className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners' || location.match(/^\/partners\/\d+$/) ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
+            Partners
+          </button>
+        </Link>
+        <Link href="/partners/payouts">
+          <button className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners/payouts' ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
+            Payouts
+          </button>
+        </Link>
+        <Link href="/partners/conflicts">
+          <button className={cx("px-4 py-2 text-sm font-bold border-b-2 transition-colors", location === '/partners/conflicts' ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
+            Attribution Conflicts
+          </button>
+        </Link>
+      </div>
+
+      <Switch>
+        <Route path="/partners" component={PartnersOverview} />
+        <Route path="/partners/payouts" component={PayoutsOverview} />
+        <Route path="/partners/conflicts" component={AttributionConflicts} />
+        <Route path="/partners/:id">
+          {params => <PartnerDetail id={Number(params.id)} />}
+        </Route>
+      </Switch>
+    </div>
+  );
+}

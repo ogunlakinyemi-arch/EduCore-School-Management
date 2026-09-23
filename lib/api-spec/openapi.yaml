@@ -25,6 +25,9 @@ tags:
   - name: subscriptions
   - name: cards
   - name: audit
+  - name: platform-partners
+  - name: partner
+  - name: partner-onboarding
 paths:
   /healthz:
     get:
@@ -1097,6 +1100,357 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/AuditLog"
+  /platform/partners:
+    get:
+      operationId: listPartners
+      tags: [platform-partners]
+      summary: List partner profiles
+      parameters:
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/PartnerStatus" }
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Partners
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Partner" } }
+  /platform/partners/invitations:
+    post:
+      operationId: createPartnerInvitation
+      tags: [platform-partners]
+      summary: Invite a partner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerInvitationInput" }
+      responses:
+        "201":
+          description: Partner invitation created; the token is never returned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerInvitation" }
+  /platform/partners/{partnerId}:
+    get:
+      operationId: getPartner
+      tags: [platform-partners]
+      summary: Get a partner profile
+      parameters: [{ $ref: "#/components/parameters/PartnerIdPath" }]
+      responses:
+        "200":
+          description: Partner
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Partner" }
+    patch:
+      operationId: updatePartner
+      tags: [platform-partners]
+      summary: Update a partner profile
+      parameters: [{ $ref: "#/components/parameters/PartnerIdPath" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerUpdate" }
+      responses:
+        "200":
+          description: Updated partner
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Partner" }
+  /platform/partners/{partnerId}/status:
+    patch:
+      operationId: updatePartnerStatus
+      tags: [platform-partners]
+      summary: Change partner status
+      parameters: [{ $ref: "#/components/parameters/PartnerIdPath" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerStatusUpdate" }
+      responses:
+        "200":
+          description: Updated partner
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Partner" }
+  /platform/partners/{partnerId}/schools:
+    get:
+      operationId: listPartnerSchools
+      tags: [platform-partners]
+      summary: List schools attributed to a partner
+      parameters: [{ $ref: "#/components/parameters/PartnerIdPath" }]
+      responses:
+        "200":
+          description: Partner school attributions
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PartnerSchool" } }
+  /platform/partners/{partnerId}/attribution-history:
+    get:
+      operationId: listPartnerAttributionHistory
+      tags: [platform-partners]
+      summary: List historical school attributions for a partner
+      parameters: [{ $ref: "#/components/parameters/PartnerIdPath" }]
+      responses:
+        "200":
+          description: Immutable attribution history
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PartnerAttributionHistory" } }
+  /platform/partners/{partnerId}/commissions:
+    get:
+      operationId: listPartnerCommissions
+      tags: [platform-partners]
+      summary: List a partner's commission ledger
+      parameters: [{ $ref: "#/components/parameters/PartnerIdPath" }]
+      responses:
+        "200":
+          description: Commission ledger
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PartnerCommission" } }
+  /platform/partners/{partnerId}/payouts:
+    get:
+      operationId: listPartnerPayouts
+      tags: [platform-partners]
+      summary: List a partner's payouts
+      parameters: [{ $ref: "#/components/parameters/PartnerIdPath" }]
+      responses:
+        "200":
+          description: Payout history
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PartnerPayout" } }
+  /platform/partner-attribution-conflicts:
+    get:
+      operationId: listPartnerAttributionConflicts
+      tags: [platform-partners]
+      summary: Review partner attribution conflicts
+      responses:
+        "200":
+          description: Attribution conflicts
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PartnerAttributionConflict" } }
+  /platform/partner-attribution-conflicts/{conflictId}/resolve:
+    post:
+      operationId: resolvePartnerAttributionConflict
+      tags: [platform-partners]
+      summary: Resolve an attribution conflict
+      parameters: [{ $ref: "#/components/parameters/ConflictIdPath" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AttributionConflictResolution" }
+      responses:
+        "200":
+          description: Resolved conflict
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerAttributionConflict" }
+  /platform/partner-commission-rules:
+    get:
+      operationId: listPartnerCommissionRules
+      tags: [platform-partners]
+      summary: List commission rules
+      responses:
+        "200":
+          description: Commission rules
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PartnerCommissionRule" } }
+    post:
+      operationId: createPartnerCommissionRule
+      tags: [platform-partners]
+      summary: Create a commission rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerCommissionRuleInput" }
+      responses:
+        "201":
+          description: Commission rule
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerCommissionRule" }
+  /platform/partner-commission-rules/{ruleId}:
+    patch:
+      operationId: updatePartnerCommissionRule
+      tags: [platform-partners]
+      summary: Update a commission rule
+      parameters: [{ $ref: "#/components/parameters/RuleIdPath" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerCommissionRuleUpdate" }
+      responses:
+        "200":
+          description: Commission rule
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerCommissionRule" }
+  /platform/partner-payouts:
+    get:
+      operationId: listPlatformPartnerPayouts
+      tags: [platform-partners]
+      summary: List partner payouts for administration
+      responses:
+        "200":
+          description: Payouts
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PartnerPayout" } }
+    post:
+      operationId: createPartnerPayout
+      tags: [platform-partners]
+      summary: Create a partner payout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerPayoutInput" }
+      responses:
+        "201":
+          description: Payout
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerPayout" }
+  /platform/partner-payouts/{payoutId}:
+    patch:
+      operationId: updatePartnerPayout
+      tags: [platform-partners]
+      summary: Update payout status or payment reference
+      parameters: [{ $ref: "#/components/parameters/PayoutIdPath" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerPayoutUpdate" }
+      responses:
+        "200":
+          description: Payout
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerPayout" }
+  /partner/profile:
+    get:
+      operationId: getPartnerProfile
+      tags: [partner]
+      summary: Get the authenticated partner profile
+      responses:
+        "200": { description: Partner profile, content: { application/json: { schema: { $ref: "#/components/schemas/Partner" } } } }
+    patch:
+      operationId: updatePartnerProfile
+      tags: [partner]
+      summary: Update the authenticated partner profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerSelfUpdate" }
+      responses:
+        "200": { description: Partner profile, content: { application/json: { schema: { $ref: "#/components/schemas/Partner" } } } }
+  /partner/dashboard:
+    get:
+      operationId: getPartnerDashboard
+      tags: [partner]
+      summary: Get the authenticated partner dashboard
+      responses:
+        "200": { description: Partner dashboard, content: { application/json: { schema: { $ref: "#/components/schemas/PartnerDashboard" } } } }
+  /partner/referral-link:
+    get:
+      operationId: getPartnerReferralLink
+      tags: [partner]
+      summary: Get the authenticated partner referral link
+      responses:
+        "200": { description: Referral link, content: { application/json: { schema: { $ref: "#/components/schemas/PartnerReferralLink" } } } }
+  /partner/schools:
+    get:
+      operationId: listMyPartnerSchools
+      tags: [partner]
+      summary: List schools referred by the authenticated partner
+      responses:
+        "200": { description: Schools, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/PartnerSchool" } } } } }
+  /partner/schools/{schoolId}:
+    get:
+      operationId: getMyPartnerSchool
+      tags: [partner]
+      summary: Get a referred school summary
+      parameters: [{ $ref: "#/components/parameters/SchoolIdPath" }]
+      responses:
+        "200": { description: School summary, content: { application/json: { schema: { $ref: "#/components/schemas/PartnerSchool" } } } }
+  /partner/commissions:
+    get:
+      operationId: getMyPartnerCommissions
+      tags: [partner]
+      summary: List the authenticated partner commissions
+      responses:
+        "200": { description: Commissions, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/PartnerCommission" } } } } }
+  /partner/payouts:
+    get:
+      operationId: getMyPartnerPayouts
+      tags: [partner]
+      summary: List the authenticated partner payouts
+      responses:
+        "200": { description: Payouts, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/PartnerPayout" } } } } }
+  /partner/payout-information:
+    get:
+      operationId: getPartnerPayoutInformation
+      tags: [partner]
+      summary: Get masked payout information
+      responses:
+        "200": { description: Masked payout information; full account numbers are never returned, content: { application/json: { schema: { $ref: "#/components/schemas/PartnerPayoutInformationMasked" } } } }
+    patch:
+      operationId: updatePartnerPayoutInformation
+      tags: [partner]
+      summary: Update payout information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerPayoutInformationInput" }
+      responses:
+        "200": { description: Masked payout information, content: { application/json: { schema: { $ref: "#/components/schemas/PartnerPayoutInformationMasked" } } } }
+  /partner/invitations/{invitationToken}/accept:
+    post:
+      operationId: acceptPartnerInvitation
+      tags: [partner-onboarding]
+      summary: Accept an invitation for the authenticated user
+      parameters: [{ $ref: "#/components/parameters/InvitationTokenPath" }]
+      responses:
+        "200": { description: Activated partner, content: { application/json: { schema: { $ref: "#/components/schemas/Partner" } } } }
+  /partner/referrals/validate:
+    post:
+      operationId: validatePartnerReferral
+      tags: [partner-onboarding]
+      security: []
+      summary: Validate a referral token without revealing stored token data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReferralValidationInput" }
+      responses:
+        "200": { description: Referral validation, content: { application/json: { schema: { $ref: "#/components/schemas/ReferralValidation" } } } }
+  /partner/onboarding:
+    post:
+      operationId: onboardSchoolThroughPartnerReferral
+      tags: [partner-onboarding]
+      summary: Start school onboarding using a validated referral
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerSchoolOnboardingInput" }
+      responses:
+        "201": { description: School onboarding result, content: { application/json: { schema: { $ref: "#/components/schemas/PartnerOnboardingResult" } } } }
 components:
   securitySchemes:
     ClerkAuth:
@@ -1203,6 +1557,35 @@ components:
       in: query
       schema:
         type: string
+    PartnerIdPath:
+      name: partnerId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    InvitationTokenPath:
+      name: invitationToken
+      in: path
+      required: true
+      description: Opaque, single-use, high-entropy invitation token. Never a database identifier.
+      schema:
+        type: string
+        minLength: 32
+        pattern: "^[A-Za-z0-9_-]{32,}$"
+    ConflictIdPath:
+      name: conflictId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    RuleIdPath:
+      name: ruleId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    PayoutIdPath:
+      name: payoutId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
   schemas:
     ApiError:
       type: object
@@ -1451,7 +1834,7 @@ components:
         id: { type: integer }
         role:
           type: string
-          enum: [PLATFORM_OWNER, SCHOOL_ADMIN, TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF]
+          enum: [PLATFORM_OWNER, SCHOOL_ADMIN, TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF, PARTNER]
         schoolId: { type: ["integer", "null"] }
         status:
           type: string
@@ -1959,3 +2342,263 @@ components:
         severity:
           type: string
           enum: [info, warning, critical]
+    PartnerStatus:
+      type: string
+      enum: [INVITED, ACTIVE, SUSPENDED, DEACTIVATED]
+    PartnerType:
+      type: string
+      enum: [INDIVIDUAL, BUSINESS]
+    Partner:
+      type: object
+      required: [id, partnerCode, partnerType, fullName, email, status, createdAt]
+      properties:
+        id: { type: integer }
+        partnerCode: { type: string }
+        partnerType: { $ref: "#/components/schemas/PartnerType" }
+        fullName: { type: string }
+        businessName: { type: ["string", "null"] }
+        email: { type: string, format: email }
+        phone: { type: ["string", "null"] }
+        address: { type: ["string", "null"] }
+        state: { type: ["string", "null"] }
+        lga: { type: ["string", "null"] }
+        status: { $ref: "#/components/schemas/PartnerStatus" }
+        clerkUserId: { type: ["string", "null"] }
+        userId: { type: ["integer", "null"] }
+        registrationDate: { type: ["string", "null"], format: date-time }
+        activationDate: { type: ["string", "null"], format: date-time }
+        deactivationDate: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: ["string", "null"], format: date-time }
+    PartnerInvitationInput:
+      type: object
+      required: [email, fullName]
+      properties:
+        email: { type: string, format: email }
+        fullName: { type: string, minLength: 2 }
+        businessName: { type: string }
+        phone: { type: string }
+        partnerType: { $ref: "#/components/schemas/PartnerType" }
+    PartnerInvitation:
+      type: object
+      required: [id, partnerId, email, status, invitationUrl, expiresAt, createdAt]
+      properties:
+        id: { type: integer }
+        partnerId: { type: integer }
+        email: { type: string, format: email }
+        status: { type: string, enum: [PENDING, ACCEPTED, EXPIRED, REVOKED] }
+        invitationUrl: { type: string, format: uri, description: Copyable single-use invitation URL; returned exactly once at creation and never persisted or returned again }
+        expiresAt: { type: string, format: date-time }
+        acceptedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+    PartnerUpdate:
+      type: object
+      properties:
+        fullName: { type: string, minLength: 2 }
+        businessName: { type: string }
+        phone: { type: string }
+        address: { type: string }
+        state: { type: string }
+        lga: { type: string }
+        status: { $ref: "#/components/schemas/PartnerStatus" }
+    PartnerSelfUpdate:
+      type: object
+      properties:
+        fullName: { type: string, minLength: 2 }
+        businessName: { type: string }
+        phone: { type: string }
+        address: { type: string }
+        state: { type: string }
+        lga: { type: string }
+    PartnerStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: "#/components/schemas/PartnerStatus" }
+    PartnerSchool:
+      type: object
+      required: [schoolId, schoolName, attributionStatus, attributionSource, startDate]
+      properties:
+        schoolId: { type: integer }
+        schoolName: { type: string }
+        schoolCode: { type: ["string", "null"] }
+        attributionStatus: { type: string, enum: [ACTIVE, ENDED, PENDING] }
+        attributionSource: { type: string, enum: [REFERRAL, PLATFORM_ASSIGNED, DIRECT] }
+        referralLinkId: { type: ["integer", "null"] }
+        startDate: { type: string, format: date-time }
+        endDate: { type: ["string", "null"], format: date-time }
+        eligibleStudentCount: { type: integer }
+    PartnerAttributionConflict:
+      type: object
+      required: [id, schoolId, attemptedPartnerId, status, createdAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        existingPartnerId: { type: ["integer", "null"] }
+        attemptedPartnerId: { type: integer }
+        attemptedAttributionSource: { type: string }
+        status: { type: string, enum: [OPEN, ACCEPTED, REJECTED] }
+        resolutionNote: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        resolvedAt: { type: ["string", "null"], format: date-time }
+    PartnerAttributionHistory:
+      type: object
+      required: [id, partnerId, schoolId, attributionStatus, attributionSource, startDate]
+      properties:
+        id: { type: integer }
+        partnerId: { type: integer }
+        schoolId: { type: integer }
+        attributionStatus: { type: string, enum: [ACTIVE, ENDED, PENDING] }
+        attributionSource: { type: string, enum: [REFERRAL, PLATFORM_ASSIGNED, DIRECT] }
+        referralLinkId: { type: ["integer", "null"] }
+        startDate: { type: string, format: date-time }
+        endDate: { type: ["string", "null"], format: date-time }
+        changedBy: { type: ["integer", "null"] }
+        changeReason: { type: ["string", "null"] }
+    AttributionConflictResolution:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [ACCEPT, REJECT] }
+        note: { type: string }
+    PartnerCommissionRule:
+      type: object
+      required: [id, rate, currency, calculationBasis, effectiveDate, status]
+      properties:
+        id: { type: integer }
+        rate: { type: number, minimum: 0 }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        calculationBasis: { type: string, enum: [PER_ELIGIBLE_STUDENT_PER_TERM] }
+        effectiveDate: { type: string, format: date-time }
+        endDate: { type: ["string", "null"], format: date-time }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        createdAt: { type: string, format: date-time }
+    PartnerCommissionRuleInput:
+      type: object
+      required: [rate, currency, calculationBasis, effectiveDate]
+      properties:
+        rate: { type: number, minimum: 0 }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        calculationBasis: { type: string, enum: [PER_ELIGIBLE_STUDENT_PER_TERM] }
+        effectiveDate: { type: string, format: date-time }
+    PartnerCommissionRuleUpdate:
+      type: object
+      properties:
+        rate: { type: number, minimum: 0 }
+        endDate: { type: string, format: date-time }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+    PartnerCommission:
+      type: object
+      required: [id, partnerId, schoolId, commissionRuleId, rate, eligibleStudentCount, amount, currency, status, generatedAt]
+      properties:
+        id: { type: integer }
+        partnerId: { type: integer }
+        schoolId: { type: integer }
+        studentId: { type: ["integer", "null"] }
+        subscriptionId: { type: ["integer", "null"] }
+        academicSession: { type: ["string", "null"] }
+        term: { type: ["string", "null"] }
+        commissionRuleId: { type: integer }
+        rate: { type: number }
+        eligibleStudentCount: { type: integer }
+        amount: { type: number }
+        currency: { type: string }
+        status: { type: string, enum: [PENDING, APPROVED, PAYABLE, PAID, HELD, REVERSED, CANCELLED] }
+        generatedAt: { type: string, format: date-time }
+        approvedAt: { type: ["string", "null"], format: date-time }
+        payableAt: { type: ["string", "null"], format: date-time }
+        paidAt: { type: ["string", "null"], format: date-time }
+        paymentReference: { type: ["string", "null"] }
+    PartnerPayout:
+      type: object
+      required: [id, partnerId, amount, currency, status, createdAt]
+      properties:
+        id: { type: integer }
+        partnerId: { type: integer }
+        amount: { type: number, minimum: 0 }
+        currency: { type: string }
+        status: { type: string, enum: [PENDING, PROCESSING, PAID, FAILED, REVERSED] }
+        paymentReference: { type: ["string", "null"] }
+        periodStart: { type: ["string", "null"], format: date }
+        periodEnd: { type: ["string", "null"], format: date }
+        createdAt: { type: string, format: date-time }
+        paidAt: { type: ["string", "null"], format: date-time }
+    PartnerPayoutInput:
+      type: object
+      required: [partnerId, amount, currency]
+      properties:
+        partnerId: { type: integer, minimum: 1 }
+        amount: { type: number, minimum: 0 }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+    PartnerPayoutUpdate:
+      type: object
+      properties:
+        status: { type: string, enum: [PENDING, PROCESSING, PAID, FAILED, REVERSED] }
+        paymentReference: { type: string }
+    PartnerDashboard:
+      type: object
+      required: [referredSchools, eligibleStudents, currentTermCommission, lifetimeCommission, paidCommission, outstandingCommission]
+      properties:
+        referredSchools: { type: integer }
+        eligibleStudents: { type: integer }
+        currentTermCommission: { type: number }
+        lifetimeCommission: { type: number }
+        paidCommission: { type: number }
+        outstandingCommission: { type: number }
+    PartnerReferralLink:
+      type: object
+      required: [id, url, status]
+      properties:
+        id: { type: integer }
+        url: { type: string, format: uri, pattern: "^/school/register\\?ref=[A-Za-z0-9_-]{32,}$", description: Stable indefinite referral URL in the form /school/register?ref=<opaque-token>; token is not returned as a separate field }
+        status: { type: string, enum: [ACTIVE, REVOKED] }
+        createdAt: { type: string, format: date-time }
+    PartnerPayoutInformationMasked:
+      type: object
+      required: [id, payoutMethod, bankName, accountName, maskedAccountNumber, updatedAt]
+      properties:
+        id: { type: integer }
+        payoutMethod: { type: string, enum: [BANK_TRANSFER, MOBILE_MONEY, OTHER] }
+        bankName: { type: ["string", "null"] }
+        accountName: { type: ["string", "null"] }
+        maskedAccountNumber: { type: ["string", "null"], description: "Masked value only, for example ****1234" }
+        bankCode: { type: ["string", "null"] }
+        updatedAt: { type: string, format: date-time }
+    PartnerPayoutInformationInput:
+      type: object
+      required: [payoutMethod, accountName]
+      properties:
+        payoutMethod: { type: string, enum: [BANK_TRANSFER, MOBILE_MONEY, OTHER] }
+        bankName: { type: string }
+        accountName: { type: string }
+        accountNumber: { type: string, minLength: 4, description: "Write-only; never returned by the API" }
+        bankCode: { type: string }
+        otherDetails: { type: string }
+    ReferralValidationInput:
+      type: object
+      required: [referralToken]
+      properties:
+        referralToken: { type: string, minLength: 16, writeOnly: true }
+    ReferralValidation:
+      type: object
+      required: [valid, status]
+      properties:
+        valid: { type: boolean }
+        status: { type: string, enum: [VALID, INVALID, EXPIRED, REVOKED] }
+        partnerCode: { type: ["string", "null"] }
+        referralLinkId: { type: ["integer", "null"] }
+    PartnerSchoolOnboardingInput:
+      type: object
+      required: [referralToken, school]
+      properties:
+        referralToken: { type: string, minLength: 16, writeOnly: true }
+        school: { $ref: "#/components/schemas/SchoolInput" }
+    PartnerOnboardingResult:
+      type: object
+      required: [school, attributionStatus]
+      properties:
+        school: { $ref: "#/components/schemas/School" }
+        attributionStatus: { type: string, enum: [CREATED, CONFLICT] }
+        conflictId: { type: ["integer", "null"] }

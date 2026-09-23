@@ -1,0 +1,1308 @@
+EduPulse Phase 4 — Partner/Reseller Management & Commission System
+
+Phase 3 has been completed and verified.
+
+Continue from the existing EduPulse codebase.
+
+CRITICAL RULES
+
+DO NOT:
+
+- restart the project
+- delete or reset the database
+- recreate the application
+- replace the existing authentication architecture
+- replace the existing RBAC architecture
+- weaken tenant isolation
+- modify or remove existing school/student/parent/teacher data
+- remove existing subscription records
+- remove existing NFC records
+- remove existing audit records
+- duplicate the existing user/role system
+- automatically promote users to PLATFORM_OWNER
+- implement attendance yet
+- implement fingerprint yet
+- implement NFC attendance yet
+- implement fees/payment collection yet
+- implement exams/results yet
+
+First inspect the existing Phase 1–3 implementation, database schema, subscription allocation logic, authentication, RBAC, and audit system.
+
+Reuse the existing architecture.
+
+Use additive migrations only.
+
+---
+
+1. OBJECTIVE
+
+Build a complete Partner/Reseller ecosystem for EduPulse.
+
+The Partner system is separate from school administration.
+
+A partner introduces schools to EduPulse and earns:
+
+₦100 per eligible student per term
+
+The partner relationship has no automatic expiry.
+
+A school remains attributed to the partner until the Platform Owner changes the attribution according to company policy.
+
+The commission system must be designed so that the rate can be changed in the future without changing historical commission records.
+
+---
+
+2. PARTNER ROLES
+
+Introduce a new role:
+
+PARTNER
+
+Do not give PARTNER school administration privileges.
+
+A partner should NOT automatically become:
+
+- SCHOOL_ADMIN
+- TEACHER
+- ACCOUNTANT
+- STAFF
+- PLATFORM_OWNER
+
+Partner access must be limited to the partner ecosystem.
+
+A partner can:
+
+- manage their own partner profile
+- view their own referred schools
+- invite schools
+- view their own referral activity
+- view eligible students associated with their referred schools at the permitted aggregate/detail level
+- view their commission
+- view payout history
+- view payout status
+- maintain permitted payout information
+
+A partner cannot:
+
+- manage school academic data
+- manage school users
+- modify student records
+- modify subscriptions
+- modify commission rates
+- modify school attribution
+- mark commissions as paid
+- access another partner's information
+- access another partner's schools
+- access unrelated school financial records
+
+---
+
+3. PARTNER STATUS
+
+Support:
+
+- INVITED
+- ACTIVE
+- SUSPENDED
+- DEACTIVATED
+
+Rules:
+
+INVITED
+
+Partner invitation created but registration not completed.
+
+ACTIVE
+
+Partner can access the partner portal and onboard schools.
+
+SUSPENDED
+
+Partner cannot onboard new schools or perform normal partner activities, but historical information remains available to authorized Platform Owners.
+
+DEACTIVATED
+
+Partner cannot access the partner portal or onboard new schools.
+
+Never delete historical partner records merely because a partner becomes inactive.
+
+---
+
+4. PARTNER PROFILE
+
+Create a proper partner entity.
+
+Suggested fields:
+
+- Partner ID
+- Partner Code
+- Partner Type
+- Full Name
+- Business/Company Name
+- Email
+- Phone
+- Address
+- State
+- LGA
+- Status
+- Clerk User ID where applicable
+- User ID
+- Registration date
+- Activation date
+- Deactivation date
+- Created by
+- Created date
+- Updated date
+
+Partner Code must be unique.
+
+Partner ID should be system-generated.
+
+---
+
+5. PARTNER INVITATION
+
+The Platform Owner must be able to invite a partner.
+
+Create secure partner invitation functionality.
+
+Platform Owner workflow:
+
+1. Platform Owner selects "Invite Partner"
+2. Enters partner information
+3. System creates a secure invitation
+4. System generates an invitation link
+5. Platform Owner can copy/share the link
+6. Partner opens the link
+7. Partner registers/authenticates using Clerk
+8. Partner account becomes associated with the partner record
+9. Partner status becomes ACTIVE after successful completion/approval according to the chosen workflow
+
+Do not grant partner privileges merely because someone knows an invitation URL.
+
+Invitation tokens must be:
+
+- cryptographically secure
+- difficult to guess
+- stored safely
+- single-use where appropriate
+- auditable
+
+Do not expose sensitive information in the invitation token.
+
+---
+
+6. PARTNER USER MAPPING
+
+Use the existing EduPulse authenticated user architecture.
+
+Do not create a second authentication system.
+
+The relationship should be:
+
+Clerk User
+→ EduPulse App User
+→ Partner Profile
+
+The partner's authenticated identity must determine which partner record they can access.
+
+Never trust a client-supplied partner ID for authorization.
+
+---
+
+7. PARTNER REFERRAL LINK
+
+After registration/activation, the partner receives a unique school referral/onboarding link.
+
+Example concept:
+
+"/school/register?ref=PARTNER_TOKEN"
+
+The exact URL structure can follow the existing frontend architecture.
+
+The referral link should:
+
+- identify the partner server-side
+- be unique
+- be difficult to manipulate
+- not expose sensitive partner information
+- remain active indefinitely unless the Platform Owner changes the policy
+- be auditable
+
+Partner should have:
+
+My Referral Link
+
+and:
+
+Invite a School
+
+The partner should be able to copy/share the referral link.
+
+---
+
+8. SCHOOL ONBOARDING THROUGH PARTNER
+
+A school can join EduPulse through:
+
+Method A
+
+Platform Owner creates the school.
+
+Method B
+
+Partner referral link.
+
+Method C
+
+Direct school registration, if the existing product permits it.
+
+When a school is created through a valid partner referral:
+
+Automatically create the partner-school attribution server-side.
+
+Record:
+
+- Partner ID
+- School ID
+- Referral link ID
+- Attribution source
+- Date attributed
+- Attribution status
+- Created by/system
+- Attribution history
+
+Do NOT allow the browser to simply submit:
+
+"partnerId = X"
+
+and claim a school.
+
+The server must determine the partner from the valid referral mechanism.
+
+---
+
+9. EXISTING SCHOOL PROTECTION
+
+A partner must NOT be able to claim an existing school simply by entering:
+
+- school name
+- school code
+- school ID
+- phone number
+- email
+
+If an existing school already belongs to Partner A and someone attempts to use Partner B's referral link:
+
+DO NOT automatically overwrite Partner A.
+
+Instead:
+
+- preserve Partner A
+- record the attempted attribution
+- flag the conflict
+- allow Platform Owner review
+
+Platform Owner can decide whether attribution should change according to company policy.
+
+Every attribution change must be audited.
+
+---
+
+10. SCHOOL ATTRIBUTION
+
+Create a proper partner-school relationship.
+
+A school can have one current primary partner attribution unless future company policy explicitly supports another model.
+
+Recommended fields:
+
+- Partner ID
+- School ID
+- Attribution status
+- Attribution source
+- Referral link ID
+- Start date
+- End date
+- Created date
+- Updated date
+
+Do not automatically set an expiry date.
+
+The relationship should continue until:
+
+- Platform Owner changes attribution
+- school/partner relationship is manually ended
+- company policy changes
+
+---
+
+11. ATTRIBUTION HISTORY
+
+Never simply overwrite historical attribution.
+
+Create an attribution history mechanism.
+
+Example:
+
+School A
+→ Partner X
+→ Term 1
+
+Later:
+
+School A
+→ Partner Y
+→ Term 3
+
+Historical records must show that Partner X was previously attributed.
+
+If commission was already generated under Partner X, do not delete it.
+
+Do not retroactively move already generated earnings merely because attribution changes.
+
+Use adjustments/reversals where required.
+
+---
+
+12. COMMISSION RULE
+
+Default commission:
+
+₦100 per eligible student per term
+
+However, do NOT hard-code ₦100 into multiple parts of the application.
+
+Create a configurable commission-rule structure.
+
+Support:
+
+- Commission rule ID
+- Rate
+- Currency
+- Calculation basis
+- Effective date
+- End date
+- Status
+- Created by
+- Created date
+
+Calculation basis:
+
+PER_ELIGIBLE_STUDENT_PER_TERM
+
+The Platform Owner should eventually be able to change the commission rate.
+
+Historical commission records must retain the exact rate used when they were generated.
+
+Example:
+
+Term 1:
+₦100
+
+Future term:
+₦125
+
+Term 1 records remain ₦100.
+
+---
+
+13. COMMISSION CALCULATION
+
+Commission must be based on eligible/verified student subscriptions, not merely the number of students registered in a school.
+
+Example:
+
+School A:
+
+300 registered students
+
+280 eligible/verified students
+
+Commission:
+
+280 × ₦100 = ₦28,000
+
+Do not generate commission simply because a student exists in the student table.
+
+Use the existing subscription verification/status architecture.
+
+Only eligible subscription records should contribute to partner commission.
+
+Do not count:
+
+- unpaid
+- failed
+- cancelled
+- rejected
+- invalid
+
+subscriptions.
+
+---
+
+14. COMMISSION ALLOCATION
+
+Integrate the partner commission into the existing subscription allocation architecture.
+
+The existing subscription structure is:
+
+Total subscription:
+₦5,000
+
+Current allocation:
+
+School:
+₦2,000
+
+EduPulse:
+₦3,000
+
+For the initial partner model, partner commission should come from the EduPulse share.
+
+Therefore:
+
+Student subscription:
+₦5,000
+
+School:
+₦2,000
+
+Partner:
+₦100
+
+EduPulse:
+₦2,900
+
+Total:
+₦5,000
+
+Do not increase the student's subscription price merely because a partner is involved.
+
+Make the allocation configurable so the company can change the commercial model later.
+
+Do not break existing historical subscription records.
+
+Existing subscription records must retain their original allocation.
+
+---
+
+15. COMMISSION LEDGER
+
+Create a proper immutable-style financial ledger for partner earnings.
+
+Suggested entity:
+
+"partner_commission_ledger"
+
+Each commission record should include:
+
+- Commission ID
+- Partner ID
+- School ID
+- Student ID where appropriate
+- Subscription ID
+- Academic session
+- Term
+- Commission rule ID
+- Commission rate
+- Eligible student count
+- Commission amount
+- Currency
+- Status
+- Generated date
+- Approved date
+- Payable date
+- Paid date
+- Payment reference
+- Adjustment reference
+- Reversal reference
+- Created by/system
+- Created date
+- Updated date
+
+Prevent duplicate commission generation for the same eligible subscription.
+
+Use database constraints/idempotency where appropriate.
+
+---
+
+16. COMMISSION STATUS
+
+Support:
+
+- PENDING
+- APPROVED
+- PAYABLE
+- PAID
+- HELD
+- REVERSED
+- CANCELLED
+
+Suggested lifecycle:
+
+Eligible subscription verified
+→ Commission generated
+→ PENDING
+
+Platform Owner reviews
+→ APPROVED
+
+Term becomes payable
+→ PAYABLE
+
+Partner paid
+→ PAID
+
+If a valid reversal occurs
+→ REVERSED
+
+Do not allow partners to change commission status.
+
+---
+
+17. TERM-BASED PAYMENT
+
+Partner payments are termly.
+
+The system must support:
+
+- Academic session
+- Term
+- Commission period
+- Eligible student count
+- Generated amount
+- Paid amount
+- Outstanding amount
+
+Partner should be able to see:
+
+Current term:
+
+- eligible students
+- commission generated
+- commission payable
+- commission paid
+- outstanding
+
+Historical terms should remain visible.
+
+No automatic expiry of partner earnings.
+
+---
+
+18. PARTNER PAYOUTS
+
+Create a payout structure.
+
+Suggested fields:
+
+- Payout ID
+- Partner ID
+- Academic session
+- Term
+- Amount
+- Currency
+- Status
+- Payment reference
+- Payment date
+- Payment method
+- Notes
+- Processed by
+- Created date
+- Updated date
+
+Initial payout process can be manual.
+
+Platform Owner can:
+
+- review payable commission
+- create payout
+- enter payment reference
+- mark payout as paid
+- reverse a payout where necessary
+
+Partner cannot mark their own payout as paid.
+
+Do not implement automatic bank/payment provider payout yet unless the existing architecture already supports it safely.
+
+---
+
+19. PARTNER PAYOUT INFORMATION
+
+Partner profile should support protected payout information such as:
+
+- Bank name
+- Account name
+- Account number
+- Other required payout details
+
+Sensitive payout information must:
+
+- be protected
+- only be accessible to authorized users
+- never appear in ordinary logs
+- never appear in audit payloads in full
+- be redacted where necessary
+
+Partner can update permitted payout information.
+
+Platform Owner can view/manage it according to authorization.
+
+---
+
+20. PARTNER DASHBOARD
+
+Create a dedicated Partner Dashboard.
+
+Display real database values.
+
+Metrics:
+
+- Total referred schools
+- Active referred schools
+- Total students under referred schools
+- Current-term eligible students
+- Current-term commission
+- Lifetime commission
+- Total paid
+- Outstanding amount
+
+Do not fabricate metrics.
+
+If data does not yet exist:
+
+Not available
+
+---
+
+21. MY SCHOOLS
+
+Partner should have a:
+
+My Schools
+
+section.
+
+For each school, display permitted information such as:
+
+- School name
+- School code
+- Attribution date
+- School status
+- Student count
+- Current-term eligible student count
+- Current-term commission
+- Lifetime commission
+- Paid amount
+- Outstanding amount
+
+Do not expose confidential school administration information.
+
+Partner must not be able to edit the school's:
+
+- students
+- parents
+- teachers
+- classes
+- subscriptions
+- users
+- academic records
+
+---
+
+22. SCHOOL COMMISSION DETAIL
+
+Partner should be able to select one of their referred schools and see a financial summary.
+
+Example:
+
+School A
+
+Current Term:
+
+- Eligible students: 280
+- Rate: ₦100
+- Commission: ₦28,000
+- Paid: ₦0
+- Outstanding: ₦28,000
+
+Historical terms should also be available.
+
+Do not expose individual student financial details unless there is a clear business requirement and authorization.
+
+Prefer aggregate student counts for partner financial reporting.
+
+---
+
+23. INVITE A SCHOOL
+
+Partner dashboard must include:
+
+Invite a School
+
+This should provide:
+
+- referral link
+- copy link
+- share link where supported
+- onboarding instructions
+- referral status
+
+Do not allow partner to create arbitrary attribution IDs.
+
+---
+
+24. PLATFORM OWNER PARTNER MANAGEMENT
+
+Add:
+
+Partner Management
+
+to the Platform Owner interface.
+
+Platform Owner should see:
+
+- Total partners
+- Active partners
+- Suspended partners
+- Deactivated partners
+- Pending invitations
+- Total referred schools
+- Total students under referred schools
+- Current-term commission
+- Lifetime commission
+- Paid commission
+- Outstanding commission
+
+Platform Owner should be able to:
+
+- create partner invitation
+- view partner
+- activate partner
+- suspend partner
+- deactivate partner
+- view referred schools
+- view commissions
+- view payouts
+- review attribution conflicts
+- change attribution where permitted
+- view audit history
+
+---
+
+25. ATTRIBUTION CONFLICT MANAGEMENT
+
+Create a Platform Owner review mechanism.
+
+Example:
+
+School already attributed to Partner A.
+
+Partner B attempts to onboard the same school.
+
+System creates:
+
+Attribution Conflict
+
+Status:
+
+- PENDING
+- APPROVED
+- REJECTED
+- RESOLVED
+
+Platform Owner can inspect:
+
+- existing attribution
+- attempted attribution
+- referral source
+- dates
+- relevant evidence/metadata
+- previous attribution history
+
+Platform Owner can resolve the conflict.
+
+Every resolution must be audited.
+
+---
+
+26. PARTNER AUDIT EVENTS
+
+Use the existing EduPulse audit infrastructure.
+
+Record:
+
+- Partner invitation created
+- Partner invitation accepted
+- Partner created
+- Partner activated
+- Partner suspended
+- Partner deactivated
+- Referral link created
+- School referred
+- School onboarding started
+- School successfully attributed
+- Attribution conflict created
+- Attribution changed
+- Attribution conflict resolved
+- Commission generated
+- Commission approved
+- Commission held
+- Commission adjusted
+- Commission reversed
+- Payout created
+- Payout marked paid
+- Payout reversed
+- Partner payout information changed
+- Unauthorized partner access attempt
+
+Audit records must contain the authenticated actor.
+
+Sensitive bank information must never be stored in plain audit payloads.
+
+---
+
+27. PARTNER SECURITY
+
+A partner must never be able to access another partner's:
+
+- profile
+- schools
+- commissions
+- payouts
+- referral links
+- payout information
+- attribution records
+
+Do not trust:
+
+- partnerId
+- schoolId
+- commissionId
+- payoutId
+
+from the client.
+
+Always verify ownership/authorization on the server.
+
+---
+
+28. SCHOOL SECURITY
+
+School Admin must not gain access to Partner Management merely because their school was referred by a partner.
+
+The partner relationship is separate from school administration.
+
+Partner does not become a school user.
+
+School Admin does not become a partner unless separately authorized.
+
+---
+
+29. DATABASE DESIGN
+
+Use normalized tables.
+
+Recommended structures:
+
+partners
+
+Partner identity/profile.
+
+partner_users
+
+Links partner profile to EduPulse authenticated user.
+
+partner_invitations
+
+Secure partner invitations.
+
+partner_referral_links
+
+Partner school referral links.
+
+partner_school_attributions
+
+Current partner-school relationships.
+
+partner_attribution_history
+
+Historical attribution changes/conflicts.
+
+partner_commission_rules
+
+Configurable commission rules.
+
+partner_commission_ledger
+
+Immutable-style commission transaction records.
+
+partner_payouts
+
+Termly payout records.
+
+partner_payout_information
+
+Protected partner banking/payout details.
+
+Use appropriate:
+
+- foreign keys
+- indexes
+- unique constraints
+- status constraints
+- timestamps
+- audit references
+
+Do not create unnecessary duplicate tables if equivalent structures already exist.
+
+---
+
+30. EXISTING SUBSCRIPTION SYSTEM
+
+Inspect the current subscription implementation before modifying it.
+
+Preserve:
+
+- existing subscription amount
+- existing school allocation
+- existing EduPulse allocation
+- existing subscription records
+- existing verification flow
+- existing NFC relationship
+
+Add partner commission without breaking current subscription behavior.
+
+Existing historical records must remain unchanged.
+
+---
+
+31. IDEMPOTENCY
+
+Commission generation must be idempotent.
+
+If the same subscription is processed twice:
+
+DO NOT generate two commissions.
+
+Use a database uniqueness strategy based on the appropriate combination of:
+
+- partner
+- subscription
+- commission rule/period
+
+The exact constraint should match the actual subscription lifecycle.
+
+---
+
+32. API ENDPOINTS
+
+Design secure APIs following the existing EduPulse API conventions.
+
+Examples:
+
+Platform Owner:
+
+- GET /platform/partners
+- POST /platform/partners/invitations
+- GET /platform/partners/:id
+- PATCH /platform/partners/:id
+- POST /platform/partners/:id/suspend
+- POST /platform/partners/:id/deactivate
+- GET /platform/partners/:id/schools
+- GET /platform/partners/:id/commissions
+- GET /platform/partners/:id/payouts
+- GET /platform/partner-attribution-conflicts
+- POST /platform/partner-attribution-conflicts/:id/resolve
+- GET /platform/partner-commission-rules
+- POST/PATCH /platform/partner-commission-rules
+- GET /platform/partner-payouts
+- POST /platform/partner-payouts
+- PATCH /platform/partner-payouts/:id
+
+Partner:
+
+- GET /partner/profile
+- PATCH /partner/profile
+- GET /partner/dashboard
+- GET /partner/referral-link
+- GET /partner/schools
+- GET /partner/schools/:id
+- GET /partner/commissions
+- GET /partner/payouts
+- GET /partner/payout-information
+- PATCH /partner/payout-information
+
+School onboarding:
+
+- GET/validate partner referral
+- POST school onboarding through partner referral
+
+Use the existing API naming conventions if they differ.
+
+Every endpoint must be authorized.
+
+---
+
+33. FRONTEND
+
+Create:
+
+Platform Owner
+
+- Partner Management
+- Partner List
+- Partner Detail
+- Partner Invitation
+- Partner Schools
+- Commission Management
+- Commission Rules
+- Attribution Conflicts
+- Partner Payouts
+
+Partner
+
+- Partner Dashboard
+- My Profile
+- My Schools
+- Invite a School
+- Referral Link
+- Commission History
+- Payout History
+- Payout Information
+
+Use the existing responsive design system.
+
+Use generated React Query/Zod clients.
+
+Do not bypass the API.
+
+---
+
+34. OPENAPI
+
+Update the OpenAPI specification for every new endpoint.
+
+Regenerate:
+
+- React Query hooks
+- Zod schemas
+- shared API types
+
+Do not manually duplicate generated contracts.
+
+---
+
+35. TESTING
+
+Create comprehensive automated tests.
+
+Authentication
+
+- unauthenticated partner endpoint → 401
+- inactive partner → denied
+- suspended partner → appropriate restriction
+- deactivated partner → denied
+
+Partner isolation
+
+Partner A cannot access Partner B's:
+
+- profile
+- schools
+- commissions
+- payouts
+- payout information
+
+School isolation
+
+Partner cannot access unrelated school operational data.
+
+Attribution
+
+- valid referral creates attribution
+- invalid referral rejected
+- existing attribution cannot be silently overwritten
+- duplicate attribution prevented
+- attribution conflict created
+- Platform Owner can resolve conflict
+- attribution history preserved
+
+Commission
+
+- ₦100 default rule works
+- commission calculated from eligible students
+- unpaid subscriptions excluded
+- failed subscriptions excluded
+- cancelled subscriptions excluded
+- duplicate commission prevented
+- historical commission retains historical rate
+- commission belongs to correct partner
+- commission belongs to correct school
+- commission is term-specific
+
+Allocation
+
+Verify:
+
+₦5,000 total
+
+₦2,000 school
+
+₦100 partner
+
+₦2,900 EduPulse
+
+Total:
+
+₦5,000
+
+Verify existing historical subscriptions remain unchanged.
+
+Payout
+
+- partner cannot mark payout paid
+- Platform Owner can create payout
+- Platform Owner can mark payout paid
+- payout reference recorded
+- payout cannot exceed payable balance without explicit adjustment mechanism
+- payout history remains intact
+
+Security
+
+Test:
+
+- IDOR attempts
+- manipulated partner IDs
+- manipulated school IDs
+- manipulated commission IDs
+- manipulated payout IDs
+- privilege escalation
+- cross-tenant access
+
+---
+
+36. DATA MIGRATION
+
+Migration must be additive.
+
+Before migration:
+
+- inspect current database
+- inspect subscription allocation
+- inspect school records
+- inspect users
+- inspect roles
+
+After migration verify:
+
+Schools preserved.
+
+Students preserved.
+
+Parents preserved.
+
+Subscriptions preserved.
+
+NFC cards preserved.
+
+Audit records preserved.
+
+No existing records deleted.
+
+Do not assign existing schools to a partner automatically unless there is an explicit existing attribution source.
+
+Existing schools should remain unassigned if no valid partner attribution exists.
+
+---
+
+37. SECURITY REVIEW
+
+Before completion, inspect:
+
+- partner authorization middleware
+- partner-school access
+- commission authorization
+- payout authorization
+- referral token handling
+- attribution logic
+- financial calculations
+- database constraints
+- audit logging
+- sensitive payout information handling
+- IDOR protection
+
+Ensure no endpoint relies only on an ID supplied by the frontend.
+
+---
+
+38. VERIFICATION
+
+Run:
+
+- API typecheck
+- shared-library typecheck
+- frontend typecheck
+- API build
+- frontend production build
+- existing Phase 2 security tests
+- existing Phase 3 tests
+- new Phase 4 tests
+- migration verification
+- API health check
+- browser verification
+
+Verify:
+
+- Clerk sign-in works
+- Platform Owner works
+- School Admin works
+- Parent portal works
+- Partner registration works
+- Partner login works
+- Partner dashboard works
+- Partner referral link works
+- School onboarding through referral works
+- Attribution is stored correctly
+- Commission is calculated correctly
+- Partner cannot access another partner
+- Partner cannot modify school operations
+- Platform Owner can manage partners
+- Platform Owner can resolve attribution conflicts
+- payout workflow works
+- historical records remain intact
+
+---
+
+39. COMPLETION REPORT
+
+When finished, report:
+
+1. Tables created
+2. Tables modified
+3. Migrations
+4. API endpoints
+5. Frontend pages/components
+6. Partner roles and permissions
+7. Attribution architecture
+8. Commission architecture
+9. Subscription allocation changes
+10. Payout architecture
+11. Audit events
+12. Security tests
+13. Test results
+14. Typecheck results
+15. Build results
+16. Migration results
+17. Browser verification
+18. Any limitations
+19. Any unresolved security concerns
+
+STOP after Phase 4.
+
+Do not automatically begin Phase 5.
+
+The next planned phase after successful completion is:
+
+Phase 5 — Attendance, NFC Identification & Biometric/Fingerprint Architecture.

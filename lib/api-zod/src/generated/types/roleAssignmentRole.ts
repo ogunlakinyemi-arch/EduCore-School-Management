@@ -17,4 +17,5 @@ export const RoleAssignmentRole = {
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
   STAFF: 'STAFF',
+  PARTNER: 'PARTNER',
 } as const;

@@ -5,7 +5,7 @@ import {
   Activity, ArrowLeft, ArrowUpRight, BadgeCheck, BarChart3, Bell, BookOpen, Building2, Check, ChevronDown, 
   CircleAlert, CircleDollarSign, CreditCard, FileClock, GraduationCap, LayoutDashboard, Library, Menu, 
   MoreHorizontal, Pencil, Plus, RefreshCw, Search, Settings2, ShieldCheck, SlidersHorizontal, Smartphone, 
-  UserRound, UsersRound, WalletCards, X, Zap, Calendar, UserCog, ClipboardList, Briefcase
+  UserRound, UsersRound, WalletCards, X, Zap, Calendar, UserCog, ClipboardList, Briefcase, Handshake
 } from 'lucide-react';
 import { useGetAuthorizedContext, useListSchools, getListSchoolsQueryKey, useGetCurrentUserSchools, getGetCurrentUserSchoolsQueryKey } from '@workspace/api-client-react';
 
@@ -42,6 +42,7 @@ const nav: NavItem[] = [
   { href: '/subjects', label: 'Subjects', icon: BookOpen, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER'] },
   { href: '/classes', label: 'Classes', icon: Library, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
   { href: '/users', label: 'Users & Roles', icon: UserCog, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
+  { href: '/partners', label: 'Partners', icon: Handshake, roles: ['PLATFORM_OWNER'] },
   { href: '/subscriptions', label: 'Subscriptions', icon: WalletCards, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/cards', label: 'NFC Cards', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'STAFF'] },
   { href: '/audit', label: 'Audit Log', icon: FileClock, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },

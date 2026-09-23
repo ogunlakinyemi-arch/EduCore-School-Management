@@ -4,6 +4,7 @@ import authRouter from "./auth";
 import peopleRouter from "./people";
 import academicRouter from "./academic";
 import edupulseRouter from "./edupulse";
+import partnersRouter from "./partners";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(authRouter);
 router.use(peopleRouter);
 router.use(academicRouter);
 router.use(edupulseRouter);
+router.use(partnersRouter);
 
 export default router;

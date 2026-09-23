@@ -1,5 +1,6 @@
 import {
   boolean,
+  check,
   date,
   foreignKey,
   index,
@@ -185,6 +186,9 @@ export const subscriptions = pgTable(
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull().default("5000"),
     schoolShare: numeric("school_share", { precision: 12, scale: 2 }).notNull().default("2000"),
     edupulseShare: numeric("edupulse_share", { precision: 12, scale: 2 }).notNull().default("3000"),
+    partnerProfileId: integer("partner_profile_id").references(() => partnerProfiles.id),
+    partnerShare: numeric("partner_share", { precision: 12, scale: 2 }),
+    allocationSnapshot: jsonb("allocation_snapshot"),
     status: text("status").notNull().default("pending"),
     verificationStatus: text("verification_status").notNull().default("pending"),
     provider: text("provider").notNull().default("test"),
@@ -195,6 +199,258 @@ export const subscriptions = pgTable(
   (table) => [
     index("subscriptions_school_idx").on(table.schoolId),
     uniqueIndex("subscriptions_provider_reference_unique").on(table.providerReference),
+    index("subscriptions_partner_profile_idx").on(table.partnerProfileId),
+    check(
+      "subscriptions_partner_allocation_integrity",
+      sql`${table.partnerProfileId} IS NULL OR (${table.partnerShare} IS NOT NULL AND ${table.amount} = ${table.schoolShare} + ${table.edupulseShare} + ${table.partnerShare})`,
+    ),
+  ],
+);
+
+export const partnerProfiles = pgTable(
+  "partner_profiles",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").references(() => appUsers.id),
+    partnerCode: text("partner_code").notNull(),
+    type: text("type").notNull().default("RESELLER"),
+    fullName: text("full_name").notNull(),
+    businessName: text("business_name"),
+    email: text("email").notNull(),
+    phone: text("phone"),
+    address: text("address"),
+    state: text("state"),
+    lga: text("lga"),
+    registrationNumber: text("registration_number"),
+    status: text("status").notNull().default("PENDING"),
+    invitedAt: timestamp("invited_at", { withTimezone: true }),
+    registeredAt: timestamp("registered_at", { withTimezone: true }),
+    activatedAt: timestamp("activated_at", { withTimezone: true }),
+    deactivatedAt: timestamp("deactivated_at", { withTimezone: true }),
+    createdBy: integer("created_by").references(() => appUsers.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("partner_profiles_code_unique").on(table.partnerCode),
+    uniqueIndex("partner_profiles_user_unique").on(table.userId),
+    index("partner_profiles_email_idx").on(table.email),
+    index("partner_profiles_status_idx").on(table.status),
+  ],
+);
+
+export const partnerProfileUsers = pgTable(
+  "partner_profile_users",
+  {
+    id: serial("id").primaryKey(),
+    partnerProfileId: integer("partner_profile_id").notNull().references(() => partnerProfiles.id),
+    userId: integer("user_id").notNull().references(() => appUsers.id),
+    role: text("role").notNull().default("PARTNER"),
+    status: text("status").notNull().default("ACTIVE"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("partner_profile_users_unique").on(table.partnerProfileId, table.userId),
+    uniqueIndex("partner_profile_users_user_role_unique").on(table.userId, table.role),
+    index("partner_profile_users_partner_idx").on(table.partnerProfileId, table.status),
+  ],
+);
+
+export const partnerInvitations = pgTable(
+  "partner_invitations",
+  {
+    id: serial("id").primaryKey(),
+    partnerProfileId: integer("partner_profile_id").notNull().references(() => partnerProfiles.id),
+    invitedEmail: text("invited_email").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    status: text("status").notNull().default("ACTIVE"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    redeemedAt: timestamp("redeemed_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdBy: integer("created_by").notNull().references(() => appUsers.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("partner_invitations_token_hash_unique").on(table.tokenHash),
+    index("partner_invitations_partner_status_idx").on(table.partnerProfileId, table.status),
+  ],
+);
+
+export const partnerReferralLinks = pgTable(
+  "partner_referral_links",
+  {
+    id: serial("id").primaryKey(),
+    partnerProfileId: integer("partner_profile_id").notNull().references(() => partnerProfiles.id),
+    tokenHash: text("token_hash").notNull(),
+    status: text("status").notNull().default("ACTIVE"),
+    createdBy: integer("created_by").references(() => appUsers.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("partner_referral_links_hash_unique").on(table.tokenHash),
+    index("partner_referral_links_partner_status_idx").on(table.partnerProfileId, table.status),
+  ],
+);
+
+export const schoolPartnerAttributions = pgTable(
+  "school_partner_attributions",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    partnerProfileId: integer("partner_profile_id").notNull().references(() => partnerProfiles.id),
+    referralLinkId: integer("referral_link_id").references(() => partnerReferralLinks.id),
+    source: text("source").notNull().default("REFERRAL_LINK"),
+    status: text("status").notNull().default("ACTIVE"),
+    isCurrent: boolean("is_current").notNull().default(true),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull().defaultNow(),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    createdBy: integer("created_by").references(() => appUsers.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("school_partner_attributions_current_unique")
+      .on(table.schoolId)
+      .where(sql`${table.isCurrent} = true`),
+    index("school_partner_attributions_school_history_idx").on(table.schoolId, table.startsAt),
+    index("school_partner_attributions_partner_idx").on(table.partnerProfileId, table.status),
+  ],
+);
+
+export const partnerAttributionConflicts = pgTable(
+  "partner_attribution_conflicts",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    existingPartnerProfileId: integer("existing_partner_profile_id").references(() => partnerProfiles.id),
+    attemptedPartnerProfileId: integer("attempted_partner_profile_id").notNull().references(() => partnerProfiles.id),
+    referralLinkId: integer("referral_link_id").references(() => partnerReferralLinks.id),
+    source: text("source").notNull(),
+    status: text("status").notNull().default("OPEN"),
+    metadata: jsonb("metadata"),
+    evidence: jsonb("evidence"),
+    resolvedBy: integer("resolved_by").references(() => appUsers.id),
+    decision: text("decision"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("partner_attribution_conflicts_school_status_idx").on(table.schoolId, table.status),
+    index("partner_attribution_conflicts_attempted_idx").on(table.attemptedPartnerProfileId),
+  ],
+);
+
+export const commissionRules = pgTable(
+  "commission_rules",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    status: text("status").notNull().default("ACTIVE"),
+    term: text("term"),
+    currency: text("currency").notNull().default("NGN"),
+    calculationBasis: text("calculation_basis").notNull().default("FIXED"),
+    effectiveAt: timestamp("effective_at", { withTimezone: true }).notNull().defaultNow(),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    partnerRate: numeric("partner_rate", { precision: 12, scale: 4 }).notNull().default("100"),
+    allocationTotal: numeric("allocation_total", { precision: 12, scale: 2 }).notNull().default("5000"),
+    partnerAmount: numeric("partner_amount", { precision: 12, scale: 2 }).notNull().default("100"),
+    schoolAmount: numeric("school_amount", { precision: 12, scale: 2 }).notNull().default("2000"),
+    edupulseAmount: numeric("edupulse_amount", { precision: 12, scale: 2 }).notNull().default("2900"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("commission_rules_status_term_idx").on(table.status, table.term),
+    check("commission_rules_allocation_integrity", sql`${table.partnerAmount} >= 0 AND ${table.schoolAmount} >= 0 AND ${table.edupulseAmount} >= 0 AND ${table.partnerAmount} + ${table.schoolAmount} + ${table.edupulseAmount} = ${table.allocationTotal}`),
+  ],
+);
+
+export const commissionLedger = pgTable(
+  "commission_ledger",
+  {
+    id: serial("id").primaryKey(),
+    partnerProfileId: integer("partner_profile_id").notNull().references(() => partnerProfiles.id),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    studentId: integer("student_id").notNull().references(() => students.id),
+    subscriptionId: integer("subscription_id").notNull().references(() => subscriptions.id),
+    commissionRuleId: integer("commission_rule_id").notNull().references(() => commissionRules.id),
+    academicSessionId: integer("academic_session_id").references(() => academicSessions.id),
+    term: text("term").notNull(),
+    rate: numeric("rate", { precision: 12, scale: 4 }).notNull(),
+    count: integer("count").notNull().default(1),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+    currency: text("currency").notNull().default("NGN"),
+    status: text("status").notNull().default("PENDING"),
+    payoutId: integer("payout_id"),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    payableAt: timestamp("payable_at", { withTimezone: true }),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    heldAt: timestamp("held_at", { withTimezone: true }),
+    reversedAt: timestamp("reversed_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    paymentReference: text("payment_reference"),
+    adjustmentReference: text("adjustment_reference"),
+    reversalReference: text("reversal_reference"),
+    createdBy: integer("created_by").references(() => appUsers.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("commission_ledger_subscription_period_unique").on(table.subscriptionId, table.term),
+    index("commission_ledger_partner_status_idx").on(table.partnerProfileId, table.status),
+    check("commission_ledger_amount_nonnegative", sql`${table.amount} >= 0 AND ${table.count} > 0`),
+    check("commission_ledger_status_check", sql`${table.status} IN ('PENDING','APPROVED','PAYABLE','PAID','HELD','REVERSED','CANCELLED')`),
+  ],
+);
+
+export const partnerPayouts = pgTable(
+  "partner_payouts",
+  {
+    id: serial("id").primaryKey(),
+    partnerProfileId: integer("partner_profile_id").notNull().references(() => partnerProfiles.id),
+    academicSessionId: integer("academic_session_id").references(() => academicSessions.id),
+    term: text("term"),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+    currency: text("currency").notNull().default("NGN"),
+    status: text("status").notNull().default("PENDING"),
+    paymentReference: text("payment_reference"),
+    paymentDate: timestamp("payment_date", { withTimezone: true }),
+    method: text("method"),
+    notes: text("notes"),
+    provider: text("provider"),
+    providerReference: text("provider_reference"),
+    periodStart: timestamp("period_start", { withTimezone: true }).notNull(),
+    periodEnd: timestamp("period_end", { withTimezone: true }).notNull(),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    reversedAt: timestamp("reversed_at", { withTimezone: true }),
+    reversalReference: text("reversal_reference"),
+    reversalReason: text("reversal_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("partner_payouts_provider_reference_unique").on(table.providerReference),
+    index("partner_payouts_partner_status_idx").on(table.partnerProfileId, table.status),
+    check("partner_payouts_amount_nonnegative", sql`${table.amount} >= 0`),
+  ],
+);
+
+export const partnerPayoutInformation = pgTable(
+  "partner_payout_information",
+  {
+    id: serial("id").primaryKey(),
+    partnerProfileId: integer("partner_profile_id").notNull().references(() => partnerProfiles.id),
+    method: text("method").notNull(),
+    bankNameEncrypted: text("bank_name_encrypted").notNull(),
+    accountNameEncrypted: text("account_name_encrypted").notNull(),
+    accountNumberEncrypted: text("account_number_encrypted").notNull(),
+    bankCodeEncrypted: text("bank_code_encrypted"),
+    accountLast4: text("account_last4").notNull(),
+    encryptionKeyVersion: text("encryption_key_version").notNull(),
+    status: text("status").notNull().default("ACTIVE"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("partner_payout_information_partner_unique").on(table.partnerProfileId),
+    index("partner_payout_information_status_idx").on(table.status),
   ],
 );
 

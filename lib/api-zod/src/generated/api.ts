@@ -30,7 +30,7 @@ export const GetCurrentUserResponse = zod.object({
   "name": zod.string(),
   "roles": zod.array(zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 }))
@@ -42,7 +42,7 @@ export const GetCurrentUserResponse = zod.object({
  */
 export const GetCurrentUserRolesResponseItem = zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 })
@@ -78,7 +78,7 @@ export const GetAuthorizedContextResponse = zod.object({
   "isPlatformOwner": zod.boolean(),
   "roles": zod.array(zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 }))
@@ -277,7 +277,7 @@ export const ListUsersResponseItem = zod.object({
   "createdAt": zod.string().optional(),
   "memberships": zod.array(zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 }))
@@ -298,7 +298,7 @@ export const CreatePlatformMembershipBody = zod.object({
 
 export const CreatePlatformMembershipResponse = zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 })
@@ -344,7 +344,7 @@ export const CreateSchoolMembershipBody = zod.object({
 
 export const CreateSchoolMembershipResponse = zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 })
@@ -2251,5 +2251,868 @@ export const ListAuditLogsResponseItem = zod.object({
   "severity": zod.enum(['info', 'warning', 'critical'])
 })
 export const ListAuditLogsResponse = zod.array(ListAuditLogsResponseItem)
+
+
+/**
+ * @summary List partner profiles
+ */
+export const ListPartnersQueryParams = zod.object({
+  "status": zod.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED']).optional(),
+  "search": zod.coerce.string().optional()
+})
+
+export const ListPartnersResponseItem = zod.object({
+  "id": zod.number().int(),
+  "partnerCode": zod.string(),
+  "partnerType": zod.enum(['INDIVIDUAL', 'BUSINESS']),
+  "fullName": zod.string(),
+  "businessName": zod.string().nullish(),
+  "email": zod.string().email(),
+  "phone": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "lga": zod.string().nullish(),
+  "status": zod.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
+  "clerkUserId": zod.string().nullish(),
+  "userId": zod.number().int().nullish(),
+  "registrationDate": zod.coerce.date().nullish(),
+  "activationDate": zod.coerce.date().nullish(),
+  "deactivationDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().nullish()
+})
+export const ListPartnersResponse = zod.array(ListPartnersResponseItem)
+
+
+/**
+ * @summary Invite a partner
+ */
+export const createPartnerInvitationBodyFullNameMin = 2;
+
+
+
+export const CreatePartnerInvitationBody = zod.object({
+  "email": zod.string().email(),
+  "fullName": zod.string().min(createPartnerInvitationBodyFullNameMin),
+  "businessName": zod.string().optional(),
+  "phone": zod.string().optional(),
+  "partnerType": zod.enum(['INDIVIDUAL', 'BUSINESS']).optional()
+})
+
+export const CreatePartnerInvitationResponse = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "email": zod.string().email(),
+  "status": zod.enum(['PENDING', 'ACCEPTED', 'EXPIRED', 'REVOKED']),
+  "invitationUrl": zod.string().url().describe('Copyable single-use invitation URL; returned exactly once at creation and never persisted or returned again'),
+  "expiresAt": zod.coerce.date(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get a partner profile
+ */
+
+
+
+export const GetPartnerParams = zod.object({
+  "partnerId": zod.coerce.number().int().min(1)
+})
+
+export const GetPartnerResponse = zod.object({
+  "id": zod.number().int(),
+  "partnerCode": zod.string(),
+  "partnerType": zod.enum(['INDIVIDUAL', 'BUSINESS']),
+  "fullName": zod.string(),
+  "businessName": zod.string().nullish(),
+  "email": zod.string().email(),
+  "phone": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "lga": zod.string().nullish(),
+  "status": zod.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
+  "clerkUserId": zod.string().nullish(),
+  "userId": zod.number().int().nullish(),
+  "registrationDate": zod.coerce.date().nullish(),
+  "activationDate": zod.coerce.date().nullish(),
+  "deactivationDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Update a partner profile
+ */
+
+
+
+export const UpdatePartnerParams = zod.object({
+  "partnerId": zod.coerce.number().int().min(1)
+})
+
+export const updatePartnerBodyFullNameMin = 2;
+
+
+
+export const UpdatePartnerBody = zod.object({
+  "fullName": zod.string().min(updatePartnerBodyFullNameMin).optional(),
+  "businessName": zod.string().optional(),
+  "phone": zod.string().optional(),
+  "address": zod.string().optional(),
+  "state": zod.string().optional(),
+  "lga": zod.string().optional(),
+  "status": zod.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED']).optional()
+})
+
+export const UpdatePartnerResponse = zod.object({
+  "id": zod.number().int(),
+  "partnerCode": zod.string(),
+  "partnerType": zod.enum(['INDIVIDUAL', 'BUSINESS']),
+  "fullName": zod.string(),
+  "businessName": zod.string().nullish(),
+  "email": zod.string().email(),
+  "phone": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "lga": zod.string().nullish(),
+  "status": zod.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
+  "clerkUserId": zod.string().nullish(),
+  "userId": zod.number().int().nullish(),
+  "registrationDate": zod.coerce.date().nullish(),
+  "activationDate": zod.coerce.date().nullish(),
+  "deactivationDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Change partner status
+ */
+
+
+
+export const UpdatePartnerStatusParams = zod.object({
+  "partnerId": zod.coerce.number().int().min(1)
+})
+
+export const UpdatePartnerStatusBody = zod.object({
+  "status": zod.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED'])
+})
+
+export const UpdatePartnerStatusResponse = zod.object({
+  "id": zod.number().int(),
+  "partnerCode": zod.string(),
+  "partnerType": zod.enum(['INDIVIDUAL', 'BUSINESS']),
+  "fullName": zod.string(),
+  "businessName": zod.string().nullish(),
+  "email": zod.string().email(),
+  "phone": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "lga": zod.string().nullish(),
+  "status": zod.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
+  "clerkUserId": zod.string().nullish(),
+  "userId": zod.number().int().nullish(),
+  "registrationDate": zod.coerce.date().nullish(),
+  "activationDate": zod.coerce.date().nullish(),
+  "deactivationDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary List schools attributed to a partner
+ */
+
+
+
+export const ListPartnerSchoolsParams = zod.object({
+  "partnerId": zod.coerce.number().int().min(1)
+})
+
+export const ListPartnerSchoolsResponseItem = zod.object({
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "schoolCode": zod.string().nullish(),
+  "attributionStatus": zod.enum(['ACTIVE', 'ENDED', 'PENDING']),
+  "attributionSource": zod.enum(['REFERRAL', 'PLATFORM_ASSIGNED', 'DIRECT']),
+  "referralLinkId": zod.number().int().nullish(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "eligibleStudentCount": zod.number().int().optional()
+})
+export const ListPartnerSchoolsResponse = zod.array(ListPartnerSchoolsResponseItem)
+
+
+/**
+ * @summary List historical school attributions for a partner
+ */
+
+
+
+export const ListPartnerAttributionHistoryParams = zod.object({
+  "partnerId": zod.coerce.number().int().min(1)
+})
+
+export const ListPartnerAttributionHistoryResponseItem = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "attributionStatus": zod.enum(['ACTIVE', 'ENDED', 'PENDING']),
+  "attributionSource": zod.enum(['REFERRAL', 'PLATFORM_ASSIGNED', 'DIRECT']),
+  "referralLinkId": zod.number().int().nullish(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "changedBy": zod.number().int().nullish(),
+  "changeReason": zod.string().nullish()
+})
+export const ListPartnerAttributionHistoryResponse = zod.array(ListPartnerAttributionHistoryResponseItem)
+
+
+/**
+ * @summary List a partner's commission ledger
+ */
+
+
+
+export const ListPartnerCommissionsParams = zod.object({
+  "partnerId": zod.coerce.number().int().min(1)
+})
+
+export const ListPartnerCommissionsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int().nullish(),
+  "subscriptionId": zod.number().int().nullish(),
+  "academicSession": zod.string().nullish(),
+  "term": zod.string().nullish(),
+  "commissionRuleId": zod.number().int(),
+  "rate": zod.number(),
+  "eligibleStudentCount": zod.number().int(),
+  "amount": zod.number(),
+  "currency": zod.string(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'PAYABLE', 'PAID', 'HELD', 'REVERSED', 'CANCELLED']),
+  "generatedAt": zod.coerce.date(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "payableAt": zod.coerce.date().nullish(),
+  "paidAt": zod.coerce.date().nullish(),
+  "paymentReference": zod.string().nullish()
+})
+export const ListPartnerCommissionsResponse = zod.array(ListPartnerCommissionsResponseItem)
+
+
+/**
+ * @summary List a partner's payouts
+ */
+
+
+
+export const ListPartnerPayoutsParams = zod.object({
+  "partnerId": zod.coerce.number().int().min(1)
+})
+
+export const listPartnerPayoutsResponseAmountMin = 0;
+
+
+
+export const ListPartnerPayoutsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "amount": zod.number().min(listPartnerPayoutsResponseAmountMin),
+  "currency": zod.string(),
+  "status": zod.enum(['PENDING', 'PROCESSING', 'PAID', 'FAILED', 'REVERSED']),
+  "paymentReference": zod.string().nullish(),
+  "periodStart": zod.coerce.date().nullish(),
+  "periodEnd": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "paidAt": zod.coerce.date().nullish()
+})
+export const ListPartnerPayoutsResponse = zod.array(ListPartnerPayoutsResponseItem)
+
+
+/**
+ * @summary Review partner attribution conflicts
+ */
+export const ListPartnerAttributionConflictsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "existingPartnerId": zod.number().int().nullish(),
+  "attemptedPartnerId": zod.number().int(),
+  "attemptedAttributionSource": zod.string().optional(),
+  "status": zod.enum(['OPEN', 'ACCEPTED', 'REJECTED']),
+  "resolutionNote": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "resolvedAt": zod.coerce.date().nullish()
+})
+export const ListPartnerAttributionConflictsResponse = zod.array(ListPartnerAttributionConflictsResponseItem)
+
+
+/**
+ * @summary Resolve an attribution conflict
+ */
+
+
+
+export const ResolvePartnerAttributionConflictParams = zod.object({
+  "conflictId": zod.coerce.number().int().min(1)
+})
+
+export const ResolvePartnerAttributionConflictBody = zod.object({
+  "decision": zod.enum(['ACCEPT', 'REJECT']),
+  "note": zod.string().optional()
+})
+
+export const ResolvePartnerAttributionConflictResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "existingPartnerId": zod.number().int().nullish(),
+  "attemptedPartnerId": zod.number().int(),
+  "attemptedAttributionSource": zod.string().optional(),
+  "status": zod.enum(['OPEN', 'ACCEPTED', 'REJECTED']),
+  "resolutionNote": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "resolvedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary List commission rules
+ */
+export const listPartnerCommissionRulesResponseRateMin = 0;
+
+export const listPartnerCommissionRulesResponseCurrencyMin = 3;
+export const listPartnerCommissionRulesResponseCurrencyMax = 3;
+
+
+
+export const ListPartnerCommissionRulesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "rate": zod.number().min(listPartnerCommissionRulesResponseRateMin),
+  "currency": zod.string().min(listPartnerCommissionRulesResponseCurrencyMin).max(listPartnerCommissionRulesResponseCurrencyMax),
+  "calculationBasis": zod.enum(['PER_ELIGIBLE_STUDENT_PER_TERM']),
+  "effectiveDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "createdAt": zod.coerce.date().optional()
+})
+export const ListPartnerCommissionRulesResponse = zod.array(ListPartnerCommissionRulesResponseItem)
+
+
+/**
+ * @summary Create a commission rule
+ */
+export const createPartnerCommissionRuleBodyRateMin = 0;
+
+export const createPartnerCommissionRuleBodyCurrencyMin = 3;
+export const createPartnerCommissionRuleBodyCurrencyMax = 3;
+
+
+
+export const CreatePartnerCommissionRuleBody = zod.object({
+  "rate": zod.number().min(createPartnerCommissionRuleBodyRateMin),
+  "currency": zod.string().min(createPartnerCommissionRuleBodyCurrencyMin).max(createPartnerCommissionRuleBodyCurrencyMax),
+  "calculationBasis": zod.enum(['PER_ELIGIBLE_STUDENT_PER_TERM']),
+  "effectiveDate": zod.coerce.date()
+})
+
+export const createPartnerCommissionRuleResponseRateMin = 0;
+
+export const createPartnerCommissionRuleResponseCurrencyMin = 3;
+export const createPartnerCommissionRuleResponseCurrencyMax = 3;
+
+
+
+export const CreatePartnerCommissionRuleResponse = zod.object({
+  "id": zod.number().int(),
+  "rate": zod.number().min(createPartnerCommissionRuleResponseRateMin),
+  "currency": zod.string().min(createPartnerCommissionRuleResponseCurrencyMin).max(createPartnerCommissionRuleResponseCurrencyMax),
+  "calculationBasis": zod.enum(['PER_ELIGIBLE_STUDENT_PER_TERM']),
+  "effectiveDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "createdAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Update a commission rule
+ */
+
+
+
+export const UpdatePartnerCommissionRuleParams = zod.object({
+  "ruleId": zod.coerce.number().int().min(1)
+})
+
+export const updatePartnerCommissionRuleBodyRateMin = 0;
+
+
+
+export const UpdatePartnerCommissionRuleBody = zod.object({
+  "rate": zod.number().min(updatePartnerCommissionRuleBodyRateMin).optional(),
+  "endDate": zod.coerce.date().optional(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']).optional()
+})
+
+export const updatePartnerCommissionRuleResponseRateMin = 0;
+
+export const updatePartnerCommissionRuleResponseCurrencyMin = 3;
+export const updatePartnerCommissionRuleResponseCurrencyMax = 3;
+
+
+
+export const UpdatePartnerCommissionRuleResponse = zod.object({
+  "id": zod.number().int(),
+  "rate": zod.number().min(updatePartnerCommissionRuleResponseRateMin),
+  "currency": zod.string().min(updatePartnerCommissionRuleResponseCurrencyMin).max(updatePartnerCommissionRuleResponseCurrencyMax),
+  "calculationBasis": zod.enum(['PER_ELIGIBLE_STUDENT_PER_TERM']),
+  "effectiveDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "createdAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary List partner payouts for administration
+ */
+export const listPlatformPartnerPayoutsResponseAmountMin = 0;
+
+
+
+export const ListPlatformPartnerPayoutsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "amount": zod.number().min(listPlatformPartnerPayoutsResponseAmountMin),
+  "currency": zod.string(),
+  "status": zod.enum(['PENDING', 'PROCESSING', 'PAID', 'FAILED', 'REVERSED']),
+  "paymentReference": zod.string().nullish(),
+  "periodStart": zod.coerce.date().nullish(),
+  "periodEnd": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "paidAt": zod.coerce.date().nullish()
+})
+export const ListPlatformPartnerPayoutsResponse = zod.array(ListPlatformPartnerPayoutsResponseItem)
+
+
+/**
+ * @summary Create a partner payout
+ */
+
+export const createPartnerPayoutBodyAmountMin = 0;
+
+export const createPartnerPayoutBodyCurrencyMin = 3;
+export const createPartnerPayoutBodyCurrencyMax = 3;
+
+
+
+export const CreatePartnerPayoutBody = zod.object({
+  "partnerId": zod.number().int().min(1),
+  "amount": zod.number().min(createPartnerPayoutBodyAmountMin),
+  "currency": zod.string().min(createPartnerPayoutBodyCurrencyMin).max(createPartnerPayoutBodyCurrencyMax),
+  "periodStart": zod.coerce.date().optional(),
+  "periodEnd": zod.coerce.date().optional()
+})
+
+export const createPartnerPayoutResponseAmountMin = 0;
+
+
+
+export const CreatePartnerPayoutResponse = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "amount": zod.number().min(createPartnerPayoutResponseAmountMin),
+  "currency": zod.string(),
+  "status": zod.enum(['PENDING', 'PROCESSING', 'PAID', 'FAILED', 'REVERSED']),
+  "paymentReference": zod.string().nullish(),
+  "periodStart": zod.coerce.date().nullish(),
+  "periodEnd": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "paidAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Update payout status or payment reference
+ */
+
+
+
+export const UpdatePartnerPayoutParams = zod.object({
+  "payoutId": zod.coerce.number().int().min(1)
+})
+
+export const UpdatePartnerPayoutBody = zod.object({
+  "status": zod.enum(['PENDING', 'PROCESSING', 'PAID', 'FAILED', 'REVERSED']).optional(),
+  "paymentReference": zod.string().optional()
+})
+
+export const updatePartnerPayoutResponseAmountMin = 0;
+
+
+
+export const UpdatePartnerPayoutResponse = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "amount": zod.number().min(updatePartnerPayoutResponseAmountMin),
+  "currency": zod.string(),
+  "status": zod.enum(['PENDING', 'PROCESSING', 'PAID', 'FAILED', 'REVERSED']),
+  "paymentReference": zod.string().nullish(),
+  "periodStart": zod.coerce.date().nullish(),
+  "periodEnd": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "paidAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Get the authenticated partner profile
+ */
+export const GetPartnerProfileResponse = zod.object({
+  "id": zod.number().int(),
+  "partnerCode": zod.string(),
+  "partnerType": zod.enum(['INDIVIDUAL', 'BUSINESS']),
+  "fullName": zod.string(),
+  "businessName": zod.string().nullish(),
+  "email": zod.string().email(),
+  "phone": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "lga": zod.string().nullish(),
+  "status": zod.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
+  "clerkUserId": zod.string().nullish(),
+  "userId": zod.number().int().nullish(),
+  "registrationDate": zod.coerce.date().nullish(),
+  "activationDate": zod.coerce.date().nullish(),
+  "deactivationDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Update the authenticated partner profile
+ */
+export const updatePartnerProfileBodyFullNameMin = 2;
+
+
+
+export const UpdatePartnerProfileBody = zod.object({
+  "fullName": zod.string().min(updatePartnerProfileBodyFullNameMin).optional(),
+  "businessName": zod.string().optional(),
+  "phone": zod.string().optional(),
+  "address": zod.string().optional(),
+  "state": zod.string().optional(),
+  "lga": zod.string().optional()
+})
+
+export const UpdatePartnerProfileResponse = zod.object({
+  "id": zod.number().int(),
+  "partnerCode": zod.string(),
+  "partnerType": zod.enum(['INDIVIDUAL', 'BUSINESS']),
+  "fullName": zod.string(),
+  "businessName": zod.string().nullish(),
+  "email": zod.string().email(),
+  "phone": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "lga": zod.string().nullish(),
+  "status": zod.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
+  "clerkUserId": zod.string().nullish(),
+  "userId": zod.number().int().nullish(),
+  "registrationDate": zod.coerce.date().nullish(),
+  "activationDate": zod.coerce.date().nullish(),
+  "deactivationDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Get the authenticated partner dashboard
+ */
+export const GetPartnerDashboardResponse = zod.object({
+  "referredSchools": zod.number().int(),
+  "eligibleStudents": zod.number().int(),
+  "currentTermCommission": zod.number(),
+  "lifetimeCommission": zod.number(),
+  "paidCommission": zod.number(),
+  "outstandingCommission": zod.number()
+})
+
+
+/**
+ * @summary Get the authenticated partner referral link
+ */
+export const getPartnerReferralLinkResponseUrlRegExp = new RegExp('^/school/register\\?ref=[A-Za-z0-9_-]{32,}$');
+
+
+export const GetPartnerReferralLinkResponse = zod.object({
+  "id": zod.number().int(),
+  "url": zod.string().url().regex(getPartnerReferralLinkResponseUrlRegExp).describe('Stable indefinite referral URL in the form /school/register?ref=<opaque-token>; token is not returned as a separate field'),
+  "status": zod.enum(['ACTIVE', 'REVOKED']),
+  "createdAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary List schools referred by the authenticated partner
+ */
+export const ListMyPartnerSchoolsResponseItem = zod.object({
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "schoolCode": zod.string().nullish(),
+  "attributionStatus": zod.enum(['ACTIVE', 'ENDED', 'PENDING']),
+  "attributionSource": zod.enum(['REFERRAL', 'PLATFORM_ASSIGNED', 'DIRECT']),
+  "referralLinkId": zod.number().int().nullish(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "eligibleStudentCount": zod.number().int().optional()
+})
+export const ListMyPartnerSchoolsResponse = zod.array(ListMyPartnerSchoolsResponseItem)
+
+
+/**
+ * @summary Get a referred school summary
+ */
+
+
+
+export const GetMyPartnerSchoolParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const GetMyPartnerSchoolResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "schoolCode": zod.string().nullish(),
+  "attributionStatus": zod.enum(['ACTIVE', 'ENDED', 'PENDING']),
+  "attributionSource": zod.enum(['REFERRAL', 'PLATFORM_ASSIGNED', 'DIRECT']),
+  "referralLinkId": zod.number().int().nullish(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "eligibleStudentCount": zod.number().int().optional()
+})
+
+
+/**
+ * @summary List the authenticated partner commissions
+ */
+export const GetMyPartnerCommissionsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int().nullish(),
+  "subscriptionId": zod.number().int().nullish(),
+  "academicSession": zod.string().nullish(),
+  "term": zod.string().nullish(),
+  "commissionRuleId": zod.number().int(),
+  "rate": zod.number(),
+  "eligibleStudentCount": zod.number().int(),
+  "amount": zod.number(),
+  "currency": zod.string(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'PAYABLE', 'PAID', 'HELD', 'REVERSED', 'CANCELLED']),
+  "generatedAt": zod.coerce.date(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "payableAt": zod.coerce.date().nullish(),
+  "paidAt": zod.coerce.date().nullish(),
+  "paymentReference": zod.string().nullish()
+})
+export const GetMyPartnerCommissionsResponse = zod.array(GetMyPartnerCommissionsResponseItem)
+
+
+/**
+ * @summary List the authenticated partner payouts
+ */
+export const getMyPartnerPayoutsResponseAmountMin = 0;
+
+
+
+export const GetMyPartnerPayoutsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "amount": zod.number().min(getMyPartnerPayoutsResponseAmountMin),
+  "currency": zod.string(),
+  "status": zod.enum(['PENDING', 'PROCESSING', 'PAID', 'FAILED', 'REVERSED']),
+  "paymentReference": zod.string().nullish(),
+  "periodStart": zod.coerce.date().nullish(),
+  "periodEnd": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "paidAt": zod.coerce.date().nullish()
+})
+export const GetMyPartnerPayoutsResponse = zod.array(GetMyPartnerPayoutsResponseItem)
+
+
+/**
+ * @summary Get masked payout information
+ */
+export const GetPartnerPayoutInformationResponse = zod.object({
+  "id": zod.number().int(),
+  "payoutMethod": zod.enum(['BANK_TRANSFER', 'MOBILE_MONEY', 'OTHER']),
+  "bankName": zod.string().nullable(),
+  "accountName": zod.string().nullable(),
+  "maskedAccountNumber": zod.string().nullable().describe('Masked value only, for example ****1234'),
+  "bankCode": zod.string().nullish(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update payout information
+ */
+export const updatePartnerPayoutInformationBodyAccountNumberMin = 4;
+
+
+
+export const UpdatePartnerPayoutInformationBody = zod.object({
+  "payoutMethod": zod.enum(['BANK_TRANSFER', 'MOBILE_MONEY', 'OTHER']),
+  "bankName": zod.string().optional(),
+  "accountName": zod.string(),
+  "accountNumber": zod.string().min(updatePartnerPayoutInformationBodyAccountNumberMin).optional().describe('Write-only; never returned by the API'),
+  "bankCode": zod.string().optional(),
+  "otherDetails": zod.string().optional()
+})
+
+export const UpdatePartnerPayoutInformationResponse = zod.object({
+  "id": zod.number().int(),
+  "payoutMethod": zod.enum(['BANK_TRANSFER', 'MOBILE_MONEY', 'OTHER']),
+  "bankName": zod.string().nullable(),
+  "accountName": zod.string().nullable(),
+  "maskedAccountNumber": zod.string().nullable().describe('Masked value only, for example ****1234'),
+  "bankCode": zod.string().nullish(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Accept an invitation for the authenticated user
+ */
+export const acceptPartnerInvitationPathInvitationTokenMin = 32;
+
+
+export const acceptPartnerInvitationPathInvitationTokenRegExp = new RegExp('^[A-Za-z0-9_-]{32,}$');
+
+
+export const AcceptPartnerInvitationParams = zod.object({
+  "invitationToken": zod.coerce.string().min(acceptPartnerInvitationPathInvitationTokenMin).regex(acceptPartnerInvitationPathInvitationTokenRegExp).describe('Opaque, single-use, high-entropy invitation token. Never a database identifier.')
+})
+
+export const AcceptPartnerInvitationResponse = zod.object({
+  "id": zod.number().int(),
+  "partnerCode": zod.string(),
+  "partnerType": zod.enum(['INDIVIDUAL', 'BUSINESS']),
+  "fullName": zod.string(),
+  "businessName": zod.string().nullish(),
+  "email": zod.string().email(),
+  "phone": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "lga": zod.string().nullish(),
+  "status": zod.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
+  "clerkUserId": zod.string().nullish(),
+  "userId": zod.number().int().nullish(),
+  "registrationDate": zod.coerce.date().nullish(),
+  "activationDate": zod.coerce.date().nullish(),
+  "deactivationDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Validate a referral token without revealing stored token data
+ */
+export const validatePartnerReferralBodyReferralTokenMin = 16;
+
+
+
+export const ValidatePartnerReferralBody = zod.object({
+  "referralToken": zod.string().min(validatePartnerReferralBodyReferralTokenMin)
+})
+
+export const ValidatePartnerReferralResponse = zod.object({
+  "valid": zod.boolean(),
+  "status": zod.enum(['VALID', 'INVALID', 'EXPIRED', 'REVOKED']),
+  "partnerCode": zod.string().nullish(),
+  "referralLinkId": zod.number().int().nullish()
+})
+
+
+/**
+ * @summary Start school onboarding using a validated referral
+ */
+export const onboardSchoolThroughPartnerReferralBodyReferralTokenMin = 16;
+
+
+export const onboardSchoolThroughPartnerReferralBodySchoolNameMin = 2;
+
+export const onboardSchoolThroughPartnerReferralBodySchoolCityMin = 2;
+
+export const onboardSchoolThroughPartnerReferralBodySchoolStateMin = 2;
+
+
+
+export const OnboardSchoolThroughPartnerReferralBody = zod.object({
+  "referralToken": zod.string().min(onboardSchoolThroughPartnerReferralBodyReferralTokenMin),
+  "school": zod.object({
+  "code": zod.string().min(1),
+  "name": zod.string().min(onboardSchoolThroughPartnerReferralBodySchoolNameMin),
+  "city": zod.string().min(onboardSchoolThroughPartnerReferralBodySchoolCityMin),
+  "state": zod.string().min(onboardSchoolThroughPartnerReferralBodySchoolStateMin),
+  "registrationNumber": zod.string().optional(),
+  "address": zod.string().optional(),
+  "lga": zod.string().optional(),
+  "phone": zod.string().optional(),
+  "email": zod.string().email().optional(),
+  "website": zod.string().url().optional(),
+  "logoUrl": zod.string().url().optional(),
+  "schoolType": zod.string().optional(),
+  "status": zod.enum(['active', 'suspended', 'inactive']).optional()
+})
+})
+
+export const OnboardSchoolThroughPartnerReferralResponse = zod.object({
+  "school": zod.object({
+  "id": zod.number().int(),
+  "code": zod.string(),
+  "name": zod.string(),
+  "city": zod.string(),
+  "state": zod.string(),
+  "registrationNumber": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "lga": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().email().nullish(),
+  "website": zod.string().url().nullish(),
+  "logoUrl": zod.string().url().nullish(),
+  "schoolType": zod.string().nullish(),
+  "administrators": zod.array(zod.object({
+  "id": zod.number().int(),
+  "email": zod.string(),
+  "firstName": zod.string().nullish(),
+  "lastName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "userStatus": zod.string(),
+  "membershipId": zod.number().int(),
+  "role": zod.string(),
+  "membershipStatus": zod.string(),
+  "schoolId": zod.number().int()
+})).optional(),
+  "academicSetupStatus": zod.string().nullish(),
+  "status": zod.enum(['active', 'suspended', 'inactive']),
+  "studentCount": zod.number().int(),
+  "staffCount": zod.number().int(),
+  "subscriptionStatus": zod.enum(['active', 'attention', 'expired']),
+  "createdAt": zod.string()
+}),
+  "attributionStatus": zod.enum(['CREATED', 'CONFLICT']),
+  "conflictId": zod.number().int().nullish()
+})
 
 

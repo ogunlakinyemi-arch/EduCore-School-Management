@@ -14,6 +14,10 @@ import { Shell, TenantProvider } from '@/components/shared';
 import NotFound from '@/pages/not-found';
 import { AuthScreen } from '@/pages/auth-screen';
 import ParentPortal from '@/pages/parent-portal';
+import PartnerPortal from '@/pages/partner/portal';
+import PartnerManagement from '@/pages/partner/management';
+import RegisterSchool from '@/pages/partner/register-school';
+import AcceptInvitation from '@/pages/partner/accept-invitation';
 import { Dashboard } from '@/pages/dashboard';
 import { SchoolsPage, SchoolOverview } from '@/pages/schools';
 import { StudentsPage } from '@/pages/students';
@@ -54,9 +58,14 @@ function ProtectedRoutes() {
 
   const roles = context?.roles?.map(r => r.role) || [];
   const isOnlyParent = roles.length === 1 && roles[0] === 'PARENT';
+  const isOnlyPartner = roles.length === 1 && roles[0] === 'PARTNER';
 
   if (isOnlyParent) {
     return <ParentPortal />;
+  }
+
+  if (isOnlyPartner) {
+    return <PartnerPortal />;
   }
 
   return (
@@ -64,6 +73,7 @@ function ProtectedRoutes() {
       <Shell>
         <Switch>
           <Route path="/" component={Dashboard} />
+          <Route path="/partners*" component={PartnerManagement} />
           <Route path="/schools" component={SchoolsPage} />
           <Route path="/schools/:id" component={SchoolOverview} />
           <Route path="/students" component={StudentsPage} />
@@ -120,10 +130,13 @@ export default function App() {
             <Switch>
               <Route path="/sign-in"><AuthScreen mode="sign-in" /></Route>
               <Route path="/sign-up"><AuthScreen mode="sign-up" /></Route>
+              <Route path="/school/register"><RegisterSchool /></Route>
               <Route>
                 <AuthGuard>
                   <Switch>
+                    <Route path="/partner/invitations/:invitationId"><AcceptInvitation /></Route>
                     <Route path="/parent*"><ParentPortal /></Route>
+                    <Route path="/partner*"><PartnerPortal /></Route>
                     <Route><ProtectedRoutes /></Route>
                   </Switch>
                 </AuthGuard>
