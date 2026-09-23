@@ -27,6 +27,39 @@ function userName(user: {
   return [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
 }
 
+async function auditSecurityEvent(
+  req: Request,
+  schoolId: number | null,
+  action: string,
+  eventType: string,
+  recordId: number | null,
+  result = "SUCCESS",
+) {
+  const context = getUserContext(req);
+  const role =
+    context.roles.find((assignment) => assignment.schoolId === schoolId)?.role ??
+    context.roles.find((assignment) => assignment.schoolId === null)?.role ??
+    "AUTHENTICATED";
+  await pool.query(
+    `INSERT INTO audit_logs
+      ("user", role, actor_user_id, clerk_user_id, school_id, action, module,
+       record_id, severity, event_type, result)
+     VALUES ($1, $2, $3, $4, $5, $6, 'Security', $7, $8, $9, $10)`,
+    [
+      userName(context.user),
+      role,
+      context.user.id,
+      context.user.clerkUserId,
+      schoolId,
+      action,
+      recordId,
+      result === "SUCCESS" ? "info" : "critical",
+      eventType,
+      result,
+    ],
+  );
+}
+
 async function parentForUser(req: Request) {
   const context = getUserContext(req);
   const result = await pool.query(
@@ -187,7 +220,6 @@ router.get(
       return res.json(result.rows);
     }
 
-    assertRoles(req, ["PLATFORM_OWNER", "SCHOOL_ADMIN"]);
     if (!schoolId) throw new AuthError(403, "A school context is required");
     assertSchoolAccess(req, schoolId, ["SCHOOL_ADMIN"]);
     const result = await pool.query(
@@ -244,6 +276,13 @@ router.post(
         Number(contactPriority) || 1,
       ],
     );
+    await auditSecurityEvent(
+      req,
+      student.rows[0].schoolId,
+      "Linked parent to student",
+      "PARENT_LINKED",
+      result.rows[0].id,
+    );
     res.status(201).json(result.rows[0]);
   }),
 );
@@ -284,6 +323,13 @@ router.patch(
         relationshipId,
       ],
     );
+    await auditSecurityEvent(
+      req,
+      existing.rows[0].schoolId,
+      "Updated parent-student relationship",
+      "PARENT_RELATIONSHIP_UPDATED",
+      relationshipId,
+    );
     res.json(result.rows[0]);
   }),
 );
@@ -306,6 +352,13 @@ router.delete(
        SET status = 'INACTIVE', updated_at = NOW() WHERE id = $1`,
       [relationshipId],
     );
+    await auditSecurityEvent(
+      req,
+      existing.rows[0].schoolId,
+      "Deactivated parent-student relationship",
+      "PARENT_UNLINKED",
+      relationshipId,
+    );
     res.status(204).send();
   }),
 );
@@ -326,6 +379,73 @@ router.get(
        GROUP BY au.id ORDER BY au.created_at DESC`,
     );
     res.json(result.rows);
+  }),
+);
+
+router.post(
+  "/platform-users",
+  asyncRoute(async (req, res) => {
+    assertRoles(req, ["PLATFORM_OWNER"]);
+    const userId = Number(req.body?.userId);
+    const role = parseRole(req.body?.role);
+    const context = getUserContext(req);
+    if (role !== "PLATFORM_OWNER") {
+      throw new AuthError(400, "Only platform roles may be assigned here");
+    }
+    if (userId === context.user.id) {
+      throw new AuthError(403, "You cannot change your own platform role");
+    }
+    const user = await pool.query(`SELECT id FROM app_users WHERE id = $1`, [userId]);
+    if (!user.rows[0]) throw new AuthError(404, "User not found");
+    const result = await pool.query(
+      `INSERT INTO school_memberships (user_id, school_id, role)
+       VALUES ($1, NULL, 'PLATFORM_OWNER')
+       ON CONFLICT (user_id, role) WHERE school_id IS NULL
+       DO UPDATE SET status = 'ACTIVE', updated_at = NOW()
+       RETURNING id, user_id AS "userId", school_id AS "schoolId", role, status`,
+      [userId],
+    );
+    await auditSecurityEvent(
+      req,
+      null,
+      "Assigned platform owner role",
+      "USER_ROLE_CHANGED",
+      result.rows[0].id,
+    );
+    res.status(201).json(result.rows[0]);
+  }),
+);
+
+router.patch(
+  "/platform-memberships/:membershipId/status",
+  asyncRoute(async (req, res) => {
+    assertRoles(req, ["PLATFORM_OWNER"]);
+    const membershipId = Number(req.params.membershipId);
+    const status = req.body?.status === "INACTIVE" ? "INACTIVE" : "ACTIVE";
+    const context = getUserContext(req);
+    const existing = await pool.query(
+      `SELECT id, user_id AS "userId" FROM school_memberships
+       WHERE id = $1 AND school_id IS NULL AND role = 'PLATFORM_OWNER'`,
+      [membershipId],
+    );
+    if (!existing.rows[0]) throw new AuthError(404, "Platform membership not found");
+    if (existing.rows[0].userId === context.user.id) {
+      throw new AuthError(403, "You cannot change your own platform role");
+    }
+    const result = await pool.query(
+      `UPDATE school_memberships SET status = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING id, user_id AS "userId", school_id AS "schoolId", role, status`,
+      [status, membershipId],
+    );
+    await auditSecurityEvent(
+      req,
+      null,
+      `${status === "ACTIVE" ? "Activated" : "Deactivated"} platform owner role`,
+      "USER_ROLE_CHANGED",
+      membershipId,
+    );
+    res.json(result.rows[0]);
   }),
 );
 
@@ -360,6 +480,10 @@ router.post(
       throw new AuthError(403, "Platform Owner cannot be assigned as a school membership");
     }
     assertSchoolAccess(req, schoolId, ["SCHOOL_ADMIN"]);
+    const context = getUserContext(req);
+    if (userId === context.user.id) {
+      throw new AuthError(403, "You cannot change your own role");
+    }
     const user = await pool.query(`SELECT id FROM app_users WHERE id = $1`, [userId]);
     if (!user.rows[0]) throw new AuthError(404, "User not found");
     const result = await pool.query(
@@ -368,6 +492,23 @@ router.post(
        ON CONFLICT (user_id, school_id, role) DO UPDATE SET status = 'ACTIVE', updated_at = NOW()
        RETURNING id, user_id AS "userId", school_id AS "schoolId", role, status`,
       [userId, schoolId, role],
+    );
+    if (role === "PARENT") {
+      await pool.query(
+        `UPDATE parents p
+         SET user_id = $1
+         FROM app_users au
+         WHERE au.id = $1 AND p.school_id = $2 AND lower(p.email) = lower(au.email)
+           AND p.user_id IS NULL`,
+        [userId, schoolId],
+      );
+    }
+    await auditSecurityEvent(
+      req,
+      schoolId,
+      `Assigned ${role} school role`,
+      "USER_ROLE_CHANGED",
+      result.rows[0].id,
     );
     res.status(201).json(result.rows[0]);
   }),
@@ -380,6 +521,9 @@ router.patch(
     const schoolId = Number(req.body?.schoolId);
     const status = req.body?.status === "INACTIVE" ? "INACTIVE" : "ACTIVE";
     assertSchoolAccess(req, schoolId, ["SCHOOL_ADMIN"]);
+    if (userId === getUserContext(req).user.id) {
+      throw new AuthError(403, "You cannot change your own membership status");
+    }
     const result = await pool.query(
       `UPDATE school_memberships SET status = $1, updated_at = NOW()
        WHERE user_id = $2 AND school_id = $3
@@ -387,6 +531,13 @@ router.patch(
       [status, userId, schoolId],
     );
     if (!result.rows[0]) throw new AuthError(404, "School user not found");
+    await auditSecurityEvent(
+      req,
+      schoolId,
+      `${status === "ACTIVE" ? "Activated" : "Deactivated"} school membership`,
+      status === "ACTIVE" ? "USER_ACTIVATED" : "USER_DEACTIVATED",
+      result.rows[0].id,
+    );
     res.json(result.rows[0]);
   }),
 );
@@ -400,16 +551,27 @@ router.patch(
       throw new AuthError(403, "Platform Owner cannot be assigned as a school membership");
     }
     const existing = await pool.query(
-      `SELECT id, school_id AS "schoolId" FROM school_memberships WHERE id = $1`,
+      `SELECT id, user_id AS "userId", school_id AS "schoolId", role
+       FROM school_memberships WHERE id = $1`,
       [membershipId],
     );
     if (!existing.rows[0]) throw new AuthError(404, "Membership not found");
     assertSchoolAccess(req, existing.rows[0].schoolId, ["SCHOOL_ADMIN"]);
+    if (existing.rows[0].userId === getUserContext(req).user.id) {
+      throw new AuthError(403, "You cannot change your own role");
+    }
     const result = await pool.query(
       `UPDATE school_memberships SET role = $1, updated_at = NOW()
        WHERE id = $2
        RETURNING id, user_id AS "userId", school_id AS "schoolId", role, status`,
       [role, membershipId],
+    );
+    await auditSecurityEvent(
+      req,
+      existing.rows[0].schoolId,
+      `Changed school role from ${existing.rows[0].role} to ${role}`,
+      "USER_ROLE_CHANGED",
+      membershipId,
     );
     res.json(result.rows[0]);
   }),
@@ -428,6 +590,13 @@ router.patch(
       [status, userId],
     );
     if (!result.rows[0]) throw new AuthError(404, "User not found");
+    await auditSecurityEvent(
+      req,
+      null,
+      `${status === "ACTIVE" ? "Activated" : "Deactivated"} EduPulse user`,
+      status === "ACTIVE" ? "USER_ACTIVATED" : "USER_DEACTIVATED",
+      userId,
+    );
     res.json(result.rows[0]);
   }),
 );

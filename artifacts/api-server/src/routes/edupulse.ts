@@ -176,7 +176,7 @@ router.get("/dashboard/school", async (req, res) => {
           (SELECT COUNT(*)::int FROM students st WHERE school_id = $1 AND NOT EXISTS (
             SELECT 1 FROM subscriptions sub WHERE sub.student_id = st.id AND sub.status = 'active'
           )) AS "unpaidStudents",
-          94.2::float AS "attendanceRate",
+          NULL::float AS "attendanceRate",
           (SELECT COUNT(*)::int FROM subscriptions WHERE school_id = $1 AND status = 'pending') AS "pendingPayments",
           (SELECT COUNT(*)::int FROM nfc_cards WHERE school_id = $1 AND status = 'active') AS "activeCards",
           (SELECT COUNT(*)::int FROM nfc_cards WHERE school_id = $1 AND status = 'locked') AS "lockedCards"
@@ -201,10 +201,22 @@ router.get("/dashboard/school", async (req, res) => {
 
 router.get("/schools", async (req, res) => {
   try {
-    assertRoles(req, ["PLATFORM_OWNER"]);
+    const context = getUserContext(req);
+    const platformOwner = context.roles.some(
+      (assignment) => assignment.role === "PLATFORM_OWNER" && assignment.schoolId === null,
+    );
     const query = ListSchoolsQueryParams.parse(req.query);
     const values: unknown[] = [];
     const conditions: string[] = [];
+    if (!platformOwner) {
+      values.push(context.user.id);
+      conditions.push(`EXISTS (
+        SELECT 1 FROM school_memberships sm
+        WHERE sm.school_id = s.id AND sm.user_id = $${values.length}
+          AND sm.status = 'ACTIVE'
+          AND sm.role IN ('SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STAFF')
+      )`);
+    }
     if (query.status && query.status !== "all") {
       values.push(query.status);
       conditions.push(`s.status = $${values.length}`);
@@ -383,6 +395,7 @@ router.patch("/students/:studentId", async (req, res) => {
         parent_phone AS "parentPhone", status, joined_at AS "joinedAt"
     `, [next.first_name, next.last_name, next.class_name, next.section, next.status, params.studentId, query.schoolId]);
     const row = result.rows[0];
+    await audit(req, query.schoolId, "Updated student", "Students", params.studentId, "info", "STUDENT_UPDATED");
     res.json({ ...row, subscriptionStatus: "unpaid", cardStatus: "unassigned", joinedAt: dateString(row.joinedAt) });
   } catch (error) {
     fail(req, res, error);
@@ -449,6 +462,7 @@ router.post("/classes", async (req, res) => {
       INSERT INTO school_classes (school_id, name, section, class_teacher, capacity) VALUES ($1, $2, $3, $4, $5)
       RETURNING id, school_id AS "schoolId", name, section, class_teacher AS "classTeacher", capacity
     `, [schoolId, body.name, body.section, body.classTeacher ?? null, body.capacity]);
+    await audit(req, schoolId, "Created class", "Classes", result.rows[0].id, "info", "CLASS_CREATED");
     res.status(201).json({ ...result.rows[0], studentCount: 0 });
   } catch (error) {
     fail(req, res, error);
@@ -493,6 +507,7 @@ router.post("/subscriptions", async (req, res) => {
         status, verification_status AS "verificationStatus", provider, term, expires_at AS "expiresAt"
     `, [schoolId, body.studentId, body.term, body.provider ?? "test", expiresAt]);
     const row = result.rows[0];
+    await audit(req, schoolId, "Created subscription", "Subscriptions", row.id, "info", "SUBSCRIPTION_CREATED");
     res.status(201).json({ ...row, studentName: student.rows[0].name, expiresAt: dateString(row.expiresAt) });
   } catch (error) {
     fail(req, res, error);
@@ -503,9 +518,18 @@ router.post("/subscriptions/:subscriptionId/verify", async (req, res) => {
   try {
     const params = VerifySubscriptionParams.parse(req.params);
     const body = VerifySubscriptionBody.parse(req.body);
-    const existing = await pool.query(`SELECT * FROM subscriptions WHERE id = $1`, [params.subscriptionId]);
+    const existing = await pool.query(
+      `SELECT sub.*
+       FROM subscriptions sub
+       JOIN students st ON st.id = sub.student_id AND st.school_id = sub.school_id
+       WHERE sub.id = $1`,
+      [params.subscriptionId],
+    );
     if (!existing.rows[0]) return res.status(404).json({ error: "Subscription not found" });
     assertSchoolAccess(req, existing.rows[0].school_id, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
+    if (existing.rows[0].verification_status === "verified") {
+      throw new AuthError(409, "Subscription is already verified");
+    }
     const result = await pool.query(`
       UPDATE subscriptions SET status = 'active', verification_status = 'verified', provider_reference = $1
       WHERE id = $2
@@ -568,7 +592,14 @@ router.patch("/cards/:cardId/status", async (req, res) => {
   try {
     const cardId = asNumber(req.params.cardId);
     const body = UpdateCardStatusBody.parse(req.body);
-    const card = await pool.query(`SELECT school_id AS "schoolId" FROM nfc_cards WHERE id = $1`, [cardId]);
+    const card = await pool.query(
+      `SELECT nc.school_id AS "schoolId"
+       FROM nfc_cards nc
+       LEFT JOIN students st ON st.id = nc.student_id
+       WHERE nc.id = $1
+         AND (nc.student_id IS NULL OR st.school_id = nc.school_id)`,
+      [cardId],
+    );
     if (!card.rows[0]) return res.status(404).json({ error: "Card not found" });
     assertSchoolAccess(req, card.rows[0].schoolId, ["SCHOOL_ADMIN", "STAFF"]);
     const result = await pool.query(`

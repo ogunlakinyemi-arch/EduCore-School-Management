@@ -147,6 +147,7 @@ CREATE UNIQUE INDEX "parents_user_unique" ON "parents" USING btree ("user_id");-
 CREATE INDEX "parents_school_idx" ON "parents" USING btree ("school_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "school_classes_unique" ON "school_classes" USING btree ("school_id","name","section");--> statement-breakpoint
 CREATE UNIQUE INDEX "school_memberships_user_school_role_unique" ON "school_memberships" USING btree ("user_id","school_id","role");--> statement-breakpoint
+CREATE UNIQUE INDEX "school_memberships_platform_role_unique" ON "school_memberships" USING btree ("user_id","role") WHERE "school_id" is null;--> statement-breakpoint
 CREATE INDEX "school_memberships_user_idx" ON "school_memberships" USING btree ("user_id","status");--> statement-breakpoint
 CREATE INDEX "school_memberships_school_idx" ON "school_memberships" USING btree ("school_id","status");--> statement-breakpoint
 CREATE UNIQUE INDEX "schools_code_unique" ON "schools" USING btree ("code");--> statement-breakpoint
@@ -155,3 +156,17 @@ CREATE UNIQUE INDEX "students_user_unique" ON "students" USING btree ("user_id")
 CREATE INDEX "students_school_idx" ON "students" USING btree ("school_id");--> statement-breakpoint
 CREATE INDEX "subscriptions_school_idx" ON "subscriptions" USING btree ("school_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "subscriptions_provider_reference_unique" ON "subscriptions" USING btree ("provider_reference");
+--> statement-breakpoint
+INSERT INTO "parent_student_relationships"
+  ("parent_id", "student_id", "relationship_type", "is_primary_guardian",
+   "is_emergency_contact", "contact_priority", "status")
+SELECT p.id, st.id, 'Guardian', true, true, 1, 'ACTIVE'
+FROM "students" st
+JOIN "parents" p
+  ON p.school_id = st.school_id
+ AND lower(trim(p.name)) = lower(trim(st.parent_name))
+ AND regexp_replace(p.phone, '\D', '', 'g') =
+     regexp_replace(st.parent_phone, '\D', '', 'g')
+WHERE st.parent_name IS NOT NULL
+  AND st.parent_phone IS NOT NULL
+ON CONFLICT ("parent_id", "student_id") DO NOTHING;

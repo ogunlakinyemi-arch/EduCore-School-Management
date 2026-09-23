@@ -13,7 +13,8 @@ export interface SchoolDashboard {
   totalStudents: number;
   activeStudents: number;
   unpaidStudents: number;
-  attendanceRate: number;
+  /** @nullable */
+  attendanceRate?: number | null;
   pendingPayments: number;
   activeCards: number;
   lockedCards: number;

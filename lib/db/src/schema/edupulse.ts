@@ -10,6 +10,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const appUsers = pgTable(
   "app_users",
@@ -61,6 +62,9 @@ export const schoolMemberships = pgTable(
       table.schoolId,
       table.role,
     ),
+    uniqueIndex("school_memberships_platform_role_unique")
+      .on(table.userId, table.role)
+      .where(sql`${table.schoolId} is null`),
     index("school_memberships_user_idx").on(table.userId, table.status),
     index("school_memberships_school_idx").on(table.schoolId, table.status),
   ],

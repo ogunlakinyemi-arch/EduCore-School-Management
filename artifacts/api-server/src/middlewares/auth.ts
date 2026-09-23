@@ -35,7 +35,7 @@ export type UserContext = {
 
 export class AuthError extends Error {
   constructor(
-    public readonly statusCode: 400 | 401 | 403 | 404,
+    public readonly statusCode: 400 | 401 | 403 | 404 | 409,
     message: string,
     public readonly eventType = "ACCESS_DENIED",
   ) {
@@ -94,8 +94,20 @@ export async function provisionCurrentUser(clerkUserId: string) {
 
 export async function loadUserContext(clerkUserId: string): Promise<UserContext> {
   const user = await provisionCurrentUser(clerkUserId);
-  if (user.status !== "ACTIVE") {
-    throw new AuthError(403, "This EduPulse account is inactive");
+  assertUserActive(user.status);
+  if (
+    process.env.EDUPULSE_BOOTSTRAP_CLERK_USER_ID &&
+    process.env.EDUPULSE_BOOTSTRAP_CLERK_USER_ID === clerkUserId
+  ) {
+    await pool.query(
+      `INSERT INTO school_memberships (user_id, school_id, role)
+       SELECT $1, NULL, 'PLATFORM_OWNER'
+       WHERE NOT EXISTS (
+         SELECT 1 FROM school_memberships
+         WHERE user_id = $1 AND school_id IS NULL AND role = 'PLATFORM_OWNER'
+       )`,
+      [user.id],
+    );
   }
 
   const roles = await pool.query(
@@ -106,6 +118,12 @@ export async function loadUserContext(clerkUserId: string): Promise<UserContext>
   );
 
   return { user, roles: roles.rows };
+}
+
+export function assertUserActive(status: string) {
+  if (status !== "ACTIVE") {
+    throw new AuthError(403, "This EduPulse account is inactive");
+  }
 }
 
 function respondAuthError(res: Response, error: unknown) {

@@ -5,6 +5,11 @@
  * Multi-tenant EduPulse school management API
  * OpenAPI spec version: 0.1.0
  */
+export interface ApiError {
+  error: string;
+  code?: string;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -83,7 +88,8 @@ export interface SchoolDashboard {
   totalStudents: number;
   activeStudents: number;
   unpaidStudents: number;
-  attendanceRate: number;
+  /** @nullable */
+  attendanceRate?: number | null;
   pendingPayments: number;
   activeCards: number;
   lockedCards: number;
@@ -237,6 +243,246 @@ export interface Parent {
   activeChildren: number;
 }
 
+export type RoleAssignmentRole = typeof RoleAssignmentRole[keyof typeof RoleAssignmentRole];
+
+
+export const RoleAssignmentRole = {
+  PLATFORM_OWNER: 'PLATFORM_OWNER',
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+  TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+  STAFF: 'STAFF',
+} as const;
+
+export type RoleAssignmentStatus = typeof RoleAssignmentStatus[keyof typeof RoleAssignmentStatus];
+
+
+export const RoleAssignmentStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface RoleAssignment {
+  id: number;
+  role: RoleAssignmentRole;
+  /** @nullable */
+  schoolId?: number | null;
+  status: RoleAssignmentStatus;
+}
+
+export type CurrentUserStatus = typeof CurrentUserStatus[keyof typeof CurrentUserStatus];
+
+
+export const CurrentUserStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface CurrentUser {
+  id: number;
+  clerkUserId: string;
+  email: string;
+  /** @nullable */
+  firstName?: string | null;
+  /** @nullable */
+  lastName?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  status: CurrentUserStatus;
+  name: string;
+  roles: RoleAssignment[];
+}
+
+export interface AuthorizedSchool {
+  id: number;
+  schoolId: number;
+  role: string;
+  status: string;
+  code: string;
+  name: string;
+  city: string;
+  state: string;
+}
+
+export type AuthorizedContextUser = {
+  id: number;
+  name: string;
+  email: string;
+  status: string;
+};
+
+export interface AuthorizedContext {
+  user: AuthorizedContextUser;
+  isPlatformOwner: boolean;
+  roles: RoleAssignment[];
+}
+
+export interface ParentProfile {
+  id: number;
+  schoolId: number;
+  name: string;
+  email: string;
+  phone: string;
+}
+
+export interface ParentChild {
+  id: number;
+  schoolId: number;
+  admissionNo: string;
+  firstName: string;
+  lastName: string;
+  gender?: string;
+  className: string;
+  section: string;
+  status: string;
+  schoolCode?: string;
+  schoolName: string;
+  city?: string;
+  state?: string;
+  relationshipType?: string;
+  isPrimaryGuardian?: boolean;
+  isEmergencyContact?: boolean;
+  contactPriority?: number;
+}
+
+export type ParentStudentRelationshipStatus = typeof ParentStudentRelationshipStatus[keyof typeof ParentStudentRelationshipStatus];
+
+
+export const ParentStudentRelationshipStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface ParentStudentRelationship {
+  id: number;
+  parentId: number;
+  studentId: number;
+  relationshipType: string;
+  isPrimaryGuardian: boolean;
+  isEmergencyContact: boolean;
+  contactPriority: number;
+  status: ParentStudentRelationshipStatus;
+  studentName?: string;
+  parentName?: string;
+}
+
+export type ParentStudentRelationshipInputRelationshipType = typeof ParentStudentRelationshipInputRelationshipType[keyof typeof ParentStudentRelationshipInputRelationshipType];
+
+
+export const ParentStudentRelationshipInputRelationshipType = {
+  Father: 'Father',
+  Mother: 'Mother',
+  Guardian: 'Guardian',
+  Grandparent: 'Grandparent',
+  Other: 'Other',
+} as const;
+
+export interface ParentStudentRelationshipInput {
+  /** @minimum 1 */
+  parentId: number;
+  /** @minimum 1 */
+  studentId: number;
+  relationshipType: ParentStudentRelationshipInputRelationshipType;
+  isPrimaryGuardian?: boolean;
+  isEmergencyContact?: boolean;
+  /** @minimum 1 */
+  contactPriority?: number;
+}
+
+export type ParentStudentRelationshipUpdateRelationshipType = typeof ParentStudentRelationshipUpdateRelationshipType[keyof typeof ParentStudentRelationshipUpdateRelationshipType];
+
+
+export const ParentStudentRelationshipUpdateRelationshipType = {
+  Father: 'Father',
+  Mother: 'Mother',
+  Guardian: 'Guardian',
+  Grandparent: 'Grandparent',
+  Other: 'Other',
+} as const;
+
+export type ParentStudentRelationshipUpdateStatus = typeof ParentStudentRelationshipUpdateStatus[keyof typeof ParentStudentRelationshipUpdateStatus];
+
+
+export const ParentStudentRelationshipUpdateStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface ParentStudentRelationshipUpdate {
+  relationshipType?: ParentStudentRelationshipUpdateRelationshipType;
+  isPrimaryGuardian?: boolean;
+  isEmergencyContact?: boolean;
+  /** @minimum 1 */
+  contactPriority?: number;
+  status?: ParentStudentRelationshipUpdateStatus;
+}
+
+export interface AppUser {
+  id: number;
+  clerkUserId: string;
+  email: string;
+  /** @nullable */
+  firstName?: string | null;
+  /** @nullable */
+  lastName?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  status: string;
+  createdAt?: string;
+  memberships: RoleAssignment[];
+}
+
+export interface SchoolUser {
+  id: number;
+  email: string;
+  /** @nullable */
+  firstName?: string | null;
+  /** @nullable */
+  lastName?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  userStatus: string;
+  membershipId: number;
+  role: string;
+  membershipStatus: string;
+  schoolId: number;
+}
+
+export type SchoolMembershipInputRole = typeof SchoolMembershipInputRole[keyof typeof SchoolMembershipInputRole];
+
+
+export const SchoolMembershipInputRole = {
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+  TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+  STAFF: 'STAFF',
+} as const;
+
+export interface SchoolMembershipInput {
+  /** @minimum 1 */
+  userId: number;
+  /** @minimum 1 */
+  schoolId: number;
+  role: SchoolMembershipInputRole;
+}
+
+export type PlatformMembershipInputRole = typeof PlatformMembershipInputRole[keyof typeof PlatformMembershipInputRole];
+
+
+export const PlatformMembershipInputRole = {
+  PLATFORM_OWNER: 'PLATFORM_OWNER',
+} as const;
+
+export interface PlatformMembershipInput {
+  /** @minimum 1 */
+  userId: number;
+  role: PlatformMembershipInputRole;
+}
+
 export interface ParentInput {
   /** @minLength 2 */
   name: string;
@@ -372,9 +618,38 @@ export interface CardStatusInput {
   status: CardStatusInputStatus;
 }
 
+/**
+ * Authentication required
+ */
+export type UnauthenticatedResponse = ApiError;
+
+/**
+ * Authenticated but not authorized
+ */
+export type ForbiddenResponse = ApiError;
+
+/**
+ * Resource not found or outside authorized visibility
+ */
+export type NotFoundResponse = ApiError;
+
 export type SchoolIdParameter = number;
 
 export type SearchParameter = string;
+
+export type ListParentStudentRelationshipsParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+};
+
+export type ListSchoolUsersParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
 
 export type GetSchoolDashboardParams = {
 /**

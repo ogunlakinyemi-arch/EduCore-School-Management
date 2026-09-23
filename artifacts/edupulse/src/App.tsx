@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { Link, Route, Switch, Router as WouterRouter, useLocation, useParams } from 'wouter';
+import { ClerkProvider, UserButton, useAuth } from '@clerk/react';
+import { Link, Redirect, Route, Switch, Router as WouterRouter, useLocation, useParams } from 'wouter';
 import {
   Activity, ArrowLeft, ArrowUpRight, BadgeCheck, BarChart3, Bell, BookOpen, Building2, Check, ChevronDown,
   CircleAlert, CircleDollarSign, CreditCard, FileClock, GraduationCap, LayoutDashboard, Library, Menu,
@@ -14,12 +15,14 @@ import {
   useCreateStudent, useCreateSubscription, useGetPlatformDashboard, useGetSchool, useGetSchoolDashboard,
   useListAuditLogs, useListCards, useListClasses, useListParents, useListSchools, useListStudents,
   useListSubscriptions, useRegisterCard, useUpdateCardStatus, useUpdateSchool, useUpdateStudent,
-  useVerifySubscription,
+  useVerifySubscription, useGetCurrentUser,
 } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
+import { AuthScreen } from '@/pages/auth-screen';
+import ParentPortal from '@/pages/parent-portal';
 import './index.css';
 
 const queryClient = new QueryClient();
@@ -38,26 +41,33 @@ function IconLogo({ compact = false }: { compact?: boolean }) {
   </div>;
 }
 
-type NavItem = { href: string; label: string; icon: typeof Activity };
+type AppRole = 'PLATFORM_OWNER' | 'SCHOOL_ADMIN' | 'TEACHER' | 'ACCOUNTANT' | 'PARENT' | 'STUDENT' | 'STAFF';
+type NavItem = { href: string; label: string; icon: typeof Activity; roles?: AppRole[] };
 const nav: NavItem[] = [
   { href: '/', label: 'Command centre', icon: LayoutDashboard },
-  { href: '/schools', label: 'Schools', icon: Building2 },
-  { href: '/students', label: 'Students', icon: GraduationCap },
-  { href: '/parents', label: 'Parents & guardians', icon: UsersRound },
-  { href: '/classes', label: 'Classes & sections', icon: Library },
-  { href: '/subscriptions', label: 'Subscriptions', icon: WalletCards },
-  { href: '/nfc-cards', label: 'NFC cards', icon: CreditCard },
-  { href: '/audit-log', label: 'Audit log', icon: FileClock },
+  { href: '/schools', label: 'Schools', icon: Building2, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
+  { href: '/students', label: 'Students', icon: GraduationCap, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
+  { href: '/parents', label: 'Parents & guardians', icon: UsersRound, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
+  { href: '/classes', label: 'Classes & sections', icon: Library, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
+  { href: '/subscriptions', label: 'Subscriptions', icon: WalletCards, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
+  { href: '/nfc-cards', label: 'NFC cards', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'STAFF'] },
+  { href: '/audit-log', label: 'Audit log', icon: FileClock, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
 ];
 
 function Shell({ children, schoolName }: { children: ReactNode; schoolName?: string }) {
   const [location] = useLocation();
   const [open, setOpen] = useState(false);
+  const me = useGetCurrentUser();
+  const roles = (me.data?.roles.map(item => item.role) ?? []) as AppRole[];
+  const visibleNav = nav.filter(item => !item.roles || item.roles.some(role => roles.includes(role)));
+  const name = me.data?.name ?? 'EduPulse user';
+  const role = roles[0]?.replaceAll('_', ' ').toLowerCase() ?? 'authenticated user';
+  const initials = name.split(' ').slice(0, 2).map(part => part[0]).join('').toUpperCase();
   return <div className="app-shell min-h-[100dvh] text-[hsl(var(--foreground))]">
     <aside className={cx('fixed inset-y-0 left-0 z-40 flex w-[252px] -translate-x-full flex-col bg-[hsl(var(--sidebar))] p-4 transition-transform md:translate-x-0', open && 'translate-x-0')} data-testid="sidebar">
       <div className="mb-7 flex items-center justify-between px-2"><IconLogo /><button onClick={() => setOpen(false)} className="text-[hsl(var(--sidebar-foreground))] md:hidden" aria-label="Close navigation" data-testid="button-close-navigation"><X size={18} /></button></div>
       <div className="mb-3 px-2 text-[10px] font-bold uppercase tracking-[.18em] text-[hsl(var(--sidebar-foreground)/.5)]">Workspace</div>
-      <nav className="space-y-1">{nav.map(item => {
+      <nav className="space-y-1">{visibleNav.map(item => {
         const Icon = item.icon; const active = item.href === '/' ? location === '/' : location.startsWith(item.href);
         return <Link key={item.href} href={item.href} onClick={() => setOpen(false)} className={cx('group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-[hsl(var(--sidebar-foreground)/.68)] hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-foreground))]', active && 'bg-[hsl(var(--sidebar-primary))] font-bold text-[hsl(var(--sidebar-primary-foreground))] hover:bg-[hsl(var(--sidebar-primary))]')} data-testid={`link-nav-${item.label.toLowerCase().replaceAll(' ', '-')}`}>
           <Icon size={17} strokeWidth={active ? 2.4 : 1.8} /><span>{item.label}</span>{active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-current" />}
@@ -72,8 +82,8 @@ function Shell({ children, schoolName }: { children: ReactNode; schoolName?: str
     {open && <button className="fixed inset-0 z-30 bg-[hsl(var(--foreground)/.2)] md:hidden" onClick={() => setOpen(false)} aria-label="Close menu" data-testid="button-dismiss-menu" />}
     <div className="md:pl-[252px]">
       <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-[hsl(var(--border)/.75)] bg-[hsl(var(--background)/.92)] px-4 backdrop-blur-xl md:px-8">
-        <div className="flex items-center gap-3"><button className="rounded-lg p-2 hover:bg-[hsl(var(--muted))] md:hidden" onClick={() => setOpen(true)} aria-label="Open navigation" data-testid="button-open-navigation"><Menu size={20} /></button><div><div className="eyebrow">Operations / {schoolName || 'All schools'}</div><div className="mt-0.5 text-sm font-semibold">{location === '/' ? 'Good morning, Amaka' : nav.find(item => item.href !== '/' && location.startsWith(item.href))?.label || 'Settings'}</div></div></div>
-        <div className="flex items-center gap-2.5"><button className="relative grid h-9 w-9 place-items-center rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]" aria-label="Notifications" data-testid="button-notifications"><Bell size={17} /><span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[hsl(var(--destructive))]" /></button><div className="hidden h-8 w-px bg-[hsl(var(--border))] sm:block" /><div className="grid h-9 w-9 place-items-center rounded-full bg-[hsl(var(--primary))] text-xs font-bold text-[hsl(var(--primary-foreground))]" data-testid="avatar-user">AO</div><div className="hidden text-left sm:block"><div className="text-xs font-bold">Amaka Okafor</div><div className="text-[10px] text-[hsl(var(--muted-foreground))]">Platform owner</div></div><ChevronDown size={14} className="hidden text-[hsl(var(--muted-foreground))] sm:block" /></div>
+        <div className="flex items-center gap-3"><button className="rounded-lg p-2 hover:bg-[hsl(var(--muted))] md:hidden" onClick={() => setOpen(true)} aria-label="Open navigation" data-testid="button-open-navigation"><Menu size={20} /></button><div><div className="eyebrow">Operations / {schoolName || 'Authorized schools'}</div><div className="mt-0.5 text-sm font-semibold">{location === '/' ? `Welcome, ${me.data?.firstName || name}` : nav.find(item => item.href !== '/' && location.startsWith(item.href))?.label || 'Settings'}</div></div></div>
+        <div className="flex items-center gap-2.5"><button className="relative grid h-9 w-9 place-items-center rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]" aria-label="Notifications" data-testid="button-notifications"><Bell size={17} /></button><div className="hidden h-8 w-px bg-[hsl(var(--border))] sm:block" /><div className="hidden h-9 w-9 place-items-center rounded-full bg-[hsl(var(--primary))] text-xs font-bold text-[hsl(var(--primary-foreground))] sm:grid" data-testid="avatar-user">{initials}</div><div className="hidden text-left sm:block"><div className="text-xs font-bold">{name}</div><div className="text-[10px] capitalize text-[hsl(var(--muted-foreground))]">{role}</div></div><UserButton /></div>
       </header>
       <main className="nav-grid min-h-[calc(100dvh-72px)] p-4 md:p-8">{children}</main>
     </div>
@@ -150,7 +160,7 @@ function SchoolOverview() {
   const params = useParams<{ id: string }>(); const [, setLocation] = useLocation(); const schoolId = Number(params.id); const schoolQuery = useGetSchool(schoolId); const dash = useGetSchoolDashboard({ schoolId });
   if (schoolQuery.isLoading || dash.isLoading) return <SkeletonPage />; if (schoolQuery.isError || dash.isError) return <ErrorState retry={() => { schoolQuery.refetch(); dash.refetch(); }} />;
   const school: any = schoolQuery.data; const data: any = dash.data;
-  return <div className="mx-auto max-w-[1440px]"><Link href="/schools" className="mb-5 inline-flex items-center gap-2 text-xs font-bold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]" data-testid="link-back-schools"><ArrowLeft size={14} />All schools</Link><PageHeading eyebrow={`School / ${school?.code}`} title={school?.name ?? 'School overview'} description={`${school?.city}, ${school?.state} · joined ${date(school?.createdAt)}`} action={<Button variant="outline" onClick={() => setLocation('/students')} testId="button-open-school-directory"><GraduationCap size={15} />Open directory</Button>} /><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric label="Total students" value={data?.totalStudents ?? 0} detail={`${data?.activeStudents ?? 0} currently active`} icon={GraduationCap} accent /><Metric label="Unpaid students" value={data?.unpaidStudents ?? 0} detail="Need subscription follow-up" icon={CircleAlert} /><Metric label="Attendance rate" value={`${data?.attendanceRate ?? 0}%`} detail="Across the current term" icon={BarChart3} accent /><Metric label="Active cards" value={data?.activeCards ?? 0} detail={`${data?.lockedCards ?? 0} locked`} icon={CreditCard} /></div><div className="mt-5 grid gap-5 lg:grid-cols-[1.1fr_.9fr]"><div className="panel p-5 md:p-6"><div className="eyebrow">Tenant context</div><h2 className="display-font mt-1 text-xl font-bold">Operational snapshot</h2><div className="mt-5 grid gap-3 sm:grid-cols-2"><Info label="School code" value={school?.code} /><Info label="School status" value={<StatusPill value={school?.status} />} /><Info label="Subscription health" value={<StatusPill value={school?.subscriptionStatus} />} /><Info label="Staff on record" value={school?.staffCount ?? 0} /></div><div className="mt-5 rounded-2xl bg-[hsl(var(--secondary))] p-4"><div className="flex items-center gap-2 text-xs font-bold"><ShieldCheck size={15} className="text-[hsl(var(--primary))]" />Data boundary is active</div><p className="mt-1 text-xs leading-5 text-[hsl(var(--muted-foreground))]">Students, payments and card events shown here belong only to {school?.name}.</p></div></div><div className="panel p-5 md:p-6"><div className="mb-5 flex items-start justify-between"><div><div className="eyebrow">School activity</div><h2 className="display-font mt-1 text-xl font-bold">Recent movement</h2></div><Link href="/audit-log" className="text-[11px] font-bold text-[hsl(var(--primary))]" data-testid="link-school-audit">Full trail</Link></div><ActivityFeed items={data?.recentActivity} /></div></div></div>;
+  return <div className="mx-auto max-w-[1440px]"><Link href="/schools" className="mb-5 inline-flex items-center gap-2 text-xs font-bold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]" data-testid="link-back-schools"><ArrowLeft size={14} />All schools</Link><PageHeading eyebrow={`School / ${school?.code}`} title={school?.name ?? 'School overview'} description={`${school?.city}, ${school?.state} · joined ${date(school?.createdAt)}`} action={<Button variant="outline" onClick={() => setLocation('/students')} testId="button-open-school-directory"><GraduationCap size={15} />Open directory</Button>} /><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric label="Total students" value={data?.totalStudents ?? 0} detail={`${data?.activeStudents ?? 0} currently active`} icon={GraduationCap} accent /><Metric label="Unpaid students" value={data?.unpaidStudents ?? 0} detail="Need subscription follow-up" icon={CircleAlert} /><Metric label="Attendance" value="Not available" detail="Attendance is planned for a later phase" icon={BarChart3} accent /><Metric label="Active cards" value={data?.activeCards ?? 0} detail={`${data?.lockedCards ?? 0} locked`} icon={CreditCard} /></div><div className="mt-5 grid gap-5 lg:grid-cols-[1.1fr_.9fr]"><div className="panel p-5 md:p-6"><div className="eyebrow">Tenant context</div><h2 className="display-font mt-1 text-xl font-bold">Operational snapshot</h2><div className="mt-5 grid gap-3 sm:grid-cols-2"><Info label="School code" value={school?.code} /><Info label="School status" value={<StatusPill value={school?.status} />} /><Info label="Subscription health" value={<StatusPill value={school?.subscriptionStatus} />} /><Info label="Staff on record" value={school?.staffCount ?? 0} /></div><div className="mt-5 rounded-2xl bg-[hsl(var(--secondary))] p-4"><div className="flex items-center gap-2 text-xs font-bold"><ShieldCheck size={15} className="text-[hsl(var(--primary))]" />Data boundary is active</div><p className="mt-1 text-xs leading-5 text-[hsl(var(--muted-foreground))]">Students, payments and card events shown here belong only to {school?.name}.</p></div></div><div className="panel p-5 md:p-6"><div className="mb-5 flex items-start justify-between"><div><div className="eyebrow">School activity</div><h2 className="display-font mt-1 text-xl font-bold">Recent movement</h2></div><Link href="/audit-log" className="text-[11px] font-bold text-[hsl(var(--primary))]" data-testid="link-school-audit">Full trail</Link></div><ActivityFeed items={data?.recentActivity} /></div></div></div>;
 }
 function Info({ label, value }: { label: string; value: ReactNode }) { return <div className="rounded-xl border border-[hsl(var(--border))] p-3"><div className="eyebrow">{label}</div><div className="mt-1 text-sm font-bold">{value || '—'}</div></div>; }
 
@@ -218,6 +228,42 @@ function Preference({ title, description, checked, onChange, testId }: { title: 
 function Router() {
   return <ErrorBoundary resetKey={useLocation()[0]}><Shell><Switch><Route path="/" component={Dashboard} /><Route path="/schools/:id" component={SchoolOverview} /><Route path="/schools" component={SchoolsPage} /><Route path="/students" component={StudentsPage} /><Route path="/parents" component={ParentsPage} /><Route path="/classes" component={ClassesPage} /><Route path="/subscriptions" component={SubscriptionsPage} /><Route path="/nfc-cards" component={CardsPage} /><Route path="/audit-log" component={AuditPage} /><Route path="/settings" component={SettingsPage} /><Route component={NotFound} /></Switch></Shell></ErrorBoundary>;
 }
-function App() { return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Router /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider>; }
+
+function AccessPending() {
+  return <main className="grid min-h-[100dvh] place-items-center bg-[hsl(var(--background))] p-5"><div className="panel max-w-lg p-8 text-center"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><ShieldCheck size={24} /></div><h1 className="display-font mt-5 text-2xl font-bold">Your account is authenticated</h1><p className="mt-2 text-sm leading-6 text-[hsl(var(--muted-foreground))]">An EduPulse administrator still needs to assign your platform or school role. No privileged access is granted automatically.</p><div className="mt-6 flex justify-center"><UserButton /></div></div></main>;
+}
+
+function AuthenticatedRouter() {
+  const me = useGetCurrentUser();
+  const [location] = useLocation();
+  if (me.isLoading) return <SkeletonPage />;
+  if (me.isError || !me.data) return <ErrorState retry={() => me.refetch()} />;
+  const roles = me.data.roles;
+  if (!roles.length) return <AccessPending />;
+  const isPlatformOwner = roles.some(item => item.role === 'PLATFORM_OWNER');
+  const isParentOnly = roles.some(item => item.role === 'PARENT') && !roles.some(item => ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STAFF'].includes(item.role));
+  if (isParentOnly) return <ParentPortal />;
+  const firstSchool = roles.find(item => item.schoolId != null)?.schoolId;
+  if (!isPlatformOwner && location === '/' && firstSchool) return <Redirect to={`/schools/${firstSchool}`} />;
+  return <Router />;
+}
+
+function PublicRouter() {
+  const [location] = useLocation();
+  if (location === '/') return <Redirect to="/sign-in" />;
+  return <AuthScreen mode={location.startsWith('/sign-up') ? 'sign-up' : 'sign-in'} />;
+}
+
+function AuthBoundary() {
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) return <SkeletonPage />;
+  return isSignedIn ? <AuthenticatedRouter /> : <PublicRouter />;
+}
+
+function App() {
+  const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+  if (!publishableKey) return <main className="grid min-h-[100dvh] place-items-center p-8 text-center"><div><h1 className="display-font text-2xl font-bold">Authentication is not configured</h1><p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Add the Clerk publishable key to the workspace environment.</p></div></main>;
+  return <ClerkProvider publishableKey={publishableKey} proxyUrl={import.meta.env.PROD ? '/api/__clerk' : undefined} afterSignOutUrl={`${import.meta.env.BASE_URL}sign-in`}><QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><AuthBoundary /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider></ClerkProvider>;
+}
 
 export default App;

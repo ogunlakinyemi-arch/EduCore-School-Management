@@ -17,6 +17,334 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary Get the authenticated EduPulse user
+ */
+export const GetCurrentUserResponse = zod.object({
+  "id": zod.number().int(),
+  "clerkUserId": zod.string(),
+  "email": zod.string().email(),
+  "firstName": zod.string().nullish(),
+  "lastName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "name": zod.string(),
+  "roles": zod.array(zod.object({
+  "id": zod.number().int(),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "schoolId": zod.number().int().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+}))
+})
+
+
+/**
+ * @summary Get active role assignments
+ */
+export const GetCurrentUserRolesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "schoolId": zod.number().int().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+export const GetCurrentUserRolesResponse = zod.array(GetCurrentUserRolesResponseItem)
+
+
+/**
+ * @summary Get schools available to the authenticated user
+ */
+export const GetCurrentUserSchoolsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "role": zod.string(),
+  "status": zod.string(),
+  "code": zod.string(),
+  "name": zod.string(),
+  "city": zod.string(),
+  "state": zod.string()
+})
+export const GetCurrentUserSchoolsResponse = zod.array(GetCurrentUserSchoolsResponseItem)
+
+
+/**
+ * @summary Get the authenticated authorization context
+ */
+export const GetAuthorizedContextResponse = zod.object({
+  "user": zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "status": zod.string()
+}),
+  "isPlatformOwner": zod.boolean(),
+  "roles": zod.array(zod.object({
+  "id": zod.number().int(),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "schoolId": zod.number().int().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+}))
+})
+
+
+/**
+ * @summary Get the authenticated parent's profile
+ */
+export const GetParentProfileResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string()
+})
+
+
+/**
+ * @summary List children linked to the authenticated parent
+ */
+export const GetParentChildrenResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "admissionNo": zod.string(),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "gender": zod.string().optional(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "status": zod.string(),
+  "schoolCode": zod.string().optional(),
+  "schoolName": zod.string(),
+  "city": zod.string().optional(),
+  "state": zod.string().optional(),
+  "relationshipType": zod.string().optional(),
+  "isPrimaryGuardian": zod.boolean().optional(),
+  "isEmergencyContact": zod.boolean().optional(),
+  "contactPriority": zod.number().int().optional()
+})
+export const GetParentChildrenResponse = zod.array(GetParentChildrenResponseItem)
+
+
+/**
+ * @summary Get one child linked to the authenticated parent
+ */
+
+
+
+export const GetParentChildParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const GetParentChildResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "admissionNo": zod.string(),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "gender": zod.string().optional(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "status": zod.string(),
+  "schoolCode": zod.string().optional(),
+  "schoolName": zod.string(),
+  "city": zod.string().optional(),
+  "state": zod.string().optional(),
+  "relationshipType": zod.string().optional(),
+  "isPrimaryGuardian": zod.boolean().optional(),
+  "isEmergencyContact": zod.boolean().optional(),
+  "contactPriority": zod.number().int().optional()
+})
+
+
+/**
+ * @summary List authorized parent-student relationships
+ */
+
+
+
+export const ListParentStudentRelationshipsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional()
+})
+
+export const ListParentStudentRelationshipsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "parentId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "relationshipType": zod.string(),
+  "isPrimaryGuardian": zod.boolean(),
+  "isEmergencyContact": zod.boolean(),
+  "contactPriority": zod.number().int(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "studentName": zod.string().optional(),
+  "parentName": zod.string().optional()
+})
+export const ListParentStudentRelationshipsResponse = zod.array(ListParentStudentRelationshipsResponseItem)
+
+
+/**
+ * @summary Link a parent and student in an authorized school
+ */
+
+
+
+
+
+export const CreateParentStudentRelationshipBody = zod.object({
+  "parentId": zod.number().int().min(1),
+  "studentId": zod.number().int().min(1),
+  "relationshipType": zod.enum(['Father', 'Mother', 'Guardian', 'Grandparent', 'Other']),
+  "isPrimaryGuardian": zod.boolean().optional(),
+  "isEmergencyContact": zod.boolean().optional(),
+  "contactPriority": zod.number().int().min(1).optional()
+})
+
+export const CreateParentStudentRelationshipResponse = zod.object({
+  "id": zod.number().int(),
+  "parentId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "relationshipType": zod.string(),
+  "isPrimaryGuardian": zod.boolean(),
+  "isEmergencyContact": zod.boolean(),
+  "contactPriority": zod.number().int(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "studentName": zod.string().optional(),
+  "parentName": zod.string().optional()
+})
+
+
+/**
+ * @summary Update an authorized parent-student relationship
+ */
+
+
+
+export const UpdateParentStudentRelationshipParams = zod.object({
+  "relationshipId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const UpdateParentStudentRelationshipBody = zod.object({
+  "relationshipType": zod.enum(['Father', 'Mother', 'Guardian', 'Grandparent', 'Other']).optional(),
+  "isPrimaryGuardian": zod.boolean().optional(),
+  "isEmergencyContact": zod.boolean().optional(),
+  "contactPriority": zod.number().int().min(1).optional(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']).optional()
+})
+
+export const UpdateParentStudentRelationshipResponse = zod.object({
+  "id": zod.number().int(),
+  "parentId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "relationshipType": zod.string(),
+  "isPrimaryGuardian": zod.boolean(),
+  "isEmergencyContact": zod.boolean(),
+  "contactPriority": zod.number().int(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "studentName": zod.string().optional(),
+  "parentName": zod.string().optional()
+})
+
+
+/**
+ * @summary Deactivate a relationship while preserving history
+ */
+
+
+
+export const DeactivateParentStudentRelationshipParams = zod.object({
+  "relationshipId": zod.coerce.number().int().min(1)
+})
+
+export const DeactivateParentStudentRelationshipResponse = zod.void()
+
+
+/**
+ * @summary List EduPulse users for platform administration
+ */
+export const ListUsersResponseItem = zod.object({
+  "id": zod.number().int(),
+  "clerkUserId": zod.string(),
+  "email": zod.string(),
+  "firstName": zod.string().nullish(),
+  "lastName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "status": zod.string(),
+  "createdAt": zod.string().optional(),
+  "memberships": zod.array(zod.object({
+  "id": zod.number().int(),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "schoolId": zod.number().int().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+}))
+})
+export const ListUsersResponse = zod.array(ListUsersResponseItem)
+
+
+/**
+ * @summary Assign an authorized platform role
+ */
+
+
+
+export const CreatePlatformMembershipBody = zod.object({
+  "userId": zod.number().int().min(1),
+  "role": zod.enum(['PLATFORM_OWNER'])
+})
+
+export const CreatePlatformMembershipResponse = zod.object({
+  "id": zod.number().int(),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "schoolId": zod.number().int().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+
+
+/**
+ * @summary List users in an authorized school
+ */
+
+
+
+export const ListSchoolUsersQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ListSchoolUsersResponseItem = zod.object({
+  "id": zod.number().int(),
+  "email": zod.string(),
+  "firstName": zod.string().nullish(),
+  "lastName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "userStatus": zod.string(),
+  "membershipId": zod.number().int(),
+  "role": zod.string(),
+  "membershipStatus": zod.string(),
+  "schoolId": zod.number().int()
+})
+export const ListSchoolUsersResponse = zod.array(ListSchoolUsersResponseItem)
+
+
+/**
+ * @summary Add or reactivate an authorized school membership
+ */
+
+
+
+
+export const CreateSchoolMembershipBody = zod.object({
+  "userId": zod.number().int().min(1),
+  "schoolId": zod.number().int().min(1),
+  "role": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF'])
+})
+
+export const CreateSchoolMembershipResponse = zod.object({
+  "id": zod.number().int(),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "schoolId": zod.number().int().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+
+
+/**
  * @summary Platform owner dashboard
  */
 export const GetPlatformDashboardResponse = zod.object({
@@ -71,7 +399,7 @@ export const GetSchoolDashboardResponse = zod.object({
   "totalStudents": zod.number().int(),
   "activeStudents": zod.number().int(),
   "unpaidStudents": zod.number().int(),
-  "attendanceRate": zod.number(),
+  "attendanceRate": zod.number().nullish(),
   "pendingPayments": zod.number().int(),
   "activeCards": zod.number().int(),
   "lockedCards": zod.number().int(),
