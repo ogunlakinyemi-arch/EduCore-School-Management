@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation } from 'wouter';
+import { useClerk } from '@clerk/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -26,12 +26,16 @@ const setupSchema = z.object({
 type SetupFormValues = z.infer<typeof setupSchema>;
 
 export function PlatformOwnerSetup() {
-  const [, setLocation] = useLocation();
+  const { signOut } = useClerk();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const statusQuery = useGetPlatformOwnerBootstrapStatus();
   const createOwner = useCreateInitialPlatformOwner();
+  const signOutToOwnerLogin = async (path = '/sign-in') => {
+    const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+    await signOut({ redirectUrl: `${base}${path}` });
+  };
 
   const form = useForm<SetupFormValues>({
     resolver: zodResolver(setupSchema),
@@ -60,7 +64,7 @@ export function PlatformOwnerSetup() {
       });
       
       if (response.created) {
-        setLocation(response.signInPath || '/sign-in');
+        await signOutToOwnerLogin(response.signInPath || '/sign-in');
       }
     } catch (err: any) {
       setErrorMsg(err?.message || 'Failed to initialize platform owner. Please verify your setup key.');
@@ -109,7 +113,7 @@ export function PlatformOwnerSetup() {
           <p className="text-[hsl(var(--muted-foreground))] text-sm leading-relaxed">
             The platform owner has already been configured. The setup plane is now permanently locked.
           </p>
-          <Button onClick={() => setLocation('/sign-in')} className="mt-4 w-full">
+          <Button onClick={() => void signOutToOwnerLogin()} className="mt-4 w-full">
             Go to Sign In <ArrowRight size={16} className="ml-1" />
           </Button>
         </div>
