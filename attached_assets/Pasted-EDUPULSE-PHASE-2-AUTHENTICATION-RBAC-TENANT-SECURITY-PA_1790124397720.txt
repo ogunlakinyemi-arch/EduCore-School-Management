@@ -1,0 +1,1201 @@
+EDUPULSE PHASE 2
+
+AUTHENTICATION, RBAC, TENANT SECURITY & PARENT-STUDENT RELATIONSHIPS
+
+The Phase 1 audit has been completed.
+
+Use the audit findings as the implementation baseline.
+
+IMPORTANT:
+
+Do NOT restart the project.
+
+Do NOT delete the existing application.
+
+Do NOT reset PostgreSQL.
+
+Do NOT recreate existing modules unnecessarily.
+
+Do NOT build the Partner/Reseller module yet.
+
+Do NOT build Attendance, Academics, Fees, Library, Notifications, or other future modules yet.
+
+This task is ONLY Phase 2.
+
+The existing EduPulse application already contains working functionality including:
+
+- Platform dashboard
+- School management
+- School creation/editing
+- School overview
+- Student directory
+- Student create/edit
+- Parent/guardian directory
+- Classes and sections
+- Subscription ledger
+- Subscription verification
+- NFC card registration/status
+- Audit log
+- PostgreSQL persistence
+- OpenAPI specification
+- Generated React Query hooks
+- Seed data
+
+Preserve these features while implementing the security and identity foundation.
+
+---
+
+1. PHASE 2 OBJECTIVE
+
+Implement a production-quality:
+
+1. Clerk authentication system
+2. EduPulse internal user identity
+3. Role-based access control
+4. School membership system
+5. Backend authorization middleware
+6. Strict multi-tenant authorization
+7. User management foundation
+8. Normalized parent-student relationships
+9. Parent portal foundation
+10. Security audit logging
+11. Automated authorization/security tests
+
+The result must ensure that authenticated users can only access resources they are authorized to access.
+
+---
+
+2. FIRST INSPECT THE EXISTING IMPLEMENTATION
+
+Before changing code:
+
+Inspect:
+
+- package.json
+- frontend authentication-related files
+- backend middleware
+- API routes
+- database schema
+- Drizzle schema
+- migrations
+- OpenAPI specification
+- generated hooks
+- existing user/role fields
+- existing parent/student schema
+- existing audit schema
+- environment variables
+
+Do not duplicate existing structures.
+
+If an equivalent structure exists, extend it rather than creating a competing implementation.
+
+---
+
+3. CLERK AUTHENTICATION
+
+Integrate Clerk into the existing application.
+
+Use Clerk for:
+
+- Sign up
+- Sign in
+- Sign out
+- Session management
+- Current authenticated identity
+
+Do not implement password authentication separately.
+
+Do not store Clerk passwords.
+
+Use environment variables for Clerk configuration.
+
+The backend must validate authenticated requests using Clerk.
+
+The frontend must use Clerk authentication state for protected application routes.
+
+---
+
+4. INTERNAL EDUPULSE USER
+
+Create an internal application user model that maps Clerk users to EduPulse users.
+
+Recommended structure:
+
+app_users
+
+Fields should include appropriate equivalents of:
+
+- id
+- clerk_user_id
+- email
+- first_name
+- last_name
+- phone
+- status
+- created_at
+- updated_at
+
+Requirements:
+
+- clerk_user_id must be unique.
+- Internal user ID must be used by the application's relational database.
+- Do not use email as the permanent identity key.
+- User records must have an active/inactive status.
+
+If the existing architecture has an equivalent table, extend it rather than creating another identity table.
+
+---
+
+5. USER PROVISIONING
+
+When an authenticated Clerk user first accesses EduPulse:
+
+Determine whether an internal EduPulse user exists.
+
+If not, create/provision the appropriate internal user record according to the application's approved onboarding flow.
+
+Do not automatically grant privileged roles.
+
+New users must never automatically become:
+
+- PLATFORM_OWNER
+- SCHOOL_ADMIN
+
+unless an authorized provisioning process explicitly assigns the role.
+
+---
+
+6. ROLES
+
+Implement these roles:
+
+PLATFORM_OWNER
+
+SCHOOL_ADMIN
+
+TEACHER
+
+ACCOUNTANT
+
+PARENT
+
+STUDENT
+
+STAFF
+
+The role system must be extensible.
+
+Do not hard-code authorization checks throughout individual route handlers.
+
+Create reusable authorization helpers/middleware.
+
+---
+
+7. SCHOOL MEMBERSHIP
+
+Create a school membership/role-assignment architecture.
+
+A user may have:
+
+- One platform-level role
+- One or more school memberships
+- Different roles in different schools if the architecture requires it
+
+Recommended conceptual model:
+
+school_memberships
+
+Fields:
+
+- id
+- user_id
+- school_id
+- role
+- status
+- created_at
+- updated_at
+
+Add appropriate:
+
+- Foreign keys
+- Indexes
+- Unique constraints
+
+Prevent duplicate active membership assignments.
+
+---
+
+8. ROLE ASSIGNMENT SECURITY
+
+Only authorized administrators may assign school roles.
+
+Rules:
+
+PLATFORM_OWNER:
+
+- Can manage authorized platform users and school memberships.
+
+SCHOOL_ADMIN:
+
+- Can manage users within their own school only.
+- Cannot create or assign PLATFORM_OWNER.
+
+TEACHER:
+
+- Cannot change roles.
+
+ACCOUNTANT:
+
+- Cannot change roles unless explicitly authorized.
+
+PARENT:
+
+- Cannot change roles.
+
+STUDENT:
+
+- Cannot change roles.
+
+STAFF:
+
+- Cannot change roles.
+
+No user may promote themselves.
+
+No client-supplied role may be trusted without server-side authorization.
+
+---
+
+9. AUTHORIZATION MIDDLEWARE
+
+Create reusable backend authorization functions/middleware.
+
+At minimum support concepts equivalent to:
+
+requireAuthentication()
+
+requireRole()
+
+requirePermission()
+
+requireSchoolMembership()
+
+requireSchoolAccess()
+
+requirePlatformAccess()
+
+Names may follow the existing codebase conventions.
+
+Authorization must happen on the backend.
+
+Frontend route hiding is NOT security.
+
+---
+
+10. AUTHENTICATED SCHOOL CONTEXT
+
+For school-scoped users:
+
+Do not trust:
+
+?schoolId=schoolB
+
+or:
+
+/schools/schoolB/students
+
+simply because the client supplied that ID.
+
+The backend must determine:
+
+- Who is authenticated?
+- What role do they have?
+- Which school(s) are they authorized to access?
+- Is the requested resource inside their authorized scope?
+
+A School Admin from School A must not access School B.
+
+A Teacher from School A must not access School B.
+
+A Parent must not access unrelated school records.
+
+---
+
+11. PLATFORM OWNER ACCESS
+
+PLATFORM_OWNER is the only role that should have platform-wide access at this stage.
+
+Platform Owner may:
+
+- View schools
+- View school details
+- Manage schools
+- View platform subscription information
+- View authorized platform audit information
+- Manage authorized users
+
+All platform-wide access must still be authenticated.
+
+Do not create an anonymous administrator.
+
+---
+
+12. HARDEN EXISTING API ROUTES
+
+The audit identified these existing areas as requiring authorization:
+
+- Platform dashboard
+- School dashboard
+- School list/detail
+- School update
+- Student list/detail/create/update
+- Parent list/create
+- Class list/create
+- Subscription list/create/verify
+- NFC list/register/status update
+- Audit log list
+
+Update them without breaking their existing functionality.
+
+---
+
+13. STUDENT API SECURITY
+
+Existing endpoints such as:
+
+GET /students?schoolId=...
+
+POST /students?schoolId=...
+
+PATCH /students/:studentId?schoolId=...
+
+must be protected.
+
+For each request:
+
+1. Authenticate user.
+2. Determine authorized school context.
+3. Verify permission.
+4. Verify student belongs to authorized school.
+5. Perform operation.
+
+A malicious user must not be able to change schoolId and access another school's students.
+
+---
+
+14. PARENT API SECURITY
+
+Protect parent endpoints similarly.
+
+A School Admin can access parents within their school.
+
+A Parent user must not receive the entire school's parent directory.
+
+A Parent user should only receive information necessary for:
+
+- Their own profile
+- Their linked children
+
+---
+
+15. CLASS API SECURITY
+
+Class and section operations must be school-scoped.
+
+A user from School A must not:
+
+- View School B classes
+- Create a class in School B
+- Modify School B classes
+- Delete School B classes
+
+---
+
+16. SUBSCRIPTION API SECURITY
+
+Protect:
+
+- Subscription list
+- Subscription creation
+- Subscription verification
+- Subscription status
+
+A user must not be able to manipulate another school's subscription simply by changing a subscription ID or school ID.
+
+Subscription verification must verify:
+
+- Authenticated user
+- Appropriate permission
+- Subscription ownership/school
+- Valid transaction state
+
+Do not change the existing financial allocation in this phase.
+
+Keep the current:
+
+₦5,000 total
+
+₦2,000 school share
+
+₦3,000 EduPulse share
+
+Partner commission will be integrated later.
+
+---
+
+17. NFC API SECURITY
+
+The audit specifically identified NFC status updates as a security gap.
+
+Harden all NFC operations.
+
+For:
+
+GET NFC cards
+
+Register NFC card
+
+Update NFC card status
+
+Replace NFC card
+
+etc.
+
+Verify that:
+
+- User is authenticated.
+- User has appropriate permission.
+- Card belongs to the authorized school.
+- Student associated with card belongs to authorized school.
+
+A user must not be able to modify an NFC card belonging to another school simply by knowing its card ID.
+
+---
+
+18. SCHOOL API SECURITY
+
+Protect:
+
+GET school
+
+PATCH school
+
+School creation
+
+School management
+
+School Admin may manage their own school.
+
+Platform Owner may manage platform schools.
+
+A School Admin must not modify another school by changing the route ID.
+
+---
+
+19. AUDIT LOG SECURITY
+
+Extend the current audit log.
+
+Every security-sensitive operation should record the authenticated actor.
+
+Add fields where necessary for:
+
+- internal user ID
+- Clerk user ID
+- role
+- school context
+- action
+- entity type
+- entity ID
+- result
+- security event type
+- timestamp
+- relevant metadata
+
+Examples:
+
+USER_CREATED
+
+USER_ROLE_CHANGED
+
+USER_DEACTIVATED
+
+PARENT_LINKED
+
+PARENT_UNLINKED
+
+ACCESS_DENIED
+
+CROSS_TENANT_ACCESS_ATTEMPT
+
+SCHOOL_ACCESS_DENIED
+
+SUBSCRIPTION_ACCESS_DENIED
+
+NFC_ACCESS_DENIED
+
+AUTHENTICATION_EVENT
+
+Do not log passwords, Clerk secrets, payment secrets, or other sensitive credentials.
+
+---
+
+20. AUDIT ACTOR
+
+Remove hard-coded actor labels such as:
+
+"Platform Owner"
+
+"School Admin"
+
+"Finance Administrator"
+
+"Platform Administrator"
+
+where they are being used as the actor identity.
+
+Instead record the actual authenticated EduPulse user.
+
+The role may be stored as contextual information, but the actual actor must be identifiable through the internal user ID.
+
+---
+
+21. AUDIT IMMUTABILITY
+
+The audit log must remain immutable.
+
+Normal application users must not be able to:
+
+- Update audit records
+- Delete audit records
+
+If PostgreSQL-level protection can be safely implemented without disrupting the existing application, consider database-level restrictions.
+
+At minimum, enforce immutability at the application/service layer in this phase.
+
+Do not break existing audit functionality.
+
+---
+
+22. PARENT-STUDENT RELATIONSHIP REDESIGN
+
+The current system uses:
+
+students.parent_name
+
+students.parent_phone
+
+This must be replaced as the authoritative relationship mechanism.
+
+Create:
+
+parent_student_relationships
+
+The relationship must support:
+
+- Parent
+- Student
+- Relationship type
+- Primary guardian
+- Emergency contact
+- Contact priority
+- Active/inactive
+- Created date
+- Updated date
+
+Support relationship types such as:
+
+- Father
+- Mother
+- Guardian
+- Grandparent
+- Other
+
+Do not assume one student has only one parent.
+
+---
+
+23. RELATIONSHIP RULES
+
+Support:
+
+One parent → multiple students.
+
+One student → multiple parents.
+
+Prevent duplicate active parent/student relationships.
+
+Use a database uniqueness constraint where appropriate.
+
+Do not delete historical relationship data unnecessarily.
+
+Use inactive status where historical preservation is required.
+
+---
+
+24. MIGRATE EXISTING PARENT DATA
+
+The existing students table contains:
+
+parent_name
+
+parent_phone
+
+Use these values to assist with migration into the normalized relationship table.
+
+Do NOT immediately delete the old fields.
+
+Instead:
+
+1. Create the relationship table.
+2. Preserve existing records.
+3. Create relationships where a reliable match is possible.
+4. Report records that could not be matched confidently.
+5. Keep compatibility fields temporarily.
+6. Make the new relationship table authoritative.
+7. Do not destroy existing data.
+
+Do not invent parent identities when matching is ambiguous.
+
+---
+
+25. PARENT AUTHENTICATION
+
+A parent must be capable of having an authenticated EduPulse account.
+
+Associate the parent profile with an internal user where appropriate.
+
+A parent account must only access:
+
+- Their own profile
+- Their linked children
+- Authorized information about those children
+
+A parent must never access:
+
+- Another parent's children
+- Unrelated students
+- Another school's parent directory
+- Another school's student directory
+
+---
+
+26. PARENT APIs
+
+Implement appropriate APIs following the existing OpenAPI architecture.
+
+At minimum provide functionality equivalent to:
+
+GET /me
+
+GET /me/roles
+
+GET /me/schools
+
+GET /me/authorized-context
+
+GET /parent/profile
+
+GET /parent/children
+
+GET /parent/children/:studentId
+
+GET /parent-student-relationships
+
+POST /parent-student-relationships
+
+PATCH /parent-student-relationships/:relationshipId
+
+DELETE /parent-student-relationships/:relationshipId
+
+Use the existing API naming conventions if they differ.
+
+Update the OpenAPI specification.
+
+Regenerate React Query hooks.
+
+Do not create a separate API pattern.
+
+---
+
+27. PARENT PORTAL
+
+Create a responsive Parent Portal foundation.
+
+Parent dashboard should display:
+
+- Parent profile
+- Linked children
+- Child names
+- Classes
+- Sections
+- Basic student information
+
+Do not fabricate attendance, academic results, fees, or other information that does not exist yet.
+
+For future modules, provide appropriate navigation placeholders only if necessary.
+
+Clearly label unavailable future information rather than displaying fake data.
+
+---
+
+28. PARENT CHILD PROFILE
+
+A parent can select a linked child.
+
+The child profile should show available information such as:
+
+- Name
+- Admission number
+- Class
+- Section
+- School
+- Profile photo where available
+- Current status
+
+Only return fields the parent is authorized to see.
+
+---
+
+29. USER MANAGEMENT FOUNDATION
+
+Create the backend foundation for user management.
+
+Platform Owner should be able to:
+
+- View users
+- View roles
+- View school memberships
+- Activate/deactivate users
+- Assign authorized roles
+
+School Admin should be able to:
+
+- View users in their school
+- Manage appropriate school users
+- Invite/add users where supported
+
+Do not yet build advanced invitation workflows unless required for the authentication integration.
+
+Do not build Partner invitation functionality in this phase.
+
+---
+
+30. REQUIRED API SECURITY RESPONSES
+
+Implement appropriate response behavior.
+
+Unauthenticated:
+
+401
+
+Authenticated but unauthorized:
+
+403
+
+Resource outside authorized visibility:
+
+Use 404 where appropriate to avoid leaking resource existence.
+
+Do not expose unnecessary information in authorization errors.
+
+---
+
+31. FRONTEND ROUTE PROTECTION
+
+Protect application routes based on authentication.
+
+Unauthenticated users should not access:
+
+- Platform dashboard
+- School dashboard
+- Student management
+- Parent management
+- Subscription management
+- NFC management
+- Audit logs
+
+Public routes may include:
+
+- Sign in
+- Sign up where enabled
+- Authentication callbacks
+
+Use role-aware navigation.
+
+Do not depend on frontend restrictions for security.
+
+---
+
+32. ROLE-SPECIFIC NAVIGATION
+
+At minimum:
+
+PLATFORM_OWNER sees platform administration.
+
+SCHOOL_ADMIN sees school management.
+
+TEACHER sees teacher-related areas when implemented.
+
+ACCOUNTANT sees financial areas when implemented.
+
+PARENT sees Parent Portal.
+
+STUDENT sees Student Portal foundation when appropriate.
+
+STAFF sees authorized areas.
+
+Do not expose future modules as functional if they have not been implemented.
+
+---
+
+33. USER STATUS
+
+Support:
+
+ACTIVE
+
+INACTIVE
+
+or equivalent.
+
+Inactive users must not be allowed to use protected application functionality.
+
+Do not delete inactive users merely because they are inactive.
+
+Preserve historical relationships and audit records.
+
+---
+
+34. TESTING — MANDATORY
+
+Create a meaningful automated security test suite.
+
+At minimum test:
+
+Authentication
+
+Unauthenticated API request → 401.
+
+Authenticated valid user → allowed where authorized.
+
+Inactive user → denied.
+
+RBAC
+
+Platform Owner can access platform functions.
+
+School Admin can access own school.
+
+School Admin cannot access another school.
+
+Teacher cannot access unauthorized school.
+
+Parent cannot access school-wide parent directory.
+
+Student cannot access another student's information.
+
+Cross-tenant security
+
+School A user attempts:
+
+GET School B student
+
+Expected: denied.
+
+School A user attempts:
+
+PATCH School B student
+
+Expected: denied.
+
+School A user attempts:
+
+GET School B parent
+
+Expected: denied.
+
+School A user attempts:
+
+PATCH School B school
+
+Expected: denied.
+
+School A user attempts:
+
+Modify School B NFC card
+
+Expected: denied.
+
+School A user attempts:
+
+Verify School B subscription
+
+Expected: denied.
+
+Privilege escalation
+
+School Admin attempts to assign PLATFORM_OWNER.
+
+Expected: denied.
+
+Parent attempts to change own role.
+
+Expected: denied.
+
+Student attempts to change own role.
+
+Expected: denied.
+
+Parent relationships
+
+One parent → multiple children.
+
+Multiple parents → one child.
+
+Duplicate relationship prevented.
+
+Inactive relationship handled.
+
+Parent cannot access unrelated child.
+
+---
+
+35. REGRESSION TESTING
+
+After implementing Phase 2, verify that existing functionality still works:
+
+- Platform dashboard
+- School list
+- School creation
+- School editing
+- School overview
+- Student list
+- Student creation
+- Student editing
+- Parent directory
+- Classes
+- Sections
+- Subscription ledger
+- Subscription verification
+- NFC registration
+- NFC status
+- Audit log
+- PostgreSQL persistence
+
+Do not change the existing subscription allocation in this phase.
+
+---
+
+36. DATABASE MIGRATIONS
+
+All schema changes must use proper migrations.
+
+Do not reset the database.
+
+Do not drop existing operational tables unnecessarily.
+
+Use additive migrations where possible.
+
+Preserve:
+
+- Schools
+- Students
+- Parents
+- Classes
+- Subscriptions
+- NFC cards
+- Audit logs
+- Seed data
+
+Run migrations safely.
+
+---
+
+37. OPENAPI
+
+The OpenAPI specification is the source of truth for the API contract.
+
+Update it for new endpoints.
+
+Ensure:
+
+- Request schemas
+- Response schemas
+- Authentication requirements
+- Error responses
+- Authorization behavior
+
+are documented.
+
+Regenerate React Query hooks after updating OpenAPI.
+
+Do not manually create duplicate API hooks if generated hooks are already the project's standard.
+
+---
+
+38. SECURITY REQUIREMENTS
+
+Never trust:
+
+- schoolId from client
+- studentId from client
+- parentId from client
+- subscriptionId from client
+- NFC card ID from client
+- role from client
+
+Every resource must be authorized against the authenticated user's permissions.
+
+Protect against:
+
+- IDOR
+- Cross-tenant access
+- Privilege escalation
+- Unauthorized role changes
+- Unauthorized subscription verification
+- Unauthorized NFC changes
+- Parent data leakage
+
+---
+
+39. REMOVE OR CORRECT FAKE DASHBOARD DATA
+
+The audit identified a fixed attendance value of:
+
+94.2
+
+Do not continue presenting this as real attendance data.
+
+Until the attendance module exists:
+
+Either:
+
+- Display "Attendance data not available"
+
+or
+
+- Clearly label it as unavailable/not implemented.
+
+Do not fabricate operational statistics.
+
+---
+
+40. IMPLEMENTATION ORDER
+
+Implement this phase in this exact general order:
+
+1. Database identity/membership schema
+2. Clerk integration
+3. Internal user provisioning
+4. Authentication middleware
+5. Role/permission system
+6. School membership authorization
+7. Existing API authorization hardening
+8. Audit actor/security event improvements
+9. Parent-student relationship migration
+10. Parent relationship APIs
+11. Parent portal
+12. User management foundation
+13. Automated security tests
+14. Regression tests
+15. OpenAPI update
+16. React Query hook regeneration
+17. Typecheck
+18. Build
+19. Browser verification
+
+You may adjust the order slightly if required by the existing architecture, but do not skip any required component.
+
+---
+
+41. DO NOT IMPLEMENT YET
+
+Do NOT implement:
+
+- Partner/reseller system
+- Partner invitation links
+- Partner school referral links
+- Partner commission
+- Partner dashboard
+- Attendance
+- Fingerprint integration
+- Fees
+- Paystack
+- Flutterwave
+- Remita
+- Assignments
+- Exams
+- Results
+- Report cards
+- Library
+- Notifications
+- Messaging
+
+Those are later phases.
+
+However, make the identity and authorization architecture extensible enough that these future modules can use it.
+
+---
+
+42. FINAL VERIFICATION
+
+Before declaring Phase 2 complete:
+
+Run:
+
+- Backend typecheck
+- Frontend typecheck
+- Database migration validation
+- Unit tests
+- Authentication tests
+- RBAC tests
+- Cross-tenant tests
+- Parent relationship tests
+- API tests
+- Existing regression tests
+- Production build
+
+Open the application in the browser.
+
+Verify:
+
+- Login works
+- Logout works
+- Protected routes work
+- Platform Owner access works
+- School access is isolated
+- Parent portal works
+- Existing dashboards still work
+- Existing student management still works
+- Existing subscription functionality still works
+- Existing NFC functionality still works
+- Audit logs contain authenticated actors
+
+Fix errors before reporting completion.
+
+---
+
+43. FINAL REPORT
+
+When finished, provide:
+
+1. Files created
+2. Files modified
+3. Database migrations
+4. Clerk implementation
+5. User identity implementation
+6. RBAC implementation
+7. School membership implementation
+8. Existing endpoint security changes
+9. Parent-student relationship implementation
+10. Parent portal implementation
+11. Audit improvements
+12. Tests created
+13. Tests passed
+14. Existing functionality verified
+15. Remaining limitations
+
+Do not proceed to Phase 3 automatically.
+
+STOP after Phase 2 is fully implemented and verified.

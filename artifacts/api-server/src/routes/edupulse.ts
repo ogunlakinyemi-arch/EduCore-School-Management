@@ -25,8 +25,17 @@ import {
   VerifySubscriptionParams,
 } from "@workspace/api-zod";
 import { pool } from "@workspace/db";
+import {
+  AuthError,
+  assertRoles,
+  assertSchoolAccess,
+  getUserContext,
+  requireAuthentication,
+  type Role,
+} from "../middlewares/auth";
 
 const router: IRouter = Router();
+router.use(requireAuthentication());
 
 const asNumber = (value: unknown) => Number(value);
 const asString = (value: unknown) =>
@@ -34,32 +43,79 @@ const asString = (value: unknown) =>
 const dateString = (value: Date | string | null) =>
   value ? new Date(value).toISOString() : null;
 
-function tenantId(req: Request) {
+function tenantId(req: Request, roles: Role[]) {
   const raw = req.query.schoolId;
   const id = asNumber(raw);
   if (!Number.isInteger(id) || id < 1) {
-    throw new Error("A valid schoolId is required");
+    throw new AuthError(400, "A valid schoolId is required");
   }
+  assertSchoolAccess(req, id, roles);
   return id;
 }
 
 async function audit(
-  user: string,
-  role: string,
+  req: Request,
   schoolId: number | null,
   action: string,
   module: string,
   recordId: number | null,
   severity = "info",
+  eventType = "APPLICATION_EVENT",
+  result = "SUCCESS",
+  metadata: Record<string, unknown> | null = null,
 ) {
+  const context = getUserContext(req);
+  const actor = [context.user.firstName, context.user.lastName]
+    .filter(Boolean)
+    .join(" ") || context.user.email;
+  const role = context.roles.find((assignment) =>
+    assignment.schoolId === null || assignment.schoolId === schoolId,
+  )?.role ?? "AUTHENTICATED";
   await pool.query(
-    `INSERT INTO audit_logs ("user", role, school_id, action, module, record_id, severity)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [user, role, schoolId, action, module, recordId, severity],
+    `INSERT INTO audit_logs
+      ("user", role, actor_user_id, clerk_user_id, school_id, action, module,
+       record_id, severity, event_type, result, metadata)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+    [
+      actor,
+      role,
+      context.user.id,
+      context.user.clerkUserId,
+      schoolId,
+      action,
+      module,
+      recordId,
+      severity,
+      eventType,
+      result,
+      metadata,
+    ],
   );
 }
 
-function fail(res: ExpressResponse, error: unknown) {
+function fail(req: Request, res: ExpressResponse, error: unknown) {
+  if (error instanceof AuthError) {
+    const context = (req as Request & { edupulseUser?: unknown }).edupulseUser as
+      | { user?: { id: number; clerkUserId: string }; roles?: Array<{ role: string }> }
+      | undefined;
+    void pool.query(
+      `INSERT INTO audit_logs
+        ("user", role, actor_user_id, clerk_user_id, school_id, action, module,
+         severity, event_type, result, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, 'Security', 'critical', $7, 'DENIED', $8)`,
+      [
+        context?.user?.clerkUserId ?? "Unauthenticated request",
+        context?.roles?.[0]?.role ?? "UNAUTHENTICATED",
+        context?.user?.id ?? null,
+        context?.user?.clerkUserId ?? null,
+        Number.isInteger(Number(req.query.schoolId)) ? Number(req.query.schoolId) : null,
+        error.message,
+        error.eventType,
+        JSON.stringify({ method: req.method, path: req.path }),
+      ],
+    ).catch(() => undefined);
+    return res.status(error.statusCode).json({ error: error.message, code: error.eventType });
+  }
   const message = error instanceof Error ? error.message : "Request failed";
   const statusCode = message.includes("required") || message.includes("invalid")
     ? 400
@@ -69,6 +125,7 @@ function fail(res: ExpressResponse, error: unknown) {
 
 router.get("/dashboard/platform", async (req, res) => {
   try {
+    assertRoles(req, ["PLATFORM_OWNER"]);
     const [counts, recent] = await Promise.all([
       pool.query(`
         SELECT
@@ -95,13 +152,14 @@ router.get("/dashboard/platform", async (req, res) => {
     ]);
     res.json({ ...counts.rows[0], recentActivity: recent.rows.map(mapAudit) });
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
 router.get("/dashboard/school", async (req, res) => {
   try {
     const schoolId = GetSchoolDashboardQueryParams.parse(req.query).schoolId;
+    assertSchoolAccess(req, schoolId, ["SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "STAFF"]);
     const [school, metrics, recent] = await Promise.all([
       pool.query(`
         SELECT s.id, s.code, s.name, s.city, s.state, s.status, s.created_at AS "createdAt",
@@ -137,12 +195,13 @@ router.get("/dashboard/school", async (req, res) => {
       recentActivity: recent.rows.map(mapAudit),
     });
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
 router.get("/schools", async (req, res) => {
   try {
+    assertRoles(req, ["PLATFORM_OWNER"]);
     const query = ListSchoolsQueryParams.parse(req.query);
     const values: unknown[] = [];
     const conditions: string[] = [];
@@ -165,12 +224,13 @@ router.get("/schools", async (req, res) => {
     `, values);
     res.json(result.rows.map((row) => ({ ...row, createdAt: dateString(row.createdAt) })));
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
 router.post("/schools", async (req, res) => {
   try {
+    assertRoles(req, ["PLATFORM_OWNER"]);
     const body = CreateSchoolBody.parse(req.body);
     const code = `EDU-${Date.now().toString(36).slice(-6).toUpperCase()}`;
     const result = await pool.query(`
@@ -178,16 +238,17 @@ router.post("/schools", async (req, res) => {
       VALUES ($1, $2, $3, $4, $5)
       RETURNING id, code, name, city, state, status, created_at AS "createdAt"
     `, [code, body.name, body.city, body.state, body.status ?? "active"]);
-    await audit("Platform Owner", "Super Owner", null, "Created school", "Schools", result.rows[0].id);
+    await audit(req, null, "Created school", "Schools", result.rows[0].id, "info", "SCHOOL_CREATED");
     res.status(201).json({ ...result.rows[0], studentCount: 0, staffCount: 0, subscriptionStatus: "attention" });
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
 router.get("/schools/:schoolId", async (req, res) => {
   try {
     const id = asNumber(req.params.schoolId);
+    assertSchoolAccess(req, id, ["SCHOOL_ADMIN"]);
     const result = await pool.query(`
       SELECT s.id, s.code, s.name, s.city, s.state, s.status, s.created_at AS "createdAt",
         (SELECT COUNT(*)::int FROM students WHERE school_id = s.id) AS "studentCount",
@@ -199,13 +260,14 @@ router.get("/schools/:schoolId", async (req, res) => {
     if (!result.rows[0]) return res.status(404).json({ error: "School not found" });
     res.json({ ...result.rows[0], createdAt: dateString(result.rows[0].createdAt) });
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
 router.patch("/schools/:schoolId", async (req, res) => {
   try {
     const params = UpdateSchoolParams.parse(req.params);
+    assertSchoolAccess(req, params.schoolId, ["SCHOOL_ADMIN"]);
     const body = UpdateSchoolBody.parse(req.body);
     const current = await pool.query(`SELECT * FROM schools WHERE id = $1`, [params.schoolId]);
     if (!current.rows[0]) return res.status(404).json({ error: "School not found" });
@@ -214,16 +276,17 @@ router.patch("/schools/:schoolId", async (req, res) => {
       UPDATE schools SET name = $1, city = $2, state = $3, status = $4 WHERE id = $5
       RETURNING id, code, name, city, state, status, created_at AS "createdAt"
     `, [next.name, next.city, next.state, next.status, params.schoolId]);
-    await audit("Platform Owner", "Super Owner", params.schoolId, "Updated school", "Schools", params.schoolId);
+    await audit(req, params.schoolId, "Updated school", "Schools", params.schoolId, "info", "SCHOOL_UPDATED");
     res.json({ ...result.rows[0], studentCount: 0, staffCount: 0, subscriptionStatus: "attention" });
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
 router.get("/students", async (req, res) => {
   try {
     const query = ListStudentsQueryParams.parse(req.query);
+    assertSchoolAccess(req, query.schoolId, ["SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "STAFF"]);
     const values: unknown[] = [query.schoolId];
     const conditions = ["st.school_id = $1"];
     if (query.status && query.status !== "all") {
@@ -251,13 +314,13 @@ router.get("/students", async (req, res) => {
     `, values);
     res.json(result.rows.map((row) => ({ ...row, joinedAt: dateString(row.joinedAt) })));
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
 router.post("/students", async (req, res) => {
   try {
-    const schoolId = tenantId(req);
+    const schoolId = tenantId(req, ["SCHOOL_ADMIN"]);
     const body = CreateStudentBody.parse(req.body);
     const result = await pool.query(`
       INSERT INTO students (school_id, admission_no, first_name, last_name, gender, class_name, section, parent_name, parent_phone)
@@ -268,17 +331,17 @@ router.post("/students", async (req, res) => {
     `, [schoolId, body.admissionNo, body.firstName, body.lastName, body.gender, body.className, body.section, body.parentName ?? null, body.parentPhone ?? null]);
     const row = result.rows[0];
     const student = { ...row, subscriptionStatus: "unpaid", cardStatus: "unassigned", joinedAt: dateString(row.joinedAt) };
-    await audit("School Admin", "School Owner/Admin", schoolId, "Created student", "Students", row.id);
+    await audit(req, schoolId, "Created student", "Students", row.id, "info", "STUDENT_CREATED");
     res.status(201).json(student);
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
 router.get("/students/:studentId", async (req, res) => {
   try {
     const studentId = asNumber(req.params.studentId);
-    const schoolId = tenantId(req);
+    const schoolId = tenantId(req, ["SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "STAFF"]);
     const result = await pool.query(`
       SELECT st.id, st.school_id AS "schoolId", st.admission_no AS "admissionNo",
         st.first_name AS "firstName", st.last_name AS "lastName", st.gender,
@@ -292,7 +355,7 @@ router.get("/students/:studentId", async (req, res) => {
     if (!result.rows[0]) return res.status(404).json({ error: "Student not found" });
     res.json({ ...result.rows[0], joinedAt: dateString(result.rows[0].joinedAt) });
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
@@ -300,6 +363,7 @@ router.patch("/students/:studentId", async (req, res) => {
   try {
     const params = UpdateStudentParams.parse(req.params);
     const query = UpdateStudentQueryParams.parse(req.query);
+    assertSchoolAccess(req, query.schoolId, ["SCHOOL_ADMIN"]);
     const body = UpdateStudentBody.parse(req.body);
     const current = await pool.query(`SELECT * FROM students WHERE id = $1 AND school_id = $2`, [params.studentId, query.schoolId]);
     if (!current.rows[0]) return res.status(404).json({ error: "Student not found" });
@@ -321,13 +385,14 @@ router.patch("/students/:studentId", async (req, res) => {
     const row = result.rows[0];
     res.json({ ...row, subscriptionStatus: "unpaid", cardStatus: "unassigned", joinedAt: dateString(row.joinedAt) });
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
 router.get("/parents", async (req, res) => {
   try {
     const query = ListParentsQueryParams.parse(req.query);
+    assertSchoolAccess(req, query.schoolId, ["SCHOOL_ADMIN"]);
     const values: unknown[] = [query.schoolId];
     const condition = query.search
       ? `AND (p.name ILIKE $2 OR p.email ILIKE $2 OR p.phone ILIKE $2)`
@@ -341,29 +406,30 @@ router.get("/parents", async (req, res) => {
     `, values);
     res.json(result.rows);
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
 router.post("/parents", async (req, res) => {
   try {
-    const schoolId = tenantId(req);
+    const schoolId = tenantId(req, ["SCHOOL_ADMIN"]);
     const body = CreateParentBody.parse(req.body);
     const result = await pool.query(`
       INSERT INTO parents (school_id, name, email, phone) VALUES ($1, $2, $3, $4)
       RETURNING id, school_id AS "schoolId", name, email, phone
     `, [schoolId, body.name, body.email, body.phone]);
     const parent = { ...result.rows[0], childrenCount: 0, activeChildren: 0 };
-    await audit("School Admin", "School Owner/Admin", schoolId, "Created parent", "Parents", result.rows[0].id);
+    await audit(req, schoolId, "Created parent", "Parents", result.rows[0].id, "info", "USER_CREATED");
     res.status(201).json(parent);
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
 router.get("/classes", async (req, res) => {
   try {
     const query = ListClassesQueryParams.parse(req.query);
+    assertSchoolAccess(req, query.schoolId, ["SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "STAFF"]);
     const result = await pool.query(`
       SELECT c.id, c.school_id AS "schoolId", c.name, c.section, c.class_teacher AS "classTeacher",
         c.capacity, (SELECT COUNT(*)::int FROM students st WHERE st.school_id = c.school_id AND st.class_name = c.name AND st.section = c.section) AS "studentCount"
@@ -371,13 +437,13 @@ router.get("/classes", async (req, res) => {
     `, [query.schoolId]);
     res.json(result.rows);
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
 router.post("/classes", async (req, res) => {
   try {
-    const schoolId = tenantId(req);
+    const schoolId = tenantId(req, ["SCHOOL_ADMIN"]);
     const body = CreateClassBody.parse(req.body);
     const result = await pool.query(`
       INSERT INTO school_classes (school_id, name, section, class_teacher, capacity) VALUES ($1, $2, $3, $4, $5)
@@ -385,13 +451,14 @@ router.post("/classes", async (req, res) => {
     `, [schoolId, body.name, body.section, body.classTeacher ?? null, body.capacity]);
     res.status(201).json({ ...result.rows[0], studentCount: 0 });
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
 router.get("/subscriptions", async (req, res) => {
   try {
     const query = ListSubscriptionsQueryParams.parse(req.query);
+    assertSchoolAccess(req, query.schoolId, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
     const values: unknown[] = [query.schoolId];
     const condition = query.status && query.status !== "all" ? `AND sub.status = $2` : "";
     if (condition) values.push(query.status);
@@ -406,13 +473,13 @@ router.get("/subscriptions", async (req, res) => {
     `, values);
     res.json(result.rows.map((row) => ({ ...row, expiresAt: dateString(row.expiresAt) })));
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
 router.post("/subscriptions", async (req, res) => {
   try {
-    const schoolId = tenantId(req);
+    const schoolId = tenantId(req, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
     const body = CreateSubscriptionBody.parse(req.body);
     const student = await pool.query(`SELECT id, first_name || ' ' || last_name AS name FROM students WHERE id = $1 AND school_id = $2`, [body.studentId, schoolId]);
     if (!student.rows[0]) return res.status(404).json({ error: "Student not found in school" });
@@ -428,7 +495,7 @@ router.post("/subscriptions", async (req, res) => {
     const row = result.rows[0];
     res.status(201).json({ ...row, studentName: student.rows[0].name, expiresAt: dateString(row.expiresAt) });
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
@@ -438,6 +505,7 @@ router.post("/subscriptions/:subscriptionId/verify", async (req, res) => {
     const body = VerifySubscriptionBody.parse(req.body);
     const existing = await pool.query(`SELECT * FROM subscriptions WHERE id = $1`, [params.subscriptionId]);
     if (!existing.rows[0]) return res.status(404).json({ error: "Subscription not found" });
+    assertSchoolAccess(req, existing.rows[0].school_id, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
     const result = await pool.query(`
       UPDATE subscriptions SET status = 'active', verification_status = 'verified', provider_reference = $1
       WHERE id = $2
@@ -446,17 +514,18 @@ router.post("/subscriptions/:subscriptionId/verify", async (req, res) => {
         status, verification_status AS "verificationStatus", provider, term, expires_at AS "expiresAt"
     `, [body.providerReference, params.subscriptionId]);
     await pool.query(`UPDATE nfc_cards SET status = 'active' WHERE student_id = $1 AND status IN ('locked', 'unassigned')`, [existing.rows[0].student_id]);
-    await audit("Finance Administrator", "Finance Administrator", existing.rows[0].school_id, "Verified subscription payment", "Subscriptions", params.subscriptionId);
+    await audit(req, existing.rows[0].school_id, "Verified subscription payment", "Subscriptions", params.subscriptionId, "info", "SUBSCRIPTION_VERIFIED");
     const student = await pool.query(`SELECT first_name || ' ' || last_name AS name FROM students WHERE id = $1`, [existing.rows[0].student_id]);
     res.json({ ...result.rows[0], studentName: student.rows[0]?.name ?? "Student", expiresAt: dateString(result.rows[0].expiresAt) });
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
 router.get("/cards", async (req, res) => {
   try {
     const query = ListCardsQueryParams.parse(req.query);
+    assertSchoolAccess(req, query.schoolId, ["SCHOOL_ADMIN", "STAFF"]);
     const values: unknown[] = [query.schoolId];
     const condition = query.status && query.status !== "all" ? `AND nc.status = $2` : "";
     if (condition) values.push(query.status);
@@ -469,13 +538,13 @@ router.get("/cards", async (req, res) => {
     `, values);
     res.json(result.rows.map((row) => ({ ...row, lastScan: dateString(row.lastScan) })));
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
 router.post("/cards", async (req, res) => {
   try {
-    const schoolId = tenantId(req);
+    const schoolId = tenantId(req, ["SCHOOL_ADMIN", "STAFF"]);
     const body = RegisterCardBody.parse(req.body);
     RegisterCardQueryParams.parse(req.query);
     const studentId = body.studentId ?? null;
@@ -488,10 +557,10 @@ router.post("/cards", async (req, res) => {
       INSERT INTO nfc_cards (school_id, uid, student_id, status) VALUES ($1, $2, $3, $4)
       RETURNING id, school_id AS "schoolId", uid, student_id AS "studentId", status, scans, last_scan AS "lastScan"
     `, [schoolId, body.uid, studentId, status]);
-    await audit("Platform Administrator", "Platform Administrator", schoolId, "Registered NFC card", "NFC Cards", result.rows[0].id);
+    await audit(req, schoolId, "Registered NFC card", "NFC Cards", result.rows[0].id, "info", "NFC_CARD_REGISTERED");
     res.status(201).json({ ...result.rows[0], studentName: null, lastScan: null });
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
@@ -499,21 +568,29 @@ router.patch("/cards/:cardId/status", async (req, res) => {
   try {
     const cardId = asNumber(req.params.cardId);
     const body = UpdateCardStatusBody.parse(req.body);
+    const card = await pool.query(`SELECT school_id AS "schoolId" FROM nfc_cards WHERE id = $1`, [cardId]);
+    if (!card.rows[0]) return res.status(404).json({ error: "Card not found" });
+    assertSchoolAccess(req, card.rows[0].schoolId, ["SCHOOL_ADMIN", "STAFF"]);
     const result = await pool.query(`
       UPDATE nfc_cards SET status = $1 WHERE id = $2
       RETURNING id, school_id AS "schoolId", uid, student_id AS "studentId", status, scans, last_scan AS "lastScan"
     `, [body.status, cardId]);
     if (!result.rows[0]) return res.status(404).json({ error: "Card not found" });
-    await audit("Platform Administrator", "Platform Administrator", result.rows[0].schoolId, `Changed NFC status to ${body.status}`, "NFC Cards", cardId);
+    await audit(req, result.rows[0].schoolId, `Changed NFC status to ${body.status}`, "NFC Cards", cardId, "info", "NFC_STATUS_CHANGED");
     res.json({ ...result.rows[0], studentName: null, lastScan: dateString(result.rows[0].lastScan) });
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 
 router.get("/audit-logs", async (req, res) => {
   try {
     const query = ListAuditLogsQueryParams.parse(req.query);
+    if (query.schoolId) {
+      assertSchoolAccess(req, query.schoolId, ["SCHOOL_ADMIN"]);
+    } else {
+      assertRoles(req, ["PLATFORM_OWNER"]);
+    }
     const values: unknown[] = [];
     const conditions: string[] = [];
     if (query.schoolId) {
@@ -526,14 +603,16 @@ router.get("/audit-logs", async (req, res) => {
     }
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
     const result = await pool.query(`
-      SELECT a.id, a."user", a.role, s.name AS school, a.action, a.module,
+      SELECT a.id, a."user", a.role, a.actor_user_id AS "actorUserId",
+        a.clerk_user_id AS "clerkUserId", a.event_type AS "eventType",
+        a.result, s.name AS school, a.action, a.module,
         a.record_id AS "recordId", a.timestamp, a.severity
       FROM audit_logs a LEFT JOIN schools s ON s.id = a.school_id ${where}
       ORDER BY a.timestamp DESC LIMIT 100
     `, values);
     res.json(result.rows.map(mapAudit));
   } catch (error) {
-    fail(res, error);
+    fail(req, res, error);
   }
 });
 

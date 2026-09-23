@@ -1,6 +1,8 @@
 import {
+  boolean,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   serial,
@@ -8,6 +10,25 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+
+export const appUsers = pgTable(
+  "app_users",
+  {
+    id: serial("id").primaryKey(),
+    clerkUserId: text("clerk_user_id").notNull(),
+    email: text("email").notNull(),
+    firstName: text("first_name"),
+    lastName: text("last_name"),
+    phone: text("phone"),
+    status: text("status").notNull().default("ACTIVE"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("app_users_clerk_user_id_unique").on(table.clerkUserId),
+    index("app_users_email_idx").on(table.email),
+  ],
+);
 
 export const schools = pgTable(
   "schools",
@@ -23,11 +44,34 @@ export const schools = pgTable(
   (table) => [uniqueIndex("schools_code_unique").on(table.code)],
 );
 
+export const schoolMemberships = pgTable(
+  "school_memberships",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").notNull().references(() => appUsers.id),
+    schoolId: integer("school_id").references(() => schools.id),
+    role: text("role").notNull(),
+    status: text("status").notNull().default("ACTIVE"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("school_memberships_user_school_role_unique").on(
+      table.userId,
+      table.schoolId,
+      table.role,
+    ),
+    index("school_memberships_user_idx").on(table.userId, table.status),
+    index("school_memberships_school_idx").on(table.schoolId, table.status),
+  ],
+);
+
 export const students = pgTable(
   "students",
   {
     id: serial("id").primaryKey(),
     schoolId: integer("school_id").notNull().references(() => schools.id),
+    userId: integer("user_id").references(() => appUsers.id),
     admissionNo: text("admission_no").notNull(),
     firstName: text("first_name").notNull(),
     lastName: text("last_name").notNull(),
@@ -41,6 +85,7 @@ export const students = pgTable(
   },
   (table) => [
     uniqueIndex("students_school_admission_unique").on(table.schoolId, table.admissionNo),
+    uniqueIndex("students_user_unique").on(table.userId),
     index("students_school_idx").on(table.schoolId),
   ],
 );
@@ -50,11 +95,36 @@ export const parents = pgTable(
   {
     id: serial("id").primaryKey(),
     schoolId: integer("school_id").notNull().references(() => schools.id),
+    userId: integer("user_id").references(() => appUsers.id),
     name: text("name").notNull(),
     email: text("email").notNull(),
     phone: text("phone").notNull(),
   },
-  (table) => [index("parents_school_idx").on(table.schoolId)],
+  (table) => [
+    uniqueIndex("parents_user_unique").on(table.userId),
+    index("parents_school_idx").on(table.schoolId),
+  ],
+);
+
+export const parentStudentRelationships = pgTable(
+  "parent_student_relationships",
+  {
+    id: serial("id").primaryKey(),
+    parentId: integer("parent_id").notNull().references(() => parents.id),
+    studentId: integer("student_id").notNull().references(() => students.id),
+    relationshipType: text("relationship_type").notNull().default("Guardian"),
+    isPrimaryGuardian: boolean("is_primary_guardian").notNull().default(false),
+    isEmergencyContact: boolean("is_emergency_contact").notNull().default(false),
+    contactPriority: integer("contact_priority").notNull().default(1),
+    status: text("status").notNull().default("ACTIVE"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("parent_student_relationship_unique").on(table.parentId, table.studentId),
+    index("parent_student_relationship_parent_idx").on(table.parentId, table.status),
+    index("parent_student_relationship_student_idx").on(table.studentId, table.status),
+  ],
 );
 
 export const schoolClasses = pgTable(
@@ -116,12 +186,17 @@ export const auditLogs = pgTable(
     id: serial("id").primaryKey(),
     user: text("user").notNull(),
     role: text("role").notNull(),
+    actorUserId: integer("actor_user_id").references(() => appUsers.id),
+    clerkUserId: text("clerk_user_id"),
     schoolId: integer("school_id").references(() => schools.id),
     action: text("action").notNull(),
     module: text("module").notNull(),
     recordId: integer("record_id"),
     timestamp: timestamp("timestamp", { withTimezone: true }).notNull().defaultNow(),
     severity: text("severity").notNull().default("info"),
+    eventType: text("event_type").notNull().default("APPLICATION_EVENT"),
+    result: text("result").notNull().default("SUCCESS"),
+    metadata: jsonb("metadata"),
   },
   (table) => [index("audit_logs_school_idx").on(table.schoolId, table.timestamp)],
 );
