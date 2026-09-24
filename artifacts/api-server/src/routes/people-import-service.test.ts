@@ -59,7 +59,55 @@ function zip(entries: Record<string, string>): Buffer {
   return Buffer.concat([...local, directoryBuffer, eocd]);
 }
 
+function textPdf(lines: Array<Array<[number, string]>>): Buffer {
+  const content = Buffer.from(lines.flatMap((cells, row) =>
+    cells.map(([x, text]) => `BT /F1 12 Tf ${x} ${700 - row * 20} Td (${text}) Tj ET`),
+  ).join("\n") + "\n");
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    Buffer.concat([Buffer.from(`<< /Length ${content.length} >>\nstream\n`), content, Buffer.from("endstream")]),
+  ];
+  let output = Buffer.from("%PDF-1.4\n");
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets.push(output.length);
+    output = Buffer.concat([output, Buffer.from(`${index + 1} 0 obj\n`), Buffer.from(object), Buffer.from("\nendobj\n")]);
+  });
+  const xref = output.length;
+  output = Buffer.concat([output, Buffer.from(`xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`)]);
+  offsets.slice(1).forEach((offset) => {
+    output = Buffer.concat([output, Buffer.from(`${String(offset).padStart(10, "0")} 00000 n \n`)]);
+  });
+  return Buffer.concat([output, Buffer.from(`trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`)]);
+}
+
 describe("people import parsers and row validation", () => {
+  it("parses a real selectable-text PDF table through pdftotext before preview", () => {
+    const result = parseImportFile({
+      filename: "students.pdf",
+      mimeType: "application/pdf",
+      buffer: textPdf([
+        [[50, "Admission No"], [210, "First Name"], [370, "Last Name"]],
+        [[50, "A-1"], [210, "Ada"], [370, "Okafor"]],
+      ]),
+    });
+    expect(result).toEqual({
+      detectedType: "pdf",
+      rows: [{ sourceRow: 2, values: { "Admission No": "A-1", "First Name": "Ada", "Last Name": "Okafor" } }],
+    });
+  });
+
+  it("rejects a PDF with no selectable table text rather than inventing records", () => {
+    expect(() => parseImportFile({
+      filename: "scanned.pdf",
+      mimeType: "application/pdf",
+      buffer: textPdf([]),
+    })).toThrow(/scanned|readable/i);
+  });
+
   it("parses quoted CSV cells, commas, escaped quotes, and CRLF safely", () => {
     expect(parseCsv('Name,Note\r\n"Doe, Jane","said ""hello"""\r\n')).toEqual([
       ["Name", "Note"],

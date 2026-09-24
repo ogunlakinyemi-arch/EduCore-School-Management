@@ -1,0 +1,769 @@
+PRE-PHASE 7 FINAL VERIFICATION — YEMAIT EDUCORE
+
+We have completed the pre-Phase 7 correction work. Do NOT resume Phase 7 Finance yet.
+
+The latest implementation reports:
+
+- Owner school creation now collects the School Administrator's name and email.
+- School Administrator invitations are password-free.
+- Invitation failure has a retry path.
+- Import preview and confirmation have been tightened.
+- Duplicate detection has been improved.
+- Student-status handling has been improved.
+- Parent matching has been improved.
+- Multi-role portal selection has been fixed.
+- Recovery has been added for uncertain database commits after partner invitations.
+- API and web builds pass.
+- TypeScript checks pass.
+- 132 automated tests currently pass.
+- The app renders.
+- Health check returns HTTP 200.
+- Unauthenticated requests to protected routes return HTTP 401.
+
+However, this is NOT a completion claim.
+
+The following have NOT yet been verified end-to-end:
+
+1. Actual invitation email delivery.
+2. Invitation-link activation and password creation.
+3. Authenticated browser flows.
+4. Imported parent/personnel invitation behavior.
+5. Full partner referral workflow in an authenticated session.
+6. Full tenant-isolation/security behavior through authenticated UI and API.
+7. Regression compatibility with the existing system.
+
+Your task now is to perform a structured verification of the existing implementation.
+
+IMPORTANT:
+
+- Do NOT resume Phase 7 Finance.
+- Do NOT add unrelated features.
+- Do NOT redesign working functionality unnecessarily.
+- Do NOT reset or destroy the database.
+- Do NOT delete existing data.
+- Use safe migrations only if a genuine verification failure requires a schema correction.
+- Preserve all existing working functionality.
+- If something is already correctly implemented, verify it rather than rewriting it.
+- Do not claim a test passed unless you actually ran it.
+- Do not claim email delivery works unless an actual end-to-end email delivery test succeeds.
+- Do not claim browser authentication works unless it is actually tested in an authenticated browser session.
+
+---
+
+1. INSPECT THE CURRENT IMPLEMENTATION FIRST
+
+Before changing anything:
+
+- Inspect the current authentication implementation.
+- Inspect user/role/permission models.
+- Inspect school/tenant relationships.
+- Inspect invitation/token implementation.
+- Inspect email provider configuration and delivery implementation.
+- Inspect partner/referral implementation.
+- Inspect bulk-import implementation.
+- Inspect parent/student/personnel relationships.
+- Inspect NFC/device/card relationships.
+- Inspect existing finance implementation only enough to ensure these corrections do not break it.
+- Inspect the existing 132 automated tests.
+- Identify which tests cover the newly corrected flows.
+- Identify any gaps between automated tests and real authenticated browser behavior.
+
+Provide a short verification plan before making fixes.
+
+---
+
+2. OWNER ADMIN → CREATE SCHOOL → ADMIN INVITATION
+
+Perform a real authenticated Owner Admin browser test.
+
+Test:
+
+1. Sign in as Owner Admin.
+2. Open school management.
+3. Create a new test school.
+4. Enter:
+   - School name
+   - School information required by the existing system
+   - School Administrator name
+   - School Administrator email
+5. Submit the school creation.
+6. Verify:
+   - School is created successfully.
+   - Administrator record is associated with the correct school.
+   - No password is requested from Owner Admin.
+   - Owner Admin cannot see or retrieve the Administrator's password.
+   - A secure invitation is generated.
+   - Invitation has appropriate expiration/security controls.
+   - Invitation is associated with the correct administrator and school.
+7. Verify the invitation email is actually sent using the configured email system.
+8. If delivery fails:
+   - Verify the failure is surfaced clearly.
+   - Verify the retry mechanism works.
+   - Do not create duplicate administrator accounts when retrying.
+
+Do not mark this section passed merely because an email record exists in the database.
+
+---
+
+3. SCHOOL ADMINISTRATOR INVITATION ACTIVATION
+
+Using the actual invitation received in the email system:
+
+1. Open the invitation link.
+2. Verify the link identifies the correct account.
+3. Verify the invitation cannot be reused after successful activation.
+4. Create a password.
+5. Complete activation.
+6. Sign in as the School Administrator.
+7. Verify the user lands in the correct School Administrator portal.
+8. Verify the administrator is associated only with the intended school.
+9. Verify the administrator cannot access another school's data.
+10. Verify the Owner Admin still does not have access to the Administrator's password.
+11. Test expired/invalid/reused invitation behavior where practical.
+
+If the email provider is unavailable in the current environment, clearly report that limitation. Do not mark email delivery as passed based only on mocks.
+
+---
+
+4. AUTHENTICATED OWNER ADMIN VERIFICATION
+
+Verify Owner Admin can legitimately access the platform-wide functions intended for the Owner:
+
+- Dashboard
+- Schools
+- School Administrators
+- Users
+- Students
+- Parents
+- Teachers
+- Staff
+- Partners
+- NFC Devices
+- NFC Cards
+- Reports
+- Audit Logs
+- Platform Settings
+- Other existing Owner-authorized functions
+
+Verify that Owner Admin can see school information across tenants where intended.
+
+Verify that Owner Admin can:
+
+- View a school's records.
+- Manage/assign NFC devices.
+- Link an NFC card to an existing student.
+- View platform-level partner/referral information.
+- View appropriate audit records.
+
+Do not give Owner Admin access to plaintext passwords, password hashes, authentication secrets, or other private credentials.
+
+---
+
+5. PARTNER AUTHENTICATED VERIFICATION
+
+Create/use a test Partner account.
+
+Test:
+
+1. Partner signs in.
+2. Partner reaches Partner Dashboard.
+3. Partner generates a secure referral/registration link.
+4. Verify the referral link is unique and associated with that Partner.
+5. Open the referral link.
+6. Verify it opens the correct School Administrator registration/onboarding flow.
+7. Register a test school.
+8. Create the School Administrator account/password through the proper workflow.
+9. Verify the new school is automatically associated with the Partner that generated the referral.
+10. Verify the relationship is persisted correctly.
+
+Verify the Partner can see only appropriate information, including:
+
+- School name
+- Student count
+- School status
+- Date joined
+- Commission earned
+- Commission paid
+- Commission pending
+- Commission history
+- Relevant partner-level reports
+
+Verify the Partner CANNOT access:
+
+- Individual student names/details
+- Parent contact information
+- Student results
+- Attendance details
+- School financial/payment records
+- Private teacher/staff information
+- Passwords
+- Authentication secrets
+- Private school operational information
+
+Also test that Partner A cannot access Partner B's schools, referrals, or commission data.
+
+---
+
+6. PARTNER INVITATION AND RECOVERY
+
+Test Partner Administrator/Partner Staff invitation.
+
+Verify:
+
+1. Partner Admin can invite authorized partner staff.
+2. Recipient receives an invitation.
+3. Recipient creates their own password.
+4. Recipient can sign in with the correct role.
+5. Sender never creates or sees the recipient's password.
+6. Invitation cannot be improperly reused.
+7. If database commit status becomes uncertain after invitation delivery, the recovery mechanism behaves safely.
+8. Retrying does not accidentally create duplicate users, duplicate invitations, or duplicate partner relationships.
+
+---
+
+7. SCHOOL ADMINISTRATOR USER MANAGEMENT
+
+Sign in as a School Administrator.
+
+Verify the administrator can create/invite authorized users for their own school, including as supported by the existing system:
+
+- Teachers
+- Accountants
+- Staff
+- Parents
+- Students
+- Other authorized school roles
+
+For every invitation workflow:
+
+- Recipient receives secure invitation.
+- Recipient creates their own password.
+- Sender does not see the password.
+- Invitation is associated with the correct school.
+- Role is assigned correctly.
+- Account activation works.
+- Permissions are enforced server-side.
+
+Verify the School Administrator cannot create or manage users belonging to another school.
+
+---
+
+8. MULTI-ROLE LOGIN VERIFICATION
+
+Test a user with multiple legitimate roles.
+
+Verify:
+
+- Login/portal selection works correctly.
+- Selecting a role does NOT itself grant permissions.
+- Backend verifies the user's actual assigned roles.
+- User cannot select an unauthorized role and gain access.
+- Switching between legitimate roles does not leak data between tenants.
+- The correct dashboard and permissions are displayed for each role.
+- Direct API requests still enforce the actual authorization.
+
+The role selector must remain a UX mechanism, NOT a security mechanism.
+
+---
+
+9. BULK IMPORT VERIFICATION
+
+Test authenticated School Administrator imports.
+
+Test Excel (.xlsx) and CSV imports at minimum.
+
+Verify:
+
+1. School Admin opens the correct import function.
+2. File upload works.
+3. Column mapping is available.
+4. Different reasonable column names can be mapped.
+5. Preview appears before data is saved.
+6. Preview shows:
+   - Total detected
+   - Valid records
+   - Warnings
+   - Errors
+   - Duplicate candidates
+7. Confirmation is required before final import.
+8. Invalid rows do not silently create incorrect records.
+9. Existing records are not silently overwritten.
+10. Duplicate handling behaves according to the implemented rules.
+11. User can review skipped/failed records.
+12. Error report can be downloaded where implemented.
+13. Successful/failed/skipped counts are accurate.
+14. Import is associated with the authenticated School Administrator's school.
+
+CRITICAL SECURITY TEST:
+
+Do not trust school_id/tenant_id values supplied by uploaded files.
+
+If a file attempts to specify another school as its school_id/tenant_id, the system must ignore/reject that value and use the authenticated administrator's school context.
+
+---
+
+10. STUDENT IMPORT VERIFICATION
+
+Test student imports containing realistic fields such as:
+
+- Student name
+- Admission number
+- Student ID
+- Date of birth
+- Gender
+- Class
+- Status
+- Parent information
+- Other supported student fields
+
+Verify duplicate detection using the existing implemented rules.
+
+Test cases should include:
+
+- Completely new student.
+- Existing admission number.
+- Existing student ID.
+- Same/similar name and date of birth.
+- Existing parent.
+- New parent.
+- Multiple children belonging to one parent.
+- Invalid class.
+- Invalid date.
+- Invalid required fields.
+- Different student status values.
+
+Verify student status does not accidentally create an incorrect active/inactive account or incorrectly remove legitimate historical data.
+
+---
+
+11. CLASS MAPPING VERIFICATION
+
+Test class variants such as:
+
+- Primary 1
+- Primary One
+- P1
+- Basic 1
+- JSS1
+- JSS 1
+
+Verify they can be mapped to the school's configured classes where appropriate.
+
+Do not hard-code assumptions that could conflict with a school's actual class structure.
+
+---
+
+12. PARENT MATCHING VERIFICATION
+
+Test:
+
+Existing parent
+
+Import a student belonging to an existing parent.
+
+Verify the system matches the existing parent instead of unnecessarily creating a duplicate.
+
+New parent
+
+Import a student with a new parent.
+
+Verify the parent can be created/associated correctly.
+
+Multiple children
+
+Import multiple students belonging to the same parent.
+
+Verify one parent can be associated with multiple children.
+
+Parent invitation
+
+Verify the current system's behavior for portal invitations.
+
+IMPORTANT:
+
+The current implementation reportedly does NOT automatically send portal invitations to imported parents/personnel.
+
+Do not assume this works.
+
+Determine and report whether this is:
+
+- Intentionally deferred functionality,
+- Existing intended behavior that is missing,
+- Or a bug that should be fixed now.
+
+If the existing requirements require automatic invitations for imported users, implement the smallest safe correction.
+
+If it is intentionally deferred, document it clearly rather than silently changing behavior.
+
+---
+
+13. TEACHER / STAFF / ACCOUNTANT IMPORT VERIFICATION
+
+Test supported personnel imports.
+
+Verify fields such as:
+
+- Name
+- Email
+- Phone
+- Staff ID
+- Department
+- Role
+- Subject where applicable
+
+CRITICAL:
+
+A role value uploaded in a spreadsheet must NOT automatically grant privileged permissions unless it maps to an explicitly authorized system role.
+
+For example, an uploaded value such as:
+
+"Owner Admin"
+
+must not allow a School Administrator to create an Owner Admin account through an import file.
+
+Verify role assignment is controlled by server-side authorization.
+
+---
+
+14. PDF IMPORT VERIFICATION
+
+If PDF import is implemented:
+
+Test a selectable/tabular PDF.
+
+Verify:
+
+- Data extraction.
+- Preview.
+- Column/field mapping.
+- Validation.
+- Duplicate detection.
+- Confirmation before saving.
+
+If a scanned/image PDF cannot be reliably extracted:
+
+- Do not silently create incorrect records.
+- Show an appropriate warning.
+- Recommend Excel/CSV/template import.
+- If OCR is implemented, verify extracted records still go through preview and validation before saving.
+
+Do not mark PDF import as fully reliable simply because a PDF upload succeeds.
+
+---
+
+15. TENANT ISOLATION SECURITY TESTS
+
+Create at least two test schools:
+
+- School A
+- School B
+
+Create records under both.
+
+Then attempt the following as School A:
+
+1. View School B student through UI.
+2. Change URL IDs to School B IDs.
+3. Change request parameters to School B IDs.
+4. Call APIs with School B record IDs.
+5. Attempt to modify School B records.
+6. Attempt to delete School B records.
+7. Attempt to import data into School B.
+8. Attempt to access School B parent records.
+9. Attempt to access School B staff/teacher records.
+10. Attempt to access School B finance records.
+
+Every unauthorized attempt must fail.
+
+Repeat equivalent cross-tenant tests through API requests, not only the UI.
+
+Frontend hiding is NOT sufficient.
+
+---
+
+16. PARTNER ISOLATION SECURITY TESTS
+
+Create:
+
+- Partner A
+- Partner B
+
+Associate different schools with each.
+
+Verify Partner A cannot access:
+
+- Partner B schools
+- Partner B referrals
+- Partner B commissions
+- Partner B partner staff
+- Partner B private information
+
+Attempt direct URL/API manipulation and verify server-side rejection.
+
+---
+
+17. INVITATION SECURITY TESTS
+
+Test:
+
+- Invalid invitation token.
+- Expired invitation.
+- Already-used invitation.
+- Modified token.
+- Invitation belonging to another user.
+- Invitation belonging to another school.
+- Repeated activation attempts.
+- Repeated resend attempts.
+
+Verify no privilege escalation or account takeover is possible.
+
+---
+
+18. NFC REGRESSION VERIFICATION
+
+Do not redesign the existing NFC architecture.
+
+Verify:
+
+Devices
+
+- Owner Admin can register a device.
+- Device has a unique identifier/serial.
+- Device can be assigned to a school.
+- Device status is visible.
+- Device can be unassigned/reassigned according to existing rules.
+
+Cards
+
+- Owner Admin can link a card to an existing student.
+- One active card cannot be assigned to multiple active students.
+- Card status is handled correctly.
+- Card assignment remains tied to the correct school/student.
+
+Tenant security
+
+A device/card assigned to School A must not automatically operate for School B.
+
+---
+
+19. FINANCE REGRESSION CHECK
+
+Do NOT develop new Phase 7 Finance features yet.
+
+Only verify that the correction work did not break the existing finance foundation.
+
+Verify:
+
+- School finance data remains tenant-isolated.
+- School Admin can access only their school's finance records.
+- Accountant permissions remain correct.
+- Parent payment access remains limited to authorized children.
+- Owner Admin retains intended platform-level visibility.
+- Partner cannot access school payment records.
+- Partner commission relationships remain associated with referred schools.
+- Existing finance routes/API endpoints still respond correctly.
+
+Do not introduce new finance functionality during this verification.
+
+---
+
+20. AUDIT LOG VERIFICATION
+
+Verify audit logs are generated for important actions including, where implemented:
+
+- School creation.
+- Administrator invitation.
+- Administrator activation.
+- Partner creation.
+- Referral link generation.
+- School registration through referral.
+- User invitation.
+- User activation.
+- Role/permission changes.
+- NFC device assignment.
+- NFC card assignment.
+- School status changes.
+- Bulk imports.
+- Important administrative/financial changes.
+
+Audit entries should include appropriate:
+
+- Actor
+- Action
+- Entity
+- Entity ID
+- Timestamp
+- School/tenant context
+- Relevant metadata
+
+Do not log passwords, tokens, secrets, or sensitive credentials.
+
+---
+
+21. FILE AND IMPORT SECURITY
+
+Verify uploaded files:
+
+- Have type/extension validation.
+- Have reasonable size limits.
+- Are not executed as code.
+- Are processed securely.
+- Are not exposed through predictable public URLs.
+- Temporary processing files are handled safely.
+- Error reports do not expose secrets or unrelated tenant data.
+
+---
+
+22. AUTOMATED TEST REGRESSION
+
+Run the complete automated test suite again.
+
+The existing baseline is:
+
+132 tests passing.
+
+Report:
+
+- Previous test count.
+- Current test count.
+- Passed.
+- Failed.
+- Skipped.
+- New tests added, if any.
+- Any changed tests and why.
+
+Do not modify tests merely to make failures disappear.
+
+If a test is invalid because implementation requirements have changed, explain the reason and update it appropriately.
+
+---
+
+23. BUILD AND RUNTIME VERIFICATION
+
+Run:
+
+- API build.
+- Web build.
+- TypeScript checks.
+- Existing lint/type checks where configured.
+- Health check.
+- Relevant startup checks.
+
+Verify:
+
+- Health endpoint returns 200.
+- Protected endpoints return 401 when unauthenticated.
+- Authenticated endpoints work with valid sessions.
+- No new runtime errors appear in logs.
+
+---
+
+24. FIX ONLY VERIFIED ISSUES
+
+If any verification fails:
+
+1. Identify the exact failure.
+2. Determine the root cause.
+3. Make the smallest safe correction.
+4. Preserve existing data.
+5. Do not reset the database.
+6. Do not introduce unrelated features.
+7. Add/update an appropriate regression test.
+8. Re-run the affected test.
+9. Re-run the complete automated test suite.
+10. Re-run the relevant authenticated browser test.
+
+Continue until all realistically testable correction flows pass.
+
+If an external dependency prevents verification, such as unavailable email delivery credentials/provider access, do NOT fake the result. Clearly identify it as an environment limitation.
+
+---
+
+25. FINAL SECURITY REVIEW
+
+Before declaring this correction phase complete, verify:
+
+- No plaintext passwords are stored or exposed.
+- No password hashes are exposed through APIs.
+- No authentication secrets are exposed.
+- No invitation tokens are unnecessarily exposed.
+- No frontend-only authorization is being relied upon.
+- No role selector can grant privileges.
+- No school can access another school's data.
+- No partner can access another partner's data.
+- Uploaded files cannot override tenant context.
+- Imported role names cannot escalate privileges.
+- Invitation links are appropriately protected.
+- Sensitive data is not leaked through error messages.
+- Audit logs do not contain passwords/secrets.
+- Existing finance permissions remain intact.
+
+---
+
+26. DO NOT CLAIM COMPLETION WITHOUT EVIDENCE
+
+Do not report:
+
+"Everything is complete"
+
+unless the actual tests support that statement.
+
+Separate the final report into:
+
+VERIFIED PASS
+
+Things that were actually tested and passed.
+
+FAILED AND FIXED
+
+Issues discovered during verification and corrected.
+
+NOT VERIFIABLE IN CURRENT ENVIRONMENT
+
+Things blocked by external dependencies or unavailable credentials.
+
+REMAINING FUNCTIONAL GAPS
+
+Actual missing functionality that still requires implementation.
+
+AUTOMATED TEST RESULT
+
+Exact test count and result.
+
+AUTHENTICATED BROWSER RESULT
+
+Exact flows tested and their results.
+
+EMAIL RESULT
+
+Whether actual invitation delivery and activation were successfully tested.
+
+SECURITY RESULT
+
+Exact tenant/role/partner isolation tests performed and results.
+
+FINANCE RESULT
+
+Only regression compatibility. Do NOT resume Phase 7 Finance.
+
+FILES CHANGED
+
+List every file changed during this verification.
+
+DATABASE CHANGES
+
+List every migration/schema change, if any.
+
+FINAL RECOMMENDATION
+
+State whether the system is:
+
+1. Ready to resume Phase 7 Finance,
+2. Requires specific corrections before Phase 7,
+3. Or is blocked by an external dependency.
+
+Do not make a completion claim unless the evidence supports it.
+
+STOP after this verification report.
+
+Do not continue into Phase 7 Finance automatically.
