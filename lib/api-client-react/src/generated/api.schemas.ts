@@ -2840,6 +2840,8 @@ export interface AcademicReportCard {
   studentId: number;
   sessionId: number;
   termId: number;
+  sessionName?: string;
+  termName?: string;
   studentClassAssignmentId: number;
   classId: number;
   className: string;

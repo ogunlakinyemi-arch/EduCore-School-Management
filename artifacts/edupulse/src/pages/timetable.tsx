@@ -26,10 +26,16 @@ export function TimetablePage() {
   const contextQuery = useGetAuthorizedContext();
   const roles = contextQuery.data?.roles?.map(r => r.role) || [];
   
-  const canManage = roles.includes('SCHOOL_ADMIN') || contextQuery.data?.isPlatformOwner;
+  const canManage = !!contextQuery.data?.isPlatformOwner || !!contextQuery.data?.roles?.some(
+    role => role.role === 'SCHOOL_ADMIN' && role.schoolId === schoolId && role.status === 'ACTIVE'
+  );
   const isTeacherOrStudent = roles.includes('TEACHER') || roles.includes('STUDENT');
+  const isStudent = roles.includes('STUDENT') && !roles.includes('TEACHER');
   
-  const [tab, setTab] = useState<'manage' | 'mine'>(isTeacherOrStudent && !canManage ? 'mine' : 'manage');
+  const [tab, setTab] = useState<'manage' | 'mine'>('manage');
+  const activeTab = canManage ? tab : 'mine';
+
+  if (contextQuery.isLoading) return <SkeletonPage />;
   
   return (
     <div className="fade-up">
@@ -45,12 +51,12 @@ export function TimetablePage() {
         <>
           {canManage && isTeacherOrStudent && (
             <div className="mb-6 flex gap-2 border-b border-[hsl(var(--border))]">
-              <button onClick={() => setTab('manage')} className={cx("px-4 py-2.5 text-sm font-bold border-b-2 transition-colors", tab === 'manage' ? "border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>Manage Timetable</button>
-              <button onClick={() => setTab('mine')} className={cx("px-4 py-2.5 text-sm font-bold border-b-2 transition-colors", tab === 'mine' ? "border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>My Schedule</button>
+               <button onClick={() => setTab('manage')} className={cx("px-4 py-2.5 text-sm font-bold border-b-2 transition-colors", activeTab === 'manage' ? "border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>Manage Timetable</button>
+               <button onClick={() => setTab('mine')} className={cx("px-4 py-2.5 text-sm font-bold border-b-2 transition-colors", activeTab === 'mine' ? "border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>My Schedule</button>
             </div>
           )}
-          {tab === 'manage' && canManage && <ManageTimetableView schoolId={schoolId} />}
-          {tab === 'mine' && isTeacherOrStudent && <MyScheduleView schoolId={schoolId} />}
+           {activeTab === 'manage' && canManage && <ManageTimetableView schoolId={schoolId} />}
+           {activeTab === 'mine' && isTeacherOrStudent && <MyScheduleView schoolId={schoolId} isStudent={isStudent} />}
         </>
       )}
     </div>
@@ -221,12 +227,17 @@ function TimetableEntryForm({ schoolId, sessionId, termId, classes, subjects, te
   );
 }
 
-function MyScheduleView({ schoolId }: { schoolId: number }) {
+function MyScheduleView({ schoolId, isStudent }: { schoolId: number; isStudent: boolean }) {
   const { activeSession, activeTerm, classes, subjects, isLoading } = useAcademicContext(schoolId);
-  const query = useGetMyAcademicTimetable(
+  const studentQuery = useGetMyAcademicTimetable(
     { schoolId, sessionId: activeSession?.id, termId: activeTerm?.id },
-    { query: { enabled: !!(schoolId && activeSession?.id && activeTerm?.id), queryKey: getGetMyAcademicTimetableQueryKey({ schoolId, sessionId: activeSession?.id, termId: activeTerm?.id }) } }
+    { query: { enabled: isStudent && !!(schoolId && activeSession?.id && activeTerm?.id), queryKey: getGetMyAcademicTimetableQueryKey({ schoolId, sessionId: activeSession?.id, termId: activeTerm?.id }) } }
   );
+  const teacherQuery = useListAcademicTimetable(
+    { schoolId, sessionId: activeSession?.id, termId: activeTerm?.id },
+    { query: { enabled: !isStudent && !!(schoolId && activeSession?.id && activeTerm?.id), queryKey: getListAcademicTimetableQueryKey({ schoolId, sessionId: activeSession?.id, termId: activeTerm?.id }) } }
+  );
+  const query = isStudent ? studentQuery : teacherQuery;
 
   if (isLoading || query.isLoading) return <SkeletonPage />;
   if (query.isError) return <ErrorState retry={() => query.refetch()} />;

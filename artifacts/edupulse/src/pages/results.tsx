@@ -6,7 +6,7 @@ import {
   useListAcademicResults, useCreateAcademicResult, useUpdateAcademicResult, usePublishAcademicAssessmentResults, getListAcademicResultsQueryKey,
   useListAcademicReportCards, useCreateAcademicReportCard, usePublishAcademicReportCard, getListAcademicReportCardsQueryKey,
   useListAcademicGradingRules, useCreateAcademicGradingRule, useUpdateAcademicGradingRule, getListAcademicGradingRulesQueryKey,
-  useListAcademicSessions, useListAcademicTerms, useListClasses, useListSubjects, useListStudents
+  useListAcademicSessions, useListAcademicTerms, useListClasses, useListSubjects, useListStudents, useGetAuthorizedContext
 } from '@workspace/api-client-react';
 import { Plus, BarChart3, Save, CheckCircle2, Search, Pencil } from 'lucide-react';
 
@@ -18,12 +18,16 @@ function useAcademicContext(schoolId: number) {
   const classes = useListClasses({ schoolId }, { query: { enabled: !!schoolId, queryKey: ['classes', schoolId] } });
   const subjects = useListSubjects({ schoolId }, { query: { enabled: !!schoolId, queryKey: ['subjects', schoolId] } });
 
-  return { activeSession, activeTerm, classes: classes.data ?? [], subjects: subjects.data ?? [], isLoading: sessions.isLoading || terms.isLoading || classes.isLoading || subjects.isLoading };
+  return { activeSession, activeTerm, sessions: sessions.data ?? [], terms: terms.data ?? [], classes: classes.data ?? [], subjects: subjects.data ?? [], isLoading: sessions.isLoading || terms.isLoading || classes.isLoading || subjects.isLoading };
 }
 
 export function ResultsPage() {
   const { schoolId } = useTenant();
   const [tab, setTab] = useState<'results' | 'cards' | 'rules'>('results');
+  const context = useGetAuthorizedContext().data;
+  const canManage = !!context?.isPlatformOwner || !!context?.roles?.some(
+    role => role.role === 'SCHOOL_ADMIN' && role.schoolId === schoolId && role.status === 'ACTIVE'
+  );
   
   return (
     <div className="fade-up">
@@ -38,7 +42,7 @@ export function ResultsPage() {
       ) : (
         <>
           <div className="mb-6 flex gap-2 border-b border-[hsl(var(--border))]">
-            {[{id: 'results', label: 'Result Entry'}, {id: 'cards', label: 'Report Cards'}, {id: 'rules', label: 'Grading Rules'}].map(t => (
+             {[{id: 'results', label: 'Result Entry'}, ...(canManage ? [{id: 'cards', label: 'Report Cards'}, {id: 'rules', label: 'Grading Rules'}] : [])].map(t => (
               <button 
                 key={t.id} 
                 onClick={() => setTab(t.id as any)} 
@@ -48,16 +52,16 @@ export function ResultsPage() {
               </button>
             ))}
           </div>
-          {tab === 'results' && <ResultEntryView schoolId={schoolId} />}
-          {tab === 'cards' && <ReportCardsView schoolId={schoolId} />}
-          {tab === 'rules' && <GradingRulesView schoolId={schoolId} />}
+           {tab === 'results' && <ResultEntryView schoolId={schoolId} canManage={canManage} />}
+           {canManage && tab === 'cards' && <ReportCardsView schoolId={schoolId} />}
+           {canManage && tab === 'rules' && <GradingRulesView schoolId={schoolId} />}
         </>
       )}
     </div>
   );
 }
 
-function ResultEntryView({ schoolId }: { schoolId: number }) {
+function ResultEntryView({ schoolId, canManage }: { schoolId: number; canManage: boolean }) {
   const { activeSession, activeTerm, classes, subjects, isLoading } = useAcademicContext(schoolId);
   const assessmentsQuery = useListAcademicAssessments(
     { schoolId, sessionId: activeSession?.id, termId: activeTerm?.id }, 
@@ -112,7 +116,7 @@ function ResultEntryView({ schoolId }: { schoolId: number }) {
              <div className="text-sm">
                 <span className="text-[hsl(var(--muted-foreground))]">Status:</span> <StatusPill value={selectedAssessment.status} />
              </div>
-             {selectedAssessment.status !== 'PUBLISHED' && (
+              {canManage && selectedAssessment.status !== 'PUBLISHED' && (
                 <Button onClick={handlePublish} disabled={publish.isPending}><CheckCircle2 size={16}/> Publish Results</Button>
              )}
           </div>
@@ -239,7 +243,7 @@ function ResultRow({ student, existing, assessmentId, maxScore, schoolId, sessio
 }
 
 function ReportCardsView({ schoolId }: { schoolId: number }) {
-  const { activeSession, activeTerm, classes, isLoading } = useAcademicContext(schoolId);
+  const { activeSession, activeTerm, sessions, terms, classes, isLoading } = useAcademicContext(schoolId);
   const [classId, setClassId] = useState<number | ''>('');
   
   const query = useListAcademicReportCards(
@@ -297,30 +301,48 @@ function ReportCardsView({ schoolId }: { schoolId: number }) {
                {students.map((student: any) => {
                  const card = cards.find((c: any) => c.studentId === student.id && c.sessionId === activeSession?.id && c.termId === activeTerm?.id && c.classId === classId);
                  return (
-                   <div key={student.id} className="flex items-center gap-4 p-5 hover:bg-[hsl(var(--muted)/.2)]">
-                      <div className="min-w-[200px] flex-1">
-                        <div className="font-bold text-sm">{student.firstName} {student.lastName}</div>
-                        <div className="text-[10px] text-[hsl(var(--muted-foreground))]">{student.admissionNo}</div>
-                      </div>
-                      {card ? (
-                        <>
-                          <div className="flex-1 text-xs space-y-1">
-                            <div>{card.lines.length} published assessment {card.lines.length === 1 ? 'score' : 'scores'} recorded</div>
-                            <div className="font-bold text-[hsl(var(--primary))]">{card.resultState.replaceAll('_', ' ')}</div>
-                          </div>
-                          <div className="w-32">
-                            <StatusPill value={card.status} />
-                          </div>
-                          <div className="w-32 flex justify-end gap-2">
-                            {card.status !== 'PUBLISHED' && (
-                              <Button variant="outline" className="h-8 text-xs py-0" onClick={() => handlePublish(card.id)} disabled={publishCard.isPending}>Publish</Button>
-                            )}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="flex-1 flex justify-end">
-                           <Button variant="outline" className="h-8 text-xs py-0" onClick={() => handleGenerate(student.id)} disabled={createCard.isPending}>Generate Card</Button>
+                    <div key={student.id} className="p-5 hover:bg-[hsl(var(--muted)/.2)]">
+                      <div className="flex items-center gap-4">
+                        <div className="min-w-[200px] flex-1">
+                          <div className="font-bold text-sm">{student.firstName} {student.lastName}</div>
+                          <div className="text-[10px] text-[hsl(var(--muted-foreground))]">{student.admissionNo}</div>
                         </div>
+                        {card ? (
+                          <>
+                            <div className="flex-1 text-xs space-y-1">
+                              <div>{card.lines.length} published assessment {card.lines.length === 1 ? 'score' : 'scores'} recorded</div>
+                              <div className="font-bold text-[hsl(var(--primary))]">{card.resultState.replaceAll('_', ' ')}</div>
+                            </div>
+                            <div className="w-32"><StatusPill value={card.status} /></div>
+                            <div className="w-32 flex justify-end">
+                              {card.status !== 'PUBLISHED' && (
+                                <Button variant="outline" className="h-8 text-xs py-0" onClick={() => handlePublish(card.id)} disabled={publishCard.isPending}>Publish</Button>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex-1 flex justify-end">
+                            <Button variant="outline" className="h-8 text-xs py-0" onClick={() => handleGenerate(student.id)} disabled={createCard.isPending}>Generate Card</Button>
+                          </div>
+                        )}
+                      </div>
+                      {card && (
+                        <details className="mt-3 text-sm">
+                          <summary className="cursor-pointer font-semibold text-[hsl(var(--primary))]">View report card</summary>
+                          <div className="mt-3 space-y-3 rounded-lg border border-[hsl(var(--border))] p-4">
+                            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                              {card.className} {card.section} · {sessions.find((s: any) => s.id === card.sessionId)?.name ?? `Session #${card.sessionId}`}, {terms.find((t: any) => t.id === card.termId)?.name ?? `Term #${card.termId}`} · {card.status}
+                            </p>
+                            {card.lines.length ? card.lines.map((line: any) => (
+                              <div key={line.id} className="flex flex-wrap justify-between gap-2 border-t border-[hsl(var(--border))] pt-2">
+                                <span><strong>{line.subjectName}</strong> · {line.assessmentName}</span>
+                                <span className="font-semibold">{line.score}/{line.maxScore} · {line.grade}</span>
+                              </div>
+                            )) : <p>No graded results were included at publication.</p>}
+                            {card.teacherRemark && <p>Teacher: {card.teacherRemark}</p>}
+                            {card.schoolRemark && <p>School: {card.schoolRemark}</p>}
+                          </div>
+                        </details>
                       )}
                    </div>
                  );

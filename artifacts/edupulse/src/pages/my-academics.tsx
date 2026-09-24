@@ -1,20 +1,9 @@
 import { useState } from 'react';
 import { PageHeading, StatusPill, SkeletonPage, ErrorState, EmptyState, TenantPicker, useTenant, cx, date } from '@/components/shared';
 import { 
-  useListMyAcademicAssignments, useListMyAcademicResults, useListMyAcademicReportCards, useGetMyAcademicTimetable,
-  useListAcademicSessions, useListAcademicTerms, useListSubjects
+  useListMyAcademicAssignments, useListMyAcademicResults, useListMyAcademicReportCards, useGetMyAcademicTimetable
 } from '@workspace/api-client-react';
 import { BookOpen, GraduationCap, Calendar, BarChart3, Clock, CheckCircle2 } from 'lucide-react';
-
-function useAcademicContext(schoolId: number) {
-  const sessions = useListAcademicSessions({ schoolId }, { query: { enabled: !!schoolId, queryKey: ['sessions', schoolId] } });
-  const activeSession = sessions.data?.find((s: any) => s.isCurrent) || sessions.data?.[0];
-  const terms = useListAcademicTerms(activeSession?.id as number, { schoolId }, { query: { enabled: !!(schoolId && activeSession?.id), queryKey: ['terms', activeSession?.id, schoolId] } });
-  const activeTerm = terms.data?.find((t: any) => t.isCurrent) || terms.data?.[0];
-  const subjects = useListSubjects({ schoolId }, { query: { enabled: !!schoolId, queryKey: ['subjects', schoolId] } });
-
-  return { activeSession, activeTerm, subjects: subjects.data ?? [], isLoading: sessions.isLoading || terms.isLoading || subjects.isLoading };
-}
 
 export function MyAcademicsPage() {
   const { schoolId } = useTenant();
@@ -54,13 +43,12 @@ export function MyAcademicsPage() {
 }
 
 function MyAssignmentsView({ schoolId }: { schoolId: number }) {
-  const { activeSession, activeTerm, subjects, isLoading } = useAcademicContext(schoolId);
   const query = useListMyAcademicAssignments(
-    { schoolId, sessionId: activeSession?.id, termId: activeTerm?.id },
-    { query: { enabled: !!(schoolId && activeSession?.id && activeTerm?.id), queryKey: ['my-assignments', schoolId, activeSession?.id, activeTerm?.id] } }
+    { schoolId },
+    { query: { enabled: !!schoolId, queryKey: ['my-assignments', schoolId] } }
   );
 
-  if (isLoading || query.isLoading) return <SkeletonPage />;
+  if (query.isLoading) return <SkeletonPage />;
   if (query.isError) return <ErrorState retry={() => query.refetch()} />;
 
   const assignments = query.data ?? [];
@@ -77,7 +65,7 @@ function MyAssignmentsView({ schoolId }: { schoolId: number }) {
               <div>
                 <div className="font-bold text-base">{item.title}</div>
                 <div className="text-sm font-medium text-[hsl(var(--primary))] mt-1">
-                  {subjects.find((s: any) => s.id === item.subjectId)?.name || 'Subject'}
+                  {item.subjectName || `Subject #${item.subjectId}`}
                 </div>
                 {item.description && <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2 max-w-2xl">{item.description}</p>}
                 <div className="text-xs font-medium text-[hsl(var(--muted-foreground))] mt-3 flex items-center gap-4">
@@ -100,13 +88,12 @@ function MyAssignmentsView({ schoolId }: { schoolId: number }) {
 }
 
 function MyResultsView({ schoolId }: { schoolId: number }) {
-  const { activeSession, activeTerm, subjects, isLoading } = useAcademicContext(schoolId);
   const query = useListMyAcademicResults(
     { schoolId },
     { query: { enabled: !!schoolId, queryKey: ['my-results', schoolId] } }
   );
 
-  if (isLoading || query.isLoading) return <SkeletonPage />;
+  if (query.isLoading) return <SkeletonPage />;
   if (query.isError) return <ErrorState retry={() => query.refetch()} />;
 
   // Filter only PUBLISHED results - assuming the API returns only published or we can filter it locally.
@@ -127,7 +114,7 @@ function MyResultsView({ schoolId }: { schoolId: number }) {
                   Assessment #{item.assessmentId}
                 </div>
                 <div className="text-sm text-[hsl(var(--muted-foreground))] mt-1">
-                  Subject: {subjects.find((s: any) => s.id === item.subjectId)?.name || 'Subject'}
+                   Subject: {item.subjectName || `#${item.subjectId}`}
                 </div>
                 {item.remark && <div className="text-sm mt-2 italic text-[hsl(var(--muted-foreground))]">"{item.remark}"</div>}
               </div>
@@ -146,13 +133,12 @@ function MyResultsView({ schoolId }: { schoolId: number }) {
 }
 
 function MyReportCardsView({ schoolId }: { schoolId: number }) {
-  const { activeSession, activeTerm, isLoading } = useAcademicContext(schoolId);
   const query = useListMyAcademicReportCards(
     { schoolId },
     { query: { enabled: !!schoolId, queryKey: ['my-cards', schoolId] } }
   );
 
-  if (isLoading || query.isLoading) return <SkeletonPage />;
+  if (query.isLoading) return <SkeletonPage />;
   if (query.isError) return <ErrorState retry={() => query.refetch()} />;
 
   const cards = (query.data ?? []).filter((r: any) => r.status === 'PUBLISHED');
@@ -164,7 +150,7 @@ function MyReportCardsView({ schoolId }: { schoolId: number }) {
           <div className="flex justify-between items-start mb-6 border-b border-[hsl(var(--border))] pb-4">
              <div>
                 <div className="eyebrow">Report Card</div>
-                <h4 className="font-bold text-lg mt-1">{card.className} {card.section} · Session #{card.sessionId}, Term #{card.termId}</h4>
+                 <h4 className="font-bold text-lg mt-1">{card.className} {card.section} · {card.sessionName ?? `Session #${card.sessionId}`}, {card.termName ?? `Term #${card.termId}`}</h4>
              </div>
              <div className="w-12 h-12 rounded-2xl bg-[hsl(var(--primary)/.1)] text-[hsl(var(--primary))] grid place-items-center"><GraduationCap size={24}/></div>
           </div>
@@ -198,13 +184,12 @@ function MyReportCardsView({ schoolId }: { schoolId: number }) {
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 
 function MyTimetableView({ schoolId }: { schoolId: number }) {
-  const { activeSession, activeTerm, subjects, isLoading } = useAcademicContext(schoolId);
   const query = useGetMyAcademicTimetable(
-    { schoolId, sessionId: activeSession?.id, termId: activeTerm?.id },
-    { query: { enabled: !!(schoolId && activeSession?.id && activeTerm?.id), queryKey: ['my-timetable', schoolId, activeSession?.id, activeTerm?.id] } }
+    { schoolId },
+    { query: { enabled: !!schoolId, queryKey: ['my-timetable', schoolId] } }
   );
 
-  if (isLoading || query.isLoading) return <SkeletonPage />;
+  if (query.isLoading) return <SkeletonPage />;
   if (query.isError) return <ErrorState retry={() => query.refetch()} />;
 
   const entries = query.data ?? [];
@@ -227,7 +212,7 @@ function MyTimetableView({ schoolId }: { schoolId: number }) {
                   <div className="flex items-center gap-2 text-xs font-bold text-[hsl(var(--foreground))] mb-1.5">
                     <Clock size={12} className="text-[hsl(var(--muted-foreground))]" /> {item.startTime} — {item.endTime}
                   </div>
-                  <div className="font-bold text-base">{subjects.find((s: any) => s.id === item.subjectId)?.name || 'Subject'}</div>
+                   <div className="font-bold text-base">{item.subjectName}</div>
                   {item.room && <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Room {item.room}</div>}
                 </div>
               ))}

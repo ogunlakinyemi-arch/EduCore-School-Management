@@ -99,6 +99,8 @@ const resultReturning = `id,school_id AS "schoolId",assessment_id AS "assessment
   grade,grade_point AS "gradePoint",remark,status,published_at AS "publishedAt"`;
 const cardSelect = `rc.id,rc.school_id AS "schoolId",rc.student_id AS "studentId",
   rc.academic_session_id AS "sessionId",rc.academic_term_id AS "termId",
+  (SELECT name FROM academic_sessions WHERE id=rc.academic_session_id AND school_id=rc.school_id) AS "sessionName",
+  (SELECT name FROM academic_terms WHERE id=rc.academic_term_id AND school_id=rc.school_id) AS "termName",
   rc.student_class_assignment_id AS "studentClassAssignmentId",rc.school_class_id AS "classId",
   rc.class_name_snapshot AS "className",rc.section_snapshot AS section,rc.status,
   rc.teacher_remark AS "teacherRemark",rc.school_remark AS "schoolRemark",rc.published_by AS "publishedBy",

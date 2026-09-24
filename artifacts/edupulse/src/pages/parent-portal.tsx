@@ -268,7 +268,7 @@ function ChildReportCards({ studentId, schoolId }: { studentId: number; schoolId
                </div>
                <div className="text-xs font-semibold text-[hsl(var(--primary))]">{card.resultState.replaceAll('_', ' ')}</div>
             </div>
-            <div className="text-xs text-[hsl(var(--muted-foreground))] mb-3">{card.className} {card.section} · Session #{card.sessionId}, Term #{card.termId}</div>
+            <div className="text-xs text-[hsl(var(--muted-foreground))] mb-3">{card.className} {card.section} · {card.sessionName ?? `Session #${card.sessionId}`}, {card.termName ?? `Term #${card.termId}`}</div>
             <div className="space-y-2 mb-4">
               {card.lines.length ? card.lines.map((line: any) => (
                 <div key={line.id} className="flex justify-between gap-4 rounded-lg border border-[hsl(var(--border))] p-3 text-sm">
@@ -311,7 +311,7 @@ function ChildTimetable({ studentId, schoolId }: { studentId: number; schoolId: 
                  <div key={item.id} className="p-3 bg-[hsl(var(--card))]">
                    <div className="text-xs font-bold mb-1">{item.startTime} — {item.endTime}</div>
                    <div className="text-xs text-[hsl(var(--muted-foreground))] flex items-center justify-between">
-                     <span>Subject ID: {item.subjectId}</span>
+                     <span>{item.subjectName}</span>
                      {item.room && <span>Rm {item.room}</span>}
                    </div>
                  </div>

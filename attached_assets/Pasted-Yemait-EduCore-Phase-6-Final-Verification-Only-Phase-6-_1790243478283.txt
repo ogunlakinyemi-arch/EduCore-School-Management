@@ -1,0 +1,283 @@
+Yemait EduCore — Phase 6 Final Verification Only
+
+Phase 6 implementation is complete, but the final verification report classified Phase 6 as:
+
+PHASE 6 NOT COMPLETE — REMAINING BLOCKERS
+
+Do NOT rebuild Phase 6.
+
+Do NOT redesign existing modules.
+
+Do NOT start Phase 7.
+
+Do NOT modify production.
+
+Do NOT reset the development database.
+
+Do NOT delete existing synthetic verification records.
+
+Only complete the two remaining verification gaps identified below.
+
+Use the existing development environment and development database.
+
+Production must remain untouched.
+
+==================================================
+REMAINING BLOCKER 1 — AUTHENTICATED BROWSER WALKTHROUGH
+
+The API verification is already complete.
+
+Do NOT count API verification as browser verification.
+
+Perform a real authenticated browser walkthrough of the Phase 6 UI using the existing development identities.
+
+Verify the actual rendered pages, navigation, data loading, authorization behavior, and important user actions.
+
+Test at minimum:
+
+A. SCHOOL ADMIN
+
+Using an authenticated School Admin:
+
+1. Open the academic/assignments area.
+2. Confirm the page renders without errors.
+3. Confirm real assignment data loads.
+4. Open/create an assignment if appropriate.
+5. Open assessments.
+6. Confirm assessment data loads.
+7. Open results.
+8. Confirm real result data loads.
+9. Confirm result publication controls appear only where authorized.
+10. Open report cards.
+11. Open a real published report card.
+12. Confirm subject-level report-card data renders correctly.
+13. Open grading rules.
+14. Confirm grading configuration loads.
+15. Open timetable.
+16. Confirm timetable data renders.
+17. Confirm no cross-school data appears.
+18. Check browser console for errors during these verified flows.
+
+B. TEACHER
+
+Using an authenticated Teacher:
+
+1. Open assignments.
+2. Confirm assigned classes/subjects are displayed.
+3. Create or inspect an authorized assignment where appropriate.
+4. Open assessments.
+5. Confirm assigned academic context is correct.
+6. Open result entry.
+7. Confirm authorized students/subjects appear.
+8. Confirm unauthorized classes/subjects are not available.
+9. Open timetable.
+10. Confirm only the teacher's authorized timetable is displayed.
+11. Confirm teacher cannot access School Admin-only academic controls.
+12. Check browser console for errors.
+
+C. STUDENT
+
+Using an authenticated Student:
+
+1. Open the Student dashboard.
+2. Confirm the dashboard loads completely.
+3. Open assignments.
+4. Confirm applicable assignments are visible.
+5. Open results.
+6. Confirm published results are visible.
+7. Confirm unpublished results are not exposed.
+8. Open report cards.
+9. Confirm the student's published report card renders.
+10. Confirm the student's historical academic context is correct.
+11. Open timetable.
+12. Confirm the student's class/section timetable renders.
+13. Attempt another student's academic resource through the UI/API boundary and confirm denial.
+14. Check browser console for errors.
+
+D. PARENT
+
+Using an authenticated Parent:
+
+1. Open the Parent dashboard.
+2. Confirm linked child information loads.
+3. Open assignments.
+4. Confirm linked child's applicable assignments appear.
+5. Open results.
+6. Confirm linked child's published results appear.
+7. Open report cards.
+8. Confirm linked child's report card renders.
+9. Open timetable.
+10. Confirm linked child's timetable renders.
+11. Confirm another/unlinked student's academic information cannot be accessed.
+12. Confirm another school's academic information cannot be accessed.
+13. Check browser console for errors.
+
+==================================================
+BROWSER VERIFICATION RULE
+
+A requirement is VERIFIED only if the actual authenticated browser application renders and performs the required workflow.
+
+Do not classify an API-only result as browser verification.
+
+Do not use signed-out pages as evidence for authenticated workflows.
+
+Do not claim success based solely on source-code inspection.
+
+If a page fails, record the actual failure and fix only the relevant Phase 6 issue.
+
+==================================================
+REMAINING BLOCKER 2 — ISOLATED LIVE CLASS CONFLICT
+
+The current report says:
+
+- Teacher overlap was rejected live with HTTP 409.
+- Class overlap passed an automated test.
+- The class-overlap test was not independently verified live because it may also have triggered a teacher conflict.
+
+Perform a NEW live development test where the teacher conflict is explicitly eliminated.
+
+Required scenario
+
+Create/use two timetable entries involving:
+
+- the SAME class/section
+- DIFFERENT subjects
+- DIFFERENT teachers
+- overlapping time
+- same school
+- same academic session/term
+
+The two teachers must both otherwise be authorized for their respective subjects/classes.
+
+Example:
+
+Class: JSS2 Emerald
+
+Existing:
+Teacher A → Mathematics → 10:00–11:00
+
+Attempt:
+Teacher B → English → 10:30–11:30
+
+This must be rejected specifically because the class/section is already occupied.
+
+IMPORTANT:
+
+Do NOT use the same teacher for both entries.
+
+Do NOT allow a teacher-overlap conflict to cause the rejection.
+
+The test must isolate the class conflict.
+
+Verify
+
+1. Confirm Teacher A is authorized.
+2. Confirm Teacher B is authorized.
+3. Confirm Teacher A and Teacher B are different users.
+4. Confirm the subjects are different.
+5. Confirm both subjects are valid for the class.
+6. Confirm the class/section is the same.
+7. Confirm the time ranges overlap.
+8. Attempt to create the second timetable entry through the real development API/application.
+9. Confirm the request is rejected.
+10. Confirm the rejection reason identifies the class/section conflict rather than teacher conflict.
+11. Confirm no invalid timetable entry was persisted.
+12. Confirm an appropriate audit record exists if the existing design audits rejected conflicts.
+13. Confirm the existing valid timetable entry remains unchanged.
+
+If the existing API returns a structured conflict code/message, report it.
+
+==================================================
+SECURITY REGRESSION
+
+Do not weaken any existing security while completing these checks.
+
+Continue enforcing:
+
+- Clerk authentication
+- RBAC
+- tenant isolation
+- teacher scope
+- parent linked-child scope
+- student self-access
+- platform-owner scope
+- school-admin scope
+
+Do not expose:
+
+- credentials
+- authentication tokens
+- biometric information
+- internal secrets
+
+==================================================
+REGRESSION
+
+After the verification:
+
+1. Run the full API test suite.
+2. Run Phase 5 tests.
+3. Run Phase 6 tests.
+4. Run shared typecheck.
+5. Run API typecheck.
+6. Run frontend typecheck.
+7. Run API production build.
+8. Run frontend production build.
+9. Confirm both development workflows are running.
+10. Confirm "/api/healthz" returns 200.
+11. Confirm the authenticated browser walkthrough has no blocking console/application errors.
+
+Do not modify production.
+
+==================================================
+FINAL REPORT
+
+Return a concise final Phase 6 verification report.
+
+Use this table:
+
+Requirement| Result| Evidence
+Admin browser walkthrough| VERIFIED / NOT VERIFIED| 
+Teacher browser walkthrough| VERIFIED / NOT VERIFIED| 
+Student browser walkthrough| VERIFIED / NOT VERIFIED| 
+Parent browser walkthrough| VERIFIED / NOT VERIFIED| 
+Report-card browser view| VERIFIED / NOT VERIFIED| 
+Timetable browser view| VERIFIED / NOT VERIFIED| 
+Isolated class conflict| VERIFIED / NOT VERIFIED| 
+Phase 5 regression| VERIFIED / NOT VERIFIED| 
+Phase 6 regression| VERIFIED / NOT VERIFIED| 
+
+Also report:
+
+- API test count
+- typecheck results
+- build results
+- health check
+- browser console results
+- database integrity
+- production database status
+
+For the class conflict, explicitly state:
+
+- Teacher 1
+- Teacher 2
+- Class/section
+- Subject 1
+- Subject 2
+- Time range
+- HTTP status
+- conflict reason
+- whether the invalid record was persisted
+
+==================================================
+FINAL DECISION
+
+If both remaining blockers pass:
+
+PHASE 6 COMPLETE — READY FOR NEXT PHASE
+
+If either blocker fails:
+
+PHASE 6 NOT COMPLETE — REMAINING BLOCKERS
+
+Do NOT start Phase 7 in this task.
