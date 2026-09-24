@@ -1,0 +1,630 @@
+Yemait EduCore — Phase 5 Final Live End-to-End Verification
+
+Phase 5 implementation and the first pre-rollout security review are complete.
+
+Current result:
+
+- 57 API tests passed
+- 0 failed
+- Typechecks passed
+- Production builds passed
+- API health check passed
+- Authentication/security tests passed
+- Cross-school protections passed
+- Authenticated browser pages rendered
+- Development and production databases are confirmed separate
+
+However, several Phase 5 workflows still lack live persisted end-to-end evidence.
+
+This task is ONLY to close those remaining verification gaps.
+
+CRITICAL
+
+DO NOT:
+
+- start Phase 6
+- redesign Phase 5
+- reset the database
+- modify production data
+- modify the production schema
+- delete existing development data unnecessarily
+- weaken any authorization rule
+- bypass Clerk authentication
+- bypass API authorization
+- claim mocked/in-memory tests as live verification
+- claim hardware integration is complete without hardware
+
+Use ONLY the development environment/database.
+
+Production database:
+"neondb"
+
+Development database:
+"heliumdb"
+
+Do not modify "neondb".
+
+---
+
+1. CREATE A CONTROLLED DEVELOPMENT TEST SCENARIO
+
+Create a clearly identifiable synthetic test scenario in the development database.
+
+Use two schools:
+
+- School A
+- School B
+
+Use synthetic development users for:
+
+- Platform Owner
+- School Admin A
+- School Admin B
+- Teacher A
+- Staff A
+- Accountant A
+- Parent A
+- Student A
+- Partner
+
+Use synthetic development students and staff.
+
+Do not overwrite real development records unless necessary.
+
+If test data already exists, reuse it.
+
+Document the test IDs used.
+
+---
+
+2. LIVE STUDENT ATTENDANCE
+
+Using the actual authenticated application/API flow, create live attendance records for a test student.
+
+Verify:
+
+School entry
+
+Create:
+
+"SCHOOL_ENTRY"
+
+Verify persisted database/API result.
+
+Record:
+
+- student
+- school
+- timestamp
+- event type
+- identification method
+- device/reference where applicable
+
+School exit
+
+Create:
+
+"SCHOOL_EXIT"
+
+Verify the persisted record.
+
+Classroom attendance
+
+Create a valid classroom attendance event for the student's assigned class.
+
+Verify:
+
+- correct student
+- correct school
+- correct class
+- correct section
+- correct timestamp
+
+Do not use an arbitrary client-supplied class to bypass server validation.
+
+---
+
+3. LIVE CLASSROOM MISMATCH
+
+Create a development scenario where:
+
+Student has valid school entry.
+
+But no classroom attendance is recorded during the configured attendance window.
+
+Use the actual reconciliation mechanism.
+
+Verify that the system creates the expected missing-class/discrepancy state.
+
+Do not fabricate the result.
+
+Record the actual persisted result.
+
+---
+
+4. LIVE INVALID CLASSROOM EVENT
+
+Use a student assigned to Class A.
+
+Attempt to submit classroom attendance from a device/location assigned to Class B.
+
+Verify the system rejects or flags the event according to the implemented policy.
+
+Confirm that no unauthorized attendance record is silently created.
+
+---
+
+5. LIVE DEVICE EVENT
+
+Use the existing development device credentials.
+
+Perform a real API-level device ingestion flow.
+
+Test:
+
+Valid
+
+School A device
++
+School A student
++
+valid credential
+
+Expected:
+
+attendance event persisted.
+
+Wrong school
+
+School A device
++
+School B student
+
+Expected:
+
+rejected.
+
+Suspended device
+
+Expected:
+
+rejected.
+
+Unassigned device
+
+Expected:
+
+rejected.
+
+Capture the actual API response and persisted outcome.
+
+---
+
+6. LIVE DEVICE REASSIGNMENT
+
+Using Platform Owner:
+
+1. Assign development device to School A.
+2. Verify School A event works.
+3. Reassign device to School B.
+4. Verify School A event is now rejected.
+5. Verify School B event works.
+6. Verify reassignment audit event exists.
+
+Do not perform this against a production device.
+
+---
+
+7. LIVE NFC CARD FLOW
+
+Use an existing or synthetic development NFC card.
+
+Verify through the real application/API:
+
+1. Active card accepted.
+2. Inactive card rejected.
+3. Blocked card rejected.
+4. Replaced card rejected.
+5. Unknown UID rejected.
+6. Wrong-school card rejected.
+7. Repeated tap within duplicate-suppression period is handled correctly.
+
+Where physical NFC hardware is unavailable, use the actual device-ingestion/API boundary with synthetic NFC UID input.
+
+Clearly distinguish this from physical hardware verification.
+
+---
+
+8. LIVE MANUAL ATTENDANCE
+
+Using an authenticated School Admin:
+
+1. Open manual attendance UI.
+2. Select development student.
+3. Submit a valid attendance event.
+4. Verify API response.
+5. Verify persisted attendance record.
+6. Verify audit record.
+
+Repeat where appropriate for staff attendance.
+
+Do not use database writes as a substitute for the actual application/API workflow.
+
+---
+
+9. LIVE ATTENDANCE CORRECTION
+
+Using School Admin:
+
+1. Identify a development attendance record.
+2. Correct it through the real correction workflow.
+3. Supply a reason.
+4. Verify the API response.
+5. Verify the corrected result.
+6. Verify original/history information remains available.
+7. Verify actor is recorded.
+8. Verify timestamp is recorded.
+9. Verify audit event exists.
+
+Then verify Staff cannot perform the same unauthorized correction.
+
+---
+
+10. LIVE DISCREPANCY RESOLUTION
+
+Create a real development discrepancy.
+
+Open it using the School Admin UI/API.
+
+Resolve it through the actual workflow.
+
+Verify:
+
+- original discrepancy remains historically traceable
+- resolution status changes
+- resolving actor is recorded
+- timestamp is recorded
+- audit event exists
+
+Test that another school's School Admin cannot resolve it.
+
+---
+
+11. LIVE STAFF ATTENDANCE
+
+Use a development teacher/staff account.
+
+Create actual:
+
+- entry
+- exit
+- late
+- early departure
+
+where supported by the current implementation.
+
+Verify persisted records.
+
+Verify School B staff cannot access School A staff attendance.
+
+---
+
+12. LIVE PARENT ATTENDANCE VISIBILITY
+
+Use a development Parent account linked to Student A.
+
+Verify:
+
+Parent can see the linked child's permitted attendance information.
+
+Then attempt to access:
+
+Student B
+
+which is not linked to that parent.
+
+Expected:
+
+Access denied or appropriately scoped response.
+
+Do not expose another student's attendance.
+
+---
+
+13. LIVE STUDENT SELF-ACCESS
+
+Use a development Student account.
+
+Verify:
+
+Student can access only their own permitted attendance information.
+
+Attempt access to another student.
+
+Expected:
+
+Denied.
+
+If the current product intentionally does not expose student attendance yet, document that as a product limitation rather than implementing unrelated functionality.
+
+---
+
+14. LIVE REPORTS
+
+Populate enough development attendance data to make reports meaningful.
+
+Verify actual populated reports for:
+
+- Daily attendance
+- Student attendance
+- Class attendance
+- Late arrivals
+- Early departures
+- Classroom discrepancies
+- Staff attendance
+
+Test filters:
+
+- date
+- date range
+- school
+- class
+- section
+- student
+- status
+- identification method
+
+Verify School A cannot retrieve School B report data.
+
+Do not use empty-state rendering as evidence that the report works.
+
+---
+
+15. LIVE PARENT NOTIFICATION QUEUE
+
+Create actual attendance events that should generate notification events.
+
+Verify persisted notification queue/event records for:
+
+- school entry
+- school exit
+- classroom discrepancy
+
+Verify the event contains appropriate non-sensitive information.
+
+Do NOT send real SMS, WhatsApp, or paid notifications.
+
+This is only verification of the internal notification-event/queue layer.
+
+---
+
+16. LIVE BIOMETRIC BOUNDARY
+
+No physical biometric hardware is available.
+
+Therefore:
+
+DO NOT claim physical biometric integration is verified.
+
+Use the software integration boundary only.
+
+Submit valid and invalid provider-resolved biometric references through the actual API.
+
+Verify:
+
+- valid reference accepted where appropriate
+- invalid reference rejected
+- correct school/device relationship enforced
+- raw fingerprint data is not stored
+- raw fingerprint data is not returned
+- sensitive biometric information does not appear in ordinary logs
+
+If persisted records contain only provider references, document that.
+
+---
+
+17. LIVE IDOR PROBES
+
+Using authenticated development sessions, directly probe the actual API with IDs belonging to the other school.
+
+Test at minimum:
+
+- school
+- student
+- class
+- section
+- attendance event
+- attendance discrepancy
+- attendance device
+- NFC card
+- attendance policy
+- biometric reference
+
+Test using:
+
+- School Admin A against School B
+- Staff A against School B
+- Teacher A against School B
+- Parent A against an unlinked student
+- Student A against another student
+
+Expected:
+
+Access denied.
+
+Use the application's actual security response.
+
+Do not require every denial to use the same HTTP status if the existing security design intentionally uses 404 to avoid resource disclosure.
+
+---
+
+18. ACCOUNTANT SECURITY
+
+Verify Accountant:
+
+- cannot access unauthorized attendance administration
+- cannot perform manual attendance unless explicitly permitted
+- cannot correct attendance unless explicitly permitted
+- cannot access device management
+- cannot access another school
+
+Use both UI and direct API tests.
+
+---
+
+19. PARTNER SECURITY
+
+Verify Partner:
+
+- cannot access school attendance dashboard
+- cannot access student attendance records
+- cannot access devices
+- cannot create attendance
+- cannot correct attendance
+- cannot access another partner's information
+
+Confirm that Phase 4 partner functionality remains intact.
+
+---
+
+20. AUDIT VERIFICATION
+
+For every live administrative operation above, verify the actual persisted audit event.
+
+At minimum:
+
+- manual attendance
+- attendance correction
+- discrepancy resolution
+- device assignment
+- device reassignment
+- device suspension
+- NFC card state change
+
+Verify audit actor is the authenticated user.
+
+Verify sensitive credentials are not logged.
+
+---
+
+21. DATA INTEGRITY CHECK
+
+After all testing, verify:
+
+- no production records changed
+- no production schema changed
+- existing development schools preserved
+- existing development students preserved
+- existing subscriptions preserved
+- existing NFC records preserved
+- existing partner records preserved
+- existing commission records preserved
+- audit history preserved
+
+Clean up only newly created synthetic test records if doing so does not destroy audit evidence required for verification.
+
+If cleanup would invalidate verification evidence, leave the synthetic records clearly marked as test data.
+
+---
+
+22. FULL REGRESSION
+
+Run the complete automated suite again:
+
+- Phase 2
+- Phase 3
+- Phase 4
+- Phase 5
+- new live/integration tests
+
+Run:
+
+- API typecheck
+- shared typecheck
+- frontend typecheck
+- API production build
+- frontend production build
+- API health check
+
+Expected:
+
+No regressions.
+
+---
+
+23. FINAL READINESS DECISION
+
+At the end, classify every Phase 5 requirement as exactly one of:
+
+VERIFIED
+
+Direct live evidence exists.
+
+AUTOMATED ONLY
+
+Covered by automated/in-memory tests but not live end-to-end.
+
+NOT VERIFIED
+
+No sufficient evidence.
+
+NOT APPLICABLE
+
+Only where genuinely not applicable.
+
+Do not mark a requirement VERIFIED merely because a route test or mocked test passed.
+
+---
+
+24. HARDWARE LIMITATION
+
+The final report must explicitly state:
+
+Physical NFC reader integration: NOT VERIFIED because physical hardware was unavailable.
+
+Physical fingerprint reader integration: NOT VERIFIED because physical hardware/vendor SDK was unavailable.
+
+The software integration boundary may be verified separately.
+
+---
+
+25. FINAL REPORT
+
+Return a concise but complete report containing:
+
+1. Test environment
+2. Development database used
+3. Production database untouched confirmation
+4. Test accounts
+5. Live workflows verified
+6. Live attendance events created
+7. Live device events
+8. Live NFC boundary tests
+9. Manual attendance evidence
+10. Correction evidence
+11. Discrepancy resolution evidence
+12. Staff attendance evidence
+13. Parent visibility evidence
+14. Student visibility evidence
+15. Reports verified
+16. Notification queue evidence
+17. Biometric boundary evidence
+18. IDOR/security probes
+19. Audit evidence
+20. Regression results
+21. Total automated tests
+22. Remaining unverified items
+23. Physical hardware limitations
+24. Final Phase 5 readiness status
+
+If all software workflows are successfully verified, state:
+
+Phase 5 software is ready for controlled rollout, subject to physical hardware/vendor integration testing.
+
+If important software workflows remain unverified, state:
+
+Phase 5 is not ready for rollout.
+
+STOP.
+
+Do not begin Phase 6 automatically.

@@ -17,6 +17,12 @@ function bearer(req: Request) {
   return { identifier: token.slice(0, split), secret: token.slice(split + 1) };
 }
 
+function attendanceInstant(value: unknown) {
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) throw new AuthError(400, "Invalid attendance date");
+  return date;
+}
+
 async function deviceAuth(req: Request) {
   const { identifier, secret } = bearer(req);
   const result = await pool.query(
@@ -221,9 +227,9 @@ const processDeviceAttendance = run(async (req, res) => {
    if (!result.rows[0]) { await client.query("ROLLBACK"); res.status(409).json({ error: "Duplicate event" }); return; }
    await reconcileAttendance(client, result.rows[0]);
    await client.query(`INSERT INTO attendance_notification_events(school_id,attendance_event_id,notification_type,channel,status,payload)
-      SELECT $1,$2,x,'IN_APP','PENDING',jsonb_build_object('studentId',$3)
+      SELECT $1::int,$2::int,x,'IN_APP','PENDING',jsonb_build_object('studentId',$3::int)
        FROM unnest(ARRAY['SCHOOL_ENTRY','SCHOOL_EXIT']::text[]) x
-       WHERE ($4='SCHOOL_ENTRY' AND x='SCHOOL_ENTRY') OR ($4='SCHOOL_EXIT' AND x='SCHOOL_EXIT')`, [device.schoolId, result.rows[0].id, studentId, eventType]);
+       WHERE ($4::text='SCHOOL_ENTRY' AND x='SCHOOL_ENTRY') OR ($4::text='SCHOOL_EXIT' AND x='SCHOOL_EXIT')`, [device.schoolId, result.rows[0].id, studentId, eventType]);
    await client.query("COMMIT");
   } catch (error) { await client.query("ROLLBACK"); throw error; }
   finally { client.release(); }
@@ -247,8 +253,14 @@ router.get("/school/attendance/events", requireAuthentication(), run(async (req,
   if (req.query.studentId != null) { conditions.push(`student_id=$${values.length + 1}`); values.push(Number(req.query.studentId)); }
   if (req.query.employeeId != null) { conditions.push(`employee_id=$${values.length + 1}`); values.push(Number(req.query.employeeId)); }
   if (req.query.classId != null) { conditions.push(`school_class_id=$${values.length + 1}`); values.push(Number(req.query.classId)); }
-  if (req.query.from) { conditions.push(`occurred_at >= $${values.length + 1}`); values.push(new Date(String(req.query.from))); }
-  if (req.query.to) { conditions.push(`occurred_at <= $${values.length + 1}`); values.push(new Date(String(req.query.to))); }
+  if (req.query.from !== undefined) { conditions.push(`occurred_at >= $${values.length + 1}`); values.push(attendanceInstant(req.query.from)); }
+  if (req.query.to !== undefined) {
+    const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.to));
+    const end = attendanceInstant(req.query.to);
+    if (dateOnly) end.setUTCDate(end.getUTCDate() + 1);
+    conditions.push(`occurred_at ${dateOnly ? "<" : "<="} $${values.length + 1}`);
+    values.push(end);
+  }
   for (const key of ["eventType", "status", "identificationMethod"] as const) {
     if (req.query[key]) { const column = key === "status" ? "attendance_status" : key === "eventType" ? "event_type" : "identification_method"; conditions.push(`${column}=$${values.length + 1}`); values.push(String(req.query[key]).toUpperCase()); }
   }
@@ -311,8 +323,8 @@ router.get("/school/attendance/discrepancies", requireAuthentication(), run(asyn
   const schoolId=Number(req.query.schoolId); assertSchoolAccess(req,schoolId,["SCHOOL_ADMIN","STAFF","TEACHER"]);
    if (getUserContext(req).roles.some(x => x.role === "TEACHER")) throw new AuthError(403,"Teachers may not view school-wide discrepancies");
   await reconcileMissingClass(schoolId, String(req.query.from ?? new Date().toISOString().slice(0, 10)));
-  const vals:any[]=[schoolId]; const c=["d.school_id=$1"]; if(req.query.status){c.push(`d.status=$${vals.length+1}`);vals.push(String(req.query.status));} if(req.query.from){c.push(`d.created_at >= $${vals.length+1}`);vals.push(String(req.query.from));} if(req.query.to){c.push(`d.created_at <= $${vals.length+1}`);vals.push(String(req.query.to));}
-  const r=await pool.query(`SELECT d.id,d.school_id AS "schoolId",d.student_id AS "studentId",d.discrepancy_type AS kind,d.status,d.created_at AS "detectedAt",d.resolved_at AS "resolvedAt",d.details->>'note' AS note FROM attendance_discrepancies d WHERE ${c.join(" AND ")} ORDER BY d.created_at DESC`,vals); res.json(r.rows);
+  const vals:any[]=[schoolId]; const c=["d.school_id=$1"]; if(req.query.status){c.push(`d.status=$${vals.length+1}`);vals.push(String(req.query.status));} if(req.query.from){c.push(`COALESCE(e.event_date,d.created_at::date) >= $${vals.length+1}::date`);vals.push(String(req.query.from));} if(req.query.to){c.push(`COALESCE(e.event_date,d.created_at::date) <= $${vals.length+1}::date`);vals.push(String(req.query.to));}
+  const r=await pool.query(`SELECT d.id,d.school_id AS "schoolId",d.student_id AS "studentId",d.discrepancy_type AS kind,d.status,d.created_at AS "detectedAt",d.resolved_at AS "resolvedAt",d.details->>'note' AS note FROM attendance_discrepancies d LEFT JOIN attendance_events e ON e.id=d.attendance_event_id AND e.school_id=d.school_id WHERE ${c.join(" AND ")} ORDER BY d.created_at DESC`,vals); res.json(r.rows);
 }));
 
 router.post("/school/attendance/manual", requireAuthentication(), run(async (req, res) => {

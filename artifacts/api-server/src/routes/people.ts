@@ -244,6 +244,9 @@ router.get("/student/profile", asyncRoute(async (req, res) => {
   const row = result.rows[0];
   res.json(GetStudentSelfProfileResponse.parse({
     ...row,
+    admissionStatus: row.admissionStatus?.toLowerCase(),
+    gender: row.gender?.toLowerCase(),
+    status: row.status?.toUpperCase(),
     joinedAt: row.joinedAt instanceof Date ? row.joinedAt.toISOString() : String(row.joinedAt),
   }));
 }));

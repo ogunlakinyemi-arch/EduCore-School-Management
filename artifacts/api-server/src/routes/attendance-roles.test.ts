@@ -141,6 +141,17 @@ async function call(path: string, role: string, method = "GET", body?: Record<st
 }
 
 describe("Phase 5 attendance route role matrix", () => {
+  it("rejects invalid event date filters instead of passing them to SQL", async () => {
+    expect((await call("/school/attendance/events?schoolId=1&from=not-a-date", "SCHOOL_ADMIN")).status).toBe(400);
+    expect((await call("/school/attendance/events?schoolId=1&to=", "SCHOOL_ADMIN")).status).toBe(400);
+  });
+  it("includes the full final day for date-only event ranges", async () => {
+    poolMock.query.mockClear();
+    expect((await call("/school/attendance/events?schoolId=1&from=2025-02-03&to=2025-02-03", "SCHOOL_ADMIN")).status).toBe(200);
+    const [sql, values] = poolMock.query.mock.calls.find(([text]) => text.includes("FROM attendance_events WHERE"))!;
+    expect(sql).toContain("occurred_at < $3");
+    expect(values?.[2]).toEqual(new Date("2025-02-04T00:00:00.000Z"));
+  });
   it("limits events, today, and discrepancies to authorized school roles", async () => {
     for (const role of ["SCHOOL_ADMIN", "STAFF"]) {
       expect((await call("/school/attendance/events?schoolId=1", role)).status).toBe(200);

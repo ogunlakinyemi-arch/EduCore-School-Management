@@ -64,6 +64,19 @@ describe("Phase 3 endpoint authentication", () => {
 });
 
 describe("Phase 3 tenant and role boundaries", () => {
+  it("recognizes school-scoped Parent and Student roles without granting platform access", () => {
+    expect(() => assertRoles(requestAs("PARENT", 10), ["PARENT"])).not.toThrow();
+    expect(() => assertRoles(requestAs("STUDENT", 10), ["STUDENT"])).not.toThrow();
+    expect(() => assertRoles(requestAs("PARENT", 10), ["PLATFORM_OWNER"])).toThrowError(
+      expect.objectContaining({ statusCode: 403 }),
+    );
+    expect(() => assertRoles(requestAs("PLATFORM_OWNER", 10), ["PLATFORM_OWNER"])).toThrowError(
+      expect.objectContaining({ statusCode: 403 }),
+    );
+    expect(() => assertSchoolAccess(requestAs("PARENT", 10), 20, ["PARENT"])).toThrowError(
+      expect.objectContaining({ statusCode: 404 }),
+    );
+  });
   it.each([
     ["employee", ["SCHOOL_ADMIN", "TEACHER", "STAFF"] as Role[]],
     ["parent", ["SCHOOL_ADMIN"] as Role[]],

@@ -105,7 +105,7 @@ const poolMock = vi.hoisted(() => {
         return result([{ id: record.id }]);
       }
       if (text.includes("INSERT INTO attendance_notification_events")) {
-        if (text.includes("SELECT $1,$2,x")) {
+        if (text.includes("FROM unnest(ARRAY['SCHOOL_ENTRY'")) {
           const [schoolId, eventId, studentId, eventType] = values;
           if (eventType === "SCHOOL_ENTRY" || eventType === "SCHOOL_EXIT") {
             state.notifications.push({ schoolId, attendanceEventId: eventId, notificationType: eventType, channel: "IN_APP", status: "PENDING", studentId });

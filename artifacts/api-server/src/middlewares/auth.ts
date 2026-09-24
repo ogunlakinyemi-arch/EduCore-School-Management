@@ -140,7 +140,9 @@ export function hasRole(context: UserContext, role: Role, schoolId?: number) {
   return context.roles.some(
     (assignment) =>
       assignment.role === role &&
-      (assignment.schoolId === null || assignment.schoolId === schoolId),
+      (role === "PLATFORM_OWNER"
+        ? assignment.schoolId === null
+        : schoolId === undefined || assignment.schoolId === null || assignment.schoolId === schoolId),
   );
 }
 
