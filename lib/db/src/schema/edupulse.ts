@@ -8,6 +8,7 @@ import {
   jsonb,
   numeric,
   pgTable,
+  primaryKey,
   serial,
   text,
   time,
@@ -109,6 +110,19 @@ export const platformDevices = pgTable(
       foreignColumns: [schoolClasses.id, schoolClasses.schoolId],
       name: "platform_devices_class_school_fk",
     }),
+  ],
+);
+
+export const deviceSchoolBindings = pgTable(
+  "device_school_bindings",
+  {
+    deviceId: integer("device_id").notNull().references(() => platformDevices.id),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.deviceId, table.schoolId], name: "device_school_bindings_pkey" }),
+    index("device_school_bindings_school_idx").on(table.schoolId),
   ],
 );
 
@@ -542,7 +556,7 @@ export const nfcCards = pgTable(
     }),
     foreignKey({
       columns: [table.lastDeviceId, table.schoolId],
-      foreignColumns: [platformDevices.id, platformDevices.schoolId],
+      foreignColumns: [deviceSchoolBindings.deviceId, deviceSchoolBindings.schoolId],
       name: "nfc_cards_last_device_school_fk",
     }),
     index("nfc_cards_last_device_idx").on(table.lastDeviceId),
@@ -856,6 +870,7 @@ export const deviceAssignmentHistory = pgTable(
     schoolId: integer("school_id").notNull().references(() => schools.id),
     deviceId: integer("device_id").notNull().references(() => platformDevices.id),
     previousSchoolId: integer("previous_school_id").references(() => schools.id),
+    newSchoolId: integer("new_school_id").references(() => schools.id),
     previousLocation: text("previous_location"),
     location: text("location"),
     action: text("action").notNull(),
@@ -923,7 +938,7 @@ export const biometricEnrollments = pgTable(
     }),
     foreignKey({
       columns: [table.deviceId, table.schoolId],
-      foreignColumns: [platformDevices.id, platformDevices.schoolId],
+      foreignColumns: [deviceSchoolBindings.deviceId, deviceSchoolBindings.schoolId],
       name: "biometric_enrollments_device_school_fk",
     }),
     check("biometric_enrollments_subject_check", sql`(("student_id" IS NOT NULL)::int + ("employee_id" IS NOT NULL)::int = 1`),
@@ -983,7 +998,7 @@ export const attendanceEvents = pgTable(
     uniqueIndex("attendance_events_id_school_unique").on(table.id, table.schoolId),
     foreignKey({ columns: [table.studentId, table.schoolId], foreignColumns: [students.id, students.schoolId], name: "attendance_events_student_school_fk" }),
     foreignKey({ columns: [table.employeeId, table.schoolId], foreignColumns: [employees.id, employees.schoolId], name: "attendance_events_employee_school_fk" }),
-    foreignKey({ columns: [table.deviceId, table.schoolId], foreignColumns: [platformDevices.id, platformDevices.schoolId], name: "attendance_events_device_school_fk" }),
+    foreignKey({ columns: [table.deviceId, table.schoolId], foreignColumns: [deviceSchoolBindings.deviceId, deviceSchoolBindings.schoolId], name: "attendance_events_device_school_fk" }),
     foreignKey({ columns: [table.academicSessionId, table.schoolId], foreignColumns: [academicSessions.id, academicSessions.schoolId], name: "attendance_events_session_school_fk" }),
     foreignKey({ columns: [table.academicTermId, table.schoolId], foreignColumns: [academicTerms.id, academicTerms.schoolId], name: "attendance_events_term_school_fk" }),
     foreignKey({ columns: [table.schoolClassId, table.schoolId], foreignColumns: [schoolClasses.id, schoolClasses.schoolId], name: "attendance_events_class_school_fk" }),

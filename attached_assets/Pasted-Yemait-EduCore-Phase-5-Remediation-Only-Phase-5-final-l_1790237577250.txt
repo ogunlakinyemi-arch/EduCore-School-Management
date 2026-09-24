@@ -1,0 +1,490 @@
+Yemait EduCore — Phase 5 Remediation Only
+
+Phase 5 final live verification is complete, and the result is NOT READY FOR ROLLOUT.
+
+Do NOT start Phase 6.
+Do NOT rebuild the system.
+Do NOT reset the development database.
+Do NOT modify production data or production schema.
+Do NOT weaken tenant isolation, authentication, RBAC, audit logging, or device security.
+
+Work only on the Phase 5 blockers identified by the final live verification.
+
+Environment
+
+Continue using the development environment and "heliumdb".
+
+Production "neondb" must remain untouched.
+
+Existing synthetic Phase 5 verification records marked "P5LIVE20260924" must remain intact because they are evidence and audit history.
+
+Do not delete or recreate the existing Phase 5 test scenario.
+
+---
+
+BLOCKER 1 — Historical Device Reassignment
+
+Current problem
+
+Device 28 has already recorded School A attendance events.
+
+Attempting to reassign Device 28 to another school currently fails with HTTP 500 because:
+
+"attendance_events_device_school_fk" still references "(28,1)".
+
+The transaction currently rolls back.
+
+This must be fixed without deleting, modifying, or losing historical attendance events.
+
+Required behavior
+
+A device that has historical attendance events MUST be safely reassignable through the authorized Platform Owner/device-management workflow.
+
+Historical events must retain their original school/tenant context.
+
+Example:
+
+- Device 28 records historical events for School A.
+- Platform Owner reassigns Device 28 to School B.
+- Historical School A events remain School A.
+- New Device 28 events are accepted only for School B after reassignment.
+- The old School A credential must no longer authorize new events.
+- A new secure device credential must be issued/rotated for School B.
+- Previous credentials must be invalidated according to the existing security model.
+- No historical attendance event may be reassigned to School B.
+- No cross-school data leakage may occur.
+
+Important
+
+Do NOT solve this by deleting historical events.
+
+Do NOT change historical events' school IDs.
+
+Do NOT remove the foreign-key constraint merely to make the reassignment pass.
+
+Choose the correct data model/migration so historical attendance preserves its original tenant ownership independently of the device's current assignment.
+
+Possible acceptable architecture:
+
+- Store the historical school/tenant directly on attendance events.
+- Keep device's current school assignment separately.
+- Historical events reference their original school context.
+- Device assignment history may also be retained.
+
+Use the architecture that best fits the existing schema rather than blindly adding duplicate fields.
+
+Required audit
+
+A successful reassignment must create an authenticated audit entry containing at minimum:
+
+- device
+- previous school
+- new school
+- actor
+- timestamp
+- reassignment action
+- credential rotation/invalidation information without exposing secrets
+
+Live verification required
+
+Using Device 28:
+
+1. Confirm existing School A events remain unchanged.
+2. Reassign Device 28 from School A to School B.
+3. Confirm HTTP success.
+4. Confirm a new credential is issued/activated securely.
+5. Confirm old credential cannot submit new events.
+6. Submit a valid School B event.
+7. Confirm the new event belongs to School B.
+8. Confirm historical Device 28 events remain School A.
+9. Attempt School A event submission using the new School B credential and confirm denial.
+10. Verify reassignment audit.
+11. Verify no credential/token secret appears in API responses, ordinary logs, or audit metadata.
+12. Verify cross-school isolation.
+
+---
+
+BLOCKER 2 — Discrepancy Resolution
+
+Current problem
+
+Discrepancy 1 exists as:
+
+"SCHOOL_PRESENT_CLASS_MISSING"
+
+It can be viewed but remains OPEN.
+
+There is currently no resolution route or UI workflow.
+
+Required implementation
+
+Implement an authorized discrepancy-resolution workflow.
+
+The workflow must support at minimum:
+
+- OPEN
+- RESOLVED
+- optionally DISMISSED/WAIVED if appropriate to the existing design
+
+Do not delete discrepancies after resolution.
+
+A resolved discrepancy must retain:
+
+- discrepancy ID
+- original type
+- student
+- school
+- related attendance records
+- original creation timestamp
+- resolver
+- resolution timestamp
+- resolution reason/comment
+- previous status
+- new status
+- audit record
+
+Authorization
+
+Only appropriately authorized school/platform roles may resolve discrepancies.
+
+At minimum:
+
+- Platform Owner: allowed within authorized scope
+- School Admin: allowed for their own school
+- Teacher: only if the existing policy explicitly permits it; otherwise deny
+- Staff: deny unless explicitly authorized
+- Accountant: deny
+- Parent: deny
+- Student: deny
+- Partner: deny
+
+Never allow one school's user to resolve another school's discrepancy.
+
+UI
+
+Add the resolution workflow to the existing discrepancy area.
+
+Do not create a disconnected duplicate attendance system.
+
+The authorized user should be able to:
+
+1. Open discrepancy.
+2. Review the related school/class/student attendance information.
+3. Choose the permitted resolution.
+4. Enter a reason/comment where required.
+5. Submit.
+6. See the updated status immediately.
+7. See resolver and resolution timestamp.
+8. See audit history.
+
+Live verification required
+
+Using Discrepancy 1:
+
+1. Resolve it through the real authenticated application/API.
+2. Confirm the database status changes.
+3. Confirm resolver and timestamp persist.
+4. Confirm resolution reason persists.
+5. Confirm audit entry exists.
+6. Attempt resolution from another school and confirm denial.
+7. Attempt resolution as unauthorized roles and confirm denial.
+8. Confirm the original discrepancy record remains intact.
+
+---
+
+BLOCKER 3 — Parent and Student Attendance Visibility
+
+The final verification found:
+
+Parent
+
+Parent A can access linked student 160.
+
+Parent A cannot access unlinked student 162, which is correct.
+
+However, attendance is currently shown as:
+
+"Not available in this phase"
+
+The direct attendance API also denies the Parent.
+
+Student
+
+Student A can access their own student profile.
+
+Attendance is not available.
+
+The Student dashboard also has a separate 404/loading issue.
+
+Required behavior
+
+Implement read-only attendance visibility for the appropriate users.
+
+Parent
+
+Parent may view attendance only for students currently linked to that parent.
+
+Parent must never be able to view attendance for:
+
+- unrelated students
+- another school's students
+- arbitrary student IDs
+
+Parent attendance should show appropriate information such as:
+
+- date
+- school entry
+- school exit
+- classroom attendance
+- status
+- late/early information
+- relevant discrepancy status where appropriate
+
+Do not expose internal security information, device credentials, biometric references, audit internals, or sensitive administrative fields.
+
+Student
+
+A Student may view only their own attendance.
+
+Student must receive authorization denial for another student's attendance.
+
+Do not allow arbitrary student ID manipulation to bypass this restriction.
+
+Dashboard
+
+Replace the current Student attendance loading/404 behavior with the real attendance view.
+
+Investigate and fix the separate Student dashboard 404 rather than hiding it.
+
+Parent attendance should also be available from the existing Parent portal without exposing school-admin functionality.
+
+Live verification required
+
+Parent:
+
+1. Linked student attendance → 200 and correct data.
+2. Unlinked student attendance → denied.
+3. Another school's student → denied.
+4. Attempt manipulated student ID → denied.
+5. Confirm only permitted attendance fields are returned.
+
+Student:
+
+1. Own attendance → 200.
+2. Other student attendance → denied.
+3. Other school student → denied.
+4. Manipulated IDs → denied.
+5. Student dashboard loads without the observed attendance-related 404.
+
+---
+
+BLOCKER 4 — Section Report Filter
+
+Current reports support:
+
+- date/date range
+- school
+- class
+- student
+- status
+- identification method
+
+But the "section" filter currently does not actually change the result.
+
+Required behavior
+
+Implement a genuine section-level attendance report filter.
+
+The filter must restrict returned attendance records to the selected section.
+
+It must respect:
+
+- school tenancy
+- class
+- section
+- student assignment/history
+- attendance event relationships
+- appropriate date range
+
+Do not simply filter the frontend display.
+
+The backend query/API must enforce the section filter.
+
+If attendance events do not currently store a section snapshot, use the existing valid class/section relationship carefully so historical records are not incorrectly reassigned when students change sections.
+
+If the correct architecture requires storing historical section context on the attendance event, implement that safely through a migration and preserve existing data.
+
+Live verification required
+
+Create/use test data containing at least two sections.
+
+Verify:
+
+1. No section filter → expected records.
+2. Section A → only Section A records.
+3. Section B → only Section B records.
+4. Section A cannot leak Section B records.
+5. School A section filter cannot return School B data.
+6. Student/class/date/status filters continue working together with section.
+7. Teacher scope remains correctly restricted.
+
+---
+
+REQUIRED REGRESSION TESTS
+
+After implementing the fixes, run the complete existing automated test suite.
+
+Also add regression tests for:
+
+Device
+
+- historical device reassignment
+- historical events retain original school
+- new events use new school
+- old credential rejected
+- new credential accepted
+- wrong-school event rejected
+- reassignment audit exists
+- secrets are not exposed
+
+Discrepancies
+
+- authorized resolution
+- unauthorized resolution denied
+- cross-school resolution denied
+- resolution audit
+- historical discrepancy preserved
+
+Parent
+
+- linked-child attendance allowed
+- unlinked-child attendance denied
+- cross-school attendance denied
+
+Student
+
+- own attendance allowed
+- other-student attendance denied
+- cross-school attendance denied
+
+Reports
+
+- section filtering
+- combined section/class/student/date/status filters
+- tenant isolation
+
+---
+
+SECURITY REQUIREMENTS
+
+Do not weaken:
+
+- Clerk authentication
+- RBAC
+- tenant isolation
+- school authorization
+- device credential security
+- NFC security
+- biometric boundary
+- audit logging
+- API authorization
+- generated OpenAPI contracts
+
+Do not expose:
+
+- device credentials
+- raw biometric data
+- fingerprint templates
+- authentication tokens
+- secrets
+- internal authorization metadata
+
+Do not rely on frontend hiding as authorization.
+
+Authorization must remain enforced server-side.
+
+---
+
+REQUIRED FINAL VERIFICATION
+
+After implementation, run:
+
+1. Full API test suite.
+2. New regression tests.
+3. Shared typecheck.
+4. API typecheck.
+5. Frontend typecheck.
+6. API production build.
+7. Frontend production build.
+8. Workflow restart.
+9. "/api/healthz".
+10. Authenticated live development E2E verification for every fixed blocker.
+
+Do not claim a requirement is VERIFIED merely because a mocked test passed.
+
+A requirement is VERIFIED only when the real development application/API produces and persists the expected result.
+
+---
+
+FINAL REPORT FORMAT
+
+Return a concise Phase 5 remediation report containing:
+
+1. Fixes implemented
+
+List exactly what changed.
+
+2. Database migrations
+
+List every migration and explain how existing attendance/audit history was preserved.
+
+3. Live E2E results
+
+For each blocker:
+
+Requirement| Result| Evidence
+Historical device reassignment| VERIFIED / NOT VERIFIED| ...
+Discrepancy resolution| VERIFIED / NOT VERIFIED| ...
+Parent attendance| VERIFIED / NOT VERIFIED| ...
+Student attendance| VERIFIED / NOT VERIFIED| ...
+Section report filter| VERIFIED / NOT VERIFIED| ...
+
+4. Security verification
+
+Report authorization and cross-school results.
+
+5. Regression
+
+Report:
+
+- API tests
+- typechecks
+- builds
+- health check
+- workflow status
+
+6. Remaining limitations
+
+Clearly separate:
+
+- software blockers
+- physical NFC hardware integration
+- physical fingerprint hardware/vendor SDK integration
+
+Do not mark hardware integration as verified without physical hardware.
+
+7. Rollout decision
+
+Use exactly one:
+
+READY FOR NEXT PHASE
+
+or
+
+NOT READY — REMAINING BLOCKERS
+
+If any of the four software blockers above remain unresolved, the decision MUST be:
+
+NOT READY — REMAINING BLOCKERS
+
+Do not start Phase 6 in this task.

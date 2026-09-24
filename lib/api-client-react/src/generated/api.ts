@@ -64,17 +64,22 @@ import type {
   DeviceAttendanceEventInput,
   DeviceCredentialRotation,
   DeviceSuspensionInput,
+  DiscrepancyResolutionInput,
   Employee,
   EmployeeInput,
   EmployeeStatusUpdate,
   EmployeeUpdate,
+  FamilyAttendanceEvent,
   ForbiddenResponse,
   GetClassAttendanceParams,
   GetEmployeeParams,
+  GetOwnAttendanceParams,
+  GetParentChildAttendanceParams,
   GetParentParams,
   GetSchoolAttendanceTodayParams,
   GetSchoolDashboardParams,
   GetStudentAttendanceParams,
+  GetStudentOwnAttendanceByIdParams,
   GetStudentParams,
   GetSubjectParams,
   HealthStatus,
@@ -980,6 +985,268 @@ export function useGetParentChild<TData = Awaited<ReturnType<typeof getParentChi
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetParentChildQueryOptions(studentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetParentChildAttendanceUrl = (studentId: number,
+    params?: GetParentChildAttendanceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/parent/children/${studentId}/attendance?${stringifiedParams}` : `/api/parent/children/${studentId}/attendance`
+}
+
+/**
+ * @summary Read attendance for a child currently linked to the authenticated parent
+ */
+export const getParentChildAttendance = async (studentId: number,
+    params?: GetParentChildAttendanceParams, options?: Parameters<typeof customFetch>[1]): Promise<FamilyAttendanceEvent[]> => {
+
+  return customFetch<FamilyAttendanceEvent[]>(getGetParentChildAttendanceUrl(studentId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetParentChildAttendanceQueryKey = (studentId: number,
+    params?: GetParentChildAttendanceParams,) => {
+    return [
+    `/api/parent/children/${studentId}/attendance`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetParentChildAttendanceQueryOptions = <TData = Awaited<ReturnType<typeof getParentChildAttendance>>, TError = ErrorType<NotFoundResponse>>(studentId: number,
+    params?: GetParentChildAttendanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getParentChildAttendance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetParentChildAttendanceQueryKey(studentId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getParentChildAttendance>>> = ({ signal }) => getParentChildAttendance(studentId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: studentId !== null && studentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getParentChildAttendance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetParentChildAttendanceQueryResult = NonNullable<Awaited<ReturnType<typeof getParentChildAttendance>>>
+export type GetParentChildAttendanceQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Read attendance for a child currently linked to the authenticated parent
+ */
+
+export function useGetParentChildAttendance<TData = Awaited<ReturnType<typeof getParentChildAttendance>>, TError = ErrorType<NotFoundResponse>>(
+ studentId: number,
+    params?: GetParentChildAttendanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getParentChildAttendance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetParentChildAttendanceQueryOptions(studentId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetOwnAttendanceUrl = (params?: GetOwnAttendanceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/student/attendance?${stringifiedParams}` : `/api/student/attendance`
+}
+
+/**
+ * @summary Read only the authenticated student's attendance
+ */
+export const getOwnAttendance = async (params?: GetOwnAttendanceParams, options?: Parameters<typeof customFetch>[1]): Promise<FamilyAttendanceEvent[]> => {
+
+  return customFetch<FamilyAttendanceEvent[]>(getGetOwnAttendanceUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOwnAttendanceQueryKey = (params?: GetOwnAttendanceParams,) => {
+    return [
+    `/api/student/attendance`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetOwnAttendanceQueryOptions = <TData = Awaited<ReturnType<typeof getOwnAttendance>>, TError = ErrorType<unknown>>(params?: GetOwnAttendanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnAttendance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOwnAttendanceQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnAttendance>>> = ({ signal }) => getOwnAttendance(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOwnAttendance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOwnAttendanceQueryResult = NonNullable<Awaited<ReturnType<typeof getOwnAttendance>>>
+export type GetOwnAttendanceQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Read only the authenticated student's attendance
+ */
+
+export function useGetOwnAttendance<TData = Awaited<ReturnType<typeof getOwnAttendance>>, TError = ErrorType<unknown>>(
+ params?: GetOwnAttendanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnAttendance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOwnAttendanceQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetStudentOwnAttendanceByIdUrl = (studentId: number,
+    params?: GetStudentOwnAttendanceByIdParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/student/attendance/${studentId}?${stringifiedParams}` : `/api/student/attendance/${studentId}`
+}
+
+/**
+ * @summary Read attendance only when the requested student ID belongs to the authenticated user
+ */
+export const getStudentOwnAttendanceById = async (studentId: number,
+    params?: GetStudentOwnAttendanceByIdParams, options?: Parameters<typeof customFetch>[1]): Promise<FamilyAttendanceEvent[]> => {
+
+  return customFetch<FamilyAttendanceEvent[]>(getGetStudentOwnAttendanceByIdUrl(studentId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStudentOwnAttendanceByIdQueryKey = (studentId: number,
+    params?: GetStudentOwnAttendanceByIdParams,) => {
+    return [
+    `/api/student/attendance/${studentId}`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetStudentOwnAttendanceByIdQueryOptions = <TData = Awaited<ReturnType<typeof getStudentOwnAttendanceById>>, TError = ErrorType<NotFoundResponse>>(studentId: number,
+    params?: GetStudentOwnAttendanceByIdParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStudentOwnAttendanceById>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStudentOwnAttendanceByIdQueryKey(studentId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStudentOwnAttendanceById>>> = ({ signal }) => getStudentOwnAttendanceById(studentId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: studentId !== null && studentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStudentOwnAttendanceById>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStudentOwnAttendanceByIdQueryResult = NonNullable<Awaited<ReturnType<typeof getStudentOwnAttendanceById>>>
+export type GetStudentOwnAttendanceByIdQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Read attendance only when the requested student ID belongs to the authenticated user
+ */
+
+export function useGetStudentOwnAttendanceById<TData = Awaited<ReturnType<typeof getStudentOwnAttendanceById>>, TError = ErrorType<NotFoundResponse>>(
+ studentId: number,
+    params?: GetStudentOwnAttendanceByIdParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStudentOwnAttendanceById>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStudentOwnAttendanceByIdQueryOptions(studentId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -2765,6 +3032,95 @@ export function useListAttendanceDiscrepancies<TData = Awaited<ReturnType<typeof
 
 
 
+
+export const getResolveAttendanceDiscrepancyUrl = (discrepancyId: number,) => {
+
+
+
+
+  return `/api/school/attendance/discrepancies/${discrepancyId}/resolve`
+}
+
+/**
+ * @summary Resolve or dismiss an open discrepancy within the authorized school
+ */
+export const resolveAttendanceDiscrepancy = async (discrepancyId: number,
+    discrepancyResolutionInput: DiscrepancyResolutionInput, options?: Parameters<typeof customFetch>[1]): Promise<AttendanceDiscrepancy> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AttendanceDiscrepancy>(getResolveAttendanceDiscrepancyUrl(discrepancyId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(discrepancyResolutionInput)
+  }
+);}
+
+
+
+
+
+export const getResolveAttendanceDiscrepancyMutationKey = () => ['resolveAttendanceDiscrepancy'] as const;
+
+export const getResolveAttendanceDiscrepancyMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveAttendanceDiscrepancy>>, TError,ResolveAttendanceDiscrepancyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resolveAttendanceDiscrepancy>>, TError,ResolveAttendanceDiscrepancyMutationVariables, TContext> => {
+
+const mutationKey = getResolveAttendanceDiscrepancyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveAttendanceDiscrepancy>>, ResolveAttendanceDiscrepancyMutationVariables> = (props) => {
+          const {discrepancyId,data} = props ?? {};
+
+          return  resolveAttendanceDiscrepancy(discrepancyId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResolveAttendanceDiscrepancyMutationResult = NonNullable<Awaited<ReturnType<typeof resolveAttendanceDiscrepancy>>>
+    export type ResolveAttendanceDiscrepancyMutationBody = BodyType<DiscrepancyResolutionInput>
+    export type ResolveAttendanceDiscrepancyMutationError = ErrorType<NotFoundResponse>
+    export type ResolveAttendanceDiscrepancyMutationVariables = {discrepancyId: number;data: BodyType<DiscrepancyResolutionInput>}
+
+    /**
+ * @summary Resolve or dismiss an open discrepancy within the authorized school
+ */
+export const useResolveAttendanceDiscrepancy = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveAttendanceDiscrepancy>>, TError,ResolveAttendanceDiscrepancyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resolveAttendanceDiscrepancy>>,
+        TError,
+        ResolveAttendanceDiscrepancyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getResolveAttendanceDiscrepancyMutationOptions(options));
+    }
 
 export const getCreateManualAttendanceUrl = () => {
 

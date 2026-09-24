@@ -1,5 +1,6 @@
 import express from "express";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 type AttendanceEvent = {
@@ -89,6 +90,12 @@ const poolMock = vi.hoisted(() => {
     query: vi.fn(async (text: string, values: unknown[] = []) => {
       if (["BEGIN", "COMMIT", "ROLLBACK"].includes(text) || text.includes("pg_advisory_xact_lock")) {
         return result([]);
+      }
+      if (text.includes("FROM platform_devices d JOIN device_credentials c")) {
+        const credential = state.credential;
+        return result(credential.status === "ACTIVE" && credential.deviceStatus === "ACTIVE" &&
+          credential.configured && Number(values[0]) === credential.deviceId &&
+          Number(values[1]) === credential.schoolId && Number(values[2]) === 1 ? [{ "?column?": 1 }] : []);
       }
       if (text.includes("SELECT EXISTS(") && text.includes("attendance_events")) {
         const [, studentId, occurredAt] = values;
@@ -221,6 +228,11 @@ beforeEach(() => {
 });
 
 describe("Phase 5 device attendance behavior", () => {
+  it("mounts credential-only device ingestion before the blanket Clerk auth router", () => {
+    const source = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
+    expect(source.indexOf("router.use(attendanceRouter);")).toBeGreaterThan(0);
+    expect(source.indexOf("router.use(attendanceRouter);")).toBeLessThan(source.indexOf("router.use(authRouter);"));
+  });
   it("rejects missing and invalid device credentials", async () => {
     const missing = await fetch(`${baseUrl}/device/attendance/events`, { method: "POST" });
     expect(missing.status).toBe(401);

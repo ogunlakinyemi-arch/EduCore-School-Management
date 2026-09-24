@@ -166,6 +166,64 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ParentChild" }
         "404": { $ref: "#/components/responses/NotFound" }
+  /parent/children/{studentId}/attendance:
+    get:
+      operationId: getParentChildAttendance
+      tags: [parent-portal, attendance]
+      summary: Read attendance for a child currently linked to the authenticated parent
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Linked child's attendance without internal device or biometric details
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/FamilyAttendanceEvent" } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /student/attendance:
+    get:
+      operationId: getOwnAttendance
+      tags: [attendance]
+      summary: Read only the authenticated student's attendance
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Own attendance without internal device or biometric details
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/FamilyAttendanceEvent" } }
+  /student/attendance/{studentId}:
+    get:
+      operationId: getStudentOwnAttendanceById
+      tags: [attendance]
+      summary: Read attendance only when the requested student ID belongs to the authenticated user
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Own attendance
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/FamilyAttendanceEvent" } }
+        "404": { $ref: "#/components/responses/NotFound" }
   /parent-student-relationships:
     get:
       operationId: listParentStudentRelationships
@@ -455,6 +513,9 @@ paths:
         - name: classId
           in: query
           schema: { type: integer, minimum: 1 }
+        - name: section
+          in: query
+          schema: { type: string, minLength: 1, maxLength: 100 }
         - name: from
           in: query
           schema: { type: string, format: date-time }
@@ -539,6 +600,28 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/AttendanceDiscrepancy" } }
+  /school/attendance/discrepancies/{discrepancyId}/resolve:
+    post:
+      operationId: resolveAttendanceDiscrepancy
+      tags: [attendance]
+      summary: Resolve or dismiss an open discrepancy within the authorized school
+      parameters:
+        - name: discrepancyId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DiscrepancyResolutionInput" }
+      responses:
+        "200":
+          description: Historical discrepancy with resolution details
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttendanceDiscrepancy" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /school/attendance/manual:
     post:
       operationId: createManualAttendance
@@ -3247,6 +3330,8 @@ components:
         studentId: { type: ["integer", "null"] }
         employeeId: { type: ["integer", "null"] }
         deviceId: { type: ["integer", "null"] }
+        classId: { type: ["integer", "null"] }
+        section: { type: ["string", "null"] }
         eventType: { $ref: "#/components/schemas/AttendanceEventType" }
         identificationMethod: { $ref: "#/components/schemas/IdentificationMethod" }
         occurredAt: { type: string, format: date-time }
@@ -3278,7 +3363,37 @@ components:
         status: { type: string, enum: [OPEN, RESOLVED, DISMISSED] }
         detectedAt: { type: string, format: date-time }
         resolvedAt: { type: ["string", "null"], format: date-time }
+        resolvedBy: { type: ["integer", "null"] }
+        attendanceEventId: { type: ["integer", "null"] }
+        createdAt: { type: string, format: date-time }
+        resolutionReason: { type: ["string", "null"] }
+        resolutionHistory: { type: array, items: { type: object } }
+        resolver:
+          type: ["object", "null"]
+          properties:
+            id: { type: integer }
+            name: { type: string }
         note: { type: ["string", "null"] }
+    DiscrepancyResolutionInput:
+      type: object
+      required: [schoolId, status, reason]
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        status: { type: string, enum: [RESOLVED, DISMISSED] }
+        reason: { type: string, minLength: 3, maxLength: 500 }
+    FamilyAttendanceEvent:
+      type: object
+      required: [id, studentId, schoolId, date, eventType, status, occurredAt, identificationMethod]
+      properties:
+        id: { type: integer }
+        studentId: { type: integer }
+        schoolId: { type: integer }
+        date: { type: string, format: date }
+        eventType: { $ref: "#/components/schemas/AttendanceEventType" }
+        status: { $ref: "#/components/schemas/AttendanceStatus" }
+        occurredAt: { type: string, format: date-time }
+        identificationMethod: { $ref: "#/components/schemas/IdentificationMethod" }
+        discrepancyStatus: { type: ["string", "null"], enum: [OPEN, RESOLVED, DISMISSED, null] }
     ManualAttendanceInput:
       type: object
       description: Exactly one of studentId or employeeId must be provided. Staff attendance supports school entry and exit only.

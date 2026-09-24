@@ -18,6 +18,8 @@ const state = vi.hoisted(() => ({
     updatedAt: "2026-01-01T00:00:00.000Z",
   },
   credentials: [] as Array<{ identifier: string; status: string; hash: string }>,
+  bindingSchoolIds: [] as number[],
+  assignmentHistory: [] as unknown[][],
 }));
 
 const dbMock = vi.hoisted(() => {
@@ -63,10 +65,18 @@ const dbMock = vi.hoisted(() => {
         });
         return result();
       }
+      if (sql.includes("INSERT INTO device_school_bindings")) {
+        state.bindingSchoolIds.push(Number(values[1]));
+        return result();
+      }
       if (sql.includes("SELECT d.id,d.serial_number")) {
         return result([{ ...state.device }]);
       }
-      if (sql.includes("INSERT INTO audit_logs") || sql.includes("INSERT INTO device_assignment_history")) {
+      if (sql.includes("INSERT INTO device_assignment_history")) {
+        state.assignmentHistory.push(values);
+        return result();
+      }
+      if (sql.includes("INSERT INTO audit_logs")) {
         return result();
       }
       throw new Error(`Unhandled platform lifecycle query: ${sql}`);
@@ -142,6 +152,8 @@ beforeEach(() => {
     configurationStatus: "CONFIGURED",
   });
   state.credentials.length = 0;
+  state.bindingSchoolIds.length = 0;
+  state.assignmentHistory.length = 0;
   vi.clearAllMocks();
 });
 
@@ -172,5 +184,26 @@ describe("platform device lifecycle behavior", () => {
     expect(device.schoolId).toBeNull();
     expect(device.classId).toBeNull();
     expect(device.configurationStatus).not.toBe("CONFIGURED");
+  });
+
+  it("preserves a historical school binding and revokes credentials on reassignment", async () => {
+    state.credentials.push({ identifier: "existing", hash: "digest-only", status: "ACTIVE" });
+
+    const response = await patch("/platform/devices/100", { schoolId: 20, reason: "Moved campus" });
+
+    expect(response.status).toBe(200);
+    expect(state.device.schoolId).toBe(20);
+    expect(state.bindingSchoolIds).toContain(20);
+    expect(state.credentials[0].status).toBe("REVOKED");
+    expect(state.assignmentHistory).toContainEqual([
+      20, 100, 10, 20, "Front gate", "Front gate", "REASSIGNED", "Moved campus", 1,
+    ]);
+    const historyInsert = dbMock.client.query.mock.calls.find(([sql]) =>
+      String(sql).includes("INSERT INTO device_assignment_history"),
+    );
+    expect(historyInsert?.[0]).toContain("new_school_id");
+    expect(historyInsert?.[0]).toContain("actor_user_id");
+    expect(historyInsert?.[0]).toContain("VALUES");
+    expect(state.credentials[0]).not.toHaveProperty("secret");
   });
 });

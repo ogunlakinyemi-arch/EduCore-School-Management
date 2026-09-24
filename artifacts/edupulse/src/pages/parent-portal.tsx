@@ -1,7 +1,7 @@
 import { UserButton } from '@clerk/react';
 import { Link, Route, Switch } from 'wouter';
-import { BookOpen, ChevronRight, GraduationCap, ShieldCheck, UserRound, UsersRound, Zap } from 'lucide-react';
-import { useGetParentChild, useGetParentChildren, useGetParentProfile } from '@workspace/api-client-react';
+import { BookOpen, ChevronRight, GraduationCap, ShieldCheck, UserRound, UsersRound, Zap, LogIn, LogOut, Calendar, Clock } from 'lucide-react';
+import { useGetParentChild, useGetParentChildren, useGetParentProfile, useGetParentChildAttendance } from '@workspace/api-client-react';
 import NotFound from './not-found';
 
 function Loading() {
@@ -57,7 +57,8 @@ export function ParentDashboard() {
         </section>
       </div>
       <div className="mt-5 grid gap-4 sm:grid-cols-3">
-        {['Attendance', 'Academic results', 'Fees'].map(label => <div key={label} className="panel p-5 opacity-70"><BookOpen size={18} className="text-[hsl(var(--muted-foreground))]" /><div className="mt-3 text-sm font-bold">{label}</div><div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Not available in this phase</div></div>)}
+        <div className="panel p-5"><BookOpen size={18} className="text-[hsl(var(--primary))]" /><div className="mt-3 text-sm font-bold">Attendance</div><div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Open a linked child above to view their attendance.</div></div>
+        {['Academic results', 'Fees'].map(label => <div key={label} className="panel p-5 opacity-70"><BookOpen size={18} className="text-[hsl(var(--muted-foreground))]" /><div className="mt-3 text-sm font-bold">{label}</div><div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Not available in this phase</div></div>)}
       </div>
     </div>
   );
@@ -68,7 +69,85 @@ function ChildProfile({ studentId }: { studentId: number }) {
   if (query.isLoading) return <Loading />;
   if (query.isError || !query.data) return <NotFound />;
   const child = query.data;
-  return <div className="mx-auto max-w-4xl p-5 md:p-8"><Link href="/" className="text-xs font-bold text-[hsl(var(--primary))]">← Back to linked children</Link><div className="panel mt-5 overflow-hidden"><div className="bg-[hsl(var(--sidebar))] p-7 text-[hsl(var(--sidebar-foreground))]"><div className="eyebrow text-white/60">{child.schoolName}</div><h1 className="display-font mt-2 text-3xl font-bold">{child.firstName} {child.lastName}</h1><p className="mt-2 text-sm text-white/60">{child.admissionNo}</p></div><div className="grid gap-5 p-6 sm:grid-cols-2"><Detail label="Class" value={child.className} /><Detail label="Section" value={child.section} /><Detail label="Student status" value={child.status} /><Detail label="School location" value={[child.city, child.state].filter(Boolean).join(', ') || '—'} /></div></div></div>;
+  return (
+    <div className="mx-auto max-w-4xl p-5 md:p-8">
+      <Link href="/" className="text-xs font-bold text-[hsl(var(--primary))]">← Back to linked children</Link>
+      <div className="panel mt-5 overflow-hidden">
+        <div className="bg-[hsl(var(--sidebar))] p-7 text-[hsl(var(--sidebar-foreground))]">
+          <div className="eyebrow text-white/60">{child.schoolName}</div>
+          <h1 className="display-font mt-2 text-3xl font-bold">{child.firstName} {child.lastName}</h1>
+          <p className="mt-2 text-sm text-white/60">{child.admissionNo}</p>
+        </div>
+        <div className="grid gap-5 p-6 sm:grid-cols-2">
+          <Detail label="Class" value={child.className} />
+          <Detail label="Section" value={child.section} />
+          <Detail label="Student status" value={child.status} />
+          <Detail label="School location" value={[child.city, child.state].filter(Boolean).join(', ') || '—'} />
+        </div>
+        <ChildAttendance studentId={studentId} />
+      </div>
+    </div>
+  );
+}
+
+function ChildAttendance({ studentId }: { studentId: number }) {
+  const query = useGetParentChildAttendance(studentId);
+
+  if (query.isLoading) return <div className="p-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading attendance records...</div>;
+  if (query.isError) return <div className="p-10 text-center text-sm font-bold text-[hsl(var(--destructive))] bg-[hsl(var(--destructive)/.05)]">Failed to load attendance.</div>;
+  if (!query.data || query.data.length === 0) return <div className="p-10 text-center text-sm text-[hsl(var(--muted-foreground))] bg-[hsl(var(--muted)/.2)]">No attendance records found.</div>;
+
+  return (
+    <div className="border-t border-[hsl(var(--border))]">
+      <div className="bg-[hsl(var(--muted)/.3)] p-5 md:p-6 border-b border-[hsl(var(--border))]">
+        <h3 className="font-bold text-lg">Recent Attendance</h3>
+      </div>
+      <div className="divide-y divide-[hsl(var(--border)/.7)]">
+        {query.data.map((event: any) => (
+           <AttendanceRow key={event.id} event={event} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AttendanceRow({ event }: { event: any }) {
+  const isLate = event.status === 'LATE';
+  const isEarly = event.status === 'LEFT_EARLY';
+  const isAbsent = event.status === 'ABSENT';
+  const hasDiscrepancy = event.discrepancyStatus === 'OPEN';
+
+  const dateStr = new Date(event.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  const timeStr = new Date(event.occurredAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
+  const typeMap: Record<string, string> = {
+    SCHOOL_ENTRY: 'School Arrival',
+    SCHOOL_EXIT: 'School Departure',
+    CLASSROOM_ENTRY: 'Classroom Entry',
+    CLASSROOM_EXIT: 'Classroom Exit'
+  };
+  const eventName = typeMap[event.eventType] || event.eventType;
+
+  return (
+    <div className="flex items-center gap-4 p-5 md:px-6 hover:bg-[hsl(var(--muted)/.25)] transition-colors">
+      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))] shadow-sm">
+         {event.eventType.includes('ENTRY') ? <LogIn size={18} /> : <LogOut size={18} />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+           <span className="font-bold">{eventName}</span>
+           {isLate && <span className="rounded bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600 uppercase tracking-wider">Late</span>}
+           {isEarly && <span className="rounded bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600 uppercase tracking-wider">Left Early</span>}
+           {isAbsent && <span className="rounded bg-red-500/10 px-2 py-0.5 text-[10px] font-bold text-red-600 uppercase tracking-wider">Absent</span>}
+           {hasDiscrepancy && <span className="rounded bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold text-purple-600 uppercase tracking-wider">Under Review</span>}
+        </div>
+        <div className="mt-1.5 flex items-center gap-4 text-xs font-medium text-[hsl(var(--muted-foreground))]">
+          <span className="flex items-center gap-1.5"><Calendar size={13} /> {dateStr}</span>
+          <span className="flex items-center gap-1.5"><Clock size={13} /> {timeStr}</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function Detail({ label, value }: { label: string; value: string }) {

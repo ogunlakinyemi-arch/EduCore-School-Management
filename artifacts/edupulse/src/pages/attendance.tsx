@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Activity, AlertTriangle, ClipboardCheck, Clock3, Plus, RefreshCw } from 'lucide-react';
 import {
   useGetSchoolAttendanceToday, useListSchoolAttendanceEvents, useListAttendanceDiscrepancies,
-  useCreateManualAttendance, useCorrectAttendance,
+  useCreateManualAttendance, useCorrectAttendance, useResolveAttendanceDiscrepancy,
   useGetClassAttendance, getGetClassAttendanceQueryKey,
   getGetSchoolAttendanceTodayQueryKey, getListSchoolAttendanceEventsQueryKey,
   getListAttendanceDiscrepanciesQueryKey,
@@ -15,6 +15,9 @@ import {
 } from '@/components/shared';
 
 type Tab = 'events' | 'history' | 'reports' | 'discrepancies';
+const timestamp = (value?: string | null) => value
+  ? new Date(value).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' })
+  : '—';
 
 export function AttendancePage() {
   const { schoolId } = useTenant();
@@ -26,8 +29,9 @@ export function AttendancePage() {
   const [status, setStatus] = useState('');
   const [method, setMethod] = useState('');
   const [subject, setSubject] = useState<'all' | 'student' | 'employee'>('all');
+  const [section, setSection] = useState('');
   const [discrepancyStatus, setDiscrepancyStatus] = useState('');
-  const [modal, setModal] = useState<'manual' | { correction: any } | null>(null);
+  const [modal, setModal] = useState<'manual' | { correction: any } | { discrepancy: any } | null>(null);
   const contextQuery = useGetAuthorizedContext();
   const isPlatformOwner = contextQuery.data?.isPlatformOwner === true;
   const roles = contextQuery.data?.roles?.map(role => role.role) ?? [];
@@ -42,12 +46,12 @@ export function AttendancePage() {
   const eventFrom = tab === 'events' ? `${date}T00:00:00.000Z` : `${fromDate}T00:00:00.000Z`;
   const eventTo = tab === 'events' ? `${date}T23:59:59.999Z` : `${toDate}T23:59:59.999Z`;
   const events = useListSchoolAttendanceEvents(
-    { schoolId, from: eventFrom, to: eventTo, eventType: eventType || undefined, status: status || undefined, identificationMethod: method || undefined } as any,
-    { query: { enabled: !!schoolId && !isTeacherView && tab !== 'discrepancies', queryKey: getListSchoolAttendanceEventsQueryKey({ schoolId, from: eventFrom, to: eventTo, eventType: eventType || undefined, status: status || undefined, identificationMethod: method || undefined } as any) } },
+    { schoolId, from: eventFrom, to: eventTo, eventType: eventType || undefined, status: status || undefined, identificationMethod: method || undefined, section: section || undefined } as any,
+    { query: { enabled: !!schoolId && !isTeacherView && tab !== 'discrepancies', queryKey: getListSchoolAttendanceEventsQueryKey({ schoolId, from: eventFrom, to: eventTo, eventType: eventType || undefined, status: status || undefined, identificationMethod: method || undefined, section: section || undefined } as any) } },
   );
   const discrepancies = useListAttendanceDiscrepancies(
-    { schoolId, status: discrepancyStatus || undefined, from: date, to: date } as any,
-    { query: { enabled: !!schoolId && !isTeacherView && tab === 'discrepancies', queryKey: getListAttendanceDiscrepanciesQueryKey({ schoolId, status: discrepancyStatus || undefined, from: date, to: date } as any) } },
+    { schoolId, status: discrepancyStatus || undefined, from: fromDate, to: toDate } as any,
+    { query: { enabled: !!schoolId && !isTeacherView && tab === 'discrepancies', queryKey: getListAttendanceDiscrepanciesQueryKey({ schoolId, status: discrepancyStatus || undefined, from: fromDate, to: toDate } as any) } },
   );
 
   const refresh = () => {
@@ -79,19 +83,21 @@ export function AttendancePage() {
                 {(['events', 'history', 'reports', 'discrepancies'] as Tab[]).map(item => <button key={item} onClick={() => setTab(item)} className={cx('rounded-lg px-3 py-2 text-xs font-bold capitalize transition-colors', tab === item ? 'bg-[hsl(var(--card))] text-[hsl(var(--primary))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]')}>{item}</button>)}
               </div>
               <div className="flex flex-wrap gap-2">
-                {tab === 'events' || tab === 'discrepancies' ? <label className="flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]">School day <input type="date" value={date} onChange={e => { if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) setDate(e.target.value); }} aria-label="School day" /></label> : <><label className="flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]">From <input type="date" value={fromDate} onChange={e => { if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) setFromDate(e.target.value); }} aria-label="History start date" /></label><label className="flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]">To <input type="date" value={toDate} onChange={e => { if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) setToDate(e.target.value); }} aria-label="History end date" /></label></>}
-                <select value={eventType} onChange={e => setEventType(e.target.value)} aria-label="Event type"><option value="">All event types</option><option value="SCHOOL_ENTRY">School entry</option><option value="SCHOOL_EXIT">School exit</option><option value="CLASSROOM_ENTRY">Classroom entry</option></select>
+                {tab === 'events' ? <label className="flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]">School day <input type="date" value={date} onChange={e => { if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) setDate(e.target.value); }} aria-label="School day" /></label> : <><label className="flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]">From <input type="date" value={fromDate} onChange={e => { if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) setFromDate(e.target.value); }} aria-label="History start date" /></label><label className="flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]">To <input type="date" value={toDate} onChange={e => { if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) setToDate(e.target.value); }} aria-label="History end date" /></label></>}
+                {tab !== 'discrepancies' && <select value={eventType} onChange={e => setEventType(e.target.value)} aria-label="Event type"><option value="">All event types</option><option value="SCHOOL_ENTRY">School entry</option><option value="SCHOOL_EXIT">School exit</option><option value="CLASSROOM_ENTRY">Class entry</option></select>}
                 {tab === 'discrepancies' ? <select value={discrepancyStatus} onChange={e => setDiscrepancyStatus(e.target.value)} aria-label="Discrepancy status"><option value="">All discrepancy statuses</option><option value="OPEN">Open</option><option value="RESOLVED">Resolved</option><option value="DISMISSED">Dismissed</option></select> : <select value={status} onChange={e => setStatus(e.target.value)} aria-label="Attendance status"><option value="">All attendance statuses</option><option value="PRESENT">Present</option><option value="LATE">Late</option><option value="ABSENT">Absent</option><option value="MISMATCH">Mismatch</option></select>}
-                <select value={method} onChange={e => setMethod(e.target.value)} aria-label="Identification method"><option value="">All methods</option><option value="NFC">NFC</option><option value="FINGERPRINT">Fingerprint</option><option value="MANUAL">Manual</option></select>
+                {tab !== 'discrepancies' && <select value={method} onChange={e => setMethod(e.target.value)} aria-label="Identification method"><option value="">All methods</option><option value="NFC">NFC</option><option value="FINGERPRINT">Fingerprint</option><option value="MANUAL">Manual</option></select>}
                 {tab !== 'discrepancies' && <select value={subject} onChange={e => setSubject(e.target.value as typeof subject)} aria-label="Attendance subject"><option value="all">Students and staff</option><option value="student">Students</option><option value="employee">Staff</option></select>}
+                {tab !== 'discrepancies' && <input type="text" placeholder="Section (e.g. A)" className="max-w-[120px] rounded-md border border-[hsl(var(--border))] bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-[hsl(var(--muted-foreground))] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]" value={section} onChange={e => setSection(e.target.value)} aria-label="Section filter" />}
               </div>
             </div>
-            <AttendanceTable rows={rows} discrepancy={tab === 'discrepancies'} canCorrect={canCorrect} loading={events.isLoading || discrepancies.isLoading} onCorrect={row => setModal({ correction: row })} />
+            <AttendanceTable rows={rows} discrepancy={tab === 'discrepancies'} canCorrect={canCorrect} loading={events.isLoading || discrepancies.isLoading} onCorrect={row => setModal({ correction: row })} onResolve={row => setModal({ discrepancy: row })} />
           </div>
         </>
       )}
       {modal === 'manual' && <Modal title="Record attendance event" eyebrow="Audited manual event" onClose={() => setModal(null)}><ManualForm schoolId={schoolId} onDone={() => { setModal(null); refresh(); }} onCancel={() => setModal(null)} /></Modal>}
-      {modal && modal !== 'manual' && <Modal title="Correct attendance" eyebrow="History is preserved" onClose={() => setModal(null)}><CorrectionForm event={modal.correction} onDone={() => { setModal(null); refresh(); }} onCancel={() => setModal(null)} /></Modal>}
+      {modal && typeof modal === 'object' && 'correction' in modal && <Modal title="Correct attendance" eyebrow="History is preserved" onClose={() => setModal(null)}><CorrectionForm event={modal.correction} onDone={() => { setModal(null); refresh(); }} onCancel={() => setModal(null)} /></Modal>}
+      {modal && typeof modal === 'object' && 'discrepancy' in modal && <Modal title="Review Discrepancy" eyebrow="Reconciliation" onClose={() => setModal(null)}><ResolveDiscrepancyForm discrepancy={modal.discrepancy} schoolId={schoolId} onDone={() => { setModal(null); refresh(); }} onCancel={() => setModal(null)} canResolve={canCorrect} /></Modal>}
     </div>
   );
 }
@@ -112,14 +118,14 @@ function TeacherClassAttendance({ schoolId }: { schoolId: number }) {
     </div>
     {!validClassId ? <EmptyState icon={ClipboardCheck} title="Choose an assigned class" description="Enter an assigned class ID to view its attendance for the selected day." /> :
       report.isError ? <div role="alert" className="panel p-5">This class is unavailable or you are not assigned to it.</div> :
-      <AttendanceTable rows={(report.data as any[]) ?? []} discrepancy={false} canCorrect={false} loading={report.isLoading} onCorrect={() => {}} />}
+      <AttendanceTable rows={(report.data as any[]) ?? []} discrepancy={false} canCorrect={false} loading={report.isLoading} onCorrect={() => {}} onResolve={() => {}} />}
   </div>;
 }
 
-function AttendanceTable({ rows, discrepancy, canCorrect, loading, onCorrect }: { rows: any[]; discrepancy: boolean; canCorrect: boolean; loading: boolean; onCorrect: (row: any) => void }) {
+function AttendanceTable({ rows, discrepancy, canCorrect, loading, onCorrect, onResolve }: { rows: any[]; discrepancy: boolean; canCorrect: boolean; loading: boolean; onCorrect: (row: any) => void; onResolve: (row: any) => void }) {
   if (loading) return <div className="p-8 text-sm text-[hsl(var(--muted-foreground))]">Loading attendance records…</div>;
   if (!rows.length) return <EmptyState icon={ClipboardCheck} title={discrepancy ? 'No discrepancies found' : 'No attendance events found'} description="Try another date or filter. Values are sourced from recorded attendance only." />;
-  return <div className="divide-y divide-[hsl(var(--border)/.6)]">{rows.map((row: any, index) => <div key={row.id ?? index} className="grid gap-2 px-5 py-4 md:grid-cols-[1.3fr_1fr_1fr_1fr_auto] md:items-center md:px-6"><div><div className="font-semibold">{row.studentId != null ? `Student ${row.studentName || row.studentId}` : row.employeeId != null ? `Staff ${row.employeeName || row.employeeId}` : 'Attendance record'}</div><div className="text-xs text-[hsl(var(--muted-foreground))]">{row.eventType || row.kind || 'Reconciliation discrepancy'}</div></div><div className="text-sm">{time(row.occurredAt || row.detectedAt || row.createdAt)}</div><div><StatusPill value={row.status || 'UNKNOWN'} /></div><div className="text-xs text-[hsl(var(--muted-foreground))]">{row.identificationMethod || row.note || '—'}</div>{!discrepancy && canCorrect && <Button variant="outline" onClick={() => onCorrect(row)}>Correct</Button>}</div>)}</div>;
+  return <div className="divide-y divide-[hsl(var(--border)/.6)]">{rows.map((row: any, index) => <div key={row.id ?? index} className="grid gap-2 px-5 py-4 md:grid-cols-[1.3fr_1fr_1fr_1fr_auto] md:items-center md:px-6"><div><div className="font-semibold">{row.studentId != null ? `Student ${row.studentName || row.studentId}` : row.employeeId != null ? `Staff ${row.employeeName || row.employeeId}` : 'Attendance record'}</div><div className="text-xs text-[hsl(var(--muted-foreground))]">{row.eventType || row.kind || 'Reconciliation discrepancy'}</div></div><div className="text-sm">{time(row.occurredAt || row.detectedAt || row.createdAt)}</div><div><StatusPill value={row.status || 'UNKNOWN'} /></div><div className="text-xs text-[hsl(var(--muted-foreground))]">{row.identificationMethod || row.note || '—'}</div><div className="flex justify-end gap-2">{!discrepancy && canCorrect && <Button variant="outline" onClick={() => onCorrect(row)}>Correct</Button>}{discrepancy && canCorrect && <Button variant="outline" onClick={() => onResolve(row)}>Review</Button>}</div></div>)}</div>;
 }
 
 function ManualForm({ schoolId, onDone, onCancel }: { schoolId: number; onDone: () => void; onCancel: () => void }) {
@@ -145,4 +151,67 @@ function CorrectionForm({ event, onDone, onCancel }: { event: any; onDone: () =>
   const [status, setStatus] = useState<AttendanceStatus>(event.status || 'PRESENT');
   const save = (e: FormEvent) => { e.preventDefault(); mutation.mutate({ attendanceId: event.id, data: { status, reason } }, { onSuccess: onDone }); };
   return <form onSubmit={save} className="space-y-4"><p className="text-sm text-[hsl(var(--muted-foreground))]">Original status: <strong>{event.status || 'Unknown'}</strong>. The original event remains in the audit history.</p><Field label="Corrected status"><select value={status} onChange={e => setStatus(e.target.value as AttendanceStatus)}><option value="PRESENT">Present</option><option value="ABSENT">Absent</option><option value="LATE">Late</option><option value="EXCUSED">Excused</option></select></Field><Field label="Reason (required)"><textarea required minLength={3} value={reason} onChange={e => setReason(e.target.value)} /></Field>{mutation.isError && <p className="text-sm text-[hsl(var(--destructive))]">Could not apply correction. The original event was not changed.</p>}<div className="flex justify-end gap-3 border-t border-[hsl(var(--border))] pt-4"><Button variant="outline" onClick={onCancel}>Cancel</Button><Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? 'Saving…' : 'Apply correction'}</Button></div></form>;
+}
+
+function ResolveDiscrepancyForm({ discrepancy, schoolId, onDone, onCancel, canResolve }: { discrepancy: any; schoolId: number; onDone: () => void; onCancel: () => void; canResolve: boolean }) {
+  const mutation = useResolveAttendanceDiscrepancy();
+  const [status, setStatus] = useState<'RESOLVED' | 'DISMISSED'>('RESOLVED');
+  const [reason, setReason] = useState('');
+  const save = (e: FormEvent) => {
+    e.preventDefault();
+    mutation.mutate({ discrepancyId: discrepancy.id, data: { schoolId, status, reason } }, { onSuccess: onDone });
+  };
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg border border-[hsl(var(--border))] p-4 space-y-2 text-sm bg-[hsl(var(--muted)/.3)]">
+        <div><strong>School:</strong> #{discrepancy.schoolId}</div>
+        <div><strong>Student:</strong> {discrepancy.studentName || discrepancy.studentId || 'Unknown'}</div>
+        <div><strong>Discrepancy:</strong> {discrepancy.kind}</div>
+        <div><strong>Detected At:</strong> {timestamp(discrepancy.detectedAt)}</div>
+        <div><strong>Status:</strong> {discrepancy.status}</div>
+        <div><strong>Related Event:</strong> {discrepancy.attendanceEventId ? `Event #${discrepancy.attendanceEventId} · ${discrepancy.relatedEvent?.eventType || 'Attendance'} · ${discrepancy.relatedEvent?.status || '—'} · ${timestamp(discrepancy.relatedEvent?.occurredAt)}` : 'None'}</div>
+        {discrepancy.relatedEvent && <div><strong>Class / Section at event:</strong> {discrepancy.relatedEvent.classId ? `Class #${discrepancy.relatedEvent.classId}` : 'Not recorded'} / {discrepancy.relatedEvent.section || 'Not recorded'}</div>}
+        {discrepancy.resolvedBy && (
+          <div className="mt-2 pt-2 border-t border-[hsl(var(--border))]">
+            <div><strong>Resolved By:</strong> {discrepancy.resolver?.name || discrepancy.resolvedBy}</div>
+            <div><strong>Resolved At:</strong> {timestamp(discrepancy.resolvedAt)}</div>
+            <div><strong>Resolution Reason:</strong> {discrepancy.resolutionReason || '—'}</div>
+          </div>
+        )}
+      </div>
+      {discrepancy.auditHistory?.length > 0 && (
+        <div className="text-xs text-[hsl(var(--muted-foreground))]">
+          <strong>Audit History:</strong>
+          <ul className="mt-1 space-y-1 list-disc pl-4">
+            {discrepancy.auditHistory.map((audit: any, i: number) => (
+               <li key={i}>{timestamp(audit.createdAt)} - {audit.action} by user #{audit.actorUserId}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {canResolve && discrepancy.status === 'OPEN' && (
+        <form onSubmit={save} className="space-y-4 pt-4 border-t border-[hsl(var(--border))]">
+          <Field label="Resolution Action">
+            <select value={status} onChange={e => setStatus(e.target.value as 'RESOLVED' | 'DISMISSED')}>
+              <option value="RESOLVED">Resolve (Fix applied)</option>
+              <option value="DISMISSED">Dismiss (No action needed)</option>
+            </select>
+          </Field>
+          <Field label="Reason (required)">
+            <textarea required minLength={3} value={reason} onChange={e => setReason(e.target.value)} placeholder="Explain the resolution or dismissal" />
+          </Field>
+          {mutation.isError && <p className="text-sm text-[hsl(var(--destructive))]">{(mutation.error as any)?.response?.data?.error || mutation.error?.message || 'Could not resolve discrepancy. Please check authorization and try again.'}</p>}
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="outline" onClick={onCancel} type="button">Cancel</Button>
+            <Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? 'Saving…' : 'Submit Resolution'}</Button>
+          </div>
+        </form>
+      )}
+      {(!canResolve || discrepancy.status !== 'OPEN') && (
+        <div className="flex justify-end pt-4 border-t border-[hsl(var(--border))]">
+          <Button variant="outline" onClick={onCancel}>Close</Button>
+        </div>
+      )}
+    </div>
+  );
 }

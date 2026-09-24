@@ -2077,6 +2077,10 @@ export interface AttendanceEvent {
   employeeId?: number | null;
   /** @nullable */
   deviceId: number | null;
+  /** @nullable */
+  classId?: number | null;
+  /** @nullable */
+  section?: string | null;
   eventType: AttendanceEventType;
   identificationMethod: IdentificationMethod;
   occurredAt: string;
@@ -2127,6 +2131,16 @@ export const AttendanceDiscrepancyStatus = {
   DISMISSED: 'DISMISSED',
 } as const;
 
+export type AttendanceDiscrepancyResolutionHistoryItem = { [key: string]: unknown };
+
+/**
+ * @nullable
+ */
+export type AttendanceDiscrepancyResolver = {
+  id?: number;
+  name?: string;
+} | null;
+
 export interface AttendanceDiscrepancy {
   id: number;
   schoolId: number;
@@ -2137,7 +2151,61 @@ export interface AttendanceDiscrepancy {
   /** @nullable */
   resolvedAt?: string | null;
   /** @nullable */
+  resolvedBy?: number | null;
+  /** @nullable */
+  attendanceEventId?: number | null;
+  createdAt?: string;
+  /** @nullable */
+  resolutionReason?: string | null;
+  resolutionHistory?: AttendanceDiscrepancyResolutionHistoryItem[];
+  /** @nullable */
+  resolver?: AttendanceDiscrepancyResolver;
+  /** @nullable */
   note?: string | null;
+}
+
+export type DiscrepancyResolutionInputStatus = typeof DiscrepancyResolutionInputStatus[keyof typeof DiscrepancyResolutionInputStatus];
+
+
+export const DiscrepancyResolutionInputStatus = {
+  RESOLVED: 'RESOLVED',
+  DISMISSED: 'DISMISSED',
+} as const;
+
+export interface DiscrepancyResolutionInput {
+  /** @minimum 1 */
+  schoolId: number;
+  status: DiscrepancyResolutionInputStatus;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+/**
+ * @nullable
+ */
+export type FamilyAttendanceEventDiscrepancyStatus = typeof FamilyAttendanceEventDiscrepancyStatus[keyof typeof FamilyAttendanceEventDiscrepancyStatus] | null;
+
+
+export const FamilyAttendanceEventDiscrepancyStatus = {
+  OPEN: 'OPEN',
+  RESOLVED: 'RESOLVED',
+  DISMISSED: 'DISMISSED',
+} as const;
+
+export interface FamilyAttendanceEvent {
+  id: number;
+  studentId: number;
+  schoolId: number;
+  date: string;
+  eventType: AttendanceEventType;
+  status: AttendanceStatus;
+  occurredAt: string;
+  identificationMethod: IdentificationMethod;
+  /** @nullable */
+  discrepancyStatus?: FamilyAttendanceEventDiscrepancyStatus;
 }
 
 /**
@@ -2387,6 +2455,21 @@ export const StatusFilterParameter = {
 
 export type SearchParameter = string;
 
+export type GetParentChildAttendanceParams = {
+from?: string;
+to?: string;
+};
+
+export type GetOwnAttendanceParams = {
+from?: string;
+to?: string;
+};
+
+export type GetStudentOwnAttendanceByIdParams = {
+from?: string;
+to?: string;
+};
+
 export type ListParentStudentRelationshipsParams = {
 /**
  * @minimum 1
@@ -2426,6 +2509,11 @@ employeeId?: number;
  * @minimum 1
  */
 classId?: number;
+/**
+ * @minLength 1
+ * @maxLength 100
+ */
+section?: string;
 from?: string;
 to?: string;
 eventType?: AttendanceEventType;

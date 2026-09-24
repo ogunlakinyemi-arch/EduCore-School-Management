@@ -28,12 +28,13 @@ async function audit(
   module: string,
   recordId: number,
   db: { query: (text: string, values?: unknown[]) => Promise<any> } = pool,
+  metadata: Record<string, unknown> | null = null,
 ) {
   const context = getUserContext(req);
   await db.query(
     `INSERT INTO audit_logs
-      ("user",role,actor_user_id,clerk_user_id,action,module,record_id,event_type,result)
-     VALUES($1,'PLATFORM_OWNER',$2,$3,$4,$5,$6,$7,'SUCCESS')`,
+      ("user",role,actor_user_id,clerk_user_id,action,module,record_id,event_type,result,metadata)
+     VALUES($1,'PLATFORM_OWNER',$2,$3,$4,$5,$6,$7,'SUCCESS',$8::jsonb)`,
     [
       [context.user.firstName, context.user.lastName].filter(Boolean).join(" ") || context.user.email,
       context.user.id,
@@ -42,6 +43,7 @@ async function audit(
       module,
       recordId,
       module === "Devices" ? "PLATFORM_DEVICE_CHANGED" : "PLATFORM_NOTIFICATION_READ",
+      metadata ? JSON.stringify(metadata) : null,
     ],
   );
 }
@@ -56,6 +58,19 @@ export async function createPlatformDeviceRecord(req: Request, input: DeviceInpu
        RETURNING id`,
       [input.serialNumber, input.name, input.deviceType, input.schoolId],
     );
+    if (input.schoolId !== null) {
+      await client.query(
+        `INSERT INTO device_school_bindings(device_id,school_id)
+         VALUES($1,$2) ON CONFLICT (device_id,school_id) DO NOTHING`,
+        [result.rows[0].id, input.schoolId],
+      );
+      await client.query(
+        `INSERT INTO device_assignment_history
+          (school_id,device_id,previous_school_id,new_school_id,action,actor_user_id)
+         VALUES($1,$2,NULL,$1,'ASSIGNED',$3)`,
+        [input.schoolId, result.rows[0].id, getUserContext(req).user.id],
+      );
+    }
     await audit(req, "Registered platform device", "Devices", result.rows[0].id, client);
     const device = await client.query(
       `SELECT ${deviceFields} FROM platform_devices d
@@ -148,11 +163,20 @@ router.post("/platform/devices/:deviceId/assign", run(async (req, res) => {
        if (!klass.rows[0]) throw new AuthError(400, "classId is not a class in the assigned school");
      }
      await client.query(`UPDATE platform_devices SET school_id=$1,location=$2,school_class_id=$3,configuration_status='CONFIGURED',status='ACTIVE',updated_at=NOW() WHERE id=$4`, [schoolId, req.body?.location ?? null, req.body?.classId == null ? null : Number(req.body.classId), id]);
-      if (old.rows[0].schoolId !== null) {
+      await client.query(
+        `INSERT INTO device_school_bindings(device_id,school_id)
+         VALUES($1,$2) ON CONFLICT (device_id,school_id) DO NOTHING`,
+        [id, schoolId],
+      );
+      if (old.rows[0].schoolId !== schoolId) {
         await client.query(`UPDATE device_credentials SET status='REVOKED',revoked_at=NOW() WHERE device_id=$1 AND status='ACTIVE'`, [id]);
       }
-     await client.query(`INSERT INTO device_assignment_history(school_id,device_id,previous_school_id,previous_location,location,action,reason,actor_user_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, [schoolId,id,old.rows[0].schoolId,old.rows[0].location,req.body?.location ?? null,old.rows[0].schoolId == null ? "ASSIGNED" : "REASSIGNED",req.body?.reason ?? null,getUserContext(req).user.id]);
-     await audit(req, old.rows[0].schoolId == null ? "Registered platform device assignment" : "Reassigned platform device", "Devices", id, client);
+      await client.query(`INSERT INTO device_assignment_history(school_id,device_id,previous_school_id,new_school_id,previous_location,location,action,reason,actor_user_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [schoolId,id,old.rows[0].schoolId,schoolId,old.rows[0].location,req.body?.location ?? null,old.rows[0].schoolId == null ? "ASSIGNED" : "REASSIGNED",req.body?.reason ?? null,getUserContext(req).user.id]);
+      await audit(req, old.rows[0].schoolId == null ? "Registered platform device assignment" : "Reassigned platform device", "Devices", id, client, {
+        previousSchoolId: old.rows[0].schoolId,
+        newSchoolId: schoolId,
+        credentialAction: old.rows[0].schoolId === schoolId ? "UNCHANGED" : "ACTIVE_CREDENTIALS_REVOKED_NEW_CREDENTIAL_REQUIRED",
+      });
      const device = await client.query(`SELECT ${deviceFields} FROM platform_devices d LEFT JOIN schools s ON s.id=d.school_id WHERE d.id=$1`, [id]);
      await client.query("COMMIT");
      res.json(device.rows[0]);
@@ -246,17 +270,31 @@ router.patch("/platform/devices/:deviceId", run(async (req, res) => {
          status === "UNASSIGNED" ? "UNASSIGNED" : status ?? null, deviceId, unassigned],
     );
      if (!result.rows[0]) throw new AuthError(404, "Device not found");
+      if (!unassigned && targetSchoolId !== null) {
+        await client.query(
+          `INSERT INTO device_school_bindings(device_id,school_id)
+           VALUES($1,$2) ON CONFLICT (device_id,school_id) DO NOTHING`,
+          [deviceId, targetSchoolId],
+        );
+      }
      if (reassigned) {
         await client.query(`UPDATE device_credentials SET status='REVOKED',revoked_at=NOW() WHERE device_id=$1 AND status='ACTIVE'`, [deviceId]);
-        await client.query(`INSERT INTO device_assignment_history(school_id,device_id,previous_school_id,previous_location,location,action,reason,actor_user_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
-          [schoolId ?? before.rows[0].schoolId, deviceId, before.rows[0].schoolId, before.rows[0].location,
+         await client.query(`INSERT INTO device_assignment_history(school_id,device_id,previous_school_id,new_school_id,previous_location,location,action,reason,actor_user_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+           [unassigned ? before.rows[0].schoolId : targetSchoolId, deviceId, before.rows[0].schoolId,
+             unassigned ? null : targetSchoolId, before.rows[0].location,
             unassigned ? null : (req.body?.location !== undefined ? req.body.location : before.rows[0].location),
-            unassigned ? "UNASSIGNED" : "REASSIGNED", req.body?.reason ?? null, getUserContext(req).user.id]);
+             unassigned ? "UNASSIGNED" : before.rows[0].schoolId === null ? "ASSIGNED" : "REASSIGNED",
+             req.body?.reason ?? null, getUserContext(req).user.id]);
      }
       if (status === "SUSPENDED") {
         await client.query(`UPDATE device_credentials SET status='REVOKED',revoked_at=NOW() WHERE device_id=$1 AND status='ACTIVE'`, [deviceId]);
       }
-    await audit(req, "Updated device assignment or status", "Devices", deviceId, client);
+    await audit(req, reassigned ? "Reassigned platform device" : "Updated device assignment or status", "Devices", deviceId, client,
+      reassigned ? {
+        previousSchoolId: before.rows[0].schoolId,
+        newSchoolId: unassigned ? null : targetSchoolId,
+        credentialAction: "ACTIVE_CREDENTIALS_REVOKED_NEW_CREDENTIAL_REQUIRED",
+      } : null);
     const device = await client.query(
       `SELECT ${deviceFields} FROM platform_devices d
        LEFT JOIN schools s ON s.id=d.school_id WHERE d.id=$1`,

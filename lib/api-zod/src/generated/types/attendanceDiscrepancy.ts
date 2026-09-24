@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AttendanceDiscrepancyKind } from './attendanceDiscrepancyKind';
+import type { AttendanceDiscrepancyResolutionHistoryItem } from './attendanceDiscrepancyResolutionHistoryItem';
+import type { AttendanceDiscrepancyResolver } from './attendanceDiscrepancyResolver';
 import type { AttendanceDiscrepancyStatus } from './attendanceDiscrepancyStatus';
 
 export interface AttendanceDiscrepancy {
@@ -17,6 +19,16 @@ export interface AttendanceDiscrepancy {
   detectedAt: Date;
   /** @nullable */
   resolvedAt?: Date | null;
+  /** @nullable */
+  resolvedBy?: number | null;
+  /** @nullable */
+  attendanceEventId?: number | null;
+  createdAt?: Date;
+  /** @nullable */
+  resolutionReason?: string | null;
+  resolutionHistory?: AttendanceDiscrepancyResolutionHistoryItem[];
+  /** @nullable */
+  resolver?: AttendanceDiscrepancyResolver;
   /** @nullable */
   note?: string | null;
 }

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Smartphone, Plus, Search, ShieldCheck, Tag, Loader2, Link as LinkIcon, Building2 } from 'lucide-react';
 import { 
-  useListPlatformDevices, useCreatePlatformDevice, useUpdatePlatformDevice, useListSchools,
+  useListPlatformDevices, useCreatePlatformDevice, useUpdatePlatformDevice, useRotatePlatformDeviceCredential, useListSchools,
   getListPlatformDevicesQueryKey, getListSchoolsQueryKey,
   PlatformDeviceDeviceType, PlatformDeviceStatus
 } from '@workspace/api-client-react';
@@ -212,6 +212,10 @@ function DeviceForm({ schools, onDone, onCancel }: { schools: any[]; onDone: () 
 
 function DeviceUpdateForm({ device, schools, onDone, onCancel }: { device: any; schools: any[]; onDone: () => void; onCancel: () => void }) {
   const updateDevice = useUpdatePlatformDevice();
+  const rotateCredential = useRotatePlatformDeviceCredential();
+  const [credential, setCredential] = useState<string | null>(null);
+  const [assignmentSaved, setAssignmentSaved] = useState(false);
+  const [error, setError] = useState('');
   const [form, setForm] = useState({
     schoolId: device.schoolId?.toString() || '',
     status: device.status
@@ -219,17 +223,45 @@ function DeviceUpdateForm({ device, schools, onDone, onCancel }: { device: any; 
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    await updateDevice.mutateAsync({
-      deviceId: device.id,
-      data: {
-        schoolId: form.schoolId ? Number(form.schoolId) : null,
-        status: form.status as any
+    setError('');
+    try {
+      const newSchoolId = form.schoolId ? Number(form.schoolId) : null;
+      const changedSchool = newSchoolId !== device.schoolId;
+      if (!assignmentSaved) {
+        await updateDevice.mutateAsync({
+          deviceId: device.id,
+          data: { schoolId: newSchoolId, status: form.status as any },
+        });
+        if (!changedSchool || newSchoolId === null) { onDone(); return; }
+        setAssignmentSaved(true);
       }
-    });
-    onDone();
+      // Assignment revokes old credentials. Only this explicit owner action
+      // returns a newly rotated secret, displayed once and never persisted here.
+      const issued = await rotateCredential.mutateAsync({ deviceId: device.id });
+      setCredential(issued.credential);
+    } catch {
+      setError(assignmentSaved
+        ? 'Assignment saved, but credential issuance failed. Retry issuance before using this device.'
+        : 'Could not save or issue the new device credential. If the assignment saved, retry issuance.');
+    }
   };
 
-  const isPending = updateDevice.isPending;
+  const rotateExisting = async () => {
+    if (form.schoolId !== String(device.schoolId ?? '') || form.status !== device.status) {
+      setError('Save or discard configuration changes before rotating a credential.');
+      return;
+    }
+    if (!window.confirm('Rotate this device credential? The currently deployed credential will stop working immediately. The replacement is shown only once.')) return;
+    setError('');
+    try {
+      const issued = await rotateCredential.mutateAsync({ deviceId: device.id });
+      setCredential(issued.credential);
+    } catch {
+      setError('Credential rotation failed. Check the device status and retry.');
+    }
+  };
+
+  const isPending = updateDevice.isPending || rotateCredential.isPending;
 
   return (
     <form onSubmit={save} className="space-y-4">
@@ -244,6 +276,11 @@ function DeviceUpdateForm({ device, schools, onDone, onCancel }: { device: any; 
         </div>
       </div>
 
+      {credential && <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-4">
+        <p className="text-sm font-bold">New device credential — shown once</p>
+        <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Transfer it securely to the device. It will not appear again after closing this window.</p>
+        <input aria-label="One-time device credential" className="mt-3 w-full font-mono text-xs" readOnly value={credential} onFocus={event => event.currentTarget.select()} />
+      </div>}
       <Field label="Operational Status">
         <select required value={form.status} onChange={e => setForm({...form, status: e.target.value})}>
           {Object.values(PlatformDeviceStatus).map(s => (
@@ -261,11 +298,21 @@ function DeviceUpdateForm({ device, schools, onDone, onCancel }: { device: any; 
         </select>
       </Field>
 
+      {!credential && device.schoolId && !assignmentSaved && (
+        <div className="rounded-lg border border-[hsl(var(--border))] p-4 text-xs text-[hsl(var(--muted-foreground))]">
+          <p>Moving this device to another school revokes its previous credential. Saving the reassignment issues a replacement shown only once.</p>
+          <Button variant="outline" type="button" className="mt-3" disabled={isPending || form.schoolId !== String(device.schoolId) || form.status !== device.status} onClick={rotateExisting}>
+            Rotate current credential
+          </Button>
+        </div>
+      )}
+
       <div className="flex justify-end gap-3 pt-5 border-t border-[hsl(var(--border))]">
-        <Button variant="outline" onClick={onCancel} type="button">Cancel</Button>
-        <Button type="submit" disabled={isPending}>{isPending ? 'Applying…' : 'Save Configuration'}</Button>
+        <Button variant="outline" onClick={credential ? onDone : onCancel} type="button">{credential ? 'Done' : 'Cancel'}</Button>
+        {!credential && <Button type="submit" disabled={isPending}>{isPending ? 'Applying…' : assignmentSaved ? 'Retry credential issuance' : 'Save Configuration'}</Button>}
       </div>
       {updateDevice.isError && <p className="text-sm font-medium text-[hsl(var(--destructive))]">Failed to update device configuration.</p>}
+      {error && <p role="alert" className="text-sm font-medium text-[hsl(var(--destructive))]">{error}</p>}
     </form>
   );
 }

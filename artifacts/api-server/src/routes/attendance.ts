@@ -44,7 +44,7 @@ async function deviceAuth(req: Request) {
   }
   await pool.query(`UPDATE device_credentials SET last_used_at=NOW() WHERE id=$1`, [row.credentialId]);
   await pool.query(`UPDATE platform_devices SET last_seen_at=NOW() WHERE id=$1`, [row.deviceId]);
-  return row as { deviceId: number; schoolId: number };
+  return row as { credentialId: number; deviceId: number; schoolId: number };
 }
 
 async function enforcePolicy(schoolId: number, studentId: number, method: string) {
@@ -199,6 +199,18 @@ const processDeviceAttendance = run(async (req, res) => {
   let result: { rows: any[] };
   try {
    await client.query("BEGIN");
+   // Serialize ingestion with assignment/rotation so a credential cannot be
+   // validated on the old school and inserted after an owner moves the device.
+   const current = await client.query(
+     `SELECT 1 FROM platform_devices d JOIN device_credentials c ON c.device_id=d.id
+       WHERE d.id=$1 AND d.school_id=$2 AND d.status='ACTIVE'
+         AND d.configuration_status='CONFIGURED' AND c.id=$3
+         AND c.school_id=d.school_id AND c.status='ACTIVE'
+         AND (c.expires_at IS NULL OR c.expires_at>NOW())
+       FOR UPDATE OF d`,
+     [device.deviceId, device.schoolId, device.credentialId],
+   );
+   if (!current.rows[0]) throw new AuthError(401, "Invalid or inactive device credential");
    await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, [lockKey]);
    const recent = await client.query(
      `SELECT id FROM attendance_events WHERE school_id=$1 AND student_id=$2 AND device_id=$3 AND event_type=$4
@@ -215,8 +227,15 @@ const processDeviceAttendance = run(async (req, res) => {
    result = await client.query(
     `INSERT INTO attendance_events
       (school_id,student_id,device_id,nfc_card_id,school_class_id,identification_method,event_type,result,
-       attendance_status,event_date,occurred_at,dedupe_key)
-     VALUES($1,$2,$3,$4,$5,$6,$7,'ACCEPTED','PRESENT',$8,$9,$10)
+       attendance_status,event_date,occurred_at,dedupe_key,section_snapshot)
+     VALUES($1,$2,$3,$4,$5,$6,$7,'ACCEPTED','PRESENT',$8,$9,$10,
+       (SELECT a.section FROM student_class_assignments a
+        WHERE a.school_id=$1 AND a.student_id=$2
+          AND ($5::int IS NULL OR a.school_class_id=$5)
+          AND a.created_at<=$9::timestamptz
+          AND (a.start_date IS NULL OR a.start_date<=$8::date)
+          AND (a.end_date IS NULL OR a.end_date>=$8::date)
+        ORDER BY a.created_at DESC,a.id DESC LIMIT 1))
      ON CONFLICT (school_id,dedupe_key) DO NOTHING
      RETURNING id,school_id AS "schoolId",student_id AS "studentId",device_id AS "deviceId",
        event_type AS "eventType",identification_method AS "identificationMethod",
@@ -241,6 +260,25 @@ router.post("/biometric/events", (req, res, next) => {
   processDeviceAttendance(req, res, next);
 });
 
+// An event keeps its own section snapshot. Older events are matched to the
+// assignment in effect at the event instant, never to the student's current
+// section (which may have changed since then).
+const eventSection = `COALESCE(e.section_snapshot,(
+  SELECT a.section FROM student_class_assignments a
+  WHERE a.school_id=e.school_id AND a.student_id=e.student_id
+    AND (e.school_class_id IS NULL OR a.school_class_id=e.school_class_id)
+    AND a.created_at<=e.occurred_at
+    AND (a.start_date IS NULL OR a.start_date<=e.event_date)
+    AND (a.end_date IS NULL OR a.end_date>=e.event_date)
+  ORDER BY a.created_at DESC,a.id DESC LIMIT 1))`;
+const eventClass = `COALESCE(e.school_class_id,(
+  SELECT a.school_class_id FROM student_class_assignments a
+  WHERE a.school_id=e.school_id AND a.student_id=e.student_id
+    AND a.created_at<=e.occurred_at
+    AND (a.start_date IS NULL OR a.start_date<=e.event_date)
+    AND (a.end_date IS NULL OR a.end_date>=e.event_date)
+  ORDER BY a.created_at DESC,a.id DESC LIMIT 1))`;
+
 router.get("/school/attendance/events", requireAuthentication(), run(async (req, res) => {
   const schoolId = Number(req.query.schoolId);
   if (!Number.isInteger(schoolId) || schoolId < 1) throw new AuthError(400, "A valid schoolId is required");
@@ -249,26 +287,33 @@ router.get("/school/attendance/events", requireAuthentication(), run(async (req,
     throw new AuthError(403, "Teachers may only view attendance through an assigned class report");
   }
   const values: unknown[] = [schoolId];
-  const conditions = ["school_id=$1"];
-  if (req.query.studentId != null) { conditions.push(`student_id=$${values.length + 1}`); values.push(Number(req.query.studentId)); }
-  if (req.query.employeeId != null) { conditions.push(`employee_id=$${values.length + 1}`); values.push(Number(req.query.employeeId)); }
-  if (req.query.classId != null) { conditions.push(`school_class_id=$${values.length + 1}`); values.push(Number(req.query.classId)); }
-  if (req.query.from !== undefined) { conditions.push(`occurred_at >= $${values.length + 1}`); values.push(attendanceInstant(req.query.from)); }
+  const conditions = ["e.school_id=$1"];
+  if (req.query.studentId != null) { conditions.push(`e.student_id=$${values.length + 1}`); values.push(Number(req.query.studentId)); }
+  if (req.query.employeeId != null) { conditions.push(`e.employee_id=$${values.length + 1}`); values.push(Number(req.query.employeeId)); }
+  if (req.query.classId != null) { conditions.push(`${eventClass}=$${values.length + 1}`); values.push(Number(req.query.classId)); }
+  if (req.query.section !== undefined) {
+    const section = String(req.query.section).trim();
+    if (!section || section.length > 100) throw new AuthError(400, "Valid section is required");
+    conditions.push(`${eventSection}=$${values.length + 1}`);
+    values.push(section);
+  }
+  if (req.query.from !== undefined) { conditions.push(`e.occurred_at >= $${values.length + 1}`); values.push(attendanceInstant(req.query.from)); }
   if (req.query.to !== undefined) {
     const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.to));
     const end = attendanceInstant(req.query.to);
     if (dateOnly) end.setUTCDate(end.getUTCDate() + 1);
-    conditions.push(`occurred_at ${dateOnly ? "<" : "<="} $${values.length + 1}`);
+    conditions.push(`e.occurred_at ${dateOnly ? "<" : "<="} $${values.length + 1}`);
     values.push(end);
   }
   for (const key of ["eventType", "status", "identificationMethod"] as const) {
-    if (req.query[key]) { const column = key === "status" ? "attendance_status" : key === "eventType" ? "event_type" : "identification_method"; conditions.push(`${column}=$${values.length + 1}`); values.push(String(req.query[key]).toUpperCase()); }
+    if (req.query[key]) { const column = key === "status" ? "attendance_status" : key === "eventType" ? "event_type" : "identification_method"; conditions.push(`e.${column}=$${values.length + 1}`); values.push(String(req.query[key]).toUpperCase()); }
   }
   const result = await pool.query(
-    `SELECT id,school_id AS "schoolId",student_id AS "studentId",employee_id AS "employeeId",device_id AS "deviceId",
-      event_type AS "eventType",identification_method AS "identificationMethod",
-      attendance_status AS status,result,occurred_at AS "occurredAt",created_at AS "createdAt"
-     FROM attendance_events WHERE ${conditions.join(" AND ")} ORDER BY occurred_at DESC LIMIT 500`, values,
+    `SELECT e.id,e.school_id AS "schoolId",e.student_id AS "studentId",e.employee_id AS "employeeId",
+      e.device_id AS "deviceId",${eventClass} AS "classId",${eventSection} AS "section",
+      e.event_type AS "eventType",e.identification_method AS "identificationMethod",
+      e.attendance_status AS status,e.result,e.occurred_at AS "occurredAt",e.created_at AS "createdAt"
+     FROM attendance_events e WHERE ${conditions.join(" AND ")} ORDER BY e.occurred_at DESC LIMIT 500`, values,
   );
   res.json(result.rows);
 }));
@@ -324,7 +369,20 @@ router.get("/school/attendance/discrepancies", requireAuthentication(), run(asyn
    if (getUserContext(req).roles.some(x => x.role === "TEACHER")) throw new AuthError(403,"Teachers may not view school-wide discrepancies");
   await reconcileMissingClass(schoolId, String(req.query.from ?? new Date().toISOString().slice(0, 10)));
   const vals:any[]=[schoolId]; const c=["d.school_id=$1"]; if(req.query.status){c.push(`d.status=$${vals.length+1}`);vals.push(String(req.query.status));} if(req.query.from){c.push(`COALESCE(e.event_date,d.created_at::date) >= $${vals.length+1}::date`);vals.push(String(req.query.from));} if(req.query.to){c.push(`COALESCE(e.event_date,d.created_at::date) <= $${vals.length+1}::date`);vals.push(String(req.query.to));}
-  const r=await pool.query(`SELECT d.id,d.school_id AS "schoolId",d.student_id AS "studentId",d.discrepancy_type AS kind,d.status,d.created_at AS "detectedAt",d.resolved_at AS "resolvedAt",d.details->>'note' AS note FROM attendance_discrepancies d LEFT JOIN attendance_events e ON e.id=d.attendance_event_id AND e.school_id=d.school_id WHERE ${c.join(" AND ")} ORDER BY d.created_at DESC`,vals); res.json(r.rows);
+  const r=await pool.query(`SELECT d.id,d.school_id AS "schoolId",d.student_id AS "studentId",
+    d.attendance_event_id AS "attendanceEventId",d.discrepancy_type AS kind,d.status,
+    d.created_at AS "detectedAt",d.created_at AS "createdAt",d.resolved_at AS "resolvedAt",
+    d.resolved_by AS "resolvedBy",d.details->>'note' AS note,
+    d.details->>'reason' AS "resolutionReason",
+    COALESCE(d.details->'resolutionHistory','[]'::jsonb) AS "resolutionHistory",
+    CASE WHEN u.id IS NULL THEN NULL ELSE jsonb_build_object('id',u.id,'name',trim(concat_ws(' ',u.first_name,u.last_name))) END AS resolver,
+    CASE WHEN e.id IS NULL THEN NULL ELSE jsonb_build_object('id',e.id,'eventType',e.event_type,'status',e.attendance_status,'occurredAt',e.occurred_at,'classId',e.school_class_id,'section',${eventSection}) END AS "relatedEvent",
+    COALESCE((SELECT jsonb_agg(jsonb_build_object('action',a.action,'actorUserId',a.actor_user_id,'createdAt',a."timestamp",'eventType',a.event_type) ORDER BY a."timestamp")
+      FROM audit_logs a WHERE a.school_id=d.school_id AND a.record_id=d.id AND a.module='Attendance' AND a.event_type='ATTENDANCE_DISCREPANCY_RESOLVED'),'[]'::jsonb) AS "auditHistory"
+    FROM attendance_discrepancies d
+    LEFT JOIN attendance_events e ON e.id=d.attendance_event_id AND e.school_id=d.school_id
+    LEFT JOIN app_users u ON u.id=d.resolved_by
+    WHERE ${c.join(" AND ")} ORDER BY d.created_at DESC`,vals); res.json(r.rows);
 }));
 
 router.post("/school/attendance/manual", requireAuthentication(), run(async (req, res) => {
@@ -357,8 +415,13 @@ router.post("/school/attendance/manual", requireAuthentication(), run(async (req
     await client.query("BEGIN");
     const result = await client.query(
       `INSERT INTO attendance_events
-        (school_id,student_id,employee_id,identification_method,event_type,result,attendance_status,event_date,occurred_at,reason,actor_user_id,dedupe_key)
-       VALUES($1,$2,$3,'MANUAL',$4,'ACCEPTED',$5,$6,$7,$8,$9,$10)
+        (school_id,student_id,employee_id,identification_method,event_type,result,attendance_status,event_date,occurred_at,reason,actor_user_id,dedupe_key,section_snapshot)
+       VALUES($1,$2,$3,'MANUAL',$4,'ACCEPTED',$5,$6,$7,$8,$9,$10,
+         (SELECT a.section FROM student_class_assignments a
+          WHERE a.school_id=$1 AND a.student_id=$2 AND a.created_at<=$7::timestamptz
+            AND (a.start_date IS NULL OR a.start_date<=$6::date)
+            AND (a.end_date IS NULL OR a.end_date>=$6::date)
+          ORDER BY a.created_at DESC,a.id DESC LIMIT 1))
        RETURNING id,school_id AS "schoolId",student_id AS "studentId",employee_id AS "employeeId",
          device_id AS "deviceId",event_type AS "eventType",identification_method AS "identificationMethod",
          occurred_at AS "occurredAt",attendance_status AS status,result,created_at AS "createdAt"`,

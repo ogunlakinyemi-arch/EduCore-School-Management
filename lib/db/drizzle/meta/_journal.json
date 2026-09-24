@@ -71,6 +71,20 @@
       "when": 1790192000000,
       "tag": "0009_phase5_attendance",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790193000000,
+      "tag": "0010_historical_device_school_bindings",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790194000000,
+      "tag": "0011_historical_device_references",
+      "breakpoints": true
     }
   ]
 }

@@ -19,6 +19,10 @@ export interface AttendanceEvent {
   employeeId?: number | null;
   /** @nullable */
   deviceId: number | null;
+  /** @nullable */
+  classId?: number | null;
+  /** @nullable */
+  section?: string | null;
   eventType: AttendanceEventType;
   identificationMethod: IdentificationMethod;
   occurredAt: Date;

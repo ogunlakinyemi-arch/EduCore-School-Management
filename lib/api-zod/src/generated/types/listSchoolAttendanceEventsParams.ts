@@ -27,6 +27,11 @@ employeeId?: number;
  * @minimum 1
  */
 classId?: number;
+/**
+ * @minLength 1
+ * @maxLength 100
+ */
+section?: string;
 from?: Date;
 to?: Date;
 eventType?: AttendanceEventType;

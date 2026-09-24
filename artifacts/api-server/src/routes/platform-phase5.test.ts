@@ -15,7 +15,7 @@ describe("platform device phase 5 security contract", () => {
     expect(source).toContain('"SUSPENDED"');
     expect(source).toMatch(/school_class_id=CASE WHEN \$3::boolean/);
     expect(source).toMatch(/configuration_status=CASE WHEN \$3::boolean/);
-    expect(source).toContain('unassigned ? "UNASSIGNED" : "REASSIGNED"');
+    expect(source).toContain('unassigned ? "UNASSIGNED" : before.rows[0].schoolId === null ? "ASSIGNED" : "REASSIGNED"');
   });
 
   it("returns assignment fields and never logs the one-time secret", () => {

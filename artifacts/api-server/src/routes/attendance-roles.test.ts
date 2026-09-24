@@ -29,7 +29,7 @@ const poolMock = vi.hoisted(() => {
     if (sql.includes("FROM attendance_events WHERE school_id=$1 AND school_class_id=$2")) {
       return result(state.events.filter(e => e.school_id === Number(values[0]) && e.school_class_id === Number(values[1]) && e.event_date === values[2]));
     }
-    if (sql.includes("FROM attendance_events WHERE")) {
+    if (sql.includes("FROM attendance_events WHERE") || sql.includes("FROM attendance_events e WHERE")) {
       return result(state.events.filter(e => e.school_id === Number(values[0])));
     }
     if (sql.includes("FROM attendance_discrepancies d")) return result([{ id: 401, schoolId: 1, studentId: 11, kind: "EXIT_WITHOUT_ENTRY", status: "OPEN" }]);
@@ -148,9 +148,27 @@ describe("Phase 5 attendance route role matrix", () => {
   it("includes the full final day for date-only event ranges", async () => {
     poolMock.query.mockClear();
     expect((await call("/school/attendance/events?schoolId=1&from=2025-02-03&to=2025-02-03", "SCHOOL_ADMIN")).status).toBe(200);
-    const [sql, values] = poolMock.query.mock.calls.find(([text]) => text.includes("FROM attendance_events WHERE"))!;
-    expect(sql).toContain("occurred_at < $3");
+    const [sql, values] = poolMock.query.mock.calls.find(([text]) => text.includes("FROM attendance_events e WHERE"))!;
+    expect(sql).toContain("e.occurred_at < $3");
     expect(values?.[2]).toEqual(new Date("2025-02-04T00:00:00.000Z"));
+  });
+  it("applies section at event time in SQL together with tenant, class, student, date and status filters", async () => {
+    poolMock.query.mockClear();
+    const filter = "/school/attendance/events?schoolId=1&classId=3&studentId=11&section=Emerald&from=2025-02-03&to=2025-02-03&status=PRESENT";
+    expect((await call(filter, "SCHOOL_ADMIN")).status).toBe(200);
+    const [sql, values] = poolMock.query.mock.calls.find(([text]) => text.includes("FROM attendance_events e WHERE"))!;
+    expect(sql).toContain("e.school_id=$1");
+    expect(sql).toContain("e.student_id=$2");
+    expect(sql).toContain("COALESCE(e.school_class_id");
+    expect(sql).toContain("a.school_id=e.school_id");
+    expect(sql).toContain("COALESCE(e.section_snapshot");
+    expect(sql).toContain("a.created_at<=e.occurred_at");
+    expect(sql).toContain("a.school_id=e.school_id");
+    expect(sql).toContain("e.attendance_status=$");
+    expect(values).toEqual([1, 11, 3, "Emerald", new Date("2025-02-03T00:00:00.000Z"),
+      new Date("2025-02-04T00:00:00.000Z"), "PRESENT"]);
+    expect((await call(filter.replace("schoolId=1", "schoolId=2"), "SCHOOL_ADMIN")).status).toBe(404);
+    expect((await call(filter, "TEACHER")).status).toBe(403);
   });
   it("limits events, today, and discrepancies to authorized school roles", async () => {
     for (const role of ["SCHOOL_ADMIN", "STAFF"]) {
