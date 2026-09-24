@@ -1,0 +1,570 @@
+Yemait EduCore — Phase 5 Pre-Rollout Verification & Security Test
+
+Phase 5 Attendance, NFC Identification, Device, Biometric Integration Boundary, Manual Attendance, Corrections, Discrepancies, Reports, and Notification Events have been implemented.
+
+Do NOT begin Phase 6.
+
+This task is specifically to close the verification gaps identified at the end of Phase 5.
+
+CRITICAL RULES
+
+DO NOT:
+
+- reset the database
+- delete data
+- modify production data
+- modify the production schema
+- remove existing features
+- weaken authentication
+- weaken RBAC
+- weaken tenant isolation
+- replace Clerk
+- replace the existing attendance architecture
+- claim hardware integration is complete without actual hardware
+- introduce unrelated features
+
+Use the existing development/test environment.
+
+First inspect the existing Phase 5 implementation and tests.
+
+---
+
+1. AUTHENTICATED BROWSER VERIFICATION
+
+The previous browser verification only reached the Clerk sign-in screen.
+
+Use the existing development environment to perform authenticated browser verification.
+
+Use an authorized test account/session.
+
+Verify the actual attendance pages after authentication.
+
+At minimum verify:
+
+Platform Owner
+
+- Can access authorized device management
+- Can view attendance-related platform information where permitted
+- Cannot bypass authorization through manipulated IDs
+
+School Admin
+
+- Can access their school's attendance dashboard
+- Can view attendance events
+- Can view discrepancies
+- Can use permitted manual attendance functions
+- Can view authorized devices
+- Cannot access another school's attendance data
+
+Teacher
+
+Verify the actual permissions implemented by the application.
+
+Teacher must only access attendance information permitted by their school/class scope.
+
+Parent
+
+Verify:
+
+- Parent can see only their linked child/children
+- Parent cannot modify attendance
+- Parent cannot access unrelated students
+
+Student
+
+Verify the implemented student attendance access.
+
+Student must only see their own authorized information.
+
+Partner
+
+Verify that Partner access remains restricted to the partner ecosystem and does not expose school attendance operations.
+
+---
+
+2. CROSS-SCHOOL SECURITY TESTING
+
+Use at least two schools in the development environment.
+
+Example:
+
+School A
+School B
+
+Create or use authorized test users for each school.
+
+Attempt cross-school access for:
+
+- attendance dashboard
+- attendance events
+- student attendance
+- class attendance
+- attendance reports
+- discrepancies
+- attendance devices
+- device events
+- NFC cards
+- biometric references
+- manual attendance
+- attendance corrections
+
+For every attempted cross-school access verify that it is denied.
+
+Test both:
+
+- frontend navigation
+- direct API requests
+
+Do not rely only on hidden frontend buttons for security.
+
+---
+
+3. ROLE TEST MATRIX
+
+Create an explicit authorization matrix for the Phase 5 endpoints.
+
+Test at minimum:
+
+Role| Own School Attendance| Other School Attendance| Device Management| Manual Attendance| Corrections
+PLATFORM_OWNER| Allowed| Allowed according to platform scope| Allowed| Allowed where intended| Allowed where intended
+SCHOOL_ADMIN| Allowed| Denied| Authorized school only| Allowed| Allowed according to policy
+TEACHER| Permitted scope only| Denied| Denied unless explicitly permitted| Permitted scope only| Restricted
+ACCOUNTANT| Denied unless explicitly required| Denied| Denied| Denied unless explicitly required| Denied
+PARENT| Own children only| Denied| Denied| Denied| Denied
+STUDENT| Own record only| Denied| Denied| Denied| Denied
+STAFF| Permitted scope only| Denied| Denied unless explicitly permitted| Permitted scope only| Restricted
+PARTNER| No operational attendance access| Denied| Denied| Denied| Denied
+
+Do not assume this table overrides the existing application policy.
+
+Use the actual intended permissions from the Phase 5 implementation and document any differences.
+
+---
+
+4. DEVICE SECURITY
+
+Test the complete device-security flow.
+
+Valid device
+
+School A device
+→ School A student
+→ valid attendance event
+
+Must succeed.
+
+Wrong school
+
+School A device
+→ School B student
+
+Must fail.
+
+Invalid credential
+
+Invalid device credential
+→ attendance event
+
+Must fail.
+
+Suspended device
+
+Suspended device
+→ attendance event
+
+Must fail.
+
+Unassigned device
+
+Unassigned device
+→ attendance event
+
+Must fail.
+
+Reassigned device
+
+Device reassigned from School A to School B.
+
+Verify:
+
+- School A events are rejected
+- School B events are accepted
+- reassignment is audited
+
+---
+
+5. NFC SECURITY
+
+Test:
+
+- active card
+- inactive card
+- blocked card
+- replaced card
+- unknown NFC UID
+- duplicate NFC UID
+- card assigned to wrong school
+- valid card at correct school
+- repeated tap within duplicate suppression window
+
+Verify that historical NFC records remain intact.
+
+---
+
+6. ATTENDANCE EVENT TESTING
+
+Verify:
+
+School entry
+
+Student enters school.
+
+Expected:
+
+SCHOOL_ENTRY recorded.
+
+School exit
+
+Student leaves school.
+
+Expected:
+
+SCHOOL_EXIT recorded.
+
+Classroom attendance
+
+Student enters assigned classroom.
+
+Expected:
+
+CLASSROOM attendance recorded.
+
+School present but classroom missing
+
+Create:
+
+SCHOOL_ENTRY
+
+without valid classroom attendance.
+
+Expected:
+
+discrepancy/missing classroom state according to configured attendance rules.
+
+Invalid classroom
+
+Student belongs to JSS1A.
+
+Attempt classroom event from a JSS1B device.
+
+Expected:
+
+rejected or flagged according to the implemented policy.
+
+Do not allow arbitrary client-supplied class IDs to bypass server validation.
+
+---
+
+7. MANUAL ATTENDANCE
+
+Verify an authorized user can:
+
+- create permitted manual attendance
+- select the correct student
+- select valid event/status
+- provide a reason
+
+Verify unauthorized users cannot manually mark attendance.
+
+Every manual attendance action must create an audit record.
+
+---
+
+8. ATTENDANCE CORRECTION
+
+Verify an authorized correction workflow.
+
+Example:
+
+Original:
+ABSENT
+
+Correction:
+PRESENT
+
+Verify:
+
+- original record/history remains available
+- correction is recorded
+- reason is recorded
+- actor is recorded
+- timestamp is recorded
+
+Do not silently overwrite historical attendance.
+
+---
+
+9. DISCREPANCY WORKFLOW
+
+Verify discrepancies can be:
+
+- created
+- viewed by authorized users
+- resolved where supported
+- audited
+
+Test at least:
+
+- school present/class missing
+- invalid classroom event
+- exit without entry
+
+Do not label discrepancies as misconduct.
+
+They are attendance exceptions requiring review.
+
+---
+
+10. ATTENDANCE REPORTS
+
+Verify the actual browser pages and API responses for:
+
+- daily attendance
+- student attendance
+- class attendance
+- late arrivals
+- early departures
+- classroom discrepancies
+- staff attendance
+
+Test filters:
+
+- date
+- date range
+- school
+- class
+- section
+- student
+- status
+- identification method
+
+Verify that report results remain tenant-scoped.
+
+---
+
+11. STAFF ATTENDANCE
+
+Verify:
+
+- teacher entry
+- teacher exit
+- staff entry
+- staff exit
+- late status where implemented
+- early departure where implemented
+
+Verify that staff attendance cannot be assigned to another school.
+
+---
+
+12. BIOMETRIC INTEGRATION BOUNDARY
+
+Do not claim that biometric hardware integration is complete.
+
+Verify only the software boundary:
+
+- provider-resolved biometric reference can be accepted
+- provider reference is associated with the correct student/device/school
+- invalid references are rejected where validation exists
+- raw fingerprint data is not stored
+- raw fingerprint data is not exposed through APIs
+- biometric references are not visible to parents/students
+- biometric credentials/secrets are not exposed in logs
+
+Document that physical biometric hardware remains untested.
+
+---
+
+13. PARENT NOTIFICATION EVENTS
+
+Verify that qualifying attendance events create the appropriate notification event/queue record where configured.
+
+Test examples:
+
+- school entry
+- school exit
+- classroom discrepancy
+
+Do NOT integrate SMS/WhatsApp providers in this task.
+
+Verify only the internal notification-event foundation.
+
+---
+
+14. IDOR TESTING
+
+Explicitly test attempts to manipulate:
+
+- schoolId
+- studentId
+- classId
+- sectionId
+- deviceId
+- attendanceEventId
+- discrepancyId
+- parentId
+- teacherId
+- biometric reference ID
+
+The server must always validate authorization and ownership.
+
+---
+
+15. EXISTING REGRESSION TESTS
+
+Run ALL previous tests from:
+
+- Phase 2
+- Phase 3
+- Phase 4
+- Phase 5
+
+Do not run only the new tests.
+
+Confirm there is no regression in:
+
+- Clerk authentication
+- RBAC
+- school management
+- students
+- parents
+- teachers
+- staff
+- academic sessions/terms
+- subscriptions
+- NFC card management
+- partner management
+- partner attribution
+- partner commissions
+- partner payouts
+- audit logs
+
+---
+
+16. PRODUCTION-SAFETY CHECK
+
+Do not make production schema changes.
+
+Do not modify production records.
+
+Clearly identify:
+
+- development database
+- production database
+
+If environment separation is unclear, STOP and report the ambiguity rather than modifying anything.
+
+---
+
+17. BROWSER VERIFICATION REQUIREMENT
+
+The previous Phase 5 report specifically stated:
+
+"The browser preview reached the Clerk sign-in screen, so attendance could not be verified in an authenticated school session."
+
+Resolve this gap.
+
+Authenticate using a legitimate development/test account and verify the actual:
+
+- attendance dashboard
+- attendance events
+- device management
+- discrepancies
+- reports
+- manual attendance
+- role restrictions
+
+Capture/record the result of each workflow.
+
+If a workflow cannot be verified because of an environment limitation, clearly report the limitation rather than marking it as passed.
+
+---
+
+18. FIX ONLY WHAT IS NECESSARY
+
+If tests reveal defects:
+
+- diagnose them
+- make the smallest safe fix
+- add regression tests
+- rerun the affected tests
+- rerun the complete test suite
+
+Do not redesign working Phase 5 architecture unnecessarily.
+
+---
+
+19. FINAL VERIFICATION
+
+Run:
+
+- API typecheck
+- shared library typecheck
+- frontend typecheck
+- API production build
+- frontend production build
+- complete API test suite
+- Phase 5 security tests
+- cross-school tests
+- role tests
+- device tests
+- NFC tests
+- attendance tests
+- browser verification
+- API health check
+
+Verify unauthenticated protected attendance endpoints return:
+
+401
+
+Verify authenticated unauthorized requests return:
+
+403
+
+where appropriate.
+
+---
+
+20. COMPLETION REPORT
+
+Report:
+
+1. Browser workflows successfully verified
+2. Roles tested
+3. Cross-school tests performed
+4. Device-security tests
+5. NFC tests
+6. Attendance tests
+7. Manual attendance tests
+8. Correction tests
+9. Discrepancy tests
+10. Report/filter tests
+11. Biometric-boundary tests
+12. Parent notification-event tests
+13. IDOR tests
+14. Previous regression tests
+15. Total tests passed/failed
+16. Typecheck results
+17. Build results
+18. Health check
+19. Any defects fixed
+20. Any remaining limitations
+21. Whether Phase 5 is now ready for rollout
+
+If physical hardware was not available, explicitly state:
+
+Physical NFC/fingerprint hardware integration remains unverified.
+
+STOP after this verification task.
+
+Do not begin Phase 6 automatically.

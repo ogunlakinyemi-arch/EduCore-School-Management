@@ -3,6 +3,7 @@ import { Activity, AlertTriangle, ClipboardCheck, Clock3, Plus, RefreshCw } from
 import {
   useGetSchoolAttendanceToday, useListSchoolAttendanceEvents, useListAttendanceDiscrepancies,
   useCreateManualAttendance, useCorrectAttendance,
+  useGetClassAttendance, getGetClassAttendanceQueryKey,
   getGetSchoolAttendanceTodayQueryKey, getListSchoolAttendanceEventsQueryKey,
   getListAttendanceDiscrepanciesQueryKey,
   useGetAuthorizedContext,
@@ -30,21 +31,23 @@ export function AttendancePage() {
   const contextQuery = useGetAuthorizedContext();
   const isPlatformOwner = contextQuery.data?.isPlatformOwner === true;
   const roles = contextQuery.data?.roles?.map(role => role.role) ?? [];
+  const isTeacherView = !isPlatformOwner && roles.includes('TEACHER');
   const canWrite = isPlatformOwner || roles.includes('SCHOOL_ADMIN') || roles.includes('STAFF');
+  const canCorrect = isPlatformOwner || roles.includes('SCHOOL_ADMIN');
 
   const today = useGetSchoolAttendanceToday(
     { schoolId, date },
-    { query: { enabled: !!schoolId, queryKey: getGetSchoolAttendanceTodayQueryKey({ schoolId, date }) } },
+    { query: { enabled: !!schoolId && !isTeacherView, queryKey: getGetSchoolAttendanceTodayQueryKey({ schoolId, date }) } },
   );
   const eventFrom = tab === 'events' ? `${date}T00:00:00.000Z` : `${fromDate}T00:00:00.000Z`;
   const eventTo = tab === 'events' ? `${date}T23:59:59.999Z` : `${toDate}T23:59:59.999Z`;
   const events = useListSchoolAttendanceEvents(
     { schoolId, from: eventFrom, to: eventTo, eventType: eventType || undefined, status: status || undefined, identificationMethod: method || undefined } as any,
-    { query: { enabled: !!schoolId && tab !== 'discrepancies', queryKey: getListSchoolAttendanceEventsQueryKey({ schoolId, from: eventFrom, to: eventTo, eventType: eventType || undefined, status: status || undefined, identificationMethod: method || undefined } as any) } },
+    { query: { enabled: !!schoolId && !isTeacherView && tab !== 'discrepancies', queryKey: getListSchoolAttendanceEventsQueryKey({ schoolId, from: eventFrom, to: eventTo, eventType: eventType || undefined, status: status || undefined, identificationMethod: method || undefined } as any) } },
   );
   const discrepancies = useListAttendanceDiscrepancies(
     { schoolId, status: discrepancyStatus || undefined, from: date, to: date } as any,
-    { query: { enabled: !!schoolId && tab === 'discrepancies', queryKey: getListAttendanceDiscrepanciesQueryKey({ schoolId, status: discrepancyStatus || undefined, from: date, to: date } as any) } },
+    { query: { enabled: !!schoolId && !isTeacherView && tab === 'discrepancies', queryKey: getListAttendanceDiscrepanciesQueryKey({ schoolId, status: discrepancyStatus || undefined, from: date, to: date } as any) } },
   );
 
   const refresh = () => {
@@ -56,6 +59,7 @@ export function AttendancePage() {
   const rows: any[] = tab === 'discrepancies' ? ((discrepancies.data as any[]) ?? []) : ((events.data as any[]) ?? []).filter(row => subject === 'all' || (subject === 'student' ? row.studentId != null : row.employeeId != null));
 
   if (!schoolId) return <div className="fade-up"><PageHeading eyebrow="Operations / Attendance" title="Attendance, with context." description="Select a school to inspect attendance events and reconciliation." action={<TenantPicker />} /><EmptyState icon={ClipboardCheck} title="Select a school context" description="Platform owners can choose any active school; school users see their authorized school." /></div>;
+  if (isTeacherView) return <TeacherClassAttendance schoolId={schoolId} />;
   if (today.isLoading) return <SkeletonPage />;
 
   return (
@@ -82,7 +86,7 @@ export function AttendancePage() {
                 {tab !== 'discrepancies' && <select value={subject} onChange={e => setSubject(e.target.value as typeof subject)} aria-label="Attendance subject"><option value="all">Students and staff</option><option value="student">Students</option><option value="employee">Staff</option></select>}
               </div>
             </div>
-            <AttendanceTable rows={rows} discrepancy={tab === 'discrepancies'} canWrite={canWrite} loading={events.isLoading || discrepancies.isLoading} onCorrect={row => setModal({ correction: row })} />
+            <AttendanceTable rows={rows} discrepancy={tab === 'discrepancies'} canCorrect={canCorrect} loading={events.isLoading || discrepancies.isLoading} onCorrect={row => setModal({ correction: row })} />
           </div>
         </>
       )}
@@ -92,10 +96,30 @@ export function AttendancePage() {
   );
 }
 
-function AttendanceTable({ rows, discrepancy, canWrite, loading, onCorrect }: { rows: any[]; discrepancy: boolean; canWrite: boolean; loading: boolean; onCorrect: (row: any) => void }) {
+function TeacherClassAttendance({ schoolId }: { schoolId: number }) {
+  const [classId, setClassId] = useState('');
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const selectedClassId = Number(classId);
+  const validClassId = Number.isInteger(selectedClassId) && selectedClassId > 0;
+  const report = useGetClassAttendance(selectedClassId, { schoolId, date }, {
+    query: { enabled: validClassId && !!schoolId, queryKey: getGetClassAttendanceQueryKey(selectedClassId, { schoolId, date }) },
+  });
+  return <div className="fade-up">
+    <PageHeading eyebrow="Operations / Attendance" title="Class attendance" description="Only your assigned classes are available. School-wide attendance is restricted." action={<TenantPicker />} />
+    <div className="panel mb-5 flex flex-wrap gap-4 p-5">
+      <Field label="Assigned class ID"><input type="number" min="1" value={classId} onChange={e => setClassId(e.target.value)} /></Field>
+      <Field label="School day"><input type="date" value={date} onChange={e => setDate(e.target.value)} /></Field>
+    </div>
+    {!validClassId ? <EmptyState icon={ClipboardCheck} title="Choose an assigned class" description="Enter an assigned class ID to view its attendance for the selected day." /> :
+      report.isError ? <div role="alert" className="panel p-5">This class is unavailable or you are not assigned to it.</div> :
+      <AttendanceTable rows={(report.data as any[]) ?? []} discrepancy={false} canCorrect={false} loading={report.isLoading} onCorrect={() => {}} />}
+  </div>;
+}
+
+function AttendanceTable({ rows, discrepancy, canCorrect, loading, onCorrect }: { rows: any[]; discrepancy: boolean; canCorrect: boolean; loading: boolean; onCorrect: (row: any) => void }) {
   if (loading) return <div className="p-8 text-sm text-[hsl(var(--muted-foreground))]">Loading attendance records…</div>;
   if (!rows.length) return <EmptyState icon={ClipboardCheck} title={discrepancy ? 'No discrepancies found' : 'No attendance events found'} description="Try another date or filter. Values are sourced from recorded attendance only." />;
-  return <div className="divide-y divide-[hsl(var(--border)/.6)]">{rows.map((row: any, index) => <div key={row.id ?? index} className="grid gap-2 px-5 py-4 md:grid-cols-[1.3fr_1fr_1fr_1fr_auto] md:items-center md:px-6"><div><div className="font-semibold">{row.studentId != null ? `Student ${row.studentName || row.studentId}` : row.employeeId != null ? `Staff ${row.employeeName || row.employeeId}` : 'Attendance record'}</div><div className="text-xs text-[hsl(var(--muted-foreground))]">{row.eventType || row.kind || 'Reconciliation discrepancy'}</div></div><div className="text-sm">{time(row.occurredAt || row.detectedAt || row.createdAt)}</div><div><StatusPill value={row.status || 'UNKNOWN'} /></div><div className="text-xs text-[hsl(var(--muted-foreground))]">{row.identificationMethod || row.note || '—'}</div>{!discrepancy && canWrite && <Button variant="outline" onClick={() => onCorrect(row)}>Correct</Button>}</div>)}</div>;
+  return <div className="divide-y divide-[hsl(var(--border)/.6)]">{rows.map((row: any, index) => <div key={row.id ?? index} className="grid gap-2 px-5 py-4 md:grid-cols-[1.3fr_1fr_1fr_1fr_auto] md:items-center md:px-6"><div><div className="font-semibold">{row.studentId != null ? `Student ${row.studentName || row.studentId}` : row.employeeId != null ? `Staff ${row.employeeName || row.employeeId}` : 'Attendance record'}</div><div className="text-xs text-[hsl(var(--muted-foreground))]">{row.eventType || row.kind || 'Reconciliation discrepancy'}</div></div><div className="text-sm">{time(row.occurredAt || row.detectedAt || row.createdAt)}</div><div><StatusPill value={row.status || 'UNKNOWN'} /></div><div className="text-xs text-[hsl(var(--muted-foreground))]">{row.identificationMethod || row.note || '—'}</div>{!discrepancy && canCorrect && <Button variant="outline" onClick={() => onCorrect(row)}>Correct</Button>}</div>)}</div>;
 }
 
 function ManualForm({ schoolId, onDone, onCancel }: { schoolId: number; onDone: () => void; onCancel: () => void }) {
