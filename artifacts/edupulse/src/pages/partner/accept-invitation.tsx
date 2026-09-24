@@ -11,6 +11,8 @@ export default function AcceptInvitation() {
   
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
+  const [activatedRole, setActivatedRole] = useState<string | null>(null);
+  const [redirectTo, setRedirectTo] = useState('/partner');
 
   useEffect(() => {
     if (match && params.invitationToken) {
@@ -22,7 +24,9 @@ export default function AcceptInvitation() {
       }
 
       accept.mutate({ invitationToken }, {
-        onSuccess: () => {
+        onSuccess: (result: any) => {
+          setActivatedRole(result.role ?? 'PARTNER_OWNER');
+          setRedirectTo(result.redirectTo ?? '/partner');
           setStatus('success');
         },
         onError: (err: any) => {
@@ -54,12 +58,19 @@ export default function AcceptInvitation() {
             <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[hsl(157_37%_43%/.15)] text-[hsl(157_37%_43%)] dark:text-[hsl(157_37%_55%)] mb-6">
               <CheckCircle2 size={32} />
             </div>
-            <h1 className="display-font text-3xl font-bold mb-3">Welcome to Yemait EduCore</h1>
+            <h1 className="display-font text-3xl font-bold mb-3">
+              {activatedRole === 'SCHOOL_ADMIN' ? 'School Administrator Activated' :
+                activatedRole === 'PARTNER_STAFF' ? 'Partner Staff Account Activated' : 'Welcome to Yemait EduCore'}
+            </h1>
             <p className="text-[hsl(var(--muted-foreground))] mb-8 leading-relaxed">
-              Your partner account is ready. You can now start referring schools and managing your commissions.
+              {activatedRole === 'SCHOOL_ADMIN'
+                ? 'Your school administrator account is active. You can now sign in to manage your school.'
+                : activatedRole === 'PARTNER_STAFF'
+                  ? 'Your partner staff account is active. The partner portal is ready for you.'
+                  : 'Your partner account is ready. You can now start referring schools and managing your commissions.'}
             </p>
-            <Button className="w-full h-12" onClick={() => setLocation('/partner')}>
-              Go to Partner Dashboard
+            <Button className="w-full h-12" onClick={() => setLocation(redirectTo)}>
+              {activatedRole === 'SCHOOL_ADMIN' ? 'Continue to School Dashboard' : 'Go to Partner Dashboard'}
             </Button>
           </div>
         )}

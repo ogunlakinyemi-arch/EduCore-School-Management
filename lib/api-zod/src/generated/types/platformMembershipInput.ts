@@ -8,7 +8,6 @@
 import type { PlatformMembershipInputRole } from './platformMembershipInputRole';
 
 export interface PlatformMembershipInput {
-  /** @minimum 1 */
-  userId: number;
+  email: string;
   role: PlatformMembershipInputRole;
 }

@@ -18,10 +18,5 @@ export interface SchoolAdministratorInput {
      * @minLength 8
      * @maxLength 25
      */
-  phone: string;
-  /**
-     * @minLength 12
-     * @maxLength 256
-     */
-  password: string;
+  phone?: string;
 }

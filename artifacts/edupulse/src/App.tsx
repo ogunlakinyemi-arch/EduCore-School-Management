@@ -34,6 +34,7 @@ import { TimetablePage } from '@/pages/timetable';
 import { MyAcademicsPage } from '@/pages/my-academics';
 import { ClassesPage } from '@/pages/classes';
 import { UsersPage } from '@/pages/users';
+import { PeopleImportsPage } from '@/pages/people-imports';
 import { SubscriptionsPage } from '@/pages/subscriptions';
 import { CardsPage } from '@/pages/cards';
 import { AuditPage } from '@/pages/audit';
@@ -114,8 +115,31 @@ function ProtectedRoutes() {
   }
 
   const roles = context?.roles?.map(r => r.role) || [];
-  const isOnlyParent = roles.length === 1 && roles[0] === 'PARENT';
-  const isOnlyPartner = roles.length === 1 && roles[0] === 'PARTNER';
+  const requestedPortal = window.sessionStorage.getItem('edupulse:selected-portal');
+  if (requestedPortal && !(requestedPortal === 'PLATFORM_OWNER' ? context.isPlatformOwner : roles.includes(requestedPortal as typeof roles[number]))) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-[hsl(var(--background))] p-8">
+        <div className="panel max-w-md p-8 text-center">
+          <h1 className="display-font text-2xl font-bold">Portal not available</h1>
+          <p className="mt-3 text-sm text-[hsl(var(--muted-foreground))]">
+            Your verified account does not have access to the selected portal. Choosing an account type cannot change your permissions.
+          </p>
+          <button
+            type="button"
+            className="mt-6 rounded-xl bg-[hsl(var(--primary))] px-5 py-2 text-sm font-bold text-[hsl(var(--primary-foreground))]"
+            onClick={() => {
+              window.sessionStorage.removeItem('edupulse:selected-portal');
+              window.location.reload();
+            }}
+          >
+            Open my authorized portal
+          </button>
+        </div>
+      </div>
+    );
+  }
+  const isOnlyParent = roles.includes('PARENT') && (roles.length === 1 || requestedPortal === 'PARENT');
+  const isOnlyPartner = roles.includes('PARTNER') && (roles.length === 1 || requestedPortal === 'PARTNER');
 
   if (isOnlyParent) {
     return <ParentPortal />;
@@ -141,6 +165,9 @@ function ProtectedRoutes() {
           </Route>
           <Route path="/users">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><UsersPage /></RoleGuard>
+          </Route>
+          <Route path="/people/imports">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><PeopleImportsPage /></RoleGuard>
           </Route>
           <Route path="/audit">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><AuditPage /></RoleGuard>

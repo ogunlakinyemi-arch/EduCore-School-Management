@@ -1,5 +1,4 @@
 import { Router, type IRouter, type Request } from "express";
-import { clerkClient } from "@clerk/express";
 import { pool } from "@workspace/db";
 import {
   AuthError,
@@ -11,6 +10,11 @@ import {
   requireAuthentication,
   type Role,
 } from "../middlewares/auth";
+import {
+  activateAcceptedSchoolInvitation,
+  createSchoolInvitation,
+  INVITABLE_SCHOOL_ROLES,
+} from "./school-invitations";
 
 const router: IRouter = Router();
 router.use(requireAuthentication());
@@ -26,37 +30,6 @@ function userName(user: {
   email: string;
 }) {
   return [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
-}
-
-async function createOrRecoverSchoolAdmin(input: {
-  schoolId: number;
-  email: string;
-  password: string;
-  firstName: string;
-  lastName?: string;
-}) {
-  const marker = `school-admin:${input.schoolId}`;
-  try {
-    return await clerkClient.users.createUser({
-      emailAddress: [input.email],
-      password: input.password,
-      firstName: input.firstName,
-      lastName: input.lastName,
-      privateMetadata: { edupulseProvisioning: marker },
-    });
-  } catch (createError) {
-    const users = await clerkClient.users.getUserList({ emailAddress: [input.email], limit: 10 });
-    const orphan = users.data.find(
-      (user) => user.privateMetadata?.edupulseProvisioning === marker,
-    );
-    if (!orphan) throw createError;
-    return clerkClient.users.updateUser(orphan.id, {
-      password: input.password,
-      firstName: input.firstName,
-      lastName: input.lastName,
-      signOutOfOtherSessions: true,
-    });
-  }
 }
 
 async function auditSecurityEvent(
@@ -155,19 +128,30 @@ router.get(
 router.get(
   "/me/authorized-context",
   asyncRoute(async (req, res) => {
-    const context = getUserContext(req);
+    const initialContext = getUserContext(req);
+    if (!initialContext.roles.length) {
+      await activateAcceptedSchoolInvitation(
+        initialContext.user.id,
+        initialContext.user.clerkUserId,
+      );
+    }
+    const roles = await pool.query(
+      `SELECT id,role,school_id AS "schoolId",status
+       FROM school_memberships WHERE user_id=$1 AND status='ACTIVE'`,
+      [initialContext.user.id],
+    );
     res.json({
       user: {
-        id: context.user.id,
-        name: userName(context.user),
-        email: context.user.email,
-        status: context.user.status,
+        id: initialContext.user.id,
+        name: userName(initialContext.user),
+        email: initialContext.user.email,
+        status: initialContext.user.status,
       },
-      isPlatformOwner: context.roles.some(
+      isPlatformOwner: roles.rows.some(
         (assignment) =>
           assignment.role === "PLATFORM_OWNER" && assignment.schoolId === null,
       ),
-      roles: context.roles,
+      roles: roles.rows,
     });
   }),
 );
@@ -418,17 +402,27 @@ router.post(
   "/platform-users",
   asyncRoute(async (req, res) => {
     assertRoles(req, ["PLATFORM_OWNER"]);
-    const userId = Number(req.body?.userId);
+    const email = String(req.body?.email ?? "").trim().toLowerCase();
     const role = parseRole(req.body?.role);
     const context = getUserContext(req);
     if (role !== "PLATFORM_OWNER") {
       throw new AuthError(400, "Only platform roles may be assigned here");
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new AuthError(400, "A valid user email is required");
+    }
+    const matchingUsers = await pool.query(
+      `SELECT id FROM app_users WHERE lower(email)=lower($1) ORDER BY id LIMIT 2`,
+      [email],
+    );
+    if (matchingUsers.rows.length > 1) {
+      throw new AuthError(409, "Multiple accounts use this email; resolve the duplicate before assigning a platform role");
+    }
+    if (!matchingUsers.rows[0]) throw new AuthError(404, "User account not found");
+    const userId = matchingUsers.rows[0].id;
     if (userId === context.user.id) {
       throw new AuthError(403, "You cannot change your own platform role");
     }
-    const user = await pool.query(`SELECT id FROM app_users WHERE id = $1`, [userId]);
-    if (!user.rows[0]) throw new AuthError(404, "User not found");
     const result = await pool.query(
       `INSERT INTO school_memberships (user_id, school_id, role)
        VALUES ($1, NULL, 'PLATFORM_OWNER')
@@ -510,102 +504,54 @@ router.post(
     const fullName = String(req.body?.fullName ?? "").trim().replace(/\s+/g, " ");
     const email = String(req.body?.email ?? "").trim().toLowerCase();
     const phone = String(req.body?.phone ?? "").trim();
-    const password = String(req.body?.password ?? "");
+    if (Object.hasOwn(req.body ?? {}, "password") || Object.hasOwn(req.body ?? {}, "confirmPassword")) {
+      throw new AuthError(400, "Passwords are created by the invitee and must not be submitted by an administrator");
+    }
     if (!Number.isInteger(schoolId) || schoolId < 1) throw new AuthError(404, "School not found");
     if (fullName.length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw new AuthError(400, "A valid name and email are required");
     }
-    if (!/^\+?[0-9][0-9\s()-]{7,24}$/.test(phone)) throw new AuthError(400, "A valid phone is required");
-    if (password.length < 12 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) ||
-        !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
-      throw new AuthError(400, "Password does not meet security requirements");
+    if (phone && !/^\+?[0-9][0-9\s()-]{7,24}$/.test(phone)) {
+      throw new AuthError(400, "A valid phone is required");
     }
-    const school = await pool.query("SELECT id FROM schools WHERE id=$1", [schoolId]);
-    if (!school.rows[0]) throw new AuthError(404, "School not found");
-    const duplicate = await pool.query("SELECT id FROM app_users WHERE lower(email)=lower($1)", [email]);
-    if (duplicate.rows[0]) throw new AuthError(409, "An account with this email already exists");
+    const created = await createSchoolInvitation(
+      { schoolId, fullName, email, phone: phone || null, role: "SCHOOL_ADMIN" },
+      getUserContext(req),
+    );
+    res.status(created.status === "INVITATION_SENT" ? 202 : 201).json(created);
+  }),
+);
 
-    const [firstName, ...lastParts] = fullName.split(" ");
-    let clerkUserId: string | null = null;
-    const client = await pool.connect();
-    let committed = false;
-    let commitAttempted = false;
-    try {
-      const clerkUser = await createOrRecoverSchoolAdmin({
-        schoolId,
-        email,
-        password,
-        firstName,
-        lastName: lastParts.join(" ") || undefined,
-      });
-      clerkUserId = clerkUser.id;
-      await client.query("BEGIN");
-      const user = await client.query(
-        `INSERT INTO app_users(clerk_user_id,email,first_name,last_name,phone,status)
-         VALUES($1,$2,$3,$4,$5,'ACTIVE') RETURNING id`,
-        [clerkUser.id, email, firstName, lastParts.join(" ") || null, phone],
-      );
-      const membership = await client.query(
-        `INSERT INTO school_memberships(user_id,school_id,role,status)
-         VALUES($1,$2,'SCHOOL_ADMIN','ACTIVE')
-         RETURNING id,user_id AS "userId",school_id AS "schoolId",role,status`,
-        [user.rows[0].id, schoolId],
-      );
-      const context = getUserContext(req);
-      await client.query(
-        `INSERT INTO audit_logs
-          ("user",role,actor_user_id,clerk_user_id,school_id,action,module,record_id,event_type,result)
-         VALUES($1,'PLATFORM_OWNER',$2,$3,$4,'Created School Administrator','Security',$5,
-                'SCHOOL_ADMIN_CREATED','SUCCESS')`,
-        [userName(context.user), context.user.id, context.user.clerkUserId, schoolId, membership.rows[0].id],
-      );
-      commitAttempted = true;
-      await client.query("COMMIT");
-      committed = true;
-      res.status(201).json({
-        id: user.rows[0].id,
-        email,
-        firstName,
-        lastName: lastParts.join(" ") || null,
-        phone,
-        membership: membership.rows[0],
-      });
-    } catch (error) {
-      await client.query("ROLLBACK").catch(() => undefined);
-      if (commitAttempted && clerkUserId) {
-        const persisted = await pool.query(
-          `SELECT u.id,u.email,u.first_name AS "firstName",u.last_name AS "lastName",u.phone,
-                  jsonb_build_object('id',sm.id,'userId',sm.user_id,'schoolId',sm.school_id,
-                    'role',sm.role,'status',sm.status) AS membership
-           FROM app_users u JOIN school_memberships sm ON sm.user_id=u.id
-           WHERE u.clerk_user_id=$1 AND sm.school_id=$2 AND sm.role='SCHOOL_ADMIN'`,
-          [clerkUserId, schoolId],
-        );
-        if (persisted.rows[0]) {
-          committed = true;
-          res.status(201).json(persisted.rows[0]);
-          return;
-        }
-      }
-      if (clerkUserId && !committed) {
-        try {
-          await clerkClient.users.deleteUser(clerkUserId);
-        } catch (cleanupError) {
-          console.error("Clerk School Admin compensation failed", {
-            clerkUserId,
-            error: cleanupError instanceof Error ? cleanupError.message : "Unknown cleanup error",
-          });
-          throw new AuthError(
-            503,
-            "Administrator provisioning did not complete. Retry with the same email to recover.",
-            "ADMIN_PROVISIONING_RECOVERY_REQUIRED",
-          );
-        }
-      }
-      throw error;
-    } finally {
-      client.release();
+router.post(
+  "/school-users/invitations",
+  asyncRoute(async (req, res) => {
+    const schoolId = Number(req.body?.schoolId);
+    const email = String(req.body?.email ?? "").trim().toLowerCase();
+    const fullName = String(req.body?.fullName ?? "").trim().replace(/\s+/g, " ");
+    const phone = String(req.body?.phone ?? "").trim();
+    const role = parseRole(req.body?.role);
+    if (Object.hasOwn(req.body ?? {}, "password") || Object.hasOwn(req.body ?? {}, "confirmPassword")) {
+      throw new AuthError(400, "Passwords are created by the invitee and must not be submitted by an administrator");
     }
+    if (!Number.isInteger(schoolId) || schoolId < 1) {
+      throw new AuthError(400, "A valid school context is required");
+    }
+    assertSchoolAccess(req, schoolId, ["SCHOOL_ADMIN"]);
+    if (!(INVITABLE_SCHOOL_ROLES as readonly string[]).includes(role) || role === "SCHOOL_ADMIN") {
+      throw new AuthError(403, "This role cannot be assigned through a school invitation");
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || fullName.length < 2) {
+      throw new AuthError(400, "A valid full name and email are required");
+    }
+    if (phone && !/^\+?[0-9][0-9\s()-]{7,24}$/.test(phone)) {
+      throw new AuthError(400, "A valid phone is required");
+    }
+    const created = await createSchoolInvitation(
+      { schoolId, fullName, email, phone: phone || null, role: role as
+        "TEACHER" | "ACCOUNTANT" | "STAFF" | "PARENT" },
+      getUserContext(req),
+    );
+    res.status(created.status === "INVITATION_SENT" ? 202 : 201).json(created);
   }),
 );
 
@@ -615,8 +561,8 @@ router.post(
     const schoolId = Number(req.body?.schoolId);
     const userId = Number(req.body?.userId);
     const role = parseRole(req.body?.role);
-    if (role === "PLATFORM_OWNER") {
-      throw new AuthError(403, "Platform Owner cannot be assigned as a school membership");
+    if (!["TEACHER", "ACCOUNTANT", "STAFF", "PARENT", "STUDENT"].includes(role)) {
+      throw new AuthError(403, "This role cannot be assigned by a School Administrator");
     }
     assertSchoolAccess(req, schoolId, ["SCHOOL_ADMIN"]);
     const context = getUserContext(req);
@@ -686,8 +632,8 @@ router.patch(
   asyncRoute(async (req, res) => {
     const membershipId = Number(req.params.membershipId);
     const role = parseRole(req.body?.role);
-    if (role === "PLATFORM_OWNER") {
-      throw new AuthError(403, "Platform Owner cannot be assigned as a school membership");
+    if (!["TEACHER", "ACCOUNTANT", "STAFF", "PARENT", "STUDENT"].includes(role)) {
+      throw new AuthError(403, "This role cannot be assigned by a School Administrator");
     }
     const existing = await pool.query(
       `SELECT id, user_id AS "userId", school_id AS "schoolId", role

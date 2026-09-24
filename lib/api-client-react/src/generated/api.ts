@@ -72,6 +72,7 @@ import type {
   ClassInput,
   ClassSubjectAssignment,
   ClassSubjectAssignmentInput,
+  ConfirmPeopleImportParams,
   CreateAcademicAssessmentParams,
   CreateAcademicAssessmentTypeParams,
   CreateAcademicAssignmentParams,
@@ -111,6 +112,7 @@ import type {
   GetStudentParams,
   GetSubjectParams,
   HealthStatus,
+  InspectPeopleImportParams,
   ListAcademicAssessmentTypesParams,
   ListAcademicAssessmentsParams,
   ListAcademicAssignmentsParams,
@@ -132,9 +134,11 @@ import type {
   ListMyAcademicAssignmentsParams,
   ListMyAcademicReportCardsParams,
   ListMyAcademicResultsParams,
+  ListOwnerSchoolDirectoryParams,
   ListParentStudentRelationshipsParams,
   ListParentsParams,
   ListPartnersParams,
+  ListPeopleImportClassesParams,
   ListSchoolAttendanceEventsParams,
   ListSchoolUsersParams,
   ListSchoolsParams,
@@ -147,6 +151,8 @@ import type {
   ManualAttendanceInput,
   NfcCard,
   NotFoundResponse,
+  OwnerSchoolDirectory,
+  OwnerSchoolOverview,
   Parent,
   ParentChild,
   ParentInput,
@@ -180,6 +186,13 @@ import type {
   PartnerStatusUpdate,
   PartnerUpdate,
   PaymentVerificationInput,
+  PeopleImportClasses,
+  PeopleImportConfirmationInput,
+  PeopleImportInspection,
+  PeopleImportPreview,
+  PeopleImportPreviewUpload,
+  PeopleImportResult,
+  PeopleImportUpload,
   PlatformDashboard,
   PlatformDevice,
   PlatformDeviceInput,
@@ -189,6 +202,7 @@ import type {
   PlatformOwnerBootstrapInput,
   PlatformOwnerBootstrapResult,
   PlatformOwnerBootstrapStatus,
+  PreviewPeopleImportParams,
   ReferralValidation,
   ReferralValidationInput,
   RegisterCardParams,
@@ -203,6 +217,7 @@ import type {
   SchoolStatusUpdate,
   SchoolUpdate,
   SchoolUser,
+  SchoolUserInvitationInput,
   Student,
   StudentClassAssignment,
   StudentClassAssignmentInput,
@@ -1803,6 +1818,94 @@ export const useCreatePlatformMembership = <TError = ErrorType<ForbiddenResponse
       return useMutation(getCreatePlatformMembershipMutationOptions(options));
     }
 
+export const getInviteSchoolUserUrl = () => {
+
+
+
+
+  return `/api/school-users/invitations`
+}
+
+/**
+ * @summary Send a password-free school user invitation or grant an existing user access by email
+ */
+export const inviteSchoolUser = async (schoolUserInvitationInput: SchoolUserInvitationInput, options?: Parameters<typeof customFetch>[1]): Promise<SchoolAdministratorResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolAdministratorResult>(getInviteSchoolUserUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(schoolUserInvitationInput)
+  }
+);}
+
+
+
+
+
+export const getInviteSchoolUserMutationKey = () => ['inviteSchoolUser'] as const;
+
+export const getInviteSchoolUserMutationOptions = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof inviteSchoolUser>>, TError,InviteSchoolUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof inviteSchoolUser>>, TError,InviteSchoolUserMutationVariables, TContext> => {
+
+const mutationKey = getInviteSchoolUserMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof inviteSchoolUser>>, InviteSchoolUserMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  inviteSchoolUser(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InviteSchoolUserMutationResult = NonNullable<Awaited<ReturnType<typeof inviteSchoolUser>>>
+    export type InviteSchoolUserMutationBody = BodyType<SchoolUserInvitationInput>
+    export type InviteSchoolUserMutationError = ErrorType<ForbiddenResponse>
+    export type InviteSchoolUserMutationVariables = {data: BodyType<SchoolUserInvitationInput>}
+
+    /**
+ * @summary Send a password-free school user invitation or grant an existing user access by email
+ */
+export const useInviteSchoolUser = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof inviteSchoolUser>>, TError,InviteSchoolUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof inviteSchoolUser>>,
+        TError,
+        InviteSchoolUserMutationVariables,
+        TContext
+      > => {
+      return useMutation(getInviteSchoolUserMutationOptions(options));
+    }
+
 export const getListSchoolUsersUrl = (params: ListSchoolUsersParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -1984,7 +2087,7 @@ export const getCreateSchoolAdministratorUrl = (schoolId: number,) => {
 }
 
 /**
- * @summary Create a Clerk-backed School Administrator account
+ * @summary Invite a School Administrator to create their own credentials
  */
 export const createSchoolAdministrator = async (schoolId: number,
     schoolAdministratorInput: SchoolAdministratorInput, options?: Parameters<typeof customFetch>[1]): Promise<SchoolAdministratorResult> => {
@@ -2051,7 +2154,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateSchoolAdministratorMutationVariables = {schoolId: number;data: BodyType<SchoolAdministratorInput>}
 
     /**
- * @summary Create a Clerk-backed School Administrator account
+ * @summary Invite a School Administrator to create their own credentials
  */
 export const useCreateSchoolAdministrator = <TError = ErrorType<ForbiddenResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSchoolAdministrator>>, TError,CreateSchoolAdministratorMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -2063,6 +2166,519 @@ export const useCreateSchoolAdministrator = <TError = ErrorType<ForbiddenRespons
       > => {
       return useMutation(getCreateSchoolAdministratorMutationOptions(options));
     }
+
+export const getListPeopleImportClassesUrl = (params: ListPeopleImportClassesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/people/imports/classes?${stringifiedParams}` : `/api/people/imports/classes`
+}
+
+/**
+ * @summary List classes available for a school-admin import
+ */
+export const listPeopleImportClasses = async (params: ListPeopleImportClassesParams, options?: Parameters<typeof customFetch>[1]): Promise<PeopleImportClasses> => {
+
+  return customFetch<PeopleImportClasses>(getListPeopleImportClassesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPeopleImportClassesQueryKey = (params?: ListPeopleImportClassesParams,) => {
+    return [
+    `/api/people/imports/classes`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListPeopleImportClassesQueryOptions = <TData = Awaited<ReturnType<typeof listPeopleImportClasses>>, TError = ErrorType<unknown>>(params: ListPeopleImportClassesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPeopleImportClasses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPeopleImportClassesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPeopleImportClasses>>> = ({ signal }) => listPeopleImportClasses(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPeopleImportClasses>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPeopleImportClassesQueryResult = NonNullable<Awaited<ReturnType<typeof listPeopleImportClasses>>>
+export type ListPeopleImportClassesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List classes available for a school-admin import
+ */
+
+export function useListPeopleImportClasses<TData = Awaited<ReturnType<typeof listPeopleImportClasses>>, TError = ErrorType<unknown>>(
+ params: ListPeopleImportClassesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPeopleImportClasses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPeopleImportClassesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getInspectPeopleImportUrl = (params: InspectPeopleImportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/people/imports/inspect?${stringifiedParams}` : `/api/people/imports/inspect`
+}
+
+/**
+ * @summary Detect the columns of a school-scoped CSV, Excel, or text PDF
+ */
+export const inspectPeopleImport = async (peopleImportUpload: PeopleImportUpload,
+    params: InspectPeopleImportParams, options?: Parameters<typeof customFetch>[1]): Promise<PeopleImportInspection> => {
+    const formData = new FormData();
+formData.append(`file`, peopleImportUpload.file);
+formData.append(`kind`, peopleImportUpload.kind);
+
+  return customFetch<PeopleImportInspection>(getInspectPeopleImportUrl(params),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+
+export const getInspectPeopleImportMutationKey = () => ['inspectPeopleImport'] as const;
+
+export const getInspectPeopleImportMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof inspectPeopleImport>>, TError,InspectPeopleImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof inspectPeopleImport>>, TError,InspectPeopleImportMutationVariables, TContext> => {
+
+const mutationKey = getInspectPeopleImportMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof inspectPeopleImport>>, InspectPeopleImportMutationVariables> = (props) => {
+          const {data,params} = props ?? {};
+
+          return  inspectPeopleImport(data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InspectPeopleImportMutationResult = NonNullable<Awaited<ReturnType<typeof inspectPeopleImport>>>
+    export type InspectPeopleImportMutationBody = BodyType<PeopleImportUpload>
+    export type InspectPeopleImportMutationError = ErrorType<unknown>
+    export type InspectPeopleImportMutationVariables = {data: BodyType<PeopleImportUpload>;params: InspectPeopleImportParams}
+
+    /**
+ * @summary Detect the columns of a school-scoped CSV, Excel, or text PDF
+ */
+export const useInspectPeopleImport = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof inspectPeopleImport>>, TError,InspectPeopleImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof inspectPeopleImport>>,
+        TError,
+        InspectPeopleImportMutationVariables,
+        TContext
+      > => {
+      return useMutation(getInspectPeopleImportMutationOptions(options));
+    }
+
+export const getPreviewPeopleImportUrl = (params: PreviewPeopleImportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/people/imports/preview?${stringifiedParams}` : `/api/people/imports/preview`
+}
+
+/**
+ * @summary Validate and review rows without saving
+ */
+export const previewPeopleImport = async (peopleImportPreviewUpload: PeopleImportPreviewUpload,
+    params: PreviewPeopleImportParams, options?: Parameters<typeof customFetch>[1]): Promise<PeopleImportPreview> => {
+    const formData = new FormData();
+formData.append(`file`, peopleImportPreviewUpload.file);
+formData.append(`kind`, peopleImportPreviewUpload.kind);
+formData.append(`mapping`, peopleImportPreviewUpload.mapping);
+formData.append(`classMapping`, peopleImportPreviewUpload.classMapping);
+
+  return customFetch<PeopleImportPreview>(getPreviewPeopleImportUrl(params),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+
+export const getPreviewPeopleImportMutationKey = () => ['previewPeopleImport'] as const;
+
+export const getPreviewPeopleImportMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewPeopleImport>>, TError,PreviewPeopleImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewPeopleImport>>, TError,PreviewPeopleImportMutationVariables, TContext> => {
+
+const mutationKey = getPreviewPeopleImportMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewPeopleImport>>, PreviewPeopleImportMutationVariables> = (props) => {
+          const {data,params} = props ?? {};
+
+          return  previewPeopleImport(data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewPeopleImportMutationResult = NonNullable<Awaited<ReturnType<typeof previewPeopleImport>>>
+    export type PreviewPeopleImportMutationBody = BodyType<PeopleImportPreviewUpload>
+    export type PreviewPeopleImportMutationError = ErrorType<unknown>
+    export type PreviewPeopleImportMutationVariables = {data: BodyType<PeopleImportPreviewUpload>;params: PreviewPeopleImportParams}
+
+    /**
+ * @summary Validate and review rows without saving
+ */
+export const usePreviewPeopleImport = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewPeopleImport>>, TError,PreviewPeopleImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewPeopleImport>>,
+        TError,
+        PreviewPeopleImportMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPreviewPeopleImportMutationOptions(options));
+    }
+
+export const getConfirmPeopleImportUrl = (params: ConfirmPeopleImportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/people/imports/confirm?${stringifiedParams}` : `/api/people/imports/confirm`
+}
+
+/**
+ * @summary Commit explicitly selected validated import rows and audit the result
+ */
+export const confirmPeopleImport = async (peopleImportConfirmationInput: PeopleImportConfirmationInput,
+    params: ConfirmPeopleImportParams, options?: Parameters<typeof customFetch>[1]): Promise<PeopleImportResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PeopleImportResult>(getConfirmPeopleImportUrl(params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(peopleImportConfirmationInput)
+  }
+);}
+
+
+
+
+
+export const getConfirmPeopleImportMutationKey = () => ['confirmPeopleImport'] as const;
+
+export const getConfirmPeopleImportMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmPeopleImport>>, TError,ConfirmPeopleImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmPeopleImport>>, TError,ConfirmPeopleImportMutationVariables, TContext> => {
+
+const mutationKey = getConfirmPeopleImportMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmPeopleImport>>, ConfirmPeopleImportMutationVariables> = (props) => {
+          const {data,params} = props ?? {};
+
+          return  confirmPeopleImport(data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmPeopleImportMutationResult = NonNullable<Awaited<ReturnType<typeof confirmPeopleImport>>>
+    export type ConfirmPeopleImportMutationBody = BodyType<PeopleImportConfirmationInput>
+    export type ConfirmPeopleImportMutationError = ErrorType<unknown>
+    export type ConfirmPeopleImportMutationVariables = {data: BodyType<PeopleImportConfirmationInput>;params: ConfirmPeopleImportParams}
+
+    /**
+ * @summary Commit explicitly selected validated import rows and audit the result
+ */
+export const useConfirmPeopleImport = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmPeopleImport>>, TError,ConfirmPeopleImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmPeopleImport>>,
+        TError,
+        ConfirmPeopleImportMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfirmPeopleImportMutationOptions(options));
+    }
+
+export const getListOwnerSchoolDirectoryUrl = (params?: ListOwnerSchoolDirectoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/platform/schools/directory?${stringifiedParams}` : `/api/platform/schools/directory`
+}
+
+/**
+ * @summary Owner-only school directory with tenant-safe aggregate counts
+ */
+export const listOwnerSchoolDirectory = async (params?: ListOwnerSchoolDirectoryParams, options?: Parameters<typeof customFetch>[1]): Promise<OwnerSchoolDirectory> => {
+
+  return customFetch<OwnerSchoolDirectory>(getListOwnerSchoolDirectoryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOwnerSchoolDirectoryQueryKey = (params?: ListOwnerSchoolDirectoryParams,) => {
+    return [
+    `/api/platform/schools/directory`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListOwnerSchoolDirectoryQueryOptions = <TData = Awaited<ReturnType<typeof listOwnerSchoolDirectory>>, TError = ErrorType<ForbiddenResponse>>(params?: ListOwnerSchoolDirectoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOwnerSchoolDirectory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOwnerSchoolDirectoryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOwnerSchoolDirectory>>> = ({ signal }) => listOwnerSchoolDirectory(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOwnerSchoolDirectory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOwnerSchoolDirectoryQueryResult = NonNullable<Awaited<ReturnType<typeof listOwnerSchoolDirectory>>>
+export type ListOwnerSchoolDirectoryQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary Owner-only school directory with tenant-safe aggregate counts
+ */
+
+export function useListOwnerSchoolDirectory<TData = Awaited<ReturnType<typeof listOwnerSchoolDirectory>>, TError = ErrorType<ForbiddenResponse>>(
+ params?: ListOwnerSchoolDirectoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOwnerSchoolDirectory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOwnerSchoolDirectoryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetOwnerSchoolOverviewUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/platform/schools/${schoolId}/overview`
+}
+
+/**
+ * @summary Owner-only operational overview of one school
+ */
+export const getOwnerSchoolOverview = async (schoolId: number, options?: Parameters<typeof customFetch>[1]): Promise<OwnerSchoolOverview> => {
+
+  return customFetch<OwnerSchoolOverview>(getGetOwnerSchoolOverviewUrl(schoolId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOwnerSchoolOverviewQueryKey = (schoolId: number,) => {
+    return [
+    `/api/platform/schools/${schoolId}/overview`
+    ] as const;
+    }
+
+
+export const getGetOwnerSchoolOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getOwnerSchoolOverview>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse>>(schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerSchoolOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOwnerSchoolOverviewQueryKey(schoolId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnerSchoolOverview>>> = ({ signal }) => getOwnerSchoolOverview(schoolId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOwnerSchoolOverview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOwnerSchoolOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof getOwnerSchoolOverview>>>
+export type GetOwnerSchoolOverviewQueryError = ErrorType<ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary Owner-only operational overview of one school
+ */
+
+export function useGetOwnerSchoolOverview<TData = Awaited<ReturnType<typeof getOwnerSchoolOverview>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse>>(
+ schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnerSchoolOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOwnerSchoolOverviewQueryOptions(schoolId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListPlatformDevicesUrl = () => {
 

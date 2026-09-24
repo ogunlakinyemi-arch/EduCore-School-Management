@@ -67,6 +67,7 @@ function SignInSessionGate() {
 export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const [, navigate] = useLocation();
   const isSignIn = mode === 'sign-in';
+  const [accountType, setAccountType] = useState('');
 
   return (
     <main className="min-h-[100dvh] bg-[hsl(var(--background))] p-4 md:p-8">
@@ -89,6 +90,35 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-[hsl(var(--accent))]"><Zap size={17} /></span>
             <span className="display-font text-lg font-bold">Yemait EduCore</span>
           </button>
+          {isSignIn && (
+            <div className="mb-5 w-full max-w-sm">
+              <label htmlFor="account-type" className="mb-2 block text-sm font-semibold">Select account type</label>
+              <select
+                id="account-type"
+                className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3 text-sm"
+                value={accountType}
+                onChange={(event) => {
+                  const selected = event.target.value;
+                  setAccountType(selected);
+                  if (selected) window.sessionStorage.setItem('edupulse:selected-portal', selected);
+                  else window.sessionStorage.removeItem('edupulse:selected-portal');
+                }}
+              >
+                <option value="">Choose your portal</option>
+                <option value="SCHOOL_ADMIN">School Administrator</option>
+                <option value="TEACHER">Teacher</option>
+                <option value="ACCOUNTANT">Accountant</option>
+                <option value="STAFF">Staff</option>
+                <option value="PARENT">Parent</option>
+                <option value="STUDENT">Student</option>
+                <option value="PARTNER">Partner / Partner Administrator / Staff</option>
+                <option value="PLATFORM_OWNER">Platform Owner</option>
+              </select>
+              <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">
+                This selection does not change your access. Your verified account and school permissions determine which portal opens.
+              </p>
+            </div>
+          )}
           {isSignIn ? (
             <SignInSessionGate />
           ) : (

@@ -410,11 +410,8 @@ export const ListUsersResponse = zod.array(ListUsersResponseItem)
 /**
  * @summary Assign an authorized platform role
  */
-
-
-
 export const CreatePlatformMembershipBody = zod.object({
-  "userId": zod.number().int().min(1),
+  "email": zod.string().email(),
   "role": zod.enum(['PLATFORM_OWNER'])
 })
 
@@ -423,6 +420,44 @@ export const CreatePlatformMembershipResponse = zod.object({
   "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+
+
+/**
+ * @summary Send a password-free school user invitation or grant an existing user access by email
+ */
+
+export const inviteSchoolUserBodyFullNameMin = 2;
+export const inviteSchoolUserBodyFullNameMax = 120;
+
+export const inviteSchoolUserBodyEmailMax = 254;
+
+export const inviteSchoolUserBodyPhoneMin = 8;
+export const inviteSchoolUserBodyPhoneMax = 25;
+
+
+
+export const InviteSchoolUserBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "fullName": zod.string().min(inviteSchoolUserBodyFullNameMin).max(inviteSchoolUserBodyFullNameMax),
+  "email": zod.string().email().max(inviteSchoolUserBodyEmailMax),
+  "phone": zod.string().min(inviteSchoolUserBodyPhoneMin).max(inviteSchoolUserBodyPhoneMax).optional(),
+  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'STAFF', 'PARENT'])
+})
+
+export const InviteSchoolUserResponse = zod.object({
+  "status": zod.enum(['INVITATION_SENT', 'ACTIVE']),
+  "email": zod.string().email(),
+  "schoolId": zod.number().int(),
+  "role": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STAFF', 'PARENT']),
+  "invitationId": zod.string().optional(),
+  "expiresAt": zod.coerce.date().optional(),
+  "membership": zod.object({
+  "id": zod.number().int(),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
+  "schoolId": zod.number().int().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+}).optional()
 })
 
 
@@ -461,7 +496,7 @@ export const ListSchoolUsersResponse = zod.array(ListSchoolUsersResponseItem)
 export const CreateSchoolMembershipBody = zod.object({
   "userId": zod.number().int().min(1),
   "schoolId": zod.number().int().min(1),
-  "role": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF'])
+  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF'])
 })
 
 export const CreateSchoolMembershipResponse = zod.object({
@@ -473,7 +508,7 @@ export const CreateSchoolMembershipResponse = zod.object({
 
 
 /**
- * @summary Create a Clerk-backed School Administrator account
+ * @summary Invite a School Administrator to create their own credentials
  */
 
 
@@ -490,31 +525,264 @@ export const createSchoolAdministratorBodyEmailMax = 254;
 export const createSchoolAdministratorBodyPhoneMin = 8;
 export const createSchoolAdministratorBodyPhoneMax = 25;
 
-export const createSchoolAdministratorBodyPasswordMin = 12;
-export const createSchoolAdministratorBodyPasswordMax = 256;
-
 
 
 export const CreateSchoolAdministratorBody = zod.object({
   "fullName": zod.string().min(createSchoolAdministratorBodyFullNameMin).max(createSchoolAdministratorBodyFullNameMax),
   "email": zod.string().email().max(createSchoolAdministratorBodyEmailMax),
-  "phone": zod.string().min(createSchoolAdministratorBodyPhoneMin).max(createSchoolAdministratorBodyPhoneMax),
-  "password": zod.string().min(createSchoolAdministratorBodyPasswordMin).max(createSchoolAdministratorBodyPasswordMax)
+  "phone": zod.string().min(createSchoolAdministratorBodyPhoneMin).max(createSchoolAdministratorBodyPhoneMax).optional()
 })
 
 export const CreateSchoolAdministratorResponse = zod.object({
-  "id": zod.number().int(),
+  "status": zod.enum(['INVITATION_SENT', 'ACTIVE']),
   "email": zod.string().email(),
-  "firstName": zod.string(),
-  "lastName": zod.string().nullish(),
-  "phone": zod.string(),
+  "schoolId": zod.number().int(),
+  "role": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STAFF', 'PARENT']),
+  "invitationId": zod.string().optional(),
+  "expiresAt": zod.coerce.date().optional(),
   "membership": zod.object({
   "id": zod.number().int(),
   "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
+}).optional()
+})
+
+
+/**
+ * @summary List classes available for a school-admin import
+ */
+
+
+
+export const ListPeopleImportClassesQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ListPeopleImportClassesResponse = zod.object({
+  "classes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "section": zod.string()
+}))
+})
+
+
+/**
+ * @summary Detect the columns of a school-scoped CSV, Excel, or text PDF
+ */
+
+
+
+export const InspectPeopleImportQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const InspectPeopleImportBody = zod.object({
+  "file": zod.instanceof(Blob),
+  "kind": zod.enum(['students', 'parents', 'teachers', 'staff'])
+})
+
+export const InspectPeopleImportResponse = zod.object({
+  "filename": zod.string(),
+  "detectedType": zod.enum(['csv', 'xlsx', 'pdf']),
+  "kind": zod.enum(['students', 'parents', 'teachers', 'staff']),
+  "columns": zod.array(zod.string()),
+  "classes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "section": zod.string()
+}))
+})
+
+
+/**
+ * @summary Validate and review rows without saving
+ */
+
+
+
+export const PreviewPeopleImportQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const PreviewPeopleImportBody = zod.object({
+  "file": zod.instanceof(Blob),
+  "kind": zod.enum(['students', 'parents', 'teachers', 'staff']),
+  "mapping": zod.string().describe('JSON object mapping canonical fields to file headers'),
+  "classMapping": zod.string().describe('JSON object mapping imported class values to existing class IDs')
+})
+
+export const PreviewPeopleImportResponse = zod.object({
+  "previewId": zod.string(),
+  "filename": zod.string(),
+  "detectedType": zod.enum(['csv', 'xlsx', 'pdf']),
+  "kind": zod.enum(['students', 'parents', 'teachers', 'staff']),
+  "detected": zod.number().int(),
+  "counts": zod.object({
+  "ready": zod.number().int().optional(),
+  "potentialDuplicates": zod.number().int().optional(),
+  "duplicates": zod.number().int().optional(),
+  "invalid": zod.number().int().optional()
+}),
+  "columns": zod.array(zod.string()),
+  "classes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "section": zod.string()
+})),
+  "classValues": zod.array(zod.string()),
+  "rows": zod.array(zod.object({
+  "index": zod.number().int(),
+  "sourceRow": zod.number().int(),
+  "values": zod.record(zod.string(), zod.unknown()),
+  "status": zod.enum(['READY', 'INVALID', 'DUPLICATE', 'POTENTIAL_DUPLICATE']),
+  "errors": zod.array(zod.object({
+  "field": zod.string().optional(),
+  "message": zod.string()
+})),
+  "warnings": zod.array(zod.object({
+  "field": zod.string().optional(),
+  "message": zod.string()
+}))
+}))
+})
+
+
+/**
+ * @summary Commit explicitly selected validated import rows and audit the result
+ */
+
+
+
+export const ConfirmPeopleImportQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ConfirmPeopleImportBody = zod.object({
+  "previewId": zod.string(),
+  "selectedRows": zod.array(zod.number().int()),
+  "includePotentialDuplicates": zod.boolean().optional()
+})
+
+export const ConfirmPeopleImportResponse = zod.object({
+  "detected": zod.number().int(),
+  "imported": zod.number().int(),
+  "skipped": zod.number().int(),
+  "failed": zod.number().int(),
+  "results": zod.array(zod.object({
+  "index": zod.number().int().optional(),
+  "sourceRow": zod.number().int().optional(),
+  "status": zod.enum(['IMPORTED', 'FAILED', 'SKIPPED']).optional(),
+  "recordId": zod.number().int().optional(),
+  "message": zod.string().optional()
+}))
+})
+
+
+/**
+ * @summary Owner-only school directory with tenant-safe aggregate counts
+ */
+export const listOwnerSchoolDirectoryQuerySearchMax = 100;
+
+
+
+export const ListOwnerSchoolDirectoryQueryParams = zod.object({
+  "status": zod.enum(['all', 'active', 'inactive', 'suspended']).optional(),
+  "search": zod.coerce.string().max(listOwnerSchoolDirectoryQuerySearchMax).optional()
+})
+
+export const ListOwnerSchoolDirectoryResponse = zod.object({
+  "schools": zod.array(zod.object({
+  "id": zod.number().int(),
+  "code": zod.string(),
+  "name": zod.string(),
+  "city": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date().optional(),
+  "studentCount": zod.number().int(),
+  "activeStudentCount": zod.number().int(),
+  "teacherCount": zod.number().int(),
+  "staffCount": zod.number().int(),
+  "employeeCount": zod.number().int(),
+  "accountantCount": zod.number().int(),
+  "parentCount": zod.number().int(),
+  "classCount": zod.number().int(),
+  "administrators": zod.array(zod.object({
+  "id": zod.number().int().optional(),
+  "name": zod.string().optional(),
+  "email": zod.string().optional(),
+  "status": zod.string().optional()
+})),
+  "subscriptionStatus": zod.string(),
+  "partnerReferral": zod.object({
+  "partnerId": zod.number().int().optional(),
+  "partnerName": zod.string().optional(),
+  "source": zod.string().optional(),
+  "status": zod.string().optional(),
+  "referralLinkId": zod.number().int().nullish(),
+  "registrationDate": zod.coerce.date().optional()
+}).nullish()
+})),
+  "totals": zod.object({
+  "schoolCount": zod.number().int(),
+  "studentCount": zod.number().int(),
+  "activeStudentCount": zod.number().int(),
+  "teacherCount": zod.number().int(),
+  "staffCount": zod.number().int(),
+  "parentCount": zod.number().int()
 })
 })
+
+
+/**
+ * @summary Owner-only operational overview of one school
+ */
+export const GetOwnerSchoolOverviewParams = zod.object({
+  "schoolId": zod.coerce.number().int()
+})
+
+export const GetOwnerSchoolOverviewResponse = zod.object({
+  "id": zod.number().int(),
+  "code": zod.string(),
+  "name": zod.string(),
+  "city": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date().optional(),
+  "studentCount": zod.number().int(),
+  "activeStudentCount": zod.number().int(),
+  "teacherCount": zod.number().int(),
+  "staffCount": zod.number().int(),
+  "employeeCount": zod.number().int(),
+  "accountantCount": zod.number().int(),
+  "parentCount": zod.number().int(),
+  "classCount": zod.number().int(),
+  "administrators": zod.array(zod.object({
+  "id": zod.number().int().optional(),
+  "name": zod.string().optional(),
+  "email": zod.string().optional(),
+  "status": zod.string().optional()
+})),
+  "subscriptionStatus": zod.string(),
+  "partnerReferral": zod.object({
+  "partnerId": zod.number().int().optional(),
+  "partnerName": zod.string().optional(),
+  "source": zod.string().optional(),
+  "status": zod.string().optional(),
+  "referralLinkId": zod.number().int().nullish(),
+  "registrationDate": zod.coerce.date().optional()
+}).nullish()
+}).and(zod.object({
+  "attendanceEventCount": zod.number().int().optional(),
+  "resultCount": zod.number().int().optional(),
+  "subscriptionCount": zod.number().int().optional(),
+  "deviceCount": zod.number().int().optional(),
+  "cardCount": zod.number().int().optional(),
+  "activeCardCount": zod.number().int().optional(),
+  "recentActivity": zod.array(zod.record(zod.string(), zod.unknown())).optional()
+}))
 
 
 /**
@@ -4063,6 +4331,8 @@ export const onboardSchoolThroughPartnerReferralBodySchoolCityMin = 2;
 
 export const onboardSchoolThroughPartnerReferralBodySchoolStateMin = 2;
 
+export const onboardSchoolThroughPartnerReferralBodyAdministratorFullNameMin = 2;
+
 
 
 export const OnboardSchoolThroughPartnerReferralBody = zod.object({
@@ -4081,6 +4351,10 @@ export const OnboardSchoolThroughPartnerReferralBody = zod.object({
   "logoUrl": zod.string().url().optional(),
   "schoolType": zod.string().optional(),
   "status": zod.enum(['active', 'suspended', 'inactive']).optional()
+}),
+  "administrator": zod.object({
+  "fullName": zod.string().min(onboardSchoolThroughPartnerReferralBodyAdministratorFullNameMin),
+  "email": zod.string().email()
 })
 })
 
@@ -4119,7 +4393,12 @@ export const OnboardSchoolThroughPartnerReferralResponse = zod.object({
   "createdAt": zod.string()
 }),
   "attributionStatus": zod.enum(['CREATED', 'CONFLICT']),
-  "conflictId": zod.number().int().nullish()
+  "conflictId": zod.number().int().nullish(),
+  "administratorInvitation": zod.object({
+  "email": zod.string().email(),
+  "status": zod.enum(['SENT']),
+  "expiresInDays": zod.number().int()
+})
 })
 
 

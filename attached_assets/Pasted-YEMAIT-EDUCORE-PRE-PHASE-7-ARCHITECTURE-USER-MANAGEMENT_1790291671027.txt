@@ -1,0 +1,1471 @@
+YEMAIT EDUCORE — PRE-PHASE 7 ARCHITECTURE & USER MANAGEMENT CORRECTION
+
+IMPORTANT — READ BEFORE MAKING CHANGES
+
+I am currently at Phase 7 — Finance of the Yemait EduCore development.
+
+Before continuing Phase 7 Finance, I need you to correct and restructure the existing Owner Admin, Partner, School Administrator, user-management, onboarding, role/permission, tenant-isolation, NFC, and school-data-import architecture.
+
+This is an architecture correction before continuing Phase 7, not a request to rebuild the entire platform.
+
+DO NOT:
+
+- Restart the project.
+- Rebuild completed phases unnecessarily.
+- Delete existing production/test data.
+- Remove completed functionality.
+- Break existing authentication.
+- Break existing finance functionality already implemented.
+- Replace working features unnecessarily.
+
+FIRST:
+
+1. Inspect the entire existing Yemait EduCore codebase.
+2. Inspect the current database schema.
+3. Inspect the existing authentication implementation.
+4. Inspect the existing Owner Admin portal.
+5. Inspect the current Partner implementation.
+6. Inspect the current School Administrator/user-management workflow.
+7. Inspect existing roles and permissions.
+8. Inspect existing NFC device/card functionality.
+9. Inspect existing Phase 7 Finance work.
+10. Identify what needs to be modified versus what can be preserved.
+
+Then implement the architecture below using the existing system wherever possible.
+
+After implementation, perform a complete regression and security test.
+
+---
+
+1. YEMAIT EDUCORE PLATFORM HIERARCHY
+
+Yemait EduCore must operate as a secure multi-tenant school management SaaS platform.
+
+The hierarchy should be:
+
+Yemait Technologies
+│
+├── Platform Owner / Owner Admin
+│   └── Full platform-wide administration
+│
+├── Partners
+│   ├── Partner Owner/Admin
+│   └── Partner Staff/Admin
+│
+└── Schools
+└── School Administrator
+├── Teachers
+├── Accountants
+├── Staff
+├── Parents
+└── Students
+
+The Platform Owner has platform-wide visibility and control.
+
+Partners have restricted partner-scoped visibility.
+
+Each school is a separate tenant.
+
+School users can only access data belonging to their authorized school.
+
+---
+
+2. PLATFORM OWNER ADMIN
+
+The existing Owner Admin portal must become the central platform administration portal.
+
+The Platform Owner should be able to:
+
+- Create schools
+- View all schools
+- View school status
+- View school administrators
+- View students across schools
+- View parents
+- View teachers
+- View staff
+- View accountants
+- View student counts
+- View school activity
+- View platform-wide reports
+- View platform-wide finance information where authorized
+- Manage partners
+- View partner information
+- View schools referred by each partner
+- View partner commissions
+- Manage NFC devices
+- Assign NFC devices to schools
+- Unassign/reassign NFC devices
+- View NFC device status
+- Link NFC cards to students
+- View NFC card assignments
+- Manage platform-level settings
+- View audit logs
+- Perform authorized platform-level administrative actions
+
+The Platform Owner has the highest level of access.
+
+However, the Platform Owner should NOT be responsible for manually entering every student's, parent's, teacher's, or staff's information.
+
+---
+
+3. OWNER ADMIN SCHOOL CREATION
+
+When the Platform Owner creates a school, the Owner Admin should NOT create the School Administrator's password.
+
+The workflow must be:
+
+Platform Owner
+→ Create School
+→ Enter school information
+→ Enter School Administrator name/email
+→ Assign role: School Administrator
+→ Send invitation
+
+The School Administrator receives an invitation email.
+
+The administrator opens the secure invitation link and creates their own password.
+
+The Platform Owner must NEVER see or create the administrator's plaintext password.
+
+Use the existing authentication provider securely.
+
+The invitation should:
+
+- Use a secure non-guessable token.
+- Have an expiration period.
+- Be usable only as intended.
+- Become invalid after successful activation where appropriate.
+
+---
+
+4. SCHOOL ADMINISTRATOR
+
+Once the School Administrator activates the account, they become the administrator of that school's tenant.
+
+The School Administrator should manage their own school.
+
+They should be able to create/invite:
+
+- Teachers
+- Accountants
+- Other staff
+- Parents
+- Students
+- Other authorized school roles
+
+The School Administrator should NOT need the Platform Owner to manually create operational users.
+
+---
+
+5. SCHOOL USER INVITATION WORKFLOW
+
+The School Administrator should use the same secure invitation workflow.
+
+Example:
+
+School Administrator
+→ Add Teacher
+→ Enter teacher information/email
+→ Assign role
+→ Send invitation
+
+Teacher receives invitation.
+
+Teacher creates their own password.
+
+The same principle applies to:
+
+- Accountants
+- Staff
+- Parents
+- Other invited users
+
+The School Administrator must NEVER see another user's plaintext password.
+
+---
+
+6. STUDENT MANAGEMENT
+
+The School Administrator should create and manage student records for their school.
+
+The Platform Owner should NOT manually create every student for schools.
+
+Student records must belong to the school's tenant.
+
+The Platform Owner can view students across schools because of platform-wide permissions.
+
+Partners cannot view individual student records.
+
+School Administrators can manage only students belonging to their school.
+
+---
+
+7. PARENT MANAGEMENT
+
+The School Administrator should be able to create/invite parents.
+
+A parent may have multiple children.
+
+Example:
+
+Parent Account
+→ Child A
+→ Child B
+→ Child C
+
+Parents should only see children associated with their account.
+
+The School Administrator manages parent/student relationships within their school.
+
+The Platform Owner can view this information according to Owner permissions.
+
+Partners cannot access private parent information.
+
+---
+
+8. BULK FILE IMPORT — IMPORTANT
+
+Schools may already have their student, parent, teacher, or staff information stored electronically.
+
+The School Administrator must therefore be able to upload existing files instead of manually entering hundreds or thousands of records one by one.
+
+Support at minimum:
+
+- Excel (.xlsx)
+- CSV (.csv)
+- PDF (.pdf) where technically reliable
+
+This should be a core School Administrator feature.
+
+Examples:
+
+School Administrator
+→ Students
+→ Import Students
+
+School Administrator
+→ Parents
+→ Import Parents
+
+School Administrator
+→ Teachers
+→ Import Teachers
+
+School Administrator
+→ Staff
+→ Import Staff
+
+---
+
+9. STUDENT BULK IMPORT
+
+For Excel/CSV student files, provide a column-mapping workflow.
+
+Do NOT assume every school uses the same column names.
+
+Example uploaded file:
+
+First Name | Surname | Admission No | Class | Gender | DOB | Parent Phone
+
+Map to:
+
+First Name → first_name
+Surname → last_name
+Admission No → admission_number
+Class → class
+Gender → gender
+DOB → date_of_birth
+Parent Phone → parent_phone
+
+The administrator must be able to map columns before importing.
+
+---
+
+10. PDF IMPORT
+
+Schools may have student lists in PDF.
+
+Where the PDF contains selectable/tabular text:
+
+1. Upload PDF.
+2. Extract readable table/text data.
+3. Show detected records.
+4. Allow column/field mapping.
+5. Validate records.
+6. Show warnings/errors.
+7. Require administrator confirmation.
+8. Import only after confirmation.
+
+If a PDF is scanned/image-based and reliable extraction is not possible, do NOT silently create incorrect records.
+
+Instead display an appropriate message and recommend Excel/CSV or the provided template.
+
+If OCR already exists in the application, it may be used, but OCR results must still pass through preview and validation before being saved.
+
+---
+
+11. IMPORT PREVIEW
+
+Never immediately create records from an uploaded file.
+
+Show an import preview first.
+
+Example:
+
+IMPORT PREVIEW
+
+File: Students_2026.xlsx
+
+Records detected: 845
+Valid: 832
+Warnings: 8
+Errors: 5
+
+Display each problematic row and explain the issue.
+
+The administrator must be able to resolve or exclude problematic records before final confirmation.
+
+---
+
+12. DUPLICATE DETECTION
+
+Detect potential duplicates before creating records.
+
+Use appropriate identifiers such as:
+
+- Admission number
+- Student ID
+- Name + date of birth where appropriate
+- Other school-specific identifiers
+
+Do not create duplicate records simply because the same student appears twice.
+
+Allow:
+
+- Skip duplicate
+- Review duplicate
+- Update existing record where authorized
+- Import as new only after explicit confirmation
+
+Never overwrite existing data without explicit confirmation.
+
+---
+
+13. CLASS MAPPING DURING IMPORT
+
+Schools may use different class naming conventions.
+
+Examples:
+
+- Primary 1
+- Primary One
+- P1
+- Basic 1
+- JSS1
+- JSS 1
+
+Allow the administrator to map uploaded class names to existing Yemait EduCore classes.
+
+Do not automatically create incorrect classes because of spelling differences.
+
+---
+
+14. PARENT INFORMATION DURING STUDENT IMPORT
+
+If a student file contains parent/guardian information, allow the system to associate it with the student.
+
+For example:
+
+Student:
+John Doe
+
+Parent:
+John Doe Snr.
+
+Parent Email:
+parent@example.com
+
+Parent Phone:
+080XXXXXXXX
+
+If the parent already exists, attempt to match the existing parent rather than creating a duplicate.
+
+If the parent does not exist and sufficient information is available, create the parent according to the school's configured workflow.
+
+If parent portal access is enabled, send the parent an invitation to create their own password.
+
+The School Administrator must never create the parent's password.
+
+---
+
+15. TEACHER/STAFF BULK IMPORT
+
+Apply bulk import to:
+
+- Teachers
+- Accountants
+- Staff
+
+Support Excel/CSV and PDF extraction where reliable.
+
+Allow mapping of:
+
+- First name
+- Last name
+- Email
+- Phone
+- Staff ID
+- Department
+- Role
+- Subject
+- Other relevant fields
+
+Do NOT automatically grant permissions merely because an uploaded file contains a role name.
+
+Roles and permissions must be validated against the system's configured roles.
+
+---
+
+16. PARENT BULK IMPORT
+
+Allow schools to bulk import existing parent/guardian information.
+
+Support:
+
+- Excel
+- CSV
+- PDF where reliable
+
+Fields may include:
+
+- Parent name
+- Email
+- Phone
+- Address
+- Student/admission number
+- Relationship to student
+
+Use admission number or another reliable identifier to establish the parent-child relationship.
+
+---
+
+17. IMPORT TEMPLATES
+
+Provide downloadable Excel/CSV templates.
+
+At minimum:
+
+- Student Import Template
+- Parent Import Template
+- Teacher Import Template
+- Staff Import Template
+
+Student template may include:
+
+- Admission Number
+- First Name
+- Middle Name
+- Last Name
+- Date of Birth
+- Gender
+- Class
+- Section
+- Student Phone
+- Parent Name
+- Parent Email
+- Parent Phone
+- Parent Relationship
+- Address
+- Admission Date
+
+Use the actual existing Yemait EduCore database model when determining final fields.
+
+---
+
+18. IMPORT VALIDATION
+
+Validate before saving:
+
+- Required fields
+- Email format
+- Date format
+- Class
+- Gender where applicable
+- Duplicate admission numbers
+- Duplicate records
+- Existing users
+- Existing parents
+- Existing students
+- Invalid references
+- Unsupported values
+
+Do not allow bad rows to corrupt the import.
+
+Where practical, valid records may be imported while invalid records are reported separately.
+
+---
+
+19. IMPORT RESULT
+
+After import, show:
+
+IMPORT COMPLETED
+
+Total records: 845
+Successfully imported: 832
+Skipped: 8
+Failed: 5
+
+Allow:
+
+- View imported records
+- View skipped records
+- View failed records
+- Download error report
+
+The error report should identify the row and reason for failure.
+
+---
+
+20. IMPORT SECURITY
+
+Uploaded files and imported records must belong to the authenticated School Administrator's school.
+
+A School Administrator from School A must never be able to import data into School B.
+
+The backend must determine the school/tenant from the authenticated user's authorization.
+
+Do NOT trust school_id or tenant_id supplied by the uploaded file.
+
+---
+
+21. FILE SECURITY
+
+Securely handle uploaded files.
+
+Validate:
+
+- File type
+- Extension
+- File size
+- File content where possible
+
+Never execute uploaded files.
+
+Do not expose uploaded documents through publicly guessable URLs.
+
+Temporary processing files should be securely handled and removed according to the application's retention policy.
+
+---
+
+22. IMPORT AUDIT LOG
+
+Every bulk import should create an audit record containing:
+
+- School
+- User who initiated import
+- File type
+- File name
+- Import type
+- Records detected
+- Records imported
+- Records skipped
+- Records failed
+- Date/time
+- Result
+- Error report reference where applicable
+
+The Platform Owner should be able to audit these imports.
+
+---
+
+23. ROLE-BASED LOGIN
+
+The main Yemait EduCore login page should allow users to select where they belong.
+
+Example:
+
+LOGIN TO YEMAIT EDUCORE
+
+Select account type:
+
+- School Administrator
+- Teacher
+- Accountant
+- Staff
+- Parent
+- Student
+- Partner
+- Partner Administrator/Staff
+- Other enabled roles
+
+Then:
+
+Email/Username
+Password
+Login
+
+IMPORTANT:
+
+The selected role must NOT itself grant access.
+
+After authentication, the backend must verify:
+
+1. Actual authenticated role.
+2. Permissions.
+3. School/tenant relationship.
+4. Account status.
+5. Whether the account is active.
+6. Whether the requested portal is permitted.
+
+A user must not gain privileges simply by selecting a different role in the login dropdown.
+
+The dropdown is only a login/navigation aid.
+
+Actual authorization must be enforced server-side.
+
+---
+
+24. ROLE AND PERMISSION SYSTEM
+
+Use proper Role-Based Access Control.
+
+Support:
+
+- Platform Owner
+- Partner Owner/Admin
+- Partner Staff
+- School Administrator
+- Teacher
+- Accountant
+- Staff
+- Parent
+- Student
+- Custom roles where supported
+
+Permissions should be granular.
+
+For example:
+
+Teacher:
+
+- Assigned classes
+- Assigned students
+- Attendance
+- Assignments
+- Results
+
+Accountant:
+
+- Fees
+- Payments
+- Receipts
+- Financial reports
+
+Parent:
+
+- Own profile
+- Own children
+- Attendance
+- Fees
+- Results
+- Notifications
+
+Student:
+
+- Own profile
+- Own attendance
+- Own timetable
+- Own assignments
+- Own results
+
+School Administrator:
+
+- School users
+- Students
+- Parents
+- Teachers
+- Staff
+- Academic settings
+- Finance according to permissions
+- School operations
+
+Partner:
+
+- Partner profile
+- Referral links
+- Referred schools
+- Student totals
+- Commission
+
+Platform Owner:
+
+- Platform-wide administration
+
+Backend authorization must enforce every permission.
+
+---
+
+25. PARTNER DASHBOARD
+
+Partners must have their own dashboard.
+
+Example:
+
+PARTNER DASHBOARD
+
+My Schools: 18
+Total Students: 4,280
+Commission Earned: ₦XXX
+Commission Paid: ₦XXX
+Commission Pending: ₦XXX
+
+My Schools:
+
+School Name | Students | Status | Commission
+
+The Partner can see schools they referred.
+
+However, the Partner must NOT be able to open a school and see private operational data.
+
+---
+
+26. PARTNER SCHOOL REFERRAL LINK
+
+A Partner must be able to generate a unique school registration/referral link.
+
+Workflow:
+
+Partner Dashboard
+→ Generate School Registration Link
+
+The system generates a secure, unique referral token/link.
+
+The Partner sends the link to the prospective school.
+
+The link opens a School Administrator registration/onboarding page.
+
+The School Administrator enters:
+
+- School information
+- Administrator information
+- Required contact information
+- Other required onboarding information
+
+The School Administrator creates their own password.
+
+The Partner must never create or know the administrator's password.
+
+---
+
+27. PARTNER REFERRAL ATTRIBUTION
+
+Every school registered through a Partner referral link must automatically be associated with that Partner.
+
+Record a secure relationship containing, where appropriate:
+
+- school_id
+- partner_id
+- referral_id/token
+- administrator_id
+- registration date
+- activation date
+- referral status
+
+The backend must validate the referral token.
+
+Do not rely on frontend values to determine the Partner.
+
+A Partner should not be able to alter referral ownership without appropriate Platform Owner authorization.
+
+---
+
+28. TWO SCHOOL ONBOARDING ROUTES
+
+Route A — Platform Owner
+
+Platform Owner
+→ Creates School
+→ Assigns School Administrator
+→ Sends invitation
+→ Administrator creates password
+→ School activated
+
+Route B — Partner
+
+Partner
+→ Generates referral link
+→ Sends link to school
+→ School Administrator opens link
+→ Completes registration
+→ Creates own password
+→ School created
+→ Partner relationship recorded
+→ Platform Owner sees complete school
+
+Both routes must create the same standard School tenant and School Administrator structure.
+
+---
+
+29. PARTNER ADMINISTRATORS
+
+Partners should be able to have their own staff/administrator accounts.
+
+Partner Owner/Admin can invite Partner Staff.
+
+Partner Staff must create their own passwords through invitation links.
+
+Partner Owner/Admin must not see staff plaintext passwords.
+
+Partner staff permissions must be configurable.
+
+---
+
+30. PARTNER VISIBILITY RESTRICTIONS
+
+For schools referred by a Partner, the Partner may see:
+
+- School name
+- School status
+- Number of students
+- Date joined
+- Commission
+- Commission earned
+- Commission paid
+- Commission pending
+- Commission history
+- Appropriate partner reports
+
+The Partner must NOT see:
+
+- Student names
+- Student personal information
+- Parent information
+- Parent contact details
+- Teacher information
+- Staff information
+- Student results
+- Attendance details
+- School financial records
+- Parent payments
+- Private school information
+- School passwords
+- Private school administration data
+
+These restrictions must be enforced at the backend/database level.
+
+---
+
+31. OWNER ADMIN VISIBILITY OF PARTNERS
+
+The Platform Owner should be able to see:
+
+- All Partners
+- Partner administrators
+- Partner staff
+- Referral links
+- Schools referred
+- Student totals
+- Commission rate
+- Commission earned
+- Commission paid
+- Commission pending
+- Commission history
+- Partner activity
+
+The Platform Owner has complete platform-level visibility.
+
+---
+
+32. SCHOOL DIRECTORY FOR OWNER ADMIN
+
+Owner Admin should have a school directory.
+
+Example:
+
+School Name
+Students
+Teachers
+Staff
+Parents
+Status
+Partner
+Created Date
+
+Opening a school should allow Owner Admin to view authorized school information including:
+
+- Students
+- Parents
+- Teachers
+- Staff
+- School Administrator
+- Classes
+- Attendance
+- Results
+- Fees
+- Payments
+- NFC devices
+- NFC cards
+- Subscription
+- Activity
+- Audit information
+
+Partners should NOT receive this same access.
+
+---
+
+33. TENANT ISOLATION
+
+This is CRITICAL.
+
+Every school-specific record must belong to the correct school/tenant.
+
+For example:
+
+School A
+→ Students
+→ Parents
+→ Teachers
+→ Staff
+→ Classes
+→ Attendance
+→ Results
+→ Fees
+→ Payments
+→ NFC Cards
+→ NFC Devices
+
+School B must have completely separate tenant data.
+
+A School Administrator from School A must NEVER access School B through:
+
+- Frontend
+- API
+- URL manipulation
+- Direct record IDs
+- Request manipulation
+- Frontend state
+- Hidden routes
+
+Enforce tenant isolation at the backend/database authorization level.
+
+---
+
+34. NFC DEVICE MANAGEMENT
+
+The Platform Owner should control NFC device assignment.
+
+Owner Admin must be able to:
+
+- Register NFC device
+- View device ID
+- View serial number
+- View status
+- Assign device to school
+- Unassign device
+- Reassign device when authorized
+- View school assigned to device
+- View device status/activity
+
+A device assigned to School A must not automatically work for School B.
+
+Preserve the existing device-security architecture where possible.
+
+---
+
+35. NFC CARD MANAGEMENT
+
+The School Administrator creates/manages student records.
+
+The Platform Owner manages NFC card assignment where required.
+
+Workflow:
+
+School creates Student
+→ Student exists in school database
+→ Owner Admin sees student
+→ Owner Admin selects NFC Card
+→ NFC Card linked to Student
+→ Card associated with Student + School
+
+The Owner Admin should NOT have to manually create the student.
+
+Prevent one active NFC card from being assigned to multiple active students.
+
+Support card statuses such as:
+
+- Unassigned
+- Assigned
+- Active
+- Suspended
+- Lost
+- Replaced
+- Expired/Renewal where applicable
+
+---
+
+36. OWNER VS PARTNER VS SCHOOL ACCESS
+
+Implement this principle:
+
+PLATFORM OWNER
+
+Full platform visibility/control.
+
+PARTNER
+
+Only partner/referral/commission information and permitted school summary information.
+
+SCHOOL ADMINISTRATOR
+
+Full operational access to their own school only.
+
+TEACHER
+
+Authorized teacher/class information only.
+
+ACCOUNTANT
+
+Authorized financial information only.
+
+PARENT
+
+Own account and authorized children's information only.
+
+STUDENT
+
+Own authorized information only.
+
+No role should inherit access simply because a frontend route exists.
+
+---
+
+37. AUDIT LOGGING
+
+Preserve or implement audit logging for:
+
+- School created
+- School Administrator invited
+- Administrator activated
+- Partner created
+- Partner referral link generated
+- School registered through Partner
+- User invitation sent
+- User activated
+- Role changed
+- Permission changed
+- NFC device assigned
+- NFC device unassigned
+- NFC card assigned
+- NFC card reassigned
+- School status changed
+- Bulk import performed
+- Important financial/admin changes
+
+Logs should contain appropriate:
+
+- Actor
+- Action
+- Entity
+- Entity ID
+- Timestamp
+- Relevant metadata
+- School/tenant context where applicable
+
+---
+
+38. SECURITY
+
+Never expose:
+
+- Passwords
+- Password hashes
+- Authentication secrets
+- Invitation tokens after appropriate use
+- Platform secrets
+- Private credentials
+
+Do not allow users to escalate their own roles.
+
+Do not trust role information supplied by the frontend.
+
+All sensitive permissions must be validated server-side.
+
+---
+
+39. PHASE 7 FINANCE COMPATIBILITY
+
+This correction is happening BEFORE continuing Phase 7 Finance.
+
+Do not remove or damage existing Phase 7 Finance work.
+
+The new user/tenant structure must be compatible with Finance.
+
+Finance must follow the same authorization hierarchy.
+
+Parent
+
+Can make payments for their authorized children.
+
+School Administrator / Accountant
+
+Can manage the school's authorized financial records.
+
+Platform Owner
+
+Can view platform-wide financial information according to permissions.
+
+Partner
+
+Can see only their authorized commission information.
+
+Partner commission relationships must remain linked to referred schools.
+
+---
+
+40. PARTNER COMMISSION FOUNDATION
+
+Do not unnecessarily rebuild the Finance module.
+
+However, ensure the architecture supports partner commissions.
+
+Each referred school must retain its Partner relationship.
+
+Example:
+
+Partner
+→ School
+→ Student Count
+→ Commission Calculation
+→ Partner Commission Record
+
+The commission rate must be configurable by the Platform Owner rather than permanently hard-coded.
+
+If the existing business rule is ₦100 per student, it should be configurable as the current default rather than hard-coded throughout the application.
+
+---
+
+41. DATABASE MIGRATION
+
+Before modifying the database:
+
+1. Inspect existing schema.
+2. Identify users.
+3. Identify roles.
+4. Identify schools.
+5. Identify students.
+6. Identify parents.
+7. Identify teachers/staff.
+8. Identify partners.
+9. Identify NFC records.
+10. Identify Finance records.
+11. Preserve existing data.
+12. Create safe migrations.
+13. Avoid destructive resets.
+
+Extend existing models where practical instead of replacing them unnecessarily.
+
+---
+
+42. FRONTEND PORTALS
+
+OWNER ADMIN
+
+Provide:
+
+- Dashboard
+- Schools
+- Partners
+- Users
+- Students
+- Parents
+- Staff
+- NFC Devices
+- NFC Cards
+- Reports
+- Audit Logs
+- Platform Settings
+
+PARTNER
+
+Provide:
+
+- Dashboard
+- My Schools
+- Generate Referral Link
+- Referral Links
+- Commission
+- Commission History
+- Partner Staff
+- Partner Profile
+
+SCHOOL ADMIN
+
+Provide:
+
+- Dashboard
+- Students
+- Import Students
+- Parents
+- Import Parents
+- Teachers
+- Import Teachers
+- Staff
+- Import Staff
+- Classes
+- Attendance
+- Academic modules
+- Finance
+- School Settings
+- Invitations/Users
+
+Unauthorized navigation items should not be displayed.
+
+However, UI hiding is NOT a substitute for backend authorization.
+
+---
+
+43. EMAIL INVITATIONS
+
+Use the existing email infrastructure if available.
+
+Support invitations for:
+
+- School Administrator
+- Teacher
+- Accountant
+- Staff
+- Parent
+- Partner Administrator
+- Partner Staff
+
+Each recipient creates their own password through a secure activation link.
+
+The sender must never see the password.
+
+---
+
+44. ONBOARDING STATUS
+
+Track onboarding states.
+
+School Administrator:
+
+- Invitation Sent
+- Invitation Accepted
+- Account Activated
+- School Active
+- Suspended
+
+Partner referral:
+
+- Link Generated
+- Link Opened
+- Registration Started
+- Registration Completed
+- School Activated
+
+This should be visible to the Platform Owner.
+
+---
+
+45. OWNER ADMIN REFERRAL SOURCE
+
+For every school, Owner Admin should see:
+
+School Name
+Administrator
+Student Count
+Status
+Onboarding Source
+
+Onboarding Source:
+
+- Platform Owner
+  OR
+- Partner Name
+
+If Partner-referred:
+
+- Partner Name
+- Referral ID
+- Registration Date
+- Commission Status
+
+---
+
+46. IMPORT + OWNER/PARTNER VISIBILITY
+
+When a School Administrator imports 850 students:
+
+The Platform Owner should automatically see the imported records according to Owner permissions.
+
+The Partner should see only:
+
+School Name
+Student Count
+Status
+Commission information
+
+The Partner must NOT gain access to the individual student records simply because those students were imported.
+
+---
+
+47. FINAL TESTING REQUIREMENTS
+
+After implementation, test the complete workflow.
+
+OWNER ADMIN
+
+Verify:
+
+- Can create school.
+- Can invite School Administrator.
+- Administrator receives invitation.
+- Administrator creates own password.
+- Owner never sees password.
+- Owner can view school.
+- Owner can view students.
+- Owner can view staff.
+- Owner can manage NFC devices.
+- Owner can link NFC cards.
+- Owner can see Partner/referral information.
+
+PARTNER
+
+Verify:
+
+- Can log in.
+- Can generate referral link.
+- Referral link opens School Administrator registration.
+- School Administrator can register.
+- Administrator creates own password.
+- Partner relationship is automatically recorded.
+- Partner sees school name.
+- Partner sees student count.
+- Partner sees commission.
+- Partner cannot see individual students.
+- Partner cannot see parents.
+- Partner cannot see teachers/staff private information.
+- Partner cannot see school finance/private operations.
+
+SCHOOL ADMINISTRATOR
+
+Verify:
+
+- Can activate account.
+- Can create/invite teachers.
+- Can create/invite accountants.
+- Can create/invite staff.
+- Can create/invite parents.
+- Can create students.
+- Can bulk import students.
+- Can bulk import parents.
+- Can bulk import teachers/staff.
+- Can upload Excel.
+- Can upload CSV.
+- Can process supported PDFs.
+- Can preview imports.
+- Can map columns.
+- Can identify duplicates.
+- Can resolve validation errors.
+- Can confirm import.
+- Cannot access another school.
+
+PARENT
+
+Verify:
+
+- Can activate account.
+- Can create own password.
+- Can see only authorized children.
+- Can access authorized parent functions.
+- Can make authorized payments once Finance is active.
+
+TEACHER
+
+Verify:
+
+- Can activate account.
+- Can see authorized classes/students.
+- Cannot access unauthorized administration functions.
+
+STUDENT
+
+Verify:
+
+- Can activate/login.
+- Can see only authorized student information.
+
+SECURITY
+
+Test:
+
+- Direct API access.
+- URL manipulation.
+- Changing frontend role selection.
+- Changing school IDs in requests.
+- Attempting to access another school's records.
+- Partner A attempting to access Partner B's schools.
+- School A attempting to access School B.
+- School Administrator attempting Owner Admin functions.
+- Reusing invitation tokens.
+- Accessing uploaded files from another school.
+- Uploading a file containing another school ID/tenant ID.
+
+All unauthorized attempts must be rejected server-side.
+
+---
+
+48. DEVELOPMENT PROCESS
+
+Before changing code:
+
+1. Inspect the existing implementation.
+2. Identify current architecture.
+3. Identify conflicts.
+4. Provide a concise implementation plan.
+5. Apply safe database migrations.
+6. Implement backend authorization.
+7. Implement tenant isolation.
+8. Implement invitation workflows.
+9. Implement Partner referral workflow.
+10. Implement bulk import.
+11. Implement Owner/Partner/School dashboards.
+12. Implement NFC relationships.
+13. Ensure Finance compatibility.
+14. Run tests.
+15. Run regression checks.
+16. Fix any issues discovered.
+
+Do NOT proceed with additional Phase 7 Finance development until this architecture correction has been verified.
+
+---
+
+49. COMPLETION REPORT
+
+When finished, provide a clear implementation report containing:
+
+- Files changed
+- Database migrations created
+- Authentication changes
+- Authorization changes
+- New roles
+- New permissions
+- Tenant-isolation changes
+- Owner Admin changes
+- Partner changes
+- School Administrator changes
+- Invitation workflow changes
+- Referral workflow changes
+- Bulk import changes
+- NFC changes
+- Finance compatibility changes
+- Tests performed
+- Security tests performed
+- Any remaining issues
+
+Do not claim this correction is complete unless the implemented functionality has actually been tested.
+
+After successful verification, stop and wait for my instruction before continuing with the remaining Phase 7 Finance development.

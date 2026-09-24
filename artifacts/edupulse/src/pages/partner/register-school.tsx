@@ -17,7 +17,11 @@ const onboardSchema = z.object({
     state: z.string().min(2, "State is required"),
     email: z.string().email("Valid email is required").optional().or(z.literal('')),
     phone: z.string().optional().or(z.literal('')),
-  })
+  }),
+  administrator: z.object({
+    fullName: z.string().trim().min(2, "Administrator name is required"),
+    email: z.string().trim().email("Valid administrator email is required"),
+  }),
 });
 
 export default function RegisterSchool() {
@@ -32,7 +36,7 @@ export default function RegisterSchool() {
   const [validatedPartner, setValidatedPartner] = useState<{ code: string } | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState<{ administratorEmail: string } | null>(null);
 
   const form = useForm<z.infer<typeof onboardSchema>>({
     resolver: zodResolver(onboardSchema),
@@ -45,7 +49,8 @@ export default function RegisterSchool() {
         state: '',
         email: '',
         phone: ''
-      }
+      },
+      administrator: { fullName: '', email: '' },
     }
   });
 
@@ -89,9 +94,9 @@ export default function RegisterSchool() {
       return;
     }
     
-    onboard.mutate({ data }, {
-      onSuccess: () => {
-        setSuccess(true);
+    onboard.mutate({ data: data as any }, {
+      onSuccess: (result: any) => {
+        setSuccess({ administratorEmail: result.administratorInvitation?.email ?? data.administrator.email });
       },
       onError: (err: any) => {
         toast({ title: "Registration failed", description: err.error || "An error occurred", variant: "destructive" });
@@ -106,13 +111,12 @@ export default function RegisterSchool() {
           <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[hsl(157_37%_43%/.15)] text-[hsl(157_37%_43%)] dark:text-[hsl(157_37%_55%)] mb-6">
             <CheckCircle2 size={32} />
           </div>
-          <h1 className="display-font text-3xl font-bold mb-3">School Registered</h1>
+          <h1 className="display-font text-3xl font-bold mb-3">Administrator Invitation Sent</h1>
           <p className="text-[hsl(var(--muted-foreground))] mb-8 leading-relaxed">
-            Your school has been successfully registered on Yemait EduCore via your partner's referral.
+            Your school has been registered through the partner referral. A secure invitation was sent to
+            <strong className="block mt-2 text-[hsl(var(--foreground))]">{success.administratorEmail}</strong>
+            <span className="block mt-2">The School Administrator will use that link to activate the account and create their own password.</span>
           </p>
-          <Button className="w-full" onClick={() => window.location.href = '/sign-in'}>
-            Continue to Sign In
-          </Button>
         </div>
       </main>
     );
@@ -197,6 +201,20 @@ export default function RegisterSchool() {
 
             {validatedPartner && (
               <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="rounded-xl border border-[hsl(var(--primary)/.25)] bg-[hsl(var(--primary)/.04)] p-5">
+                  <h3 className="font-bold mb-3">School Administrator</h3>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))] mb-4">
+                    We will send a secure setup invitation. The administrator creates and controls their own password.
+                  </p>
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <Field label="Administrator Name" error={form.formState.errors.administrator?.fullName?.message}>
+                      <input {...form.register('administrator.fullName')} placeholder="e.g. Ada Okafor" />
+                    </Field>
+                    <Field label="Administrator Email" error={form.formState.errors.administrator?.email?.message}>
+                      <input type="email" {...form.register('administrator.email')} placeholder="admin@excellence.edu" />
+                    </Field>
+                  </div>
+                </div>
                 <div className="grid gap-5 md:grid-cols-2">
                   <Field label="School Name" error={form.formState.errors.school?.name?.message}>
                     <input {...form.register('school.name')} placeholder="e.g. Excellence Academy" />

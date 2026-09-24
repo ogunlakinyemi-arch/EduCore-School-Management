@@ -51,6 +51,7 @@ const nav: NavItem[] = [
   { href: '/my-academics', label: 'My Academics', icon: GraduationCap, roles: ['STUDENT'] },
   { href: '/attendance', label: 'Attendance', icon: ClipboardCheck, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
   { href: '/users', label: 'Users & Roles', icon: UserCog, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
+  { href: '/people/imports', label: 'Import Records', icon: UsersRound, roles: ['SCHOOL_ADMIN'] },
   { href: '/partners', label: 'Partners', icon: Handshake, roles: ['PLATFORM_OWNER'] },
   { href: '/devices', label: 'Devices', icon: Smartphone, roles: ['PLATFORM_OWNER'] },
   { href: '/subscriptions', label: 'Subscriptions', icon: WalletCards, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },

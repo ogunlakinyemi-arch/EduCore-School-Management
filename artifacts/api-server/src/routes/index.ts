@@ -13,6 +13,7 @@ import attendanceDiscrepancyResolutionRouter from "./attendance-discrepancy-reso
 import academicWorkRouter from "./academic-work";
 import academicResultsRouter from "./academic-results";
 import academicTimetableRouter from "./academic-timetable";
+import peopleImportsRouter from "./people-imports";
 
 const router: IRouter = Router();
 
@@ -33,5 +34,6 @@ router.use(attendanceDiscrepancyResolutionRouter);
 router.use(academicWorkRouter);
 router.use(academicResultsRouter);
 router.use(academicTimetableRouter);
+router.use(peopleImportsRouter);
 
 export default router;

@@ -49,6 +49,243 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface PeopleImportClass {
+  id: number;
+  name: string;
+  section: string;
+}
+
+export interface PeopleImportClasses {
+  classes: PeopleImportClass[];
+}
+
+export type PeopleImportUploadKind = typeof PeopleImportUploadKind[keyof typeof PeopleImportUploadKind];
+
+
+export const PeopleImportUploadKind = {
+  students: 'students',
+  parents: 'parents',
+  teachers: 'teachers',
+  staff: 'staff',
+} as const;
+
+export interface PeopleImportUpload {
+  file: Blob;
+  kind: PeopleImportUploadKind;
+}
+
+export type PeopleImportPreviewUploadKind = typeof PeopleImportPreviewUploadKind[keyof typeof PeopleImportPreviewUploadKind];
+
+
+export const PeopleImportPreviewUploadKind = {
+  students: 'students',
+  parents: 'parents',
+  teachers: 'teachers',
+  staff: 'staff',
+} as const;
+
+export interface PeopleImportPreviewUpload {
+  file: Blob;
+  kind: PeopleImportPreviewUploadKind;
+  /** JSON object mapping canonical fields to file headers */
+  mapping: string;
+  /** JSON object mapping imported class values to existing class IDs */
+  classMapping: string;
+}
+
+export type PeopleImportInspectionDetectedType = typeof PeopleImportInspectionDetectedType[keyof typeof PeopleImportInspectionDetectedType];
+
+
+export const PeopleImportInspectionDetectedType = {
+  csv: 'csv',
+  xlsx: 'xlsx',
+  pdf: 'pdf',
+} as const;
+
+export type PeopleImportInspectionKind = typeof PeopleImportInspectionKind[keyof typeof PeopleImportInspectionKind];
+
+
+export const PeopleImportInspectionKind = {
+  students: 'students',
+  parents: 'parents',
+  teachers: 'teachers',
+  staff: 'staff',
+} as const;
+
+export interface PeopleImportInspection {
+  filename: string;
+  detectedType: PeopleImportInspectionDetectedType;
+  kind: PeopleImportInspectionKind;
+  columns: string[];
+  classes: PeopleImportClass[];
+}
+
+export interface PeopleImportIssue {
+  field?: string;
+  message: string;
+}
+
+export type PeopleImportRowValues = { [key: string]: unknown };
+
+export type PeopleImportRowStatus = typeof PeopleImportRowStatus[keyof typeof PeopleImportRowStatus];
+
+
+export const PeopleImportRowStatus = {
+  READY: 'READY',
+  INVALID: 'INVALID',
+  DUPLICATE: 'DUPLICATE',
+  POTENTIAL_DUPLICATE: 'POTENTIAL_DUPLICATE',
+} as const;
+
+export interface PeopleImportRow {
+  index: number;
+  sourceRow: number;
+  values: PeopleImportRowValues;
+  status: PeopleImportRowStatus;
+  errors: PeopleImportIssue[];
+  warnings: PeopleImportIssue[];
+}
+
+export type PeopleImportPreviewDetectedType = typeof PeopleImportPreviewDetectedType[keyof typeof PeopleImportPreviewDetectedType];
+
+
+export const PeopleImportPreviewDetectedType = {
+  csv: 'csv',
+  xlsx: 'xlsx',
+  pdf: 'pdf',
+} as const;
+
+export type PeopleImportPreviewKind = typeof PeopleImportPreviewKind[keyof typeof PeopleImportPreviewKind];
+
+
+export const PeopleImportPreviewKind = {
+  students: 'students',
+  parents: 'parents',
+  teachers: 'teachers',
+  staff: 'staff',
+} as const;
+
+export type PeopleImportPreviewCounts = {
+  ready?: number;
+  potentialDuplicates?: number;
+  duplicates?: number;
+  invalid?: number;
+};
+
+export interface PeopleImportPreview {
+  previewId: string;
+  filename: string;
+  detectedType: PeopleImportPreviewDetectedType;
+  kind: PeopleImportPreviewKind;
+  detected: number;
+  counts: PeopleImportPreviewCounts;
+  columns: string[];
+  classes: PeopleImportClass[];
+  classValues: string[];
+  rows: PeopleImportRow[];
+}
+
+export interface PeopleImportConfirmationInput {
+  previewId: string;
+  selectedRows: number[];
+  includePotentialDuplicates?: boolean;
+}
+
+export type PeopleImportResultResultsItemStatus = typeof PeopleImportResultResultsItemStatus[keyof typeof PeopleImportResultResultsItemStatus];
+
+
+export const PeopleImportResultResultsItemStatus = {
+  IMPORTED: 'IMPORTED',
+  FAILED: 'FAILED',
+  SKIPPED: 'SKIPPED',
+} as const;
+
+export type PeopleImportResultResultsItem = {
+  index?: number;
+  sourceRow?: number;
+  status?: PeopleImportResultResultsItemStatus;
+  recordId?: number;
+  message?: string;
+};
+
+export interface PeopleImportResult {
+  detected: number;
+  imported: number;
+  skipped: number;
+  failed: number;
+  results: PeopleImportResultResultsItem[];
+}
+
+export type OwnerSchoolAdministratorsItem = {
+  id?: number;
+  name?: string;
+  email?: string;
+  status?: string;
+};
+
+/**
+ * @nullable
+ */
+export type OwnerSchoolPartnerReferral = {
+  partnerId?: number;
+  partnerName?: string;
+  source?: string;
+  status?: string;
+  /** @nullable */
+  referralLinkId?: number | null;
+  registrationDate?: string;
+} | null;
+
+export interface OwnerSchool {
+  id: number;
+  code: string;
+  name: string;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  state?: string | null;
+  status: string;
+  createdAt?: string;
+  studentCount: number;
+  activeStudentCount: number;
+  teacherCount: number;
+  staffCount: number;
+  employeeCount: number;
+  accountantCount: number;
+  parentCount: number;
+  classCount: number;
+  administrators: OwnerSchoolAdministratorsItem[];
+  subscriptionStatus: string;
+  /** @nullable */
+  partnerReferral?: OwnerSchoolPartnerReferral;
+}
+
+export type OwnerSchoolDirectoryTotals = {
+  schoolCount: number;
+  studentCount: number;
+  activeStudentCount: number;
+  teacherCount: number;
+  staffCount: number;
+  parentCount: number;
+};
+
+export interface OwnerSchoolDirectory {
+  schools: OwnerSchool[];
+  totals: OwnerSchoolDirectoryTotals;
+}
+
+export type OwnerSchoolOverviewRecentActivityItem = { [key: string]: unknown };
+
+export type OwnerSchoolOverview = OwnerSchool & {
+  attendanceEventCount?: number;
+  resultCount?: number;
+  subscriptionCount?: number;
+  deviceCount?: number;
+  cardCount?: number;
+  activeCardCount?: number;
+  recentActivity?: OwnerSchoolOverviewRecentActivityItem[];
+};
+
 export type PlatformDashboardSubscriptionSummary = {[key: string]: number};
 
 export type AuditLogSeverity = typeof AuditLogSeverity[keyof typeof AuditLogSeverity];
@@ -584,22 +821,64 @@ export interface SchoolAdministratorInput {
      * @minLength 8
      * @maxLength 25
      */
-  phone: string;
-  /**
-     * @minLength 12
-     * @maxLength 256
-     */
-  password: string;
+  phone?: string;
 }
 
-export interface SchoolAdministratorResult {
-  id: number;
+export type SchoolUserInvitationInputRole = typeof SchoolUserInvitationInputRole[keyof typeof SchoolUserInvitationInputRole];
+
+
+export const SchoolUserInvitationInputRole = {
+  TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  STAFF: 'STAFF',
+  PARENT: 'PARENT',
+} as const;
+
+export interface SchoolUserInvitationInput {
+  /** @minimum 1 */
+  schoolId: number;
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  fullName: string;
+  /** @maxLength 254 */
   email: string;
-  firstName: string;
-  /** @nullable */
-  lastName?: string | null;
-  phone: string;
-  membership: RoleAssignment;
+  /**
+     * @minLength 8
+     * @maxLength 25
+     */
+  phone?: string;
+  role: SchoolUserInvitationInputRole;
+}
+
+export type SchoolAdministratorResultStatus = typeof SchoolAdministratorResultStatus[keyof typeof SchoolAdministratorResultStatus];
+
+
+export const SchoolAdministratorResultStatus = {
+  INVITATION_SENT: 'INVITATION_SENT',
+  ACTIVE: 'ACTIVE',
+} as const;
+
+export type SchoolAdministratorResultRole = typeof SchoolAdministratorResultRole[keyof typeof SchoolAdministratorResultRole];
+
+
+export const SchoolAdministratorResultRole = {
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+  TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  STAFF: 'STAFF',
+  PARENT: 'PARENT',
+} as const;
+
+export interface SchoolAdministratorResult {
+  status: SchoolAdministratorResultStatus;
+  email: string;
+  schoolId: number;
+  role: SchoolAdministratorResultRole;
+  invitationId?: string;
+  expiresAt?: string;
+  membership?: RoleAssignment;
 }
 
 export type PlatformDeviceDeviceType = typeof PlatformDeviceDeviceType[keyof typeof PlatformDeviceDeviceType];
@@ -893,7 +1172,6 @@ export type SchoolMembershipInputRole = typeof SchoolMembershipInputRole[keyof t
 
 
 export const SchoolMembershipInputRole = {
-  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
   TEACHER: 'TEACHER',
   ACCOUNTANT: 'ACCOUNTANT',
   PARENT: 'PARENT',
@@ -917,8 +1195,7 @@ export const PlatformMembershipInputRole = {
 } as const;
 
 export interface PlatformMembershipInput {
-  /** @minimum 1 */
-  userId: number;
+  email: string;
   role: PlatformMembershipInputRole;
 }
 
@@ -1974,10 +2251,17 @@ export interface ReferralValidation {
   referralLinkId?: number | null;
 }
 
+export type PartnerSchoolOnboardingInputAdministrator = {
+  /** @minLength 2 */
+  fullName: string;
+  email: string;
+};
+
 export interface PartnerSchoolOnboardingInput {
   /** @minLength 16 */
   referralToken: string;
   school: SchoolInput;
+  administrator: PartnerSchoolOnboardingInputAdministrator;
 }
 
 export type PartnerOnboardingResultAttributionStatus = typeof PartnerOnboardingResultAttributionStatus[keyof typeof PartnerOnboardingResultAttributionStatus];
@@ -1988,11 +2272,25 @@ export const PartnerOnboardingResultAttributionStatus = {
   CONFLICT: 'CONFLICT',
 } as const;
 
+export type PartnerOnboardingResultAdministratorInvitationStatus = typeof PartnerOnboardingResultAdministratorInvitationStatus[keyof typeof PartnerOnboardingResultAdministratorInvitationStatus];
+
+
+export const PartnerOnboardingResultAdministratorInvitationStatus = {
+  SENT: 'SENT',
+} as const;
+
+export type PartnerOnboardingResultAdministratorInvitation = {
+  email: string;
+  status: PartnerOnboardingResultAdministratorInvitationStatus;
+  expiresInDays: number;
+};
+
 export interface PartnerOnboardingResult {
   school: School;
   attributionStatus: PartnerOnboardingResultAttributionStatus;
   /** @nullable */
   conflictId?: number | null;
+  administratorInvitation: PartnerOnboardingResultAdministratorInvitation;
 }
 
 export interface DeviceAssignmentInput {
@@ -3019,6 +3317,52 @@ export type ListSchoolUsersParams = {
  */
 schoolId: SchoolIdParameter;
 };
+
+export type ListPeopleImportClassesParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type InspectPeopleImportParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type PreviewPeopleImportParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ConfirmPeopleImportParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ListOwnerSchoolDirectoryParams = {
+status?: ListOwnerSchoolDirectoryStatus;
+/**
+ * @maxLength 100
+ */
+search?: string;
+};
+
+export type ListOwnerSchoolDirectoryStatus = typeof ListOwnerSchoolDirectoryStatus[keyof typeof ListOwnerSchoolDirectoryStatus];
+
+
+export const ListOwnerSchoolDirectoryStatus = {
+  all: 'all',
+  active: 'active',
+  inactive: 'inactive',
+  suspended: 'suspended',
+} as const;
 
 export type GetSchoolAttendanceTodayParams = {
 /**

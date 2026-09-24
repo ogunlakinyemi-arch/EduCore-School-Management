@@ -1,5 +1,7 @@
 import { useGetPlatformDashboard, useGetSchoolDashboard, useGetAuthorizedContext, useGetStudentSelfProfile, useGetOwnAttendance } from '@workspace/api-client-react';
-import { Building2, GraduationCap, CircleDollarSign, Smartphone, ArrowUpRight, LogIn, LogOut, Calendar, Clock } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'wouter';
+import { Building2, GraduationCap, CircleDollarSign, Smartphone, ArrowUpRight, LogIn, LogOut, Calendar, Clock, UsersRound, Briefcase, CreditCard, FileClock } from 'lucide-react';
 import { PageHeading, Metric, useTenant, SkeletonPage, ErrorState, ActivityFeed, money } from '@/components/shared';
 
 export function Dashboard() {
@@ -125,10 +127,30 @@ function StudentAttendanceRow({ event }: { event: any }) {
 
 function PlatformDashboard() {
   const query = useGetPlatformDashboard();
+  const directoryQuery = useQuery({
+    queryKey: ['platform-school-directory', 'dashboard'],
+    queryFn: async () => {
+      const response = await fetch('/api/platform/schools/directory?status=all', { credentials: 'same-origin' });
+      if (!response.ok) throw new Error(`Could not load platform-wide school totals (${response.status})`);
+      return response.json() as Promise<{
+        totals: {
+          schoolCount: number;
+          studentCount: number;
+          activeStudentCount: number;
+          teacherCount: number;
+          staffCount: number;
+          parentCount: number;
+        };
+      }>;
+    },
+  });
   const data: any = query.data;
   
-  if (query.isLoading) return <SkeletonPage />;
-  if (query.isError) return <ErrorState retry={() => query.refetch()} />;
+  if (query.isLoading || directoryQuery.isLoading) return <SkeletonPage />;
+  if (query.isError || directoryQuery.isError) return <ErrorState retry={() => { query.refetch(); directoryQuery.refetch(); }} />;
+  const network = directoryQuery.data?.totals ?? {
+    teacherCount: 0, staffCount: 0, parentCount: 0,
+  };
   
   const today = new Date().toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -138,12 +160,10 @@ function PlatformDashboard() {
         eyebrow={`Platform overview · ${today}`} 
         title="The whole network, at a glance." 
         description="A calm operational read on the schools, people and payments moving through Yemait EduCore."
-        // We avoid wouter Link here since it's just a UI demo, but wait, wouter Link needs a proper import in shared, actually I'll use native a or wouter Link
-        // Need to import Link from wouter directly
         action={
-          <a href="/schools" className="inline-flex items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-5 py-3 text-sm font-bold text-[hsl(var(--primary-foreground))] shadow-[0_4px_14px_hsl(var(--primary)/.25)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_hsl(var(--primary)/.3)]" data-testid="link-manage-schools">
+          <Link href="/schools" className="inline-flex items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-5 py-3 text-sm font-bold text-[hsl(var(--primary-foreground))] shadow-[0_4px_14px_hsl(var(--primary)/.25)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_hsl(var(--primary)/.3)]" data-testid="link-manage-schools">
             <Building2 size={16} />Manage schools
-          </a>
+          </Link>
         } 
       />
       
@@ -152,6 +172,27 @@ function PlatformDashboard() {
         <Metric label="Students across network" value={(data?.totalStudents ?? 0).toLocaleString()} detail={`${data?.activeSubscriptions ?? 0} active subscriptions`} icon={GraduationCap} />
         <Metric label="Revenue this cycle" value={money(data?.revenue)} detail={`${money(data?.schoolAllocation)} allocated to schools`} icon={CircleDollarSign} accent />
         <Metric label="NFC fleet" value={(data?.activeCards ?? 0).toLocaleString()} detail={`${data?.lockedCards ?? 0} locked cards`} icon={Smartphone} />
+      </div>
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-3">
+        <Metric label="Active teachers across schools" value={network.teacherCount.toLocaleString()} icon={Briefcase} />
+        <Metric label="Other active employees" value={network.staffCount.toLocaleString()} icon={UsersRound} />
+        <Metric label="Parent accounts" value={network.parentCount.toLocaleString()} icon={UsersRound} />
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-3">
+        <Link href="/schools" className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3 text-sm font-bold hover:border-[hsl(var(--primary)/.4)]" data-testid="link-owner-school-directory">
+          <Building2 size={16} />School directory
+        </Link>
+        <Link href="/devices" className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3 text-sm font-bold hover:border-[hsl(var(--primary)/.4)]" data-testid="link-owner-devices">
+          <Smartphone size={16} />NFC devices
+        </Link>
+        <Link href="/cards" className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3 text-sm font-bold hover:border-[hsl(var(--primary)/.4)]" data-testid="link-owner-cards">
+          <CreditCard size={16} />NFC cards
+        </Link>
+        <Link href="/audit" className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3 text-sm font-bold hover:border-[hsl(var(--primary)/.4)]" data-testid="link-owner-audit">
+          <FileClock size={16} />Audit trail
+        </Link>
       </div>
       
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
@@ -195,7 +236,7 @@ function PlatformDashboard() {
               <div className="eyebrow">Latest activity</div>
               <h2 className="display-font mt-2 text-2xl font-bold">What just happened</h2>
             </div>
-            <a href="/audit" className="text-sm font-bold text-[hsl(var(--primary))] hover:underline" data-testid="link-view-audit">View trail</a>
+            <Link href="/audit" className="text-sm font-bold text-[hsl(var(--primary))] hover:underline" data-testid="link-view-audit">View trail</Link>
           </div>
           <ActivityFeed items={data?.recentActivity} />
         </div>
@@ -221,9 +262,9 @@ function SchoolDashboard({ schoolId }: { schoolId: number }) {
         title={`${school?.name || 'Your School'} Command Centre`} 
         description="The pulse of your students, staff, and daily operations." 
         action={
-          <a href="/students" className="inline-flex items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-5 py-3 text-sm font-bold text-[hsl(var(--primary-foreground))] shadow-[0_4px_14px_hsl(var(--primary)/.25)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_hsl(var(--primary)/.3)]" data-testid="link-directory">
+          <Link href="/students" className="inline-flex items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-5 py-3 text-sm font-bold text-[hsl(var(--primary-foreground))] shadow-[0_4px_14px_hsl(var(--primary)/.25)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_hsl(var(--primary)/.3)]" data-testid="link-directory">
             <GraduationCap size={16} />Open directory
-          </a>
+          </Link>
         } 
       />
       
@@ -264,7 +305,7 @@ function SchoolDashboard({ schoolId }: { schoolId: number }) {
                 {data?.currentAcademicSession?.name || 'No active session'} · {data?.currentTerm?.name || 'No term'} Term
               </div>
             </div>
-            <a href="/academics" className="text-xs font-bold text-[hsl(var(--primary))] hover:underline">Manage</a>
+            <Link href="/academics" className="text-xs font-bold text-[hsl(var(--primary))] hover:underline">Manage</Link>
           </div>
         </div>
         
@@ -274,7 +315,7 @@ function SchoolDashboard({ schoolId }: { schoolId: number }) {
               <div className="eyebrow">School activity</div>
               <h2 className="display-font mt-2 text-2xl font-bold">Recent movement</h2>
             </div>
-            <a href="/audit" className="text-sm font-bold text-[hsl(var(--primary))] hover:underline" data-testid="link-view-audit">Full trail</a>
+            <Link href="/audit" className="text-sm font-bold text-[hsl(var(--primary))] hover:underline" data-testid="link-view-audit">Full trail</Link>
           </div>
           <ActivityFeed items={data?.recentActivity} />
         </div>

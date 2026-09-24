@@ -5,10 +5,12 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { PartnerSchoolOnboardingInputAdministrator } from './partnerSchoolOnboardingInputAdministrator';
 import type { SchoolInput } from './schoolInput';
 
 export interface PartnerSchoolOnboardingInput {
   /** @minLength 16 */
   referralToken: string;
   school: SchoolInput;
+  administrator: PartnerSchoolOnboardingInputAdministrator;
 }

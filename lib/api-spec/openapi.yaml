@@ -312,6 +312,28 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/RoleAssignment" }
         "403": { $ref: "#/components/responses/Forbidden" }
+  /school-users/invitations:
+    post:
+      operationId: inviteSchoolUser
+      tags: [users]
+      summary: Send a password-free school user invitation or grant an existing user access by email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SchoolUserInvitationInput" }
+      responses:
+        "201":
+          description: Existing account granted a school membership
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolAdministratorResult" }
+        "202":
+          description: Clerk invitation emailed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolAdministratorResult" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /school-users:
     get:
       operationId: listSchoolUsers
@@ -346,7 +368,7 @@ paths:
     post:
       operationId: createSchoolAdministrator
       tags: [users]
-      summary: Create a Clerk-backed School Administrator account
+      summary: Invite a School Administrator to create their own credentials
       parameters:
         - $ref: "#/components/parameters/SchoolIdPath"
       requestBody:
@@ -356,11 +378,116 @@ paths:
             schema: { $ref: "#/components/schemas/SchoolAdministratorInput" }
       responses:
         "201":
-          description: School Administrator created
+          description: Existing account granted School Administrator access
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolAdministratorResult" }
+        "202":
+          description: School Administrator invitation emailed
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SchoolAdministratorResult" }
         "403": { $ref: "#/components/responses/Forbidden" }
+  /people/imports/classes:
+    get:
+      operationId: listPeopleImportClasses
+      tags: [people]
+      summary: List classes available for a school-admin import
+      parameters: [{ $ref: "#/components/parameters/SchoolId" }]
+      responses:
+        "200":
+          description: Existing school classes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PeopleImportClasses" }
+  /people/imports/inspect:
+    post:
+      operationId: inspectPeopleImport
+      tags: [people]
+      summary: Detect the columns of a school-scoped CSV, Excel, or text PDF
+      parameters: [{ $ref: "#/components/parameters/SchoolId" }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/PeopleImportUpload" }
+      responses:
+        "200":
+          description: Detected columns and classes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PeopleImportInspection" }
+  /people/imports/preview:
+    post:
+      operationId: previewPeopleImport
+      tags: [people]
+      summary: Validate and review rows without saving
+      parameters: [{ $ref: "#/components/parameters/SchoolId" }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/PeopleImportPreviewUpload" }
+      responses:
+        "200":
+          description: Expiring import preview with row-level issues
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PeopleImportPreview" }
+  /people/imports/confirm:
+    post:
+      operationId: confirmPeopleImport
+      tags: [people]
+      summary: Commit explicitly selected validated import rows and audit the result
+      parameters: [{ $ref: "#/components/parameters/SchoolId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PeopleImportConfirmationInput" }
+      responses:
+        "200":
+          description: Per-row import result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PeopleImportResult" }
+  /platform/schools/directory:
+    get:
+      operationId: listOwnerSchoolDirectory
+      tags: [platform]
+      summary: Owner-only school directory with tenant-safe aggregate counts
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [all, active, inactive, suspended] }
+        - name: search
+          in: query
+          schema: { type: string, maxLength: 100 }
+      responses:
+        "200":
+          description: School directory
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OwnerSchoolDirectory" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /platform/schools/{schoolId}/overview:
+    get:
+      operationId: getOwnerSchoolOverview
+      tags: [platform]
+      summary: Owner-only operational overview of one school
+      parameters:
+        - name: schoolId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: School overview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OwnerSchoolOverview" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /platform/devices:
     get:
       operationId: listPlatformDevices
@@ -2703,6 +2830,183 @@ components:
         status:
           type: string
       required: [status]
+    PeopleImportClasses:
+      type: object
+      required: [classes]
+      properties:
+        classes:
+          type: array
+          items: { $ref: "#/components/schemas/PeopleImportClass" }
+    PeopleImportClass:
+      type: object
+      required: [id, name, section]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        section: { type: string }
+    PeopleImportUpload:
+      type: object
+      required: [file, kind]
+      properties:
+        file: { type: string, format: binary }
+        kind: { type: string, enum: [students, parents, teachers, staff] }
+    PeopleImportPreviewUpload:
+      type: object
+      required: [file, kind, mapping, classMapping]
+      properties:
+        file: { type: string, format: binary }
+        kind: { type: string, enum: [students, parents, teachers, staff] }
+        mapping: { type: string, description: JSON object mapping canonical fields to file headers }
+        classMapping: { type: string, description: JSON object mapping imported class values to existing class IDs }
+    PeopleImportInspection:
+      type: object
+      required: [filename, detectedType, kind, columns, classes]
+      properties:
+        filename: { type: string }
+        detectedType: { type: string, enum: [csv, xlsx, pdf] }
+        kind: { type: string, enum: [students, parents, teachers, staff] }
+        columns: { type: array, items: { type: string } }
+        classes:
+          type: array
+          items: { $ref: "#/components/schemas/PeopleImportClass" }
+    PeopleImportIssue:
+      type: object
+      required: [message]
+      properties:
+        field: { type: string }
+        message: { type: string }
+    PeopleImportRow:
+      type: object
+      required: [index, sourceRow, values, status, errors, warnings]
+      properties:
+        index: { type: integer }
+        sourceRow: { type: integer }
+        values: { type: object, additionalProperties: true }
+        status: { type: string, enum: [READY, INVALID, DUPLICATE, POTENTIAL_DUPLICATE] }
+        errors:
+          type: array
+          items: { $ref: "#/components/schemas/PeopleImportIssue" }
+        warnings:
+          type: array
+          items: { $ref: "#/components/schemas/PeopleImportIssue" }
+    PeopleImportPreview:
+      type: object
+      required: [previewId, filename, detectedType, kind, detected, counts, columns, classes, classValues, rows]
+      properties:
+        previewId: { type: string }
+        filename: { type: string }
+        detectedType: { type: string, enum: [csv, xlsx, pdf] }
+        kind: { type: string, enum: [students, parents, teachers, staff] }
+        detected: { type: integer }
+        counts:
+          type: object
+          properties:
+            ready: { type: integer }
+            potentialDuplicates: { type: integer }
+            duplicates: { type: integer }
+            invalid: { type: integer }
+        columns: { type: array, items: { type: string } }
+        classes:
+          type: array
+          items: { $ref: "#/components/schemas/PeopleImportClass" }
+        classValues: { type: array, items: { type: string } }
+        rows:
+          type: array
+          items: { $ref: "#/components/schemas/PeopleImportRow" }
+    PeopleImportConfirmationInput:
+      type: object
+      required: [previewId, selectedRows]
+      properties:
+        previewId: { type: string }
+        selectedRows: { type: array, items: { type: integer } }
+        includePotentialDuplicates: { type: boolean }
+    PeopleImportResult:
+      type: object
+      required: [detected, imported, skipped, failed, results]
+      properties:
+        detected: { type: integer }
+        imported: { type: integer }
+        skipped: { type: integer }
+        failed: { type: integer }
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              index: { type: integer }
+              sourceRow: { type: integer }
+              status: { type: string, enum: [IMPORTED, FAILED, SKIPPED] }
+              recordId: { type: integer }
+              message: { type: string }
+    OwnerSchool:
+      type: object
+      required: [id, code, name, status, studentCount, activeStudentCount, teacherCount, staffCount, employeeCount, accountantCount, parentCount, classCount, administrators, subscriptionStatus]
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        name: { type: string }
+        city: { type: ["string", "null"] }
+        state: { type: ["string", "null"] }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+        studentCount: { type: integer }
+        activeStudentCount: { type: integer }
+        teacherCount: { type: integer }
+        staffCount: { type: integer }
+        employeeCount: { type: integer }
+        accountantCount: { type: integer }
+        parentCount: { type: integer }
+        classCount: { type: integer }
+        administrators:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              name: { type: string }
+              email: { type: string }
+              status: { type: string }
+        subscriptionStatus: { type: string }
+        partnerReferral:
+          type: ["object", "null"]
+          properties:
+            partnerId: { type: integer }
+            partnerName: { type: string }
+            source: { type: string }
+            status: { type: string }
+            referralLinkId: { type: ["integer", "null"] }
+            registrationDate: { type: string, format: date-time }
+    OwnerSchoolDirectory:
+      type: object
+      required: [schools, totals]
+      properties:
+        schools:
+          type: array
+          items: { $ref: "#/components/schemas/OwnerSchool" }
+        totals:
+          type: object
+          required: [schoolCount, studentCount, activeStudentCount, teacherCount, staffCount, parentCount]
+          properties:
+            schoolCount: { type: integer }
+            studentCount: { type: integer }
+            activeStudentCount: { type: integer }
+            teacherCount: { type: integer }
+            staffCount: { type: integer }
+            parentCount: { type: integer }
+    OwnerSchoolOverview:
+      allOf:
+        - $ref: "#/components/schemas/OwnerSchool"
+        - type: object
+          properties:
+            attendanceEventCount: { type: integer }
+            resultCount: { type: integer }
+            subscriptionCount: { type: integer }
+            deviceCount: { type: integer }
+            cardCount: { type: integer }
+            activeCardCount: { type: integer }
+            recentActivity:
+              type: array
+              items: { type: object, additionalProperties: true }
     PlatformDashboard:
       type: object
       required: [totalSchools, activeSchools, suspendedSchools, totalStudents, activeSubscriptions, pendingPayments, revenue, schoolAllocation, edupulseAllocation, activeCards, lockedCards, recentActivity]
@@ -2945,21 +3249,30 @@ components:
           enum: [ACTIVE, INACTIVE]
     SchoolAdministratorInput:
       type: object
-      required: [fullName, email, phone, password]
+      required: [fullName, email]
       properties:
         fullName: { type: string, minLength: 2, maxLength: 120 }
         email: { type: string, format: email, maxLength: 254 }
         phone: { type: string, minLength: 8, maxLength: 25 }
-        password: { type: string, minLength: 12, maxLength: 256 }
+    SchoolUserInvitationInput:
+      type: object
+      required: [schoolId, fullName, email, role]
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        fullName: { type: string, minLength: 2, maxLength: 120 }
+        email: { type: string, format: email, maxLength: 254 }
+        phone: { type: string, minLength: 8, maxLength: 25 }
+        role: { type: string, enum: [TEACHER, ACCOUNTANT, STAFF, PARENT] }
     SchoolAdministratorResult:
       type: object
-      required: [id, email, firstName, phone, membership]
+      required: [status, email, schoolId, role]
       properties:
-        id: { type: integer }
+        status: { type: string, enum: [INVITATION_SENT, ACTIVE] }
         email: { type: string, format: email }
-        firstName: { type: string }
-        lastName: { type: ["string", "null"] }
-        phone: { type: string }
+        schoolId: { type: integer }
+        role: { type: string, enum: [SCHOOL_ADMIN, TEACHER, ACCOUNTANT, STAFF, PARENT] }
+        invitationId: { type: string }
+        expiresAt: { type: string, format: date-time }
         membership: { $ref: "#/components/schemas/RoleAssignment" }
     PlatformDevice:
       type: object
@@ -3154,12 +3467,12 @@ components:
         schoolId: { type: integer, minimum: 1 }
         role:
           type: string
-          enum: [SCHOOL_ADMIN, TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF]
+          enum: [TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF]
     PlatformMembershipInput:
       type: object
-      required: [userId, role]
+      required: [email, role]
       properties:
-        userId: { type: integer, minimum: 1 }
+        email: { type: string, format: email }
         role:
           type: string
           enum: [PLATFORM_OWNER]
@@ -3767,17 +4080,30 @@ components:
         referralLinkId: { type: ["integer", "null"] }
     PartnerSchoolOnboardingInput:
       type: object
-      required: [referralToken, school]
+      required: [referralToken, school, administrator]
       properties:
         referralToken: { type: string, minLength: 16, writeOnly: true }
         school: { $ref: "#/components/schemas/SchoolInput" }
+        administrator:
+          type: object
+          required: [fullName, email]
+          properties:
+            fullName: { type: string, minLength: 2 }
+            email: { type: string, format: email }
     PartnerOnboardingResult:
       type: object
-      required: [school, attributionStatus]
+      required: [school, attributionStatus, administratorInvitation]
       properties:
         school: { $ref: "#/components/schemas/School" }
         attributionStatus: { type: string, enum: [CREATED, CONFLICT] }
         conflictId: { type: ["integer", "null"] }
+        administratorInvitation:
+          type: object
+          required: [email, status, expiresInDays]
+          properties:
+            email: { type: string, format: email }
+            status: { type: string, enum: [SENT] }
+            expiresInDays: { type: integer }
     DeviceAssignmentInput:
       type: object
       required: [schoolId]

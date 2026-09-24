@@ -10,7 +10,6 @@ export type SchoolMembershipInputRole = typeof SchoolMembershipInputRole[keyof t
 
 
 export const SchoolMembershipInputRole = {
-  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
   TEACHER: 'TEACHER',
   ACCOUNTANT: 'ACCOUNTANT',
   PARENT: 'PARENT',

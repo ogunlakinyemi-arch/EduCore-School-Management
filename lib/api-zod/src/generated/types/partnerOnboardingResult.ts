@@ -5,6 +5,7 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { PartnerOnboardingResultAdministratorInvitation } from './partnerOnboardingResultAdministratorInvitation';
 import type { PartnerOnboardingResultAttributionStatus } from './partnerOnboardingResultAttributionStatus';
 import type { School } from './school';
 
@@ -13,4 +14,5 @@ export interface PartnerOnboardingResult {
   attributionStatus: PartnerOnboardingResultAttributionStatus;
   /** @nullable */
   conflictId?: number | null;
+  administratorInvitation: PartnerOnboardingResultAdministratorInvitation;
 }

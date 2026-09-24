@@ -6,13 +6,15 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { RoleAssignment } from './roleAssignment';
+import type { SchoolAdministratorResultRole } from './schoolAdministratorResultRole';
+import type { SchoolAdministratorResultStatus } from './schoolAdministratorResultStatus';
 
 export interface SchoolAdministratorResult {
-  id: number;
+  status: SchoolAdministratorResultStatus;
   email: string;
-  firstName: string;
-  /** @nullable */
-  lastName?: string | null;
-  phone: string;
-  membership: RoleAssignment;
+  schoolId: number;
+  role: SchoolAdministratorResultRole;
+  invitationId?: string;
+  expiresAt?: Date;
+  membership?: RoleAssignment;
 }

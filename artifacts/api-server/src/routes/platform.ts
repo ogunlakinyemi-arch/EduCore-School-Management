@@ -15,6 +15,31 @@ const deviceFields = `d.id,d.serial_number AS "serialNumber",d.name,d.device_typ
   d.last_seen_at AS "lastSeenAt",
   d.created_at AS "createdAt",d.updated_at AS "updatedAt"`;
 
+const ownerSchoolFields = `s.id,s.code,s.name,s.city,s.state,s.status,s.created_at AS "createdAt",
+  (SELECT COUNT(*)::int FROM students st WHERE st.school_id=s.id) AS "studentCount",
+  (SELECT COUNT(*)::int FROM students st WHERE st.school_id=s.id AND UPPER(st.status)='ACTIVE') AS "activeStudentCount",
+  (SELECT COUNT(*)::int FROM employees e WHERE e.school_id=s.id AND e.employment_status='ACTIVE'
+    AND UPPER(e.employee_type)='TEACHER') AS "teacherCount",
+  (SELECT COUNT(*)::int FROM employees e WHERE e.school_id=s.id AND e.employment_status='ACTIVE'
+    AND UPPER(e.employee_type)<>'TEACHER') AS "staffCount",
+  (SELECT COUNT(*)::int FROM employees e WHERE e.school_id=s.id AND e.employment_status='ACTIVE') AS "employeeCount",
+  (SELECT COUNT(*)::int FROM school_memberships sm WHERE sm.school_id=s.id
+    AND sm.role='ACCOUNTANT' AND sm.status='ACTIVE') AS "accountantCount",
+  (SELECT COUNT(*)::int FROM parents p WHERE p.school_id=s.id) AS "parentCount",
+  (SELECT COUNT(*)::int FROM school_classes sc WHERE sc.school_id=s.id) AS "classCount",
+  (SELECT COALESCE(json_agg(json_build_object(
+    'id',u.id,'name',concat_ws(' ',u.first_name,u.last_name),'email',u.email,
+    'status',sm.status) ORDER BY u.first_name,u.last_name),'[]'::json)
+    FROM school_memberships sm JOIN app_users u ON u.id=sm.user_id
+    WHERE sm.school_id=s.id AND sm.role='SCHOOL_ADMIN') AS administrators,
+  (SELECT CASE WHEN COUNT(*)=0 THEN 'attention'
+    WHEN COUNT(*) FILTER (WHERE LOWER(sub.status)='active' AND sub.expires_at>NOW())>0 THEN 'active'
+    ELSE 'expired' END FROM subscriptions sub WHERE sub.school_id=s.id) AS "subscriptionStatus",
+  CASE WHEN pp.id IS NULL THEN NULL ELSE json_build_object(
+    'partnerId',pp.id,'partnerName',COALESCE(NULLIF(pp.business_name,''),pp.full_name),
+    'source',spa.source,'status',spa.status,'referralLinkId',spa.referral_link_id,
+    'registrationDate',spa.starts_at) END AS "partnerReferral"`;
+
 type DeviceInput = {
   serialNumber: string;
   name: string;
@@ -47,6 +72,77 @@ async function audit(
     ],
   );
 }
+
+router.get("/platform/schools/directory", run(async (req, res) => {
+  assertRoles(req, ["PLATFORM_OWNER"]);
+  const status = typeof req.query.status === "string" ? req.query.status.toLowerCase() : "all";
+  if (!["all", "active", "inactive", "suspended"].includes(status)) {
+    throw new AuthError(400, "status must be all, active, inactive, or suspended");
+  }
+  const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+  if (search.length > 100) throw new AuthError(400, "search must be 100 characters or fewer");
+  const values: unknown[] = [];
+  const conditions: string[] = [];
+  if (status !== "all") {
+    values.push(status);
+    conditions.push(`LOWER(s.status)=$${values.length}`);
+  }
+  if (search) {
+    values.push(`%${search}%`);
+    conditions.push(`(s.name ILIKE $${values.length} OR s.code ILIKE $${values.length}
+      OR s.city ILIKE $${values.length} OR s.state ILIKE $${values.length})`);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const result = await pool.query(
+    `SELECT ${ownerSchoolFields}
+       FROM schools s
+       LEFT JOIN school_partner_attributions spa ON spa.school_id=s.id AND spa.is_current=true
+       LEFT JOIN partner_profiles pp ON pp.id=spa.partner_profile_id
+       ${where}
+      ORDER BY s.created_at DESC,s.id DESC`,
+    values,
+  );
+  const schools = result.rows;
+  const totals = schools.reduce((sum, school) => ({
+    schoolCount: sum.schoolCount + 1,
+    studentCount: sum.studentCount + Number(school.studentCount || 0),
+    activeStudentCount: sum.activeStudentCount + Number(school.activeStudentCount || 0),
+    teacherCount: sum.teacherCount + Number(school.teacherCount || 0),
+    staffCount: sum.staffCount + Number(school.staffCount || 0),
+    parentCount: sum.parentCount + Number(school.parentCount || 0),
+  }), {
+    schoolCount: 0, studentCount: 0, activeStudentCount: 0,
+    teacherCount: 0, staffCount: 0, parentCount: 0,
+  });
+  res.json({ schools, totals });
+}));
+
+router.get("/platform/schools/:schoolId/overview", run(async (req, res) => {
+  assertRoles(req, ["PLATFORM_OWNER"]);
+  const schoolId = Number(req.params.schoolId);
+  if (!Number.isSafeInteger(schoolId) || schoolId < 1) throw new AuthError(404, "School not found");
+  const school = await pool.query(
+    `SELECT ${ownerSchoolFields},
+       (SELECT COUNT(*)::int FROM attendance_events ae WHERE ae.school_id=s.id) AS "attendanceEventCount",
+       (SELECT COUNT(*)::int FROM academic_results ar WHERE ar.school_id=s.id) AS "resultCount",
+       (SELECT COUNT(*)::int FROM subscriptions sub WHERE sub.school_id=s.id) AS "subscriptionCount",
+       (SELECT COUNT(*)::int FROM platform_devices d WHERE d.school_id=s.id) AS "deviceCount",
+       (SELECT COUNT(*)::int FROM nfc_cards c WHERE c.school_id=s.id) AS "cardCount",
+       (SELECT COUNT(*)::int FROM nfc_cards c WHERE c.school_id=s.id
+         AND LOWER(c.status)='active') AS "activeCardCount",
+       (SELECT COALESCE(json_agg(activity ORDER BY activity.timestamp DESC),'[]'::json)
+          FROM (SELECT id,action,module,"user",timestamp,severity,result
+                  FROM audit_logs WHERE school_id=s.id ORDER BY timestamp DESC,id DESC LIMIT 12) activity
+       ) AS "recentActivity"
+     FROM schools s
+     LEFT JOIN school_partner_attributions spa ON spa.school_id=s.id AND spa.is_current=true
+     LEFT JOIN partner_profiles pp ON pp.id=spa.partner_profile_id
+     WHERE s.id=$1`,
+    [schoolId],
+  );
+  if (!school.rows[0]) throw new AuthError(404, "School not found");
+  res.json(school.rows[0]);
+}));
 
 export async function createPlatformDeviceRecord(req: Request, input: DeviceInput) {
   const client = await pool.connect();
