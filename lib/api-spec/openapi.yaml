@@ -2032,6 +2032,493 @@ paths:
             schema: { $ref: "#/components/schemas/PartnerSchoolOnboardingInput" }
       responses:
         "201": { description: School onboarding result, content: { application/json: { schema: { $ref: "#/components/schemas/PartnerOnboardingResult" } } } }
+  /academic/assignments:
+    get:
+      operationId: listAcademicAssignments
+      tags: [academics]
+      summary: List assignments within an authorized school and academic context
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - { name: sessionId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: termId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: classId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: section, in: query, schema: { type: string } }
+        - { name: subjectId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: teacherId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/AssignmentStatus" } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        "200":
+          description: Assignments
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AcademicAssignment" } }
+    post:
+      operationId: createAcademicAssignment
+      tags: [academics]
+      summary: Create an assignment for an authorized class and subject
+      parameters: [{ $ref: "#/components/parameters/SchoolId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcademicAssignmentInput" }
+      responses:
+        "201":
+          description: Assignment created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicAssignment" }
+  /academic/assignments/{assignmentId}:
+    patch:
+      operationId: updateAcademicAssignment
+      tags: [academics]
+      summary: Update an assignment in an authorized school
+      parameters:
+        - { name: assignmentId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcademicAssignmentUpdate" }
+      responses:
+        "200":
+          description: Updated assignment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicAssignment" }
+  /academic/students/me/assignments:
+    get:
+      operationId: listMyAcademicAssignments
+      tags: [academics]
+      summary: List assignments applicable to the authenticated student
+      parameters:
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: sessionId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: termId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: classId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: subjectId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: section, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        "200":
+          description: Applicable assignments
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AcademicAssignment" } }
+  /academic/parents/children/{studentId}/assignments:
+    get:
+      operationId: listChildAcademicAssignments
+      tags: [academics]
+      summary: List assignments applicable to a linked child
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: sessionId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: termId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: classId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: subjectId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: section, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        "200":
+          description: Linked child's applicable assignments
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AcademicAssignment" } }
+  /academic/assessment-types:
+    get:
+      operationId: listAcademicAssessmentTypes
+      tags: [academics]
+      summary: List assessment types for an authorized school
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/AssessmentTypeStatus" } }
+      responses:
+        "200":
+          description: Assessment types
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AcademicAssessmentType" } }
+    post:
+      operationId: createAcademicAssessmentType
+      tags: [academics]
+      summary: Create an assessment type for an authorized school
+      parameters: [{ $ref: "#/components/parameters/SchoolId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcademicAssessmentTypeInput" }
+      responses:
+        "201":
+          description: Assessment type created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicAssessmentType" }
+  /academic/assessments:
+    get:
+      operationId: listAcademicAssessments
+      tags: [academics]
+      summary: List assessments in an authorized school
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - { name: sessionId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: termId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: classId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: section, in: query, schema: { type: string } }
+        - { name: subjectId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: teacherId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/AssessmentStatus" } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        "200":
+          description: Assessments
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AcademicAssessment" } }
+    post:
+      operationId: createAcademicAssessment
+      tags: [academics]
+      summary: Create an assessment for an authorized class and subject
+      parameters: [{ $ref: "#/components/parameters/SchoolId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcademicAssessmentInput" }
+      responses:
+        "201":
+          description: Assessment created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicAssessment" }
+  /academic/assessments/{assessmentId}:
+    patch:
+      operationId: updateAcademicAssessment
+      tags: [academics]
+      summary: Update an assessment in an authorized school
+      parameters:
+        - { name: assessmentId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcademicAssessmentUpdate" }
+      responses:
+        "200":
+          description: Updated assessment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicAssessment" }
+  /academic/grading-rules:
+    get:
+      operationId: listAcademicGradingRules
+      tags: [academics]
+      summary: List grading rules for an authorized school
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Grading rules
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AcademicGradingRule" } }
+    post:
+      operationId: createAcademicGradingRule
+      tags: [academics]
+      summary: Create a school grading rule
+      parameters: [{ $ref: "#/components/parameters/SchoolId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcademicGradingRuleInput" }
+      responses:
+        "201":
+          description: Grading rule created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicGradingRule" }
+  /academic/grading-rules/{ruleId}:
+    patch:
+      operationId: updateAcademicGradingRule
+      tags: [academics]
+      summary: Update a school grading rule
+      parameters:
+        - { name: ruleId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcademicGradingRuleUpdate" }
+      responses:
+        "200":
+          description: Updated grading rule
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicGradingRule" }
+  /academic/results:
+    get:
+      operationId: listAcademicResults
+      tags: [academics]
+      summary: List results in an authorized school
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - { name: studentId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: assessmentId, in: query, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Results
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AcademicResult" } }
+    post:
+      operationId: createAcademicResult
+      tags: [academics]
+      summary: Enter a result for an authorized student and assessment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcademicResultInput" }
+      responses:
+        "201":
+          description: Result created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicResult" }
+  /academic/results/{resultId}:
+    patch:
+      operationId: updateAcademicResult
+      tags: [academics]
+      summary: Update a result subject to publication permissions
+      parameters:
+        - { name: resultId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcademicResultUpdate" }
+      responses:
+        "200":
+          description: Updated result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicResult" }
+  /academic/assessments/{assessmentId}/publish-results:
+    post:
+      operationId: publishAcademicAssessmentResults
+      tags: [academics]
+      summary: Publish results for an assessment
+      parameters:
+        - { name: assessmentId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcademicResultsPublicationInput" }
+      responses:
+        "200":
+          description: Published assessment results
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicResultsPublication" }
+  /academic/students/me/results:
+    get:
+      operationId: listMyAcademicResults
+      tags: [academics]
+      summary: List published results for the authenticated student
+      parameters:
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Own published results
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AcademicResult" } }
+  /academic/parents/children/{studentId}/results:
+    get:
+      operationId: listChildAcademicResults
+      tags: [academics]
+      summary: List published results for a linked child
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Linked child's published results
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AcademicResult" } }
+  /academic/report-cards:
+    get:
+      operationId: listAcademicReportCards
+      tags: [academics]
+      summary: List report cards in an authorized school
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - { name: studentId, in: query, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Report cards
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AcademicReportCard" } }
+    post:
+      operationId: createAcademicReportCard
+      tags: [academics]
+      summary: Generate a report card from available academic records
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcademicReportCardInput" }
+      responses:
+        "201":
+          description: Report card generated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicReportCard" }
+  /academic/report-cards/{cardId}/publish:
+    post:
+      operationId: publishAcademicReportCard
+      tags: [academics]
+      summary: Publish a report card
+      parameters:
+        - { name: cardId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcademicReportCardPublicationInput" }
+      responses:
+        "200":
+          description: Published report card
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicReportCard" }
+  /academic/students/me/report-cards:
+    get:
+      operationId: listMyAcademicReportCards
+      tags: [academics]
+      summary: List report cards for the authenticated student
+      parameters:
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Own report cards
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AcademicReportCard" } }
+  /academic/parents/children/{studentId}/report-cards:
+    get:
+      operationId: listChildAcademicReportCards
+      tags: [academics]
+      summary: List report cards for a linked child
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Linked child's report cards
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AcademicReportCard" } }
+  /academic/timetable:
+    get:
+      operationId: listAcademicTimetable
+      tags: [academics]
+      summary: List timetable entries in an authorized school
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - { name: sessionId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: termId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: classId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: section, in: query, schema: { type: string } }
+        - { name: subjectId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: teacherId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: weekday, in: query, schema: { $ref: "#/components/schemas/Weekday" } }
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/TimetableEntryStatus" } }
+      responses:
+        "200":
+          description: Timetable entries
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AcademicTimetableEntry" } }
+    post:
+      operationId: createAcademicTimetableEntry
+      tags: [academics]
+      summary: Create a timetable entry without conflicts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcademicTimetableEntryInput" }
+      responses:
+        "201":
+          description: Timetable entry created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicTimetableEntry" }
+  /academic/timetable/{entryId}:
+    patch:
+      operationId: updateAcademicTimetableEntry
+      tags: [academics]
+      summary: Update a timetable entry without conflicts
+      parameters:
+        - { name: entryId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcademicTimetableEntryUpdate" }
+      responses:
+        "200":
+          description: Updated timetable entry
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicTimetableEntry" }
+  /academic/students/me/timetable:
+    get:
+      operationId: getMyAcademicTimetable
+      tags: [academics]
+      summary: Get the authenticated student's class timetable
+      parameters:
+        - { name: schoolId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: sessionId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: termId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: weekday, in: query, schema: { $ref: "#/components/schemas/Weekday" } }
+      responses:
+        "200":
+          description: Own class timetable
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AcademicTimetableEntry" } }
+  /academic/parents/children/{studentId}/timetable:
+    get:
+      operationId: getChildAcademicTimetable
+      tags: [academics]
+      summary: Get a linked child's class timetable
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+        - { name: schoolId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: sessionId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: termId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: weekday, in: query, schema: { $ref: "#/components/schemas/Weekday" } }
+      responses:
+        "200":
+          description: Linked child's class timetable
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AcademicTimetableEntry" } }
 components:
   securitySchemes:
     ClerkAuth:
@@ -3488,3 +3975,334 @@ components:
         actorId: { type: ["integer", "null"] }
         occurredAt: { type: string, format: date-time }
         note: { type: ["string", "null"] }
+    AssignmentStatus:
+      type: string
+      enum: [DRAFT, PUBLISHED, CLOSED, ARCHIVED]
+    AssessmentStatus:
+      type: string
+      enum: [DRAFT, OPEN, CLOSED, PUBLISHED, ARCHIVED]
+    AssessmentTypeStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE, ARCHIVED]
+    GradingRuleStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE, ARCHIVED]
+    ResultStatus:
+      type: string
+      enum: [DRAFT, SUBMITTED, PUBLISHED, ARCHIVED]
+    ReportCardStatus:
+      type: string
+      enum: [DRAFT, PUBLISHED, ARCHIVED]
+    TimetableEntryStatus:
+      type: string
+      enum: [ACTIVE, CANCELLED, ARCHIVED]
+    Weekday:
+      type: string
+      enum: [MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY]
+    AcademicAssignment:
+      type: object
+      required: [id, schoolId, sessionId, termId, classId, subjectId, teacherId, createdBy, title, description, issueDate, dueDate, maxScore, status, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        sessionId: { type: integer }
+        termId: { type: integer }
+        classId: { type: integer }
+        section: { type: ["string", "null"] }
+        subjectId: { type: integer }
+        teacherId: { type: integer }
+        createdBy: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        issueDate: { type: string, format: date }
+        dueDate: { type: string, format: date }
+        maxScore: { type: number }
+        status: { $ref: "#/components/schemas/AssignmentStatus" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    AcademicAssignmentInput:
+      type: object
+      required: [sessionId, termId, classId, subjectId, title, issueDate, dueDate, maxScore]
+      properties:
+        sessionId: { type: integer, minimum: 1 }
+        termId: { type: integer, minimum: 1 }
+        classId: { type: integer, minimum: 1 }
+        section: { type: ["string", "null"] }
+        subjectId: { type: integer, minimum: 1 }
+        teacherId: { type: integer, minimum: 1 }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: ["string", "null"], maxLength: 10000 }
+        issueDate: { type: string, format: date }
+        dueDate: { type: string, format: date }
+        maxScore: { type: number, exclusiveMinimum: 0 }
+        status: { $ref: "#/components/schemas/AssignmentStatus" }
+    AcademicAssignmentUpdate:
+      type: object
+      properties:
+        sessionId: { type: integer, minimum: 1 }
+        termId: { type: integer, minimum: 1 }
+        classId: { type: integer, minimum: 1 }
+        section: { type: ["string", "null"] }
+        subjectId: { type: integer, minimum: 1 }
+        teacherId: { type: integer, minimum: 1 }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: ["string", "null"], maxLength: 10000 }
+        issueDate: { type: string, format: date }
+        dueDate: { type: string, format: date }
+        maxScore: { type: number, exclusiveMinimum: 0 }
+        status: { $ref: "#/components/schemas/AssignmentStatus" }
+    AcademicAssessmentType:
+      type: object
+      required: [id, schoolId, name, code, status]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        name: { type: string }
+        code: { type: string }
+        status: { $ref: "#/components/schemas/AssessmentTypeStatus" }
+    AcademicAssessmentTypeInput:
+      type: object
+      required: [name, code]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        code: { type: string, minLength: 1, maxLength: 64 }
+        status: { $ref: "#/components/schemas/AssessmentTypeStatus" }
+    AcademicAssessment:
+      type: object
+      required: [id, schoolId, sessionId, termId, classId, subjectId, assessmentTypeId, teacherId, createdBy, title, description, date, maxScore, status, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        sessionId: { type: integer }
+        termId: { type: integer }
+        classId: { type: integer }
+        section: { type: ["string", "null"] }
+        subjectId: { type: integer }
+        assessmentTypeId: { type: integer }
+        teacherId: { type: integer }
+        assessmentTypeName: { type: string }
+        createdBy: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        date: { type: string, format: date }
+        maxScore: { type: number }
+        status: { $ref: "#/components/schemas/AssessmentStatus" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    AcademicAssessmentInput:
+      type: object
+      required: [sessionId, termId, classId, subjectId, assessmentTypeId, title, date, maxScore]
+      properties:
+        sessionId: { type: integer, minimum: 1 }
+        termId: { type: integer, minimum: 1 }
+        classId: { type: integer, minimum: 1 }
+        section: { type: ["string", "null"] }
+        subjectId: { type: integer, minimum: 1 }
+        assessmentTypeId: { type: integer, minimum: 1 }
+        teacherId: { type: integer, minimum: 1 }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: ["string", "null"], maxLength: 10000 }
+        date: { type: string, format: date }
+        maxScore: { type: number, exclusiveMinimum: 0 }
+        status: { $ref: "#/components/schemas/AssessmentStatus" }
+    AcademicAssessmentUpdate:
+      type: object
+      properties:
+        sessionId: { type: integer, minimum: 1 }
+        termId: { type: integer, minimum: 1 }
+        classId: { type: integer, minimum: 1 }
+        section: { type: ["string", "null"] }
+        subjectId: { type: integer, minimum: 1 }
+        assessmentTypeId: { type: integer, minimum: 1 }
+        teacherId: { type: integer, minimum: 1 }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: ["string", "null"], maxLength: 10000 }
+        date: { type: string, format: date }
+        maxScore: { type: number, exclusiveMinimum: 0 }
+        status: { $ref: "#/components/schemas/AssessmentStatus" }
+    AcademicGradingRule:
+      type: object
+      required: [id, schoolId, minScore, maxScore, grade, gradePoint, remark, status]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        minScore: { type: number }
+        maxScore: { type: number }
+        grade: { type: string }
+        gradePoint: { type: ["number", "null"] }
+        remark: { type: string }
+        status: { $ref: "#/components/schemas/GradingRuleStatus" }
+    AcademicGradingRuleInput:
+      type: object
+      required: [minScore, maxScore, grade, remark]
+      properties:
+        minScore: { type: number, minimum: 0 }
+        maxScore: { type: number, minimum: 0 }
+        grade: { type: string, minLength: 1, maxLength: 32 }
+        gradePoint: { type: ["number", "null"], minimum: 0 }
+        remark: { type: string, minLength: 1, maxLength: 500 }
+    AcademicGradingRuleUpdate:
+      type: object
+      properties:
+        minScore: { type: number, minimum: 0 }
+        maxScore: { type: number, minimum: 0 }
+        grade: { type: string, minLength: 1, maxLength: 32 }
+        gradePoint: { type: ["number", "null"], minimum: 0 }
+        remark: { type: string, minLength: 1, maxLength: 500 }
+        status: { $ref: "#/components/schemas/GradingRuleStatus" }
+    AcademicResult:
+      type: object
+      required: [id, schoolId, assessmentId, studentId, studentClassAssignmentId, teacherId, sessionId, termId, classId, section, subjectId, score, maxScore, grade, gradePoint, remark, status, publishedAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        assessmentId: { type: integer }
+        studentId: { type: integer }
+        studentClassAssignmentId: { type: integer }
+        teacherId: { type: integer }
+        sessionId: { type: integer }
+        termId: { type: integer }
+        classId: { type: integer }
+        section: { type: ["string", "null"] }
+        subjectId: { type: integer }
+        score: { type: number, minimum: 0 }
+        maxScore: { type: number, exclusiveMinimum: 0 }
+        grade: { type: ["string", "null"] }
+        gradePoint: { type: ["number", "null"] }
+        remark: { type: ["string", "null"] }
+        status: { $ref: "#/components/schemas/ResultStatus" }
+        publishedAt: { type: ["string", "null"], format: date-time }
+    AcademicResultInput:
+      type: object
+      required: [schoolId, assessmentId, studentId, score]
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        assessmentId: { type: integer, minimum: 1 }
+        studentId: { type: integer, minimum: 1 }
+        score: { type: number, minimum: 0 }
+        remark: { type: ["string", "null"], maxLength: 500 }
+    AcademicResultUpdate:
+      type: object
+      required: [schoolId]
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        score: { type: number, minimum: 0 }
+        remark: { type: ["string", "null"], maxLength: 500 }
+    AcademicResultsPublicationInput:
+      type: object
+      required: [schoolId]
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+    AcademicResultsPublication:
+      type: object
+      required: [assessmentId, publishedCount, results]
+      properties:
+        assessmentId: { type: integer }
+        publishedCount: { type: integer, minimum: 0 }
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/AcademicResult" }
+    AcademicReportCardLine:
+      type: object
+      required: [id, subjectId, subjectName, assessmentName, score, maxScore, grade, gradePoint, remark]
+      properties:
+        id: { type: integer }
+        subjectId: { type: integer }
+        subjectName: { type: string }
+        assessmentName: { type: string }
+        score: { type: number }
+        maxScore: { type: number }
+        grade: { type: string }
+        gradePoint: { type: number }
+        remark: { type: string }
+    AcademicReportCard:
+      type: object
+      required: [id, schoolId, studentId, sessionId, termId, studentClassAssignmentId, classId, className, section, status, teacherRemark, schoolRemark, publishedAt, resultState, lines]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        studentId: { type: integer }
+        sessionId: { type: integer }
+        termId: { type: integer }
+        studentClassAssignmentId: { type: integer }
+        classId: { type: integer }
+        className: { type: string }
+        section: { type: string }
+        status: { $ref: "#/components/schemas/ReportCardStatus" }
+        teacherRemark: { type: string }
+        schoolRemark: { type: string }
+        publishedAt: { type: ["string", "null"], format: date-time }
+        hasUnpublishedResults: { type: boolean }
+        resultState: { type: string, enum: [SOME_RESULTS_UNPUBLISHED, INCOMPLETE_RESULTS, COMPLETE, NO_PUBLISHED_RESULTS] }
+        lines:
+          type: array
+          items: { $ref: "#/components/schemas/AcademicReportCardLine" }
+    AcademicReportCardInput:
+      type: object
+      required: [schoolId, studentId, sessionId, termId]
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        studentId: { type: integer, minimum: 1 }
+        sessionId: { type: integer, minimum: 1 }
+        termId: { type: integer, minimum: 1 }
+        teacherRemark: { type: ["string", "null"], maxLength: 500 }
+        schoolRemark: { type: ["string", "null"], maxLength: 500 }
+    AcademicReportCardPublicationInput:
+      type: object
+      required: [schoolId]
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+    AcademicTimetableEntry:
+      type: object
+      required: [id, schoolId, sessionId, termId, classId, section, subjectId, teacherId, weekday, startTime, endTime, room, status, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        sessionId: { type: integer }
+        termId: { type: integer }
+        classId: { type: integer }
+        section: { type: string }
+        subjectId: { type: integer }
+        teacherId: { type: integer }
+        weekday: { $ref: "#/components/schemas/Weekday" }
+        startTime: { type: string, format: time }
+        endTime: { type: string, format: time }
+        room: { type: ["string", "null"] }
+        status: { $ref: "#/components/schemas/TimetableEntryStatus" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        className: { type: string }
+        subjectName: { type: string }
+        teacherFirstName: { type: string }
+        teacherLastName: { type: string }
+    AcademicTimetableEntryInput:
+      type: object
+      required: [schoolId, sessionId, termId, classId, subjectId, teacherId, weekday, startTime, endTime]
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        sessionId: { type: integer, minimum: 1 }
+        termId: { type: integer, minimum: 1 }
+        classId: { type: integer, minimum: 1 }
+        section: { type: string, maxLength: 80 }
+        subjectId: { type: integer, minimum: 1 }
+        teacherId: { type: integer, minimum: 1 }
+        weekday: { $ref: "#/components/schemas/Weekday" }
+        startTime: { type: string, format: time }
+        endTime: { type: string, format: time }
+        room: { type: ["string", "null"], maxLength: 120 }
+    AcademicTimetableEntryUpdate:
+      type: object
+      required: [schoolId]
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        sessionId: { type: integer, minimum: 1 }
+        termId: { type: integer, minimum: 1 }
+        classId: { type: integer, minimum: 1 }
+        section: { type: string, maxLength: 80 }
+        subjectId: { type: integer, minimum: 1 }
+        teacherId: { type: integer, minimum: 1 }
+        weekday: { $ref: "#/components/schemas/Weekday" }
+        startTime: { type: string, format: time }
+        endTime: { type: string, format: time }
+        room: { type: ["string", "null"], maxLength: 120 }
+        status: { $ref: "#/components/schemas/TimetableEntryStatus" }

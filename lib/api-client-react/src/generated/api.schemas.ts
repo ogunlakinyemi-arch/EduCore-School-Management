@@ -2420,6 +2420,540 @@ export interface CardHistoryEntry {
   note?: string | null;
 }
 
+export type AssignmentStatus = typeof AssignmentStatus[keyof typeof AssignmentStatus];
+
+
+export const AssignmentStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  CLOSED: 'CLOSED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type AssessmentStatus = typeof AssessmentStatus[keyof typeof AssessmentStatus];
+
+
+export const AssessmentStatus = {
+  DRAFT: 'DRAFT',
+  OPEN: 'OPEN',
+  CLOSED: 'CLOSED',
+  PUBLISHED: 'PUBLISHED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type AssessmentTypeStatus = typeof AssessmentTypeStatus[keyof typeof AssessmentTypeStatus];
+
+
+export const AssessmentTypeStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type GradingRuleStatus = typeof GradingRuleStatus[keyof typeof GradingRuleStatus];
+
+
+export const GradingRuleStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type ResultStatus = typeof ResultStatus[keyof typeof ResultStatus];
+
+
+export const ResultStatus = {
+  DRAFT: 'DRAFT',
+  SUBMITTED: 'SUBMITTED',
+  PUBLISHED: 'PUBLISHED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type ReportCardStatus = typeof ReportCardStatus[keyof typeof ReportCardStatus];
+
+
+export const ReportCardStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type TimetableEntryStatus = typeof TimetableEntryStatus[keyof typeof TimetableEntryStatus];
+
+
+export const TimetableEntryStatus = {
+  ACTIVE: 'ACTIVE',
+  CANCELLED: 'CANCELLED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type Weekday = typeof Weekday[keyof typeof Weekday];
+
+
+export const Weekday = {
+  MONDAY: 'MONDAY',
+  TUESDAY: 'TUESDAY',
+  WEDNESDAY: 'WEDNESDAY',
+  THURSDAY: 'THURSDAY',
+  FRIDAY: 'FRIDAY',
+  SATURDAY: 'SATURDAY',
+  SUNDAY: 'SUNDAY',
+} as const;
+
+export interface AcademicAssignment {
+  id: number;
+  schoolId: number;
+  sessionId: number;
+  termId: number;
+  classId: number;
+  /** @nullable */
+  section?: string | null;
+  subjectId: number;
+  teacherId: number;
+  createdBy: number;
+  title: string;
+  description: string;
+  issueDate: string;
+  dueDate: string;
+  maxScore: number;
+  status: AssignmentStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AcademicAssignmentInput {
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  termId: number;
+  /** @minimum 1 */
+  classId: number;
+  /** @nullable */
+  section?: string | null;
+  /** @minimum 1 */
+  subjectId: number;
+  /** @minimum 1 */
+  teacherId?: number;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /**
+     * @maxLength 10000
+     * @nullable
+     */
+  description?: string | null;
+  issueDate: string;
+  dueDate: string;
+  /** @exclusiveMinimum 0 */
+  maxScore: number;
+  status?: AssignmentStatus;
+}
+
+export interface AcademicAssignmentUpdate {
+  /** @minimum 1 */
+  sessionId?: number;
+  /** @minimum 1 */
+  termId?: number;
+  /** @minimum 1 */
+  classId?: number;
+  /** @nullable */
+  section?: string | null;
+  /** @minimum 1 */
+  subjectId?: number;
+  /** @minimum 1 */
+  teacherId?: number;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title?: string;
+  /**
+     * @maxLength 10000
+     * @nullable
+     */
+  description?: string | null;
+  issueDate?: string;
+  dueDate?: string;
+  /** @exclusiveMinimum 0 */
+  maxScore?: number;
+  status?: AssignmentStatus;
+}
+
+export interface AcademicAssessmentType {
+  id: number;
+  schoolId: number;
+  name: string;
+  code: string;
+  status: AssessmentTypeStatus;
+}
+
+export interface AcademicAssessmentTypeInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  /**
+     * @minLength 1
+     * @maxLength 64
+     */
+  code: string;
+  status?: AssessmentTypeStatus;
+}
+
+export interface AcademicAssessment {
+  id: number;
+  schoolId: number;
+  sessionId: number;
+  termId: number;
+  classId: number;
+  /** @nullable */
+  section?: string | null;
+  subjectId: number;
+  assessmentTypeId: number;
+  teacherId: number;
+  assessmentTypeName?: string;
+  createdBy: number;
+  title: string;
+  description: string;
+  date: string;
+  maxScore: number;
+  status: AssessmentStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AcademicAssessmentInput {
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  termId: number;
+  /** @minimum 1 */
+  classId: number;
+  /** @nullable */
+  section?: string | null;
+  /** @minimum 1 */
+  subjectId: number;
+  /** @minimum 1 */
+  assessmentTypeId: number;
+  /** @minimum 1 */
+  teacherId?: number;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /**
+     * @maxLength 10000
+     * @nullable
+     */
+  description?: string | null;
+  date: string;
+  /** @exclusiveMinimum 0 */
+  maxScore: number;
+  status?: AssessmentStatus;
+}
+
+export interface AcademicAssessmentUpdate {
+  /** @minimum 1 */
+  sessionId?: number;
+  /** @minimum 1 */
+  termId?: number;
+  /** @minimum 1 */
+  classId?: number;
+  /** @nullable */
+  section?: string | null;
+  /** @minimum 1 */
+  subjectId?: number;
+  /** @minimum 1 */
+  assessmentTypeId?: number;
+  /** @minimum 1 */
+  teacherId?: number;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title?: string;
+  /**
+     * @maxLength 10000
+     * @nullable
+     */
+  description?: string | null;
+  date?: string;
+  /** @exclusiveMinimum 0 */
+  maxScore?: number;
+  status?: AssessmentStatus;
+}
+
+export interface AcademicGradingRule {
+  id: number;
+  schoolId: number;
+  minScore: number;
+  maxScore: number;
+  grade: string;
+  /** @nullable */
+  gradePoint: number | null;
+  remark: string;
+  status: GradingRuleStatus;
+}
+
+export interface AcademicGradingRuleInput {
+  /** @minimum 0 */
+  minScore: number;
+  /** @minimum 0 */
+  maxScore: number;
+  /**
+     * @minLength 1
+     * @maxLength 32
+     */
+  grade: string;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  gradePoint?: number | null;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  remark: string;
+}
+
+export interface AcademicGradingRuleUpdate {
+  /** @minimum 0 */
+  minScore?: number;
+  /** @minimum 0 */
+  maxScore?: number;
+  /**
+     * @minLength 1
+     * @maxLength 32
+     */
+  grade?: string;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  gradePoint?: number | null;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  remark?: string;
+  status?: GradingRuleStatus;
+}
+
+export interface AcademicResult {
+  id: number;
+  schoolId: number;
+  assessmentId: number;
+  studentId: number;
+  studentClassAssignmentId: number;
+  teacherId: number;
+  sessionId: number;
+  termId: number;
+  classId: number;
+  /** @nullable */
+  section: string | null;
+  subjectId: number;
+  /** @minimum 0 */
+  score: number;
+  /** @exclusiveMinimum 0 */
+  maxScore: number;
+  /** @nullable */
+  grade: string | null;
+  /** @nullable */
+  gradePoint: number | null;
+  /** @nullable */
+  remark: string | null;
+  status: ResultStatus;
+  /** @nullable */
+  publishedAt: string | null;
+}
+
+export interface AcademicResultInput {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  assessmentId: number;
+  /** @minimum 1 */
+  studentId: number;
+  /** @minimum 0 */
+  score: number;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  remark?: string | null;
+}
+
+export interface AcademicResultUpdate {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 0 */
+  score?: number;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  remark?: string | null;
+}
+
+export interface AcademicResultsPublicationInput {
+  /** @minimum 1 */
+  schoolId: number;
+}
+
+export interface AcademicResultsPublication {
+  assessmentId: number;
+  /** @minimum 0 */
+  publishedCount: number;
+  results: AcademicResult[];
+}
+
+export interface AcademicReportCardLine {
+  id: number;
+  subjectId: number;
+  subjectName: string;
+  assessmentName: string;
+  score: number;
+  maxScore: number;
+  grade: string;
+  gradePoint: number;
+  remark: string;
+}
+
+export type AcademicReportCardResultState = typeof AcademicReportCardResultState[keyof typeof AcademicReportCardResultState];
+
+
+export const AcademicReportCardResultState = {
+  SOME_RESULTS_UNPUBLISHED: 'SOME_RESULTS_UNPUBLISHED',
+  INCOMPLETE_RESULTS: 'INCOMPLETE_RESULTS',
+  COMPLETE: 'COMPLETE',
+  NO_PUBLISHED_RESULTS: 'NO_PUBLISHED_RESULTS',
+} as const;
+
+export interface AcademicReportCard {
+  id: number;
+  schoolId: number;
+  studentId: number;
+  sessionId: number;
+  termId: number;
+  studentClassAssignmentId: number;
+  classId: number;
+  className: string;
+  section: string;
+  status: ReportCardStatus;
+  teacherRemark: string;
+  schoolRemark: string;
+  /** @nullable */
+  publishedAt: string | null;
+  hasUnpublishedResults?: boolean;
+  resultState: AcademicReportCardResultState;
+  lines: AcademicReportCardLine[];
+}
+
+export interface AcademicReportCardInput {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  studentId: number;
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  termId: number;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  teacherRemark?: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  schoolRemark?: string | null;
+}
+
+export interface AcademicReportCardPublicationInput {
+  /** @minimum 1 */
+  schoolId: number;
+}
+
+export interface AcademicTimetableEntry {
+  id: number;
+  schoolId: number;
+  sessionId: number;
+  termId: number;
+  classId: number;
+  section: string;
+  subjectId: number;
+  teacherId: number;
+  weekday: Weekday;
+  startTime: string;
+  endTime: string;
+  /** @nullable */
+  room: string | null;
+  status: TimetableEntryStatus;
+  createdAt: string;
+  updatedAt: string;
+  className?: string;
+  subjectName?: string;
+  teacherFirstName?: string;
+  teacherLastName?: string;
+}
+
+export interface AcademicTimetableEntryInput {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  termId: number;
+  /** @minimum 1 */
+  classId: number;
+  /** @maxLength 80 */
+  section?: string;
+  /** @minimum 1 */
+  subjectId: number;
+  /** @minimum 1 */
+  teacherId: number;
+  weekday: Weekday;
+  startTime: string;
+  endTime: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  room?: string | null;
+}
+
+export interface AcademicTimetableEntryUpdate {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  sessionId?: number;
+  /** @minimum 1 */
+  termId?: number;
+  /** @minimum 1 */
+  classId?: number;
+  /** @maxLength 80 */
+  section?: string;
+  /** @minimum 1 */
+  subjectId?: number;
+  /** @minimum 1 */
+  teacherId?: number;
+  weekday?: Weekday;
+  startTime?: string;
+  endTime?: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  room?: string | null;
+  status?: TimetableEntryStatus;
+}
+
 /**
  * Invalid request or rejected school/device/student relationship
  */
@@ -2934,5 +3468,299 @@ search?: SearchParameter;
 export type ListPartnersParams = {
 status?: PartnerStatus;
 search?: SearchParameter;
+};
+
+export type ListAcademicAssignmentsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+/**
+ * @minimum 1
+ */
+sessionId?: number;
+/**
+ * @minimum 1
+ */
+termId?: number;
+/**
+ * @minimum 1
+ */
+classId?: number;
+section?: string;
+/**
+ * @minimum 1
+ */
+subjectId?: number;
+/**
+ * @minimum 1
+ */
+teacherId?: number;
+status?: AssignmentStatus;
+from?: string;
+to?: string;
+};
+
+export type CreateAcademicAssignmentParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type UpdateAcademicAssignmentParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ListMyAcademicAssignmentsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * @minimum 1
+ */
+sessionId?: number;
+/**
+ * @minimum 1
+ */
+termId?: number;
+/**
+ * @minimum 1
+ */
+classId?: number;
+/**
+ * @minimum 1
+ */
+subjectId?: number;
+section?: string;
+from?: string;
+to?: string;
+};
+
+export type ListChildAcademicAssignmentsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * @minimum 1
+ */
+sessionId?: number;
+/**
+ * @minimum 1
+ */
+termId?: number;
+/**
+ * @minimum 1
+ */
+classId?: number;
+/**
+ * @minimum 1
+ */
+subjectId?: number;
+section?: string;
+from?: string;
+to?: string;
+};
+
+export type ListAcademicAssessmentTypesParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+status?: AssessmentTypeStatus;
+};
+
+export type CreateAcademicAssessmentTypeParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ListAcademicAssessmentsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+/**
+ * @minimum 1
+ */
+sessionId?: number;
+/**
+ * @minimum 1
+ */
+termId?: number;
+/**
+ * @minimum 1
+ */
+classId?: number;
+section?: string;
+/**
+ * @minimum 1
+ */
+subjectId?: number;
+/**
+ * @minimum 1
+ */
+teacherId?: number;
+status?: AssessmentStatus;
+from?: string;
+to?: string;
+};
+
+export type CreateAcademicAssessmentParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type UpdateAcademicAssessmentParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ListAcademicGradingRulesParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type CreateAcademicGradingRuleParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type UpdateAcademicGradingRuleParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ListAcademicResultsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+/**
+ * @minimum 1
+ */
+studentId?: number;
+/**
+ * @minimum 1
+ */
+assessmentId?: number;
+};
+
+export type ListMyAcademicResultsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type ListChildAcademicResultsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type ListAcademicReportCardsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+/**
+ * @minimum 1
+ */
+studentId?: number;
+};
+
+export type ListMyAcademicReportCardsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type ListChildAcademicReportCardsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type ListAcademicTimetableParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+/**
+ * @minimum 1
+ */
+sessionId?: number;
+/**
+ * @minimum 1
+ */
+termId?: number;
+/**
+ * @minimum 1
+ */
+classId?: number;
+section?: string;
+/**
+ * @minimum 1
+ */
+subjectId?: number;
+/**
+ * @minimum 1
+ */
+teacherId?: number;
+weekday?: Weekday;
+status?: TimetableEntryStatus;
+};
+
+export type GetMyAcademicTimetableParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+/**
+ * @minimum 1
+ */
+sessionId?: number;
+/**
+ * @minimum 1
+ */
+termId?: number;
+weekday?: Weekday;
+};
+
+export type GetChildAcademicTimetableParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+/**
+ * @minimum 1
+ */
+sessionId?: number;
+/**
+ * @minimum 1
+ */
+termId?: number;
+weekday?: Weekday;
 };
 

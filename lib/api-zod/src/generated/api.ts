@@ -4123,3 +4123,1363 @@ export const OnboardSchoolThroughPartnerReferralResponse = zod.object({
 })
 
 
+/**
+ * @summary List assignments within an authorized school and academic context
+ */
+
+
+
+
+
+
+
+
+export const ListAcademicAssignmentsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "sessionId": zod.coerce.number().int().min(1).optional(),
+  "termId": zod.coerce.number().int().min(1).optional(),
+  "classId": zod.coerce.number().int().min(1).optional(),
+  "section": zod.coerce.string().optional(),
+  "subjectId": zod.coerce.number().int().min(1).optional(),
+  "teacherId": zod.coerce.number().int().min(1).optional(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'CLOSED', 'ARCHIVED']).optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
+export const ListAcademicAssignmentsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string().nullish(),
+  "subjectId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "createdBy": zod.number().int(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "issueDate": zod.coerce.date(),
+  "dueDate": zod.coerce.date(),
+  "maxScore": zod.number(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'CLOSED', 'ARCHIVED']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListAcademicAssignmentsResponse = zod.array(ListAcademicAssignmentsResponseItem)
+
+
+/**
+ * @summary Create an assignment for an authorized class and subject
+ */
+
+
+
+export const CreateAcademicAssignmentQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+
+export const createAcademicAssignmentBodyTitleMax = 200;
+
+export const createAcademicAssignmentBodyDescriptionMax = 10000;
+
+export const createAcademicAssignmentBodyMaxScoreExclusiveMin = 0;
+
+
+
+export const CreateAcademicAssignmentBody = zod.object({
+  "sessionId": zod.number().int().min(1),
+  "termId": zod.number().int().min(1),
+  "classId": zod.number().int().min(1),
+  "section": zod.string().nullish(),
+  "subjectId": zod.number().int().min(1),
+  "teacherId": zod.number().int().min(1).optional(),
+  "title": zod.string().min(1).max(createAcademicAssignmentBodyTitleMax),
+  "description": zod.string().max(createAcademicAssignmentBodyDescriptionMax).nullish(),
+  "issueDate": zod.coerce.date(),
+  "dueDate": zod.coerce.date(),
+  "maxScore": zod.number().gt(createAcademicAssignmentBodyMaxScoreExclusiveMin),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'CLOSED', 'ARCHIVED']).optional()
+})
+
+export const CreateAcademicAssignmentResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string().nullish(),
+  "subjectId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "createdBy": zod.number().int(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "issueDate": zod.coerce.date(),
+  "dueDate": zod.coerce.date(),
+  "maxScore": zod.number(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'CLOSED', 'ARCHIVED']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update an assignment in an authorized school
+ */
+
+
+
+export const UpdateAcademicAssignmentParams = zod.object({
+  "assignmentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const UpdateAcademicAssignmentQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+
+export const updateAcademicAssignmentBodyTitleMax = 200;
+
+export const updateAcademicAssignmentBodyDescriptionMax = 10000;
+
+export const updateAcademicAssignmentBodyMaxScoreExclusiveMin = 0;
+
+
+
+export const UpdateAcademicAssignmentBody = zod.object({
+  "sessionId": zod.number().int().min(1).optional(),
+  "termId": zod.number().int().min(1).optional(),
+  "classId": zod.number().int().min(1).optional(),
+  "section": zod.string().nullish(),
+  "subjectId": zod.number().int().min(1).optional(),
+  "teacherId": zod.number().int().min(1).optional(),
+  "title": zod.string().min(1).max(updateAcademicAssignmentBodyTitleMax).optional(),
+  "description": zod.string().max(updateAcademicAssignmentBodyDescriptionMax).nullish(),
+  "issueDate": zod.coerce.date().optional(),
+  "dueDate": zod.coerce.date().optional(),
+  "maxScore": zod.number().gt(updateAcademicAssignmentBodyMaxScoreExclusiveMin).optional(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'CLOSED', 'ARCHIVED']).optional()
+})
+
+export const UpdateAcademicAssignmentResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string().nullish(),
+  "subjectId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "createdBy": zod.number().int(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "issueDate": zod.coerce.date(),
+  "dueDate": zod.coerce.date(),
+  "maxScore": zod.number(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'CLOSED', 'ARCHIVED']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List assignments applicable to the authenticated student
+ */
+
+
+
+
+
+
+
+export const ListMyAcademicAssignmentsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "sessionId": zod.coerce.number().int().min(1).optional(),
+  "termId": zod.coerce.number().int().min(1).optional(),
+  "classId": zod.coerce.number().int().min(1).optional(),
+  "subjectId": zod.coerce.number().int().min(1).optional(),
+  "section": zod.coerce.string().optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
+export const ListMyAcademicAssignmentsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string().nullish(),
+  "subjectId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "createdBy": zod.number().int(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "issueDate": zod.coerce.date(),
+  "dueDate": zod.coerce.date(),
+  "maxScore": zod.number(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'CLOSED', 'ARCHIVED']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListMyAcademicAssignmentsResponse = zod.array(ListMyAcademicAssignmentsResponseItem)
+
+
+/**
+ * @summary List assignments applicable to a linked child
+ */
+
+
+
+export const ListChildAcademicAssignmentsParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+
+
+
+export const ListChildAcademicAssignmentsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "sessionId": zod.coerce.number().int().min(1).optional(),
+  "termId": zod.coerce.number().int().min(1).optional(),
+  "classId": zod.coerce.number().int().min(1).optional(),
+  "subjectId": zod.coerce.number().int().min(1).optional(),
+  "section": zod.coerce.string().optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
+export const ListChildAcademicAssignmentsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string().nullish(),
+  "subjectId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "createdBy": zod.number().int(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "issueDate": zod.coerce.date(),
+  "dueDate": zod.coerce.date(),
+  "maxScore": zod.number(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'CLOSED', 'ARCHIVED']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListChildAcademicAssignmentsResponse = zod.array(ListChildAcademicAssignmentsResponseItem)
+
+
+/**
+ * @summary List assessment types for an authorized school
+ */
+
+
+
+export const ListAcademicAssessmentTypesQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']).optional()
+})
+
+export const ListAcademicAssessmentTypesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "name": zod.string(),
+  "code": zod.string(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED'])
+})
+export const ListAcademicAssessmentTypesResponse = zod.array(ListAcademicAssessmentTypesResponseItem)
+
+
+/**
+ * @summary Create an assessment type for an authorized school
+ */
+
+
+
+export const CreateAcademicAssessmentTypeQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const createAcademicAssessmentTypeBodyNameMax = 120;
+
+export const createAcademicAssessmentTypeBodyCodeMax = 64;
+
+
+
+export const CreateAcademicAssessmentTypeBody = zod.object({
+  "name": zod.string().min(1).max(createAcademicAssessmentTypeBodyNameMax),
+  "code": zod.string().min(1).max(createAcademicAssessmentTypeBodyCodeMax),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']).optional()
+})
+
+export const CreateAcademicAssessmentTypeResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "name": zod.string(),
+  "code": zod.string(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED'])
+})
+
+
+/**
+ * @summary List assessments in an authorized school
+ */
+
+
+
+
+
+
+
+
+export const ListAcademicAssessmentsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "sessionId": zod.coerce.number().int().min(1).optional(),
+  "termId": zod.coerce.number().int().min(1).optional(),
+  "classId": zod.coerce.number().int().min(1).optional(),
+  "section": zod.coerce.string().optional(),
+  "subjectId": zod.coerce.number().int().min(1).optional(),
+  "teacherId": zod.coerce.number().int().min(1).optional(),
+  "status": zod.enum(['DRAFT', 'OPEN', 'CLOSED', 'PUBLISHED', 'ARCHIVED']).optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
+export const ListAcademicAssessmentsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string().nullish(),
+  "subjectId": zod.number().int(),
+  "assessmentTypeId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "assessmentTypeName": zod.string().optional(),
+  "createdBy": zod.number().int(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "date": zod.coerce.date(),
+  "maxScore": zod.number(),
+  "status": zod.enum(['DRAFT', 'OPEN', 'CLOSED', 'PUBLISHED', 'ARCHIVED']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListAcademicAssessmentsResponse = zod.array(ListAcademicAssessmentsResponseItem)
+
+
+/**
+ * @summary Create an assessment for an authorized class and subject
+ */
+
+
+
+export const CreateAcademicAssessmentQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+
+
+export const createAcademicAssessmentBodyTitleMax = 200;
+
+export const createAcademicAssessmentBodyDescriptionMax = 10000;
+
+export const createAcademicAssessmentBodyMaxScoreExclusiveMin = 0;
+
+
+
+export const CreateAcademicAssessmentBody = zod.object({
+  "sessionId": zod.number().int().min(1),
+  "termId": zod.number().int().min(1),
+  "classId": zod.number().int().min(1),
+  "section": zod.string().nullish(),
+  "subjectId": zod.number().int().min(1),
+  "assessmentTypeId": zod.number().int().min(1),
+  "teacherId": zod.number().int().min(1).optional(),
+  "title": zod.string().min(1).max(createAcademicAssessmentBodyTitleMax),
+  "description": zod.string().max(createAcademicAssessmentBodyDescriptionMax).nullish(),
+  "date": zod.coerce.date(),
+  "maxScore": zod.number().gt(createAcademicAssessmentBodyMaxScoreExclusiveMin),
+  "status": zod.enum(['DRAFT', 'OPEN', 'CLOSED', 'PUBLISHED', 'ARCHIVED']).optional()
+})
+
+export const CreateAcademicAssessmentResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string().nullish(),
+  "subjectId": zod.number().int(),
+  "assessmentTypeId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "assessmentTypeName": zod.string().optional(),
+  "createdBy": zod.number().int(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "date": zod.coerce.date(),
+  "maxScore": zod.number(),
+  "status": zod.enum(['DRAFT', 'OPEN', 'CLOSED', 'PUBLISHED', 'ARCHIVED']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update an assessment in an authorized school
+ */
+
+
+
+export const UpdateAcademicAssessmentParams = zod.object({
+  "assessmentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const UpdateAcademicAssessmentQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+
+
+export const updateAcademicAssessmentBodyTitleMax = 200;
+
+export const updateAcademicAssessmentBodyDescriptionMax = 10000;
+
+export const updateAcademicAssessmentBodyMaxScoreExclusiveMin = 0;
+
+
+
+export const UpdateAcademicAssessmentBody = zod.object({
+  "sessionId": zod.number().int().min(1).optional(),
+  "termId": zod.number().int().min(1).optional(),
+  "classId": zod.number().int().min(1).optional(),
+  "section": zod.string().nullish(),
+  "subjectId": zod.number().int().min(1).optional(),
+  "assessmentTypeId": zod.number().int().min(1).optional(),
+  "teacherId": zod.number().int().min(1).optional(),
+  "title": zod.string().min(1).max(updateAcademicAssessmentBodyTitleMax).optional(),
+  "description": zod.string().max(updateAcademicAssessmentBodyDescriptionMax).nullish(),
+  "date": zod.coerce.date().optional(),
+  "maxScore": zod.number().gt(updateAcademicAssessmentBodyMaxScoreExclusiveMin).optional(),
+  "status": zod.enum(['DRAFT', 'OPEN', 'CLOSED', 'PUBLISHED', 'ARCHIVED']).optional()
+})
+
+export const UpdateAcademicAssessmentResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string().nullish(),
+  "subjectId": zod.number().int(),
+  "assessmentTypeId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "assessmentTypeName": zod.string().optional(),
+  "createdBy": zod.number().int(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "date": zod.coerce.date(),
+  "maxScore": zod.number(),
+  "status": zod.enum(['DRAFT', 'OPEN', 'CLOSED', 'PUBLISHED', 'ARCHIVED']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List grading rules for an authorized school
+ */
+
+
+
+export const ListAcademicGradingRulesQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ListAcademicGradingRulesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "minScore": zod.number(),
+  "maxScore": zod.number(),
+  "grade": zod.string(),
+  "gradePoint": zod.number().nullable(),
+  "remark": zod.string(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED'])
+})
+export const ListAcademicGradingRulesResponse = zod.array(ListAcademicGradingRulesResponseItem)
+
+
+/**
+ * @summary Create a school grading rule
+ */
+
+
+
+export const CreateAcademicGradingRuleQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const createAcademicGradingRuleBodyMinScoreMin = 0;
+
+export const createAcademicGradingRuleBodyMaxScoreMin = 0;
+
+export const createAcademicGradingRuleBodyGradeMax = 32;
+
+export const createAcademicGradingRuleBodyGradePointMin = 0;
+
+export const createAcademicGradingRuleBodyRemarkMax = 500;
+
+
+
+export const CreateAcademicGradingRuleBody = zod.object({
+  "minScore": zod.number().min(createAcademicGradingRuleBodyMinScoreMin),
+  "maxScore": zod.number().min(createAcademicGradingRuleBodyMaxScoreMin),
+  "grade": zod.string().min(1).max(createAcademicGradingRuleBodyGradeMax),
+  "gradePoint": zod.number().min(createAcademicGradingRuleBodyGradePointMin).nullish(),
+  "remark": zod.string().min(1).max(createAcademicGradingRuleBodyRemarkMax)
+})
+
+export const CreateAcademicGradingRuleResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "minScore": zod.number(),
+  "maxScore": zod.number(),
+  "grade": zod.string(),
+  "gradePoint": zod.number().nullable(),
+  "remark": zod.string(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED'])
+})
+
+
+/**
+ * @summary Update a school grading rule
+ */
+
+
+
+export const UpdateAcademicGradingRuleParams = zod.object({
+  "ruleId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const UpdateAcademicGradingRuleQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const updateAcademicGradingRuleBodyMinScoreMin = 0;
+
+export const updateAcademicGradingRuleBodyMaxScoreMin = 0;
+
+export const updateAcademicGradingRuleBodyGradeMax = 32;
+
+export const updateAcademicGradingRuleBodyGradePointMin = 0;
+
+export const updateAcademicGradingRuleBodyRemarkMax = 500;
+
+
+
+export const UpdateAcademicGradingRuleBody = zod.object({
+  "minScore": zod.number().min(updateAcademicGradingRuleBodyMinScoreMin).optional(),
+  "maxScore": zod.number().min(updateAcademicGradingRuleBodyMaxScoreMin).optional(),
+  "grade": zod.string().min(1).max(updateAcademicGradingRuleBodyGradeMax).optional(),
+  "gradePoint": zod.number().min(updateAcademicGradingRuleBodyGradePointMin).nullish(),
+  "remark": zod.string().min(1).max(updateAcademicGradingRuleBodyRemarkMax).optional(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED']).optional()
+})
+
+export const UpdateAcademicGradingRuleResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "minScore": zod.number(),
+  "maxScore": zod.number(),
+  "grade": zod.string(),
+  "gradePoint": zod.number().nullable(),
+  "remark": zod.string(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE', 'ARCHIVED'])
+})
+
+
+/**
+ * @summary List results in an authorized school
+ */
+
+
+
+
+
+export const ListAcademicResultsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1).optional(),
+  "assessmentId": zod.coerce.number().int().min(1).optional()
+})
+
+export const listAcademicResultsResponseScoreMin = 0;
+
+export const listAcademicResultsResponseMaxScoreExclusiveMin = 0;
+
+
+
+export const ListAcademicResultsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "assessmentId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "studentClassAssignmentId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string().nullable(),
+  "subjectId": zod.number().int(),
+  "score": zod.number().min(listAcademicResultsResponseScoreMin),
+  "maxScore": zod.number().gt(listAcademicResultsResponseMaxScoreExclusiveMin),
+  "grade": zod.string().nullable(),
+  "gradePoint": zod.number().nullable(),
+  "remark": zod.string().nullable(),
+  "status": zod.enum(['DRAFT', 'SUBMITTED', 'PUBLISHED', 'ARCHIVED']),
+  "publishedAt": zod.coerce.date().nullable()
+})
+export const ListAcademicResultsResponse = zod.array(ListAcademicResultsResponseItem)
+
+
+/**
+ * @summary Enter a result for an authorized student and assessment
+ */
+
+
+
+export const createAcademicResultBodyScoreMin = 0;
+
+export const createAcademicResultBodyRemarkMax = 500;
+
+
+
+export const CreateAcademicResultBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "assessmentId": zod.number().int().min(1),
+  "studentId": zod.number().int().min(1),
+  "score": zod.number().min(createAcademicResultBodyScoreMin),
+  "remark": zod.string().max(createAcademicResultBodyRemarkMax).nullish()
+})
+
+export const createAcademicResultResponseScoreMin = 0;
+
+export const createAcademicResultResponseMaxScoreExclusiveMin = 0;
+
+
+
+export const CreateAcademicResultResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "assessmentId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "studentClassAssignmentId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string().nullable(),
+  "subjectId": zod.number().int(),
+  "score": zod.number().min(createAcademicResultResponseScoreMin),
+  "maxScore": zod.number().gt(createAcademicResultResponseMaxScoreExclusiveMin),
+  "grade": zod.string().nullable(),
+  "gradePoint": zod.number().nullable(),
+  "remark": zod.string().nullable(),
+  "status": zod.enum(['DRAFT', 'SUBMITTED', 'PUBLISHED', 'ARCHIVED']),
+  "publishedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Update a result subject to publication permissions
+ */
+
+
+
+export const UpdateAcademicResultParams = zod.object({
+  "resultId": zod.coerce.number().int().min(1)
+})
+
+
+export const updateAcademicResultBodyScoreMin = 0;
+
+export const updateAcademicResultBodyRemarkMax = 500;
+
+
+
+export const UpdateAcademicResultBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "score": zod.number().min(updateAcademicResultBodyScoreMin).optional(),
+  "remark": zod.string().max(updateAcademicResultBodyRemarkMax).nullish()
+})
+
+export const updateAcademicResultResponseScoreMin = 0;
+
+export const updateAcademicResultResponseMaxScoreExclusiveMin = 0;
+
+
+
+export const UpdateAcademicResultResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "assessmentId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "studentClassAssignmentId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string().nullable(),
+  "subjectId": zod.number().int(),
+  "score": zod.number().min(updateAcademicResultResponseScoreMin),
+  "maxScore": zod.number().gt(updateAcademicResultResponseMaxScoreExclusiveMin),
+  "grade": zod.string().nullable(),
+  "gradePoint": zod.number().nullable(),
+  "remark": zod.string().nullable(),
+  "status": zod.enum(['DRAFT', 'SUBMITTED', 'PUBLISHED', 'ARCHIVED']),
+  "publishedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Publish results for an assessment
+ */
+
+
+
+export const PublishAcademicAssessmentResultsParams = zod.object({
+  "assessmentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const PublishAcademicAssessmentResultsBody = zod.object({
+  "schoolId": zod.number().int().min(1)
+})
+
+export const publishAcademicAssessmentResultsResponsePublishedCountMin = 0;
+
+export const publishAcademicAssessmentResultsResponseResultsItemScoreMin = 0;
+
+export const publishAcademicAssessmentResultsResponseResultsItemMaxScoreExclusiveMin = 0;
+
+
+
+export const PublishAcademicAssessmentResultsResponse = zod.object({
+  "assessmentId": zod.number().int(),
+  "publishedCount": zod.number().int().min(publishAcademicAssessmentResultsResponsePublishedCountMin),
+  "results": zod.array(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "assessmentId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "studentClassAssignmentId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string().nullable(),
+  "subjectId": zod.number().int(),
+  "score": zod.number().min(publishAcademicAssessmentResultsResponseResultsItemScoreMin),
+  "maxScore": zod.number().gt(publishAcademicAssessmentResultsResponseResultsItemMaxScoreExclusiveMin),
+  "grade": zod.string().nullable(),
+  "gradePoint": zod.number().nullable(),
+  "remark": zod.string().nullable(),
+  "status": zod.enum(['DRAFT', 'SUBMITTED', 'PUBLISHED', 'ARCHIVED']),
+  "publishedAt": zod.coerce.date().nullable()
+}))
+})
+
+
+/**
+ * @summary List published results for the authenticated student
+ */
+
+
+
+export const ListMyAcademicResultsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const listMyAcademicResultsResponseScoreMin = 0;
+
+export const listMyAcademicResultsResponseMaxScoreExclusiveMin = 0;
+
+
+
+export const ListMyAcademicResultsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "assessmentId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "studentClassAssignmentId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string().nullable(),
+  "subjectId": zod.number().int(),
+  "score": zod.number().min(listMyAcademicResultsResponseScoreMin),
+  "maxScore": zod.number().gt(listMyAcademicResultsResponseMaxScoreExclusiveMin),
+  "grade": zod.string().nullable(),
+  "gradePoint": zod.number().nullable(),
+  "remark": zod.string().nullable(),
+  "status": zod.enum(['DRAFT', 'SUBMITTED', 'PUBLISHED', 'ARCHIVED']),
+  "publishedAt": zod.coerce.date().nullable()
+})
+export const ListMyAcademicResultsResponse = zod.array(ListMyAcademicResultsResponseItem)
+
+
+/**
+ * @summary List published results for a linked child
+ */
+
+
+
+export const ListChildAcademicResultsParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ListChildAcademicResultsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const listChildAcademicResultsResponseScoreMin = 0;
+
+export const listChildAcademicResultsResponseMaxScoreExclusiveMin = 0;
+
+
+
+export const ListChildAcademicResultsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "assessmentId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "studentClassAssignmentId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string().nullable(),
+  "subjectId": zod.number().int(),
+  "score": zod.number().min(listChildAcademicResultsResponseScoreMin),
+  "maxScore": zod.number().gt(listChildAcademicResultsResponseMaxScoreExclusiveMin),
+  "grade": zod.string().nullable(),
+  "gradePoint": zod.number().nullable(),
+  "remark": zod.string().nullable(),
+  "status": zod.enum(['DRAFT', 'SUBMITTED', 'PUBLISHED', 'ARCHIVED']),
+  "publishedAt": zod.coerce.date().nullable()
+})
+export const ListChildAcademicResultsResponse = zod.array(ListChildAcademicResultsResponseItem)
+
+
+/**
+ * @summary List report cards in an authorized school
+ */
+
+
+
+
+export const ListAcademicReportCardsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1).optional()
+})
+
+export const ListAcademicReportCardsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "studentClassAssignmentId": zod.number().int(),
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  "teacherRemark": zod.string(),
+  "schoolRemark": zod.string(),
+  "publishedAt": zod.coerce.date().nullable(),
+  "hasUnpublishedResults": zod.boolean().optional(),
+  "resultState": zod.enum(['SOME_RESULTS_UNPUBLISHED', 'INCOMPLETE_RESULTS', 'COMPLETE', 'NO_PUBLISHED_RESULTS']),
+  "lines": zod.array(zod.object({
+  "id": zod.number().int(),
+  "subjectId": zod.number().int(),
+  "subjectName": zod.string(),
+  "assessmentName": zod.string(),
+  "score": zod.number(),
+  "maxScore": zod.number(),
+  "grade": zod.string(),
+  "gradePoint": zod.number(),
+  "remark": zod.string()
+}))
+})
+export const ListAcademicReportCardsResponse = zod.array(ListAcademicReportCardsResponseItem)
+
+
+/**
+ * @summary Generate a report card from available academic records
+ */
+
+
+
+
+export const createAcademicReportCardBodyTeacherRemarkMax = 500;
+
+export const createAcademicReportCardBodySchoolRemarkMax = 500;
+
+
+
+export const CreateAcademicReportCardBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "studentId": zod.number().int().min(1),
+  "sessionId": zod.number().int().min(1),
+  "termId": zod.number().int().min(1),
+  "teacherRemark": zod.string().max(createAcademicReportCardBodyTeacherRemarkMax).nullish(),
+  "schoolRemark": zod.string().max(createAcademicReportCardBodySchoolRemarkMax).nullish()
+})
+
+export const CreateAcademicReportCardResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "studentClassAssignmentId": zod.number().int(),
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  "teacherRemark": zod.string(),
+  "schoolRemark": zod.string(),
+  "publishedAt": zod.coerce.date().nullable(),
+  "hasUnpublishedResults": zod.boolean().optional(),
+  "resultState": zod.enum(['SOME_RESULTS_UNPUBLISHED', 'INCOMPLETE_RESULTS', 'COMPLETE', 'NO_PUBLISHED_RESULTS']),
+  "lines": zod.array(zod.object({
+  "id": zod.number().int(),
+  "subjectId": zod.number().int(),
+  "subjectName": zod.string(),
+  "assessmentName": zod.string(),
+  "score": zod.number(),
+  "maxScore": zod.number(),
+  "grade": zod.string(),
+  "gradePoint": zod.number(),
+  "remark": zod.string()
+}))
+})
+
+
+/**
+ * @summary Publish a report card
+ */
+
+
+
+export const PublishAcademicReportCardParams = zod.object({
+  "cardId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const PublishAcademicReportCardBody = zod.object({
+  "schoolId": zod.number().int().min(1)
+})
+
+export const PublishAcademicReportCardResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "studentClassAssignmentId": zod.number().int(),
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  "teacherRemark": zod.string(),
+  "schoolRemark": zod.string(),
+  "publishedAt": zod.coerce.date().nullable(),
+  "hasUnpublishedResults": zod.boolean().optional(),
+  "resultState": zod.enum(['SOME_RESULTS_UNPUBLISHED', 'INCOMPLETE_RESULTS', 'COMPLETE', 'NO_PUBLISHED_RESULTS']),
+  "lines": zod.array(zod.object({
+  "id": zod.number().int(),
+  "subjectId": zod.number().int(),
+  "subjectName": zod.string(),
+  "assessmentName": zod.string(),
+  "score": zod.number(),
+  "maxScore": zod.number(),
+  "grade": zod.string(),
+  "gradePoint": zod.number(),
+  "remark": zod.string()
+}))
+})
+
+
+/**
+ * @summary List report cards for the authenticated student
+ */
+
+
+
+export const ListMyAcademicReportCardsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ListMyAcademicReportCardsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "studentClassAssignmentId": zod.number().int(),
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  "teacherRemark": zod.string(),
+  "schoolRemark": zod.string(),
+  "publishedAt": zod.coerce.date().nullable(),
+  "hasUnpublishedResults": zod.boolean().optional(),
+  "resultState": zod.enum(['SOME_RESULTS_UNPUBLISHED', 'INCOMPLETE_RESULTS', 'COMPLETE', 'NO_PUBLISHED_RESULTS']),
+  "lines": zod.array(zod.object({
+  "id": zod.number().int(),
+  "subjectId": zod.number().int(),
+  "subjectName": zod.string(),
+  "assessmentName": zod.string(),
+  "score": zod.number(),
+  "maxScore": zod.number(),
+  "grade": zod.string(),
+  "gradePoint": zod.number(),
+  "remark": zod.string()
+}))
+})
+export const ListMyAcademicReportCardsResponse = zod.array(ListMyAcademicReportCardsResponseItem)
+
+
+/**
+ * @summary List report cards for a linked child
+ */
+
+
+
+export const ListChildAcademicReportCardsParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ListChildAcademicReportCardsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ListChildAcademicReportCardsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "studentClassAssignmentId": zod.number().int(),
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  "teacherRemark": zod.string(),
+  "schoolRemark": zod.string(),
+  "publishedAt": zod.coerce.date().nullable(),
+  "hasUnpublishedResults": zod.boolean().optional(),
+  "resultState": zod.enum(['SOME_RESULTS_UNPUBLISHED', 'INCOMPLETE_RESULTS', 'COMPLETE', 'NO_PUBLISHED_RESULTS']),
+  "lines": zod.array(zod.object({
+  "id": zod.number().int(),
+  "subjectId": zod.number().int(),
+  "subjectName": zod.string(),
+  "assessmentName": zod.string(),
+  "score": zod.number(),
+  "maxScore": zod.number(),
+  "grade": zod.string(),
+  "gradePoint": zod.number(),
+  "remark": zod.string()
+}))
+})
+export const ListChildAcademicReportCardsResponse = zod.array(ListChildAcademicReportCardsResponseItem)
+
+
+/**
+ * @summary List timetable entries in an authorized school
+ */
+
+
+
+
+
+
+
+
+export const ListAcademicTimetableQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "sessionId": zod.coerce.number().int().min(1).optional(),
+  "termId": zod.coerce.number().int().min(1).optional(),
+  "classId": zod.coerce.number().int().min(1).optional(),
+  "section": zod.coerce.string().optional(),
+  "subjectId": zod.coerce.number().int().min(1).optional(),
+  "teacherId": zod.coerce.number().int().min(1).optional(),
+  "weekday": zod.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']).optional(),
+  "status": zod.enum(['ACTIVE', 'CANCELLED', 'ARCHIVED']).optional()
+})
+
+export const ListAcademicTimetableResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string(),
+  "subjectId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "weekday": zod.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']),
+  "startTime": zod.string().time({}),
+  "endTime": zod.string().time({}),
+  "room": zod.string().nullable(),
+  "status": zod.enum(['ACTIVE', 'CANCELLED', 'ARCHIVED']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "className": zod.string().optional(),
+  "subjectName": zod.string().optional(),
+  "teacherFirstName": zod.string().optional(),
+  "teacherLastName": zod.string().optional()
+})
+export const ListAcademicTimetableResponse = zod.array(ListAcademicTimetableResponseItem)
+
+
+/**
+ * @summary Create a timetable entry without conflicts
+ */
+
+
+
+
+export const createAcademicTimetableEntryBodySectionMax = 80;
+
+
+
+export const createAcademicTimetableEntryBodyRoomMax = 120;
+
+
+
+export const CreateAcademicTimetableEntryBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "sessionId": zod.number().int().min(1),
+  "termId": zod.number().int().min(1),
+  "classId": zod.number().int().min(1),
+  "section": zod.string().max(createAcademicTimetableEntryBodySectionMax).optional(),
+  "subjectId": zod.number().int().min(1),
+  "teacherId": zod.number().int().min(1),
+  "weekday": zod.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']),
+  "startTime": zod.string().time({}),
+  "endTime": zod.string().time({}),
+  "room": zod.string().max(createAcademicTimetableEntryBodyRoomMax).nullish()
+})
+
+export const CreateAcademicTimetableEntryResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string(),
+  "subjectId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "weekday": zod.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']),
+  "startTime": zod.string().time({}),
+  "endTime": zod.string().time({}),
+  "room": zod.string().nullable(),
+  "status": zod.enum(['ACTIVE', 'CANCELLED', 'ARCHIVED']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "className": zod.string().optional(),
+  "subjectName": zod.string().optional(),
+  "teacherFirstName": zod.string().optional(),
+  "teacherLastName": zod.string().optional()
+})
+
+
+/**
+ * @summary Update a timetable entry without conflicts
+ */
+
+
+
+export const UpdateAcademicTimetableEntryParams = zod.object({
+  "entryId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+export const updateAcademicTimetableEntryBodySectionMax = 80;
+
+
+
+export const updateAcademicTimetableEntryBodyRoomMax = 120;
+
+
+
+export const UpdateAcademicTimetableEntryBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "sessionId": zod.number().int().min(1).optional(),
+  "termId": zod.number().int().min(1).optional(),
+  "classId": zod.number().int().min(1).optional(),
+  "section": zod.string().max(updateAcademicTimetableEntryBodySectionMax).optional(),
+  "subjectId": zod.number().int().min(1).optional(),
+  "teacherId": zod.number().int().min(1).optional(),
+  "weekday": zod.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']).optional(),
+  "startTime": zod.string().time({}).optional(),
+  "endTime": zod.string().time({}).optional(),
+  "room": zod.string().max(updateAcademicTimetableEntryBodyRoomMax).nullish(),
+  "status": zod.enum(['ACTIVE', 'CANCELLED', 'ARCHIVED']).optional()
+})
+
+export const UpdateAcademicTimetableEntryResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string(),
+  "subjectId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "weekday": zod.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']),
+  "startTime": zod.string().time({}),
+  "endTime": zod.string().time({}),
+  "room": zod.string().nullable(),
+  "status": zod.enum(['ACTIVE', 'CANCELLED', 'ARCHIVED']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "className": zod.string().optional(),
+  "subjectName": zod.string().optional(),
+  "teacherFirstName": zod.string().optional(),
+  "teacherLastName": zod.string().optional()
+})
+
+
+/**
+ * @summary Get the authenticated student's class timetable
+ */
+
+
+
+
+
+export const GetMyAcademicTimetableQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional(),
+  "sessionId": zod.coerce.number().int().min(1).optional(),
+  "termId": zod.coerce.number().int().min(1).optional(),
+  "weekday": zod.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']).optional()
+})
+
+export const GetMyAcademicTimetableResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string(),
+  "subjectId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "weekday": zod.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']),
+  "startTime": zod.string().time({}),
+  "endTime": zod.string().time({}),
+  "room": zod.string().nullable(),
+  "status": zod.enum(['ACTIVE', 'CANCELLED', 'ARCHIVED']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "className": zod.string().optional(),
+  "subjectName": zod.string().optional(),
+  "teacherFirstName": zod.string().optional(),
+  "teacherLastName": zod.string().optional()
+})
+export const GetMyAcademicTimetableResponse = zod.array(GetMyAcademicTimetableResponseItem)
+
+
+/**
+ * @summary Get a linked child's class timetable
+ */
+
+
+
+export const GetChildAcademicTimetableParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+
+export const GetChildAcademicTimetableQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional(),
+  "sessionId": zod.coerce.number().int().min(1).optional(),
+  "termId": zod.coerce.number().int().min(1).optional(),
+  "weekday": zod.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']).optional()
+})
+
+export const GetChildAcademicTimetableResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string(),
+  "subjectId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "weekday": zod.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']),
+  "startTime": zod.string().time({}),
+  "endTime": zod.string().time({}),
+  "room": zod.string().nullable(),
+  "status": zod.enum(['ACTIVE', 'CANCELLED', 'ARCHIVED']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "className": zod.string().optional(),
+  "subjectName": zod.string().optional(),
+  "teacherFirstName": zod.string().optional(),
+  "teacherLastName": zod.string().optional()
+})
+export const GetChildAcademicTimetableResponse = zod.array(GetChildAcademicTimetableResponseItem)
+
+

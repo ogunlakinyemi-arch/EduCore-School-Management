@@ -1,0 +1,725 @@
+Yemait EduCore — Phase 6: Academic Operations
+
+Phase 5 is complete and verified.
+
+Phase 5 status:
+
+- Historical device reassignment — VERIFIED
+- Discrepancy resolution — VERIFIED
+- Parent attendance — VERIFIED
+- Student attendance — VERIFIED
+- Section reporting/filtering — VERIFIED
+- 72/72 API tests passed
+- Typechecks passed
+- Production builds passed
+- Health check passed
+- Authenticated browser checks passed
+- No Phase 5 software blockers remain
+- Physical NFC reader integration remains pending hardware testing
+- Physical fingerprint/vendor SDK integration remains pending hardware testing
+
+START PHASE 6 ONLY.
+
+Do NOT start Phase 7.
+
+Do NOT rebuild Yemait EduCore.
+
+Do NOT reset the development database.
+
+Do NOT modify the production database.
+
+Do NOT replace Clerk, PostgreSQL/Drizzle, the existing API architecture, RBAC, tenant isolation, audit system, Partner module, or Phase 5 attendance/NFC/biometric architecture.
+
+Use the existing development environment and database.
+
+Production must remain untouched.
+
+==================================================
+PHASE 6 — ACADEMIC OPERATIONS
+
+Build the Academic Operations layer for Yemait EduCore.
+
+Phase 6 must cover:
+
+1. Assignments
+2. Examinations/Assessments
+3. Results
+4. Report Cards
+5. Timetable
+
+These modules must integrate with the existing:
+
+- Schools
+- Academic sessions
+- Terms
+- Classes
+- Sections
+- Students
+- Teachers
+- Subjects
+- Class-subject mappings
+- Teacher/class/subject assignments
+- Historical student class assignments
+- RBAC
+- Tenant isolation
+- Audit logging
+
+Reuse existing entities wherever possible. Do not create duplicate school, student, teacher, class, section, subject, session, or term systems.
+
+==================================================
+
+1. ASSIGNMENTS
+   ==================================================
+
+Implement a complete assignment workflow.
+
+Teachers can create assignments only for:
+
+- their school
+- classes they teach
+- subjects they are assigned to
+- authorized academic session/term
+
+Assignment fields should include:
+
+- title
+- description/instructions
+- school
+- academic session
+- term
+- class
+- section where applicable
+- subject
+- teacher
+- issue date
+- due date
+- maximum score
+- status
+
+Suggested statuses:
+
+DRAFT
+PUBLISHED
+CLOSED
+ARCHIVED
+
+Students can view only assignments applicable to themselves.
+
+Parents can view assignments only for their linked children.
+
+Parents must not access unrelated students or other schools.
+
+Do not build an unnecessary complex file-upload system unless existing infrastructure already supports it.
+
+==================================================
+2. EXAMINATIONS / ASSESSMENTS
+
+Implement an assessment framework supporting configurable types such as:
+
+- Continuous Assessment
+- Assignment
+- Test
+- Mid-Term Examination
+- Terminal Examination
+- Mock Examination
+- Other configurable assessment types
+
+Each assessment must belong to:
+
+- school
+- academic session
+- term
+- class
+- section where applicable
+- subject
+- assessment type
+
+Include:
+
+- name/title
+- assessment type
+- date
+- maximum score
+- status
+- description/instructions
+- created by
+- timestamps
+
+Suggested statuses:
+
+DRAFT
+OPEN
+CLOSED
+PUBLISHED
+ARCHIVED
+
+All relationships must be validated server-side.
+
+==================================================
+3. RESULT ENTRY
+
+Implement secure result entry.
+
+Teachers may enter results only for:
+
+- subjects they teach
+- classes they are assigned to
+- students in the relevant academic class/section
+- their authorized school
+- the correct academic session and term
+
+Result fields should include:
+
+- student
+- subject
+- assessment
+- score
+- maximum score
+- grade where applicable
+- grade point where applicable
+- remark where applicable
+- teacher
+- academic session
+- term
+- historical class/section context
+- timestamps
+
+Validation:
+
+- score cannot be negative
+- score cannot exceed maximum score
+- student must belong to the academic context
+- assessment must belong to the same school
+- subject must belong to the correct school
+- teacher must be authorized
+- prevent accidental duplicate result records
+
+Do not silently create duplicates.
+
+==================================================
+4. RESULT APPROVAL AND PUBLICATION
+
+Separate result entry from result publication.
+
+Teachers may enter/edit results while permitted.
+
+School Admin can review and publish results.
+
+After publication:
+
+- Student can view own result
+- Parent can view linked child's result
+- Unauthorized users cannot view results
+- Students and parents cannot modify results
+
+Changes to published results require appropriate authorization and must generate audit records.
+
+==================================================
+5. GRADING SYSTEM
+
+Implement configurable grading.
+
+The system should support school-specific grading rules containing:
+
+- minimum score
+- maximum score
+- grade
+- grade point where applicable
+- remark
+
+A grading configuration must not silently rewrite historical published results.
+
+Automatic grade calculation, if implemented, must be deterministic and tested.
+
+==================================================
+6. REPORT CARDS
+
+Implement report-card generation/viewing.
+
+Each report card must be tied to:
+
+- student
+- school
+- academic session
+- term
+- class
+- section where applicable
+
+Display appropriate information such as:
+
+- student name/identity
+- class
+- section
+- subjects
+- assessment scores
+- totals
+- averages
+- grades
+- grade points where configured
+- teacher remarks
+- school/admin remarks where configured
+- attendance summary where appropriate
+- promotion/status information where configured
+
+Do not fabricate missing academic data.
+
+If results are missing or unpublished, clearly indicate that state.
+
+Parents can only view report cards for linked children.
+
+Students can only view their own report cards.
+
+==================================================
+7. HISTORICAL REPORT CARD INTEGRITY
+
+Historical academic records must remain tied to their original academic context.
+
+Example:
+
+2026/2027 Term 1 → JSS2 Emerald
+
+Later:
+
+2027/2028 Term 1 → JSS3 Ruby
+
+The old report card must continue showing JSS2 Emerald.
+
+A future class change, section change, teacher reassignment, subject reassignment, or grading configuration change must not rewrite historical published records.
+
+Use historical references/snapshots where necessary.
+
+==================================================
+8. TIMETABLE
+
+Implement timetable management.
+
+Each timetable entry should support:
+
+- school
+- academic session
+- term where appropriate
+- class
+- section
+- subject
+- teacher
+- day
+- start time
+- end time
+- room/location where applicable
+
+Support normal school days while allowing future configurability.
+
+Prevent conflicts.
+
+At minimum detect:
+
+TEACHER CONFLICT:
+A teacher cannot teach two classes at the same time.
+
+CLASS CONFLICT:
+A class/section cannot have two subjects at the same time.
+
+ROOM CONFLICT:
+If rooms are implemented, a room cannot be used by two simultaneous entries.
+
+Return a validation error instead of silently overwriting entries.
+
+==================================================
+9. TIMETABLE ACCESS
+
+School Admin:
+
+- school timetable
+- class timetable
+- teacher timetable
+
+Teacher:
+
+- own timetable
+- assigned classes/subjects only
+
+Student:
+
+- own class/section timetable
+
+Parent:
+
+- linked child's timetable
+
+Platform Owner:
+
+- authorized platform-wide access
+
+Partner and Accountant must not receive academic operational access unless explicitly authorized by the existing role policy.
+
+==================================================
+10. ROLE SECURITY
+
+Maintain the existing RBAC model.
+
+Platform Owner:
+Authorized platform-level access.
+
+School Admin:
+Manage academic operations within their school.
+
+Teacher:
+Manage only assigned classes/subjects.
+
+Student:
+Read-only access to own academic information.
+
+Parent:
+Read-only access to linked children's academic information.
+
+Accountant:
+No academic management access unless explicitly authorized.
+
+Staff:
+No academic management access unless explicitly authorized.
+
+Partner:
+No academic operational access.
+
+Never rely on hiding frontend buttons.
+
+All authorization must be enforced server-side.
+
+==================================================
+11. TENANT ISOLATION
+
+School A must never access School B academic data.
+
+Test direct manipulation of:
+
+- school IDs
+- assignment IDs
+- assessment IDs
+- result IDs
+- report-card IDs
+- timetable IDs
+- student IDs
+- class IDs
+- section IDs
+- subject IDs
+- teacher IDs
+
+Cross-school access must be denied.
+
+Parent access must be restricted to linked children.
+
+Student access must be restricted to the signed-in student.
+
+==================================================
+12. SEARCH AND FILTERING
+
+Implement server-side filtering where appropriate.
+
+Support filters such as:
+
+- academic session
+- term
+- school
+- class
+- section
+- subject
+- teacher
+- student
+- assessment type
+- status
+- date range
+
+Do not use frontend-only filtering for authorization.
+
+==================================================
+13. ACADEMIC DASHBOARD
+
+Update relevant dashboards with real data only.
+
+Possible metrics:
+
+- active academic session
+- current term
+- assignments
+- upcoming assessments
+- published results
+- pending result entries
+- timetable entries
+
+Do not use fake statistics.
+
+Only display metrics appropriate to each role.
+
+==================================================
+14. AUDIT LOGGING
+
+Audit important academic actions:
+
+- assignment creation
+- assignment publication
+- assignment modification
+- assessment creation
+- assessment modification
+- result creation
+- result modification
+- result publication
+- published-result changes
+- grading configuration changes
+- report-card publication
+- report-card changes
+- timetable creation
+- timetable modification
+- timetable cancellation/deletion where applicable
+
+Audit records must contain the authenticated actor and relevant school/entity context.
+
+Never store:
+
+- passwords
+- authentication tokens
+- device credentials
+- biometric data
+- secrets
+
+==================================================
+15. NOTIFICATIONS
+
+Do not build SMS/WhatsApp provider integration in Phase 6 unless an existing provider is already available.
+
+Where the existing internal notification queue supports it, create internal notification events for:
+
+- assignment published
+- assessment published
+- result published
+- report card published
+
+Do not claim SMS, WhatsApp, email, or push delivery unless an actual provider is connected and tested.
+
+==================================================
+16. API / OPENAPI
+
+Follow the existing architecture.
+
+Every new endpoint must:
+
+- authenticate
+- authorize
+- enforce school tenancy
+- validate input
+- validate relationships
+- enforce role permissions
+- use parameterized database operations
+- return correct HTTP status codes
+- update OpenAPI
+- update generated clients/hooks/schemas where applicable
+
+Do not create a second API architecture.
+
+==================================================
+17. DATABASE MIGRATIONS
+
+Before modifying the database:
+
+1. Inspect existing schema.
+2. Reuse existing tables where appropriate.
+3. Preserve existing data.
+4. Avoid destructive migrations.
+5. Create proper migrations.
+6. Apply migrations only to development.
+7. Verify migration results.
+8. Do not modify production.
+
+Never reset the development database.
+
+Do not delete Phase 5 verification records.
+
+==================================================
+18. AUTOMATED TESTING
+
+Create tests for:
+
+ASSIGNMENTS:
+
+- authorized teacher creation
+- unauthorized teacher rejection
+- cross-school rejection
+- student access
+- parent linked-child access
+- parent unlinked-child rejection
+
+ASSESSMENTS:
+
+- authorized creation
+- invalid relationships
+- cross-school rejection
+- role restrictions
+
+RESULTS:
+
+- valid score
+- negative score rejection
+- score-above-maximum rejection
+- unauthorized teacher rejection
+- cross-school rejection
+- duplicate-result handling
+- published-result protection
+- audit logging
+
+REPORT CARDS:
+
+- correct student
+- correct school
+- correct session
+- correct term
+- historical class/section
+- parent linked-child access
+- parent unlinked-child rejection
+- student own access
+- student other-student rejection
+
+TIMETABLE:
+
+- valid timetable
+- teacher conflict
+- class conflict
+- room conflict if implemented
+- cross-school rejection
+
+==================================================
+19. LIVE DEVELOPMENT E2E VERIFICATION
+
+Do not count mocked tests as live verification.
+
+Use the real development application and database.
+
+Create or reuse clearly identified synthetic Phase 6 test data.
+
+Use at least:
+
+- two schools
+- Platform Owner
+- two School Admins
+- teachers from both schools
+- students from both schools
+- parents linked to students
+- at least two classes/sections
+- multiple subjects
+- academic session
+- terms
+
+Verify:
+
+1. Teacher creates assignment.
+2. Student sees applicable assignment.
+3. Parent sees linked child's assignment.
+4. Unlinked parent is denied.
+5. Teacher creates assessment.
+6. Authorized teacher enters result.
+7. Invalid score is rejected.
+8. Unauthorized teacher is denied.
+9. School Admin publishes results.
+10. Student sees published result.
+11. Parent sees linked child's published result.
+12. Other students remain inaccessible.
+13. Historical report-card context remains correct.
+14. Timetable entry is created.
+15. Teacher conflict is rejected.
+16. Class conflict is rejected.
+17. Student sees class timetable.
+18. Parent sees linked child's timetable.
+19. Cross-school academic access is denied.
+20. Audit records are created.
+
+==================================================
+20. PHASE 5 REGRESSION
+
+Phase 5 must continue working after Phase 6.
+
+Run:
+
+- full API tests
+- Phase 5 tests
+- Phase 6 tests
+- shared typecheck
+- API typecheck
+- frontend typecheck
+- API production build
+- frontend production build
+- workflow restart
+- /api/healthz
+- authenticated browser checks
+
+Do not accept Phase 6 if it breaks:
+
+- authentication
+- RBAC
+- tenant isolation
+- Partner functionality
+- attendance
+- NFC architecture
+- biometric boundary
+- audit logging
+- parent access
+- student access
+
+==================================================
+21. DATA INTEGRITY CHECK
+
+Before and after Phase 6, verify that existing data remains intact:
+
+- schools
+- students
+- parents
+- subscriptions
+- NFC cards
+- attendance events
+- discrepancies
+- devices
+- partners
+- commission records
+- audit logs
+
+Do not delete or rewrite historical Phase 5 data.
+
+==================================================
+22. FINAL REPORT
+
+When Phase 6 work is complete, provide a structured report containing:
+
+1. Implementation summary
+2. Database migrations
+3. API changes
+4. UI changes
+5. Security verification
+6. Automated testing
+7. Live E2E verification
+8. Remaining limitations
+9. Final Phase 6 decision
+
+Use this table for live verification:
+
+Requirement| Result| Evidence
+Assignments| VERIFIED / PARTIALLY VERIFIED / NOT VERIFIED| 
+Assessments| VERIFIED / PARTIALLY VERIFIED / NOT VERIFIED| 
+Result entry| VERIFIED / PARTIALLY VERIFIED / NOT VERIFIED| 
+Result publication| VERIFIED / PARTIALLY VERIFIED / NOT VERIFIED| 
+Student results| VERIFIED / PARTIALLY VERIFIED / NOT VERIFIED| 
+Parent results| VERIFIED / PARTIALLY VERIFIED / NOT VERIFIED| 
+Report cards| VERIFIED / PARTIALLY VERIFIED / NOT VERIFIED| 
+Historical academic context| VERIFIED / PARTIALLY VERIFIED / NOT VERIFIED| 
+Timetable| VERIFIED / PARTIALLY VERIFIED / NOT VERIFIED| 
+Conflict detection| VERIFIED / PARTIALLY VERIFIED / NOT VERIFIED| 
+Cross-school isolation| VERIFIED / PARTIALLY VERIFIED / NOT VERIFIED| 
+Audit logging| VERIFIED / PARTIALLY VERIFIED / NOT VERIFIED| 
+
+Final decision must be exactly one of:
+
+PHASE 6 COMPLETE — READY FOR NEXT PHASE
+
+OR
+
+PHASE 6 NOT COMPLETE — REMAINING BLOCKERS
+
+Do not start Phase 7.
+
+Do not make changes outside Phase 6 without explicit approval.

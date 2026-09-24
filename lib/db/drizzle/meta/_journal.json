@@ -85,6 +85,13 @@
       "when": 1790194000000,
       "tag": "0011_historical_device_references",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790195000000,
+      "tag": "0012_phase6_academic_operations",
+      "breakpoints": true
     }
   ]
 }

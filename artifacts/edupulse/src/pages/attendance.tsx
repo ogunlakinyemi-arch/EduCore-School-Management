@@ -15,9 +15,6 @@ import {
 } from '@/components/shared';
 
 type Tab = 'events' | 'history' | 'reports' | 'discrepancies';
-const timestamp = (value?: string | null) => value
-  ? new Date(value).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' })
-  : '—';
 
 export function AttendancePage() {
   const { schoolId } = useTenant();
@@ -167,14 +164,14 @@ function ResolveDiscrepancyForm({ discrepancy, schoolId, onDone, onCancel, canRe
         <div><strong>School:</strong> #{discrepancy.schoolId}</div>
         <div><strong>Student:</strong> {discrepancy.studentName || discrepancy.studentId || 'Unknown'}</div>
         <div><strong>Discrepancy:</strong> {discrepancy.kind}</div>
-        <div><strong>Detected At:</strong> {timestamp(discrepancy.detectedAt)}</div>
+        <div><strong>Detected At:</strong> {time(discrepancy.detectedAt)}</div>
         <div><strong>Status:</strong> {discrepancy.status}</div>
-        <div><strong>Related Event:</strong> {discrepancy.attendanceEventId ? `Event #${discrepancy.attendanceEventId} · ${discrepancy.relatedEvent?.eventType || 'Attendance'} · ${discrepancy.relatedEvent?.status || '—'} · ${timestamp(discrepancy.relatedEvent?.occurredAt)}` : 'None'}</div>
+        <div><strong>Related Event:</strong> {discrepancy.attendanceEventId ? `Event #${discrepancy.attendanceEventId} · ${discrepancy.relatedEvent?.eventType || 'Attendance'} · ${discrepancy.relatedEvent?.status || '—'} · ${time(discrepancy.relatedEvent?.occurredAt)}` : 'None'}</div>
         {discrepancy.relatedEvent && <div><strong>Class / Section at event:</strong> {discrepancy.relatedEvent.classId ? `Class #${discrepancy.relatedEvent.classId}` : 'Not recorded'} / {discrepancy.relatedEvent.section || 'Not recorded'}</div>}
         {discrepancy.resolvedBy && (
           <div className="mt-2 pt-2 border-t border-[hsl(var(--border))]">
             <div><strong>Resolved By:</strong> {discrepancy.resolver?.name || discrepancy.resolvedBy}</div>
-            <div><strong>Resolved At:</strong> {timestamp(discrepancy.resolvedAt)}</div>
+            <div><strong>Resolved At:</strong> {time(discrepancy.resolvedAt)}</div>
             <div><strong>Resolution Reason:</strong> {discrepancy.resolutionReason || '—'}</div>
           </div>
         )}
@@ -184,7 +181,7 @@ function ResolveDiscrepancyForm({ discrepancy, schoolId, onDone, onCancel, canRe
           <strong>Audit History:</strong>
           <ul className="mt-1 space-y-1 list-disc pl-4">
             {discrepancy.auditHistory.map((audit: any, i: number) => (
-               <li key={i}>{timestamp(audit.createdAt)} - {audit.action} by user #{audit.actorUserId}</li>
+              <li key={i}>{time(audit.createdAt)} - {audit.action} by user #{audit.actorUserId}</li>
             ))}
           </ul>
         </div>

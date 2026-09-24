@@ -10,6 +10,9 @@ import platformRouter from "./platform";
 import attendanceRouter from "./attendance";
 import attendanceFamilyRouter from "./attendance-family";
 import attendanceDiscrepancyResolutionRouter from "./attendance-discrepancy-resolution";
+import academicWorkRouter from "./academic-work";
+import academicResultsRouter from "./academic-results";
+import academicTimetableRouter from "./academic-timetable";
 
 const router: IRouter = Router();
 
@@ -27,5 +30,8 @@ router.use(partnersRouter);
 router.use(platformRouter);
 router.use(attendanceFamilyRouter);
 router.use(attendanceDiscrepancyResolutionRouter);
+router.use(academicWorkRouter);
+router.use(academicResultsRouter);
+router.use(academicTimetableRouter);
 
 export default router;
