@@ -1,0 +1,776 @@
+AUTHENTICATED END-TO-END VERIFICATION — YEMAIT EDUCORE
+
+The previous pre-Phase 7 verification was not considered complete because authenticated browser testing could not be performed.
+
+Current verified baseline:
+
+- 134 automated tests pass.
+- 0 automated tests fail.
+- 0 tests are skipped.
+- API and web builds pass.
+- API, web, and shared-library TypeScript checks pass.
+- Health endpoint returns HTTP 200.
+- Unauthenticated protected requests return HTTP 401.
+- No database migration or reset was performed.
+- No critical or high security findings were found.
+- Two moderate dependency findings remain in Vitest and @vitest/mocker.
+- PDF parser regression coverage was added.
+- Phase 7 Finance has NOT been resumed.
+
+This verification pass is specifically to complete the remaining authenticated end-to-end verification.
+
+DO NOT resume Phase 7 Finance.
+
+DO NOT redesign working functionality.
+
+DO NOT reset, seed-destructively, or wipe the database.
+
+DO NOT expose or request passwords, API keys, Clerk secrets, database credentials, or other sensitive secrets in the final report.
+
+Use only controlled test accounts and test data.
+
+---
+
+1. TEST IDENTITIES
+
+Use the controlled test identities available in the development/staging environment.
+
+Required test identities:
+
+1. Owner Admin
+2. School Administrator for School A
+3. School Administrator for School B
+4. Partner A
+5. Partner B
+6. Test Parent
+7. Test Teacher/Staff where required
+
+Also use an accessible test mailbox for invitation testing.
+
+If any required test identity does not exist, do not invent credentials and do not bypass authentication.
+
+Clearly report which identity is unavailable.
+
+---
+
+2. OWNER ADMIN AUTHENTICATED TEST
+
+Sign in through the actual browser as Owner Admin.
+
+Verify:
+
+- Authentication succeeds.
+- Owner Admin reaches the correct Owner/Admin dashboard.
+- Owner Admin can access the functions authorized for the platform owner.
+- Owner Admin can see the intended platform-wide school information.
+- Owner Admin can access schools.
+- Owner Admin can access partners.
+- Owner Admin can access users.
+- Owner Admin can access students/parents/staff where authorized.
+- Owner Admin can access NFC management where implemented.
+- Owner Admin can access audit logs.
+- Owner Admin can access platform reports/settings where implemented.
+
+Verify that the Owner Admin cannot see:
+
+- Plaintext passwords.
+- Password hashes.
+- Clerk/API secrets.
+- Invitation secrets beyond what is legitimately required.
+- Other authentication credentials.
+
+Record the actual result of each test.
+
+---
+
+3. OWNER → CREATE SCHOOL → ADMIN INVITATION
+
+Using the authenticated Owner Admin:
+
+1. Create a controlled test school.
+2. Enter the School Administrator's:
+   - Name
+   - Email
+3. Complete school creation.
+4. Verify the school is created.
+5. Verify the administrator record is associated with the correct school.
+6. Verify Owner Admin was NOT required to create the administrator's password.
+7. Verify no password is displayed to Owner Admin.
+8. Verify the invitation is generated.
+9. Verify the invitation is sent through the configured Clerk/email system.
+10. Check the controlled receiving mailbox.
+11. Confirm the invitation email actually arrives.
+12. Open the invitation link.
+13. Verify it points to the correct activation flow.
+14. Create the administrator password through the invitation.
+15. Complete activation.
+16. Sign out.
+17. Sign in as the newly activated School Administrator.
+18. Verify the administrator reaches the correct school's dashboard.
+
+IMPORTANT:
+
+Do not mark invitation delivery as passed merely because an invitation record exists.
+
+The email must actually be received and the activation flow must actually complete.
+
+---
+
+4. INVITATION FAILURE / RETRY TEST
+
+If the existing implementation supports invitation retry:
+
+- Test the retry path where safely possible.
+- Verify retry does not create duplicate administrator accounts.
+- Verify retry does not create duplicate school relationships.
+- Verify the final invitation remains associated with the correct administrator.
+- Verify an old/invalid invitation cannot be improperly used after a successful activation.
+
+Do not intentionally damage production services to simulate failure.
+
+If a true delivery failure cannot safely be simulated, verify the implementation and report the limitation rather than fabricating a failed-delivery test.
+
+---
+
+5. SCHOOL ADMIN AUTHENTICATED TEST
+
+Sign in as School Administrator A.
+
+Verify access to the intended school-management functions, including where implemented:
+
+- Dashboard
+- Students
+- Parents
+- Teachers
+- Staff
+- Accountants
+- Classes
+- Attendance
+- Academic modules
+- Finance
+- Imports
+- School settings
+- Invitations/users
+
+Verify the administrator cannot access another school's private data.
+
+Do not rely only on hidden navigation.
+
+Test direct API/URL access where possible.
+
+---
+
+6. SCHOOL A / SCHOOL B TENANT ISOLATION
+
+Create or use:
+
+- School A
+- School B
+
+Create identifiable test records in both schools.
+
+As School Administrator A, attempt to:
+
+1. View School B students.
+2. View School B parents.
+3. View School B teachers.
+4. View School B staff.
+5. View School B attendance.
+6. View School B finance records.
+7. Modify School B records.
+8. Delete School B records.
+9. Access School B URLs directly.
+10. Access School B API resources using known IDs.
+11. Change request parameters/IDs from School A to School B.
+12. Submit/import data while attempting to specify School B as the tenant.
+
+All unauthorized operations must be rejected server-side.
+
+Repeat the most important tests in the opposite direction:
+
+School B → School A.
+
+Do not consider frontend hiding sufficient.
+
+---
+
+7. ROLE SELECTOR SECURITY
+
+Test the multi-role login/portal selector.
+
+For each test user:
+
+- Select their legitimate role.
+- Verify the correct portal loads.
+- Select a role they do not actually possess.
+- Verify the backend rejects unauthorized access.
+- Attempt direct navigation to the unauthorized portal.
+- Attempt direct API requests for unauthorized resources.
+
+The selected role must never itself grant permission.
+
+Backend authorization must determine the user's actual permissions.
+
+---
+
+8. PARTNER A END-TO-END TEST
+
+Sign in as Partner A.
+
+Verify:
+
+- Partner dashboard loads.
+- Partner sees only Partner A's information.
+- Partner can generate a referral link.
+- Referral link is unique.
+- Referral is associated with Partner A.
+
+Open the referral link in a clean browser/session.
+
+Register a controlled test school using that referral.
+
+Verify:
+
+- School is created.
+- School Administrator is created through the intended workflow.
+- School Administrator creates their own password.
+- School is automatically associated with Partner A.
+- Referral relationship is persisted.
+- Partner A can see the school in its dashboard.
+
+Verify Partner A can see appropriate summary information such as:
+
+- School name
+- Student count
+- School status
+- Date joined
+- Commission
+- Commission status/history
+
+---
+
+9. PARTNER DATA RESTRICTION
+
+As Partner A, attempt to access:
+
+- Individual student details
+- Student names
+- Parent contact details
+- Student results
+- Attendance details
+- Teacher private information
+- Staff private information
+- School financial/payment records
+- Passwords
+- Authentication information
+
+These must be rejected or unavailable according to the intended product permissions.
+
+Partner should only receive the approved school-level summary and commission information.
+
+---
+
+10. PARTNER A / PARTNER B ISOLATION
+
+Use Partner A and Partner B.
+
+Associate different schools with each partner.
+
+Verify:
+
+Partner A CANNOT access:
+
+- Partner B schools
+- Partner B referrals
+- Partner B commissions
+- Partner B partner staff
+- Partner B private information
+
+Test both:
+
+- UI navigation
+- Direct URL access
+- Direct API requests
+
+Then repeat:
+
+Partner B → Partner A.
+
+All unauthorized access must fail server-side.
+
+---
+
+11. SCHOOL ADMIN USER INVITATIONS
+
+As School Administrator A:
+
+Create/invite a controlled:
+
+- Teacher
+- Staff member
+- Accountant
+- Parent
+
+where supported by the current implementation.
+
+For each invitation:
+
+1. Send invitation.
+2. Verify recipient receives it in the controlled mailbox where applicable.
+3. Open invitation.
+4. Create password.
+5. Activate account.
+6. Sign in.
+7. Verify correct role.
+8. Verify correct school.
+9. Verify correct permissions.
+
+Verify the sender does not see the recipient's password.
+
+---
+
+12. PARENT MULTI-CHILD TEST
+
+Create/use a test parent.
+
+Associate the parent with multiple children in the same school.
+
+Verify:
+
+- One parent account can see all authorized children.
+- Parent cannot see unrelated students.
+- Parent cannot see another family's information.
+- Parent permissions are based on actual parent-child relationships.
+
+If the system currently rejects one parent account being linked to children across different schools, do NOT change it during this verification unless the product requirement explicitly requires cross-school family support.
+
+Report it as a product decision.
+
+---
+
+13. BULK IMPORT AUTHENTICATED TEST
+
+As School Administrator A, test the actual browser import workflow.
+
+Use controlled test files.
+
+Test:
+
+Students
+
+- Excel
+- CSV
+
+Parents
+
+- Excel
+- CSV
+
+Teachers/Staff
+
+- Excel
+- CSV
+
+Where PDF import is available, test:
+
+- Selectable-text PDF.
+- Non-extractable/scanned PDF.
+
+Verify the UI provides:
+
+- File upload.
+- Column mapping.
+- Preview.
+- Validation.
+- Duplicate detection.
+- Warnings.
+- Errors.
+- Confirmation before saving.
+- Final import summary.
+
+Verify records are actually created only after confirmation.
+
+---
+
+14. IMPORT TENANT SECURITY
+
+Create a test import file containing a fake or incorrect:
+
+- school_id
+- tenant_id
+- school identifier
+
+Attempt to import it while authenticated as School Administrator A.
+
+Verify the uploaded value cannot redirect the import into School B.
+
+The authenticated administrator's school context must be authoritative.
+
+Repeat with other school-related identifiers where applicable.
+
+---
+
+15. IMPORT DUPLICATE TEST
+
+Test:
+
+- Existing admission number.
+- Existing student ID.
+- Existing parent.
+- Similar name + date of birth.
+- Duplicate teacher/staff record.
+- Duplicate email.
+
+Verify the system does not silently create unintended duplicates.
+
+Verify existing records are not silently overwritten.
+
+Verify the user receives an appropriate preview/warning and must explicitly confirm any supported update behavior.
+
+---
+
+16. IMPORT PARENT/PERSONNEL INVITATION POLICY
+
+IMPORTANT:
+
+The previous verification identified that imported parents and personnel currently create records but do not automatically receive portal invitations.
+
+Do NOT automatically enable mass invitations during this verification.
+
+Instead:
+
+1. Confirm the current implementation behavior.
+2. Determine whether the product currently specifies automatic invitations for imported parents/personnel.
+3. If it is NOT currently specified, leave the behavior unchanged.
+4. If the existing requirements explicitly require automatic invitations, identify this as a functional gap and implement it only after considering:
+   - Duplicate invitations
+   - Invalid/missing email addresses
+   - Existing active accounts
+   - Multiple children
+   - Existing personnel accounts
+   - Rate limits
+   - User consent/notification expectations
+
+Do not send large numbers of unexpected emails.
+
+Report the exact conclusion.
+
+---
+
+17. NFC AUTHENTICATED TEST
+
+Using the authenticated Owner Admin and School Admin accounts, verify the existing NFC functionality.
+
+Owner Admin:
+
+- Register/view device.
+- Assign device to School A.
+- Verify device belongs to School A.
+- View device status.
+- Unassign/reassign where supported.
+
+Card:
+
+- Link an existing NFC card to a School A student.
+- Verify card status.
+- Verify card/student relationship.
+
+Security:
+
+- Attempt to use/access School A's device/card relationship from School B.
+- Attempt unauthorized reassignment as School Admin.
+- Verify server-side permission enforcement.
+
+Do not redesign NFC behavior.
+
+---
+
+18. AUTHENTICATED FINANCE REGRESSION ONLY
+
+DO NOT resume Phase 7 Finance.
+
+Only verify that authenticated access control remains correct.
+
+As School Administrator A:
+
+- Access School A finance.
+- Verify School A data is visible.
+
+Attempt to access School B finance.
+
+Verify access is denied.
+
+As Partner A:
+
+- Verify commission information is visible.
+- Verify school financial/payment records are NOT visible.
+
+As Owner Admin:
+
+- Verify intended platform-wide finance visibility.
+
+As Parent:
+
+- Verify only authorized child payment information is accessible.
+
+Do not add new finance functionality.
+
+---
+
+19. AUDIT LOG VERIFICATION
+
+After performing the authenticated tests, inspect audit logs.
+
+Verify important actions are recorded, where implemented:
+
+- School creation.
+- Administrator invitation.
+- Administrator activation.
+- Partner referral generation.
+- School registration through referral.
+- User invitation.
+- User activation.
+- Role/permission changes.
+- NFC device changes.
+- NFC card changes.
+- Bulk imports.
+- Important finance/admin changes.
+
+Verify audit records contain appropriate:
+
+- Actor
+- Action
+- Entity
+- Entity ID
+- Timestamp
+- Tenant/school context
+- Relevant metadata
+
+Verify passwords, tokens, API keys, and secrets are NOT logged.
+
+---
+
+20. INVITATION SECURITY
+
+Test controlled invitation scenarios:
+
+- Valid invitation.
+- Expired invitation if safely testable.
+- Already-used invitation.
+- Invalid token.
+- Modified token.
+- Invitation intended for another account.
+
+Verify:
+
+- Unauthorized activation fails.
+- Invitation cannot be reused after activation.
+- Invitation cannot be transferred to another user.
+- Invitation cannot cross school boundaries.
+- No privilege escalation occurs.
+
+---
+
+21. AUTHENTICATED API SECURITY
+
+For critical resources, test the actual authenticated API behavior.
+
+Verify:
+
+- Missing authentication → 401.
+- Authenticated but unauthorized → 403 or equivalent authorization failure.
+- Authorized user → successful response.
+- Wrong school/tenant → denied.
+- Wrong partner → denied.
+- Wrong role → denied.
+
+Do not rely exclusively on UI behavior.
+
+---
+
+22. SECURITY FINDINGS
+
+Review the current security scan again after authenticated verification.
+
+Report:
+
+- Critical findings.
+- High findings.
+- Moderate findings.
+- Low findings.
+- Static-code findings.
+- Dataflow findings.
+- Dependency findings.
+
+The previously identified moderate Vitest/@vitest/mocker findings should be reported accurately if they remain.
+
+Do not silently suppress security findings merely to produce a clean report.
+
+---
+
+23. AUTOMATED REGRESSION
+
+Run the complete automated test suite after all authenticated verification.
+
+Expected baseline:
+
+134 passed, 0 failed, 0 skipped.
+
+Report the exact final result.
+
+If new tests are required, add them appropriately.
+
+Do not modify existing tests merely to make failures disappear.
+
+---
+
+24. BUILD / TYPE / RUNTIME REGRESSION
+
+After verification, run:
+
+- API build.
+- Web build.
+- API TypeScript checks.
+- Web TypeScript checks.
+- Shared-library TypeScript checks.
+- Existing lint checks where configured.
+- Health check.
+- Relevant runtime checks.
+
+Verify no regressions were introduced.
+
+---
+
+25. IF A FAILURE IS FOUND
+
+If an actual implementation failure is discovered:
+
+1. Identify the exact failing flow.
+2. Identify the root cause.
+3. Make the smallest safe correction.
+4. Do not reset the database.
+5. Do not delete existing data.
+6. Do not change unrelated functionality.
+7. Add/update a regression test.
+8. Re-run the affected test.
+9. Re-run the full test suite.
+10. Re-run the affected authenticated browser flow.
+
+Do not claim the issue is fixed until the actual test passes.
+
+---
+
+26. FINAL REPORT FORMAT
+
+At the end, provide a factual verification report using exactly these sections:
+
+VERIFIED PASS
+
+List every authenticated flow actually completed successfully.
+
+FAILED AND FIXED
+
+List every real implementation failure found and corrected.
+
+If none were found, explicitly state:
+
+"No implementation failure was reproduced."
+
+NOT VERIFIABLE
+
+List anything that could not be tested because of environment limitations.
+
+REMAINING FUNCTIONAL GAPS
+
+List genuine remaining gaps separately from environment limitations.
+
+AUTHENTICATED BROWSER RESULT
+
+Report exact flows tested and results.
+
+EMAIL RESULT
+
+State whether invitations were:
+
+- Sent
+- Actually received
+- Opened
+- Activated
+- Used to log in
+
+Do not infer email delivery from database records.
+
+TENANT ISOLATION RESULT
+
+Report School A → School B and School B → School A results.
+
+PARTNER ISOLATION RESULT
+
+Report Partner A → Partner B and Partner B → Partner A results.
+
+IMPORT RESULT
+
+Report actual Excel, CSV, PDF, duplicate, parent matching, and tenant-context results.
+
+NFC RESULT
+
+Report actual authenticated NFC verification.
+
+FINANCE RESULT
+
+Only report regression/access-control verification.
+
+Do NOT resume Phase 7 Finance.
+
+SECURITY RESULT
+
+Report actual security findings and authenticated authorization results.
+
+AUTOMATED TEST RESULT
+
+Give exact final test count:
+
+- Passed:
+- Failed:
+- Skipped:
+- Test files:
+
+BUILD RESULT
+
+Report build/type/runtime results.
+
+FILES CHANGED
+
+List every file changed during this verification.
+
+DATABASE CHANGES
+
+State whether migrations or data changes were made.
+
+REMAINING BLOCKERS
+
+List anything preventing Phase 7 from safely resuming.
+
+FINAL STATUS
+
+Choose exactly one:
+
+READY TO RESUME PHASE 7
+
+Only if the authenticated verification evidence supports this.
+
+NOT READY — CORRECTIONS REQUIRED
+
+If an implementation issue remains.
+
+NOT READY — ENVIRONMENT BLOCKED
+
+If required authenticated/email testing could not be completed.
+
+Do not choose "READY TO RESUME PHASE 7" merely because automated tests pass.
+
+The authenticated end-to-end evidence is required.
+
+STOP after the verification report.
+
+Do not begin Phase 7 Finance automatically.
