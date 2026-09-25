@@ -1,0 +1,435 @@
+BEGIN AUTHENTICATED VERIFICATION — USE EXISTING E2E FIXTURES
+
+The development-only E2E fixture has now been created successfully.
+
+Current state:
+
+- "E2E-VERIFY-A" exists with one Primary 1 class and two students.
+- "E2E-VERIFY-B" exists with one Primary 1 class and two students.
+- The fixture is idempotent; running it twice did not duplicate records.
+- No test users, roles, sessions, invitations, or Partner identities were created by the fixture.
+- No production fixture data was created.
+- 134 automated tests pass.
+- API/web/scripts/shared TypeScript checks pass.
+- Builds pass.
+- Health endpoint returns 200.
+- No authentication bypass was introduced.
+- Phase 7 Finance remains paused.
+
+The remaining verification blocker is legitimate authentication and email delivery.
+
+IMPORTANT:
+
+Do NOT modify the authentication architecture.
+
+Do NOT bypass Clerk.
+
+Do NOT create fake sessions.
+
+Do NOT create hidden login routes.
+
+Do NOT hard-code passwords.
+
+Do NOT ask the user to provide passwords, Clerk secrets, API keys, or database credentials in chat.
+
+Do NOT create another authentication system.
+
+Do NOT create additional fixture schools unless specifically required.
+
+Use the existing "E2E-VERIFY-A" and "E2E-VERIFY-B" records.
+
+---
+
+1. STOP APPLICATION DEVELOPMENT
+
+At this stage, do not implement unrelated application features.
+
+Do not resume Phase 7 Finance.
+
+Do not change import behavior.
+
+Do not change parent cross-school behavior.
+
+Do not redesign Partner functionality.
+
+Do not redesign NFC.
+
+The current task is only to establish legitimate authenticated E2E verification.
+
+---
+
+2. DETERMINE WHETHER A LEGITIMATE OWNER AUTHENTICATION PATH EXISTS
+
+Inspect the existing Clerk development configuration and determine what is required for the existing Owner account to authenticate normally.
+
+The Owner account must:
+
+- Exist in Clerk.
+- Have the appropriate application membership/authorization.
+- Sign in through the normal "/sign-in" flow.
+- Establish a legitimate Clerk session.
+- Be recognized by "/api/auth/me/authorized-context".
+
+Do not bypass any of these checks.
+
+If the existing Owner account cannot authenticate because of a missing environment configuration or external Clerk requirement, report the exact blocker.
+
+Do not work around it by weakening authentication.
+
+---
+
+3. CONTROLLED EMAIL REQUIREMENT
+
+Determine whether the current development environment has a supported way to receive Clerk invitation emails.
+
+Acceptable options include an already configured:
+
+- Development mailbox.
+- Test mailbox.
+- Email capture service.
+- Other supported development email mechanism.
+
+If one exists, use it.
+
+If none exists:
+
+- Do not invent an inbox.
+- Do not claim email delivery is working.
+- Do not send invitations to arbitrary real addresses.
+- Do not alter production email configuration.
+- Report that a controlled receiving mailbox is still required.
+
+---
+
+4. ONCE OWNER AUTHENTICATION IS AVAILABLE
+
+Do NOT automatically send invitations immediately.
+
+First verify:
+
+Owner login
+→ Owner Dashboard
+→ "/api/auth/me/authorized-context"
+→ Owner authorization context
+
+Only after this succeeds should the actual invitation tests begin.
+
+---
+
+5. INVITE SCHOOL ADMINISTRATOR A
+
+Use the existing:
+
+"E2E-VERIFY-A"
+
+school.
+
+Through the authenticated Owner Admin UI:
+
+1. Open Schools.
+2. Open/create the administrator assignment for "E2E-VERIFY-A" according to the existing workflow.
+3. Enter the controlled test administrator's name and email.
+4. Send the invitation.
+5. Verify the invitation is actually delivered to the controlled mailbox.
+6. Open the invitation.
+7. Create the administrator's password through Clerk.
+8. Activate the account.
+9. Sign in normally.
+10. Verify the account reaches the School Administrator dashboard.
+11. Verify the administrator belongs to "E2E-VERIFY-A".
+12. Verify the administrator cannot access "E2E-VERIFY-B".
+
+Do not report success until the entire chain has actually completed.
+
+---
+
+6. INVITE SCHOOL ADMINISTRATOR B
+
+Repeat the same process for:
+
+"E2E-VERIFY-B"
+
+Use a separate controlled test identity/email.
+
+Verify:
+
+- Administrator B belongs to School B.
+- Administrator B can access School B.
+- Administrator B cannot access School A.
+
+---
+
+7. CREATE TWO PARTNERS
+
+Once Owner authentication and controlled email are available:
+
+Create:
+
+- Partner A
+- Partner B
+
+Use separate controlled identities.
+
+For each Partner:
+
+- Create through the normal Owner workflow.
+- Send invitation through the normal system.
+- Activate through Clerk.
+- Sign in normally.
+- Verify the correct Partner dashboard.
+
+Do not create Partner accounts directly in the database unless the existing application architecture explicitly requires that as part of normal Owner administration.
+
+---
+
+8. PARTNER ISOLATION TEST
+
+After Partner A and Partner B are authenticated:
+
+Partner A:
+
+- Generate referral.
+- View Partner A schools.
+- View Partner A commission.
+- Attempt to access Partner B information.
+
+Partner B:
+
+- Generate referral.
+- View Partner B schools.
+- View Partner B commission.
+- Attempt to access Partner A information.
+
+Test both UI and direct API/resource access.
+
+All unauthorized access must fail server-side.
+
+---
+
+9. SCHOOL TENANT ISOLATION TEST
+
+After School Administrator A and B are authenticated:
+
+Administrator A
+
+Verify:
+
+- Can access E2E-VERIFY-A.
+- Can see Student A1/A2.
+- Cannot see Student B1/B2.
+- Cannot access School B parents.
+- Cannot access School B staff.
+- Cannot access School B finance.
+- Cannot modify School B records.
+
+Administrator B
+
+Verify the reverse.
+
+Also test direct URL/API manipulation where practical.
+
+Do not rely only on navigation visibility.
+
+---
+
+10. OWNER VISIBILITY TEST
+
+After authentication is working:
+
+Verify Owner Admin can appropriately see:
+
+- E2E-VERIFY-A.
+- E2E-VERIFY-B.
+- Their students.
+- Their administrators.
+- Partners.
+- Referral relationships.
+- Appropriate platform-level reports.
+
+Verify Owner still cannot see passwords or authentication secrets.
+
+---
+
+11. EMAIL ACTIVATION TEST
+
+For every tested invitation, record:
+
+- Invitation generated.
+- Invitation delivered.
+- Invitation opened.
+- Password created by recipient.
+- Account activated.
+- Recipient logged in.
+- Correct role assigned.
+- Correct school/partner context assigned.
+
+Do not infer any step from another step.
+
+For example:
+
+Invitation generated ≠ email delivered.
+
+Email delivered ≠ account activated.
+
+Account activated ≠ correct authorization.
+
+---
+
+12. DO NOT MASS-INVITE IMPORTED USERS
+
+The previous verification established that imported parents and personnel currently do not automatically receive portal invitations.
+
+Leave this unchanged.
+
+Do not send bulk invitations during this verification.
+
+Report it as an existing functional gap/product decision.
+
+---
+
+13. DO NOT MODIFY CROSS-SCHOOL PARENT SUPPORT
+
+Leave the current cross-school parent-account behavior unchanged.
+
+Do not implement it during this verification unless a separate explicit product requirement is provided.
+
+---
+
+14. USE EXISTING FIXTURE DATA
+
+Do not create another set of E2E schools.
+
+Use:
+
+- "E2E-VERIFY-A"
+- "E2E-VERIFY-B"
+
+If these records already have the required students/classes, do not duplicate them.
+
+If additional records are genuinely required for a specific test, create only the minimum necessary and clearly report them.
+
+---
+
+15. AUTOMATED TESTS
+
+After any required authentication/test-environment changes:
+
+Run the full test suite.
+
+Current baseline:
+
+134 passed
+0 failed
+0 skipped
+
+Report the actual final result.
+
+---
+
+16. BUILD AND RUNTIME
+
+Verify:
+
+- API build.
+- Web build.
+- Scripts build/type check.
+- Shared-library type check.
+- Health endpoint.
+- Sign-in page.
+- Authenticated Owner dashboard if authentication is available.
+
+---
+
+17. IF AUTHENTICATION IS STILL BLOCKED
+
+If the Owner cannot authenticate legitimately or no controlled mailbox is available:
+
+STOP.
+
+Do not modify application authentication to make the test pass.
+
+Report:
+
+AUTHENTICATION BLOCKER
+
+Exact reason authentication could not be established.
+
+EMAIL BLOCKER
+
+Exact reason invitation delivery cannot be verified.
+
+CURRENT TEST DATA
+
+Confirm E2E-VERIFY-A and E2E-VERIFY-B remain available.
+
+AUTOMATED TEST RESULT
+
+Exact result.
+
+BUILD RESULT
+
+Exact result.
+
+SECURITY
+
+Confirm no bypass was introduced.
+
+NEXT REQUIRED ENVIRONMENT INPUT
+
+State only what is genuinely required to continue.
+
+---
+
+18. IF AUTHENTICATION SUCCEEDS
+
+Continue with the authenticated tests described above.
+
+After completing them, provide a factual report containing:
+
+VERIFIED AUTHENTICATED FLOWS
+
+EMAIL DELIVERY AND ACTIVATION
+
+SCHOOL A/B TENANT ISOLATION
+
+PARTNER A/B ISOLATION
+
+OWNER ADMIN ACCESS
+
+ROLE/PERMISSION TESTS
+
+IMPORT E2E TESTS
+
+NFC E2E TESTS
+
+FINANCE REGRESSION
+
+SECURITY
+
+AUTOMATED TEST RESULT
+
+BUILD RESULT
+
+FILES CHANGED
+
+DATABASE CHANGES
+
+REMAINING GAPS
+
+FINAL STATUS
+
+Choose exactly one:
+
+READY TO RESUME PHASE 7
+
+or
+
+NOT READY — CORRECTIONS REQUIRED
+
+or
+
+NOT READY — ENVIRONMENT BLOCKED
+
+Do not resume Phase 7 Finance automatically.
+
+Do not claim completion without actual authenticated evidence.
