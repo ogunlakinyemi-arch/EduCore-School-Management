@@ -3,3 +3,4 @@
 - [Manual artifact builds](manual-artifact-builds.md) — shell builds may lack environment variables that managed artifact workflows inject.
 - [Family academic reads](family-academic-reads.md) — student and parent pages must not wait on school-wide academic catalogs denied to their roles.
 - [External invitations and uncertain commits](invitation-commit-recovery.md) — verify persistence before revoking a sent identity-provider invitation after an ambiguous database commit.
+- [Development database targeting](development-database-targeting.md) — environment labels alone can misidentify the database target; independently verify it before test-data writes.

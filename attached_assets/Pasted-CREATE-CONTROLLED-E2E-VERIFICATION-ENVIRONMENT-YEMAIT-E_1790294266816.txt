@@ -1,0 +1,549 @@
+CREATE CONTROLLED E2E VERIFICATION ENVIRONMENT — YEMAIT EDUCORE
+
+The previous verification is blocked because the browser cannot establish legitimate authenticated sessions and the development environment does not contain enough controlled test identities.
+
+Current status:
+
+- 134 automated tests pass.
+- 0 fail.
+- 0 skipped.
+- Builds pass.
+- TypeScript checks pass.
+- Health check returns 200.
+- Protected unauthenticated routes return 401.
+- No authenticated browser journey has been completed.
+- No invitation email has been verified end-to-end.
+- Only one Partner profile currently exists.
+- Phase 7 Finance remains paused.
+
+Do NOT resume Phase 7 Finance.
+
+Do NOT weaken authentication.
+
+Do NOT bypass Clerk.
+
+Do NOT expose passwords, password hashes, API keys, Clerk secrets, database credentials, invitation tokens, or other secrets.
+
+Do NOT ask the user to paste credentials into chat.
+
+The objective is to create a SAFE, DEVELOPMENT-ONLY verification environment that allows legitimate authenticated browser testing through the existing authentication system.
+
+---
+
+1. INSPECT THE EXISTING AUTHENTICATION ARCHITECTURE
+
+Before making changes:
+
+- Inspect the current Clerk integration.
+- Inspect how users/memberships are associated with:
+  - Owner Admin
+  - Schools
+  - School Administrators
+  - Partners
+  - Partner staff
+- Inspect the current development authentication configuration.
+- Inspect whether the application already has:
+  - development seed scripts,
+  - test fixtures,
+  - test users,
+  - test organizations,
+  - authentication helpers,
+  - E2E setup,
+  - Playwright/browser test utilities,
+  - Clerk development tooling.
+
+Do NOT create a second authentication system.
+
+Do NOT replace Clerk.
+
+Do NOT create fake sessions that bypass actual authentication.
+
+Use the existing authentication architecture.
+
+---
+
+2. CREATE A DEVELOPMENT-ONLY TEST FIXTURE SYSTEM
+
+If the project does not already have a safe fixture system, create one.
+
+The fixture system must:
+
+- Work ONLY in development/test environments.
+- Never run against production.
+- Never expose credentials through the application UI.
+- Never store plaintext passwords in source control.
+- Never log passwords.
+- Never create permanent production users.
+- Be idempotent.
+- Be safe to run repeatedly.
+- Clearly identify test records as test data where appropriate.
+
+The fixture should create the minimum controlled entities needed for E2E verification.
+
+---
+
+3. REQUIRED TEST ENTITIES
+
+Create or provision controlled development test identities for:
+
+Owner
+
+- Test Owner Admin
+
+Schools
+
+- School A
+- School B
+
+School Administrators
+
+- School Administrator A
+- School Administrator B
+
+Partners
+
+- Partner A
+- Partner B
+
+Partner staff
+
+Where the existing product supports partner staff:
+
+- Partner A Staff
+- Partner B Staff
+
+School personnel
+
+For School A:
+
+- Teacher
+- Accountant
+- Staff
+
+For School B:
+
+- Teacher
+- Accountant
+- Staff
+
+Parent
+
+Create at least one controlled parent with:
+
+- Child A1
+- Child A2
+
+Both children should belong to School A.
+
+Where supported, create another parent belonging to School B.
+
+Do not introduce cross-school parent relationships unless the existing product requirements explicitly support them.
+
+---
+
+4. AUTHENTICATION REQUIREMENT
+
+Every test identity must authenticate through the application's REAL authentication mechanism.
+
+Do NOT:
+
+- inject fake authentication cookies,
+- bypass Clerk middleware,
+- modify authorization checks,
+- create a special backdoor route,
+- add a hidden login,
+- disable authentication,
+- hard-code a privileged test session.
+
+If Clerk's development environment requires users to be provisioned through Clerk, use the existing supported development/test mechanism.
+
+If an email verification step is required, use the supported development/test workflow.
+
+---
+
+5. TEST ACCOUNT CREDENTIAL HANDLING
+
+Do not put test passwords in:
+
+- source code,
+- Git,
+- database records,
+- application logs,
+- final verification reports,
+- chat messages.
+
+If the existing E2E framework supports environment variables for test credentials, use environment variables or the project's existing secret-management mechanism.
+
+Use clearly development-only test accounts.
+
+Never reuse real production credentials.
+
+The final report should say only that the controlled test identities were provisioned and whether authentication succeeded.
+
+Do NOT print credentials.
+
+---
+
+6. CONTROLLED EMAIL TESTING
+
+We need an accessible development/test mailbox for invitation verification.
+
+Inspect the existing Clerk/email configuration.
+
+If the development environment already has a supported email testing mechanism, use it.
+
+If a test mailbox/provider is already configured, use that.
+
+If no mailbox is available:
+
+- Do NOT invent one.
+- Do NOT claim email delivery was verified.
+- Do NOT send invitations to arbitrary real users.
+- Do NOT change production email settings.
+- Clearly report that external mailbox configuration remains required.
+
+If a safe development email capture system exists, verify:
+
+1. Invitation is generated.
+2. Email is captured.
+3. Invitation link is accessible.
+4. Invitation activates the intended account.
+5. User can establish the legitimate authenticated session.
+
+---
+
+7. CREATE PARTNER B
+
+The current development data contains only one Partner profile.
+
+Create a second controlled Partner:
+
+- Partner A
+- Partner B
+
+Ensure they have separate identities and separate referral relationships.
+
+Do NOT modify existing production/business data.
+
+Verify:
+
+- Partner A can access only Partner A data.
+- Partner B can access only Partner B data.
+- Their schools/referrals/commissions remain separate.
+
+---
+
+8. CREATE SCHOOL A AND SCHOOL B TEST DATA
+
+Ensure School A and School B contain distinguishable test records.
+
+For example:
+
+School A:
+
+- Student A1
+- Student A2
+- Parent A
+- Teacher A
+- Staff A
+
+School B:
+
+- Student B1
+- Student B2
+- Parent B
+- Teacher B
+- Staff B
+
+Use clearly identifiable test values.
+
+Do not modify unrelated existing records.
+
+---
+
+9. OWNER TEST DATA
+
+Ensure the Owner Admin has legitimate platform-level authorization.
+
+Verify:
+
+- Owner membership exists.
+- Owner role/permissions are correct.
+- Owner is not incorrectly tied to a school as a School Administrator.
+- Owner can access intended platform-wide functions.
+
+Do not grant Owner permissions to School Administrators.
+
+---
+
+10. SCHOOL ADMIN TEST DATA
+
+Verify School Administrator A belongs only to School A.
+
+Verify School Administrator B belongs only to School B.
+
+The test fixtures must NOT accidentally create:
+
+School Admin A → School B
+
+or:
+
+School Admin B → School A
+
+unless the existing architecture explicitly permits platform-level administration.
+
+---
+
+11. PARTNER TEST DATA
+
+Verify:
+
+Partner A → its own test school/referral/commission data.
+
+Partner B → its own test school/referral/commission data.
+
+Do not give either partner access to the other's data.
+
+---
+
+12. E2E BROWSER TEST PREPARATION
+
+If Playwright or another existing browser testing framework is available:
+
+Use it.
+
+If the project already has an E2E browser test configuration, extend it instead of creating a competing framework.
+
+Prepare authenticated browser tests for:
+
+1. Owner Admin.
+2. School Administrator A.
+3. School Administrator B.
+4. Partner A.
+5. Partner B.
+6. Parent.
+7. Teacher/Staff where supported.
+
+The tests must authenticate legitimately.
+
+---
+
+13. DO NOT CLAIM AUTHENTICATION UNTIL IT ACTUALLY WORKS
+
+After provisioning the test identities:
+
+Open the real sign-in page.
+
+Authenticate.
+
+Verify the application recognizes the correct identity.
+
+Verify:
+
+- "/api/auth/me/authorized-context"
+- role/permission context
+- tenant/school context
+- dashboard routing
+
+Only then should an authenticated browser flow be considered passed.
+
+A database membership record by itself is NOT proof of authentication.
+
+---
+
+14. REQUIRED E2E FLOWS AFTER ENVIRONMENT SETUP
+
+Once the environment is available, prepare the following tests.
+
+Owner
+
+Owner login → Owner Dashboard → Schools → School details.
+
+School A
+
+School Admin A login → School A Dashboard → Student A records.
+
+Attempt School B access → must fail.
+
+School B
+
+School Admin B login → School B Dashboard → Student B records.
+
+Attempt School A access → must fail.
+
+Partner A
+
+Partner A login → Partner Dashboard → Partner A schools/referrals/commission.
+
+Attempt Partner B data → must fail.
+
+Partner B
+
+Partner B login → Partner Dashboard → Partner B schools/referrals/commission.
+
+Attempt Partner A data → must fail.
+
+Parent
+
+Parent login → Parent Dashboard → Child A1/A2.
+
+Attempt unrelated student → must fail.
+
+---
+
+15. DO NOT YET IMPLEMENT AUTOMATIC IMPORT INVITATIONS
+
+The previous verification identified that imported parents/personnel do not automatically receive portal invitations.
+
+Do NOT change that behavior in this task.
+
+Do NOT send bulk invitations.
+
+Do NOT introduce mass-email behavior.
+
+Leave the existing behavior unchanged and record it as a product decision/functional gap for later resolution.
+
+---
+
+16. DO NOT CHANGE CROSS-SCHOOL PARENT BEHAVIOR
+
+The previous verification identified that one parent account cannot currently be linked to profiles at different schools.
+
+Do NOT modify this behavior in this task.
+
+Do NOT assume that cross-school parent accounts are required.
+
+Leave it unchanged until the product requirement is explicitly decided.
+
+---
+
+17. DATABASE SAFETY
+
+Before provisioning:
+
+- Inspect the current development database.
+- Ensure the fixture system will not delete real development records.
+- Use unique test identifiers.
+- Make the fixture idempotent.
+- Do not reset the database.
+- Do not truncate tables.
+- Do not delete existing schools/users/partners.
+- Do not run destructive migrations.
+
+If cleanup functionality is needed, restrict it to records created by the test fixture and require an explicit development-only command.
+
+---
+
+18. SECURITY REQUIREMENTS
+
+The test environment must NOT introduce:
+
+- Authentication bypasses.
+- Hidden admin routes.
+- Hard-coded session cookies.
+- Universal passwords.
+- Role escalation.
+- Frontend-only authorization.
+- Production backdoors.
+- Development credentials exposed to users.
+- API endpoints that skip normal authorization.
+
+All normal authorization middleware must remain active during E2E testing.
+
+---
+
+19. AUTOMATED TEST REGRESSION
+
+After implementing only the test infrastructure/fixtures:
+
+Run the complete test suite.
+
+Expected current baseline:
+
+134 passed
+0 failed
+0 skipped
+
+Report the actual result.
+
+If the test count changes because legitimate E2E tests were added, explain exactly what was added.
+
+Do not modify existing tests simply to preserve the old number.
+
+---
+
+20. BUILD REGRESSION
+
+Run:
+
+- API build.
+- Web build.
+- API TypeScript checks.
+- Web TypeScript checks.
+- Shared-library TypeScript checks.
+- Existing lint checks where configured.
+- Health check.
+
+Verify the test infrastructure did not affect production/application builds.
+
+---
+
+21. FINAL REPORT FOR THIS TASK
+
+Do NOT perform the full authenticated verification yet if the environment still lacks a legitimate receiving mailbox or authentication mechanism.
+
+Instead report:
+
+TEST ENVIRONMENT CREATED
+
+List the test entities provisioned, without passwords/secrets.
+
+AUTHENTICATION METHOD
+
+Explain how the test identities are intended to authenticate through the existing system.
+
+EMAIL TEST ENVIRONMENT
+
+State whether a controlled receiving mailbox/test email system is available.
+
+PARTNER TEST DATA
+
+Confirm Partner A and Partner B exist separately.
+
+SCHOOL TEST DATA
+
+Confirm School A and School B are isolated.
+
+E2E TEST READINESS
+
+State whether the browser can now authenticate legitimately.
+
+SECURITY
+
+Confirm no authentication bypass/backdoor was introduced.
+
+AUTOMATED TEST RESULT
+
+Provide exact count.
+
+BUILD RESULT
+
+Provide exact result.
+
+FILES CHANGED
+
+List files changed.
+
+DATABASE CHANGES
+
+State exactly what test records were created and confirm no destructive changes occurred.
+
+REMAINING BLOCKERS
+
+List anything still preventing actual authenticated E2E verification.
+
+STOP HERE.
+
+Do NOT resume Phase 7 Finance.
+
+Do NOT claim the correction phase is complete merely because the test environment was created.
