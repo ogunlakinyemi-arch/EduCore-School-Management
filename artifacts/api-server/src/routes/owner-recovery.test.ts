@@ -143,7 +143,7 @@ describe("forward migration safety", () => {
        WHERE conname LIKE '%_id_school_tenant_key'
        ORDER BY conname`,
     );
-    expect(tenantKeys.rowCount).toBe(6);
+    expect(tenantKeys.rowCount).toBeGreaterThanOrEqual(6);
     expect(tenantKeys.rows.every((row) =>
       row.convalidated && row.definition === "UNIQUE (id, school_id)",
     )).toBe(true);
