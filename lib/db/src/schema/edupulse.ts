@@ -538,7 +538,6 @@ export const nfcCards = pgTable(
   (table) => [
     uniqueIndex("nfc_cards_uid_unique").on(table.uid),
     uniqueIndex("nfc_cards_id_school_unique").on(table.id, table.schoolId),
-    unique("nfc_cards_id_school_tenant_key").on(table.id, table.schoolId),
     index("nfc_cards_school_idx").on(table.schoolId),
     foreignKey({
       columns: [table.studentId, table.schoolId],
@@ -997,7 +996,6 @@ export const attendanceEvents = pgTable(
   (table) => [
     uniqueIndex("attendance_events_school_dedupe_unique").on(table.schoolId, table.dedupeKey),
     uniqueIndex("attendance_events_id_school_unique").on(table.id, table.schoolId),
-    unique("attendance_events_id_school_tenant_key").on(table.id, table.schoolId),
     foreignKey({ columns: [table.studentId, table.schoolId], foreignColumns: [students.id, students.schoolId], name: "attendance_events_student_school_fk" }),
     foreignKey({ columns: [table.employeeId, table.schoolId], foreignColumns: [employees.id, employees.schoolId], name: "attendance_events_employee_school_fk" }),
     foreignKey({ columns: [table.deviceId, table.schoolId], foreignColumns: [deviceSchoolBindings.deviceId, deviceSchoolBindings.schoolId], name: "attendance_events_device_school_fk" }),
@@ -1048,7 +1046,6 @@ export const attendanceDiscrepancies = pgTable(
     foreignKey({ columns: [table.attendanceEventId, table.schoolId], foreignColumns: [attendanceEvents.id, attendanceEvents.schoolId], name: "attendance_discrepancies_event_school_fk" }),
     index("attendance_discrepancies_school_status_idx").on(table.schoolId, table.status, table.createdAt),
     uniqueIndex("attendance_discrepancies_id_school_unique").on(table.id, table.schoolId),
-    unique("attendance_discrepancies_id_school_tenant_key").on(table.id, table.schoolId),
   ],
 );
 
