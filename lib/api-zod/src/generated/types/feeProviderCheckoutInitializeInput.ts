@@ -6,7 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ProviderPaymentInput {
-  /** @minimum 1 */
-  invoiceId: number;
+export interface FeeProviderCheckoutInitializeInput {
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  amountMinor?: number;
 }

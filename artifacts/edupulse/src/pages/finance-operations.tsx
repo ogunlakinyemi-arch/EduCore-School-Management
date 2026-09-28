@@ -9,6 +9,7 @@ import {
   getListParentFeePaymentsQueryKey, getListStudentFeePaymentsQueryKey, getListParentFeeInvoicesQueryKey,
   getListStudentFeeInvoicesQueryKey, getListFeeInvoicesQueryKey, getGetSchoolFinanceSummaryQueryKey,
   getGetFeePaymentReceiptQueryKey,
+  getListMyFeePaymentNotificationsQueryKey,
 } from '@workspace/api-client-react';
 import type { FeePaymentHistory } from '@workspace/api-client-react';
 import { Button, EmptyState, ErrorState, Modal, SkeletonPage, StatusPill } from '@/components/shared';
@@ -54,6 +55,8 @@ function ReviewPayment({ paymentId, schoolId, onClose, onChanged }: { paymentId:
       qc.invalidateQueries({ queryKey: getListParentFeeInvoicesQueryKey() }),
       qc.invalidateQueries({ queryKey: getListStudentFeeInvoicesQueryKey() }),
       qc.invalidateQueries({ queryKey: getGetFeePaymentReceiptQueryKey(paymentId) }),
+       qc.invalidateQueries({ queryKey: getListMyFeePaymentNotificationsQueryKey({ schoolId }) }),
+       qc.invalidateQueries({ queryKey: getListMyFeePaymentNotificationsQueryKey() }),
     ]);
   };
   const submit = async (event: FormEvent) => {

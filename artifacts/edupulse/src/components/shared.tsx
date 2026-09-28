@@ -1,6 +1,7 @@
 import { useLocation, Link } from 'wouter';
 import { useState, type ReactNode, type FormEvent, createContext, useContext, useEffect, useRef } from 'react';
 import { UserButton } from '@clerk/react';
+import { FeePaymentNotifications } from './fee-payment-notifications';
 import { 
   Activity, ArrowLeft, ArrowUpRight, BadgeCheck, BarChart3, Bell, BookOpen, Building2, Check, ChevronDown, 
   CircleAlert, CircleDollarSign, CreditCard, FileClock, GraduationCap, LayoutDashboard, Library, Menu, 
@@ -72,6 +73,8 @@ export function Shell({ children }: { children: ReactNode }) {
 
   const roles = context?.roles?.map(r => r.role) || [];
   const isPlatformOwner = context?.isPlatformOwner || false;
+  const financeRole = !!schoolId && context?.roles?.some(r => r.schoolId === schoolId && r.status === 'ACTIVE' && (r.role === 'SCHOOL_ADMIN' || r.role === 'ACCOUNTANT')) === true;
+  const studentRole = context?.roles?.some(r => r.role === 'STUDENT' && r.status === 'ACTIVE') === true;
   if (isPlatformOwner && !roles.includes('PLATFORM_OWNER')) roles.push('PLATFORM_OWNER');
 
   const visibleNav = nav.filter(item => !item.roles || item.roles.some(role => roles.includes(role)));
@@ -147,11 +150,7 @@ export function Shell({ children }: { children: ReactNode }) {
                   {hasUnread && <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full border-2 border-[hsl(var(--card))] bg-[hsl(var(--destructive))]" />}
                 </button>
               </Link>
-            ) : (
-              <button className="relative grid h-10 w-10 place-items-center rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--primary)/.3)] hover:text-[hsl(var(--primary))]" aria-label="Notifications" data-testid="button-notifications">
-                <Bell size={18} />
-              </button>
-            )}
+            ) : studentRole && (location.startsWith('/my-fees') || location.startsWith('/my-academics')) ? <FeePaymentNotifications audience="student" /> : financeRole ? <FeePaymentNotifications key={`school-${schoolId}`} audience="school" schoolId={schoolId} /> : studentRole ? <FeePaymentNotifications audience="student" /> : null}
             <div className="hidden h-8 w-px bg-[hsl(var(--border))] sm:block" />
             <div className="hidden text-right sm:block">
               <div className="text-xs font-bold">{name}</div>

@@ -3641,11 +3641,177 @@ export interface FinanceSummary {
   pendingPayments: number;
 }
 
+export interface FeeBulkAssignmentInput {
+  /** @minimum 1 */
+  structureId: number;
+  issueDate: string;
+  dueDate: string;
+  /** @minimum 1 */
+  classId?: number;
+  /** @maxLength 100 */
+  section?: string;
+}
+
+export type FeeBulkAssignmentItemStatus = typeof FeeBulkAssignmentItemStatus[keyof typeof FeeBulkAssignmentItemStatus];
+
+
+export const FeeBulkAssignmentItemStatus = {
+  CREATED: 'CREATED',
+  SKIPPED: 'SKIPPED',
+} as const;
+
+export interface FeeBulkAssignmentItem {
+  studentId: number;
+  /** @nullable */
+  invoiceId?: number | null;
+  status: FeeBulkAssignmentItemStatus;
+  /** @nullable */
+  reason: string | null;
+}
+
+export interface FeeBulkAssignmentResult {
+  createdCount: number;
+  skippedCount: number;
+  results: FeeBulkAssignmentItem[];
+}
+
+export interface FeeRefundInput {
+  /** @minimum 1 */
+  amountMinor: number;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export interface FeeRefundApprovalInput {
+  /**
+     * @minLength 3
+     * @maxLength 200
+     */
+  evidenceReference: string;
+  /**
+     * @minLength 3
+     * @maxLength 1000
+     */
+  reviewerNotes: string;
+}
+
+export type FeeRefundStatus = typeof FeeRefundStatus[keyof typeof FeeRefundStatus];
+
+
+export const FeeRefundStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface FeeRefund {
+  id: number;
+  schoolId: number;
+  paymentId: number;
+  invoiceId: number;
+  amountMinor: number;
+  currency: string;
+  reason: string;
+  status: FeeRefundStatus;
+  reference: string;
+  /** @nullable */
+  evidenceReference: string | null;
+  /** @nullable */
+  reviewerNotes: string | null;
+}
+
+export type SchoolFeeRefundStatus = typeof SchoolFeeRefundStatus[keyof typeof SchoolFeeRefundStatus];
+
+
+export const SchoolFeeRefundStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface SchoolFeeRefund {
+  id: number;
+  schoolId: number;
+  paymentId: number;
+  invoiceId: number;
+  invoiceNumber: string;
+  studentId: number;
+  studentName: string;
+  className: string;
+  section: string;
+  paymentReference: string;
+  paymentAmountMinor: number;
+  paymentMethod: string;
+  paymentStatus: string;
+  amountMinor: number;
+  currency: string;
+  reason: string;
+  status: SchoolFeeRefundStatus;
+  reference: string;
+  /** @nullable */
+  evidenceReference: string | null;
+  /** @nullable */
+  reviewerNotes: string | null;
+  requestedAt: string;
+  /** @nullable */
+  approvedAt: string | null;
+}
+
+export type FeePaymentNotificationEventType = typeof FeePaymentNotificationEventType[keyof typeof FeePaymentNotificationEventType];
+
+
+export const FeePaymentNotificationEventType = {
+  PAYMENT_VERIFIED: 'PAYMENT_VERIFIED',
+} as const;
+
+export interface FeePaymentNotification {
+  id: number;
+  schoolId: number;
+  eventType: FeePaymentNotificationEventType;
+  isRead: boolean;
+  createdAt: string;
+  /** @nullable */
+  readAt: string | null;
+  receiptNumber: string;
+  invoiceNumber: string;
+  studentName: string;
+  paymentReference: string;
+  amountMinor: number;
+  currency: string;
+  method: string;
+}
+
+export interface FinanceReportRow {
+  label: string;
+  count: number;
+  amountMinor: number;
+  secondaryAmountMinor: number;
+}
+
+export interface FinanceReport {
+  schoolId: number;
+  reportType: string;
+  totalBilledMinor: number;
+  totalCollectedMinor: number;
+  totalOutstandingMinor: number;
+  totalDiscountMinor: number;
+  totalWaiverMinor: number;
+  totalRefundedMinor: number;
+  rows: FinanceReportRow[];
+}
+
 export interface FinanceSettings {
   schoolId: number;
   partialPaymentsEnabled: boolean;
   /** Explicit school-admin approval and enablement for parent bank transfers */
   bankTransferEnabled: boolean;
+  /** School-approved Paystack test-provider checkout enablement */
+  paystackEnabled: boolean;
+  /** School-approved Flutterwave test-provider checkout enablement */
+  flutterwaveEnabled: boolean;
   /** @nullable */
   bankName: string | null;
   /** @nullable */
@@ -3660,6 +3826,8 @@ export interface FinanceSettings {
 export interface FinanceSettingsUpdate {
   partialPaymentsEnabled?: boolean;
   bankTransferEnabled?: boolean;
+  paystackEnabled?: boolean;
+  flutterwaveEnabled?: boolean;
   /**
      * @minLength 2
      * @maxLength 100
@@ -3705,9 +3873,129 @@ export interface ParentInvoiceBankDetailsUnavailable {
 
 export type ParentInvoiceBankDetails = ParentInvoiceBankDetailsAvailable | ParentInvoiceBankDetailsUnavailable;
 
-export interface ProviderPaymentInput {
-  /** @minimum 1 */
+export type FeeProviderCheckoutProvider = typeof FeeProviderCheckoutProvider[keyof typeof FeeProviderCheckoutProvider];
+
+
+export const FeeProviderCheckoutProvider = {
+  PAYSTACK: 'PAYSTACK',
+  FLUTTERWAVE: 'FLUTTERWAVE',
+} as const;
+
+export type FeeProviderCheckoutStatus = typeof FeeProviderCheckoutStatus[keyof typeof FeeProviderCheckoutStatus];
+
+
+export const FeeProviderCheckoutStatus = {
+  PENDING: 'PENDING',
+} as const;
+
+export interface FeeProviderCheckout {
+  paymentId: number;
   invoiceId: number;
+  reference: string;
+  provider: FeeProviderCheckoutProvider;
+  amountMinor: number;
+  /** @pattern ^[A-Z]{3}$ */
+  currency: string;
+  status: FeeProviderCheckoutStatus;
+  checkoutUrl: string;
+}
+
+export type FeeProviderCheckoutProcessingOutcome = typeof FeeProviderCheckoutProcessingOutcome[keyof typeof FeeProviderCheckoutProcessingOutcome];
+
+
+export const FeeProviderCheckoutProcessingOutcome = {
+  processing: 'processing',
+  reconciliation_required: 'reconciliation_required',
+} as const;
+
+export interface FeeProviderCheckoutProcessing {
+  outcome: FeeProviderCheckoutProcessingOutcome;
+  error: string;
+}
+
+export interface FeeProviderCheckoutInitializeInput {
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  amountMinor?: number;
+}
+
+export interface ParentFeeInvoiceCheckoutPolicy {
+  invoiceId: number;
+  schoolId: number;
+  /** @minimum 0 */
+  outstandingMinor: number;
+  partialPaymentsEnabled: boolean;
+}
+
+export type FeeProviderReconciliationEventProvider = typeof FeeProviderReconciliationEventProvider[keyof typeof FeeProviderReconciliationEventProvider];
+
+
+export const FeeProviderReconciliationEventProvider = {
+  PAYSTACK: 'PAYSTACK',
+  FLUTTERWAVE: 'FLUTTERWAVE',
+} as const;
+
+export type FeeProviderReconciliationEventStatus = typeof FeeProviderReconciliationEventStatus[keyof typeof FeeProviderReconciliationEventStatus];
+
+
+export const FeeProviderReconciliationEventStatus = {
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+} as const;
+
+export interface FeeProviderReconciliationEvent {
+  id: number;
+  provider: FeeProviderReconciliationEventProvider;
+  eventId: string;
+  /** @nullable */
+  paymentId: number | null;
+  /** @nullable */
+  schoolId: number | null;
+  /** @nullable */
+  providerReference: string | null;
+  /** @nullable */
+  webhookTransactionId: string | null;
+  /** @nullable */
+  verifiedTransactionId: string | null;
+  status: FeeProviderReconciliationEventStatus;
+  /** @nullable */
+  errorMessage: string | null;
+  signatureVerified: boolean;
+  receivedAt: string;
+  updatedAt: string;
+}
+
+export type FeeProviderReconciliationRetryOutcome = typeof FeeProviderReconciliationRetryOutcome[keyof typeof FeeProviderReconciliationRetryOutcome];
+
+
+export const FeeProviderReconciliationRetryOutcome = {
+  verified: 'verified',
+  pending: 'pending',
+  failed: 'failed',
+  duplicate: 'duplicate',
+  reconciliation_required: 'reconciliation_required',
+} as const;
+
+export interface FeeProviderReconciliationRetry {
+  eventId: string;
+  outcome: FeeProviderReconciliationRetryOutcome;
+}
+
+export type FeeProviderCheckoutReconciliationOutcome = typeof FeeProviderCheckoutReconciliationOutcome[keyof typeof FeeProviderCheckoutReconciliationOutcome];
+
+
+export const FeeProviderCheckoutReconciliationOutcome = {
+  verified: 'verified',
+  pending: 'pending',
+  released: 'released',
+  duplicate: 'duplicate',
+  reconciliation_required: 'reconciliation_required',
+} as const;
+
+export interface FeeProviderCheckoutReconciliation {
+  paymentId: number;
+  outcome: FeeProviderCheckoutReconciliationOutcome;
 }
 
 /**
@@ -3759,6 +4047,45 @@ export type UpdateFinanceSettingsParams = {
 schoolId: SchoolIdParameter;
 };
 
+export type ListMyFeePaymentNotificationsParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+};
+
+export type ListFeeProviderReconciliationEventsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type RetryFeeProviderReconciliationEventParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ReconcileFeeProviderCheckoutParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type GetParentFeeInvoicePaymentMethods200Item = typeof GetParentFeeInvoicePaymentMethods200Item[keyof typeof GetParentFeeInvoicePaymentMethods200Item];
+
+
+export const GetParentFeeInvoicePaymentMethods200Item = {
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  PAYSTACK: 'PAYSTACK',
+  FLUTTERWAVE: 'FLUTTERWAVE',
+} as const;
+
+export type ReceiveFeeProviderWebhookBody = { [key: string]: unknown };
+
 export type ListFeeCategoriesParams = {
 /**
  * @minimum 1
@@ -3807,6 +4134,109 @@ export type AssignFeeStructureParams = {
  */
 schoolId: SchoolIdParameter;
 };
+
+export type BulkAssignFeeStructureParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type RequestFeeRefundParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ListSchoolFeeRefundsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+status?: ListSchoolFeeRefundsStatus;
+};
+
+export type ListSchoolFeeRefundsStatus = typeof ListSchoolFeeRefundsStatus[keyof typeof ListSchoolFeeRefundsStatus];
+
+
+export const ListSchoolFeeRefundsStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  ALL: 'ALL',
+} as const;
+
+export type GetSchoolFeeRefundParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ApproveFeeRefundParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type GetSchoolFinanceReportParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+reportType?: GetSchoolFinanceReportReportType;
+/**
+ * @minimum 1
+ */
+sessionId?: number;
+/**
+ * @minimum 1
+ */
+termId?: number;
+/**
+ * @minimum 1
+ */
+classId?: number;
+/**
+ * @maxLength 100
+ */
+section?: string;
+/**
+ * @minimum 1
+ */
+categoryId?: number;
+status?: string;
+provider?: GetSchoolFinanceReportProvider;
+from?: string;
+to?: string;
+};
+
+export type GetSchoolFinanceReportReportType = typeof GetSchoolFinanceReportReportType[keyof typeof GetSchoolFinanceReportReportType];
+
+
+export const GetSchoolFinanceReportReportType = {
+  summary: 'summary',
+  payments: 'payments',
+  outstanding: 'outstanding',
+  category: 'category',
+  class: 'class',
+  term: 'term',
+  adjustment: 'adjustment',
+  refund: 'refund',
+  'provider-reconciliation': 'provider-reconciliation',
+} as const;
+
+export type GetSchoolFinanceReportProvider = typeof GetSchoolFinanceReportProvider[keyof typeof GetSchoolFinanceReportProvider];
+
+
+export const GetSchoolFinanceReportProvider = {
+  MANUAL_BANK_TRANSFER: 'MANUAL_BANK_TRANSFER',
+  REMITA: 'REMITA',
+  FLUTTERWAVE: 'FLUTTERWAVE',
+  PAYSTACK: 'PAYSTACK',
+} as const;
 
 export type ListFeeInvoicesParams = {
 /**
@@ -3908,13 +4338,6 @@ schoolId: SchoolIdParameter;
 };
 
 export type ListPendingFeeAdjustmentsParams = {
-/**
- * @minimum 1
- */
-schoolId: SchoolIdParameter;
-};
-
-export type InitializeFeeProviderPaymentParams = {
 /**
  * @minimum 1
  */

@@ -11,6 +11,10 @@ export interface FinanceSettings {
   partialPaymentsEnabled: boolean;
   /** Explicit school-admin approval and enablement for parent bank transfers */
   bankTransferEnabled: boolean;
+  /** School-approved Paystack test-provider checkout enablement */
+  paystackEnabled: boolean;
+  /** School-approved Flutterwave test-provider checkout enablement */
+  flutterwaveEnabled: boolean;
   /** @nullable */
   bankName: string | null;
   /** @nullable */

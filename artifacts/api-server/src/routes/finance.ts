@@ -7,6 +7,25 @@ import {
   AssignFeeStructureBody,
   AssignFeeStructureResponse,
   AssignFeeStructureQueryParams,
+  BulkAssignFeeStructureBody,
+  BulkAssignFeeStructureResponse,
+  BulkAssignFeeStructureQueryParams,
+  RequestFeeRefundParams,
+  RequestFeeRefundQueryParams,
+  RequestFeeRefundBody,
+  RequestFeeRefundHeader,
+  RequestFeeRefundResponse,
+  ApproveFeeRefundParams,
+  ApproveFeeRefundQueryParams,
+  ApproveFeeRefundBody,
+  ApproveFeeRefundResponse,
+  GetSchoolFinanceReportQueryParams,
+  GetSchoolFinanceReportResponse,
+  ListSchoolFeeRefundsQueryParams,
+  ListSchoolFeeRefundsResponse,
+  GetSchoolFeeRefundParams,
+  GetSchoolFeeRefundQueryParams,
+  GetSchoolFeeRefundResponse,
   CreateFeeCategoryBody,
   CreateFeeCategoryResponse,
   CreateFeeCategoryQueryParams,
@@ -25,9 +44,19 @@ import {
   GetFeePaymentReceiptResponse,
   GetParentFeeInvoiceBankDetailsParams,
   GetParentFeeInvoiceBankDetailsResponse,
-  InitializeFeeProviderPaymentBody,
+  GetParentFeeInvoiceCheckoutPolicyParams,
+  GetParentFeeInvoiceCheckoutPolicyResponse,
+  GetParentFeeInvoicePaymentMethodsParams,
+  GetParentFeeInvoicePaymentMethodsResponse,
+  ReconcileFeeProviderCheckoutParams,
+  ReconcileFeeProviderCheckoutQueryParams,
+  ReconcileFeeProviderCheckoutResponse,
   InitializeFeeProviderPaymentParams,
-  InitializeFeeProviderPaymentQueryParams,
+  InitializeFeeProviderPaymentHeader,
+  InitializeFeeProviderPaymentBody,
+  InitializeFeeProviderPaymentResponse,
+  ListFeeProviderReconciliationEventsQueryParams,
+  ListFeeProviderReconciliationEventsResponse,
   ListFeeCategoriesResponse,
   ListFeeCategoriesQueryParams,
   ListFeeInvoicesResponse,
@@ -49,6 +78,9 @@ import {
   RejectManualBankTransferResponse,
   RejectManualBankTransferParams,
   RejectManualBankTransferQueryParams,
+  RetryFeeProviderReconciliationEventParams,
+  RetryFeeProviderReconciliationEventQueryParams,
+  RetryFeeProviderReconciliationEventResponse,
   RequestFeeAdjustmentBody,
   RequestFeeAdjustmentResponse,
   RequestFeeAdjustmentParams,
@@ -71,6 +103,12 @@ import {
 } from "@workspace/api-zod";
 import { pool } from "@workspace/db";
 import {
+  configuredCheckoutReturnUrl,
+  configuredTestAdapter,
+} from "../lib/fee-providers/factory";
+import { PaymentProviderError, type VerifiedPayment } from "../lib/fee-providers";
+import { retryReconciliationEvent, settleVerifiedPayment } from "./fee-provider-webhooks";
+import {
   assertRoles,
   assertSchoolAccess,
   AuthError,
@@ -78,6 +116,7 @@ import {
   requireAuthentication,
 } from "../middlewares/auth";
 import { invoiceStatus, payableAmount } from "./finance-money";
+import { enqueueVerifiedFeePaymentNotifications } from "./finance-notifications-service";
 
 const router: IRouter = Router();
 router.use(requireAuthentication());
@@ -112,13 +151,15 @@ router.get("/school/finance/settings", async (req, res): Promise<void> => {
     const schoolId = schoolIdFromQuery(req, GetFinanceSettingsQueryParams);
     const result = await pool.query(
       `SELECT school_id AS "schoolId",partial_payments_enabled AS "partialPaymentsEnabled",
-         bank_transfer_enabled AS "bankTransferEnabled",bank_name AS "bankName",
+          bank_transfer_enabled AS "bankTransferEnabled",paystack_enabled AS "paystackEnabled",
+          flutterwave_enabled AS "flutterwaveEnabled",bank_name AS "bankName",
          bank_account_name AS "accountName",bank_account_number AS "accountNumber"
        FROM fee_school_settings WHERE school_id=$1`,
       [schoolId],
     );
     res.json(GetFinanceSettingsResponse.parse(result.rows[0] ?? {
       schoolId, partialPaymentsEnabled: false, bankTransferEnabled: false,
+      paystackEnabled: false, flutterwaveEnabled: false,
       bankName: null, accountName: null, accountNumber: null,
     }));
   } catch (error) { fail(res, error); }
@@ -139,12 +180,14 @@ router.patch("/school/finance/settings", async (req, res): Promise<void> => {
     const currentResult = await client.query(
       `SELECT partial_payments_enabled AS "partialPaymentsEnabled",
          bank_transfer_enabled AS "bankTransferEnabled",bank_name AS "bankName",
+         paystack_enabled AS "paystackEnabled",flutterwave_enabled AS "flutterwaveEnabled",
          bank_account_name AS "accountName",bank_account_number AS "accountNumber"
        FROM fee_school_settings WHERE school_id=$1 FOR UPDATE`,
       [schoolId],
     );
     const current = currentResult.rows[0] ?? {
       partialPaymentsEnabled: false, bankTransferEnabled: false,
+      paystackEnabled: false, flutterwaveEnabled: false,
       bankName: null, accountName: null, accountNumber: null,
     };
     const normalizeSetting = (input: unknown, previous: string | null) => {
@@ -157,6 +200,8 @@ router.patch("/school/finance/settings", async (req, res): Promise<void> => {
     const accountNumber = normalizeSetting(body.accountNumber, current.accountNumber);
     const bankTransferEnabled = body.bankTransferEnabled ?? current.bankTransferEnabled;
     const partialPaymentsEnabled = body.partialPaymentsEnabled ?? current.partialPaymentsEnabled;
+    const paystackEnabled = body.paystackEnabled ?? current.paystackEnabled;
+    const flutterwaveEnabled = body.flutterwaveEnabled ?? current.flutterwaveEnabled;
     if ((bankName !== null && (bankName.length < 2 || bankName.length > 100))
         || (accountName !== null && (accountName.length < 2 || accountName.length > 150))
         || (accountNumber !== null && !/^\d{10}$/.test(accountNumber))) {
@@ -167,20 +212,26 @@ router.patch("/school/finance/settings", async (req, res): Promise<void> => {
     }
     const result = await client.query(
       `INSERT INTO fee_school_settings
-        (school_id,partial_payments_enabled,bank_transfer_enabled,bank_name,bank_account_name,bank_account_number,updated_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (school_id) DO UPDATE SET
+        (school_id,partial_payments_enabled,bank_transfer_enabled,paystack_enabled,flutterwave_enabled,
+         bank_name,bank_account_name,bank_account_number,updated_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (school_id) DO UPDATE SET
         partial_payments_enabled=EXCLUDED.partial_payments_enabled,
-        bank_transfer_enabled=EXCLUDED.bank_transfer_enabled,bank_name=EXCLUDED.bank_name,
+        bank_transfer_enabled=EXCLUDED.bank_transfer_enabled,
+        paystack_enabled=EXCLUDED.paystack_enabled,flutterwave_enabled=EXCLUDED.flutterwave_enabled,
+        bank_name=EXCLUDED.bank_name,
         bank_account_name=EXCLUDED.bank_account_name,bank_account_number=EXCLUDED.bank_account_number,
         updated_by=EXCLUDED.updated_by,updated_at=NOW()
        RETURNING school_id AS "schoolId",partial_payments_enabled AS "partialPaymentsEnabled",
-        bank_transfer_enabled AS "bankTransferEnabled",bank_name AS "bankName",
+         bank_transfer_enabled AS "bankTransferEnabled",paystack_enabled AS "paystackEnabled",
+         flutterwave_enabled AS "flutterwaveEnabled",bank_name AS "bankName",
         bank_account_name AS "accountName",bank_account_number AS "accountNumber"`,
-      [schoolId, partialPaymentsEnabled, bankTransferEnabled, bankName, accountName, accountNumber, context.user.id],
+      [schoolId, partialPaymentsEnabled, bankTransferEnabled, paystackEnabled, flutterwaveEnabled,
+        bankName, accountName, accountNumber, context.user.id],
     );
     await audit(req, client, schoolId, "updated", "finance settings", schoolId,
       {
         changedFields: Object.keys(body), partialPaymentsEnabled, bankTransferEnabled,
+        paystackEnabled, flutterwaveEnabled,
         bankName, accountName, accountNumberLast4: accountNumber?.slice(-4) ?? null,
       });
     await client.query("COMMIT");
@@ -242,6 +293,7 @@ function fail(res: any, error: unknown) {
   if (message.includes("duplicate key")) res.status(409).json({ error: "The operation already exists" });
   else if (message.includes("violates foreign key")) res.status(404).json({ error: "Referenced school resource not found" });
   else if (message === "Verified payment receipt integrity failure") res.status(500).json({ error: message });
+  else if (message === "Finance amount exceeds safe integer precision") res.status(500).json({ error: message });
   else res.status(500).json({ error: "Finance operation failed" });
 }
 
@@ -249,6 +301,12 @@ function dateOnly(value: unknown): string | null {
   if (value instanceof Date && !Number.isNaN(value.valueOf())) return value.toISOString().slice(0, 10);
   if (typeof value === "string") return value.slice(0, 10);
   return null;
+}
+
+function exactInteger(value: unknown): number {
+  const converted = Number(value);
+  if (!Number.isSafeInteger(converted)) throw new Error("Finance amount exceeds safe integer precision");
+  return converted;
 }
 
 function configuredBankDetails(settings: any) {
@@ -288,6 +346,85 @@ async function getStructure(client: any, schoolId: number, id: number) {
     [schoolId, id],
   );
   return result.rows[0];
+}
+
+async function createInvoiceForStudent(
+  client: any,
+  req: Request,
+  schoolId: number,
+  structure: any,
+  student: any,
+  lines: any[],
+  issueDate: string,
+  dueDate: string,
+  createdBy: number,
+  bulk = false,
+) {
+  const subtotal = lines.reduce((total: number, line: any) => total + Number(line.amount_minor), 0);
+  const invoiceNumber = `EDC-${schoolId}-${Date.now()}-${randomUUID().slice(0, 8).toUpperCase()}`;
+  const inserted = await client.query(
+    `INSERT INTO fee_invoices (school_id,student_id,structure_id,academic_session_id,academic_term_id,invoice_number,
+     student_name_snapshot,admission_no_snapshot,class_name_snapshot,section_snapshot,issue_date,due_date,
+     subtotal_minor,total_minor,outstanding_minor,created_by)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$13,$13,$14) RETURNING id`,
+    [schoolId, student.id, structure.id, structure.academic_session_id, structure.academic_term_id,
+      invoiceNumber, `${student.first_name} ${student.last_name}`, student.admission_no,
+      student.class_name, student.section, issueDate, dueDate, subtotal, createdBy],
+  );
+  const invoiceId = inserted.rows[0].id;
+  for (const line of lines) {
+    await client.query(
+      `INSERT INTO fee_invoice_lines (school_id,invoice_id,category_id,category_name_snapshot,description_snapshot,amount_minor)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [schoolId, invoiceId, line.category_id, line.category_name_snapshot, line.description_snapshot, line.amount_minor],
+    );
+  }
+  await audit(req, client, schoolId, "assigned", "invoice", invoiceId, {
+    studentId: student.id, ...(bulk ? { structureId: structure.id, bulk: true } : {}),
+  });
+  return invoiceId;
+}
+
+function assignmentList(value: unknown): any[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try {
+      const parsedAssignments: unknown = JSON.parse(value);
+      return Array.isArray(parsedAssignments) ? parsedAssignments : [];
+    } catch { return []; }
+  }
+  return [];
+}
+
+function bulkAssignmentForStructure(
+  student: any,
+  structure: any,
+  section: string | null,
+): { assignment: any | null; reason: string | null } {
+  const assignments = assignmentList(student.classAssignments);
+  const inSession = assignments.filter((assignment) =>
+    Number(assignment.sessionId) === Number(structure.academic_session_id));
+  if (!inSession.length) return { assignment: null, reason: "NO_MATCHING_SESSION" };
+  const inTerm = inSession.filter((assignment) =>
+    Number(assignment.termId) === Number(structure.academic_term_id));
+  if (!inTerm.length) return { assignment: null, reason: "NO_MATCHING_TERM" };
+  const inClass = inTerm.filter((assignment) =>
+    Number(assignment.classId) === Number(structure.school_class_id));
+  if (!inClass.length) return { assignment: null, reason: "WRONG_CLASS" };
+  const inSection = section === null
+    ? inClass
+    : inClass.filter((assignment) => assignment.section === section);
+  if (!inSection.length) return { assignment: null, reason: "WRONG_SECTION" };
+  const validStatus = inSection.filter((assignment) =>
+    assignment.status === "ACTIVE" || assignment.status === "INACTIVE");
+  if (!validStatus.length) return { assignment: null, reason: "INVALID_ASSIGNMENT_STATUS" };
+  const overlapsTerm = validStatus.filter((assignment) =>
+    (assignment.startDate === null || assignment.startDate === undefined
+      || String(assignment.startDate).slice(0, 10) <= structure.term_end_date)
+    && (assignment.endDate === null || assignment.endDate === undefined
+      || String(assignment.endDate).slice(0, 10) >= structure.term_start_date));
+  if (!overlapsTerm.length) return { assignment: null, reason: "ASSIGNMENT_OUTSIDE_TERM" };
+  return { assignment: overlapsTerm[0], reason: null };
 }
 
 router.get("/school/finance/categories", async (req, res): Promise<void> => {
@@ -467,29 +604,117 @@ router.post("/school/finance/assignments", async (req, res): Promise<void> => {
       [body.structureId, schoolId],
     );
     if (!lines.rows.length) throw new AuthError(409, "Published fee structure has no fee lines");
-    const subtotal = lines.rows.reduce((total: number, line: any) => total + line.amount_minor, 0);
-    const date = (value: Date) => value.toISOString().slice(0, 10);
-    const invoiceNumber = `EDC-${schoolId}-${Date.now()}-${randomUUID().slice(0, 8).toUpperCase()}`;
-    const inserted = await client.query(
-      `INSERT INTO fee_invoices (school_id,student_id,structure_id,academic_session_id,academic_term_id,invoice_number,
-       student_name_snapshot,admission_no_snapshot,class_name_snapshot,section_snapshot,issue_date,due_date,
-       subtotal_minor,total_minor,outstanding_minor,created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$13,$13,$14) RETURNING id`,
-      [schoolId, body.studentId, body.structureId, structure.rows[0].academic_session_id, structure.rows[0].academic_term_id,
-        invoiceNumber, `${student.rows[0].first_name} ${student.rows[0].last_name}`, student.rows[0].admission_no,
-        student.rows[0].class_name, student.rows[0].section, date(body.issueDate), date(body.dueDate), subtotal, context.user.id],
+    const invoiceId = await createInvoiceForStudent(
+      client, req, schoolId, structure.rows[0], student.rows[0], lines.rows,
+      body.issueDate.toISOString().slice(0, 10), body.dueDate.toISOString().slice(0, 10), context.user.id,
     );
-    for (const line of lines.rows) {
-      await client.query(
-        `INSERT INTO fee_invoice_lines (school_id,invoice_id,category_id,category_name_snapshot,description_snapshot,amount_minor)
-         VALUES ($1,$2,$3,$4,$5,$6)`,
-        [schoolId, inserted.rows[0].id, line.category_id, line.category_name_snapshot, line.description_snapshot, line.amount_minor],
-      );
-    }
-    await audit(req, client, schoolId, "assigned", "invoice", inserted.rows[0].id, { studentId: body.studentId });
-    const invoice = await client.query(`SELECT ${invoiceShape} FROM fee_invoices i WHERE i.id=$1 AND i.school_id=$2`, [inserted.rows[0].id, schoolId]);
+    const invoice = await client.query(`SELECT ${invoiceShape} FROM fee_invoices i WHERE i.id=$1 AND i.school_id=$2`, [invoiceId, schoolId]);
     await client.query("COMMIT");
     res.status(201).json(AssignFeeStructureResponse.parse(invoice.rows[0]));
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    fail(res, error);
+  } finally { client.release(); }
+});
+
+router.post("/school/finance/bulk-assignments", async (req, res): Promise<void> => {
+  const client = await pool.connect();
+  try {
+    const schoolId = schoolIdForMutation(req, BulkAssignFeeStructureQueryParams, schoolRoles);
+    const body = parsed(BulkAssignFeeStructureBody, req.body);
+    const context = getUserContext(req);
+    await client.query("BEGIN");
+    const structureResult = await client.query(
+      `SELECT fs.*,t.start_date::text AS term_start_date,t.end_date::text AS term_end_date
+       FROM fee_structures fs
+       JOIN academic_terms t ON t.id=fs.academic_term_id AND t.school_id=fs.school_id
+         AND t.academic_session_id=fs.academic_session_id
+       WHERE fs.id=$1 AND fs.school_id=$2 AND fs.status='PUBLISHED' FOR SHARE OF fs`,
+      [body.structureId, schoolId],
+    );
+    const structure = structureResult.rows[0];
+    if (!structure) throw new AuthError(404, "Published fee structure not found");
+    if (body.classId !== undefined && body.classId !== structure.school_class_id) {
+      throw new AuthError(400, "Bulk assignment class must match the published structure");
+    }
+    if (body.section !== undefined && structure.section !== null && body.section !== structure.section) {
+      throw new AuthError(400, "Bulk assignment section must match the published structure");
+    }
+    const effectiveSection = body.section ?? structure.section;
+    const candidates = await client.query(
+      `SELECT st.id,st.first_name,st.last_name,st.admission_no,
+          COALESCE(json_agg(json_build_object(
+            'sessionId',a.academic_session_id,'termId',a.academic_term_id,
+            'classId',a.school_class_id,'className',sc.name,'section',a.section,
+            'status',a.status,'startDate',a.start_date::text,'endDate',a.end_date::text
+          ) ORDER BY a.start_date DESC NULLS LAST,a.id DESC)
+            FILTER (WHERE a.id IS NOT NULL),'[]'::json) AS "classAssignments"
+       FROM students st
+       LEFT JOIN student_class_assignments a ON a.student_id=st.id AND a.school_id=st.school_id
+       LEFT JOIN school_classes sc ON sc.id=a.school_class_id AND sc.school_id=a.school_id
+       WHERE st.school_id=$1 AND LOWER(st.status)='active'
+         AND UPPER(st.admission_status)='ADMITTED'
+       GROUP BY st.id
+       ORDER BY st.id`,
+      [schoolId],
+    );
+    const lines = await client.query(
+      `SELECT * FROM fee_structure_lines WHERE structure_id=$1 AND school_id=$2 ORDER BY id`,
+      [body.structureId, schoolId],
+    );
+    if (!lines.rows.length) throw new AuthError(409, "Published fee structure has no fee lines");
+    const results: Array<{ studentId: number; invoiceId: number | null; status: "CREATED" | "SKIPPED"; reason: string | null }> = [];
+    const issueDate = body.issueDate.toISOString().slice(0, 10);
+    const dueDate = body.dueDate.toISOString().slice(0, 10);
+    for (const student of candidates.rows) {
+      const duplicate = await client.query(
+        `SELECT id FROM fee_invoices WHERE school_id=$1 AND student_id=$2 AND structure_id=$3`,
+        [schoolId, student.id, body.structureId],
+      );
+      if (duplicate.rows[0]) {
+        results.push({ studentId: student.id, invoiceId: duplicate.rows[0].id, status: "SKIPPED", reason: "EXISTING_INVOICE" });
+        continue;
+      }
+      const { assignment, reason } = bulkAssignmentForStructure(student, structure, effectiveSection);
+      if (!assignment) {
+        results.push({ studentId: student.id, invoiceId: null, status: "SKIPPED", reason });
+        continue;
+      }
+      const invoiceStudent = {
+        ...student,
+        class_name: assignment.className,
+        section: assignment.section,
+      };
+      await client.query("SAVEPOINT fee_bulk_student");
+      try {
+        const invoiceId = await createInvoiceForStudent(
+          client, req, schoolId, structure, invoiceStudent, lines.rows, issueDate, dueDate, context.user.id, true,
+        );
+        await client.query("RELEASE SAVEPOINT fee_bulk_student");
+        results.push({ studentId: student.id, invoiceId, status: "CREATED", reason: null });
+      } catch {
+        await client.query("ROLLBACK TO SAVEPOINT fee_bulk_student");
+        await client.query("RELEASE SAVEPOINT fee_bulk_student");
+        const racedDuplicate = await client.query(
+          `SELECT id FROM fee_invoices WHERE school_id=$1 AND student_id=$2 AND structure_id=$3`,
+          [schoolId, student.id, body.structureId],
+        );
+        results.push({
+          studentId: student.id, invoiceId: racedDuplicate.rows[0]?.id ?? null,
+          status: "SKIPPED", reason: racedDuplicate.rows[0] ? "EXISTING_INVOICE" : "ASSIGNMENT_FAILED",
+        });
+      }
+    }
+    await audit(req, client, schoolId, "completed bulk assignment", "fee structure", body.structureId, {
+      createdCount: results.filter((result) => result.status === "CREATED").length,
+      skippedCount: results.filter((result) => result.status === "SKIPPED").length,
+    });
+    await client.query("COMMIT");
+    res.json(BulkAssignFeeStructureResponse.parse({
+      createdCount: results.filter((result) => result.status === "CREATED").length,
+      skippedCount: results.filter((result) => result.status === "SKIPPED").length,
+      results,
+    }));
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
     fail(res, error);
@@ -647,6 +872,87 @@ router.get("/parent/fees/invoices/:invoiceId/bank-details", async (req, res): Pr
     }
     res.json(GetParentFeeInvoiceBankDetailsResponse.parse({
       invoiceId, schoolId: invoice.rows[0].schoolId, available: true, ...bankDetails,
+    }));
+  } catch (error) { fail(res, error); }
+});
+
+router.get("/parent/fees/invoices/:invoiceId/payment-methods", async (req, res): Promise<void> => {
+  try {
+    assertRoles(req, ["PARENT"]);
+    const { invoiceId } = parsed(GetParentFeeInvoicePaymentMethodsParams, req.params);
+    const context = getUserContext(req);
+    const invoice = await pool.query(
+      `SELECT i.id,i.school_id AS "schoolId",i.status,i.outstanding_minor AS "outstandingMinor",i.currency
+       FROM fee_invoices i
+       WHERE i.id=$1 AND EXISTS (
+         SELECT 1 FROM parents p JOIN parent_student_relationships r ON r.parent_id=p.id
+         WHERE p.user_id=$2 AND p.school_id=i.school_id AND p.status='ACTIVE'
+           AND r.student_id=i.student_id AND r.status='ACTIVE'
+       )`,
+      [invoiceId, context.user.id],
+    );
+    if (!invoice.rows[0]) throw new AuthError(404, "Invoice not found");
+    if (invoice.rows[0].status === "CANCELLED" || invoice.rows[0].status === "PAID"
+        || Number(invoice.rows[0].outstandingMinor) <= 0) {
+      throw new AuthError(409, "Invoice is not payable");
+    }
+
+    const settings = await pool.query(
+      `SELECT bank_transfer_enabled AS "bankTransferEnabled",bank_name AS "bankName",
+          bank_account_name AS "accountName",bank_account_number AS "accountNumber",
+          paystack_enabled AS "paystackEnabled",flutterwave_enabled AS "flutterwaveEnabled"
+       FROM fee_school_settings WHERE school_id=$1`,
+      [invoice.rows[0].schoolId],
+    );
+    const schoolSettings = settings.rows[0];
+    const methods: Array<"BANK_TRANSFER" | "PAYSTACK" | "FLUTTERWAVE"> = [];
+    if (configuredBankDetails(schoolSettings)) methods.push("BANK_TRANSFER");
+
+    const returnUrlAvailable = configuredCheckoutReturnUrl() !== null;
+    const amountMinor = Number(invoice.rows[0].outstandingMinor);
+    const currency = String(invoice.rows[0].currency).toUpperCase();
+    for (const provider of ["PAYSTACK", "FLUTTERWAVE"] as const) {
+      const enabled = provider === "PAYSTACK"
+        ? schoolSettings?.paystackEnabled
+        : schoolSettings?.flutterwaveEnabled;
+      if (!enabled || !returnUrlAvailable) continue;
+      try {
+        const adapter = configuredTestAdapter(provider);
+        if (adapter?.validateAmount(amountMinor, currency)) methods.push(provider);
+      } catch {
+        // Malformed or live credentials make this provider unavailable; never expose configuration details.
+      }
+    }
+    res.json(GetParentFeeInvoicePaymentMethodsResponse.parse(methods));
+  } catch (error) { fail(res, error); }
+});
+
+router.get("/parent/fees/invoices/:invoiceId/checkout-policy", async (req, res): Promise<void> => {
+  try {
+    assertRoles(req, ["PARENT"]);
+    const { invoiceId } = parsed(GetParentFeeInvoiceCheckoutPolicyParams, req.params);
+    const context = getUserContext(req);
+    const result = await pool.query(
+      `SELECT i.id AS "invoiceId",i.school_id AS "schoolId",
+          i.outstanding_minor AS "outstandingMinor",
+          COALESCE(fs.partial_payments_enabled,false) AS "partialPaymentsEnabled"
+       FROM fee_invoices i
+       LEFT JOIN fee_school_settings fs ON fs.school_id=i.school_id
+       WHERE i.id=$1 AND EXISTS (
+         SELECT 1 FROM parents p JOIN parent_student_relationships r ON r.parent_id=p.id
+         WHERE p.user_id=$2 AND p.school_id=i.school_id AND p.status='ACTIVE'
+           AND r.student_id=i.student_id AND r.status='ACTIVE'
+       )`,
+      [invoiceId, context.user.id],
+    );
+    const row = result.rows[0];
+    if (!row) throw new AuthError(404, "Invoice not found");
+    res.json(GetParentFeeInvoiceCheckoutPolicyResponse.parse({
+      ...row,
+      invoiceId: Number(row.invoiceId),
+      schoolId: Number(row.schoolId),
+      outstandingMinor: Number(row.outstandingMinor),
+      partialPaymentsEnabled: Boolean(row.partialPaymentsEnabled),
     }));
   } catch (error) { fail(res, error); }
 });
@@ -837,6 +1143,7 @@ router.post("/school/finance/payments/:paymentId/verify", async (req, res): Prom
     if (persistedReceipt.rows[0]?.receipt_number !== receiptNumber) {
       throw new Error("Verified payment receipt integrity failure");
     }
+    await enqueueVerifiedFeePaymentNotifications(client, paymentId, schoolId);
     await audit(req, client, schoolId, "verified manual bank transfer", "payment", paymentId, {
       amountMinor: payment.rows[0].amount_minor, evidenceReference, reviewerNotes,
     });
@@ -884,6 +1191,220 @@ router.post("/school/finance/payments/:paymentId/reject", async (req, res): Prom
     await audit(req, client, schoolId, "rejected manual bank transfer", "payment", paymentId, { reason });
     await client.query("COMMIT");
     res.json(RejectManualBankTransferResponse.parse(result.rows[0]));
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    fail(res, error);
+  } finally { client.release(); }
+});
+
+const refundShape = `id,school_id AS "schoolId",payment_id AS "paymentId",invoice_id AS "invoiceId",
+  amount_minor AS "amountMinor",currency,reason,status,reference,
+  evidence_reference AS "evidenceReference",reviewer_notes AS "reviewerNotes"`;
+
+router.post("/school/finance/payments/:paymentId/refunds", async (req, res): Promise<void> => {
+  const client = await pool.connect();
+  try {
+    const { paymentId } = parsed(RequestFeeRefundParams, req.params);
+    const schoolId = schoolIdForMutation(req, RequestFeeRefundQueryParams, schoolRoles);
+    const body = parsed(RequestFeeRefundBody, req.body);
+    const headers = parsed(RequestFeeRefundHeader, { "Idempotency-Key": req.get("Idempotency-Key") });
+    const context = getUserContext(req);
+    const reason = body.reason.trim();
+    const idempotencyKey = `REFUND:${context.user.id}:${headers["Idempotency-Key"]}`;
+    await client.query("BEGIN");
+    const paymentIdentity = await client.query(
+      `SELECT invoice_id FROM fee_payments WHERE id=$1 AND school_id=$2`,
+      [paymentId, schoolId],
+    );
+    if (!paymentIdentity.rows[0]) throw new AuthError(404, "Payment not found");
+    const payment = await client.query(
+      `SELECT * FROM fee_payments WHERE id=$1 AND school_id=$2 AND invoice_id=$3 FOR UPDATE`,
+      [paymentId, schoolId, paymentIdentity.rows[0].invoice_id],
+    );
+    if (!payment.rows[0]) throw new AuthError(404, "Payment not found");
+    const invoice = await client.query(
+      `SELECT * FROM fee_invoices WHERE id=$1 AND school_id=$2 FOR UPDATE`,
+      [paymentIdentity.rows[0].invoice_id, schoolId],
+    );
+    if (!invoice.rows[0]) throw new AuthError(404, "Invoice not found");
+    const replay = await client.query(
+      `SELECT ${refundShape} FROM fee_refunds WHERE school_id=$1 AND idempotency_key=$2`,
+      [schoolId, idempotencyKey],
+    );
+    if (replay.rows[0]) {
+      if (replay.rows[0].paymentId !== paymentId || replay.rows[0].amountMinor !== body.amountMinor
+          || replay.rows[0].reason !== reason) {
+        throw new AuthError(409, "Idempotency key was already used for a different refund request");
+      }
+      await client.query("COMMIT");
+      res.status(201).json(RequestFeeRefundResponse.parse(replay.rows[0]));
+      return;
+    }
+    if (payment.rows[0].status !== "VERIFIED") {
+      throw new AuthError(409, "Only a verified payment may be refunded");
+    }
+    const refunded = await client.query(
+      `SELECT COALESCE(SUM(amount_minor),0)::int AS total_minor
+       FROM fee_refunds WHERE school_id=$1 AND payment_id=$2 AND status IN ('PENDING','APPROVED')`,
+      [schoolId, paymentId],
+    );
+    const refundableMinor = Number(payment.rows[0].amount_minor) - Number(refunded.rows[0].total_minor);
+    if (!Number.isSafeInteger(body.amountMinor) || body.amountMinor <= 0) {
+      throw new AuthError(400, "Refund amount must be a positive integer number of minor currency units");
+    }
+    if (body.amountMinor > refundableMinor) {
+      throw new AuthError(409, "Refund amount exceeds the remaining refundable payment balance");
+    }
+    const reference = `EDC-REF-${randomUUID().replaceAll("-", "").slice(0, 20).toUpperCase()}`;
+    const created = await client.query(
+      `INSERT INTO fee_refunds (school_id,payment_id,invoice_id,reference,idempotency_key,amount_minor,currency,reason,requested_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING ${refundShape}`,
+      [schoolId, paymentId, invoice.rows[0].id, reference, idempotencyKey, body.amountMinor,
+        payment.rows[0].currency, reason, context.user.id],
+    );
+    await audit(req, client, schoolId, "requested refund", "fee refund", created.rows[0].id, {
+      paymentId, amountMinor: body.amountMinor, reference,
+    });
+    await client.query("COMMIT");
+    res.status(201).json(RequestFeeRefundResponse.parse(created.rows[0]));
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    fail(res, error);
+  } finally { client.release(); }
+});
+
+const schoolRefundHistoryShape = `fr.id,fr.school_id AS "schoolId",fr.payment_id AS "paymentId",
+  fr.invoice_id AS "invoiceId",i.invoice_number AS "invoiceNumber",p.student_id AS "studentId",
+  i.student_name_snapshot AS "studentName",i.class_name_snapshot AS "className",
+  i.section_snapshot AS section,p.reference AS "paymentReference",p.amount_minor AS "paymentAmountMinor",
+  p.method AS "paymentMethod",p.status AS "paymentStatus",fr.amount_minor AS "amountMinor",
+  fr.currency,fr.reason,fr.status,fr.reference,fr.evidence_reference AS "evidenceReference",
+  fr.reviewer_notes AS "reviewerNotes",
+  to_char(fr.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "requestedAt",
+  CASE WHEN fr.approved_at IS NULL THEN NULL
+    ELSE to_char(fr.approved_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS "approvedAt"`;
+
+function schoolRefundJoinWhere() {
+  return `FROM fee_refunds fr
+    JOIN fee_payments p ON p.id=fr.payment_id AND p.school_id=fr.school_id AND p.invoice_id=fr.invoice_id
+    JOIN fee_invoices i ON i.id=fr.invoice_id AND i.school_id=fr.school_id`;
+}
+
+router.get("/school/finance/refunds", async (req, res): Promise<void> => {
+  try {
+    const filters = parsed(ListSchoolFeeRefundsQueryParams, req.query);
+    const schoolId = schoolIdForMutation(req, { parse: () => filters }, schoolRoles);
+    const result = await pool.query(
+      `SELECT ${schoolRefundHistoryShape} ${schoolRefundJoinWhere()}
+       WHERE fr.school_id=$1 AND ($2::text='ALL' OR fr.status=$2)
+       ORDER BY fr.created_at DESC,fr.id DESC`,
+      [schoolId, filters.status],
+    );
+    res.json(ListSchoolFeeRefundsResponse.parse(result.rows));
+  } catch (error) { fail(res, error); }
+});
+
+router.get("/school/finance/refunds/:refundId", async (req, res): Promise<void> => {
+  try {
+    const { refundId } = parsed(GetSchoolFeeRefundParams, req.params);
+    const { schoolId } = parsed(GetSchoolFeeRefundQueryParams, req.query);
+    schoolIdForMutation(req, { parse: () => ({ schoolId }) }, schoolRoles);
+    const result = await pool.query(
+      `SELECT ${schoolRefundHistoryShape} ${schoolRefundJoinWhere()}
+       WHERE fr.id=$1 AND fr.school_id=$2`,
+      [refundId, schoolId],
+    );
+    if (!result.rows[0]) throw new AuthError(404, "Refund not found");
+    res.json(GetSchoolFeeRefundResponse.parse(result.rows[0]));
+  } catch (error) { fail(res, error); }
+});
+
+router.post("/school/finance/refunds/:refundId/approve", async (req, res): Promise<void> => {
+  const client = await pool.connect();
+  try {
+    const { refundId } = parsed(ApproveFeeRefundParams, req.params);
+    const schoolId = schoolIdForMutation(req, ApproveFeeRefundQueryParams, ["SCHOOL_ADMIN"]);
+    const body = parsed(ApproveFeeRefundBody, req.body);
+    const evidenceReference = body.evidenceReference.trim();
+    const reviewerNotes = body.reviewerNotes.trim();
+    if (evidenceReference.length < 3 || reviewerNotes.length < 3) {
+      throw new AuthError(400, "External refund evidence and reviewer notes are required");
+    }
+    const context = getUserContext(req);
+    await client.query("BEGIN");
+    const refundIdentity = await client.query(
+      `SELECT payment_id,invoice_id FROM fee_refunds WHERE id=$1 AND school_id=$2`,
+      [refundId, schoolId],
+    );
+    if (!refundIdentity.rows[0]) throw new AuthError(404, "Refund not found");
+    const payment = await client.query(
+      `SELECT * FROM fee_payments WHERE id=$1 AND school_id=$2 AND invoice_id=$3 FOR UPDATE`,
+      [refundIdentity.rows[0].payment_id, schoolId, refundIdentity.rows[0].invoice_id],
+    );
+    if (!payment.rows[0]) throw new AuthError(404, "Payment not found");
+    const invoice = await client.query(
+      `SELECT * FROM fee_invoices WHERE id=$1 AND school_id=$2 FOR UPDATE`,
+      [refundIdentity.rows[0].invoice_id, schoolId],
+    );
+    if (!invoice.rows[0]) throw new AuthError(404, "Invoice not found");
+    const current = await client.query(
+      `SELECT * FROM fee_refunds WHERE id=$1 AND school_id=$2 AND payment_id=$3 AND invoice_id=$4 FOR UPDATE`,
+      [refundId, schoolId, refundIdentity.rows[0].payment_id, invoice.rows[0].id],
+    );
+    if (!current.rows[0]) throw new AuthError(404, "Refund not found");
+    if (current.rows[0].status === "APPROVED") {
+      if (current.rows[0].approved_by !== context.user.id
+          || current.rows[0].evidence_reference !== evidenceReference
+          || current.rows[0].reviewer_notes !== reviewerNotes) {
+        throw new AuthError(409, "Refund was already approved with different evidence");
+      }
+      await client.query("COMMIT");
+      res.json(ApproveFeeRefundResponse.parse({
+        id: current.rows[0].id, schoolId, paymentId: current.rows[0].payment_id, invoiceId: current.rows[0].invoice_id,
+        amountMinor: current.rows[0].amount_minor, currency: current.rows[0].currency, reason: current.rows[0].reason,
+        status: current.rows[0].status, reference: current.rows[0].reference,
+        evidenceReference: current.rows[0].evidence_reference, reviewerNotes: current.rows[0].reviewer_notes,
+      }));
+      return;
+    }
+    if (current.rows[0].status !== "PENDING") throw new AuthError(409, "Only pending refunds can be approved");
+    if (payment.rows[0].status !== "VERIFIED") {
+      throw new AuthError(409, "Refund requires its original verified payment");
+    }
+    const priorRefunds = await client.query(
+      `SELECT COALESCE(SUM(amount_minor),0)::int AS total_minor
+       FROM fee_refunds WHERE school_id=$1 AND payment_id=$2 AND status='APPROVED'`,
+      [schoolId, payment.rows[0].id],
+    );
+    if (Number(priorRefunds.rows[0].total_minor) + Number(current.rows[0].amount_minor) > Number(payment.rows[0].amount_minor)
+        || Number(invoice.rows[0].paid_minor) < Number(current.rows[0].amount_minor)) {
+      throw new AuthError(409, "Refund exceeds the verified payment or invoice paid balance");
+    }
+    const duplicateEvidence = await client.query(
+      `SELECT id FROM fee_refunds WHERE school_id=$1 AND id<>$2 AND status='APPROVED'
+       AND LOWER(BTRIM(evidence_reference))=LOWER(BTRIM($3)) FOR UPDATE`,
+      [schoolId, refundId, evidenceReference],
+    );
+    if (duplicateEvidence.rows[0]) throw new AuthError(409, "This external refund evidence reference was already used");
+    const nextPaid = Number(invoice.rows[0].paid_minor) - Number(current.rows[0].amount_minor);
+    const nextOutstanding = Number(invoice.rows[0].total_minor) - nextPaid;
+    const updated = await client.query(
+      `UPDATE fee_refunds SET status='APPROVED',approved_by=$1,approved_at=NOW(),
+         evidence_reference=$2,reviewer_notes=$3
+       WHERE id=$4 AND school_id=$5 AND status='PENDING' RETURNING ${refundShape}`,
+      [context.user.id, evidenceReference, reviewerNotes, refundId, schoolId],
+    );
+    if (!updated.rows[0]) throw new AuthError(409, "Refund approval did not complete");
+    await client.query(
+      `UPDATE fee_invoices SET paid_minor=$1,outstanding_minor=$2,status=$3 WHERE id=$4 AND school_id=$5`,
+      [nextPaid, nextOutstanding, invoiceStatus(nextPaid, invoice.rows[0].total_minor), invoice.rows[0].id, schoolId],
+    );
+    await audit(req, client, schoolId, "approved evidenced refund", "fee refund", refundId, {
+      paymentId: payment.rows[0].id, reference: current.rows[0].reference,
+      amountMinor: current.rows[0].amount_minor, evidenceReference, reviewerNotes,
+    });
+    await client.query("COMMIT");
+    res.json(ApproveFeeRefundResponse.parse(updated.rows[0]));
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
     fail(res, error);
@@ -1032,13 +1553,696 @@ router.get("/school/finance/summary", async (req, res): Promise<void> => {
   } catch (error) { fail(res, error); }
 });
 
-router.post("/school/finance/payments/providers/:provider/initialize", async (req, res): Promise<void> => {
+router.get("/school/finance/reports", async (req, res): Promise<void> => {
   try {
-    parsed(InitializeFeeProviderPaymentParams, req.params);
-    const schoolId = schoolIdForMutation(req, InitializeFeeProviderPaymentQueryParams, schoolRoles);
-    parsed(InitializeFeeProviderPaymentBody, req.body);
-    res.status(503).json({ error: "Online payment provider is unavailable: credentials and verified provider integration are not configured" });
+    const filters = parsed(GetSchoolFinanceReportQueryParams, req.query);
+    assertSchoolAccess(req, filters.schoolId, [...schoolRoles]);
+    const values: unknown[] = [filters.schoolId];
+    const predicates = ["i.school_id=$1", "i.status <> 'CANCELLED'"];
+    const add = (sql: (index: number) => string, value: unknown) => {
+      values.push(value);
+      predicates.push(sql(values.length));
+    };
+    if (filters.sessionId !== undefined) add((n) => `i.academic_session_id=$${n}`, filters.sessionId);
+    if (filters.termId !== undefined) add((n) => `i.academic_term_id=$${n}`, filters.termId);
+    if (filters.classId !== undefined) {
+      add((n) => `EXISTS (SELECT 1 FROM school_classes sc WHERE sc.id=$${n} AND sc.school_id=i.school_id AND sc.name=i.class_name_snapshot)`, filters.classId);
+    }
+    if (filters.section !== undefined) add((n) => `i.section_snapshot=$${n}`, filters.section);
+    if (filters.categoryId !== undefined) {
+      add((n) => `EXISTS (SELECT 1 FROM fee_invoice_lines fil WHERE fil.invoice_id=i.id AND fil.school_id=i.school_id AND fil.category_id=$${n})`, filters.categoryId);
+    }
+    if (filters.from) add((n) => `i.issue_date >= $${n}::date`, dateOnly(filters.from));
+    if (filters.to) add((n) => `i.issue_date <= $${n}::date`, dateOnly(filters.to));
+    const invoiceWhere = predicates.join(" AND ");
+    const totals = await pool.query(
+      `WITH invoice_scope AS (SELECT i.* FROM fee_invoices i WHERE ${invoiceWhere})
+       SELECT COALESCE(SUM(total_minor),0)::bigint AS "totalBilledMinor",
+         COALESCE(SUM(paid_minor),0)::bigint AS "totalCollectedMinor",
+         COALESCE(SUM(outstanding_minor),0)::bigint AS "totalOutstandingMinor",
+         COALESCE(SUM(discount_minor),0)::bigint AS "totalDiscountMinor",
+         COALESCE(SUM(waiver_minor),0)::bigint AS "totalWaiverMinor",
+         (SELECT COALESCE(SUM(fr.amount_minor),0)::bigint FROM fee_refunds fr
+           JOIN invoice_scope si ON si.id=fr.invoice_id AND si.school_id=fr.school_id
+           WHERE fr.status='APPROVED') AS "totalRefundedMinor"
+       FROM invoice_scope`,
+      values,
+    );
+    const reportType = filters.reportType;
+    const additional: unknown[] = [...values];
+    const commonCte = `WITH invoice_scope AS (SELECT i.* FROM fee_invoices i WHERE ${invoiceWhere})`;
+    let grouped: any;
+    switch (reportType) {
+      case "payments":
+      case "provider-reconciliation": {
+        const pWhere = ["p.school_id=$1", "EXISTS (SELECT 1 FROM invoice_scope si WHERE si.id=p.invoice_id AND si.school_id=p.school_id)"];
+        if (filters.status) {
+          additional.push(filters.status);
+          pWhere.push(`p.status=$${additional.length}`);
+        }
+        if (filters.provider) {
+          additional.push(filters.provider);
+          pWhere.push(`p.provider=$${additional.length}`);
+        }
+        const group = reportType === "payments" ? "p.method || ':' || p.status" : "p.provider || ':' || p.status";
+        grouped = await pool.query(
+          `${commonCte}
+           SELECT ${group} AS label,COUNT(*)::int AS count,
+             COALESCE(SUM(CASE WHEN p.status='VERIFIED' THEN p.amount_minor ELSE 0 END),0)::bigint AS "amountMinor",
+             COALESCE(SUM(CASE WHEN p.status<>'VERIFIED' THEN p.amount_minor ELSE 0 END),0)::bigint AS "secondaryAmountMinor"
+           FROM fee_payments p WHERE ${pWhere.join(" AND ")} GROUP BY label ORDER BY label`,
+          additional,
+        );
+        break;
+      }
+      case "outstanding":
+        {
+        const outstandingValues = [...values];
+        const statusPredicate = filters.status
+          ? (outstandingValues.push(filters.status), ` AND status=$${outstandingValues.length}`)
+          : "";
+        grouped = await pool.query(
+          `${commonCte} SELECT status AS label,COUNT(*)::int AS count,
+             COALESCE(SUM(outstanding_minor),0)::bigint AS "amountMinor",
+             COALESCE(SUM(total_minor),0)::bigint AS "secondaryAmountMinor"
+           FROM invoice_scope WHERE outstanding_minor>0${statusPredicate} GROUP BY status ORDER BY status`,
+          outstandingValues,
+        );
+        break;
+        }
+      case "category": {
+        const lineValues = [...values];
+        let categoryFilter = "";
+        if (filters.categoryId !== undefined) {
+          lineValues.push(filters.categoryId);
+          categoryFilter = ` AND fil.category_id=$${lineValues.length}`;
+        }
+        grouped = await pool.query(
+          `${commonCte} SELECT fil.category_name_snapshot AS label,COUNT(DISTINCT fil.invoice_id)::int AS count,
+             COALESCE(SUM(fil.amount_minor),0)::bigint AS "amountMinor",
+             COALESCE(SUM(si.outstanding_minor),0)::bigint AS "secondaryAmountMinor"
+           FROM fee_invoice_lines fil JOIN invoice_scope si ON si.id=fil.invoice_id AND si.school_id=fil.school_id
+           WHERE fil.school_id=$1${categoryFilter}
+           GROUP BY fil.category_name_snapshot ORDER BY fil.category_name_snapshot`,
+          lineValues,
+        );
+        break;
+      }
+      case "class":
+        grouped = await pool.query(
+          `${commonCte} SELECT class_name_snapshot || COALESCE(' / ' || NULLIF(section_snapshot,''),'') AS label,
+             COUNT(*)::int AS count,COALESCE(SUM(total_minor),0)::bigint AS "amountMinor",
+             COALESCE(SUM(outstanding_minor),0)::bigint AS "secondaryAmountMinor"
+           FROM invoice_scope GROUP BY class_name_snapshot,section_snapshot ORDER BY class_name_snapshot,section_snapshot`,
+          values,
+        );
+        break;
+      case "term":
+        grouped = await pool.query(
+          `${commonCte} SELECT academic_session_id::text || ':' || academic_term_id::text AS label,
+             COUNT(*)::int AS count,COALESCE(SUM(total_minor),0)::bigint AS "amountMinor",
+             COALESCE(SUM(outstanding_minor),0)::bigint AS "secondaryAmountMinor"
+           FROM invoice_scope GROUP BY academic_session_id,academic_term_id ORDER BY academic_session_id,academic_term_id`,
+          values,
+        );
+        break;
+      case "adjustment":
+        {
+        const adjustmentValues = [...values];
+        const statusPredicate = filters.status
+          ? (adjustmentValues.push(filters.status), ` AND a.status=$${adjustmentValues.length}`)
+          : "";
+        grouped = await pool.query(
+          `${commonCte} SELECT a.kind || ':' || a.status AS label,COUNT(*)::int AS count,
+             COALESCE(SUM(a.amount_minor),0)::bigint AS "amountMinor",
+             COALESCE(SUM(CASE WHEN a.status='PENDING' THEN a.amount_minor ELSE 0 END),0)::bigint AS "secondaryAmountMinor"
+           FROM fee_adjustments a JOIN invoice_scope si ON si.id=a.invoice_id AND si.school_id=a.school_id
+           WHERE a.school_id=$1${statusPredicate} GROUP BY a.kind,a.status ORDER BY a.kind,a.status`,
+          adjustmentValues,
+        );
+        break;
+        }
+      case "refund":
+        {
+        const refundValues = [...values];
+        const statusPredicate = filters.status
+          ? (refundValues.push(filters.status), ` AND fr.status=$${refundValues.length}`)
+          : "";
+        grouped = await pool.query(
+          `${commonCte} SELECT fr.status AS label,COUNT(*)::int AS count,
+             COALESCE(SUM(CASE WHEN fr.status='APPROVED' THEN fr.amount_minor ELSE 0 END),0)::bigint AS "amountMinor",
+             COALESCE(SUM(CASE WHEN fr.status='PENDING' THEN fr.amount_minor ELSE 0 END),0)::bigint AS "secondaryAmountMinor"
+           FROM fee_refunds fr JOIN invoice_scope si ON si.id=fr.invoice_id AND si.school_id=fr.school_id
+           WHERE fr.school_id=$1${statusPredicate} GROUP BY fr.status ORDER BY fr.status`,
+          refundValues,
+        );
+        break;
+        }
+      default:
+        grouped = await pool.query(
+          `${commonCte} SELECT 'TOTAL'::text AS label,COUNT(*)::int AS count,
+             COALESCE(SUM(total_minor),0)::bigint AS "amountMinor",
+             COALESCE(SUM(outstanding_minor),0)::bigint AS "secondaryAmountMinor"
+           FROM invoice_scope`,
+          values,
+        );
+    }
+    res.json(GetSchoolFinanceReportResponse.parse({
+      schoolId: filters.schoolId,
+      reportType,
+      ...Object.fromEntries(Object.entries(totals.rows[0]).map(([key, value]) => [key, exactInteger(value)])),
+      rows: grouped.rows.map((row: any) => ({
+        label: row.label, count: exactInteger(row.count), amountMinor: exactInteger(row.amountMinor),
+        secondaryAmountMinor: exactInteger(row.secondaryAmountMinor),
+      })),
+    }));
   } catch (error) { fail(res, error); }
+});
+
+router.get("/school/finance/provider-reconciliation", async (req, res): Promise<void> => {
+  try {
+    const schoolId = schoolIdForMutation(req, ListFeeProviderReconciliationEventsQueryParams, schoolRoles);
+    const result = await pool.query(
+      `SELECT id,provider,event_id AS "eventId",payment_id AS "paymentId",school_id AS "schoolId",
+          provider_reference AS "providerReference",webhook_transaction_id AS "webhookTransactionId",
+          verified_transaction_id AS "verifiedTransactionId",status,error_message AS "errorMessage",
+          signature_verified AS "signatureVerified",received_at AS "receivedAt",updated_at AS "updatedAt"
+       FROM fee_provider_webhook_events
+       WHERE school_id=$1 AND status='RECONCILIATION_REQUIRED'
+       ORDER BY received_at DESC,id DESC LIMIT 200`,
+      [schoolId],
+    );
+    res.json(ListFeeProviderReconciliationEventsResponse.parse(result.rows));
+  } catch (error) { fail(res, error); }
+});
+
+router.post("/school/finance/provider-reconciliation/:eventId/retry", async (req, res): Promise<void> => {
+  try {
+    const { eventId } = parsed(RetryFeeProviderReconciliationEventParams, req.params);
+    const schoolId = schoolIdForMutation(req, RetryFeeProviderReconciliationEventQueryParams, schoolRoles);
+    const outcome = await retryReconciliationEvent(schoolId, eventId);
+    res.json(RetryFeeProviderReconciliationEventResponse.parse({ eventId, outcome }));
+  } catch (error) {
+    if (error instanceof PaymentProviderError) {
+      res.status(409).json({ error: "Provider verification did not resolve this reconciliation event" });
+      return;
+    }
+    if (error instanceof Error && error.message === "Provider test credentials are unavailable") {
+      res.status(503).json({ error: error.message });
+      return;
+    }
+    if (error instanceof Error && error.message === "Reconciliation event cannot be safely retried") {
+      res.status(409).json({ error: error.message });
+      return;
+    }
+    fail(res, error);
+  }
+});
+
+router.post("/school/finance/provider-checkouts/:paymentId/reconcile", async (req, res): Promise<void> => {
+  const client = await pool.connect();
+  let schoolId = 0;
+  let paymentId = 0;
+  let claimToken = "";
+  let checkout: any;
+  try {
+    ({ paymentId } = parsed(ReconcileFeeProviderCheckoutParams, req.params));
+    schoolId = schoolIdForMutation(req, ReconcileFeeProviderCheckoutQueryParams, schoolRoles);
+    claimToken = randomUUID();
+    await client.query("BEGIN");
+    const found = await client.query(
+      `SELECT p.id,p.school_id,p.invoice_id,p.reference,p.amount_minor,p.currency,p.provider,
+          p.provider_transaction_id,p.status,i.student_id AS invoice_student_id,i.currency AS invoice_currency,
+          i.status AS invoice_status,i.outstanding_minor,cs.state AS session_state,
+          cs.claim_token,cs.claim_expires_at
+       FROM fee_payments p
+       JOIN fee_provider_checkout_sessions cs ON cs.payment_id=p.id AND cs.school_id=p.school_id
+       JOIN fee_invoices i ON i.id=p.invoice_id AND i.school_id=p.school_id
+       WHERE p.id=$1 AND p.school_id=$2
+       FOR UPDATE OF p,cs,i`,
+      [paymentId, schoolId],
+    );
+    checkout = found.rows[0];
+    if (!checkout) throw new AuthError(404, "Provider checkout not found");
+    if (checkout.session_state === "SETTLED" || checkout.status === "VERIFIED") {
+      await audit(req, client, schoolId, "provider checkout reconciliation: already settled",
+        "provider checkout", paymentId, { provider: checkout.provider, reference: checkout.reference });
+      await client.query("COMMIT");
+      res.json(ReconcileFeeProviderCheckoutResponse.parse({ paymentId, outcome: "duplicate" }));
+      return;
+    }
+    if (!["INITIALIZING", "READY", "FAILED", "RELEASED"].includes(checkout.session_state)) {
+      throw new AuthError(409, "Provider checkout is not eligible for reconciliation");
+    }
+    const claimExpiresAt = checkout.claim_expires_at instanceof Date
+      ? checkout.claim_expires_at.valueOf()
+      : new Date(checkout.claim_expires_at ?? "").valueOf();
+    if (checkout.claim_token && Number.isFinite(claimExpiresAt) && claimExpiresAt > Date.now()) {
+      throw new AuthError(409, "Provider checkout reconciliation is already processing");
+    }
+    const claimed = await client.query(
+      `UPDATE fee_provider_checkout_sessions SET claim_token=$1,claim_expires_at=NOW()+INTERVAL '30 seconds',
+          updated_at=NOW()
+       WHERE payment_id=$2 AND school_id=$3 AND state IN ('INITIALIZING','READY','FAILED','RELEASED')
+         AND (claim_token IS NULL OR claim_expires_at<=NOW())
+       RETURNING payment_id`,
+      [claimToken, paymentId, schoolId],
+    );
+    if (!claimed.rows[0]) throw new AuthError(409, "Provider checkout reconciliation could not be claimed");
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    fail(res, error);
+    return;
+  } finally {
+    client.release();
+  }
+
+  if (!checkout || !claimToken) {
+    res.status(500).json({ error: "Provider checkout reconciliation failed" });
+    return;
+  }
+  let adapter: ReturnType<typeof configuredTestAdapter>;
+  try {
+    adapter = configuredTestAdapter(checkout.provider);
+  } catch {
+    await recordCheckoutReconciliationDecision(
+      req, schoolId, paymentId, claimToken, "reconciliation_required", "Provider status credentials are unavailable",
+    );
+    res.status(503).json({ error: "Provider status credentials are unavailable" });
+    return;
+  }
+  if (!adapter) {
+    await recordCheckoutReconciliationDecision(
+      req, schoolId, paymentId, claimToken, "reconciliation_required", "Provider status credentials are unavailable",
+    );
+    res.status(503).json({ error: "Provider status credentials are unavailable" });
+    return;
+  }
+
+  let verified;
+  try {
+    verified = await adapter.verifyCheckoutStatus({
+      reference: checkout.reference,
+      amountMinor: Number(checkout.amount_minor),
+      currency: checkout.currency,
+    });
+  } catch {
+    await recordCheckoutReconciliationDecision(
+      req, schoolId, paymentId, claimToken, "reconciliation_required",
+      "Provider status was not independently established; reservation remains active",
+    );
+    res.status(202).json(ReconcileFeeProviderCheckoutResponse.parse({
+      paymentId, outcome: "reconciliation_required",
+    }));
+    return;
+  }
+
+  if (verified.status === "succeeded") {
+    try {
+      const outcome = await settleVerifiedPayment(
+        checkout.provider, `reconcile:${String(checkout.provider).toLowerCase()}:${verified.providerTransactionId}`,
+        verified, Buffer.alloc(0), "ADMIN_RECONCILIATION",
+      );
+      await recordCheckoutReconciliationDecision(
+        req, schoolId, paymentId, claimToken, outcome, "Provider independently verified checkout success",
+      );
+      res.json(ReconcileFeeProviderCheckoutResponse.parse({ paymentId, outcome }));
+    } catch {
+      await recordCheckoutReconciliationDecision(
+        req, schoolId, paymentId, claimToken, "reconciliation_required",
+        "Provider success was verified but settlement requires reconciliation",
+      );
+      res.status(202).json(ReconcileFeeProviderCheckoutResponse.parse({
+        paymentId, outcome: "reconciliation_required",
+      }));
+    }
+    return;
+  }
+  if (verified.status === "failed") {
+    const released = await releaseVerifiedFailedCheckout(
+      req, schoolId, paymentId, claimToken, checkout, verified,
+    );
+    if (released) {
+      res.json(ReconcileFeeProviderCheckoutResponse.parse({ paymentId, outcome: "released" }));
+    } else {
+      res.status(202).json(ReconcileFeeProviderCheckoutResponse.parse({
+        paymentId, outcome: "reconciliation_required",
+      }));
+    }
+    return;
+  }
+
+  await recordCheckoutReconciliationDecision(
+    req, schoolId, paymentId, claimToken, "pending", "Provider reports pending; reservation remains active",
+  );
+  res.status(202).json(ReconcileFeeProviderCheckoutResponse.parse({ paymentId, outcome: "pending" }));
+});
+
+async function recordCheckoutReconciliationDecision(
+  req: Request,
+  schoolId: number,
+  paymentId: number,
+  claimToken: string,
+  outcome: string,
+  detail: string,
+) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `UPDATE fee_provider_checkout_sessions
+       SET claim_token=NULL,claim_expires_at=NULL,last_error=$4,updated_at=NOW()
+       WHERE payment_id=$1 AND school_id=$2 AND claim_token=$3`,
+      [paymentId, schoolId, claimToken, detail.slice(0, 300)],
+    );
+    await audit(req, client, schoolId, `provider checkout reconciliation: ${outcome}`, "provider checkout", paymentId, {
+      outcome, detail: detail.slice(0, 300),
+    });
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function releaseVerifiedFailedCheckout(
+  req: Request,
+  schoolId: number,
+  paymentId: number,
+  claimToken: string,
+  claimedCheckout: Record<string, any>,
+  verified: VerifiedPayment,
+): Promise<boolean> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const locked = await client.query(
+      `SELECT p.reference,p.amount_minor,p.currency,p.provider,p.provider_transaction_id,p.status,
+          i.currency AS invoice_currency,cs.state AS session_state,cs.claim_token
+       FROM fee_payments p
+       JOIN fee_provider_checkout_sessions cs ON cs.payment_id=p.id AND cs.school_id=p.school_id
+       JOIN fee_invoices i ON i.id=p.invoice_id AND i.school_id=p.school_id
+       WHERE p.id=$1 AND p.school_id=$2
+       FOR UPDATE OF p,cs,i`,
+      [paymentId, schoolId],
+    );
+    const current = locked.rows[0];
+    if (!current) throw new AuthError(404, "Provider checkout not found");
+    const exact = current.claim_token === claimToken
+      && ["INITIALIZING", "READY", "FAILED", "RELEASED"].includes(current.session_state)
+      && current.provider === claimedCheckout.provider
+      && current.reference === verified.reference
+      && Number(current.amount_minor) === verified.amountMinor
+      && current.currency === verified.currency
+      && current.invoice_currency === verified.currency
+      && (!current.provider_transaction_id || current.provider_transaction_id === verified.providerTransactionId)
+      && current.status !== "VERIFIED";
+    if (!exact) {
+      await client.query(
+        `UPDATE fee_provider_checkout_sessions SET claim_token=NULL,claim_expires_at=NULL,updated_at=NOW()
+         WHERE payment_id=$1 AND school_id=$2 AND claim_token=$3`,
+        [paymentId, schoolId, claimToken],
+      );
+      await audit(req, client, schoolId, "provider checkout release withheld", "provider checkout", paymentId, {
+        provider: claimedCheckout.provider, reference: claimedCheckout.reference,
+        reason: "Checkout state or persisted payment tuple changed during provider verification",
+      });
+      await client.query("COMMIT");
+      return false;
+    }
+    if (current.session_state === "RELEASED") {
+      await client.query(
+        `UPDATE fee_provider_checkout_sessions SET claim_token=NULL,claim_expires_at=NULL,updated_at=NOW()
+         WHERE payment_id=$1 AND school_id=$2 AND claim_token=$3`,
+        [paymentId, schoolId, claimToken],
+      );
+      await audit(req, client, schoolId, "provider checkout remains released after terminal failure verification",
+        "provider checkout", paymentId, {
+          provider: claimedCheckout.provider, reference: verified.reference,
+          providerTransactionId: verified.providerTransactionId, status: verified.status,
+        });
+      await client.query("COMMIT");
+      return true;
+    }
+    const owner = await client.query(
+      `SELECT id FROM fee_payments
+       WHERE provider=$1 AND provider_transaction_id=$2 AND id<>$3`,
+      [current.provider, verified.providerTransactionId, paymentId],
+    );
+    if (owner.rows[0]) {
+      await client.query(
+        `UPDATE fee_provider_checkout_sessions SET claim_token=NULL,claim_expires_at=NULL,updated_at=NOW()
+         WHERE payment_id=$1 AND school_id=$2 AND claim_token=$3`,
+        [paymentId, schoolId, claimToken],
+      );
+      await audit(req, client, schoolId, "provider checkout release withheld", "provider checkout", paymentId, {
+        provider: claimedCheckout.provider, reference: claimedCheckout.reference,
+        providerTransactionId: verified.providerTransactionId,
+        reason: "Provider transaction is already assigned to another payment",
+      });
+      await client.query("COMMIT");
+      return false;
+    }
+    const paymentUpdate = await client.query(
+      `UPDATE fee_payments SET status='FAILED',provider_transaction_id=$1
+       WHERE id=$2 AND school_id=$3 AND status IN ('PENDING','FAILED')
+         AND (provider_transaction_id IS NULL OR provider_transaction_id=$1)
+       RETURNING id`,
+      [verified.providerTransactionId, paymentId, schoolId],
+    );
+    const sessionUpdate = await client.query(
+      `UPDATE fee_provider_checkout_sessions SET state='RELEASED',claim_token=NULL,claim_expires_at=NULL,
+          last_error='Provider independently confirmed terminal failure',updated_at=NOW()
+       WHERE payment_id=$1 AND school_id=$2 AND state IN ('INITIALIZING','READY','FAILED')
+         AND claim_token=$3
+       RETURNING payment_id`,
+      [paymentId, schoolId, claimToken],
+    );
+    if (!paymentUpdate.rows[0] || !sessionUpdate.rows[0]) {
+      await client.query("ROLLBACK");
+      return false;
+    }
+    await audit(req, client, schoolId, "released terminally failed provider checkout", "provider checkout", paymentId, {
+      provider: claimedCheckout.provider, reference: verified.reference,
+      providerTransactionId: verified.providerTransactionId, status: verified.status,
+    });
+    await client.query("COMMIT");
+    return true;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+router.post("/parent/fees/invoices/:invoiceId/providers/:provider/initialize", async (req, res): Promise<void> => {
+  const client = await pool.connect();
+  let paymentId: number | null = null;
+  let schoolId: number | null = null;
+  let provider: "PAYSTACK" | "FLUTTERWAVE" | null = null;
+  let invoiceId = 0;
+  let reference = "";
+  let amountMinor = 0;
+  let currency = "";
+  let email = "";
+  let returnUrl = "";
+  let claimToken = "";
+  let adapter: ReturnType<typeof configuredTestAdapter> = null;
+  try {
+    const params = parsed(InitializeFeeProviderPaymentParams, req.params);
+    invoiceId = params.invoiceId;
+    const requestedProvider = params.provider;
+    if (requestedProvider === "REMITA") {
+      throw new AuthError(503, "Remita payments are disabled until its official integration contract and sandbox are verified");
+    }
+    provider = requestedProvider;
+    assertRoles(req, ["PARENT"]);
+    const headers = parsed(InitializeFeeProviderPaymentHeader, { "Idempotency-Key": req.get("Idempotency-Key") });
+    const body = parsed(InitializeFeeProviderPaymentBody, req.body ?? {});
+    const idempotencyHeader = headers["Idempotency-Key"];
+    const context = getUserContext(req);
+    email = context.user.email;
+    returnUrl = configuredCheckoutReturnUrl() ?? "";
+    if (!returnUrl) throw new AuthError(503, "Online payment return URL is not configured");
+    try {
+      adapter = configuredTestAdapter(provider);
+    } catch (error) {
+      if (error instanceof PaymentProviderError) throw new AuthError(503, "Online payment provider test credentials are not configured correctly");
+      throw error;
+    }
+    if (!adapter) throw new AuthError(503, "Online payment provider test credentials are not configured");
+
+    const storedIdempotencyKey = `ONLINE:${provider}:${context.user.id}:${idempotencyHeader}`;
+    await client.query("BEGIN");
+    const invoiceResult = await client.query(
+      `SELECT i.*,p.id AS parent_id FROM fee_invoices i
+       JOIN parents p ON p.school_id=i.school_id AND p.user_id=$2 AND p.status='ACTIVE'
+       JOIN parent_student_relationships r ON r.parent_id=p.id AND r.student_id=i.student_id AND r.status='ACTIVE'
+       WHERE i.id=$1 FOR UPDATE OF i`,
+      [invoiceId, context.user.id],
+    );
+    const invoice = invoiceResult.rows[0];
+    if (!invoice) throw new AuthError(404, "Invoice not found");
+    schoolId = invoice.school_id;
+    const invoiceSchoolId: number = invoice.school_id;
+    const settingsResult = await client.query(
+      `SELECT paystack_enabled AS "paystackEnabled",flutterwave_enabled AS "flutterwaveEnabled",
+          partial_payments_enabled AS "partialPaymentsEnabled"
+       FROM fee_school_settings WHERE school_id=$1`,
+      [invoiceSchoolId],
+    );
+    const enabled = provider === "PAYSTACK"
+      ? settingsResult.rows[0]?.paystackEnabled
+      : settingsResult.rows[0]?.flutterwaveEnabled;
+    if (!enabled) throw new AuthError(409, "This online payment method is not enabled for the school");
+    if (invoice.status === "CANCELLED" || invoice.status === "PAID" || Number(invoice.outstanding_minor) <= 0) {
+      throw new AuthError(409, "Invoice is not payable");
+    }
+    const outstandingMinor = Number(invoice.outstanding_minor);
+    amountMinor = payableAmount(body.amountMinor ?? outstandingMinor, outstandingMinor);
+    const partialPaymentsEnabled = settingsResult.rows[0]?.partialPaymentsEnabled ?? false;
+    if (amountMinor < outstandingMinor && !partialPaymentsEnabled) {
+      throw new AuthError(400, "Partial payments are disabled by this school's finance settings");
+    }
+    currency = String(invoice.currency).toUpperCase();
+    if (!adapter.validateAmount(amountMinor, currency)) {
+      throw new AuthError(409, "Invoice currency or outstanding amount is not supported by this provider");
+    }
+    claimToken = randomUUID();
+    const existing = await client.query(
+      `SELECT p.id,p.invoice_id,p.student_id,p.parent_id,p.reference,p.amount_minor,p.currency,p.provider,p.status,
+          s.state AS session_state,s.checkout_url AS "checkoutUrl",s.claim_expires_at AS "claimExpiresAt"
+       FROM fee_payments p JOIN fee_provider_checkout_sessions s ON s.payment_id=p.id AND s.school_id=p.school_id
+       WHERE p.school_id=$1 AND s.idempotency_key=$2 FOR UPDATE OF p,s`,
+      [invoiceSchoolId, storedIdempotencyKey],
+    );
+    if (existing.rows[0]) {
+      const row = existing.rows[0];
+      if (row.invoice_id !== invoiceId || row.student_id !== invoice.student_id || row.parent_id !== invoice.parent_id
+          || row.provider !== provider || row.amount_minor !== amountMinor || row.currency !== currency) {
+        throw new AuthError(409, "Idempotency key was already used for a different checkout");
+      }
+      if (row.status !== "PENDING" && row.status !== "FAILED") {
+        throw new AuthError(409, "This idempotent checkout is no longer recoverable");
+      }
+      paymentId = row.id;
+      reference = row.reference;
+      if (row.status === "PENDING" && row.session_state === "READY" && row.checkoutUrl) {
+        await client.query("COMMIT");
+        res.status(200).json(InitializeFeeProviderPaymentResponse.parse({
+          paymentId, invoiceId, reference, provider, amountMinor, currency, status: "PENDING",
+          checkoutUrl: row.checkoutUrl,
+        }));
+        return;
+      }
+      if (row.session_state === "INITIALIZING") {
+        const leaseUntil = row.claimExpiresAt instanceof Date
+          ? row.claimExpiresAt.valueOf()
+          : new Date(row.claimExpiresAt ?? "").valueOf();
+        await client.query("COMMIT");
+        const active = Number.isFinite(leaseUntil) && leaseUntil > Date.now();
+        res.status(202).json({
+          outcome: active ? "processing" : "reconciliation_required",
+          error: active
+            ? "Checkout initialization is still processing"
+            : "Checkout initialization may have completed; independently reconcile provider status before retrying",
+        });
+        return;
+      }
+      if (row.session_state === "FAILED") {
+        await client.query("COMMIT");
+        res.status(202).json({
+          outcome: "reconciliation_required",
+          error: "Provider initialization outcome is uncertain; independently reconcile provider status before retrying",
+        });
+        return;
+      }
+      if (row.session_state === "RELEASED") {
+        throw new AuthError(409, "This checkout reservation was released; use a new idempotency key for another attempt");
+      }
+      throw new AuthError(409, "This checkout is not recoverable");
+    } else {
+      const invoiceCheckout = await client.query(
+        `SELECT p.id FROM fee_provider_checkout_sessions s
+         JOIN fee_payments p ON p.id=s.payment_id AND p.school_id=s.school_id
+         WHERE s.school_id=$1 AND s.invoice_id=$2
+           AND s.state IN ('INITIALIZING','READY','FAILED')
+         FOR UPDATE OF p,s`,
+        [invoiceSchoolId, invoiceId],
+      );
+      if (invoiceCheckout.rows[0]) {
+        throw new AuthError(409, "An online checkout already reserves this invoice; retry it with its original idempotency key");
+      }
+      reference = adapter.generateReference();
+      const inserted = await client.query(
+        `INSERT INTO fee_payments (school_id,invoice_id,student_id,parent_id,reference,idempotency_key,
+           amount_minor,currency,method,provider,status,submitted_by,provider_metadata)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9,'PENDING',$10,'{}'::jsonb) RETURNING id`,
+        [schoolId, invoiceId, invoice.student_id, invoice.parent_id, reference, storedIdempotencyKey,
+          amountMinor, currency, provider, context.user.id],
+      );
+      paymentId = inserted.rows[0].id;
+      await client.query(
+        `INSERT INTO fee_provider_checkout_sessions
+           (payment_id,school_id,invoice_id,provider,reference,idempotency_key,state,claim_token,claim_expires_at)
+         VALUES ($1,$2,$3,$4,$5,$6,'INITIALIZING',$7,NOW()+INTERVAL '30 seconds')`,
+        [paymentId, schoolId, invoiceId, provider, reference, storedIdempotencyKey, claimToken],
+      );
+      await audit(req, client, invoiceSchoolId, "initialized provider checkout", "payment", paymentId!, {
+        provider, invoiceId, amountMinor, currency,
+      });
+    }
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    fail(res, error);
+    return;
+  } finally {
+    client.release();
+  }
+
+  if (!adapter || !paymentId || !schoolId || !provider) {
+    res.status(503).json({ error: "Online payment provider is unavailable" });
+    return;
+  }
+  try {
+    const initialized = await adapter.initializePayment({
+      reference, amountMinor, currency, email, returnUrl,
+    });
+    const update = await pool.query(
+      `UPDATE fee_provider_checkout_sessions SET state='READY',checkout_url=$1,
+          provider_session_metadata=$2,updated_at=NOW(),last_error=NULL,
+          claim_token=NULL,claim_expires_at=NULL
+       WHERE payment_id=$3 AND school_id=$4 AND reference=$5
+         AND state='INITIALIZING' AND claim_token=$6
+       RETURNING payment_id`,
+      [initialized.checkoutUrl, { provider, reference }, paymentId, schoolId, reference, claimToken],
+    );
+    if (!update.rows[0]) throw new Error("Checkout session persistence failed");
+    res.status(201).json(InitializeFeeProviderPaymentResponse.parse({
+      paymentId, invoiceId, reference, provider, amountMinor, currency,
+      status: "PENDING", checkoutUrl: initialized.checkoutUrl,
+    }));
+  } catch {
+    const failed = await pool.query(
+      `UPDATE fee_provider_checkout_sessions SET state='FAILED',last_error='Provider checkout initialization failed',
+          updated_at=NOW(),claim_token=NULL,claim_expires_at=NULL
+       WHERE payment_id=$1 AND school_id=$2 AND state='INITIALIZING' AND claim_token=$3
+       RETURNING payment_id`,
+      [paymentId, schoolId, claimToken],
+    ).catch(() => undefined);
+    if (failed?.rows[0]) {
+      await pool.query(
+        `UPDATE fee_payments SET status='FAILED' WHERE id=$1 AND school_id=$2 AND status='PENDING'`,
+        [paymentId, schoolId],
+      ).catch(() => undefined);
+    }
+    res.status(503).json({ error: "Online payment provider could not initialize checkout" });
+  }
 });
 
 export default router;

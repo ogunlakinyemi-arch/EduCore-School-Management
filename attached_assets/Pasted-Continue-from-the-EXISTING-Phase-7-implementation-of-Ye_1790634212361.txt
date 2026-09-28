@@ -1,0 +1,1100 @@
+Continue from the EXISTING Phase 7 implementation of Yemait EduCore.
+
+Do NOT restart Phase 7.
+
+Do NOT rebuild the finance module.
+
+Do NOT start Phase 8.
+
+Do NOT remove the existing working finance foundation.
+
+The previous Phase 7 implementation report states:
+
+- Development-only finance foundation implemented.
+- Fee categories implemented.
+- Fee structures implemented.
+- Individual invoices implemented.
+- Parent fee views implemented.
+- Student fee views implemented.
+- School finance controls implemented.
+- Manual bank transfers implemented.
+- School Admin can configure approved bank details.
+- Parents cannot submit bank transfers until approved bank details are enabled.
+- Manual transfers remain PENDING until an authorized reviewer verifies evidence.
+- Only VERIFIED payments update balances and generate receipts.
+- Three additive finance migrations applied to development only.
+- Historical-schema replay passed.
+- 161 API tests passed.
+- API/web builds and typechecks passed.
+- Both services are running.
+- Production was not modified.
+
+However:
+
+PHASE 7 IS NOT COMPLETE.
+
+The following remain unfinished:
+
+1. Remita checkout
+2. Flutterwave checkout
+3. Paystack checkout
+4. Provider sandbox verification
+5. Authenticated parent-to-receipt browser journey
+6. Bulk fee assignments
+7. Refunds/reversals
+8. Full financial reporting
+9. NFC publish migration ordering issue
+10. Final Phase 7 end-to-end verification
+
+The primary business requirement is:
+
+Parent Dashboard → Select Child → View Outstanding Fees → Pay Online → Provider Confirms Payment → Yemait EduCore Verifies Payment → Invoice Updates → Student Balance Updates → Receipt Automatically Generated → Parent Can View Receipt → Student Dashboard Reflects Payment
+
+Complete the remaining Phase 7 work without breaking Phase 1–6.
+
+---
+
+1. FIRST: INSPECT EXISTING IMPLEMENTATION
+
+Before changing anything:
+
+Inspect the current:
+
+- Finance database schema
+- Finance migrations
+- Fee category implementation
+- Fee structure implementation
+- Invoice implementation
+- Payment implementation
+- Receipt implementation
+- Manual bank transfer workflow
+- Parent finance pages
+- Student finance pages
+- School Admin finance pages
+- Accountant permissions
+- Existing RBAC
+- Existing tenant isolation
+- Existing audit system
+- Existing notification system
+- Existing OpenAPI definitions
+- Existing generated clients
+- Existing API tests
+- Existing migration ordering
+- Existing NFC migration dependency problem
+
+Do not create duplicate tables, APIs, services, or UI components if equivalent functionality already exists.
+
+Reuse the existing implementation wherever possible.
+
+---
+
+2. FIX THE NFC MIGRATION BLOCKER
+
+The previous publish validation is blocked by an NFC foreign-key ordering issue.
+
+Investigate the existing migration failure generically.
+
+The known issue is related to:
+
+"nfc_card_history"
+
+having a composite foreign key involving:
+
+"nfc_cards(id, school_id)"
+
+while the referenced composite uniqueness/constraint is not available at the point where the foreign key is created.
+
+Fix the migration ordering/schema dependency correctly.
+
+Requirements:
+
+- Do not delete NFC history.
+- Do not rewrite attendance history.
+- Do not remove existing foreign keys simply to make migration pass.
+- Do not weaken tenant isolation.
+- Preserve historical device/card relationships.
+- Ensure referenced composite keys exist before dependent foreign keys are created.
+- Ensure the migration works on a clean database.
+- Ensure it works on the populated historical-schema replay.
+- Ensure existing Phase 5 functionality continues to work.
+
+Validate:
+
+1. Clean migration.
+2. Historical-schema replay.
+3. Existing data preservation.
+4. NFC tests.
+5. Attendance tests.
+6. Full regression.
+
+This is a migration dependency fix, not a reason to redesign Phase 5.
+
+---
+
+3. COMPLETE BULK FEE ASSIGNMENT
+
+Implement bulk assignment of fee structures.
+
+Authorized School Admin/Accountant users should be able to select:
+
+- Session
+- Term
+- Class
+- Section where applicable
+- Fee structure
+
+Then assign it to eligible students.
+
+Requirements:
+
+- Only students belonging to that school.
+- Only appropriate active/historical class assignments.
+- Prevent accidental duplicate assignments.
+- Preserve existing assignments.
+- Provide clear assignment results.
+- Report skipped students and reasons.
+- Use transactional processing where appropriate.
+- Audit the bulk operation.
+
+Example:
+
+Primary 5
+Term 1
+2026/2027
+100 students
+
+Assign fee structure.
+
+System should report:
+
+Assigned: 95
+Skipped: 5
+
+with reasons for skipped students.
+
+Do not create duplicate invoices for students who already have the same applicable invoice.
+
+---
+
+4. COMPLETE REFUNDS AND REVERSALS
+
+Implement proper financial reversal/refund workflows.
+
+Do NOT delete the original payment.
+
+For a verified payment:
+
+Payment:
+₦50,000
+Status:
+VERIFIED
+
+If reversed:
+
+Create a separate reversal/refund record.
+
+Preserve:
+
+- Original payment
+- Original reference
+- Original receipt
+- Reversal/refund reference
+- Amount reversed
+- Reason
+- Actor
+- Timestamp
+- Approval where required
+- Audit event
+
+Update the financial balance correctly.
+
+Example:
+
+Invoice:
+₦100,000
+
+Paid:
+₦100,000
+
+Refund:
+₦20,000
+
+Result:
+
+Paid:
+₦80,000
+
+Outstanding:
+₦20,000
+
+The original ₦100,000 payment must remain in history.
+
+Do not simply edit the original payment amount.
+
+Prevent:
+
+- Double refunds
+- Refund exceeding verified amount
+- Unauthorized refunds
+- Cross-school refunds
+
+---
+
+5. COMPLETE FINANCIAL REPORTING
+
+Finish the full Phase 7 reporting scope.
+
+Implement at minimum:
+
+School Financial Summary
+
+- Total billed
+- Total collected
+- Total outstanding
+- Total discounts
+- Total waivers
+- Total refunds
+
+Payment Report
+
+- Date
+- Student
+- Class
+- Invoice
+- Amount
+- Provider
+- Payment method
+- Reference
+- Status
+
+Outstanding Report
+
+- Student
+- Class
+- Total charges
+- Discounts
+- Waivers
+- Paid
+- Outstanding
+- Status
+
+Fee Category Report
+
+- Category
+- Amount billed
+- Amount collected
+- Outstanding
+
+Class Financial Report
+
+- Class
+- Student count
+- Total billed
+- Total collected
+- Outstanding
+
+Term Report
+
+- Session
+- Term
+- Total billed
+- Total collected
+- Outstanding
+
+Discount/Scholarship/Waiver Report
+
+Refund/Reversal Report
+
+Provider/Reconciliation Report
+
+Every report must enforce school/tenant isolation.
+
+---
+
+6. IMPLEMENT PAYMENT PROVIDER ABSTRACTION
+
+Do not hard-code the finance system to one provider.
+
+Create a reusable payment provider abstraction supporting:
+
+- initializePayment
+- verifyPayment
+- handleWebhook
+- getPaymentStatus
+- generateReference
+- validateAmount
+
+Providers should be independently implemented behind the abstraction.
+
+Prepare:
+
+- Remita
+- Flutterwave
+- Paystack
+
+Do not fabricate credentials.
+
+Do not expose secret keys to frontend code.
+
+Use environment secrets.
+
+---
+
+7. PARENT ONLINE PAYMENT FLOW
+
+This is the most important remaining requirement.
+
+The Parent Dashboard must provide:
+
+Fees
+
+For each linked child:
+
+- Total fees
+- Paid
+- Outstanding
+- Invoice
+- Payment history
+- Receipts
+
+For an unpaid/partially paid invoice:
+
+Pay Now
+
+must be available.
+
+---
+
+8. PAYMENT INITIALIZATION
+
+When parent clicks Pay Now:
+
+1. Authenticate parent.
+2. Verify parent is linked to selected student.
+3. Verify invoice belongs to same school.
+4. Verify invoice is payable.
+5. Calculate actual outstanding balance on backend.
+6. Validate requested payment amount.
+7. Create internal PENDING payment.
+8. Generate unique internal payment reference.
+9. Initialize provider.
+10. Return/open provider checkout.
+
+Never mark payment VERIFIED at initialization.
+
+---
+
+9. PROVIDER CHECKOUT
+
+Implement sandbox checkout for at least one provider first.
+
+Do not attempt to claim all three providers are verified if only one works.
+
+The provider must return the parent through the appropriate callback/return flow.
+
+However, the return URL must NOT itself mark payment as paid.
+
+The backend must verify the transaction.
+
+---
+
+10. WEBHOOKS
+
+Implement provider webhook processing.
+
+Webhook must:
+
+- Validate provider event.
+- Identify internal payment.
+- Verify transaction server-side.
+- Verify amount.
+- Verify currency.
+- Verify invoice.
+- Verify school.
+- Verify transaction status.
+- Prevent duplicate processing.
+- Update payment exactly once.
+
+Use idempotency.
+
+---
+
+11. SERVER-SIDE VERIFICATION
+
+The backend must independently verify successful transactions.
+
+Never trust:
+
+- Frontend success
+- Browser redirect
+- Query-string status
+- Client-side callback
+- Parent declaration
+
+The payment can become VERIFIED only after backend verification succeeds.
+
+---
+
+12. AUTOMATIC BALANCE UPDATE
+
+Once payment is VERIFIED:
+
+Example:
+
+Invoice:
+₦100,000
+
+Previous paid:
+₦30,000
+
+New payment:
+₦70,000
+
+Automatically update:
+
+Paid:
+₦100,000
+
+Outstanding:
+₦0
+
+Invoice:
+PAID
+
+No manual school action should be required.
+
+For partial payment:
+
+Invoice:
+₦100,000
+
+Payment:
+₦40,000
+
+Result:
+
+Paid:
+₦40,000
+
+Outstanding:
+₦60,000
+
+Invoice:
+PARTIALLY_PAID
+
+---
+
+13. AUTOMATIC RECEIPT GENERATION
+
+When payment becomes VERIFIED:
+
+Automatically generate receipt.
+
+Receipt must contain:
+
+- School
+- Student
+- Admission/student ID
+- Class
+- Parent/payer
+- Invoice number
+- Receipt number
+- Payment reference
+- Provider
+- Method
+- Amount
+- Date
+- Session
+- Term
+- Previous balance
+- Amount paid
+- Remaining balance
+- Status
+
+Parent must immediately be able to:
+
+View Receipt
+
+and:
+
+Print Receipt
+
+Do not require the parent to manually request a receipt from the school.
+
+---
+
+14. STUDENT DASHBOARD UPDATE
+
+After verified payment:
+
+Student Dashboard must automatically reflect:
+
+- Total fees
+- Paid amount
+- Outstanding amount
+- Payment status
+- Payment history
+- Receipt where permitted
+
+The student should not need to refresh manually through a separate financial process.
+
+Use normal query invalidation/revalidation after the backend state changes.
+
+Backend remains the source of truth.
+
+---
+
+15. PARENT DASHBOARD UPDATE
+
+After successful verified payment:
+
+Parent should see:
+
+Payment Successful
+
+Amount:
+₦XX,XXX
+
+Reference:
+XXXXXXXX
+
+Status:
+VERIFIED
+
+Then:
+
+View Receipt
+
+The parent should also immediately see the updated:
+
+- Paid amount
+- Outstanding balance
+- Invoice status
+- Payment history
+
+---
+
+16. DELAYED PROVIDER CONFIRMATION
+
+If provider confirmation is delayed:
+
+Show:
+
+Payment Processing
+
+Do not show:
+
+PAID
+
+until backend verification succeeds.
+
+When webhook/verification eventually succeeds, automatically update the parent/student financial dashboards.
+
+---
+
+17. BANK TRANSFER
+
+Keep the existing manual bank transfer workflow.
+
+Do not remove it.
+
+Also support automatic bank transfer where the selected provider supports virtual accounts/dedicated payment references.
+
+There should therefore be:
+
+Automatic Bank Transfer
+
+Provider detects transfer → webhook → verification → automatic update.
+
+Manual Bank Transfer
+
+Parent submits transfer evidence → PENDING → authorized reviewer verifies → update.
+
+Clearly distinguish the two workflows.
+
+---
+
+18. PAYMENT METHODS
+
+Parent payment interface should support configured methods:
+
+- Remita
+- Flutterwave
+- Paystack
+- Bank Transfer
+
+Only enabled methods should appear.
+
+Do not show providers that are not configured.
+
+---
+
+19. PARTIAL PAYMENTS
+
+Support multiple payments against one invoice.
+
+Example:
+
+₦100,000 invoice.
+
+Payment 1:
+₦20,000
+
+Payment 2:
+₦30,000
+
+Payment 3:
+₦50,000
+
+Final:
+
+Paid:
+₦100,000
+
+Outstanding:
+₦0
+
+Invoice:
+PAID
+
+Every payment retains independent history and receipt.
+
+---
+
+20. PAYMENT SECURITY
+
+Test:
+
+Cross-child payment
+
+Parent attempts to pay another parent's child's invoice.
+
+Must be denied.
+
+Cross-school payment
+
+Parent attempts to pay School B invoice.
+
+Must be denied.
+
+Amount manipulation
+
+Parent changes amount in frontend/API.
+
+Backend must validate.
+
+Fake success
+
+Frontend reports success without provider confirmation.
+
+Must remain PENDING/PROCESSING.
+
+Duplicate webhook
+
+Same transaction delivered multiple times.
+
+Must count once.
+
+Wrong provider transaction
+
+Must not update invoice.
+
+Wrong amount
+
+Must be rejected or placed into reconciliation.
+
+Unauthorized refund
+
+Must be denied.
+
+---
+
+21. PAYMENT RECONCILIATION
+
+Accountant should have access to:
+
+- Pending transactions
+- Verified transactions
+- Failed transactions
+- Rejected transactions
+- Unmatched transactions
+- Reversed transactions
+- Refunded transactions
+- Provider references
+
+Allow authorized reconciliation actions with audit logs.
+
+---
+
+22. NOTIFICATIONS
+
+After verified payment:
+
+Parent:
+
+Payment received successfully.
+
+Student:
+
+School fee payment received.
+
+Accountant:
+
+New verified payment received.
+
+School Admin:
+
+New verified payment received.
+
+Reuse the existing notification architecture.
+
+---
+
+23. AUTHENTICATED BROWSER VERIFICATION
+
+The previous verification could only confirm logged-out screens and protected API responses.
+
+This is insufficient.
+
+Perform an authenticated browser walkthrough.
+
+At minimum verify:
+
+School Admin
+
+- Login
+- Finance dashboard
+- Fee structure
+- Invoice
+- Payment
+- Receipt
+- Reports
+
+Accountant
+
+- Login
+- Pending payments
+- Verification
+- Receipt
+- Reconciliation
+
+Parent
+
+- Login
+- Select linked child
+- View fees
+- View invoice
+- Click Pay Now
+- Complete sandbox payment
+- Return to application
+- Payment becomes VERIFIED
+- Invoice updates
+- Balance updates
+- Receipt appears
+
+Student
+
+- Login
+- View updated financial balance
+- View payment history
+- View receipt where permitted
+
+This parent-to-receipt journey is a mandatory verification.
+
+---
+
+24. PROVIDER SANDBOX VERIFICATION
+
+At least ONE provider must be verified end-to-end before Phase 7 can be marked complete.
+
+For each provider tested, record:
+
+- Provider
+- Environment
+- Initialization
+- Checkout
+- Successful transaction
+- Callback
+- Webhook
+- Server verification
+- Invoice update
+- Balance update
+- Receipt generation
+- Parent dashboard update
+- Student dashboard update
+- Duplicate webhook handling
+
+If a provider cannot be tested because credentials are unavailable, mark it:
+
+PENDING EXTERNAL CREDENTIALS
+
+Do not claim it is complete.
+
+---
+
+25. AUTOMATED TESTS
+
+Expand the existing test suite.
+
+Retain the existing 161 tests.
+
+Add tests for:
+
+- Bulk assignment
+- Refunds
+- Reversals
+- Reports
+- Payment initialization
+- Payment verification
+- Webhooks
+- Idempotency
+- Amount mismatch
+- Wrong invoice
+- Wrong student
+- Wrong school
+- Parent authorization
+- Receipt generation
+- Automatic invoice update
+- Student balance update
+- Manual bank transfer
+- Automatic bank transfer where supported
+- Provider failure
+- Provider retry
+
+The final report must show the total number of tests and results.
+
+---
+
+26. MIGRATION VERIFICATION
+
+After fixing the NFC migration ordering issue:
+
+Run:
+
+1. Clean schema migration.
+2. Populated historical-schema replay.
+3. Finance migrations.
+4. NFC migrations.
+5. Phase 1–6 regression tests.
+
+Confirm:
+
+- No data loss.
+- No broken foreign keys.
+- No broken tenant constraints.
+- No broken NFC history.
+- No broken attendance.
+- No broken academic data.
+- No broken partner data.
+- No broken finance data.
+
+---
+
+27. PRODUCTION SAFETY
+
+Production must remain untouched.
+
+Do not:
+
+- Publish yet.
+- Run production migrations.
+- Insert test payments into production.
+- Insert fake invoices into production.
+- Use real payment credentials in development.
+- Commit secrets.
+- Modify production data.
+
+Development/sandbox only until final approval.
+
+---
+
+28. FINAL PHASE 7 REGRESSION
+
+After all work:
+
+Verify:
+
+Phase 1
+
+Foundation
+
+Phase 2
+
+Authentication/RBAC/Tenant Security
+
+Phase 3
+
+School & People
+
+Phase 4
+
+Partner/Commission
+
+Phase 5
+
+Attendance/NFC/Biometric Architecture
+
+Phase 6
+
+Academic Operations
+
+Phase 7
+
+Finance/Fees/Payments
+
+Do not declare Phase 7 complete if any previous phase is broken.
+
+---
+
+29. FINAL COMPLETION CRITERIA
+
+Phase 7 may only be marked:
+
+COMPLETE
+
+when all of the following are true:
+
+- Fee categories complete
+- Fee structures complete
+- Individual assignment complete
+- Bulk assignment complete
+- Invoices complete
+- Discounts complete
+- Scholarships complete
+- Waivers complete
+- Manual bank transfer complete
+- Online payment architecture complete
+- At least one provider sandbox verified
+- Provider server-side verification verified
+- Webhook verified
+- Idempotency verified
+- Payment failure handling verified
+- Partial payment verified
+- Automatic invoice update verified
+- Automatic student balance update verified
+- Automatic receipt generation verified
+- Parent receipt access verified
+- Student receipt/payment view verified
+- Accountant workflow verified
+- Reconciliation verified
+- Refund/reversal verified
+- Financial reports complete
+- Security tests passed
+- Cross-school isolation passed
+- Authenticated parent-to-receipt browser journey passed
+- Phase 1–6 regression passed
+- Migration replay passed
+- Build/typechecks passed
+- Health checks passed
+- Production remains untouched
+
+If any item is incomplete, report:
+
+PHASE 7 NOT COMPLETE
+
+and clearly list the remaining blockers.
+
+Do NOT start Phase 8.
+
+---
+
+30. FINAL REPORT FORMAT
+
+At completion, provide:
+
+Phase 7 Status
+
+COMPLETE / NOT COMPLETE
+
+Finance
+
+- Fee categories:
+- Fee structures:
+- Individual assignment:
+- Bulk assignment:
+- Invoices:
+- Discounts:
+- Scholarships:
+- Waivers:
+
+Payments
+
+- Manual bank transfer:
+- Automatic bank transfer:
+- Remita:
+- Flutterwave:
+- Paystack:
+- Provider abstraction:
+- Webhooks:
+- Server verification:
+- Idempotency:
+- Partial payments:
+- Refunds:
+- Reversals:
+- Reconciliation:
+
+Parent Experience
+
+- Fees dashboard:
+- Pay Now:
+- Provider checkout:
+- Payment confirmation:
+- Automatic balance update:
+- Receipt generation:
+- Receipt access:
+
+Student Experience
+
+- Financial status:
+- Payment history:
+- Receipt access:
+
+Reports
+
+- School summary:
+- Payment report:
+- Outstanding report:
+- Class report:
+- Term report:
+- Fee category report:
+- Refund/reversal report:
+- Reconciliation report:
+
+Security
+
+- RBAC:
+- Tenant isolation:
+- Parent-child authorization:
+- Payment security:
+- IDOR protection:
+
+Verification
+
+- API tests:
+- Browser tests:
+- Sandbox provider tests:
+- Typechecks:
+- Builds:
+- Migration replay:
+- Health:
+- Phase 1–6 regression:
+
+Remaining Blockers
+
+List every unresolved item.
+
+Do not hide limitations.
+
+If a provider cannot be tested because credentials are unavailable, explicitly state:
+
+PENDING EXTERNAL CREDENTIALS
+
+If hardware or external infrastructure is unavailable, explicitly state:
+
+PENDING EXTERNAL INTEGRATION
+
+Only report:
+
+PHASE 7 COMPLETE — READY FOR PHASE 8
+
+when the required completion criteria above have actually been verified.

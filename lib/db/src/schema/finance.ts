@@ -22,6 +22,8 @@ export const feeSchoolSettings = pgTable("fee_school_settings", {
   schoolId: integer("school_id").primaryKey().references(() => schools.id),
   partialPaymentsEnabled: boolean("partial_payments_enabled").notNull().default(false),
   bankTransferEnabled: boolean("bank_transfer_enabled").notNull().default(false),
+  paystackEnabled: boolean("paystack_enabled").notNull().default(false),
+  flutterwaveEnabled: boolean("flutterwave_enabled").notNull().default(false),
   bankName: text("bank_name"),
   bankAccountName: text("bank_account_name"),
   bankAccountNumber: text("bank_account_number"),
@@ -270,6 +272,154 @@ export const feeReceipts = pgTable("fee_receipts", {
     foreignColumns: [feePayments.id, feePayments.invoiceId, feePayments.schoolId],
     name: "fee_receipts_payment_invoice_school_fk",
   }),
+]);
+
+export const feeRefunds = pgTable("fee_refunds", {
+  id: serial("id").primaryKey(),
+  schoolId: integer("school_id").notNull().references(() => schools.id),
+  paymentId: integer("payment_id").notNull(),
+  invoiceId: integer("invoice_id").notNull(),
+  reference: text("reference").notNull(),
+  idempotencyKey: text("idempotency_key").notNull(),
+  amountMinor: integer("amount_minor").notNull(),
+  currency: text("currency").notNull(),
+  reason: text("reason").notNull(),
+  status: text("status").notNull().default("PENDING"),
+  requestedBy: integer("requested_by").notNull().references(() => appUsers.id),
+  approvedBy: integer("approved_by").references(() => appUsers.id),
+  evidenceReference: text("evidence_reference"),
+  reviewerNotes: text("reviewer_notes"),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  unique("fee_refunds_id_school_unique").on(t.id, t.schoolId),
+  unique("fee_refunds_reference_unique").on(t.reference),
+  unique("fee_refunds_school_idempotency_unique").on(t.schoolId, t.idempotencyKey),
+  uniqueIndex("fee_refunds_school_evidence_unique")
+    .on(t.schoolId, sql`LOWER(BTRIM(${t.evidenceReference}))`)
+    .where(sql`${t.status}='APPROVED' AND NULLIF(BTRIM(${t.evidenceReference}), '') IS NOT NULL`),
+  foreignKey({
+    columns: [t.paymentId, t.invoiceId, t.schoolId],
+    foreignColumns: [feePayments.id, feePayments.invoiceId, feePayments.schoolId],
+    name: "fee_refunds_payment_invoice_school_fk",
+  }),
+  check("fee_refunds_amount_check", sql`${t.amountMinor} > 0 AND ${t.currency} ~ '^[A-Z]{3}$'`),
+  check("fee_refunds_status_check", sql`${t.status} IN ('PENDING','APPROVED','REJECTED')`),
+  check("fee_refunds_approval_evidence_check", sql`${t.status} <> 'APPROVED' OR (
+    ${t.approvedBy} IS NOT NULL AND ${t.approvedAt} IS NOT NULL
+    AND NULLIF(BTRIM(${t.evidenceReference}), '') IS NOT NULL
+    AND NULLIF(BTRIM(${t.reviewerNotes}), '') IS NOT NULL
+  )`),
+  index("fee_refunds_school_status_idx").on(t.schoolId, t.status, t.createdAt),
+]);
+
+export const feeProviderCheckoutSessions = pgTable("fee_provider_checkout_sessions", {
+  paymentId: integer("payment_id").primaryKey(),
+  schoolId: integer("school_id").notNull(),
+  invoiceId: integer("invoice_id").notNull(),
+  provider: text("provider").notNull(),
+  reference: text("reference").notNull(),
+  idempotencyKey: text("idempotency_key").notNull(),
+  state: text("state").notNull().default("INITIALIZING"),
+  claimToken: text("claim_token"),
+  claimExpiresAt: timestamp("claim_expires_at", { withTimezone: true }),
+  checkoutUrl: text("checkout_url"),
+  providerSessionMetadata: jsonb("provider_session_metadata").notNull().default({}),
+  attemptCount: integer("attempt_count").notNull().default(1),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  unique("fee_provider_checkout_sessions_reference_unique").on(t.reference),
+  unique("fee_provider_checkout_sessions_school_provider_idem_unique").on(t.schoolId, t.provider, t.idempotencyKey),
+  uniqueIndex("fee_provider_checkout_sessions_one_open_invoice_unique")
+    .on(t.schoolId, t.invoiceId)
+    .where(sql`${t.state} IN ('INITIALIZING','READY','FAILED')`),
+  foreignKey({
+    columns: [t.paymentId, t.schoolId],
+    foreignColumns: [feePayments.id, feePayments.schoolId],
+    name: "fee_provider_checkout_sessions_payment_school_fk",
+  }),
+  foreignKey({
+    columns: [t.invoiceId, t.schoolId],
+    foreignColumns: [feeInvoices.id, feeInvoices.schoolId],
+    name: "fee_provider_checkout_sessions_invoice_school_fk",
+  }),
+  check("fee_provider_checkout_sessions_provider_check", sql`${t.provider} IN ('PAYSTACK','FLUTTERWAVE')`),
+  check("fee_provider_checkout_sessions_state_check", sql`${t.state} IN ('INITIALIZING','READY','FAILED','SETTLED','RELEASED')`),
+  check("fee_provider_checkout_sessions_attempts_check", sql`${t.attemptCount} > 0`),
+  check(
+    "fee_provider_checkout_sessions_claim_pair_check",
+    sql`(${t.claimToken} IS NULL) = (${t.claimExpiresAt} IS NULL)`,
+  ),
+  check("fee_provider_checkout_sessions_ready_url_check", sql`${t.state} <> 'READY' OR ${t.checkoutUrl} IS NOT NULL`),
+]);
+
+export const feeProviderWebhookEvents = pgTable("fee_provider_webhook_events", {
+  id: serial("id").primaryKey(),
+  provider: text("provider").notNull(),
+  eventId: text("event_id").notNull(),
+  paymentId: integer("payment_id"),
+  schoolId: integer("school_id").references(() => schools.id),
+  providerReference: text("provider_reference"),
+  webhookTransactionId: text("webhook_transaction_id"),
+  verifiedTransactionId: text("verified_transaction_id"),
+  status: text("status").notNull().default("RECEIVED"),
+  signatureVerified: boolean("signature_verified").notNull().default(false),
+  payloadSha256: text("payload_sha256").notNull(),
+  errorMessage: text("error_message"),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+}, (t) => [
+  unique("fee_provider_webhook_events_provider_event_unique").on(t.provider, t.eventId),
+  foreignKey({
+    columns: [t.paymentId, t.schoolId],
+    foreignColumns: [feePayments.id, feePayments.schoolId],
+    name: "fee_provider_webhook_events_payment_school_fk",
+  }),
+  check("fee_provider_webhook_events_provider_check", sql`${t.provider} IN ('PAYSTACK','FLUTTERWAVE')`),
+  check(
+    "fee_provider_webhook_events_status_check",
+    sql`${t.status} IN ('RECEIVED','VERIFIED','PENDING','FAILED','RECONCILIATION_REQUIRED')`,
+  ),
+  check(
+    "fee_provider_webhook_events_signature_link_check",
+    sql`${t.paymentId} IS NULL OR (
+      ${t.schoolId} IS NOT NULL AND (${t.signatureVerified} OR ${t.verifiedTransactionId} IS NOT NULL)
+    )`,
+  ),
+  index("fee_provider_webhook_events_school_status_idx").on(t.schoolId, t.status, t.receivedAt),
+  index("fee_provider_webhook_events_reference_idx").on(t.provider, t.providerReference, t.receivedAt),
+]);
+
+export const feePaymentNotifications = pgTable("fee_payment_notifications", {
+  id: serial("id").primaryKey(),
+  schoolId: integer("school_id").notNull().references(() => schools.id),
+  paymentId: integer("payment_id").notNull(),
+  invoiceId: integer("invoice_id").notNull(),
+  recipientUserId: integer("recipient_user_id").notNull().references(() => appUsers.id),
+  recipientRole: text("recipient_role").notNull(),
+  eventType: text("event_type").notNull().default("PAYMENT_VERIFIED"),
+  channel: text("channel").notNull().default("IN_APP"),
+  isRead: boolean("is_read").notNull().default(false),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  unique("fee_payment_notifications_id_school_unique").on(t.id, t.schoolId),
+  unique("fee_payment_notifications_delivery_unique")
+    .on(t.paymentId, t.recipientUserId, t.recipientRole, t.eventType),
+  foreignKey({
+    columns: [t.paymentId, t.invoiceId, t.schoolId],
+    foreignColumns: [feePayments.id, feePayments.invoiceId, feePayments.schoolId],
+    name: "fee_payment_notifications_payment_invoice_school_fk",
+  }),
+  check("fee_payment_notifications_role_check", sql`${t.recipientRole} IN ('PARENT','STUDENT','SCHOOL_ADMIN','ACCOUNTANT')`),
+  check("fee_payment_notifications_event_check", sql`${t.eventType} = 'PAYMENT_VERIFIED'`),
+  check("fee_payment_notifications_channel_check", sql`${t.channel} = 'IN_APP'`),
+  check("fee_payment_notifications_read_check", sql`(${t.isRead} = false AND ${t.readAt} IS NULL) OR (${t.isRead} = true AND ${t.readAt} IS NOT NULL)`),
+  index("fee_payment_notifications_recipient_idx").on(t.recipientUserId, t.isRead, t.createdAt),
+  index("fee_payment_notifications_school_idx").on(t.schoolId, t.createdAt),
 ]);
 
 export const insertFeeCategorySchema = createInsertSchema(feeCategories).omit({ id: true, createdAt: true, updatedAt: true });

@@ -181,15 +181,18 @@ const poolMock = vi.hoisted(() => {
           ? [{ receipt_number: state.receipt.receipt_number }]
           : []);
       }
+      if (sql.includes("INSERT INTO fee_payment_notifications")) return result();
       if (sql.includes("INSERT INTO fee_school_settings (school_id) VALUES")) return result();
       if (sql.includes("INSERT INTO fee_school_settings")) {
         state.bankSettings = {
           schoolId: values[0],
           partialPaymentsEnabled: values[1],
           bankTransferEnabled: values[2],
-          bankName: values[3],
-          accountName: values[4],
-          accountNumber: values[5],
+          paystackEnabled: values[3],
+          flutterwaveEnabled: values[4],
+          bankName: values[5],
+          accountName: values[6],
+          accountNumber: values[7],
         };
         return result([{ ...state.bankSettings }]);
       }
@@ -329,6 +332,8 @@ beforeEach(() => {
     schoolId: 1,
     partialPaymentsEnabled: false,
     bankTransferEnabled: true,
+    paystackEnabled: false,
+    flutterwaveEnabled: false,
     bankName: "Test Bank",
     accountName: "Test School",
     accountNumber: "1234567890",
@@ -398,6 +403,11 @@ describe("manual bank-transfer review integration", () => {
       payment_id: 71, invoice_id: 41, school_id: 1, receipt_number: body.receiptNumber,
       snapshot: { invoiceId: 41, schoolId: 1 },
     });
+    const notificationIndex = state.calls.findIndex(({ sql }) => sql.includes("INSERT INTO fee_payment_notifications"));
+    const receiptCheckIndex = state.calls.findIndex(({ sql }) => sql.includes("SELECT receipt_number FROM fee_receipts"));
+    const commitIndex = state.calls.findIndex(({ sql }) => sql === "COMMIT");
+    expect(notificationIndex).toBeGreaterThan(receiptCheckIndex);
+    expect(notificationIndex).toBeLessThan(commitIndex);
     expect(state.audit.some((entry) => JSON.stringify(entry[7]).includes(verificationBody.evidenceReference))).toBe(true);
   });
 
@@ -530,6 +540,8 @@ describe("manual bank-transfer review integration", () => {
   it("binds school-admin mutations to the requested school and keeps platform-owner oversight read-only", async () => {
     const updateSettings = (assignments: string, body: unknown = {
       bankTransferEnabled: true,
+      paystackEnabled: true,
+      flutterwaveEnabled: true,
       bankName: "Configured Bank",
       accountName: "Example School",
       accountNumber: "0123456789",
@@ -549,7 +561,8 @@ describe("manual bank-transfer review integration", () => {
     const sameSchoolAdmin = await updateSettings("SCHOOL_ADMIN:1,ACCOUNTANT:2");
     expect(sameSchoolAdmin.status).toBe(200);
     expect(await sameSchoolAdmin.json()).toMatchObject({
-      schoolId: 1, bankTransferEnabled: true, bankName: "Configured Bank",
+      schoolId: 1, bankTransferEnabled: true, paystackEnabled: true, flutterwaveEnabled: true,
+      bankName: "Configured Bank",
       accountName: "Example School", accountNumber: "0123456789",
     });
     expect(state.audit.at(-1)?.[7]).toMatchObject({ accountNumberLast4: "6789" });

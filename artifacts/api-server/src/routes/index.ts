@@ -15,6 +15,7 @@ import academicResultsRouter from "./academic-results";
 import academicTimetableRouter from "./academic-timetable";
 import peopleImportsRouter from "./people-imports";
 import financeRouter from "./finance";
+import financeNotificationsRouter from "./finance-notifications";
 
 const router: IRouter = Router();
 
@@ -37,5 +38,6 @@ router.use(academicResultsRouter);
 router.use(academicTimetableRouter);
 router.use(peopleImportsRouter);
 router.use(financeRouter);
+router.use(financeNotificationsRouter);
 
 export default router;

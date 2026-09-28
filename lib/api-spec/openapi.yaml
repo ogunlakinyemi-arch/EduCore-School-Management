@@ -60,6 +60,100 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FinanceSettings" }
+  /me/finance/payment-notifications:
+    get:
+      operationId: listMyFeePaymentNotifications
+      tags: [finance]
+      summary: List verified-payment notifications currently linked to the authenticated recipient
+      parameters:
+        - name: schoolId
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Recipient-only IN_APP notifications with minimal receipt and payment context
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FeePaymentNotification" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /me/finance/payment-notifications/{notificationId}/read:
+    patch:
+      operationId: markMyFeePaymentNotificationRead
+      tags: [finance]
+      summary: Mark a currently authorized verified-payment notification as read
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: The safe notification representation after marking it read
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeePaymentNotification" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /school/finance/provider-reconciliation:
+    get:
+      operationId: listFeeProviderReconciliationEvents
+      tags: [finance]
+      summary: List signed provider events requiring school finance reconciliation
+      parameters: [{ $ref: "#/components/parameters/SchoolId" }]
+      responses:
+        "200":
+          description: Reconciliation events scoped to the authorized school
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FeeProviderReconciliationEvent" }
+  /school/finance/provider-reconciliation/{eventId}/retry:
+    post:
+      operationId: retryFeeProviderReconciliationEvent
+      tags: [finance]
+      summary: Reverify a signed provider transaction for a school payment
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 160 }
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Provider event was reconciled or remains pending review
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeProviderReconciliationRetry" }
+  /school/finance/provider-checkouts/{paymentId}/reconcile:
+    post:
+      operationId: reconcileFeeProviderCheckout
+      tags: [finance]
+      summary: Independently verify an unresolved checkout and safely release it only after terminal failure
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Checkout was independently verified, settled, or released after terminal failure
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeProviderCheckoutReconciliation" }
+        "202":
+          description: Provider status is pending or cannot yet be independently established; reservation remains active
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeProviderCheckoutReconciliation" }
+        "409":
+          description: Checkout is already being reconciled or is not eligible for this operation
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { description: Provider status credentials are unavailable }
   /parent/fees/invoices/{invoiceId}/bank-details:
     get:
       operationId: getParentFeeInvoiceBankDetails
@@ -78,6 +172,115 @@ paths:
               schema: { $ref: "#/components/schemas/ParentInvoiceBankDetails" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { description: Invoice is not payable }
+  /parent/fees/invoices/{invoiceId}/payment-methods:
+    get:
+      operationId: getParentFeeInvoicePaymentMethods
+      tags: [finance, parent-portal]
+      summary: List payment methods currently usable for a linked parent invoice
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Only configured, school-enabled payment methods usable for this payable invoice
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string, enum: [BANK_TRANSFER, PAYSTACK, FLUTTERWAVE] }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: Invoice is not payable }
+  /parent/fees/invoices/{invoiceId}/checkout-policy:
+    get:
+      operationId: getParentFeeInvoiceCheckoutPolicy
+      tags: [finance, parent-portal]
+      summary: Read the linked parent's outstanding invoice amount and partial-payment policy
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Safe checkout amount policy without payment or school secrets
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ParentFeeInvoiceCheckoutPolicy" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /parent/fees/invoices/{invoiceId}/providers/{provider}/initialize:
+    post:
+      operationId: initializeFeeProviderPayment
+      tags: [finance, parent-portal]
+      summary: Create an idempotent hosted checkout for a linked parent and payable invoice
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: provider
+          in: path
+          required: true
+          schema: { type: string, enum: [PAYSTACK, FLUTTERWAVE, REMITA] }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 120, pattern: "^[A-Za-z0-9._:-]+$" }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FeeProviderCheckoutInitializeInput" }
+      responses:
+        "201":
+          description: Hosted checkout initialized; redirects are informational only
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeProviderCheckout" }
+        "200":
+          description: Idempotent replay of an existing checkout
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeProviderCheckout" }
+        "202":
+          description: Existing initialization is active or its outcome is uncertain and requires independent provider reconciliation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeProviderCheckoutProcessing" }
+        "400": { description: Amount is invalid or partial payments are disabled }
+        "409":
+          description: Provider disabled, invoice not payable, or idempotency conflict
+        "503":
+          description: Test provider credentials or callback URL unavailable
+  /finance/provider-webhooks/{provider}:
+    post:
+      operationId: receiveFeeProviderWebhook
+      tags: [finance]
+      summary: Public raw-body payment provider callback
+      security: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema: { type: string, enum: [paystack, flutterwave] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        "200":
+          description: Verified, safely ignored duplicate, or recorded no-credit provider event
+        "202":
+          description: Authenticated provider event retained for reconciliation
+        "400":
+          description: Invalid or oversized raw body
+        "401":
+          description: Invalid provider signature
+        "503":
+          description: Provider test credentials unavailable
   /school/finance/categories:
     get:
       operationId: listFeeCategories
@@ -194,6 +397,151 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FeeInvoice" }
         "409": { description: Structure already used or assignment conflicts }
+  /school/finance/bulk-assignments:
+    post:
+      operationId: bulkAssignFeeStructure
+      tags: [finance]
+      summary: Assign a published structure to all active matching students with per-student duplicate reasons
+      parameters: [{ $ref: "#/components/parameters/SchoolId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FeeBulkAssignmentInput" }
+      responses:
+        "200":
+          description: Per-student invoice creation and duplicate skip results
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeBulkAssignmentResult" }
+  /school/finance/payments/{paymentId}/refunds:
+    post:
+      operationId: requestFeeRefund
+      tags: [finance]
+      summary: Request a refund against a verified payment; funds are not changed until separately approved
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - $ref: "#/components/parameters/SchoolId"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 128 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FeeRefundInput" }
+      responses:
+        "201":
+          description: Pending refund request, not an external refund success
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeRefund" }
+        "409": { description: Refund amount exceeds refundable balance or key conflicts }
+  /school/finance/refunds:
+    get:
+      operationId: listSchoolFeeRefunds
+      tags: [finance]
+      summary: Recover school refund requests with safe invoice, student, payment, and review evidence fields
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - name: status
+          in: query
+          schema: { type: string, enum: [PENDING, APPROVED, REJECTED, ALL], default: PENDING }
+      responses:
+        "200":
+          description: Refund ledger entries visible to an admin or accountant assigned to this exact school
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/SchoolFeeRefund" } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /school/finance/refunds/{refundId}:
+    get:
+      operationId: getSchoolFeeRefund
+      tags: [finance]
+      summary: Read one school-scoped refund ledger entry and review evidence
+      parameters:
+        - name: refundId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Refund with safe linked invoice, student, and payment details
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolFeeRefund" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /school/finance/refunds/{refundId}/approve:
+    post:
+      operationId: approveFeeRefund
+      tags: [finance]
+      summary: Approve and record an externally confirmed refund with evidence; preserves original payment and receipt
+      parameters:
+        - name: refundId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FeeRefundApprovalInput" }
+      responses:
+        "200":
+          description: Approved refund ledger record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeRefund" }
+        "409": { description: Refund is not pending or exceeds refundable balance }
+  /school/finance/reports:
+    get:
+      operationId: getSchoolFinanceReport
+      tags: [finance]
+      summary: School-scoped financial totals and grouped financial report data
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - name: reportType
+          in: query
+          schema: { type: string, enum: [summary, payments, outstanding, category, class, term, adjustment, refund, provider-reconciliation], default: summary }
+        - name: sessionId
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: termId
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: classId
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: section
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - name: categoryId
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: provider
+          in: query
+          schema: { type: string, enum: [MANUAL_BANK_TRANSFER, REMITA, FLUTTERWAVE, PAYSTACK] }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Aggregates and report rows; no student identifying details
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinanceReport" }
   /school/finance/invoices:
     get:
       operationId: listFeeInvoices
@@ -449,28 +797,6 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/PendingFeeAdjustment" } }
-  /school/finance/payments/providers/{provider}/initialize:
-    post:
-      operationId: initializeFeeProviderPayment
-      tags: [finance]
-      summary: Initialize a configured online payment provider or return an explicit unavailable response
-      parameters:
-        - name: provider
-          in: path
-          required: true
-          schema: { type: string, enum: [REMITA, FLUTTERWAVE, PAYSTACK] }
-        - $ref: "#/components/parameters/SchoolId"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/ProviderPaymentInput" }
-      responses:
-        "503":
-          description: Provider disabled or credentials not configured; no payment transaction was created
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ApiError" }
   /healthz:
     get:
       security: []
@@ -5293,13 +5619,134 @@ components:
         totalCollectedMinor: { type: integer }
         totalOutstandingMinor: { type: integer }
         pendingPayments: { type: integer }
+    FeeBulkAssignmentInput:
+      type: object
+      required: [structureId, issueDate, dueDate]
+      properties:
+        structureId: { type: integer, minimum: 1 }
+        issueDate: { type: string, format: date }
+        dueDate: { type: string, format: date }
+        classId: { type: integer, minimum: 1 }
+        section: { type: string, maxLength: 100 }
+    FeeBulkAssignmentItem:
+      type: object
+      required: [studentId, status, reason]
+      properties:
+        studentId: { type: integer }
+        invoiceId: { type: ["integer", "null"] }
+        status: { type: string, enum: [CREATED, SKIPPED] }
+        reason: { type: ["string", "null"] }
+    FeeBulkAssignmentResult:
+      type: object
+      required: [createdCount, skippedCount, results]
+      properties:
+        createdCount: { type: integer }
+        skippedCount: { type: integer }
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/FeeBulkAssignmentItem" }
+    FeeRefundInput:
+      type: object
+      required: [amountMinor, reason]
+      properties:
+        amountMinor: { type: integer, minimum: 1 }
+        reason: { type: string, minLength: 3, maxLength: 500 }
+    FeeRefundApprovalInput:
+      type: object
+      required: [evidenceReference, reviewerNotes]
+      properties:
+        evidenceReference: { type: string, minLength: 3, maxLength: 200 }
+        reviewerNotes: { type: string, minLength: 3, maxLength: 1000 }
+    FeeRefund:
+      type: object
+      required: [id, schoolId, paymentId, invoiceId, amountMinor, currency, reason, status, reference, evidenceReference, reviewerNotes]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        paymentId: { type: integer }
+        invoiceId: { type: integer }
+        amountMinor: { type: integer }
+        currency: { type: string }
+        reason: { type: string }
+        status: { type: string, enum: [PENDING, APPROVED, REJECTED] }
+        reference: { type: string }
+        evidenceReference: { type: ["string", "null"] }
+        reviewerNotes: { type: ["string", "null"] }
+    SchoolFeeRefund:
+      type: object
+      required: [id, schoolId, paymentId, invoiceId, invoiceNumber, studentId, studentName, className, section, paymentReference, paymentAmountMinor, paymentMethod, paymentStatus, amountMinor, currency, reason, status, reference, evidenceReference, reviewerNotes, requestedAt, approvedAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        paymentId: { type: integer }
+        invoiceId: { type: integer }
+        invoiceNumber: { type: string }
+        studentId: { type: integer }
+        studentName: { type: string }
+        className: { type: string }
+        section: { type: string }
+        paymentReference: { type: string }
+        paymentAmountMinor: { type: integer }
+        paymentMethod: { type: string }
+        paymentStatus: { type: string }
+        amountMinor: { type: integer }
+        currency: { type: string }
+        reason: { type: string }
+        status: { type: string, enum: [PENDING, APPROVED, REJECTED] }
+        reference: { type: string }
+        evidenceReference: { type: ["string", "null"] }
+        reviewerNotes: { type: ["string", "null"] }
+        requestedAt: { type: string, format: date-time }
+        approvedAt: { type: ["string", "null"], format: date-time }
+    FeePaymentNotification:
+      type: object
+      required: [id, schoolId, eventType, isRead, createdAt, readAt, receiptNumber, invoiceNumber, studentName, paymentReference, amountMinor, currency, method]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        eventType: { type: string, enum: [PAYMENT_VERIFIED] }
+        isRead: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        readAt: { type: ["string", "null"], format: date-time }
+        receiptNumber: { type: string }
+        invoiceNumber: { type: string }
+        studentName: { type: string }
+        paymentReference: { type: string }
+        amountMinor: { type: integer }
+        currency: { type: string }
+        method: { type: string }
+    FinanceReportRow:
+      type: object
+      required: [label, count, amountMinor, secondaryAmountMinor]
+      properties:
+        label: { type: string }
+        count: { type: integer }
+        amountMinor: { type: integer }
+        secondaryAmountMinor: { type: integer }
+    FinanceReport:
+      type: object
+      required: [schoolId, reportType, totalBilledMinor, totalCollectedMinor, totalOutstandingMinor, totalDiscountMinor, totalWaiverMinor, totalRefundedMinor, rows]
+      properties:
+        schoolId: { type: integer }
+        reportType: { type: string }
+        totalBilledMinor: { type: integer }
+        totalCollectedMinor: { type: integer }
+        totalOutstandingMinor: { type: integer }
+        totalDiscountMinor: { type: integer }
+        totalWaiverMinor: { type: integer }
+        totalRefundedMinor: { type: integer }
+        rows:
+          type: array
+          items: { $ref: "#/components/schemas/FinanceReportRow" }
     FinanceSettings:
       type: object
-      required: [schoolId, partialPaymentsEnabled, bankTransferEnabled, bankName, accountName, accountNumber]
+      required: [schoolId, partialPaymentsEnabled, bankTransferEnabled, paystackEnabled, flutterwaveEnabled, bankName, accountName, accountNumber]
       properties:
         schoolId: { type: integer }
         partialPaymentsEnabled: { type: boolean }
         bankTransferEnabled: { type: boolean, description: "Explicit school-admin approval and enablement for parent bank transfers" }
+        paystackEnabled: { type: boolean, description: "School-approved Paystack test-provider checkout enablement" }
+        flutterwaveEnabled: { type: boolean, description: "School-approved Flutterwave test-provider checkout enablement" }
         bankName: { type: ["string", "null"] }
         accountName: { type: ["string", "null"] }
         accountNumber: { type: ["string", "null"], pattern: "^[0-9]{10}$" }
@@ -5308,6 +5755,8 @@ components:
       properties:
         partialPaymentsEnabled: { type: boolean }
         bankTransferEnabled: { type: boolean }
+        paystackEnabled: { type: boolean }
+        flutterwaveEnabled: { type: boolean }
         bankName: { type: ["string", "null"], minLength: 2, maxLength: 100 }
         accountName: { type: ["string", "null"], minLength: 2, maxLength: 150 }
         accountNumber: { type: ["string", "null"], pattern: "^[0-9]{10}$" }
@@ -5333,8 +5782,63 @@ components:
         schoolId: { type: integer }
         available: { type: boolean, const: false }
         reason: { type: string, enum: [BANK_DETAILS_UNAVAILABLE] }
-    ProviderPaymentInput:
+    FeeProviderCheckout:
       type: object
-      required: [invoiceId]
+      required: [paymentId, invoiceId, reference, provider, amountMinor, currency, status, checkoutUrl]
       properties:
-        invoiceId: { type: integer, minimum: 1 }
+        paymentId: { type: integer }
+        invoiceId: { type: integer }
+        reference: { type: string }
+        provider: { type: string, enum: [PAYSTACK, FLUTTERWAVE] }
+        amountMinor: { type: integer }
+        currency: { type: string, pattern: "^[A-Z]{3}$" }
+        status: { type: string, enum: [PENDING] }
+        checkoutUrl: { type: string, format: uri }
+    FeeProviderCheckoutProcessing:
+      type: object
+      required: [outcome, error]
+      properties:
+        outcome: { type: string, enum: [processing, reconciliation_required] }
+        error: { type: string }
+    FeeProviderCheckoutInitializeInput:
+      type: object
+      additionalProperties: false
+      properties:
+        amountMinor: { type: integer, minimum: 1, maximum: 9007199254740991 }
+    ParentFeeInvoiceCheckoutPolicy:
+      type: object
+      required: [invoiceId, schoolId, outstandingMinor, partialPaymentsEnabled]
+      properties:
+        invoiceId: { type: integer }
+        schoolId: { type: integer }
+        outstandingMinor: { type: integer, minimum: 0 }
+        partialPaymentsEnabled: { type: boolean }
+    FeeProviderReconciliationEvent:
+      type: object
+      required: [id, provider, eventId, paymentId, schoolId, providerReference, webhookTransactionId, verifiedTransactionId, status, errorMessage, signatureVerified, receivedAt, updatedAt]
+      properties:
+        id: { type: integer }
+        provider: { type: string, enum: [PAYSTACK, FLUTTERWAVE] }
+        eventId: { type: string }
+        paymentId: { type: ["integer", "null"] }
+        schoolId: { type: ["integer", "null"] }
+        providerReference: { type: ["string", "null"] }
+        webhookTransactionId: { type: ["string", "null"] }
+        verifiedTransactionId: { type: ["string", "null"] }
+        status: { type: string, enum: [RECONCILIATION_REQUIRED] }
+        errorMessage: { type: ["string", "null"] }
+        signatureVerified: { type: boolean }
+        receivedAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    FeeProviderReconciliationRetry:
+      type: object
+      required: [eventId, outcome]
+      properties:
+        eventId: { type: string }
+        outcome: { type: string, enum: [verified, pending, failed, duplicate, reconciliation_required] }
+    FeeProviderCheckoutReconciliation:
+      type: object
+      required: [paymentId, outcome]
+      properties:
+        paymentId: { type: integer }
+        outcome: { type: string, enum: [verified, pending, released, duplicate, reconciliation_required] }

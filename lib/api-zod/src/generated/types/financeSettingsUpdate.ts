@@ -9,6 +9,8 @@
 export interface FinanceSettingsUpdate {
   partialPaymentsEnabled?: boolean;
   bankTransferEnabled?: boolean;
+  paystackEnabled?: boolean;
+  flutterwaveEnabled?: boolean;
   /**
      * @minLength 2
      * @maxLength 100

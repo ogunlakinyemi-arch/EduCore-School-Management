@@ -113,6 +113,27 @@
       "when": 1790632158536,
       "tag": "0015_school_bank_transfer_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790632159536,
+      "tag": "0016_finance_refunds",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790632160536,
+      "tag": "0017_fee_provider_payments",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790632161536,
+      "tag": "0018_fee_payment_notifications",
+      "breakpoints": true
     }
   ]
 }

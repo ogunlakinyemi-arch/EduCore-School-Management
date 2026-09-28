@@ -14,6 +14,7 @@ import {
   getClerkProxyHost,
 } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
+import feeProviderWebhookRouter from "./routes/fee-provider-webhooks";
 import { logger } from "./lib/logger";
 import { AuthError } from "./middlewares/auth";
 
@@ -40,6 +41,13 @@ app.use(
 );
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use(cors({ credentials: true, origin: true }));
+// Provider callbacks are public and require the untouched raw bytes for
+// signature verification. This mount deliberately precedes Clerk and JSON parsing.
+app.use(
+  "/api/finance/provider-webhooks",
+  express.raw({ type: "application/json", limit: "64kb" }),
+  feeProviderWebhookRouter,
+);
 app.use(
   clerkMiddleware((req) => ({
     publishableKey: publishableKeyFromHost(

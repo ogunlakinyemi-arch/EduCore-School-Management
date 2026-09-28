@@ -25,6 +25,8 @@ export const GetFinanceSettingsResponse = zod.object({
   "schoolId": zod.number().int(),
   "partialPaymentsEnabled": zod.boolean(),
   "bankTransferEnabled": zod.boolean().describe('Explicit school-admin approval and enablement for parent bank transfers'),
+  "paystackEnabled": zod.boolean().describe('School-approved Paystack test-provider checkout enablement'),
+  "flutterwaveEnabled": zod.boolean().describe('School-approved Flutterwave test-provider checkout enablement'),
   "bankName": zod.string().nullable(),
   "accountName": zod.string().nullable(),
   "accountNumber": zod.string().regex(getFinanceSettingsResponseAccountNumberRegExp).nullable()
@@ -53,6 +55,8 @@ export const updateFinanceSettingsBodyAccountNumberRegExp = new RegExp('^[0-9]{1
 export const UpdateFinanceSettingsBody = zod.object({
   "partialPaymentsEnabled": zod.boolean().optional(),
   "bankTransferEnabled": zod.boolean().optional(),
+  "paystackEnabled": zod.boolean().optional(),
+  "flutterwaveEnabled": zod.boolean().optional(),
   "bankName": zod.string().min(updateFinanceSettingsBodyBankNameMin).max(updateFinanceSettingsBodyBankNameMax).nullish(),
   "accountName": zod.string().min(updateFinanceSettingsBodyAccountNameMin).max(updateFinanceSettingsBodyAccountNameMax).nullish(),
   "accountNumber": zod.string().regex(updateFinanceSettingsBodyAccountNumberRegExp).nullish()
@@ -65,9 +69,141 @@ export const UpdateFinanceSettingsResponse = zod.object({
   "schoolId": zod.number().int(),
   "partialPaymentsEnabled": zod.boolean(),
   "bankTransferEnabled": zod.boolean().describe('Explicit school-admin approval and enablement for parent bank transfers'),
+  "paystackEnabled": zod.boolean().describe('School-approved Paystack test-provider checkout enablement'),
+  "flutterwaveEnabled": zod.boolean().describe('School-approved Flutterwave test-provider checkout enablement'),
   "bankName": zod.string().nullable(),
   "accountName": zod.string().nullable(),
   "accountNumber": zod.string().regex(updateFinanceSettingsResponseAccountNumberRegExp).nullable()
+})
+
+
+/**
+ * @summary List verified-payment notifications currently linked to the authenticated recipient
+ */
+
+
+
+export const ListMyFeePaymentNotificationsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional()
+})
+
+export const ListMyFeePaymentNotificationsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "eventType": zod.enum(['PAYMENT_VERIFIED']),
+  "isRead": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "readAt": zod.coerce.date().nullable(),
+  "receiptNumber": zod.string(),
+  "invoiceNumber": zod.string(),
+  "studentName": zod.string(),
+  "paymentReference": zod.string(),
+  "amountMinor": zod.number().int(),
+  "currency": zod.string(),
+  "method": zod.string()
+})
+export const ListMyFeePaymentNotificationsResponse = zod.array(ListMyFeePaymentNotificationsResponseItem)
+
+
+/**
+ * @summary Mark a currently authorized verified-payment notification as read
+ */
+
+
+
+export const MarkMyFeePaymentNotificationReadParams = zod.object({
+  "notificationId": zod.coerce.number().int().min(1)
+})
+
+export const MarkMyFeePaymentNotificationReadResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "eventType": zod.enum(['PAYMENT_VERIFIED']),
+  "isRead": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "readAt": zod.coerce.date().nullable(),
+  "receiptNumber": zod.string(),
+  "invoiceNumber": zod.string(),
+  "studentName": zod.string(),
+  "paymentReference": zod.string(),
+  "amountMinor": zod.number().int(),
+  "currency": zod.string(),
+  "method": zod.string()
+})
+
+
+/**
+ * @summary List signed provider events requiring school finance reconciliation
+ */
+
+
+
+export const ListFeeProviderReconciliationEventsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ListFeeProviderReconciliationEventsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "provider": zod.enum(['PAYSTACK', 'FLUTTERWAVE']),
+  "eventId": zod.string(),
+  "paymentId": zod.number().int().nullable(),
+  "schoolId": zod.number().int().nullable(),
+  "providerReference": zod.string().nullable(),
+  "webhookTransactionId": zod.string().nullable(),
+  "verifiedTransactionId": zod.string().nullable(),
+  "status": zod.enum(['RECONCILIATION_REQUIRED']),
+  "errorMessage": zod.string().nullable(),
+  "signatureVerified": zod.boolean(),
+  "receivedAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListFeeProviderReconciliationEventsResponse = zod.array(ListFeeProviderReconciliationEventsResponseItem)
+
+
+/**
+ * @summary Reverify a signed provider transaction for a school payment
+ */
+export const retryFeeProviderReconciliationEventPathEventIdMax = 160;
+
+
+
+export const RetryFeeProviderReconciliationEventParams = zod.object({
+  "eventId": zod.coerce.string().min(1).max(retryFeeProviderReconciliationEventPathEventIdMax)
+})
+
+
+
+
+export const RetryFeeProviderReconciliationEventQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const RetryFeeProviderReconciliationEventResponse = zod.object({
+  "eventId": zod.string(),
+  "outcome": zod.enum(['verified', 'pending', 'failed', 'duplicate', 'reconciliation_required'])
+})
+
+
+/**
+ * @summary Independently verify an unresolved checkout and safely release it only after terminal failure
+ */
+
+
+
+export const ReconcileFeeProviderCheckoutParams = zod.object({
+  "paymentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ReconcileFeeProviderCheckoutQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ReconcileFeeProviderCheckoutResponse = zod.object({
+  "paymentId": zod.number().int(),
+  "outcome": zod.enum(['verified', 'pending', 'released', 'duplicate', 'reconciliation_required'])
 })
 
 
@@ -97,6 +233,99 @@ export const GetParentFeeInvoiceBankDetailsResponse = zod.union([zod.object({
   "available": zod.literal(false),
   "reason": zod.enum(['BANK_DETAILS_UNAVAILABLE'])
 })])
+
+
+/**
+ * @summary List payment methods currently usable for a linked parent invoice
+ */
+
+
+
+export const GetParentFeeInvoicePaymentMethodsParams = zod.object({
+  "invoiceId": zod.coerce.number().int().min(1)
+})
+
+export const GetParentFeeInvoicePaymentMethodsResponseItem = zod.enum(['BANK_TRANSFER', 'PAYSTACK', 'FLUTTERWAVE'])
+export const GetParentFeeInvoicePaymentMethodsResponse = zod.array(GetParentFeeInvoicePaymentMethodsResponseItem)
+
+
+/**
+ * @summary Read the linked parent's outstanding invoice amount and partial-payment policy
+ */
+
+
+
+export const GetParentFeeInvoiceCheckoutPolicyParams = zod.object({
+  "invoiceId": zod.coerce.number().int().min(1)
+})
+
+export const getParentFeeInvoiceCheckoutPolicyResponseOutstandingMinorMin = 0;
+
+
+
+export const GetParentFeeInvoiceCheckoutPolicyResponse = zod.object({
+  "invoiceId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "outstandingMinor": zod.number().int().min(getParentFeeInvoiceCheckoutPolicyResponseOutstandingMinorMin),
+  "partialPaymentsEnabled": zod.boolean()
+})
+
+
+/**
+ * @summary Create an idempotent hosted checkout for a linked parent and payable invoice
+ */
+
+
+
+export const InitializeFeeProviderPaymentParams = zod.object({
+  "invoiceId": zod.coerce.number().int().min(1),
+  "provider": zod.enum(['PAYSTACK', 'FLUTTERWAVE', 'REMITA'])
+})
+
+export const initializeFeeProviderPaymentHeaderIdempotencyKeyMin = 8;
+export const initializeFeeProviderPaymentHeaderIdempotencyKeyMax = 120;
+
+
+export const initializeFeeProviderPaymentHeaderIdempotencyKeyRegExp = new RegExp('^[A-Za-z0-9._:-]+$');
+
+
+export const InitializeFeeProviderPaymentHeader = zod.object({
+  "Idempotency-Key": zod.string().min(initializeFeeProviderPaymentHeaderIdempotencyKeyMin).max(initializeFeeProviderPaymentHeaderIdempotencyKeyMax).regex(initializeFeeProviderPaymentHeaderIdempotencyKeyRegExp)
+})
+
+export const initializeFeeProviderPaymentBodyAmountMinorMax = 9007199254740991;
+
+
+
+export const InitializeFeeProviderPaymentBody = zod.object({
+  "amountMinor": zod.number().int().min(1).max(initializeFeeProviderPaymentBodyAmountMinorMax).optional()
+})
+
+export const initializeFeeProviderPaymentResponseCurrencyRegExp = new RegExp('^[A-Z]{3}$');
+
+
+export const InitializeFeeProviderPaymentResponse = zod.object({
+  "paymentId": zod.number().int(),
+  "invoiceId": zod.number().int(),
+  "reference": zod.string(),
+  "provider": zod.enum(['PAYSTACK', 'FLUTTERWAVE']),
+  "amountMinor": zod.number().int(),
+  "currency": zod.string().regex(initializeFeeProviderPaymentResponseCurrencyRegExp),
+  "status": zod.enum(['PENDING']),
+  "checkoutUrl": zod.string().url()
+})
+
+
+/**
+ * @summary Public raw-body payment provider callback
+ */
+export const ReceiveFeeProviderWebhookParams = zod.object({
+  "provider": zod.enum(['paystack', 'flutterwave'])
+})
+
+export const ReceiveFeeProviderWebhookBody = zod.record(zod.string(), zod.unknown())
+
+export const ReceiveFeeProviderWebhookResponse = zod.unknown()
 
 
 /**
@@ -345,6 +574,264 @@ export const AssignFeeStructureResponse = zod.object({
   "paidMinor": zod.number().int(),
   "outstandingMinor": zod.number().int(),
   "status": zod.enum(['UNPAID', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'WAIVED', 'CANCELLED'])
+})
+
+
+/**
+ * @summary Assign a published structure to all active matching students with per-student duplicate reasons
+ */
+
+
+
+export const BulkAssignFeeStructureQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+export const bulkAssignFeeStructureBodySectionMax = 100;
+
+
+
+export const BulkAssignFeeStructureBody = zod.object({
+  "structureId": zod.number().int().min(1),
+  "issueDate": zod.coerce.date(),
+  "dueDate": zod.coerce.date(),
+  "classId": zod.number().int().min(1).optional(),
+  "section": zod.string().max(bulkAssignFeeStructureBodySectionMax).optional()
+})
+
+export const BulkAssignFeeStructureResponse = zod.object({
+  "createdCount": zod.number().int(),
+  "skippedCount": zod.number().int(),
+  "results": zod.array(zod.object({
+  "studentId": zod.number().int(),
+  "invoiceId": zod.number().int().nullish(),
+  "status": zod.enum(['CREATED', 'SKIPPED']),
+  "reason": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Request a refund against a verified payment; funds are not changed until separately approved
+ */
+
+
+
+export const RequestFeeRefundParams = zod.object({
+  "paymentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const RequestFeeRefundQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const requestFeeRefundHeaderIdempotencyKeyMin = 8;
+export const requestFeeRefundHeaderIdempotencyKeyMax = 128;
+
+
+
+export const RequestFeeRefundHeader = zod.object({
+  "Idempotency-Key": zod.string().min(requestFeeRefundHeaderIdempotencyKeyMin).max(requestFeeRefundHeaderIdempotencyKeyMax)
+})
+
+
+export const requestFeeRefundBodyReasonMin = 3;
+export const requestFeeRefundBodyReasonMax = 500;
+
+
+
+export const RequestFeeRefundBody = zod.object({
+  "amountMinor": zod.number().int().min(1),
+  "reason": zod.string().min(requestFeeRefundBodyReasonMin).max(requestFeeRefundBodyReasonMax)
+})
+
+export const RequestFeeRefundResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "paymentId": zod.number().int(),
+  "invoiceId": zod.number().int(),
+  "amountMinor": zod.number().int(),
+  "currency": zod.string(),
+  "reason": zod.string(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED']),
+  "reference": zod.string(),
+  "evidenceReference": zod.string().nullable(),
+  "reviewerNotes": zod.string().nullable()
+})
+
+
+/**
+ * @summary Recover school refund requests with safe invoice, student, payment, and review evidence fields
+ */
+
+export const listSchoolFeeRefundsQueryStatusDefault = `PENDING`;
+
+export const ListSchoolFeeRefundsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'ALL']).default(listSchoolFeeRefundsQueryStatusDefault)
+})
+
+export const ListSchoolFeeRefundsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "paymentId": zod.number().int(),
+  "invoiceId": zod.number().int(),
+  "invoiceNumber": zod.string(),
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "paymentReference": zod.string(),
+  "paymentAmountMinor": zod.number().int(),
+  "paymentMethod": zod.string(),
+  "paymentStatus": zod.string(),
+  "amountMinor": zod.number().int(),
+  "currency": zod.string(),
+  "reason": zod.string(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED']),
+  "reference": zod.string(),
+  "evidenceReference": zod.string().nullable(),
+  "reviewerNotes": zod.string().nullable(),
+  "requestedAt": zod.coerce.date(),
+  "approvedAt": zod.coerce.date().nullable()
+})
+export const ListSchoolFeeRefundsResponse = zod.array(ListSchoolFeeRefundsResponseItem)
+
+
+/**
+ * @summary Read one school-scoped refund ledger entry and review evidence
+ */
+
+
+
+export const GetSchoolFeeRefundParams = zod.object({
+  "refundId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GetSchoolFeeRefundQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const GetSchoolFeeRefundResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "paymentId": zod.number().int(),
+  "invoiceId": zod.number().int(),
+  "invoiceNumber": zod.string(),
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "paymentReference": zod.string(),
+  "paymentAmountMinor": zod.number().int(),
+  "paymentMethod": zod.string(),
+  "paymentStatus": zod.string(),
+  "amountMinor": zod.number().int(),
+  "currency": zod.string(),
+  "reason": zod.string(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED']),
+  "reference": zod.string(),
+  "evidenceReference": zod.string().nullable(),
+  "reviewerNotes": zod.string().nullable(),
+  "requestedAt": zod.coerce.date(),
+  "approvedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Approve and record an externally confirmed refund with evidence; preserves original payment and receipt
+ */
+
+
+
+export const ApproveFeeRefundParams = zod.object({
+  "refundId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ApproveFeeRefundQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const approveFeeRefundBodyEvidenceReferenceMin = 3;
+export const approveFeeRefundBodyEvidenceReferenceMax = 200;
+
+export const approveFeeRefundBodyReviewerNotesMin = 3;
+export const approveFeeRefundBodyReviewerNotesMax = 1000;
+
+
+
+export const ApproveFeeRefundBody = zod.object({
+  "evidenceReference": zod.string().min(approveFeeRefundBodyEvidenceReferenceMin).max(approveFeeRefundBodyEvidenceReferenceMax),
+  "reviewerNotes": zod.string().min(approveFeeRefundBodyReviewerNotesMin).max(approveFeeRefundBodyReviewerNotesMax)
+})
+
+export const ApproveFeeRefundResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "paymentId": zod.number().int(),
+  "invoiceId": zod.number().int(),
+  "amountMinor": zod.number().int(),
+  "currency": zod.string(),
+  "reason": zod.string(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED']),
+  "reference": zod.string(),
+  "evidenceReference": zod.string().nullable(),
+  "reviewerNotes": zod.string().nullable()
+})
+
+
+/**
+ * @summary School-scoped financial totals and grouped financial report data
+ */
+
+export const getSchoolFinanceReportQueryReportTypeDefault = `summary`;
+
+
+export const getSchoolFinanceReportQuerySectionMax = 100;
+
+
+
+
+export const GetSchoolFinanceReportQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "reportType": zod.enum(['summary', 'payments', 'outstanding', 'category', 'class', 'term', 'adjustment', 'refund', 'provider-reconciliation']).default(getSchoolFinanceReportQueryReportTypeDefault),
+  "sessionId": zod.coerce.number().int().min(1).optional(),
+  "termId": zod.coerce.number().int().min(1).optional(),
+  "classId": zod.coerce.number().int().min(1).optional(),
+  "section": zod.coerce.string().max(getSchoolFinanceReportQuerySectionMax).optional(),
+  "categoryId": zod.coerce.number().int().min(1).optional(),
+  "status": zod.coerce.string().optional(),
+  "provider": zod.enum(['MANUAL_BANK_TRANSFER', 'REMITA', 'FLUTTERWAVE', 'PAYSTACK']).optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
+export const GetSchoolFinanceReportResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "reportType": zod.string(),
+  "totalBilledMinor": zod.number().int(),
+  "totalCollectedMinor": zod.number().int(),
+  "totalOutstandingMinor": zod.number().int(),
+  "totalDiscountMinor": zod.number().int(),
+  "totalWaiverMinor": zod.number().int(),
+  "totalRefundedMinor": zod.number().int(),
+  "rows": zod.array(zod.object({
+  "label": zod.string(),
+  "count": zod.number().int(),
+  "amountMinor": zod.number().int(),
+  "secondaryAmountMinor": zod.number().int()
+}))
 })
 
 
@@ -844,30 +1331,6 @@ export const ListPendingFeeAdjustmentsResponseItem = zod.object({
   "requestedAt": zod.coerce.date()
 })
 export const ListPendingFeeAdjustmentsResponse = zod.array(ListPendingFeeAdjustmentsResponseItem)
-
-
-/**
- * @summary Initialize a configured online payment provider or return an explicit unavailable response
- */
-export const InitializeFeeProviderPaymentParams = zod.object({
-  "provider": zod.enum(['REMITA', 'FLUTTERWAVE', 'PAYSTACK'])
-})
-
-
-
-
-export const InitializeFeeProviderPaymentQueryParams = zod.object({
-  "schoolId": zod.coerce.number().int().min(1)
-})
-
-
-
-
-export const InitializeFeeProviderPaymentBody = zod.object({
-  "invoiceId": zod.number().int().min(1)
-})
-
-export const InitializeFeeProviderPaymentResponse = zod.void()
 
 
 /**

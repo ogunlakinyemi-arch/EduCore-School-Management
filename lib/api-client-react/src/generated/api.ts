@@ -52,6 +52,7 @@ import type {
   ApiError,
   AppUser,
   ApproveFeeAdjustmentParams,
+  ApproveFeeRefundParams,
   AssignClassSubjectParams,
   AssignFeeStructureParams,
   AssignStudentClassParams,
@@ -68,6 +69,7 @@ import type {
   BiometricEnrollment,
   BiometricEnrollmentInput,
   BiometricProviderEventInput,
+  BulkAssignFeeStructureParams,
   CardHistoryEntry,
   CardInput,
   CardReplacementInput,
@@ -105,17 +107,30 @@ import type {
   FeeAdjustment,
   FeeAdjustmentInput,
   FeeAssignmentInput,
+  FeeBulkAssignmentInput,
+  FeeBulkAssignmentResult,
   FeeCategory,
   FeeCategoryInput,
   FeeCategoryUpdate,
   FeeInvoice,
   FeePayment,
   FeePaymentHistory,
+  FeePaymentNotification,
   FeePaymentVerificationInput,
   FeePaymentVerificationResult,
+  FeeProviderCheckout,
+  FeeProviderCheckoutInitializeInput,
+  FeeProviderCheckoutProcessing,
+  FeeProviderCheckoutReconciliation,
+  FeeProviderReconciliationEvent,
+  FeeProviderReconciliationRetry,
   FeeReceipt,
+  FeeRefund,
+  FeeRefundApprovalInput,
+  FeeRefundInput,
   FeeStructure,
   FeeStructureInput,
+  FinanceReport,
   FinanceSettings,
   FinanceSettingsUpdate,
   FinanceSummary,
@@ -128,17 +143,19 @@ import type {
   GetMyAcademicTimetableParams,
   GetOwnAttendanceParams,
   GetParentChildAttendanceParams,
+  GetParentFeeInvoicePaymentMethods200Item,
   GetParentParams,
   GetSchoolAttendanceTodayParams,
   GetSchoolDashboardParams,
+  GetSchoolFeeRefundParams,
   GetSchoolFinancePaymentParams,
+  GetSchoolFinanceReportParams,
   GetSchoolFinanceSummaryParams,
   GetStudentAttendanceParams,
   GetStudentOwnAttendanceByIdParams,
   GetStudentParams,
   GetSubjectParams,
   HealthStatus,
-  InitializeFeeProviderPaymentParams,
   InspectPeopleImportParams,
   ListAcademicAssessmentTypesParams,
   ListAcademicAssessmentsParams,
@@ -160,10 +177,12 @@ import type {
   ListEmployeesParams,
   ListFeeCategoriesParams,
   ListFeeInvoicesParams,
+  ListFeeProviderReconciliationEventsParams,
   ListFeeStructuresParams,
   ListMyAcademicAssignmentsParams,
   ListMyAcademicReportCardsParams,
   ListMyAcademicResultsParams,
+  ListMyFeePaymentNotificationsParams,
   ListOwnerSchoolDirectoryParams,
   ListParentStudentRelationshipsParams,
   ListParentsParams,
@@ -171,6 +190,7 @@ import type {
   ListPendingFeeAdjustmentsParams,
   ListPeopleImportClassesParams,
   ListSchoolAttendanceEventsParams,
+  ListSchoolFeeRefundsParams,
   ListSchoolFinancePaymentsParams,
   ListSchoolUsersParams,
   ListSchoolsParams,
@@ -187,6 +207,7 @@ import type {
   OwnerSchoolOverview,
   Parent,
   ParentChild,
+  ParentFeeInvoiceCheckoutPolicy,
   ParentInput,
   ParentInvoiceBankDetails,
   ParentProfile,
@@ -238,19 +259,23 @@ import type {
   PlatformOwnerBootstrapResult,
   PlatformOwnerBootstrapStatus,
   PreviewPeopleImportParams,
-  ProviderPaymentInput,
   PublishFeeStructureParams,
+  ReceiveFeeProviderWebhookBody,
+  ReconcileFeeProviderCheckoutParams,
   ReferralValidation,
   ReferralValidationInput,
   RegisterCardParams,
   RejectManualBankTransferParams,
   RequestFeeAdjustmentParams,
+  RequestFeeRefundParams,
+  RetryFeeProviderReconciliationEventParams,
   RoleAssignment,
   School,
   SchoolAdministratorInput,
   SchoolAdministratorResult,
   SchoolClass,
   SchoolDashboard,
+  SchoolFeeRefund,
   SchoolInput,
   SchoolMembershipInput,
   SchoolStatusUpdate,
@@ -497,6 +522,414 @@ export const useUpdateFinanceSettings = <TError = ErrorType<unknown>,
       return useMutation(getUpdateFinanceSettingsMutationOptions(options));
     }
 
+export const getListMyFeePaymentNotificationsUrl = (params?: ListMyFeePaymentNotificationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/me/finance/payment-notifications?${stringifiedParams}` : `/api/me/finance/payment-notifications`
+}
+
+/**
+ * @summary List verified-payment notifications currently linked to the authenticated recipient
+ */
+export const listMyFeePaymentNotifications = async (params?: ListMyFeePaymentNotificationsParams, options?: Parameters<typeof customFetch>[1]): Promise<FeePaymentNotification[]> => {
+
+  return customFetch<FeePaymentNotification[]>(getListMyFeePaymentNotificationsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMyFeePaymentNotificationsQueryKey = (params?: ListMyFeePaymentNotificationsParams,) => {
+    return [
+    `/api/me/finance/payment-notifications`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListMyFeePaymentNotificationsQueryOptions = <TData = Awaited<ReturnType<typeof listMyFeePaymentNotifications>>, TError = ErrorType<NotFoundResponse>>(params?: ListMyFeePaymentNotificationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyFeePaymentNotifications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMyFeePaymentNotificationsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyFeePaymentNotifications>>> = ({ signal }) => listMyFeePaymentNotifications(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMyFeePaymentNotifications>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMyFeePaymentNotificationsQueryResult = NonNullable<Awaited<ReturnType<typeof listMyFeePaymentNotifications>>>
+export type ListMyFeePaymentNotificationsQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary List verified-payment notifications currently linked to the authenticated recipient
+ */
+
+export function useListMyFeePaymentNotifications<TData = Awaited<ReturnType<typeof listMyFeePaymentNotifications>>, TError = ErrorType<NotFoundResponse>>(
+ params?: ListMyFeePaymentNotificationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyFeePaymentNotifications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMyFeePaymentNotificationsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMarkMyFeePaymentNotificationReadUrl = (notificationId: number,) => {
+
+
+
+
+  return `/api/me/finance/payment-notifications/${notificationId}/read`
+}
+
+/**
+ * @summary Mark a currently authorized verified-payment notification as read
+ */
+export const markMyFeePaymentNotificationRead = async (notificationId: number, options?: Parameters<typeof customFetch>[1]): Promise<FeePaymentNotification> => {
+
+  return customFetch<FeePaymentNotification>(getMarkMyFeePaymentNotificationReadUrl(notificationId),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkMyFeePaymentNotificationReadMutationKey = () => ['markMyFeePaymentNotificationRead'] as const;
+
+export const getMarkMyFeePaymentNotificationReadMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markMyFeePaymentNotificationRead>>, TError,MarkMyFeePaymentNotificationReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markMyFeePaymentNotificationRead>>, TError,MarkMyFeePaymentNotificationReadMutationVariables, TContext> => {
+
+const mutationKey = getMarkMyFeePaymentNotificationReadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markMyFeePaymentNotificationRead>>, MarkMyFeePaymentNotificationReadMutationVariables> = (props) => {
+          const {notificationId} = props ?? {};
+
+          return  markMyFeePaymentNotificationRead(notificationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkMyFeePaymentNotificationReadMutationResult = NonNullable<Awaited<ReturnType<typeof markMyFeePaymentNotificationRead>>>
+
+    export type MarkMyFeePaymentNotificationReadMutationError = ErrorType<NotFoundResponse>
+    export type MarkMyFeePaymentNotificationReadMutationVariables = {notificationId: number}
+
+    /**
+ * @summary Mark a currently authorized verified-payment notification as read
+ */
+export const useMarkMyFeePaymentNotificationRead = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markMyFeePaymentNotificationRead>>, TError,MarkMyFeePaymentNotificationReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markMyFeePaymentNotificationRead>>,
+        TError,
+        MarkMyFeePaymentNotificationReadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMarkMyFeePaymentNotificationReadMutationOptions(options));
+    }
+
+export const getListFeeProviderReconciliationEventsUrl = (params: ListFeeProviderReconciliationEventsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/finance/provider-reconciliation?${stringifiedParams}` : `/api/school/finance/provider-reconciliation`
+}
+
+/**
+ * @summary List signed provider events requiring school finance reconciliation
+ */
+export const listFeeProviderReconciliationEvents = async (params: ListFeeProviderReconciliationEventsParams, options?: Parameters<typeof customFetch>[1]): Promise<FeeProviderReconciliationEvent[]> => {
+
+  return customFetch<FeeProviderReconciliationEvent[]>(getListFeeProviderReconciliationEventsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFeeProviderReconciliationEventsQueryKey = (params?: ListFeeProviderReconciliationEventsParams,) => {
+    return [
+    `/api/school/finance/provider-reconciliation`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListFeeProviderReconciliationEventsQueryOptions = <TData = Awaited<ReturnType<typeof listFeeProviderReconciliationEvents>>, TError = ErrorType<unknown>>(params: ListFeeProviderReconciliationEventsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFeeProviderReconciliationEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFeeProviderReconciliationEventsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFeeProviderReconciliationEvents>>> = ({ signal }) => listFeeProviderReconciliationEvents(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFeeProviderReconciliationEvents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFeeProviderReconciliationEventsQueryResult = NonNullable<Awaited<ReturnType<typeof listFeeProviderReconciliationEvents>>>
+export type ListFeeProviderReconciliationEventsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List signed provider events requiring school finance reconciliation
+ */
+
+export function useListFeeProviderReconciliationEvents<TData = Awaited<ReturnType<typeof listFeeProviderReconciliationEvents>>, TError = ErrorType<unknown>>(
+ params: ListFeeProviderReconciliationEventsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFeeProviderReconciliationEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFeeProviderReconciliationEventsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRetryFeeProviderReconciliationEventUrl = (eventId: string,
+    params: RetryFeeProviderReconciliationEventParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/finance/provider-reconciliation/${eventId}/retry?${stringifiedParams}` : `/api/school/finance/provider-reconciliation/${eventId}/retry`
+}
+
+/**
+ * @summary Reverify a signed provider transaction for a school payment
+ */
+export const retryFeeProviderReconciliationEvent = async (eventId: string,
+    params: RetryFeeProviderReconciliationEventParams, options?: Parameters<typeof customFetch>[1]): Promise<FeeProviderReconciliationRetry> => {
+
+  return customFetch<FeeProviderReconciliationRetry>(getRetryFeeProviderReconciliationEventUrl(eventId,params),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRetryFeeProviderReconciliationEventMutationKey = () => ['retryFeeProviderReconciliationEvent'] as const;
+
+export const getRetryFeeProviderReconciliationEventMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryFeeProviderReconciliationEvent>>, TError,RetryFeeProviderReconciliationEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof retryFeeProviderReconciliationEvent>>, TError,RetryFeeProviderReconciliationEventMutationVariables, TContext> => {
+
+const mutationKey = getRetryFeeProviderReconciliationEventMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retryFeeProviderReconciliationEvent>>, RetryFeeProviderReconciliationEventMutationVariables> = (props) => {
+          const {eventId,params} = props ?? {};
+
+          return  retryFeeProviderReconciliationEvent(eventId,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RetryFeeProviderReconciliationEventMutationResult = NonNullable<Awaited<ReturnType<typeof retryFeeProviderReconciliationEvent>>>
+
+    export type RetryFeeProviderReconciliationEventMutationError = ErrorType<unknown>
+    export type RetryFeeProviderReconciliationEventMutationVariables = {eventId: string;params: RetryFeeProviderReconciliationEventParams}
+
+    /**
+ * @summary Reverify a signed provider transaction for a school payment
+ */
+export const useRetryFeeProviderReconciliationEvent = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryFeeProviderReconciliationEvent>>, TError,RetryFeeProviderReconciliationEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof retryFeeProviderReconciliationEvent>>,
+        TError,
+        RetryFeeProviderReconciliationEventMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRetryFeeProviderReconciliationEventMutationOptions(options));
+    }
+
+export const getReconcileFeeProviderCheckoutUrl = (paymentId: number,
+    params: ReconcileFeeProviderCheckoutParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/finance/provider-checkouts/${paymentId}/reconcile?${stringifiedParams}` : `/api/school/finance/provider-checkouts/${paymentId}/reconcile`
+}
+
+/**
+ * @summary Independently verify an unresolved checkout and safely release it only after terminal failure
+ */
+export const reconcileFeeProviderCheckout = async (paymentId: number,
+    params: ReconcileFeeProviderCheckoutParams, options?: Parameters<typeof customFetch>[1]): Promise<FeeProviderCheckoutReconciliation> => {
+
+  return customFetch<FeeProviderCheckoutReconciliation>(getReconcileFeeProviderCheckoutUrl(paymentId,params),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReconcileFeeProviderCheckoutMutationKey = () => ['reconcileFeeProviderCheckout'] as const;
+
+export const getReconcileFeeProviderCheckoutMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileFeeProviderCheckout>>, TError,ReconcileFeeProviderCheckoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reconcileFeeProviderCheckout>>, TError,ReconcileFeeProviderCheckoutMutationVariables, TContext> => {
+
+const mutationKey = getReconcileFeeProviderCheckoutMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reconcileFeeProviderCheckout>>, ReconcileFeeProviderCheckoutMutationVariables> = (props) => {
+          const {paymentId,params} = props ?? {};
+
+          return  reconcileFeeProviderCheckout(paymentId,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReconcileFeeProviderCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof reconcileFeeProviderCheckout>>>
+
+    export type ReconcileFeeProviderCheckoutMutationError = ErrorType<ForbiddenResponse | NotFoundResponse | void>
+    export type ReconcileFeeProviderCheckoutMutationVariables = {paymentId: number;params: ReconcileFeeProviderCheckoutParams}
+
+    /**
+ * @summary Independently verify an unresolved checkout and safely release it only after terminal failure
+ */
+export const useReconcileFeeProviderCheckout = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileFeeProviderCheckout>>, TError,ReconcileFeeProviderCheckoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reconcileFeeProviderCheckout>>,
+        TError,
+        ReconcileFeeProviderCheckoutMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReconcileFeeProviderCheckoutMutationOptions(options));
+    }
+
 export const getGetParentFeeInvoiceBankDetailsUrl = (invoiceId: number,) => {
 
 
@@ -573,6 +1006,340 @@ export function useGetParentFeeInvoiceBankDetails<TData = Awaited<ReturnType<typ
 
 
 
+
+export const getGetParentFeeInvoicePaymentMethodsUrl = (invoiceId: number,) => {
+
+
+
+
+  return `/api/parent/fees/invoices/${invoiceId}/payment-methods`
+}
+
+/**
+ * @summary List payment methods currently usable for a linked parent invoice
+ */
+export const getParentFeeInvoicePaymentMethods = async (invoiceId: number, options?: Parameters<typeof customFetch>[1]): Promise<GetParentFeeInvoicePaymentMethods200Item[]> => {
+
+  return customFetch<GetParentFeeInvoicePaymentMethods200Item[]>(getGetParentFeeInvoicePaymentMethodsUrl(invoiceId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetParentFeeInvoicePaymentMethodsQueryKey = (invoiceId: number,) => {
+    return [
+    `/api/parent/fees/invoices/${invoiceId}/payment-methods`
+    ] as const;
+    }
+
+
+export const getGetParentFeeInvoicePaymentMethodsQueryOptions = <TData = Awaited<ReturnType<typeof getParentFeeInvoicePaymentMethods>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>>(invoiceId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getParentFeeInvoicePaymentMethods>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetParentFeeInvoicePaymentMethodsQueryKey(invoiceId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getParentFeeInvoicePaymentMethods>>> = ({ signal }) => getParentFeeInvoicePaymentMethods(invoiceId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: invoiceId !== null && invoiceId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getParentFeeInvoicePaymentMethods>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetParentFeeInvoicePaymentMethodsQueryResult = NonNullable<Awaited<ReturnType<typeof getParentFeeInvoicePaymentMethods>>>
+export type GetParentFeeInvoicePaymentMethodsQueryError = ErrorType<ForbiddenResponse | NotFoundResponse | void>
+
+
+/**
+ * @summary List payment methods currently usable for a linked parent invoice
+ */
+
+export function useGetParentFeeInvoicePaymentMethods<TData = Awaited<ReturnType<typeof getParentFeeInvoicePaymentMethods>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>>(
+ invoiceId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getParentFeeInvoicePaymentMethods>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetParentFeeInvoicePaymentMethodsQueryOptions(invoiceId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetParentFeeInvoiceCheckoutPolicyUrl = (invoiceId: number,) => {
+
+
+
+
+  return `/api/parent/fees/invoices/${invoiceId}/checkout-policy`
+}
+
+/**
+ * @summary Read the linked parent's outstanding invoice amount and partial-payment policy
+ */
+export const getParentFeeInvoiceCheckoutPolicy = async (invoiceId: number, options?: Parameters<typeof customFetch>[1]): Promise<ParentFeeInvoiceCheckoutPolicy> => {
+
+  return customFetch<ParentFeeInvoiceCheckoutPolicy>(getGetParentFeeInvoiceCheckoutPolicyUrl(invoiceId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetParentFeeInvoiceCheckoutPolicyQueryKey = (invoiceId: number,) => {
+    return [
+    `/api/parent/fees/invoices/${invoiceId}/checkout-policy`
+    ] as const;
+    }
+
+
+export const getGetParentFeeInvoiceCheckoutPolicyQueryOptions = <TData = Awaited<ReturnType<typeof getParentFeeInvoiceCheckoutPolicy>>, TError = ErrorType<NotFoundResponse>>(invoiceId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getParentFeeInvoiceCheckoutPolicy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetParentFeeInvoiceCheckoutPolicyQueryKey(invoiceId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getParentFeeInvoiceCheckoutPolicy>>> = ({ signal }) => getParentFeeInvoiceCheckoutPolicy(invoiceId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: invoiceId !== null && invoiceId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getParentFeeInvoiceCheckoutPolicy>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetParentFeeInvoiceCheckoutPolicyQueryResult = NonNullable<Awaited<ReturnType<typeof getParentFeeInvoiceCheckoutPolicy>>>
+export type GetParentFeeInvoiceCheckoutPolicyQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Read the linked parent's outstanding invoice amount and partial-payment policy
+ */
+
+export function useGetParentFeeInvoiceCheckoutPolicy<TData = Awaited<ReturnType<typeof getParentFeeInvoiceCheckoutPolicy>>, TError = ErrorType<NotFoundResponse>>(
+ invoiceId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getParentFeeInvoiceCheckoutPolicy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetParentFeeInvoiceCheckoutPolicyQueryOptions(invoiceId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getInitializeFeeProviderPaymentUrl = (invoiceId: number,
+    provider: 'PAYSTACK' | 'FLUTTERWAVE' | 'REMITA',) => {
+
+
+
+
+  return `/api/parent/fees/invoices/${invoiceId}/providers/${provider}/initialize`
+}
+
+/**
+ * @summary Create an idempotent hosted checkout for a linked parent and payable invoice
+ */
+export const initializeFeeProviderPayment = async (invoiceId: number,
+    provider: 'PAYSTACK' | 'FLUTTERWAVE' | 'REMITA',
+    feeProviderCheckoutInitializeInput?: FeeProviderCheckoutInitializeInput, options?: Parameters<typeof customFetch>[1]): Promise<FeeProviderCheckout | FeeProviderCheckoutProcessing> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FeeProviderCheckout | FeeProviderCheckoutProcessing>(getInitializeFeeProviderPaymentUrl(invoiceId,provider),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(feeProviderCheckoutInitializeInput)
+  }
+);}
+
+
+
+
+
+export const getInitializeFeeProviderPaymentMutationKey = () => ['initializeFeeProviderPayment'] as const;
+
+export const getInitializeFeeProviderPaymentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initializeFeeProviderPayment>>, TError,InitializeFeeProviderPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof initializeFeeProviderPayment>>, TError,InitializeFeeProviderPaymentMutationVariables, TContext> => {
+
+const mutationKey = getInitializeFeeProviderPaymentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof initializeFeeProviderPayment>>, InitializeFeeProviderPaymentMutationVariables> = (props) => {
+          const {invoiceId,provider,data} = props ?? {};
+
+          return  initializeFeeProviderPayment(invoiceId,provider,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InitializeFeeProviderPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof initializeFeeProviderPayment>>>
+    export type InitializeFeeProviderPaymentMutationBody = BodyType<FeeProviderCheckoutInitializeInput> | undefined
+    export type InitializeFeeProviderPaymentMutationError = ErrorType<void>
+    export type InitializeFeeProviderPaymentMutationVariables = {invoiceId: number;provider: 'PAYSTACK' | 'FLUTTERWAVE' | 'REMITA';data?: BodyType<FeeProviderCheckoutInitializeInput>}
+
+    /**
+ * @summary Create an idempotent hosted checkout for a linked parent and payable invoice
+ */
+export const useInitializeFeeProviderPayment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initializeFeeProviderPayment>>, TError,InitializeFeeProviderPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof initializeFeeProviderPayment>>,
+        TError,
+        InitializeFeeProviderPaymentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getInitializeFeeProviderPaymentMutationOptions(options));
+    }
+
+export const getReceiveFeeProviderWebhookUrl = (provider: 'paystack' | 'flutterwave',) => {
+
+
+
+
+  return `/api/finance/provider-webhooks/${provider}`
+}
+
+/**
+ * @summary Public raw-body payment provider callback
+ */
+export const receiveFeeProviderWebhook = async (provider: 'paystack' | 'flutterwave',
+    receiveFeeProviderWebhookBody: ReceiveFeeProviderWebhookBody, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getReceiveFeeProviderWebhookUrl(provider),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(receiveFeeProviderWebhookBody)
+  }
+);}
+
+
+
+
+
+export const getReceiveFeeProviderWebhookMutationKey = () => ['receiveFeeProviderWebhook'] as const;
+
+export const getReceiveFeeProviderWebhookMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveFeeProviderWebhook>>, TError,ReceiveFeeProviderWebhookMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiveFeeProviderWebhook>>, TError,ReceiveFeeProviderWebhookMutationVariables, TContext> => {
+
+const mutationKey = getReceiveFeeProviderWebhookMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiveFeeProviderWebhook>>, ReceiveFeeProviderWebhookMutationVariables> = (props) => {
+          const {provider,data} = props ?? {};
+
+          return  receiveFeeProviderWebhook(provider,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReceiveFeeProviderWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof receiveFeeProviderWebhook>>>
+    export type ReceiveFeeProviderWebhookMutationBody = BodyType<ReceiveFeeProviderWebhookBody>
+    export type ReceiveFeeProviderWebhookMutationError = ErrorType<void>
+    export type ReceiveFeeProviderWebhookMutationVariables = {provider: 'paystack' | 'flutterwave';data: BodyType<ReceiveFeeProviderWebhookBody>}
+
+    /**
+ * @summary Public raw-body payment provider callback
+ */
+export const useReceiveFeeProviderWebhook = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveFeeProviderWebhook>>, TError,ReceiveFeeProviderWebhookMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof receiveFeeProviderWebhook>>,
+        TError,
+        ReceiveFeeProviderWebhookMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReceiveFeeProviderWebhookMutationOptions(options));
+    }
 
 export const getListFeeCategoriesUrl = (params: ListFeeCategoriesParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -1210,6 +1977,555 @@ export const useAssignFeeStructure = <TError = ErrorType<void>,
       > => {
       return useMutation(getAssignFeeStructureMutationOptions(options));
     }
+
+export const getBulkAssignFeeStructureUrl = (params: BulkAssignFeeStructureParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/finance/bulk-assignments?${stringifiedParams}` : `/api/school/finance/bulk-assignments`
+}
+
+/**
+ * @summary Assign a published structure to all active matching students with per-student duplicate reasons
+ */
+export const bulkAssignFeeStructure = async (feeBulkAssignmentInput: FeeBulkAssignmentInput,
+    params: BulkAssignFeeStructureParams, options?: Parameters<typeof customFetch>[1]): Promise<FeeBulkAssignmentResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FeeBulkAssignmentResult>(getBulkAssignFeeStructureUrl(params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(feeBulkAssignmentInput)
+  }
+);}
+
+
+
+
+
+export const getBulkAssignFeeStructureMutationKey = () => ['bulkAssignFeeStructure'] as const;
+
+export const getBulkAssignFeeStructureMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkAssignFeeStructure>>, TError,BulkAssignFeeStructureMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof bulkAssignFeeStructure>>, TError,BulkAssignFeeStructureMutationVariables, TContext> => {
+
+const mutationKey = getBulkAssignFeeStructureMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bulkAssignFeeStructure>>, BulkAssignFeeStructureMutationVariables> = (props) => {
+          const {data,params} = props ?? {};
+
+          return  bulkAssignFeeStructure(data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BulkAssignFeeStructureMutationResult = NonNullable<Awaited<ReturnType<typeof bulkAssignFeeStructure>>>
+    export type BulkAssignFeeStructureMutationBody = BodyType<FeeBulkAssignmentInput>
+    export type BulkAssignFeeStructureMutationError = ErrorType<unknown>
+    export type BulkAssignFeeStructureMutationVariables = {data: BodyType<FeeBulkAssignmentInput>;params: BulkAssignFeeStructureParams}
+
+    /**
+ * @summary Assign a published structure to all active matching students with per-student duplicate reasons
+ */
+export const useBulkAssignFeeStructure = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkAssignFeeStructure>>, TError,BulkAssignFeeStructureMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof bulkAssignFeeStructure>>,
+        TError,
+        BulkAssignFeeStructureMutationVariables,
+        TContext
+      > => {
+      return useMutation(getBulkAssignFeeStructureMutationOptions(options));
+    }
+
+export const getRequestFeeRefundUrl = (paymentId: number,
+    params: RequestFeeRefundParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/finance/payments/${paymentId}/refunds?${stringifiedParams}` : `/api/school/finance/payments/${paymentId}/refunds`
+}
+
+/**
+ * @summary Request a refund against a verified payment; funds are not changed until separately approved
+ */
+export const requestFeeRefund = async (paymentId: number,
+    feeRefundInput: FeeRefundInput,
+    params: RequestFeeRefundParams, options?: Parameters<typeof customFetch>[1]): Promise<FeeRefund> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FeeRefund>(getRequestFeeRefundUrl(paymentId,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(feeRefundInput)
+  }
+);}
+
+
+
+
+
+export const getRequestFeeRefundMutationKey = () => ['requestFeeRefund'] as const;
+
+export const getRequestFeeRefundMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestFeeRefund>>, TError,RequestFeeRefundMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestFeeRefund>>, TError,RequestFeeRefundMutationVariables, TContext> => {
+
+const mutationKey = getRequestFeeRefundMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestFeeRefund>>, RequestFeeRefundMutationVariables> = (props) => {
+          const {paymentId,data,params} = props ?? {};
+
+          return  requestFeeRefund(paymentId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestFeeRefundMutationResult = NonNullable<Awaited<ReturnType<typeof requestFeeRefund>>>
+    export type RequestFeeRefundMutationBody = BodyType<FeeRefundInput>
+    export type RequestFeeRefundMutationError = ErrorType<void>
+    export type RequestFeeRefundMutationVariables = {paymentId: number;data: BodyType<FeeRefundInput>;params: RequestFeeRefundParams}
+
+    /**
+ * @summary Request a refund against a verified payment; funds are not changed until separately approved
+ */
+export const useRequestFeeRefund = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestFeeRefund>>, TError,RequestFeeRefundMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestFeeRefund>>,
+        TError,
+        RequestFeeRefundMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestFeeRefundMutationOptions(options));
+    }
+
+export const getListSchoolFeeRefundsUrl = (params: ListSchoolFeeRefundsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/finance/refunds?${stringifiedParams}` : `/api/school/finance/refunds`
+}
+
+/**
+ * @summary Recover school refund requests with safe invoice, student, payment, and review evidence fields
+ */
+export const listSchoolFeeRefunds = async (params: ListSchoolFeeRefundsParams, options?: Parameters<typeof customFetch>[1]): Promise<SchoolFeeRefund[]> => {
+
+  return customFetch<SchoolFeeRefund[]>(getListSchoolFeeRefundsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSchoolFeeRefundsQueryKey = (params?: ListSchoolFeeRefundsParams,) => {
+    return [
+    `/api/school/finance/refunds`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSchoolFeeRefundsQueryOptions = <TData = Awaited<ReturnType<typeof listSchoolFeeRefunds>>, TError = ErrorType<NotFoundResponse>>(params: ListSchoolFeeRefundsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolFeeRefunds>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSchoolFeeRefundsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSchoolFeeRefunds>>> = ({ signal }) => listSchoolFeeRefunds(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSchoolFeeRefunds>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSchoolFeeRefundsQueryResult = NonNullable<Awaited<ReturnType<typeof listSchoolFeeRefunds>>>
+export type ListSchoolFeeRefundsQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Recover school refund requests with safe invoice, student, payment, and review evidence fields
+ */
+
+export function useListSchoolFeeRefunds<TData = Awaited<ReturnType<typeof listSchoolFeeRefunds>>, TError = ErrorType<NotFoundResponse>>(
+ params: ListSchoolFeeRefundsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolFeeRefunds>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSchoolFeeRefundsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSchoolFeeRefundUrl = (refundId: number,
+    params: GetSchoolFeeRefundParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/finance/refunds/${refundId}?${stringifiedParams}` : `/api/school/finance/refunds/${refundId}`
+}
+
+/**
+ * @summary Read one school-scoped refund ledger entry and review evidence
+ */
+export const getSchoolFeeRefund = async (refundId: number,
+    params: GetSchoolFeeRefundParams, options?: Parameters<typeof customFetch>[1]): Promise<SchoolFeeRefund> => {
+
+  return customFetch<SchoolFeeRefund>(getGetSchoolFeeRefundUrl(refundId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolFeeRefundQueryKey = (refundId: number,
+    params?: GetSchoolFeeRefundParams,) => {
+    return [
+    `/api/school/finance/refunds/${refundId}`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSchoolFeeRefundQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolFeeRefund>>, TError = ErrorType<NotFoundResponse>>(refundId: number,
+    params: GetSchoolFeeRefundParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolFeeRefund>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolFeeRefundQueryKey(refundId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolFeeRefund>>> = ({ signal }) => getSchoolFeeRefund(refundId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: refundId !== null && refundId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolFeeRefund>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchoolFeeRefundQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolFeeRefund>>>
+export type GetSchoolFeeRefundQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Read one school-scoped refund ledger entry and review evidence
+ */
+
+export function useGetSchoolFeeRefund<TData = Awaited<ReturnType<typeof getSchoolFeeRefund>>, TError = ErrorType<NotFoundResponse>>(
+ refundId: number,
+    params: GetSchoolFeeRefundParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolFeeRefund>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchoolFeeRefundQueryOptions(refundId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getApproveFeeRefundUrl = (refundId: number,
+    params: ApproveFeeRefundParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/finance/refunds/${refundId}/approve?${stringifiedParams}` : `/api/school/finance/refunds/${refundId}/approve`
+}
+
+/**
+ * @summary Approve and record an externally confirmed refund with evidence; preserves original payment and receipt
+ */
+export const approveFeeRefund = async (refundId: number,
+    feeRefundApprovalInput: FeeRefundApprovalInput,
+    params: ApproveFeeRefundParams, options?: Parameters<typeof customFetch>[1]): Promise<FeeRefund> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FeeRefund>(getApproveFeeRefundUrl(refundId,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(feeRefundApprovalInput)
+  }
+);}
+
+
+
+
+
+export const getApproveFeeRefundMutationKey = () => ['approveFeeRefund'] as const;
+
+export const getApproveFeeRefundMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveFeeRefund>>, TError,ApproveFeeRefundMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveFeeRefund>>, TError,ApproveFeeRefundMutationVariables, TContext> => {
+
+const mutationKey = getApproveFeeRefundMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveFeeRefund>>, ApproveFeeRefundMutationVariables> = (props) => {
+          const {refundId,data,params} = props ?? {};
+
+          return  approveFeeRefund(refundId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveFeeRefundMutationResult = NonNullable<Awaited<ReturnType<typeof approveFeeRefund>>>
+    export type ApproveFeeRefundMutationBody = BodyType<FeeRefundApprovalInput>
+    export type ApproveFeeRefundMutationError = ErrorType<void>
+    export type ApproveFeeRefundMutationVariables = {refundId: number;data: BodyType<FeeRefundApprovalInput>;params: ApproveFeeRefundParams}
+
+    /**
+ * @summary Approve and record an externally confirmed refund with evidence; preserves original payment and receipt
+ */
+export const useApproveFeeRefund = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveFeeRefund>>, TError,ApproveFeeRefundMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveFeeRefund>>,
+        TError,
+        ApproveFeeRefundMutationVariables,
+        TContext
+      > => {
+      return useMutation(getApproveFeeRefundMutationOptions(options));
+    }
+
+export const getGetSchoolFinanceReportUrl = (params: GetSchoolFinanceReportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/finance/reports?${stringifiedParams}` : `/api/school/finance/reports`
+}
+
+/**
+ * @summary School-scoped financial totals and grouped financial report data
+ */
+export const getSchoolFinanceReport = async (params: GetSchoolFinanceReportParams, options?: Parameters<typeof customFetch>[1]): Promise<FinanceReport> => {
+
+  return customFetch<FinanceReport>(getGetSchoolFinanceReportUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolFinanceReportQueryKey = (params?: GetSchoolFinanceReportParams,) => {
+    return [
+    `/api/school/finance/reports`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSchoolFinanceReportQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolFinanceReport>>, TError = ErrorType<unknown>>(params: GetSchoolFinanceReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolFinanceReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolFinanceReportQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolFinanceReport>>> = ({ signal }) => getSchoolFinanceReport(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolFinanceReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchoolFinanceReportQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolFinanceReport>>>
+export type GetSchoolFinanceReportQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary School-scoped financial totals and grouped financial report data
+ */
+
+export function useGetSchoolFinanceReport<TData = Awaited<ReturnType<typeof getSchoolFinanceReport>>, TError = ErrorType<unknown>>(
+ params: GetSchoolFinanceReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolFinanceReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchoolFinanceReportQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListFeeInvoicesUrl = (params: ListFeeInvoicesParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -2498,104 +3814,6 @@ export function useListPendingFeeAdjustments<TData = Awaited<ReturnType<typeof l
 
 
 
-
-export const getInitializeFeeProviderPaymentUrl = (provider: 'REMITA' | 'FLUTTERWAVE' | 'PAYSTACK',
-    params: InitializeFeeProviderPaymentParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/api/school/finance/payments/providers/${provider}/initialize?${stringifiedParams}` : `/api/school/finance/payments/providers/${provider}/initialize`
-}
-
-/**
- * @summary Initialize a configured online payment provider or return an explicit unavailable response
- */
-export const initializeFeeProviderPayment = async (provider: 'REMITA' | 'FLUTTERWAVE' | 'PAYSTACK',
-    providerPaymentInput: ProviderPaymentInput,
-    params: InitializeFeeProviderPaymentParams, options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<unknown>(getInitializeFeeProviderPaymentUrl(provider,params),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(providerPaymentInput)
-  }
-);}
-
-
-
-
-
-export const getInitializeFeeProviderPaymentMutationKey = () => ['initializeFeeProviderPayment'] as const;
-
-export const getInitializeFeeProviderPaymentMutationOptions = <TError = ErrorType<ApiError>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initializeFeeProviderPayment>>, TError,InitializeFeeProviderPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof initializeFeeProviderPayment>>, TError,InitializeFeeProviderPaymentMutationVariables, TContext> => {
-
-const mutationKey = getInitializeFeeProviderPaymentMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof initializeFeeProviderPayment>>, InitializeFeeProviderPaymentMutationVariables> = (props) => {
-          const {provider,data,params} = props ?? {};
-
-          return  initializeFeeProviderPayment(provider,data,params,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type InitializeFeeProviderPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof initializeFeeProviderPayment>>>
-    export type InitializeFeeProviderPaymentMutationBody = BodyType<ProviderPaymentInput>
-    export type InitializeFeeProviderPaymentMutationError = ErrorType<ApiError>
-    export type InitializeFeeProviderPaymentMutationVariables = {provider: 'REMITA' | 'FLUTTERWAVE' | 'PAYSTACK';data: BodyType<ProviderPaymentInput>;params: InitializeFeeProviderPaymentParams}
-
-    /**
- * @summary Initialize a configured online payment provider or return an explicit unavailable response
- */
-export const useInitializeFeeProviderPayment = <TError = ErrorType<ApiError>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initializeFeeProviderPayment>>, TError,InitializeFeeProviderPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof initializeFeeProviderPayment>>,
-        TError,
-        InitializeFeeProviderPaymentMutationVariables,
-        TContext
-      > => {
-      return useMutation(getInitializeFeeProviderPaymentMutationOptions(options));
-    }
 
 export const getHealthCheckUrl = () => {
 

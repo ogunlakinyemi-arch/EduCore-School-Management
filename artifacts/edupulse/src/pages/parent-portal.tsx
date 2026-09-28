@@ -8,6 +8,8 @@ import {
 } from '@workspace/api-client-react';
 import NotFound from './not-found';
 import { ParentFeesPage } from './finance';
+import { ParentCheckoutReturn } from './finance-online';
+import { FeePaymentNotifications } from '@/components/fee-payment-notifications';
 import { cx } from 'class-variance-authority';
 
 function Loading() {
@@ -24,6 +26,7 @@ function PortalHeader() {
         </Link>
         <div className="flex items-center gap-3">
           <span className="hidden text-xs font-semibold text-[hsl(var(--muted-foreground))] sm:block">Protected family access</span>
+          <FeePaymentNotifications audience="parent" />
           <UserButton />
         </div>
       </div>
@@ -343,5 +346,5 @@ function ChildFeesRoute() {
 }
 
 export default function ParentPortal() {
-  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><Switch><Route path="/" component={ParentDashboard} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route component={NotFound} /></Switch></div>;
+  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><Switch><Route path="/" component={ParentDashboard} /><Route path="/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route component={NotFound} /></Switch></div>;
 }

@@ -7,7 +7,7 @@
  */
 import type { SchoolIdParameter } from './schoolIdParameter';
 
-export type InitializeFeeProviderPaymentParams = {
+export type ReconcileFeeProviderCheckoutParams = {
 /**
  * @minimum 1
  */
