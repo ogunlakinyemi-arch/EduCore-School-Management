@@ -550,8 +550,11 @@ export const nfcCards = pgTable(
       foreignColumns: [table.id],
       name: "nfc_cards_replaced_by_id_fk",
     }),
-    // Publish stage 1: restore the composite replacement FK only after
-    // nfc_cards_id_school_tenant_key is live in production.
+    foreignKey({
+      columns: [table.replacedByCardId, table.replacedBySchoolId],
+      foreignColumns: [table.id, table.schoolId],
+      name: "nfc_cards_replaced_by_school_fk",
+    }),
     foreignKey({
       columns: [table.lastDeviceId, table.schoolId],
       foreignColumns: [deviceSchoolBindings.deviceId, deviceSchoolBindings.schoolId],
@@ -709,6 +712,7 @@ export const studentClassAssignments = pgTable(
       )
       .where(sql`${table.status} = 'ACTIVE'`),
     uniqueIndex("student_class_assignments_id_school_unique").on(table.id, table.schoolId),
+    unique("student_class_assignments_id_school_tenant_key").on(table.id, table.schoolId),
     foreignKey({
       columns: [table.studentId, table.schoolId],
       foreignColumns: [students.id, students.schoolId],
@@ -1087,7 +1091,7 @@ export const nfcCardHistory = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    // Publish stage 1: restore this composite FK after the NFC tenant key is live.
+    foreignKey({ columns: [table.nfcCardId, table.schoolId], foreignColumns: [nfcCards.id, nfcCards.schoolId], name: "nfc_card_history_card_school_fk" }),
     foreignKey({ columns: [table.studentId, table.schoolId], foreignColumns: [students.id, students.schoolId], name: "nfc_card_history_student_school_fk" }),
     index("nfc_card_history_school_idx").on(table.schoolId, table.createdAt),
     index("nfc_card_history_card_idx").on(table.nfcCardId, table.createdAt),

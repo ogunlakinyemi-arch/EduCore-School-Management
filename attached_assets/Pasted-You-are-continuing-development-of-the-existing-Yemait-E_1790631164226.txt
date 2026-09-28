@@ -1,0 +1,1894 @@
+You are continuing development of the existing Yemait EduCore school management platform.
+
+IMPORTANT — PROJECT CONTINUITY
+
+Do NOT rebuild the application.
+
+Do NOT restart the project.
+
+Do NOT replace the existing architecture.
+
+Do NOT remove or rewrite working Phase 1–6 functionality.
+
+Build Phase 7 on top of the existing Yemait EduCore codebase.
+
+Current product:
+
+- Company: Yemait Technologies Limited
+- Platform: Yemait EduCore
+- Target market: Nigerian private primary and secondary schools, Preparatory through SS3.
+
+Preserve all existing:
+
+- Authentication
+- Clerk integration
+- RBAC
+- Tenant/school isolation
+- Platform Owner permissions
+- School Admin permissions
+- Accountant permissions
+- Parent permissions
+- Student permissions
+- Partner permissions
+- Audit logging
+- School/session/term models
+- Student/parent relationships
+- Partner/reseller system
+- Subscription system
+- Attendance system
+- NFC/device architecture
+- Academic Operations
+- Assignments
+- Assessments
+- Results
+- Report cards
+- Timetable
+- OpenAPI
+- Generated clients
+- React Query
+- Zod schemas
+- Existing UI architecture
+- Existing database conventions
+
+Production must NOT be modified during development implementation or testing.
+
+Apply database migrations to development only unless explicitly instructed otherwise.
+
+Do not begin Phase 8.
+
+---
+
+PHASE 7 — FINANCE, FEES & ONLINE PAYMENTS
+
+Build a complete Finance & Fees system for Yemait EduCore.
+
+The system must support:
+
+1. Fee categories
+2. Fee structures
+3. Student fee assignments
+4. Invoices
+5. Discounts
+6. Scholarships
+7. Waivers
+8. Payments
+9. Online payments
+10. Bank transfer
+11. Payment-provider integration architecture
+12. Remita
+13. Flutterwave
+14. Paystack/provider abstraction
+15. Payment webhooks
+16. Server-side payment verification
+17. Payment reconciliation
+18. Automatic invoice updates
+19. Automatic student financial-status updates
+20. Automatic receipt generation
+21. Parent payment dashboard
+22. Student financial dashboard
+23. Accountant workflows
+24. School Admin financial controls
+25. Platform Owner financial oversight
+26. Financial reports
+27. Financial audit trail
+28. Strict tenant isolation
+29. Automated tests
+30. Authenticated browser/E2E verification
+
+---
+
+1. CORE FINANCIAL MODEL
+
+Create a proper financial model supporting:
+
+- Academic session
+- Term
+- Fee categories
+- Fee structures
+- Student fee assignments
+- Invoices
+- Invoice items
+- Payments
+- Payment attempts
+- Payment-provider transactions
+- Payment verification
+- Receipts
+- Discounts
+- Scholarships
+- Waivers
+- Adjustments
+- Refunds/reversals
+- Outstanding balances
+- Financial reports
+- Reconciliation
+- Audit history
+
+Every financial record must be associated with the correct school/tenant.
+
+No school may access another school's financial information.
+
+Platform Owner may have controlled cross-school financial oversight according to the existing RBAC architecture.
+
+---
+
+2. FEE CATEGORIES
+
+Create configurable fee categories.
+
+Initial examples:
+
+- Tuition
+- Registration
+- Examination
+- Textbooks
+- Uniform
+- Transportation
+- Boarding
+- Feeding
+- ICT
+- Medical
+- Sports
+- Development Levy
+- Other
+
+These must NOT be hard-coded.
+
+School Admin should be able to:
+
+- Create fee category
+- Edit fee category
+- Activate/deactivate fee category
+- Add description
+- Set compulsory/non-compulsory status
+- Audit changes
+
+Historical invoices must not change simply because a fee category is edited or deactivated.
+
+---
+
+3. FEE STRUCTURES
+
+Allow schools to create fee structures based on:
+
+- Academic session
+- Term
+- Class
+- Section where applicable
+- Fee category
+
+Example:
+
+2026/2027
+Term 1
+Primary 5
+
+Tuition: ₦50,000
+Books: ₦10,000
+Uniform: ₦8,000
+ICT: ₦5,000
+
+Support different fee amounts for different classes.
+
+School Admin should be able to:
+
+- Create fee structure
+- Edit unpublished structure
+- Publish structure
+- Activate/deactivate structure
+- View historical structures
+- Preserve historical versions
+
+Once a financial structure has been used to create invoices, historical invoice values must remain unchanged.
+
+---
+
+4. STUDENT FEE ASSIGNMENT
+
+Support:
+
+- Individual assignment
+- Bulk class assignment
+- Section assignment
+- Assignment from fee structure
+- Additional charges
+- Discounts
+- Scholarships
+- Waivers
+
+Example:
+
+Primary 5 students receive the Primary 5 Term 1 fee structure.
+
+Display:
+
+- Total assigned
+- Discount
+- Waiver
+- Total paid
+- Outstanding
+- Status
+
+Statuses:
+
+- UNPAID
+- PARTIALLY_PAID
+- PAID
+- OVERDUE
+- WAIVED
+- CANCELLED
+
+Never delete financial history to correct an assignment.
+
+Use adjustments/reversals where necessary.
+
+---
+
+5. INVOICES
+
+Create proper invoices.
+
+Each invoice must contain:
+
+- Unique invoice number
+- School
+- Student
+- Parent/guardian where applicable
+- Academic session
+- Term
+- Issue date
+- Due date
+- Currency
+- Invoice items
+- Subtotal
+- Discount
+- Waiver
+- Total
+- Amount paid
+- Outstanding balance
+- Status
+- Created by
+- Updated by
+- Audit history
+
+Invoice numbers must be unique within the correct tenant/scope.
+
+Invoices must be viewable and printable.
+
+Finalized invoices must not be freely modified by unauthorized users.
+
+---
+
+6. PAYMENT ARCHITECTURE
+
+Implement a proper payment architecture.
+
+A payment must be treated as a separate financial entity from an invoice.
+
+A payment should contain at minimum:
+
+- Internal payment ID
+- Internal payment reference
+- School ID
+- Student ID
+- Parent ID where applicable
+- Invoice ID
+- Amount
+- Currency
+- Payment method
+- Provider
+- Provider transaction ID
+- Payment status
+- Created timestamp
+- Verification timestamp
+- Verified by/system
+- Provider metadata where appropriate
+- Audit information
+
+Payment statuses:
+
+- PENDING
+- PROCESSING
+- VERIFIED
+- FAILED
+- REJECTED
+- CANCELLED
+- REVERSED
+- REFUNDED
+
+Never automatically treat PENDING as PAID.
+
+---
+
+7. PARENT ONLINE PAYMENT — PRIMARY WORKFLOW
+
+The Parent Dashboard must allow a parent to make payment directly.
+
+Required flow:
+
+Parent Dashboard
+↓
+Select Child
+↓
+Open Fees
+↓
+View Outstanding Invoice
+↓
+Click Pay Now
+↓
+Select Payment Method
+↓
+Complete Payment
+↓
+Provider Confirms Payment
+↓
+Yemait EduCore Server Verifies Payment
+↓
+Payment Becomes VERIFIED
+↓
+Invoice Automatically Updates
+↓
+Student Balance Automatically Updates
+↓
+Receipt Automatically Generated
+↓
+Receipt Available to Parent
+↓
+Updated Financial Status Available to Student
+↓
+Accountant Dashboard Updated
+↓
+Audit Event Created
+
+The parent should NOT need to manually inform the school after a successfully verified online payment.
+
+---
+
+8. PARENT DASHBOARD — FEES
+
+Add a Finance/Fees section to the Parent Dashboard.
+
+For every linked child, show:
+
+- Student name
+- Class
+- Session
+- Term
+- Total fees
+- Amount paid
+- Outstanding balance
+- Unpaid invoices
+- Partially paid invoices
+- Paid invoices
+- Payment history
+- Receipts
+
+The parent must only see their linked children.
+
+Use the existing parent-child authorization model.
+
+---
+
+9. PAY NOW
+
+For each eligible invoice, provide:
+
+Pay Now
+
+Before payment, show:
+
+- Student
+- Invoice number
+- Session
+- Term
+- Total amount
+- Amount already paid
+- Outstanding balance
+- Amount to pay
+
+Support:
+
+Full payment
+
+Parent pays the complete outstanding amount.
+
+Partial payment
+
+Allow partial payment only if enabled by the school's financial settings.
+
+Backend must validate payment amounts.
+
+Never trust the amount sent by the frontend.
+
+---
+
+10. PAYMENT METHODS
+
+Build support for:
+
+- Remita
+- Flutterwave
+- Paystack
+- Bank Transfer
+- Other providers through a provider abstraction
+
+Do not permanently hard-code the platform to one payment provider.
+
+The available providers should be configurable.
+
+Example:
+
+- Remita — Enabled
+- Flutterwave — Enabled
+- Paystack — Disabled
+- Bank Transfer — Enabled
+
+Only enabled methods should appear to parents.
+
+---
+
+11. PAYMENT PROVIDER ABSTRACTION
+
+Create a common provider interface.
+
+Conceptually support:
+
+- initializePayment()
+- verifyPayment()
+- handleWebhook()
+- getPaymentStatus()
+- generatePaymentReference()
+- validateAmount()
+
+Each provider implementation should follow the same architecture.
+
+This must allow Yemait EduCore to add another Nigerian payment provider later without rebuilding the Finance module.
+
+---
+
+12. PAYMENT INITIALIZATION
+
+When parent clicks Pay Now:
+
+1. Authenticate parent.
+2. Verify parent-child relationship.
+3. Verify invoice belongs to same school.
+4. Verify invoice is payable.
+5. Calculate outstanding balance on backend.
+6. Validate payment amount.
+7. Generate internal payment reference.
+8. Create PENDING payment.
+9. Initialize selected provider.
+10. Redirect/open provider checkout.
+
+Do not mark payment VERIFIED during initialization.
+
+---
+
+13. INTERNAL PAYMENT REFERENCE
+
+Every payment attempt must have a unique internal reference.
+
+Example:
+
+EDC-2026-000001
+
+The exact format may follow existing project conventions.
+
+Store:
+
+- Internal payment reference
+- Invoice
+- Student
+- Parent
+- School
+- Provider
+- Provider transaction ID
+- Amount
+- Currency
+- Status
+- Timestamps
+
+Do not rely only on provider references.
+
+---
+
+14. SERVER-SIDE PAYMENT VERIFICATION
+
+This is mandatory.
+
+Never mark a payment successful because:
+
+- Parent returned to the site
+- Frontend reports success
+- Redirect URL says success
+- Client-side JavaScript says success
+
+The backend must verify the transaction independently.
+
+Required process:
+
+Provider processes payment
+↓
+Provider callback/redirect/webhook
+↓
+Yemait EduCore receives event
+↓
+Backend verifies transaction
+↓
+Backend validates:
+
+- provider transaction
+- internal payment reference
+- invoice
+- school
+- student
+- amount
+- currency
+- status
+  ↓
+  Payment becomes VERIFIED
+
+Only then:
+
+- Update invoice
+- Update balance
+- Generate receipt
+- Notify relevant users
+
+---
+
+15. WEBHOOKS
+
+Implement secure webhook endpoints for supported providers.
+
+Examples conceptually:
+
+/api/payments/webhooks/remita
+
+/api/payments/webhooks/flutterwave
+
+/api/payments/webhooks/paystack
+
+Use the existing API conventions.
+
+Webhook handling must:
+
+- Validate provider webhook
+- Verify transaction
+- Identify internal payment
+- Validate amount
+- Validate currency
+- Validate school/invoice
+- Prevent duplicate processing
+- Update payment exactly once
+
+Do not blindly trust webhook payloads.
+
+---
+
+16. IDEMPOTENCY
+
+Payment systems must be idempotent.
+
+Protect against:
+
+- Duplicate webhook
+- Provider retry
+- Duplicate callback
+- Parent refreshing page
+- Parent returning multiple times
+- Network retry
+
+If the same successful transaction is received five times, it must still count as one payment.
+
+Example:
+
+Payment = ₦50,000
+
+Repeated webhook:
+
+Paid = ₦50,000
+
+NOT:
+
+₦250,000.
+
+Use unique transaction identifiers and appropriate database constraints.
+
+---
+
+17. AUTOMATIC INVOICE UPDATE
+
+After VERIFIED payment:
+
+Example:
+
+Invoice total = ₦100,000
+
+Previous paid = ₦20,000
+
+New payment = ₦50,000
+
+System automatically updates:
+
+Paid = ₦70,000
+
+Outstanding = ₦30,000
+
+Status = PARTIALLY_PAID
+
+If paid amount reaches invoice total:
+
+Status = PAID
+
+Parent does not manually mark an invoice as paid.
+
+---
+
+18. STUDENT DASHBOARD SYNCHRONIZATION
+
+Once payment is verified, the Student Dashboard must automatically reflect the new financial state.
+
+Example:
+
+Fees:
+₦100,000
+
+Paid:
+₦70,000
+
+Outstanding:
+₦30,000
+
+Status:
+PARTIALLY_PAID
+
+After full payment:
+
+Status:
+PAID
+
+The student dashboard must read financial status from the backend source of truth.
+
+Do not maintain an independent frontend-only balance.
+
+---
+
+19. PARENT DASHBOARD SYNCHRONIZATION
+
+After verified payment, parent should immediately see:
+
+Payment Successful
+
+Payment reference:
+EDC-2026-000001
+
+Amount:
+₦50,000
+
+Student:
+Student Name
+
+Invoice:
+INV-2026-000123
+
+Status:
+VERIFIED
+
+The parent must then be able to:
+
+- View receipt
+- Print receipt
+- View updated balance
+- View payment history
+
+If provider confirmation is delayed, show:
+
+Payment processing — awaiting payment provider confirmation.
+
+Do not show PAID before backend verification.
+
+---
+
+20. AUTOMATIC RECEIPTS
+
+After a payment becomes VERIFIED, automatically create a receipt.
+
+Receipt must include:
+
+- School name
+- School logo where configured
+- Student name
+- Admission/student ID
+- Class
+- Parent/payer
+- Invoice number
+- Receipt number
+- Payment reference
+- Payment provider
+- Payment method
+- Amount
+- Payment date
+- Session
+- Term
+- Previous balance
+- Amount paid
+- Remaining balance
+- Payment status
+
+Receipt numbers must be unique.
+
+Do not create final receipts for:
+
+- PENDING
+- PROCESSING
+- FAILED
+- REJECTED
+- CANCELLED
+
+payments.
+
+---
+
+21. RECEIPT ACCESS
+
+Parent:
+
+Parent Dashboard
+→ Child
+→ Payments
+→ Receipts
+
+Student:
+
+Student Dashboard
+→ Fees
+→ Receipts
+
+School:
+
+School Admin/Accountant
+→ Finance
+→ Receipts
+
+Every receipt access request must be authorized.
+
+No cross-school access.
+
+---
+
+22. PARTIAL PAYMENTS
+
+Support multiple verified payments against one invoice.
+
+Example:
+
+Invoice = ₦100,000
+
+Payment 1 = ₦30,000
+Payment 2 = ₦40,000
+Payment 3 = ₦30,000
+
+Final:
+
+Total = ₦100,000
+Paid = ₦100,000
+Outstanding = ₦0
+Invoice = PAID
+
+Every payment retains:
+
+- Own reference
+- Own date
+- Own provider
+- Own transaction ID
+- Own receipt
+- Own verification history
+
+Never overwrite previous payments.
+
+---
+
+23. BANK TRANSFER
+
+Support bank transfer in two ways.
+
+MODEL A — AUTOMATIC BANK TRANSFER
+
+Where provider supports virtual accounts/dedicated payment references:
+
+1. Parent selects Bank Transfer.
+2. System creates payment attempt.
+3. Provider generates dedicated account/reference.
+4. Parent transfers money.
+5. Provider detects transfer.
+6. Provider sends webhook.
+7. Yemait EduCore verifies transaction.
+8. Payment becomes VERIFIED.
+9. Invoice updates automatically.
+10. Receipt is generated.
+
+This is the preferred automated bank-transfer model.
+
+MODEL B — MANUAL BANK TRANSFER
+
+Where automatic bank-transfer detection is unavailable:
+
+1. Parent selects Bank Transfer.
+2. System displays approved school bank information.
+3. Parent transfers money.
+4. Parent enters:
+   - Amount
+   - Bank
+   - Transfer reference
+   - Date
+5. Parent may upload proof of payment.
+6. Payment becomes PENDING.
+7. Accountant reviews.
+8. Accountant verifies or rejects.
+
+Only after verification should the student's balance update.
+
+Clearly distinguish automatic and manual bank transfer.
+
+---
+
+24. PAYMENT FAILURE
+
+If provider reports failure:
+
+Payment = FAILED
+
+Invoice remains unchanged.
+
+Outstanding balance remains unchanged.
+
+Parent can retry.
+
+A failed payment must never be counted as paid.
+
+---
+
+25. PAYMENT REVERSAL AND REFUND
+
+If a previously verified payment is reversed/refunded:
+
+- Do not delete original payment.
+- Create reversal/refund record.
+- Update financial balance.
+- Update invoice status if necessary.
+- Preserve original payment history.
+- Preserve original receipt history.
+- Record audit event.
+- Clearly show reversal/refund to authorized users.
+
+---
+
+26. OVERPAYMENT PROTECTION
+
+Prevent payments exceeding the permitted outstanding balance unless the school explicitly supports credit balances.
+
+Backend must validate:
+
+requested amount <= permitted payable amount
+
+Never rely only on frontend validation.
+
+---
+
+27. DISCOUNTS
+
+Support:
+
+- Percentage discounts
+- Fixed discounts
+- Student-specific discounts
+- Class-based discounts where appropriate
+- Session-specific discounts
+- Term-specific discounts
+
+Store:
+
+- Reason
+- Amount/percentage
+- Applicable fee
+- Approved by
+- Approval date
+- Status
+
+Historical invoices must preserve the discount actually applied.
+
+---
+
+28. SCHOLARSHIPS AND WAIVERS
+
+Support:
+
+- Full scholarship
+- Partial scholarship
+- Full waiver
+- Partial waiver
+
+Store:
+
+- Student
+- Amount/percentage
+- Reason
+- Approved by
+- Approval date
+- Session
+- Term
+- Applicable fee
+- Status
+
+Do not delete historical records.
+
+---
+
+29. OUTSTANDING BALANCE CALCULATION
+
+Backend source of truth:
+
+Outstanding balance =
+
+Total applicable charges
+− discounts
+− waivers
+− verified payments
+
++ valid adjustments
+
+Do NOT count:
+
+- PENDING
+- PROCESSING
+- FAILED
+- REJECTED
+
+as paid amounts.
+
+---
+
+30. OVERDUE FEES
+
+Support invoice due dates.
+
+Statuses:
+
+- Not Due
+- Due Today
+- Overdue
+
+Allow authorized users to filter overdue invoices.
+
+Do not introduce automatic penalties unless explicitly implemented and configured.
+
+---
+
+31. ACCOUNTANT DASHBOARD
+
+Create an Accountant finance dashboard showing:
+
+- Total invoiced
+- Total collected
+- Total outstanding
+- Pending payments
+- Processing payments
+- Verified payments
+- Failed payments
+- Rejected payments
+- Overdue invoices
+- Recent transactions
+
+Accountant can:
+
+- Manage fee assignments
+- View invoices
+- View payments
+- Verify manual bank transfers
+- View receipts
+- View balances
+- Reconcile payments
+- Run financial reports
+
+Accountant remains school-scoped.
+
+---
+
+32. SCHOOL ADMIN FINANCE CONTROLS
+
+School Admin can:
+
+- Manage fee categories
+- Create fee structures
+- Publish fee structures
+- Assign fees
+- View invoices
+- View payments
+- Configure permitted payment methods according to authorization
+- Verify payments where authorized
+- View receipts
+- Manage discounts
+- Manage scholarships/waivers
+- View reports
+
+Do not give School Admin Platform Owner permissions.
+
+---
+
+33. PLATFORM OWNER FINANCIAL OVERSIGHT
+
+Platform Owner should have controlled cross-school visibility.
+
+Include:
+
+- School financial summaries
+- Platform-level subscription revenue
+- Payment activity
+- Provider activity
+- Financial reports where appropriate
+- Reconciliation overview
+
+Do not expose unnecessary student financial information without business need.
+
+---
+
+34. EXISTING EDCORE SUBSCRIPTION SYSTEM
+
+Do NOT replace the existing EduCore school subscription system.
+
+Existing platform subscription model:
+
+- Total: ₦5,000 per eligible student per term
+- School: ₦2,000
+- EduCore: ₦3,000
+- Partner: ₦100
+- EduCore after partner commission: ₦2,900
+
+Partner commission remains based on eligible/verified subscriptions according to the existing Phase 4 implementation.
+
+The normal school fee system is DIFFERENT from the EduCore platform subscription system.
+
+Do not combine them.
+
+Do not break the existing:
+
+- Subscription ledger
+- Subscription verification
+- Partner commission ledger
+- Partner attribution
+
+---
+
+35. PAYMENT PROVIDER CONFIGURATION
+
+Prepare secure provider configuration.
+
+Support:
+
+- Provider
+- Enabled/disabled
+- Test/live environment
+- Public key where applicable
+- Secret key
+- Merchant ID where applicable
+- Webhook configuration
+- Provider-specific settings
+
+Secrets must never be exposed to the frontend.
+
+Use secure environment variables/secrets.
+
+Do not hard-code credentials.
+
+Do not invent credentials.
+
+---
+
+36. REMITA
+
+Prepare proper Remita architecture.
+
+Support fields/concepts such as:
+
+- Merchant/service information
+- RRR where applicable
+- Internal payment reference
+- Remita transaction reference
+- Verification status
+- Callback/webhook information
+- Verification timestamp
+
+Do not activate live Remita processing without legitimate credentials and proper sandbox/live verification.
+
+---
+
+37. FLUTTERWAVE
+
+Prepare Flutterwave integration using the same provider abstraction.
+
+Support:
+
+- Payment initialization
+- Transaction reference
+- Provider transaction ID
+- Redirect/callback
+- Server-side verification
+- Webhook
+- Duplicate-event protection
+- Amount validation
+- Currency validation
+- Invoice matching
+
+Do not trust frontend success responses.
+
+---
+
+38. PAYSTACK / OTHER PROVIDERS
+
+The architecture should allow Paystack or another provider to be added without rebuilding the finance system.
+
+Use the same provider abstraction.
+
+Do not make provider-specific code spread throughout invoices, students, parents, or financial calculations.
+
+---
+
+39. PAYMENT RECONCILIATION
+
+Create reconciliation capability for Accountant/authorized School Admin.
+
+Support identifying:
+
+- Provider transactions
+- Verified payments
+- Pending payments
+- Failed payments
+- Unmatched transactions
+- Duplicate callbacks
+- Reversed transactions
+- Refunded transactions
+
+Do not silently discard unmatched provider transactions.
+
+---
+
+40. FINANCIAL REPORTS
+
+Create:
+
+School Financial Summary
+
+- Total billed
+- Total collected
+- Total outstanding
+
+Payment Report
+
+- Date
+- Student
+- Invoice
+- Amount
+- Method
+- Provider
+- Reference
+- Status
+
+Outstanding Report
+
+- Student
+- Class
+- Total charges
+- Paid
+- Outstanding
+
+Fee Category Report
+
+- Category
+- Amount billed
+- Amount collected
+- Outstanding
+
+Class Financial Report
+
+- Class
+- Number of students
+- Total billed
+- Total collected
+- Outstanding
+
+Term Report
+
+- Session
+- Term
+- Total billed
+- Total collected
+- Outstanding
+
+Discount/Waiver Report
+
+Provider/Reconciliation Report
+
+All reports must respect tenant isolation.
+
+---
+
+41. FINANCIAL AUDIT LOGGING
+
+Audit all sensitive financial actions:
+
+- Fee category created
+- Fee category changed
+- Fee structure created
+- Fee structure published
+- Fee assigned
+- Invoice created
+- Invoice finalized
+- Invoice adjusted
+- Payment initialized
+- Payment submitted
+- Payment verified
+- Payment rejected
+- Payment failed
+- Payment reversed
+- Payment refunded
+- Receipt generated
+- Discount created
+- Scholarship created
+- Waiver created
+- Bank transfer submitted
+- Bank transfer verified
+- Provider webhook received
+- Provider verification performed
+- Reconciliation performed
+
+Each audit event should identify:
+
+- Actor
+- Role
+- School
+- Action
+- Entity
+- Entity ID
+- Timestamp
+- Relevant metadata
+
+Never hard-code actors.
+
+---
+
+42. NOTIFICATIONS
+
+After verified payment, create notification events.
+
+Parent:
+
+Payment received successfully.
+
+Student:
+
+School fee payment received.
+
+Accountant:
+
+New verified payment received.
+
+School Admin:
+
+New verified payment received.
+
+Use the existing notification-event architecture.
+
+Do not expose financial information to unauthorized users.
+
+---
+
+43. SEARCH AND FILTERING
+
+Support filtering by:
+
+- Student
+- Class
+- Section
+- Session
+- Term
+- Fee category
+- Invoice status
+- Payment status
+- Payment provider
+- Payment method
+- Date range
+- Amount range
+
+Filtering must occur securely on the backend.
+
+Never retrieve another school's financial records and hide them only in the frontend.
+
+---
+
+44. API AND OPENAPI
+
+Implement proper APIs for:
+
+- Fee categories
+- Fee structures
+- Fee assignments
+- Invoices
+- Invoice items
+- Payments
+- Payment initialization
+- Payment verification
+- Webhooks
+- Receipts
+- Discounts
+- Scholarships
+- Waivers
+- Balances
+- Reports
+- Reconciliation
+- Provider configuration
+- Financial dashboard
+
+Update:
+
+- OpenAPI
+- Generated clients
+- Zod schemas
+- React Query hooks
+- Shared types
+
+Follow existing Yemait EduCore conventions.
+
+---
+
+45. DATABASE
+
+Create normalized database tables/entities following existing architecture.
+
+Use:
+
+- Foreign keys
+- Appropriate indexes
+- Unique constraints
+- Tenant/school IDs
+- Historical relationships
+- Payment transaction uniqueness
+- Provider transaction uniqueness where appropriate
+
+Protect financial history.
+
+Avoid destructive migrations.
+
+Apply migrations to development only.
+
+---
+
+46. SECURITY TESTING
+
+Test:
+
+- Unauthenticated → 401
+- Unauthorized role → 403
+- Wrong school → denied
+- Parent → unlinked child denied
+- Student → another student denied
+- Accountant → another school denied
+- Partner → school financial data denied unless explicitly authorized
+- Manipulated invoice ID denied
+- Manipulated student ID denied
+- Manipulated school ID denied
+- Manipulated payment ID denied
+- Payment amount tampering denied
+- Duplicate webhook rejected/idempotently handled
+- Fake payment success denied
+- Invalid provider transaction denied
+
+---
+
+47. PAYMENT SECURITY TESTING
+
+Explicitly test:
+
+Amount manipulation
+
+Parent attempts to change:
+
+₦50,000
+
+to:
+
+₦1,000
+
+Backend must reject the unauthorized amount if it violates payment rules.
+
+Invoice manipulation
+
+Parent attempts to pay another student's invoice.
+
+Must be denied.
+
+School manipulation
+
+Parent attempts to submit payment against another school's invoice.
+
+Must be denied.
+
+Fake success
+
+Frontend reports successful payment without provider confirmation.
+
+Must NOT mark payment verified.
+
+Duplicate webhook
+
+Same successful transaction received multiple times.
+
+Must count once.
+
+Wrong amount
+
+Provider transaction amount differs from expected invoice/payment amount.
+
+Must be rejected or held for reconciliation according to defined rules.
+
+---
+
+48. TEST MODE / SANDBOX
+
+Before live payments:
+
+Implement sandbox/test mode.
+
+Test:
+
+- Successful payment
+- Failed payment
+- Cancelled payment
+- Partial payment
+- Duplicate webhook
+- Delayed webhook
+- Amount mismatch
+- Wrong invoice
+- Wrong school
+- Invalid reference
+- Reversed payment
+
+Do not use real money during development testing.
+
+---
+
+49. FRONTEND PAGES
+
+Add Finance navigation according to role.
+
+School Admin
+
+- Finance Dashboard
+- Fee Categories
+- Fee Structures
+- Student Fees
+- Invoices
+- Payments
+- Receipts
+- Discounts
+- Scholarships/Waivers
+- Reconciliation
+- Reports
+
+Accountant
+
+- Finance Dashboard
+- Payments
+- Payment Verification
+- Invoices
+- Receipts
+- Balances
+- Reconciliation
+- Reports
+
+Parent
+
+- My Children
+- Fees
+- Invoices
+- Pay Now
+- Payment History
+- Receipts
+
+Student
+
+- My Fees
+- Invoices
+- Payment Status
+- Payment History
+- Receipts where permitted
+
+Platform Owner
+
+- Platform Financial Overview
+- School Financial Overview
+- Provider/Reconciliation Overview
+- Existing Subscription/Partner Financial Oversight
+
+---
+
+50. PARENT PAYMENT USER EXPERIENCE
+
+The parent experience should be simple.
+
+Example:
+
+Child
+
+John Doe
+Primary 5
+
+Term Fees
+
+Total: ₦100,000
+
+Paid: ₦40,000
+
+Outstanding: ₦60,000
+
+[Pay Now]
+
+Parent clicks Pay Now.
+
+Choose Payment Method
+
+- Remita
+- Flutterwave
+- Paystack
+- Bank Transfer
+
+Parent chooses provider.
+
+Payment is initialized.
+
+After confirmation:
+
+Payment Successful
+
+Amount: ₦60,000
+
+Reference: EDC-2026-000001
+
+Status: VERIFIED
+
+[View Receipt]
+
+The dashboard now displays:
+
+Paid: ₦100,000
+
+Outstanding: ₦0
+
+Status: PAID
+
+---
+
+51. DELAYED PAYMENT CONFIRMATION
+
+If the parent completes payment but provider confirmation is delayed:
+
+Show:
+
+Payment Processing
+
+Your payment has been submitted and is awaiting confirmation.
+
+Do not mark the invoice PAID yet.
+
+Allow the system to automatically update once webhook/server-side verification succeeds.
+
+The parent should not have to repeatedly submit the same payment.
+
+---
+
+52. RECEIPT GENERATION
+
+Receipts must be generated from verified financial records.
+
+Parent:
+
+[View Receipt]
+[Print Receipt]
+
+Student:
+
+[View Receipt]
+
+Accountant:
+
+[View Receipt]
+
+School Admin:
+
+[View Receipt]
+
+Do not allow parents/students to manually create fake receipts.
+
+---
+
+53. HISTORICAL FINANCIAL INTEGRITY
+
+Do not change historical financial information because:
+
+- Student changes class
+- Student transfers
+- Student leaves school
+- Parent changes
+- Fee structure changes
+- Term closes
+- Session changes
+- Fee category changes
+
+Use snapshots/versioning where required.
+
+---
+
+54. PHASE 1–6 REGRESSION
+
+After Phase 7 implementation, verify that the following remain functional:
+
+- Authentication
+- RBAC
+- Tenant isolation
+- School management
+- Student management
+- Parent management
+- Teacher/staff management
+- Partner management
+- Subscription system
+- Partner commission
+- NFC/device architecture
+- Attendance
+- Attendance discrepancy resolution
+- Assignments
+- Assessments
+- Results
+- Report cards
+- Timetable
+- Audit logging
+
+Do not break previous functionality.
+
+---
+
+55. LIVE END-TO-END PAYMENT TEST
+
+Perform an authenticated sandbox test using a real configured test provider.
+
+Test:
+
+1. School A exists.
+2. Student A exists.
+3. Parent A is linked to Student A.
+4. Create valid invoice.
+5. Parent signs in.
+6. Parent opens Fees.
+7. Parent selects Student A.
+8. Parent sees outstanding invoice.
+9. Parent clicks Pay Now.
+10. Parent selects a configured sandbox provider.
+11. Payment is initialized.
+12. Sandbox payment is completed.
+13. Provider callback/webhook is received.
+14. Backend verifies transaction.
+15. Payment becomes VERIFIED.
+16. Invoice updates automatically.
+17. Student balance updates automatically.
+18. Receipt is generated automatically.
+19. Parent sees receipt.
+20. Student sees updated financial status.
+21. Accountant sees verified payment.
+22. Audit event exists.
+23. Repeat the webhook.
+24. Confirm payment is not duplicated.
+
+Then repeat relevant security tests using School B.
+
+Confirm:
+
+School A parent/student cannot access School B financial information.
+
+---
+
+56. MANUAL BANK TRANSFER TEST
+
+If manual bank transfer is enabled:
+
+1. Parent selects Bank Transfer.
+2. Parent submits transfer details.
+3. Payment becomes PENDING.
+4. Accountant sees pending payment.
+5. Accountant verifies it.
+6. Payment becomes VERIFIED.
+7. Invoice updates.
+8. Student balance updates.
+9. Receipt is generated.
+10. Parent can view receipt.
+11. Audit event exists.
+
+Also test rejection:
+
+1. Parent submits bank transfer.
+2. Accountant rejects.
+3. Payment becomes REJECTED.
+4. Invoice remains unpaid/unchanged.
+5. No final receipt is generated.
+
+---
+
+57. AUTOMATIC BANK TRANSFER TEST
+
+If the selected provider supports virtual accounts or automatic transfer detection:
+
+1. Parent selects Bank Transfer.
+2. System creates payment reference/account.
+3. Parent uses sandbox transfer.
+4. Provider detects transaction.
+5. Webhook arrives.
+6. Backend verifies.
+7. Payment becomes VERIFIED.
+8. Invoice updates.
+9. Student balance updates.
+10. Receipt generates.
+11. Parent sees receipt.
+12. Accountant sees transaction.
+
+---
+
+58. BUILD AND QUALITY CHECKS
+
+Before declaring Phase 7 complete, run:
+
+- Database migration validation
+- API tests
+- Payment tests
+- Finance calculation tests
+- Security tests
+- Cross-school isolation tests
+- Webhook tests
+- Idempotency tests
+- Provider sandbox tests
+- Shared typecheck
+- API typecheck
+- Frontend typecheck
+- API production build
+- Frontend production build
+- Development workflows
+- Health endpoint
+- Authenticated browser verification
+- Phase 1–6 regression tests
+
+Fix blocking errors.
+
+Do not disable tests to make the phase pass.
+
+---
+
+59. PRODUCTION SAFETY
+
+Do NOT:
+
+- Run destructive production migrations
+- Insert fake payments into production
+- Insert fake invoices into production
+- Use real payment credentials in development
+- Expose provider secret keys
+- Commit secrets
+- Modify production financial records
+
+Clearly report which environment was used for testing.
+
+---
+
+60. LIVE PROVIDER STATUS
+
+Do not claim live payment integration is complete merely because the UI exists.
+
+For every provider, report separately:
+
+Remita
+
+- Architecture
+- Sandbox credentials
+- Payment initialization
+- Verification
+- Webhook
+- Idempotency
+- Receipt
+- Invoice update
+- Student update
+- Parent update
+
+Flutterwave
+
+Same verification list.
+
+Paystack
+
+Same verification list.
+
+If credentials are unavailable:
+
+PENDING EXTERNAL CREDENTIALS
+
+Do not fabricate provider credentials or successful live transactions.
+
+---
+
+61. FINAL COMPLETION REPORT
+
+At the end, provide a structured report containing:
+
+1. Phase 7 implementation summary
+2. Database changes
+3. API changes
+4. Frontend changes
+5. Fee management
+6. Invoice management
+7. Parent payment workflow
+8. Bank transfer workflow
+9. Remita status
+10. Flutterwave status
+11. Paystack status
+12. Payment webhook status
+13. Server-side verification status
+14. Idempotency status
+15. Automatic invoice update status
+16. Student dashboard synchronization
+17. Parent dashboard synchronization
+18. Receipt generation
+19. Accountant workflow
+20. Reconciliation
+21. Discounts/scholarships/waivers
+22. Financial reports
+23. Audit logging
+24. Security testing
+25. Automated test results
+26. Browser/E2E verification
+27. Typechecks
+28. Production builds
+29. Health check
+30. Phase 1–6 regression status
+31. Production safety status
+32. Remaining limitations
+33. External credentials/hardware/provider dependencies
+34. Final decision
+
+Only declare:
+
+PHASE 7 COMPLETE — READY FOR PHASE 8
+
+when all required Phase 7 functionality has been implemented and verified.
+
+If a provider requires external credentials or approval that is not yet available, clearly mark that specific integration as:
+
+PENDING EXTERNAL CREDENTIALS / PROVIDER ACTIVATION
+
+Do not pretend it has been verified.
+
+Do not start Phase 8 automatically.

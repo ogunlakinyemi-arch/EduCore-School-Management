@@ -1,12 +1,13 @@
 import { UserButton } from '@clerk/react';
 import { useState } from 'react';
 import { Link, Route, Switch } from 'wouter';
-import { BookOpen, ChevronRight, GraduationCap, ShieldCheck, UserRound, UsersRound, Zap, LogIn, LogOut, Calendar, Clock } from 'lucide-react';
+import { BookOpen, ChevronRight, GraduationCap, ShieldCheck, UserRound, UsersRound, Zap, LogIn, LogOut, Calendar, Clock, ReceiptText } from 'lucide-react';
 import { 
   useGetParentChild, useGetParentChildren, useGetParentProfile, useGetParentChildAttendance,
   useListChildAcademicAssignments, useListChildAcademicResults, useListChildAcademicReportCards, useGetChildAcademicTimetable
 } from '@workspace/api-client-react';
 import NotFound from './not-found';
+import { ParentFeesPage } from './finance';
 import { cx } from 'class-variance-authority';
 
 function Loading() {
@@ -63,7 +64,8 @@ export function ParentDashboard() {
       </div>
       <div className="mt-5 grid gap-4 sm:grid-cols-3">
         <div className="panel p-5"><BookOpen size={18} className="text-[hsl(var(--primary))]" /><div className="mt-3 text-sm font-bold">Attendance</div><div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Open a linked child above to view their attendance.</div></div>
-        {['Academic results', 'Fees'].map(label => <div key={label} className="panel p-5 opacity-70"><BookOpen size={18} className="text-[hsl(var(--muted-foreground))]" /><div className="mt-3 text-sm font-bold">{label}</div><div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Not available in this phase</div></div>)}
+        <div className="panel p-5"><BookOpen size={18} className="text-[hsl(var(--primary))]" /><div className="mt-3 text-sm font-bold">Academic results</div><div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Open a linked child above to view published results.</div></div>
+        <div className="panel p-5"><ReceiptText size={18} className="text-[hsl(var(--primary))]" /><div className="mt-3 text-sm font-bold">Fees</div><div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Open a linked child to review their invoices and transfers.</div></div>
       </div>
     </div>
   );
@@ -95,6 +97,7 @@ function ChildProfile({ studentId }: { studentId: number }) {
       </div>
       
       <div className="space-y-8">
+        <Link href={`/parent/fees/${studentId}`} className="panel flex items-center gap-4 p-5 transition-colors hover:bg-[hsl(var(--secondary))]" data-testid={`link-child-fees-${studentId}`}><span className="grid h-11 w-11 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><ReceiptText size={21} /></span><span className="flex-1"><strong className="block">Fees & payments</strong><span className="text-xs text-[hsl(var(--muted-foreground))]">Invoices, balances and bank transfer submissions</span></span><ChevronRight size={17} /></Link>
         <div className="panel overflow-hidden shadow-sm">
           <ChildAttendance studentId={studentId} />
         </div>
@@ -333,6 +336,12 @@ function ChildRoute() {
   return <ChildProfile studentId={id} />;
 }
 
+function ChildFeesRoute() {
+  const id = Number(window.location.pathname.split('/').pop());
+  if (!Number.isInteger(id) || id < 1) return <NotFound />;
+  return <ParentFeesPage studentId={id} />;
+}
+
 export default function ParentPortal() {
-  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><Switch><Route path="/" component={ParentDashboard} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route component={NotFound} /></Switch></div>;
+  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><Switch><Route path="/" component={ParentDashboard} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route component={NotFound} /></Switch></div>;
 }

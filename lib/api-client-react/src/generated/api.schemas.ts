@@ -3254,6 +3254,462 @@ export interface AcademicTimetableEntryUpdate {
   status?: TimetableEntryStatus;
 }
 
+export type FeeCategoryStatus = typeof FeeCategoryStatus[keyof typeof FeeCategoryStatus];
+
+
+export const FeeCategoryStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface FeeCategory {
+  id: number;
+  schoolId: number;
+  name: string;
+  /** @nullable */
+  description: string | null;
+  compulsory: boolean;
+  status: FeeCategoryStatus;
+}
+
+export interface FeeCategoryInput {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  /** @maxLength 500 */
+  description?: string;
+  compulsory?: boolean;
+}
+
+export type FeeCategoryUpdateStatus = typeof FeeCategoryUpdateStatus[keyof typeof FeeCategoryUpdateStatus];
+
+
+export const FeeCategoryUpdateStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface FeeCategoryUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name?: string;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  description?: string | null;
+  compulsory?: boolean;
+  status?: FeeCategoryUpdateStatus;
+}
+
+export interface FeeStructureLineInput {
+  /** @minimum 1 */
+  categoryId: number;
+  /** @minimum 1 */
+  amountMinor: number;
+  /** @maxLength 300 */
+  description?: string;
+}
+
+export interface FeeStructureInput {
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  termId: number;
+  /** @minimum 1 */
+  classId: number;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  section?: string | null;
+  /** @minItems 1 */
+  lines: FeeStructureLineInput[];
+}
+
+export type FeeStructureStatus = typeof FeeStructureStatus[keyof typeof FeeStructureStatus];
+
+
+export const FeeStructureStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface FeeStructureLine {
+  categoryId: number;
+  categoryName: string;
+  description: string;
+  amountMinor: number;
+}
+
+export interface FeeStructure {
+  id: number;
+  schoolId: number;
+  sessionId: number;
+  termId: number;
+  classId: number;
+  /** @nullable */
+  section?: string | null;
+  version: number;
+  status: FeeStructureStatus;
+  lines: FeeStructureLine[];
+}
+
+export interface FeeAssignmentInput {
+  /** @minimum 1 */
+  structureId: number;
+  /** @minimum 1 */
+  studentId: number;
+  issueDate: string;
+  dueDate: string;
+}
+
+export type FeeInvoiceStatus = typeof FeeInvoiceStatus[keyof typeof FeeInvoiceStatus];
+
+
+export const FeeInvoiceStatus = {
+  UNPAID: 'UNPAID',
+  PARTIALLY_PAID: 'PARTIALLY_PAID',
+  PAID: 'PAID',
+  OVERDUE: 'OVERDUE',
+  WAIVED: 'WAIVED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export interface FeeInvoice {
+  id: number;
+  schoolId: number;
+  studentId: number;
+  invoiceNumber: string;
+  studentName: string;
+  sessionId: number;
+  termId: number;
+  currency: string;
+  subtotalMinor: number;
+  discountMinor: number;
+  waiverMinor: number;
+  totalMinor: number;
+  paidMinor: number;
+  outstandingMinor: number;
+  status: FeeInvoiceStatus;
+}
+
+export type FeePaymentStatus = typeof FeePaymentStatus[keyof typeof FeePaymentStatus];
+
+
+export const FeePaymentStatus = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  VERIFIED: 'VERIFIED',
+  FAILED: 'FAILED',
+  REJECTED: 'REJECTED',
+  CANCELLED: 'CANCELLED',
+  REVERSED: 'REVERSED',
+  REFUNDED: 'REFUNDED',
+} as const;
+
+export interface FeePayment {
+  id: number;
+  schoolId: number;
+  invoiceId: number;
+  reference: string;
+  amountMinor: number;
+  currency: string;
+  method: string;
+  status: FeePaymentStatus;
+  /** @nullable */
+  receiptNumber?: string | null;
+}
+
+export type FeePaymentVerificationResultStatus = typeof FeePaymentVerificationResultStatus[keyof typeof FeePaymentVerificationResultStatus];
+
+
+export const FeePaymentVerificationResultStatus = {
+  VERIFIED: 'VERIFIED',
+} as const;
+
+export interface FeePaymentVerificationResult {
+  id: number;
+  schoolId: number;
+  invoiceId: number;
+  reference: string;
+  amountMinor: number;
+  currency: string;
+  method: string;
+  status: FeePaymentVerificationResultStatus;
+  /** @minLength 1 */
+  receiptNumber: string;
+}
+
+export type FeePaymentHistoryMethod = typeof FeePaymentHistoryMethod[keyof typeof FeePaymentHistoryMethod];
+
+
+export const FeePaymentHistoryMethod = {
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  REMITA: 'REMITA',
+  FLUTTERWAVE: 'FLUTTERWAVE',
+  PAYSTACK: 'PAYSTACK',
+} as const;
+
+export type FeePaymentHistoryStatus = typeof FeePaymentHistoryStatus[keyof typeof FeePaymentHistoryStatus];
+
+
+export const FeePaymentHistoryStatus = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  VERIFIED: 'VERIFIED',
+  FAILED: 'FAILED',
+  REJECTED: 'REJECTED',
+  CANCELLED: 'CANCELLED',
+  REVERSED: 'REVERSED',
+  REFUNDED: 'REFUNDED',
+} as const;
+
+export interface FeePaymentHistory {
+  id: number;
+  schoolId: number;
+  invoiceId: number;
+  invoiceNumber: string;
+  studentId: number;
+  studentName: string;
+  schoolName: string;
+  reference: string;
+  amountMinor: number;
+  currency: string;
+  method: FeePaymentHistoryMethod;
+  status: FeePaymentHistoryStatus;
+  /** @nullable */
+  transferBank: string | null;
+  /** @nullable */
+  transferReference: string | null;
+  /** @nullable */
+  transferDate: string | null;
+  /** @nullable */
+  proofUrl: string | null;
+  /** @nullable */
+  rejectionReason: string | null;
+  /** @nullable */
+  verificationEvidenceReference: string | null;
+  /** @nullable */
+  reviewerNotes: string | null;
+  createdAt: string;
+  /** @nullable */
+  verifiedAt: string | null;
+  /** @nullable */
+  receiptNumber: string | null;
+}
+
+export type FeeReceiptSnapshot = {
+  invoiceId: number;
+  schoolId: number;
+  [key: string]: unknown;
+ };
+
+export interface FeeReceipt {
+  receiptNumber: string;
+  paymentId: number;
+  schoolId: number;
+  snapshot: FeeReceiptSnapshot;
+}
+
+export interface BankTransferInput {
+  /** @minimum 1 */
+  amountMinor: number;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  bank: string;
+  /**
+     * @minLength 2
+     * @maxLength 150
+     */
+  transferReference: string;
+  transferDate: string;
+  /** @maxLength 1000 */
+  proofUrl?: string;
+}
+
+export interface PaymentRejectionInput {
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export interface FeePaymentVerificationInput {
+  /**
+     * @minLength 3
+     * @maxLength 200
+     */
+  evidenceReference: string;
+  /**
+     * @minLength 3
+     * @maxLength 1000
+     */
+  reviewerNotes: string;
+}
+
+export type FeeAdjustmentInputKind = typeof FeeAdjustmentInputKind[keyof typeof FeeAdjustmentInputKind];
+
+
+export const FeeAdjustmentInputKind = {
+  DISCOUNT: 'DISCOUNT',
+  SCHOLARSHIP: 'SCHOLARSHIP',
+  WAIVER: 'WAIVER',
+} as const;
+
+export interface FeeAdjustmentInput {
+  kind: FeeAdjustmentInputKind;
+  /** @minimum 1 */
+  amountMinor: number;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export type FeeAdjustmentKind = typeof FeeAdjustmentKind[keyof typeof FeeAdjustmentKind];
+
+
+export const FeeAdjustmentKind = {
+  DISCOUNT: 'DISCOUNT',
+  SCHOLARSHIP: 'SCHOLARSHIP',
+  WAIVER: 'WAIVER',
+} as const;
+
+export type FeeAdjustmentStatus = typeof FeeAdjustmentStatus[keyof typeof FeeAdjustmentStatus];
+
+
+export const FeeAdjustmentStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface FeeAdjustment {
+  id: number;
+  schoolId: number;
+  invoiceId: number;
+  kind: FeeAdjustmentKind;
+  amountMinor: number;
+  reason: string;
+  status: FeeAdjustmentStatus;
+}
+
+export type PendingFeeAdjustmentKind = typeof PendingFeeAdjustmentKind[keyof typeof PendingFeeAdjustmentKind];
+
+
+export const PendingFeeAdjustmentKind = {
+  DISCOUNT: 'DISCOUNT',
+  SCHOLARSHIP: 'SCHOLARSHIP',
+  WAIVER: 'WAIVER',
+} as const;
+
+export type PendingFeeAdjustmentStatus = typeof PendingFeeAdjustmentStatus[keyof typeof PendingFeeAdjustmentStatus];
+
+
+export const PendingFeeAdjustmentStatus = {
+  PENDING: 'PENDING',
+} as const;
+
+export interface PendingFeeAdjustment {
+  id: number;
+  schoolId: number;
+  invoiceId: number;
+  invoiceNumber: string;
+  studentId: number;
+  studentName: string;
+  kind: PendingFeeAdjustmentKind;
+  amountMinor: number;
+  reason: string;
+  status: PendingFeeAdjustmentStatus;
+  requestedAt: string;
+}
+
+export interface FinanceSummary {
+  totalBilledMinor: number;
+  totalCollectedMinor: number;
+  totalOutstandingMinor: number;
+  pendingPayments: number;
+}
+
+export interface FinanceSettings {
+  schoolId: number;
+  partialPaymentsEnabled: boolean;
+  /** Explicit school-admin approval and enablement for parent bank transfers */
+  bankTransferEnabled: boolean;
+  /** @nullable */
+  bankName: string | null;
+  /** @nullable */
+  accountName: string | null;
+  /**
+     * @nullable
+     * @pattern ^[0-9]{10}$
+     */
+  accountNumber: string | null;
+}
+
+export interface FinanceSettingsUpdate {
+  partialPaymentsEnabled?: boolean;
+  bankTransferEnabled?: boolean;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     * @nullable
+     */
+  bankName?: string | null;
+  /**
+     * @minLength 2
+     * @maxLength 150
+     * @nullable
+     */
+  accountName?: string | null;
+  /**
+     * @nullable
+     * @pattern ^[0-9]{10}$
+     */
+  accountNumber?: string | null;
+}
+
+export interface ParentInvoiceBankDetailsAvailable {
+  invoiceId: number;
+  schoolId: number;
+  available: true;
+  bankName: string;
+  accountName: string;
+  /** @pattern ^[0-9]{10}$ */
+  accountNumber: string;
+}
+
+export type ParentInvoiceBankDetailsUnavailableReason = typeof ParentInvoiceBankDetailsUnavailableReason[keyof typeof ParentInvoiceBankDetailsUnavailableReason];
+
+
+export const ParentInvoiceBankDetailsUnavailableReason = {
+  BANK_DETAILS_UNAVAILABLE: 'BANK_DETAILS_UNAVAILABLE',
+} as const;
+
+export interface ParentInvoiceBankDetailsUnavailable {
+  invoiceId: number;
+  schoolId: number;
+  available: false;
+  reason: ParentInvoiceBankDetailsUnavailableReason;
+}
+
+export type ParentInvoiceBankDetails = ParentInvoiceBankDetailsAvailable | ParentInvoiceBankDetailsUnavailable;
+
+export interface ProviderPaymentInput {
+  /** @minimum 1 */
+  invoiceId: number;
+}
+
 /**
  * Invalid request or rejected school/device/student relationship
  */
@@ -3288,6 +3744,182 @@ export const StatusFilterParameter = {
 } as const;
 
 export type SearchParameter = string;
+
+export type GetFinanceSettingsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type UpdateFinanceSettingsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ListFeeCategoriesParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type CreateFeeCategoryParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type UpdateFeeCategoryParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ListFeeStructuresParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type CreateFeeStructureParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type PublishFeeStructureParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type AssignFeeStructureParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ListFeeInvoicesParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+status?: ListFeeInvoicesStatus;
+/**
+ * @minimum 1
+ */
+studentId?: number;
+};
+
+export type ListFeeInvoicesStatus = typeof ListFeeInvoicesStatus[keyof typeof ListFeeInvoicesStatus];
+
+
+export const ListFeeInvoicesStatus = {
+  UNPAID: 'UNPAID',
+  PARTIALLY_PAID: 'PARTIALLY_PAID',
+  PAID: 'PAID',
+  OVERDUE: 'OVERDUE',
+  WAIVED: 'WAIVED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type ListSchoolFinancePaymentsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+status?: ListSchoolFinancePaymentsStatus;
+/**
+ * @minimum 1
+ */
+studentId?: number;
+};
+
+export type ListSchoolFinancePaymentsStatus = typeof ListSchoolFinancePaymentsStatus[keyof typeof ListSchoolFinancePaymentsStatus];
+
+
+export const ListSchoolFinancePaymentsStatus = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  VERIFIED: 'VERIFIED',
+  FAILED: 'FAILED',
+  REJECTED: 'REJECTED',
+  CANCELLED: 'CANCELLED',
+  REVERSED: 'REVERSED',
+  REFUNDED: 'REFUNDED',
+} as const;
+
+export type GetSchoolFinancePaymentParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type VerifyManualBankTransferParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type RejectManualBankTransferParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type GetFeePaymentReceiptParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+};
+
+export type RequestFeeAdjustmentParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ApproveFeeAdjustmentParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type GetSchoolFinanceSummaryParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type ListPendingFeeAdjustmentsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type InitializeFeeProviderPaymentParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
 
 export type GetParentChildAttendanceParams = {
 from?: string;

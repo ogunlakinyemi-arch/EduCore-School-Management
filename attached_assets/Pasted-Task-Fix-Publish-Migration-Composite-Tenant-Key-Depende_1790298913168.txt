@@ -1,0 +1,285 @@
+Task: Fix Publish Migration Composite Tenant-Key Dependencies Safely
+
+The disposable production fork reports:
+
+"academic_results_class_assignment_school_fk"
+references:
+
+"student_class_assignments(id, school_id)"
+
+but PostgreSQL reports:
+
+"there is no unique constraint matching given keys for referenced table "student_class_assignments""
+
+1. Identify the immediate root cause
+
+Inspect the generated migration and confirm that it contains:
+
+"DROP INDEX "student_class_assignments_id_school_unique";"
+
+before creating:
+
+"FOREIGN KEY ("student_class_assignment_id","school_id") REFERENCES "student_class_assignments"("id","school_id")"
+
+This means the migration removes the exact referenced tenant key required by the later composite foreign key.
+
+Do NOT simply remove the foreign key.
+
+Do NOT weaken tenant isolation.
+
+Do NOT replace the composite FK with a single-column FK.
+
+Determine why the schema diff believes the existing tenant key should be dropped.
+
+2. Inspect the actual source schema
+
+Inspect "student_class_assignments" in the schema source and determine:
+
+- primary key
+- "school_id"
+- existing unique declarations
+- generated index names
+- whether "(id, school_id)" is intentionally part of the tenant-integrity design
+- whether the source schema and actual development/production-fork schema disagree
+
+Because "id" is already the primary key, understand that "(id, school_id)" may appear logically redundant, but PostgreSQL still requires an exact matching UNIQUE/PRIMARY KEY target for a composite FK.
+
+3. Audit EVERY composite tenant foreign key
+
+Do not fix only "student_class_assignments".
+
+Scan the complete generated migration for every FK of the form:
+
+"FOREIGN KEY (x, school_id) REFERENCES table(id, school_id)"
+
+For every referenced table, verify that "(id, school_id)" exists as a PRIMARY KEY or UNIQUE constraint/index BEFORE the FK is created.
+
+At minimum audit:
+
+- "student_class_assignments"
+- "school_classes"
+- "students"
+- "employees"
+- "academic_sessions"
+- "academic_terms"
+- "subjects"
+- "academic_assessments"
+- "academic_assessment_types"
+- "academic_report_cards"
+- "academic_results"
+- "attendance_events"
+- "attendance_discrepancies"
+- "nfc_cards"
+- "device_school_bindings"
+- every other composite tenant-key reference in the full migration
+
+Do not assume the tables listed above all have the correct keys. Inspect them.
+
+4. Pay special attention to DROP statements
+
+Find every migration statement that drops a unique index or constraint which is subsequently required by a composite FK.
+
+In particular investigate:
+
+"DROP INDEX "student_class_assignments_id_school_unique";"
+
+Also search for any other:
+
+"DROP INDEX"
+
+or:
+
+"DROP CONSTRAINT"
+
+that affects a referenced "(id, school_id)" key.
+
+A referenced tenant key must not be removed unless an equivalent matching UNIQUE/PRIMARY KEY is created before the FK is added.
+
+5. Determine the intended schema design
+
+The application's tenant-isolation architecture uses composite foreign keys such as:
+
+"(student_class_assignment_id, school_id) → (id, school_id)"
+
+This provides database-level protection against cross-school relationships.
+
+Preserve this architecture.
+
+The safe pattern is:
+
+1. referenced table exists;
+2. referenced "(id, school_id)" unique/primary key exists;
+3. dependent table exists;
+4. dependent composite FK is created;
+5. supporting indexes are created.
+
+If an equivalent unique key already exists under another name, do not create unnecessary duplicates. Correct the migration generator/source so it recognizes the existing key.
+
+6. Inspect why the migration generator wants to drop the key
+
+Determine whether the problem is caused by:
+
+- schema declaration mismatch;
+- changed constraint name;
+- changed index name;
+- unique declaration being represented differently in source;
+- migration-generation ordering;
+- an earlier migration already owning the key;
+- duplicate/competing unique declarations;
+- Drizzle introspection/diff behavior;
+- another schema change unintentionally causing the index to be recreated.
+
+Do not make arbitrary SQL changes just to make this particular migration pass.
+
+Fix the source-of-truth schema/migration generation problem.
+
+7. Audit the other known tenant-key risks
+
+The supplied migration already shows these composite references:
+
+- "attendance_events → school_classes"
+- "attendance_events → employees"
+- "attendance_events → device_school_bindings"
+- "attendance_events → academic_sessions"
+- "attendance_events → academic_terms"
+- "attendance_events → students"
+- "biometric_enrollments → employees"
+- "biometric_enrollments → students"
+- "attendance_corrections → attendance_events"
+- "attendance_discrepancies → attendance_events"
+- "attendance_discrepancies → students"
+- "nfc_card_history → students"
+- "academic_timetable_entries → school_classes"
+- "academic_timetable_entries → academic_sessions"
+- "academic_timetable_entries → subjects"
+- "academic_timetable_entries → employees"
+- "academic_timetable_entries → academic_terms"
+- "student_identification_policies → students"
+- "academic_results → academic_assessments"
+- "academic_results → student_class_assignments"
+- "academic_results → school_classes"
+- "academic_results → academic_sessions"
+- "academic_results → students"
+- "academic_results → subjects"
+- "academic_results → employees"
+- "academic_results → academic_terms"
+- "academic_report_card_lines → academic_report_cards"
+- "academic_report_card_lines → academic_results"
+- "academic_report_card_lines → subjects"
+- "academic_report_cards → student_class_assignments"
+- "academic_report_cards → school_classes"
+- "academic_report_cards → academic_sessions"
+- "academic_report_cards → students"
+- "academic_report_cards → academic_terms"
+- "academic_assignments → school_classes"
+- "academic_assignments → academic_sessions"
+- "academic_assignments → subjects"
+- "academic_assignments → employees"
+- "academic_assignments → academic_terms"
+- "academic_assessments → school_classes"
+- "academic_assessments → academic_sessions"
+- "academic_assessments → subjects"
+- "academic_assessments → employees"
+- "academic_assessments → academic_terms"
+- "academic_assessments → academic_assessment_types"
+- "attendance_notification_events → attendance_discrepancies"
+- "attendance_notification_events → attendance_events"
+
+Audit the complete migration, not only this list.
+
+8. Check migration ordering
+
+The final generated migration must ensure that every referenced tenant key exists before its corresponding FK.
+
+Do not rely on PostgreSQL to defer this unless the project explicitly uses deferred constraints.
+
+Prefer deterministic migration ordering.
+
+9. Validate against a populated disposable database
+
+After correcting the source/migration generation:
+
+1. Generate the migration.
+2. Inspect the complete SQL before applying it.
+3. Confirm no required "(id, school_id)" key is dropped before its dependent FK.
+4. Apply it to a disposable populated database/fork.
+5. Confirm the migration completes successfully.
+6. Verify existing data remains intact.
+7. Verify tenant relationships remain intact.
+8. Verify the expected constraints exist afterward.
+
+Do not test only against an empty database.
+
+10. Do NOT modify production
+
+Do not:
+
+- publish to production;
+- run production DDL;
+- use "--force";
+- truncate production;
+- disable constraints;
+- remove tenant-scoped foreign keys;
+- bypass migration validation.
+
+11. Do NOT modify unrelated application behavior
+
+Do not change:
+
+- Clerk authentication;
+- Owner login;
+- Partner functionality;
+- parent cross-school behavior;
+- import behavior;
+- NFC business rules;
+- UI;
+- Finance;
+- E2E fixture data.
+
+This is strictly a database schema/migration dependency investigation.
+
+12. Required final report
+
+Report:
+
+ROOT CAUSE
+
+Explain why "student_class_assignments_id_school_unique" was dropped before the FK that requires it.
+
+ALL COMPOSITE TENANT-FK FINDINGS
+
+List every referenced table whose "(id, school_id)" key was missing, dropped, duplicated, or incorrectly ordered.
+
+SOURCE FIX
+
+Explain exactly what was changed in the schema source or migration generation.
+
+GENERATED MIGRATION
+
+Confirm that referenced tenant keys are created/preserved before dependent FKs.
+
+DISPOSABLE POPULATED DATABASE
+
+Report whether the complete migration succeeded against populated data.
+
+DATA INTEGRITY
+
+Report whether row counts and existing relationships remained intact.
+
+TENANT ISOLATION
+
+Confirm that database-level tenant-scoped relationships remain enforced.
+
+FILES CHANGED
+
+List every changed file.
+
+TESTS / BUILD / TYPE CHECKS
+
+Report actual results.
+
+PRODUCTION
+
+Explicitly confirm that production was not modified.
+
+Do not report the migration as fixed unless the complete generated migration has actually succeeded against a populated disposable database.

@@ -42,6 +42,7 @@ import { SettingsPage } from '@/pages/settings';
 import { DevicesPage } from '@/pages/devices';
 import { NotificationsPage } from '@/pages/notifications';
 import { AttendancePage } from '@/pages/attendance';
+import { FinancePage, MyFeesPage } from '@/pages/finance';
 
 import './index.css';
 
@@ -199,6 +200,12 @@ function ProtectedRoutes() {
           <Route path="/my-academics">
             <RoleGuard allowedRoles={['STUDENT']}><MyAcademicsPage /></RoleGuard>
           </Route>
+          <Route path="/my-fees">
+            <RoleGuard allowedRoles={['STUDENT']}><MyFeesPage /></RoleGuard>
+          </Route>
+          <Route path="/finance">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']}><FinancePage /></RoleGuard>
+          </Route>
           <Route path="/classes">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']}><ClassesPage /></RoleGuard>
           </Route>
@@ -291,7 +298,7 @@ export default function App() {
                 <AuthGuard>
                   <Switch>
                     <Route path="/partner/invitations/:invitationToken/accept"><AcceptInvitation /></Route>
-                    <Route path="/parent*"><ParentPortal /></Route>
+                     <Route path="/parent*"><RoleGuard allowedRoles={['PARENT']}><ParentPortal /></RoleGuard></Route>
                     <Route path="/partner*"><PartnerPortal /></Route>
                     <Route><ProtectedRoutes /></Route>
                   </Switch>

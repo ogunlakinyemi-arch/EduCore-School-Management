@@ -1,0 +1,121 @@
+import { useState, type FormEvent } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { ArrowUpRight, Banknote, Check, Clock3, FileCheck2, ReceiptText, ShieldCheck, X } from 'lucide-react';
+import {
+  useListSchoolFinancePayments, useGetSchoolFinancePayment, useVerifyManualBankTransfer, useRejectManualBankTransfer,
+  useListPendingFeeAdjustments, useApproveFeeAdjustment, useListParentFeePayments, useListStudentFeePayments,
+  useGetFeePaymentReceipt,
+  getListSchoolFinancePaymentsQueryKey, getGetSchoolFinancePaymentQueryKey, getListPendingFeeAdjustmentsQueryKey,
+  getListParentFeePaymentsQueryKey, getListStudentFeePaymentsQueryKey, getListParentFeeInvoicesQueryKey,
+  getListStudentFeeInvoicesQueryKey, getListFeeInvoicesQueryKey, getGetSchoolFinanceSummaryQueryKey,
+  getGetFeePaymentReceiptQueryKey,
+} from '@workspace/api-client-react';
+import type { FeePaymentHistory } from '@workspace/api-client-react';
+import { Button, EmptyState, ErrorState, Modal, SkeletonPage, StatusPill } from '@/components/shared';
+
+const amount = (minor: number) => `₦${(minor / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const input = 'w-full rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3.5 py-2.5 text-sm outline-none focus:border-[hsl(var(--primary))]';
+const muted = 'text-xs leading-5 text-[hsl(var(--muted-foreground))]';
+const message = (error: unknown) => error instanceof Error ? error.message : 'Could not save this change. Please retry.';
+const safeProof = (value: string | null) => {
+  if (!value) return null;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'https:' ? parsed.href : null;
+  } catch { return null; }
+};
+function Detail({ label, value }: { label: string; value?: string | number | null }) {
+  return <div><div className="eyebrow">{label}</div><div className="mt-1 break-words text-sm font-semibold">{value || '—'}</div></div>;
+}
+
+function ReviewPayment({ paymentId, schoolId, onClose, onChanged }: { paymentId: number; schoolId: number; onClose: () => void; onChanged: (text: string) => void }) {
+  const qc = useQueryClient();
+  const params = { schoolId };
+  const query = useGetSchoolFinancePayment(paymentId, params, { query: { enabled: !!paymentId && !!schoolId, queryKey: getGetSchoolFinancePaymentQueryKey(paymentId, params) } });
+  const verify = useVerifyManualBankTransfer();
+  const reject = useRejectManualBankTransfer();
+  const [action, setAction] = useState<'verify' | 'reject' | null>(null);
+  const [evidence, setEvidence] = useState('');
+  const [notes, setNotes] = useState('');
+  const [reason, setReason] = useState('');
+  const [failure, setFailure] = useState('');
+  const payment = query.data;
+  const proof = safeProof(payment?.proofUrl ?? null);
+  const canReview = payment?.status === 'PENDING' && payment.method === 'BANK_TRANSFER';
+  const refresh = async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: getListSchoolFinancePaymentsQueryKey(params) }),
+      qc.invalidateQueries({ queryKey: getListSchoolFinancePaymentsQueryKey({ schoolId, status: 'PENDING' }) }),
+      qc.invalidateQueries({ queryKey: getGetSchoolFinancePaymentQueryKey(paymentId, params) }),
+      qc.invalidateQueries({ queryKey: getListFeeInvoicesQueryKey(params) }),
+      qc.invalidateQueries({ queryKey: getGetSchoolFinanceSummaryQueryKey(params) }),
+      qc.invalidateQueries({ queryKey: getListParentFeePaymentsQueryKey() }),
+      qc.invalidateQueries({ queryKey: getListStudentFeePaymentsQueryKey() }),
+      qc.invalidateQueries({ queryKey: getListParentFeeInvoicesQueryKey() }),
+      qc.invalidateQueries({ queryKey: getListStudentFeeInvoicesQueryKey() }),
+      qc.invalidateQueries({ queryKey: getGetFeePaymentReceiptQueryKey(paymentId) }),
+    ]);
+  };
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!canReview || !action) return;
+    if (!window.confirm(action === 'verify' ? `Verify ${amount(payment.amountMinor)} against the bank record? This will credit invoice ${payment.invoiceNumber}.` : `Reject this transfer submission for ${payment.invoiceNumber}?`)) return;
+    try {
+      if (action === 'verify') {
+        const result = await verify.mutateAsync({ paymentId, params, data: { evidenceReference: evidence.trim(), reviewerNotes: notes.trim() } });
+        await refresh(); onChanged(`Payment #${paymentId} verified. Receipt ${result.receiptNumber} is now available.`);
+      } else {
+        await reject.mutateAsync({ paymentId, params, data: { reason: reason.trim() } });
+        await refresh(); onChanged(`Payment #${paymentId} rejected; no balance was credited.`);
+      }
+      onClose();
+    } catch (error) { setFailure(message(error)); query.refetch(); }
+  };
+  return <Modal title={`Transfer #${paymentId}`} eyebrow="Bank reconciliation" onClose={onClose}>
+    {query.isLoading ? <div className="space-y-3 animate-pulse"><div className="h-16 rounded-xl bg-[hsl(var(--muted))]" /><div className="h-36 rounded-xl bg-[hsl(var(--muted))]" /></div> : query.isError || !payment ? <ErrorState retry={() => query.refetch()} message="This transfer could not be loaded. No review action is available without its details." /> :
+      <div className="space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[hsl(var(--secondary))] p-4"><div><div className="eyebrow">Submitted amount</div><div className="display-font mt-1 text-2xl font-bold tabular-nums">{amount(payment.amountMinor)}</div></div><StatusPill value={payment.status} /></div>
+        <div className="grid gap-4 sm:grid-cols-2"><Detail label="Student" value={payment.studentName} /><Detail label="Invoice" value={payment.invoiceNumber} /><Detail label="Sending bank" value={payment.transferBank} /><Detail label="Bank reference" value={payment.transferReference} /><Detail label="Transfer date" value={payment.transferDate} /><Detail label="Submitted" value={new Date(payment.createdAt).toLocaleString('en-NG')} /><Detail label="Internal reference" value={payment.reference} /><Detail label="Method" value={payment.method.replaceAll('_', ' ')} /></div>
+        <div className="rounded-xl border border-[hsl(var(--border))] p-4"><div className="eyebrow">Submitted proof</div>{proof ? <div className="mt-2"><div className={`${muted} break-all`}>External source: {new URL(proof).hostname}. Check the destination before opening.</div><a href={proof} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex max-w-full items-center gap-2 break-all text-sm font-semibold text-[hsl(var(--primary))] underline" data-testid={`link-transfer-proof-${payment.id}`}>Open evidence link <ArrowUpRight size={15} className="shrink-0" /></a></div> : <div className={`mt-2 ${muted}`}>{payment.proofUrl ? 'The supplied link cannot be opened safely. Only HTTPS evidence links are supported.' : 'No proof link was supplied. Confirm against the actual bank record.'}</div>}</div>
+        {payment.status !== 'PENDING' && <div className="rounded-xl bg-[hsl(var(--muted)/.5)] p-4"><div className="grid gap-3 sm:grid-cols-2"><Detail label="Bank evidence reference" value={payment.verificationEvidenceReference} /><Detail label="Reviewed at" value={payment.verifiedAt ? new Date(payment.verifiedAt).toLocaleString('en-NG') : null} /><Detail label="Reviewer notes" value={payment.reviewerNotes} /><Detail label="Rejection reason" value={payment.rejectionReason} /></div>{payment.status === 'VERIFIED' && payment.receiptNumber && <div className="mt-3 text-sm font-bold text-[hsl(var(--primary))]">Receipt {payment.receiptNumber}</div>}</div>}
+        {canReview && <><div className={`flex items-start gap-2 ${muted}`}><ShieldCheck size={17} className="shrink-0 text-[hsl(var(--primary))]" />Check amount, bank reference, date and proof against your bank statement before verifying. A pending transfer is not paid.</div><div className="flex gap-2"><Button variant={action === 'verify' ? 'primary' : 'outline'} onClick={() => { setAction('verify'); setFailure(''); }} testId="button-start-verify-transfer"><Check size={15} />Verify</Button><Button variant={action === 'reject' ? 'danger' : 'outline'} onClick={() => { setAction('reject'); setFailure(''); }} testId="button-start-reject-transfer"><X size={15} />Reject</Button></div>{action && <form onSubmit={submit} className="space-y-3 rounded-xl border border-[hsl(var(--border))] p-4">{action === 'verify' ? <><label className="block text-xs font-bold">Bank statement / evidence reference<input required minLength={3} maxLength={200} value={evidence} onChange={e => setEvidence(e.target.value)} className={`${input} mt-1.5`} data-testid="input-verification-evidence" /></label><label className="block text-xs font-bold">Reviewer notes<textarea required minLength={3} maxLength={1000} rows={3} value={notes} onChange={e => setNotes(e.target.value)} className={`${input} mt-1.5`} data-testid="input-verification-notes" /></label></> : <label className="block text-xs font-bold">Reason for rejection<textarea required minLength={3} maxLength={500} rows={3} value={reason} onChange={e => setReason(e.target.value)} className={`${input} mt-1.5`} data-testid="input-rejection-reason" /></label>}{failure && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{failure}</p>}<Button type="submit" disabled={verify.isPending || reject.isPending} variant={action === 'reject' ? 'danger' : 'primary'} testId="button-confirm-transfer-review">{verify.isPending || reject.isPending ? 'Saving…' : action === 'verify' ? 'Confirm verified payment' : 'Confirm rejection'}</Button></form>}</>}
+      </div>}
+  </Modal>;
+}
+
+export function SchoolPaymentQueue({ schoolId, onChanged }: { schoolId: number; onChanged: (message: string) => void }) {
+  const params = { schoolId };
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [filter, setFilter] = useState<'PENDING' | 'ALL'>('PENDING');
+  const pending = useListSchoolFinancePayments({ schoolId, status: 'PENDING' }, { query: { enabled: !!schoolId, queryKey: getListSchoolFinancePaymentsQueryKey({ schoolId, status: 'PENDING' }), refetchInterval: 30000 } });
+  const all = useListSchoolFinancePayments(params, { query: { enabled: !!schoolId && filter === 'ALL', queryKey: getListSchoolFinancePaymentsQueryKey(params) } });
+  const active = filter === 'PENDING' ? pending : all;
+  return <section className="panel mt-6 overflow-hidden" data-testid="section-transfer-queue"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-[hsl(var(--border))] p-5 md:p-6"><div><div className="eyebrow">Bank reconciliation</div><h2 className="display-font mt-1 text-xl font-bold">Manual transfers <span className="text-sm text-[hsl(var(--muted-foreground))]">· {pending.data?.length ?? 0} pending</span></h2></div><div className="flex rounded-xl bg-[hsl(var(--secondary))] p-1">{(['PENDING', 'ALL'] as const).map(item => <button key={item} onClick={() => setFilter(item)} className={`rounded-lg px-3 py-2 text-xs font-bold ${filter === item ? 'bg-[hsl(var(--card))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`} data-testid={`button-payment-filter-${item.toLowerCase()}`}>{item === 'ALL' ? 'All payments' : 'Pending review'}</button>)}</div></div>{active.isLoading ? <div className="space-y-2 p-5"><div className="skeleton h-16 rounded-xl" /><div className="skeleton h-16 rounded-xl" /></div> : active.isError ? <div className="p-5"><ErrorState retry={() => active.refetch()} /></div> : !active.data?.length ? <EmptyState icon={Banknote} title={filter === 'PENDING' ? 'Queue is clear' : 'No transfers yet'} description={filter === 'PENDING' ? 'There are no submitted transfers waiting for bank reconciliation.' : 'Payments will appear here once families submit bank transfers.'} /> : <div className="divide-y divide-[hsl(var(--border))]">{active.data.map(payment => <div key={payment.id} className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:gap-5 md:px-6" data-testid={`row-finance-payment-${payment.id}`}><div className="min-w-0 flex-1"><div className="text-sm font-bold">{payment.studentName} <span className="font-mono text-xs text-[hsl(var(--muted-foreground))]">· {payment.invoiceNumber}</span></div><div className={`mt-1 break-all ${muted}`}>{payment.transferBank || payment.method} · Ref {payment.transferReference || payment.reference} · {new Date(payment.createdAt).toLocaleDateString('en-NG')}</div></div><div className="flex flex-wrap items-center gap-3"><span className="text-sm font-bold tabular-nums">{amount(payment.amountMinor)}</span><StatusPill value={payment.status} /><Button variant="outline" onClick={() => setSelectedId(payment.id)} testId={`button-review-payment-${payment.id}`}>{payment.status === 'PENDING' ? 'Review' : 'Details'}</Button></div></div>)}</div>}{selectedId !== null && <ReviewPayment key={`${schoolId}-${selectedId}`} paymentId={selectedId} schoolId={schoolId} onClose={() => setSelectedId(null)} onChanged={onChanged} />}</section>;
+}
+
+export function PendingAdjustments({ schoolId, onChanged }: { schoolId: number; onChanged: (message: string) => void }) {
+  const qc = useQueryClient();
+  const params = { schoolId };
+  const query = useListPendingFeeAdjustments(params, { query: { enabled: !!schoolId, queryKey: getListPendingFeeAdjustmentsQueryKey(params), refetchInterval: 30000 } });
+  const approve = useApproveFeeAdjustment();
+  const [failure, setFailure] = useState('');
+  return <section className="panel mt-6 overflow-hidden"><div className="border-b border-[hsl(var(--border))] p-5 md:p-6"><div className="eyebrow">Approval desk</div><h2 className="display-font mt-1 text-xl font-bold">Pending adjustments <span className="text-sm text-[hsl(var(--muted-foreground))]">· {query.data?.length ?? 0}</span></h2></div>{failure && <p className="p-4 text-sm text-[hsl(var(--destructive))]" role="alert">{failure}</p>}{query.isLoading ? <div className="skeleton m-5 h-24 rounded-xl" /> : query.isError ? <div className="p-5"><ErrorState retry={() => query.refetch()} /></div> : !query.data?.length ? <EmptyState icon={FileCheck2} title="No approvals waiting" description="Requested fee adjustments will appear here for review." /> : <div className="divide-y divide-[hsl(var(--border))]">{query.data.map(adjustment => <div key={adjustment.id} className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:px-6"><div className="min-w-0 flex-1"><div className="text-sm font-bold">{adjustment.studentName} · {adjustment.kind.toLowerCase()}</div><div className={`mt-1 ${muted}`}>{adjustment.invoiceNumber} · Requested {new Date(adjustment.requestedAt).toLocaleDateString('en-NG')}</div><p className="mt-2 break-words text-sm">{adjustment.reason}</p></div><div className="flex items-center gap-3"><strong className="tabular-nums">{amount(adjustment.amountMinor)}</strong><Button disabled={approve.isPending} onClick={async () => { if (!window.confirm(`Approve ${amount(adjustment.amountMinor)} ${adjustment.kind.toLowerCase()} on ${adjustment.invoiceNumber}?`)) return; try { await approve.mutateAsync({ adjustmentId: adjustment.id, params }); setFailure(''); await Promise.all([qc.invalidateQueries({ queryKey: getListPendingFeeAdjustmentsQueryKey(params) }), qc.invalidateQueries({ queryKey: getListFeeInvoicesQueryKey(params) }), qc.invalidateQueries({ queryKey: getGetSchoolFinanceSummaryQueryKey(params) }), qc.invalidateQueries({ queryKey: getListParentFeeInvoicesQueryKey() }), qc.invalidateQueries({ queryKey: getListStudentFeeInvoicesQueryKey() })]); onChanged(`Adjustment #${adjustment.id} approved.`); } catch (error) { setFailure(message(error)); } }} testId={`button-approve-adjustment-${adjustment.id}`}>Approve</Button></div></div>)}</div>}</section>;
+}
+
+function VerifiedReceipt({ payment, onClose }: { payment: FeePaymentHistory; onClose: () => void }) {
+  const query = useGetFeePaymentReceipt(payment.id, undefined, { query: { enabled: payment.status === 'VERIFIED', queryKey: getGetFeePaymentReceiptQueryKey(payment.id) } });
+  const matchesPayment = query.data?.paymentId === payment.id
+    && Number(query.data.snapshot?.invoiceId) === payment.invoiceId
+    && Number(query.data.snapshot?.schoolId) === payment.schoolId
+    && query.data.schoolId === payment.schoolId;
+  return <Modal title="Verified receipt" eyebrow={payment.invoiceNumber} onClose={onClose}>{query.isLoading ? <div className="skeleton h-32 rounded-xl" /> : query.isError ? <ErrorState retry={() => query.refetch()} message="The verified receipt could not be retrieved right now." /> : query.data && !matchesPayment ? <div role="alert" className="rounded-xl bg-[hsl(var(--destructive)/.08)] p-4 text-sm text-[hsl(var(--destructive))]">The receipt does not match this invoice and school. Contact the finance office.</div> : query.data && payment.status === 'VERIFIED' ? <div><div className="rounded-xl bg-[hsl(var(--secondary))] p-5"><div className="eyebrow">Official receipt number</div><div className="mt-2 break-all font-mono text-xl font-bold" data-testid="text-verified-receipt-number">{query.data.receiptNumber}</div><div className="mt-3 text-sm">{payment.studentName} · {amount(payment.amountMinor)}</div><div className={`mt-1 ${muted}`}>Verified {payment.verifiedAt ? new Date(payment.verifiedAt).toLocaleDateString('en-NG') : 'by the school'}</div></div><Button variant="outline" className="mt-5" onClick={() => window.print()}>Print receipt</Button></div> : null}</Modal>;
+}
+
+export function FamilyPaymentHistory({ audience, studentId }: { audience: 'parent' | 'student'; studentId?: number }) {
+  const parent = useListParentFeePayments({ query: { enabled: audience === 'parent', queryKey: getListParentFeePaymentsQueryKey(), refetchInterval: 30000 } });
+  const student = useListStudentFeePayments({ query: { enabled: audience === 'student', queryKey: getListStudentFeePaymentsQueryKey(), refetchInterval: 30000 } });
+  const query = audience === 'parent' ? parent : student;
+  const [receipt, setReceipt] = useState<FeePaymentHistory | null>(null);
+  const payments = (query.data ?? []).filter(payment => studentId === undefined || payment.studentId === studentId);
+  return <section className="panel mt-5 overflow-hidden" data-testid="section-payment-history"><div className="border-b border-[hsl(var(--border))] p-5 md:p-6"><div className="eyebrow">Payment trail</div><h2 className="display-font mt-1 text-xl font-bold">Transfer history</h2><p className={`mt-1 ${muted}`}>Pending submissions are not included in verified paid balances.</p></div>{query.isLoading ? <div className="space-y-2 p-5"><div className="skeleton h-16 rounded-xl" /><div className="skeleton h-16 rounded-xl" /></div> : query.isError ? <div className="p-5"><ErrorState retry={() => query.refetch()} /></div> : !payments.length ? <EmptyState icon={Clock3} title="No payment submissions" description="Submitted transfers and their review status will appear here after they are recorded." /> : <div className="divide-y divide-[hsl(var(--border))]">{payments.map(payment => <div key={payment.id} className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:px-6" data-testid={`row-payment-history-${payment.id}`}><div className="min-w-0 flex-1"><div className="text-sm font-bold">{payment.invoiceNumber} · {payment.studentName}</div><div className={`mt-1 break-all ${muted}`}>{payment.transferBank || payment.method.replaceAll('_', ' ')} · {payment.transferReference || payment.reference} · {new Date(payment.createdAt).toLocaleDateString('en-NG')}</div>{payment.status === 'REJECTED' && payment.rejectionReason && <div className="mt-2 text-xs text-[hsl(var(--destructive))]">Rejected: {payment.rejectionReason}</div>}{payment.status === 'PENDING' && <div className={`mt-2 ${muted}`}>Awaiting school verification. Not paid.</div>}</div><div className="flex flex-wrap items-center gap-3"><strong className="text-sm tabular-nums">{amount(payment.amountMinor)}</strong><StatusPill value={payment.status} />{payment.status === 'VERIFIED' && payment.receiptNumber && <Button variant="outline" onClick={() => setReceipt(payment)} testId={`button-open-receipt-${payment.id}`}><ReceiptText size={14} />Receipt</Button>}</div></div>)}</div>}{receipt && <VerifiedReceipt payment={receipt} onClose={() => setReceipt(null)} />}</section>;
+}

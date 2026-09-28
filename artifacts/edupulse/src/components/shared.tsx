@@ -5,7 +5,7 @@ import {
   Activity, ArrowLeft, ArrowUpRight, BadgeCheck, BarChart3, Bell, BookOpen, Building2, Check, ChevronDown, 
   CircleAlert, CircleDollarSign, CreditCard, FileClock, GraduationCap, LayoutDashboard, Library, Menu, 
   MoreHorizontal, Pencil, Plus, RefreshCw, Search, Settings2, ShieldCheck, SlidersHorizontal, Smartphone, 
-  UserRound, UsersRound, WalletCards, X, Zap, Calendar, UserCog, ClipboardList, Briefcase, Handshake, ClipboardCheck
+  UserRound, UsersRound, WalletCards, X, Zap, Calendar, UserCog, ClipboardList, Briefcase, Handshake, ClipboardCheck, ReceiptText
 } from 'lucide-react';
 import {
   useGetAuthorizedContext, useListSchools, getListSchoolsQueryKey,
@@ -49,6 +49,8 @@ const nav: NavItem[] = [
   { href: '/results', label: 'Results', icon: BarChart3, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
   { href: '/timetable', label: 'Timetable', icon: Calendar, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STUDENT'] },
   { href: '/my-academics', label: 'My Academics', icon: GraduationCap, roles: ['STUDENT'] },
+  { href: '/my-fees', label: 'My Fees', icon: ReceiptText, roles: ['STUDENT'] },
+  { href: '/finance', label: 'School Fees', icon: CircleDollarSign, roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/attendance', label: 'Attendance', icon: ClipboardCheck, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
   { href: '/users', label: 'Users & Roles', icon: UserCog, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
   { href: '/people/imports', label: 'Import Records', icon: UsersRound, roles: ['SCHOOL_ADMIN'] },

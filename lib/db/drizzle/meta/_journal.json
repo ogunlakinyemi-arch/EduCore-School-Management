@@ -92,6 +92,27 @@
       "when": 1790195000000,
       "tag": "0012_phase6_academic_operations",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790632156536,
+      "tag": "0013_phase7_finance",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790632157536,
+      "tag": "0014_finance_payment_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790632158536,
+      "tag": "0015_school_bank_transfer_settings",
+      "breakpoints": true
     }
   ]
 }
