@@ -1,0 +1,95 @@
+Make ONLY the targeted development frontend fix for the signed-in blank-page/loading loop identified in the latest read-only diagnosis.
+
+IMPORTANT:
+
+- Development only.
+- Do NOT modify production.
+- Do NOT Publish.
+- Do NOT modify the database.
+- Do NOT modify migrations or migration ledger.
+- Do NOT change Clerk configuration.
+- Do NOT change Platform Owner/RBAC membership records.
+- Do NOT redesign the dashboard.
+- Do NOT change payment, SMS, communication, finance, or other modules.
+
+CONFIRMED DIAGNOSIS:
+
+The development server and preview URL are healthy:
+
+- "/" returns HTTP 200 HTML.
+- Root element exists.
+- Vite/client/frontend assets return HTTP 200.
+- No general JavaScript exception was observed.
+- Unauthenticated browser renders the sign-in page.
+- API logs show hundreds of repeated "/api/me/authorized-context" requests approximately every 0.3–0.4 seconds.
+- The strongest code-level explanation is that "TenantProvider" calls "queryClient.resetQueries()" during mount.
+- This can reset the authorization query used by the route above it, cause the loading state to render, unmount/remount the provider, and repeat.
+
+TASK:
+
+1. Inspect the current "TenantProvider" implementation and the authorization query/provider hierarchy.
+
+2. Confirm exactly which query is being reset by the mount-time "queryClient.resetQueries()".
+
+3. Remove or replace ONLY the unnecessary mount-time query reset that causes the authorization query/provider remount loop.
+
+4. Preserve the intended behavior:
+   
+   - Authorization context must still load.
+   - Stale authorization data must not incorrectly grant access.
+   - Platform Owner authorization must remain server-side.
+   - School Admin and other role boundaries must remain unchanged.
+   - Sign-out/session changes must still correctly invalidate or refresh authorization state.
+   - Do not introduce cached authorization that survives account changes.
+
+5. If cache invalidation is genuinely required, use the narrowest appropriate invalidation/refetch mechanism rather than resetting the entire active query tree.
+
+6. Do not change unrelated queries or providers.
+
+TESTING:
+
+Run:
+
+- relevant TenantProvider/authentication frontend tests
+- authorization/RBAC frontend tests
+- full frontend tests
+- full API tests
+- backend typecheck
+- frontend typecheck
+- frontend build
+
+Also add or update a focused regression test proving that mounting "TenantProvider" does NOT continuously reset the active authorization query.
+
+The regression test should verify that:
+
+- authorization context can load normally;
+- the provider does not repeatedly remount/reset;
+- repeated "/api/me/authorized-context" requests do not occur because of a mount/reset loop.
+
+DEVELOPMENT BROWSER VERIFICATION:
+
+If the authenticated development browser session is available:
+
+1. Open the development preview.
+2. Sign in/use the existing session.
+3. Confirm the blank page is gone.
+4. Confirm the Platform Owner dashboard renders.
+5. Confirm the school selector works.
+6. Confirm "Open dashboard snapshot" works.
+7. Confirm "/dashboard" works.
+8. Confirm "/audit" works.
+9. Confirm the repeated authorization requests have stopped or reduced to normal request/refetch behavior.
+
+If the authenticated session is not available to the Replit browser, do not claim authenticated browser verification. Report that limitation clearly.
+
+Do not make any additional changes if this targeted fix resolves the issue.
+
+Final report must include:
+
+- exact frontend file(s) changed
+- exact behavior changed
+- tests before/after
+- typecheck/build results
+- whether the authorization request loop stopped
+- whether authenticated browser verification was possible
+- confirmation that production, database, migrations, Clerk configuration, and Publish were untouched.

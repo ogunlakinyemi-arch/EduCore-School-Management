@@ -1,7 +1,6 @@
 import { useLocation, Link } from 'wouter';
 import { useState, type ReactNode, type FormEvent, createContext, useContext, useEffect, useRef } from 'react';
 import { useAuth, UserButton } from '@clerk/react';
-import { useQueryClient } from '@tanstack/react-query';
 import { FeePaymentNotifications } from './fee-payment-notifications';
 import { CommunicationInboxBadge } from '@/pages/communication-inbox';
 import { 
@@ -12,7 +11,6 @@ import {
 } from 'lucide-react';
 import {
   useGetAuthorizedContext, getAuthorizedContext,
-  getGetAuthorizedContextQueryKey,
   useListOwnerSchoolDirectory, getListOwnerSchoolDirectoryQueryKey,
   useGetCurrentUserSchools, getGetCurrentUserSchoolsQueryKey,
   useListPlatformNotifications, getListPlatformNotificationsQueryKey
@@ -401,12 +399,11 @@ export function TenantSessionBoundary({
 
 export function TenantProvider({ children }: { children: ReactNode }) {
   const { userId, isLoaded } = useAuth();
-  const queryClient = useQueryClient();
   const currentUserId = userId ?? null;
   const [session, setSession] = useState<TenantSession>({ userId: currentUserId, status: 'loading' });
   const [schoolId, setSchoolId] = useState<number>(0);
   const initialized = useRef(false);
-  useGetAuthorizedContext();
+  const contextQuery = useGetAuthorizedContext();
   const sessionContext = session.userId === currentUserId && session.status === 'ready' ? session.context : undefined;
   const userSchoolsQuery = useGetCurrentUserSchools({
     query: {
@@ -416,39 +413,24 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   });
   
   useEffect(() => {
+    setSchoolId(0);
+    initialized.current = false;
+  }, [currentUserId]);
+
+  useEffect(() => {
     if (!isLoaded || !currentUserId) {
       setSession({ userId: currentUserId, status: 'loading' });
-      setSchoolId(0);
-      initialized.current = false;
       return;
     }
 
-    let cancelled = false;
-    setSession({ userId: currentUserId, status: 'loading' });
-    setSchoolId(0);
-    initialized.current = false;
-    queryClient.getMutationCache().clear();
-    void queryClient.resetQueries().then(
-      () => {
-        if (cancelled) return;
-        const authContextKey = getGetAuthorizedContextQueryKey();
-        const context = queryClient.getQueryData<Awaited<ReturnType<typeof getAuthorizedContext>>>(authContextKey);
-        const queryState = queryClient.getQueryState(authContextKey);
-        if (!context || queryState?.status !== 'success') {
-          setSession({ userId: currentUserId, status: 'error' });
-          return;
-        }
-        setSession({ userId: currentUserId, status: 'ready', context });
-      },
-      () => {
-        if (!cancelled) setSession({ userId: currentUserId, status: 'error' });
-      },
-    );
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentUserId, isLoaded, queryClient]);
+    if (contextQuery.isError) {
+      setSession({ userId: currentUserId, status: 'error' });
+    } else if (contextQuery.isSuccess && contextQuery.data) {
+      setSession({ userId: currentUserId, status: 'ready', context: contextQuery.data });
+    } else {
+      setSession({ userId: currentUserId, status: 'loading' });
+    }
+  }, [currentUserId, isLoaded, contextQuery.isError, contextQuery.isSuccess, contextQuery.data]);
 
   useEffect(() => {
     if (!sessionContext || initialized.current) return;

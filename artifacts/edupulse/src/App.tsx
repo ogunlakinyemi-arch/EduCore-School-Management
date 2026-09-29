@@ -1,5 +1,3 @@
-import { useMemo } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ClerkProvider, useAuth } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { Route, Switch, Redirect, Link } from 'wouter';
@@ -11,6 +9,7 @@ import { ShieldAlert } from 'lucide-react';
 
 // Layout & Shared
 import { Shell, TenantProvider, Button } from '@/components/shared';
+import { AuthQueryProvider } from '@/components/auth-query-provider';
 
 // Pages
 import NotFound from '@/pages/not-found';
@@ -52,8 +51,6 @@ import { OperationsPage } from '@/pages/operations';
 import { ReportingPage } from '@/pages/reporting';
 
 import './index.css';
-
-const queryClient = new QueryClient();
 
 function AccessDenied() {
   return (
@@ -331,7 +328,7 @@ export default function App() {
           },
         }}
       >
-        <QueryClientProvider client={queryClient}>
+        <AuthQueryProvider>
           <TooltipProvider>
             <Switch>
               <Route path="/setup/platform-owner"><PlatformOwnerSetup /></Route>
@@ -351,7 +348,7 @@ export default function App() {
             </Switch>
             <Toaster />
           </TooltipProvider>
-        </QueryClientProvider>
+        </AuthQueryProvider>
       </ClerkProvider>
     </ErrorBoundary>
   );
