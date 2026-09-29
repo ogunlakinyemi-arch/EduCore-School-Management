@@ -31,6 +31,7 @@ tags:
   - name: platform
   - name: attendance
   - name: finance
+  - name: communication
 paths:
   /school/finance/settings:
     get:
@@ -3557,6 +3558,307 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/AcademicTimetableEntry" } }
+  /communication/notifications:
+    get:
+      operationId: listCommunicationNotifications
+      tags: [communication]
+      summary: List the authenticated user's tenant-authorized notification inbox
+      description: Platform Owners receive platform-level notices only. School notifications are limited to the recipient's authorized school relationships; a schoolId filter never grants access.
+      parameters:
+        - name: schoolId
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: beforeId
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Own visible notifications and unread count
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationNotificationInbox" }
+  /communication/notifications/{notificationId}/read:
+    patch:
+      operationId: markCommunicationNotificationRead
+      tags: [communication]
+      summary: Mark one of the authenticated recipient's notifications as read
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: The recipient's updated notification
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationNotification" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /communication/notifications/read-all:
+    post:
+      operationId: markAllCommunicationNotificationsRead
+      tags: [communication]
+      summary: Mark all visible notifications, optionally in one school, as read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommunicationNotificationReadAllInput" }
+      responses:
+        "200":
+          description: Number of the authenticated recipient's notifications marked read
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationNotificationReadAllResult" }
+  /communication/preferences:
+    get:
+      operationId: getCommunicationPreferences
+      tags: [communication]
+      summary: Get the authenticated user's global or school-scoped channel preferences
+      parameters:
+        - name: schoolId
+          in: query
+          required: false
+          description: Omit to retrieve global preferences; specify a school for preferences scoped to that school.
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Preferences are always scoped to the authenticated user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationPreferences" }
+    put:
+      operationId: updateCommunicationPreference
+      tags: [communication]
+      summary: Update a channel preference for the authenticated user
+      description: Mandatory security and account notifications remain enabled regardless of user preference.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommunicationPreferenceUpdate" }
+      responses:
+        "200":
+          description: Updated preference
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationPreference" }
+  /communication/templates:
+    get:
+      operationId: listCommunicationTemplates
+      tags: [communication]
+      summary: List templates for an authorized school
+      parameters:
+        - name: schoolId
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: category
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/CommunicationCategory" }
+      responses:
+        "200":
+          description: Templates the caller is authorized to view
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CommunicationTemplate" }
+    post:
+      operationId: createCommunicationTemplate
+      tags: [communication]
+      summary: Create a school-scoped reusable notification template
+      description: Requires School Admin authorization for the school. Template variables are allowlisted and cannot execute arbitrary code.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommunicationTemplateInput" }
+      responses:
+        "201":
+          description: Created template
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationTemplate" }
+  /communication/templates/{templateId}:
+    patch:
+      operationId: updateCommunicationTemplate
+      tags: [communication]
+      summary: Update an authorized school-scoped template
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommunicationTemplateUpdate" }
+      responses:
+        "200":
+          description: Updated template
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationTemplate" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /communication/announcements/preview:
+    post:
+      operationId: previewCommunicationAnnouncement
+      tags: [communication]
+      summary: Count validated recipients before a school announcement is sent
+      description: School Admins can target only authorized recipients in their school. Platform Owner status alone does not allow school announcements.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommunicationAnnouncementPreviewInput" }
+      responses:
+        "200":
+          description: Server-derived recipient count by eligible channel
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationAnnouncementPreview" }
+  /communication/announcements:
+    get:
+      operationId: listCommunicationAnnouncements
+      tags: [communication]
+      summary: List school communication history
+      description: School Admins may view school campaigns; Accountants may view finance-related communications in their authorized school.
+      parameters:
+        - name: schoolId
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: beforeId
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: School-scoped campaign history
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationAnnouncementHistory" }
+    post:
+      operationId: createCommunicationAnnouncement
+      tags: [communication]
+      summary: Send an idempotent school announcement to server-resolved recipients
+      description: School Admins may send school-wide announcements within their own school. Teachers may communicate only with recipients in their authorized classes or sections. Accountants may send finance-related communications only within their authorized school. Platform Owners may never send ordinary school announcements, including when they also hold a school role. Recipient identities are derived and revalidated by the server; caller-supplied target criteria never bypass school, class, or parent-child authorization.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommunicationAnnouncementInput" }
+      responses:
+        "201":
+          description: Campaign created and channel delivery work recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationAnnouncement" }
+        "200":
+          description: Idempotent replay returned the existing campaign for the same key and request content
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationAnnouncement" }
+        "409":
+          description: Idempotency key was reused with different announcement content
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /communication/announcements/{campaignId}:
+    get:
+      operationId: getCommunicationAnnouncement
+      tags: [communication]
+      summary: Get an authorized campaign and per-recipient channel delivery statuses
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: School-scoped campaign with recipient roles and sanitized delivery outcomes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationAnnouncementDetail" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /communication/deliveries/{deliveryId}/retry:
+    post:
+      operationId: retryCommunicationDelivery
+      tags: [communication]
+      summary: Retry an eligible failed school communication delivery
+      description: Requires authorized school communication management. Permanent failures and exhausted retries cannot be retried. Credentials, addresses, and provider payloads are never returned.
+      parameters:
+        - name: deliveryId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Updated sanitized delivery state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationDelivery" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /communication/push-devices:
+    get:
+      operationId: listCommunicationPushDevices
+      tags: [communication]
+      summary: List the authenticated user's registered push-device references
+      parameters:
+        - name: schoolId
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: User-owned device metadata without device secrets or endpoints
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CommunicationPushDevice" }
+    post:
+      operationId: registerCommunicationPushDevice
+      tags: [communication]
+      summary: Register an opaque push-device reference for the authenticated user
+      description: Push delivery is future-ready only. This endpoint stores a caller-owned opaque reference; it does not accept raw subscription secrets or device personal information.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommunicationPushDeviceInput" }
+      responses:
+        "201":
+          description: Registered device metadata
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommunicationPushDevice" }
+  /communication/push-devices/{deviceId}:
+    delete:
+      operationId: revokeCommunicationPushDevice
+      tags: [communication]
+      summary: Revoke a push-device reference owned by the authenticated user
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "204": { description: Device reference revoked }
+        "404": { $ref: "#/components/responses/NotFound" }
 components:
   securitySchemes:
     ClerkAuth:
@@ -6085,3 +6387,296 @@ components:
       properties:
         paymentId: { type: integer }
         outcome: { type: string, enum: [verified, pending, released, duplicate, reconciliation_required] }
+    CommunicationCategory:
+      type: string
+      enum: [ATTENDANCE, ACADEMIC, ASSIGNMENT, FINANCE, PAYMENT, ANNOUNCEMENT, ACCOUNT, SYSTEM, SUBSCRIPTION, PARTNER, SECURITY]
+    CommunicationChannel:
+      type: string
+      enum: [IN_APP, SMS, EMAIL, PUSH]
+    CommunicationOutboundChannel:
+      type: string
+      enum: [IN_APP, SMS, EMAIL]
+    CommunicationDeliveryStatus:
+      type: string
+      enum: [QUEUED, PROCESSING, SENT, DELIVERED, READ, FAILED, CANCELLED]
+    CommunicationCampaignStatus:
+      type: string
+      enum: [DRAFT, QUEUED, SENDING, SENT, FAILED, CANCELLED]
+    CommunicationTargetType:
+      type: string
+      enum: [SCHOOL, PARENTS, STUDENTS, TEACHERS, STAFF, CLASS, SECTION, USERS]
+    CommunicationTargetCriteria:
+      type: object
+      description: Target details validated against the caller's active school, class assignments, and parent-child relationships. Never interpreted as arbitrary recipient IDs.
+      additionalProperties: true
+    CommunicationNotification:
+      type: object
+      required: [id, schoolId, origin, category, subject, body, link, isRead, createdAt, readAt, deliveries]
+      properties:
+        id: { type: integer }
+        schoolId: { type: ["integer", "null"] }
+        origin:
+          type: string
+          enum: [CAMPAIGN, SYSTEM]
+          description: CAMPAIGN is a manually authored school message; SYSTEM is a backend event, including finance notifications.
+        category: { $ref: "#/components/schemas/CommunicationCategory" }
+        subject: { type: ["string", "null"] }
+        body: { type: string }
+        link: { type: ["string", "null"] }
+        isRead: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        readAt: { type: ["string", "null"], format: date-time }
+        deliveries:
+          type: array
+          items: { $ref: "#/components/schemas/CommunicationDelivery" }
+    CommunicationNotificationInbox:
+      type: object
+      required: [items, unreadCount, hasMore, nextBeforeId]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CommunicationNotification" }
+        unreadCount: { type: integer, minimum: 0 }
+        hasMore: { type: boolean }
+        nextBeforeId: { type: ["integer", "null"] }
+    CommunicationNotificationReadAllInput:
+      type: object
+      additionalProperties: false
+      properties:
+        schoolId: { type: ["integer", "null"], minimum: 1 }
+    CommunicationNotificationReadAllResult:
+      type: object
+      required: [updatedCount]
+      properties:
+        updatedCount: { type: integer, minimum: 0 }
+    CommunicationPreference:
+      type: object
+      required: [schoolId, category, channel, enabled, mandatory, updatedAt]
+      properties:
+        schoolId: { type: ["integer", "null"] }
+        category: { $ref: "#/components/schemas/CommunicationCategory" }
+        channel: { $ref: "#/components/schemas/CommunicationChannel" }
+        enabled: { type: boolean }
+        mandatory:
+          type: boolean
+          description: Security/account notifications may be mandatory and cannot be suppressed.
+        updatedAt: { type: string, format: date-time }
+    CommunicationPreferences:
+      type: object
+      required: [schoolId, preferences]
+      properties:
+        schoolId: { type: ["integer", "null"] }
+        preferences:
+          type: array
+          items: { $ref: "#/components/schemas/CommunicationPreference" }
+    CommunicationPreferenceUpdate:
+      type: object
+      required: [schoolId, category, channel, enabled]
+      additionalProperties: false
+      properties:
+        schoolId: { type: ["integer", "null"], minimum: 1 }
+        category: { $ref: "#/components/schemas/CommunicationCategory" }
+        channel: { $ref: "#/components/schemas/CommunicationChannel" }
+        enabled: { type: boolean }
+    CommunicationTemplate:
+      type: object
+      required: [id, schoolId, templateKey, name, category, channel, subject, body, allowedVariables, isActive, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        templateKey: { type: string }
+        name: { type: string }
+        category: { $ref: "#/components/schemas/CommunicationCategory" }
+        channel: { $ref: "#/components/schemas/CommunicationChannel" }
+        subject: { type: ["string", "null"] }
+        body: { type: string }
+        allowedVariables:
+          type: array
+          items: { $ref: "#/components/schemas/CommunicationTemplateVariable" }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CommunicationTemplateVariable:
+      type: string
+      enum: [student_name, parent_name, school_name, class_name, amount, invoice_number, payment_date, attendance_date, term_name, assignment_title]
+    CommunicationTemplateInput:
+      type: object
+      required: [schoolId, templateKey, name, category, channel, body]
+      additionalProperties: false
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        templateKey: { type: string, minLength: 1, maxLength: 80, pattern: "^[a-zA-Z0-9_-]+$" }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        category: { $ref: "#/components/schemas/CommunicationCategory" }
+        channel: { $ref: "#/components/schemas/CommunicationChannel" }
+        subject: { type: ["string", "null"], maxLength: 200 }
+        body: { type: string, minLength: 1, maxLength: 5000 }
+        allowedVariables:
+          type: array
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/CommunicationTemplateVariable" }
+        isActive: { type: boolean, default: true }
+    CommunicationTemplateUpdate:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        category: { $ref: "#/components/schemas/CommunicationCategory" }
+        channel: { $ref: "#/components/schemas/CommunicationChannel" }
+        subject: { type: ["string", "null"], maxLength: 200 }
+        body: { type: string, minLength: 1, maxLength: 5000 }
+        allowedVariables:
+          type: array
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/CommunicationTemplateVariable" }
+        isActive: { type: boolean }
+    CommunicationAnnouncementPreviewInput:
+      type: object
+      required: [schoolId, targetType, targetCriteria, channels]
+      additionalProperties: false
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        targetType: { $ref: "#/components/schemas/CommunicationTargetType" }
+        targetCriteria: { $ref: "#/components/schemas/CommunicationTargetCriteria" }
+        channels:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/CommunicationOutboundChannel" }
+    CommunicationAnnouncementPreview:
+      type: object
+      required: [schoolId, recipientCount, channelCounts]
+      properties:
+        schoolId: { type: integer }
+        recipientCount: { type: integer, minimum: 0 }
+        channelCounts:
+          type: array
+          items: { $ref: "#/components/schemas/CommunicationAnnouncementChannelCount" }
+    CommunicationAnnouncementChannelCount:
+      type: object
+      required: [channel, eligibleRecipientCount]
+      properties:
+        channel: { $ref: "#/components/schemas/CommunicationOutboundChannel" }
+        eligibleRecipientCount: { type: integer, minimum: 0 }
+    CommunicationAnnouncementInput:
+      type: object
+      required: [schoolId, title, body, category, targetType, targetCriteria, channels, idempotencyKey]
+      additionalProperties: false
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        title: { type: string, minLength: 1, maxLength: 160 }
+        subject: { type: ["string", "null"], maxLength: 200 }
+        body: { type: string, minLength: 1, maxLength: 10000 }
+        category: { $ref: "#/components/schemas/CommunicationCategory" }
+        targetType: { $ref: "#/components/schemas/CommunicationTargetType" }
+        targetCriteria: { $ref: "#/components/schemas/CommunicationTargetCriteria" }
+        channels:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/CommunicationOutboundChannel" }
+        templateId: { type: ["integer", "null"], minimum: 1 }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+    CommunicationAnnouncement:
+      type: object
+      required: [id, schoolId, createdByUserId, templateId, title, subject, body, category, targetType, targetCriteria, channels, status, recipientCount, createdAt, sentAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        createdByUserId: { type: integer }
+        templateId: { type: ["integer", "null"] }
+        title: { type: string }
+        subject: { type: ["string", "null"] }
+        body: { type: string }
+        category: { $ref: "#/components/schemas/CommunicationCategory" }
+        targetType: { $ref: "#/components/schemas/CommunicationTargetType" }
+        targetCriteria: { $ref: "#/components/schemas/CommunicationTargetCriteria" }
+        channels:
+          type: array
+          items: { $ref: "#/components/schemas/CommunicationOutboundChannel" }
+        status: { $ref: "#/components/schemas/CommunicationCampaignStatus" }
+        recipientCount: { type: integer, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+        sentAt: { type: ["string", "null"], format: date-time }
+    CommunicationAnnouncementHistory:
+      type: object
+      required: [items, hasMore, nextBeforeId]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CommunicationAnnouncement" }
+        hasMore: { type: boolean }
+        nextBeforeId: { type: ["integer", "null"] }
+    CommunicationAnnouncementDetail:
+      allOf:
+        - $ref: "#/components/schemas/CommunicationAnnouncement"
+        - type: object
+          required: [recipients]
+          properties:
+            recipients:
+              type: array
+              items: { $ref: "#/components/schemas/CommunicationAnnouncementRecipient" }
+    CommunicationAnnouncementRecipient:
+      type: object
+      required: [recipientUserId, recipientRole, status, deliveries]
+      properties:
+        recipientUserId:
+          type: integer
+          description: Internal user id is returned only to authorized school communication managers.
+        recipientRole:
+          type: string
+          enum: [SCHOOL_ADMIN, TEACHER, STAFF, ACCOUNTANT, PARENT, STUDENT]
+        status: { type: string, enum: [QUEUED, SENT, FAILED, SKIPPED] }
+        deliveries:
+          type: array
+          items: { $ref: "#/components/schemas/CommunicationDelivery" }
+    CommunicationDelivery:
+      type: object
+      required: [id, channel, status, provider, providerMessageId, providerAcknowledgedAt, sentAt, deliveredAt, failedAt, errorCode, lastError, attempts, nextAttemptAt, lastAttemptAt, simulated, label]
+      properties:
+        id: { type: integer }
+        channel: { $ref: "#/components/schemas/CommunicationChannel" }
+        status: { $ref: "#/components/schemas/CommunicationDeliveryStatus" }
+        provider:
+          type: ["string", "null"]
+          description: Provider identifier, or dev-test for the explicit no-network adapter.
+        providerMessageId: { type: ["string", "null"] }
+        providerAcknowledgedAt:
+          type: ["string", "null"]
+          format: date-time
+          description: Provider acceptance is not proof of delivery.
+        sentAt: { type: ["string", "null"], format: date-time }
+        deliveredAt: { type: ["string", "null"], format: date-time }
+        failedAt: { type: ["string", "null"], format: date-time }
+        errorCode: { type: ["string", "null"] }
+        lastError:
+          type: ["string", "null"]
+          description: Sanitized error text. Never contains recipient addresses, raw provider payloads, or credentials.
+        attempts: { type: integer, minimum: 0 }
+        nextAttemptAt: { type: string, format: date-time }
+        lastAttemptAt: { type: ["string", "null"], format: date-time }
+        simulated:
+          type: boolean
+          description: True indicates a no-network simulation and never means a real send.
+        label:
+          type: ["string", "null"]
+          description: Human-readable delivery label; simulation labels explicitly indicate that no message was sent.
+    CommunicationPushDevice:
+      type: object
+      required: [id, schoolId, provider, status, createdAt, lastUsedAt, revokedAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: ["integer", "null"] }
+        provider: { type: string, enum: [WEB_PUSH] }
+        status: { type: string, enum: [ACTIVE, REVOKED] }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: ["string", "null"], format: date-time }
+        revokedAt: { type: ["string", "null"], format: date-time }
+    CommunicationPushDeviceInput:
+      type: object
+      required: [opaqueDeviceReference]
+      additionalProperties: false
+      properties:
+        schoolId: { type: ["integer", "null"], minimum: 1 }
+        opaqueDeviceReference: { type: string, minLength: 1, maxLength: 256 }

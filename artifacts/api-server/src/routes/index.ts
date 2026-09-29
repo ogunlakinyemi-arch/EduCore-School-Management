@@ -18,6 +18,8 @@ import financeRouter from "./finance";
 import financeNotificationsRouter from "./finance-notifications";
 import invoiceNotificationsRouter from "./invoice-notifications";
 import platformCompanyEmployeesRouter from "./platform-company-employees";
+import communicationInboxRouter from "./communication-inbox";
+import communicationCampaignsRouter from "./communication-campaigns";
 
 const router: IRouter = Router();
 
@@ -43,5 +45,7 @@ router.use(peopleImportsRouter);
 router.use(financeRouter);
 router.use(financeNotificationsRouter);
 router.use(invoiceNotificationsRouter);
+router.use(communicationInboxRouter);
+router.use(communicationCampaignsRouter);
 
 export default router;

@@ -2,6 +2,7 @@ import { useLocation, Link } from 'wouter';
 import { useState, type ReactNode, type FormEvent, createContext, useContext, useEffect, useRef } from 'react';
 import { UserButton } from '@clerk/react';
 import { FeePaymentNotifications } from './fee-payment-notifications';
+import { CommunicationInboxBadge } from '@/pages/communication-inbox';
 import { 
   Activity, ArrowLeft, ArrowUpRight, BadgeCheck, BarChart3, Bell, BookOpen, Building2, Check, ChevronDown, 
   CircleAlert, CircleDollarSign, CreditCard, FileClock, GraduationCap, LayoutDashboard, Library, Menu, 
@@ -53,6 +54,9 @@ const nav: NavItem[] = [
   { href: '/my-academics', label: 'My Academics', icon: GraduationCap, roles: ['STUDENT'] },
   { href: '/my-fees', label: 'My Fees', icon: ReceiptText, roles: ['STUDENT'] },
   { href: '/finance', label: 'School Fees', icon: CircleDollarSign, roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
+  { href: '/communications', label: 'Communications', icon: Bell, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT'] },
+  { href: '/inbox', label: 'Inbox', icon: Bell, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'STAFF', 'PARENT'] },
+  { href: '/notification-settings', label: 'Notification settings', icon: Settings2, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'STAFF', 'PARENT'] },
   { href: '/attendance', label: 'Attendance', icon: ClipboardCheck, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
   { href: '/users', label: 'Users & Roles', icon: UserCog, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
   { href: '/people/imports', label: 'Import Records', icon: UsersRound, roles: ['SCHOOL_ADMIN'] },
@@ -151,6 +155,7 @@ export function Shell({ children }: { children: ReactNode }) {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {!isPlatformOwner && <CommunicationInboxBadge />}
             {isPlatformOwner ? (
               <Link href="/notifications">
                 <button className="relative grid h-10 w-10 place-items-center rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--primary)/.3)] hover:text-[hsl(var(--primary))]" aria-label="Notifications" data-testid="button-notifications">

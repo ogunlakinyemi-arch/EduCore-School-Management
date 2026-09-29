@@ -2,6 +2,8 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { clerkClient } from "@clerk/express";
 import { pool } from "@workspace/db";
 import { AuthError, type Role, type UserContext } from "../middlewares/auth";
+import { logger } from "../lib/logger";
+import { queueCommunicationNotification } from "../services/communication-service";
 
 export const INVITABLE_SCHOOL_ROLES = [
   "SCHOOL_ADMIN",
@@ -116,6 +118,37 @@ async function auditInvitation(
       JSON.stringify({ invitedEmail: email, role, invitationId: invitationId ?? null }),
     ],
   );
+}
+
+async function queueSchoolAccountNotification(input: {
+  recipientUserId: number;
+  schoolId: number;
+  role: InvitationRole;
+  eventKey: string;
+  body: string;
+}) {
+  try {
+    await queueCommunicationNotification(pool, {
+      recipientUserId: input.recipientUserId,
+      schoolId: input.schoolId,
+      category: "ACCOUNT",
+      eventKey: input.eventKey,
+      subject: "School access is active",
+      body: input.body,
+      link: "/",
+      channels: ["IN_APP"],
+    });
+  } catch (error) {
+    logger.warn(
+      {
+        recipientUserId: input.recipientUserId,
+        schoolId: input.schoolId,
+        role: input.role,
+        errorType: error instanceof Error ? error.name : "UnknownError",
+      },
+      "Could not queue school account notification",
+    );
+  }
 }
 
 async function ensureInviteProfile(client: any, input: InviteeInput, employeeNo: string) {
@@ -327,6 +360,13 @@ async function provisionExistingAccount(
       membership.rows[0].id,
     );
     await client.query("COMMIT");
+    await queueSchoolAccountNotification({
+      recipientUserId: user.id,
+      schoolId: input.schoolId,
+      role: input.role,
+      eventKey: `school-invitation:${input.schoolId}:role-granted:${input.role}:${user.id}`,
+      body: `Your ${input.role.replaceAll("_", " ").toLowerCase()} access to this school is active.`,
+    });
     return {
       status: "ACTIVE" as const,
       email: input.email,
@@ -584,5 +624,14 @@ export async function activateAcceptedSchoolInvitation(userId: number, clerkUser
   await clerkClient.users.updateUserMetadata(clerkUserId, {
     publicMetadata: { [METADATA_KEY]: null },
   });
+  if (changedMembership) {
+    await queueSchoolAccountNotification({
+      recipientUserId: userId,
+      schoolId: invite.schoolId,
+      role: invite.role,
+      eventKey: `school-invitation:${invite.claimId}:activated`,
+      body: `Your ${invite.role.replaceAll("_", " ").toLowerCase()} access to this school is active.`,
+    });
+  }
   return changedMembership;
 }

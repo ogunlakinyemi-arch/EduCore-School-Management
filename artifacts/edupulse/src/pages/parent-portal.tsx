@@ -10,6 +10,8 @@ import NotFound from './not-found';
 import { ParentFeesPage } from './finance';
 import { ParentCheckoutReturn } from './finance-online';
 import { FeePaymentNotifications } from '@/components/fee-payment-notifications';
+import { CommunicationInbox, CommunicationInboxBadge } from '@/pages/communication-inbox';
+import { NotificationSettings } from '@/pages/notification-settings';
 import { cx } from 'class-variance-authority';
 
 function Loading() {
@@ -27,6 +29,8 @@ function PortalHeader() {
         <div className="flex items-center gap-3">
           <span className="hidden text-xs font-semibold text-[hsl(var(--muted-foreground))] sm:block">Protected family access</span>
           <FeePaymentNotifications audience="parent" />
+          <CommunicationInboxBadge />
+          <Link href="/notification-settings" className="hidden text-xs font-bold text-[hsl(var(--primary))] sm:block" data-testid="link-parent-notification-settings">Preferences</Link>
           <UserButton />
         </div>
       </div>
@@ -346,5 +350,5 @@ function ChildFeesRoute() {
 }
 
 export default function ParentPortal() {
-  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><Switch><Route path="/" component={ParentDashboard} /><Route path="/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route component={NotFound} /></Switch></div>;
+  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><Switch><Route path="/" component={ParentDashboard} /><Route path="/inbox"><CommunicationInbox standalone /></Route><Route path="/notification-settings"><NotificationSettings standalone /></Route><Route path="/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route component={NotFound} /></Switch></div>;
 }

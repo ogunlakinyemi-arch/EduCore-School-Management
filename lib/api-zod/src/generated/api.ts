@@ -7356,3 +7356,575 @@ export const GetChildAcademicTimetableResponseItem = zod.object({
 export const GetChildAcademicTimetableResponse = zod.array(GetChildAcademicTimetableResponseItem)
 
 
+/**
+ * Platform Owners receive platform-level notices only. School notifications are limited to the recipient's authorized school relationships; a schoolId filter never grants access.
+ * @summary List the authenticated user's tenant-authorized notification inbox
+ */
+
+export const listCommunicationNotificationsQueryLimitDefault = 50;
+export const listCommunicationNotificationsQueryLimitMax = 100;
+
+
+
+
+export const ListCommunicationNotificationsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional(),
+  "limit": zod.coerce.number().int().min(1).max(listCommunicationNotificationsQueryLimitMax).default(listCommunicationNotificationsQueryLimitDefault),
+  "beforeId": zod.coerce.number().int().min(1).optional()
+})
+
+export const listCommunicationNotificationsResponseItemsItemDeliveriesItemAttemptsMin = 0;
+
+export const listCommunicationNotificationsResponseUnreadCountMin = 0;
+
+
+
+export const ListCommunicationNotificationsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int().nullable(),
+  "origin": zod.enum(['CAMPAIGN', 'SYSTEM']).describe('CAMPAIGN is a manually authored school message; SYSTEM is a backend event, including finance notifications.'),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
+  "subject": zod.string().nullable(),
+  "body": zod.string(),
+  "link": zod.string().nullable(),
+  "isRead": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "readAt": zod.coerce.date().nullable(),
+  "deliveries": zod.array(zod.object({
+  "id": zod.number().int(),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "status": zod.enum(['QUEUED', 'PROCESSING', 'SENT', 'DELIVERED', 'READ', 'FAILED', 'CANCELLED']),
+  "provider": zod.string().nullable().describe('Provider identifier, or dev-test for the explicit no-network adapter.'),
+  "providerMessageId": zod.string().nullable(),
+  "providerAcknowledgedAt": zod.coerce.date().nullable().describe('Provider acceptance is not proof of delivery.'),
+  "sentAt": zod.coerce.date().nullable(),
+  "deliveredAt": zod.coerce.date().nullable(),
+  "failedAt": zod.coerce.date().nullable(),
+  "errorCode": zod.string().nullable(),
+  "lastError": zod.string().nullable().describe('Sanitized error text. Never contains recipient addresses, raw provider payloads, or credentials.'),
+  "attempts": zod.number().int().min(listCommunicationNotificationsResponseItemsItemDeliveriesItemAttemptsMin),
+  "nextAttemptAt": zod.coerce.date(),
+  "lastAttemptAt": zod.coerce.date().nullable(),
+  "simulated": zod.boolean().describe('True indicates a no-network simulation and never means a real send.'),
+  "label": zod.string().nullable().describe('Human-readable delivery label; simulation labels explicitly indicate that no message was sent.')
+}))
+})),
+  "unreadCount": zod.number().int().min(listCommunicationNotificationsResponseUnreadCountMin),
+  "hasMore": zod.boolean(),
+  "nextBeforeId": zod.number().int().nullable()
+})
+
+
+/**
+ * @summary Mark one of the authenticated recipient's notifications as read
+ */
+
+
+
+export const MarkCommunicationNotificationReadParams = zod.object({
+  "notificationId": zod.coerce.number().int().min(1)
+})
+
+export const markCommunicationNotificationReadResponseDeliveriesItemAttemptsMin = 0;
+
+
+
+export const MarkCommunicationNotificationReadResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int().nullable(),
+  "origin": zod.enum(['CAMPAIGN', 'SYSTEM']).describe('CAMPAIGN is a manually authored school message; SYSTEM is a backend event, including finance notifications.'),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
+  "subject": zod.string().nullable(),
+  "body": zod.string(),
+  "link": zod.string().nullable(),
+  "isRead": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "readAt": zod.coerce.date().nullable(),
+  "deliveries": zod.array(zod.object({
+  "id": zod.number().int(),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "status": zod.enum(['QUEUED', 'PROCESSING', 'SENT', 'DELIVERED', 'READ', 'FAILED', 'CANCELLED']),
+  "provider": zod.string().nullable().describe('Provider identifier, or dev-test for the explicit no-network adapter.'),
+  "providerMessageId": zod.string().nullable(),
+  "providerAcknowledgedAt": zod.coerce.date().nullable().describe('Provider acceptance is not proof of delivery.'),
+  "sentAt": zod.coerce.date().nullable(),
+  "deliveredAt": zod.coerce.date().nullable(),
+  "failedAt": zod.coerce.date().nullable(),
+  "errorCode": zod.string().nullable(),
+  "lastError": zod.string().nullable().describe('Sanitized error text. Never contains recipient addresses, raw provider payloads, or credentials.'),
+  "attempts": zod.number().int().min(markCommunicationNotificationReadResponseDeliveriesItemAttemptsMin),
+  "nextAttemptAt": zod.coerce.date(),
+  "lastAttemptAt": zod.coerce.date().nullable(),
+  "simulated": zod.boolean().describe('True indicates a no-network simulation and never means a real send.'),
+  "label": zod.string().nullable().describe('Human-readable delivery label; simulation labels explicitly indicate that no message was sent.')
+}))
+})
+
+
+/**
+ * @summary Mark all visible notifications, optionally in one school, as read
+ */
+
+
+
+export const MarkAllCommunicationNotificationsReadBody = zod.object({
+  "schoolId": zod.number().int().min(1).nullish()
+})
+
+export const markAllCommunicationNotificationsReadResponseUpdatedCountMin = 0;
+
+
+
+export const MarkAllCommunicationNotificationsReadResponse = zod.object({
+  "updatedCount": zod.number().int().min(markAllCommunicationNotificationsReadResponseUpdatedCountMin)
+})
+
+
+/**
+ * @summary Get the authenticated user's global or school-scoped channel preferences
+ */
+
+
+
+export const GetCommunicationPreferencesQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional().describe('Omit to retrieve global preferences; specify a school for preferences scoped to that school.')
+})
+
+export const GetCommunicationPreferencesResponse = zod.object({
+  "schoolId": zod.number().int().nullable(),
+  "preferences": zod.array(zod.object({
+  "schoolId": zod.number().int().nullable(),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "enabled": zod.boolean(),
+  "mandatory": zod.boolean().describe('Security/account notifications may be mandatory and cannot be suppressed.'),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * Mandatory security and account notifications remain enabled regardless of user preference.
+ * @summary Update a channel preference for the authenticated user
+ */
+
+
+
+export const UpdateCommunicationPreferenceBody = zod.object({
+  "schoolId": zod.number().int().min(1).nullable(),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "enabled": zod.boolean()
+})
+
+export const UpdateCommunicationPreferenceResponse = zod.object({
+  "schoolId": zod.number().int().nullable(),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "enabled": zod.boolean(),
+  "mandatory": zod.boolean().describe('Security/account notifications may be mandatory and cannot be suppressed.'),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List templates for an authorized school
+ */
+
+
+
+export const ListCommunicationTemplatesQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']).optional()
+})
+
+export const ListCommunicationTemplatesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "templateKey": zod.string(),
+  "name": zod.string(),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "subject": zod.string().nullable(),
+  "body": zod.string(),
+  "allowedVariables": zod.array(zod.enum(['student_name', 'parent_name', 'school_name', 'class_name', 'amount', 'invoice_number', 'payment_date', 'attendance_date', 'term_name', 'assignment_title'])),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListCommunicationTemplatesResponse = zod.array(ListCommunicationTemplatesResponseItem)
+
+
+/**
+ * Requires School Admin authorization for the school. Template variables are allowlisted and cannot execute arbitrary code.
+ * @summary Create a school-scoped reusable notification template
+ */
+
+export const createCommunicationTemplateBodyTemplateKeyMax = 80;
+
+
+export const createCommunicationTemplateBodyTemplateKeyRegExp = new RegExp('^[a-zA-Z0-9_-]+$');
+export const createCommunicationTemplateBodyNameMax = 120;
+
+export const createCommunicationTemplateBodySubjectMax = 200;
+
+export const createCommunicationTemplateBodyBodyMax = 5000;
+
+export const createCommunicationTemplateBodyIsActiveDefault = true;
+
+export const CreateCommunicationTemplateBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "templateKey": zod.string().min(1).max(createCommunicationTemplateBodyTemplateKeyMax).regex(createCommunicationTemplateBodyTemplateKeyRegExp),
+  "name": zod.string().min(1).max(createCommunicationTemplateBodyNameMax),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "subject": zod.string().max(createCommunicationTemplateBodySubjectMax).nullish(),
+  "body": zod.string().min(1).max(createCommunicationTemplateBodyBodyMax),
+  "allowedVariables": zod.array(zod.enum(['student_name', 'parent_name', 'school_name', 'class_name', 'amount', 'invoice_number', 'payment_date', 'attendance_date', 'term_name', 'assignment_title'])).optional(),
+  "isActive": zod.boolean().default(createCommunicationTemplateBodyIsActiveDefault)
+})
+
+export const CreateCommunicationTemplateResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "templateKey": zod.string(),
+  "name": zod.string(),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "subject": zod.string().nullable(),
+  "body": zod.string(),
+  "allowedVariables": zod.array(zod.enum(['student_name', 'parent_name', 'school_name', 'class_name', 'amount', 'invoice_number', 'payment_date', 'attendance_date', 'term_name', 'assignment_title'])),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update an authorized school-scoped template
+ */
+
+
+
+export const UpdateCommunicationTemplateParams = zod.object({
+  "templateId": zod.coerce.number().int().min(1)
+})
+
+export const updateCommunicationTemplateBodyNameMax = 120;
+
+export const updateCommunicationTemplateBodySubjectMax = 200;
+
+export const updateCommunicationTemplateBodyBodyMax = 5000;
+
+
+
+export const UpdateCommunicationTemplateBody = zod.object({
+  "name": zod.string().min(1).max(updateCommunicationTemplateBodyNameMax).optional(),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']).optional(),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']).optional(),
+  "subject": zod.string().max(updateCommunicationTemplateBodySubjectMax).nullish(),
+  "body": zod.string().min(1).max(updateCommunicationTemplateBodyBodyMax).optional(),
+  "allowedVariables": zod.array(zod.enum(['student_name', 'parent_name', 'school_name', 'class_name', 'amount', 'invoice_number', 'payment_date', 'attendance_date', 'term_name', 'assignment_title'])).optional(),
+  "isActive": zod.boolean().optional()
+})
+
+export const UpdateCommunicationTemplateResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "templateKey": zod.string(),
+  "name": zod.string(),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "subject": zod.string().nullable(),
+  "body": zod.string(),
+  "allowedVariables": zod.array(zod.enum(['student_name', 'parent_name', 'school_name', 'class_name', 'amount', 'invoice_number', 'payment_date', 'attendance_date', 'term_name', 'assignment_title'])),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * School Admins can target only authorized recipients in their school. Platform Owner status alone does not allow school announcements.
+ * @summary Count validated recipients before a school announcement is sent
+ */
+
+
+
+
+export const PreviewCommunicationAnnouncementBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "targetType": zod.enum(['SCHOOL', 'PARENTS', 'STUDENTS', 'TEACHERS', 'STAFF', 'CLASS', 'SECTION', 'USERS']),
+  "targetCriteria": zod.record(zod.string(), zod.unknown()).describe('Target details validated against the caller\'s active school, class assignments, and parent-child relationships. Never interpreted as arbitrary recipient IDs.'),
+  "channels": zod.array(zod.enum(['IN_APP', 'SMS', 'EMAIL'])).min(1)
+})
+
+export const previewCommunicationAnnouncementResponseRecipientCountMin = 0;
+
+export const previewCommunicationAnnouncementResponseChannelCountsItemEligibleRecipientCountMin = 0;
+
+
+
+export const PreviewCommunicationAnnouncementResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "recipientCount": zod.number().int().min(previewCommunicationAnnouncementResponseRecipientCountMin),
+  "channelCounts": zod.array(zod.object({
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL']),
+  "eligibleRecipientCount": zod.number().int().min(previewCommunicationAnnouncementResponseChannelCountsItemEligibleRecipientCountMin)
+}))
+})
+
+
+/**
+ * School Admins may view school campaigns; Accountants may view finance-related communications in their authorized school.
+ * @summary List school communication history
+ */
+
+export const listCommunicationAnnouncementsQueryLimitDefault = 50;
+export const listCommunicationAnnouncementsQueryLimitMax = 100;
+
+
+
+
+export const ListCommunicationAnnouncementsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "limit": zod.coerce.number().int().min(1).max(listCommunicationAnnouncementsQueryLimitMax).default(listCommunicationAnnouncementsQueryLimitDefault),
+  "beforeId": zod.coerce.number().int().min(1).optional()
+})
+
+export const listCommunicationAnnouncementsResponseItemsItemRecipientCountMin = 0;
+
+
+
+export const ListCommunicationAnnouncementsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "createdByUserId": zod.number().int(),
+  "templateId": zod.number().int().nullable(),
+  "title": zod.string(),
+  "subject": zod.string().nullable(),
+  "body": zod.string(),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
+  "targetType": zod.enum(['SCHOOL', 'PARENTS', 'STUDENTS', 'TEACHERS', 'STAFF', 'CLASS', 'SECTION', 'USERS']),
+  "targetCriteria": zod.record(zod.string(), zod.unknown()).describe('Target details validated against the caller\'s active school, class assignments, and parent-child relationships. Never interpreted as arbitrary recipient IDs.'),
+  "channels": zod.array(zod.enum(['IN_APP', 'SMS', 'EMAIL'])),
+  "status": zod.enum(['DRAFT', 'QUEUED', 'SENDING', 'SENT', 'FAILED', 'CANCELLED']),
+  "recipientCount": zod.number().int().min(listCommunicationAnnouncementsResponseItemsItemRecipientCountMin),
+  "createdAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
+  "hasMore": zod.boolean(),
+  "nextBeforeId": zod.number().int().nullable()
+})
+
+
+/**
+ * School Admins may send school-wide announcements within their own school. Teachers may communicate only with recipients in their authorized classes or sections. Accountants may send finance-related communications only within their authorized school. Platform Owners may never send ordinary school announcements, including when they also hold a school role. Recipient identities are derived and revalidated by the server; caller-supplied target criteria never bypass school, class, or parent-child authorization.
+ * @summary Send an idempotent school announcement to server-resolved recipients
+ */
+
+export const createCommunicationAnnouncementBodyTitleMax = 160;
+
+export const createCommunicationAnnouncementBodySubjectMax = 200;
+
+export const createCommunicationAnnouncementBodyBodyMax = 10000;
+
+
+
+export const createCommunicationAnnouncementBodyIdempotencyKeyMin = 8;
+export const createCommunicationAnnouncementBodyIdempotencyKeyMax = 128;
+
+
+
+export const CreateCommunicationAnnouncementBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "title": zod.string().min(1).max(createCommunicationAnnouncementBodyTitleMax),
+  "subject": zod.string().max(createCommunicationAnnouncementBodySubjectMax).nullish(),
+  "body": zod.string().min(1).max(createCommunicationAnnouncementBodyBodyMax),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
+  "targetType": zod.enum(['SCHOOL', 'PARENTS', 'STUDENTS', 'TEACHERS', 'STAFF', 'CLASS', 'SECTION', 'USERS']),
+  "targetCriteria": zod.record(zod.string(), zod.unknown()).describe('Target details validated against the caller\'s active school, class assignments, and parent-child relationships. Never interpreted as arbitrary recipient IDs.'),
+  "channels": zod.array(zod.enum(['IN_APP', 'SMS', 'EMAIL'])).min(1),
+  "templateId": zod.number().int().min(1).nullish(),
+  "idempotencyKey": zod.string().min(createCommunicationAnnouncementBodyIdempotencyKeyMin).max(createCommunicationAnnouncementBodyIdempotencyKeyMax)
+})
+
+export const createCommunicationAnnouncementResponseRecipientCountMin = 0;
+
+
+
+export const CreateCommunicationAnnouncementResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "createdByUserId": zod.number().int(),
+  "templateId": zod.number().int().nullable(),
+  "title": zod.string(),
+  "subject": zod.string().nullable(),
+  "body": zod.string(),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
+  "targetType": zod.enum(['SCHOOL', 'PARENTS', 'STUDENTS', 'TEACHERS', 'STAFF', 'CLASS', 'SECTION', 'USERS']),
+  "targetCriteria": zod.record(zod.string(), zod.unknown()).describe('Target details validated against the caller\'s active school, class assignments, and parent-child relationships. Never interpreted as arbitrary recipient IDs.'),
+  "channels": zod.array(zod.enum(['IN_APP', 'SMS', 'EMAIL'])),
+  "status": zod.enum(['DRAFT', 'QUEUED', 'SENDING', 'SENT', 'FAILED', 'CANCELLED']),
+  "recipientCount": zod.number().int().min(createCommunicationAnnouncementResponseRecipientCountMin),
+  "createdAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Get an authorized campaign and per-recipient channel delivery statuses
+ */
+
+
+
+export const GetCommunicationAnnouncementParams = zod.object({
+  "campaignId": zod.coerce.number().int().min(1)
+})
+
+export const getCommunicationAnnouncementResponseOneRecipientCountMin = 0;
+
+export const getCommunicationAnnouncementResponseTwoRecipientsItemDeliveriesItemAttemptsMin = 0;
+
+
+
+export const GetCommunicationAnnouncementResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "createdByUserId": zod.number().int(),
+  "templateId": zod.number().int().nullable(),
+  "title": zod.string(),
+  "subject": zod.string().nullable(),
+  "body": zod.string(),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
+  "targetType": zod.enum(['SCHOOL', 'PARENTS', 'STUDENTS', 'TEACHERS', 'STAFF', 'CLASS', 'SECTION', 'USERS']),
+  "targetCriteria": zod.record(zod.string(), zod.unknown()).describe('Target details validated against the caller\'s active school, class assignments, and parent-child relationships. Never interpreted as arbitrary recipient IDs.'),
+  "channels": zod.array(zod.enum(['IN_APP', 'SMS', 'EMAIL'])),
+  "status": zod.enum(['DRAFT', 'QUEUED', 'SENDING', 'SENT', 'FAILED', 'CANCELLED']),
+  "recipientCount": zod.number().int().min(getCommunicationAnnouncementResponseOneRecipientCountMin),
+  "createdAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+}).and(zod.object({
+  "recipients": zod.array(zod.object({
+  "recipientUserId": zod.number().int().describe('Internal user id is returned only to authorized school communication managers.'),
+  "recipientRole": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'STAFF', 'ACCOUNTANT', 'PARENT', 'STUDENT']),
+  "status": zod.enum(['QUEUED', 'SENT', 'FAILED', 'SKIPPED']),
+  "deliveries": zod.array(zod.object({
+  "id": zod.number().int(),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "status": zod.enum(['QUEUED', 'PROCESSING', 'SENT', 'DELIVERED', 'READ', 'FAILED', 'CANCELLED']),
+  "provider": zod.string().nullable().describe('Provider identifier, or dev-test for the explicit no-network adapter.'),
+  "providerMessageId": zod.string().nullable(),
+  "providerAcknowledgedAt": zod.coerce.date().nullable().describe('Provider acceptance is not proof of delivery.'),
+  "sentAt": zod.coerce.date().nullable(),
+  "deliveredAt": zod.coerce.date().nullable(),
+  "failedAt": zod.coerce.date().nullable(),
+  "errorCode": zod.string().nullable(),
+  "lastError": zod.string().nullable().describe('Sanitized error text. Never contains recipient addresses, raw provider payloads, or credentials.'),
+  "attempts": zod.number().int().min(getCommunicationAnnouncementResponseTwoRecipientsItemDeliveriesItemAttemptsMin),
+  "nextAttemptAt": zod.coerce.date(),
+  "lastAttemptAt": zod.coerce.date().nullable(),
+  "simulated": zod.boolean().describe('True indicates a no-network simulation and never means a real send.'),
+  "label": zod.string().nullable().describe('Human-readable delivery label; simulation labels explicitly indicate that no message was sent.')
+}))
+}))
+}))
+
+
+/**
+ * Requires authorized school communication management. Permanent failures and exhausted retries cannot be retried. Credentials, addresses, and provider payloads are never returned.
+ * @summary Retry an eligible failed school communication delivery
+ */
+
+
+
+export const RetryCommunicationDeliveryParams = zod.object({
+  "deliveryId": zod.coerce.number().int().min(1)
+})
+
+export const retryCommunicationDeliveryResponseAttemptsMin = 0;
+
+
+
+export const RetryCommunicationDeliveryResponse = zod.object({
+  "id": zod.number().int(),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "status": zod.enum(['QUEUED', 'PROCESSING', 'SENT', 'DELIVERED', 'READ', 'FAILED', 'CANCELLED']),
+  "provider": zod.string().nullable().describe('Provider identifier, or dev-test for the explicit no-network adapter.'),
+  "providerMessageId": zod.string().nullable(),
+  "providerAcknowledgedAt": zod.coerce.date().nullable().describe('Provider acceptance is not proof of delivery.'),
+  "sentAt": zod.coerce.date().nullable(),
+  "deliveredAt": zod.coerce.date().nullable(),
+  "failedAt": zod.coerce.date().nullable(),
+  "errorCode": zod.string().nullable(),
+  "lastError": zod.string().nullable().describe('Sanitized error text. Never contains recipient addresses, raw provider payloads, or credentials.'),
+  "attempts": zod.number().int().min(retryCommunicationDeliveryResponseAttemptsMin),
+  "nextAttemptAt": zod.coerce.date(),
+  "lastAttemptAt": zod.coerce.date().nullable(),
+  "simulated": zod.boolean().describe('True indicates a no-network simulation and never means a real send.'),
+  "label": zod.string().nullable().describe('Human-readable delivery label; simulation labels explicitly indicate that no message was sent.')
+})
+
+
+/**
+ * @summary List the authenticated user's registered push-device references
+ */
+
+
+
+export const ListCommunicationPushDevicesQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional()
+})
+
+export const ListCommunicationPushDevicesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int().nullable(),
+  "provider": zod.enum(['WEB_PUSH']),
+  "status": zod.enum(['ACTIVE', 'REVOKED']),
+  "createdAt": zod.coerce.date(),
+  "lastUsedAt": zod.coerce.date().nullable(),
+  "revokedAt": zod.coerce.date().nullable()
+})
+export const ListCommunicationPushDevicesResponse = zod.array(ListCommunicationPushDevicesResponseItem)
+
+
+/**
+ * Push delivery is future-ready only. This endpoint stores a caller-owned opaque reference; it does not accept raw subscription secrets or device personal information.
+ * @summary Register an opaque push-device reference for the authenticated user
+ */
+
+export const registerCommunicationPushDeviceBodyOpaqueDeviceReferenceMax = 256;
+
+
+
+export const RegisterCommunicationPushDeviceBody = zod.object({
+  "schoolId": zod.number().int().min(1).nullish(),
+  "opaqueDeviceReference": zod.string().min(1).max(registerCommunicationPushDeviceBodyOpaqueDeviceReferenceMax)
+})
+
+export const RegisterCommunicationPushDeviceResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int().nullable(),
+  "provider": zod.enum(['WEB_PUSH']),
+  "status": zod.enum(['ACTIVE', 'REVOKED']),
+  "createdAt": zod.coerce.date(),
+  "lastUsedAt": zod.coerce.date().nullable(),
+  "revokedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Revoke a push-device reference owned by the authenticated user
+ */
+
+
+
+export const RevokeCommunicationPushDeviceParams = zod.object({
+  "deviceId": zod.coerce.number().int().min(1)
+})
+
+export const RevokeCommunicationPushDeviceResponse = zod.void()
+
+

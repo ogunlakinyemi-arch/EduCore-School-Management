@@ -7,6 +7,10 @@ import {
   handleAuthError,
   requireAuthentication,
 } from "../middlewares/auth";
+import {
+  queueCommunicationNotification,
+  type CommunicationQueryClient,
+} from "../services/communication-service";
 
 const router = Router();
 router.use(requireAuthentication());
@@ -90,15 +94,80 @@ function schoolContext(req: Request, raw: unknown, allowed: readonly string[], o
   return { schoolId, context };
 }
 
-function audit(req: Request, schoolId: number, action: string, recordId: number) {
+function audit(
+  req: Request,
+  schoolId: number,
+  action: string,
+  recordId: number,
+  client: CommunicationQueryClient = pool,
+) {
   const context = getUserContext(req);
   const actor = [context.user.firstName, context.user.lastName].filter(Boolean).join(" ") || context.user.email;
   const role = context.roles.find((r) => r.schoolId === schoolId || r.schoolId === null)?.role ?? "AUTHENTICATED";
-  return pool.query(
+  return client.query(
     `INSERT INTO audit_logs ("user", role, actor_user_id, clerk_user_id, school_id, action, module, record_id, severity, event_type, result)
      VALUES ($1,$2,$3,$4,$5,$6,'Academics',$7,'info','APPLICATION_EVENT','SUCCESS')`,
     [actor, role, context.user.id, context.user.clerkUserId, schoolId, action, recordId],
   );
+}
+
+async function notifyPublishedAssignment(
+  client: CommunicationQueryClient,
+  assignment: {
+    id: number;
+    schoolId: number;
+    sessionId: number;
+    termId: number;
+    classId: number;
+    section: string | null;
+    title: string;
+  },
+) {
+  const recipients = await client.query<{ userId: number | string; studentId: number | string; link: string }>(
+    `SELECT roster.recipient_user_id AS "userId",
+            roster.subject_student_id AS "studentId",
+            CASE WHEN bool_or(roster.is_student) THEN '/my-academics' ELSE '/' END AS link
+       FROM (
+         SELECT st.user_id AS recipient_user_id, st.id AS subject_student_id, TRUE AS is_student
+           FROM student_class_assignments sca
+           JOIN students st ON st.id=sca.student_id AND st.school_id=sca.school_id
+          WHERE sca.school_id=$1 AND sca.school_class_id=$2
+            AND sca.academic_session_id=$3 AND sca.academic_term_id=$4
+            AND ($5::text IS NULL OR sca.section=$5)
+            AND UPPER(sca.status)='ACTIVE' AND UPPER(st.status)='ACTIVE'
+         UNION ALL
+          SELECT p.user_id AS recipient_user_id, st.id AS subject_student_id, FALSE AS is_student
+           FROM student_class_assignments sca
+           JOIN students st ON st.id=sca.student_id AND st.school_id=sca.school_id
+           JOIN parent_student_relationships psr
+             ON psr.student_id=st.id AND UPPER(psr.status)='ACTIVE'
+           JOIN parents p ON p.id=psr.parent_id AND p.school_id=sca.school_id
+          WHERE sca.school_id=$1 AND sca.school_class_id=$2
+            AND sca.academic_session_id=$3 AND sca.academic_term_id=$4
+            AND ($5::text IS NULL OR sca.section=$5)
+            AND UPPER(sca.status)='ACTIVE' AND UPPER(st.status)='ACTIVE'
+            AND UPPER(p.status)='ACTIVE'
+       ) roster
+      WHERE roster.recipient_user_id IS NOT NULL
+       GROUP BY roster.recipient_user_id, roster.subject_student_id
+       ORDER BY roster.recipient_user_id, roster.subject_student_id`,
+    [assignment.schoolId, assignment.classId, assignment.sessionId, assignment.termId, assignment.section],
+  );
+
+  for (const recipient of recipients.rows) {
+    await queueCommunicationNotification(client, {
+      recipientUserId: Number(recipient.userId),
+      schoolId: assignment.schoolId,
+       subjectStudentId: Number(recipient.studentId),
+       subjectClassId: assignment.classId,
+      category: "ASSIGNMENT",
+       eventKey: `assignment-published:${assignment.id}:${recipient.studentId}`,
+      subject: "New assignment available",
+      body: `A new assignment, "${assignment.title}", is available.`,
+      link: recipient.link,
+      channels: ["IN_APP"],
+    });
+  }
 }
 
 const assignmentColumns = `a.id, a.school_id AS "schoolId", a.academic_session_id AS "sessionId",
@@ -360,7 +429,7 @@ router.post("/academic/assignments", asyncRoute(async (req, res) => {
     }
   }
   const status = input.status ?? "DRAFT";
-  const result = await pool.query(
+  const insertSql =
     `INSERT INTO academic_assignments
        (school_id, academic_session_id, academic_term_id, school_class_id, section, subject_id, teacher_employee_id,
         created_by, title, description, issue_date, due_date, max_score, status)
@@ -369,11 +438,47 @@ router.post("/academic/assignments", asyncRoute(async (req, res) => {
        school_class_id AS "classId", section, subject_id AS "subjectId", teacher_employee_id AS "teacherId",
        created_by AS "createdBy", title,
        description, issue_date AS "issueDate", due_date AS "dueDate", max_score AS "maxScore", status,
-       created_at AS "createdAt", updated_at AS "updatedAt"`,
-    [schoolId, input.sessionId, input.termId, input.classId, section, input.subjectId, teacherId, context.user.id, input.title, input.description ?? "", input.issueDate, input.dueDate, input.maxScore, status],
-  );
-  await audit(req, schoolId, status === "PUBLISHED" ? "Published academic assignment" : "Created academic assignment", result.rows[0].id);
-  res.status(201).json(result.rows[0]);
+       created_at AS "createdAt", updated_at AS "updatedAt"`;
+  const insertValues = [
+    schoolId, input.sessionId, input.termId, input.classId, section, input.subjectId,
+    teacherId, context.user.id, input.title, input.description ?? "", input.issueDate,
+    input.dueDate, input.maxScore, status,
+  ];
+  if (status !== "PUBLISHED") {
+    const result = await pool.query(insertSql, insertValues);
+    await audit(req, schoolId, "Created academic assignment", result.rows[0].id);
+    res.status(201).json(result.rows[0]);
+    return;
+  }
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await client.query(insertSql, insertValues);
+    const assignment = result.rows[0];
+    await audit(req, schoolId, status === "PUBLISHED" ? "Published academic assignment" : "Created academic assignment", assignment.id, client);
+    if (status === "PUBLISHED") {
+      await notifyPublishedAssignment(client, {
+        id: Number(assignment.id),
+        schoolId,
+        sessionId: Number(assignment.sessionId),
+        termId: Number(assignment.termId),
+        classId: Number(assignment.classId),
+        section: assignment.section ?? null,
+        title: String(assignment.title),
+      });
+    }
+    await client.query("COMMIT");
+    res.status(201).json(assignment);
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // Keep the original assignment or notification error.
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
 }));
 
 router.patch("/academic/assignments/:assignmentId", asyncRoute(async (req, res) => {
@@ -382,54 +487,82 @@ router.patch("/academic/assignments/:assignmentId", asyncRoute(async (req, res) 
   if (Object.keys(input).length === 0) throw new AuthError(400, "At least one assignment field is required");
   const schoolId = id(req.query.schoolId, "schoolId");
   const { context } = schoolContext(req, schoolId, [...ADMIN, "TEACHER"], true);
-  const target = await pool.query(`SELECT * FROM academic_assignments WHERE id=$1 AND school_id=$2`, [assignmentId, schoolId]);
-  const current = target.rows[0];
-  if (!current) throw new AuthError(404, "Assignment not found");
-  const admin = context.roles.some((r) => r.status === "ACTIVE" && r.role === "SCHOOL_ADMIN" && r.schoolId === schoolId);
-  if (!admin) {
-    const teacherId = await validateTeacherAssignment(schoolId, context.user.id, current.academic_session_id, current.academic_term_id, current.school_class_id, current.subject_id, current.section);
-    if (!context.roles.some((r) => r.role === "TEACHER" && r.schoolId === schoolId && r.status === "ACTIVE") || teacherId !== current.teacher_employee_id) {
-      throw new AuthError(403, "You are not authorized to edit this assignment");
-    }
-  }
-  const nextStatus = (input.status ?? current.status) as string;
-  const transitions: Record<string, string[]> = { DRAFT: ["DRAFT", "PUBLISHED", "ARCHIVED"], PUBLISHED: ["PUBLISHED", "CLOSED", "ARCHIVED"], CLOSED: ["CLOSED", "ARCHIVED"], ARCHIVED: ["ARCHIVED"] };
-  if (!transitions[current.status]?.includes(nextStatus)) throw new AuthError(400, `Invalid assignment status transition: ${current.status} to ${nextStatus}`);
-  const sessionId = (input.sessionId ?? current.academic_session_id) as number;
-  const termId = (input.termId ?? current.academic_term_id) as number;
-  const classId = (input.classId ?? current.school_class_id) as number;
-  const subjectId = (input.subjectId ?? current.subject_id) as number;
-  const section = (input.section === undefined ? current.section : input.section) as string | null;
-  let teacherId = current.teacher_employee_id as number;
-  if (input.teacherId !== undefined) {
-    if (!admin) throw new AuthError(403, "Only a school administrator can reassign an assignment");
-    const teacher = await pool.query(
-      `SELECT id FROM employees WHERE id=$1 AND school_id=$2 AND employment_status='ACTIVE' AND employee_type='TEACHER'`,
-      [input.teacherId, schoolId],
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const target = await client.query(
+      `SELECT * FROM academic_assignments WHERE id=$1 AND school_id=$2 FOR UPDATE`,
+      [assignmentId, schoolId],
     );
-    if (!teacher.rows[0]) throw new AuthError(404, "Teacher profile not found");
-    teacherId = input.teacherId as number;
+    const current = target.rows[0];
+    if (!current) throw new AuthError(404, "Assignment not found");
+    const admin = context.roles.some((r) => r.status === "ACTIVE" && r.role === "SCHOOL_ADMIN" && r.schoolId === schoolId);
+    if (!admin) {
+      const teacherId = await validateTeacherAssignment(schoolId, context.user.id, current.academic_session_id, current.academic_term_id, current.school_class_id, current.subject_id, current.section);
+      if (!context.roles.some((r) => r.role === "TEACHER" && r.schoolId === schoolId && r.status === "ACTIVE") || teacherId !== current.teacher_employee_id) {
+        throw new AuthError(403, "You are not authorized to edit this assignment");
+      }
+    }
+    const nextStatus = (input.status ?? current.status) as string;
+    const transitions: Record<string, string[]> = { DRAFT: ["DRAFT", "PUBLISHED", "ARCHIVED"], PUBLISHED: ["PUBLISHED", "CLOSED", "ARCHIVED"], CLOSED: ["CLOSED", "ARCHIVED"], ARCHIVED: ["ARCHIVED"] };
+    if (!transitions[current.status]?.includes(nextStatus)) throw new AuthError(400, `Invalid assignment status transition: ${current.status} to ${nextStatus}`);
+    const sessionId = (input.sessionId ?? current.academic_session_id) as number;
+    const termId = (input.termId ?? current.academic_term_id) as number;
+    const classId = (input.classId ?? current.school_class_id) as number;
+    const subjectId = (input.subjectId ?? current.subject_id) as number;
+    const section = (input.section === undefined ? current.section : input.section) as string | null;
+    let teacherId = current.teacher_employee_id as number;
+    if (input.teacherId !== undefined) {
+      if (!admin) throw new AuthError(403, "Only a school administrator can reassign an assignment");
+      const teacher = await pool.query(
+        `SELECT id FROM employees WHERE id=$1 AND school_id=$2 AND employment_status='ACTIVE' AND employee_type='TEACHER'`,
+        [input.teacherId, schoolId],
+      );
+      if (!teacher.rows[0]) throw new AuthError(404, "Teacher profile not found");
+      teacherId = input.teacherId as number;
+    }
+    await validateAcademicResource(schoolId, sessionId, termId, classId, subjectId, section);
+    if (!admin) await validateTeacherAssignment(schoolId, context.user.id, sessionId, termId, classId, subjectId, section);
+    const issueDate = (input.issueDate ?? current.issue_date) as string;
+    const dueDate = (input.dueDate ?? current.due_date) as string;
+    if (issueDate > dueDate) throw new AuthError(400, "issueDate must be on or before dueDate");
+    const result = await client.query(
+      `UPDATE academic_assignments SET academic_session_id=$1, academic_term_id=$2, school_class_id=$3,
+         section=$4, subject_id=$5, teacher_employee_id=$6, title=$7, description=$8, issue_date=$9, due_date=$10, max_score=$11,
+         status=$12, updated_at=NOW()
+       WHERE id=$13 AND school_id=$14
+       RETURNING id, school_id AS "schoolId", academic_session_id AS "sessionId", academic_term_id AS "termId",
+         school_class_id AS "classId", section, subject_id AS "subjectId", teacher_employee_id AS "teacherId",
+         created_by AS "createdBy", title,
+         description, issue_date AS "issueDate", due_date AS "dueDate", max_score AS "maxScore", status,
+         created_at AS "createdAt", updated_at AS "updatedAt"`,
+      [sessionId, termId, classId, section, subjectId, teacherId, input.title ?? current.title, input.description === undefined ? current.description : input.description ?? "", issueDate, dueDate, input.maxScore ?? current.max_score, nextStatus, assignmentId, schoolId],
+    );
+    const action = current.status !== "PUBLISHED" && nextStatus === "PUBLISHED" ? "Published academic assignment" : "Updated academic assignment";
+    await audit(req, schoolId, action, assignmentId, client);
+    if (current.status !== "PUBLISHED" && nextStatus === "PUBLISHED") {
+      await notifyPublishedAssignment(client, {
+        id: Number(result.rows[0].id),
+        schoolId,
+        sessionId,
+        termId,
+        classId,
+        section,
+        title: String(result.rows[0].title),
+      });
+    }
+    await client.query("COMMIT");
+    res.json(result.rows[0]);
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // Keep the original assignment or notification error.
+    }
+    throw error;
+  } finally {
+    client.release();
   }
-  await validateAcademicResource(schoolId, sessionId, termId, classId, subjectId, section);
-  if (!admin) await validateTeacherAssignment(schoolId, context.user.id, sessionId, termId, classId, subjectId, section);
-  const issueDate = (input.issueDate ?? current.issue_date) as string;
-  const dueDate = (input.dueDate ?? current.due_date) as string;
-  if (issueDate > dueDate) throw new AuthError(400, "issueDate must be on or before dueDate");
-  const result = await pool.query(
-    `UPDATE academic_assignments SET academic_session_id=$1, academic_term_id=$2, school_class_id=$3,
-       section=$4, subject_id=$5, teacher_employee_id=$6, title=$7, description=$8, issue_date=$9, due_date=$10, max_score=$11,
-       status=$12, updated_at=NOW()
-     WHERE id=$13 AND school_id=$14
-     RETURNING id, school_id AS "schoolId", academic_session_id AS "sessionId", academic_term_id AS "termId",
-       school_class_id AS "classId", section, subject_id AS "subjectId", teacher_employee_id AS "teacherId",
-       created_by AS "createdBy", title,
-       description, issue_date AS "issueDate", due_date AS "dueDate", max_score AS "maxScore", status,
-       created_at AS "createdAt", updated_at AS "updatedAt"`,
-    [sessionId, termId, classId, section, subjectId, teacherId, input.title ?? current.title, input.description === undefined ? current.description : input.description ?? "", issueDate, dueDate, input.maxScore ?? current.max_score, nextStatus, assignmentId, schoolId],
-  );
-  const action = current.status !== "PUBLISHED" && nextStatus === "PUBLISHED" ? "Published academic assignment" : "Updated academic assignment";
-  await audit(req, schoolId, action, assignmentId);
-  res.json(result.rows[0]);
 }));
 
 router.get("/academic/students/me/assignments", asyncRoute(async (req, res) => {

@@ -9,6 +9,11 @@ import {
   isPlatformOwner,
   requireAuthentication,
 } from "../middlewares/auth";
+import {
+  queueCommunicationNotification,
+  type CommunicationQueryClient,
+} from "../services/communication-service";
+import { logger } from "../lib/logger";
 
 const router = Router();
 const run = (handler: (req: Request, res: Response) => Promise<void>) =>
@@ -103,6 +108,152 @@ async function reconcileAttendance(client: { query: (sql: string, values?: unkno
       VALUES($1,$2,$3,'ATTENDANCE_DISCREPANCY','IN_APP','PENDING',$4::jsonb)`,
     [event.schoolId, event.id, d.rows[0].id, JSON.stringify({ kind, studentId: event.studentId })],
   );
+}
+
+type AttendanceNoticeInput = {
+  schoolId: number;
+  studentId: number;
+  subjectClassId?: number | null;
+  eventKey: string;
+  subject: string;
+  body: string;
+  link?: string;
+};
+
+/**
+ * Resolve notification recipients from the persisted, active parent-child
+ * relationship and tenant. Callers must pass the transaction client so
+ * notification intent commits or rolls back with its attendance event.
+ */
+export async function queueStudentAttendanceCommunication(
+  client: CommunicationQueryClient,
+  input: AttendanceNoticeInput,
+): Promise<void> {
+  if (!Number.isSafeInteger(input.schoolId) || input.schoolId < 1 ||
+      !Number.isSafeInteger(input.studentId) || input.studentId < 1) {
+    return;
+  }
+
+  const recipients = await client.query<{
+    recipientUserId: number | string;
+    recipientRole: "PARENT" | "STUDENT";
+  }>(
+    `SELECT recipient_user_id AS "recipientUserId", recipient_role AS "recipientRole"
+       FROM (
+         SELECT st.user_id AS recipient_user_id, 'STUDENT'::text AS recipient_role
+           FROM students st
+          WHERE st.school_id=$1 AND st.id=$2 AND UPPER(st.status)='ACTIVE'
+            AND st.user_id IS NOT NULL
+         UNION
+         SELECT p.user_id AS recipient_user_id, 'PARENT'::text AS recipient_role
+           FROM students st
+           JOIN parent_student_relationships psr
+             ON psr.student_id=st.id AND UPPER(psr.status)='ACTIVE'
+           JOIN parents p
+             ON p.id=psr.parent_id AND p.school_id=st.school_id
+            AND UPPER(p.status)='ACTIVE'
+          WHERE st.school_id=$1 AND st.id=$2 AND UPPER(st.status)='ACTIVE'
+            AND p.user_id IS NOT NULL
+       ) recipients
+      ORDER BY recipient_role, recipient_user_id`,
+    [input.schoolId, input.studentId],
+  );
+
+  for (const recipient of recipients.rows) {
+    const recipientUserId = Number(recipient.recipientUserId);
+    if (!Number.isSafeInteger(recipientUserId) || recipientUserId < 1) continue;
+    await queueCommunicationNotification(client, {
+      recipientUserId,
+      schoolId: input.schoolId,
+      subjectStudentId: input.studentId,
+      subjectClassId: input.subjectClassId ?? null,
+      category: "ATTENDANCE",
+      eventKey: input.eventKey,
+      subject: input.subject,
+      body: input.body,
+      link: input.link ?? "/",
+      channels: recipient.recipientRole === "PARENT" ? ["IN_APP", "SMS"] : ["IN_APP"],
+    });
+  }
+}
+
+export async function queueSchoolEntryExitCommunication(
+  client: CommunicationQueryClient,
+  event: {
+    id: number | string;
+    schoolId: number | string;
+    studentId: number | string | null;
+    schoolClassId?: number | string | null;
+    eventType: string;
+    status: string;
+  },
+): Promise<void> {
+  if (event.studentId == null || !["SCHOOL_ENTRY", "SCHOOL_EXIT"].includes(event.eventType)) return;
+  const entered = event.eventType === "SCHOOL_ENTRY";
+  const attendanceStatus = String(event.status).toUpperCase();
+  if (entered && !["PRESENT", "LATE"].includes(attendanceStatus)) return;
+  if (!entered && !["PRESENT", "LEFT_EARLY"].includes(attendanceStatus)) return;
+  const schoolId = Number(event.schoolId);
+  const eventId = Number(event.id);
+  if (!Number.isSafeInteger(eventId) || eventId < 1) return;
+  await queueStudentAttendanceCommunication(client, {
+    schoolId,
+    studentId: Number(event.studentId),
+    subjectClassId: event.schoolClassId == null ? null : Number(event.schoolClassId),
+    eventKey: `attendance:${schoolId}:${eventId}:${event.eventType}`,
+    subject: entered ? "School entry recorded" : "School exit recorded",
+    body: entered
+      ? "A student entry into school has been recorded."
+      : "A student exit from school has been recorded.",
+  });
+}
+
+/**
+ * Attendance remains authoritative when the notification system is unavailable.
+ * Savepoints contain database errors from recipient lookup or queue writes;
+ * the failure is logged and the attendance transaction remains committable.
+ */
+export async function queueAttendanceCommunicationBestEffort(
+  client: CommunicationQueryClient,
+  req: Request,
+  queue: () => Promise<void>,
+  context: { schoolId: number; eventType: string },
+): Promise<void> {
+  const savepoint = "attendance_communication_queue";
+  try {
+    await client.query(`SAVEPOINT ${savepoint}`);
+  } catch (error) {
+    logAttendanceCommunicationFailure(req, context, error);
+    return;
+  }
+
+  try {
+    await queue();
+    await client.query(`RELEASE SAVEPOINT ${savepoint}`);
+  } catch (error) {
+    try {
+      await client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+      await client.query(`RELEASE SAVEPOINT ${savepoint}`);
+    } catch (rollbackError) {
+      logAttendanceCommunicationFailure(req, context, error);
+      throw rollbackError;
+    }
+    logAttendanceCommunicationFailure(req, context, error);
+  }
+}
+
+function logAttendanceCommunicationFailure(
+  req: Request,
+  context: { schoolId: number; eventType: string },
+  error: unknown,
+) {
+  const fields = {
+    schoolId: context.schoolId,
+    eventType: context.eventType,
+    error: error instanceof Error ? error.message : "Unknown communication queue failure",
+  };
+  if (req.log) req.log.warn(fields, "Could not queue attendance communication");
+  else logger.warn(fields, "Could not queue attendance communication");
 }
 
 // Reconcile only after the school's configured classroom window. Schools with no
@@ -261,7 +412,7 @@ const processDeviceAttendance = run(async (req, res) => {
           AND (a.end_date IS NULL OR a.end_date>=$8::date)
         ORDER BY a.created_at DESC,a.id DESC LIMIT 1))
      ON CONFLICT (school_id,dedupe_key) DO NOTHING
-     RETURNING id,school_id AS "schoolId",student_id AS "studentId",device_id AS "deviceId",
+      RETURNING id,school_id AS "schoolId",student_id AS "studentId",school_class_id AS "schoolClassId",device_id AS "deviceId",
        event_type AS "eventType",identification_method AS "identificationMethod",
         attendance_status AS status,result,failure_reason AS "failureReason",occurred_at AS "occurredAt",created_at AS "createdAt"`,
       [device.schoolId, studentId, device.deviceId, cardId, schoolClassId, method, eventType,
@@ -270,6 +421,12 @@ const processDeviceAttendance = run(async (req, res) => {
    if (!result.rows[0]) { await client.query("ROLLBACK"); res.status(409).json({ error: "Duplicate event" }); return; }
    await reconcileAttendance(client, result.rows[0]);
     await reconcileMissingClass(device.schoolId, occurredAt.toISOString().slice(0, 10), client);
+    await queueAttendanceCommunicationBestEffort(
+      client,
+      req,
+      () => queueSchoolEntryExitCommunication(client, result.rows[0]),
+      { schoolId: device.schoolId, eventType },
+    );
    await client.query(`INSERT INTO attendance_notification_events(school_id,attendance_event_id,notification_type,channel,status,payload)
       SELECT $1::int,$2::int,x,'IN_APP','PENDING',jsonb_build_object('studentId',$3::int)
        FROM unnest(ARRAY['SCHOOL_ENTRY','SCHOOL_EXIT']::text[]) x
@@ -446,11 +603,19 @@ router.post("/school/attendance/manual", requireAuthentication(), run(async (req
             AND (a.end_date IS NULL OR a.end_date>=$6::date)
           ORDER BY a.created_at DESC,a.id DESC LIMIT 1))
        RETURNING id,school_id AS "schoolId",student_id AS "studentId",employee_id AS "employeeId",
-         device_id AS "deviceId",event_type AS "eventType",identification_method AS "identificationMethod",
+         school_class_id AS "schoolClassId",device_id AS "deviceId",event_type AS "eventType",identification_method AS "identificationMethod",
          occurred_at AS "occurredAt",attendance_status AS status,result,created_at AS "createdAt"`,
       [schoolId, studentId, employeeId, eventType, attendanceStatus, occurred.toISOString().slice(0, 10),
         occurred.toISOString(), reason, context.user.id, `manual:${randomUUID()}`],
     );
+     if (studentId !== null && ["SCHOOL_ENTRY", "SCHOOL_EXIT"].includes(eventType)) {
+       await queueAttendanceCommunicationBestEffort(
+         client,
+         req,
+         () => queueSchoolEntryExitCommunication(client, result.rows[0]),
+         { schoolId, eventType },
+       );
+     }
      await reconcileMissingClass(schoolId, occurred.toISOString().slice(0, 10), client);
     await client.query(
       `INSERT INTO audit_logs("user",role,actor_user_id,clerk_user_id,school_id,action,module,record_id,event_type,result)
@@ -538,19 +703,35 @@ router.post("/school/attendance/:eventId/correct", requireAuthentication(), run(
     if (!original.rows[0]) throw new AuthError(404, "Attendance event not found");
     const schoolId = original.rows[0].school_id;
     const context = assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN"]);
-    await client.query(
+    const correction = await client.query(
       `INSERT INTO attendance_corrections(school_id,attendance_event_id,original_value,corrected_value,reason,actor_user_id)
-       VALUES($1,$2,$3::jsonb,$4::jsonb,$5,$6)`,
+       VALUES($1,$2,$3::jsonb,$4::jsonb,$5,$6)
+       RETURNING id`,
       [schoolId, eventId, JSON.stringify({ status: original.rows[0].attendance_status }),
         JSON.stringify({ status }), reason, context.user.id],
     );
     const updated = await client.query(
       `UPDATE attendance_events SET attendance_status=$1 WHERE id=$2
-       RETURNING id,school_id AS "schoolId",student_id AS "studentId",employee_id AS "employeeId",
+       RETURNING id,school_id AS "schoolId",student_id AS "studentId",school_class_id AS "schoolClassId",employee_id AS "employeeId",
          device_id AS "deviceId",event_type AS "eventType",identification_method AS "identificationMethod",
          occurred_at AS "occurredAt",attendance_status AS status,result,created_at AS "createdAt"`,
       [status, eventId],
     );
+     if (updated.rows[0]?.studentId != null) {
+       await queueAttendanceCommunicationBestEffort(
+         client,
+         req,
+         () => queueStudentAttendanceCommunication(client, {
+           schoolId: Number(updated.rows[0].schoolId),
+           studentId: Number(updated.rows[0].studentId),
+           subjectClassId: updated.rows[0].schoolClassId == null ? null : Number(updated.rows[0].schoolClassId),
+           eventKey: `attendance-correction:${schoolId}:${eventId}:${correction.rows[0]?.id ?? status}`,
+           subject: "Attendance record updated",
+           body: "The school updated an attendance record for your child.",
+         }),
+         { schoolId, eventType: "ATTENDANCE_CORRECTION" },
+       );
+     }
     await client.query(
       `INSERT INTO audit_logs("user",role,actor_user_id,clerk_user_id,school_id,action,module,record_id,event_type,result)
        VALUES($1,'SCHOOL_ADMIN',$2,$3,$4,'Corrected attendance','Attendance',$5,'ATTENDANCE_CORRECTED','SUCCESS')`,

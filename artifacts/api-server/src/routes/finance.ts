@@ -118,6 +118,7 @@ import {
 } from "../middlewares/auth";
 import { invoiceStatus, payableAmount } from "./finance-money";
 import { enqueueFinancePaymentNotificationsSafely } from "./finance-notifications-service";
+import { enqueueFinanceInvoiceCommunicationsSafely } from "./finance-communication-service";
 import { enqueueInvoiceGeneratedNotificationsSafely } from "./invoice-notifications-service";
 
 const router: IRouter = Router();
@@ -434,6 +435,7 @@ async function createInvoiceForStudent(
     studentId: student.id, ...(bulk ? { structureId: structure.id, bulk: true } : {}),
   });
   await enqueueInvoiceGeneratedNotificationsSafely(client, Number(invoiceId), schoolId);
+  await enqueueFinanceInvoiceCommunicationsSafely(client, Number(invoiceId), schoolId);
   return invoiceId;
 }
 

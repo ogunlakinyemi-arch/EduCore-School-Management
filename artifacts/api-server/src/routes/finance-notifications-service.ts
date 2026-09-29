@@ -1,4 +1,5 @@
 import { logger } from "../lib/logger";
+import { enqueueFinancePaymentCommunications } from "./finance-communication-service";
 
 type QueryClient = {
   query: (sql: string, values?: unknown[]) => Promise<{ rows: any[]; rowCount?: number | null }>;
@@ -206,6 +207,7 @@ export async function enqueueFinancePaymentNotificationsSafely(
   }
   try {
     await enqueueFinancePaymentNotifications(client, paymentId, schoolId, eventType, metadata, eventReferenceId);
+    await enqueueFinancePaymentCommunications(client, paymentId, schoolId, eventType, eventReferenceId);
     await client.query(
       `DELETE FROM fee_payment_notification_outbox
        WHERE payment_id=$1 AND school_id=$2 AND event_type=$3 AND event_reference_id=$4`,
@@ -272,6 +274,13 @@ export async function retryPendingFinancePaymentNotifications(
           retry.metadata ?? {},
           Number(retry.event_reference_id),
           true,
+        );
+        await enqueueFinancePaymentCommunications(
+          client,
+          Number(retry.payment_id),
+          Number(retry.school_id),
+          retry.event_type,
+          Number(retry.event_reference_id),
         );
         await client.query("RELEASE SAVEPOINT fee_payment_notification_retry");
         await client.query(

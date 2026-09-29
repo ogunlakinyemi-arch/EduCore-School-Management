@@ -5,6 +5,10 @@ import {
   getUserContext,
   requireAuthentication,
 } from "../middlewares/auth";
+import {
+  queueAttendanceCommunicationBestEffort,
+  queueStudentAttendanceCommunication,
+} from "./attendance";
 
 const router = Router();
 const run = (handler: (req: Request, res: Response) => Promise<void>) =>
@@ -38,10 +42,13 @@ router.post(
     try {
       await client.query("BEGIN");
       const selected = await client.query(
-        `SELECT id,school_id,status,created_at,attendance_event_id
-           FROM attendance_discrepancies
-          WHERE id=$1
-          FOR UPDATE`,
+        `SELECT d.id,d.school_id,d.status,d.created_at,d.attendance_event_id,
+                e.school_class_id AS subject_class_id
+           FROM attendance_discrepancies d
+           LEFT JOIN attendance_events e
+             ON e.id=d.attendance_event_id AND e.school_id=d.school_id
+          WHERE d.id=$1
+          FOR UPDATE OF d`,
         [discrepancyId],
       );
       const discrepancy = selected.rows[0];
@@ -97,12 +104,13 @@ router.post(
         [status, context.user.id, reason, discrepancy.status, discrepancyId],
       );
       const updated = updatedResult.rows[0];
-      await client.query(
+      const auditResult = await client.query(
         `INSERT INTO audit_logs
           ("user",role,actor_user_id,clerk_user_id,school_id,action,module,
            record_id,event_type,result,metadata)
          VALUES($1,$2,$3,$4,$5,$6,'Attendance',$7,
-                'ATTENDANCE_DISCREPANCY_RESOLVED','SUCCESS',$8::jsonb)`,
+                'ATTENDANCE_DISCREPANCY_RESOLVED','SUCCESS',$8::jsonb)
+         RETURNING id`,
         [
           context.user.email,
           "SCHOOL_ADMIN",
@@ -113,6 +121,19 @@ router.post(
           discrepancyId,
           JSON.stringify({ reason, previousStatus: discrepancy.status, newStatus: status }),
         ],
+      );
+      await queueAttendanceCommunicationBestEffort(
+        client,
+        req,
+        () => queueStudentAttendanceCommunication(client, {
+          schoolId: actualSchoolId,
+          studentId: Number(updated.studentId),
+          subjectClassId: discrepancy.subject_class_id == null ? null : Number(discrepancy.subject_class_id),
+          eventKey: `attendance-discrepancy-resolution:${actualSchoolId}:${discrepancyId}:${auditResult.rows[0]?.id ?? status}`,
+          subject: "Attendance discrepancy reviewed",
+          body: "The school reviewed an attendance discrepancy for your child.",
+        }),
+        { schoolId: actualSchoolId, eventType: "ATTENDANCE_DISCREPANCY_RESOLVED" },
       );
       await client.query("COMMIT");
 

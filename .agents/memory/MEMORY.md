@@ -4,6 +4,7 @@
 - [Family academic reads](family-academic-reads.md) — student and parent pages must not wait on school-wide academic catalogs denied to their roles.
 - [External invitations and uncertain commits](invitation-commit-recovery.md) — verify persistence before revoking a sent identity-provider invitation after an ambiguous database commit.
 - [Development database targeting](development-database-targeting.md) — environment labels alone can misidentify the database target; independently verify it before test-data writes.
+- [Ambiguous provider sends](ambiguous-provider-sends.md) — do not automatically resend external messages after provider acceptance becomes uncertain; reconcile first.
 - [Development migration ledger drift](development-migration-ledger-drift.md) — inspect the live schema as well as the ledger before running migrations; prior out-of-band applies can leave them out of sync.
 - [Provider checkout claims](provider-checkout-claims.md) — an expired local initialization lease must not launch a second provider checkout; reconcile the original reference first.
 - [Orphaned workflow ports](orphaned-workflow-ports.md) — a failed managed restart may leave an older server holding the port while the preview still answers.

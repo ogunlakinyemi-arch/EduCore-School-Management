@@ -46,6 +46,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { CommunicationInbox, CommunicationInboxBadge } from '@/pages/communication-inbox';
+import { NotificationSettings } from '@/pages/notification-settings';
 
 function Loading() {
   return (
@@ -88,6 +90,8 @@ function PortalHeader() {
               {isOwner && <Link href="/partner/profile" className={cx("hover:text-[hsl(var(--foreground))]", location === '/partner/profile' && "text-[hsl(var(--primary))]")}>Settings</Link>}
             </nav>
           )}
+          <CommunicationInboxBadge />
+          <Link href="/notification-settings" className="hidden text-xs font-bold text-[hsl(var(--primary))] sm:block" data-testid="link-partner-notification-settings">Preferences</Link>
           <UserButton />
         </div>
       </div>
@@ -782,6 +786,8 @@ export default function PartnerPortal() {
     <div className="min-h-[100dvh] bg-[hsl(var(--background))]">
       <PortalHeader />
       <Switch>
+        <Route path="/inbox"><CommunicationInbox standalone /></Route>
+        <Route path="/notification-settings"><NotificationSettings standalone /></Route>
         <Route path="/partner" component={Dashboard} />
         <Route path="/partner/schools" component={MySchools} />
         <Route path="/partner/staff" component={PartnerStaff} />

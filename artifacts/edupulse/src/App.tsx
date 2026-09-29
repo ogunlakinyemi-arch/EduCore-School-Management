@@ -44,6 +44,9 @@ import { DevicesPage } from '@/pages/devices';
 import { NotificationsPage } from '@/pages/notifications';
 import { AttendancePage } from '@/pages/attendance';
 import { FinancePage, MyFeesPage } from '@/pages/finance';
+import { CommunicationsPage } from '@/pages/communications';
+import { CommunicationInbox } from '@/pages/communication-inbox';
+import { NotificationSettings } from '@/pages/notification-settings';
 
 import './index.css';
 
@@ -226,6 +229,11 @@ function ProtectedRoutes() {
           <Route path="/finance">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']}><FinancePage /></RoleGuard>
           </Route>
+          <Route path="/communications">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT']}><CommunicationsPage /></RoleGuard>
+          </Route>
+          <Route path="/inbox"><CommunicationInbox /></Route>
+          <Route path="/notification-settings"><NotificationSettings /></Route>
           <Route path="/classes">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']} ownerCanView ownerReadOnly><ClassesPage /></RoleGuard>
           </Route>

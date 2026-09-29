@@ -4278,6 +4278,454 @@ export interface FeeProviderCheckoutReconciliation {
   outcome: FeeProviderCheckoutReconciliationOutcome;
 }
 
+export type CommunicationCategory = typeof CommunicationCategory[keyof typeof CommunicationCategory];
+
+
+export const CommunicationCategory = {
+  ATTENDANCE: 'ATTENDANCE',
+  ACADEMIC: 'ACADEMIC',
+  ASSIGNMENT: 'ASSIGNMENT',
+  FINANCE: 'FINANCE',
+  PAYMENT: 'PAYMENT',
+  ANNOUNCEMENT: 'ANNOUNCEMENT',
+  ACCOUNT: 'ACCOUNT',
+  SYSTEM: 'SYSTEM',
+  SUBSCRIPTION: 'SUBSCRIPTION',
+  PARTNER: 'PARTNER',
+  SECURITY: 'SECURITY',
+} as const;
+
+export type CommunicationChannel = typeof CommunicationChannel[keyof typeof CommunicationChannel];
+
+
+export const CommunicationChannel = {
+  IN_APP: 'IN_APP',
+  SMS: 'SMS',
+  EMAIL: 'EMAIL',
+  PUSH: 'PUSH',
+} as const;
+
+export type CommunicationOutboundChannel = typeof CommunicationOutboundChannel[keyof typeof CommunicationOutboundChannel];
+
+
+export const CommunicationOutboundChannel = {
+  IN_APP: 'IN_APP',
+  SMS: 'SMS',
+  EMAIL: 'EMAIL',
+} as const;
+
+export type CommunicationDeliveryStatus = typeof CommunicationDeliveryStatus[keyof typeof CommunicationDeliveryStatus];
+
+
+export const CommunicationDeliveryStatus = {
+  QUEUED: 'QUEUED',
+  PROCESSING: 'PROCESSING',
+  SENT: 'SENT',
+  DELIVERED: 'DELIVERED',
+  READ: 'READ',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type CommunicationCampaignStatus = typeof CommunicationCampaignStatus[keyof typeof CommunicationCampaignStatus];
+
+
+export const CommunicationCampaignStatus = {
+  DRAFT: 'DRAFT',
+  QUEUED: 'QUEUED',
+  SENDING: 'SENDING',
+  SENT: 'SENT',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type CommunicationTargetType = typeof CommunicationTargetType[keyof typeof CommunicationTargetType];
+
+
+export const CommunicationTargetType = {
+  SCHOOL: 'SCHOOL',
+  PARENTS: 'PARENTS',
+  STUDENTS: 'STUDENTS',
+  TEACHERS: 'TEACHERS',
+  STAFF: 'STAFF',
+  CLASS: 'CLASS',
+  SECTION: 'SECTION',
+  USERS: 'USERS',
+} as const;
+
+/**
+ * Target details validated against the caller's active school, class assignments, and parent-child relationships. Never interpreted as arbitrary recipient IDs.
+ */
+export interface CommunicationTargetCriteria { [key: string]: unknown }
+
+/**
+ * CAMPAIGN is a manually authored school message; SYSTEM is a backend event, including finance notifications.
+ */
+export type CommunicationNotificationOrigin = typeof CommunicationNotificationOrigin[keyof typeof CommunicationNotificationOrigin];
+
+
+export const CommunicationNotificationOrigin = {
+  CAMPAIGN: 'CAMPAIGN',
+  SYSTEM: 'SYSTEM',
+} as const;
+
+export interface CommunicationDelivery {
+  id: number;
+  channel: CommunicationChannel;
+  status: CommunicationDeliveryStatus;
+  /**
+     * Provider identifier, or dev-test for the explicit no-network adapter.
+     * @nullable
+     */
+  provider: string | null;
+  /** @nullable */
+  providerMessageId: string | null;
+  /**
+     * Provider acceptance is not proof of delivery.
+     * @nullable
+     */
+  providerAcknowledgedAt: string | null;
+  /** @nullable */
+  sentAt: string | null;
+  /** @nullable */
+  deliveredAt: string | null;
+  /** @nullable */
+  failedAt: string | null;
+  /** @nullable */
+  errorCode: string | null;
+  /**
+     * Sanitized error text. Never contains recipient addresses, raw provider payloads, or credentials.
+     * @nullable
+     */
+  lastError: string | null;
+  /** @minimum 0 */
+  attempts: number;
+  nextAttemptAt: string;
+  /** @nullable */
+  lastAttemptAt: string | null;
+  /** True indicates a no-network simulation and never means a real send. */
+  simulated: boolean;
+  /**
+     * Human-readable delivery label; simulation labels explicitly indicate that no message was sent.
+     * @nullable
+     */
+  label: string | null;
+}
+
+export interface CommunicationNotification {
+  id: number;
+  /** @nullable */
+  schoolId: number | null;
+  /** CAMPAIGN is a manually authored school message; SYSTEM is a backend event, including finance notifications. */
+  origin: CommunicationNotificationOrigin;
+  category: CommunicationCategory;
+  /** @nullable */
+  subject: string | null;
+  body: string;
+  /** @nullable */
+  link: string | null;
+  isRead: boolean;
+  createdAt: string;
+  /** @nullable */
+  readAt: string | null;
+  deliveries: CommunicationDelivery[];
+}
+
+export interface CommunicationNotificationInbox {
+  items: CommunicationNotification[];
+  /** @minimum 0 */
+  unreadCount: number;
+  hasMore: boolean;
+  /** @nullable */
+  nextBeforeId: number | null;
+}
+
+export interface CommunicationNotificationReadAllInput {
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  schoolId?: number | null;
+}
+
+export interface CommunicationNotificationReadAllResult {
+  /** @minimum 0 */
+  updatedCount: number;
+}
+
+export interface CommunicationPreference {
+  /** @nullable */
+  schoolId: number | null;
+  category: CommunicationCategory;
+  channel: CommunicationChannel;
+  enabled: boolean;
+  /** Security/account notifications may be mandatory and cannot be suppressed. */
+  mandatory: boolean;
+  updatedAt: string;
+}
+
+export interface CommunicationPreferences {
+  /** @nullable */
+  schoolId: number | null;
+  preferences: CommunicationPreference[];
+}
+
+export interface CommunicationPreferenceUpdate {
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  schoolId: number | null;
+  category: CommunicationCategory;
+  channel: CommunicationChannel;
+  enabled: boolean;
+}
+
+export type CommunicationTemplateVariable = typeof CommunicationTemplateVariable[keyof typeof CommunicationTemplateVariable];
+
+
+export const CommunicationTemplateVariable = {
+  student_name: 'student_name',
+  parent_name: 'parent_name',
+  school_name: 'school_name',
+  class_name: 'class_name',
+  amount: 'amount',
+  invoice_number: 'invoice_number',
+  payment_date: 'payment_date',
+  attendance_date: 'attendance_date',
+  term_name: 'term_name',
+  assignment_title: 'assignment_title',
+} as const;
+
+export interface CommunicationTemplate {
+  id: number;
+  schoolId: number;
+  templateKey: string;
+  name: string;
+  category: CommunicationCategory;
+  channel: CommunicationChannel;
+  /** @nullable */
+  subject: string | null;
+  body: string;
+  allowedVariables: CommunicationTemplateVariable[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommunicationTemplateInput {
+  /** @minimum 1 */
+  schoolId: number;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     * @pattern ^[a-zA-Z0-9_-]+$
+     */
+  templateKey: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  category: CommunicationCategory;
+  channel: CommunicationChannel;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  subject?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  body: string;
+  allowedVariables?: CommunicationTemplateVariable[];
+  isActive?: boolean;
+}
+
+export interface CommunicationTemplateUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name?: string;
+  category?: CommunicationCategory;
+  channel?: CommunicationChannel;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  subject?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  body?: string;
+  allowedVariables?: CommunicationTemplateVariable[];
+  isActive?: boolean;
+}
+
+export interface CommunicationAnnouncementPreviewInput {
+  /** @minimum 1 */
+  schoolId: number;
+  targetType: CommunicationTargetType;
+  targetCriteria: CommunicationTargetCriteria;
+  /** @minItems 1 */
+  channels: CommunicationOutboundChannel[];
+}
+
+export interface CommunicationAnnouncementChannelCount {
+  channel: CommunicationOutboundChannel;
+  /** @minimum 0 */
+  eligibleRecipientCount: number;
+}
+
+export interface CommunicationAnnouncementPreview {
+  schoolId: number;
+  /** @minimum 0 */
+  recipientCount: number;
+  channelCounts: CommunicationAnnouncementChannelCount[];
+}
+
+export interface CommunicationAnnouncementInput {
+  /** @minimum 1 */
+  schoolId: number;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  title: string;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  subject?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 10000
+     */
+  body: string;
+  category: CommunicationCategory;
+  targetType: CommunicationTargetType;
+  targetCriteria: CommunicationTargetCriteria;
+  /** @minItems 1 */
+  channels: CommunicationOutboundChannel[];
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  templateId?: number | null;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+}
+
+export interface CommunicationAnnouncement {
+  id: number;
+  schoolId: number;
+  createdByUserId: number;
+  /** @nullable */
+  templateId: number | null;
+  title: string;
+  /** @nullable */
+  subject: string | null;
+  body: string;
+  category: CommunicationCategory;
+  targetType: CommunicationTargetType;
+  targetCriteria: CommunicationTargetCriteria;
+  channels: CommunicationOutboundChannel[];
+  status: CommunicationCampaignStatus;
+  /** @minimum 0 */
+  recipientCount: number;
+  createdAt: string;
+  /** @nullable */
+  sentAt: string | null;
+}
+
+export interface CommunicationAnnouncementHistory {
+  items: CommunicationAnnouncement[];
+  hasMore: boolean;
+  /** @nullable */
+  nextBeforeId: number | null;
+}
+
+export type CommunicationAnnouncementRecipientRecipientRole = typeof CommunicationAnnouncementRecipientRecipientRole[keyof typeof CommunicationAnnouncementRecipientRecipientRole];
+
+
+export const CommunicationAnnouncementRecipientRecipientRole = {
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+  ACCOUNTANT: 'ACCOUNTANT',
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+} as const;
+
+export type CommunicationAnnouncementRecipientStatus = typeof CommunicationAnnouncementRecipientStatus[keyof typeof CommunicationAnnouncementRecipientStatus];
+
+
+export const CommunicationAnnouncementRecipientStatus = {
+  QUEUED: 'QUEUED',
+  SENT: 'SENT',
+  FAILED: 'FAILED',
+  SKIPPED: 'SKIPPED',
+} as const;
+
+export interface CommunicationAnnouncementRecipient {
+  /** Internal user id is returned only to authorized school communication managers. */
+  recipientUserId: number;
+  recipientRole: CommunicationAnnouncementRecipientRecipientRole;
+  status: CommunicationAnnouncementRecipientStatus;
+  deliveries: CommunicationDelivery[];
+}
+
+export type CommunicationAnnouncementDetail = CommunicationAnnouncement & {
+  recipients: CommunicationAnnouncementRecipient[];
+};
+
+export type CommunicationPushDeviceProvider = typeof CommunicationPushDeviceProvider[keyof typeof CommunicationPushDeviceProvider];
+
+
+export const CommunicationPushDeviceProvider = {
+  WEB_PUSH: 'WEB_PUSH',
+} as const;
+
+export type CommunicationPushDeviceStatus = typeof CommunicationPushDeviceStatus[keyof typeof CommunicationPushDeviceStatus];
+
+
+export const CommunicationPushDeviceStatus = {
+  ACTIVE: 'ACTIVE',
+  REVOKED: 'REVOKED',
+} as const;
+
+export interface CommunicationPushDevice {
+  id: number;
+  /** @nullable */
+  schoolId: number | null;
+  provider: CommunicationPushDeviceProvider;
+  status: CommunicationPushDeviceStatus;
+  createdAt: string;
+  /** @nullable */
+  lastUsedAt: string | null;
+  /** @nullable */
+  revokedAt: string | null;
+}
+
+export interface CommunicationPushDeviceInput {
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  schoolId?: number | null;
+  /**
+     * @minLength 1
+     * @maxLength 256
+     */
+  opaqueDeviceReference: string;
+}
+
 /**
  * Invalid request or rejected school/device/student relationship
  */
@@ -5474,5 +5922,60 @@ sessionId?: number;
  */
 termId?: number;
 weekday?: Weekday;
+};
+
+export type ListCommunicationNotificationsParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 1
+ */
+beforeId?: number;
+};
+
+export type GetCommunicationPreferencesParams = {
+/**
+ * Omit to retrieve global preferences; specify a school for preferences scoped to that school.
+ * @minimum 1
+ */
+schoolId?: number;
+};
+
+export type ListCommunicationTemplatesParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+category?: CommunicationCategory;
+};
+
+export type ListCommunicationAnnouncementsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 1
+ */
+beforeId?: number;
+};
+
+export type ListCommunicationPushDevicesParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
 };
 

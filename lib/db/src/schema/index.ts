@@ -20,3 +20,4 @@
 export * from "./edupulse";
 export * from "./phase6";
 export * from "./finance";
+export * from "./communication";

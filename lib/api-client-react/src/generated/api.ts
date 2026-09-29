@@ -78,6 +78,25 @@ import type {
   ClassInput,
   ClassSubjectAssignment,
   ClassSubjectAssignmentInput,
+  CommunicationAnnouncement,
+  CommunicationAnnouncementDetail,
+  CommunicationAnnouncementHistory,
+  CommunicationAnnouncementInput,
+  CommunicationAnnouncementPreview,
+  CommunicationAnnouncementPreviewInput,
+  CommunicationDelivery,
+  CommunicationNotification,
+  CommunicationNotificationInbox,
+  CommunicationNotificationReadAllInput,
+  CommunicationNotificationReadAllResult,
+  CommunicationPreference,
+  CommunicationPreferenceUpdate,
+  CommunicationPreferences,
+  CommunicationPushDevice,
+  CommunicationPushDeviceInput,
+  CommunicationTemplate,
+  CommunicationTemplateInput,
+  CommunicationTemplateUpdate,
   CompanyEmployee,
   CompanyEmployeeInput,
   CompanyEmployeeUpdate,
@@ -142,6 +161,7 @@ import type {
   ForbiddenResponse,
   GetChildAcademicTimetableParams,
   GetClassAttendanceParams,
+  GetCommunicationPreferencesParams,
   GetEmployeeParams,
   GetFeePaymentReceiptParams,
   GetFinanceSettingsParams,
@@ -179,6 +199,10 @@ import type {
   ListChildAcademicResultsParams,
   ListClassSubjectAssignmentsParams,
   ListClassesParams,
+  ListCommunicationAnnouncementsParams,
+  ListCommunicationNotificationsParams,
+  ListCommunicationPushDevicesParams,
+  ListCommunicationTemplatesParams,
   ListEmployeesParams,
   ListFeeCategoriesParams,
   ListFeeInvoicesParams,
@@ -18222,4 +18246,1348 @@ export function useGetChildAcademicTimetable<TData = Awaited<ReturnType<typeof g
 
 
 
+
+export const getListCommunicationNotificationsUrl = (params?: ListCommunicationNotificationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/communication/notifications?${stringifiedParams}` : `/api/communication/notifications`
+}
+
+/**
+ * Platform Owners receive platform-level notices only. School notifications are limited to the recipient's authorized school relationships; a schoolId filter never grants access.
+ * @summary List the authenticated user's tenant-authorized notification inbox
+ */
+export const listCommunicationNotifications = async (params?: ListCommunicationNotificationsParams, options?: Parameters<typeof customFetch>[1]): Promise<CommunicationNotificationInbox> => {
+
+  return customFetch<CommunicationNotificationInbox>(getListCommunicationNotificationsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCommunicationNotificationsQueryKey = (params?: ListCommunicationNotificationsParams,) => {
+    return [
+    `/api/communication/notifications`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCommunicationNotificationsQueryOptions = <TData = Awaited<ReturnType<typeof listCommunicationNotifications>>, TError = ErrorType<unknown>>(params?: ListCommunicationNotificationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCommunicationNotifications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCommunicationNotificationsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCommunicationNotifications>>> = ({ signal }) => listCommunicationNotifications(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCommunicationNotifications>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCommunicationNotificationsQueryResult = NonNullable<Awaited<ReturnType<typeof listCommunicationNotifications>>>
+export type ListCommunicationNotificationsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List the authenticated user's tenant-authorized notification inbox
+ */
+
+export function useListCommunicationNotifications<TData = Awaited<ReturnType<typeof listCommunicationNotifications>>, TError = ErrorType<unknown>>(
+ params?: ListCommunicationNotificationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCommunicationNotifications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCommunicationNotificationsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMarkCommunicationNotificationReadUrl = (notificationId: number,) => {
+
+
+
+
+  return `/api/communication/notifications/${notificationId}/read`
+}
+
+/**
+ * @summary Mark one of the authenticated recipient's notifications as read
+ */
+export const markCommunicationNotificationRead = async (notificationId: number, options?: Parameters<typeof customFetch>[1]): Promise<CommunicationNotification> => {
+
+  return customFetch<CommunicationNotification>(getMarkCommunicationNotificationReadUrl(notificationId),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkCommunicationNotificationReadMutationKey = () => ['markCommunicationNotificationRead'] as const;
+
+export const getMarkCommunicationNotificationReadMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markCommunicationNotificationRead>>, TError,MarkCommunicationNotificationReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markCommunicationNotificationRead>>, TError,MarkCommunicationNotificationReadMutationVariables, TContext> => {
+
+const mutationKey = getMarkCommunicationNotificationReadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markCommunicationNotificationRead>>, MarkCommunicationNotificationReadMutationVariables> = (props) => {
+          const {notificationId} = props ?? {};
+
+          return  markCommunicationNotificationRead(notificationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkCommunicationNotificationReadMutationResult = NonNullable<Awaited<ReturnType<typeof markCommunicationNotificationRead>>>
+
+    export type MarkCommunicationNotificationReadMutationError = ErrorType<NotFoundResponse>
+    export type MarkCommunicationNotificationReadMutationVariables = {notificationId: number}
+
+    /**
+ * @summary Mark one of the authenticated recipient's notifications as read
+ */
+export const useMarkCommunicationNotificationRead = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markCommunicationNotificationRead>>, TError,MarkCommunicationNotificationReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markCommunicationNotificationRead>>,
+        TError,
+        MarkCommunicationNotificationReadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMarkCommunicationNotificationReadMutationOptions(options));
+    }
+
+export const getMarkAllCommunicationNotificationsReadUrl = () => {
+
+
+
+
+  return `/api/communication/notifications/read-all`
+}
+
+/**
+ * @summary Mark all visible notifications, optionally in one school, as read
+ */
+export const markAllCommunicationNotificationsRead = async (communicationNotificationReadAllInput: CommunicationNotificationReadAllInput, options?: Parameters<typeof customFetch>[1]): Promise<CommunicationNotificationReadAllResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CommunicationNotificationReadAllResult>(getMarkAllCommunicationNotificationsReadUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(communicationNotificationReadAllInput)
+  }
+);}
+
+
+
+
+
+export const getMarkAllCommunicationNotificationsReadMutationKey = () => ['markAllCommunicationNotificationsRead'] as const;
+
+export const getMarkAllCommunicationNotificationsReadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markAllCommunicationNotificationsRead>>, TError,MarkAllCommunicationNotificationsReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markAllCommunicationNotificationsRead>>, TError,MarkAllCommunicationNotificationsReadMutationVariables, TContext> => {
+
+const mutationKey = getMarkAllCommunicationNotificationsReadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markAllCommunicationNotificationsRead>>, MarkAllCommunicationNotificationsReadMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  markAllCommunicationNotificationsRead(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkAllCommunicationNotificationsReadMutationResult = NonNullable<Awaited<ReturnType<typeof markAllCommunicationNotificationsRead>>>
+    export type MarkAllCommunicationNotificationsReadMutationBody = BodyType<CommunicationNotificationReadAllInput>
+    export type MarkAllCommunicationNotificationsReadMutationError = ErrorType<unknown>
+    export type MarkAllCommunicationNotificationsReadMutationVariables = {data: BodyType<CommunicationNotificationReadAllInput>}
+
+    /**
+ * @summary Mark all visible notifications, optionally in one school, as read
+ */
+export const useMarkAllCommunicationNotificationsRead = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markAllCommunicationNotificationsRead>>, TError,MarkAllCommunicationNotificationsReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markAllCommunicationNotificationsRead>>,
+        TError,
+        MarkAllCommunicationNotificationsReadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMarkAllCommunicationNotificationsReadMutationOptions(options));
+    }
+
+export const getGetCommunicationPreferencesUrl = (params?: GetCommunicationPreferencesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/communication/preferences?${stringifiedParams}` : `/api/communication/preferences`
+}
+
+/**
+ * @summary Get the authenticated user's global or school-scoped channel preferences
+ */
+export const getCommunicationPreferences = async (params?: GetCommunicationPreferencesParams, options?: Parameters<typeof customFetch>[1]): Promise<CommunicationPreferences> => {
+
+  return customFetch<CommunicationPreferences>(getGetCommunicationPreferencesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCommunicationPreferencesQueryKey = (params?: GetCommunicationPreferencesParams,) => {
+    return [
+    `/api/communication/preferences`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCommunicationPreferencesQueryOptions = <TData = Awaited<ReturnType<typeof getCommunicationPreferences>>, TError = ErrorType<unknown>>(params?: GetCommunicationPreferencesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCommunicationPreferences>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCommunicationPreferencesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCommunicationPreferences>>> = ({ signal }) => getCommunicationPreferences(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCommunicationPreferences>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCommunicationPreferencesQueryResult = NonNullable<Awaited<ReturnType<typeof getCommunicationPreferences>>>
+export type GetCommunicationPreferencesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the authenticated user's global or school-scoped channel preferences
+ */
+
+export function useGetCommunicationPreferences<TData = Awaited<ReturnType<typeof getCommunicationPreferences>>, TError = ErrorType<unknown>>(
+ params?: GetCommunicationPreferencesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCommunicationPreferences>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCommunicationPreferencesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateCommunicationPreferenceUrl = () => {
+
+
+
+
+  return `/api/communication/preferences`
+}
+
+/**
+ * Mandatory security and account notifications remain enabled regardless of user preference.
+ * @summary Update a channel preference for the authenticated user
+ */
+export const updateCommunicationPreference = async (communicationPreferenceUpdate: CommunicationPreferenceUpdate, options?: Parameters<typeof customFetch>[1]): Promise<CommunicationPreference> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CommunicationPreference>(getUpdateCommunicationPreferenceUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(communicationPreferenceUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateCommunicationPreferenceMutationKey = () => ['updateCommunicationPreference'] as const;
+
+export const getUpdateCommunicationPreferenceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCommunicationPreference>>, TError,UpdateCommunicationPreferenceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCommunicationPreference>>, TError,UpdateCommunicationPreferenceMutationVariables, TContext> => {
+
+const mutationKey = getUpdateCommunicationPreferenceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCommunicationPreference>>, UpdateCommunicationPreferenceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateCommunicationPreference(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCommunicationPreferenceMutationResult = NonNullable<Awaited<ReturnType<typeof updateCommunicationPreference>>>
+    export type UpdateCommunicationPreferenceMutationBody = BodyType<CommunicationPreferenceUpdate>
+    export type UpdateCommunicationPreferenceMutationError = ErrorType<unknown>
+    export type UpdateCommunicationPreferenceMutationVariables = {data: BodyType<CommunicationPreferenceUpdate>}
+
+    /**
+ * @summary Update a channel preference for the authenticated user
+ */
+export const useUpdateCommunicationPreference = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCommunicationPreference>>, TError,UpdateCommunicationPreferenceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCommunicationPreference>>,
+        TError,
+        UpdateCommunicationPreferenceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateCommunicationPreferenceMutationOptions(options));
+    }
+
+export const getListCommunicationTemplatesUrl = (params: ListCommunicationTemplatesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/communication/templates?${stringifiedParams}` : `/api/communication/templates`
+}
+
+/**
+ * @summary List templates for an authorized school
+ */
+export const listCommunicationTemplates = async (params: ListCommunicationTemplatesParams, options?: Parameters<typeof customFetch>[1]): Promise<CommunicationTemplate[]> => {
+
+  return customFetch<CommunicationTemplate[]>(getListCommunicationTemplatesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCommunicationTemplatesQueryKey = (params?: ListCommunicationTemplatesParams,) => {
+    return [
+    `/api/communication/templates`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCommunicationTemplatesQueryOptions = <TData = Awaited<ReturnType<typeof listCommunicationTemplates>>, TError = ErrorType<unknown>>(params: ListCommunicationTemplatesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCommunicationTemplates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCommunicationTemplatesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCommunicationTemplates>>> = ({ signal }) => listCommunicationTemplates(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCommunicationTemplates>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCommunicationTemplatesQueryResult = NonNullable<Awaited<ReturnType<typeof listCommunicationTemplates>>>
+export type ListCommunicationTemplatesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List templates for an authorized school
+ */
+
+export function useListCommunicationTemplates<TData = Awaited<ReturnType<typeof listCommunicationTemplates>>, TError = ErrorType<unknown>>(
+ params: ListCommunicationTemplatesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCommunicationTemplates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCommunicationTemplatesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCommunicationTemplateUrl = () => {
+
+
+
+
+  return `/api/communication/templates`
+}
+
+/**
+ * Requires School Admin authorization for the school. Template variables are allowlisted and cannot execute arbitrary code.
+ * @summary Create a school-scoped reusable notification template
+ */
+export const createCommunicationTemplate = async (communicationTemplateInput: CommunicationTemplateInput, options?: Parameters<typeof customFetch>[1]): Promise<CommunicationTemplate> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CommunicationTemplate>(getCreateCommunicationTemplateUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(communicationTemplateInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCommunicationTemplateMutationKey = () => ['createCommunicationTemplate'] as const;
+
+export const getCreateCommunicationTemplateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCommunicationTemplate>>, TError,CreateCommunicationTemplateMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCommunicationTemplate>>, TError,CreateCommunicationTemplateMutationVariables, TContext> => {
+
+const mutationKey = getCreateCommunicationTemplateMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCommunicationTemplate>>, CreateCommunicationTemplateMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCommunicationTemplate(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCommunicationTemplateMutationResult = NonNullable<Awaited<ReturnType<typeof createCommunicationTemplate>>>
+    export type CreateCommunicationTemplateMutationBody = BodyType<CommunicationTemplateInput>
+    export type CreateCommunicationTemplateMutationError = ErrorType<unknown>
+    export type CreateCommunicationTemplateMutationVariables = {data: BodyType<CommunicationTemplateInput>}
+
+    /**
+ * @summary Create a school-scoped reusable notification template
+ */
+export const useCreateCommunicationTemplate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCommunicationTemplate>>, TError,CreateCommunicationTemplateMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCommunicationTemplate>>,
+        TError,
+        CreateCommunicationTemplateMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateCommunicationTemplateMutationOptions(options));
+    }
+
+export const getUpdateCommunicationTemplateUrl = (templateId: number,) => {
+
+
+
+
+  return `/api/communication/templates/${templateId}`
+}
+
+/**
+ * @summary Update an authorized school-scoped template
+ */
+export const updateCommunicationTemplate = async (templateId: number,
+    communicationTemplateUpdate: CommunicationTemplateUpdate, options?: Parameters<typeof customFetch>[1]): Promise<CommunicationTemplate> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CommunicationTemplate>(getUpdateCommunicationTemplateUrl(templateId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(communicationTemplateUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateCommunicationTemplateMutationKey = () => ['updateCommunicationTemplate'] as const;
+
+export const getUpdateCommunicationTemplateMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCommunicationTemplate>>, TError,UpdateCommunicationTemplateMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCommunicationTemplate>>, TError,UpdateCommunicationTemplateMutationVariables, TContext> => {
+
+const mutationKey = getUpdateCommunicationTemplateMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCommunicationTemplate>>, UpdateCommunicationTemplateMutationVariables> = (props) => {
+          const {templateId,data} = props ?? {};
+
+          return  updateCommunicationTemplate(templateId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCommunicationTemplateMutationResult = NonNullable<Awaited<ReturnType<typeof updateCommunicationTemplate>>>
+    export type UpdateCommunicationTemplateMutationBody = BodyType<CommunicationTemplateUpdate>
+    export type UpdateCommunicationTemplateMutationError = ErrorType<NotFoundResponse>
+    export type UpdateCommunicationTemplateMutationVariables = {templateId: number;data: BodyType<CommunicationTemplateUpdate>}
+
+    /**
+ * @summary Update an authorized school-scoped template
+ */
+export const useUpdateCommunicationTemplate = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCommunicationTemplate>>, TError,UpdateCommunicationTemplateMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCommunicationTemplate>>,
+        TError,
+        UpdateCommunicationTemplateMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateCommunicationTemplateMutationOptions(options));
+    }
+
+export const getPreviewCommunicationAnnouncementUrl = () => {
+
+
+
+
+  return `/api/communication/announcements/preview`
+}
+
+/**
+ * School Admins can target only authorized recipients in their school. Platform Owner status alone does not allow school announcements.
+ * @summary Count validated recipients before a school announcement is sent
+ */
+export const previewCommunicationAnnouncement = async (communicationAnnouncementPreviewInput: CommunicationAnnouncementPreviewInput, options?: Parameters<typeof customFetch>[1]): Promise<CommunicationAnnouncementPreview> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CommunicationAnnouncementPreview>(getPreviewCommunicationAnnouncementUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(communicationAnnouncementPreviewInput)
+  }
+);}
+
+
+
+
+
+export const getPreviewCommunicationAnnouncementMutationKey = () => ['previewCommunicationAnnouncement'] as const;
+
+export const getPreviewCommunicationAnnouncementMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewCommunicationAnnouncement>>, TError,PreviewCommunicationAnnouncementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewCommunicationAnnouncement>>, TError,PreviewCommunicationAnnouncementMutationVariables, TContext> => {
+
+const mutationKey = getPreviewCommunicationAnnouncementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewCommunicationAnnouncement>>, PreviewCommunicationAnnouncementMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewCommunicationAnnouncement(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewCommunicationAnnouncementMutationResult = NonNullable<Awaited<ReturnType<typeof previewCommunicationAnnouncement>>>
+    export type PreviewCommunicationAnnouncementMutationBody = BodyType<CommunicationAnnouncementPreviewInput>
+    export type PreviewCommunicationAnnouncementMutationError = ErrorType<unknown>
+    export type PreviewCommunicationAnnouncementMutationVariables = {data: BodyType<CommunicationAnnouncementPreviewInput>}
+
+    /**
+ * @summary Count validated recipients before a school announcement is sent
+ */
+export const usePreviewCommunicationAnnouncement = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewCommunicationAnnouncement>>, TError,PreviewCommunicationAnnouncementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewCommunicationAnnouncement>>,
+        TError,
+        PreviewCommunicationAnnouncementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPreviewCommunicationAnnouncementMutationOptions(options));
+    }
+
+export const getListCommunicationAnnouncementsUrl = (params: ListCommunicationAnnouncementsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/communication/announcements?${stringifiedParams}` : `/api/communication/announcements`
+}
+
+/**
+ * School Admins may view school campaigns; Accountants may view finance-related communications in their authorized school.
+ * @summary List school communication history
+ */
+export const listCommunicationAnnouncements = async (params: ListCommunicationAnnouncementsParams, options?: Parameters<typeof customFetch>[1]): Promise<CommunicationAnnouncementHistory> => {
+
+  return customFetch<CommunicationAnnouncementHistory>(getListCommunicationAnnouncementsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCommunicationAnnouncementsQueryKey = (params?: ListCommunicationAnnouncementsParams,) => {
+    return [
+    `/api/communication/announcements`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCommunicationAnnouncementsQueryOptions = <TData = Awaited<ReturnType<typeof listCommunicationAnnouncements>>, TError = ErrorType<unknown>>(params: ListCommunicationAnnouncementsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCommunicationAnnouncements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCommunicationAnnouncementsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCommunicationAnnouncements>>> = ({ signal }) => listCommunicationAnnouncements(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCommunicationAnnouncements>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCommunicationAnnouncementsQueryResult = NonNullable<Awaited<ReturnType<typeof listCommunicationAnnouncements>>>
+export type ListCommunicationAnnouncementsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List school communication history
+ */
+
+export function useListCommunicationAnnouncements<TData = Awaited<ReturnType<typeof listCommunicationAnnouncements>>, TError = ErrorType<unknown>>(
+ params: ListCommunicationAnnouncementsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCommunicationAnnouncements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCommunicationAnnouncementsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCommunicationAnnouncementUrl = () => {
+
+
+
+
+  return `/api/communication/announcements`
+}
+
+/**
+ * School Admins may send school-wide announcements within their own school. Teachers may communicate only with recipients in their authorized classes or sections. Accountants may send finance-related communications only within their authorized school. Platform Owners may never send ordinary school announcements, including when they also hold a school role. Recipient identities are derived and revalidated by the server; caller-supplied target criteria never bypass school, class, or parent-child authorization.
+ * @summary Send an idempotent school announcement to server-resolved recipients
+ */
+export const createCommunicationAnnouncement = async (communicationAnnouncementInput: CommunicationAnnouncementInput, options?: Parameters<typeof customFetch>[1]): Promise<CommunicationAnnouncement> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CommunicationAnnouncement>(getCreateCommunicationAnnouncementUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(communicationAnnouncementInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCommunicationAnnouncementMutationKey = () => ['createCommunicationAnnouncement'] as const;
+
+export const getCreateCommunicationAnnouncementMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCommunicationAnnouncement>>, TError,CreateCommunicationAnnouncementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCommunicationAnnouncement>>, TError,CreateCommunicationAnnouncementMutationVariables, TContext> => {
+
+const mutationKey = getCreateCommunicationAnnouncementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCommunicationAnnouncement>>, CreateCommunicationAnnouncementMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCommunicationAnnouncement(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCommunicationAnnouncementMutationResult = NonNullable<Awaited<ReturnType<typeof createCommunicationAnnouncement>>>
+    export type CreateCommunicationAnnouncementMutationBody = BodyType<CommunicationAnnouncementInput>
+    export type CreateCommunicationAnnouncementMutationError = ErrorType<ApiError>
+    export type CreateCommunicationAnnouncementMutationVariables = {data: BodyType<CommunicationAnnouncementInput>}
+
+    /**
+ * @summary Send an idempotent school announcement to server-resolved recipients
+ */
+export const useCreateCommunicationAnnouncement = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCommunicationAnnouncement>>, TError,CreateCommunicationAnnouncementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCommunicationAnnouncement>>,
+        TError,
+        CreateCommunicationAnnouncementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateCommunicationAnnouncementMutationOptions(options));
+    }
+
+export const getGetCommunicationAnnouncementUrl = (campaignId: number,) => {
+
+
+
+
+  return `/api/communication/announcements/${campaignId}`
+}
+
+/**
+ * @summary Get an authorized campaign and per-recipient channel delivery statuses
+ */
+export const getCommunicationAnnouncement = async (campaignId: number, options?: Parameters<typeof customFetch>[1]): Promise<CommunicationAnnouncementDetail> => {
+
+  return customFetch<CommunicationAnnouncementDetail>(getGetCommunicationAnnouncementUrl(campaignId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCommunicationAnnouncementQueryKey = (campaignId: number,) => {
+    return [
+    `/api/communication/announcements/${campaignId}`
+    ] as const;
+    }
+
+
+export const getGetCommunicationAnnouncementQueryOptions = <TData = Awaited<ReturnType<typeof getCommunicationAnnouncement>>, TError = ErrorType<NotFoundResponse>>(campaignId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCommunicationAnnouncement>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCommunicationAnnouncementQueryKey(campaignId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCommunicationAnnouncement>>> = ({ signal }) => getCommunicationAnnouncement(campaignId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: campaignId !== null && campaignId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCommunicationAnnouncement>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCommunicationAnnouncementQueryResult = NonNullable<Awaited<ReturnType<typeof getCommunicationAnnouncement>>>
+export type GetCommunicationAnnouncementQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Get an authorized campaign and per-recipient channel delivery statuses
+ */
+
+export function useGetCommunicationAnnouncement<TData = Awaited<ReturnType<typeof getCommunicationAnnouncement>>, TError = ErrorType<NotFoundResponse>>(
+ campaignId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCommunicationAnnouncement>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCommunicationAnnouncementQueryOptions(campaignId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRetryCommunicationDeliveryUrl = (deliveryId: number,) => {
+
+
+
+
+  return `/api/communication/deliveries/${deliveryId}/retry`
+}
+
+/**
+ * Requires authorized school communication management. Permanent failures and exhausted retries cannot be retried. Credentials, addresses, and provider payloads are never returned.
+ * @summary Retry an eligible failed school communication delivery
+ */
+export const retryCommunicationDelivery = async (deliveryId: number, options?: Parameters<typeof customFetch>[1]): Promise<CommunicationDelivery> => {
+
+  return customFetch<CommunicationDelivery>(getRetryCommunicationDeliveryUrl(deliveryId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRetryCommunicationDeliveryMutationKey = () => ['retryCommunicationDelivery'] as const;
+
+export const getRetryCommunicationDeliveryMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryCommunicationDelivery>>, TError,RetryCommunicationDeliveryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof retryCommunicationDelivery>>, TError,RetryCommunicationDeliveryMutationVariables, TContext> => {
+
+const mutationKey = getRetryCommunicationDeliveryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retryCommunicationDelivery>>, RetryCommunicationDeliveryMutationVariables> = (props) => {
+          const {deliveryId} = props ?? {};
+
+          return  retryCommunicationDelivery(deliveryId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RetryCommunicationDeliveryMutationResult = NonNullable<Awaited<ReturnType<typeof retryCommunicationDelivery>>>
+
+    export type RetryCommunicationDeliveryMutationError = ErrorType<NotFoundResponse>
+    export type RetryCommunicationDeliveryMutationVariables = {deliveryId: number}
+
+    /**
+ * @summary Retry an eligible failed school communication delivery
+ */
+export const useRetryCommunicationDelivery = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryCommunicationDelivery>>, TError,RetryCommunicationDeliveryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof retryCommunicationDelivery>>,
+        TError,
+        RetryCommunicationDeliveryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRetryCommunicationDeliveryMutationOptions(options));
+    }
+
+export const getListCommunicationPushDevicesUrl = (params?: ListCommunicationPushDevicesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/communication/push-devices?${stringifiedParams}` : `/api/communication/push-devices`
+}
+
+/**
+ * @summary List the authenticated user's registered push-device references
+ */
+export const listCommunicationPushDevices = async (params?: ListCommunicationPushDevicesParams, options?: Parameters<typeof customFetch>[1]): Promise<CommunicationPushDevice[]> => {
+
+  return customFetch<CommunicationPushDevice[]>(getListCommunicationPushDevicesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCommunicationPushDevicesQueryKey = (params?: ListCommunicationPushDevicesParams,) => {
+    return [
+    `/api/communication/push-devices`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCommunicationPushDevicesQueryOptions = <TData = Awaited<ReturnType<typeof listCommunicationPushDevices>>, TError = ErrorType<unknown>>(params?: ListCommunicationPushDevicesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCommunicationPushDevices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCommunicationPushDevicesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCommunicationPushDevices>>> = ({ signal }) => listCommunicationPushDevices(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCommunicationPushDevices>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCommunicationPushDevicesQueryResult = NonNullable<Awaited<ReturnType<typeof listCommunicationPushDevices>>>
+export type ListCommunicationPushDevicesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List the authenticated user's registered push-device references
+ */
+
+export function useListCommunicationPushDevices<TData = Awaited<ReturnType<typeof listCommunicationPushDevices>>, TError = ErrorType<unknown>>(
+ params?: ListCommunicationPushDevicesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCommunicationPushDevices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCommunicationPushDevicesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRegisterCommunicationPushDeviceUrl = () => {
+
+
+
+
+  return `/api/communication/push-devices`
+}
+
+/**
+ * Push delivery is future-ready only. This endpoint stores a caller-owned opaque reference; it does not accept raw subscription secrets or device personal information.
+ * @summary Register an opaque push-device reference for the authenticated user
+ */
+export const registerCommunicationPushDevice = async (communicationPushDeviceInput: CommunicationPushDeviceInput, options?: Parameters<typeof customFetch>[1]): Promise<CommunicationPushDevice> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CommunicationPushDevice>(getRegisterCommunicationPushDeviceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(communicationPushDeviceInput)
+  }
+);}
+
+
+
+
+
+export const getRegisterCommunicationPushDeviceMutationKey = () => ['registerCommunicationPushDevice'] as const;
+
+export const getRegisterCommunicationPushDeviceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerCommunicationPushDevice>>, TError,RegisterCommunicationPushDeviceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof registerCommunicationPushDevice>>, TError,RegisterCommunicationPushDeviceMutationVariables, TContext> => {
+
+const mutationKey = getRegisterCommunicationPushDeviceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registerCommunicationPushDevice>>, RegisterCommunicationPushDeviceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  registerCommunicationPushDevice(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegisterCommunicationPushDeviceMutationResult = NonNullable<Awaited<ReturnType<typeof registerCommunicationPushDevice>>>
+    export type RegisterCommunicationPushDeviceMutationBody = BodyType<CommunicationPushDeviceInput>
+    export type RegisterCommunicationPushDeviceMutationError = ErrorType<unknown>
+    export type RegisterCommunicationPushDeviceMutationVariables = {data: BodyType<CommunicationPushDeviceInput>}
+
+    /**
+ * @summary Register an opaque push-device reference for the authenticated user
+ */
+export const useRegisterCommunicationPushDevice = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerCommunicationPushDevice>>, TError,RegisterCommunicationPushDeviceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof registerCommunicationPushDevice>>,
+        TError,
+        RegisterCommunicationPushDeviceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRegisterCommunicationPushDeviceMutationOptions(options));
+    }
+
+export const getRevokeCommunicationPushDeviceUrl = (deviceId: number,) => {
+
+
+
+
+  return `/api/communication/push-devices/${deviceId}`
+}
+
+/**
+ * @summary Revoke a push-device reference owned by the authenticated user
+ */
+export const revokeCommunicationPushDevice = async (deviceId: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getRevokeCommunicationPushDeviceUrl(deviceId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRevokeCommunicationPushDeviceMutationKey = () => ['revokeCommunicationPushDevice'] as const;
+
+export const getRevokeCommunicationPushDeviceMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeCommunicationPushDevice>>, TError,RevokeCommunicationPushDeviceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokeCommunicationPushDevice>>, TError,RevokeCommunicationPushDeviceMutationVariables, TContext> => {
+
+const mutationKey = getRevokeCommunicationPushDeviceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeCommunicationPushDevice>>, RevokeCommunicationPushDeviceMutationVariables> = (props) => {
+          const {deviceId} = props ?? {};
+
+          return  revokeCommunicationPushDevice(deviceId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokeCommunicationPushDeviceMutationResult = NonNullable<Awaited<ReturnType<typeof revokeCommunicationPushDevice>>>
+
+    export type RevokeCommunicationPushDeviceMutationError = ErrorType<NotFoundResponse>
+    export type RevokeCommunicationPushDeviceMutationVariables = {deviceId: number}
+
+    /**
+ * @summary Revoke a push-device reference owned by the authenticated user
+ */
+export const useRevokeCommunicationPushDevice = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeCommunicationPushDevice>>, TError,RevokeCommunicationPushDeviceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revokeCommunicationPushDevice>>,
+        TError,
+        RevokeCommunicationPushDeviceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRevokeCommunicationPushDeviceMutationOptions(options));
+    }
 

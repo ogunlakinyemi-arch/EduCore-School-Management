@@ -6,6 +6,11 @@ import {
   getUserContext,
   requireAuthentication,
 } from "../middlewares/auth";
+import {
+  queueCommunicationNotification,
+  type CommunicationQueryClient,
+} from "../services/communication-service";
+import { logger } from "../lib/logger";
 
 const router = Router();
 router.use(requireAuthentication());
@@ -72,6 +77,68 @@ function auditSql(actor: ReturnType<typeof getUserContext>, schoolId: number, ac
 async function audit(req: Request, schoolId: number, action: string, recordId: number, client: any = pool) {
   const query = auditSql(getUserContext(req), schoolId, action, recordId);
   await client.query(query.sql, query.values);
+}
+async function notifyStudentAcademicRecord(
+  client: CommunicationQueryClient,
+  schoolId: number,
+  studentId: number,
+  classId: number,
+  input: { category: "ACADEMIC"; eventKey: string; subject: string; body: string },
+) {
+  const recipients = await client.query<{ userId: number | string; link: string }>(
+    `SELECT linked.user_id AS "userId",
+            CASE WHEN bool_or(linked.is_student) THEN '/my-academics' ELSE '/' END AS link
+       FROM (
+         SELECT st.user_id, TRUE AS is_student
+           FROM students st
+          WHERE st.id=$1 AND st.school_id=$2 AND UPPER(st.status)='ACTIVE'
+         UNION ALL
+         SELECT p.user_id, FALSE AS is_student
+           FROM parents p
+           JOIN parent_student_relationships psr
+             ON psr.parent_id=p.id AND UPPER(psr.status)='ACTIVE'
+           JOIN students st ON st.id=psr.student_id AND st.school_id=p.school_id
+          WHERE st.id=$1 AND p.school_id=$2 AND UPPER(p.status)='ACTIVE'
+       ) linked
+      WHERE linked.user_id IS NOT NULL
+      GROUP BY linked.user_id
+      ORDER BY linked.user_id`,
+    [studentId, schoolId],
+  );
+  for (const recipient of recipients.rows) {
+    await queueCommunicationNotification(client, {
+      recipientUserId: Number(recipient.userId),
+      schoolId,
+      subjectStudentId: studentId,
+      subjectClassId: classId,
+      category: input.category,
+      eventKey: input.eventKey,
+      subject: input.subject,
+      body: input.body,
+      link: recipient.link,
+      channels: ["IN_APP"],
+    });
+  }
+}
+async function notifyStudentAcademicRecordSafely(
+  req: Request,
+  schoolId: number,
+  studentId: number,
+  classId: number,
+  input: { category: "ACADEMIC"; eventKey: string; subject: string; body: string },
+) {
+  try {
+    await notifyStudentAcademicRecord(pool, schoolId, studentId, classId, input);
+  } catch (error) {
+    const fields = {
+      schoolId,
+      studentId,
+      eventKey: input.eventKey,
+      error: error instanceof Error ? error.message : "Unknown communication queue failure",
+    };
+    if (req.log) req.log.warn(fields, "Could not queue academic communication");
+    else logger.warn(fields, "Could not queue academic communication");
+  }
 }
 function bodyObject(body: unknown): Record<string, unknown> {
   if (!body || typeof body !== "object" || Array.isArray(body)) throw new AuthError(400, "A JSON object body is required");
@@ -408,6 +475,18 @@ router.post("/academic/assessments/:assessmentId/publish-results", run(async (re
     await client.query("COMMIT");
   } catch (error) { await client.query("ROLLBACK"); throw error; }
   finally { client.release(); }
+  const notifiedStudents = new Set<number>();
+  for (const publishedResult of result!.rows) {
+    const studentId = Number(publishedResult.studentId);
+    if (!Number.isSafeInteger(studentId) || studentId < 1 || notifiedStudents.has(studentId)) continue;
+    notifiedStudents.add(studentId);
+    await notifyStudentAcademicRecordSafely(req, schoolId, studentId, Number(publishedResult.classId), {
+      category: "ACADEMIC",
+      eventKey: `assessment-results-published:${assessmentId}:${studentId}`,
+      subject: "Academic results available",
+      body: "New academic results are available in your Yemait EduCore account.",
+    });
+  }
   res.json({ assessmentId, publishedCount: result!.rows.length, results: result!.rows });
 }));
 
@@ -613,6 +692,18 @@ router.post("/academic/report-cards/:id/publish", run(async (req, res) => {
     await client.query("COMMIT");
   } catch (error) { await client.query("ROLLBACK"); throw error; }
   finally { client.release(); }
+  await notifyStudentAcademicRecordSafely(
+    req,
+    schoolId,
+    Number(card!.rows[0].studentId),
+    Number(card!.rows[0].classId),
+    {
+    category: "ACADEMIC",
+    eventKey: `report-card-published:${cardId}`,
+    subject: "Report card available",
+    body: "A report card is now available in your Yemait EduCore account.",
+    },
+  );
   const lines = await pool.query(`SELECT id,subject_id AS "subjectId",subject_name_snapshot AS "subjectName",
     assessment_name_snapshot AS "assessmentName",score,max_score AS "maxScore",grade,grade_point AS "gradePoint",remark
     FROM academic_report_card_lines WHERE school_id=$1 AND report_card_id=$2 ORDER BY id`, [schoolId,cardId]);
