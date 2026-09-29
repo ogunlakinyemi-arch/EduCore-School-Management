@@ -5,6 +5,15 @@ const state = vi.hoisted(() => ({
   calls: [] as Array<{ sql: string; values: unknown[] }>,
   conflict: "" as "" | "teacher" | "class" | "room",
   valid: true,
+  studentRoleSchools: [1] as number[],
+  studentProfiles: [{ studentId: 10, schoolId: 1, status: "ACTIVE" }] as Array<{
+    studentId: number; schoolId: number; status: string;
+  }>,
+  studentAssignments: [{
+    studentId: 10, schoolId: 1, sessionId: 2, termId: 3, classId: 4, section: "Blue",
+  }] as Array<{
+    studentId: number; schoolId: number; sessionId: number; termId: number; classId: number; section: string;
+  }>,
   entry: {
     id: 71, schoolId: 1, sessionId: 2, termId: 3, classId: 4, section: "Blue",
     subjectId: 5, teacherId: 6, day: "MONDAY", startTime: "09:00:00", endTime: "10:00:00",
@@ -32,8 +41,17 @@ const db = vi.hoisted(() => {
     if (sql.includes("INSERT INTO audit_logs")) return result();
     if (sql.includes("FROM employees WHERE user_id")) return result([{ id: 6 }]);
     if (sql.includes("FROM academic_timetable_entries te")) return result([{ ...state.entry }]);
-    if (sql.includes("FROM students st")) {
-      return result([{ studentId: 10, schoolId: 1, sessionId: 2, termId: 3, classId: 4, section: "Blue" }]);
+    if (sql.includes("FROM students st") && sql.includes("UPPER(st.status)='ACTIVE'")) {
+      return result(state.studentProfiles.filter((profile) =>
+        profile.status === "ACTIVE" &&
+        (values[1] as number[]).includes(profile.schoolId) &&
+        (values[2] === null || values[2] === profile.schoolId),
+      ).map(({ studentId, schoolId }) => ({ studentId, schoolId })));
+    }
+    if (sql.includes("FROM student_class_assignments a")) {
+      return result(state.studentAssignments
+        .filter((assignment) => assignment.studentId === values[0] && assignment.schoolId === values[1])
+        .map(({ sessionId, termId, classId, section }) => ({ sessionId, termId, classId, section })));
     }
     if (sql.includes("FROM parents p")) {
       return Number(values[1]) === 10
@@ -86,7 +104,9 @@ vi.mock("../middlewares/auth", () => {
           id: Number(req.header("x-test-user-id") ?? 20), clerkUserId: "clerk-test",
           email: "user@example.test", firstName: "Test", lastName: "User",
         },
-        roles: [{ role, schoolId: role === "PLATFORM_OWNER" ? null : Number(req.header("x-test-school") ?? 1), status: "ACTIVE" }],
+        roles: role === "STUDENT"
+          ? state.studentRoleSchools.map((schoolId) => ({ role, schoolId, status: "ACTIVE" }))
+          : [{ role, schoolId: role === "PLATFORM_OWNER" ? null : Number(req.header("x-test-school") ?? 1), status: "ACTIVE" }],
       };
       next();
     },
@@ -118,6 +138,11 @@ beforeEach(() => {
   state.calls.length = 0;
   state.conflict = "";
   state.valid = true;
+  state.studentRoleSchools = [1];
+  state.studentProfiles = [{ studentId: 10, schoolId: 1, status: "ACTIVE" }];
+  state.studentAssignments = [{
+    studentId: 10, schoolId: 1, sessionId: 2, termId: 3, classId: 4, section: "Blue",
+  }];
   db.query.mockClear();
   db.client.query.mockClear();
   db.connect.mockClear();
@@ -221,6 +246,12 @@ describe("academic timetable API", () => {
   it("limits student and linked-parent reads to the child's current class and section", async () => {
     const studentResponse = await request("/academic/students/me/timetable", "STUDENT", {}, 1);
     expect(studentResponse.status).toBe(200);
+    const profileLookup = state.calls.find(({ sql }) => sql.includes("FROM students st") && sql.includes("UPPER(st.status)"));
+    expect(profileLookup?.sql).toContain("st.school_id=ANY($2::int[])");
+    expect(profileLookup?.values).toEqual([20, [1], null]);
+    const assignmentLookup = state.calls.find(({ sql }) => sql.includes("FROM student_class_assignments a"));
+    expect(assignmentLookup?.sql).toContain("st.school_id=$2");
+    expect(assignmentLookup?.values).toEqual([10, 1]);
     const studentListing = state.calls.find(({ sql }) => sql.includes("FROM academic_timetable_entries te"));
     expect(studentListing?.sql).toContain("te.school_class_id=$3");
     expect(studentListing?.sql).toContain("te.academic_term_id=$5");
@@ -233,6 +264,36 @@ describe("academic timetable API", () => {
 
     state.calls.length = 0;
     expect((await request("/academic/parents/children/11/timetable", "PARENT")).status).toBe(404);
+    expect(state.calls.some(({ sql }) => sql.includes("FROM academic_timetable_entries te"))).toBe(false);
+  });
+
+  it("requires an active self profile and its school-scoped student identity", async () => {
+    state.studentProfiles = [{ studentId: 10, schoolId: 1, status: "INACTIVE" }];
+    const inactive = await request("/academic/students/me/timetable", "STUDENT");
+    expect(inactive.status).toBe(404);
+    expect(state.calls.some(({ sql }) => sql.includes("FROM academic_timetable_entries te"))).toBe(false);
+
+    state.calls.length = 0;
+    state.studentProfiles = [{ studentId: 10, schoolId: 2, status: "ACTIVE" }];
+    const crossSchool = await request("/academic/students/me/timetable", "STUDENT");
+    expect(crossSchool.status).toBe(404);
+    expect(state.calls.some(({ sql }) => sql.includes("FROM academic_timetable_entries te"))).toBe(false);
+
+    state.calls.length = 0;
+    const wrongRequestedSchool = await request("/academic/students/me/timetable?schoolId=2", "STUDENT");
+    expect(wrongRequestedSchool.status).toBe(404);
+    expect(state.calls).toHaveLength(0);
+  });
+
+  it("rejects duplicate active profiles instead of choosing an arbitrary school", async () => {
+    state.studentRoleSchools = [1, 2];
+    state.studentProfiles = [
+      { studentId: 10, schoolId: 1, status: "ACTIVE" },
+      { studentId: 20, schoolId: 2, status: "ACTIVE" },
+    ];
+    const response = await request("/academic/students/me/timetable", "STUDENT");
+    expect(response.status).toBe(409);
+    expect(state.calls.some(({ sql }) => sql.includes("FROM student_class_assignments a"))).toBe(false);
     expect(state.calls.some(({ sql }) => sql.includes("FROM academic_timetable_entries te"))).toBe(false);
   });
 

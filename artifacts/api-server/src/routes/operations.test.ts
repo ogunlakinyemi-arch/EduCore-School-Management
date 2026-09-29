@@ -356,6 +356,72 @@ describe("school operations authorization and audit", () => {
     expect(insert?.values[8]).toBe("HIGH");
   });
 
+  it("rejects maintenance creation with an asset from another school in the transaction", async () => {
+    state.assetExists = false;
+    const response = await call("/operations/maintenance-requests?schoolId=1", "POST", {
+      assetId: 91,
+      title: "Repair projector",
+      description: "The projector is not powering on.",
+    });
+    expect(response.status).toBe(404);
+    const validation = state.queries.find(({ sql }) => sql.includes("SELECT 1 FROM school_assets"));
+    expect(validation).toMatchObject({
+      values: [91, 1],
+      transactional: true,
+    });
+    expect(state.queries.some(({ sql }) => sql.includes("INSERT INTO maintenance_requests"))).toBe(false);
+    expect(state.queries.some(({ sql }) => sql === "ROLLBACK")).toBe(true);
+  });
+
+  it("creates maintenance requests linked to an asset in the same school", async () => {
+    const response = await call("/operations/maintenance-requests?schoolId=1", "POST", {
+      assetId: 41,
+      title: "Repair projector",
+      description: "The projector is not powering on.",
+    });
+    expect(response.status).toBe(201);
+    const validationIndex = state.queries.findIndex(({ sql }) => sql.includes("SELECT 1 FROM school_assets"));
+    const insertIndex = state.queries.findIndex(({ sql }) => sql.includes("INSERT INTO maintenance_requests"));
+    const validation = state.queries[validationIndex];
+    const insert = state.queries[insertIndex];
+    expect(validation?.values).toEqual([41, 1]);
+    expect(validation?.transactional).toBe(true);
+    expect(validationIndex).toBeLessThan(insertIndex);
+    expect(insert?.values[2]).toBe(41);
+    expect(insert?.transactional).toBe(true);
+  });
+
+  it("rejects updating a maintenance request to an asset from another school", async () => {
+    state.assetExists = false;
+    const response = await call("/operations/maintenance-requests/53?schoolId=1", "PATCH", {
+      assetId: 91,
+    });
+    expect(response.status).toBe(404);
+    const validation = state.queries.find(({ sql }) => sql.includes("SELECT 1 FROM school_assets"));
+    expect(validation).toMatchObject({
+      values: [91, 1],
+      transactional: true,
+    });
+    expect(state.queries.some(({ sql }) => sql.includes("UPDATE maintenance_requests"))).toBe(false);
+    expect(state.queries.some(({ sql }) => sql === "ROLLBACK")).toBe(true);
+  });
+
+  it("updates maintenance requests to an asset in the same school", async () => {
+    const response = await call("/operations/maintenance-requests/53?schoolId=1", "PATCH", {
+      assetId: 41,
+    });
+    expect(response.status).toBe(200);
+    const validationIndex = state.queries.findIndex(({ sql }) => sql.includes("SELECT 1 FROM school_assets"));
+    const updateIndex = state.queries.findIndex(({ sql }) => sql.includes("UPDATE maintenance_requests"));
+    const validation = state.queries[validationIndex];
+    const update = state.queries[updateIndex];
+    expect(validation?.values).toEqual([41, 1]);
+    expect(validation?.transactional).toBe(true);
+    expect(validationIndex).toBeLessThan(updateIndex);
+    expect(update?.values[0]).toBe(41);
+    expect(update?.transactional).toBe(true);
+  });
+
   it("honors the school's disabled staff maintenance-reporting setting", async () => {
     state.role = "STAFF";
     state.settingStaffReport = false;

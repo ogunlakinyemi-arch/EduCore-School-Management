@@ -3,7 +3,7 @@ import { Router, type IRouter, type NextFunction, type Request } from "express";
 import { pool } from "@workspace/db";
 import {
   AuthError,
-  assertSchoolAccess,
+  assertSchoolOperationalAccess,
   getUserContext,
   handleAuthError,
   requireAuthentication,
@@ -67,7 +67,7 @@ function authorizedSchoolId(req: Request): { schoolId: number; userId: number } 
     schoolId = Number(raw);
   }
   if (!adminSchoolIds.includes(schoolId)) throw new AuthError(404, "Resource not found", "CROSS_TENANT_ACCESS_ATTEMPT");
-  assertSchoolAccess(req, schoolId, ["SCHOOL_ADMIN"]);
+  assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN"]);
   return { schoolId, userId: context.user.id };
 }
 

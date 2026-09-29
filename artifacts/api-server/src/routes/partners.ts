@@ -19,6 +19,52 @@ const idOf = (value: unknown, label = "Resource") => {
   if (!Number.isInteger(id) || id < 1) throw new AuthError(404, `${label} not found`);
   return id;
 };
+const minorUnitsOf = (value: unknown) => {
+  const decimal = typeof value === "number" && Number.isFinite(value)
+    ? String(value)
+    : typeof value === "string" ? value.trim() : "";
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(decimal);
+  if (!match) return null;
+  return BigInt(match[1]) * 100n + BigInt((match[2] ?? "").padEnd(2, "0") || "0");
+};
+const decimalOfMinorUnits = (value: bigint) =>
+  `${value / 100n}.${String(value % 100n).padStart(2, "0")}`;
+const maxPayoutSubsetEntries = 256;
+const maxPayoutSubsetSearchSteps = 100_000;
+function oldestExactPayoutSubset(
+  entries: Array<{ id: number; amount: bigint }>,
+  target: bigint,
+) {
+  const candidates = entries.filter((entry) => entry.amount <= target);
+  if (candidates.length > maxPayoutSubsetEntries) {
+    throw new AuthError(409, "Too many payable entries for safe payout selection; reduce the payable set and retry");
+  }
+  const suffixTotals = Array<bigint>(candidates.length + 1).fill(0n);
+  for (let index = candidates.length - 1; index >= 0; index--) {
+    suffixTotals[index] = suffixTotals[index + 1] + candidates[index].amount;
+  }
+  const selected: number[] = [];
+  let result: number[] | null = null;
+  let searchSteps = 0;
+  const search = (index: number, sum: bigint): boolean => {
+    if (++searchSteps > maxPayoutSubsetSearchSteps) {
+      throw new AuthError(409, "Payout selection exceeded the safe search limit; narrow the payable set and retry");
+    }
+    if (sum === target) {
+      result = [...selected];
+      return true;
+    }
+    if (sum > target || index === candidates.length || sum + suffixTotals[index] < target) return false;
+
+    // Include earlier payable entries first, but backtrack and skip entries when needed.
+    selected.push(candidates[index].id);
+    if (search(index + 1, sum + candidates[index].amount)) return true;
+    selected.pop();
+    return search(index + 1, sum);
+  };
+  search(0, 0n);
+  return result;
+}
 const run = (fn: (req: Request, res: any) => Promise<void>) =>
   (req: Request, res: any, next: NextFunction) => fn(req, res).catch(next);
 const currentPayoutKeyVersion = () =>
@@ -402,8 +448,59 @@ router.post("/platform/partner-commission-rules", run(async(req,res)=>{assertRol
 router.patch("/platform/partner-commission-rules/:ruleId", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const id=idOf(req.params.ruleId,"Rule"),b=req.body??{};const current=await pool.query(`SELECT partner_rate::float AS rate FROM commission_rules WHERE id=$1`,[id]);if(!current.rows[0])throw new AuthError(404,"Rule not found");if(b.rate!==undefined&&Number(b.rate)!==Number(current.rows[0].rate))throw new AuthError(409,"Financial rule amounts are immutable; create a new effective-dated rule");const r=await pool.query(`UPDATE commission_rules SET status=COALESCE($1,status),ends_at=COALESCE($2,ends_at) WHERE id=$3 RETURNING id,status,currency,calculation_basis AS "calculationBasis",effective_at AS "effectiveDate",ends_at AS "endDate",partner_rate::float AS rate,created_at AS "createdAt"`,[b.status,b.endDate,id]);await audit(req,"Updated commission rule","Commission Rules",id);res.json(r.rows[0])}));
 router.patch("/platform/partner-commissions/:commissionId/status", run(async(req,res)=>{const c=assertRoles(req,["PLATFORM_OWNER"]),id=idOf(req.params.commissionId,"Commission"),nextStatus=String(req.body?.status??"");const allowed:Record<string,string[]>={PENDING:["APPROVED","HELD","CANCELLED"],APPROVED:["PAYABLE","HELD","CANCELLED"],PAYABLE:["HELD","CANCELLED"],HELD:["APPROVED","CANCELLED"]};const client=await pool.connect();try{await client.query("BEGIN");const current=await client.query(`SELECT status,payout_id FROM commission_ledger WHERE id=$1 FOR UPDATE`,[id]);if(!current.rows[0])throw new AuthError(404,"Commission not found");if(current.rows[0].payout_id||!allowed[current.rows[0].status]?.includes(nextStatus))throw new AuthError(409,`Invalid commission transition from ${current.rows[0].status} to ${nextStatus}`);await client.query(`UPDATE commission_ledger SET status=$1,approved_at=CASE WHEN $1='APPROVED' THEN NOW() ELSE approved_at END,payable_at=CASE WHEN $1='PAYABLE' THEN NOW() ELSE payable_at END,held_at=CASE WHEN $1='HELD' THEN NOW() ELSE held_at END,cancelled_at=CASE WHEN $1='CANCELLED' THEN NOW() ELSE cancelled_at END,created_by=COALESCE(created_by,$2) WHERE id=$3`,[nextStatus,c.user.id,id]);const r=await client.query(`SELECT ${commissionFields} FROM commission_ledger l WHERE l.id=$1`,[id]);await audit(req,`Changed commission status to ${nextStatus}`,"Commissions",id,null,client);await client.query("COMMIT");res.json(r.rows[0])}catch(e){await client.query("ROLLBACK");throw e}finally{client.release()}}));
 router.get("/platform/partner-payouts", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const r=await pool.query(`SELECT id,partner_profile_id AS "partnerId",amount::float,currency,status,payment_reference AS "paymentReference",period_start AS "periodStart",period_end AS "periodEnd",created_at AS "createdAt",paid_at AS "paidAt" FROM partner_payouts ORDER BY created_at DESC`);res.json(r.rows)}));
-router.post("/platform/partner-payouts", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const b=req.body??{},pid=idOf(b.partnerId,"Partner"),amount=Number(b.amount),currency=String(b.currency??"NGN").toUpperCase();if(!Number.isFinite(amount)||amount<=0)throw new AuthError(400,"A positive amount is required");if(!/^[A-Z]{3}$/.test(currency))throw new AuthError(400,"A valid three-letter currency is required");const client=await pool.connect();try{await client.query("BEGIN");const payable=await client.query(`SELECT id,amount::float AS amount FROM commission_ledger WHERE partner_profile_id=$1 AND currency=$2 AND status='PAYABLE' AND payout_id IS NULL ORDER BY payable_at,id FOR UPDATE`,[pid,currency]);const total=payable.rows.reduce((sum,row)=>sum+Number(row.amount),0);if(amount>total+0.001)throw new AuthError(409,"Payout exceeds payable commission");const selected:number[]=[];let selectedTotal=0;for(const row of payable.rows){if(selectedTotal+Number(row.amount)>amount+0.001)break;selected.push(row.id);selectedTotal+=Number(row.amount);if(Math.abs(selectedTotal-amount)<0.001)break;}if(Math.abs(selectedTotal-amount)>0.001)throw new AuthError(409,"Payout amount must exactly match whole payable commission entries");const p=await client.query(`INSERT INTO partner_payouts(partner_profile_id,amount,currency,status,period_start,period_end,method,notes) VALUES($1,$2,$3,'PENDING',$4,$5,$6,$7) RETURNING id,partner_profile_id AS "partnerId",amount::float,currency,status,period_start AS "periodStart",period_end AS "periodEnd",created_at AS "createdAt"`,[pid,amount,currency,b.periodStart??new Date(0),b.periodEnd??new Date(),b.method??null,b.notes??null]);await client.query(`UPDATE commission_ledger SET payout_id=$1 WHERE id=ANY($2::int[])`,[p.rows[0].id,selected]);await audit(req,"Created partner payout","Payouts",p.rows[0].id,null,client);await client.query("COMMIT");res.status(201).json(p.rows[0])}catch(e){await client.query("ROLLBACK");throw e}finally{client.release()}}));
-router.patch("/platform/partner-payouts/:payoutId", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const id=idOf(req.params.payoutId,"Payout"),status=req.body?.status,reference=typeof req.body?.paymentReference==="string"?req.body.paymentReference.trim():"";const transitions:Record<string,string[]>={PENDING:["PROCESSING","FAILED"],PROCESSING:["PAID","FAILED"],PAID:["REVERSED"]};const client=await pool.connect();try{await client.query("BEGIN");const current=await client.query(`SELECT id,status FROM partner_payouts WHERE id=$1 FOR UPDATE`,[id]);if(!current.rows[0])throw new AuthError(404,"Payout not found");if(!transitions[current.rows[0].status]?.includes(status))throw new AuthError(409,`Invalid payout transition from ${current.rows[0].status} to ${status}`);if(status==="PAID"&&!reference)throw new AuthError(400,"paymentReference is required when marking a payout paid");const p=await client.query(`UPDATE partner_payouts SET status=$1,payment_reference=CASE WHEN $2='' THEN payment_reference ELSE $2 END,paid_at=CASE WHEN $1='PAID' THEN NOW() ELSE paid_at END,reversed_at=CASE WHEN $1='REVERSED' THEN NOW() ELSE reversed_at END WHERE id=$3 RETURNING id,partner_profile_id AS "partnerId",amount::float,currency,status,payment_reference AS "paymentReference",period_start AS "periodStart",period_end AS "periodEnd",created_at AS "createdAt",paid_at AS "paidAt"`,[status,reference,id]);if(status==="PAID")await client.query(`UPDATE commission_ledger SET status='PAID',paid_at=NOW(),payment_reference=$1 WHERE payout_id=$2 AND status='PAYABLE'`,[reference,id]);if(status==="FAILED")await client.query(`UPDATE commission_ledger SET payout_id=NULL WHERE payout_id=$1 AND status='PAYABLE'`,[id]);if(status==="REVERSED")await client.query(`UPDATE commission_ledger SET payout_id=NULL,status='PAYABLE',reversed_at=NOW(),reversal_reference=$2 WHERE payout_id=$1 AND status='PAID'`,[id,reference||null]);await audit(req,`Updated partner payout to ${status}`,"Payouts",id,null,client);await client.query("COMMIT");res.json(p.rows[0])}catch(e){await client.query("ROLLBACK");throw e}finally{client.release()}}));
+router.post("/platform/partner-payouts", run(async (req, res) => {
+  assertRoles(req, ["PLATFORM_OWNER"]);
+  const body = req.body ?? {};
+  const partnerId = idOf(body.partnerId, "Partner");
+  const amount = minorUnitsOf(body.amount);
+  const currency = String(body.currency ?? "NGN").toUpperCase();
+  if (amount === null || amount <= 0n) {
+    throw new AuthError(400, "A positive amount with no more than two decimal places is required");
+  }
+  if (!/^[A-Z]{3}$/.test(currency)) throw new AuthError(400, "A valid three-letter currency is required");
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const payable = await client.query(
+      `SELECT id,amount FROM commission_ledger
+       WHERE partner_profile_id=$1 AND currency=$2 AND status='PAYABLE' AND payout_id IS NULL
+       ORDER BY payable_at,id FOR UPDATE`,
+      [partnerId, currency],
+    );
+    const entries = payable.rows.map((row) => {
+      const entryAmount = minorUnitsOf(row.amount);
+      if (entryAmount === null) throw new Error("Invalid commission amount returned from database");
+      return { id: row.id, amount: entryAmount };
+    });
+    const total = entries.reduce((sum, entry) => sum + entry.amount, 0n);
+    if (amount > total) throw new AuthError(409, "Payout exceeds payable commission");
+    const selected = oldestExactPayoutSubset(entries, amount);
+    if (!selected) {
+      throw new AuthError(409, "Payout amount must exactly match a whole-entry payable commission subset");
+    }
+    const payout = await client.query(
+      `INSERT INTO partner_payouts
+       (partner_profile_id,amount,currency,status,period_start,period_end,method,notes)
+       VALUES($1,$2,$3,'PENDING',$4,$5,$6,$7)
+       RETURNING id,partner_profile_id AS "partnerId",amount::float,currency,status,
+         period_start AS "periodStart",period_end AS "periodEnd",created_at AS "createdAt"`,
+      [partnerId, decimalOfMinorUnits(amount), currency, body.periodStart ?? new Date(0),
+        body.periodEnd ?? new Date(), body.method ?? null, body.notes ?? null],
+    );
+    await client.query(`UPDATE commission_ledger SET payout_id=$1 WHERE id=ANY($2::int[])`,
+      [payout.rows[0].id, selected]);
+    await audit(req, "Created partner payout", "Payouts", payout.rows[0].id, null, client);
+    await client.query("COMMIT");
+    res.status(201).json(payout.rows[0]);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}));
+router.patch("/platform/partner-payouts/:payoutId", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const id=idOf(req.params.payoutId,"Payout"),status=req.body?.status,reference=typeof req.body?.paymentReference==="string"?req.body.paymentReference.trim():"";const transitions:Record<string,string[]>={PENDING:["PROCESSING","FAILED"],PROCESSING:["PAID","FAILED"],PAID:["REVERSED"]};const client=await pool.connect();try{await client.query("BEGIN");const current=await client.query(`SELECT id,status FROM partner_payouts WHERE id=$1 FOR UPDATE`,[id]);if(!current.rows[0])throw new AuthError(404,"Payout not found");if(!transitions[current.rows[0].status]?.includes(status))throw new AuthError(409,`Invalid payout transition from ${current.rows[0].status} to ${status}`);if(status==="PAID"&&!reference)throw new AuthError(400,"paymentReference is required when marking a payout paid");if(status==="REVERSED"&&(!reference||reference.length>200||/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(reference)))throw new AuthError(400,"A valid reversal paymentReference is required");const p=await client.query(`UPDATE partner_payouts SET status=$1,payment_reference=CASE WHEN $1='REVERSED' OR $2='' THEN payment_reference ELSE $2 END,paid_at=CASE WHEN $1='PAID' THEN NOW() ELSE paid_at END,reversed_at=CASE WHEN $1='REVERSED' THEN NOW() ELSE reversed_at END,reversal_reference=CASE WHEN $1='REVERSED' THEN $3 ELSE reversal_reference END WHERE id=$4 RETURNING id,partner_profile_id AS "partnerId",amount::float,currency,status,payment_reference AS "paymentReference",reversal_reference AS "reversalReference",period_start AS "periodStart",period_end AS "periodEnd",created_at AS "createdAt",paid_at AS "paidAt"`,[status,reference,status==="REVERSED"?reference:null,id]);if(status==="PAID")await client.query(`UPDATE commission_ledger SET status='PAID',paid_at=NOW(),payment_reference=$1 WHERE payout_id=$2 AND status='PAYABLE'`,[reference,id]);if(status==="FAILED")await client.query(`UPDATE commission_ledger SET payout_id=NULL WHERE payout_id=$1 AND status='PAYABLE'`,[id]);if(status==="REVERSED")await client.query(`UPDATE commission_ledger SET payout_id=NULL,status='PAYABLE',reversed_at=NOW(),reversal_reference=$2 WHERE payout_id=$1 AND status='PAID'`,[id,reference]);await audit(req,`Updated partner payout to ${status}`,"Payouts",id,status==="REVERSED"?{reversalReference:reference}:null,client);await client.query("COMMIT");res.json(p.rows[0])}catch(e){await client.query("ROLLBACK");throw e}finally{client.release()}}));
 
 router.post("/partner/invitations/:invitationToken/accept", run(async (req, res) => {
   const context = getUserContext(req);

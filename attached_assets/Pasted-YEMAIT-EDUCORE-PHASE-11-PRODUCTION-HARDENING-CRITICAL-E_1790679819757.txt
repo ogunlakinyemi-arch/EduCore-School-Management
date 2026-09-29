@@ -1,0 +1,1474 @@
+YEMAIT EDUCORE — PHASE 11: PRODUCTION HARDENING
+
+CRITICAL EXECUTION RULE
+
+This phase is a production-readiness hardening phase, NOT a production deployment.
+
+Work in DEVELOPMENT and disposable test environments only.
+
+ABSOLUTELY DO NOT:
+
+- Publish
+- Deploy
+- Modify the production database
+- Run SQL against production
+- Run migrations against production
+- Modify production users
+- Modify production authentication settings
+- Modify production secrets
+- Modify production environment variables
+- Change production payment configuration
+- Change production SMS/email/push configuration
+- Create production data
+- Delete production data
+- Trigger production webhooks
+- Send real production notifications
+- Make irreversible production changes
+
+Production must remain untouched throughout this phase.
+
+The purpose is to make the existing development codebase and deployment configuration ready for a later controlled production release.
+
+---
+
+1. OBJECTIVE
+
+Perform a comprehensive Production Hardening and Production Readiness pass over the entire Yemait EduCore system.
+
+Do not assume that because previous phases passed automated tests the application is automatically production-ready.
+
+Inspect the entire system:
+
+1. Platform Owner
+2. School Admin
+3. Teacher
+4. Accountant
+5. Parent
+6. Student
+7. Partner
+8. Authentication
+9. RBAC
+10. Multi-tenant isolation
+11. Students/Parents/Staff
+12. Attendance
+13. NFC
+14. Academic Operations
+15. Timetable
+16. Finance
+17. Subscriptions
+18. Partners
+19. Communication
+20. Library
+21. Operations
+22. Reporting
+23. Invitations
+24. Audit logs
+25. Database
+26. Migrations
+27. API
+28. Frontend
+29. PWA readiness
+30. External providers
+31. Error handling
+32. Logging
+33. Security
+34. Performance
+35. Backup/recovery readiness
+36. Production environment configuration
+
+Do not rebuild completed modules.
+
+Fix only genuine issues discovered during the hardening process.
+
+---
+
+2. PRODUCTION READINESS PRINCIPLE
+
+Use this distinction throughout the work:
+
+DEVELOPMENT
+
+Safe to modify.
+
+DISPOSABLE TEST DATABASE
+
+Safe for migration replay, destructive testing, isolation testing and recovery testing.
+
+PRODUCTION
+
+READ-ONLY for this phase.
+
+If a test requires a production change, DO NOT perform it.
+
+Instead:
+
+- reproduce the scenario in a disposable environment;
+- document the required production action;
+- provide the exact proposed SQL/configuration/migration separately for later approval.
+
+---
+
+3. BASELINE THE CURRENT SYSTEM
+
+Before changing code:
+
+1. Inspect repository structure.
+2. Inspect package versions.
+3. Inspect database schema.
+4. Inspect migration files.
+5. Inspect migration ledger behavior.
+6. Inspect authentication implementation.
+7. Inspect RBAC.
+8. Inspect tenant isolation.
+9. Inspect API authorization.
+10. Inspect frontend route protection.
+11. Inspect environment variables.
+12. Inspect provider adapters.
+13. Inspect error handling.
+14. Inspect logging.
+15. Inspect build configuration.
+16. Inspect deployment configuration.
+17. Inspect PWA configuration.
+18. Inspect existing tests.
+
+Create a baseline report.
+
+Do not make assumptions based solely on previous phase reports.
+
+---
+
+4. AUTHENTICATION HARDENING
+
+Review Clerk authentication integration.
+
+Verify:
+
+- Unauthenticated requests return 401.
+- Authenticated users receive only authorized resources.
+- Session identity comes from the trusted authentication layer.
+- User IDs are not trusted from arbitrary request bodies.
+- Role information cannot be escalated through frontend input.
+- School scope cannot be changed by modifying request parameters.
+- Logout behavior is correct.
+- Expired sessions are rejected.
+- Protected API routes are consistently protected.
+- Frontend route protection does not replace backend authorization.
+
+Check for:
+
+- Missing auth middleware
+- Inconsistent auth checks
+- Role confusion
+- Session caching problems
+- Stale authorization state
+- Unsafe development bypasses
+- Setup/bootstrap mechanisms accidentally available in production
+
+Any development-only authentication bypass must be clearly gated and impossible to activate accidentally in production.
+
+---
+
+5. RBAC HARDENING
+
+Audit every role:
+
+- PLATFORM_OWNER
+- SCHOOL_ADMIN
+- TEACHER
+- ACCOUNTANT
+- PARENT
+- STUDENT
+- PARTNER
+- STAFF
+- Any additional existing roles
+
+Build an effective permission matrix.
+
+Verify every API route against the intended permission.
+
+Important:
+
+A frontend-hidden button is NOT security.
+
+Authorization must be enforced server-side.
+
+Test direct API calls for unauthorized actions.
+
+---
+
+6. PLATFORM OWNER HARDENING
+
+Pay special attention to the known Owner UI issue.
+
+Verify that Platform Owner is a platform-level role.
+
+Owner should be able to:
+
+- Manage schools
+- Manage partners
+- View platform-level student information
+- Manage NFC cards/devices
+- View authorized school information
+- Manage Yemait Technologies internal employees
+- Access platform-level reports
+
+Owner must NOT automatically inherit School Admin operational controls.
+
+Verify that selecting a school from the Owner portal does NOT silently turn the Owner into a School Admin.
+
+Owner must not accidentally gain write access to:
+
+- School teachers
+- School parents
+- School classes
+- School subjects
+- School academic sessions
+- School attendance
+- School results
+- School timetable
+- School finance operations
+- School assignments
+- School assessments
+
+Unless a specific platform-level permission already exists and is intentionally designed.
+
+DO NOT redesign the Owner dashboard unnecessarily.
+
+Fix actual security or functional defects only.
+
+---
+
+7. MULTI-TENANT SECURITY
+
+This is a critical production requirement.
+
+Every school-owned resource must be tenant-protected.
+
+Audit:
+
+- Students
+- Parents
+- Teachers
+- Staff
+- Classes
+- Sections
+- Subjects
+- Academic sessions
+- Attendance
+- NFC cards
+- NFC devices
+- Assignments
+- Assessments
+- Results
+- Timetable
+- Invoices
+- Payments
+- Subscriptions
+- Communications
+- Library
+- Operations
+- Reports
+- Audit records
+
+Test cross-school access attempts.
+
+Examples:
+
+School A user attempts to:
+
+- Read School B student
+- Edit School B student
+- Read School B attendance
+- Read School B results
+- Read School B invoices
+- Export School B reports
+- Access School B library records
+- Access School B assets
+- Use School B NFC device/card
+
+Every unauthorized operation must be denied.
+
+Do not rely on frontend filtering.
+
+---
+
+8. PARENT-CHILD SECURITY
+
+Verify:
+
+- Parent can only access linked children.
+- Parent cannot change their own child relationship through request manipulation.
+- Parent cannot access unrelated students.
+- Parent cannot access another parent's records.
+- Parent reports respect linked-child authorization.
+- Parent finance information is properly scoped.
+- Parent library information is properly scoped.
+- Parent notifications are properly scoped.
+
+Test direct API manipulation of student IDs.
+
+---
+
+9. STUDENT SECURITY
+
+Verify students can only access:
+
+- Their own attendance
+- Their own academic information
+- Their own authorized reports
+- Their own library information
+- Their own permitted finance/subscription information
+
+Attempt access to another student's records.
+
+Must be denied.
+
+---
+
+10. TEACHER SECURITY
+
+Verify teachers can only access information allowed by their assignments and school role.
+
+Test:
+
+- Assigned class
+- Assigned subject
+- Unassigned class
+- Unassigned subject
+- Other school
+- Other teacher's restricted information
+
+Ensure teacher reporting and academic permissions remain correctly scoped.
+
+---
+
+11. ACCOUNTANT SECURITY
+
+Verify accountants can access authorized school Finance information.
+
+Ensure accountants cannot automatically access:
+
+- Platform Owner functions
+- Partner management
+- Cross-school information
+- Unauthorized academic administration
+- Unauthorized user management
+
+---
+
+12. PARTNER SECURITY
+
+Verify partner access remains limited to authorized referral/commission information.
+
+Test:
+
+- Referred school
+- Non-referred school
+- Student count
+- Commission
+- Subscription status
+- Unauthorized student details
+- Unauthorized parent information
+- Unauthorized academic records
+- Unauthorized finance details
+
+Partners must not become school administrators.
+
+---
+
+13. SCHOOL ADMIN SECURITY
+
+School Admin must remain restricted to their own school.
+
+Verify they can perform intended school operations but cannot:
+
+- Access another school
+- Access platform-level owner functions
+- Manage unrelated partner records
+- Access another school's financial data
+- Access platform-wide reports unless explicitly authorized
+
+---
+
+14. INVITATION SECURITY
+
+Audit the invitation lifecycle.
+
+Roles include:
+
+- School Admin
+- Teacher
+- Accountant
+- Parent
+- Student
+- Staff
+- Other supported roles
+
+Verify:
+
+- Invitation tokens are secure.
+- Tokens expire.
+- Tokens cannot be reused after acceptance.
+- Tokens cannot be modified to change school.
+- Tokens cannot be modified to change role.
+- Password creation happens through the intended secure flow.
+- Invited users cannot activate unauthorized roles.
+- Invitation links do not expose sensitive information.
+- Revoked invitations stop working.
+- Existing users cannot accidentally create conflicting accounts.
+
+Platform Owner should invite School Admins.
+
+School Admin should invite appropriate school users.
+
+Do not reintroduce the old pattern where the owner manually sets another user's password unless explicitly required by the existing design.
+
+---
+
+15. DEVELOPMENT/PRODUCTION SEPARATION
+
+Search the entire codebase for development-only behavior.
+
+Look for:
+
+- Seed users
+- Test users
+- Setup keys
+- Development passwords
+- Test bypasses
+- Mock authentication
+- Mock payment verification
+- Fake provider responses
+- Development-only endpoints
+- Fixture data
+- Test routes
+- Debug endpoints
+- Development admin routes
+
+Every development-only mechanism must be:
+
+- clearly environment-gated;
+- impossible to activate accidentally in production;
+- absent from production behavior.
+
+Pay particular attention to previous setup/bootstrap mechanisms.
+
+---
+
+16. SECRETS AND ENVIRONMENT VARIABLES
+
+Audit environment-variable usage.
+
+Identify required production variables without revealing their values.
+
+Classify each variable:
+
+- Required
+- Optional
+- Development-only
+- Test-only
+- Production-only
+
+Never print secret values.
+
+Never commit secrets to the repository.
+
+Search for accidental:
+
+- API keys
+- passwords
+- tokens
+- authentication secrets
+- database credentials
+- webhook secrets
+
+If secrets are discovered in source code, remove them from code and document the required secret rotation without performing production rotation.
+
+---
+
+17. PAYMENT SECURITY
+
+Audit Phase 7 Finance.
+
+Verify:
+
+- Frontend cannot mark payment VERIFIED.
+- Backend controls payment state transitions.
+- Provider webhooks are authenticated where applicable.
+- Webhooks are idempotent.
+- Duplicate webhook events cannot create duplicate payments.
+- Payment references cannot be reused incorrectly.
+- Refunds/reversals preserve history.
+- Manual bank transfer verification requires authorized school personnel.
+- Payment amount cannot be trusted from the client.
+- School scope is enforced.
+- Provider callback data cannot alter another school's payment.
+- Receipts are generated only for valid verified payments.
+- Failed/pending payments cannot appear as verified.
+
+Do not perform real payment transactions.
+
+Use test/sandbox adapters only.
+
+---
+
+18. PARTNER COMMISSION SECURITY
+
+Audit the existing commission model.
+
+Verify:
+
+- Commission is calculated according to existing rules.
+- Unauthorized users cannot modify commission status.
+- Partner cannot mark commission PAID.
+- Reversal behavior preserves history.
+- School attribution cannot be changed through client input.
+- Duplicate subscription events cannot create duplicate commissions.
+- Cross-school attribution cannot occur.
+
+Do not change the existing business model during hardening.
+
+---
+
+19. NFC AND DEVICE SECURITY
+
+Audit:
+
+- NFC card assignment
+- NFC card history
+- Device assignment
+- Device reassignment
+- School binding
+- Attendance events
+
+Verify:
+
+- School A card cannot be used as School B's card.
+- School A device cannot be used by School B.
+- Reassignment is properly recorded.
+- Historical records remain intact.
+- Composite constraints remain valid.
+- Cross-school API manipulation is denied.
+
+Pay special attention to the existing:
+
+"nfc_cards(id, school_id)"
+
+composite uniqueness requirement and the "nfc_card_history" relationship.
+
+Do not remove the existing protection.
+
+---
+
+20. ATTENDANCE SECURITY
+
+Verify:
+
+- Gate events
+- Classroom attendance
+- Manual attendance
+- Corrections
+- Discrepancy resolution
+- Parent notifications
+- Attendance history
+
+Cannot be manipulated across schools.
+
+Verify audit history remains intact.
+
+---
+
+21. ACADEMIC SECURITY
+
+Audit:
+
+- Assignments
+- Assessments
+- Grading
+- Results
+- Publication
+- Report cards
+- Historical sessions
+- Timetable
+
+Verify:
+
+- Unauthorized users cannot modify results.
+- Students cannot modify results.
+- Parents cannot modify results.
+- Teachers can only modify authorized academic records.
+- Published results follow existing rules.
+- Historical records remain isolated.
+- Cross-school access is denied.
+
+---
+
+22. COMMUNICATION SECURITY
+
+Audit Phase 8.
+
+Verify:
+
+- Notification recipient authorization
+- School scope
+- Parent-child scope
+- Announcement targeting
+- Template access
+- Retry permissions
+- Push-device ownership
+- Delivery history
+
+Queued notifications must re-check recipient authorization before dispatch.
+
+Do not claim real delivery unless a provider confirms it.
+
+---
+
+23. LIBRARY AND OPERATIONS SECURITY
+
+Audit Phase 9.
+
+Verify:
+
+- Library school isolation
+- Borrower eligibility
+- Linked-parent access
+- Librarian permissions
+- Loan ownership
+- Return/renewal permissions
+- Copy-level integrity
+- Lost/damaged records
+
+Operations:
+
+- Asset isolation
+- Facility isolation
+- Maintenance permissions
+- Task assignment restrictions
+- Assigned-staff access
+- History protection
+
+Fines remain disabled unless already intentionally integrated.
+
+---
+
+24. REPORTING SECURITY
+
+Audit Phase 10.
+
+Verify:
+
+- Report authorization
+- Tenant isolation
+- Export authorization
+- Parent-child filtering
+- Student self-access
+- Teacher scope
+- Accountant scope
+- Partner scope
+- Platform Owner scope
+
+CSV/XLSX/PDF exports must use the same authorization as the corresponding report.
+
+Test manipulating:
+
+- school_id
+- student_id
+- report type
+- filters
+- pagination
+- export parameters
+
+---
+
+25. DATABASE HARDENING
+
+Inspect PostgreSQL schema.
+
+Check:
+
+- Foreign keys
+- Unique constraints
+- Composite constraints
+- NOT NULL constraints
+- Check constraints
+- Indexes
+- Cascades
+- Delete behavior
+- Update behavior
+- Tenant keys
+- Referential integrity
+
+Pay special attention to relationships involving:
+
+- school_id
+- student_id
+- parent_id
+- teacher/staff IDs
+- NFC card/device IDs
+- academic assignment IDs
+- finance IDs
+
+Do not add constraints simply because they seem useful.
+
+Only add a constraint when it fixes a demonstrated integrity risk and does not break existing valid data.
+
+---
+
+26. MIGRATION HARDENING
+
+This is a critical area.
+
+The development migration ledger has previously been reported as potentially behind the actual development schema.
+
+Do NOT blindly reconcile it.
+
+Instead:
+
+1. Inspect all migrations.
+2. Determine actual schema state.
+3. Determine migration-ledger state.
+4. Create a disposable PostgreSQL database.
+5. Replay all migrations from the beginning.
+6. Verify the resulting schema.
+7. Compare it against the expected development schema.
+8. Identify drift.
+9. Determine whether drift is:
+   - expected;
+   - historical;
+   - dangerous;
+   - deployment-blocking.
+
+If a migration problem exists:
+
+- Fix it in development.
+- Test clean replay.
+- Test replay against a representative disposable copy.
+- Do NOT execute against production.
+
+Do not delete historical migrations merely to make the migration runner pass.
+
+---
+
+27. DATABASE BACKUP AND RECOVERY READINESS
+
+Do not perform a production backup or restore.
+
+Instead, document and test the application's recovery assumptions in a disposable environment.
+
+Verify:
+
+- Database backup strategy can be defined.
+- Restore procedure is documented.
+- File uploads/storage are accounted for.
+- Database and uploaded files are not treated as if one backup automatically protects the other.
+- Critical audit/history data is included.
+
+If the application currently has no backup mechanism, report it as a production-readiness item.
+
+Do not invent that backups exist.
+
+---
+
+28. API HARDENING
+
+Audit all API routes.
+
+Check for:
+
+- Authentication
+- Authorization
+- Input validation
+- Output filtering
+- Parameter tampering
+- SQL injection resistance
+- Unsafe dynamic queries
+- Mass assignment
+- IDOR
+- Improper error leakage
+- Missing rate limiting where appropriate
+- Unsafe file handling
+- Unsafe export handling
+
+Do not expose:
+
+- Passwords
+- Tokens
+- Secrets
+- Internal credentials
+- Authentication headers
+- Sensitive database errors
+
+Use generic production-safe errors while preserving useful server logs.
+
+---
+
+29. INPUT VALIDATION
+
+Verify all important input boundaries.
+
+Examples:
+
+- Email
+- Phone number
+- Student IDs
+- School IDs
+- Payment amounts
+- Dates
+- Academic scores
+- Pagination
+- Search strings
+- File uploads
+- Report filters
+- NFC identifiers
+
+Reject invalid values server-side.
+
+Do not rely solely on Zod/frontend validation if the endpoint can be called directly.
+
+---
+
+30. FILE UPLOAD SECURITY
+
+Audit Excel/PDF/document imports.
+
+Verify:
+
+- File type validation
+- File size limits
+- Safe parsing
+- Malformed file handling
+- No arbitrary code execution
+- No path traversal
+- No unsafe filenames
+- Temporary-file cleanup
+- School scope
+- Import authorization
+
+Non-text PDFs should continue to be rejected where the existing import design requires textual parsing.
+
+---
+
+31. RATE LIMITING AND ABUSE CONTROLS
+
+Identify endpoints that could be abused:
+
+- Login/auth-related endpoints
+- Invitations
+- Password/reset flows
+- Payment creation
+- Webhooks
+- Report generation
+- Export generation
+- File uploads
+- Communication sending
+- Notification retries
+- Search endpoints
+
+Where the architecture supports it, add reasonable rate limiting or abuse protection.
+
+Do not introduce limits that break normal school operations.
+
+Document any endpoint that still requires infrastructure-level rate limiting.
+
+---
+
+32. ERROR HANDLING
+
+Production errors must:
+
+- Return appropriate HTTP status codes.
+- Avoid exposing database internals.
+- Avoid exposing secrets.
+- Avoid exposing stack traces to normal users.
+- Provide useful server-side diagnostics.
+- Maintain consistent API error format.
+
+Test:
+
+- 400
+- 401
+- 403
+- 404
+- 409
+- 422 where applicable
+- 429 where applicable
+- 500
+
+---
+
+33. LOGGING AND AUDIT
+
+Review logs.
+
+Do not log:
+
+- Passwords
+- Tokens
+- Cookies
+- API secrets
+- Authentication headers
+- Full payment credentials
+
+Audit important actions:
+
+- User creation
+- Invitations
+- Role changes
+- School changes
+- Payment verification
+- Refunds
+- Subscription changes
+- NFC assignment
+- Attendance corrections
+- Result publication
+- Communication actions
+- Library actions
+- Operations actions
+- Report exports
+
+Do not generate excessive duplicate audit records.
+
+---
+
+34. PWA / MOBILE READINESS
+
+Inspect current PWA state.
+
+Do not build a native mobile application in this phase.
+
+Verify:
+
+- Existing PWA configuration
+- Service worker
+- Manifest
+- Installability
+- Secure-context requirements
+- Push-device registration
+- Notification permissions
+- Logout/device revocation
+- Mobile responsive layouts
+
+Do not claim push notifications are production-ready unless an actual push sender/dispatcher exists and has been verified.
+
+If the PWA is incomplete, document the exact remaining work.
+
+---
+
+35. COMMUNICATION PROVIDERS
+
+Inspect provider abstraction.
+
+Current system may have:
+
+- SMS
+- Email
+- Push
+- Future Telegram
+- Future WhatsApp
+
+Do not claim providers are production-ready unless credentials and delivery have actually been verified.
+
+Verify:
+
+- Provider failure handling
+- Retry behavior
+- Idempotency
+- Delivery status
+- Provider timeout handling
+- Disabled-provider behavior
+- No-network development adapters
+
+A provider being architecturally supported is different from provider delivery being operational.
+
+Document this distinction.
+
+---
+
+36. PAYMENT PROVIDERS
+
+Inspect:
+
+- Paystack adapter
+- Flutterwave adapter
+- Remita adapter
+- Bank transfer flow
+- Provider abstraction
+
+Do not use real money.
+
+Verify sandbox/test behavior where credentials exist.
+
+If real/sandbox credentials are absent, explicitly report:
+
+NOT VERIFIED — CREDENTIALS NOT PROVIDED
+
+Do not replace missing verification with assumptions.
+
+---
+
+37. PERFORMANCE REVIEW
+
+Run development performance checks.
+
+Look for:
+
+- N+1 queries
+- Unbounded queries
+- Large table scans
+- Missing obvious indexes
+- Excessive frontend requests
+- Duplicate React Query requests
+- Large report queries
+- Slow exports
+- Large file processing
+- Unnecessary polling
+
+Do not optimize blindly.
+
+Only make changes where there is a demonstrable issue or obvious production risk.
+
+---
+
+38. FRONTEND HARDENING
+
+Check:
+
+- Protected routes
+- Role-based navigation
+- Unauthorized-page behavior
+- Loading states
+- Empty states
+- Error states
+- Mobile responsiveness
+- Form validation
+- Duplicate submissions
+- Session expiry
+- Stale cached authorization
+- Sensitive data exposure in browser state
+
+Do not assume hidden navigation equals authorization.
+
+---
+
+39. BUILD AND DEPENDENCY REVIEW
+
+Run:
+
+- Typecheck
+- Backend build
+- Frontend build
+- Existing automated tests
+- Migration replay
+- "git diff --check"
+
+Inspect dependencies for:
+
+- Deprecated packages
+- Known high-risk vulnerabilities where tooling is available
+- Unnecessary dependencies
+- Development dependencies accidentally required at runtime
+
+Do not upgrade major packages automatically.
+
+If a dependency upgrade is necessary, isolate and test it.
+
+---
+
+40. PRODUCTION CONFIGURATION AUDIT
+
+Create a production configuration checklist.
+
+Identify:
+
+- Database URL
+- Clerk production configuration
+- Allowed origins
+- Application URL
+- Cookie/session configuration
+- Provider credentials
+- Payment credentials
+- SMS credentials
+- Email credentials
+- Push credentials
+- Storage configuration
+- Webhook endpoints
+- Webhook secrets
+- Logging configuration
+
+DO NOT reveal secret values.
+
+DO NOT change production values.
+
+Report missing configuration without fabricating it.
+
+---
+
+41. SECURITY TESTING
+
+Perform automated security tests against development/disposable environments.
+
+Include:
+
+- IDOR tests
+- Cross-tenant tests
+- RBAC tests
+- Parameter tampering
+- Invalid role injection
+- Invalid school injection
+- Parent-child bypass attempts
+- Export authorization
+- Payment verification bypass
+- Webhook replay
+- Duplicate payment
+- Duplicate commission
+- NFC cross-school access
+- Invitation token reuse
+- Unauthorized report access
+
+Do not perform intrusive attacks against production.
+
+---
+
+42. FINAL REGRESSION TEST
+
+After all hardening changes:
+
+Run the COMPLETE existing test suite.
+
+Do not only run new hardening tests.
+
+Report exact:
+
+- Passed
+- Failed
+- Skipped
+
+Also run:
+
+- Typecheck
+- Backend build
+- Frontend build
+- "git diff --check"
+- Clean migration replay
+- PostgreSQL integrity tests
+- Security tests
+
+Compare the results with the previous Phase 10 baseline:
+
+Phase 10 baseline:
+
+- 565 passed
+- 0 failed
+- 0 skipped
+- 30 PostgreSQL smoke checks passed
+
+Do not claim improvement unless the numbers actually demonstrate it.
+
+---
+
+43. BROWSER VERIFICATION
+
+Attempt development browser verification.
+
+Test at minimum:
+
+Platform Owner
+
+- Login
+- Dashboard
+- School selection
+- Read-only school view
+- Reports
+- Owner controls
+
+School Admin
+
+- Login
+- Dashboard
+- Students
+- Attendance
+- Academics
+- Finance
+- Communication
+- Library
+- Operations
+- Reports
+
+Teacher
+
+- Login
+- Assigned classes
+- Attendance
+- Academics
+- Reports
+
+Accountant
+
+- Login
+- Finance
+- Reports
+
+Parent
+
+- Login
+- Child selection
+- Attendance
+- Results
+- Finance
+- Communication
+- Library
+- Reports
+
+Student
+
+- Login
+- Own attendance
+- Own results
+- Own library
+- Own reports
+
+Partner
+
+- Login
+- Referred schools
+- Student counts
+- Commissions
+- Reports
+
+If Clerk session sharing prevents authenticated browser verification, report that fact accurately.
+
+Do not fabricate successful browser testing.
+
+---
+
+44. KNOWN PDF REPORTING LIMITATION
+
+Phase 10 identified:
+
+«PDF uses a basic Latin font and some non-ASCII characters may appear as "?".»
+
+Inspect this during hardening.
+
+If practical, upgrade PDF generation to a Unicode-capable font using a legally distributable font already available to the application.
+
+Verify:
+
+- Nigerian names
+- ₦
+- Accented characters
+- Common African names
+- School names
+
+If fixing it introduces unnecessary dependency or licensing complexity, leave it documented as a known limitation.
+
+CSV/XLSX must continue preserving Unicode characters.
+
+---
+
+45. PRODUCTION READINESS CLASSIFICATION
+
+Every discovered issue must be classified:
+
+BLOCKER
+
+Must be fixed before production.
+
+Examples:
+
+- Cross-school data access
+- Authentication bypass
+- Payment verification bypass
+- Production migration failure
+- Exposed secrets
+- Broken core database integrity
+
+HIGH
+
+Should be fixed before production unless explicitly accepted.
+
+MEDIUM
+
+Important but may be addressed immediately after launch.
+
+LOW
+
+Non-blocking improvement.
+
+Do not hide known issues.
+
+Do not classify something as fixed unless it was actually fixed and tested.
+
+---
+
+46. DO NOT CREATE A FALSE "100% READY" RESULT
+
+The purpose of this phase is to discover real production risks.
+
+If something is not verified, say:
+
+NOT VERIFIED
+
+If something is unavailable because credentials are missing, say:
+
+NOT VERIFIED — CREDENTIALS NOT PROVIDED
+
+If browser testing is blocked by Clerk session isolation, say:
+
+NOT VERIFIED — AUTHENTICATED BROWSER SESSION UNAVAILABLE
+
+If a provider has not been tested in a real/sandbox environment, do not claim it works.
+
+---
+
+47. REQUIRED FINAL REPORT
+
+At the end, provide a detailed:
+
+YEMAIT EDUCORE PRODUCTION HARDENING REPORT
+
+Include:
+
+A. Overall Status
+
+One of:
+
+- HARDENING COMPLETE — NO BLOCKERS FOUND
+- HARDENING COMPLETE — BLOCKERS REMAIN
+- HARDENING INCOMPLETE
+
+Do not declare production-ready unless the evidence supports it.
+
+B. Security Findings
+
+For every issue:
+
+- Severity
+- Module
+- Description
+- Evidence
+- Fix applied
+- Test performed
+- Remaining limitation
+
+C. RBAC Matrix
+
+Show effective permissions for:
+
+- Platform Owner
+- School Admin
+- Teacher
+- Accountant
+- Parent
+- Student
+- Partner
+- Staff
+
+D. Tenant Isolation
+
+Report cross-school tests and results.
+
+E. Database
+
+Report:
+
+- Migration replay
+- Schema integrity
+- Constraints
+- Indexes
+- Migration drift
+- Backup/recovery findings
+
+F. Authentication
+
+Report Clerk findings and any remaining limitations.
+
+G. Finance
+
+Report payment security and provider verification status.
+
+H. NFC
+
+Report card/device isolation and history integrity.
+
+I. Communication
+
+Report provider and delivery verification status.
+
+J. Reporting
+
+Report report/export security.
+
+K. PWA
+
+Report actual readiness and remaining work.
+
+L. Performance
+
+Report findings and fixes.
+
+M. Dependencies
+
+Report important dependency findings.
+
+N. Tests
+
+Provide exact results:
+
+- Full suite
+- Security tests
+- PostgreSQL tests
+- Migration replay
+- Typecheck
+- Backend build
+- Frontend build
+- "git diff --check"
+
+O. Browser Verification
+
+Clearly separate:
+
+- Verified
+- Not verified
+- Blocked
+
+P. Production
+
+Explicitly confirm:
+
+- Production untouched
+- No Publish executed
+- No production SQL executed
+- No production migration executed
+- No production users modified
+- No production secrets modified
+- No production authentication configuration modified
+- No real payment transaction performed
+- No real notification sent
+
+Q. Remaining Blockers
+
+Provide a concise list of anything that must be fixed before production.
+
+R. Recommended Next Step
+
+Do NOT publish automatically.
+
+The final report should tell us whether the next step should be:
+
+1. Fix blockers
+2. Perform final audit
+3. Prepare controlled production migration/deployment
+4. Perform final authenticated browser verification
+
+Do not choose based on assumptions. Base the recommendation on actual findings.
+
+---
+
+FINAL RULE
+
+The most important requirement is:
+
+DO NOT PUBLISH.
+
+Complete the hardening work in development/disposable environments, test it thoroughly, report every blocker and limitation, and leave production completely untouched.

@@ -401,26 +401,46 @@ async function rejectConflicts(client: { query: (sql: string, values?: unknown[]
 router.get("/academic/students/me/timetable", asyncRoute(async (req, res) => {
   assertRoles(req, ["STUDENT"]);
   const context = getUserContext(req);
-  const result = await pool.query(
-    `SELECT st.id AS "studentId", st.school_id AS "schoolId",
-       a.academic_session_id AS "sessionId", a.academic_term_id AS "termId",
-       a.school_class_id AS "classId", a.section
-       FROM students st JOIN student_class_assignments a ON a.student_id=st.id AND a.school_id=st.school_id
-       JOIN school_classes c ON c.id=a.school_class_id AND c.school_id=a.school_id
-       JOIN academic_sessions ac ON ac.id=a.academic_session_id AND ac.school_id=a.school_id
-      WHERE st.user_id=$1 AND a.is_current=true AND a.status='ACTIVE'
-        AND ac.is_current=true AND ac.status='ACTIVE' ORDER BY a.start_date DESC LIMIT 1`,
-    [context.user.id],
-  );
-  const assignment = result.rows[0];
-  if (!assignment) throw new AuthError(404, "Current student class assignment not found");
-  if (req.query.schoolId !== undefined && id(req.query.schoolId, "schoolId") !== Number(assignment.schoolId)) {
+  const studentSchoolIds = context.roles
+    .filter((role) => role.role === "STUDENT" && role.status === "ACTIVE" && role.schoolId !== null)
+    .map((role) => role.schoolId!);
+  if (!studentSchoolIds.length) throw new AuthError(404, "Student identity not found");
+
+  const requestedSchoolId = req.query.schoolId === undefined ? null : id(req.query.schoolId, "schoolId");
+  if (requestedSchoolId !== null && !studentSchoolIds.includes(requestedSchoolId)) {
     throw new AuthError(404, "Timetable not found");
   }
-  await timetableRows(req, res, Number(assignment.schoolId), [
+
+  const profiles = await pool.query(
+    `SELECT st.id AS "studentId", st.school_id AS "schoolId"
+       FROM students st
+      WHERE st.user_id=$1 AND UPPER(st.status)='ACTIVE'
+        AND st.school_id=ANY($2::int[])
+        AND ($3::int IS NULL OR st.school_id=$3)`,
+    [context.user.id, studentSchoolIds, requestedSchoolId],
+  );
+  if (profiles.rows.length > 1) throw new AuthError(409, "Student identity is ambiguous");
+  const profile = profiles.rows[0];
+  if (!profile) throw new AuthError(404, "Student profile not found");
+
+  const assignments = await pool.query(
+    `SELECT a.academic_session_id AS "sessionId", a.academic_term_id AS "termId",
+       a.school_class_id AS "classId", a.section
+       FROM student_class_assignments a
+       JOIN students st ON st.id=a.student_id AND st.school_id=a.school_id
+       JOIN school_classes c ON c.id=a.school_class_id AND c.school_id=a.school_id
+       JOIN academic_sessions ac ON ac.id=a.academic_session_id AND ac.school_id=a.school_id
+      WHERE st.id=$1 AND st.school_id=$2 AND a.is_current=true AND a.status='ACTIVE'
+        AND ac.is_current=true AND ac.status='ACTIVE'`,
+    [profile.studentId, profile.schoolId],
+  );
+  if (assignments.rows.length > 1) throw new AuthError(409, "Current student class assignment is ambiguous");
+  const assignment = assignments.rows[0];
+  if (!assignment) throw new AuthError(404, "Current student class assignment not found");
+  await timetableRows(req, res, Number(profile.schoolId), [
     "te.school_id=$1", "te.academic_session_id=$2", "te.school_class_id=$3",
     "COALESCE(te.section,'')=$4", "te.academic_term_id=$5", "te.status='ACTIVE'",
-  ], [assignment.schoolId, assignment.sessionId, assignment.classId, assignment.section ?? "", assignment.termId]);
+  ], [profile.schoolId, assignment.sessionId, assignment.classId, assignment.section ?? "", assignment.termId]);
 }));
 
 router.get("/academic/parents/children/:studentId/timetable", asyncRoute(async (req, res) => {

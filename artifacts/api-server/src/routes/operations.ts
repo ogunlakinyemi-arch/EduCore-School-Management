@@ -269,6 +269,15 @@ async function validateCategory(
   if (!result.rows.length) throw new AuthError(404, "Active operation category not found in this school");
 }
 
+async function validateAsset(client: Queryable, schoolId: number, assetId: number | null): Promise<void> {
+  if (assetId === null) return;
+  const result = await client.query(
+    `SELECT 1 FROM school_assets WHERE id = $1 AND school_id = $2 LIMIT 1`,
+    [assetId, schoolId],
+  );
+  if (!result.rows.length) throw new AuthError(404, "Asset not found in this school");
+}
+
 const categorySelect = `
   id, school_id AS "schoolId", category_type AS "categoryType", name, description,
   is_active AS "isActive", created_by_user_id AS "createdByUserId",
@@ -671,6 +680,7 @@ router.post("/operations/maintenance-requests", asyncRoute(async (req, res) => {
       throw new AuthError(403, "Maintenance reporting is disabled for staff at this school");
     }
     await validateCategory(client, schoolId, categoryId, "MAINTENANCE");
+    await validateAsset(client, schoolId, assetId);
     await validateAssignee(client, schoolId, assignedToUserId);
     const initialStatus = assignedToUserId === null ? "OPEN" : "ASSIGNED";
     const inserted = await client.query(
@@ -730,6 +740,9 @@ router.patch("/operations/maintenance-requests/:requestId", asyncRoute(async (re
     }
     if (Object.hasOwn(fields, "category_id")) {
       await validateCategory(client, schoolId, fields.category_id as number | null, "MAINTENANCE");
+    }
+    if (Object.hasOwn(fields, "asset_id")) {
+      await validateAsset(client, schoolId, fields.asset_id as number | null);
     }
     if (Object.hasOwn(fields, "assigned_to_user_id")) {
       await validateAssignee(client, schoolId, fields.assigned_to_user_id as number | null);

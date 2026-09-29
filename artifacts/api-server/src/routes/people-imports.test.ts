@@ -56,9 +56,10 @@ vi.mock("../middlewares/auth", () => {
   }
   return {
     AuthError,
-    assertSchoolAccess: (req: express.Request, schoolId: number, roles: string[]) => {
+    assertSchoolOperationalAccess: (req: express.Request, schoolId: number, roles: string[]) => {
       const context = (req as any).edupulseUser;
-      if (!context.roles.some((item: any) => item.schoolId === schoolId && roles.includes(item.role))) {
+      if (!context.roles.some((item: any) =>
+        item.status === "ACTIVE" && item.schoolId === schoolId && roles.includes(item.role))) {
         throw new AuthError(404, "Resource not found", "CROSS_TENANT_ACCESS_ATTEMPT");
       }
     },
@@ -156,6 +157,22 @@ describe("school-admin people import routes", () => {
     const owner = await call("/people/imports/classes?schoolId=1", {}, "PLATFORM_OWNER");
     expect(owner.status).toBe(403);
     expect(poolMock.query).not.toHaveBeenCalled();
+  });
+
+  it("denies platform-owner requests to preview and confirm school people imports before database access", async () => {
+    const preview = await call("/people/imports/preview?schoolId=1", {
+      method: "POST",
+      body: studentUpload(),
+    }, "PLATFORM_OWNER");
+    const confirm = await call("/people/imports/confirm?schoolId=1", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ previewId: "a".repeat(43), selectedRows: [0] }),
+    }, "PLATFORM_OWNER");
+
+    expect([preview.status, confirm.status]).toEqual([403, 403]);
+    expect(poolMock.query).not.toHaveBeenCalled();
+    expect(poolMock.connect).not.toHaveBeenCalled();
   });
 
   it("rejects a school ID that is not an active School Administrator membership", async () => {

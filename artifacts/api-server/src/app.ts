@@ -20,6 +20,48 @@ import { AuthError } from "./middlewares/auth";
 
 const app: Express = express();
 
+const trustedCorsOriginsEnv = "CORS_ALLOWED_ORIGINS";
+const safeErrorCodes = new Set([
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "ECONNREFUSED",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+]);
+
+function safeErrorCode(error: unknown): string {
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return "UNCLASSIFIED";
+  }
+  const code = (error as { code: unknown }).code;
+  return typeof code === "string" && safeErrorCodes.has(code)
+    ? code
+    : "UNCLASSIFIED";
+}
+
+function corsOrigin(
+  origin: string | undefined,
+  callback: (error: Error | null, allow?: boolean) => void,
+) {
+  if (!origin) {
+    callback(null, false);
+    return;
+  }
+
+  // Preserve the development preview/proxy behavior, but require an explicit
+  // deployment allowlist for every cross-origin production request.
+  if (process.env.NODE_ENV !== "production") {
+    callback(null, true);
+    return;
+  }
+
+  const trustedOrigins = (process.env[trustedCorsOriginsEnv] ?? "")
+    .split(",")
+    .map((trustedOrigin) => trustedOrigin.trim())
+    .filter(Boolean);
+  callback(null, trustedOrigins.includes(origin));
+}
+
 app.use(
   pinoHttp({
     logger,
@@ -40,7 +82,7 @@ app.use(
   }),
 );
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
-app.use(cors({ credentials: true, origin: true }));
+app.use(cors({ credentials: true, origin: corsOrigin }));
 // Provider callbacks are public and require the untouched raw bytes for
 // signature verification. This mount deliberately precedes Clerk and JSON parsing.
 app.use(
@@ -68,7 +110,24 @@ app.use((error: unknown, req: Request, res: Response, next: NextFunction) => {
       code: error.eventType,
     });
   }
-  req.log.error({ error }, "Unhandled API error");
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "type" in error &&
+    "status" in error
+  ) {
+    const parserError = error as { type: unknown; status: unknown };
+    if (parserError.type === "entity.parse.failed" && parserError.status === 400) {
+      return res.status(400).json({ error: "Invalid request body" });
+    }
+    if (parserError.type === "entity.too.large" && parserError.status === 413) {
+      return res.status(413).json({ error: "Request body too large" });
+    }
+  }
+  req.log.error(
+    { category: "unhandled_api_error", code: safeErrorCode(error) },
+    "Unhandled API error",
+  );
   return res.status(500).json({ error: "Internal server error" });
 });
 

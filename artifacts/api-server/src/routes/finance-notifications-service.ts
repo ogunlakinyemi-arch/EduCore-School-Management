@@ -94,6 +94,45 @@ export class FinanceNotificationSettlementSafetyError extends Error {
   }
 }
 
+const SAFE_ERROR_CODE_CATEGORIES: Record<string, string> = {
+  ECONNRESET: "network",
+  ETIMEDOUT: "network",
+  ECONNREFUSED: "network",
+  EHOSTUNREACH: "network",
+  ENETUNREACH: "network",
+  ENOTFOUND: "network",
+  EAI_AGAIN: "network",
+  EPIPE: "network",
+  "57P01": "database",
+  "53300": "database",
+};
+const SAFE_PROVIDER_ERROR_NAMES = new Set(["ProviderError", "PaystackError", "FlutterwaveError", "AxiosError"]);
+
+function safeErrorDiagnostics(error: unknown): { errorCategory: string; errorCode: string | null } {
+  let name: unknown;
+  let code: unknown;
+  let isError = false;
+  try {
+    isError = error instanceof Error;
+    if (error && (typeof error === "object" || typeof error === "function")) {
+      name = (error as { name?: unknown }).name;
+      code = (error as { code?: unknown }).code;
+    }
+  } catch {
+    // Error objects can have accessor properties; never let diagnostics expose or disrupt on them.
+  }
+
+  const safeCode = typeof code === "string" && Object.prototype.hasOwnProperty.call(SAFE_ERROR_CODE_CATEGORIES, code)
+    ? code
+    : null;
+  const category = safeCode
+    ? SAFE_ERROR_CODE_CATEGORIES[safeCode]
+    : typeof name === "string" && SAFE_PROVIDER_ERROR_NAMES.has(name)
+      ? "provider"
+      : isError ? "exception" : "unknown";
+  return { errorCategory: category, errorCode: safeCode };
+}
+
 /**
  * Enqueue role-scoped notifications using only current, active relationships
  * in the payment's own school. Call from the payment transaction.
@@ -220,10 +259,10 @@ export async function enqueueFinancePaymentNotificationsSafely(
       await client.query("ROLLBACK TO SAVEPOINT fee_payment_notification_delivery");
       await client.query("RELEASE SAVEPOINT fee_payment_notification_delivery");
     } catch (rollbackError) {
-      logger.error({ error: rollbackError, paymentId, schoolId, eventType }, "Unable to roll back failed finance notification savepoint");
+      logger.error({ ...safeErrorDiagnostics(rollbackError), paymentId, schoolId, eventType }, "Unable to roll back failed finance notification savepoint");
       throw new FinanceNotificationSettlementSafetyError();
     }
-    logger.error({ error, paymentId, schoolId, eventType, eventReferenceId },
+    logger.error({ ...safeErrorDiagnostics(error), paymentId, schoolId, eventType, eventReferenceId },
       "Finance notification delivery failed; atomic outbox intent remains pending");
     return { queued: true };
   }
@@ -245,7 +284,7 @@ export async function retryPendingFinancePaymentNotifications(
     );
     pending = result.rows;
   } catch (error) {
-    logger.error({ error, schoolIds }, "Unable to inspect pending finance notification retries");
+    logger.error({ ...safeErrorDiagnostics(error), schoolIds }, "Unable to inspect pending finance notification retries");
     return;
   }
   for (const row of pending) {
@@ -297,13 +336,13 @@ export async function retryPendingFinancePaymentNotifications(
            WHERE id=$1 AND school_id=$2`,
           [retry.id, retry.school_id],
         );
-        logger.error({ error, paymentId: retry.payment_id, schoolId: retry.school_id, eventType: retry.event_type },
+        logger.error({ ...safeErrorDiagnostics(error), paymentId: retry.payment_id, schoolId: retry.school_id, eventType: retry.event_type },
           "Finance notification outbox retry failed");
       }
       await client.query("COMMIT");
     } catch (error) {
       await client?.query("ROLLBACK").catch(() => undefined);
-      logger.error({ error, outboxId: row.id, schoolId: row.school_id }, "Unable to process finance notification retry");
+      logger.error({ ...safeErrorDiagnostics(error), outboxId: row.id, schoolId: row.school_id }, "Unable to process finance notification retry");
     } finally {
       client?.release();
     }

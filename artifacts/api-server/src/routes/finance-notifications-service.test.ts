@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+vi.mock("../lib/logger", () => ({ logger: { error: vi.fn() } }));
+import { logger } from "../lib/logger";
 import {
   enqueueFinancePaymentNotifications,
   enqueueFinancePaymentNotificationsSafely,
@@ -82,6 +84,35 @@ describe("finance payment notification enqueue", () => {
     expect(outboxIndex).toBeLessThan(savepointIndex);
     expect(calls).toContain("ROLLBACK TO SAVEPOINT fee_payment_notification_delivery");
     expect(calls.at(-1)).toBe("RELEASE SAVEPOINT fee_payment_notification_delivery");
+  });
+
+  it("logs only safe provider error diagnostics without changing retry behavior", async () => {
+    vi.mocked(logger.error).mockClear();
+    const secret = "Bearer provider-secret-123";
+    const providerError = Object.assign(new Error(`Provider rejected request; authorization: ${secret}`), {
+      name: "ProviderError",
+      code: "ETIMEDOUT",
+      response: { headers: { authorization: secret } },
+    });
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes("INSERT INTO fee_payment_notification_outbox")) return { rows: [{ id: 3 }], rowCount: 1 };
+      if (sql.startsWith("WITH target AS")) throw providerError;
+      return { rows: [], rowCount: 1 };
+    });
+    const result = await enqueueFinancePaymentNotificationsSafely(
+      { query }, 31, 4, "PAYMENT_REJECTED", { reason: "Not matched" },
+    );
+
+    expect(result).toEqual({ queued: true });
+    expect(query).toHaveBeenCalledWith("ROLLBACK TO SAVEPOINT fee_payment_notification_delivery");
+    expect(logger.error).toHaveBeenCalledTimes(1);
+    const logArgs = vi.mocked(logger.error).mock.calls[0];
+    const serializedLog = JSON.stringify(logArgs);
+    expect(serializedLog).not.toContain(secret);
+    expect(serializedLog).not.toContain(providerError.message);
+    expect(serializedLog).not.toContain("authorization");
+    expect(logArgs[0]).not.toHaveProperty("error");
+    expect(logArgs[0]).toMatchObject({ errorCategory: "network", errorCode: "ETIMEDOUT" });
   });
 
   it("isolates success-audit failure too and still records a retryable event", async () => {

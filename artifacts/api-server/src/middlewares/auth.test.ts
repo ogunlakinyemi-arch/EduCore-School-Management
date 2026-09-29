@@ -11,6 +11,7 @@ import {
   assertSchoolAccess,
   assertSchoolOperationalAccess,
   assertUserActive,
+  hasRole,
   requireAuthentication,
   type Role,
   type UserContext,
@@ -123,6 +124,28 @@ describe("role and tenant authorization", () => {
         ["PLATFORM_OWNER"],
       ),
     ).toThrowError(AuthError);
+  });
+
+  it("does not treat null-scoped school roles as global or cross-school access", () => {
+    for (const role of ["SCHOOL_ADMIN", "TEACHER", "PARENT"] as const) {
+      const context = requestWith([{ role, schoolId: null }]).edupulseUser;
+      expect(hasRole(context, role, 1)).toBe(false);
+      expect(() => assertRoles(requestWith([{ role, schoolId: null }]), [role]))
+        .toThrowError(AuthError);
+    }
+  });
+
+  it("keeps platform-owner and partner null memberships global only without a school", () => {
+    const context = requestWith([
+      { role: "PLATFORM_OWNER", schoolId: null },
+      { role: "PARTNER", schoolId: null },
+    ]).edupulseUser;
+
+    expect(hasRole(context, "PLATFORM_OWNER")).toBe(true);
+    expect(hasRole(context, "PARTNER")).toBe(true);
+    expect(hasRole(context, "PARTNER", 1)).toBe(false);
+    expect(() => assertRoles(requestWith([{ role: "PARTNER", schoolId: null }]), ["PARTNER"]))
+      .not.toThrow();
   });
 
   it("requires an active, school-scoped operational membership without an owner bypass", () => {
