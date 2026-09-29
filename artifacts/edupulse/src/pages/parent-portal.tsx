@@ -12,6 +12,7 @@ import { ParentCheckoutReturn } from './finance-online';
 import { FeePaymentNotifications } from '@/components/fee-payment-notifications';
 import { CommunicationInbox, CommunicationInboxBadge } from '@/pages/communication-inbox';
 import { NotificationSettings } from '@/pages/notification-settings';
+import { Loans } from '@/pages/library';
 import { cx } from 'class-variance-authority';
 
 function Loading() {
@@ -105,6 +106,7 @@ function ChildProfile({ studentId }: { studentId: number }) {
       
       <div className="space-y-8">
         <Link href={`/parent/fees/${studentId}`} className="panel flex items-center gap-4 p-5 transition-colors hover:bg-[hsl(var(--secondary))]" data-testid={`link-child-fees-${studentId}`}><span className="grid h-11 w-11 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><ReceiptText size={21} /></span><span className="flex-1"><strong className="block">Fees & payments</strong><span className="text-xs text-[hsl(var(--muted-foreground))]">Invoices, balances and bank transfer submissions</span></span><ChevronRight size={17} /></Link>
+        <Link href={`/parent/library/${studentId}`} className="panel flex items-center gap-4 p-5 transition-colors hover:bg-[hsl(var(--secondary))]" data-testid={`link-child-library-${studentId}`}><span className="grid h-11 w-11 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><BookOpen size={21} /></span><span className="flex-1"><strong className="block">Library loans</strong><span className="text-xs text-[hsl(var(--muted-foreground))]">Books, due dates and borrowing history</span></span><ChevronRight size={17} /></Link>
         <div className="panel overflow-hidden shadow-sm">
           <ChildAttendance studentId={studentId} />
         </div>
@@ -349,6 +351,15 @@ function ChildFeesRoute() {
   return <ParentFeesPage studentId={id} />;
 }
 
+function ChildLibraryRoute() {
+  const studentId = Number(window.location.pathname.split('/').pop());
+  const child = useGetParentChild(studentId);
+  if (!Number.isInteger(studentId) || studentId < 1) return <NotFound />;
+  if (child.isLoading) return <Loading />;
+  if (child.isError || !child.data) return <NotFound />;
+  return <div className="mx-auto max-w-6xl p-5 md:p-8"><Link href={`/parent/children/${studentId}`} className="mb-6 inline-block text-xs font-bold text-[hsl(var(--primary))]" data-testid="link-parent-child-back">Back to child profile</Link><div className="eyebrow">Linked child / Library</div><h1 className="display-font mb-3 mt-2 text-3xl font-bold">{child.data.firstName}’s books</h1><p className="mb-7 text-sm text-[hsl(var(--muted-foreground))]">Current loans and return history for your linked child. Only the borrower can return or renew a book.</p><Loans schoolId={child.data.schoolId} admin={false} currentUserId={0} childId={studentId} /></div>;
+}
+
 export default function ParentPortal() {
-  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><Switch><Route path="/" component={ParentDashboard} /><Route path="/inbox"><CommunicationInbox standalone /></Route><Route path="/notification-settings"><NotificationSettings standalone /></Route><Route path="/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route component={NotFound} /></Switch></div>;
+  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><Switch><Route path="/" component={ParentDashboard} /><Route path="/inbox"><CommunicationInbox standalone /></Route><Route path="/notification-settings"><NotificationSettings standalone /></Route><Route path="/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route path="/parent/library/:studentId" component={ChildLibraryRoute} /><Route component={NotFound} /></Switch></div>;
 }

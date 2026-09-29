@@ -190,6 +190,34 @@
       "when": 1790632169536,
       "tag": "0026_communication_entitlements",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1790632170536,
+      "tag": "0027_library",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1790632171536,
+      "tag": "0028_school_operations",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1790632172536,
+      "tag": "0029_operations_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1790632173536,
+      "tag": "0030_library_loan_copy_integrity",
+      "breakpoints": true
     }
   ]
 }

@@ -20,6 +20,8 @@ import invoiceNotificationsRouter from "./invoice-notifications";
 import platformCompanyEmployeesRouter from "./platform-company-employees";
 import communicationInboxRouter from "./communication-inbox";
 import communicationCampaignsRouter from "./communication-campaigns";
+import libraryRouter from "./library";
+import operationsRouter from "./operations";
 
 const router: IRouter = Router();
 
@@ -47,5 +49,7 @@ router.use(financeNotificationsRouter);
 router.use(invoiceNotificationsRouter);
 router.use(communicationInboxRouter);
 router.use(communicationCampaignsRouter);
+router.use(libraryRouter);
+router.use(operationsRouter);
 
 export default router;

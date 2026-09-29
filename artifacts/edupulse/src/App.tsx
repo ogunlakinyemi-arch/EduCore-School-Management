@@ -47,6 +47,8 @@ import { FinancePage, MyFeesPage } from '@/pages/finance';
 import { CommunicationsPage } from '@/pages/communications';
 import { CommunicationInbox } from '@/pages/communication-inbox';
 import { NotificationSettings } from '@/pages/notification-settings';
+import { LibraryPage } from '@/pages/library';
+import { OperationsPage } from '@/pages/operations';
 
 import './index.css';
 
@@ -239,6 +241,15 @@ function ProtectedRoutes() {
           </Route>
           <Route path="/attendance">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']} ownerCanView ownerReadOnly><AttendancePage /></RoleGuard>
+          </Route>
+          <Route path="/library">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF', 'STUDENT']}><LibraryPage /></RoleGuard>
+          </Route>
+          <Route path="/library/loans">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF', 'STUDENT']}><LibraryPage initialArea="loans" /></RoleGuard>
+          </Route>
+          <Route path="/operations">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'STAFF']}><OperationsPage /></RoleGuard>
           </Route>
           <Route path="/devices">
             <RoleGuard isPlatformOwnerOnly><DevicesPage /></RoleGuard>

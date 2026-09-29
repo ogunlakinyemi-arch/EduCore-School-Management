@@ -1,0 +1,1057 @@
+YEMAIT EDUCORE — PHASE 9: LIBRARY & OPERATIONS
+
+PROJECT CONTEXT
+
+This is Yemait EduCore, owned by Yemait Technologies Limited.
+
+Existing development phases include:
+
+- Platform Owner
+- School Admin
+- Teacher
+- Accountant
+- Parent
+- Student
+- Partner
+- Authentication/RBAC
+- Multi-school tenant isolation
+- Students/parents/staff
+- Academic Operations
+- Attendance
+- NFC/device management
+- Partner/reseller system
+- Finance
+- Communication
+
+Proceed with:
+
+PHASE 9 — LIBRARY & OPERATIONS
+
+This phase must add school Library and general School Operations functionality while preserving all existing Phase 1–8 systems.
+
+---
+
+CRITICAL SAFETY RULE
+
+This is a DEVELOPMENT-ONLY implementation.
+
+DO NOT:
+
+- Publish
+- Deploy to production
+- Modify the production database
+- Run production SQL
+- Change production environment variables
+- Create production users
+- Create production financial records
+- Reset production data
+- Rebuild the application
+- Replace existing Phase 1–8 functionality
+
+The current Platform Owner UI issue is a known item for the later comprehensive audit.
+
+Do not redesign the Platform Owner dashboard during Phase 9.
+
+Do not attempt to solve the Replit automatic-Publish function/trigger limitation during this phase.
+
+---
+
+1. PHASE 9 OBJECTIVE
+
+Build a complete school Library and Operations module.
+
+The module must support:
+
+LIBRARY
+
+- Library catalogue
+- Books
+- Book copies
+- Categories
+- Authors
+- Publishers
+- ISBN/barcode information where applicable
+- Physical location/shelf
+- Book availability
+- Student borrowing
+- Staff borrowing where authorized
+- Book returns
+- Due dates
+- Renewals
+- Overdue books
+- Lost/damaged books
+- Fines where enabled
+- Library history
+- Library reports
+
+OPERATIONS
+
+Build practical school operational records including:
+
+- School assets/equipment
+- Inventory
+- Maintenance requests
+- Operational tasks
+- School facilities
+- Important operational records
+- Operational issue tracking
+- Responsible staff
+- Status tracking
+- Operational reports
+
+Use the existing application architecture and database patterns.
+
+Do not create unnecessary systems outside this scope.
+
+---
+
+2. LIBRARY ROLES
+
+SCHOOL ADMIN
+
+School Admin controls the school's Library and Operations.
+
+Can:
+
+- Add/edit library books
+- Manage book copies
+- Manage categories
+- Manage authors/publishers
+- Register library items
+- Issue books
+- Receive returns
+- Manage overdue items
+- Manage lost/damaged items
+- Manage authorized library staff
+- View reports
+- Manage operational records
+
+All actions remain restricted to their school.
+
+TEACHER
+
+Teacher may:
+
+- Search available library resources
+- Borrow books if enabled
+- View own borrowing history
+- Return/renew authorized books
+
+Teacher must not manage the entire library unless explicitly assigned an appropriate library-management permission.
+
+STUDENT
+
+Student may:
+
+- Search available books
+- View book details
+- See availability
+- View own borrowed books
+- See due dates
+- Request/borrow where the school's workflow permits
+- View own borrowing history
+
+Student must not access another student's library records.
+
+PARENT
+
+Parent may:
+
+- View library activity of linked children where enabled
+- See books currently borrowed by their children
+- See due dates
+- See overdue status
+
+Parent must not access unrelated students' records.
+
+ACCOUNTANT
+
+Accountant should only see library financial information if the existing school finance authorization permits it.
+
+Do not give Accountant unrestricted library-management access.
+
+PARTNER
+
+Partner has no ordinary school library-management access.
+
+PLATFORM OWNER
+
+Platform Owner may retain platform-level visibility where already authorized, but must not automatically receive school operational write permissions.
+
+Do not use Platform Owner status as a shortcut to school-level library or operations management.
+
+---
+
+3. LIBRARY CATALOGUE
+
+Implement a searchable catalogue.
+
+Book fields should support appropriate information such as:
+
+- Title
+- Subtitle
+- ISBN
+- Author
+- Publisher
+- Publication year
+- Edition
+- Category
+- Subject
+- Description
+- Cover image/reference where supported
+- Language
+- Shelf/location
+- Total copies
+- Available copies
+- Status
+- School
+
+Books must be school-scoped.
+
+A book belonging to School A must never appear as a School B library asset.
+
+---
+
+4. BOOK COPIES
+
+Separate the conceptual book title from individual physical copies.
+
+Example:
+
+Book:
+
+«Mathematics for SS2»
+
+Copies:
+
+- COPY-001
+- COPY-002
+- COPY-003
+
+Each physical copy should support:
+
+- Unique copy identifier
+- Book reference
+- School
+- Condition
+- Status
+- Location
+- Acquisition information where applicable
+
+Possible copy statuses:
+
+- AVAILABLE
+- BORROWED
+- RESERVED
+- LOST
+- DAMAGED
+- MAINTENANCE
+- RETIRED
+
+Do not allow two active physical copies in the same school to have the same unique identifier.
+
+---
+
+5. LIBRARY CATEGORIES
+
+Support categories such as:
+
+- Textbooks
+- Fiction
+- Non-fiction
+- Reference
+- Science
+- Mathematics
+- English
+- Social Studies
+- Religious Studies
+- Literature
+- Children's Books
+- Other
+
+School Admin should be able to manage school-specific categories where appropriate.
+
+Do not hard-code categories in a way that prevents future customization.
+
+---
+
+6. AUTHORS AND PUBLISHERS
+
+Create reusable author/publisher records where appropriate.
+
+Support:
+
+- Author name
+- Publisher name
+- Contact/reference information where appropriate
+- Book relationships
+
+Avoid unnecessary duplicate records.
+
+Use school scoping where the data is school-specific.
+
+---
+
+7. LIBRARY BORROWING
+
+Implement a secure borrowing workflow.
+
+A borrowing record should track:
+
+- School
+- Borrower
+- Borrower type
+- Book
+- Physical copy
+- Issue date
+- Due date
+- Return date
+- Status
+- Issued by
+- Returned by
+- Renewal count
+- Notes
+
+Borrower types may include:
+
+- STUDENT
+- TEACHER
+- STAFF
+
+Do not allow borrowing for unauthorized users.
+
+---
+
+8. BORROWING RULES
+
+Implement configurable school-level rules where practical.
+
+Examples:
+
+- Maximum books per student
+- Maximum books per teacher
+- Default loan period
+- Maximum renewals
+- Overdue policy
+- Fine policy if enabled
+
+Do not hard-code one global policy for every school.
+
+A School Admin should be able to configure appropriate library rules.
+
+---
+
+9. RETURNS
+
+Implement a return workflow.
+
+When a book is returned:
+
+- Record actual return date
+- Update physical-copy status
+- Update borrowing record
+- Calculate overdue status where applicable
+- Record return operator
+- Preserve historical record
+
+Do not delete the borrowing history.
+
+---
+
+10. RENEWALS
+
+Allow authorized renewal.
+
+Validate:
+
+- Borrower authorization
+- School authorization
+- Current borrowing status
+- Renewal limit
+- Reservation/conflict rules
+- Overdue policy
+
+Every renewal must preserve history.
+
+Do not overwrite the original issue record in a way that destroys the audit trail.
+
+---
+
+11. OVERDUE BOOKS
+
+Automatically identify overdue items using backend dates.
+
+Display:
+
+- Borrower
+- Book
+- Copy
+- Due date
+- Days overdue
+- Current status
+
+Where appropriate, generate a communication event that can later use the existing Phase 8 Communication system.
+
+Example:
+
+Overdue Library Book
+→ Notification Service
+→ Parent / Student
+→ In-App / SMS / Email according to preferences
+
+Do not directly hard-code SMS or email into Library.
+
+Use the existing Communication service.
+
+---
+
+12. LOST AND DAMAGED BOOKS
+
+Support authorized status changes for:
+
+- LOST
+- DAMAGED
+- RETIRED
+
+Record:
+
+- Who changed the status
+- Date/time
+- Reason
+- Notes
+- Previous status
+
+Do not delete the physical-copy history.
+
+If a fine or replacement charge is required, integrate with the existing Finance system rather than creating a second payment system.
+
+Do not mark a financial payment as completed from the Library module.
+
+---
+
+13. LIBRARY FINES
+
+If fines are implemented, they must integrate with existing Finance architecture.
+
+Library may create:
+
+- Fine/charge record
+- Amount
+- Reason
+- Related borrower
+- Related borrowing
+- Status
+
+Finance remains authoritative for:
+
+- Invoice
+- Payment
+- Verification
+- Receipt
+- Refund
+- Reversal
+
+The Library module must never independently mark a payment as verified.
+
+---
+
+14. LIBRARY SEARCH
+
+Provide search/filter functionality for authorized users.
+
+Search by:
+
+- Title
+- Author
+- ISBN
+- Category
+- Subject
+- Copy ID
+- Availability
+
+Students and parents should only see information appropriate to their role.
+
+---
+
+15. LIBRARY REPORTS
+
+Provide school-level reports such as:
+
+- Catalogue report
+- Available books
+- Borrowed books
+- Overdue books
+- Lost books
+- Damaged books
+- Borrowing history
+- Most borrowed books
+- Borrowers with overdue items
+- Library inventory
+
+Export formats may include:
+
+- CSV
+- Excel
+- PDF
+
+Reuse existing reporting/export patterns.
+
+---
+
+16. OPERATIONS MODULE
+
+Create a general School Operations area for authorized school staff.
+
+The module should support practical operational records without turning into an unrestricted administrative system.
+
+Core areas:
+
+Assets
+
+Track school-owned assets such as:
+
+- Computers
+- Printers
+- Projectors
+- Desks
+- Chairs
+- Laboratory equipment
+- Sports equipment
+- Furniture
+- Other equipment
+
+Asset fields may include:
+
+- Asset name
+- Asset code
+- Category
+- Location
+- Condition
+- Assigned person/department
+- Acquisition date
+- Status
+- Notes
+
+---
+
+17. ASSET STATUSES
+
+Support statuses such as:
+
+- ACTIVE
+- AVAILABLE
+- ASSIGNED
+- MAINTENANCE
+- DAMAGED
+- LOST
+- RETIRED
+
+Changes must be audited.
+
+Do not physically delete important historical asset records.
+
+---
+
+18. MAINTENANCE REQUESTS
+
+Implement maintenance issue tracking.
+
+Fields may include:
+
+- Title
+- Description
+- Category
+- Location
+- Reported by
+- Assigned staff/vendor reference
+- Priority
+- Status
+- Date reported
+- Due date
+- Completed date
+- Notes
+
+Statuses:
+
+- OPEN
+- ASSIGNED
+- IN_PROGRESS
+- ON_HOLD
+- COMPLETED
+- CANCELLED
+
+Priorities:
+
+- LOW
+- MEDIUM
+- HIGH
+- URGENT
+
+Do not create a vendor payment system in this phase.
+
+If financial processing becomes necessary, use existing Finance architecture.
+
+---
+
+19. FACILITIES
+
+Allow schools to maintain operational information about facilities such as:
+
+- Classrooms
+- Laboratories
+- Library
+- Staff rooms
+- Offices
+- Toilets
+- Sports areas
+- ICT facilities
+- Other school facilities
+
+Where useful, track:
+
+- Name
+- Type
+- Location
+- Condition
+- Capacity
+- Status
+- Notes
+
+Keep this school-scoped.
+
+---
+
+20. OPERATIONAL TASKS
+
+Provide a simple task/issue workflow for authorized school staff.
+
+Tasks should support:
+
+- Title
+- Description
+- Assigned user
+- Priority
+- Due date
+- Status
+- Notes
+- Created date
+- Completion date
+
+Do not recreate a full project-management application.
+
+Keep this focused on school operational activities.
+
+---
+
+21. OPERATIONS PERMISSIONS
+
+School Admin has full school operational management.
+
+Authorized staff may receive limited permissions where the existing role model supports it.
+
+Teacher should not automatically gain asset or maintenance-management permissions.
+
+Accountant should not automatically gain operational-management permissions.
+
+Platform Owner must not automatically receive school operational write permissions.
+
+All backend authorization must be enforced server-side.
+
+---
+
+22. SCHOOL SETTINGS
+
+Library/Operations configuration must be school-specific.
+
+Examples:
+
+- Library loan rules
+- Fine rules
+- Borrowing limits
+- Operational categories
+- Asset categories
+- Maintenance priorities
+
+One school's settings must never affect another school's settings.
+
+---
+
+23. COMMUNICATION INTEGRATION
+
+Use the existing Phase 8 Communication service.
+
+Potential events:
+
+- Book overdue
+- Book returned
+- Library reservation/availability event if implemented
+- Important maintenance/operations notice if appropriate
+
+Do not directly call SMS/email providers from Library or Operations.
+
+Use:
+
+Library/Operations Event
+        ↓
+Communication Service
+        ↓
+User preferences
+        ↓
+Configured channels
+
+Respect notification preferences and tenant boundaries.
+
+---
+
+24. SECURITY
+
+All endpoints must enforce:
+
+- Authentication
+- Role authorization
+- School/tenant isolation
+- Borrower ownership
+- Parent-child relationship
+- Staff authorization
+- Asset school ownership
+- Maintenance record school ownership
+
+Prevent:
+
+- Cross-school catalogue access
+- Cross-school borrowing access
+- Cross-school asset access
+- Cross-school maintenance access
+- IDOR
+- Unauthorized book issuance
+- Unauthorized return
+- Unauthorized fine creation
+- Unauthorized operational edits
+
+Do not rely on frontend-hidden controls.
+
+---
+
+25. AUDIT LOGGING
+
+Use the existing audit-log system.
+
+Audit important actions such as:
+
+- Book created
+- Book edited
+- Copy created
+- Copy status changed
+- Book issued
+- Book returned
+- Book renewed
+- Book marked lost
+- Book marked damaged
+- Fine created
+- Asset created
+- Asset assigned
+- Asset status changed
+- Maintenance request created
+- Maintenance status changed
+- Facility changed
+- Operational task changed
+
+Preserve historical records.
+
+---
+
+26. DATABASE
+
+Inspect the existing schema before adding tables.
+
+Potential entities may include:
+
+library_books
+library_book_copies
+library_authors
+library_publishers
+library_categories
+library_loans
+library_renewals
+library_fines
+library_settings
+school_assets
+asset_categories
+maintenance_requests
+school_facilities
+operational_tasks
+
+Only create entities that are actually required.
+
+Use:
+
+- Primary keys
+- Foreign keys
+- School/tenant references
+- Unique constraints
+- Appropriate indexes
+- Status constraints
+- Created/updated timestamps
+
+Ensure migration replay works from a clean disposable database.
+
+Do not blindly run migrations against the existing development database if its migration ledger is already known to be out of sync.
+
+Inspect the ledger/schema relationship first.
+
+---
+
+27. FRONTEND
+
+Use the existing Yemait EduCore design system.
+
+Add appropriate school-level navigation for authorized users.
+
+Potential sections:
+
+Library
+
+- Dashboard
+- Catalogue
+- Books
+- Copies
+- Borrowing
+- Returns
+- Overdue
+- Reports
+- Settings
+
+Operations
+
+- Dashboard
+- Assets
+- Maintenance
+- Facilities
+- Tasks
+- Reports
+- Settings
+
+Do not expose these sections to roles that are not authorized.
+
+Do not redesign Platform Owner dashboard.
+
+---
+
+28. TESTING
+
+Create comprehensive tests.
+
+Library
+
+Test:
+
+- Book creation
+- Book editing
+- Copy creation
+- Unique copy identifiers
+- Catalogue search
+- Borrowing
+- Return
+- Renewal
+- Overdue detection
+- Lost status
+- Damaged status
+- Fine creation
+- Borrower authorization
+- Parent-child access
+- Tenant isolation
+
+Operations
+
+Test:
+
+- Asset creation
+- Asset assignment
+- Asset status
+- Maintenance request
+- Maintenance status transitions
+- Facility creation/editing
+- Operational task assignment
+- Operational task completion
+- Tenant isolation
+
+Security
+
+Test:
+
+- Unauthenticated requests denied
+- School A cannot access School B
+- Student cannot access another student's loans
+- Parent cannot access unrelated child records
+- Teacher cannot perform unauthorized library administration
+- Accountant cannot perform unauthorized operations
+- Partner cannot access school operations
+- Platform Owner cannot gain school operational write access merely from platform role
+
+Finance integration
+
+Test:
+
+- Library fine can create the appropriate Finance record where implemented
+- Library cannot mark payment verified
+- Finance remains authoritative
+
+Communication integration
+
+Test:
+
+- Overdue event creates the correct communication event
+- No cross-school notification
+- Notification preferences respected
+- Duplicate events do not produce duplicate messages
+
+---
+
+29. TEST TARGET
+
+Run the existing complete test suite after implementation.
+
+Do not remove or weaken existing tests.
+
+Do not alter Phase 1–8 tests simply to make Phase 9 pass.
+
+Run:
+
+- API tests
+- Phase 9 tests
+- Typecheck
+- Frontend build
+- Backend build
+- Clean migration replay
+- Relevant integration tests
+
+If authenticated browser tests are available, test actual workflows.
+
+Do not claim authenticated browser verification if the testing browser cannot access the user's Clerk session.
+
+Report exact:
+
+- Previous test count
+- New test count
+- Passed
+- Failed
+- Skipped
+
+---
+
+30. MIGRATION SAFETY
+
+The development migration ledger is currently known to have historical drift.
+
+Therefore:
+
+DO NOT blindly run the normal migration command against the existing development database.
+
+First inspect:
+
+- Current migration ledger
+- Current database schema
+- Existing migration files
+- New Phase 9 migration dependencies
+
+For disposable databases, clean replay from the beginning should be tested.
+
+If the existing development database requires reconciliation, report it separately rather than performing a risky automatic repair.
+
+---
+
+31. DO NOT REBUILD EXISTING SYSTEMS
+
+Before changing existing functionality:
+
+1. Inspect the current implementation.
+2. Identify the smallest integration point.
+3. Reuse existing services.
+4. Reuse existing RBAC.
+5. Reuse existing tenant isolation.
+6. Reuse existing Finance.
+7. Reuse existing Communication.
+8. Reuse existing audit logging.
+9. Make additive changes where possible.
+10. Run regression tests.
+
+Do not rebuild the application.
+
+Do not replace existing modules.
+
+---
+
+32. FINAL REPORT
+
+When Phase 9 development is complete, provide:
+
+PHASE 9 STATUS
+
+Complete / Incomplete
+
+LIBRARY
+
+List implemented functionality.
+
+OPERATIONS
+
+List implemented functionality.
+
+DATABASE
+
+List new development migrations and tables.
+
+API
+
+List major endpoints/services.
+
+FRONTEND
+
+List screens/components added.
+
+SECURITY
+
+Summarize:
+
+- RBAC
+- Tenant isolation
+- Borrower authorization
+- Parent-child authorization
+- Operational permissions
+- Audit logging
+
+COMMUNICATION
+
+Explain which Library/Operations events integrate with Phase 8 Communication.
+
+FINANCE
+
+Explain any Library/Finance integration.
+
+TESTS
+
+Provide exact test results.
+
+MIGRATION
+
+State whether clean migration replay passed.
+
+Clearly identify any existing development migration-ledger drift.
+
+BROWSER VERIFICATION
+
+Clearly distinguish automated verification from authenticated browser verification.
+
+PROVIDERS
+
+Do not claim real SMS/email/push/Telegram/WhatsApp delivery.
+
+PRODUCTION
+
+Explicitly state:
+
+Production was not modified and Publish was not executed.
+
+Do not proceed automatically to Phase 10.
+
+Do not Publish.

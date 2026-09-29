@@ -7,7 +7,7 @@ import {
   Activity, ArrowLeft, ArrowUpRight, BadgeCheck, BarChart3, Bell, BookOpen, Building2, Check, ChevronDown, 
   CircleAlert, CircleDollarSign, CreditCard, FileClock, GraduationCap, LayoutDashboard, Library, Menu, 
   MoreHorizontal, Pencil, Plus, RefreshCw, Search, Settings2, ShieldCheck, SlidersHorizontal, Smartphone, 
-  UserRound, UsersRound, WalletCards, X, Zap, Calendar, UserCog, ClipboardList, Briefcase, Handshake, ClipboardCheck, ReceiptText
+  UserRound, UsersRound, WalletCards, X, Zap, Calendar, UserCog, ClipboardList, Briefcase, Handshake, ClipboardCheck, ReceiptText, Wrench
 } from 'lucide-react';
 import {
   useGetAuthorizedContext, useListSchools, getListSchoolsQueryKey,
@@ -58,6 +58,8 @@ const nav: NavItem[] = [
   { href: '/inbox', label: 'Inbox', icon: Bell, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'STAFF', 'PARENT'] },
   { href: '/notification-settings', label: 'Notification settings', icon: Settings2, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'STAFF', 'PARENT'] },
   { href: '/attendance', label: 'Attendance', icon: ClipboardCheck, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
+  { href: '/library', label: 'Library', icon: Library, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STAFF', 'STUDENT'] },
+  { href: '/operations', label: 'Operations', icon: Wrench, roles: ['SCHOOL_ADMIN', 'STAFF'] },
   { href: '/users', label: 'Users & Roles', icon: UserCog, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
   { href: '/people/imports', label: 'Import Records', icon: UsersRound, roles: ['SCHOOL_ADMIN'] },
   { href: '/partners', label: 'Partners', icon: Handshake, roles: ['PLATFORM_OWNER'] },
