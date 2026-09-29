@@ -1,0 +1,647 @@
+YEMAIT EDUCORE — PHASE 11B
+
+MIGRATION RECONCILIATION & RECOVERY REHEARSAL
+
+CRITICAL RULE
+
+This is a DEVELOPMENT/DISPOSABLE-ENVIRONMENT exercise only.
+
+DO NOT:
+
+- Publish
+- Deploy
+- Modify production
+- Run SQL against production
+- Run migrations against production
+- Modify production migration history
+- Modify production users
+- Modify production secrets
+- Modify production configuration
+- Trigger production webhooks
+- Send real payments
+- Send real notifications
+
+Production must remain completely untouched.
+
+---
+
+1. OBJECTIVE
+
+Resolve and document the migration-ledger uncertainty identified during Phase 11 Production Hardening.
+
+Current findings:
+
+- 31 checked-in migrations replay successfully on an empty disposable PostgreSQL database.
+- The migration runner is idempotent on a second run.
+- A disposable backup/restore preserved schema and migration ledger.
+- However, a disposable clone of the current development schema contains only five migration-ledger entries.
+- Replaying the migration runner against that cloned schema fails at an already-existing object in migration "0005".
+- The development migration ledger was intentionally left untouched.
+
+The objective is NOT to force the migration runner to succeed by deleting or hiding information.
+
+The objective is to determine the safest, evidence-based way to reconcile:
+
+1. Checked-in migrations
+2. Migration ledger
+3. Actual development schema
+4. A representative database containing realistic development data
+
+---
+
+2. FIRST: INSPECT, DO NOT MODIFY
+
+Before making any change:
+
+Inspect and record:
+
+- Every checked-in migration in order.
+- Migration filenames/numbers.
+- Migration contents.
+- Current development schema.
+- Current migration ledger.
+- Tables.
+- Columns.
+- Constraints.
+- Foreign keys.
+- Unique constraints.
+- Indexes.
+- Functions.
+- Triggers.
+- Views.
+- Extensions.
+- Relevant PostgreSQL metadata.
+- Existing seed/development data.
+- The objects created by migration "0005".
+- The exact object that caused the "0005" failure.
+- Why that object already exists.
+- Whether it matches the object expected by migration "0005".
+
+Do not modify the live development database during this inspection.
+
+Produce an evidence report first.
+
+---
+
+3. CLASSIFY THE MIGRATION DRIFT
+
+Determine which situation actually exists.
+
+Case A — Ledger is incomplete but schema matches migrations
+
+The database already contains the objects created by earlier migrations, but the ledger does not record those migrations.
+
+Case B — Schema differs from migration history
+
+The schema contains changes not represented by the checked-in migrations.
+
+Case C — Object exists but differs from expected migration definition
+
+For example:
+
+- Different constraint
+- Different index
+- Different column
+- Different data type
+- Different default
+- Different foreign key
+- Different function
+- Different trigger
+
+Case D — Development schema contains manually applied changes
+
+Identify exactly what they are.
+
+Case E — Migration itself is not safely idempotent
+
+Identify the migration and exact statement.
+
+Do not assume Case A.
+
+---
+
+4. COMPARE MIGRATIONS TO ACTUAL SCHEMA
+
+Build a reconciliation matrix.
+
+For each migration:
+
+Migration| Expected objects| Actual objects| Ledger entry| Status
+
+Classify each as:
+
+- MATCHED
+- MISSING
+- EXTRA
+- DIFFERENT
+- UNKNOWN
+
+Pay special attention to:
+
+- Composite foreign keys
+- Composite unique constraints
+- NFC tables
+- NFC history
+- Maintenance/operations tables
+- Academic relationships
+- Finance relationships
+- Communication tables
+- Library tables
+- Reporting-related structures
+
+Do not modify anything yet.
+
+---
+
+5. DETERMINE THE SAFE RECONCILIATION STRATEGY
+
+Only after inspection determine whether reconciliation should use:
+
+Strategy A — Ledger-only reconciliation
+
+If the actual schema demonstrably matches the historical migrations, the migration ledger may be safely advanced to reflect already-applied migrations.
+
+However, do NOT perform this automatically.
+
+Verify object equivalence first.
+
+Strategy B — Idempotent migration correction
+
+If migrations contain unsafe statements such as:
+
+- CREATE TABLE without existence checks
+- CREATE INDEX without appropriate checks
+- CREATE FUNCTION without safe replacement logic
+- ADD CONSTRAINT without checking existing equivalent constraints
+
+make the migration/reconciliation logic safe where appropriate.
+
+Do not blindly rewrite historical migrations if doing so changes their meaning.
+
+Strategy C — Baseline migration
+
+If the database represents a legitimate existing schema that cannot safely be reconstructed through historical migrations, design a reviewed baseline strategy.
+
+Do not delete historical migrations.
+
+Do not create a fake ledger state simply to make deployment appear successful.
+
+Strategy D — New reconciliation migration
+
+If the schema needs actual changes, create a new migration rather than modifying historical migration meaning.
+
+Use this only when evidence supports it.
+
+---
+
+6. DO NOT DESTROY MIGRATION HISTORY
+
+Never:
+
+- Delete old migrations.
+- Rename old migration IDs just to bypass errors.
+- Delete migration ledger rows blindly.
+- Mark migrations as applied without verifying their effects.
+- Drop production-like objects just to replay migrations.
+- Recreate the database merely to hide drift.
+
+The final migration history must remain understandable to another developer.
+
+---
+
+7. REPRESENTATIVE DATABASE
+
+Create a disposable PostgreSQL database representing the current development state.
+
+It must contain:
+
+- Current schema
+- Migration ledger
+- Representative schools
+- Students
+- Parents
+- Teachers
+- Classes
+- Attendance
+- Academic records
+- Finance records
+- Partner records
+- Communication records
+- Library records
+- Operations records
+- NFC cards/devices
+- Relevant audit records
+
+Use synthetic/development data only.
+
+Do not copy production personal data into the disposable environment unless an explicitly approved anonymization process exists.
+
+---
+
+8. BACKUP BEFORE RECONCILIATION
+
+Create a disposable PostgreSQL backup.
+
+Record:
+
+- Database schema state
+- Migration ledger
+- Row counts for important tables
+- Constraint counts
+- Index counts
+
+Restore the backup into a second disposable database.
+
+Verify:
+
+- Schema matches.
+- Ledger matches.
+- Important row counts match.
+- Foreign keys remain intact.
+- Composite constraints remain intact.
+
+Do not call this a production backup test.
+
+It is only a development recovery rehearsal.
+
+---
+
+9. RECONCILIATION TEST
+
+After the reviewed reconciliation strategy is implemented:
+
+Run the migration runner against:
+
+Test A — Empty database
+
+Expected:
+
+All migrations apply successfully.
+
+Test B — Empty database, second run
+
+Expected:
+
+No migration is applied twice.
+
+Test C — Representative current-schema database
+
+Expected:
+
+The migration process reaches the intended reconciled state without destroying existing valid data.
+
+Test D — Representative database, second run
+
+Expected:
+
+No additional changes.
+
+Test E — Backup restored database
+
+Expected:
+
+Migration state remains consistent.
+
+---
+
+10. DATA INTEGRITY TEST
+
+After reconciliation, verify:
+
+- Schools
+- Students
+- Parents
+- Teachers
+- Classes
+- Attendance
+- Results
+- Payments
+- Subscriptions
+- Partners
+- Communications
+- Library
+- Operations
+- NFC
+
+Important records must remain intact.
+
+Check representative row counts before and after.
+
+No valid data should disappear.
+
+---
+
+11. CONSTRAINT TESTING
+
+Explicitly test the previously identified protections.
+
+NFC
+
+Attempt an invalid cross-school relationship.
+
+Expected:
+
+Rejected.
+
+Maintenance/Operations
+
+Attempt an invalid cross-school relationship.
+
+Expected:
+
+Rejected.
+
+Academic
+
+Attempt invalid cross-school relationships.
+
+Expected:
+
+Rejected.
+
+Finance
+
+Attempt invalid cross-school relationships.
+
+Expected:
+
+Rejected.
+
+Do not weaken existing constraints merely to make migrations pass.
+
+---
+
+12. MIGRATION FAILURE ANALYSIS
+
+If a migration still fails:
+
+STOP and identify:
+
+- Migration ID
+- Exact SQL statement
+- Existing object
+- Expected object
+- Actual object
+- Why they differ
+- Whether data is affected
+- Whether the migration can safely be made idempotent
+- Whether a baseline is required
+
+Do not continue blindly through subsequent migrations.
+
+---
+
+13. BACKUP AND RESTORE REHEARSAL
+
+Create a complete disposable backup containing:
+
+- PostgreSQL schema
+- PostgreSQL data
+- Migration ledger
+
+Restore it into a clean disposable PostgreSQL instance.
+
+Then verify:
+
+1. Application can start.
+2. Database connection works.
+3. Authentication-independent health checks work.
+4. Existing records remain accessible.
+5. Migration state is recognized correctly.
+6. No migration is unexpectedly replayed.
+7. Important constraints remain intact.
+
+If file storage/uploads are part of the current architecture, document them separately.
+
+Do not claim database backup alone is a complete application backup.
+
+---
+
+14. APPLICATION REGRESSION TEST
+
+After reconciliation:
+
+Run the complete existing test suite.
+
+Compare with Phase 11 baseline:
+
+- 574 API tests passed
+- 21 frontend tests passed
+- 595 total
+- 0 failed
+- 0 skipped
+
+Run:
+
+- Full test suite
+- Typecheck
+- Backend build
+- Frontend build
+- "git diff --check"
+
+Do not claim success unless the tests actually run.
+
+---
+
+15. SECURITY REGRESSION
+
+Re-run critical Phase 11 security tests:
+
+- Cross-school access
+- RBAC
+- Parent-child isolation
+- Student self-access
+- Partner isolation
+- Owner boundaries
+- NFC school binding
+- Operations school binding
+- Finance authorization
+- Report authorization
+- Export authorization
+
+Migration reconciliation must not weaken authorization.
+
+---
+
+16. APPLICATION HEALTH
+
+Start the development application after reconciliation.
+
+Verify:
+
+- API starts
+- Frontend starts
+- Database connects
+- Protected endpoints return 401 without authentication
+- No migration startup failure
+- No unexpected database errors
+
+If authenticated browser testing remains blocked by Clerk session isolation, report that accurately.
+
+---
+
+17. DO NOT FIX UNRELATED ISSUES
+
+Do not use this phase to redesign:
+
+- Owner dashboard
+- School Admin dashboard
+- Finance UI
+- Reporting UI
+- Communication UI
+- Library UI
+- Operations UI
+- PWA
+- Mobile application
+
+Only fix issues directly related to:
+
+- Migration integrity
+- Database reconciliation
+- Backup/recovery
+- Deployment readiness
+
+---
+
+18. REQUIRED FINAL REPORT
+
+Produce:
+
+PHASE 11B — MIGRATION RECONCILIATION & RECOVERY REPORT
+
+Include:
+
+1. Root Cause
+
+Explain exactly why the development schema had only five ledger entries and why migration "0005" encountered an existing object.
+
+Do not speculate.
+
+2. Schema/Ledger Comparison
+
+Provide the reconciliation matrix.
+
+3. Strategy Used
+
+State exactly which strategy was selected:
+
+- Ledger reconciliation
+- Idempotent migration correction
+- Baseline
+- New reconciliation migration
+- Other, with explanation
+
+4. Changes Made
+
+List exact files/migrations changed.
+
+5. Data Integrity
+
+Show representative before/after counts.
+
+6. Migration Tests
+
+Report:
+
+- Empty DB replay
+- Second replay
+- Current-schema reconciliation
+- Second reconciliation
+- Backup restore
+- Restored DB migration check
+
+7. Constraint Tests
+
+Report:
+
+- NFC cross-school rejection
+- Operations cross-school rejection
+- Other relevant integrity tests
+
+8. Application Tests
+
+Report exact:
+
+- API tests
+- Frontend tests
+- Total
+- Failed
+- Skipped
+- Typecheck
+- Backend build
+- Frontend build
+- "git diff --check"
+
+9. Security Regression
+
+Report exact results.
+
+10. Recovery Findings
+
+Clearly distinguish:
+
+Verified in disposable environment
+
+from:
+
+NOT VERIFIED IN PRODUCTION
+
+Do not imply that a development restore proves production recoverability.
+
+11. Remaining Production Blockers
+
+Include all unresolved items, including previously identified:
+
+- Production backup/recovery verification
+- Production Clerk configuration
+- Production CORS
+- Real provider configuration/delivery
+- Distributed rate limiting
+- PWA/push readiness
+- PDF Unicode limitation
+- Any migration issue that remains
+
+12. Production Status
+
+Explicitly confirm:
+
+- Production untouched
+- No Publish
+- No deployment
+- No production SQL
+- No production migration
+- No production configuration changes
+- No production users changed
+- No production secrets changed
+- No real payment
+- No real notification
+
+---
+
+FINAL ACCEPTANCE CRITERIA
+
+This Phase 11B is complete only when:
+
+1. The root cause of migration drift is understood.
+2. The migration strategy is documented.
+3. Historical migration meaning is preserved.
+4. Empty database replay passes.
+5. Representative current-schema reconciliation passes.
+6. Second migration run is a no-op.
+7. Backup/restore rehearsal passes in disposable PostgreSQL.
+8. Important data remains intact.
+9. Critical constraints remain intact.
+10. Full regression tests pass.
+11. Security regression passes.
+12. Application starts cleanly.
+13. Production remains untouched.
+
+If any of these cannot be verified, report it as NOT VERIFIED rather than assuming success.
+
+MOST IMPORTANT
+
+Do not publish.
+
+Do not touch production.
+
+Do not declare the system production-ready from this exercise alone.
