@@ -1,0 +1,180 @@
+PHASE 8 FINAL VERIFICATION — COMMUNICATION
+
+Perform a read-only verification of the completed Phase 8 Communication implementation.
+
+IMPORTANT
+
+Do NOT modify code.
+
+Do NOT create migrations.
+
+Do NOT modify the database.
+
+Do NOT run production SQL.
+
+Do NOT Publish.
+
+Do NOT change production.
+
+Do NOT spend credits fixing anything.
+
+This is strictly an inspection and verification task.
+
+VERIFY THE FOLLOWING
+
+1. Communication channels
+
+Confirm whether the current Phase 8 architecture contains channel/provider abstractions for:
+
+- IN_APP
+- SMS
+- EMAIL
+- PUSH
+- TELEGRAM
+- WHATSAPP
+
+For each channel report:
+
+- Present or absent
+- Active or disabled
+- Test/mock adapter available or not
+- Real provider configured or not
+
+For Telegram and WhatsApp specifically, confirm whether they are future-ready but safely disabled when provider credentials are unavailable.
+
+Do not add them if they are currently absent. Just report the finding.
+
+2. Existing Phase 8 features
+
+Confirm the actual implementation of:
+
+- Notification centre
+- Notification preferences
+- School announcements
+- Recipient preview
+- Recipient targeting
+- Notification templates
+- Delivery history
+- Delivery retry
+- Push-device registration/revocation
+- Attendance notification hooks
+- Academic notification hooks
+- Finance notification hooks
+- Account activation notifications
+
+3. Security
+
+Verify server-side:
+
+- Authentication
+- RBAC
+- School/tenant isolation
+- Recipient authorization
+- Parent-child authorization
+- Teacher/class authorization
+- Partner restrictions
+- Platform Owner restrictions
+- Queued-message recipient revalidation
+- Idempotency
+- Retry protection
+
+Do not rely on frontend visibility as evidence of authorization.
+
+4. Finance separation
+
+Confirm that manual communication cannot falsely create a backend-confirmed payment notification.
+
+Payment notifications must originate from authoritative Finance/payment state.
+
+5. Database
+
+Inspect the current development schema and confirm:
+
+- "0025_communication.sql"
+- "0026_communication_entitlements.sql"
+
+are present/applied as reported.
+
+Do NOT attempt to reconcile the existing migration ledger automatically.
+
+Do NOT run a normal migration command against the existing development database.
+
+Confirm that clean migration replay through 0026 passes on a disposable database if the existing verification evidence is still available.
+
+6. Testing
+
+Confirm the reported result:
+
+461 passed, 0 failed, 0 skipped
+
+Also confirm:
+
+- Typecheck passed
+- Frontend build passed
+- Backend build passed
+- Development workflows are running
+- Unauthenticated communication API returns 401
+
+Do not rerun expensive tests unless necessary to verify an inconsistency.
+
+7. Browser verification limitation
+
+Confirm that authenticated browser verification remains unverified because the testing browser does not share the user's Clerk session.
+
+Do NOT claim that authenticated Platform Owner, School Admin, Teacher, Accountant, Parent or Student communication workflows were browser-verified unless they actually were.
+
+8. Provider verification
+
+Clearly distinguish:
+
+- Mock/test adapter verification
+- Sandbox verification
+- Real provider verification
+
+Do not claim real SMS, email, Telegram, WhatsApp or push delivery unless actual delivery was performed.
+
+FINAL REPORT FORMAT
+
+Return only:
+
+PHASE 8 STATUS
+
+Complete / Incomplete
+
+CHANNEL STATUS
+
+Channel| Present| Status| Real delivery verified
+In-App| | | 
+SMS| | | 
+Email| | | 
+Push| | | 
+Telegram| | | 
+WhatsApp| | | 
+
+TEST STATUS
+
+- Tests:
+- Typecheck:
+- Frontend build:
+- Backend build:
+- Migration replay:
+
+SECURITY STATUS
+
+Brief summary.
+
+BROWSER VERIFICATION
+
+Clearly state what remains unverified.
+
+PRODUCTION
+
+Confirm:
+
+Production was not modified. Publish was not executed.
+
+REQUIRED ACTIONS
+
+List only genuine outstanding items.
+
+Do not make any changes during this verification.
