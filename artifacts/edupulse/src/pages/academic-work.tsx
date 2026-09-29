@@ -22,8 +22,8 @@ function useAcademicContext(schoolId: number) {
 
 export function AcademicWorkPage() {
   const { schoolId } = useTenant();
-  const { isPlatformOwner, isSchoolAdmin } = useSchoolAdminAccess();
-  const readOnly = isPlatformOwner && !isSchoolAdmin;
+  const { isPlatformOwner } = useSchoolAdminAccess();
+  const readOnly = isPlatformOwner;
   const [tab, setTab] = useState<'assignments' | 'assessments' | 'types'>('assignments');
   
   return (
@@ -31,11 +31,11 @@ export function AcademicWorkPage() {
       <PageHeading 
         eyebrow="Academics" 
         title="Academic Work." 
-        description="Manage assignments, assessments, and assessment types for your classes." 
+        description={readOnly ? 'View school academic work. School Admins manage assignments and assessments.' : 'Manage assignments, assessments, and assessment types for your classes.'}
         action={<TenantPicker />} 
       />
       {!schoolId ? (
-        <EmptyState icon={BookOpen} title="Select a school context" description="You must select a school to manage academic work." />
+        <EmptyState icon={BookOpen} title="Select a school context" description="Select a school to view academic work." />
       ) : (
         <>
           <div className="mb-6 flex gap-2 border-b border-[hsl(var(--border))]">

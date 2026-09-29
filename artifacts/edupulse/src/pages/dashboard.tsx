@@ -2,7 +2,7 @@ import { useGetPlatformDashboard, useGetSchoolDashboard, useGetAuthorizedContext
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { Building2, GraduationCap, CircleDollarSign, Smartphone, ArrowUpRight, LogIn, LogOut, Calendar, Clock, UsersRound, Briefcase, CreditCard, FileClock, ReceiptText } from 'lucide-react';
-import { PageHeading, Metric, useTenant, SkeletonPage, ErrorState, ActivityFeed, money } from '@/components/shared';
+import { PageHeading, Metric, useTenant, SkeletonPage, ErrorState, ActivityFeed, money, Button, StatusPill } from '@/components/shared';
 
 export function Dashboard() {
   const contextQuery = useGetAuthorizedContext();
@@ -14,7 +14,7 @@ export function Dashboard() {
 
   const roles = contextQuery.data?.roles?.map(r => r.role) || [];
   const isOnlyStudent = roles.length === 1 && roles[0] === 'STUDENT';
-  const canOpenSchoolFinance = contextQuery.data?.roles?.some(role =>
+  const canOpenSchoolFinance = !isPlatformOwner && contextQuery.data?.roles?.some(role =>
     (role.role === 'SCHOOL_ADMIN' || role.role === 'ACCOUNTANT')
     && role.status === 'ACTIVE'
     && role.schoolId === schoolId) === true;
@@ -23,8 +23,8 @@ export function Dashboard() {
     return <StudentDashboard />;
   }
 
-  if (isPlatformOwner && (!schoolId || schoolId === 0)) {
-    return <PlatformDashboard />;
+  if (isPlatformOwner) {
+    return <PlatformDashboard selectedSchoolId={schoolId} />;
   } else if (schoolId && schoolId !== 0) {
     return <SchoolDashboard schoolId={schoolId} canOpenFinance={canOpenSchoolFinance} />;
   } else {
@@ -135,7 +135,21 @@ function StudentAttendanceRow({ event }: { event: any }) {
   );
 }
 
-function PlatformDashboard() {
+type PlatformSchoolSummary = {
+  id: number;
+  name: string;
+  code: string;
+  city: string;
+  state: string;
+  status: string;
+  subscriptionStatus: string;
+  studentCount: number;
+  activeStudentCount: number;
+  partnerReferral: null | { partnerName: string };
+};
+
+function PlatformDashboard({ selectedSchoolId }: { selectedSchoolId: number }) {
+  const { setSchoolId } = useTenant();
   const query = useGetPlatformDashboard();
   const directoryQuery = useQuery({
     queryKey: ['platform-school-directory', 'dashboard'],
@@ -143,6 +157,7 @@ function PlatformDashboard() {
       const response = await fetch('/api/platform/schools/directory?status=all', { credentials: 'same-origin' });
       if (!response.ok) throw new Error(`Could not load platform-wide school totals (${response.status})`);
       return response.json() as Promise<{
+        schools: PlatformSchoolSummary[];
         totals: {
           schoolCount: number;
           studentCount: number;
@@ -158,6 +173,15 @@ function PlatformDashboard() {
   
   if (query.isLoading || directoryQuery.isLoading) return <SkeletonPage />;
   if (query.isError || directoryQuery.isError) return <ErrorState retry={() => { query.refetch(); directoryQuery.refetch(); }} />;
+  const selectedSchool = selectedSchoolId
+    ? directoryQuery.data?.schools.find(school => school.id === selectedSchoolId)
+    : undefined;
+  if (selectedSchoolId && !selectedSchool) {
+    return <ErrorState retry={() => directoryQuery.refetch()} message="The selected school is not available in the platform directory." />;
+  }
+  if (selectedSchool) {
+    return <PlatformSchoolDashboard school={selectedSchool} onReturn={() => setSchoolId(0)} />;
+  }
   const network = directoryQuery.data?.totals ?? {
     teacherCount: 0, staffCount: 0, parentCount: 0,
   };
@@ -249,6 +273,60 @@ function PlatformDashboard() {
             <Link href="/audit" className="text-sm font-bold text-[hsl(var(--primary))] hover:underline" data-testid="link-view-audit">View trail</Link>
           </div>
           <ActivityFeed items={data?.recentActivity} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PlatformSchoolDashboard({ school, onReturn }: { school: PlatformSchoolSummary; onReturn: () => void }) {
+  return (
+    <div className="fade-up">
+      <PageHeading
+        eyebrow="Platform Owner / School view"
+        title={school.name}
+        description="Platform-level school information. School Admins manage day-to-day school operations."
+        action={<Button variant="outline" onClick={onReturn}>Platform network</Button>}
+      />
+      <div className="panel mb-6 p-6 md:p-8" data-testid="owner-school-snapshot">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="eyebrow">School profile</div>
+            <div className="mt-2 text-xl font-bold">{school.name}</div>
+            <div className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
+              {school.code} · {[school.city, school.state].filter(Boolean).join(', ')}
+            </div>
+          </div>
+          <StatusPill value={school.status} />
+        </div>
+        <div className="mt-6 border-t border-[hsl(var(--border))] pt-5 text-sm">
+          <span className="text-[hsl(var(--muted-foreground))]">Subscription status: </span>
+          <strong>{school.subscriptionStatus || 'Not available'}</strong>
+          {school.partnerReferral?.partnerName && (
+            <p className="mt-2"><span className="text-[hsl(var(--muted-foreground))]">Referral partner: </span>{school.partnerReferral.partnerName}</p>
+          )}
+        </div>
+      </div>
+      <div className="mb-6 grid gap-5 sm:grid-cols-2">
+        <Metric label="Students" value={school.studentCount.toLocaleString()} icon={GraduationCap} accent />
+        <Metric label="Active students" value={school.activeStudentCount.toLocaleString()} icon={GraduationCap} />
+      </div>
+      <div className="panel p-6">
+        <div className="eyebrow mb-4">Platform access</div>
+        <div className="flex flex-wrap gap-3">
+          {[
+            { href: `/schools/${school.id}`, label: 'School profile' },
+            { href: '/students', label: 'Students & e-ID' },
+            { href: '/cards', label: 'NFC cards' },
+            { href: '/devices', label: 'NFC devices' },
+            { href: '/partners', label: 'Partners' },
+            { href: '/subscriptions', label: 'Subscription status' },
+            { href: '/audit', label: 'Audit log' },
+          ].map(link => (
+            <Link key={link.href} href={link.href} className="rounded-xl border border-[hsl(var(--border))] px-4 py-2.5 text-sm font-semibold hover:border-[hsl(var(--primary)/.4)]">
+              {link.label}
+            </Link>
+          ))}
         </div>
       </div>
     </div>

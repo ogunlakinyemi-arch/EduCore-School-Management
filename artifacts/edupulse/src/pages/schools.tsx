@@ -425,8 +425,8 @@ export function SchoolOverview() {
       
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_1fr]">
         <div className="panel p-6 md:p-8">
-          <div className="eyebrow mb-2">Tenant context</div>
-          <h2 className="display-font text-2xl font-bold mb-6">Operational snapshot</h2>
+          <div className="eyebrow mb-2">{isPlatformOwner ? 'Platform school context' : 'Tenant context'}</div>
+          <h2 className="display-font text-2xl font-bold mb-6">{isPlatformOwner ? 'School snapshot' : 'Operational snapshot'}</h2>
           
           <div className="grid gap-4 sm:grid-cols-2">
             <Info label="School code" value={<span className="font-mono">{school?.code}</span>} />

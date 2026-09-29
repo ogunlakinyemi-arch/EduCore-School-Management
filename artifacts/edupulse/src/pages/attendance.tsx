@@ -34,8 +34,8 @@ export function AttendancePage() {
   const tenantRoles = contextQuery.data?.roles?.filter(role => role.schoolId === schoolId && role.status === 'ACTIVE').map(role => role.role) ?? [];
   const isSchoolAdmin = tenantRoles.includes('SCHOOL_ADMIN');
   const isTeacherView = !isPlatformOwner && tenantRoles.includes('TEACHER');
-  const canWrite = isSchoolAdmin || (!isPlatformOwner && (tenantRoles.includes('TEACHER') || tenantRoles.includes('STAFF')));
-  const canCorrect = isSchoolAdmin;
+  const canWrite = !isPlatformOwner && (isSchoolAdmin || tenantRoles.includes('TEACHER') || tenantRoles.includes('STAFF'));
+  const canCorrect = !isPlatformOwner && isSchoolAdmin;
 
   const today = useGetSchoolAttendanceToday(
     { schoolId, date },

@@ -14,9 +14,9 @@ import { useGetAuthorizedContext } from '@workspace/api-client-react';
 // Phase 3 compliant Subscriptions Page
 export function SubscriptionsPage() {
   const { schoolId, setSchoolId } = useTenant();
-  const { isPlatformOwner, isSchoolAdmin } = useSchoolAdminAccess();
+  const { isPlatformOwner } = useSchoolAdminAccess();
   const context = useGetAuthorizedContext().data;
-  const canVerify = isPlatformOwner ? isSchoolAdmin : !!context?.roles?.some(
+  const canVerify = !isPlatformOwner && !!context?.roles?.some(
     role => role.schoolId === schoolId && role.role === 'ACCOUNTANT' && role.status === 'ACTIVE'
   );
   const qc = useQueryClient();
@@ -45,7 +45,7 @@ export function SubscriptionsPage() {
       />
       
       {!schoolId ? (
-        <EmptyState icon={WalletCards} title="Select a school context" description="You must select a school to manage subscriptions." />
+        <EmptyState icon={WalletCards} title="Select a school context" description="Select a school to view its subscriptions." />
       ) : query.isLoading ? (
         <SkeletonPage />
       ) : query.isError ? (

@@ -62,6 +62,10 @@ const nav: NavItem[] = [
   { href: '/cards', label: 'NFC Cards', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'STAFF'] },
   { href: '/audit', label: 'Audit Log', icon: FileClock, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
 ];
+const ownerNavPaths = new Set([
+  '/', '/schools', '/students', '/company-employees', '/users', '/partners',
+  '/devices', '/subscriptions', '/cards', '/audit',
+]);
 
 export function Shell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
@@ -74,14 +78,12 @@ export function Shell({ children }: { children: ReactNode }) {
 
   const roles = context?.roles?.filter(r => r.status === 'ACTIVE').map(r => r.role) || [];
   const isPlatformOwner = context?.isPlatformOwner || false;
-  const schoolAdminForTenant = !isPlatformOwner && !!schoolId && context?.roles?.some(r => r.schoolId === schoolId && r.role === 'SCHOOL_ADMIN' && r.status === 'ACTIVE') === true;
   const financeRole = !!schoolId && context?.roles?.some(r => r.schoolId === schoolId && r.status === 'ACTIVE' && (r.role === 'SCHOOL_ADMIN' || r.role === 'ACCOUNTANT')) === true;
   const studentRole = context?.roles?.some(r => r.role === 'STUDENT' && r.status === 'ACTIVE') === true;
   if (isPlatformOwner && !roles.includes('PLATFORM_OWNER')) roles.push('PLATFORM_OWNER');
 
   const visibleNav = nav.filter(item => {
-    const isSchoolOperations = ['parents', 'employees', 'academics', 'subjects', 'classes', 'academic-work', 'results', 'timetable', 'attendance', 'people/imports', 'finance'].some(path => item.href === `/${path}`);
-    if (isPlatformOwner && isSchoolOperations && !schoolAdminForTenant) return false;
+    if (isPlatformOwner) return ownerNavPaths.has(item.href);
     return !item.roles || item.roles.some(role => roles.includes(role));
   });
   const name = context?.user?.name ?? 'Yemait EduCore user';

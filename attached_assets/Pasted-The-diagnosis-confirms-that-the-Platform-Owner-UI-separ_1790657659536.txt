@@ -1,0 +1,132 @@
+The diagnosis confirms that the Platform Owner UI separation is incomplete.
+
+Do NOT modify production.
+Do NOT Publish.
+Do NOT create test users.
+Do NOT create Finance records.
+
+Implement the minimum development-only changes needed to complete the Platform Owner dashboard separation.
+
+1. Platform Owner dashboard must remain a Platform Owner dashboard
+
+When a Platform Owner selects a school, do NOT switch the entire dashboard to the SchoolDashboard component.
+
+The Platform Owner should remain in the Platform Owner dashboard context.
+
+Selecting a school should provide a platform-level school view, not turn the Owner into a School Admin.
+
+The school view may show platform-relevant information such as:
+
+- School profile
+- School status
+- Student information
+- Student counts
+- NFC cards
+- NFC devices
+- Student e-ID cards
+- Partner/referral information
+- Subscription/platform status
+- Relevant audit information
+
+Do not expose ordinary school-operation management from this Owner view.
+
+2. Remove Owner school-operation controls from the Owner UI
+
+Platform Owner should NOT see normal controls for:
+
+- Creating/editing subjects
+- Creating/editing classes
+- Creating/editing parents
+- Creating/editing academic sessions/terms
+- Recording/correcting attendance
+- Creating/editing ordinary school employees/teachers
+- School Finance creation/verification/operational controls
+- Teacher assignments
+- Assignments/assessments
+- Results/report-card editing
+- Timetable management
+
+Viewing relevant information for platform administration is acceptable where already supported, but the Owner UI must clearly distinguish read-only platform visibility from School Admin management.
+
+3. Owner navigation
+
+Keep the existing intended Owner navigation:
+
+- Dashboard
+- Schools
+- Students
+- Partners
+- NFC Cards
+- Devices
+- Company Employees
+- Audit Log
+- Other genuinely platform-level functions already implemented
+
+Do not expose school-operational navigation as normal Owner functions.
+
+4. Direct routes
+
+Review the current route behavior in:
+
+- "src/App.tsx"
+- "src/components/shared.tsx"
+- "src/pages/dashboard.tsx"
+
+A Platform Owner may need read-only access to some school information, but route access must not imply school-operation write access.
+
+Where an Owner can legitimately view a school page, make the UI explicitly read-only where appropriate.
+
+Do not rely solely on hiding buttons. Preserve the backend authorization already implemented.
+
+5. Mixed-role protection
+
+The diagnosis identified a mixed-role inconsistency.
+
+A user who has Platform Owner status must NOT receive school-operation controls merely because the account also has a school role.
+
+Platform Owner status must not silently grant or expose School Admin mutation capabilities.
+
+Backend authorization must remain authoritative.
+
+6. Owner dashboard metrics
+
+Do not display school-operation management widgets on the Owner dashboard simply because a school has been selected.
+
+Replace inappropriate Owner-facing school-operation widgets with platform-level information where practical.
+
+Do not invent unnecessary new modules.
+
+7. Company Employees
+
+Keep Company Employees separate from school employees.
+
+Platform Owner may manage Yemait Technologies internal employee profiles.
+
+These must not automatically become school staff accounts.
+
+8. Testing
+
+After implementation, add focused tests for the dashboard separation.
+
+At minimum verify:
+
+- Platform Owner dashboard does not render SchoolDashboard as its primary dashboard.
+- Selecting a school does not switch the Owner into School Admin context.
+- Owner does not receive school-operation create/edit controls.
+- Owner retains legitimate platform-level school/student/NFC/e-ID functionality.
+- Mixed-role Platform Owner does not receive School Admin mutation controls.
+- School Admin dashboard remains unchanged and continues to provide its legitimate school-operation controls.
+- Existing tenant isolation remains intact.
+
+Run the full existing test suite and report the results.
+
+9. Browser verification
+
+After implementation, do NOT claim authenticated browser verification merely from automated/API tests.
+
+Tell me to inspect the authenticated Platform Owner dashboard manually.
+
+Do not modify production.
+Do not Publish.
+
+STOP after the development implementation and test results are complete.

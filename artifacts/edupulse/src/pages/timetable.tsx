@@ -26,7 +26,7 @@ export function TimetablePage() {
   const contextQuery = useGetAuthorizedContext();
   const roles = contextQuery.data?.roles?.map(r => r.role) || [];
   
-  const canManage = !!contextQuery.data?.roles?.some(
+  const canManage = !contextQuery.data?.isPlatformOwner && !!contextQuery.data?.roles?.some(
     role => role.role === 'SCHOOL_ADMIN' && role.schoolId === schoolId && role.status === 'ACTIVE'
   );
   const canViewSchoolSchedule = !!contextQuery.data?.isPlatformOwner || canManage;
@@ -52,7 +52,7 @@ export function TimetablePage() {
         <>
           {canManage && isTeacherOrStudent && (
             <div className="mb-6 flex gap-2 border-b border-[hsl(var(--border))]">
-               <button onClick={() => setTab('manage')} className={cx("px-4 py-2.5 text-sm font-bold border-b-2 transition-colors", activeTab === 'manage' ? "border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>Manage Timetable</button>
+               <button onClick={() => setTab('manage')} className={cx("px-4 py-2.5 text-sm font-bold border-b-2 transition-colors", activeTab === 'manage' ? "border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>{canManage ? 'Manage Timetable' : 'View Timetable'}</button>
                <button onClick={() => setTab('mine')} className={cx("px-4 py-2.5 text-sm font-bold border-b-2 transition-colors", activeTab === 'mine' ? "border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>My Schedule</button>
             </div>
           )}
@@ -128,9 +128,9 @@ function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; canEdit:
           })}
         </div>
       ) : (
-        <EmptyState icon={Calendar} title="Timetable is empty" description="Add schedule blocks to build the class timetable." />
+        <EmptyState icon={Calendar} title="Timetable is empty" description={canEdit ? "Add schedule blocks to build the class timetable." : "No schedule blocks are available for this class."} />
       ) : (
-        <EmptyState icon={Calendar} title="Select a class" description="Choose a class to view and manage its timetable." />
+        <EmptyState icon={Calendar} title="Select a class" description={canEdit ? "Choose a class to view and manage its timetable." : "Choose a class to view its timetable."} />
       )}
 
       {canEdit && modal && (

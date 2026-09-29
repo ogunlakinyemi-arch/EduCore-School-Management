@@ -26,7 +26,7 @@ export function ResultsPage() {
   const [tab, setTab] = useState<'results' | 'cards' | 'rules'>('results');
   const context = useGetAuthorizedContext().data;
   const isPlatformOwner = context?.isPlatformOwner === true;
-  const canManage = !!context?.roles?.some(
+  const canManage = !isPlatformOwner && !!context?.roles?.some(
     role => role.role === 'SCHOOL_ADMIN' && role.schoolId === schoolId && role.status === 'ACTIVE'
   );
   
@@ -35,15 +35,15 @@ export function ResultsPage() {
       <PageHeading 
         eyebrow="Academics" 
         title="Results & Reports." 
-        description="Enter marks, manage grading rules, and publish report cards." 
+        description={isPlatformOwner ? 'View school results. School Admins manage marks, grading rules, and report cards.' : 'Enter marks, manage grading rules, and publish report cards.'}
         action={<TenantPicker />} 
       />
       {!schoolId ? (
-        <EmptyState icon={BarChart3} title="Select a school context" description="You must select a school to manage results." />
+        <EmptyState icon={BarChart3} title="Select a school context" description="Select a school to view results." />
       ) : (
         <>
           <div className="mb-6 flex gap-2 border-b border-[hsl(var(--border))]">
-             {[{id: 'results', label: 'Result Entry'}, ...(canManage ? [{id: 'cards', label: 'Report Cards'}, {id: 'rules', label: 'Grading Rules'}] : [])].map(t => (
+             {[{id: 'results', label: isPlatformOwner ? 'Results' : 'Result Entry'}, ...(canManage ? [{id: 'cards', label: 'Report Cards'}, {id: 'rules', label: 'Grading Rules'}] : [])].map(t => (
               <button 
                 key={t.id} 
                 onClick={() => setTab(t.id as any)} 
