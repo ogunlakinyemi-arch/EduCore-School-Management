@@ -1,0 +1,73 @@
+Yemait EduCore production has PITR enabled with a 7-day recovery window.
+
+Prepare the staged NFC prerequisite needed to resolve the Replit Publish ordering problem.
+
+IMPORTANT:
+
+- DO NOT execute any production migration.
+- DO NOT click Publish.
+- DO NOT alter production schema or data.
+- DO NOT create/drop/modify NFC foreign keys.
+- DO NOT disable constraints.
+- DO NOT delete or recreate tables.
+- DO NOT expose DATABASE_URL or any secrets.
+
+First perform a READ-ONLY investigation.
+
+1. Confirm that the production database being inspected is the database used by the deployed Yemait EduCore application, using safe metadata only. Do not display credentials.
+
+2. Inspect the current production definition of:
+   
+   - nfc_cards
+   - nfc_card_history
+   - their indexes
+   - their unique constraints
+   - their foreign keys
+
+3. Confirm specifically whether production currently has:
+   UNIQUE (nfc_cards.id, nfc_cards.school_id)
+
+4. Compare the current production schema with the development schema.
+
+5. Generate the exact SQL that would establish ONLY the missing prerequisite:
+   UNIQUE (nfc_cards.id, nfc_cards.school_id)
+
+6. Do NOT execute that SQL.
+
+7. Verify that this prerequisite is sufficient for the later:
+   nfc_card_history → nfc_cards(id, school_id)
+   composite foreign key.
+
+8. Generate a proposed two-stage migration plan:
+   
+   STAGE 1:
+   Establish the required composite uniqueness on nfc_cards.
+   
+   STAGE 2:
+   After Stage 1 is successfully verified, allow the existing NFC history foreign key to be added by a subsequent Publish.
+
+9. Confirm that Stage 1:
+   
+   - does not delete data
+   - does not change NFC ownership
+   - does not remove tenant isolation
+   - does not remove existing security constraints
+   - does not modify attendance records
+   - does not modify finance/payment records
+   - does not modify users or schools
+
+10. Check for existing duplicate (id, school_id) values in production that would prevent the unique constraint from being created.
+
+If duplicates exist, STOP. Do not modify or delete anything. Report the duplicates and explain the safe remediation required.
+
+If no duplicates exist, report the exact proposed SQL and the expected effect, but DO NOT execute it.
+
+Finally report exactly one of:
+
+READY FOR HUMAN APPROVAL — STAGE 1 SQL PREPARED
+
+or
+
+NOT SAFE TO PROCEED — ISSUE FOUND
+
+No production change is authorized by this prompt.
