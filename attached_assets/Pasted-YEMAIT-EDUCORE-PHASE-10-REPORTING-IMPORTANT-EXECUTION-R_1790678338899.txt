@@ -1,0 +1,1023 @@
+YEMAIT EDUCORE — PHASE 10: REPORTING
+
+IMPORTANT EXECUTION RULE
+
+Implement Phase 10 — Reporting in DEVELOPMENT ONLY.
+
+DO NOT:
+
+- Publish
+- Deploy to production
+- Modify the production database
+- Run production SQL
+- Modify production users
+- Modify production environment variables/secrets
+- Change production authentication configuration
+- Replace existing dashboards
+- Redesign the Platform Owner dashboard
+- Rebuild completed modules unnecessarily
+- Change existing Finance, Attendance, Academic, Communication, Library, Operations, Partner or NFC business logic unless a reporting integration requires a minimal read-only adapter
+
+The existing production environment must remain untouched.
+
+This phase is for the development environment and disposable test databases only.
+
+---
+
+1. OBJECTIVE
+
+Build a centralized, secure and role-aware Reporting module for Yemait EduCore.
+
+Reporting must aggregate data from the modules already implemented:
+
+- Schools
+- Students
+- Parents
+- Teachers/staff
+- Classes/sections
+- Academic sessions/terms
+- Subjects
+- Teacher assignments
+- Attendance
+- NFC/device activity
+- Academic assessments/results
+- Timetable
+- Finance
+- Subscriptions
+- Partners
+- Communication
+- Library
+- Operations
+- Audit/history where appropriate
+
+The Reporting module must NOT become a second source of truth.
+
+Reports must read from the existing authoritative domain tables/services.
+
+---
+
+2. REPORTING PRINCIPLE
+
+Reporting is primarily READ-ONLY.
+
+Do not allow reports to directly modify:
+
+- Students
+- Parents
+- Teachers
+- Classes
+- Attendance
+- Results
+- Payments
+- Invoices
+- Subscriptions
+- NFC cards
+- NFC devices
+- Library loans
+- Assets
+- Maintenance requests
+- Communication records
+
+If a report needs a correction, the correction must happen in the originating module.
+
+---
+
+3. ROLE-BASED REPORT ACCESS
+
+Implement server-side authorization.
+
+PLATFORM OWNER
+
+Platform Owner can access platform-level reports across authorized schools.
+
+Examples:
+
+- Total schools
+- Active schools
+- Student counts by school
+- Student counts by class/session
+- Subscription status
+- Subscription revenue summaries
+- Partner-attributed schools
+- Partner commission summaries
+- NFC device/card deployment
+- Attendance summaries by school
+- Academic performance summaries by school
+- Communication usage
+- Library usage
+- Operations summaries
+- System activity/audit summaries
+
+Platform Owner must not automatically inherit School Admin write permissions.
+
+Reports must remain read-only.
+
+Owner school selection must remain a platform-level reporting/read-only context.
+
+Do NOT use the reporting module to reintroduce the previously identified Owner-vs-School-Admin UI problem.
+
+---
+
+4. SCHOOL ADMIN REPORTS
+
+School Admin can see reports for their own school only.
+
+Include:
+
+Student reports
+
+- Total students
+- Students by class
+- Students by section
+- Students by gender where the existing data model supports it
+- Active/inactive students
+- New students
+- Withdrawn students
+- Student directory export
+
+Parent reports
+
+- Parent/guardian counts
+- Parent-child relationships
+- Students without linked parents where detectable
+- Parent communication status where supported
+
+Staff reports
+
+- Teachers
+- Accountants
+- Staff
+- Staff by role
+- Staff assignments
+
+Class reports
+
+- Class/section population
+- Teacher assignments
+- Subject assignments
+
+---
+
+5. ATTENDANCE REPORTS
+
+Use existing Phase 5 attendance data.
+
+Provide:
+
+- Daily attendance
+- Weekly attendance
+- Monthly attendance
+- Term attendance
+- Student attendance history
+- Class attendance
+- Section attendance
+- Teacher/class attendance where applicable
+- Present/absent/late/other existing statuses
+- Gate attendance
+- Classroom attendance
+- Gate-vs-class discrepancy reports
+- Attendance correction/history report
+- NFC attendance activity
+- Device activity where supported
+
+Filters:
+
+- Academic session
+- Term
+- Date range
+- Class
+- Section
+- Student
+- Attendance status
+
+Do not create a second attendance calculation system.
+
+Use existing attendance business rules.
+
+---
+
+6. ACADEMIC REPORTS
+
+Use existing Phase 6 academic data.
+
+Provide:
+
+- Assessment summaries
+- Student results
+- Class results
+- Subject results
+- Term results
+- Session results
+- Grade distributions
+- Published/unpublished result status
+- Report-card summaries
+- Student academic history
+- Subject performance
+- Class performance
+- Assessment completion/status
+- Teacher assessment activity where appropriate
+
+Support filtering by:
+
+- Session
+- Term
+- Class
+- Section
+- Subject
+- Student
+- Assessment
+
+Do not modify grades or results from Reporting.
+
+Do not create an alternate grading engine.
+
+Use existing grading rules and published-result logic.
+
+---
+
+7. FINANCE REPORTS
+
+Use existing Phase 7 Finance implementation.
+
+Provide read-only reporting for:
+
+Invoices
+
+- Total invoiced
+- Paid
+- Partially paid
+- Unpaid
+- Overdue
+- Waived
+- Cancelled
+
+Payments
+
+- Verified payments
+- Pending payments
+- Failed payments
+- Rejected payments
+- Reversed payments
+- Refunded payments
+- Payment totals by date
+- Payment totals by method/provider
+
+Fees
+
+- Fee category summaries
+- Fee structure summaries
+- Outstanding balances
+- Collection summaries
+- Discounts/scholarships/waivers where supported
+
+Reconciliation
+
+- Payment reconciliation
+- Provider/reference summaries
+- Manual bank-transfer summaries
+- Unmatched/problematic payment records where existing Finance logic exposes them
+
+IMPORTANT:
+
+Reporting must NEVER mark a payment as verified.
+
+Reporting must NEVER create a payment.
+
+Reporting must NEVER create a refund.
+
+Use existing Finance status and verification rules.
+
+---
+
+8. SUBSCRIPTION REPORTS
+
+Provide:
+
+- Active subscriptions
+- Expired subscriptions
+- Pending subscriptions
+- Subscription status by school
+- Student subscription counts
+- Term subscription summaries
+- Subscription revenue summaries
+- School subscription history where supported
+
+Respect the existing subscription model.
+
+Do not invent new subscription rules.
+
+---
+
+9. PARTNER REPORTS
+
+Partner reporting must respect existing partner visibility rules.
+
+Partners should only see information they are authorized to see.
+
+Provide:
+
+- Referred schools
+- Student counts for referred schools
+- Eligible subscriptions
+- Commission records
+- Payable commissions
+- Paid commissions
+- Held/reversed/cancelled commissions where existing statuses support them
+- Term-based commission summaries
+
+Partners must NOT receive unrestricted school data.
+
+Do not expose unrelated student, parent, teacher, academic or finance records.
+
+---
+
+10. COMMUNICATION REPORTS
+
+Use Phase 8 Communication data.
+
+Provide:
+
+- Notifications sent/queued/failed where supported
+- Delivery history
+- Retry history
+- Announcement activity
+- Recipient counts
+- Communication preferences summary where authorized
+- Channel usage
+- Event-triggered notification summaries
+
+Do not create a new communication provider system.
+
+Do not claim real-world SMS/email/push/Telegram/WhatsApp delivery where the existing provider layer has not actually delivered it.
+
+Use actual recorded delivery/provider status.
+
+---
+
+11. LIBRARY REPORTS
+
+Use Phase 9 Library data.
+
+Provide:
+
+- Total books
+- Total copies
+- Available copies
+- Borrowed copies
+- Overdue loans
+- Returned loans
+- Renewals
+- Lost copies
+- Damaged copies
+- Student borrowing activity
+- Staff borrowing activity
+- Most-borrowed books where data supports it
+- Library activity by class/section where authorized
+
+Do not create library fines or payment logic.
+
+Existing Phase 9 rule remains:
+
+Library fines are disabled until intentionally integrated with Finance.
+
+---
+
+12. OPERATIONS REPORTS
+
+Use Phase 9 Operations data.
+
+Provide:
+
+- Assets
+- Assets by category
+- Assets by status
+- Assets by location
+- Assigned assets
+- Asset movement/history
+- Facilities
+- Maintenance requests
+- Maintenance status
+- Assigned tasks
+- Task status
+- Staff work-item activity where authorized
+
+Do not duplicate Operations workflows.
+
+Reports remain read-only.
+
+---
+
+13. NFC AND DEVICE REPORTS
+
+Use existing Phase 5 NFC/device data.
+
+Provide:
+
+- NFC cards by school
+- Assigned/unassigned cards
+- Card assignment history
+- Device inventory
+- Devices by school
+- Device assignment history
+- Device status
+- Attendance events by device
+- Card activity
+- Reassignment history
+- Invalid/cross-school attempts where existing audit data supports this
+
+Maintain the existing school-bound security model.
+
+A card/device belonging to School A must not appear in School B's report.
+
+Platform Owner may see cross-school reporting according to Owner authorization.
+
+---
+
+14. REPORT FILTERING
+
+Create reusable report filters.
+
+Support where applicable:
+
+- School
+- Academic session
+- Term
+- Date range
+- Class
+- Section
+- Subject
+- Student
+- Parent
+- Teacher
+- Staff role
+- Status
+- Payment method
+- Subscription status
+- Attendance status
+- Library status
+- Operations status
+
+Do not show filters that are irrelevant to the selected report.
+
+Filters must be server-validated.
+
+Never rely only on frontend filtering for tenant isolation.
+
+---
+
+15. REPORT EXPORTS
+
+Implement development-ready exports where technically appropriate.
+
+Support:
+
+- CSV
+- XLSX
+- PDF
+
+Exports must respect exactly the same authorization rules as on-screen reports.
+
+A user must never be able to manipulate a report URL or export request to obtain another school's data.
+
+Every export should use the same server-side query authorization as the corresponding report.
+
+Do not expose hidden columns merely because an export endpoint is called directly.
+
+---
+
+16. REPORT DASHBOARD
+
+Create a Reporting area without replacing existing dashboards.
+
+Suggested structure:
+
+Reporting
+
+- Overview
+- Students
+- Attendance
+- Academics
+- Finance
+- Subscriptions
+- Partners
+- Communication
+- Library
+- Operations
+- NFC & Devices
+- Audit/System Activity where authorized
+
+Use existing application navigation conventions.
+
+Role-aware navigation must determine which report categories appear.
+
+---
+
+17. PLATFORM OWNER REPORTING
+
+Create a platform-level Owner reporting experience.
+
+Owner reporting should focus on platform-level information.
+
+Examples:
+
+Platform Overview
+
+- Schools
+- Students
+- Active subscriptions
+- Subscription status
+- Revenue summaries
+- Partner activity
+- NFC deployment
+- Communication usage
+- System activity
+
+School comparison views
+
+Allow authorized Owner users to select a school and view reporting information for that school.
+
+This is a READ-ONLY platform reporting context.
+
+Do not navigate the Owner into the School Admin dashboard.
+
+Do not expose School Admin controls.
+
+---
+
+18. SCHOOL REPORTING
+
+School Admin should have a school-specific reporting context.
+
+Every query must enforce:
+
+school_id = authenticated user's authorized school scope
+
+Do not trust:
+
+- URL school_id
+- query parameter school_id
+- request body school_id
+- frontend state
+
+The server must determine the authorized school scope.
+
+---
+
+19. PARENT REPORTING
+
+Parents should only receive reports concerning their linked children.
+
+Potential reports:
+
+- Child attendance
+- Child academic results
+- Child library activity
+- Relevant fee/payment summaries
+- Relevant notifications
+
+A parent must never query arbitrary student IDs to obtain another student's reports.
+
+Enforce existing parent-child relationship rules server-side.
+
+---
+
+20. STUDENT REPORTING
+
+Students should only access their own authorized information.
+
+Potential reports:
+
+- Own attendance
+- Own results
+- Own academic history
+- Own library activity
+- Own relevant subscription/fee status where existing permissions allow it
+
+No cross-student access.
+
+---
+
+21. TEACHER REPORTING
+
+Teachers should only access reports permitted by their existing school/class/subject permissions.
+
+Examples:
+
+- Assigned class attendance
+- Assigned subject performance
+- Assessment completion
+- Class result summaries
+- Relevant academic reports
+
+Do not grant teachers School Admin reporting privileges.
+
+---
+
+22. ACCOUNTANT REPORTING
+
+Accountants should have appropriate school-scoped Finance reports.
+
+Do not expose unrelated Platform Owner or cross-school reports.
+
+Respect existing Finance RBAC.
+
+---
+
+23. AUDITABILITY
+
+Important reporting actions should be auditable where appropriate.
+
+Examples:
+
+- Report generated
+- Export generated
+- Report type
+- User
+- School scope
+- Timestamp
+- Relevant filter context
+
+Do not store sensitive report contents unnecessarily.
+
+Do not log passwords, authentication tokens, cookies or secrets.
+
+---
+
+24. SECURITY REQUIREMENTS
+
+Every Reporting API must have:
+
+- Authentication
+- Role authorization
+- School tenant isolation
+- Object-level authorization
+- Parent-child authorization where applicable
+- Partner visibility restrictions
+- Teacher scope restrictions
+- Accountant scope restrictions
+- Student self-access restrictions
+- Platform Owner authorization
+
+Test direct API access.
+
+Do not rely on frontend hiding alone.
+
+Test:
+
+- Missing authentication → 401
+- Unauthorized role → 403
+- Wrong school → denied
+- Wrong student → denied
+- Wrong parent-child relationship → denied
+- Unauthorized export → denied
+
+---
+
+25. PERFORMANCE
+
+Reporting queries must be designed for real school usage.
+
+Avoid loading entire tables into the frontend.
+
+Use:
+
+- Server-side aggregation
+- Pagination
+- Appropriate indexes
+- Date-range filtering
+- Parameterized queries
+- Efficient joins
+- Summary queries
+- Existing database constraints
+
+Do not introduce premature caching that could cause stale financial or academic information unless explicitly required.
+
+---
+
+26. DATA ACCURACY
+
+Reports must use authoritative existing records.
+
+For example:
+
+Finance reports must derive payment totals from existing Finance payment records.
+
+Attendance reports must derive attendance from existing attendance records.
+
+Academic reports must derive results from existing academic records.
+
+Library reports must derive loans from existing library records.
+
+Do not duplicate records merely to make reporting easier.
+
+If an aggregation cannot be calculated reliably from existing data, document the limitation instead of inventing a value.
+
+---
+
+27. DATABASE
+
+If new reporting tables are genuinely required, minimize them.
+
+Prefer reporting queries/views/services over duplicating domain data.
+
+If migrations are required:
+
+- Create properly numbered migrations after the current development migration state.
+- Make them safe and deterministic.
+- Test them on a clean disposable PostgreSQL database.
+- Test migration replay from the beginning.
+- Do not blindly run migrations against the existing development database if the migration ledger is already behind the live schema.
+- Do not touch production.
+
+Do NOT create a separate duplicate database for reporting.
+
+---
+
+28. API DESIGN
+
+Use the existing API architecture and conventions.
+
+Create appropriate endpoints under a reporting namespace, for example:
+
+/api/reports/overview
+/api/reports/students
+/api/reports/attendance
+/api/reports/academics
+/api/reports/finance
+/api/reports/subscriptions
+/api/reports/partners
+/api/reports/communication
+/api/reports/library
+/api/reports/operations
+/api/reports/nfc
+/api/reports/audit
+
+Adjust endpoint naming to match the existing project conventions rather than blindly creating duplicates.
+
+Every endpoint must have:
+
+- Authentication
+- Authorization
+- Tenant filtering
+- Validation
+- Consistent errors
+- Pagination where applicable
+- Safe query construction
+
+---
+
+29. FRONTEND
+
+Build role-aware Reporting screens.
+
+Do not replace the existing dashboards.
+
+Add Reporting to existing navigation where appropriate.
+
+Use the existing:
+
+- UI components
+- Design system
+- React Query patterns
+- API client
+- Authentication context
+- RBAC helpers
+- Table components
+- Filter components
+- Modal/dialog patterns
+
+Avoid introducing a second UI framework.
+
+---
+
+30. NO BUSINESS LOGIC DUPLICATION
+
+Do not recreate:
+
+- Finance calculations
+- Attendance rules
+- Academic grading rules
+- Subscription rules
+- Partner commission rules
+- Library eligibility rules
+- Communication delivery rules
+
+Reporting should consume authoritative results from those modules.
+
+If a shared calculation currently exists only inside a module and Reporting needs it, refactor carefully into a shared server-side service without changing its behavior.
+
+---
+
+31. TESTING REQUIREMENTS
+
+Create comprehensive automated tests.
+
+Minimum categories:
+
+Authentication
+
+- Unauthenticated report request → 401
+
+RBAC
+
+- Platform Owner access
+- School Admin access
+- Teacher access
+- Accountant access
+- Parent access
+- Student access
+- Partner access
+
+Tenant isolation
+
+- School A cannot retrieve School B reports
+- School A cannot export School B reports
+- Parent cannot retrieve unrelated student reports
+- Student cannot retrieve another student's reports
+- Partner cannot retrieve unauthorized school details
+
+Filters
+
+- Date filtering
+- Session filtering
+- Term filtering
+- Class filtering
+- Section filtering
+- Subject filtering
+- Status filtering
+
+Finance
+
+- Verified payment totals
+- Pending payments excluded from verified totals where appropriate
+- Refund/reversal handling
+- Invoice status summaries
+
+Attendance
+
+- Daily
+- Term
+- Class
+- Student
+- Gate/class discrepancies
+
+Academics
+
+- Published results
+- Unpublished results
+- Class/subject summaries
+- Historical sessions
+
+Library
+
+- Loans
+- Returns
+- Overdue
+- Lost/damaged
+
+Operations
+
+- Assets
+- Maintenance
+- Tasks
+
+NFC
+
+- School-bound devices
+- School-bound cards
+- Attendance activity
+
+Exports
+
+- CSV authorization
+- XLSX authorization
+- PDF authorization
+- Export data matches on-screen authorized scope
+
+Security
+
+Attempt direct manipulation of:
+
+- school_id
+- student_id
+- parent_id
+- teacher_id
+- report IDs
+- export parameters
+
+All must remain protected.
+
+---
+
+32. MIGRATION VERIFICATION
+
+If migrations are added:
+
+1. Run them on a clean disposable PostgreSQL database.
+2. Replay all migrations from the beginning.
+3. Verify the reporting schema.
+4. Verify constraints/indexes.
+5. Run the complete test suite.
+6. Run typecheck.
+7. Run frontend build.
+8. Run backend build.
+9. Verify no production database has been modified.
+
+Do not Publish.
+
+---
+
+33. DEVELOPMENT VERIFICATION REPORT
+
+At completion, provide a factual report containing:
+
+Implementation
+
+- Reporting modules implemented
+- API endpoints
+- Frontend screens
+- Exports
+- Filters
+- Role access
+
+Database
+
+- Migrations created
+- Clean replay result
+- Indexes/constraints
+- Any schema changes
+
+Security
+
+- Authentication
+- RBAC
+- Tenant isolation
+- Object-level authorization
+- Export security
+
+Tests
+
+Report exact results:
+
+- Total passed
+- Total failed
+- Total skipped
+- Typecheck
+- Frontend build
+- Backend build
+
+Do not report tests as passing unless they actually ran.
+
+Browser verification
+
+Clearly distinguish:
+
+- Verified
+- Not verified
+- Blocked by Clerk/session limitations
+
+Do not claim authenticated browser verification if the test browser cannot access the required Clerk session.
+
+Provider verification
+
+Do not claim real SMS/email/push/payment provider delivery unless actually tested with real or sandbox credentials.
+
+Production
+
+Explicitly confirm:
+
+- Production untouched
+- No Publish executed
+- No production migration executed
+- No production users changed
+- No production secrets changed
+
+---
+
+34. FINAL ACCEPTANCE CRITERIA
+
+Phase 10 is complete only when:
+
+- Reporting works in development.
+- Reports use authoritative existing data.
+- All roles are correctly restricted.
+- Tenant isolation is enforced server-side.
+- Parent/student/teacher/partner access is correctly scoped.
+- Platform Owner reporting remains separate from School Admin operations.
+- Finance reporting is read-only.
+- Attendance reporting is read-only.
+- Academic reporting is read-only.
+- Library reporting is read-only.
+- Operations reporting is read-only.
+- NFC reporting respects school binding.
+- Exports respect all permissions.
+- Automated tests pass.
+- Typechecks pass.
+- Builds pass.
+- Migration replay passes if migrations were added.
+- Production remains untouched.
+- Publish is NOT executed.
+
+Do not stop at UI implementation. Verify the backend authorization and data boundaries as well.
+
+At the end, provide the exact implementation and verification results.

@@ -12,3 +12,4 @@
 - [Owner and school-operation separation](owner-school-operation-separation.md) — platform ownership remains read-only for ordinary school operations, even on a dual-role account.
 - [Authenticated browser evidence](authenticated-browser-evidence.md) — the owner's signed-in tab and the agent's testing browser have separate Clerk sessions; distinguish user-observed UI from agent-tested flows.
 - [Vite cartographer JSX generics](vite-cartographer-jsx-generics.md) — development metadata injection can break generic JSX elements even when typecheck and production build pass.
+- [Same-day class history](same-day-class-history.md) — attendance reports must not attribute an earlier event to a class a student joined later that day.

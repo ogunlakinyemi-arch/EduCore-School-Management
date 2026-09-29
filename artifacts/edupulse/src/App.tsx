@@ -49,6 +49,7 @@ import { CommunicationInbox } from '@/pages/communication-inbox';
 import { NotificationSettings } from '@/pages/notification-settings';
 import { LibraryPage } from '@/pages/library';
 import { OperationsPage } from '@/pages/operations';
+import { ReportingPage } from '@/pages/reporting';
 
 import './index.css';
 
@@ -197,6 +198,9 @@ function ProtectedRoutes() {
           </Route>
           <Route path="/audit">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><AuditPage /></RoleGuard>
+          </Route>
+          <Route path="/reporting">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'PARENT', 'PARTNER']} ownerCanView><ReportingPage /></RoleGuard>
           </Route>
           <Route path="/students">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']} ownerCanView ownerReadOnly><StudentsPage /></RoleGuard>

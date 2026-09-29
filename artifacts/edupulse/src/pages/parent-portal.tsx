@@ -1,7 +1,7 @@
 import { UserButton } from '@clerk/react';
 import { useState } from 'react';
 import { Link, Route, Switch } from 'wouter';
-import { BookOpen, ChevronRight, GraduationCap, ShieldCheck, UserRound, UsersRound, Zap, LogIn, LogOut, Calendar, Clock, ReceiptText } from 'lucide-react';
+import { BookOpen, ChevronRight, GraduationCap, ShieldCheck, UserRound, UsersRound, Zap, LogIn, LogOut, Calendar, Clock, ReceiptText, FileSpreadsheet } from 'lucide-react';
 import { 
   useGetParentChild, useGetParentChildren, useGetParentProfile, useGetParentChildAttendance,
   useListChildAcademicAssignments, useListChildAcademicResults, useListChildAcademicReportCards, useGetChildAcademicTimetable
@@ -13,6 +13,7 @@ import { FeePaymentNotifications } from '@/components/fee-payment-notifications'
 import { CommunicationInbox, CommunicationInboxBadge } from '@/pages/communication-inbox';
 import { NotificationSettings } from '@/pages/notification-settings';
 import { Loans } from '@/pages/library';
+import { ReportingPage } from '@/pages/reporting';
 import { cx } from 'class-variance-authority';
 
 function Loading() {
@@ -29,6 +30,7 @@ function PortalHeader() {
         </Link>
         <div className="flex items-center gap-3">
           <span className="hidden text-xs font-semibold text-[hsl(var(--muted-foreground))] sm:block">Protected family access</span>
+          <Link href="/reporting" className="inline-flex items-center gap-1.5 text-xs font-bold text-[hsl(var(--primary))] hover:underline" data-testid="link-parent-reporting"><FileSpreadsheet size={15} /> Reports</Link>
           <FeePaymentNotifications audience="parent" />
           <CommunicationInboxBadge />
           <Link href="/notification-settings" className="hidden text-xs font-bold text-[hsl(var(--primary))] sm:block" data-testid="link-parent-notification-settings">Preferences</Link>
@@ -361,5 +363,5 @@ function ChildLibraryRoute() {
 }
 
 export default function ParentPortal() {
-  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><Switch><Route path="/" component={ParentDashboard} /><Route path="/inbox"><CommunicationInbox standalone /></Route><Route path="/notification-settings"><NotificationSettings standalone /></Route><Route path="/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route path="/parent/library/:studentId" component={ChildLibraryRoute} /><Route component={NotFound} /></Switch></div>;
+  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><Switch><Route path="/" component={ParentDashboard} /><Route path="/reporting"><main className="mx-auto max-w-6xl p-5 md:p-8"><ReportingPage audience="parent" /></main></Route><Route path="/inbox"><CommunicationInbox standalone /></Route><Route path="/notification-settings"><NotificationSettings standalone /></Route><Route path="/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route path="/parent/library/:studentId" component={ChildLibraryRoute} /><Route component={NotFound} /></Switch></div>;
 }

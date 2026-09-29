@@ -25,7 +25,8 @@ import {
   School as SchoolIcon,
   Copy,
   Check,
-  Users
+  Users,
+  FileSpreadsheet
 } from 'lucide-react';
 import { 
   cx, 
@@ -48,6 +49,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { CommunicationInbox, CommunicationInboxBadge } from '@/pages/communication-inbox';
 import { NotificationSettings } from '@/pages/notification-settings';
+import { ReportingPage } from '@/pages/reporting';
 
 function Loading() {
   return (
@@ -87,10 +89,12 @@ function PortalHeader() {
               {isOwner && <Link href="/partner/staff" className={cx("hover:text-[hsl(var(--foreground))]", location.startsWith('/partner/staff') && "text-[hsl(var(--primary))]")}>Staff</Link>}
               {canViewFinance && <Link href="/partner/commissions" className={cx("hover:text-[hsl(var(--foreground))]", location.startsWith('/partner/commissions') && "text-[hsl(var(--primary))]")}>Commissions</Link>}
               {canViewFinance && <Link href="/partner/payouts" className={cx("hover:text-[hsl(var(--foreground))]", location.startsWith('/partner/payouts') && "text-[hsl(var(--primary))]")}>Payouts</Link>}
+              <Link href="/reporting" className={cx("hover:text-[hsl(var(--foreground))]", location === '/reporting' && "text-[hsl(var(--primary))]")} data-testid="link-partner-reporting">Reports</Link>
               {isOwner && <Link href="/partner/profile" className={cx("hover:text-[hsl(var(--foreground))]", location === '/partner/profile' && "text-[hsl(var(--primary))]")}>Settings</Link>}
             </nav>
           )}
           <CommunicationInboxBadge />
+          {isSetup && <Link href="/reporting" className="inline-flex items-center gap-1 text-xs font-bold text-[hsl(var(--primary))] md:hidden" data-testid="link-partner-reporting-mobile"><FileSpreadsheet size={15} /> Reports</Link>}
           <Link href="/notification-settings" className="hidden text-xs font-bold text-[hsl(var(--primary))] sm:block" data-testid="link-partner-notification-settings">Preferences</Link>
           <UserButton />
         </div>
@@ -786,6 +790,7 @@ export default function PartnerPortal() {
     <div className="min-h-[100dvh] bg-[hsl(var(--background))]">
       <PortalHeader />
       <Switch>
+        <Route path="/reporting"><main className="mx-auto max-w-6xl p-5 md:p-8"><ReportingPage audience="partner" /></main></Route>
         <Route path="/inbox"><CommunicationInbox standalone /></Route>
         <Route path="/notification-settings"><NotificationSettings standalone /></Route>
         <Route path="/partner" component={Dashboard} />

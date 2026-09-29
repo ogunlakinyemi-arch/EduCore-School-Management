@@ -7,7 +7,7 @@ import {
   Activity, ArrowLeft, ArrowUpRight, BadgeCheck, BarChart3, Bell, BookOpen, Building2, Check, ChevronDown, 
   CircleAlert, CircleDollarSign, CreditCard, FileClock, GraduationCap, LayoutDashboard, Library, Menu, 
   MoreHorizontal, Pencil, Plus, RefreshCw, Search, Settings2, ShieldCheck, SlidersHorizontal, Smartphone, 
-  UserRound, UsersRound, WalletCards, X, Zap, Calendar, UserCog, ClipboardList, Briefcase, Handshake, ClipboardCheck, ReceiptText, Wrench
+  UserRound, UsersRound, WalletCards, X, Zap, Calendar, UserCog, ClipboardList, Briefcase, Handshake, ClipboardCheck, ReceiptText, Wrench, FileSpreadsheet
 } from 'lucide-react';
 import {
   useGetAuthorizedContext, useListSchools, getListSchoolsQueryKey,
@@ -54,6 +54,7 @@ const nav: NavItem[] = [
   { href: '/my-academics', label: 'My Academics', icon: GraduationCap, roles: ['STUDENT'] },
   { href: '/my-fees', label: 'My Fees', icon: ReceiptText, roles: ['STUDENT'] },
   { href: '/finance', label: 'School Fees', icon: CircleDollarSign, roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
+  { href: '/reporting', label: 'Reporting', icon: FileSpreadsheet, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT'] },
   { href: '/communications', label: 'Communications', icon: Bell, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT'] },
   { href: '/inbox', label: 'Inbox', icon: Bell, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'STAFF', 'PARENT'] },
   { href: '/notification-settings', label: 'Notification settings', icon: Settings2, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'STAFF', 'PARENT'] },
@@ -70,7 +71,7 @@ const nav: NavItem[] = [
 ];
 const ownerNavPaths = new Set([
   '/', '/schools', '/students', '/company-employees', '/users', '/partners',
-  '/devices', '/subscriptions', '/cards', '/audit',
+  '/devices', '/subscriptions', '/cards', '/audit', '/reporting',
 ]);
 
 export function Shell({ children }: { children: ReactNode }) {

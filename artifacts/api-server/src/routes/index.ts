@@ -22,6 +22,7 @@ import communicationInboxRouter from "./communication-inbox";
 import communicationCampaignsRouter from "./communication-campaigns";
 import libraryRouter from "./library";
 import operationsRouter from "./operations";
+import reportingRouter from "./reporting";
 
 const router: IRouter = Router();
 
@@ -51,5 +52,6 @@ router.use(communicationInboxRouter);
 router.use(communicationCampaignsRouter);
 router.use(libraryRouter);
 router.use(operationsRouter);
+router.use(reportingRouter);
 
 export default router;
