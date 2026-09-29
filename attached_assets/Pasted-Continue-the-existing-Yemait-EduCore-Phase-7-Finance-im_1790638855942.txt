@@ -1,0 +1,806 @@
+Continue the existing Yemait EduCore Phase 7 Finance implementation.
+
+Do NOT rebuild, restart, replace, or redesign the existing application. Work only within the current architecture and preserve all completed Phase 1–6 functionality.
+
+There is currently NO Paystack test key configured. Do not ask for, invent, simulate, or require a Paystack secret key during this development pass.
+
+The objective is to complete and harden every Phase 7 feature that can be completed and verified without external payment credentials. Paystack/Flutterwave/Remita real sandbox transaction verification will remain a final external-verification blocker and must NOT be falsely reported as complete.
+
+1. FIRST — AUDIT THE CURRENT PHASE 7 IMPLEMENTATION
+
+Inspect the existing database schema, migrations, API routes, services, provider adapters, finance UI, payment UI, authorization rules, tests, OpenAPI definitions, generated clients, and current Phase 7 implementation.
+
+Do not duplicate existing functionality.
+
+Identify:
+
+- completed Phase 7 features
+- partially completed features
+- missing features
+- broken features
+- security gaps
+- migration risks
+- browser-flow gaps
+- remaining provider-dependent functionality
+
+Preserve working functionality.
+
+---
+
+2. FEE MANAGEMENT
+
+Verify and complete:
+
+Fee Categories
+
+Support:
+
+- tuition
+- registration
+- examination
+- development
+- transport
+- hostel
+- feeding
+- books
+- uniforms
+- technology
+- other school-defined fees
+
+School-specific fee categories must remain tenant-isolated.
+
+Fee Structures
+
+Support:
+
+- session
+- term
+- class
+- section where applicable
+- fee category
+- amount
+- effective dates/status where applicable
+
+Historical fee structures must not be silently changed by later edits.
+
+Individual Fee Assignment
+
+Allow authorized School Admin/Accountant users to assign fees to individual students.
+
+Prevent:
+
+- duplicate assignments
+- wrong school assignments
+- wrong session/term
+- unauthorized assignments
+
+Bulk Fee Assignment
+
+Complete and verify bulk assignment using:
+
+- session
+- term
+- class
+- section where applicable
+- fee structure/category
+
+The result must clearly show:
+
+- number created
+- number skipped
+- reason for every skipped student
+
+Do not create duplicate invoices when the operation is repeated.
+
+Use transactions where appropriate.
+
+Create appropriate audit records.
+
+---
+
+3. INVOICES
+
+Verify:
+
+Invoice statuses:
+
+- UNPAID
+- PARTIALLY_PAID
+- PAID
+- OVERDUE
+- WAIVED
+- CANCELLED
+
+Invoices must contain sufficient information to identify:
+
+- school
+- student
+- parent relationship where applicable
+- session
+- term
+- fee category
+- original amount
+- adjustments
+- paid amount
+- outstanding amount
+- status
+
+Do not allow cross-school invoice access.
+
+Do not allow a parent to access an invoice belonging to another child.
+
+Do not allow students to access another student's invoice.
+
+---
+
+4. DISCOUNTS, SCHOLARSHIPS AND WAIVERS
+
+Verify and complete:
+
+- percentage discount
+- fixed discount
+- scholarship
+- waiver
+
+Record:
+
+- reason
+- authorized user
+- date
+- original amount
+- adjustment amount
+- resulting balance
+
+Do not overwrite historical financial records.
+
+Prevent unauthorized adjustment.
+
+Prevent adjustment amounts from creating invalid negative balances unless explicitly supported by the existing business rules.
+
+---
+
+5. PAYMENT ARCHITECTURE
+
+Keep the existing provider abstraction.
+
+The system must support the existing architecture for:
+
+- Paystack
+- Flutterwave
+- Remita
+- Bank Transfer
+
+Do not require external credentials to complete the development work.
+
+The provider interface should support, where applicable:
+
+- initializePayment
+- verifyPayment
+- handleWebhook
+- getPaymentStatus
+- generateReference
+- validateAmount
+
+Provider-specific credentials must come only from secure environment variables/secrets.
+
+Never hard-code credentials.
+
+Never expose secret credentials to the frontend.
+
+Never log secret credentials.
+
+---
+
+6. PAYMENT STATE MANAGEMENT
+
+Verify the existing payment statuses:
+
+- PENDING
+- PROCESSING
+- VERIFIED
+- FAILED
+- REJECTED
+- CANCELLED
+- REVERSED
+- REFUNDED
+
+Only a genuinely verified payment may update the financial balance.
+
+Never allow:
+
+Frontend success → directly mark payment VERIFIED.
+
+The backend must remain authoritative.
+
+Delayed provider confirmation must remain PROCESSING/PENDING until independently verified.
+
+---
+
+7. PARENT PAYMENT FLOW
+
+Ensure the Parent Dashboard supports:
+
+Parent Dashboard
+→ Select Child
+→ View Fees
+→ View Invoice
+→ Select Payment Amount
+→ Select Available Payment Method
+→ Initiate Payment
+
+The UI must only display payment methods that the backend says are currently available.
+
+Support permitted partial payments.
+
+Validate:
+
+- parent-child relationship
+- school ownership
+- invoice ownership
+- payable amount
+- outstanding balance
+- currency
+- payment reference
+
+Do not allow amount manipulation from the browser.
+
+The backend must recalculate and validate the actual payable amount.
+
+---
+
+8. PAYMENT PROVIDER SAFETY
+
+Without external credentials, build and test all provider-independent logic.
+
+For Paystack, Flutterwave and Remita:
+
+- fail closed when credentials are unavailable
+- never pretend a transaction succeeded
+- never create a VERIFIED payment from mocked frontend success
+- clearly display unavailable/unconfigured provider status
+- preserve provider abstraction
+- preserve server-side verification
+- preserve webhook validation
+
+Paystack sandbox verification remains pending until a real test credential is supplied.
+
+Do NOT fabricate a successful Paystack transaction.
+
+---
+
+9. WEBHOOKS
+
+Complete and test the webhook infrastructure without requiring a real provider transaction.
+
+Verify:
+
+- signature validation
+- event validation
+- payment-reference matching
+- invoice matching
+- student matching
+- school matching
+- amount matching
+- currency matching
+- duplicate-event protection
+- idempotency
+- invalid-event rejection
+- unknown-reference rejection
+
+A repeated webhook must never:
+
+- create another payment
+- double-count payment
+- generate another receipt
+- reduce the invoice twice
+
+Store provider event/reference identifiers where appropriate.
+
+---
+
+10. RECEIPTS
+
+Complete the existing receipt system.
+
+A verified payment must be capable of producing an associated receipt.
+
+Receipt must contain appropriate:
+
+- school
+- student
+- parent where applicable
+- invoice
+- payment reference
+- payment method
+- amount
+- date
+- status
+
+Preserve receipt history.
+
+Do not delete receipts merely because a payment is later reversed/refunded.
+
+Refund/reversal must preserve the original financial history.
+
+---
+
+11. REFUNDS AND REVERSALS
+
+Complete and harden the existing refund/reversal functionality.
+
+A refund/reversal must:
+
+- preserve the original payment
+- preserve the original receipt
+- create a separate refund/reversal record
+- record reason
+- record authorization
+- record evidence/reference
+- update the invoice balance correctly
+- prevent double refund
+- prevent over-refund
+- prevent unauthorized refund
+- enforce school tenant isolation
+
+The current system does NOT need to send real money to a provider without provider credentials.
+
+Do not pretend an external refund has occurred.
+
+Clearly distinguish:
+
+INTERNAL REFUND/REVERSAL RECORD
+
+from:
+
+PROVIDER-EXECUTED REFUND
+
+Provider-executed refund remains pending external verification.
+
+---
+
+12. MANUAL BANK TRANSFER
+
+Complete and verify the existing manual bank-transfer workflow.
+
+School Admin must be able to configure approved bank details.
+
+Parent must be able to see approved bank information.
+
+Parent must not be able to claim that a transfer is verified.
+
+Transfer should remain pending until an authorized reviewer verifies it.
+
+Reviewer must be able to record:
+
+- evidence/reference
+- amount
+- date
+- reviewer
+- verification decision
+
+Only verified transfers update balances and generate receipts.
+
+Prevent:
+
+- duplicate verification
+- cross-school transfer access
+- wrong invoice
+- wrong student
+- unauthorized verification
+
+---
+
+13. AUTOMATIC BANK TRANSFER ARCHITECTURE
+
+Prepare the architecture for provider-supported automatic bank transfer using:
+
+- virtual account
+- dedicated account
+- unique payment reference
+- provider webhook
+
+where supported.
+
+Do not claim this is operational without an actual provider sandbox/live verification.
+
+The system must remain safe when the provider is unavailable.
+
+---
+
+14. FINANCIAL REPORTING
+
+Complete and verify:
+
+School Financial Summary
+
+Show:
+
+- invoiced amount
+- paid amount
+- outstanding amount
+- adjustments
+- refunds/reversals
+
+Payment Report
+
+Filter by:
+
+- session
+- term
+- class
+- section
+- student
+- payment method
+- payment status
+- date range
+
+Outstanding Report
+
+Show:
+
+- student
+- invoice
+- original amount
+- paid
+- outstanding
+- overdue status
+
+Fee Category Report
+
+Class Report
+
+Term Report
+
+Adjustment Report
+
+Include:
+
+- discounts
+- scholarships
+- waivers
+
+Refund/Reversal Report
+
+Provider Reconciliation Report
+
+Reports must respect tenant and role permissions.
+
+---
+
+15. RECONCILIATION
+
+Complete reconciliation controls for uncertain payments.
+
+Support investigation of:
+
+- pending transactions
+- processing transactions
+- provider references
+- webhook status
+- verification status
+- mismatched amounts
+- uncertain provider responses
+
+Reconciliation must NOT automatically create a second charge.
+
+Do not allow reconciliation to bypass normal payment verification.
+
+---
+
+16. ROLE SECURITY
+
+Verify permissions for:
+
+Platform Owner
+
+Can oversee platform-wide financial information according to existing architecture.
+
+School Admin
+
+Can manage their own school's finance.
+
+Accountant
+
+Can perform authorized financial operations within their school.
+
+Teacher
+
+Must not gain unauthorized financial controls.
+
+Parent
+
+Can only access their own linked children.
+
+Student
+
+Can only access their own financial information permitted by the existing design.
+
+Partner
+
+Must not gain access to school financial records merely because they referred the school.
+
+Enforce authorization on the backend, not just the frontend.
+
+---
+
+17. TENANT ISOLATION
+
+Perform targeted security tests for:
+
+- School A accessing School B invoice
+- School A accessing School B payment
+- School A accessing School B receipt
+- Parent A accessing Parent B's child
+- Student A accessing Student B's invoice
+- Accountant from School A accessing School B finance
+- unauthorized refund
+- unauthorized payment verification
+- manipulated invoice ID
+- manipulated student ID
+- manipulated school ID
+
+All must be rejected appropriately.
+
+---
+
+18. PAYMENT SECURITY TESTS
+
+Add or verify automated tests for:
+
+- fake frontend payment success
+- amount manipulation
+- zero amount
+- negative amount
+- amount greater than outstanding
+- wrong currency
+- wrong invoice
+- wrong student
+- wrong school
+- wrong parent
+- duplicate payment
+- duplicate webhook
+- invalid webhook signature
+- unknown webhook event
+- unauthorized refund
+- double refund
+- over-refund
+- unauthorized bank-transfer verification
+
+---
+
+19. AUTHENTICATED DEVELOPMENT BROWSER TESTING
+
+Since no external Paystack credential exists, perform authenticated browser walkthroughs using disposable DEVELOPMENT fixtures/accounts.
+
+Do not modify production.
+
+Test:
+
+School Admin
+
+- finance dashboard
+- fee structure
+- bulk assignment
+- invoices
+- reports
+- payment visibility
+- refund/reversal controls
+
+Accountant
+
+- invoices
+- payments
+- manual bank transfer verification
+- receipts
+- reports
+- reconciliation
+- refund/reversal workflow
+
+Parent
+
+- login
+- select child
+- view fees
+- view invoice
+- view outstanding balance
+- view payment history
+- view receipts
+- verify unavailable provider behavior
+- verify partial-payment UI
+
+Student
+
+- login
+- view financial information allowed by the design
+- verify updated balances
+- verify payment history/receipts where applicable
+
+For external provider checkout, stop at the provider-unavailable state because there is currently no Paystack test credential.
+
+Do not fabricate a completed payment.
+
+---
+
+20. DATABASE AND MIGRATIONS
+
+Inspect every Phase 7 migration.
+
+All migrations must:
+
+- apply cleanly to an empty development database
+- replay against a populated historical schema
+- preserve existing data
+- preserve tenant isolation
+- preserve historical attendance/NFC data
+- avoid destructive changes
+
+IMPORTANT NFC BLOCKER
+
+The current Publish process has an NFC foreign-key ordering problem.
+
+The existing issue involves:
+
+"nfc_card_history"
+
+referencing:
+
+"nfc_cards(id, school_id)"
+
+The referenced composite key/unique constraint must exist BEFORE the dependent foreign key is created.
+
+Fix the migration generation/order safely in DEVELOPMENT.
+
+Do NOT:
+
+- drop existing NFC foreign keys simply to make migration pass
+- delete NFC data
+- modify production directly
+- bypass PostgreSQL referential integrity
+- create an unsafe Publish migration
+
+The correct migration ordering must establish the required referenced uniqueness/constraint before creating dependent foreign keys.
+
+Then verify:
+
+- clean migration
+- populated replay
+- NFC card history
+- attendance history
+- school isolation
+- device/card relationships
+
+Do not publish production.
+
+---
+
+21. REGRESSION TESTING
+
+Run all existing tests.
+
+The previous baseline was:
+
+226 API tests passing
+
+Do not reduce existing coverage.
+
+Add tests for all newly completed Phase 7 functionality.
+
+Run:
+
+- API tests
+- finance tests
+- payment tests
+- security tests
+- migration tests
+- typechecks
+- frontend build
+- backend build
+- API health
+- web health
+
+---
+
+22. PRODUCTION SAFETY
+
+This entire task is DEVELOPMENT ONLY.
+
+Do NOT:
+
+- publish
+- deploy
+- alter production database
+- alter production schema
+- modify production financial records
+- modify production secrets
+- use live Paystack credentials
+- use live Flutterwave credentials
+- use live Remita credentials
+
+If a production prerequisite is discovered, report it rather than changing production.
+
+---
+
+23. PAYSTACK STATUS
+
+Because there is currently no Paystack test key:
+
+DO NOT report Paystack as fully verified.
+
+Instead report:
+
+PAYSTACK SANDBOX VERIFICATION: PENDING EXTERNAL TEST CREDENTIAL
+
+The following can still be verified now:
+
+- provider abstraction
+- payment initialization logic
+- server-side verification logic
+- webhook validation
+- idempotency
+- amount validation
+- authorization
+- invoice matching
+- receipt creation logic
+- balance update logic
+- failure handling
+- security controls
+
+Actual provider-to-provider communication remains pending until a real Paystack test credential is configured.
+
+---
+
+24. FINAL VERIFICATION
+
+At the end, provide a detailed report with:
+
+1. Phase 7 features completed
+2. Fee management status
+3. Bulk assignment status
+4. Invoice status
+5. Discount/scholarship/waiver status
+6. Manual bank transfer status
+7. Payment architecture status
+8. Paystack status — explicitly PENDING EXTERNAL TEST CREDENTIAL
+9. Flutterwave status
+10. Remita status
+11. Webhook status
+12. Idempotency status
+13. Receipt status
+14. Refund/reversal status
+15. Reconciliation status
+16. Financial reports status
+17. Parent UI status
+18. Student UI status
+19. Accountant UI status
+20. School Admin UI status
+21. Tenant-isolation test status
+22. Security test status
+23. Migration status
+24. NFC Publish-ordering status
+25. API test count
+26. Typecheck result
+27. Build result
+28. Health-check result
+29. Production-change confirmation
+
+IMPORTANT FINAL STATUS RULE:
+
+Do NOT report:
+
+PHASE 7 COMPLETE — READY FOR PHASE 8
+
+because Paystack has not yet undergone a real sandbox transaction and authenticated end-to-end payment verification.
+
+Instead, if all development work is complete, report:
+
+PHASE 7 DEVELOPMENT COMPLETE — EXTERNAL PAYMENT VERIFICATION PENDING
+
+Then list the exact remaining external verification steps.
+
+If other development blockers remain, report:
+
+PHASE 7 NOT COMPLETE
+
+and identify each blocker precisely.
+
+Do not start Phase 8 in this task.

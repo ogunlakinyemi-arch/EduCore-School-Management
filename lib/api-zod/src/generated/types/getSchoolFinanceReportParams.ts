@@ -5,6 +5,7 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { GetSchoolFinanceReportMethod } from './getSchoolFinanceReportMethod';
 import type { GetSchoolFinanceReportProvider } from './getSchoolFinanceReportProvider';
 import type { GetSchoolFinanceReportReportType } from './getSchoolFinanceReportReportType';
 import type { SchoolIdParameter } from './schoolIdParameter';
@@ -35,7 +36,19 @@ section?: string;
  * @minimum 1
  */
 categoryId?: number;
+/**
+ * Restrict invoice and payment data to this student within the authorized school.
+ * @minimum 1
+ */
+studentId?: number;
+/**
+ * Payment method filter; distinct from provider.
+ */
+method?: GetSchoolFinanceReportMethod;
 status?: string;
+/**
+ * Payment provider filter; distinct from the payment method.
+ */
 provider?: GetSchoolFinanceReportProvider;
 from?: Date;
 to?: Date;

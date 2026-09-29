@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({
   payment: { id: 11, school_id: 1, invoice_id: 22, status: "VERIFIED", amount_minor: 5000, currency: "NGN" } as Record<string, any>,
   invoice: { id: 22, school_id: 1, total_minor: 5000, paid_minor: 5000, outstanding_minor: 0, status: "PAID" } as Record<string, any>,
   refunds: [] as Array<Record<string, any>>,
+  calls: [] as Array<{ sql: string; values: any[] }>,
   auditCount: 0,
 }));
 
@@ -13,6 +14,7 @@ const refundView = (refund: Record<string, any>) => ({
   schoolId: refund.school_id,
   paymentId: refund.payment_id,
   invoiceId: refund.invoice_id,
+  transactionType: refund.transaction_type ?? "REFUND",
   amountMinor: refund.amount_minor,
   currency: refund.currency,
   reason: refund.reason,
@@ -25,6 +27,7 @@ const refundView = (refund: Record<string, any>) => ({
 const dbMock = vi.hoisted(() => {
   const result = (rows: any[] = []) => ({ rows, rowCount: rows.length });
   const query = vi.fn(async (sql: string, values: any[] = []) => {
+    state.calls.push({ sql, values });
     if (sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK") return result();
     if (sql.includes("SELECT invoice_id FROM fee_payments")) {
       return result(state.payment.id === Number(values[0]) && state.payment.school_id === Number(values[1])
@@ -62,8 +65,8 @@ const dbMock = vi.hoisted(() => {
       const item = {
         id: state.refunds.length + 101,
         school_id: values[0], payment_id: values[1], invoice_id: values[2], reference: values[3],
-        idempotency_key: values[4], amount_minor: values[5], currency: values[6], reason: values[7],
-        requested_by: values[8], status: "PENDING",
+        idempotency_key: values[4], transaction_type: values[5], amount_minor: values[6],
+        currency: values[7], reason: values[8], requested_by: values[9], status: "PENDING",
       };
       state.refunds.push(item);
       return result([refundView(item)]);
@@ -81,6 +84,10 @@ const dbMock = vi.hoisted(() => {
       state.invoice.paid_minor = values[0];
       state.invoice.outstanding_minor = values[1];
       state.invoice.status = values[2];
+      return result();
+    }
+    if (sql.includes("UPDATE fee_payments SET status=$1")) {
+      state.payment.status = values[0];
       return result();
     }
     if (sql.includes("INSERT INTO audit_logs")) {
@@ -138,15 +145,20 @@ beforeEach(() => {
   state.payment = { id: 11, school_id: 1, invoice_id: 22, status: "VERIFIED", amount_minor: 5000, currency: "NGN" };
   state.invoice = { id: 22, school_id: 1, total_minor: 5000, paid_minor: 5000, outstanding_minor: 0, status: "PAID" };
   state.refunds.length = 0;
+  state.calls.length = 0;
   state.auditCount = 0;
   dbMock.query.mockClear();
 });
 
-const requestRefund = (amountMinor: unknown = 3000, headers: Record<string, string> = {}) =>
+const requestRefund = (
+  amountMinor: unknown = 3000,
+  headers: Record<string, string> = {},
+  transactionType: "REFUND" | "REVERSAL" = "REFUND",
+) =>
   fetch(`${baseUrl}/school/finance/payments/11/refunds?schoolId=1`, {
     method: "POST",
     headers: { "content-type": "application/json", "Idempotency-Key": "refund-request-0001", ...headers },
-    body: JSON.stringify({ amountMinor, reason: "Approved credit correction" }),
+    body: JSON.stringify({ amountMinor, reason: "Approved credit correction", transactionType }),
   });
 
 describe("school fee refunds", () => {
@@ -193,5 +205,32 @@ describe("school fee refunds", () => {
     expect(replay.status).toBe(200);
     expect(state.invoice.paid_minor).toBe(2000);
     expect(state.auditCount).toBe(2);
+  });
+
+  it("marks the original payment refunded after a full internal refund while retaining its receipt record", async () => {
+    const requested = await requestRefund(5000, { "Idempotency-Key": "refund-full-0001" });
+    const refund = await requested.json() as { id: number };
+    const approved = await fetch(`${baseUrl}/school/finance/refunds/${refund.id}/approve?schoolId=1`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ evidenceReference: "internal-ledger-5000", reviewerNotes: "Approved internal correction record" }),
+    });
+    expect(approved.status).toBe(200);
+    expect(state.payment.status).toBe("REFUNDED");
+    expect(state.invoice).toMatchObject({ paid_minor: 0, outstanding_minor: 5000, status: "UNPAID" });
+    expect(state.calls?.some((call: { sql: string }) => /DELETE FROM fee_receipts/i.test(call.sql))).toBe(false);
+  });
+
+  it("marks a fully reversed internal ledger entry as REVERSED, not REFUNDED", async () => {
+    const requested = await requestRefund(5000, { "Idempotency-Key": "reversal-full-0001" }, "REVERSAL");
+    const refund = await requested.json() as { id: number; transactionType: string };
+    expect(refund.transactionType).toBe("REVERSAL");
+    const approved = await fetch(`${baseUrl}/school/finance/refunds/${refund.id}/approve?schoolId=1`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ evidenceReference: "internal-reversal-5000", reviewerNotes: "Approved internal reversal record" }),
+    });
+    expect(approved.status).toBe(200);
+    expect(state.payment.status).toBe("REVERSED");
   });
 });

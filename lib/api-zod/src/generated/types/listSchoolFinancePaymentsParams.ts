@@ -18,4 +18,6 @@ status?: ListSchoolFinancePaymentsStatus;
  * @minimum 1
  */
 studentId?: number;
+from?: Date;
+to?: Date;
 };

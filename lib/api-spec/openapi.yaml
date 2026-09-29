@@ -480,7 +480,7 @@ paths:
     post:
       operationId: approveFeeRefund
       tags: [finance]
-      summary: Approve and record an externally confirmed refund with evidence; preserves original payment and receipt
+      summary: Approve an internal refund ledger adjustment with evidence; does not assert provider payout
       parameters:
         - name: refundId
           in: path
@@ -494,7 +494,7 @@ paths:
             schema: { $ref: "#/components/schemas/FeeRefundApprovalInput" }
       responses:
         "200":
-          description: Approved refund ledger record
+          description: Approved internal refund ledger record; original payment and receipt remain in history
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FeeRefund" }
@@ -504,6 +504,13 @@ paths:
       operationId: getSchoolFinanceReport
       tags: [finance]
       summary: School-scoped financial totals and grouped financial report data
+      description: >-
+        Student and method filters are school-scoped. For payments reports, and totalCollectedMinor in
+        provider-reconciliation reports, from/to select payment collections using verification time (or creation
+        time while unverified); totalCollectedMinor is net of approved internal refunds and reversals for that period.
+        totalBilledMinor and totalOutstandingMinor remain lifetime totals for the filtered invoice cohort and are not
+        limited to the payment date range. Provider-reconciliation rows are checkout-session and webhook-event
+        records; their date range uses checkout creation or webhook receipt time.
       parameters:
         - $ref: "#/components/parameters/SchoolId"
         - name: reportType
@@ -524,12 +531,21 @@ paths:
         - name: categoryId
           in: query
           schema: { type: integer, minimum: 1 }
+        - name: studentId
+          in: query
+          schema: { type: integer, minimum: 1 }
+          description: Restrict invoice and payment data to this student within the authorized school.
+        - name: method
+          in: query
+          schema: { type: string, enum: [BANK_TRANSFER, REMITA, FLUTTERWAVE, PAYSTACK] }
+          description: Payment method filter; distinct from provider.
         - name: status
           in: query
           schema: { type: string }
         - name: provider
           in: query
           schema: { type: string, enum: [MANUAL_BANK_TRANSFER, REMITA, FLUTTERWAVE, PAYSTACK] }
+          description: Payment provider filter; distinct from the payment method.
         - name: from
           in: query
           schema: { type: string, format: date }
@@ -538,7 +554,7 @@ paths:
           schema: { type: string, format: date }
       responses:
         "200":
-          description: Aggregates and report rows; no student identifying details
+          description: School-scoped totals and grouped or detailed student, invoice, and payment report rows
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FinanceReport" }
@@ -596,6 +612,12 @@ paths:
         - name: studentId
           in: query
           schema: { type: integer, minimum: 1 }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
       responses:
         "200":
           description: School-scoped payments including transfer review fields
@@ -5580,25 +5602,34 @@ components:
         reviewerNotes: { type: string, minLength: 3, maxLength: 1000 }
     FeeAdjustmentInput:
       type: object
-      required: [kind, amountMinor, reason]
+      required: [kind, reason]
       properties:
         kind: { type: string, enum: [DISCOUNT, SCHOLARSHIP, WAIVER] }
-        amountMinor: { type: integer, minimum: 1 }
+        amountMinor: { type: integer, minimum: 1, description: Required for fixed adjustments; do not send with percentage. }
+        percentage: { type: number, minimum: 0.01, maximum: 100, multipleOf: 0.01, description: Discount percentage from 0.01 through 100; only valid for DISCOUNT. Calculated from the invoice's original subtotal in integer basis points with half-up minor-unit rounding. }
         reason: { type: string, minLength: 3, maxLength: 500 }
     FeeAdjustment:
       type: object
-      required: [id, schoolId, invoiceId, kind, amountMinor, reason, status]
+      required: [id, schoolId, invoiceId, kind, amountMinor, percentage, approvedAmountMinor, originalBalanceMinor, resultingBalanceMinor, reason, status, requestedBy, requestedAt, approvedBy, approvedAt]
       properties:
         id: { type: integer }
         schoolId: { type: integer }
         invoiceId: { type: integer }
         kind: { type: string, enum: [DISCOUNT, SCHOLARSHIP, WAIVER] }
         amountMinor: { type: integer }
+        percentage: { type: ["number", "null"] }
+        approvedAmountMinor: { type: ["integer", "null"] }
+        originalBalanceMinor: { type: ["integer", "null"] }
+        resultingBalanceMinor: { type: ["integer", "null"] }
         reason: { type: string }
         status: { type: string, enum: [PENDING, APPROVED, REJECTED] }
+        requestedBy: { type: integer }
+        requestedAt: { type: string, format: date-time }
+        approvedBy: { type: ["integer", "null"] }
+        approvedAt: { type: ["string", "null"], format: date-time }
     PendingFeeAdjustment:
       type: object
-      required: [id, schoolId, invoiceId, invoiceNumber, studentId, studentName, kind, amountMinor, reason, status, requestedAt]
+      required: [id, schoolId, invoiceId, invoiceNumber, studentId, studentName, kind, amountMinor, percentage, originalBalanceMinor, requestedBy, reason, status, requestedAt]
       properties:
         id: { type: integer }
         schoolId: { type: integer }
@@ -5608,16 +5639,22 @@ components:
         studentName: { type: string }
         kind: { type: string, enum: [DISCOUNT, SCHOLARSHIP, WAIVER] }
         amountMinor: { type: integer }
+        percentage: { type: ["number", "null"] }
+        originalBalanceMinor: { type: ["integer", "null"] }
+        requestedBy: { type: integer }
         reason: { type: string }
         status: { type: string, enum: [PENDING] }
         requestedAt: { type: string, format: date-time }
     FinanceSummary:
       type: object
-      required: [totalBilledMinor, totalCollectedMinor, totalOutstandingMinor, pendingPayments]
+      required: [totalBilledMinor, totalCollectedMinor, totalOutstandingMinor, totalAdjustmentsMinor, totalRefundedMinor, totalReversedMinor, pendingPayments]
       properties:
         totalBilledMinor: { type: integer }
         totalCollectedMinor: { type: integer }
         totalOutstandingMinor: { type: integer }
+        totalAdjustmentsMinor: { type: integer }
+        totalRefundedMinor: { type: integer }
+        totalReversedMinor: { type: integer }
         pendingPayments: { type: integer }
     FeeBulkAssignmentInput:
       type: object
@@ -5650,6 +5687,7 @@ components:
       required: [amountMinor, reason]
       properties:
         amountMinor: { type: integer, minimum: 1 }
+        transactionType: { type: string, enum: [REFUND, REVERSAL], default: REFUND, description: Internal ledger event classification; neither value asserts provider payout. }
         reason: { type: string, minLength: 3, maxLength: 500 }
     FeeRefundApprovalInput:
       type: object
@@ -5659,12 +5697,13 @@ components:
         reviewerNotes: { type: string, minLength: 3, maxLength: 1000 }
     FeeRefund:
       type: object
-      required: [id, schoolId, paymentId, invoiceId, amountMinor, currency, reason, status, reference, evidenceReference, reviewerNotes]
+      required: [id, schoolId, paymentId, invoiceId, transactionType, amountMinor, currency, reason, status, reference, evidenceReference, reviewerNotes]
       properties:
         id: { type: integer }
         schoolId: { type: integer }
         paymentId: { type: integer }
         invoiceId: { type: integer }
+        transactionType: { type: string, enum: [REFUND, REVERSAL] }
         amountMinor: { type: integer }
         currency: { type: string }
         reason: { type: string }
@@ -5674,12 +5713,13 @@ components:
         reviewerNotes: { type: ["string", "null"] }
     SchoolFeeRefund:
       type: object
-      required: [id, schoolId, paymentId, invoiceId, invoiceNumber, studentId, studentName, className, section, paymentReference, paymentAmountMinor, paymentMethod, paymentStatus, amountMinor, currency, reason, status, reference, evidenceReference, reviewerNotes, requestedAt, approvedAt]
+      required: [id, schoolId, paymentId, invoiceId, transactionType, invoiceNumber, studentId, studentName, className, section, paymentReference, paymentAmountMinor, paymentMethod, paymentStatus, amountMinor, currency, reason, status, reference, evidenceReference, reviewerNotes, requestedAt, approvedAt]
       properties:
         id: { type: integer }
         schoolId: { type: integer }
         paymentId: { type: integer }
         invoiceId: { type: integer }
+        transactionType: { type: string, enum: [REFUND, REVERSAL] }
         invoiceNumber: { type: string }
         studentId: { type: integer }
         studentName: { type: string }
@@ -5723,9 +5763,32 @@ components:
         count: { type: integer }
         amountMinor: { type: integer }
         secondaryAmountMinor: { type: integer }
+        studentId: { type: ["integer", "null"] }
+        studentName: { type: ["string", "null"] }
+        invoiceId: { type: ["integer", "null"] }
+        invoiceNumber: { type: ["string", "null"] }
+        reference: { type: ["string", "null"] }
+        paymentDate: { type: ["string", "null"], format: date-time }
+        originalAmountMinor: { type: ["integer", "null"] }
+        paidMinor: { type: ["integer", "null"] }
+        outstandingMinor: { type: ["integer", "null"] }
+        overdue: { type: ["boolean", "null"] }
+        schoolId: { type: ["integer", "null"] }
+        sourceType: { type: ["string", "null"], enum: [CHECKOUT, WEBHOOK, null] }
+        provider: { type: ["string", "null"], enum: [PAYSTACK, FLUTTERWAVE, REMITA, MANUAL_BANK_TRANSFER, null] }
+        checkoutState: { type: ["string", "null"], enum: [INITIALIZING, READY, FAILED, SETTLED, RELEASED, null] }
+        reconciliationStatus: { type: ["string", "null"], enum: [RECEIVED, VERIFIED, PENDING, FAILED, RECONCILIATION_REQUIRED, null] }
+        signatureVerified: { type: ["boolean", "null"] }
+        eventId: { type: ["string", "null"] }
+        webhookTransactionId: { type: ["string", "null"] }
+        verifiedTransactionId: { type: ["string", "null"] }
+        providerReference: { type: ["string", "null"] }
+        paymentStatus: { type: ["string", "null"] }
+        eventDate: { type: ["string", "null"], format: date-time }
+        reason: { type: ["string", "null"], description: Sanitized checkout failure or webhook reconciliation reason; never includes provider credentials or raw payload data. }
     FinanceReport:
       type: object
-      required: [schoolId, reportType, totalBilledMinor, totalCollectedMinor, totalOutstandingMinor, totalDiscountMinor, totalWaiverMinor, totalRefundedMinor, rows]
+      required: [schoolId, reportType, totalBilledMinor, totalCollectedMinor, totalOutstandingMinor, totalDiscountMinor, totalWaiverMinor, totalRefundedMinor, totalReversedMinor, rows]
       properties:
         schoolId: { type: integer }
         reportType: { type: string }
@@ -5735,6 +5798,7 @@ components:
         totalDiscountMinor: { type: integer }
         totalWaiverMinor: { type: integer }
         totalRefundedMinor: { type: integer }
+        totalReversedMinor: { type: integer }
         rows:
           type: array
           items: { $ref: "#/components/schemas/FinanceReportRow" }

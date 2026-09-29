@@ -5,10 +5,63 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { FinanceReportRowCheckoutState } from './financeReportRowCheckoutState';
+import type { FinanceReportRowProvider } from './financeReportRowProvider';
+import type { FinanceReportRowReconciliationStatus } from './financeReportRowReconciliationStatus';
+import type { FinanceReportRowSourceType } from './financeReportRowSourceType';
 
 export interface FinanceReportRow {
   label: string;
   count: number;
   amountMinor: number;
   secondaryAmountMinor: number;
+  /** @nullable */
+  studentId?: number | null;
+  /** @nullable */
+  studentName?: string | null;
+  /** @nullable */
+  invoiceId?: number | null;
+  /** @nullable */
+  invoiceNumber?: string | null;
+  /** @nullable */
+  reference?: string | null;
+  /** @nullable */
+  paymentDate?: Date | null;
+  /** @nullable */
+  originalAmountMinor?: number | null;
+  /** @nullable */
+  paidMinor?: number | null;
+  /** @nullable */
+  outstandingMinor?: number | null;
+  /** @nullable */
+  overdue?: boolean | null;
+  /** @nullable */
+  schoolId?: number | null;
+  /** @nullable */
+  sourceType?: FinanceReportRowSourceType;
+  /** @nullable */
+  provider?: FinanceReportRowProvider;
+  /** @nullable */
+  checkoutState?: FinanceReportRowCheckoutState;
+  /** @nullable */
+  reconciliationStatus?: FinanceReportRowReconciliationStatus;
+  /** @nullable */
+  signatureVerified?: boolean | null;
+  /** @nullable */
+  eventId?: string | null;
+  /** @nullable */
+  webhookTransactionId?: string | null;
+  /** @nullable */
+  verifiedTransactionId?: string | null;
+  /** @nullable */
+  providerReference?: string | null;
+  /** @nullable */
+  paymentStatus?: string | null;
+  /** @nullable */
+  eventDate?: Date | null;
+  /**
+     * Sanitized checkout failure or webhook reconciliation reason; never includes provider credentials or raw payload data.
+     * @nullable
+     */
+  reason?: string | null;
 }

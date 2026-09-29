@@ -140,10 +140,13 @@ beforeEach(() => {
   dbMock.query.mockClear();
 });
 
-const assign = (headers: Record<string, string> = {}) => fetch(`${baseUrl}/school/finance/bulk-assignments?schoolId=1`, {
+const assign = (
+  headers: Record<string, string> = {},
+  dates: { issueDate?: string; dueDate?: string } = {},
+) => fetch(`${baseUrl}/school/finance/bulk-assignments?schoolId=1`, {
   method: "POST",
   headers: { "content-type": "application/json", ...headers },
-  body: JSON.stringify({ structureId: 7, issueDate: "2026-09-01", dueDate: "2026-09-30" }),
+  body: JSON.stringify({ structureId: 7, issueDate: "2026-09-01", dueDate: "2026-09-30", ...dates }),
 });
 
 describe("bulk fee assignments", () => {
@@ -189,5 +192,12 @@ describe("bulk fee assignments", () => {
       studentId: 31, invoiceId: 90, status: "SKIPPED", reason: "EXISTING_INVOICE",
     });
     expect(state.insertedStudentIds).toEqual([31]);
+  });
+
+  it("rejects issue or due dates outside the selected term", async () => {
+    const response = await assign({}, { dueDate: "2027-01-15" });
+    expect(response.status).toBe(400);
+    expect(state.insertedStudentIds).toHaveLength(0);
+    expect(state.auditCount).toBe(0);
   });
 });

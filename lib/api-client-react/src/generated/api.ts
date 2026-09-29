@@ -2362,7 +2362,7 @@ export const getApproveFeeRefundUrl = (refundId: number,
 }
 
 /**
- * @summary Approve and record an externally confirmed refund with evidence; preserves original payment and receipt
+ * @summary Approve an internal refund ledger adjustment with evidence; does not assert provider payout
  */
 export const approveFeeRefund = async (refundId: number,
     feeRefundApprovalInput: FeeRefundApprovalInput,
@@ -2430,7 +2430,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ApproveFeeRefundMutationVariables = {refundId: number;data: BodyType<FeeRefundApprovalInput>;params: ApproveFeeRefundParams}
 
     /**
- * @summary Approve and record an externally confirmed refund with evidence; preserves original payment and receipt
+ * @summary Approve an internal refund ledger adjustment with evidence; does not assert provider payout
  */
 export const useApproveFeeRefund = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveFeeRefund>>, TError,ApproveFeeRefundMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -2459,6 +2459,7 @@ export const getGetSchoolFinanceReportUrl = (params: GetSchoolFinanceReportParam
 }
 
 /**
+ * Student and method filters are school-scoped. For payments reports, and totalCollectedMinor in provider-reconciliation reports, from/to select payment collections using verification time (or creation time while unverified); totalCollectedMinor is net of approved internal refunds and reversals for that period. totalBilledMinor and totalOutstandingMinor remain lifetime totals for the filtered invoice cohort and are not limited to the payment date range. Provider-reconciliation rows are checkout-session and webhook-event records; their date range uses checkout creation or webhook receipt time.
  * @summary School-scoped financial totals and grouped financial report data
  */
 export const getSchoolFinanceReport = async (params: GetSchoolFinanceReportParams, options?: Parameters<typeof customFetch>[1]): Promise<FinanceReport> => {

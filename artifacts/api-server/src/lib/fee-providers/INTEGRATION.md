@@ -3,8 +3,9 @@
 This directory is deliberately separate from finance routes and persistence. It
 does not read environment variables, create database records, or make a payment
 successful based on a browser redirect or webhook payload alone. No credentials
-are committed; tests use inert, syntax-only key strings with mocked HTTP and
-never contact a provider.
+are committed. Adapter contract tests use mocked HTTP and never contact a
+provider; they are not sandbox transaction verification. No Paystack key is
+present or required for this development pass.
 
 ## Interface
 
@@ -56,6 +57,12 @@ the same server-side secret key used for API authorization. Flutterwave's
 `webhookSecret` is the configured verification hash (`verif-hash`), not an
 assumed HMAC key.
 
+The factory returns `null` when the corresponding server-side test secret is
+missing. In particular, no Paystack key is requested, fabricated, included in
+tests, or needed to load the application. Paystack initialization, verification,
+and real webhook verification remain unverified without an externally supplied
+test credential and provider sandbox transaction.
+
 Outbound requests use fixed HTTPS API origins only:
 
 - Paystack: `https://api.paystack.co/`
@@ -83,12 +90,19 @@ parser consumes them (for Express, mount an `express.raw({ type: "application/js
 handler on the webhook path before `express.json()`). Pass those bytes unchanged
 as `rawBody`. Never recreate the signed payload by serializing parsed JSON.
 
-## Remita
+## Remita and automatic bank transfer
 
 `RemitaAdapter` preserves the common interface but deliberately rejects
 initialization, verification, webhook handling, and status lookup. Enable it
 only after independently validating the official Remita integration contract,
 signature/verification requirements, and sandbox. It never simulates success.
+
+The current `PaymentProviderAdapter` has no virtual/dedicated-account creation
+or account-assignment capability, and no provider implements one. Manual school
+bank transfer is a distinct finance workflow; it is not automatic transfer
+reconciliation. Do not advertise an automatic bank-transfer capability until a
+provider-specific contract, provisioning operation, reference policy, webhook
+verification, and independently verified sandbox integration have been added.
 
 ## Tests
 
@@ -98,12 +112,13 @@ Run from `artifacts/api-server`:
 pnpm exec vitest run src/lib/fee-providers/index.test.ts
 ```
 
-Tests inject mock HTTP responses and locally generated webhook signatures.
-They cover successful provider verification, invalid signatures, exact raw-byte
-Paystack HMAC, decimal amount parsing, amount/currency/reference/transaction-ID
-mismatches, unknown references, stable event identity across simulated
-pre-commit crash/retry and post-commit redelivery, invalid configuration,
-unsafe URLs, HTTP failure, and Remita fail-closed behavior.
+Tests inject mock HTTP responses and never contact providers. They cover
+Flutterwave verification, case-insensitive header names, normalized
+reference/amount/currency/status behavior, decimal amount parsing,
+transaction-ID validation, absent Paystack test-secret behavior, and Remita
+fail-closed behavior. These tests do not constitute Paystack sandbox
+verification; Paystack sandbox verification remains pending an external test
+credential.
 
 ## Provider references
 

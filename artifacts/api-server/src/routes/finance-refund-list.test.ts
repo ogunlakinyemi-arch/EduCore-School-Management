@@ -7,7 +7,7 @@ const state = vi.hoisted(() => ({
     id: 101, schoolId: 1, paymentId: 11, invoiceId: 22, invoiceNumber: "INV-22",
     studentId: 31, studentName: "Example Student", className: "Year 4", section: "A",
     paymentReference: "PAY-11", paymentAmountMinor: 5000, paymentMethod: "BANK_TRANSFER",
-    paymentStatus: "VERIFIED", amountMinor: 2000, currency: "NGN", reason: "Approved credit correction",
+    paymentStatus: "VERIFIED", transactionType: "REFUND", amountMinor: 2000, currency: "NGN", reason: "Approved credit correction",
     status: "PENDING", reference: "EDC-REF-101", evidenceReference: null, reviewerNotes: null,
     requestedAt: "2026-09-02T12:00:00.000Z", approvedAt: null,
   } as Record<string, any>,

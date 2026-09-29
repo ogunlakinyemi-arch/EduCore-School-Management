@@ -134,6 +134,13 @@
       "when": 1790632161536,
       "tag": "0018_fee_payment_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790632162536,
+      "tag": "0019_phase7_finance_ledger_gaps",
+      "breakpoints": true
     }
   ]
 }

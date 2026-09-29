@@ -93,7 +93,9 @@ function validExpected(expected: ExpectedPayment): boolean {
 }
 
 function headerValue(headers: WebhookInput["headers"], name: string): string | undefined {
-  const value = headers[name] ?? headers[name.toLowerCase()];
+  const normalizedName = name.toLowerCase();
+  const value = Object.entries(headers)
+    .find(([headerName]) => headerName.toLowerCase() === normalizedName)?.[1];
   return Array.isArray(value) ? value[0] : value;
 }
 
@@ -503,9 +505,11 @@ function verifyFields(input: {
     throw new PaymentProviderError(`${input.providerName} payment amount mismatch`);
   }
   const transactionId = normalizeProviderTransactionId(input.providerTransactionId, input.providerName);
-  const status: FeePaymentStatus = input.providerStatus === input.successfulStatus
+  const providerStatus = input.providerStatus?.trim().toLowerCase();
+  const successfulStatus = input.successfulStatus.toLowerCase();
+  const status: FeePaymentStatus = providerStatus === successfulStatus
     ? "succeeded"
-    : input.providerStatus === "failed" || input.providerStatus === "cancelled" || input.providerStatus === "abandoned"
+    : providerStatus === "failed" || providerStatus === "cancelled" || providerStatus === "abandoned"
       ? "failed"
       : "pending";
   return {

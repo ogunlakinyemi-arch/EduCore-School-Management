@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
+import { configuredTestAdapter } from "./factory";
 import {
   FlutterwaveTestAdapter,
   PaystackTestAdapter,
@@ -292,6 +293,63 @@ describe("fee payment provider adapters", () => {
     await expect(adapter.verifyPayment(expected)).rejects.toThrow("Payment provider request failed");
   });
 
+  it("fails closed for an absent Paystack key without contacting the provider", () => {
+    expect(() => new PaystackTestAdapter({ secretKey: "" }))
+      .toThrow(PaymentProviderError);
+  });
+
+  it("keeps Paystack unavailable when its test secret is absent", () => {
+    vi.stubEnv("PAYSTACK_TEST_SECRET_KEY", "");
+    try {
+      expect(configuredTestAdapter("PAYSTACK")).toBeNull();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it.each([
+    { providerStatus: "successful", expectedStatus: "succeeded" },
+    { providerStatus: " SUCCESSFUL ", expectedStatus: "succeeded" },
+    { providerStatus: "failed", expectedStatus: "failed" },
+    { providerStatus: "cancelled", expectedStatus: "failed" },
+    { providerStatus: "abandoned", expectedStatus: "failed" },
+    { providerStatus: "processing", expectedStatus: "pending" },
+    { providerStatus: "unknown-provider-state", expectedStatus: "pending" },
+  ] as const)("normalizes provider-neutral status $providerStatus", async ({ providerStatus, expectedStatus }) => {
+    const adapter = new FlutterwaveTestAdapter({
+      secretKey: flutterwaveSecret, webhookSecret: flutterwaveWebhookSecret,
+    }, {
+      fetch: fetchMock(() => jsonResponse({ status: "success", data: {
+        id: 789, status: providerStatus, tx_ref: expected.reference, amount: "12.34", currency: "ngn",
+      } })),
+    });
+    await expect(adapter.verifyPayment({ ...expected, currency: " ngn ", providerTransactionId: "789" }))
+      .resolves.toMatchObject({
+        reference: expected.reference, amountMinor: expected.amountMinor, currency: "NGN",
+        status: expectedStatus, providerTransactionId: "789",
+      });
+  });
+
+  it("enforces the shared reference, amount, and currency contract", async () => {
+    const verify = async (payment: ExpectedPayment, response: Record<string, unknown>) => {
+      const adapter = new FlutterwaveTestAdapter({
+        secretKey: flutterwaveSecret, webhookSecret: flutterwaveWebhookSecret,
+      }, {
+        fetch: fetchMock(() => jsonResponse({ status: "success", data: {
+          id: 789, status: "successful", tx_ref: payment.reference, amount: "12.34", currency: "NGN",
+          ...response,
+        } })),
+      });
+      return adapter.verifyPayment({ ...payment, providerTransactionId: "789" });
+    };
+    await expect(verify(expected, {})).resolves.toMatchObject({
+      reference: expected.reference, amountMinor: expected.amountMinor, currency: "NGN", status: "succeeded",
+    });
+    await expect(verify(expected, { tx_ref: "fee_different_reference" })).rejects.toThrow(/reference mismatch/);
+    await expect(verify(expected, { amount: "12.35" })).rejects.toThrow(/amount mismatch/);
+    await expect(verify(expected, { currency: "USD" })).rejects.toThrow(/currency mismatch/);
+  });
+
   it("fails closed for Remita and validates only safe common amount primitives", async () => {
     const remita = new RemitaAdapter();
     expect(remita.validateAmount(1234, "NGN")).toBe(true);
@@ -301,5 +359,30 @@ describe("fee payment provider adapters", () => {
       ...expected, email: "parent@example.test", returnUrl: "https://school.example/return",
     })).rejects.toThrow(/Remita payments are disabled/);
     await expect(remita.getPaymentStatus(expected)).rejects.toThrow(/Remita payments are disabled/);
+  });
+
+  it("accepts case-insensitive Flutterwave webhook header names", async () => {
+    const adapter = new FlutterwaveTestAdapter({
+      secretKey: flutterwaveSecret, webhookSecret: flutterwaveWebhookSecret,
+    }, {
+      fetch: fetchMock(() => jsonResponse({ status: "success", data: {
+        id: 789, status: "successful", tx_ref: expected.reference, amount: 12.34, currency: "NGN",
+      } })),
+    });
+    const rawBody = JSON.stringify({ event: "charge.completed", data: { id: 789, tx_ref: expected.reference } });
+    await expect(adapter.handleWebhook({
+      rawBody,
+      headers: { "Verif-Hash": flutterwaveWebhookSecret },
+      resolveExpectedPayment: async () => expected,
+    })).resolves.toMatchObject({ outcome: "verified", eventId: "flutterwave:789" });
+  });
+
+  it("exposes no automatic virtual-account capability and fails closed for Remita verification and webhooks", async () => {
+    const remita = new RemitaAdapter();
+    expect("createVirtualAccount" in remita).toBe(false);
+    await expect(remita.verifyPayment(expected)).rejects.toThrow(/Remita payments are disabled/);
+    await expect(remita.handleWebhook({
+      rawBody: "{}", headers: {}, resolveExpectedPayment: async () => expected,
+    })).rejects.toThrow(/Remita payments are disabled/);
   });
 });

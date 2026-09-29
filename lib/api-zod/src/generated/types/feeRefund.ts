@@ -6,12 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { FeeRefundStatus } from './feeRefundStatus';
+import type { FeeRefundTransactionType } from './feeRefundTransactionType';
 
 export interface FeeRefund {
   id: number;
   schoolId: number;
   paymentId: number;
   invoiceId: number;
+  transactionType: FeeRefundTransactionType;
   amountMinor: number;
   currency: string;
   reason: string;

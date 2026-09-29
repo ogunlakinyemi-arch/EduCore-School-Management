@@ -16,5 +16,6 @@ export interface FinanceReport {
   totalDiscountMinor: number;
   totalWaiverMinor: number;
   totalRefundedMinor: number;
+  totalReversedMinor: number;
   rows: FinanceReportRow[];
 }

@@ -14,6 +14,20 @@ export interface FeeAdjustment {
   invoiceId: number;
   kind: FeeAdjustmentKind;
   amountMinor: number;
+  /** @nullable */
+  percentage: number | null;
+  /** @nullable */
+  approvedAmountMinor: number | null;
+  /** @nullable */
+  originalBalanceMinor: number | null;
+  /** @nullable */
+  resultingBalanceMinor: number | null;
   reason: string;
   status: FeeAdjustmentStatus;
+  requestedBy: number;
+  requestedAt: Date;
+  /** @nullable */
+  approvedBy: number | null;
+  /** @nullable */
+  approvedAt: Date | null;
 }

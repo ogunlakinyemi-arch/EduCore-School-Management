@@ -9,8 +9,17 @@ import type { FeeAdjustmentInputKind } from './feeAdjustmentInputKind';
 
 export interface FeeAdjustmentInput {
   kind: FeeAdjustmentInputKind;
-  /** @minimum 1 */
-  amountMinor: number;
+  /**
+     * Required for fixed adjustments; do not send with percentage.
+     * @minimum 1
+     */
+  amountMinor?: number;
+  /**
+     * Discount percentage from 0.01 through 100; only valid for DISCOUNT. Calculated from the invoice's original subtotal in integer basis points with half-up minor-unit rounding.
+     * @minimum 0.01
+     * @maximum 100
+     */
+  percentage?: number;
   /**
      * @minLength 3
      * @maxLength 500

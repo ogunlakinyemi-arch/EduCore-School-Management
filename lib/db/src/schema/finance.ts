@@ -7,6 +7,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgTable,
   serial,
   text,
@@ -166,6 +167,10 @@ export const feeAdjustments = pgTable("fee_adjustments", {
   invoiceId: integer("invoice_id").notNull(),
   kind: text("kind").notNull(),
   amountMinor: integer("amount_minor").notNull(),
+  requestedPercentage: numeric("requested_percentage", { precision: 5, scale: 2 }),
+  approvedAmountMinor: integer("approved_amount_minor"),
+  originalBalanceMinor: integer("original_balance_minor"),
+  resultingBalanceMinor: integer("resulting_balance_minor"),
   reason: text("reason").notNull(),
   status: text("status").notNull().default("PENDING"),
   requestedBy: integer("requested_by").notNull().references(() => appUsers.id),
@@ -178,6 +183,10 @@ export const feeAdjustments = pgTable("fee_adjustments", {
   check("fee_adjustments_kind_check", sql`${t.kind} IN ('DISCOUNT','SCHOLARSHIP','WAIVER')`),
   check("fee_adjustments_status_check", sql`${t.status} IN ('PENDING','APPROVED','REJECTED')`),
   check("fee_adjustments_amount_check", sql`${t.amountMinor} > 0`),
+  check("fee_adjustments_percentage_check", sql`${t.requestedPercentage} IS NULL OR ${t.requestedPercentage}::numeric > 0 AND ${t.requestedPercentage}::numeric <= 100`),
+  check("fee_adjustments_approved_amount_check", sql`${t.approvedAmountMinor} IS NULL OR ${t.approvedAmountMinor} > 0`),
+  check("fee_adjustments_balance_check", sql`${t.originalBalanceMinor} IS NULL OR ${t.originalBalanceMinor} >= 0`),
+  check("fee_adjustments_resulting_balance_check", sql`${t.resultingBalanceMinor} IS NULL OR ${t.resultingBalanceMinor} >= 0`),
   index("fee_adjustments_invoice_idx").on(t.schoolId, t.invoiceId, t.status),
 ]);
 
@@ -279,6 +288,7 @@ export const feeRefunds = pgTable("fee_refunds", {
   schoolId: integer("school_id").notNull().references(() => schools.id),
   paymentId: integer("payment_id").notNull(),
   invoiceId: integer("invoice_id").notNull(),
+  transactionType: text("transaction_type").notNull().default("REFUND"),
   reference: text("reference").notNull(),
   idempotencyKey: text("idempotency_key").notNull(),
   amountMinor: integer("amount_minor").notNull(),
@@ -305,6 +315,7 @@ export const feeRefunds = pgTable("fee_refunds", {
   }),
   check("fee_refunds_amount_check", sql`${t.amountMinor} > 0 AND ${t.currency} ~ '^[A-Z]{3}$'`),
   check("fee_refunds_status_check", sql`${t.status} IN ('PENDING','APPROVED','REJECTED')`),
+  check("fee_refunds_transaction_type_check", sql`${t.transactionType} IN ('REFUND','REVERSAL')`),
   check("fee_refunds_approval_evidence_check", sql`${t.status} <> 'APPROVED' OR (
     ${t.approvedBy} IS NOT NULL AND ${t.approvedAt} IS NOT NULL
     AND NULLIF(BTRIM(${t.evidenceReference}), '') IS NOT NULL

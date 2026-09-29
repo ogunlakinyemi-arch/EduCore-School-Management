@@ -17,6 +17,11 @@ export interface PendingFeeAdjustment {
   studentName: string;
   kind: PendingFeeAdjustmentKind;
   amountMinor: number;
+  /** @nullable */
+  percentage: number | null;
+  /** @nullable */
+  originalBalanceMinor: number | null;
+  requestedBy: number;
   reason: string;
   status: PendingFeeAdjustmentStatus;
   requestedAt: Date;

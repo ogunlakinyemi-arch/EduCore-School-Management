@@ -5,10 +5,13 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { FeeRefundInputTransactionType } from './feeRefundInputTransactionType';
 
 export interface FeeRefundInput {
   /** @minimum 1 */
   amountMinor: number;
+  /** Internal ledger event classification; neither value asserts provider payout. */
+  transactionType?: FeeRefundInputTransactionType;
   /**
      * @minLength 3
      * @maxLength 500

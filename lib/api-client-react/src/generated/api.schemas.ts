@@ -3567,8 +3567,17 @@ export const FeeAdjustmentInputKind = {
 
 export interface FeeAdjustmentInput {
   kind: FeeAdjustmentInputKind;
-  /** @minimum 1 */
-  amountMinor: number;
+  /**
+     * Required for fixed adjustments; do not send with percentage.
+     * @minimum 1
+     */
+  amountMinor?: number;
+  /**
+     * Discount percentage from 0.01 through 100; only valid for DISCOUNT. Calculated from the invoice's original subtotal in integer basis points with half-up minor-unit rounding.
+     * @minimum 0.01
+     * @maximum 100
+     */
+  percentage?: number;
   /**
      * @minLength 3
      * @maxLength 500
@@ -3600,8 +3609,22 @@ export interface FeeAdjustment {
   invoiceId: number;
   kind: FeeAdjustmentKind;
   amountMinor: number;
+  /** @nullable */
+  percentage: number | null;
+  /** @nullable */
+  approvedAmountMinor: number | null;
+  /** @nullable */
+  originalBalanceMinor: number | null;
+  /** @nullable */
+  resultingBalanceMinor: number | null;
   reason: string;
   status: FeeAdjustmentStatus;
+  requestedBy: number;
+  requestedAt: string;
+  /** @nullable */
+  approvedBy: number | null;
+  /** @nullable */
+  approvedAt: string | null;
 }
 
 export type PendingFeeAdjustmentKind = typeof PendingFeeAdjustmentKind[keyof typeof PendingFeeAdjustmentKind];
@@ -3629,6 +3652,11 @@ export interface PendingFeeAdjustment {
   studentName: string;
   kind: PendingFeeAdjustmentKind;
   amountMinor: number;
+  /** @nullable */
+  percentage: number | null;
+  /** @nullable */
+  originalBalanceMinor: number | null;
+  requestedBy: number;
   reason: string;
   status: PendingFeeAdjustmentStatus;
   requestedAt: string;
@@ -3638,6 +3666,9 @@ export interface FinanceSummary {
   totalBilledMinor: number;
   totalCollectedMinor: number;
   totalOutstandingMinor: number;
+  totalAdjustmentsMinor: number;
+  totalRefundedMinor: number;
+  totalReversedMinor: number;
   pendingPayments: number;
 }
 
@@ -3675,9 +3706,22 @@ export interface FeeBulkAssignmentResult {
   results: FeeBulkAssignmentItem[];
 }
 
+/**
+ * Internal ledger event classification; neither value asserts provider payout.
+ */
+export type FeeRefundInputTransactionType = typeof FeeRefundInputTransactionType[keyof typeof FeeRefundInputTransactionType];
+
+
+export const FeeRefundInputTransactionType = {
+  REFUND: 'REFUND',
+  REVERSAL: 'REVERSAL',
+} as const;
+
 export interface FeeRefundInput {
   /** @minimum 1 */
   amountMinor: number;
+  /** Internal ledger event classification; neither value asserts provider payout. */
+  transactionType?: FeeRefundInputTransactionType;
   /**
      * @minLength 3
      * @maxLength 500
@@ -3698,6 +3742,14 @@ export interface FeeRefundApprovalInput {
   reviewerNotes: string;
 }
 
+export type FeeRefundTransactionType = typeof FeeRefundTransactionType[keyof typeof FeeRefundTransactionType];
+
+
+export const FeeRefundTransactionType = {
+  REFUND: 'REFUND',
+  REVERSAL: 'REVERSAL',
+} as const;
+
 export type FeeRefundStatus = typeof FeeRefundStatus[keyof typeof FeeRefundStatus];
 
 
@@ -3712,6 +3764,7 @@ export interface FeeRefund {
   schoolId: number;
   paymentId: number;
   invoiceId: number;
+  transactionType: FeeRefundTransactionType;
   amountMinor: number;
   currency: string;
   reason: string;
@@ -3722,6 +3775,14 @@ export interface FeeRefund {
   /** @nullable */
   reviewerNotes: string | null;
 }
+
+export type SchoolFeeRefundTransactionType = typeof SchoolFeeRefundTransactionType[keyof typeof SchoolFeeRefundTransactionType];
+
+
+export const SchoolFeeRefundTransactionType = {
+  REFUND: 'REFUND',
+  REVERSAL: 'REVERSAL',
+} as const;
 
 export type SchoolFeeRefundStatus = typeof SchoolFeeRefundStatus[keyof typeof SchoolFeeRefundStatus];
 
@@ -3737,6 +3798,7 @@ export interface SchoolFeeRefund {
   schoolId: number;
   paymentId: number;
   invoiceId: number;
+  transactionType: SchoolFeeRefundTransactionType;
   invoiceNumber: string;
   studentId: number;
   studentName: string;
@@ -3784,11 +3846,112 @@ export interface FeePaymentNotification {
   method: string;
 }
 
+/**
+ * @nullable
+ */
+export type FinanceReportRowSourceType = typeof FinanceReportRowSourceType[keyof typeof FinanceReportRowSourceType] | null;
+
+
+export const FinanceReportRowSourceType = {
+  CHECKOUT: 'CHECKOUT',
+  WEBHOOK: 'WEBHOOK',
+} as const;
+
+/**
+ * @nullable
+ */
+export type FinanceReportRowProvider = typeof FinanceReportRowProvider[keyof typeof FinanceReportRowProvider] | null;
+
+
+export const FinanceReportRowProvider = {
+  PAYSTACK: 'PAYSTACK',
+  FLUTTERWAVE: 'FLUTTERWAVE',
+  REMITA: 'REMITA',
+  MANUAL_BANK_TRANSFER: 'MANUAL_BANK_TRANSFER',
+} as const;
+
+/**
+ * @nullable
+ */
+export type FinanceReportRowCheckoutState = typeof FinanceReportRowCheckoutState[keyof typeof FinanceReportRowCheckoutState] | null;
+
+
+export const FinanceReportRowCheckoutState = {
+  INITIALIZING: 'INITIALIZING',
+  READY: 'READY',
+  FAILED: 'FAILED',
+  SETTLED: 'SETTLED',
+  RELEASED: 'RELEASED',
+} as const;
+
+/**
+ * @nullable
+ */
+export type FinanceReportRowReconciliationStatus = typeof FinanceReportRowReconciliationStatus[keyof typeof FinanceReportRowReconciliationStatus] | null;
+
+
+export const FinanceReportRowReconciliationStatus = {
+  RECEIVED: 'RECEIVED',
+  VERIFIED: 'VERIFIED',
+  PENDING: 'PENDING',
+  FAILED: 'FAILED',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+} as const;
+
 export interface FinanceReportRow {
   label: string;
   count: number;
   amountMinor: number;
   secondaryAmountMinor: number;
+  /** @nullable */
+  studentId?: number | null;
+  /** @nullable */
+  studentName?: string | null;
+  /** @nullable */
+  invoiceId?: number | null;
+  /** @nullable */
+  invoiceNumber?: string | null;
+  /** @nullable */
+  reference?: string | null;
+  /** @nullable */
+  paymentDate?: string | null;
+  /** @nullable */
+  originalAmountMinor?: number | null;
+  /** @nullable */
+  paidMinor?: number | null;
+  /** @nullable */
+  outstandingMinor?: number | null;
+  /** @nullable */
+  overdue?: boolean | null;
+  /** @nullable */
+  schoolId?: number | null;
+  /** @nullable */
+  sourceType?: FinanceReportRowSourceType;
+  /** @nullable */
+  provider?: FinanceReportRowProvider;
+  /** @nullable */
+  checkoutState?: FinanceReportRowCheckoutState;
+  /** @nullable */
+  reconciliationStatus?: FinanceReportRowReconciliationStatus;
+  /** @nullable */
+  signatureVerified?: boolean | null;
+  /** @nullable */
+  eventId?: string | null;
+  /** @nullable */
+  webhookTransactionId?: string | null;
+  /** @nullable */
+  verifiedTransactionId?: string | null;
+  /** @nullable */
+  providerReference?: string | null;
+  /** @nullable */
+  paymentStatus?: string | null;
+  /** @nullable */
+  eventDate?: string | null;
+  /**
+     * Sanitized checkout failure or webhook reconciliation reason; never includes provider credentials or raw payload data.
+     * @nullable
+     */
+  reason?: string | null;
 }
 
 export interface FinanceReport {
@@ -3800,6 +3963,7 @@ export interface FinanceReport {
   totalDiscountMinor: number;
   totalWaiverMinor: number;
   totalRefundedMinor: number;
+  totalReversedMinor: number;
   rows: FinanceReportRow[];
 }
 
@@ -4207,7 +4371,19 @@ section?: string;
  * @minimum 1
  */
 categoryId?: number;
+/**
+ * Restrict invoice and payment data to this student within the authorized school.
+ * @minimum 1
+ */
+studentId?: number;
+/**
+ * Payment method filter; distinct from provider.
+ */
+method?: GetSchoolFinanceReportMethod;
 status?: string;
+/**
+ * Payment provider filter; distinct from the payment method.
+ */
 provider?: GetSchoolFinanceReportProvider;
 from?: string;
 to?: string;
@@ -4226,6 +4402,16 @@ export const GetSchoolFinanceReportReportType = {
   adjustment: 'adjustment',
   refund: 'refund',
   'provider-reconciliation': 'provider-reconciliation',
+} as const;
+
+export type GetSchoolFinanceReportMethod = typeof GetSchoolFinanceReportMethod[keyof typeof GetSchoolFinanceReportMethod];
+
+
+export const GetSchoolFinanceReportMethod = {
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  REMITA: 'REMITA',
+  FLUTTERWAVE: 'FLUTTERWAVE',
+  PAYSTACK: 'PAYSTACK',
 } as const;
 
 export type GetSchoolFinanceReportProvider = typeof GetSchoolFinanceReportProvider[keyof typeof GetSchoolFinanceReportProvider];
@@ -4272,6 +4458,8 @@ status?: ListSchoolFinancePaymentsStatus;
  * @minimum 1
  */
 studentId?: number;
+from?: string;
+to?: string;
 };
 
 export type ListSchoolFinancePaymentsStatus = typeof ListSchoolFinancePaymentsStatus[keyof typeof ListSchoolFinancePaymentsStatus];

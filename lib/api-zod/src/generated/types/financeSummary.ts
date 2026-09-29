@@ -10,5 +10,8 @@ export interface FinanceSummary {
   totalBilledMinor: number;
   totalCollectedMinor: number;
   totalOutstandingMinor: number;
+  totalAdjustmentsMinor: number;
+  totalRefundedMinor: number;
+  totalReversedMinor: number;
   pendingPayments: number;
 }
