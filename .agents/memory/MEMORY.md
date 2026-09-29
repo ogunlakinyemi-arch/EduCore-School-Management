@@ -6,3 +6,4 @@
 - [Development database targeting](development-database-targeting.md) — environment labels alone can misidentify the database target; independently verify it before test-data writes.
 - [Provider checkout claims](provider-checkout-claims.md) — an expired local initialization lease must not launch a second provider checkout; reconcile the original reference first.
 - [Orphaned workflow ports](orphaned-workflow-ports.md) — a failed managed restart may leave an older server holding the port while the preview still answers.
+- [Production database identity](production-database-identity.md) — the database name alone does not establish its hosting provider or the deployed app's connection target.
