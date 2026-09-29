@@ -1,0 +1,123 @@
+Perform a DEVELOPMENT-ONLY authorization identity mapping fix for the current signed-in Platform Owner account.
+
+IMPORTANT SAFETY RULES:
+
+- Do NOT modify production.
+- Do NOT Publish.
+- Do NOT run "drizzle-kit push".
+- Do NOT modify the migration ledger.
+- Do NOT create or alter database schema.
+- Do NOT create a new Platform Owner account.
+- Do NOT weaken RBAC or bypass authorization.
+- Do NOT change Clerk configuration.
+- Do NOT expose or print any Clerk tokens, secrets, API keys, cookies, or credentials.
+
+Confirmed diagnostic evidence from the authenticated development session:
+
+{
+"internalUserId": 309,
+"accountStatus": "ACTIVE",
+"activeMembershipCount": 0,
+"activeMemberships": [],
+"hasPlatformOwner": false,
+"authorizationLookup": {
+"outcome": "success",
+"expectedStatus": 200,
+"isPlatformOwner": false,
+"roles": []
+}
+}
+
+TASK:
+
+1. Inspect the existing development database records for internal user ID 309.
+
+2. Confirm the user's existing Clerk identity mapping and normalized email WITHOUT exposing credentials or tokens.
+
+3. Inspect the existing active global PLATFORM_OWNER membership.
+
+4. Confirm that there is currently exactly one intended global Platform Owner membership and identify its internal-user relationship.
+
+5. Determine whether internal user 309 is the authenticated development account that should be mapped to the existing Platform Owner role.
+
+6. Do NOT blindly transfer ownership.
+
+If the evidence confirms that internal user 309 is the authenticated development account I am currently using and that this account is intended to be the development Platform Owner:
+
+- Reuse the existing internal user 309.
+- Reuse the existing Platform Owner membership structure.
+- Assign/activate the global PLATFORM_OWNER membership for internal user 309 using the application's existing supported authorization model.
+- Do not create a duplicate Platform Owner membership.
+- Do not create a new user.
+- Preserve all existing audit/history records.
+- If the previous development-only Platform Owner membership belongs to a disposable/stale test identity, preserve the record/history but deactivate or otherwise reconcile it only if the application's existing data model explicitly supports that operation.
+- Do not modify production.
+
+If there is any ambiguity about whether user 309 should receive Platform Owner access:
+
+STOP before making the authorization change and report the exact ambiguity instead.
+
+AFTER THE CHANGE:
+
+Verify server-side authorization, not merely the frontend.
+
+Required checks:
+
+A. "/api/me/authorized-context"
+
+- Authenticated current development user returns HTTP 200.
+- "isPlatformOwner: true".
+- PLATFORM_OWNER role is present.
+
+B. Platform Owner authorization
+
+- Existing protected Platform Owner endpoints return authorized responses for this user.
+
+C. School Admin separation
+
+- Do not grant SCHOOL_ADMIN merely because the user is PLATFORM_OWNER.
+- Do not grant access to school-scoped write operations unless the existing authorization model explicitly allows it.
+
+D. Tenant isolation
+
+- Platform Owner retains intended platform-level read/management permissions.
+- Do not introduce cross-school access through generic school-admin permissions.
+
+E. Duplicate prevention
+
+- Confirm there is only one active global Platform Owner membership for this development environment after reconciliation.
+
+F. Regression tests
+Run the relevant authorization tests, then:
+
+- full API test suite
+- frontend tests
+- backend typecheck
+- frontend typecheck/build
+- existing RBAC/tenant-isolation tests
+
+G. Development browser verification
+If the authenticated development browser session is available:
+
+1. Reload the development application.
+2. Confirm Access Pending disappears.
+3. Confirm Platform Owner dashboard loads.
+4. Confirm the school selector works.
+5. Confirm "Open dashboard snapshot" works.
+6. Confirm Owner navigation remains separate from School Admin navigation.
+7. Confirm "/dashboard" behaves as intended.
+8. Confirm "/audit" still opens the Audit page and is not incorrectly treated as the dashboard.
+
+Do not redesign the dashboard during this task. Fix only the identity-to-Platform-Owner authorization mapping.
+
+At the end, report:
+
+1. Whether user 309 was confirmed as the authenticated development account.
+2. Whether the existing Platform Owner membership was reused.
+3. Whether a duplicate Owner was avoided.
+4. Exact development-only records changed.
+5. Authorization test results.
+6. Full test results.
+7. Typecheck/build results.
+8. Whether the development browser now reaches the Platform Owner dashboard.
+9. Confirmation that production, migration files, migration ledger, and Publish were untouched.
