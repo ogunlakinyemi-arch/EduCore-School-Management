@@ -1,0 +1,357 @@
+PHASE 11C-B — POST-MERGE EXECUTION & DATABASE AUDIT EVIDENCE
+
+Objective
+
+Collect the remaining historical evidence needed to determine whether the development schema was changed through the configured post-merge "drizzle-kit push" path or another non-migration mechanism.
+
+This is an evidence-collection task only.
+
+ABSOLUTE RULES
+
+DO NOT:
+
+- modify the development database
+- modify the migration ledger
+- run "drizzle-kit push"
+- run migrations against the development database
+- run schema synchronization
+- alter/drop/create constraints
+- alter/drop/create tables
+- modify migration files
+- modify application code
+- query production
+- publish/deploy
+
+Do not attempt to repair or reconcile anything.
+
+---
+
+1. POST-MERGE DRIZZLE-KIT PUSH HISTORY
+
+Trace the configured post-merge "drizzle-kit push" path through Git history.
+
+Identify:
+
+- exact configuration file
+- exact command
+- scripts that invoke it
+- hooks that invoke those scripts
+- when the path was introduced
+- when it was modified
+- when it was removed, if applicable
+- which environments could execute it
+- whether it targets the development database
+- whether it could bypass the application's migration ledger
+
+For every relevant Git commit, record:
+
+- commit hash
+- date
+- file
+- relevant change
+- evidence
+
+---
+
+2. SEARCH FOR EXECUTION EVIDENCE
+
+Search all available project-local evidence for historical executions of:
+
+- "drizzle-kit push"
+- "drizzle-kit"
+- schema push
+- post-merge hooks
+- database synchronization
+- migration commands
+- database initialization
+
+Search:
+
+- repository files
+- Git history
+- shell scripts
+- CI configuration
+- deployment configuration
+- Replit configuration
+- retained logs
+- generated artifacts
+- documentation
+- command history if safely available
+
+Do not fabricate evidence.
+
+If no execution record exists, state exactly:
+
+"No retained execution record found."
+
+---
+
+3. DATABASE AUDIT RECORDS
+
+Search for any historical database audit evidence, including:
+
+- PostgreSQL logs
+- DDL logs
+- audit logs
+- restore logs
+- backup metadata
+- database snapshots
+- schema dumps
+- SQL dumps
+- generated schema files
+- migration reports
+- deployment logs
+- Replit database operation records available inside the project
+
+Look specifically for evidence involving:
+
+- "school_classes_id_school_tenant_key"
+- tables introduced by "0005–0030"
+- constraints
+- indexes
+- foreign keys
+- triggers
+- functions
+
+Do not query production.
+
+---
+
+4. HISTORICAL SCHEMA SNAPSHOTS
+
+Search Git and project artifacts for previous:
+
+- "schema.sql"
+- PostgreSQL dumps
+- database exports
+- generated Drizzle schema
+- SQL snapshots
+- backup files
+- test database snapshots
+
+For each discovered snapshot:
+
+- identify date/commit
+- determine which migrations appear reflected in it
+- compare with the migration inventory
+- identify whether the migration ledger was present
+- identify whether the "0005" constraint already existed
+
+Do not restore any snapshot into the development database.
+
+If a disposable database is needed for inspection, use an isolated temporary database only.
+
+---
+
+5. DATABASE OBJECT PROVENANCE
+
+Using available historical evidence, investigate the earliest known appearance of:
+
+"school_classes_id_school_tenant_key"
+
+Also investigate representative objects from later migrations, including objects introduced by:
+
+- "0006"
+- "0010"
+- "0015"
+- "0020"
+- "0025"
+- "0030"
+
+The purpose is to determine whether schema changes appeared in historical snapshots independently of migration-ledger entries.
+
+Do not claim that an object was created by a particular mechanism unless evidence supports it.
+
+---
+
+6. COMPARE DRIZZLE PUSH BEHAVIOR WITH MIGRATION RUNNER
+
+Read the actual implementation/configuration of:
+
+- migration runner
+- migration ledger insertion
+- Drizzle schema push
+- database bootstrap
+
+Document the important difference between:
+
+Migration Runner
+
+and
+
+Drizzle Schema Push
+
+Specifically determine:
+
+- whether push records migration-ledger entries
+- whether push can create the same objects as migrations
+- whether push can explain schema objects without ledger rows
+- whether push could explain the existing "0005" constraint
+- whether push could have produced later schema objects
+
+This is an architectural analysis, not permission to execute push.
+
+---
+
+7. INVESTIGATE POSSIBLE RESTORE PATHS
+
+Search for evidence that the current development database may have originated from:
+
+- a backup
+- a restored snapshot
+- a cloned database
+- a disposable database
+- a previous Replit database
+- a database copied between environments
+
+Look for:
+
+- backup scripts
+- restore scripts
+- database URLs/configuration history
+- restore documentation
+- timestamps
+- schema snapshots
+- migration-ledger differences
+
+Again, do not perform any restore.
+
+---
+
+8. TIMELINE UPDATE
+
+Extend the Phase 11C-A timeline with:
+
+Date| Event| Evidence| Schema Effect| Ledger Effect| Confidence
+
+Pay particular attention to:
+
+- introduction of post-merge "drizzle-kit push"
+- relevant merge dates
+- migration creation dates
+- schema snapshots
+- database restore events
+- ledger changes
+
+---
+
+9. COMPETING EXPLANATIONS
+
+Evaluate these hypotheses independently:
+
+A. Post-merge "drizzle-kit push"
+
+Could have changed schema without recording migration-ledger rows.
+
+B. Database restore/clone
+
+The development database may have inherited schema from another database state.
+
+C. Failed migration
+
+A migration may have changed schema before failing before ledger insertion.
+
+D. Manual SQL
+
+Someone may have applied schema SQL outside the migration runner.
+
+E. Historical migration rewrite/rebase
+
+The current migration files may not represent the SQL originally applied.
+
+F. Other bootstrap mechanism
+
+Another project mechanism may have created the schema.
+
+For each, classify:
+
+- CONFIRMED
+- STRONGLY INDICATED
+- POSSIBLE
+- REJECTED
+- NOT ENOUGH EVIDENCE
+
+Do not select a winner unless evidence supports it.
+
+---
+
+10. FOCUS ON THE KEY QUESTION
+
+Determine whether the available evidence supports this statement:
+
+«"The missing migration-ledger entries are explained by schema changes being applied through a mechanism that bypassed the migration ledger."»
+
+If supported, identify the mechanism and evidence.
+
+If not proven, state:
+
+"The bypass mechanism is technically plausible but historical execution is not proven."
+
+---
+
+11. UPDATE DOCUMENTATION
+
+Create:
+
+"docs/phase11c-b-execution-audit.md"
+
+Include:
+
+1. Executive summary
+2. Drizzle push configuration history
+3. Execution evidence
+4. Database audit evidence
+5. Historical schema snapshots
+6. Object provenance
+7. Migration runner vs schema push
+8. Restore/clone investigation
+9. Competing explanations
+10. Updated timeline
+11. Remaining unknowns
+12. Impact on reconciliation
+13. Recommended next step
+
+Do not modify the previous Phase 11C or 11C-A reports unless necessary to correct a factual error.
+
+---
+
+12. REQUIRED FINAL STATUS
+
+Return exactly:
+
+Historical Execution Status
+
+One of:
+
+- EXECUTION PROVEN
+- EXECUTION STRONGLY INDICATED
+- EXECUTION NOT PROVEN
+
+Ledger Reconciliation
+
+Must remain:
+
+"BLOCKED"
+
+unless direct evidence conclusively establishes a safe reconciliation path.
+
+Evidence Found
+
+List the strongest evidence.
+
+Evidence Still Missing
+
+List the remaining unknowns.
+
+Safety Confirmation
+
+Explicitly confirm:
+
+- development database unchanged
+- migration ledger unchanged
+- migration files unchanged
+- production not queried
+- production unchanged
+- Publish not executed
+- no schema push executed
+- no migration executed
