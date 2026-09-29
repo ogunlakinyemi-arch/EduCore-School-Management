@@ -1,0 +1,404 @@
+PHASE 11C-A — HISTORICAL MIGRATION EVIDENCE COLLECTION
+
+Objective
+
+Investigate the historical reason migrations "0005–0030" are absent from the development migration ledger.
+
+This is an evidence-collection task only.
+
+ABSOLUTE RULES
+
+DO NOT:
+
+- modify the development database
+- modify the migration ledger
+- modify migration SQL
+- create/drop/alter database objects
+- mark migrations as applied
+- execute reconciliation
+- reset the database
+- query production
+- publish/deploy
+- change application behavior
+
+Use repository history, local files, Git metadata, logs, configuration history, and disposable copies only.
+
+---
+
+1. GIT HISTORY INVESTIGATION
+
+Inspect the complete Git history relevant to:
+
+- migration files
+- migration runner
+- migration ledger
+- database initialization
+- schema bootstrap
+- deployment/publish
+- database restore
+- development database setup
+- test database setup
+
+Search commit history for:
+
+- "0001" through "0030"
+- migration filenames
+- migration ledger table name
+- migration runner implementation
+- "school_classes_id_school_tenant_key"
+- migration hash calculation
+- database initialization
+- schema synchronization
+- SQL bootstrap
+- database restore/import
+- reset/seed scripts
+
+For each relevant commit, record:
+
+- commit hash
+- date
+- author
+- affected files
+- relevant change
+- whether it could explain the missing ledger entries
+
+Do not modify the working tree.
+
+---
+
+2. MERGE HISTORY
+
+Specifically investigate merge commits.
+
+For every merge that touched migrations or database infrastructure:
+
+- identify merge commit
+- identify both parents
+- identify migration files changed
+- determine whether migrations were introduced before or after the merge
+- determine whether the migration runner/ledger logic changed
+- determine whether migrations could have been applied through another path
+
+Pay special attention to periods where:
+
+- migrations were rebased
+- migrations were renamed
+- migrations were squashed
+- branches were merged
+- database initialization changed
+- migration numbering changed
+- deployment configuration changed
+
+Do not assume a merge caused the problem unless evidence supports it.
+
+---
+
+3. SEARCH FOR DATABASE LOGS
+
+Search the repository and available local project artifacts for:
+
+- migration logs
+- application startup logs
+- Replit deployment logs if locally available
+- database initialization logs
+- migration runner output
+- SQL execution logs
+- error logs
+- backup logs
+- restore logs
+- development startup logs
+
+Search for exact strings including:
+
+"school_classes_id_school_tenant_key"
+
+and migration filenames "0005" through "0030".
+
+If logs are unavailable, explicitly state that.
+
+Do not fabricate historical evidence.
+
+---
+
+4. SEARCH FOR MIGRATION LEDGER HISTORY
+
+Find every occurrence of the migration ledger table name and migration insertion logic.
+
+Determine:
+
+- when the ledger was introduced
+- whether its schema changed
+- whether migrations were ever recorded differently
+- whether ledger inserts occur before or after SQL execution
+- whether failed migrations could leave schema changes without ledger rows
+- whether migrations can be run outside the normal runner
+- whether tests use a separate ledger
+- whether development bootstrap bypasses the ledger
+
+Inspect Git history for changes to this logic.
+
+---
+
+5. INVESTIGATE THE 0005 UNIQUE CONSTRAINT
+
+The current failure is:
+
+"0005" attempts to add:
+
+"school_classes_id_school_tenant_key"
+
+but the validated unique constraint already exists.
+
+Investigate the earliest point in Git history where this constraint appears.
+
+Determine:
+
+1. Which migration originally introduced it.
+2. Whether its definition changed.
+3. Whether the current database definition matches the migration definition.
+4. Whether an older migration version introduced it.
+5. Whether application/bootstrap SQL introduced it.
+6. Whether a manual setup script introduced it.
+7. Whether a merge/rebase could explain its presence.
+
+Do not alter the constraint.
+
+---
+
+6. HISTORICAL HASH INVESTIGATION
+
+Continue investigation of the two known hash mismatches.
+
+0001
+
+The older Git version matching the historical hash has already been identified.
+
+Document:
+
+- commit
+- file version
+- hash
+- differences from current "0001"
+- chronology
+
+0004
+
+Search all available Git objects and historical versions for the recorded hash.
+
+Use:
+
+- commits
+- branches
+- tags
+- reflogs if available
+- dangling/unreachable Git objects if safely inspectable
+- historical file contents
+- generated migration artifacts
+
+If no matching content exists, state:
+
+"No matching historical source found in available repository evidence."
+
+Do not reconstruct the file merely to make the hash match.
+
+---
+
+7. CHECK FOR NON-MIGRATION SCHEMA PATHS
+
+Inspect project scripts and configuration for mechanisms that may create schema independently of migrations.
+
+Examples:
+
+- schema push
+- ORM synchronization
+- database bootstrap
+- initialization SQL
+- seed scripts that alter schema
+- setup scripts
+- test bootstrap
+- development startup scripts
+- deployment scripts
+- restore scripts
+- generated SQL
+- manual database setup documentation
+
+Determine whether any such path could explain why later schema objects exist without migration ledger entries.
+
+Do not execute potentially destructive scripts.
+
+---
+
+8. CHECK REPLIT-SPECIFIC PROJECT HISTORY
+
+Inspect repository configuration and historical files for database/deployment mechanisms that may have existed during development.
+
+Look for:
+
+- ".replit"
+- deployment configuration
+- run commands
+- build commands
+- database initialization commands
+- environment-specific scripts
+- startup hooks
+- migration commands
+- publish/deployment scripts
+
+Compare current configuration with historical versions where possible.
+
+Do not publish or deploy.
+
+---
+
+9. BUILD A TIMELINE
+
+Create a chronological timeline showing:
+
+Date/Commit| Event| Migration State| Ledger State| Evidence
+
+Include:
+
+- migration creation
+- migration modification
+- merge
+- migration runner changes
+- database initialization changes
+- constraint creation
+- ledger changes
+- relevant deployment/configuration changes
+
+The purpose is to determine whether a credible historical sequence explains the current state.
+
+Do not infer missing events.
+
+Mark uncertain events as:
+
+"UNVERIFIED"
+
+---
+
+10. CLASSIFY FINDINGS
+
+For every proposed explanation, classify it as:
+
+CONFIRMED
+
+Direct evidence proves it.
+
+STRONGLY INDICATED
+
+Multiple independent pieces of evidence support it, but direct proof is absent.
+
+POSSIBLE
+
+Technically plausible but insufficient evidence exists.
+
+REJECTED
+
+Evidence contradicts it.
+
+Do not convert "possible" into "confirmed."
+
+---
+
+11. CREATE DOCUMENTATION
+
+Create:
+
+"docs/phase11c-a-historical-evidence.md"
+
+Include:
+
+1. Executive summary
+2. Git history findings
+3. Merge history
+4. Database logs
+5. Migration ledger history
+6. "0005" constraint history
+7. Hash investigation
+8. Non-migration schema paths
+9. Replit configuration history
+10. Chronological timeline
+11. Evidence classification
+12. Root-cause conclusion
+13. Remaining unknowns
+14. Recommended next step
+
+---
+
+12. REQUIRED CONCLUSION
+
+Answer these questions explicitly:
+
+1. Why are migrations "0005–0030" absent from the ledger?
+2. Is there direct evidence they were executed?
+3. Is there evidence they were executed through a non-migration path?
+4. Is there evidence the ledger was reset, replaced, or bypassed?
+5. Is there evidence of a failed migration that changed schema before ledger insertion?
+6. What explains the existing "0005" constraint?
+7. What explains the "0004" historical hash?
+8. Can the development ledger safely be reconciled based on current evidence?
+
+If the answer to any question is unknown, state "NOT PROVEN".
+
+---
+
+13. VERIFICATION
+
+Run only non-destructive checks.
+
+Existing tests may be run:
+
+- 574 API tests
+- 21 web tests
+- typecheck
+- frontend build
+- backend build
+
+Do not modify the database to make tests pass.
+
+---
+
+14. FINAL RESPONSE FORMAT
+
+Return:
+
+Historical Evidence Status
+
+One of:
+
+- ROOT CAUSE CONFIRMED
+- ROOT CAUSE STRONGLY INDICATED
+- ROOT CAUSE NOT PROVEN
+
+Key Evidence
+
+List the strongest evidence.
+
+Missing Evidence
+
+List exactly what could not be found.
+
+Ledger Reconciliation Status
+
+State whether reconciliation is:
+
+- READY
+- BLOCKED
+
+Do not perform reconciliation.
+
+Files Created
+
+List every file.
+
+Safety Confirmation
+
+Explicitly confirm:
+
+- development database unchanged
+- migration ledger unchanged
+- migration files unchanged
+- production untouched
+- production not queried
+- Publish not executed
