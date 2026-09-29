@@ -1,0 +1,261 @@
+We need to resolve the remaining development-only authentication blocker so we can complete Phase 7 browser verification.
+
+Current verified status:
+
+- API: 328/328 passed
+- Disposable PostgreSQL HTTP tests: 2/2 passed
+- Migrations replay through "0023"
+- Frontend/backend builds passed
+- Typechecks passed
+- Production was NOT modified
+- Publish was NOT executed
+
+The current problem:
+
+When I sign into the development application using my existing account, Yemait EduCore recognizes the account as an ordinary user and shows:
+
+"Pending — waiting for permission"
+
+The account is not being recognized as the existing development "PLATFORM_OWNER".
+
+The existing development fixtures contain owner-related database records, but they do not create Clerk authentication sessions.
+
+CRITICAL SAFETY RULE
+
+This is DEVELOPMENT ONLY.
+
+DO NOT:
+
+- modify production
+- execute production SQL
+- click Publish
+- create a second PLATFORM_OWNER
+- use production credentials
+- manually assign PLATFORM_OWNER directly in the production database
+- bypass Clerk authentication
+- weaken RBAC
+- remove authorization checks
+- create a permanent authentication backdoor
+
+---
+
+OBJECTIVE
+
+Inspect the existing authentication/bootstrap implementation and determine why the intended development owner account is being treated as an ordinary pending user.
+
+The goal is to restore the intended development owner authentication flow using the application's existing supported mechanisms.
+
+Do not redesign the authentication architecture.
+
+Do not replace Clerk.
+
+Do not create a parallel authentication system.
+
+---
+
+STEP 1 — INSPECT OWNER BOOTSTRAP
+
+Inspect the existing owner bootstrap implementation and related environment configuration.
+
+Earlier project architecture included a first-owner bootstrap mechanism associated with:
+
+"EDUPULSE_BOOTSTRAP_CLERK_USER_ID"
+
+or its current Yemait EduCore equivalent.
+
+Determine:
+
+1. What mechanism currently establishes the first "PLATFORM_OWNER"?
+2. Which Clerk user ID is expected?
+3. Whether the current development owner database record references the correct Clerk identity.
+4. Whether the relevant environment variable/secret is configured in DEVELOPMENT.
+5. Whether the variable name was renamed during the EduPulse → Yemait EduCore transition.
+6. Whether the application is correctly reading the development value.
+7. Whether an existing session is being mapped to the correct internal user.
+8. Why the current user falls into "pending/waiting for permission."
+
+Do not reveal secret values in the report.
+
+Report only whether the required configuration exists and whether it matches the expected Clerk identity.
+
+---
+
+STEP 2 — TRACE AUTHORIZATION
+
+Trace the actual login flow:
+
+Clerk authentication
+
+→ Clerk user ID
+
+→ internal user lookup
+
+→ role lookup
+
+→ school/tenant lookup
+
+→ authorization decision
+
+→ dashboard/pending state.
+
+Identify exactly where the current user becomes:
+
+ordinary/pending user
+
+instead of:
+
+PLATFORM_OWNER
+
+Do not change anything until the cause is identified.
+
+---
+
+STEP 3 — CHECK FOR STALE OWNER MAPPING
+
+Determine whether the development database contains an old owner mapping from the previous authentication setup.
+
+Check for:
+
+- old Clerk user ID
+- current Clerk user ID
+- duplicate internal users
+- inactive owner record
+- pending invitation record
+- stale role assignment
+- wrong tenant assignment
+- incorrect role enum
+- incorrect bootstrap state
+
+Do not delete records simply to fix the problem.
+
+If a stale record exists, explain what it is and what the safe development-only correction would be.
+
+---
+
+STEP 4 — VERIFY CURRENT CLERK IDENTITY
+
+Do not ask me to provide passwords or authentication secrets.
+
+If the development environment exposes the authenticated Clerk user ID through existing application/server diagnostics, use that information.
+
+If the user ID cannot be obtained without an authenticated session, explain exactly what I need to do through the normal Clerk development login process.
+
+Do not create another owner.
+
+---
+
+STEP 5 — DEVELOPMENT-ONLY REPAIR
+
+If the problem is caused by a stale or incorrect development owner mapping, propose the smallest safe development-only correction.
+
+Prefer the existing owner bootstrap mechanism.
+
+Do not create a new authentication architecture.
+
+Do not modify production.
+
+Do not modify production secrets.
+
+Do not modify production database records.
+
+If a development environment secret needs to be configured, identify:
+
+- secret name
+- what identity it must correspond to
+
+Do NOT print or request the secret value in the report.
+
+---
+
+STEP 6 — DO NOT BYPASS AUTHORIZATION
+
+Do NOT solve this by:
+
+- automatically making every user PLATFORM_OWNER
+- removing the pending state
+- skipping role checks
+- trusting an email address alone
+- hardcoding a user ID in frontend code
+- creating a hidden development backdoor
+- accepting a query parameter as authorization
+
+The resulting login must still use the real Clerk authentication and existing RBAC authorization.
+
+---
+
+STEP 7 — AFTER REPAIR
+
+Once the development owner can authenticate correctly:
+
+Verify:
+
+1. Clerk login succeeds.
+2. Internal user is recognized.
+3. Role is "PLATFORM_OWNER".
+4. Platform dashboard is accessible.
+5. Pending permission state is not shown.
+6. Existing RBAC remains enforced.
+7. API authorization still works.
+8. Tenant isolation remains intact.
+
+Then STOP.
+
+Do not automatically create the other role accounts yet.
+
+We will use the authenticated development owner to perform the normal authorized role-assignment/invitation workflow afterward.
+
+---
+
+TESTS
+
+After any development-only correction:
+
+Run:
+
+- existing API tests
+- authentication/RBAC tests
+- tenant-isolation tests
+- builds
+- typechecks
+
+The existing baseline is:
+
+328/328 API tests passing
+
+Do not remove or weaken tests.
+
+---
+
+FINAL REPORT
+
+Return:
+
+Root Cause
+
+Exactly why the development owner was recognized as an ordinary pending user.
+
+Development Correction
+
+Exactly what was changed, if anything.
+
+Authentication Result
+
+Whether the existing development owner can now authenticate as "PLATFORM_OWNER".
+
+Tests
+
+Report actual results.
+
+Production
+
+State:
+
+PRODUCTION WAS NOT MODIFIED.
+
+PUBLISH WAS NOT EXECUTED.
+
+If the issue cannot be fixed without me completing a legitimate Clerk authentication step, state the exact user action required.
+
+Do not create another owner.
+
+Do not bypass authentication.
