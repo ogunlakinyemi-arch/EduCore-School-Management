@@ -17,6 +17,7 @@ import peopleImportsRouter from "./people-imports";
 import financeRouter from "./finance";
 import financeNotificationsRouter from "./finance-notifications";
 import invoiceNotificationsRouter from "./invoice-notifications";
+import platformCompanyEmployeesRouter from "./platform-company-employees";
 
 const router: IRouter = Router();
 
@@ -32,6 +33,7 @@ router.use(academicRouter);
 router.use(edupulseRouter);
 router.use(partnersRouter);
 router.use(platformRouter);
+router.use(platformCompanyEmployeesRouter);
 router.use(attendanceFamilyRouter);
 router.use(attendanceDiscrepancyResolutionRouter);
 router.use(academicWorkRouter);

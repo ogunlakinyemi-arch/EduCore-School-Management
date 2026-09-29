@@ -178,6 +178,22 @@ describe("academic result and report-card operations", () => {
     expect(state.queries).toHaveLength(0);
   });
 
+  it("denies platform-owner result entry and grading-rule writes before database access", async () => {
+    const result = await post("/academic/results", {
+      schoolId: 1, assessmentId: 21, studentId: 13, score: 18,
+    }, "PLATFORM_OWNER");
+    const publish = await post("/academic/assessments/21/publish-results", { schoolId: 1 }, "PLATFORM_OWNER");
+    const rules = await fetch(`${baseUrl}/academic/grading-rules?schoolId=1`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-role": "PLATFORM_OWNER", "x-test-school": "1" },
+      body: JSON.stringify({ minScore: 0, maxScore: 100, grade: "A", remark: "Excellent" }),
+    });
+
+    expect([result.status, publish.status, rules.status]).toEqual([403, 403, 403]);
+    expect(state.queries).toHaveLength(0);
+    expect(poolMock.connect).not.toHaveBeenCalled();
+  });
+
   it("publishes results atomically and writes an audit record", async () => {
     const response = await post("/academic/assessments/21/publish-results", { schoolId: 1 });
     expect(response.status).toBe(200);

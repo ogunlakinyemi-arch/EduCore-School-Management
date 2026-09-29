@@ -25,7 +25,8 @@ export function ResultsPage() {
   const { schoolId } = useTenant();
   const [tab, setTab] = useState<'results' | 'cards' | 'rules'>('results');
   const context = useGetAuthorizedContext().data;
-  const canManage = !!context?.isPlatformOwner || !!context?.roles?.some(
+  const isPlatformOwner = context?.isPlatformOwner === true;
+  const canManage = !!context?.roles?.some(
     role => role.role === 'SCHOOL_ADMIN' && role.schoolId === schoolId && role.status === 'ACTIVE'
   );
   
@@ -52,7 +53,7 @@ export function ResultsPage() {
               </button>
             ))}
           </div>
-           {tab === 'results' && <ResultEntryView schoolId={schoolId} canManage={canManage} />}
+           {tab === 'results' && <ResultEntryView schoolId={schoolId} canManage={canManage} isPlatformOwner={isPlatformOwner} />}
            {canManage && tab === 'cards' && <ReportCardsView schoolId={schoolId} />}
            {canManage && tab === 'rules' && <GradingRulesView schoolId={schoolId} />}
         </>
@@ -61,7 +62,7 @@ export function ResultsPage() {
   );
 }
 
-function ResultEntryView({ schoolId, canManage }: { schoolId: number; canManage: boolean }) {
+function ResultEntryView({ schoolId, canManage, isPlatformOwner }: { schoolId: number; canManage: boolean; isPlatformOwner: boolean }) {
   const { activeSession, activeTerm, classes, subjects, isLoading } = useAcademicContext(schoolId);
   const assessmentsQuery = useListAcademicAssessments(
     { schoolId, sessionId: activeSession?.id, termId: activeTerm?.id }, 
@@ -145,7 +146,7 @@ function ResultEntryView({ schoolId, canManage }: { schoolId: number; canManage:
                     schoolId={schoolId}
                     sessionId={activeSession?.id}
                     termId={activeTerm?.id}
-                    disabled={selectedAssessment.status === 'PUBLISHED'}
+                    disabled={selectedAssessment.status === 'PUBLISHED' || (isPlatformOwner && !canManage)}
                   />
                 );
               })}

@@ -7,11 +7,12 @@ import {
 } from '@workspace/api-client-react';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, 
-  Modal, Field, TenantPicker, useTenant, cx, date
+  Modal, Field, TenantPicker, useTenant, cx, date, useSchoolAdminAccess
 } from '@/components/shared';
 
 export function AcademicsPage() {
   const { schoolId, setSchoolId } = useTenant();
+  const { canManageSchool } = useSchoolAdminAccess();
   const [sessionModal, setSessionModal] = useState<any>(null); 
   const [termModal, setTermModal] = useState<any>(null); 
   
@@ -45,9 +46,9 @@ export function AcademicsPage() {
         action={
           <div className="flex items-center gap-3">
             <TenantPicker />
-            <Button onClick={() => setSessionModal({ create: true })} disabled={!schoolId}>
+            {canManageSchool && <Button onClick={() => setSessionModal({ create: true })} disabled={!schoolId}>
               <Plus size={16} />New Session
-            </Button>
+            </Button>}
           </div>
         } 
       />
@@ -88,9 +89,9 @@ export function AcademicsPage() {
                     </div>
                     <div className="flex items-center gap-4">
                       <StatusPill value={session.status} />
-                      <button onClick={() => setSessionModal(session)} className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors p-2">
+                      {canManageSchool && <button onClick={() => setSessionModal(session)} className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors p-2">
                         <Pencil size={15} />
-                      </button>
+                      </button>}
                     </div>
                   </div>
                 ))}
@@ -109,9 +110,9 @@ export function AcademicsPage() {
                   {activeSession ? `For ${activeSession.name}` : 'Requires an active session'}
                 </p>
               </div>
-              <Button variant="outline" onClick={() => setTermModal({ create: true })} disabled={!activeSession}>
+              {canManageSchool && <Button variant="outline" onClick={() => setTermModal({ create: true })} disabled={!activeSession}>
                 <Plus size={14} />Add term
-              </Button>
+              </Button>}
             </div>
             
             {terms.length && activeSession ? (
@@ -129,9 +130,9 @@ export function AcademicsPage() {
                     </div>
                     <div className="flex items-center gap-4">
                       <StatusPill value={term.status} />
-                      <button onClick={() => setTermModal(term)} className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors p-2">
+                      {canManageSchool && <button onClick={() => setTermModal(term)} className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors p-2">
                         <Pencil size={15} />
-                      </button>
+                      </button>}
                     </div>
                   </div>
                 ))}
@@ -143,13 +144,13 @@ export function AcademicsPage() {
             )}
           </div>
 
-          {sessionModal && (
+          {canManageSchool && sessionModal && (
             <Modal title={sessionModal.create ? 'Create Session' : 'Edit Session'} eyebrow="Academic Calendar" onClose={() => setSessionModal(null)}>
               <SessionForm schoolId={schoolId} initial={sessionModal.create ? undefined : sessionModal} onDone={doneSession} onCancel={() => setSessionModal(null)} />
             </Modal>
           )}
 
-          {termModal && (
+          {canManageSchool && termModal && (
             <Modal title={termModal.create ? 'Create Term' : 'Edit Term'} eyebrow={`For ${activeSession?.name}`} onClose={() => setTermModal(null)}>
               <TermForm schoolId={schoolId} sessionId={activeSession?.id} initial={termModal.create ? undefined : termModal} onDone={doneTerm} onCancel={() => setTermModal(null)} />
             </Modal>

@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CreditCard, Plus, ShieldCheck } from 'lucide-react';
 import { 
-  useListCards, useRegisterCard, useUpdateCardStatus, getListCardsQueryKey 
+  useListCards, useListStudents, useRegisterCard, useUpdateCardStatus, getListCardsQueryKey
 } from '@workspace/api-client-react';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Modal, Field, TenantPicker, useTenant, cx 
@@ -16,6 +16,10 @@ export function CardsPage() {
   
   const query = useListCards({ schoolId }, { query: { enabled: !!schoolId, queryKey: getListCardsQueryKey({ schoolId }) } }); 
   const cards: any[] = query.data ?? [];
+  const studentsQuery = useListStudents({ schoolId, status: 'all' as any }, {
+    query: { enabled: !!schoolId, queryKey: ['cards-reassignment-students', schoolId] }
+  });
+  const students: any[] = studentsQuery.data ?? [];
   
   const toggleStatus = useUpdateCardStatus();
 
@@ -67,9 +71,12 @@ export function CardsPage() {
                 <div>
                   <div className="font-mono text-sm font-bold text-[hsl(var(--primary))] dark:text-[hsl(var(--accent))]">{card.uid}</div>
                 </div>
-                <div className="text-sm font-medium">Student ID: {card.studentId}</div>
+                <div className="text-sm font-medium">{card.studentName ?? (card.studentId ? `Student #${card.studentId}` : 'Unassigned')}</div>
                 <div><StatusPill value={card.status} /></div>
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setModal({ reassign: card })} disabled={studentsQuery.isLoading || !students.length}>
+                    Reassign
+                  </Button>
                   <Button variant="outline" onClick={() => handleToggle(card.id, card.status)} disabled={toggleStatus.isPending}>
                     {card.status === 'active' ? 'Lock Card' : 'Unlock Card'}
                   </Button>
@@ -81,13 +88,94 @@ export function CardsPage() {
           </div>
           
           {modal && (
-            <Modal title="Provision NFC Card" eyebrow="Hardware Management" onClose={() => setModal(null)}>
-              <CardForm schoolId={schoolId} onDone={done} onCancel={() => setModal(null)} />
+            <Modal
+              title={modal.create ? 'Provision NFC Card' : 'Reassign NFC Card'}
+              eyebrow="Hardware Management"
+              onClose={() => setModal(null)}
+            >
+              {modal.create ? (
+                <CardForm schoolId={schoolId} onDone={done} onCancel={() => setModal(null)} />
+              ) : (
+                <CardReassignForm
+                  card={modal.reassign}
+                  students={students}
+                  onCancel={() => setModal(null)}
+                />
+              )}
             </Modal>
           )}
         </>
       )}
     </div>
+  );
+}
+
+function CardReassignForm({
+  card, students, onCancel,
+}: {
+  card: any;
+  students: any[];
+  onCancel: () => void;
+}) {
+  const [studentId, setStudentId] = useState('');
+  const [resultMessage, setResultMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const qc = useQueryClient();
+  const reassign = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/cards/${card.id}/reassign`, {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId: Number(studentId) }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error ?? 'Card reassignment failed');
+      return payload;
+    },
+    onSuccess: (updated: any) => {
+      setErrorMessage('');
+      setResultMessage(`Card ${updated.uid} reassigned to ${updated.studentName}.`);
+      qc.invalidateQueries({ queryKey: getListCardsQueryKey() });
+      qc.invalidateQueries({ queryKey: ['cards-reassignment-students'] });
+    },
+    onError: (error: Error) => {
+      setResultMessage('');
+      setErrorMessage(error.message || 'Card reassignment failed');
+    },
+  });
+
+  const save = (event: FormEvent) => {
+    event.preventDefault();
+    setResultMessage('');
+    setErrorMessage('');
+    reassign.mutate();
+  };
+
+  return (
+    <form onSubmit={save} className="space-y-5">
+      <p className="text-sm text-[hsl(var(--muted-foreground))]">
+        Assign <span className="font-mono font-bold text-[hsl(var(--foreground))]">{card.uid}</span> to a student in this school.
+      </p>
+      <Field label="Same-school student">
+        <select required value={studentId} onChange={(event) => setStudentId(event.target.value)}>
+          <option value="">Select a student</option>
+          {students.map((student: any) => (
+            <option key={student.id} value={student.id}>
+              {student.firstName} {student.lastName} · {student.admissionNo}
+            </option>
+          ))}
+        </select>
+      </Field>
+      {resultMessage && <p role="status" className="text-sm font-semibold text-emerald-600">{resultMessage}</p>}
+      {errorMessage && <p role="alert" className="text-sm font-semibold text-red-600">{errorMessage}</p>}
+      <div className="flex justify-end gap-3 border-t border-[hsl(var(--border))] pt-5">
+        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" disabled={reassign.isPending || !studentId}>
+          {reassign.isPending ? 'Reassigning…' : 'Reassign Card'}
+        </Button>
+      </div>
+    </form>
   );
 }
 

@@ -30,6 +30,7 @@ import {
   AuthError,
   assertRoles,
   assertSchoolAccess,
+  assertSchoolOperationalAccess,
   getUserContext,
   handleAuthError,
   requireAuthentication,
@@ -56,9 +57,12 @@ const employeeReturning = `
   gender, employment_status AS "status", date_employed AS "dateEmployed",
   department, qualification, user_id AS "userId"`;
 
-function isManager(req: Request) {
+function isManager(req: Request, schoolId: number) {
   return getUserContext(req).roles.some(
-    (assignment) => assignment.role === "PLATFORM_OWNER" || assignment.role === "SCHOOL_ADMIN",
+    (assignment) =>
+      assignment.status === "ACTIVE" &&
+      ((assignment.role === "PLATFORM_OWNER" && assignment.schoolId === null) ||
+        (assignment.role === "SCHOOL_ADMIN" && assignment.schoolId === schoolId)),
   );
 }
 
@@ -87,7 +91,7 @@ router.get("/employees", asyncRoute(async (req, res) => {
   assertSchoolAccess(req, query.schoolId, ["SCHOOL_ADMIN", "TEACHER", "STAFF"]);
   const values: unknown[] = [query.schoolId];
   const conditions = ["e.school_id = $1"];
-  if (!isManager(req)) {
+  if (!isManager(req, query.schoolId)) {
     values.push(getUserContext(req).user.id);
     conditions.push(`e.user_id = $${values.length}`);
   }
@@ -108,7 +112,7 @@ router.get("/employees", asyncRoute(async (req, res) => {
 
 router.post("/employees", asyncRoute(async (req, res) => {
   const query = CreateEmployeeQueryParams.parse(req.query);
-  assertSchoolAccess(req, query.schoolId, ["SCHOOL_ADMIN"]);
+  assertSchoolOperationalAccess(req, query.schoolId, ["SCHOOL_ADMIN"]);
   const body = CreateEmployeeBody.parse(req.body);
   if (body.userId) {
     const user = await pool.query(`SELECT id FROM app_users WHERE id = $1`, [body.userId]);
@@ -133,7 +137,8 @@ router.get("/employees/:employeeId", asyncRoute(async (req, res) => {
   const query = GetEmployeeQueryParams.parse(req.query);
   const row = await employee(req, params.employeeId);
   assertSchoolAccess(req, row.schoolId, ["SCHOOL_ADMIN", "TEACHER", "STAFF"]);
-  if (row.schoolId !== query.schoolId || (!isManager(req) && row.userId !== getUserContext(req).user.id)) {
+  if (row.schoolId !== query.schoolId ||
+      (!isManager(req, row.schoolId) && row.userId !== getUserContext(req).user.id)) {
     throw new AuthError(404, "Employee not found");
   }
   res.json(GetEmployeeResponse.parse(row));
@@ -145,7 +150,7 @@ router.patch("/employees/:employeeId", asyncRoute(async (req, res) => {
   const body = UpdateEmployeeBody.parse(req.body);
   const current = await employee(req, params.employeeId);
   if (current.schoolId !== query.schoolId) throw new AuthError(404, "Employee not found");
-  assertSchoolAccess(req, current.schoolId, ["SCHOOL_ADMIN"]);
+  assertSchoolOperationalAccess(req, current.schoolId, ["SCHOOL_ADMIN"]);
   const result = await pool.query(
     `UPDATE employees SET first_name = COALESCE($1, first_name), middle_name = COALESCE($2, middle_name),
        last_name = COALESCE($3, last_name), phone = COALESCE($4, phone), email = COALESCE($5, email),
@@ -168,7 +173,7 @@ router.patch("/employees/:employeeId/status", asyncRoute(async (req, res) => {
   const body = UpdateEmployeeStatusBody.parse(req.body);
   const current = await employee(req, params.employeeId);
   if (current.schoolId !== query.schoolId) throw new AuthError(404, "Employee not found");
-  assertSchoolAccess(req, current.schoolId, ["SCHOOL_ADMIN"]);
+  assertSchoolOperationalAccess(req, current.schoolId, ["SCHOOL_ADMIN"]);
   const result = await pool.query(
     `UPDATE employees SET employment_status = $1, updated_at = NOW()
      WHERE id = $2 AND school_id = $3 RETURNING ${employeeReturning}`,
@@ -206,7 +211,7 @@ router.patch("/parents/:parentId", asyncRoute(async (req, res) => {
   const params = UpdateParentParams.parse(req.params);
   const query = UpdateParentQueryParams.parse(req.query);
   const body = UpdateParentBody.parse(req.body);
-  assertSchoolAccess(req, query.schoolId, ["SCHOOL_ADMIN"]);
+  assertSchoolOperationalAccess(req, query.schoolId, ["SCHOOL_ADMIN"]);
   await parent(req, params.parentId, query.schoolId);
   await pool.query(
     `UPDATE parents SET name = COALESCE($1, name), email = COALESCE($2, email),

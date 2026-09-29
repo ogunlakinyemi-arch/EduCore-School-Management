@@ -7,11 +7,11 @@ import {
 } from 'lucide-react';
 import { 
   useListStudents, useCreateStudent, useUpdateStudent, 
-  getListStudentsQueryKey 
+  getListStudentsQueryKey, useGetSchool, getGetSchoolQueryKey
 } from '@workspace/api-client-react';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, 
-  Modal, Field, Info, TenantPicker, useTenant, cx, date
+  Modal, Field, Info, TenantPicker, useTenant, cx, date, useSchoolAdminAccess
 } from '@/components/shared';
 
 export function StudentsPage() {
@@ -19,7 +19,11 @@ export function StudentsPage() {
   const [search, setSearch] = useState(''); 
   const [status, setStatus] = useState('active'); 
   const [modal, setModal] = useState<any>(null); 
+  const [idCardStudent, setIdCardStudent] = useState<any>(null);
   const qc = useQueryClient();
+  const { canManageSchool } = useSchoolAdminAccess();
+  const schoolQuery = useGetSchool(schoolId, { query: { enabled: !!schoolId, queryKey: getGetSchoolQueryKey(schoolId) } });
+  const school = schoolQuery.data;
   
   const query = useListStudents({ schoolId, search: search || undefined, status: status as any }, { query: { enabled: !!schoolId, queryKey: getListStudentsQueryKey({ schoolId, search: search || undefined, status: status as any }) } }); 
   const students: any[] = query.data ?? [];
@@ -38,9 +42,9 @@ export function StudentsPage() {
         action={
           <div className="flex items-center gap-3">
             <TenantPicker />
-            <Button onClick={() => setModal({ create: true })} disabled={!schoolId} testId="button-add-student">
+            {canManageSchool && <Button onClick={() => setModal({ create: true })} disabled={!schoolId} testId="button-add-student">
               <Plus size={16} />Add student
-            </Button>
+            </Button>}
           </div>
         } 
       />
@@ -118,23 +122,48 @@ export function StudentsPage() {
                   <StatusPill value={student.status} />
                   <div className="mt-1"><StatusPill value={student.subscriptionStatus} /></div>
                 </div>
-                <Button variant="quiet" onClick={() => setModal(student)} testId={`button-edit-student-${student.id}`}>
-                  <Pencil size={15} />Edit
-                </Button>
+                <div className="flex items-center justify-end gap-1">
+                  <Button variant="quiet" onClick={() => setIdCardStudent(student)} testId={`button-student-id-card-${student.id}`}>e-ID card</Button>
+                  {canManageSchool && <Button variant="quiet" onClick={() => setModal(student)} testId={`button-edit-student-${student.id}`}>
+                    <Pencil size={15} />Edit
+                  </Button>}
+                </div>
               </div>
             )) : (
               <EmptyState 
                 icon={GraduationCap} 
                 title="No students found" 
                 description="Try adjusting your filters or add a new student to this school." 
-                action={<Button onClick={() => setModal({ create: true })} testId="button-empty-add-student"><Plus size={15} />Add student</Button>} 
+                action={canManageSchool ? <Button onClick={() => setModal({ create: true })} testId="button-empty-add-student"><Plus size={15} />Add student</Button> : undefined}
               />
             )}
           </div>
           
-          {modal && (
+          {canManageSchool && modal && (
             <Modal title={modal.create ? 'Admit new student' : 'Edit student profile'} eyebrow="Student Records" onClose={() => setModal(null)}>
               <StudentForm schoolId={schoolId} initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />
+            </Modal>
+          )}
+          {idCardStudent && (
+            <Modal title="Student e-ID card" eyebrow="Printable student identification" onClose={() => setIdCardStudent(null)}>
+              <style>{`@media print { body * { visibility: hidden !important; } .student-eid-card, .student-eid-card * { visibility: visible !important; } .student-eid-card { position: fixed; inset: 0 auto auto 0; margin: 24px; width: 340px; } .student-eid-actions { display: none !important; } }`}</style>
+              <div className="student-eid-card mx-auto w-full max-w-sm rounded-2xl border-2 border-[hsl(var(--primary))] bg-white p-5 text-slate-900 shadow-lg">
+                <div className="mb-4 flex items-center gap-3 border-b border-slate-200 pb-3">
+                  {school?.logoUrl ? <img src={school.logoUrl} alt={`${school.name} logo`} className="h-12 w-12 object-contain" /> : <div className="grid h-12 w-12 place-items-center rounded-lg bg-slate-100 text-xs font-bold">Logo</div>}
+                  <div><div className="font-bold">{school?.name || idCardStudent.schoolName || 'School'}</div><div className="text-xs uppercase tracking-wider text-slate-500">Student Identification</div></div>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="text-xl font-bold">{idCardStudent.firstName} {idCardStudent.lastName}</div>
+                  <div><strong>Admission No.:</strong> {idCardStudent.admissionNo || '—'}</div>
+                  <div><strong>Class:</strong> {idCardStudent.className || '—'} {idCardStudent.section || ''}</div>
+                  <div><strong>Status:</strong> {idCardStudent.status || '—'}</div>
+                  <div><strong>School:</strong> {school?.name || idCardStudent.schoolName || '—'}</div>
+                </div>
+              </div>
+              <div className="student-eid-actions mt-5 flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setIdCardStudent(null)}>Close</Button>
+                <Button onClick={() => window.print()}>Print / Save as PDF</Button>
+              </div>
             </Modal>
           )}
         </>

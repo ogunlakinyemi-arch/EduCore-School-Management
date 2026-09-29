@@ -1,11 +1,24 @@
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { pool } from "@workspace/db";
-import { AuthError, assertSchoolAccess, getUserContext, requireAuthentication } from "../middlewares/auth";
+import {
+  AuthError,
+  assertSchoolAccess,
+  assertSchoolOperationalAccess,
+  getUserContext,
+  isPlatformOwner,
+  requireAuthentication,
+} from "../middlewares/auth";
 
 const router = Router();
 const run = (handler: (req: Request, res: Response) => Promise<void>) =>
   (req: Request, res: Response, next: NextFunction) => handler(req, res).catch(next);
+
+function assertCardAccess(req: Request, schoolId: number) {
+  const context = getUserContext(req);
+  if (isPlatformOwner(context)) return context;
+  return assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN", "STAFF"]);
+}
 
 function bearer(req: Request) {
   // Device credentials are deliberately not accepted as user Bearer tokens.
@@ -94,11 +107,15 @@ async function reconcileAttendance(client: { query: (sql: string, values?: unkno
 
 // Reconcile only after the school's configured classroom window. Schools with no
 // window do not receive speculative "missing" flags.
-async function reconcileMissingClass(schoolId: number, day: string) {
+async function reconcileMissingClass(
+  schoolId: number,
+  day: string,
+  client: { query: (sql: string, values?: unknown[]) => Promise<{ rows: any[] }> } = pool,
+) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || Number.isNaN(Date.parse(day))) {
     throw new AuthError(400, "Invalid attendance date");
   }
-  await pool.query(
+  await client.query(
     `WITH missing AS (
       SELECT DISTINCT ON (e.student_id) e.id, e.student_id
       FROM attendance_events e
@@ -129,6 +146,13 @@ async function reconcileMissingClass(schoolId: number, day: string) {
       jsonb_build_object('studentId',student_id,'kind','SCHOOL_PRESENT_CLASS_MISSING')
     FROM inserted`,
     [schoolId, day],
+  );
+}
+
+function hasSchoolWideAttendanceRead(context: ReturnType<typeof getUserContext>, schoolId: number) {
+  return isPlatformOwner(context) || context.roles.some(
+    (assignment) => assignment.schoolId === schoolId &&
+      ["SCHOOL_ADMIN", "STAFF"].includes(assignment.role),
   );
 }
 
@@ -245,6 +269,7 @@ const processDeviceAttendance = run(async (req, res) => {
    );
    if (!result.rows[0]) { await client.query("ROLLBACK"); res.status(409).json({ error: "Duplicate event" }); return; }
    await reconcileAttendance(client, result.rows[0]);
+    await reconcileMissingClass(device.schoolId, occurredAt.toISOString().slice(0, 10), client);
    await client.query(`INSERT INTO attendance_notification_events(school_id,attendance_event_id,notification_type,channel,status,payload)
       SELECT $1::int,$2::int,x,'IN_APP','PENDING',jsonb_build_object('studentId',$3::int)
        FROM unnest(ARRAY['SCHOOL_ENTRY','SCHOOL_EXIT']::text[]) x
@@ -323,7 +348,6 @@ router.get("/school/attendance/today", requireAuthentication(), run(async (req, 
   assertSchoolAccess(req, schoolId, ["SCHOOL_ADMIN", "STAFF", "TEACHER"]);
    if (getUserContext(req).roles.some(x => x.role === "TEACHER")) throw new AuthError(403, "Teachers may not view school-wide attendance");
   const date = String(req.query.date ?? new Date().toISOString().slice(0, 10));
-  await reconcileMissingClass(schoolId, date);
   const r = await pool.query(
     `WITH gate AS (
       SELECT DISTINCT ON (student_id) student_id,event_type FROM attendance_events
@@ -351,7 +375,7 @@ router.get("/school/attendance/today", requireAuthentication(), run(async (req, 
 router.get("/school/attendance/students/:studentId", requireAuthentication(), run(async (req,res) => {
    const schoolId=Number(req.query.schoolId), studentId=Number(req.params.studentId); const ctx=assertSchoolAccess(req,schoolId,["SCHOOL_ADMIN","STAFF","TEACHER"]);
   const student=await pool.query(`SELECT id FROM students WHERE id=$1 AND school_id=$2`,[studentId,schoolId]); if(!student.rows[0]) throw new AuthError(404,"Student not found");
-   if (ctx.roles.some(x=>x.role==="TEACHER") && !ctx.roles.some(x=>x.role!=="TEACHER")) {
+    if (ctx.roles.some(x=>x.role==="TEACHER") && !hasSchoolWideAttendanceRead(ctx, schoolId)) {
      const assigned=await pool.query(`SELECT 1 FROM teacher_class_assignments t JOIN employees e ON e.id=t.employee_id JOIN student_class_assignments a ON a.school_class_id=t.school_class_id WHERE e.user_id=$1 AND t.school_id=$2 AND a.student_id=$3 AND t.status='ACTIVE' AND a.status='ACTIVE'`,[ctx.user.id,schoolId,studentId]);
      if(!assigned.rows[0]) throw new AuthError(404,"Student not found");
    }
@@ -360,14 +384,13 @@ router.get("/school/attendance/students/:studentId", requireAuthentication(), ru
 
 router.get("/school/attendance/classes/:classId", requireAuthentication(), run(async (req,res) => {
   const schoolId=Number(req.query.schoolId), classId=Number(req.params.classId); const ctx=assertSchoolAccess(req,schoolId,["SCHOOL_ADMIN","STAFF","TEACHER"]);
-  if (ctx.roles.some(x=>x.role==="TEACHER")&&!ctx.roles.some(x=>x.role!=="TEACHER")) { const ok=await pool.query(`SELECT 1 FROM teacher_class_assignments t JOIN employees e ON e.id=t.employee_id WHERE e.user_id=$1 AND t.school_id=$2 AND t.school_class_id=$3 AND t.status='ACTIVE'`,[ctx.user.id,schoolId,classId]); if(!ok.rows[0]) throw new AuthError(404,"Class not found"); }
+  if (ctx.roles.some(x=>x.role==="TEACHER")&&!hasSchoolWideAttendanceRead(ctx, schoolId)) { const ok=await pool.query(`SELECT 1 FROM teacher_class_assignments t JOIN employees e ON e.id=t.employee_id WHERE e.user_id=$1 AND t.school_id=$2 AND t.school_class_id=$3 AND t.status='ACTIVE'`,[ctx.user.id,schoolId,classId]); if(!ok.rows[0]) throw new AuthError(404,"Class not found"); }
   const date=String(req.query.date??new Date().toISOString().slice(0,10)); const r=await pool.query(`SELECT id,school_id AS "schoolId",student_id AS "studentId",device_id AS "deviceId",event_type AS "eventType",identification_method AS "identificationMethod",occurred_at AS "occurredAt",attendance_status AS status,result,created_at AS "createdAt" FROM attendance_events WHERE school_id=$1 AND school_class_id=$2 AND event_date=$3 ORDER BY occurred_at DESC`,[schoolId,classId,date]); res.json(r.rows);
 }));
 
 router.get("/school/attendance/discrepancies", requireAuthentication(), run(async (req,res) => {
   const schoolId=Number(req.query.schoolId); assertSchoolAccess(req,schoolId,["SCHOOL_ADMIN","STAFF","TEACHER"]);
    if (getUserContext(req).roles.some(x => x.role === "TEACHER")) throw new AuthError(403,"Teachers may not view school-wide discrepancies");
-  await reconcileMissingClass(schoolId, String(req.query.from ?? new Date().toISOString().slice(0, 10)));
   const vals:any[]=[schoolId]; const c=["d.school_id=$1"]; if(req.query.status){c.push(`d.status=$${vals.length+1}`);vals.push(String(req.query.status));} if(req.query.from){c.push(`COALESCE(e.event_date,d.created_at::date) >= $${vals.length+1}::date`);vals.push(String(req.query.from));} if(req.query.to){c.push(`COALESCE(e.event_date,d.created_at::date) <= $${vals.length+1}::date`);vals.push(String(req.query.to));}
   const r=await pool.query(`SELECT d.id,d.school_id AS "schoolId",d.student_id AS "studentId",
     d.attendance_event_id AS "attendanceEventId",d.discrepancy_type AS kind,d.status,
@@ -393,7 +416,7 @@ router.post("/school/attendance/manual", requireAuthentication(), run(async (req
   const eventType = String(req.body?.eventType ?? "").toUpperCase();
   const reason = String(req.body?.reason ?? "").trim();
    const attendanceStatus = String(req.body?.status ?? "").toUpperCase();
-  assertSchoolAccess(req, schoolId, ["SCHOOL_ADMIN", "STAFF"]);
+   assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN", "STAFF"]);
    if ((studentId === null) === (employeeId === null) ||
        (studentId !== null && (!Number.isInteger(studentId) || studentId < 1)) ||
        (employeeId !== null && (!Number.isInteger(employeeId) || employeeId < 1)) ||
@@ -428,6 +451,7 @@ router.post("/school/attendance/manual", requireAuthentication(), run(async (req
       [schoolId, studentId, employeeId, eventType, attendanceStatus, occurred.toISOString().slice(0, 10),
         occurred.toISOString(), reason, context.user.id, `manual:${randomUUID()}`],
     );
+     await reconcileMissingClass(schoolId, occurred.toISOString().slice(0, 10), client);
     await client.query(
       `INSERT INTO audit_logs("user",role,actor_user_id,clerk_user_id,school_id,action,module,record_id,event_type,result)
        VALUES($1,$2,$3,$4,$5,'Created manual attendance','Attendance',$6,'ATTENDANCE_MANUALLY_CREATED','SUCCESS')`,
@@ -448,7 +472,7 @@ router.put("/school/students/:studentId/identification-policy", requireAuthentic
   const schoolId = Number(req.body?.schoolId);
   const studentId = Number(req.params.studentId);
   const policy = String(req.body?.policy ?? "").toUpperCase();
-  const context = assertSchoolAccess(req, schoolId, ["SCHOOL_ADMIN", "STAFF"]);
+  const context = assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN", "STAFF"]);
   if (!Number.isInteger(studentId) || !["NFC_ONLY", "BIOMETRIC_ONLY", "NFC_AND_BIOMETRIC", "MANUAL_FALLBACK"].includes(policy)) {
     throw new AuthError(400, "A valid identification policy is required");
   }
@@ -474,26 +498,26 @@ router.get("/students/:studentId/identification-methods", requireAuthentication(
 }));
 
 router.post("/students/:studentId/identification-methods", requireAuthentication(), run(async (req,res) => {
-  const schoolId=Number(req.query.schoolId), studentId=Number(req.params.studentId), policy=String(req.body?.policy??"").toUpperCase(); const c=assertSchoolAccess(req,schoolId,["SCHOOL_ADMIN","STAFF"]);
+  const schoolId=Number(req.query.schoolId), studentId=Number(req.params.studentId), policy=String(req.body?.policy??"").toUpperCase(); const c=assertSchoolOperationalAccess(req,schoolId,["SCHOOL_ADMIN","STAFF"]);
   if(!["NFC_ONLY","BIOMETRIC_ONLY","NFC_AND_BIOMETRIC","MANUAL_FALLBACK"].includes(policy)) throw new AuthError(400,"Invalid policy");
   const student=await pool.query(`SELECT id FROM students WHERE id=$1 AND school_id=$2`,[studentId,schoolId]); if(!student.rows[0]) throw new AuthError(404,"Student not found");
   const r=await pool.query(`INSERT INTO student_identification_policies(school_id,student_id,policy,created_by) VALUES($1,$2,$3,$4) ON CONFLICT(student_id) DO UPDATE SET policy=EXCLUDED.policy,updated_at=NOW(),status='ACTIVE' RETURNING student_id AS "studentId",school_id AS "schoolId",policy`,[schoolId,studentId,policy,c.user.id]); res.json({...r.rows[0],biometricEnrollments:[]});
 }));
 
 router.post("/students/:studentId/biometric-enrollments", requireAuthentication(), run(async (req,res) => {
-  const schoolId=Number(req.query.schoolId), studentId=Number(req.params.studentId); const c=assertSchoolAccess(req,schoolId,["SCHOOL_ADMIN"]);
+  const schoolId=Number(req.query.schoolId), studentId=Number(req.params.studentId); const c=assertSchoolOperationalAccess(req,schoolId,["SCHOOL_ADMIN"]);
   const provider=String(req.body?.provider??"").trim(), reference=String(req.body?.enrollmentReference??"").trim(); if(!provider||!reference) throw new AuthError(400,"provider and enrollmentReference are required");
   const s=await pool.query(`SELECT id FROM students WHERE id=$1 AND school_id=$2`,[studentId,schoolId]); if(!s.rows[0]) throw new AuthError(404,"Student not found");
   const r=await pool.query(`INSERT INTO biometric_enrollments(school_id,student_id,provider,provider_reference,device_id,metadata) VALUES($1,$2,$3,$4,$5,NULL) RETURNING id,provider,provider_reference AS "deviceReference",status,enrolled_at AS "enrolledAt"`,[schoolId,studentId,provider,reference,req.body?.deviceReference?Number(req.body.deviceReference):null]); res.status(201).json(r.rows[0]);
 }));
 
 router.get("/cards/:cardId/history", requireAuthentication(), run(async (req,res) => {
-  const id=Number(req.params.cardId); const c=await pool.query(`SELECT school_id FROM nfc_cards WHERE id=$1`,[id]); if(!c.rows[0]) throw new AuthError(404,"Card not found"); assertSchoolAccess(req,c.rows[0].school_id,["SCHOOL_ADMIN","STAFF"]);
+  const id=Number(req.params.cardId); const c=await pool.query(`SELECT school_id FROM nfc_cards WHERE id=$1`,[id]); if(!c.rows[0]) throw new AuthError(404,"Card not found"); assertCardAccess(req,c.rows[0].school_id);
   const r=await pool.query(`SELECT id,nfc_card_id AS "cardId",action,actor_user_id AS "actorId",created_at AS "occurredAt",reason AS note FROM nfc_card_history WHERE nfc_card_id=$1 ORDER BY created_at`,[id]); res.json(r.rows);
 }));
 
 router.post("/cards/:cardId/replace", requireAuthentication(), run(async (req,res) => {
-  const id=Number(req.params.cardId), uid=String(req.body?.uid??"").trim(), old=await pool.query(`SELECT * FROM nfc_cards WHERE id=$1`,[id]); if(!old.rows[0]) throw new AuthError(404,"Card not found"); const schoolId=old.rows[0].school_id; const c=assertSchoolAccess(req,schoolId,["SCHOOL_ADMIN","STAFF"]); if(!uid) throw new AuthError(400,"uid is required");
+  const id=Number(req.params.cardId), uid=String(req.body?.uid??"").trim(), old=await pool.query(`SELECT * FROM nfc_cards WHERE id=$1`,[id]); if(!old.rows[0]) throw new AuthError(404,"Card not found"); const schoolId=old.rows[0].school_id; const c=assertCardAccess(req,schoolId); if(!uid) throw new AuthError(400,"uid is required");
   const client=await pool.connect(); try { await client.query("BEGIN"); const n=await client.query(`INSERT INTO nfc_cards(school_id,uid,student_id,status) VALUES($1,$2,$3,'locked') RETURNING id,school_id AS "schoolId",uid,student_id AS "studentId",status`,[schoolId,uid,old.rows[0].student_id]); await client.query(`UPDATE nfc_cards SET status='replaced' WHERE id=$1`,[id]); await client.query(`INSERT INTO nfc_card_history(school_id,nfc_card_id,student_id,action,previous_status,new_status,replaced_by_card_id,reason,actor_user_id) VALUES($1,$2,$3,'REPLACED',$4,'replaced',$5,$6,$7)`,[schoolId,id,old.rows[0].student_id,old.rows[0].status,n.rows[0].id,req.body.reason??null,c.user.id]); await client.query("COMMIT"); res.status(201).json(n.rows[0]); } catch(e){await client.query("ROLLBACK");throw e} finally{client.release()}
 }));
 
@@ -513,7 +537,7 @@ router.post("/school/attendance/:eventId/correct", requireAuthentication(), run(
     );
     if (!original.rows[0]) throw new AuthError(404, "Attendance event not found");
     const schoolId = original.rows[0].school_id;
-    const context = assertSchoolAccess(req, schoolId, ["SCHOOL_ADMIN"]);
+    const context = assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN"]);
     await client.query(
       `INSERT INTO attendance_corrections(school_id,attendance_event_id,original_value,corrected_value,reason,actor_user_id)
        VALUES($1,$2,$3::jsonb,$4::jsonb,$5,$6)`,

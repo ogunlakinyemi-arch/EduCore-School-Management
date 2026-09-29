@@ -69,6 +69,13 @@ vi.mock("../middlewares/auth", () => {
       return context(req);
     },
     assertSchoolAccess: allowedSchoolRole,
+    assertSchoolOperationalAccess: (req: express.Request, schoolId: number, roles: string[]) => {
+      const permitted = context(req)?.roles?.some((assignment: any) =>
+        assignment.status === "ACTIVE" && assignment.schoolId === schoolId && roles.includes(assignment.role),
+      );
+      if (!permitted) throw new AuthError(404, "Resource not found");
+      return context(req);
+    },
     getUserContext: context,
     handleAuthError: (error: any, _req: express.Request, res: express.Response) =>
       res.status(error.statusCode ?? 500).json({ error: error.message }),
@@ -188,6 +195,18 @@ describe("academic timetable API", () => {
     const listing = state.calls.find(({ sql }) => sql.includes("FROM academic_timetable_entries te"));
     expect(listing?.sql).toContain("te.teacher_employee_id=$");
     expect(listing?.values).toEqual([1, 6, 99]);
+  });
+
+  it("denies platform-owner timetable creation and updates before connecting to the database", async () => {
+    const create = await request("/academic/timetable", "PLATFORM_OWNER", {
+      method: "POST", body: JSON.stringify(validBody),
+    });
+    const update = await request("/academic/timetable/71", "PLATFORM_OWNER", {
+      method: "PATCH", body: JSON.stringify({ schoolId: 1, status: "CANCELLED" }),
+    });
+    expect([create.status, update.status]).toEqual([403, 403]);
+    expect(db.connect).not.toHaveBeenCalled();
+    expect(state.calls.some(({ sql }) => /INSERT INTO academic_timetable_entries|UPDATE academic_timetable_entries/.test(sql))).toBe(false);
   });
 
   it("allows admins to cancel an existing entry and writes a cancellation audit", async () => {

@@ -3,11 +3,12 @@ import { useLocation } from 'wouter';
 import { useQueryClient } from '@tanstack/react-query';
 import { Library, Plus, Search, Pencil } from 'lucide-react';
 import { useListClasses, useCreateClass, getListClassesQueryKey } from '@workspace/api-client-react';
-import { PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Modal, Field, TenantPicker, useTenant, cx } from '@/components/shared';
+import { PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Modal, Field, TenantPicker, useTenant, cx, useSchoolAdminAccess } from '@/components/shared';
 
 // Classes page ported from Phase 2 to Phase 3 design
 export function ClassesPage() {
   const { schoolId, setSchoolId } = useTenant();
+  const { canManageSchool } = useSchoolAdminAccess();
   const [modal, setModal] = useState<any>(null); 
   const qc = useQueryClient();
   
@@ -28,9 +29,9 @@ export function ClassesPage() {
         action={
           <div className="flex items-center gap-3">
             <TenantPicker />
-            <Button onClick={() => setModal({ create: true })} disabled={!schoolId}>
+            {canManageSchool && <Button onClick={() => setModal({ create: true })} disabled={!schoolId}>
               <Plus size={16} />Create class
-            </Button>
+            </Button>}
           </div>
         } 
       />
@@ -58,11 +59,11 @@ export function ClassesPage() {
                 <div className="flex justify-end"><StatusPill value="Active" /></div>
               </div>
             )) : (
-              <EmptyState icon={Library} title="No classes defined" description="Create a class structure to enroll students." action={<Button onClick={() => setModal({ create: true })}><Plus size={15} />Create class</Button>} />
+              <EmptyState icon={Library} title="No classes defined" description="Create a class structure to enroll students." action={canManageSchool ? <Button onClick={() => setModal({ create: true })}><Plus size={15} />Create class</Button> : undefined} />
             )}
           </div>
           
-          {modal && (
+          {canManageSchool && modal && (
             <Modal title="Create Class" eyebrow="Structure" onClose={() => setModal(null)}>
               <ClassForm schoolId={schoolId} onDone={done} onCancel={() => setModal(null)} />
             </Modal>

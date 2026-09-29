@@ -26,6 +26,7 @@ import { SchoolsPage, SchoolOverview } from '@/pages/schools';
 import { StudentsPage } from '@/pages/students';
 import { ParentsPage } from '@/pages/parents';
 import { EmployeesPage } from '@/pages/employees';
+import { PlatformCompanyEmployeesPage } from '@/pages/platform-company-employees';
 import { AcademicsPage } from '@/pages/academics';
 import { SubjectsPage } from '@/pages/subjects';
 import { AcademicWorkPage } from '@/pages/academic-work';
@@ -70,10 +71,12 @@ function AccessDenied() {
 function RoleGuard({
   allowedRoles,
   isPlatformOwnerOnly,
+  ownerCanView,
   children
 }: {
   allowedRoles?: string[],
   isPlatformOwnerOnly?: boolean,
+  ownerCanView?: boolean,
   children: React.ReactNode
 }) {
   const contextQuery = useGetAuthorizedContext();
@@ -86,9 +89,10 @@ function RoleGuard({
   if (isPlatformOwnerOnly && !isPlatformOwner) {
     return <AccessDenied />;
   }
+  if (isPlatformOwner && ownerCanView) return <>{children}</>;
+  if (isPlatformOwner && !isPlatformOwnerOnly) return <AccessDenied />;
   if (allowedRoles && allowedRoles.length > 0) {
-    if (isPlatformOwner) return <>{children}</>;
-    const roles = context.roles?.map(r => r.role as string) || [];
+    const roles = context.roles?.filter(r => r.status === 'ACTIVE').map(r => r.role as string) || [];
     const hasAccess = allowedRoles.some(role => roles.includes(role));
     if (!hasAccess) return <AccessDenied />;
   }
@@ -162,40 +166,43 @@ function ProtectedRoutes() {
             <RoleGuard isPlatformOwnerOnly><SchoolsPage /></RoleGuard>
           </Route>
           <Route path="/schools/:id">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><SchoolOverview /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><SchoolOverview /></RoleGuard>
+          </Route>
+          <Route path="/company-employees">
+            <RoleGuard isPlatformOwnerOnly><PlatformCompanyEmployeesPage /></RoleGuard>
           </Route>
           <Route path="/users">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><UsersPage /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><UsersPage /></RoleGuard>
           </Route>
           <Route path="/people/imports">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><PeopleImportsPage /></RoleGuard>
           </Route>
           <Route path="/audit">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><AuditPage /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><AuditPage /></RoleGuard>
           </Route>
           <Route path="/students">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']}><StudentsPage /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']} ownerCanView><StudentsPage /></RoleGuard>
           </Route>
           <Route path="/parents">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><ParentsPage /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><ParentsPage /></RoleGuard>
           </Route>
           <Route path="/employees">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><EmployeesPage /></RoleGuard>
           </Route>
           <Route path="/academics">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><AcademicsPage /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><AcademicsPage /></RoleGuard>
           </Route>
           <Route path="/subjects">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']}><SubjectsPage /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']} ownerCanView><SubjectsPage /></RoleGuard>
           </Route>
           <Route path="/academic-work">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']}><AcademicWorkPage /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']} ownerCanView><AcademicWorkPage /></RoleGuard>
           </Route>
           <Route path="/results">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']}><ResultsPage /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']} ownerCanView><ResultsPage /></RoleGuard>
           </Route>
           <Route path="/timetable">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STUDENT']}><TimetablePage /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STUDENT']} ownerCanView><TimetablePage /></RoleGuard>
           </Route>
           <Route path="/my-academics">
             <RoleGuard allowedRoles={['STUDENT']}><MyAcademicsPage /></RoleGuard>
@@ -207,10 +214,10 @@ function ProtectedRoutes() {
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']}><FinancePage /></RoleGuard>
           </Route>
           <Route path="/classes">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']}><ClassesPage /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']} ownerCanView><ClassesPage /></RoleGuard>
           </Route>
           <Route path="/attendance">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']}><AttendancePage /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']} ownerCanView><AttendancePage /></RoleGuard>
           </Route>
           <Route path="/devices">
             <RoleGuard isPlatformOwnerOnly><DevicesPage /></RoleGuard>
@@ -219,13 +226,13 @@ function ProtectedRoutes() {
             <RoleGuard isPlatformOwnerOnly><NotificationsPage /></RoleGuard>
           </Route>
           <Route path="/subscriptions">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']}><SubscriptionsPage /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']} ownerCanView><SubscriptionsPage /></RoleGuard>
           </Route>
           <Route path="/cards">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'STAFF']}><CardsPage /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'STAFF']} ownerCanView><CardsPage /></RoleGuard>
           </Route>
           <Route path="/settings">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN']}><SettingsPage /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><SettingsPage /></RoleGuard>
           </Route>
 
           <Route path="/parent/children/:studentId" component={ParentPortal} />

@@ -16,7 +16,7 @@ const poolMock = vi.hoisted(() => {
   const result = (rows: any[] = []) => ({ rows, rowCount: rows.length });
   const query = vi.fn(async (sql: string, values: any[] = []) => {
     if (sql.includes("FROM students WHERE id=$1 AND school_id=$2")) {
-      return result(([{ id: 11, school_id: 1 }, { id: 22, school_id: 2 }]).filter(x => x.id === Number(values[0]) && x.school_id === Number(values[1])));
+      return result(([{ id: 11, school_id: 1 }, { id: 12, school_id: 1 }, { id: 22, school_id: 2 }]).filter(x => x.id === Number(values[0]) && x.school_id === Number(values[1])));
     }
     if (sql.includes("FROM teacher_class_assignments")) {
       const match = sql.includes("a.student_id=$3") ? Number(values[2]) === 11 : Number(values[2]) === 21;
@@ -34,7 +34,9 @@ const poolMock = vi.hoisted(() => {
     }
     if (sql.includes("FROM attendance_discrepancies d")) return result([{ id: 401, schoolId: 1, studentId: 11, kind: "EXIT_WITHOUT_ENTRY", status: "OPEN" }]);
     if (sql.includes("SELECT entries")) return result([{ entries: 1, exits: 0, present: 1, absent: 0, late: 0, discrepancies: 0 }]);
-    if (sql.includes("FROM nfc_cards WHERE id=$1")) return result(Number(values[0]) === 71 ? [{ school_id: 1 }] : Number(values[0]) === 72 ? [{ school_id: 2 }] : []);
+    if (sql.includes("FROM nfc_cards WHERE id=$1")) return result(Number(values[0]) === 71
+      ? [{ id: 71, school_id: 1, student_id: 11, status: "active" }]
+      : Number(values[0]) === 72 ? [{ id: 72, school_id: 2, student_id: 22, status: "active" }] : []);
     if (sql.includes("FROM nfc_card_history")) return result([{ id: 1, cardId: Number(values[0]), action: "ISSUED", note: "Original card" }]);
     if (sql.includes("FROM student_identification_policies")) {
       const p = state.policies.find(x => x.schoolId === Number(values[0]) && x.studentId === Number(values[1]));
@@ -60,6 +62,7 @@ const poolMock = vi.hoisted(() => {
   const client = {
     query: vi.fn(async (sql: string, values: any[] = []) => {
       if (["BEGIN", "COMMIT", "ROLLBACK"].includes(sql)) return result();
+      if (sql.startsWith("WITH missing AS")) return result();
       if (sql.includes("SELECT id,school_id,attendance_status FROM attendance_events")) {
         const id = Number(values[0]);
         const event = state.events.find(e => e.id === id);
@@ -76,6 +79,9 @@ const poolMock = vi.hoisted(() => {
         return result(event ? [event] : []);
       }
       if (sql.includes("INSERT INTO attendance_corrections")) { state.corrections.push(values); return result(); }
+      if (sql.includes("INSERT INTO nfc_cards")) return result([{ id: 73, schoolId: Number(values[0]), uid: values[1], studentId: values[2], status: "locked" }]);
+      if (sql.includes("UPDATE nfc_cards SET status='replaced'")) return result();
+      if (sql.includes("INSERT INTO nfc_card_history")) return result();
       if (sql.includes("INSERT INTO audit_logs")) return result();
       throw new Error(`Unhandled client query: ${sql}`);
     }),
@@ -90,11 +96,15 @@ vi.mock("../middlewares/auth", async (importOriginal) => {
   return {
     ...actual,
     requireAuthentication: () => (req: express.Request, _res: express.Response, next: express.NextFunction) => {
-      const role = String(req.header("x-test-role") ?? "SCHOOL_ADMIN") as any;
-      const schoolId = role === "PLATFORM_OWNER" ? null : 1;
+      const roleSpecs = String(req.header("x-test-role") ?? "SCHOOL_ADMIN").split(",");
+      const roles = roleSpecs.map((spec) => {
+        const [role, assignedSchool] = spec.split(":");
+        return { role, schoolId: role === "PLATFORM_OWNER" ? null : Number(assignedSchool ?? 1) };
+      });
+      const role = roles[0]?.role;
       (req as any).edupulseUser = {
-        user: { id: role === "TEACHER" ? 30 : 10, clerkUserId: `test-${role}`, email: `${role.toLowerCase()}@example.test`, firstName: role, lastName: "Tester", phone: null, status: "ACTIVE" },
-        roles: [{ id: 1, role, schoolId, status: "ACTIVE" }],
+        user: { id: roles.some((assignment) => assignment.role === "TEACHER") ? 30 : 10, clerkUserId: `test-${role}`, email: `${role.toLowerCase()}@example.test`, firstName: role, lastName: "Tester", phone: null, status: "ACTIVE" },
+        roles: roles.map((assignment, id) => ({ id: id + 1, ...assignment, status: "ACTIVE" })),
       };
       next();
     },
@@ -130,6 +140,8 @@ beforeEach(() => {
   state.policies = [{ schoolId: 1, studentId: 11, policy: "NFC_ONLY" }];
   state.enrollments.length = 0;
   state.nextEventId = 301;
+  poolMock.query.mockClear();
+  poolMock.client.query.mockClear();
 });
 
 async function call(path: string, role: string, method = "GET", body?: Record<string, unknown>) {
@@ -187,6 +199,13 @@ describe("Phase 5 attendance route role matrix", () => {
     expect((await call("/school/attendance/today?schoolId=2&date=2025-02-03", "SCHOOL_ADMIN")).status).toBe(404);
   });
 
+  it("keeps attendance summary and discrepancy GETs free of reconciliation writes", async () => {
+    expect((await call("/school/attendance/today?schoolId=1&date=2025-02-03", "SCHOOL_ADMIN")).status).toBe(200);
+    expect((await call("/school/attendance/discrepancies?schoolId=1&from=2025-02-03", "SCHOOL_ADMIN")).status).toBe(200);
+    expect(poolMock.query.mock.calls.some(([sql]) => sql.startsWith("WITH missing AS"))).toBe(false);
+    expect(poolMock.client.query.mock.calls.some(([sql]) => sql.startsWith("WITH missing AS"))).toBe(false);
+  });
+
   it("constrains class and student reports to assigned teachers and the same school", async () => {
     expect((await call("/school/attendance/students/11?schoolId=1", "TEACHER")).status).toBe(200);
     expect((await call("/school/attendance/classes/21?schoolId=1&date=2025-02-03", "TEACHER")).status).toBe(200);
@@ -202,11 +221,20 @@ describe("Phase 5 attendance route role matrix", () => {
     }
   });
 
+  it("does not let a role in another school bypass a teacher's assigned-class restriction", async () => {
+    expect((await call("/school/attendance/students/12?schoolId=1", "TEACHER")).status).toBe(404);
+    expect((await call("/school/attendance/students/12?schoolId=1", "TEACHER:1,SCHOOL_ADMIN:2")).status).toBe(404);
+    expect((await call("/school/attendance/classes/99?schoolId=1&date=2025-02-03", "TEACHER:1,STAFF:2")).status).toBe(404);
+    expect((await call("/school/attendance/students/11?schoolId=1", "TEACHER:1,SCHOOL_ADMIN:1")).status).toBe(200);
+    expect((await call("/school/attendance/students/12?schoolId=1", "TEACHER:1,SCHOOL_ADMIN:1")).status).toBe(200);
+  });
+
   it("allows manual attendance only to school admins and staff", async () => {
     const body = { schoolId: 1, studentId: 11, eventType: "SCHOOL_ENTRY", occurredAt: "2025-02-03T08:30:00Z", status: "LATE", reason: "Late arrival" };
     expect((await call("/school/attendance/manual", "SCHOOL_ADMIN", "POST", body)).status).toBe(201);
+    expect(poolMock.client.query.mock.calls.some(([sql]) => sql.startsWith("WITH missing AS"))).toBe(true);
     expect((await call("/school/attendance/manual", "STAFF", "POST", body)).status).toBe(201);
-    expect((await call("/school/attendance/manual", "PLATFORM_OWNER", "POST", body)).status).toBe(201);
+    expect((await call("/school/attendance/manual", "PLATFORM_OWNER", "POST", body)).status).toBe(404);
     expect((await call("/school/attendance/manual", "SCHOOL_ADMIN", "POST", { ...body, schoolId: 2 })).status).toBe(404);
     for (const role of ["TEACHER", "ACCOUNTANT", "PARENT", "STUDENT", "PARTNER"]) {
       expect([403, 404]).toContain((await call("/school/attendance/manual", role, "POST", body)).status);
@@ -219,7 +247,7 @@ describe("Phase 5 attendance route role matrix", () => {
     expect(corrected.status, correctedBody).toBe(200);
     expect((await call("/school/attendance/101/correct", "STAFF", "POST", { status: "PRESENT", reason: "Verified entry" })).status).toBe(404);
     expect((await call("/school/attendance/202/correct", "SCHOOL_ADMIN", "POST", { status: "PRESENT", reason: "Wrong school" })).status).toBe(404);
-    expect((await call("/school/attendance/202/correct", "PLATFORM_OWNER", "POST", { status: "PRESENT", reason: "Owner correction" })).status).toBe(200);
+    expect((await call("/school/attendance/202/correct", "PLATFORM_OWNER", "POST", { status: "PRESENT", reason: "Owner correction" })).status).toBe(404);
     for (const role of ["TEACHER", "ACCOUNTANT", "PARENT", "STUDENT", "STAFF", "PARTNER"]) {
       expect([403, 404]).toContain((await call("/school/attendance/101/correct", role, "POST", { status: "PRESENT", reason: "Denied correction" })).status);
     }
@@ -233,11 +261,32 @@ describe("Phase 5 attendance route role matrix", () => {
     expect((await call("/students/11/biometric-enrollments?schoolId=1", "SCHOOL_ADMIN", "POST", { provider: "vendor", enrollmentReference: "enroll-11" })).status).toBe(201);
     expect((await call("/students/11/biometric-enrollments?schoolId=1", "STAFF", "POST", { provider: "vendor", enrollmentReference: "enroll-11" })).status).toBe(404);
     expect((await call("/cards/71/history", "STAFF")).status).toBe(200);
+    expect((await call("/cards/71/history", "PLATFORM_OWNER")).status).toBe(200);
     expect((await call("/cards/72/history", "SCHOOL_ADMIN")).status).toBe(404);
     for (const role of ["TEACHER", "ACCOUNTANT", "PARENT", "STUDENT", "PARTNER"]) {
       expect([403, 404]).toContain((await call("/students/11/identification-methods?schoolId=1", role)).status);
       expect([403, 404]).toContain((await call("/cards/71/history", role)).status);
     }
     expect((await call("/students/11/identification-methods?schoolId=2", "SCHOOL_ADMIN")).status).toBe(404);
+  });
+
+  it("allows Platform Owner NFC replacement without changing card school binding", async () => {
+    const response = await call("/cards/71/replace", "PLATFORM_OWNER", "POST", { uid: "replacement-card" });
+    expect(response.status).toBe(201);
+    const registration = poolMock.client.query.mock.calls.find(([sql]) => sql.includes("INSERT INTO nfc_cards"));
+    expect(registration?.[1]?.[0]).toBe(1);
+    expect(registration?.[1]?.[2]).toBe(11);
+  });
+
+  it("denies Platform Owner school attendance and biometric-setting mutations while preserving school-admin access", async () => {
+    const attendance = { schoolId: 1, studentId: 11, eventType: "SCHOOL_ENTRY", occurredAt: "2025-02-03T08:30:00Z", status: "LATE", reason: "Late arrival" };
+    expect((await call("/school/attendance/manual", "PLATFORM_OWNER", "POST", attendance)).status).toBe(404);
+    expect((await call("/school/students/11/identification-policy", "PLATFORM_OWNER", "PUT", {
+      schoolId: 1, policy: "BIOMETRIC_ONLY",
+    })).status).toBe(404);
+    expect((await call("/students/11/biometric-enrollments?schoolId=1", "PLATFORM_OWNER", "POST", {
+      provider: "vendor", enrollmentReference: "owner-enrollment",
+    })).status).toBe(404);
+    expect((await call("/school/attendance/manual", "SCHOOL_ADMIN", "POST", attendance)).status).toBe(201);
   });
 });

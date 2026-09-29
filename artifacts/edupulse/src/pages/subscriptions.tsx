@@ -7,12 +7,18 @@ import {
 } from '@workspace/api-client-react';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, 
-  TenantPicker, useTenant, money, date
+  TenantPicker, useTenant, money, date, useSchoolAdminAccess
 } from '@/components/shared';
+import { useGetAuthorizedContext } from '@workspace/api-client-react';
 
 // Phase 3 compliant Subscriptions Page
 export function SubscriptionsPage() {
   const { schoolId, setSchoolId } = useTenant();
+  const { isPlatformOwner, isSchoolAdmin } = useSchoolAdminAccess();
+  const context = useGetAuthorizedContext().data;
+  const canVerify = isPlatformOwner ? isSchoolAdmin : !!context?.roles?.some(
+    role => role.schoolId === schoolId && role.role === 'ACCOUNTANT' && role.status === 'ACTIVE'
+  );
   const qc = useQueryClient();
   const verify = useVerifySubscription();
   
@@ -63,7 +69,7 @@ export function SubscriptionsPage() {
               <div className="text-sm font-medium text-[hsl(var(--muted-foreground))]">{date(sub.endDate)}</div>
               <div><StatusPill value={sub.status} /></div>
               <div className="flex justify-end">
-                {sub.status === 'pending' && (
+                {canVerify && sub.status === 'pending' && (
                   <Button variant="outline" onClick={() => handleVerify(sub.id)} disabled={verify.isPending}>
                     <Check size={14} />Verify
                   </Button>

@@ -58,6 +58,10 @@ const poolMock = vi.hoisted(() => {
   const clientQuery = vi.fn(async (sql: string, values: unknown[] = []) => {
     state.calls.push({ sql, values });
     if (sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK") return { rows: [] };
+    if (sql.includes("INSERT INTO fee_categories")) {
+      return { rows: [{ id: 51, schoolId: 1, name: "Books", description: null, compulsory: false, status: "ACTIVE" }] };
+    }
+    if (sql.includes("INSERT INTO audit_logs")) return { rows: [] };
     throw new Error(`Unexpected finance authorization boundary mutation: ${sql}`);
   });
   return {
@@ -135,6 +139,33 @@ const get = (path: string, role: string, schoolId = 1, userId = 20) =>
 const mutations = () => state.calls.filter(({ sql }) => /^\s*(INSERT|UPDATE|DELETE|TRUNCATE)\b/i.test(sql));
 
 describe("finance direct-API authorization boundaries", () => {
+  it("blocks platform-owner operational finance writes while allowing an in-school admin", async () => {
+    const ownerWrite = await fetch(`${baseUrl}/school/finance/settings?schoolId=1`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-test-role": "PLATFORM_OWNER" },
+      body: JSON.stringify({ partialPaymentsEnabled: true }),
+    });
+    expect(ownerWrite.status).toBe(404);
+    expect(mutations()).toEqual([]);
+
+    const adminWrite = await fetch(`${baseUrl}/school/finance/categories?schoolId=1`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-role": "SCHOOL_ADMIN", "x-test-school": "1" },
+      body: JSON.stringify({ name: "Books" }),
+    });
+    expect(adminWrite.status, await adminWrite.clone().text()).toBe(201);
+    expect(state.calls.some(({ sql, values }) => sql.includes("INSERT INTO fee_categories") && values[0] === 1)).toBe(true);
+
+    state.calls.length = 0;
+    const crossSchoolWrite = await fetch(`${baseUrl}/school/finance/categories?schoolId=2`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-role": "SCHOOL_ADMIN", "x-test-school": "1" },
+      body: JSON.stringify({ name: "Science" }),
+    });
+    expect(crossSchoolWrite.status).toBe(404);
+    expect(mutations()).toEqual([]);
+  });
+
   it("denies cross-school invoice, payment, receipt, refund, report, and notification reads", async () => {
     const invoice = await get("/school/finance/invoices?schoolId=2", "ACCOUNTANT", 1);
     const payment = await get("/school/finance/payments/72?schoolId=1", "ACCOUNTANT", 1);

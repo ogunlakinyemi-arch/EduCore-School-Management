@@ -1,6 +1,6 @@
 import { useState, FormEvent, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Modal, Field, TenantPicker, useTenant, cx, date } from '@/components/shared';
+import { PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Modal, Field, TenantPicker, useTenant, cx, date, useSchoolAdminAccess } from '@/components/shared';
 import { 
   useListAcademicAssignments, useCreateAcademicAssignment, useUpdateAcademicAssignment, getListAcademicAssignmentsQueryKey,
   useListAcademicAssessmentTypes, useCreateAcademicAssessmentType, getListAcademicAssessmentTypesQueryKey,
@@ -22,6 +22,8 @@ function useAcademicContext(schoolId: number) {
 
 export function AcademicWorkPage() {
   const { schoolId } = useTenant();
+  const { isPlatformOwner, isSchoolAdmin } = useSchoolAdminAccess();
+  const readOnly = isPlatformOwner && !isSchoolAdmin;
   const [tab, setTab] = useState<'assignments' | 'assessments' | 'types'>('assignments');
   
   return (
@@ -47,16 +49,16 @@ export function AcademicWorkPage() {
               </button>
             ))}
           </div>
-          {tab === 'assignments' && <AssignmentsView schoolId={schoolId} />}
-          {tab === 'assessments' && <AssessmentsView schoolId={schoolId} />}
-          {tab === 'types' && <AssessmentTypesView schoolId={schoolId} />}
+          {tab === 'assignments' && <AssignmentsView schoolId={schoolId} readOnly={readOnly} />}
+          {tab === 'assessments' && <AssessmentsView schoolId={schoolId} readOnly={readOnly} />}
+          {tab === 'types' && <AssessmentTypesView schoolId={schoolId} readOnly={readOnly} />}
         </>
       )}
     </div>
   );
 }
 
-function AssignmentsView({ schoolId }: { schoolId: number }) {
+function AssignmentsView({ schoolId, readOnly }: { schoolId: number; readOnly: boolean }) {
   const { activeSession, activeTerm, classes, subjects, isLoading } = useAcademicContext(schoolId);
   const query = useListAcademicAssignments(
     { schoolId, sessionId: activeSession?.id, termId: activeTerm?.id }, 
@@ -78,7 +80,7 @@ function AssignmentsView({ schoolId }: { schoolId: number }) {
           <h3 className="display-font text-lg font-bold">Class Assignments</h3>
           <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">For {activeSession?.name} • {activeTerm?.name} Term</p>
         </div>
-        <Button onClick={() => setModal({ create: true })}><Plus size={16} />New Assignment</Button>
+         {!readOnly && <Button onClick={() => setModal({ create: true })}><Plus size={16} />New Assignment</Button>}
       </div>
       
       {assignments.length > 0 ? (
@@ -95,7 +97,7 @@ function AssignmentsView({ schoolId }: { schoolId: number }) {
               </div>
               <div className="flex items-center gap-4">
                 <StatusPill value={item.status} />
-                <button onClick={() => setModal(item)} className="p-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"><Pencil size={15} /></button>
+                 {!readOnly && <button onClick={() => setModal(item)} className="p-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"><Pencil size={15} /></button>}
               </div>
             </div>
           ))}
@@ -104,7 +106,7 @@ function AssignmentsView({ schoolId }: { schoolId: number }) {
         <EmptyState icon={BookOpen} title="No assignments found" description="Create assignments for your classes to get started." />
       )}
 
-      {modal && (
+      {!readOnly && modal && (
         <Modal title={modal.create ? "Create Assignment" : "Edit Assignment"} onClose={() => setModal(null)}>
           <AssignmentForm 
             schoolId={schoolId} sessionId={activeSession?.id} termId={activeTerm?.id}
@@ -206,7 +208,7 @@ function AssignmentForm({ schoolId, sessionId, termId, classes, subjects, initia
   );
 }
 
-function AssessmentTypesView({ schoolId }: { schoolId: number }) {
+function AssessmentTypesView({ schoolId, readOnly }: { schoolId: number; readOnly: boolean }) {
   const query = useListAcademicAssessmentTypes({ schoolId }, { query: { enabled: !!schoolId, queryKey: getListAcademicAssessmentTypesQueryKey({ schoolId }) } });
   const [modal, setModal] = useState<any>(null);
   const qc = useQueryClient();
@@ -223,7 +225,7 @@ function AssessmentTypesView({ schoolId }: { schoolId: number }) {
           <h3 className="display-font text-lg font-bold">Assessment Types</h3>
           <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Configure assessment categories</p>
         </div>
-        <Button onClick={() => setModal({ create: true })}><Plus size={16} />New Type</Button>
+        {!readOnly && <Button onClick={() => setModal({ create: true })}><Plus size={16} />New Type</Button>}
       </div>
       
       {types.length > 0 ? (
@@ -242,7 +244,7 @@ function AssessmentTypesView({ schoolId }: { schoolId: number }) {
         <EmptyState icon={Layers} title="No assessment types" description="Create types like 'Mid-Term', 'Exam', 'Continuous Assessment'." />
       )}
 
-      {modal && (
+      {!readOnly && modal && (
         <Modal title="Create Assessment Type" onClose={() => setModal(null)}>
           <AssessmentTypeForm 
             schoolId={schoolId} 
@@ -285,7 +287,7 @@ function AssessmentTypeForm({ schoolId, onDone, onCancel }: any) {
   );
 }
 
-function AssessmentsView({ schoolId }: { schoolId: number }) {
+function AssessmentsView({ schoolId, readOnly }: { schoolId: number; readOnly: boolean }) {
   const { activeSession, activeTerm, classes, subjects, isLoading } = useAcademicContext(schoolId);
   const typesQuery = useListAcademicAssessmentTypes({ schoolId }, { query: { enabled: !!schoolId, queryKey: getListAcademicAssessmentTypesQueryKey({ schoolId }) } });
   
@@ -310,7 +312,7 @@ function AssessmentsView({ schoolId }: { schoolId: number }) {
           <h3 className="display-font text-lg font-bold">Assessments</h3>
           <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Formal assessments & examinations</p>
         </div>
-        <Button onClick={() => setModal({ create: true })}><Plus size={16} />New Assessment</Button>
+        {!readOnly && <Button onClick={() => setModal({ create: true })}><Plus size={16} />New Assessment</Button>}
       </div>
       
       {assessments.length > 0 ? (
@@ -332,7 +334,7 @@ function AssessmentsView({ schoolId }: { schoolId: number }) {
               </div>
               <div className="flex items-center gap-4">
                 <StatusPill value={item.status} />
-                <button onClick={() => setModal(item)} className="p-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"><Pencil size={15} /></button>
+                 {!readOnly && <button onClick={() => setModal(item)} className="p-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"><Pencil size={15} /></button>}
               </div>
             </div>
           ))}
@@ -341,7 +343,7 @@ function AssessmentsView({ schoolId }: { schoolId: number }) {
         <EmptyState icon={Layers} title="No formal assessments" description="Schedule exams and continuous assessments." />
       )}
 
-      {modal && (
+      {!readOnly && modal && (
         <Modal title={modal.create ? "Create Assessment" : "Edit Assessment"} onClose={() => setModal(null)}>
           <AssessmentForm 
             schoolId={schoolId} sessionId={activeSession?.id} termId={activeTerm?.id}

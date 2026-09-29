@@ -664,6 +664,25 @@ export const employees = pgTable(
   ],
 );
 
+export const platformCompanyEmployees = pgTable(
+  "platform_company_employees",
+  {
+    id: serial("id").primaryKey(),
+    fullName: text("full_name").notNull(),
+    email: text("email").notNull(),
+    phone: text("phone"),
+    jobTitle: text("job_title"),
+    status: text("status").notNull().default("ACTIVE"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("platform_company_employees_email_unique").on(sql`lower(${table.email})`),
+    index("platform_company_employees_status_idx").on(table.status),
+    check("platform_company_employees_status_check", sql`${table.status} IN ('ACTIVE','INACTIVE')`),
+  ],
+);
+
 export const subjects = pgTable(
   "subjects",
   {

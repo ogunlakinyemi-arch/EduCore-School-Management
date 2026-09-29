@@ -1736,6 +1736,93 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/NfcCard" }
+  /cards/{cardId}/reassign:
+    patch:
+      operationId: reassignCard
+      tags: [cards]
+      summary: Reassign an NFC card to a student in the same school
+      parameters:
+        - $ref: "#/components/parameters/CardIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CardReassignmentInput" }
+      responses:
+        "200":
+          description: Reassigned card with the new student's name
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NfcCard" }
+        "400": { description: Card and student identifiers are invalid }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: Card or student is not eligible for reassignment }
+  /platform/company-employees:
+    get:
+      operationId: listPlatformCompanyEmployees
+      tags: [platform]
+      summary: List company employee profiles
+      responses:
+        "200":
+          description: Company employee profiles ordered by name
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/CompanyEmployee" } }
+    post:
+      operationId: createPlatformCompanyEmployee
+      tags: [platform]
+      summary: Create a company employee profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CompanyEmployeeInput" }
+      responses:
+        "201":
+          description: Created company employee profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CompanyEmployee" }
+        "400": { description: Invalid employee fields or email }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { description: A company employee with this email already exists }
+  /platform/company-employees/{employeeId}:
+    get:
+      operationId: getPlatformCompanyEmployee
+      tags: [platform]
+      summary: Read a company employee profile
+      parameters:
+        - $ref: "#/components/parameters/EmployeeIdPath"
+      responses:
+        "200":
+          description: Company employee profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CompanyEmployee" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      operationId: updatePlatformCompanyEmployee
+      tags: [platform]
+      summary: Update supported company employee profile fields
+      parameters:
+        - $ref: "#/components/parameters/EmployeeIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CompanyEmployeeUpdate" }
+      responses:
+        "200":
+          description: Updated company employee profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CompanyEmployee" }
+        "400": { description: No supported fields or invalid employee fields }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: A company employee with this email already exists }
   /platform/notifications/{notificationId}/read:
     patch:
       operationId: markPlatformNotificationRead
@@ -4610,6 +4697,42 @@ components:
           enum: [active, inactive, locked, unassigned, lost, blocked, suspended, replaced, expired]
         scans: { type: integer }
         lastScan: { type: ["string", "null"] }
+    CardReassignmentInput:
+      type: object
+      required: [studentId]
+      properties:
+        studentId: { type: integer, minimum: 1 }
+    CompanyEmployee:
+      type: object
+      required: [id, fullName, email, phone, jobTitle, status, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        fullName: { type: string }
+        email: { type: string, format: email }
+        phone: { type: ["string", "null"] }
+        jobTitle: { type: ["string", "null"] }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CompanyEmployeeInput:
+      type: object
+      required: [fullName, email]
+      additionalProperties: false
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 160 }
+        email: { type: string, format: email, minLength: 1, maxLength: 254 }
+        phone: { type: ["string", "null"], maxLength: 160 }
+        jobTitle: { type: ["string", "null"], maxLength: 160 }
+    CompanyEmployeeUpdate:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 160 }
+        email: { type: string, format: email, minLength: 1, maxLength: 254 }
+        phone: { type: ["string", "null"], maxLength: 160 }
+        jobTitle: { type: ["string", "null"], maxLength: 160 }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
     CardInput:
       type: object
       required: [uid]

@@ -169,6 +169,13 @@
       "when": 1790632166536,
       "tag": "0023_invoice_generated_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790632167536,
+      "tag": "0024_platform_company_employees",
+      "breakpoints": true
     }
   ]
 }

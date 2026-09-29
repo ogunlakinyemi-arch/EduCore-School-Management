@@ -34,7 +34,9 @@ import {
   AuthError,
   assertRoles,
   assertSchoolAccess,
+  assertSchoolOperationalAccess,
   getUserContext,
+  isPlatformOwner,
   requireAuthentication,
   type Role,
 } from "../middlewares/auth";
@@ -85,6 +87,12 @@ function tenantId(req: Request, roles: Role[]) {
   }
   assertSchoolAccess(req, id, roles);
   return id;
+}
+
+function assertCardControlAccess(req: Request, schoolId: number) {
+  const context = getUserContext(req);
+  if (isPlatformOwner(context)) return context;
+  return assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN", "STAFF"]);
 }
 
 async function audit(
@@ -409,7 +417,7 @@ router.get("/students", async (req, res) => {
 router.post("/students", async (req, res) => {
   try {
     const schoolId = CreateStudentQueryParams.parse(req.query).schoolId;
-    assertSchoolAccess(req, schoolId, ["SCHOOL_ADMIN"]);
+    assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN"]);
     const body = CreateStudentBody.parse(req.body);
     const result = await pool.query(`
       INSERT INTO students (school_id, admission_no, first_name, last_name, middle_name, date_of_birth, photo,
@@ -462,7 +470,7 @@ router.patch("/students/:studentId", async (req, res) => {
   try {
     const params = UpdateStudentParams.parse(req.params);
     const query = UpdateStudentQueryParams.parse(req.query);
-    assertSchoolAccess(req, query.schoolId, ["SCHOOL_ADMIN"]);
+    assertSchoolOperationalAccess(req, query.schoolId, ["SCHOOL_ADMIN"]);
     const body = UpdateStudentBody.parse(req.body);
     const current = await pool.query(`SELECT * FROM students WHERE id = $1 AND school_id = $2`, [params.studentId, query.schoolId]);
     if (!current.rows[0]) return res.status(404).json({ error: "Student not found" });
@@ -494,7 +502,7 @@ router.patch("/students/:studentId/status", async (req, res) => {
     const params = UpdateStudentStatusParams.parse(req.params);
     const query = UpdateStudentStatusQueryParams.parse(req.query);
     const body = UpdateStudentStatusBody.parse(req.body);
-    assertSchoolAccess(req, query.schoolId, ["SCHOOL_ADMIN"]);
+    assertSchoolOperationalAccess(req, query.schoolId, ["SCHOOL_ADMIN"]);
     const result = await pool.query(
       `UPDATE students SET status = $1, updated_at = NOW()
        WHERE id = $2 AND school_id = $3
@@ -539,6 +547,7 @@ router.get("/parents", async (req, res) => {
 router.post("/parents", async (req, res) => {
   try {
     const schoolId = tenantId(req, ["SCHOOL_ADMIN"]);
+    assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN"]);
     const body = CreateParentBody.parse(req.body);
     const result = await pool.query(`
       INSERT INTO parents (school_id, name, email, phone, address) VALUES ($1, $2, $3, $4, $5)
@@ -578,6 +587,7 @@ router.get("/classes", async (req, res) => {
 router.post("/classes", async (req, res) => {
   try {
     const schoolId = tenantId(req, ["SCHOOL_ADMIN"]);
+    assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN"]);
     const body = CreateClassBody.parse(req.body);
     const result = await pool.query(`
       INSERT INTO school_classes (school_id, name, section, class_teacher, capacity) VALUES ($1, $2, $3, $4, $5)
@@ -615,6 +625,7 @@ router.get("/subscriptions", async (req, res) => {
 router.post("/subscriptions", async (req, res) => {
   try {
     const schoolId = tenantId(req, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
+    assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
     const body = CreateSubscriptionBody.parse(req.body);
     const student = await pool.query(`SELECT id, first_name || ' ' || last_name AS name FROM students WHERE id = $1 AND school_id = $2`, [body.studentId, schoolId]);
     if (!student.rows[0]) return res.status(404).json({ error: "Student not found in school" });
@@ -650,7 +661,7 @@ router.post("/subscriptions/:subscriptionId/verify", async (req, res) => {
       [params.subscriptionId],
     );
     if (!existing.rows[0]) throw new AuthError(404, "Subscription not found");
-    assertSchoolAccess(req, existing.rows[0].school_id, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
+    assertSchoolOperationalAccess(req, existing.rows[0].school_id, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
     if (String(existing.rows[0].student_status).toUpperCase() !== "ACTIVE") {
       throw new AuthError(409, "Only active students are eligible for partner commission");
     }
@@ -827,6 +838,7 @@ router.post("/cards", async (req, res) => {
   const client = await pool.connect();
   try {
     const schoolId = tenantId(req, ["SCHOOL_ADMIN", "STAFF"]);
+    assertCardControlAccess(req, schoolId);
     const body = RegisterCardBody.parse(req.body);
     RegisterCardQueryParams.parse(req.query);
     const studentId = body.studentId ?? null;
@@ -900,7 +912,7 @@ router.patch("/cards/:cardId/status", async (req, res) => {
       res.status(404).json({ error: "Card not found" });
       return;
     }
-    assertSchoolAccess(req, card.rows[0].schoolId, ["SCHOOL_ADMIN", "STAFF"]);
+    assertCardControlAccess(req, card.rows[0].schoolId);
     const previousStatus = String(card.rows[0].status).toLowerCase();
     if (terminalCardStatuses.has(previousStatus) && status !== previousStatus) {
       throw new AuthError(409, `A ${previousStatus} card cannot change status`);
@@ -931,6 +943,113 @@ router.patch("/cards/:cardId/status", async (req, res) => {
     }, client);
     await client.query("COMMIT");
     res.json({ ...result.rows[0], studentName: null, lastScan: dateString(result.rows[0].lastScan) });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    fail(req, res, error);
+  } finally {
+    client.release();
+  }
+});
+
+router.patch("/cards/:cardId/reassign", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const cardId = asNumber(req.params.cardId);
+    const studentId = req.body?.studentId;
+    if (!Number.isInteger(cardId) || cardId < 1 ||
+        !Number.isInteger(studentId) || studentId < 1) {
+      throw new AuthError(400, "A valid cardId and studentId are required");
+    }
+
+    await client.query("BEGIN");
+    const card = await client.query(
+      `SELECT nc.id, nc.school_id AS "schoolId", nc.uid, nc.student_id AS "studentId",
+              nc.status, nc.scans, nc.last_scan AS "lastScan"
+       FROM nfc_cards nc
+       LEFT JOIN students st ON st.id = nc.student_id
+       WHERE nc.id = $1 AND (nc.student_id IS NULL OR st.school_id = nc.school_id)
+       FOR UPDATE OF nc`,
+      [cardId],
+    );
+    if (!card.rows[0]) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Card not found" });
+    }
+    assertCardControlAccess(req, card.rows[0].schoolId);
+
+    const currentStatus = String(card.rows[0].status).toLowerCase();
+    if (!cardStatuses.has(currentStatus) || terminalCardStatuses.has(currentStatus)) {
+      throw new AuthError(409, "This NFC card is not eligible for reassignment");
+    }
+
+    const student = await client.query(
+      `SELECT id, school_id AS "schoolId", first_name AS "firstName", last_name AS "lastName"
+       FROM students WHERE id = $1 AND school_id = $2 FOR UPDATE`,
+      [studentId, card.rows[0].schoolId],
+    );
+    if (!student.rows[0]) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Student not found in card's school" });
+    }
+    if (Number(card.rows[0].studentId) === studentId) {
+      throw new AuthError(409, "This card is already assigned to that student");
+    }
+
+    const duplicate = await client.query(
+      `SELECT id FROM nfc_cards
+       WHERE school_id = $1 AND student_id = $2 AND status = 'active' AND id <> $3
+       FOR UPDATE`,
+      [card.rows[0].schoolId, studentId, cardId],
+    );
+    if (duplicate.rows[0]) {
+      throw new AuthError(409, "Student already has an active NFC card");
+    }
+
+    const updated = await client.query(
+      `UPDATE nfc_cards SET student_id = $1
+       WHERE id = $2 AND school_id = $3
+       RETURNING id, school_id AS "schoolId", uid, student_id AS "studentId",
+         status, scans, last_scan AS "lastScan"`,
+      [studentId, cardId, card.rows[0].schoolId],
+    );
+    if (!updated.rows[0]) {
+      throw new AuthError(404, "Card not found");
+    }
+
+    const previousStudentId = card.rows[0].studentId ?? null;
+    await client.query(
+      `INSERT INTO nfc_card_history
+       (school_id, nfc_card_id, student_id, action, previous_status, new_status, reason, actor_user_id)
+       VALUES ($1, $2, $3, 'REASSIGNED_FROM', $4, $4, $5, $6),
+              ($1, $2, $7, 'REASSIGNED_TO', $4, $4, $5, $6)`,
+      [
+        card.rows[0].schoolId,
+        cardId,
+        previousStudentId,
+        currentStatus,
+        `Card reassigned from student ${previousStudentId ?? "unassigned"} to student ${studentId}`,
+        getUserContext(req).user.id,
+        studentId,
+      ],
+    );
+    await audit(
+      req,
+      card.rows[0].schoolId,
+      "Reassigned NFC card",
+      "NFC Cards",
+      cardId,
+      "info",
+      "NFC_CARD_REASSIGNED",
+      "SUCCESS",
+      { previousStudentId, studentId },
+      client,
+    );
+    await client.query("COMMIT");
+    res.json({
+      ...updated.rows[0],
+      studentName: `${student.rows[0].firstName} ${student.rows[0].lastName}`,
+      lastScan: dateString(updated.rows[0].lastScan),
+    });
   } catch (error) {
     await client.query("ROLLBACK");
     fail(req, res, error);

@@ -1,0 +1,254 @@
+We need to correct the role boundaries in Yemait EduCore before continuing Phase 7 browser verification.
+
+The current Platform Owner dashboard exposes school-operational functions such as adding parents, students, employees, subjects, classes, academic sessions and attendance. This is not the intended product architecture.
+
+Do NOT rebuild the application. Do NOT change production. Do NOT Publish.
+
+First inspect the existing implementation and produce an assessment of the current Platform Owner permissions, routes, API authorization and dashboard navigation. Then implement the minimum safe changes required to enforce the following ownership model.
+
+==================================================
+
+1. PLATFORM OWNER — PLATFORM-LEVEL RESPONSIBILITIES
+   ==================================================
+
+The Platform Owner represents Yemait Technologies Limited and manages the entire Yemait EduCore platform.
+
+Platform Owner should be able to:
+
+1. Create/manage schools at the platform level.
+2. Review and approve schools that register through the public website.
+3. Create, approve, suspend and manage Partners.
+4. Manage schools referred by Partners.
+5. View all schools.
+6. View students and relevant student information under each school.
+7. Assign/reassign NFC cards to students, subject to the existing school/card tenant-binding rules.
+8. Assign/reassign NFC devices to schools, subject to the existing device school-binding rules.
+9. Generate/download student e-ID cards for printing, including the student's school logo and required student information.
+10. Manage Yemait Technologies' own internal company employees.
+11. View platform-wide subscription, partner, finance and audit information where the existing platform design permits it.
+12. Manage platform-level settings.
+
+==================================================
+2. PLATFORM OWNER — MUST NOT MANAGE SCHOOL OPERATIONS
+
+The Platform Owner must NOT create, edit or manage ordinary school-operational records for individual schools.
+
+Specifically, Platform Owner must NOT be the normal creator/manager of:
+
+- School subjects
+- School parents
+- School classes
+- School sections
+- Academic sessions/terms
+- School attendance records
+- School teacher assignments
+- School assignments/assessments
+- School results/report cards
+- School timetable
+- School invoices/fees as an operational school user
+- Ordinary school employees/staff
+
+Those responsibilities belong to the School Admin and the appropriate school roles.
+
+Exception:
+
+The Platform Owner may VIEW relevant school information where necessary for platform administration, support, audit, compliance or platform-level management. Viewing must not automatically grant permission to modify school-operational data.
+
+==================================================
+3. PLATFORM OWNER'S INTERNAL EMPLOYEES
+
+The existing Employee functionality under Platform Owner should represent employees of Yemait Technologies Limited / the platform company.
+
+Do not confuse:
+
+- Platform Owner's internal company employees
+  with
+- A school's teachers/staff/employees.
+
+School employees must be managed by the relevant School Admin within their own school tenant.
+
+==================================================
+4. SCHOOL ADMIN RESPONSIBILITIES
+
+School Admin should manage their own school's operational data, including:
+
+- Students
+- Parents
+- School employees/staff/teachers
+- Classes
+- Sections
+- Subjects
+- Academic sessions
+- Terms
+- Teacher assignments
+- Attendance
+- Assignments
+- Assessments
+- Grading
+- Results/report cards
+- Timetable
+- School finance/fees/invoices
+- School payment operations
+- School reports
+- School settings
+- School user invitations and role assignments
+
+All of these must remain tenant-scoped to the School Admin's authorized school.
+
+==================================================
+5. PLATFORM OWNER SCHOOL VIEW
+
+When Platform Owner opens:
+
+Platform Owner → Schools → School A
+
+the Owner should be able to see platform-relevant information about School A.
+
+For students, the Owner should be able to:
+
+- View student information.
+- View the student's school association.
+- View relevant status information.
+- Assign/reassign the NFC card.
+- Download/generate the student's e-ID card.
+- See the school logo on the generated e-ID card.
+
+The Owner should NOT receive ordinary school-management controls such as:
+
+- Add subject
+- Add class
+- Add parent
+- Create academic session
+- Record attendance
+- Manage school timetable
+- Enter student results
+
+unless there is an explicitly documented platform-level administrative reason for a read-only/support action.
+
+==================================================
+6. ROLE-BASED SECURITY
+
+Do not solve this only by hiding buttons.
+
+Review and enforce the separation at:
+
+- Frontend navigation
+- Page access
+- API authorization
+- Backend service authorization
+- Database tenant checks
+- Role checks
+- Audit logging where applicable
+
+A Platform Owner being able to see all schools must NOT mean that the Platform Owner automatically inherits every School Admin mutation permission.
+
+Likewise, a School Admin must only be able to mutate records belonging to their authorized school.
+
+Preserve the existing tenant-isolation protections.
+
+==================================================
+7. SCHOOL CREATION
+
+Review the current school-creation flow.
+
+Platform Owner should create/register a school at the platform level, but the Platform Owner should not be required to populate the school's operational data.
+
+The School Admin should subsequently manage:
+
+- Parents
+- Students
+- Staff
+- Classes
+- Subjects
+- Academic sessions
+- Attendance
+- Academic operations
+- Finance
+
+through the School Admin interface.
+
+Do not invent a new onboarding architecture if the existing invitation/onboarding architecture can support this cleanly.
+
+==================================================
+8. ROLE/PERMISSION DASHBOARD
+
+Review the current "Role & Permission" interface.
+
+If it currently allows the Platform Owner to create administrators using fields such as:
+
+- Full name
+- Phone number
+- Password
+
+determine whether this conflicts with the intended invitation-based authentication model.
+
+The intended secure model is:
+
+Platform Owner creates/invites the appropriate platform-level user or approves the appropriate school account.
+
+School Admin manages/invites users belonging to their school.
+
+Users should establish their own authentication credentials through the normal Clerk flow.
+
+Do not store or expose unnecessary passwords through the Platform Owner UI.
+
+==================================================
+9. DO NOT BREAK EXISTING FUNCTIONALITY
+
+Preserve:
+
+- Existing Clerk authentication
+- Existing RBAC
+- Existing tenant isolation
+- Existing NFC school/card binding
+- Existing device school binding
+- Existing academic functionality
+- Existing finance functionality
+- Existing partner attribution
+- Existing audit logging
+- Existing production schema
+- Existing development fixtures unless a change is explicitly required
+
+Do not rebuild completed phases.
+
+==================================================
+10. REQUIRED PROCESS
+
+Before changing code:
+
+A. Inspect the current Platform Owner routes/pages.
+B. Inspect current Platform Owner API permissions.
+C. Inspect School Admin permissions.
+D. Identify exactly which existing permissions violate the above model.
+E. Identify which UI navigation items are incorrectly exposed.
+F. Identify any backend endpoints that currently allow Platform Owner to mutate school-operational records.
+G. Propose the minimum changes required.
+
+Then implement only those necessary changes in DEVELOPMENT.
+
+Do NOT modify production.
+Do NOT click Publish.
+
+After implementation, run the existing test suite and add/update focused authorization tests for:
+
+1. Platform Owner can view schools.
+2. Platform Owner can view student information.
+3. Platform Owner can assign NFC cards according to existing rules.
+4. Platform Owner can assign NFC devices to schools according to existing rules.
+5. Platform Owner can generate/download e-ID cards.
+6. Platform Owner can manage platform Partners.
+7. Platform Owner can manage platform schools.
+8. Platform Owner can manage internal Yemait Technologies employees.
+9. Platform Owner cannot create school subjects.
+10. Platform Owner cannot create school parents.
+11. Platform Owner cannot create school classes.
+12. Platform Owner cannot create school academic sessions.
+13. Platform Owner cannot record school attendance.
+14. Platform Owner cannot create ordinary school staff.
+15. School Admin can perform the intended operations within their own school.
+16. School Admin cannot access another school's data.
+17. Existing NFC and device tenant-isolation rules remain intact.
+
+Do not claim success based only on hidden/API tests. Report the exact UI and backend changes made and all test results.
+
+STOP before any production change or Publish action.

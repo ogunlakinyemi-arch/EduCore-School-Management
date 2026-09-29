@@ -79,8 +79,9 @@ vi.mock("../middlewares/auth", async (importOriginal) => {
   return {
     ...actual,
     requireAuthentication: () => (req: express.Request, _res: express.Response, next: express.NextFunction) => {
-      const role = String(req.header("x-test-role") ?? "SCHOOL_ADMIN") as any;
-      const schoolId = role === "PLATFORM_OWNER" ? null : Number(req.header("x-test-school") ?? 1);
+      const roles = String(req.header("x-test-role") ?? "SCHOOL_ADMIN").split(",") as any[];
+      const schoolId = Number(req.header("x-test-school") ?? 1);
+      const status = String(req.header("x-test-status") ?? "ACTIVE");
       (req as any).edupulseUser = {
         user: {
           id: 10,
@@ -91,7 +92,12 @@ vi.mock("../middlewares/auth", async (importOriginal) => {
           phone: null,
           status: "ACTIVE",
         },
-        roles: [{ id: 1, role, schoolId, status: "ACTIVE" }],
+        roles: roles.map((role, id) => ({
+          id: id + 1,
+          role,
+          schoolId: role === "PLATFORM_OWNER" ? null : schoolId,
+          status,
+        })),
       };
       next();
     },
@@ -145,6 +151,7 @@ async function resolve(
   role: string,
   body: Record<string, unknown> = { schoolId: 1, status: "RESOLVED", reason: "Verified by administrator" },
   schoolId?: number,
+  membershipStatus?: string,
 ) {
   return fetch(`${baseUrl}/school/attendance/discrepancies/401/resolve`, {
     method: "POST",
@@ -152,6 +159,7 @@ async function resolve(
       "content-type": "application/json",
       "x-test-role": role,
       ...(schoolId === undefined ? {} : { "x-test-school": String(schoolId) }),
+      ...(membershipStatus === undefined ? {} : { "x-test-status": membershipStatus }),
     },
     body: JSON.stringify(body),
   });
@@ -197,12 +205,18 @@ describe("attendance discrepancy resolution", () => {
     });
   });
 
-  it("allows platform owners, but hides cross-school records and denies other roles", async () => {
-    expect((await resolve("PLATFORM_OWNER")).status).toBe(200);
+  it("requires an active school-scoped administrator, including for platform owners", async () => {
+    expect((await resolve("PLATFORM_OWNER")).status).toBe(403);
+    expect(state.discrepancy.status).toBe("OPEN");
+    expect((await resolve("PLATFORM_OWNER,SCHOOL_ADMIN")).status).toBe(200);
+    state.discrepancy.status = "OPEN";
+    expect((await resolve("SCHOOL_ADMIN", { schoolId: 1, status: "DISMISSED", reason: "Not applicable" })).status).toBe(200);
+    expect(state.discrepancy.status).toBe("DISMISSED");
     state.discrepancy.status = "OPEN";
     expect((await resolve("SCHOOL_ADMIN", { schoolId: 2, status: "DISMISSED", reason: "Not applicable" })).status).toBe(404);
     expect(state.discrepancy.status).toBe("OPEN");
     expect((await resolve("SCHOOL_ADMIN", { schoolId: 1, status: "DISMISSED", reason: "Not applicable" }, 2)).status).toBe(404);
+    expect((await resolve("SCHOOL_ADMIN", undefined, 1, "INACTIVE")).status).toBe(403);
     for (const role of ["TEACHER", "STAFF", "ACCOUNTANT", "PARENT", "STUDENT", "PARTNER"]) {
       state.discrepancy.status = "OPEN";
       expect((await resolve(role)).status).toBe(403);

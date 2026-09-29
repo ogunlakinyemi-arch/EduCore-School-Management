@@ -3,6 +3,7 @@ import { pool } from "@workspace/db";
 import {
   assertRoles,
   assertSchoolAccess,
+  assertSchoolOperationalAccess,
   AuthError,
   getUserContext,
   handleAuthError,
@@ -12,7 +13,7 @@ import {
 const router = Router();
 router.use(requireAuthentication());
 
-const writeRoles = ["SCHOOL_ADMIN", "PLATFORM_OWNER"] as const;
+const writeRoles = ["SCHOOL_ADMIN"] as const;
 const readRoles = ["SCHOOL_ADMIN", "PLATFORM_OWNER", "TEACHER"] as const;
 const weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"] as const;
 type TimetableValues = {
@@ -245,7 +246,7 @@ router.get("/academic/timetable", asyncRoute(async (req, res) => {
 router.post("/academic/timetable", asyncRoute(async (req, res) => {
   const values = parseValues(req.body ?? {});
   ensureSchoolRole(req, values.schoolId, writeRoles);
-  assertSchoolAccess(req, values.schoolId, writeRoles as any);
+  assertSchoolOperationalAccess(req, values.schoolId, writeRoles as any);
   const client = await pool.connect();
   let result: any;
   try {
@@ -307,7 +308,7 @@ router.patch("/academic/timetable/:entryId", asyncRoute(async (req, res) => {
   const entryId = pathId(req.params.entryId, "Timetable entry");
   const schoolId = id(req.body?.schoolId, "schoolId")!;
   ensureSchoolRole(req, schoolId, writeRoles);
-  assertSchoolAccess(req, schoolId, writeRoles as any);
+  assertSchoolOperationalAccess(req, schoolId, writeRoles as any);
   const client = await pool.connect();
   let updated: any;
   try {

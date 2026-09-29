@@ -41,18 +41,19 @@ const nav: NavItem[] = [
   { href: '/', label: 'Command centre', icon: LayoutDashboard },
   { href: '/schools', label: 'Schools', icon: Building2, roles: ['PLATFORM_OWNER'] },
   { href: '/students', label: 'Students', icon: GraduationCap, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
-  { href: '/parents', label: 'Parents', icon: UsersRound, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
-  { href: '/employees', label: 'Employees', icon: Briefcase, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
-  { href: '/academics', label: 'Academics', icon: Calendar, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
-  { href: '/subjects', label: 'Subjects', icon: BookOpen, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER'] },
-  { href: '/classes', label: 'Classes', icon: Library, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
+  { href: '/parents', label: 'Parents', icon: UsersRound, roles: ['SCHOOL_ADMIN'] },
+  { href: '/employees', label: 'Employees', icon: Briefcase, roles: ['SCHOOL_ADMIN'] },
+  { href: '/company-employees', label: 'Company Employees', icon: Briefcase, roles: ['PLATFORM_OWNER'] },
+  { href: '/academics', label: 'Academics', icon: Calendar, roles: ['SCHOOL_ADMIN'] },
+  { href: '/subjects', label: 'Subjects', icon: BookOpen, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
+  { href: '/classes', label: 'Classes', icon: Library, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
   { href: '/academic-work', label: 'Academic Work', icon: BookOpen, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
   { href: '/results', label: 'Results', icon: BarChart3, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
   { href: '/timetable', label: 'Timetable', icon: Calendar, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STUDENT'] },
   { href: '/my-academics', label: 'My Academics', icon: GraduationCap, roles: ['STUDENT'] },
   { href: '/my-fees', label: 'My Fees', icon: ReceiptText, roles: ['STUDENT'] },
   { href: '/finance', label: 'School Fees', icon: CircleDollarSign, roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
-  { href: '/attendance', label: 'Attendance', icon: ClipboardCheck, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
+  { href: '/attendance', label: 'Attendance', icon: ClipboardCheck, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
   { href: '/users', label: 'Users & Roles', icon: UserCog, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
   { href: '/people/imports', label: 'Import Records', icon: UsersRound, roles: ['SCHOOL_ADMIN'] },
   { href: '/partners', label: 'Partners', icon: Handshake, roles: ['PLATFORM_OWNER'] },
@@ -71,13 +72,18 @@ export function Shell({ children }: { children: ReactNode }) {
   
   if (contextQuery.isLoading) return <div className="min-h-[100dvh] bg-[hsl(var(--background))]" />;
 
-  const roles = context?.roles?.map(r => r.role) || [];
+  const roles = context?.roles?.filter(r => r.status === 'ACTIVE').map(r => r.role) || [];
   const isPlatformOwner = context?.isPlatformOwner || false;
+  const schoolAdminForTenant = !isPlatformOwner && !!schoolId && context?.roles?.some(r => r.schoolId === schoolId && r.role === 'SCHOOL_ADMIN' && r.status === 'ACTIVE') === true;
   const financeRole = !!schoolId && context?.roles?.some(r => r.schoolId === schoolId && r.status === 'ACTIVE' && (r.role === 'SCHOOL_ADMIN' || r.role === 'ACCOUNTANT')) === true;
   const studentRole = context?.roles?.some(r => r.role === 'STUDENT' && r.status === 'ACTIVE') === true;
   if (isPlatformOwner && !roles.includes('PLATFORM_OWNER')) roles.push('PLATFORM_OWNER');
 
-  const visibleNav = nav.filter(item => !item.roles || item.roles.some(role => roles.includes(role)));
+  const visibleNav = nav.filter(item => {
+    const isSchoolOperations = ['parents', 'employees', 'academics', 'subjects', 'classes', 'academic-work', 'results', 'timetable', 'attendance', 'people/imports', 'finance'].some(path => item.href === `/${path}`);
+    if (isPlatformOwner && isSchoolOperations && !schoolAdminForTenant) return false;
+    return !item.roles || item.roles.some(role => roles.includes(role));
+  });
   const name = context?.user?.name ?? 'Yemait EduCore user';
   const roleDisplay = isPlatformOwner ? 'Platform Owner' : (roles[0]?.replaceAll('_', ' ') ?? 'User').toLowerCase();
   const initials = name.split(' ').slice(0, 2).map(part => part[0]).join('').toUpperCase();
@@ -366,6 +372,17 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
 export function useTenant() {
   return useContext(TenantContext);
+}
+
+export function useSchoolAdminAccess() {
+  const { schoolId } = useTenant();
+  const contextQuery = useGetAuthorizedContext();
+  const context = contextQuery.data;
+  const isPlatformOwner = context?.isPlatformOwner === true;
+  const isSchoolAdmin = !!schoolId && context?.roles?.some(
+    role => role.schoolId === schoolId && role.role === 'SCHOOL_ADMIN' && role.status === 'ACTIVE'
+  ) === true;
+  return { isPlatformOwner, isSchoolAdmin, canManageSchool: isSchoolAdmin && !isPlatformOwner };
 }
 
 export function TenantPicker() {

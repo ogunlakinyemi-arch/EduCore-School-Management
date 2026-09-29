@@ -26,14 +26,15 @@ export function TimetablePage() {
   const contextQuery = useGetAuthorizedContext();
   const roles = contextQuery.data?.roles?.map(r => r.role) || [];
   
-  const canManage = !!contextQuery.data?.isPlatformOwner || !!contextQuery.data?.roles?.some(
+  const canManage = !!contextQuery.data?.roles?.some(
     role => role.role === 'SCHOOL_ADMIN' && role.schoolId === schoolId && role.status === 'ACTIVE'
   );
+  const canViewSchoolSchedule = !!contextQuery.data?.isPlatformOwner || canManage;
   const isTeacherOrStudent = roles.includes('TEACHER') || roles.includes('STUDENT');
   const isStudent = roles.includes('STUDENT') && !roles.includes('TEACHER');
   
   const [tab, setTab] = useState<'manage' | 'mine'>('manage');
-  const activeTab = canManage ? tab : 'mine';
+  const activeTab = canViewSchoolSchedule ? tab : 'mine';
 
   if (contextQuery.isLoading) return <SkeletonPage />;
   
@@ -55,7 +56,7 @@ export function TimetablePage() {
                <button onClick={() => setTab('mine')} className={cx("px-4 py-2.5 text-sm font-bold border-b-2 transition-colors", activeTab === 'mine' ? "border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>My Schedule</button>
             </div>
           )}
-           {activeTab === 'manage' && canManage && <ManageTimetableView schoolId={schoolId} />}
+          {activeTab === 'manage' && canViewSchoolSchedule && <ManageTimetableView schoolId={schoolId} canEdit={canManage} />}
            {activeTab === 'mine' && isTeacherOrStudent && <MyScheduleView schoolId={schoolId} isStudent={isStudent} />}
         </>
       )}
@@ -65,7 +66,7 @@ export function TimetablePage() {
 
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 
-function ManageTimetableView({ schoolId }: { schoolId: number }) {
+function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; canEdit: boolean }) {
   const { activeSession, activeTerm, classes, subjects, teachers, isLoading } = useAcademicContext(schoolId);
   const [classId, setClassId] = useState<number | ''>('');
   
@@ -92,7 +93,7 @@ function ManageTimetableView({ schoolId }: { schoolId: number }) {
             </select>
           </Field>
         </div>
-        {classId && (
+        {classId && canEdit && (
           <div className="ml-auto mt-4">
              <Button onClick={() => setModal({ create: true, classId: Number(classId) })}><Plus size={16}/> Add Entry</Button>
           </div>
@@ -112,7 +113,7 @@ function ManageTimetableView({ schoolId }: { schoolId: number }) {
                 <div className="divide-y divide-[hsl(var(--border)/.5)]">
                   {dayEntries.map((item: any) => (
                     <div key={item.id} className="p-4 group hover:bg-[hsl(var(--muted)/.15)] relative">
-                      <button onClick={() => setModal(item)} className="absolute top-4 right-4 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 bg-[hsl(var(--card))] border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-all"><Pencil size={12} /></button>
+                      {canEdit && <button onClick={() => setModal(item)} className="absolute top-4 right-4 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 bg-[hsl(var(--card))] border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-all"><Pencil size={12} /></button>}
                       <div className="flex items-center gap-2 text-xs font-medium text-[hsl(var(--primary))] mb-1.5">
                         <Clock size={12} /> {item.startTime} — {item.endTime}
                       </div>
@@ -132,7 +133,7 @@ function ManageTimetableView({ schoolId }: { schoolId: number }) {
         <EmptyState icon={Calendar} title="Select a class" description="Choose a class to view and manage its timetable." />
       )}
 
-      {modal && (
+      {canEdit && modal && (
         <Modal title={modal.create ? "Add Timetable Entry" : "Edit Timetable Entry"} onClose={() => setModal(null)}>
           <TimetableEntryForm 
             schoolId={schoolId} sessionId={activeSession?.id} termId={activeTerm?.id}

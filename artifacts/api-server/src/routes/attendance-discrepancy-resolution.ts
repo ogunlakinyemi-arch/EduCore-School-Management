@@ -3,7 +3,6 @@ import { pool } from "@workspace/db";
 import {
   AuthError,
   getUserContext,
-  isPlatformOwner,
   requireAuthentication,
 } from "../middlewares/auth";
 
@@ -29,9 +28,10 @@ router.post(
     }
 
     const context = getUserContext(req);
-    const platformOwner = isPlatformOwner(context);
-    if (!platformOwner && !context.roles.some((assignment) => assignment.role === "SCHOOL_ADMIN")) {
-      throw new AuthError(403, "Only school administrators and platform owners may resolve discrepancies");
+    if (!context.roles.some(
+      (assignment) => assignment.role === "SCHOOL_ADMIN" && assignment.status === "ACTIVE",
+    )) {
+      throw new AuthError(403, "Only school administrators may resolve discrepancies");
     }
 
     const client = await pool.connect();
@@ -53,8 +53,9 @@ router.post(
       if (Number(schoolId) !== actualSchoolId) {
         throw new AuthError(404, "Attendance discrepancy not found", "CROSS_TENANT_ACCESS_ATTEMPT");
       }
-      if (!platformOwner && !context.roles.some(
-        (assignment) => assignment.role === "SCHOOL_ADMIN" && assignment.schoolId === actualSchoolId,
+      if (!context.roles.some(
+        (assignment) => assignment.role === "SCHOOL_ADMIN" &&
+          assignment.status === "ACTIVE" && assignment.schoolId === actualSchoolId,
       )) {
         throw new AuthError(404, "Attendance discrepancy not found", "CROSS_TENANT_ACCESS_ATTEMPT");
       }
@@ -96,9 +97,6 @@ router.post(
         [status, context.user.id, reason, discrepancy.status, discrepancyId],
       );
       const updated = updatedResult.rows[0];
-      const role = platformOwner
-        ? "PLATFORM_OWNER"
-        : "SCHOOL_ADMIN";
       await client.query(
         `INSERT INTO audit_logs
           ("user",role,actor_user_id,clerk_user_id,school_id,action,module,
@@ -107,7 +105,7 @@ router.post(
                 'ATTENDANCE_DISCREPANCY_RESOLVED','SUCCESS',$8::jsonb)`,
         [
           context.user.email,
-          role,
+          "SCHOOL_ADMIN",
           context.user.id,
           context.user.clerkUserId,
           actualSchoolId,

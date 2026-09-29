@@ -76,6 +76,14 @@ vi.mock("../middlewares/auth", () => {
   return {
     AuthError,
     getUserContext: (req: express.Request) => (req as any).edupulseUser,
+    assertSchoolOperationalAccess: (req: express.Request, schoolId: number, roles: string[]) => {
+      const context = (req as any).edupulseUser;
+      const allowed = context.roles.some((membership: any) =>
+        membership.status === "ACTIVE" && membership.schoolId === schoolId && roles.includes(membership.role),
+      );
+      if (!allowed) throw new AuthError(404, "Resource not found");
+      return context;
+    },
     handleAuthError: (error: any, _req: express.Request, res: express.Response) =>
       res.status(error.statusCode ?? 500).json({ error: error.message }),
     requireAuthentication: () => (
@@ -178,7 +186,7 @@ describe("academic assignments and assessments API", () => {
   });
 
   it("enforces strict role rejection and school tenant scope", async () => {
-    expect((await call("/academic/assignments?schoolId=1", { method: "POST", role: "STAFF", body: assignmentBody })).status).toBe(403);
+    expect((await call("/academic/assignments?schoolId=1", { method: "POST", role: "STAFF", body: assignmentBody })).status).toBe(404);
     expect((await call("/academic/assignments?schoolId=2", { method: "POST", role: "TEACHER", body: assignmentBody })).status).toBe(404);
     expect(state.calls.some(({ sql }) => sql.includes("INSERT INTO academic_assignments"))).toBe(false);
   });
@@ -240,7 +248,7 @@ describe("academic assignments and assessments API", () => {
       assessmentTypeId: 88, title: "Mid-term", date: "2026-03-05", maxScore: 50,
     };
     expect((await call("/academic/assessments?schoolId=1", { method: "POST", body })).status).toBe(404);
-    expect((await call("/academic/assessment-types?schoolId=1", { method: "POST", body: { name: "Quiz" } })).status).toBe(403);
+    expect((await call("/academic/assessment-types?schoolId=1", { method: "POST", body: { name: "Quiz" } })).status).toBe(404);
     expect(state.calls.some(({ sql }) => sql.includes("INSERT INTO academic_assessments"))).toBe(false);
   });
 
@@ -256,5 +264,19 @@ describe("academic assignments and assessments API", () => {
     expect(insert?.values).toEqual([1, "Continuous Assessment", "CA", "ACTIVE"]);
     expect(insert?.sql).not.toContain("description");
     expect(state.calls.some(({ sql }) => sql.includes("INSERT INTO audit_logs"))).toBe(true);
+  });
+
+  it("rejects platform-owner writes to school assignments and assessment configuration", async () => {
+    const ownerAssignment = await call("/academic/assignments?schoolId=1", {
+      method: "POST", role: "PLATFORM_OWNER", body: assignmentBody,
+    });
+    const ownerType = await call("/academic/assessment-types?schoolId=1", {
+      method: "POST", role: "PLATFORM_OWNER", body: { name: "Quiz", code: "QZ" },
+    });
+
+    expect([ownerAssignment.status, ownerType.status]).toEqual([404, 404]);
+    expect(state.calls.some(({ sql }) =>
+      sql.includes("INSERT INTO academic_assignments") || sql.includes("INSERT INTO academic_assessment_types"),
+    )).toBe(false);
   });
 });

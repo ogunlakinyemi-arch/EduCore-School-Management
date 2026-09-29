@@ -1714,6 +1714,87 @@ export interface NfcCard {
   lastScan: string | null;
 }
 
+export interface CardReassignmentInput {
+  /** @minimum 1 */
+  studentId: number;
+}
+
+export type CompanyEmployeeStatus = typeof CompanyEmployeeStatus[keyof typeof CompanyEmployeeStatus];
+
+
+export const CompanyEmployeeStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface CompanyEmployee {
+  id: number;
+  fullName: string;
+  email: string;
+  /** @nullable */
+  phone: string | null;
+  /** @nullable */
+  jobTitle: string | null;
+  status: CompanyEmployeeStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CompanyEmployeeInput {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  fullName: string;
+  /**
+     * @minLength 1
+     * @maxLength 254
+     */
+  email: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  phone?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  jobTitle?: string | null;
+}
+
+export type CompanyEmployeeUpdateStatus = typeof CompanyEmployeeUpdateStatus[keyof typeof CompanyEmployeeUpdateStatus];
+
+
+export const CompanyEmployeeUpdateStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface CompanyEmployeeUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  fullName?: string;
+  /**
+     * @minLength 1
+     * @maxLength 254
+     */
+  email?: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  phone?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  jobTitle?: string | null;
+  status?: CompanyEmployeeUpdateStatus;
+}
+
 export interface CardInput {
   /** @minLength 4 */
   uid: string;

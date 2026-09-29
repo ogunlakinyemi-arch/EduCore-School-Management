@@ -3001,6 +3001,145 @@ export const ReplaceCardResponse = zod.object({
 
 
 /**
+ * @summary Reassign an NFC card to a student in the same school
+ */
+
+
+
+export const ReassignCardParams = zod.object({
+  "cardId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ReassignCardBody = zod.object({
+  "studentId": zod.number().int().min(1)
+})
+
+export const ReassignCardResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "uid": zod.string(),
+  "studentId": zod.number().int().nullable(),
+  "studentName": zod.string().nullable(),
+  "status": zod.enum(['active', 'inactive', 'locked', 'unassigned', 'lost', 'blocked', 'suspended', 'replaced', 'expired']),
+  "scans": zod.number().int(),
+  "lastScan": zod.string().nullable()
+})
+
+
+/**
+ * @summary List company employee profiles
+ */
+export const ListPlatformCompanyEmployeesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "fullName": zod.string(),
+  "email": zod.string().email(),
+  "phone": zod.string().nullable(),
+  "jobTitle": zod.string().nullable(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListPlatformCompanyEmployeesResponse = zod.array(ListPlatformCompanyEmployeesResponseItem)
+
+
+/**
+ * @summary Create a company employee profile
+ */
+export const createPlatformCompanyEmployeeBodyFullNameMax = 160;
+
+export const createPlatformCompanyEmployeeBodyEmailMax = 254;
+
+export const createPlatformCompanyEmployeeBodyPhoneMax = 160;
+
+export const createPlatformCompanyEmployeeBodyJobTitleMax = 160;
+
+
+
+export const CreatePlatformCompanyEmployeeBody = zod.object({
+  "fullName": zod.string().min(1).max(createPlatformCompanyEmployeeBodyFullNameMax),
+  "email": zod.string().email().min(1).max(createPlatformCompanyEmployeeBodyEmailMax),
+  "phone": zod.string().max(createPlatformCompanyEmployeeBodyPhoneMax).nullish(),
+  "jobTitle": zod.string().max(createPlatformCompanyEmployeeBodyJobTitleMax).nullish()
+})
+
+export const CreatePlatformCompanyEmployeeResponse = zod.object({
+  "id": zod.number().int(),
+  "fullName": zod.string(),
+  "email": zod.string().email(),
+  "phone": zod.string().nullable(),
+  "jobTitle": zod.string().nullable(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Read a company employee profile
+ */
+
+
+
+export const GetPlatformCompanyEmployeeParams = zod.object({
+  "employeeId": zod.coerce.number().int().min(1)
+})
+
+export const GetPlatformCompanyEmployeeResponse = zod.object({
+  "id": zod.number().int(),
+  "fullName": zod.string(),
+  "email": zod.string().email(),
+  "phone": zod.string().nullable(),
+  "jobTitle": zod.string().nullable(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update supported company employee profile fields
+ */
+
+
+
+export const UpdatePlatformCompanyEmployeeParams = zod.object({
+  "employeeId": zod.coerce.number().int().min(1)
+})
+
+export const updatePlatformCompanyEmployeeBodyFullNameMax = 160;
+
+export const updatePlatformCompanyEmployeeBodyEmailMax = 254;
+
+export const updatePlatformCompanyEmployeeBodyPhoneMax = 160;
+
+export const updatePlatformCompanyEmployeeBodyJobTitleMax = 160;
+
+
+
+export const UpdatePlatformCompanyEmployeeBody = zod.object({
+  "fullName": zod.string().min(1).max(updatePlatformCompanyEmployeeBodyFullNameMax).optional(),
+  "email": zod.string().email().min(1).max(updatePlatformCompanyEmployeeBodyEmailMax).optional(),
+  "phone": zod.string().max(updatePlatformCompanyEmployeeBodyPhoneMax).nullish(),
+  "jobTitle": zod.string().max(updatePlatformCompanyEmployeeBodyJobTitleMax).nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']).optional()
+})
+
+export const UpdatePlatformCompanyEmployeeResponse = zod.object({
+  "id": zod.number().int(),
+  "fullName": zod.string(),
+  "email": zod.string().email(),
+  "phone": zod.string().nullable(),
+  "jobTitle": zod.string().nullable(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Mark a Platform Owner notification as read
  */
 export const MarkPlatformNotificationReadParams = zod.object({

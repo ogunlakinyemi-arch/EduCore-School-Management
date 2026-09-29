@@ -31,10 +31,11 @@ export function AttendancePage() {
   const [modal, setModal] = useState<'manual' | { correction: any } | { discrepancy: any } | null>(null);
   const contextQuery = useGetAuthorizedContext();
   const isPlatformOwner = contextQuery.data?.isPlatformOwner === true;
-  const roles = contextQuery.data?.roles?.map(role => role.role) ?? [];
-  const isTeacherView = !isPlatformOwner && roles.includes('TEACHER');
-  const canWrite = isPlatformOwner || roles.includes('SCHOOL_ADMIN') || roles.includes('STAFF');
-  const canCorrect = isPlatformOwner || roles.includes('SCHOOL_ADMIN');
+  const tenantRoles = contextQuery.data?.roles?.filter(role => role.schoolId === schoolId && role.status === 'ACTIVE').map(role => role.role) ?? [];
+  const isSchoolAdmin = tenantRoles.includes('SCHOOL_ADMIN');
+  const isTeacherView = !isPlatformOwner && tenantRoles.includes('TEACHER');
+  const canWrite = isSchoolAdmin || (!isPlatformOwner && (tenantRoles.includes('TEACHER') || tenantRoles.includes('STAFF')));
+  const canCorrect = isSchoolAdmin;
 
   const today = useGetSchoolAttendanceToday(
     { schoolId, date },
@@ -92,8 +93,8 @@ export function AttendancePage() {
           </div>
         </>
       )}
-      {modal === 'manual' && <Modal title="Record attendance event" eyebrow="Audited manual event" onClose={() => setModal(null)}><ManualForm schoolId={schoolId} onDone={() => { setModal(null); refresh(); }} onCancel={() => setModal(null)} /></Modal>}
-      {modal && typeof modal === 'object' && 'correction' in modal && <Modal title="Correct attendance" eyebrow="History is preserved" onClose={() => setModal(null)}><CorrectionForm event={modal.correction} onDone={() => { setModal(null); refresh(); }} onCancel={() => setModal(null)} /></Modal>}
+      {canWrite && modal === 'manual' && <Modal title="Record attendance event" eyebrow="Audited manual event" onClose={() => setModal(null)}><ManualForm schoolId={schoolId} onDone={() => { setModal(null); refresh(); }} onCancel={() => setModal(null)} /></Modal>}
+      {canCorrect && modal && typeof modal === 'object' && 'correction' in modal && <Modal title="Correct attendance" eyebrow="History is preserved" onClose={() => setModal(null)}><CorrectionForm event={modal.correction} onDone={() => { setModal(null); refresh(); }} onCancel={() => setModal(null)} /></Modal>}
       {modal && typeof modal === 'object' && 'discrepancy' in modal && <Modal title="Review Discrepancy" eyebrow="Reconciliation" onClose={() => setModal(null)}><ResolveDiscrepancyForm discrepancy={modal.discrepancy} schoolId={schoolId} onDone={() => { setModal(null); refresh(); }} onCancel={() => setModal(null)} canResolve={canCorrect} /></Modal>}
     </div>
   );

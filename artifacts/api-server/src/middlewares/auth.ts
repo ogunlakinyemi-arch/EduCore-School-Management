@@ -177,6 +177,36 @@ export function assertSchoolAccess(
   return context;
 }
 
+/**
+ * Authorizes school operations only for an active membership in that school.
+ * Unlike assertSchoolAccess, platform ownership never grants this access.
+ */
+export function assertSchoolOperationalAccess(
+  req: Request,
+  schoolId: number,
+  roles: Role[] = ["SCHOOL_ADMIN"],
+) {
+  const context = getUserContext(req);
+  if (context.roles.some(
+    (assignment) =>
+      assignment.role === "PLATFORM_OWNER" &&
+      assignment.schoolId === null &&
+      assignment.status === "ACTIVE",
+  )) {
+    throw new AuthError(404, "Resource not found", "CROSS_TENANT_ACCESS_ATTEMPT");
+  }
+  const allowed = context.roles.some(
+    (assignment) =>
+      assignment.status === "ACTIVE" &&
+      assignment.schoolId === schoolId &&
+      roles.includes(assignment.role),
+  );
+  if (!allowed) {
+    throw new AuthError(404, "Resource not found", "CROSS_TENANT_ACCESS_ATTEMPT");
+  }
+  return context;
+}
+
 export function assertResourceId(value: unknown, label: string) {
   const id = Number(value);
   if (!Number.isInteger(id) || id < 1) {

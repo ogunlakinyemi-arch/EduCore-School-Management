@@ -111,6 +111,7 @@ import { retryReconciliationEvent, settleVerifiedPayment } from "./fee-provider-
 import {
   assertRoles,
   assertSchoolAccess,
+  assertSchoolOperationalAccess,
   AuthError,
   getUserContext,
   requireAuthentication,
@@ -270,9 +271,11 @@ function schoolIdForMutation(
   const { schoolId } = parsed(schema, req.query);
   const context = getUserContext(req);
   if (!context.roles.some((assignment) =>
+    assignment.status === "ACTIVE" &&
     assignment.schoolId === schoolId && allowedRoles.includes(assignment.role as "SCHOOL_ADMIN" | "ACCOUNTANT"))) {
     throw new AuthError(404, "Resource not found", "CROSS_TENANT_ACCESS_ATTEMPT");
   }
+  assertSchoolOperationalAccess(req, schoolId, allowedRoles as any);
   return schoolId;
 }
 
@@ -287,7 +290,7 @@ async function audit(
      VALUES ($1,$2,$3,$4,$5,$6,'Finance',$7,'info','FINANCE_EVENT','SUCCESS',$8)`,
     [
       [context.user.firstName, context.user.lastName].filter(Boolean).join(" ") || context.user.email,
-      context.roles.find((role) => role.schoolId === schoolId)?.role ?? "PLATFORM_OWNER",
+      context.roles.find((role) => role.status === "ACTIVE" && role.schoolId === schoolId)?.role ?? "AUTHENTICATED",
       context.user.id, context.user.clerkUserId, schoolId, `${entity}: ${action}`, entityId, metadata,
     ],
   );

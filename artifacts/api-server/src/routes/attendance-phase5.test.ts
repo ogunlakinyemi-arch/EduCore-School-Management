@@ -91,6 +91,7 @@ const poolMock = vi.hoisted(() => {
       if (["BEGIN", "COMMIT", "ROLLBACK"].includes(text) || text.includes("pg_advisory_xact_lock")) {
         return result([]);
       }
+      if (text.startsWith("WITH missing AS")) return result([]);
       if (text.includes("FROM platform_devices d JOIN device_credentials c")) {
         const credential = state.credential;
         return result(credential.status === "ACTIVE" && credential.deviceStatus === "ACTIVE" &&

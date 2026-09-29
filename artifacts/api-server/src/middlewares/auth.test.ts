@@ -9,6 +9,7 @@ import {
   AuthError,
   assertRoles,
   assertSchoolAccess,
+  assertSchoolOperationalAccess,
   assertUserActive,
   requireAuthentication,
   type Role,
@@ -122,5 +123,30 @@ describe("role and tenant authorization", () => {
         ["PLATFORM_OWNER"],
       ),
     ).toThrowError(AuthError);
+  });
+
+  it("requires an active, school-scoped operational membership without an owner bypass", () => {
+    const owner = requestWith([{ role: "PLATFORM_OWNER", schoolId: null }]);
+    expect(() => assertSchoolOperationalAccess(owner, 1, ["SCHOOL_ADMIN"])).toThrowError(
+      expect.objectContaining({ statusCode: 404, eventType: "CROSS_TENANT_ACCESS_ATTEMPT" }),
+    );
+    const dualRole = requestWith([
+      { role: "PLATFORM_OWNER", schoolId: null },
+      { role: "SCHOOL_ADMIN", schoolId: 1 },
+      { role: "TEACHER", schoolId: 1 },
+    ]);
+    expect(() => assertSchoolOperationalAccess(dualRole, 1, ["SCHOOL_ADMIN", "TEACHER"]))
+      .toThrowError(expect.objectContaining({ statusCode: 404 }));
+
+    expect(() => assertSchoolOperationalAccess(
+      requestWith([{ role: "SCHOOL_ADMIN", schoolId: 1 }]),
+      1,
+      ["SCHOOL_ADMIN"],
+    )).not.toThrow();
+
+    const inactiveMembership = requestWith([{ role: "SCHOOL_ADMIN", schoolId: 1 }]);
+    (inactiveMembership.edupulseUser.roles[0] as any).status = "INACTIVE";
+    expect(() => assertSchoolOperationalAccess(inactiveMembership, 1, ["SCHOOL_ADMIN"]))
+      .toThrowError(AuthError);
   });
 });

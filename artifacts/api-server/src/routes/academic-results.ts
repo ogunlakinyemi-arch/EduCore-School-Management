@@ -2,8 +2,8 @@ import { Router, type NextFunction, type Request, type Response } from "express"
 import { pool } from "@workspace/db";
 import {
   AuthError,
+  assertSchoolOperationalAccess,
   getUserContext,
-  isPlatformOwner,
   requireAuthentication,
 } from "../middlewares/auth";
 
@@ -15,7 +15,7 @@ const run = (handler: (req: Request, res: Response) => Promise<void>) =>
     handler(req, res).catch(next);
 
 const allSchoolRoles = ["SCHOOL_ADMIN", "PLATFORM_OWNER", "TEACHER"] as const;
-const managerRoles = ["SCHOOL_ADMIN", "PLATFORM_OWNER"] as const;
+const managerRoles = ["SCHOOL_ADMIN"] as const;
 const studentParentRoles = ["STUDENT", "PARENT"] as const;
 type Role = "PLATFORM_OWNER" | "SCHOOL_ADMIN" | "TEACHER" | "STUDENT" | "PARENT";
 
@@ -42,6 +42,7 @@ function scoreValue(value: unknown, label: string): number {
 function hasRole(req: Request, roles: readonly Role[], schoolId?: number): boolean {
   const context = getUserContext(req);
   return context.roles.some((membership) =>
+    membership.status === "ACTIVE" &&
     (roles as readonly string[]).includes(membership.role) &&
     (membership.role === "PLATFORM_OWNER"
       ? membership.schoolId === null
@@ -130,6 +131,7 @@ router.get("/academic/grading-rules", run(async (req, res) => {
 }));
 router.post("/academic/grading-rules", run(async (req, res) => {
   const schoolId = authorizeSchool(req, req.query.schoolId, managerRoles);
+  assertSchoolOperationalAccess(req, schoolId, managerRoles as any);
   const body = bodyObject(req.body);
   const min = scoreValue(body.minScore, "minScore");
   const max = scoreValue(body.maxScore, "maxScore");
@@ -164,6 +166,7 @@ router.post("/academic/grading-rules", run(async (req, res) => {
 }));
 router.patch("/academic/grading-rules/:ruleId", run(async (req, res) => {
   const schoolId = authorizeSchool(req, req.query.schoolId, managerRoles);
+  assertSchoolOperationalAccess(req, schoolId, managerRoles as any);
   const body = bodyObject(req.body);
   const ruleId = id(req.params.ruleId, "ruleId");
   const min = body.minScore === undefined ? null : scoreValue(body.minScore, "minScore");
@@ -229,8 +232,9 @@ router.get("/academic/results", run(async (req, res) => {
 }));
 router.post("/academic/results", run(async (req, res) => {
   const body = bodyObject(req.body);
-  const schoolId = authorizeSchool(req, body.schoolId, ["SCHOOL_ADMIN", "PLATFORM_OWNER", "TEACHER"]);
-  requireRole(req, ["SCHOOL_ADMIN", "PLATFORM_OWNER", "TEACHER"]);
+  const schoolId = authorizeSchool(req, body.schoolId, ["SCHOOL_ADMIN", "TEACHER"]);
+  assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN", "TEACHER"] as any);
+  requireRole(req, ["SCHOOL_ADMIN", "TEACHER"]);
   const assessmentId = id(body.assessmentId, "assessmentId");
   const studentId = id(body.studentId, "studentId");
   const score = scoreValue(body.score, "score");
@@ -321,7 +325,8 @@ router.post("/academic/results", run(async (req, res) => {
 }));
 router.patch("/academic/results/:resultId", run(async (req, res) => {
   const body = bodyObject(req.body);
-  const schoolId = authorizeSchool(req, body.schoolId, ["SCHOOL_ADMIN", "PLATFORM_OWNER", "TEACHER"]);
+  const schoolId = authorizeSchool(req, body.schoolId, ["SCHOOL_ADMIN", "TEACHER"]);
+  assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN", "TEACHER"] as any);
   const resultId = id(req.params.resultId, "resultId");
   const actor = getUserContext(req);
   const client = await pool.connect();
@@ -384,6 +389,7 @@ router.patch("/academic/results/:resultId", run(async (req, res) => {
 router.post("/academic/assessments/:assessmentId/publish-results", run(async (req, res) => {
   const body = bodyObject(req.body);
   const schoolId = authorizeSchool(req, body.schoolId, managerRoles);
+  assertSchoolOperationalAccess(req, schoolId, managerRoles as any);
   const assessmentId = id(req.params.assessmentId, "assessmentId");
   const context = getUserContext(req);
   const client = await pool.connect();
@@ -504,6 +510,7 @@ router.get("/academic/report-cards", run(async (req, res) => {
 router.post("/academic/report-cards", run(async (req, res) => {
   const body = bodyObject(req.body);
   const schoolId = authorizeSchool(req, body.schoolId, managerRoles);
+  assertSchoolOperationalAccess(req, schoolId, managerRoles as any);
   const studentId = id(body.studentId, "studentId");
   const sessionId = id(body.sessionId, "sessionId");
   const termId = id(body.termId, "termId");
@@ -576,6 +583,7 @@ router.post("/academic/report-cards", run(async (req, res) => {
 router.post("/academic/report-cards/:id/publish", run(async (req, res) => {
   const body = bodyObject(req.body);
   const schoolId = authorizeSchool(req, body.schoolId, managerRoles);
+  assertSchoolOperationalAccess(req, schoolId, managerRoles as any);
   const cardId = id(req.params.id, "id");
   const context = getUserContext(req);
   const client = await pool.connect();

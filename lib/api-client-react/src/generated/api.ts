@@ -72,11 +72,15 @@ import type {
   BulkAssignFeeStructureParams,
   CardHistoryEntry,
   CardInput,
+  CardReassignmentInput,
   CardReplacementInput,
   CardStatusInput,
   ClassInput,
   ClassSubjectAssignment,
   ClassSubjectAssignmentInput,
+  CompanyEmployee,
+  CompanyEmployeeInput,
+  CompanyEmployeeUpdate,
   ConfirmPeopleImportParams,
   CreateAcademicAssessmentParams,
   CreateAcademicAssessmentTypeParams,
@@ -8287,6 +8291,426 @@ export const useReplaceCard = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getReplaceCardMutationOptions(options));
+    }
+
+export const getReassignCardUrl = (cardId: number,) => {
+
+
+
+
+  return `/api/cards/${cardId}/reassign`
+}
+
+/**
+ * @summary Reassign an NFC card to a student in the same school
+ */
+export const reassignCard = async (cardId: number,
+    cardReassignmentInput: CardReassignmentInput, options?: Parameters<typeof customFetch>[1]): Promise<NfcCard> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NfcCard>(getReassignCardUrl(cardId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(cardReassignmentInput)
+  }
+);}
+
+
+
+
+
+export const getReassignCardMutationKey = () => ['reassignCard'] as const;
+
+export const getReassignCardMutationOptions = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reassignCard>>, TError,ReassignCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reassignCard>>, TError,ReassignCardMutationVariables, TContext> => {
+
+const mutationKey = getReassignCardMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reassignCard>>, ReassignCardMutationVariables> = (props) => {
+          const {cardId,data} = props ?? {};
+
+          return  reassignCard(cardId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReassignCardMutationResult = NonNullable<Awaited<ReturnType<typeof reassignCard>>>
+    export type ReassignCardMutationBody = BodyType<CardReassignmentInput>
+    export type ReassignCardMutationError = ErrorType<void | ForbiddenResponse | NotFoundResponse>
+    export type ReassignCardMutationVariables = {cardId: number;data: BodyType<CardReassignmentInput>}
+
+    /**
+ * @summary Reassign an NFC card to a student in the same school
+ */
+export const useReassignCard = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reassignCard>>, TError,ReassignCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reassignCard>>,
+        TError,
+        ReassignCardMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReassignCardMutationOptions(options));
+    }
+
+export const getListPlatformCompanyEmployeesUrl = () => {
+
+
+
+
+  return `/api/platform/company-employees`
+}
+
+/**
+ * @summary List company employee profiles
+ */
+export const listPlatformCompanyEmployees = async ( options?: Parameters<typeof customFetch>[1]): Promise<CompanyEmployee[]> => {
+
+  return customFetch<CompanyEmployee[]>(getListPlatformCompanyEmployeesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPlatformCompanyEmployeesQueryKey = () => {
+    return [
+    `/api/platform/company-employees`
+    ] as const;
+    }
+
+
+export const getListPlatformCompanyEmployeesQueryOptions = <TData = Awaited<ReturnType<typeof listPlatformCompanyEmployees>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPlatformCompanyEmployees>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPlatformCompanyEmployeesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPlatformCompanyEmployees>>> = ({ signal }) => listPlatformCompanyEmployees({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPlatformCompanyEmployees>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPlatformCompanyEmployeesQueryResult = NonNullable<Awaited<ReturnType<typeof listPlatformCompanyEmployees>>>
+export type ListPlatformCompanyEmployeesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List company employee profiles
+ */
+
+export function useListPlatformCompanyEmployees<TData = Awaited<ReturnType<typeof listPlatformCompanyEmployees>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPlatformCompanyEmployees>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPlatformCompanyEmployeesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePlatformCompanyEmployeeUrl = () => {
+
+
+
+
+  return `/api/platform/company-employees`
+}
+
+/**
+ * @summary Create a company employee profile
+ */
+export const createPlatformCompanyEmployee = async (companyEmployeeInput: CompanyEmployeeInput, options?: Parameters<typeof customFetch>[1]): Promise<CompanyEmployee> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CompanyEmployee>(getCreatePlatformCompanyEmployeeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(companyEmployeeInput)
+  }
+);}
+
+
+
+
+
+export const getCreatePlatformCompanyEmployeeMutationKey = () => ['createPlatformCompanyEmployee'] as const;
+
+export const getCreatePlatformCompanyEmployeeMutationOptions = <TError = ErrorType<void | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPlatformCompanyEmployee>>, TError,CreatePlatformCompanyEmployeeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPlatformCompanyEmployee>>, TError,CreatePlatformCompanyEmployeeMutationVariables, TContext> => {
+
+const mutationKey = getCreatePlatformCompanyEmployeeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPlatformCompanyEmployee>>, CreatePlatformCompanyEmployeeMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPlatformCompanyEmployee(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePlatformCompanyEmployeeMutationResult = NonNullable<Awaited<ReturnType<typeof createPlatformCompanyEmployee>>>
+    export type CreatePlatformCompanyEmployeeMutationBody = BodyType<CompanyEmployeeInput>
+    export type CreatePlatformCompanyEmployeeMutationError = ErrorType<void | ForbiddenResponse>
+    export type CreatePlatformCompanyEmployeeMutationVariables = {data: BodyType<CompanyEmployeeInput>}
+
+    /**
+ * @summary Create a company employee profile
+ */
+export const useCreatePlatformCompanyEmployee = <TError = ErrorType<void | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPlatformCompanyEmployee>>, TError,CreatePlatformCompanyEmployeeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPlatformCompanyEmployee>>,
+        TError,
+        CreatePlatformCompanyEmployeeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreatePlatformCompanyEmployeeMutationOptions(options));
+    }
+
+export const getGetPlatformCompanyEmployeeUrl = (employeeId: number,) => {
+
+
+
+
+  return `/api/platform/company-employees/${employeeId}`
+}
+
+/**
+ * @summary Read a company employee profile
+ */
+export const getPlatformCompanyEmployee = async (employeeId: number, options?: Parameters<typeof customFetch>[1]): Promise<CompanyEmployee> => {
+
+  return customFetch<CompanyEmployee>(getGetPlatformCompanyEmployeeUrl(employeeId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPlatformCompanyEmployeeQueryKey = (employeeId: number,) => {
+    return [
+    `/api/platform/company-employees/${employeeId}`
+    ] as const;
+    }
+
+
+export const getGetPlatformCompanyEmployeeQueryOptions = <TData = Awaited<ReturnType<typeof getPlatformCompanyEmployee>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse>>(employeeId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPlatformCompanyEmployee>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPlatformCompanyEmployeeQueryKey(employeeId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPlatformCompanyEmployee>>> = ({ signal }) => getPlatformCompanyEmployee(employeeId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: employeeId !== null && employeeId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPlatformCompanyEmployee>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPlatformCompanyEmployeeQueryResult = NonNullable<Awaited<ReturnType<typeof getPlatformCompanyEmployee>>>
+export type GetPlatformCompanyEmployeeQueryError = ErrorType<ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary Read a company employee profile
+ */
+
+export function useGetPlatformCompanyEmployee<TData = Awaited<ReturnType<typeof getPlatformCompanyEmployee>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse>>(
+ employeeId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPlatformCompanyEmployee>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPlatformCompanyEmployeeQueryOptions(employeeId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdatePlatformCompanyEmployeeUrl = (employeeId: number,) => {
+
+
+
+
+  return `/api/platform/company-employees/${employeeId}`
+}
+
+/**
+ * @summary Update supported company employee profile fields
+ */
+export const updatePlatformCompanyEmployee = async (employeeId: number,
+    companyEmployeeUpdate: CompanyEmployeeUpdate, options?: Parameters<typeof customFetch>[1]): Promise<CompanyEmployee> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CompanyEmployee>(getUpdatePlatformCompanyEmployeeUrl(employeeId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(companyEmployeeUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdatePlatformCompanyEmployeeMutationKey = () => ['updatePlatformCompanyEmployee'] as const;
+
+export const getUpdatePlatformCompanyEmployeeMutationOptions = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePlatformCompanyEmployee>>, TError,UpdatePlatformCompanyEmployeeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePlatformCompanyEmployee>>, TError,UpdatePlatformCompanyEmployeeMutationVariables, TContext> => {
+
+const mutationKey = getUpdatePlatformCompanyEmployeeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePlatformCompanyEmployee>>, UpdatePlatformCompanyEmployeeMutationVariables> = (props) => {
+          const {employeeId,data} = props ?? {};
+
+          return  updatePlatformCompanyEmployee(employeeId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePlatformCompanyEmployeeMutationResult = NonNullable<Awaited<ReturnType<typeof updatePlatformCompanyEmployee>>>
+    export type UpdatePlatformCompanyEmployeeMutationBody = BodyType<CompanyEmployeeUpdate>
+    export type UpdatePlatformCompanyEmployeeMutationError = ErrorType<void | ForbiddenResponse | NotFoundResponse>
+    export type UpdatePlatformCompanyEmployeeMutationVariables = {employeeId: number;data: BodyType<CompanyEmployeeUpdate>}
+
+    /**
+ * @summary Update supported company employee profile fields
+ */
+export const useUpdatePlatformCompanyEmployee = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePlatformCompanyEmployee>>, TError,UpdatePlatformCompanyEmployeeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePlatformCompanyEmployee>>,
+        TError,
+        UpdatePlatformCompanyEmployeeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdatePlatformCompanyEmployeeMutationOptions(options));
     }
 
 export const getMarkPlatformNotificationReadUrl = (notificationId: number,) => {

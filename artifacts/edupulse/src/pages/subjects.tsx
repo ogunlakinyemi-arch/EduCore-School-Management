@@ -7,11 +7,12 @@ import {
 } from '@workspace/api-client-react';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, 
-  Modal, Field, TenantPicker, useTenant, cx
+  Modal, Field, TenantPicker, useTenant, cx, useSchoolAdminAccess
 } from '@/components/shared';
 
 export function SubjectsPage() {
   const { schoolId, setSchoolId } = useTenant();
+  const { canManageSchool } = useSchoolAdminAccess();
   const [modal, setModal] = useState<any>(null); 
   const qc = useQueryClient();
   
@@ -32,9 +33,9 @@ export function SubjectsPage() {
         action={
           <div className="flex items-center gap-3">
             <TenantPicker />
-            <Button onClick={() => setModal({ create: true })} disabled={!schoolId}>
+            {canManageSchool && <Button onClick={() => setModal({ create: true })} disabled={!schoolId}>
               <Plus size={16} />Add subject
-            </Button>
+            </Button>}
           </div>
         } 
       />
@@ -72,24 +73,24 @@ export function SubjectsPage() {
                 <div>
                   <StatusPill value={subject.status} />
                 </div>
-                <div className="flex items-center gap-2">
+                {canManageSchool && <div className="flex items-center gap-2">
                   {/* Future phase: assignment mapping directly from subject row */}
                   <Button variant="quiet" onClick={() => setModal(subject)}>
                     <Pencil size={15} />Edit
                   </Button>
-                </div>
+                </div>}
               </div>
             )) : (
               <EmptyState 
                 icon={BookOpen} 
                 title="No subjects defined" 
                 description="Begin building the curriculum by adding subjects." 
-                action={<Button onClick={() => setModal({ create: true })}><Plus size={15} />Add subject</Button>} 
+                action={canManageSchool ? <Button onClick={() => setModal({ create: true })}><Plus size={15} />Add subject</Button> : undefined}
               />
             )}
           </div>
           
-          {modal && (
+          {canManageSchool && modal && (
             <Modal title={modal.create ? 'Add Subject' : 'Edit Subject'} eyebrow="Curriculum" onClose={() => setModal(null)}>
               <SubjectForm schoolId={schoolId} initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />
             </Modal>

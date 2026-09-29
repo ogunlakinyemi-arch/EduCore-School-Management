@@ -5,6 +5,7 @@ import {
   ROLES,
   assertRoles,
   assertSchoolAccess,
+  assertSchoolOperationalAccess,
   getUserContext,
   handleAuthError,
   requireAuthentication,
@@ -272,7 +273,7 @@ router.post(
     if (!student.rows[0] || !parent.rows[0] || student.rows[0].schoolId !== parent.rows[0].schoolId) {
       throw new AuthError(404, "Parent or student not found");
     }
-    assertSchoolAccess(req, student.rows[0].schoolId, ["SCHOOL_ADMIN"]);
+    assertSchoolOperationalAccess(req, student.rows[0].schoolId, ["SCHOOL_ADMIN"]);
     const result = await pool.query(
       `INSERT INTO parent_student_relationships
         (parent_id, student_id, relationship_type, is_primary_guardian,
@@ -315,7 +316,7 @@ router.patch(
       [relationshipId],
     );
     if (!existing.rows[0]) throw new AuthError(404, "Relationship not found");
-    assertSchoolAccess(req, existing.rows[0].schoolId, ["SCHOOL_ADMIN"]);
+    assertSchoolOperationalAccess(req, existing.rows[0].schoolId, ["SCHOOL_ADMIN"]);
     const result = await pool.query(
       `UPDATE parent_student_relationships
        SET relationship_type = COALESCE($1, relationship_type),
@@ -362,7 +363,7 @@ router.delete(
       [relationshipId],
     );
     if (!existing.rows[0]) throw new AuthError(404, "Relationship not found");
-    assertSchoolAccess(req, existing.rows[0].schoolId, ["SCHOOL_ADMIN"]);
+    assertSchoolOperationalAccess(req, existing.rows[0].schoolId, ["SCHOOL_ADMIN"]);
     await pool.query(
       `UPDATE parent_student_relationships
        SET status = 'INACTIVE', updated_at = NOW() WHERE id = $1`,
@@ -536,7 +537,7 @@ router.post(
     if (!Number.isInteger(schoolId) || schoolId < 1) {
       throw new AuthError(400, "A valid school context is required");
     }
-    assertSchoolAccess(req, schoolId, ["SCHOOL_ADMIN"]);
+    assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN"]);
     if (!(INVITABLE_SCHOOL_ROLES as readonly string[]).includes(role) || role === "SCHOOL_ADMIN") {
       throw new AuthError(403, "This role cannot be assigned through a school invitation");
     }
@@ -564,7 +565,7 @@ router.post(
     if (!["TEACHER", "ACCOUNTANT", "STAFF", "PARENT", "STUDENT"].includes(role)) {
       throw new AuthError(403, "This role cannot be assigned by a School Administrator");
     }
-    assertSchoolAccess(req, schoolId, ["SCHOOL_ADMIN"]);
+    assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN"]);
     const context = getUserContext(req);
     if (userId === context.user.id) {
       throw new AuthError(403, "You cannot change your own role");
@@ -605,17 +606,41 @@ router.patch(
     const userId = Number(req.params.userId);
     const schoolId = Number(req.body?.schoolId);
     const status = req.body?.status === "INACTIVE" ? "INACTIVE" : "ACTIVE";
-    assertSchoolAccess(req, schoolId, ["SCHOOL_ADMIN"]);
+    assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN"]);
     if (userId === getUserContext(req).user.id) {
       throw new AuthError(403, "You cannot change your own membership status");
+    }
+    const memberships = await pool.query(
+      `SELECT id, role FROM school_memberships
+       WHERE user_id = $1 AND school_id = $2`,
+      [userId, schoolId],
+    );
+    if (memberships.rows.some((membership) => membership.role === "SCHOOL_ADMIN")) {
+      throw new AuthError(403, "School Admin memberships cannot be changed through ordinary school-user controls");
     }
     const result = await pool.query(
       `UPDATE school_memberships SET status = $1, updated_at = NOW()
        WHERE user_id = $2 AND school_id = $3
+         AND NOT EXISTS (
+           SELECT 1 FROM school_memberships admin
+           WHERE admin.user_id = school_memberships.user_id
+             AND admin.school_id = school_memberships.school_id
+             AND admin.role = 'SCHOOL_ADMIN'
+         )
        RETURNING id, user_id AS "userId", school_id AS "schoolId", role, status`,
       [status, userId, schoolId],
     );
-    if (!result.rows[0]) throw new AuthError(404, "School user not found");
+    if (!result.rows[0]) {
+      const adminMembership = await pool.query(
+        `SELECT 1 FROM school_memberships
+         WHERE user_id = $1 AND school_id = $2 AND role = 'SCHOOL_ADMIN' LIMIT 1`,
+        [userId, schoolId],
+      );
+      if (adminMembership.rows[0]) {
+        throw new AuthError(403, "School Admin memberships cannot be changed through ordinary school-user controls");
+      }
+      throw new AuthError(404, "School user not found");
+    }
     await auditSecurityEvent(
       req,
       schoolId,
@@ -641,16 +666,29 @@ router.patch(
       [membershipId],
     );
     if (!existing.rows[0]) throw new AuthError(404, "Membership not found");
-    assertSchoolAccess(req, existing.rows[0].schoolId, ["SCHOOL_ADMIN"]);
+    assertSchoolOperationalAccess(req, existing.rows[0].schoolId, ["SCHOOL_ADMIN"]);
+    if (existing.rows[0].role === "SCHOOL_ADMIN") {
+      throw new AuthError(403, "School Admin memberships cannot be changed through ordinary school-user controls");
+    }
     if (existing.rows[0].userId === getUserContext(req).user.id) {
       throw new AuthError(403, "You cannot change your own role");
     }
     const result = await pool.query(
       `UPDATE school_memberships SET role = $1, updated_at = NOW()
-       WHERE id = $2
+       WHERE id = $2 AND role <> 'SCHOOL_ADMIN'
        RETURNING id, user_id AS "userId", school_id AS "schoolId", role, status`,
       [role, membershipId],
     );
+    if (!result.rows[0]) {
+      const current = await pool.query(
+        `SELECT role FROM school_memberships WHERE id = $1`,
+        [membershipId],
+      );
+      if (current.rows[0]?.role === "SCHOOL_ADMIN") {
+        throw new AuthError(403, "School Admin memberships cannot be changed through ordinary school-user controls");
+      }
+      throw new AuthError(404, "Membership not found");
+    }
     await auditSecurityEvent(
       req,
       existing.rows[0].schoolId,

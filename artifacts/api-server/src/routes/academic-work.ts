@@ -2,6 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from "express"
 import { pool } from "@workspace/db";
 import {
   AuthError,
+  assertSchoolOperationalAccess,
   getUserContext,
   handleAuthError,
   requireAuthentication,
@@ -10,7 +11,7 @@ import {
 const router = Router();
 router.use(requireAuthentication());
 
-const ADMIN = ["SCHOOL_ADMIN", "PLATFORM_OWNER"] as const;
+const ADMIN = ["SCHOOL_ADMIN"] as const;
 const READ_SCHOOL = ["SCHOOL_ADMIN", "PLATFORM_OWNER", "TEACHER"] as const;
 const ASSIGNMENT_STATUSES = ["DRAFT", "PUBLISHED", "CLOSED", "ARCHIVED"] as const;
 const ASSESSMENT_STATUSES = ["DRAFT", "OPEN", "CLOSED", "PUBLISHED", "ARCHIVED"] as const;
@@ -72,9 +73,10 @@ function statusValue(value: unknown, choices: readonly string[], optional = fals
   return value;
 }
 
-function schoolContext(req: Request, raw: unknown, allowed: readonly string[]) {
+function schoolContext(req: Request, raw: unknown, allowed: readonly string[], operational = false) {
   const schoolId = id(raw, "schoolId");
   const context = getUserContext(req);
+  if (operational) assertSchoolOperationalAccess(req, schoolId, allowed as any);
   const permitted = context.roles.some((role) =>
     role.status === "ACTIVE" &&
     allowed.includes(role.role) &&
@@ -332,11 +334,11 @@ router.get("/academic/assignments", asyncRoute(async (req, res) => {
 
 router.post("/academic/assignments", asyncRoute(async (req, res) => {
   const input = assignmentInput(req.body);
-  const { schoolId, context } = schoolContext(req, req.query.schoolId, [...ADMIN, "TEACHER"]);
+  const { schoolId, context } = schoolContext(req, req.query.schoolId, [...ADMIN, "TEACHER"], true);
   const section = (input.section ?? null) as string | null;
   await validateAcademicResource(schoolId, input.sessionId as number, input.termId as number, input.classId as number, input.subjectId as number, section);
   let teacherId: number;
-  const admin = context.roles.some((r) => r.status === "ACTIVE" && (r.role === "PLATFORM_OWNER" ? r.schoolId === null : r.role === "SCHOOL_ADMIN" && r.schoolId === schoolId));
+  const admin = context.roles.some((r) => r.status === "ACTIVE" && r.role === "SCHOOL_ADMIN" && r.schoolId === schoolId);
   if (!admin) {
     teacherId = await validateTeacherAssignment(schoolId, context.user.id, input.sessionId as number, input.termId as number, input.classId as number, input.subjectId as number, section);
     if (input.teacherId !== undefined && input.teacherId !== teacherId) throw new AuthError(403, "Teachers may create assignments only under their own profile");
@@ -379,11 +381,11 @@ router.patch("/academic/assignments/:assignmentId", asyncRoute(async (req, res) 
   const input = assignmentInput(req.body, true);
   if (Object.keys(input).length === 0) throw new AuthError(400, "At least one assignment field is required");
   const schoolId = id(req.query.schoolId, "schoolId");
-  const { context } = schoolContext(req, schoolId, [...ADMIN, "TEACHER"]);
+  const { context } = schoolContext(req, schoolId, [...ADMIN, "TEACHER"], true);
   const target = await pool.query(`SELECT * FROM academic_assignments WHERE id=$1 AND school_id=$2`, [assignmentId, schoolId]);
   const current = target.rows[0];
   if (!current) throw new AuthError(404, "Assignment not found");
-  const admin = context.roles.some((r) => r.status === "ACTIVE" && (r.role === "PLATFORM_OWNER" ? r.schoolId === null : r.role === "SCHOOL_ADMIN" && r.schoolId === schoolId));
+  const admin = context.roles.some((r) => r.status === "ACTIVE" && r.role === "SCHOOL_ADMIN" && r.schoolId === schoolId);
   if (!admin) {
     const teacherId = await validateTeacherAssignment(schoolId, context.user.id, current.academic_session_id, current.academic_term_id, current.school_class_id, current.subject_id, current.section);
     if (!context.roles.some((r) => r.role === "TEACHER" && r.schoolId === schoolId && r.status === "ACTIVE") || teacherId !== current.teacher_employee_id) {
@@ -466,7 +468,7 @@ router.get("/academic/assessment-types", asyncRoute(async (req, res) => {
 }));
 
 router.post("/academic/assessment-types", asyncRoute(async (req, res) => {
-  const { schoolId } = schoolContext(req, req.query.schoolId, ADMIN);
+  const { schoolId } = schoolContext(req, req.query.schoolId, ADMIN, true);
   const body = req.body;
   if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).some((key) => !["name", "code", "status"].includes(key))) {
     throw new AuthError(400, "Assessment type requires name and code, with optional status");
@@ -511,12 +513,12 @@ router.get("/academic/assessments", asyncRoute(async (req, res) => {
 
 router.post("/academic/assessments", asyncRoute(async (req, res) => {
   const input = assessmentInput(req.body);
-  const { schoolId, context } = schoolContext(req, req.query.schoolId, [...ADMIN, "TEACHER"]);
+  const { schoolId, context } = schoolContext(req, req.query.schoolId, [...ADMIN, "TEACHER"], true);
   const section = (input.section ?? null) as string | null;
   await validateAcademicResource(schoolId, input.sessionId as number, input.termId as number, input.classId as number, input.subjectId as number, section);
   const type = await pool.query(`SELECT id FROM academic_assessment_types WHERE id=$1 AND school_id=$2 AND status='ACTIVE'`, [input.assessmentTypeId, schoolId]);
   if (!type.rows[0]) throw new AuthError(404, "Assessment type not found");
-  const admin = context.roles.some((r) => r.status === "ACTIVE" && (r.role === "PLATFORM_OWNER" ? r.schoolId === null : r.role === "SCHOOL_ADMIN" && r.schoolId === schoolId));
+  const admin = context.roles.some((r) => r.status === "ACTIVE" && r.role === "SCHOOL_ADMIN" && r.schoolId === schoolId);
   let teacherEmployeeId: number;
   if (admin) {
     const teacher = input.teacherId === undefined
@@ -550,11 +552,11 @@ router.patch("/academic/assessments/:assessmentId", asyncRoute(async (req, res) 
   const input = assessmentInput(req.body, true);
   if (Object.keys(input).length === 0) throw new AuthError(400, "At least one assessment field is required");
   const schoolId = id(req.query.schoolId, "schoolId");
-  const { context } = schoolContext(req, schoolId, [...ADMIN, "TEACHER"]);
+  const { context } = schoolContext(req, schoolId, [...ADMIN, "TEACHER"], true);
   const target = await pool.query(`SELECT * FROM academic_assessments WHERE id=$1 AND school_id=$2`, [assessmentId, schoolId]);
   const current = target.rows[0];
   if (!current) throw new AuthError(404, "Assessment not found");
-  const admin = context.roles.some((r) => r.status === "ACTIVE" && (r.role === "PLATFORM_OWNER" ? r.schoolId === null : r.role === "SCHOOL_ADMIN" && r.schoolId === schoolId));
+  const admin = context.roles.some((r) => r.status === "ACTIVE" && r.role === "SCHOOL_ADMIN" && r.schoolId === schoolId);
   if (!admin) {
     const teacherEmployeeId = await validateTeacherAssignment(schoolId, context.user.id, current.academic_session_id, current.academic_term_id, current.school_class_id, current.subject_id, current.section);
     if (!context.roles.some((r) => r.role === "TEACHER" && r.schoolId === schoolId && r.status === "ACTIVE") || context.user.id !== current.created_by) {

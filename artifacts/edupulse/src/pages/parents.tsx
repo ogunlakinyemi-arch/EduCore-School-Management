@@ -6,11 +6,12 @@ import {
 } from '@workspace/api-client-react';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, 
-  Modal, Field, TenantPicker, useTenant, cx
+  Modal, Field, TenantPicker, useTenant, cx, useSchoolAdminAccess
 } from '@/components/shared';
 
 export function ParentsPage() {
   const { schoolId, setSchoolId } = useTenant();
+  const { canManageSchool } = useSchoolAdminAccess();
   const [search, setSearch] = useState(''); 
   const [modal, setModal] = useState<any>(null); 
   const qc = useQueryClient();
@@ -32,9 +33,9 @@ export function ParentsPage() {
         action={
           <div className="flex items-center gap-3">
             <TenantPicker />
-            <Button onClick={() => setModal({ create: true })} disabled={!schoolId} testId="button-add-parent">
+            {canManageSchool && <Button onClick={() => setModal({ create: true })} disabled={!schoolId} testId="button-add-parent">
               <Plus size={16} />Add parent
-            </Button>
+            </Button>}
           </div>
         } 
       />
@@ -91,21 +92,21 @@ export function ParentsPage() {
                     <span className="text-xs text-[hsl(var(--muted-foreground))]">enrolled</span>
                   </div>
                 </div>
-                <Button variant="quiet" onClick={() => setModal(parent)} testId={`button-edit-parent-${parent.id}`}>
+                {canManageSchool && <Button variant="quiet" onClick={() => setModal(parent)} testId={`button-edit-parent-${parent.id}`}>
                   <Pencil size={15} />Edit
-                </Button>
+                </Button>}
               </div>
             )) : (
               <EmptyState 
                 icon={UsersRound} 
                 title="No parents found" 
                 description="Try adjusting your search or add a new parent profile." 
-                action={<Button onClick={() => setModal({ create: true })} testId="button-empty-add-parent"><Plus size={15} />Add parent</Button>} 
+                action={canManageSchool ? <Button onClick={() => setModal({ create: true })} testId="button-empty-add-parent"><Plus size={15} />Add parent</Button> : undefined}
               />
             )}
           </div>
           
-          {modal && (
+          {canManageSchool && modal && (
             <Modal title={modal.create ? 'Register parent' : 'Edit parent profile'} eyebrow="Community Records" onClose={() => setModal(null)}>
               <ParentForm schoolId={schoolId} initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />
             </Modal>
