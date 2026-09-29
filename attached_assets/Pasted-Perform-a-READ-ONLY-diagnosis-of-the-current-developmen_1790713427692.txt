@@ -1,0 +1,61 @@
+Perform a READ-ONLY diagnosis of the current development preview showing a blank page.
+
+IMPORTANT:
+
+- Do NOT modify application code.
+- Do NOT modify the database.
+- Do NOT modify migrations or migration ledger.
+- Do NOT change Clerk configuration.
+- Do NOT Publish.
+- Do NOT run drizzle-kit push.
+- Do NOT change production.
+- Do NOT rotate or expose any secrets.
+
+Development preview URL:
+https://f8ad4f13-ad39-4544-9de2-99a39f6d556c-00-1pkz80o0gbypm.riker.replit.dev/
+
+The current authenticated development Platform Owner identity has already been reconciled:
+
+- internal user 309
+- sole active global PLATFORM_OWNER
+- no SCHOOL_ADMIN role
+- 609 API tests passed
+- 27 frontend tests passed
+- typechecks passed
+- frontend build passed
+
+The user reports that opening the development URL on a phone produces a completely blank page.
+
+Investigate only and report:
+
+1. Confirm the development server is currently running and listening.
+2. Confirm the preview URL responds.
+3. Check the HTTP status for "/".
+4. Check whether "/" returns HTML or an unexpected response.
+5. Check browser/client console errors if available.
+6. Check whether the frontend JavaScript bundle referenced by the HTML loads successfully.
+7. Check for failed JS/CSS/network requests.
+8. Check whether React/Vite bootstrapping fails.
+9. Check whether Clerk initialization causes the blank screen.
+10. Check whether an exception occurs before React renders.
+11. Check whether the root element exists in the returned HTML.
+12. Check whether the current Owner authorization changes introduced any frontend runtime error.
+13. Check whether the issue occurs only through the Replit preview URL or also through the local development server.
+14. Check whether the application has a redirect loop.
+15. Check whether Replit's preview/protection layer is involved.
+
+Do not make any fixes.
+
+Return:
+
+- HTTP status for "/"
+- response type
+- server status
+- frontend bundle status
+- relevant console/runtime error
+- relevant server error
+- whether Clerk is implicated
+- whether the problem is frontend, backend, authentication, or Replit preview access
+- exact recommended next step
+
+Do not include cookies, JWTs, authorization headers, API keys, or other credentials.
