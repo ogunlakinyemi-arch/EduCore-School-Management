@@ -1,0 +1,150 @@
+Perform a READ-ONLY diagnosis of TWO Platform Owner portal issues in the DEVELOPMENT environment.
+
+IMPORTANT:
+
+- Do NOT modify application code.
+- Do NOT modify database records.
+- Do NOT modify migrations or migration ledger.
+- Do NOT change Clerk/RBAC configuration.
+- Do NOT Publish.
+- Do NOT run drizzle-kit push.
+- Do NOT change production.
+- Do NOT expose tokens, cookies, API keys, authorization headers, or other credentials.
+
+CURRENT AUTHENTICATION STATUS:
+
+The authenticated development Platform Owner account now opens the platform directly without the Access Pending screen.
+
+The development identity is:
+
+- internal user 309
+- sole active global PLATFORM_OWNER
+- no SCHOOL_ADMIN role
+
+The previous TenantProvider authorization-loop fix is already implemented and verified:
+
+- 609 API tests passed
+- 29 frontend tests passed
+- typechecks passed
+- frontend build passed
+
+ISSUE 1 — OWNER STUDENT DIRECTORY
+
+From the Platform Owner dashboard:
+
+Student Directory → select a school → attempt to view students.
+
+The UI displays:
+
+"Couldn't load this view
+The operations feed took a wrong turn. Retry when your connection is ready."
+
+Diagnose:
+
+1. Identify the exact frontend component/page.
+2. Identify the exact API endpoint(s) called.
+3. Identify the exact request parameters, excluding credentials.
+4. Determine HTTP status.
+5. Capture the sanitized API error/response.
+6. Inspect relevant server logs.
+7. Determine whether Platform Owner authorization succeeds.
+8. Determine whether school scope is being handled correctly.
+9. Determine whether the school ID is valid.
+10. Determine whether the database student query succeeds.
+11. Compare with the equivalent School Admin student-directory request.
+12. Check whether the problem affects all schools or only specific schools.
+13. Check whether the generic "operations feed" message is masking a different underlying error.
+14. Do not fix anything.
+
+ISSUE 2 — OWNER PARTNERS → PAYOUT
+
+From the Platform Owner Partners page:
+
+Partners → select/view payout.
+
+The application navigates to:
+
+"404 Page Not Found"
+
+Diagnose:
+
+1. Identify the exact frontend route/link/action used when clicking the payout view.
+2. Identify which component is expected to handle that route.
+3. Determine whether the route exists in the current development frontend.
+4. Determine whether the route path is incorrect, outdated, or missing.
+5. Check whether the Partner payout page was renamed or moved.
+6. Check whether the route is supposed to be a Platform Owner-only route.
+7. Check whether the current Partner payout API endpoints exist.
+8. Determine whether this is purely a frontend routing problem or whether an API problem is also involved.
+9. Compare the Partner page navigation with the actual routes registered in App.tsx/router configuration.
+10. Do not fix anything.
+
+CROSS-CHECK:
+
+Because both issues occur inside Platform Owner functionality, inspect whether they are symptoms of an incomplete Owner portal implementation rather than isolated failures.
+
+Specifically check:
+
+- Owner Student Directory route and API
+- Owner Partners route
+- Owner Payout route
+- Owner school-selection context
+- Owner navigation definitions
+- route registration
+- API endpoint registration
+- frontend API client paths
+- authorization middleware used by these endpoints
+
+Do not redesign the Owner dashboard.
+
+Do not change School Admin behavior.
+
+Do not grant new permissions.
+
+Do not alter database schema.
+
+Do not modify migration files or migration ledger.
+
+Do not change production.
+
+TESTING:
+
+Use only read-only development checks and existing test fixtures.
+
+Run relevant existing tests if they can be run without modifying persistent development data.
+
+At the end report:
+
+Student Directory
+
+- frontend route/component
+- API endpoint
+- HTTP status
+- sanitized error
+- authorization result
+- database/query result
+- root cause classification
+
+Partner Payout
+
+- clicked route
+- expected route
+- actual route
+- whether route exists
+- relevant component
+- relevant API endpoint
+- root cause classification
+
+Cross-check
+
+- whether the two failures share a common Owner-navigation/routing problem
+
+Safety
+
+- files changed: must be none
+- database changed: must be no
+- migrations changed: must be no
+- production changed: must be no
+- Publish: must be no
+
+Do not implement any fix in this task.
