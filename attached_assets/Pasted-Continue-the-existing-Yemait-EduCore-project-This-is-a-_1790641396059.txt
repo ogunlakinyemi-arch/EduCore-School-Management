@@ -1,0 +1,389 @@
+Continue the existing Yemait EduCore project.
+
+This is a development-only investigation and remediation task focused specifically on the generated Publish development-to-production migration diff.
+
+Do NOT rebuild the application.
+
+Do NOT redesign the database.
+
+Do NOT modify production.
+
+Do NOT publish.
+
+Do NOT remove existing foreign keys.
+
+Do NOT delete NFC data.
+
+Do NOT make a speculative production prerequisite change.
+
+CURRENT KNOWN ISSUE
+
+The checked-in migrations "0000–0019" are correctly ordered.
+
+However, the generated development-to-production Publish SQL diff is NOT correctly ordered.
+
+The current inspected Publish diff contains:
+
+- Statement 109: creates "nfc_card_history_card_school_fk"
+- Statement 242: creates the required "UNIQUE (id, school_id)" key on "nfc_cards"
+
+This causes PostgreSQL to fail because the dependent foreign key is created before the referenced composite uniqueness exists.
+
+The known failure is:
+
+"there is no unique constraint matching given keys"
+
+In a disposable PostgreSQL database:
+
+- the generated order failed
+- reversing statements 109 and 242 succeeded
+
+Development currently has both the composite key and the dependent foreign key.
+
+Production currently has neither.
+
+The goal is to determine why the Publish planner generates this unsafe order and fix the SOURCE OF THE PUBLISH DIFF, not manually patch production.
+
+---
+
+1. INVESTIGATE THE PUBLISH PIPELINE
+
+Inspect the actual mechanism responsible for generating the development-to-production SQL diff.
+
+Determine:
+
+- which migration/schema comparison tool generates the diff
+- how constraints and foreign keys are ordered
+- whether indexes and constraints are represented separately
+- whether PostgreSQL dependency information is being ignored
+- whether the generated diff can be deterministically reordered
+- whether the application/repository contains migration configuration that controls ordering
+- whether Replit's Publish mechanism uses a generated migration plan separate from checked-in migrations
+
+Do not assume the checked-in migration order controls the Publish diff.
+
+The known evidence shows that it currently does not.
+
+---
+
+2. REPRODUCE THE FAILURE SAFELY
+
+Use only disposable development PostgreSQL databases.
+
+Reproduce the exact generated Publish diff if possible.
+
+Confirm:
+
+1. Statement 109 attempts to create the dependent NFC foreign key.
+2. Statement 242 creates the required composite uniqueness.
+3. Running the generated order fails.
+4. Running the dependency-correct order succeeds.
+
+Document the exact dependency relationship.
+
+Do not modify production.
+
+---
+
+3. DETERMINE THE CORRECT DEPENDENCY ORDER
+
+The dependency must be:
+
+FIRST:
+
+"nfc_cards(id, school_id)"
+
+must have a valid PostgreSQL PRIMARY KEY or UNIQUE constraint/index suitable for the composite foreign key.
+
+THEN:
+
+"nfc_card_history(..., school_id)"
+
+may create the dependent composite foreign key.
+
+The migration planner must respect this dependency.
+
+Do not solve this by dropping the foreign key.
+
+Do not solve this by removing tenant integrity.
+
+Do not solve this by deleting NFC history.
+
+---
+
+4. FIND A SAFE SOURCE-LEVEL FIX
+
+Investigate whether the existing Publish/migration generation process can be corrected so that the generated SQL naturally places the prerequisite before the dependent foreign key.
+
+Potential safe approaches may include, only if supported by the existing tooling:
+
+- correcting schema metadata
+- correcting migration dependency metadata
+- correcting constraint declaration order
+- correcting migration generation configuration
+- correcting the Publish diff planner
+- ensuring referenced unique constraints are emitted before dependent foreign keys
+
+Do NOT invent unsupported configuration.
+
+Do NOT assume a manually edited generated SQL file will permanently fix future Publish operations.
+
+The preferred solution is one that makes future Publish diffs generate safely.
+
+---
+
+5. DO NOT CREATE AN UNSAFE WORKAROUND
+
+Do NOT:
+
+- drop "nfc_card_history_card_school_fk"
+- remove the composite NFC relationship
+- remove school_id from the foreign key
+- remove tenant isolation
+- delete NFC history
+- disable PostgreSQL constraint checking
+- use "NOT VALID" merely to bypass the dependency
+- create production-only manual SQL
+- modify production to make the current diff pass
+- reorder unrelated migrations without evidence
+- mark the migration as already applied without actually applying it
+- fake Publish success
+
+If the current Replit Publish system cannot safely control this dependency ordering, stop and report that limitation.
+
+---
+
+6. TEST THE PROPOSED FIX
+
+After making a source-level fix, generate a NEW development-to-production Publish diff.
+
+Do not rely on the old diff.
+
+Verify that the new generated SQL places the required NFC prerequisite BEFORE the dependent foreign key.
+
+Specifically verify that the equivalent of:
+
+"UNIQUE (nfc_cards.id, nfc_cards.school_id)"
+
+is created before:
+
+"nfc_card_history_card_school_fk"
+
+is created.
+
+The exact statement numbers may change. Do not depend on statements 109 and 242.
+
+The important requirement is dependency order.
+
+---
+
+7. DISPOSABLE DATABASE VERIFICATION
+
+Run the new generated migration plan against a disposable PostgreSQL database.
+
+Test:
+
+Test A — Clean database
+
+Apply the complete migration plan.
+
+Expected:
+
+PASS.
+
+Test B — Populated database
+
+Use a populated disposable database containing:
+
+- two schools
+- students
+- NFC cards
+- NFC card history
+- attendance
+- devices
+- device assignment history
+- finance data
+
+Apply the generated migration plan.
+
+Expected:
+
+PASS.
+
+Test C — NFC history
+
+Verify existing NFC history remains intact.
+
+Test D — Cross-school integrity
+
+Attempt an invalid cross-school NFC history relationship.
+
+Expected:
+
+REJECTED.
+
+Test E — Device reassignment history
+
+Verify historical school binding remains intact after device reassignment.
+
+Test F — Foreign-key enforcement
+
+Verify the composite NFC foreign key remains enforced.
+
+---
+
+8. VERIFY THE ACTUAL GENERATED PUBLISH DIFF
+
+This is critical.
+
+Do NOT report success merely because:
+
+- checked-in migrations pass
+- development database already contains the constraint
+- a manually reordered SQL file works
+
+The actual newly generated Publish diff must be inspected.
+
+Report:
+
+- old ordering
+- root cause
+- source-level fix
+- new ordering
+- why the new ordering is deterministic
+- whether future Publish generation will preserve the dependency
+
+---
+
+9. REGRESSION TESTS
+
+After the fix, run the existing test suite.
+
+Previous baseline:
+
+257/257 API tests passed across 37 files.
+
+Do not reduce the baseline.
+
+Also run:
+
+- typecheck
+- frontend build
+- backend build
+- migration validation
+- clean database replay
+- populated database replay
+- NFC tests
+- attendance regression tests
+- tenant-isolation tests
+- finance regression tests
+- API health check
+- web health check
+
+---
+
+10. PRODUCTION SAFETY
+
+Production must remain completely untouched.
+
+Explicitly confirm:
+
+- no production schema modification
+- no production data modification
+- no production NFC constraint modification
+- no production financial modification
+- no production secrets changed
+- no deployment
+- no Publish
+- no live payment
+- no Paystack transaction
+- no Flutterwave transaction
+- no Remita transaction
+
+Read-only inspection of production is acceptable.
+
+---
+
+11. IF A SAFE SOURCE-LEVEL FIX IS NOT POSSIBLE
+
+Do NOT force a solution.
+
+If the Replit Publish planner cannot safely guarantee dependency ordering, report:
+
+"PUBLISH PLANNER LIMITATION — SAFE AUTOMATIC FIX NOT AVAILABLE"
+
+Then explain:
+
+- where the dependency is lost
+- why checked-in migrations cannot control the generated Publish diff
+- what supported mechanism would be required
+- whether a staged prerequisite deployment would be required
+- whether such a staged deployment would require explicit approval
+
+Do not perform the staged production change.
+
+---
+
+12. FINAL REPORT
+
+Return exactly these sections:
+
+A. Root Cause
+
+Explain why the Publish diff creates the dependent FK before the referenced composite key.
+
+B. Publish Planner Fix
+
+State whether a safe source-level fix was found.
+
+C. New Generated Publish Diff
+
+Show the relevant NFC dependency ordering and explain why it is now safe.
+
+D. Disposable Database Results
+
+Report clean and populated replay results.
+
+E. NFC Regression
+
+Report:
+
+- NFC card integrity
+- NFC history
+- attendance
+- device reassignment
+- school isolation
+- foreign-key enforcement
+
+F. Regression Tests
+
+Report:
+
+- API tests
+- typecheck
+- frontend build
+- backend build
+- migration tests
+- health checks
+
+G. Production Safety
+
+Explicitly confirm whether production remained untouched.
+
+H. Remaining Blockers
+
+List anything still preventing safe Publish.
+
+FINAL STATUS
+
+If the actual generated Publish diff is now dependency-safe and all disposable tests pass, report:
+
+NFC PUBLISH ORDERING — RESOLVED IN DEVELOPMENT
+
+If the actual Publish planner cannot safely be corrected without a production prerequisite change, report:
+
+NFC PUBLISH ORDERING — NOT RESOLVED
+
+Do not claim the application is ready for production unless the actual generated Publish migration has been demonstrated to succeed safely.
+
+Do not start Phase 8.
