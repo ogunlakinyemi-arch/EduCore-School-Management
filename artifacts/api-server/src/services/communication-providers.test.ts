@@ -45,15 +45,37 @@ describe("communication provider adapters", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("fails closed when Termii is selected without its required credentials", () => {
-    try {
-      createSmsProvider({ COMMUNICATION_SMS_PROVIDER: "termii" });
-      throw new Error("Expected missing Termii credentials to fail closed");
-    } catch (error) {
-      expect(error).toBeInstanceOf(CommunicationProviderConfigurationError);
-      expect((error as CommunicationProviderConfigurationError).code).toBe("COMMUNICATION_PROVIDER_NOT_CONFIGURED");
-      expect((error as Error).message).not.toContain("api_key");
-    }
+  it("simulates Termii safely when it is selected without an approved sender ID", async () => {
+    const fetch = vi.fn();
+    const provider = createSmsProvider({
+      COMMUNICATION_SMS_PROVIDER: "termii",
+      TERMII_API_KEY: "test-termii-secret",
+    }, { fetch: fetch as unknown as typeof globalThis.fetch });
+
+    const result = await provider.send({ to: "+2348012345678", body: "Development update" });
+
+    expect(result).toMatchObject({
+      provider: "development-sms",
+      status: "SIMULATED",
+      accepted: false,
+      delivered: false,
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("still rejects Termii configuration with a sender ID but no API key", () => {
+    expect(() => createSmsProvider({
+      COMMUNICATION_SMS_PROVIDER: "termii",
+      TERMII_SENDER_ID: "ApprovedSender",
+    })).toThrow(CommunicationProviderConfigurationError);
+  });
+
+  it("fails closed in production when Termii has no approved sender ID", () => {
+    expect(() => createSmsProvider({
+      NODE_ENV: "production",
+      COMMUNICATION_SMS_PROVIDER: "termii",
+      TERMII_API_KEY: "test-termii-secret",
+    })).toThrow(CommunicationProviderConfigurationError);
   });
 
   it("fails closed when the selected email gateway is missing credentials", () => {
@@ -89,6 +111,85 @@ describe("communication provider adapters", () => {
       delivered: false,
       providerMessageId: "termii-message-17",
     });
+  });
+
+  it.each([
+    ["08012345678", "+2348012345678"],
+    ["080 1234 5678", "+2348012345678"],
+    ["8012345678", "+2348012345678"],
+    ["2348012345678", "+2348012345678"],
+    ["002348012345678", "+2348012345678"],
+  ])("normalizes an approved Nigerian phone format %s before sending", async (phone, expected) => {
+    const fetch = fakeFetch(new Response(JSON.stringify({ code: "ok" }), { status: 200 }));
+    const provider = createSmsProvider({
+      COMMUNICATION_SMS_PROVIDER: "termii",
+      TERMII_API_KEY: "test-termii-secret",
+      TERMII_SENDER_ID: "ApprovedSender",
+    }, { fetch });
+
+    const result = await provider.send({ to: phone, body: "School update" });
+    const request = vi.mocked(fetch).mock.calls[0]?.[1];
+
+    expect(result.status).toBe("ACCEPTED");
+    expect(JSON.parse(String(request?.body)).to).toBe(expected);
+  });
+
+  it.each([
+    "not-a-phone",
+    "parent@example.test",
+    "123",
+    "+23408012345678",
+    "0023408012345678",
+    "++2348012345678",
+    "0801234567",
+    "080123456789",
+    "+0123456789",
+  ])("rejects malformed Termii recipient %s without a provider call or recipient leakage", async phone => {
+    const fetch = vi.fn();
+    const events: unknown[] = [];
+    const provider = createSmsProvider({
+      COMMUNICATION_SMS_PROVIDER: "termii",
+      TERMII_API_KEY: "test-termii-secret",
+      TERMII_SENDER_ID: "ApprovedSender",
+    }, {
+      fetch: fetch as unknown as typeof globalThis.fetch,
+      onFailure: event => events.push(event),
+    });
+
+    const result = await provider.send({ to: phone, body: "Private message" });
+    const safeOutput = JSON.stringify({ result, events });
+
+    expect(result).toMatchObject({
+      status: "FAILED",
+      failure: { category: "INVALID_REQUEST", retryable: false },
+    });
+    expect(fetch).not.toHaveBeenCalled();
+    expect(safeOutput).not.toContain(phone);
+    expect(safeOutput).not.toContain("test-termii-secret");
+    expect(safeOutput).not.toContain("Private message");
+  });
+
+  it.each([
+    [408, "TIMEOUT", true],
+    [500, "PROVIDER_REJECTED", true],
+    [422, "INVALID_REQUEST", false],
+  ] as const)("classifies Termii HTTP %s safely without response-body leakage", async (status, category, retryable) => {
+    const events: unknown[] = [];
+    const fetch = fakeFetch(new Response("secret=token; recipient=private", { status }));
+    const provider = createSmsProvider({
+      COMMUNICATION_SMS_PROVIDER: "termii",
+      TERMII_API_KEY: "test-termii-secret",
+      TERMII_SENDER_ID: "ApprovedSender",
+    }, { fetch, onFailure: event => events.push(event) });
+
+    const result = await provider.send({ to: "+2348012345678", body: "Private message" });
+    const safeOutput = JSON.stringify({ result, events });
+
+    expect(result.failure).toEqual({ category, retryable });
+    expect(safeOutput).not.toContain("test-termii-secret");
+    expect(safeOutput).not.toContain("+2348012345678");
+    expect(safeOutput).not.toContain("Private message");
+    expect(safeOutput).not.toContain("recipient=private");
   });
 
   it("does not expose credentials or provider response bodies in failed SMS results or logs", async () => {

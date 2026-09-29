@@ -18,10 +18,15 @@ export function configuredTestAdapter(
     if (!secretKey) return null;
     return new PaystackTestAdapter({ secretKey });
   }
-  const secretKey = process.env.FLUTTERWAVE_TEST_SECRET_KEY;
+  const legacyTestSecret = process.env.FLUTTERWAVE_TEST_SECRET_KEY;
+  const configuredSecret = process.env.FLUTTERWAVE_SECRET_KEY;
   const webhookSecret = process.env.FLUTTERWAVE_WEBHOOK_VERIF_HASH;
-  if (!secretKey || !webhookSecret) return null;
-  return new FlutterwaveTestAdapter({ secretKey, webhookSecret });
+  const configuredSecrets = [legacyTestSecret, configuredSecret]
+    .filter((value): value is string => Boolean(value));
+  if (new Set(configuredSecrets).size > 1) return null;
+  const secretKey = configuredSecrets[0];
+  if (!secretKey) return null;
+  return new FlutterwaveTestAdapter({ secretKey, webhookSecret: webhookSecret || undefined });
 }
 
 export function configuredCheckoutReturnUrl(): string | null {

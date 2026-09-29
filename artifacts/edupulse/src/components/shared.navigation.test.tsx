@@ -12,16 +12,27 @@ const state = vi.hoisted(() => ({
       { role: 'STUDENT', schoolId: 12, status: 'ACTIVE' },
     ],
   } as any,
+  ownerDirectoryCalls: [] as any[],
 }));
 
-vi.mock('@clerk/react', () => ({ UserButton: () => <div>User account</div> }));
+vi.mock('@clerk/react', () => ({
+  UserButton: () => <div>User account</div>,
+  useAuth: () => ({ userId: 'owner-test-user', isLoaded: true }),
+}));
 vi.mock('./fee-payment-notifications', () => ({ FeePaymentNotifications: () => null }));
+vi.mock('@/pages/communication-inbox', () => ({ CommunicationInboxBadge: () => null }));
 vi.mock('@workspace/api-client-react', () => ({
   useGetAuthorizedContext: () => ({ data: state.context, isLoading: false }),
   useGetCurrentUserSchools: () => ({ data: [] }),
   getGetCurrentUserSchoolsQueryKey: () => ['user-schools'],
-  useListSchools: () => ({ data: [{ id: 12, name: 'North School' }] }),
-  getListSchoolsQueryKey: () => ['schools'],
+  useListOwnerSchoolDirectory: (params: any, options: any) => {
+    state.ownerDirectoryCalls.push({ params, options });
+    return { data: { schools: [
+      { id: 12, name: 'North School' },
+      { id: 13, name: 'Suspended School' },
+    ] }, isLoading: false };
+  },
+  getListOwnerSchoolDirectoryQueryKey: (params: any) => ['owner-school-directory', params],
   useListPlatformNotifications: () => ({ data: [] }),
   getListPlatformNotificationsQueryKey: () => ['platform-notifications'],
 }));
@@ -30,7 +41,7 @@ vi.mock('wouter', () => ({
   Link: ({ href, children, ...props }: any) => <a href={href} {...props}>{children}</a>,
 }));
 
-import { Shell } from './shared';
+import { Shell, TenantSessionBoundary } from './shared';
 
 describe('Platform Owner navigation', () => {
   beforeEach(() => {
@@ -44,6 +55,7 @@ describe('Platform Owner navigation', () => {
         { role: 'STUDENT', schoolId: 12, status: 'ACTIVE' },
       ],
     };
+    state.ownerDirectoryCalls = [];
   });
 
   it('keeps platform links and hides school-operation links even for a mixed-role Owner', () => {
@@ -57,5 +69,53 @@ describe('Platform Owner navigation', () => {
     for (const href of ['/parents', '/employees', '/academics', '/subjects', '/classes', '/academic-work', '/results', '/timetable', '/attendance', '/finance', '/people/imports', '/my-academics', '/my-fees']) {
       expect(html).not.toContain(`href="${href}"`);
     }
+    expect(html).toContain('aria-label="Owner school context"');
+    expect(html).toContain('Suspended School');
+    expect(state.ownerDirectoryCalls.some(call => call.params.status === 'all')).toBe(true);
+  });
+
+  it('does not show the Owner context selector to a School Admin', () => {
+    state.context = {
+      isPlatformOwner: false,
+      user: { name: 'School Admin' },
+      roles: [{ role: 'SCHOOL_ADMIN', schoolId: 12, status: 'ACTIVE' }],
+    };
+
+    const html = renderToStaticMarkup(<Shell><div>School content</div></Shell>);
+
+    expect(html).not.toContain('Owner school context');
+    expect(html).not.toContain('Suspended School');
+  });
+});
+
+describe('tenant session isolation', () => {
+  it('does not render the prior account context while a new identity is loading', () => {
+    const html = renderToStaticMarkup(
+      <TenantSessionBoundary
+        session={{ userId: 'owner-account', status: 'ready', context: { isPlatformOwner: true } } as any}
+        currentUserId="school-account"
+        isLoaded
+      >
+        <div>Prior account dashboard</div>
+      </TenantSessionBoundary>,
+    );
+
+    expect(html).not.toContain('Prior account dashboard');
+  });
+
+  it('keeps application children hidden when fetching the new account context fails', () => {
+    const html = renderToStaticMarkup(
+      <TenantSessionBoundary
+        session={{ userId: 'school-account', status: 'error' }}
+        currentUserId="school-account"
+        isLoaded
+      >
+        <div>Prior account dashboard</div>
+      </TenantSessionBoundary>,
+    );
+
+    expect(html).toContain('tenant-context-error');
+    expect(html).toContain('Could not verify your account context');
+    expect(html).not.toContain('Prior account dashboard');
   });
 });

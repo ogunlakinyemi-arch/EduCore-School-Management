@@ -592,13 +592,21 @@ async function loadDispatchRecord(
        n.body,
        u.email,
        COALESCE(NULLIF(u.phone, ''), NULLIF(p.phone, '')) AS phone,
-        (
-          (
-            n.school_id IS NULL
-            AND n.subject_student_id IS NULL
-            AND n.subject_class_id IS NULL
-          )
-         OR (
+         (
+           NOT EXISTS (
+             SELECT 1 FROM school_memberships owner_role
+             WHERE owner_role.user_id = u.id
+               AND owner_role.school_id IS NULL
+               AND owner_role.role = 'PLATFORM_OWNER'
+               AND UPPER(owner_role.status) = 'ACTIVE'
+           )
+           AND (
+             (
+               n.school_id IS NULL
+               AND n.subject_student_id IS NULL
+               AND n.subject_class_id IS NULL
+             )
+             OR (
             n.school_id IS NOT NULL
             AND
            LOWER(COALESCE(s.status, '')) = 'active'
@@ -628,13 +636,6 @@ async function loadDispatchRecord(
                   AND pa.school_id = n.school_id
                   AND UPPER(pa.status) = 'ACTIVE'
              )
-           )
-           AND NOT EXISTS (
-             SELECT 1 FROM school_memberships owner_role
-             WHERE owner_role.user_id = u.id
-               AND owner_role.school_id IS NULL
-               AND owner_role.role = 'PLATFORM_OWNER'
-               AND UPPER(owner_role.status) = 'ACTIVE'
            )
             AND (
               n.subject_student_id IS NULL
@@ -699,7 +700,8 @@ async function loadDispatchRecord(
                   )
               )
             )
-          )
+             )
+           )
        ) AS "schoolAuthorized",
        u.status AS "userStatus"
      FROM communication_deliveries d

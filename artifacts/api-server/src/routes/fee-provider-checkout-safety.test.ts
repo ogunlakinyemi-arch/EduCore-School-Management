@@ -80,6 +80,7 @@ afterAll(async () => new Promise<void>((resolve, reject) =>
 beforeEach(() => {
   vi.stubEnv("PAYSTACK_TEST_SECRET_KEY", "sk_test_safety_fixture_123456789");
   vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", "FLWSECK_TEST-safety_fixture_123456789");
+  vi.stubEnv("FLUTTERWAVE_SECRET_KEY", "");
   vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", "flutterwave-safety-fixture-secret");
   vi.stubEnv("FEE_PAYMENT_RETURN_URL", "https://school.example/fees/return");
   db.role = "PARENT";
@@ -381,8 +382,8 @@ beforeEach(() => {
   });
 });
 
-function initialize(idempotencyKey = "checkout-parent-41") {
-  return httpFetch(`${baseUrl}/parent/fees/invoices/${db.invoiceId}/providers/PAYSTACK/initialize`, {
+function initialize(idempotencyKey = "checkout-parent-41", provider = "PAYSTACK") {
+  return httpFetch(`${baseUrl}/parent/fees/invoices/${db.invoiceId}/providers/${provider}/initialize`, {
     method: "POST",
     headers: { "Idempotency-Key": idempotencyKey, "content-type": "application/json" },
   });
@@ -612,6 +613,47 @@ describe("online checkout reservation and claim safety", () => {
     expect(response.status).toBe(201);
     expect(await response.json()).toMatchObject({ amountMinor: 1200, checkoutUrl: "https://checkout.paystack.com/remaining" });
     expect(transport).toHaveBeenCalledTimes(1);
+  });
+
+  it("settles Flutterwave only after scoped admin reconciliation when the webhook hash is absent", async () => {
+    vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", "");
+    vi.stubEnv("FLUTTERWAVE_SECRET_KEY", "FLWSECK_TEST-safety_fixture_123456789");
+    vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", "");
+    let reference = "";
+    const transport = vi.fn(async (url: URL, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        expect(url.pathname).toBe("/v3/payments");
+        reference = JSON.parse(String(init.body)).tx_ref;
+        return new Response(JSON.stringify({
+          status: "success", data: { link: "https://checkout.flutterwave.com/test-session" },
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (url.pathname === "/v3/transactions") {
+        expect(url.searchParams.get("tx_ref")).toBe(reference);
+        return new Response(JSON.stringify({
+          status: "success", data: [{ id: 456, tx_ref: reference }],
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      expect(url.pathname).toBe("/v3/transactions/456/verify");
+      return new Response(JSON.stringify({ status: "success", data: {
+        id: 456, status: "successful", tx_ref: reference, amount: 56, currency: "NGN",
+      } }), { status: 200, headers: { "content-type": "application/json" } });
+    });
+    vi.stubGlobal("fetch", transport);
+
+    const initialized = await initialize("flutterwave-without-webhook-hash", "FLUTTERWAVE");
+    expect(initialized.status).toBe(201);
+    expect(db.session).toMatchObject({ state: "READY", provider: "FLUTTERWAVE" });
+
+    const reconciled = await reconcileCheckout();
+    expect(reconciled.status).toBe(200);
+    expect(await reconciled.json()).toMatchObject({ paymentId: 88, outcome: "verified" });
+    expect(db.payment).toMatchObject({ status: "VERIFIED", provider_transaction_id: "456" });
+    expect(db.session).toMatchObject({ state: "SETTLED" });
+    expect(db.paidMinor).toBe(5600);
+    expect(db.outstandingMinor).toBe(0);
+    expect(db.receipt).not.toBeNull();
+    expect(transport).toHaveBeenCalledTimes(3);
   });
 
   it("releases an abandoned checkout only after an exact provider-confirmed terminal failure", async () => {

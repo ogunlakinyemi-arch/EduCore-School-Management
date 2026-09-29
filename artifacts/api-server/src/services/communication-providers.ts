@@ -92,6 +92,29 @@ export class CommunicationProviderConfigurationError extends Error {
 const DEFAULT_TIMEOUT_MS = 8_000;
 const DEFAULT_FROM_NAME = "Yemait EduCore";
 const SAFE_PROVIDER_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/;
+const NIGERIAN_MOBILE_PREFIX = "(?:70|80|81|90|91)";
+const NIGERIAN_MOBILE_NUMBER = /^(?:70|80|81|90|91)\d{8}$/;
+const NIGERIAN_LOCAL_MOBILE = new RegExp(`^0${NIGERIAN_MOBILE_PREFIX}\\d{8}$`);
+const NIGERIAN_INTERNATIONAL_MOBILE = new RegExp(`^234${NIGERIAN_MOBILE_PREFIX}\\d{8}$`);
+
+function normalizeTermiiRecipient(value: string): string | null {
+  if (typeof value !== "string" || value.trim().length === 0) return null;
+  const trimmed = value.trim();
+  if (!/^[+()\d\s-]+$/.test(trimmed)) return null;
+  const compact = trimmed.replace(/[\s()-]/g, "");
+
+  if (/^(?:\+234|00234)0/.test(compact)) return null;
+  if (/^\+[1-9]\d{7,14}$/.test(compact)) return compact;
+  if (/^00[1-9]\d{7,14}$/.test(compact)) return `+${compact.slice(2)}`;
+  if (NIGERIAN_LOCAL_MOBILE.test(compact)) {
+    return `+234${compact.slice(1)}`;
+  }
+  if (NIGERIAN_MOBILE_NUMBER.test(compact)) return `+234${compact}`;
+  if (NIGERIAN_INTERNATIONAL_MOBILE.test(compact)) {
+    return `+${compact}`;
+  }
+  return null;
+}
 
 function emitSafeFailure(
   event: CommunicationProviderLogEvent,
@@ -257,7 +280,8 @@ export class TermiiSmsProvider implements SmsProvider {
   }
 
   async send(message: SmsMessage): Promise<ProviderSendResult> {
-    if (!isValidMessagePart(message.to) || !isValidMessagePart(message.body)) {
+    const recipient = normalizeTermiiRecipient(message.to);
+    if (!recipient || !isValidMessagePart(message.body)) {
       return failedResult(this.provider, this.channel, "INVALID_REQUEST", false, this.onFailure);
     }
 
@@ -268,7 +292,7 @@ export class TermiiSmsProvider implements SmsProvider {
         redirect: "error",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          to: message.to,
+          to: recipient,
           from: this.senderId,
           sms: message.body,
           type: "plain",
@@ -414,7 +438,13 @@ export function createSmsProvider(
   if (selected !== "termii") {
     throw new CommunicationProviderConfigurationError("sms", selected);
   }
-  if (!env.TERMII_API_KEY || !env.TERMII_SENDER_ID) {
+  if (!env.TERMII_SENDER_ID) {
+    if (env.NODE_ENV !== "production") {
+      return new DevelopmentCommunicationProvider("sms");
+    }
+    throw new CommunicationProviderConfigurationError("sms", selected);
+  }
+  if (!env.TERMII_API_KEY) {
     throw new CommunicationProviderConfigurationError("sms", selected);
   }
   return new TermiiSmsProvider(

@@ -393,9 +393,16 @@ export function SchoolOverview() {
         title={school?.name ?? 'School overview'} 
         description={`${school?.city}, ${school?.state} · joined ${date(school?.createdAt)}`} 
         action={
-          <Button variant="outline" onClick={() => { setSchoolId(schoolId); setLocation('/students'); }} testId="button-open-school-directory">
-            <GraduationCap size={16} />Open directory
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {isPlatformOwner && (
+              <Button variant="outline" onClick={() => { setSchoolId(schoolId); setLocation('/'); }} testId="button-open-owner-dashboard">
+                <BarChart3 size={16} />Open dashboard snapshot
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => { setSchoolId(schoolId); setLocation('/students'); }} testId="button-open-school-directory">
+              <GraduationCap size={16} />Open directory
+            </Button>
+          </div>
         } 
       />
       

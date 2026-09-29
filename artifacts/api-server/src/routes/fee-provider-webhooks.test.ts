@@ -71,6 +71,7 @@ function useFlutterwave(verification: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.stubEnv("PAYSTACK_TEST_SECRET_KEY", paystackSecret);
   vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", flutterwaveSecret);
+  vi.stubEnv("FLUTTERWAVE_SECRET_KEY", "");
   vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", flutterwaveWebhookSecret);
   vi.stubEnv("FEE_PAYMENT_RETURN_URL", "https://school.example/fees/return");
   fake.payment = {
@@ -700,6 +701,28 @@ describe("public fee-provider webhook settlement", () => {
     expect(fake.events.size).toBe(0);
     expect(fake.payment.status).toBe("PENDING");
     expect(fake.invoice.paid_minor).toBe(0);
+  });
+
+  it("rejects unsigned Flutterwave webhooks when the dedicated hash is absent", async () => {
+    vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", "");
+    vi.stubEnv("FLUTTERWAVE_SECRET_KEY", flutterwaveSecret);
+    vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", "");
+    const transport = vi.fn();
+    vi.stubGlobal("fetch", transport);
+    fake.poolQuery.mockClear();
+    fake.connect.mockClear();
+
+    const result = await httpFetch(`${baseUrl}/flutterwave`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: flutterwaveWebhook(),
+    });
+
+    expect(result.status).toBe(401);
+    expect(await result.json()).toMatchObject({ error: "Webhook verification failed" });
+    expect(transport).not.toHaveBeenCalled();
+    expect(fake.poolQuery).not.toHaveBeenCalled();
+    expect(fake.connect).not.toHaveBeenCalled();
   });
 
   it("does not attach an authenticated Flutterwave event to another provider's matching reference", async () => {

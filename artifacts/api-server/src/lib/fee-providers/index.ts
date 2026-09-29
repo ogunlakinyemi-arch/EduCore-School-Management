@@ -355,14 +355,14 @@ export class PaystackTestAdapter extends HttpPaymentAdapter {
 
 export interface FlutterwaveAdapterConfig {
   secretKey: string;
-  webhookSecret: string;
+  webhookSecret?: string;
 }
 
 export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
   readonly provider = "flutterwave" as const;
   protected readonly baseUrl = "https://api.flutterwave.com/v3/";
   private readonly secretKey: string;
-  private readonly webhookSecret: string;
+  private readonly webhookSecret: string | null;
 
   constructor(config: FlutterwaveAdapterConfig, options: AdapterHttpOptions = {}) {
     super(options);
@@ -370,11 +370,14 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
       throw new PaymentProviderError("Flutterwave test-mode configuration is required");
     }
     assertTestSecret(config.secretKey, "flutterwave");
-    if (typeof config.webhookSecret !== "string" || config.webhookSecret.length < 16) {
+    if (config.webhookSecret !== undefined && config.webhookSecret !== ""
+        && (typeof config.webhookSecret !== "string" || config.webhookSecret.length < 16)) {
       throw new PaymentProviderError("Flutterwave webhook verification hash is required");
     }
     this.secretKey = config.secretKey;
-    this.webhookSecret = config.webhookSecret;
+    this.webhookSecret = typeof config.webhookSecret === "string" && config.webhookSecret.length > 0
+      ? config.webhookSecret
+      : null;
   }
 
   async initializePayment(input: InitializePaymentInput): Promise<InitializePaymentResult> {
@@ -448,7 +451,7 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
 
   async handleWebhook(input: WebhookInput): Promise<WebhookResult> {
     const signature = headerValue(input.headers, "verif-hash");
-    if (!signature || !compareTextConstantTime(signature, this.webhookSecret)) {
+    if (!this.webhookSecret || !signature || !compareTextConstantTime(signature, this.webhookSecret)) {
       throw new PaymentProviderError("Flutterwave webhook verification hash is invalid");
     }
     try {

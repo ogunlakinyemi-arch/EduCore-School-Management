@@ -389,6 +389,32 @@ describe("communication delivery dispatcher", () => {
     expect(cancel).toBeDefined();
   });
 
+  it("rejects platform owners from unscoped delivery during final authorization", async () => {
+    const { pool, calls } = dispatchPool({
+      record: {
+        id: 42, channel: "SMS", notificationId: 33, recipientUserId: 17, schoolId: null,
+        subjectStudentId: null, subjectClassId: null, category: "SYSTEM", eventKey: null,
+        subject: "System update", body: "Message", email: null, phone: "+2348012345678",
+        schoolAuthorized: false, userStatus: "ACTIVE",
+      },
+    });
+    const send = vi.fn(async () => ({
+      provider: "test-sms", channel: "sms" as const, status: "ACCEPTED" as const,
+      accepted: true, delivered: false,
+    }));
+
+    const summary = await dispatchCommunicationDeliveries(pool, 5, { providers: testProviders(send) });
+
+    expect(send).not.toHaveBeenCalled();
+    expect(summary.skipped).toBe(1);
+    const authorization = calls.find(call => call.sql.includes('AS "schoolAuthorized"'));
+    expect(authorization?.sql).toContain("owner_role.role = 'PLATFORM_OWNER'");
+    expect(authorization?.sql.indexOf("owner_role.role")).toBeLessThan(
+      authorization?.sql.indexOf("n.school_id IS NULL") ?? -1,
+    );
+    expect(calls.some(call => call.sql.includes("RECIPIENT_UNAUTHORIZED"))).toBe(true);
+  });
+
   it("cancels subject-student deliveries when the recipient's active parent-child link was revoked", async () => {
     const { pool, calls } = dispatchPool({
       record: {
@@ -464,6 +490,42 @@ describe("communication delivery dispatcher", () => {
     expect(update?.values?.[9]).toBe("Provider delivery failed (rate limited).");
     expect(update?.values?.[10]).toBeNull();
     expect(update?.values?.[11]).toBe("2026-08-01T10:00:30.000Z");
+  });
+
+  it("does not schedule retries for an invalid Termii recipient", async () => {
+    const { pool, calls } = dispatchPool({
+      record: {
+        id: 42, channel: "SMS", notificationId: 33, recipientUserId: 17, schoolId: 9,
+        subjectStudentId: null, subjectClassId: null, category: "ANNOUNCEMENT",
+        eventKey: "campaign-9-1-user-17", subject: "Update", body: "Message",
+        email: null, phone: "not-a-phone", schoolAuthorized: true, userStatus: "ACTIVE",
+      },
+    });
+    const send = vi.fn(async () => ({
+      provider: "termii",
+      channel: "sms" as const,
+      status: "FAILED" as const,
+      accepted: false,
+      delivered: false,
+      failure: { category: "INVALID_REQUEST" as const, retryable: false },
+    }));
+
+    const summary = await dispatchCommunicationDeliveries(pool, 5, {
+      providers: testProviders(send),
+      now: () => new Date("2026-08-01T10:00:00.000Z"),
+    });
+
+    expect(send).toHaveBeenCalledWith({
+      to: "not-a-phone",
+      body: "Message",
+      idempotencyKey: "communication-33-sms",
+    });
+    expect(summary.failed).toBe(1);
+    const update = calls.find(call => call.sql.includes("provider_message_id"));
+    expect(update?.values?.[8]).toBe("INVALID_REQUEST");
+    expect(update?.values?.[9]).toBe("Provider delivery failed (invalid request).");
+    expect(update?.values?.[10]).toBe(5);
+    expect(update?.values?.[11]).toBe("2026-08-01T10:00:00.000Z");
   });
 
   it("does not retry ambiguous network outcomes that may have been accepted", async () => {

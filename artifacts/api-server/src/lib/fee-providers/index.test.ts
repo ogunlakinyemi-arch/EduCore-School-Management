@@ -367,6 +367,122 @@ describe("fee payment provider adapters", () => {
     }
   });
 
+  it("uses FLUTTERWAVE_SECRET_KEY as a strictly validated test key", () => {
+    vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", "");
+    vi.stubEnv("FLUTTERWAVE_SECRET_KEY", flutterwaveSecret);
+    vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", flutterwaveWebhookSecret);
+    try {
+      expect(configuredTestAdapter("FLUTTERWAVE")?.provider).toBe("flutterwave");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("preserves the legacy Flutterwave test-key configuration", () => {
+    vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", flutterwaveSecret);
+    vi.stubEnv("FLUTTERWAVE_SECRET_KEY", "");
+    vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", flutterwaveWebhookSecret);
+    try {
+      expect(configuredTestAdapter("FLUTTERWAVE")?.provider).toBe("flutterwave");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("fails closed when Flutterwave secret aliases conflict", () => {
+    vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", flutterwaveSecret);
+    vi.stubEnv("FLUTTERWAVE_SECRET_KEY", `${flutterwaveSecret}_different`);
+    vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", flutterwaveWebhookSecret);
+    try {
+      expect(configuredTestAdapter("FLUTTERWAVE")).toBeNull();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it.each(["FLWSECK_LIVE-1234567890abcdef", "not-a-test-secret"])(
+    "rejects malformed or live Flutterwave keys configured through the test alias",
+    (secretKey) => {
+      vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", "");
+      vi.stubEnv("FLUTTERWAVE_SECRET_KEY", secretKey);
+      vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", flutterwaveWebhookSecret);
+      try {
+        expect(() => configuredTestAdapter("FLUTTERWAVE")).toThrow(PaymentProviderError);
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    },
+  );
+
+  it("allows test payments without a webhook hash and never substitutes public or encryption keys", async () => {
+    vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", "");
+    vi.stubEnv("FLUTTERWAVE_SECRET_KEY", flutterwaveSecret);
+    vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", "");
+    vi.stubEnv("FLUTTERWAVE_PUBLIC_KEY", "FLWPUBK_TEST-1234567890abcdef");
+    vi.stubEnv("FLUTTERWAVE_ENCRYPTION_KEY", "FLWSECK_TEST-1234567890abcdef");
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    try {
+      const adapter = configuredTestAdapter("FLUTTERWAVE");
+      expect(adapter?.provider).toBe("flutterwave");
+      for (const signature of [
+        undefined, "FLWPUBK_TEST-1234567890abcdef", "FLWSECK_TEST-1234567890abcdef",
+      ]) {
+        await expect(adapter?.handleWebhook({
+          rawBody: JSON.stringify({ event: "charge.completed", data: { id: 789, tx_ref: expected.reference } }),
+          headers: signature ? { "verif-hash": signature } : {},
+          resolveExpectedPayment: async () => expected,
+        })).rejects.toThrow(/webhook verification hash is invalid/);
+      }
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("initializes and independently verifies Flutterwave test payments without a webhook hash", async () => {
+    const fetch = fetchMock((url, init) => {
+      if (init?.method === "POST") {
+        return jsonResponse({ status: "success", data: { link: "https://checkout.flutterwave.com/test-session" } });
+      }
+      if (url.pathname === "/v3/transactions") {
+        expect(url.searchParams.get("tx_ref")).toBe(expected.reference);
+        return jsonResponse({ status: "success", data: [{ id: 789, tx_ref: expected.reference }] });
+      }
+      return jsonResponse({ status: "success", data: {
+        id: 789, status: "successful", tx_ref: expected.reference, amount: 12.34, currency: "NGN",
+      } });
+    });
+    const adapter = new FlutterwaveTestAdapter({ secretKey: flutterwaveSecret }, { fetch });
+
+    await expect(adapter.initializePayment({
+      ...expected, email: "parent@example.test", returnUrl: "https://school.example/fees/return",
+    })).resolves.toMatchObject({ reference: expected.reference });
+    await expect(adapter.verifyCheckoutStatus(expected)).resolves.toMatchObject({
+      ...expected, status: "succeeded", providerTransactionId: "789",
+    });
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it("rejects Flutterwave webhooks when the dedicated hash is absent, regardless of supplied signature", async () => {
+    const fetch = fetchMock(() => {
+      throw new Error("Webhook verification must not contact the provider without its dedicated hash");
+    });
+    const adapter = new FlutterwaveTestAdapter({ secretKey: flutterwaveSecret }, { fetch });
+    const resolveExpectedPayment = vi.fn(async () => expected);
+    const rawBody = JSON.stringify({ event: "charge.completed", data: { id: 789, tx_ref: expected.reference } });
+
+    await expect(adapter.handleWebhook({
+      rawBody, headers: {}, resolveExpectedPayment,
+    })).rejects.toThrow(PaymentProviderError);
+    await expect(adapter.handleWebhook({
+      rawBody, headers: { "verif-hash": flutterwaveSecret }, resolveExpectedPayment,
+    })).rejects.toThrow(PaymentProviderError);
+    expect(resolveExpectedPayment).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it.each([
     { providerStatus: "successful", expectedStatus: "succeeded" },
     { providerStatus: " SUCCESSFUL ", expectedStatus: "succeeded" },

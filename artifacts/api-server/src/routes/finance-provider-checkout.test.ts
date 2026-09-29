@@ -190,6 +190,7 @@ afterAll(async () => new Promise<void>((resolve, reject) =>
 beforeEach(() => {
   vi.stubEnv("PAYSTACK_TEST_SECRET_KEY", "sk_test_checkout_fixture_123456789");
   vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", "FLWSECK_TEST-checkout_fixture_123456789");
+  vi.stubEnv("FLUTTERWAVE_SECRET_KEY", "");
   vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", "flutterwave-webhook-fixture-secret");
   vi.stubEnv("FEE_PAYMENT_RETURN_URL", "https://school.example/fees/return");
   state.role = "PARENT";

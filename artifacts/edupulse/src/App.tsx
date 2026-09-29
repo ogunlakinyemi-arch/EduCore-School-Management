@@ -178,6 +178,7 @@ function ProtectedRoutes() {
       <Shell>
         <Switch>
           <Route path="/" component={Dashboard} />
+          <Route path="/dashboard"><Redirect to="/" /></Route>
           <Route path="/partners*">
             <RoleGuard isPlatformOwnerOnly><PartnerManagement /></RoleGuard>
           </Route>

@@ -1,0 +1,497 @@
+Yemait EduCore — Controlled Development Fix
+
+Objective
+
+Work ONLY on the current development environment.
+
+Resolve and verify these three outstanding areas:
+
+1. Platform Owner dashboard and Owner-role functionality
+2. Flutterwave payment API integration using TEST credentials
+3. Termii SMS API integration using the existing API key
+
+Do NOT publish or deploy to production.
+
+Do NOT modify the production database.
+
+Do NOT run "drizzle-kit push".
+
+Do NOT attempt migration reconciliation, migration-ledger repair, Phase 11E, or any production migration.
+
+Do NOT replace or redesign already-working Finance, Communication, Library, Operations, Reporting, Attendance, Academic, Partner, or RBAC functionality unless a change is strictly required to fix one of the three objectives below.
+
+---
+
+1. PLATFORM OWNER DASHBOARD
+
+First inspect the existing Platform Owner portal and determine why previous Owner UI corrections did not visibly resolve the reported issue.
+
+The Platform Owner must remain a PLATFORM_OWNER, not a SCHOOL_ADMIN.
+
+Owner capabilities
+
+The Platform Owner should be able to:
+
+- View the Platform Owner dashboard
+- View all schools
+- Select a school and inspect authorized school information
+- Manage school platform-level metadata where already intended
+- View students across schools
+- View subscriptions
+- Manage/assign NFC cards
+- Manage/assign NFC devices
+- View partner relationships and referrals
+- View platform-level reports
+- Manage Yemait Technologies internal employees
+- View appropriate audit information
+- Access authorized platform-wide reporting
+
+Owner must NOT inherit School Admin operational permissions
+
+Do not give PLATFORM_OWNER automatic unrestricted school-admin write access to:
+
+- Subjects
+- Classes
+- Academic sessions
+- Terms
+- Teachers
+- Parent records
+- Teacher assignments
+- Assignments
+- Assessments
+- Attendance
+- Results
+- Timetables
+- School finance operations
+- Library operations
+- School operations/maintenance
+- Other ordinary school administration functions
+
+The Owner may have explicitly implemented platform-management permissions where already intended, but do not convert the Owner role into a School Admin role.
+
+Dashboard navigation
+
+Verify that:
+
+- Owner navigation is clearly different from School Admin navigation.
+- Selecting a school does not silently transform the Owner portal into a School Admin portal.
+- Owner school inspection remains within the Owner context.
+- Company Employees remains separate from school employees.
+- School Admin functionality is not incorrectly displayed as Owner functionality.
+- Existing role-aware navigation remains intact.
+
+Owner data scope
+
+Verify all Owner APIs server-side.
+
+The frontend must NOT be the security boundary.
+
+Owner requests must be authorized by backend role checks.
+
+Ensure:
+
+- No school tenant can escape its intended scope.
+- Owner-only endpoints cannot be accessed by School Admin/Teacher/Parent/Student/Partner.
+- School Admin cannot access platform-wide Owner endpoints.
+- Partner cannot access platform-wide school data.
+- Student/Parent access remains restricted to their intended records.
+
+Owner dashboard UI verification
+
+Check the actual rendered frontend, not just API tests.
+
+Test:
+
+- Desktop
+- Mobile/responsive layout
+- Navigation
+- School selection
+- School details
+- Students
+- Subscriptions
+- NFC/device views
+- Partners
+- Company employees
+- Reports
+- Audit
+- Logout/session behavior
+
+If an existing component is already correct, do not rewrite it unnecessarily.
+
+Fix the smallest root cause.
+
+---
+
+2. FLUTTERWAVE TEST PAYMENT INTEGRATION
+
+Use the existing Replit Secrets.
+
+Expected secret names:
+
+FLUTTERWAVE_PUBLIC_KEY
+FLUTTERWAVE_SECRET_KEY
+FLUTTERWAVE_ENCRYPTION_KEY
+
+These are TEST credentials.
+
+Never print their values in logs, UI, tests, commits, or generated documentation.
+
+Before changing code
+
+Inspect the existing Finance/payment implementation.
+
+Determine:
+
+- Existing payment provider abstraction
+- Existing Flutterwave adapter
+- Existing Paystack adapter/test adapter
+- Payment initialization endpoint
+- Payment verification endpoint
+- Webhook endpoint
+- Idempotency handling
+- Invoice/payment/receipt lifecycle
+- Parent payment flow
+- Accountant/admin verification flow
+- Notification integration
+
+Do not create duplicate payment architecture if it already exists.
+
+Reuse the existing provider abstraction.
+
+Flutterwave requirements
+
+Implement/repair the Flutterwave TEST integration so that:
+
+1. Parent can initiate an authorized payment for an eligible invoice.
+2. Backend creates/initializes the payment.
+3. Frontend receives only the information it is supposed to receive.
+4. Secret credentials remain server-side.
+5. Backend verifies transactions independently.
+6. Client-side success must NOT automatically mark a payment VERIFIED.
+7. Verified payments update the correct invoice/payment records.
+8. Receipt generation only occurs after verified payment.
+9. Partial payments continue to work where the existing Finance rules permit them.
+10. Duplicate callbacks/webhooks are idempotent.
+11. Failed/cancelled payments do not become VERIFIED.
+12. Reversed/refunded payments preserve the financial history.
+13. Payment records remain school-scoped.
+14. A payment belonging to School A cannot affect School B.
+15. Parent access remains limited to their linked children/invoices.
+16. Accountant/School Admin permissions remain correct.
+17. Platform Owner does not become a School Accountant merely because payment APIs exist.
+
+Test mode
+
+Use Flutterwave TEST credentials only.
+
+Create deterministic automated tests using mocked/test-provider behavior where appropriate.
+
+Where real Flutterwave Test Mode can safely be exercised, perform a controlled test.
+
+Do NOT send real-money transactions.
+
+Do NOT enable production payment credentials.
+
+Do NOT change production configuration.
+
+Error handling
+
+Test:
+
+- Missing credentials
+- Invalid credentials
+- Provider timeout
+- Provider error
+- Invalid transaction reference
+- Duplicate webhook
+- Already verified payment
+- Wrong school
+- Wrong invoice
+- Unauthorized parent
+- Cancelled payment
+- Failed payment
+- Partial payment
+- Successful verification
+
+Errors must be safe and must not expose credentials or sensitive provider responses.
+
+---
+
+3. TERMII SMS INTEGRATION
+
+Use the existing secret:
+
+TERMII_API_KEY
+
+Do NOT require TERMII_SENDER_ID to block the core development work because Sender ID registration is still pending.
+
+If the application already supports a configured sender ID, use it.
+
+If no Sender ID is configured:
+
+- Keep the integration configuration-safe.
+- Do not invent a Sender ID.
+- Do not send uncontrolled real SMS.
+- Use the existing test/mock SMS adapter for automated tests.
+- Clearly report that real Termii delivery remains pending Sender ID approval.
+
+Inspect existing Communication module
+
+Reuse the existing:
+
+- notification centre
+- notification preferences
+- templates
+- delivery records
+- retries
+- event hooks
+- provider abstraction
+- school/recipient authorization
+- audit logging
+- duplicate-event protection
+
+Do not replace the Phase 8 communication architecture.
+
+Termii requirements
+
+Verify/repair:
+
+- SMS provider initialization
+- API authentication
+- message construction
+- recipient phone validation
+- sender configuration
+- delivery result handling
+- provider error handling
+- retry behavior
+- delivery status recording
+- school/recipient authorization
+- duplicate-event protection
+
+SMS must support the existing Yemait EduCore use cases such as:
+
+- Attendance notifications
+- Academic/result notifications where configured
+- Finance/payment notifications
+- Account activation/verification messages
+- School announcements where SMS is enabled
+- Other existing notification events
+
+Do not automatically send SMS merely because an event exists if the existing notification preferences or entitlements prohibit it.
+
+Security
+
+Never log:
+
+- TERMII_API_KEY
+- Flutterwave secret key
+- Flutterwave encryption key
+- Authorization headers
+- Complete provider credentials
+
+Mask sensitive provider information in diagnostic output.
+
+---
+
+4. PROVIDER CONFIGURATION
+
+Create or preserve a clean provider configuration system.
+
+Development should clearly distinguish:
+
+- TEST provider
+- MOCK provider
+- LIVE provider
+
+For this task:
+
+Flutterwave = TEST
+
+Termii = development/test-safe behavior unless Sender ID is available and real delivery is explicitly enabled by existing configuration.
+
+Do not silently switch to live providers.
+
+Do not hard-code provider credentials.
+
+Do not put credentials into frontend JavaScript.
+
+Do not put credentials into source files.
+
+---
+
+5. TESTS
+
+Run the complete existing test suite after the changes.
+
+At minimum verify:
+
+- Platform Owner API tests
+- Platform Owner frontend tests
+- RBAC tests
+- Tenant isolation tests
+- Finance/payment tests
+- Flutterwave provider tests
+- Termii provider tests
+- Communication tests
+- Parent payment tests
+- Receipt tests
+- Webhook idempotency tests
+- Notification tests
+- Existing regression tests
+
+Also run:
+
+- Backend typecheck
+- Frontend typecheck
+- Backend build
+- Frontend build
+
+Do not remove or weaken existing tests merely to make the suite pass.
+
+Do not skip failing tests.
+
+If a test must change because the intended behavior was previously incorrect, explain exactly why.
+
+---
+
+6. BROWSER VERIFICATION
+
+Where the development browser can authenticate normally, verify real UI flows.
+
+If Clerk authentication cannot be shared with the test browser, do NOT weaken authentication.
+
+Instead report:
+
+"Authenticated browser verification blocked by unavailable Clerk session."
+
+Still verify all unauthenticated security boundaries and API behavior.
+
+For the Owner portal specifically, verify the actual rendered UI if authentication is available.
+
+---
+
+7. DATABASE / MIGRATION SAFETY
+
+This task is NOT a migration-reconciliation task.
+
+STRICTLY PROHIBITED:
+
+- Production database changes
+- Production queries
+- Publish
+- drizzle-kit push
+- Migration ledger repair
+- Adoption of migrations 0005–0030
+- Changing historical migration hashes
+- Creating a new production migration path
+- Rewriting historical migrations
+- Destructive database changes
+
+If a database change appears necessary:
+
+STOP and report it instead of applying it.
+
+Use disposable/test database structures only when necessary for isolated tests.
+
+The current migration-reconciliation blocker remains documented and untouched.
+
+---
+
+8. NO UNNECESSARY REFACTORING
+
+Do not rewrite working modules.
+
+Do not replace the Finance system.
+
+Do not replace Communication.
+
+Do not replace Clerk authentication.
+
+Do not replace RBAC.
+
+Do not replace the notification architecture.
+
+Do not rename existing database tables or APIs unless absolutely required for a confirmed defect.
+
+Make the smallest safe changes necessary.
+
+---
+
+9. FINAL REPORT
+
+When finished, provide a concise engineering report containing:
+
+A. Platform Owner
+
+- Root cause found
+- Files/components changed
+- APIs changed
+- Exact Owner behavior now verified
+- Remaining Owner issues, if any
+
+B. Flutterwave
+
+- Existing integration status before changes
+- Changes made
+- Test credentials detected without exposing values
+- Payment initialization result
+- Verification result
+- Webhook/idempotency result
+- Failure handling
+- Remaining limitations
+
+C. Termii
+
+- Existing integration status
+- Changes made
+- API authentication result
+- SMS test result
+- Sender ID status
+- Whether real SMS delivery was verified
+- Remaining limitations
+
+D. Testing
+
+Report exact counts:
+
+- API tests passed
+- API tests failed
+- Frontend tests passed
+- Frontend tests failed
+- Typecheck result
+- Backend build result
+- Frontend build result
+- Browser verification result
+
+E. Security
+
+Confirm:
+
+- No credentials exposed
+- RBAC preserved
+- Tenant isolation preserved
+- Parent/child isolation preserved
+- Payment authorization preserved
+- Provider secrets remain server-side
+
+F. Production Safety
+
+Explicitly confirm:
+
+- Production untouched
+- No production database changes
+- No production migration
+- No Publish performed
+- No "drizzle-kit push"
+- Development migration ledger unchanged
+- Migration reconciliation not attempted
+
+G. Remaining Blockers
+
+Separate confirmed blockers from items that are merely unverified.
+
+Do not claim production readiness.
+
+Do not claim real-world payment or SMS delivery unless it was actually demonstrated.
+
+Stop after reporting the results.

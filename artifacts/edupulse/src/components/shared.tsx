@@ -1,6 +1,7 @@
 import { useLocation, Link } from 'wouter';
 import { useState, type ReactNode, type FormEvent, createContext, useContext, useEffect, useRef } from 'react';
-import { UserButton } from '@clerk/react';
+import { useAuth, UserButton } from '@clerk/react';
+import { useQueryClient } from '@tanstack/react-query';
 import { FeePaymentNotifications } from './fee-payment-notifications';
 import { CommunicationInboxBadge } from '@/pages/communication-inbox';
 import { 
@@ -10,7 +11,9 @@ import {
   UserRound, UsersRound, WalletCards, X, Zap, Calendar, UserCog, ClipboardList, Briefcase, Handshake, ClipboardCheck, ReceiptText, Wrench, FileSpreadsheet
 } from 'lucide-react';
 import {
-  useGetAuthorizedContext, useListSchools, getListSchoolsQueryKey,
+  useGetAuthorizedContext, getAuthorizedContext,
+  getGetAuthorizedContextQueryKey,
+  useListOwnerSchoolDirectory, getListOwnerSchoolDirectoryQueryKey,
   useGetCurrentUserSchools, getGetCurrentUserSchoolsQueryKey,
   useListPlatformNotifications, getListPlatformNotificationsQueryKey
 } from '@workspace/api-client-react';
@@ -98,12 +101,15 @@ export function Shell({ children }: { children: ReactNode }) {
   const initials = name.split(' ').slice(0, 2).map(part => part[0]).join('').toUpperCase();
   
   const userSchoolsQuery = useGetCurrentUserSchools({ query: { enabled: !isPlatformOwner && !!contextQuery.data, queryKey: getGetCurrentUserSchoolsQueryKey() } });
-  const schoolsQuery = useListSchools({ status: 'active' as any }, { query: { enabled: isPlatformOwner, queryKey: getListSchoolsQueryKey({ status: 'active' as any }) } }); 
+  const ownerSchoolsQuery = useListOwnerSchoolDirectory(
+    { status: 'all' },
+    { query: { enabled: isPlatformOwner, queryKey: getListOwnerSchoolDirectoryQueryKey({ status: 'all' }) } },
+  );
   
   let schoolName = 'Platform Network';
   if (schoolId) {
     if (isPlatformOwner) {
-      schoolName = schoolsQuery.data?.find((s: any) => s.id === schoolId)?.name || 'Authorized School';
+      schoolName = ownerSchoolsQuery.data?.schools.find(school => school.id === schoolId)?.name || 'Authorized School';
     } else {
       schoolName = userSchoolsQuery.data?.find((s: any) => s.schoolId === schoolId)?.name || 'Authorized School';
     }
@@ -145,7 +151,7 @@ export function Shell({ children }: { children: ReactNode }) {
       </aside>
       {open && <button className="fixed inset-0 z-30 bg-[hsl(var(--foreground)/.4)] backdrop-blur-sm md:hidden" onClick={() => setOpen(false)} aria-label="Close menu" data-testid="button-dismiss-menu" />}
       <div className="md:pl-[260px] flex flex-col min-h-[100dvh]">
-        <header className="sticky top-0 z-20 flex h-[76px] shrink-0 items-center justify-between border-b border-[hsl(var(--border)/.8)] bg-[hsl(var(--background)/.95)] px-5 backdrop-blur-xl md:px-8">
+        <header className="sticky top-0 z-20 flex min-h-[76px] shrink-0 flex-col justify-center gap-2 border-b border-[hsl(var(--border)/.8)] bg-[hsl(var(--background)/.95)] px-5 py-3 backdrop-blur-xl sm:h-[76px] sm:flex-row sm:items-center sm:justify-between sm:py-0 md:px-8">
           <div className="flex items-center gap-4">
             <button className="rounded-lg p-2 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] md:hidden" onClick={() => setOpen(true)} aria-label="Open navigation" data-testid="button-open-navigation"><Menu size={22} /></button>
             <div>
@@ -157,7 +163,12 @@ export function Shell({ children }: { children: ReactNode }) {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            {isPlatformOwner && (
+              <div className="min-w-0 flex-1 sm:flex-none">
+                <TenantPicker />
+              </div>
+            )}
             {!isPlatformOwner && <CommunicationInboxBadge />}
             {isPlatformOwner ? (
               <Link href="/notifications">
@@ -356,28 +367,106 @@ type TenantContextType = {
 
 const TenantContext = createContext<TenantContextType>({ schoolId: 0, setSchoolId: () => {} });
 
+type TenantSession = {
+  userId: string | null;
+  status: 'loading' | 'ready' | 'error';
+  context?: Awaited<ReturnType<typeof getAuthorizedContext>>;
+};
+
+export function TenantSessionBoundary({
+  session,
+  currentUserId,
+  isLoaded,
+  children,
+}: {
+  session: TenantSession;
+  currentUserId: string | null;
+  isLoaded: boolean;
+  children: ReactNode;
+}) {
+  if (!isLoaded || !currentUserId || session.userId !== currentUserId || session.status === 'loading') {
+    return <div className="min-h-[100dvh] bg-[hsl(var(--background))]" />;
+  }
+  if (session.status === 'error') {
+    return (
+      <div className="grid min-h-[100dvh] place-items-center bg-[hsl(var(--background))] p-6">
+        <p role="alert" data-testid="tenant-context-error" className="text-sm text-[hsl(var(--destructive))]">
+          Could not verify your account context. Refresh the page to try again.
+        </p>
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
+
 export function TenantProvider({ children }: { children: ReactNode }) {
+  const { userId, isLoaded } = useAuth();
+  const queryClient = useQueryClient();
+  const currentUserId = userId ?? null;
+  const [session, setSession] = useState<TenantSession>({ userId: currentUserId, status: 'loading' });
   const [schoolId, setSchoolId] = useState<number>(0);
   const initialized = useRef(false);
-  
-  const contextQuery = useGetAuthorizedContext();
-  const isPlatformOwner = contextQuery.data?.isPlatformOwner;
-  
-  const userSchoolsQuery = useGetCurrentUserSchools({ query: { enabled: !isPlatformOwner && !!contextQuery.data, queryKey: getGetCurrentUserSchoolsQueryKey() } });
+  useGetAuthorizedContext();
+  const sessionContext = session.userId === currentUserId && session.status === 'ready' ? session.context : undefined;
+  const userSchoolsQuery = useGetCurrentUserSchools({
+    query: {
+      enabled: !!sessionContext && !sessionContext.isPlatformOwner,
+      queryKey: getGetCurrentUserSchoolsQueryKey(),
+    },
+  });
   
   useEffect(() => {
-    if (initialized.current || contextQuery.isLoading) return;
-    
-    if (isPlatformOwner) {
+    if (!isLoaded || !currentUserId) {
+      setSession({ userId: currentUserId, status: 'loading' });
+      setSchoolId(0);
+      initialized.current = false;
+      return;
+    }
+
+    let cancelled = false;
+    setSession({ userId: currentUserId, status: 'loading' });
+    setSchoolId(0);
+    initialized.current = false;
+    queryClient.getMutationCache().clear();
+    void queryClient.resetQueries().then(
+      () => {
+        if (cancelled) return;
+        const authContextKey = getGetAuthorizedContextQueryKey();
+        const context = queryClient.getQueryData<Awaited<ReturnType<typeof getAuthorizedContext>>>(authContextKey);
+        const queryState = queryClient.getQueryState(authContextKey);
+        if (!context || queryState?.status !== 'success') {
+          setSession({ userId: currentUserId, status: 'error' });
+          return;
+        }
+        setSession({ userId: currentUserId, status: 'ready', context });
+      },
+      () => {
+        if (!cancelled) setSession({ userId: currentUserId, status: 'error' });
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUserId, isLoaded, queryClient]);
+
+  useEffect(() => {
+    if (!sessionContext || initialized.current) return;
+
+    if (sessionContext.isPlatformOwner) {
       setSchoolId(0);
       initialized.current = true;
-    } else if (userSchoolsQuery.data && userSchoolsQuery.data.length > 0) {
+    } else if (!userSchoolsQuery.isLoading && userSchoolsQuery.data?.length) {
       setSchoolId(userSchoolsQuery.data[0].schoolId);
       initialized.current = true;
     }
-  }, [contextQuery.isLoading, isPlatformOwner, userSchoolsQuery.data]);
+  }, [sessionContext, userSchoolsQuery.data, userSchoolsQuery.isLoading]);
 
-  return <TenantContext.Provider value={{ schoolId, setSchoolId }}>{children}</TenantContext.Provider>;
+  return (
+    <TenantSessionBoundary session={session} currentUserId={currentUserId} isLoaded={isLoaded}>
+      <TenantContext.Provider value={{ schoolId, setSchoolId }}>{children}</TenantContext.Provider>
+    </TenantSessionBoundary>
+  );
 }
 
 export function useTenant() {
@@ -400,29 +489,40 @@ export function TenantPicker() {
   const contextQuery = useGetAuthorizedContext();
   const isPlatformOwner = contextQuery.data?.isPlatformOwner || false;
   
-  const schoolsQuery = useListSchools({ status: 'active' as any }, { query: { enabled: isPlatformOwner, queryKey: getListSchoolsQueryKey({ status: 'active' as any }) } }); 
+  const ownerSchoolsQuery = useListOwnerSchoolDirectory(
+    { status: 'all' },
+    { query: { enabled: isPlatformOwner, queryKey: getListOwnerSchoolDirectoryQueryKey({ status: 'all' }) } },
+  );
   const userSchoolsQuery = useGetCurrentUserSchools({ query: { enabled: !isPlatformOwner && !!contextQuery.data, queryKey: getGetCurrentUserSchoolsQueryKey() } });
 
   const authorizedSchools = isPlatformOwner 
-    ? (schoolsQuery.data ?? []) 
+    ? (ownerSchoolsQuery.data?.schools ?? [])
     : (userSchoolsQuery.data ?? []).map((s: any) => ({ id: s.schoolId, name: s.name }));
 
   if (!isPlatformOwner && authorizedSchools.length <= 1) return null;
 
   return (
-    <div className="flex items-center gap-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3.5 py-2 shadow-sm">
-      <Building2 size={16} className="text-[hsl(var(--primary))]" />
-      <select 
+    <label htmlFor="tenant-school-context" className="flex w-full min-w-0 max-w-full items-center gap-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3.5 py-2 shadow-sm sm:w-auto">
+      <Building2 size={16} className="shrink-0 text-[hsl(var(--primary))]" aria-hidden="true" />
+      <span className="sr-only">{isPlatformOwner ? 'Owner school context' : 'School context'}</span>
+      <select
+        id="tenant-school-context"
+        aria-label={isPlatformOwner ? 'Owner school context' : 'School context'}
         value={schoolId || ''} 
         onChange={e => setSchoolId(Number(e.target.value))} 
-        className="max-w-[200px] border-0 bg-transparent p-0 text-sm font-bold outline-none ring-0 focus:ring-0" 
+        disabled={isPlatformOwner && ownerSchoolsQuery.isLoading}
+        className="min-w-0 max-w-full flex-1 border-0 bg-transparent p-0 text-sm font-bold outline-none ring-0 focus:ring-0 sm:max-w-[220px]"
         data-testid="select-tenant-school"
       >
-        {isPlatformOwner ? <option value="">Platform Network</option> : (!schoolId && <option value="">Select a school context</option>)}
+        {isPlatformOwner
+          ? ownerSchoolsQuery.isError && authorizedSchools.length === 0
+            ? <option value="">Could not load Owner schools</option>
+            : <option value="">Platform Network · all schools</option>
+          : (!schoolId && <option value="">Select a school context</option>)}
         {authorizedSchools.map((school: any) => (
           <option key={school.id} value={school.id}>{school.name}</option>
         ))}
       </select>
-    </div>
+    </label>
   );
 }
