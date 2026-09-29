@@ -6,6 +6,7 @@ import academicRouter from "./academic";
 import edupulseRouter from "./edupulse";
 import partnersRouter, { publicPartnersRouter } from "./partners";
 import bootstrapRouter from "./bootstrap";
+import devOwnerAccessDiagnosticRouter from "./dev-owner-access-diagnostic";
 import platformRouter from "./platform";
 import attendanceRouter from "./attendance";
 import attendanceFamilyRouter from "./attendance-family";
@@ -28,6 +29,9 @@ const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(bootstrapRouter);
+if (process.env.NODE_ENV === "development") {
+  router.use(devOwnerAccessDiagnosticRouter);
+}
 router.use(publicPartnersRouter);
 // Device credentials authenticate independently of Clerk. Every human-facing
 // attendance handler applies requireAuthentication() explicitly.

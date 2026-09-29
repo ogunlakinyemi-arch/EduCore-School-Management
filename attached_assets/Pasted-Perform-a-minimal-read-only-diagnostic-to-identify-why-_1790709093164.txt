@@ -1,0 +1,83 @@
+Perform a minimal, read-only diagnostic to identify why my own development Clerk account receives "Access Pending".
+
+Do NOT modify anything.
+
+Do NOT:
+
+- assign any role
+- create a user
+- delete a user
+- modify memberships
+- run Owner setup/bootstrap
+- modify Clerk
+- modify the database
+- modify migrations
+- Publish
+- run drizzle-kit push
+- weaken authentication
+
+What I need
+
+Add a temporary, development-only diagnostic mechanism that allows ME, from my already-authenticated development browser session, to see the following safe information:
+
+1. My current Clerk user ID, partially masked if necessary.
+2. The internal "app_users.id" mapped to that Clerk user.
+3. Whether that internal user exists.
+4. Whether the user has any active memberships.
+5. Whether the user has PLATFORM_OWNER.
+6. Whether the membership is global ("school_id IS NULL").
+7. The result of the authorization lookup.
+
+Do NOT expose:
+
+- API keys
+- Clerk secret keys
+- session tokens
+- cookies
+- passwords
+- database credentials
+
+The diagnostic must be read-only and must not create an internal user or accept an invitation.
+
+Preferred method
+
+If there is already a safe authenticated development diagnostic endpoint, reuse it.
+
+Otherwise create the smallest temporary development-only diagnostic endpoint or server log that reports only the safe identity/membership facts above.
+
+It must use the authenticated Clerk session itself, not a user ID supplied by the browser.
+
+Do not allow the browser to choose which user is inspected.
+
+After I test it, provide instructions for removing the temporary diagnostic code.
+
+Also diagnose the Access Pending logic
+
+Determine whether "/api/me/authorized-context":
+
+A. returns successfully with "isPlatformOwner: false" and no roles
+
+OR
+
+B. returns an error.
+
+The frontend currently shows the same Access Pending screen for both cases.
+
+Report which condition my authenticated session actually produces.
+
+Final output
+
+Give me:
+
+- Clerk user ID (masked if appropriate)
+- internal user ID
+- membership count
+- role
+- school_id/global status
+- authorized-context result
+- whether this is the Owner account or the role-less account
+- exact recommended next action
+
+Do NOT implement the recommended role change.
+
+Confirm that no persistent data, roles, memberships, schema, migration ledger, or production resources were changed.
