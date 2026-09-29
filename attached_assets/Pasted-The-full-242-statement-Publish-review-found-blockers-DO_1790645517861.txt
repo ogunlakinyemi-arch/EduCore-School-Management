@@ -1,0 +1,143 @@
+The full 242-statement Publish review found blockers.
+
+DO NOT run Publish.
+DO NOT make any additional production changes.
+DO NOT execute production SQL.
+DO NOT modify production data.
+DO NOT drop or disable constraints.
+DO NOT truncate anything.
+DO NOT modify the migration ledger.
+
+We need to resolve the blockers in DEVELOPMENT first and then determine the safest supported production staging sequence.
+
+BLOCKER 1 — Payment verification protection
+
+Inspect the checked-in development schema/migrations for:
+
+- fee_payments
+- fee_payments_verification_metadata_immutable
+- its function
+- its trigger
+
+Determine exactly why the generated Publish diff creates fee_payments but does not create the required verification-evidence immutability trigger/function.
+
+Confirm whether these objects exist in development.
+
+If missing from development, implement the correct source-level migration/schema definition in development only.
+
+Do not weaken payment verification protection.
+
+BLOCKER 2 — Device-school history protection
+
+Inspect the checked-in development schema/migrations for:
+
+- device_school_bindings
+- append-only protection
+- no-truncate protection
+- required triggers/functions
+- historical backfill from existing devices/device assignment history
+
+Determine exactly why the Publish diff creates device_school_bindings but does not include the required triggers/backfill.
+
+Implement the correct source-level solution in DEVELOPMENT only if necessary.
+
+Do not remove device-school tenant isolation.
+
+BLOCKER 3 — student_class_assignments key dependency
+
+Inspect development and production metadata for:
+
+student_class_assignments(id, school_id)
+
+Determine:
+
+1. Whether development has a matching PRIMARY KEY or UNIQUE constraint/index.
+2. Whether production currently has one.
+3. Which generated statements depend on it.
+4. Why the Publish planner places the prerequisite after statements 123 and 172.
+
+Do NOT modify production.
+
+Determine whether a safe staged prerequisite is required, similar to the NFC prerequisite.
+
+BLOCKER 4 — Existing NFC card FK compatibility
+
+Read-only inspect production metadata/data only.
+
+Verify for all 3 production NFC cards:
+
+- card id
+- school_id
+- student_id
+- student's school_id
+
+Determine whether the future:
+
+nfc_cards(student_id, school_id)
+→ students(id, school_id)
+
+foreign key would succeed.
+
+Do not modify any rows.
+
+If any mismatch exists, STOP and report it.
+
+BLOCKER 5 — Existing device compatibility
+
+Read-only inspect production metadata/data.
+
+Determine the current device records and whether adding:
+
+configuration_status NOT NULL DEFAULT 'PENDING'
+
+would be compatible.
+
+Also identify whether existing device records require historical device_school_bindings backfill.
+
+Do not modify production.
+
+DEVELOPMENT REPAIR
+
+After investigating the five blockers:
+
+1. Make only necessary source-level/schema/migration corrections in DEVELOPMENT.
+2. Preserve tenant isolation.
+3. Preserve payment immutability.
+4. Preserve NFC school binding.
+5. Preserve device reassignment history.
+6. Do not remove existing functionality.
+7. Do not change unrelated Phase 7 behavior.
+
+Run:
+
+- typecheck
+- builds
+- all existing API tests
+- migration replay
+- relevant finance tests
+- relevant NFC/device tests
+
+Then generate a NEW Publish preview.
+
+Do NOT Publish.
+
+Review the new diff for:
+
+- payment trigger/function
+- device history triggers/backfill
+- student_class_assignments prerequisite ordering
+- NFC prerequisite ordering
+- existing-row FK compatibility
+- destructive operations
+- DROP/TRUNCATE/DELETE
+- tenant-isolation changes
+
+FINAL STATUS MUST BE ONE OF:
+
+DEVELOPMENT BLOCKERS RESOLVED — NEW PUBLISH DIFF READY FOR REVIEW
+
+or
+
+DEVELOPMENT BLOCKERS NOT RESOLVED — PRODUCTION UNTOUCHED
+
+Do not claim Publish is safe or ready for execution merely because the development tests pass.
