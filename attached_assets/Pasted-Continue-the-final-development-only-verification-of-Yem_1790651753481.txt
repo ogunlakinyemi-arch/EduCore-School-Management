@@ -1,0 +1,384 @@
+Continue the final development-only verification of Yemait EduCore Phase 7.
+
+Current verified development status:
+
+- 328/328 API tests passing
+- 2/2 disposable PostgreSQL HTTP tests passing
+- migrations replay cleanly through "0023"
+- builds passing
+- typechecks passing
+- production has NOT been modified
+- Publish has NOT been executed
+
+The remaining verification gap is authenticated browser testing.
+
+The browser currently opens at Clerk sign-in.
+
+There is an existing development owner, but it is not a test alias. There is no authorized session or controlled invitation inbox available for the required five role journeys.
+
+CRITICAL SAFETY RULE
+
+DO NOT:
+
+- use production credentials
+- use the existing production owner account as a test account
+- create a second PLATFORM_OWNER merely to bypass authentication
+- modify production
+- execute production SQL
+- click Publish
+- change production migration state
+- expose or request live credentials
+- weaken Clerk authentication
+- bypass RBAC
+- disable tenant isolation
+
+All work must remain in the development/test environment.
+
+---
+
+OBJECTIVE
+
+Determine whether the existing development authentication/RBAC architecture supports creating controlled non-production test identities for:
+
+1. PLATFORM_OWNER
+2. SCHOOL_ADMIN
+3. ACCOUNTANT
+4. PARENT
+5. STUDENT
+
+The purpose is ONLY to complete authenticated browser verification.
+
+Do not redesign authentication.
+
+Do not modify production authentication.
+
+---
+
+STEP 1 — INSPECT EXISTING AUTHENTICATION
+
+Inspect the current Clerk and internal-user implementation.
+
+Determine:
+
+- how development users are created
+- how Clerk identities map to internal users
+- how roles are assigned
+- how school tenancy is assigned
+- how parent-child relationships are assigned
+- how student accounts are linked
+- whether invitation workflows already exist
+- whether development test users can be safely created without an external inbox
+- whether there is an existing seed/test fixture mechanism
+
+Reuse existing mechanisms wherever possible.
+
+Do not invent a parallel authentication system.
+
+---
+
+STEP 2 — CONTROLLED TEST DATASET
+
+If the existing development mechanisms permit it, create a dedicated test dataset.
+
+Use clearly identifiable test records such as:
+
+- Test School A
+- Test School B
+- Test Admin A
+- Test Accountant A
+- Test Parent A
+- Test Student A
+
+Use synthetic data only.
+
+Do not use real people's personal information.
+
+Create enough data to verify tenant isolation.
+
+For example:
+
+School A
+
+- one test administrator
+- one test accountant
+- one test parent
+- one test student
+- one test invoice
+- one test payment
+
+School B
+
+- separate test school
+- separate test users/data
+
+The exact dataset should follow the existing application schema.
+
+---
+
+STEP 3 — TEST USER CREATION
+
+If Clerk supports a development/test-user mechanism already present in the project, use it.
+
+If the project already contains an approved development fixture or bootstrap mechanism, use that.
+
+If creating test users requires email verification, determine whether Clerk's development environment provides a supported way to create authenticated test sessions without requiring access to real inboxes.
+
+Do NOT:
+
+- invent email addresses that cannot receive authentication
+- use production email accounts
+- bypass authentication in the application
+- modify Clerk security behavior just for the test
+
+If the environment genuinely cannot create controlled authenticated test users, stop and report exactly what external setup is required.
+
+---
+
+STEP 4 — DO NOT CREATE A SECOND PLATFORM OWNER UNLESS REQUIRED
+
+The existing development owner must remain unchanged.
+
+A second PLATFORM_OWNER should NOT be created simply for convenience.
+
+First determine whether the existing development owner can be used safely through a controlled development authentication session.
+
+If that is impossible, document the blocker.
+
+Do not change the owner bootstrap mechanism.
+
+---
+
+STEP 5 — BROWSER JOURNEYS
+
+If controlled test sessions become available, run:
+
+PLATFORM OWNER
+
+Login
+
+→ platform dashboard
+
+→ schools
+
+→ finance visibility
+
+→ verify permitted cross-school access
+
+→ verify no unauthorized mutation
+
+SCHOOL ADMIN
+
+Login
+
+→ school dashboard
+
+→ finance
+
+→ invoice
+
+→ payment
+
+→ reports
+
+→ verify only School A data is visible
+
+ACCOUNTANT
+
+Login
+
+→ finance
+
+→ pending manual transfer
+
+→ approve/reject transfer
+
+→ verify payment status
+
+→ verify invoice balance
+
+→ verify receipt
+
+→ verify notification/audit
+
+PARENT
+
+Login
+
+→ select linked child
+
+→ finance
+
+→ invoice
+
+→ payment
+
+→ backend confirmation
+
+→ receipt
+
+→ updated balance
+
+→ notification
+
+Verify the parent cannot access another student's financial records.
+
+STUDENT
+
+Login
+
+→ finance
+
+→ own permitted financial information
+
+→ verified payment
+
+→ receipt where permitted
+
+Verify the student cannot access another student's information.
+
+---
+
+STEP 6 — TENANT ISOLATION
+
+Use School A and School B test data.
+
+Attempt legitimate and unauthorized access paths.
+
+Verify:
+
+- School A admin cannot access School B invoices
+- School A accountant cannot access School B payments
+- Parent A cannot access Student B
+- Student A cannot access Student B
+- School A cannot access School B finance reports
+- API authorization rejects unauthorized cross-tenant requests
+- frontend navigation does not expose unauthorized data
+
+Do not rely solely on frontend hiding.
+
+---
+
+STEP 7 — FINANCE JOURNEY
+
+For the Parent test account, verify the complete development flow:
+
+Invoice
+
+→ payment initiation
+
+→ PROCESSING
+
+→ backend verification
+
+→ VERIFIED
+
+→ invoice balance update
+
+→ receipt
+
+→ notification
+
+Confirm that frontend success is never treated as authoritative.
+
+For Accountant:
+
+Manual transfer
+
+→ pending
+
+→ authorized review
+
+→ VERIFIED or REJECTED
+
+→ invoice update
+
+→ receipt if verified
+
+→ notification/audit
+
+---
+
+STEP 8 — FINAL TESTS
+
+After browser testing, rerun:
+
+- all API tests
+- disposable PostgreSQL HTTP tests
+- migration replay through "0023"
+- typechecks
+- frontend build
+- backend build
+
+The existing baseline is:
+
+328/328 API tests
+
+Do not remove tests to make the result pass.
+
+---
+
+STEP 9 — IF AUTHENTICATION CANNOT BE COMPLETED
+
+If controlled development accounts cannot be created without:
+
+- real inbox access
+- production credentials
+- unsafe authentication changes
+- unsupported Clerk configuration
+
+STOP.
+
+Do not invent a workaround.
+
+Report:
+
+AUTHENTICATED BROWSER VERIFICATION BLOCKED — CONTROLLED DEVELOPMENT TEST ACCOUNTS/SESSIONS REQUIRED
+
+Clearly state what exact development-only resource is required.
+
+---
+
+FINAL REPORT
+
+Return:
+
+Development Tests
+
+- API tests
+- disposable PostgreSQL HTTP tests
+- migrations
+- builds
+- typechecks
+
+Browser Verification
+
+For each of the five roles:
+
+- Passed
+- Failed
+- Not run
+- Blocked
+
+Security
+
+Report tenant-isolation results.
+
+Production
+
+State:
+
+PRODUCTION WAS NOT MODIFIED.
+
+PUBLISH WAS NOT EXECUTED.
+
+Phase 7 Status
+
+If all required development verification passes:
+
+PHASE 7 APPLICATION DEVELOPMENT COMPLETE — AWAITING EXTERNAL PROVIDER/PRODUCTION DEPLOYMENT VALIDATION
+
+Otherwise:
+
+PHASE 7 NOT COMPLETE — DEVELOPMENT VERIFICATION REMAINS
+
+Do not make any production changes during this task.
