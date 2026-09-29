@@ -1,0 +1,179 @@
+Diagnose — Platform Owner Still Seeing Old Dashboard
+
+The previous development fix reported that the Platform Owner dashboard was corrected, but my actual authenticated Platform Owner account still displays the OLD dashboard.
+
+Do NOT make another broad redesign.
+
+Do NOT modify production.
+
+Do NOT Publish.
+
+Do NOT run "drizzle-kit push".
+
+Do NOT modify the migration ledger.
+
+Do NOT change database schema.
+
+Do NOT change Clerk authentication configuration.
+
+Do NOT weaken authentication.
+
+Objective
+
+Find the exact reason my authenticated PLATFORM_OWNER session is still rendering the old dashboard.
+
+This is a diagnostic task first. Do not implement speculative fixes before identifying the root cause.
+
+Investigate the complete frontend routing chain
+
+Trace exactly what happens when a PLATFORM_OWNER:
+
+1. Signs in.
+2. Lands after authentication.
+3. Opens "/".
+4. Opens "/dashboard".
+5. Selects a school.
+6. Opens school details.
+7. Opens the Owner dashboard snapshot.
+
+Identify:
+
+- actual route
+- actual React component
+- actual dashboard component
+- role-selection logic
+- redirect logic
+- navigation component
+- school-selection state
+- any feature flags
+- any legacy dashboard components
+- any duplicate dashboard implementations
+
+Produce a route/component map showing:
+
+"URL → route → component → role guard → dashboard rendered"
+
+Search for duplicate/legacy Owner dashboards
+
+Search the entire frontend codebase for:
+
+- Platform Owner dashboard components
+- Owner dashboard pages
+- legacy dashboard pages
+- "/dashboard"
+- "/"
+- PLATFORM_OWNER
+- Owner navigation
+- school selector
+- school snapshot
+- dashboard cards/widgets
+
+Determine whether multiple Owner dashboard implementations exist.
+
+If multiple implementations exist, identify which one my authenticated session actually reaches.
+
+Do not delete anything yet.
+
+Inspect authentication-to-dashboard routing
+
+Trace the authenticated session flow.
+
+Determine:
+
+- how Clerk identifies PLATFORM_OWNER
+- where the role is read
+- which route is selected for PLATFORM_OWNER
+- whether the role is loaded before routing
+- whether stale role state can cause the old dashboard to render
+- whether React Query/local state can preserve the old dashboard
+- whether a redirect sends PLATFORM_OWNER somewhere unexpected
+
+Do not change authentication.
+
+Inspect development serving/build behavior
+
+Determine whether the development browser is receiving the current frontend code.
+
+Check:
+
+- current source revision
+- running frontend process
+- generated frontend bundle
+- route registration
+- Vite/React development server
+- cached assets
+- service worker
+- PWA cache, if present
+- browser cache behavior
+- whether an old published/deployed frontend is being opened instead of the current development workflow
+
+Do NOT clear or modify production caches.
+
+If a service worker is involved, report exactly what it is serving before changing it.
+
+Compare OLD vs NEW dashboard
+
+Identify the exact component that corresponds to the dashboard I am currently seeing.
+
+Then identify the component that the previous fix intended to render.
+
+Explain:
+
+1. Why the old dashboard is still being rendered.
+2. Which route/component is responsible.
+3. Whether the previous changes were made to an unused component.
+4. Whether routing is bypassing the new dashboard.
+5. Whether stale frontend assets are responsible.
+6. Whether the authenticated Owner role is reaching the wrong route.
+
+Browser verification
+
+If the automated browser cannot authenticate with my Clerk account, do NOT weaken authentication.
+
+Instead create a diagnostic report that tells me exactly which URL and component I should inspect manually.
+
+Do not claim that the Owner dashboard is fixed merely because unit/API tests pass.
+
+Required final report
+
+Return:
+
+Root cause
+
+The exact reason the authenticated Owner still sees the old dashboard.
+
+Current route
+
+The exact URL/route reached after Owner login.
+
+Current component
+
+The exact React component rendering the old dashboard.
+
+Intended component
+
+The component the previous fix expected to render.
+
+Evidence
+
+Relevant source files, route definitions, redirect logic, or build/serving evidence.
+
+Fix recommendation
+
+The smallest targeted fix required.
+
+Do NOT implement the fix unless the root cause is clearly established.
+
+Safety
+
+Confirm:
+
+- production untouched
+- no Publish
+- no production database changes
+- no migration changes
+- no "drizzle-kit push"
+- no Clerk authentication weakening
+- no destructive changes
+
+Stop after the diagnostic report.
