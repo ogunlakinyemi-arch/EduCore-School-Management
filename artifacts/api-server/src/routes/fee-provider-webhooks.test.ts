@@ -11,6 +11,10 @@ const fake = vi.hoisted(() => ({
   audits: [] as unknown[],
   calls: [] as string[],
   failReceiptOnce: false,
+  failNotificationOnce: false,
+  failNotificationOutbox: false,
+  failNotificationSavepoint: false,
+  notificationOutbox: [] as any[],
   locks: Promise.resolve() as Promise<void>,
   poolQuery: vi.fn(),
   connect: vi.fn(),
@@ -20,9 +24,11 @@ vi.mock("@workspace/db", () => ({
   pool: { query: (...args: any[]) => fake.poolQuery(...args), connect: (...args: any[]) => fake.connect(...args) },
 }));
 
-import webhookRouter, { settleVerifiedPayment } from "./fee-provider-webhooks";
+import webhookRouter, { retryReconciliationEvent, settleVerifiedPayment } from "./fee-provider-webhooks";
 
 const paystackSecret = "sk_test_route_adapter_123456789";
+const flutterwaveSecret = "FLWSECK_TEST-secret-key";
+const flutterwaveWebhookSecret = "flutterwave-test-webhook-hash";
 const expectedReference = "fee_0123456789abcdef";
 const httpFetch = fetch;
 const response = (payload: unknown, status = 200) =>
@@ -35,8 +41,36 @@ function recordKey(provider: string, eventId: string) {
   return `${provider}:${eventId}`;
 }
 
+function flutterwaveWebhook(overrides: Record<string, unknown> = {}) {
+  return JSON.stringify({
+    event: "charge.completed",
+    data: { id: 456, tx_ref: expectedReference, ...overrides },
+  });
+}
+
+function postFlutterwaveWebhook(body: string, signature = flutterwaveWebhookSecret) {
+  return httpFetch(`${baseUrl}/flutterwave`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "verif-hash": signature },
+    body,
+  });
+}
+
+function useFlutterwave(verification: Record<string, unknown> = {}) {
+  fake.payment.method = "FLUTTERWAVE";
+  fake.payment.provider = "FLUTTERWAVE";
+  fake.session.session_provider = "FLUTTERWAVE";
+  fake.session.session_reference = expectedReference;
+  vi.stubGlobal("fetch", vi.fn(async () => response({ status: "success", data: {
+    id: 456, status: "successful", tx_ref: expectedReference, amount: 12.34, currency: "NGN",
+    ...verification,
+  } })));
+}
+
 beforeEach(() => {
   vi.stubEnv("PAYSTACK_TEST_SECRET_KEY", paystackSecret);
+  vi.stubEnv("FLUTTERWAVE_TEST_SECRET_KEY", flutterwaveSecret);
+  vi.stubEnv("FLUTTERWAVE_WEBHOOK_VERIF_HASH", flutterwaveWebhookSecret);
   vi.stubEnv("FEE_PAYMENT_RETURN_URL", "https://school.example/fees/return");
   fake.payment = {
     id: 11, school_id: 2, invoice_id: 22, student_id: 33, parent_id: 44,
@@ -59,17 +93,32 @@ beforeEach(() => {
   fake.audits = [];
   fake.calls = [];
   fake.failReceiptOnce = false;
+  fake.failNotificationOnce = false;
+  fake.failNotificationOutbox = false;
+  fake.failNotificationSavepoint = false;
+  fake.notificationOutbox = [];
   fake.locks = Promise.resolve();
 
   fake.poolQuery.mockReset().mockImplementation(async (sql: string, values: unknown[] = []) => {
     if (sql.includes("SELECT reference,amount_minor AS")) {
-      return String(values[0]) === fake.payment.reference && String(values[1]) === "PAYSTACK"
+      return String(values[0]) === fake.payment.reference && String(values[1]) === fake.payment.provider
         ? { rows: [{ reference: fake.payment.reference, amountMinor: fake.payment.amount_minor, currency: fake.payment.currency }] }
         : { rows: [] };
     }
     if (sql.includes("SELECT id,school_id FROM fee_payments WHERE reference=$1")) {
-      return String(values[0]) === fake.payment.reference
+      return String(values[0]) === fake.payment.reference && String(values[1]) === fake.payment.provider
         ? { rows: [{ id: fake.payment.id, school_id: fake.payment.school_id }] }
+        : { rows: [] };
+    }
+    if (sql.includes("SELECT e.provider,e.event_id,e.webhook_transaction_id")) {
+      const event = fake.events.get(recordKey(String(fake.payment.provider), String(values[1])));
+      return event?.school_id === Number(values[0]) && event.status === "RECONCILIATION_REQUIRED"
+        ? { rows: [{
+          provider: event.provider, event_id: event.event_id,
+          webhook_transaction_id: event.webhook_transaction_id,
+          reference: fake.payment.reference, amountMinor: fake.payment.amount_minor,
+          currency: fake.payment.currency, school_id: fake.payment.school_id,
+        }] }
         : { rows: [] };
     }
     if (sql.includes("INSERT INTO fee_provider_webhook_events") && sql.includes("RECONCILIATION_REQUIRED")) {
@@ -105,6 +154,7 @@ beforeEach(() => {
             session: structuredClone(fake.session),
             events: structuredClone([...fake.events.entries()]), receipt: structuredClone(fake.receipt),
             audits: structuredClone(fake.audits),
+            notificationOutbox: structuredClone(fake.notificationOutbox),
           };
           return { rows: [] };
         }
@@ -112,6 +162,12 @@ beforeEach(() => {
           releaseLock?.();
           return { rows: [] };
         }
+        if (sql === "SAVEPOINT fee_payment_notification_delivery" && fake.failNotificationSavepoint) {
+          fake.failNotificationSavepoint = false;
+          throw new Error("simulated savepoint failure");
+        }
+        if (sql.startsWith("SAVEPOINT") || sql.startsWith("RELEASE SAVEPOINT")
+            || sql.startsWith("ROLLBACK TO SAVEPOINT")) return { rows: [] };
         if (sql === "ROLLBACK") {
           if (snapshot) {
             fake.payment = snapshot.payment;
@@ -120,6 +176,7 @@ beforeEach(() => {
             fake.events = new Map(snapshot.events);
             fake.receipt = snapshot.receipt;
             fake.audits = snapshot.audits;
+            fake.notificationOutbox = snapshot.notificationOutbox;
           }
           releaseLock?.();
           return { rows: [] };
@@ -204,13 +261,35 @@ beforeEach(() => {
             fake.failReceiptOnce = false;
             throw new Error("simulated crash before settlement commit");
           }
-          fake.receipt ??= { receipt_number: values[3], snapshot: values[4] };
+          fake.receipt ??= {
+            school_id: values[0], payment_id: values[1], invoice_id: values[2],
+            receipt_number: values[3], snapshot: values[4],
+          };
           return { rows: [] };
         }
-        if (sql.includes("SELECT receipt_number FROM fee_receipts")) {
-          return fake.receipt ? { rows: [{ receipt_number: fake.receipt.receipt_number }] } : { rows: [] };
+        if (sql.includes("SELECT school_id,payment_id,invoice_id,receipt_number,snapshot")) {
+          return fake.receipt ? { rows: [fake.receipt] } : { rows: [] };
         }
-        if (sql.includes("INSERT INTO fee_payment_notifications")) return { rows: [], rowCount: 0 };
+        if (sql.includes("INSERT INTO fee_payment_notifications")) {
+          if (fake.failNotificationOnce) {
+            fake.failNotificationOnce = false;
+            throw new Error("simulated notification insert failure");
+          }
+          return { rows: [], rowCount: 0 };
+        }
+        if (sql.includes("INSERT INTO fee_payment_notification_outbox")) {
+          if (fake.failNotificationOutbox) throw new Error("simulated outbox persistence failure");
+          fake.notificationOutbox.push({
+            paymentId: values[0], schoolId: values[1], eventType: values[2], eventReferenceId: values[3],
+          });
+          return { rows: [{ id: fake.notificationOutbox.length }], rowCount: 1 };
+        }
+        if (sql.includes("DELETE FROM fee_payment_notification_outbox")) {
+          fake.notificationOutbox = fake.notificationOutbox.filter((event) =>
+            !(event.paymentId === values[0] && event.schoolId === values[1]
+              && event.eventType === values[2] && event.eventReferenceId === values[3]));
+          return { rows: [], rowCount: 1 };
+        }
         if (sql.includes("INSERT INTO audit_logs")) {
           fake.audits.push(values);
           return { rows: [] };
@@ -264,10 +343,56 @@ describe("public fee-provider webhook settlement", () => {
     expect(fake.receipt?.receipt_number).toBe("RCP-2-00000011");
     expect(fake.audits).toHaveLength(2);
     const notificationIndex = fake.calls.findIndex((sql) => sql.includes("INSERT INTO fee_payment_notifications"));
-    const receiptCheckIndex = fake.calls.findIndex((sql) => sql.includes("SELECT receipt_number FROM fee_receipts"));
+    const receiptCheckIndex = fake.calls.findIndex((sql) =>
+      sql.includes("SELECT school_id,payment_id,invoice_id,receipt_number,snapshot"));
     const commitIndex = fake.calls.findIndex((sql) => sql === "COMMIT");
     expect(notificationIndex).toBeGreaterThan(receiptCheckIndex);
     expect(notificationIndex).toBeLessThan(commitIndex);
+  });
+
+  it("commits provider settlement and receipt while queuing a failed notification delivery", async () => {
+    fake.failNotificationOnce = true;
+    vi.stubGlobal("fetch", vi.fn(async () => response({ status: true, data: {
+      id: 456, status: "success", reference: expectedReference, amount: 1234, currency: "NGN",
+    } })));
+    const result = await postWebhook(signedWebhook());
+    expect(result.status).toBe(200);
+    expect(await result.json()).toMatchObject({ received: true, outcome: "verified" });
+    expect(fake.payment.status).toBe("VERIFIED");
+    expect(fake.invoice.paid_minor).toBe(1234);
+    expect(fake.receipt?.receipt_number).toBe("RCP-2-00000011");
+    expect(fake.notificationOutbox).toEqual([{
+      paymentId: 11, schoolId: 2, eventType: "PAYMENT_VERIFIED", eventReferenceId: 0,
+    }]);
+    expect(fake.calls).toContain("ROLLBACK TO SAVEPOINT fee_payment_notification_delivery");
+    expect(fake.calls.at(-1)).toBe("COMMIT");
+  });
+
+  it("rolls back settlement and persists provider reconciliation when initial outbox intent fails", async () => {
+    fake.failNotificationOutbox = true;
+    vi.stubGlobal("fetch", vi.fn(async () => response({ status: true, data: {
+      id: 456, status: "success", reference: expectedReference, amount: 1234, currency: "NGN",
+    } })));
+    const result = await postWebhook(signedWebhook());
+    expect(result.status).toBe(202);
+    expect(await result.json()).toMatchObject({ received: true, outcome: "reconciliation_required" });
+    expect(fake.payment.status).toBe("PENDING");
+    expect(fake.invoice.paid_minor).toBe(0);
+    expect(fake.receipt).toBeNull();
+    expect([...fake.events.values()].some((event) => event.status === "RECONCILIATION_REQUIRED")).toBe(true);
+  });
+
+  it("rolls back and reconciles if the notification savepoint cannot be established", async () => {
+    fake.failNotificationSavepoint = true;
+    vi.stubGlobal("fetch", vi.fn(async () => response({ status: true, data: {
+      id: 456, status: "success", reference: expectedReference, amount: 1234, currency: "NGN",
+    } })));
+    const result = await postWebhook(signedWebhook());
+    expect(result.status).toBe(202);
+    expect(await result.json()).toMatchObject({ received: true, outcome: "reconciliation_required" });
+    expect(fake.payment.status).toBe("PENDING");
+    expect(fake.invoice.paid_minor).toBe(0);
+    expect([...fake.events.values()].some((event) => event.status === "RECONCILIATION_REQUIRED")).toBe(true);
   });
 
   it("settles an independently verified partial amount and snapshots a receipt for that payment", async () => {
@@ -297,6 +422,43 @@ describe("public fee-provider webhook settlement", () => {
     expect(fake.receipt?.receipt_number).toBe("RCP-2-00000011");
     expect(fake.audits).toHaveLength(2);
     expect([...fake.events.values()].filter((event) => event.status === "VERIFIED")).toHaveLength(1);
+  });
+
+  it("reconciles an existing receipt whose canonical snapshot disagrees with the verified event", async () => {
+    const historicalReceipt = {
+      school_id: 2,
+      payment_id: 11,
+      invoice_id: 22,
+      receipt_number: "RCP-2-00000011",
+      snapshot: {
+        invoiceId: 22, schoolId: 2, studentId: 33, amountMinor: 1234,
+        currency: "NGN", paymentReference: "different-reference",
+      },
+    };
+    fake.receipt = structuredClone(historicalReceipt);
+
+    const outcome = await settleVerifiedPayment(
+      "PAYSTACK",
+      "paystack:456",
+      {
+        reference: expectedReference, amountMinor: 1234, currency: "NGN",
+        status: "succeeded", providerTransactionId: "456",
+      },
+      Buffer.from(signedWebhook()),
+    );
+
+    expect(outcome).toBe("reconciliation_required");
+    expect(fake.payment.status).toBe("PENDING");
+    expect(fake.invoice).toMatchObject({ paid_minor: 0, outstanding_minor: 1234 });
+    expect(fake.session.state).toBe("READY");
+    expect(fake.receipt).toEqual(historicalReceipt);
+    expect(fake.events.get("PAYSTACK:paystack:456")).toMatchObject({
+      status: "RECONCILIATION_REQUIRED", payment_id: 11, school_id: 2,
+    });
+    expect(fake.audits).toHaveLength(1);
+    expect(fake.calls.some((sql) => sql.includes("receipt mismatch requires reconciliation"))).toBe(true);
+    expect(fake.calls.some((sql) => sql.includes("UPDATE fee_payments SET status='VERIFIED'"))).toBe(false);
+    expect(fake.calls.some((sql) => sql.includes("UPDATE fee_invoices SET paid_minor=$1"))).toBe(false);
   });
 
   it("rolls back a failed receipt transaction so provider retry can safely settle", async () => {
@@ -432,5 +594,112 @@ describe("public fee-provider webhook settlement", () => {
     });
     expect(invalid.status).toBe(401);
     expect(fake.events.size).toBe(1);
+  });
+
+  it("settles a signed Flutterwave route delivery and treats redelivery as idempotent", async () => {
+    useFlutterwave();
+    const body = flutterwaveWebhook();
+
+    const first = await postFlutterwaveWebhook(body);
+    const duplicate = await postFlutterwaveWebhook(body);
+
+    expect(first.status).toBe(200);
+    expect(await first.json()).toMatchObject({ outcome: "verified" });
+    expect(duplicate.status).toBe(200);
+    expect(await duplicate.json()).toMatchObject({ outcome: "duplicate" });
+    expect(fake.payment).toMatchObject({ status: "VERIFIED", provider_transaction_id: "456" });
+    expect(fake.invoice).toMatchObject({ paid_minor: 1234, outstanding_minor: 0 });
+    expect(fake.receipt).not.toBeNull();
+    expect(fake.audits).toHaveLength(2);
+    expect(fake.events.get("FLUTTERWAVE:flutterwave:456")).toMatchObject({
+      status: "VERIFIED", signature_verified: true,
+    });
+  });
+
+  it("rejects a forged Flutterwave signature before consulting or recording the transaction", async () => {
+    useFlutterwave();
+    const result = await postFlutterwaveWebhook(flutterwaveWebhook(), "forged-hash");
+
+    expect(result.status).toBe(401);
+    expect(fake.events.size).toBe(0);
+    expect(fake.payment.status).toBe("PENDING");
+    expect(fake.invoice.paid_minor).toBe(0);
+  });
+
+  it("does not attach an authenticated Flutterwave event to another provider's matching reference", async () => {
+    useFlutterwave();
+    fake.payment.method = "PAYSTACK";
+    fake.payment.provider = "PAYSTACK";
+    fake.session.session_provider = "PAYSTACK";
+    const result = await postFlutterwaveWebhook(flutterwaveWebhook());
+
+    expect(result.status).toBe(202);
+    expect([...fake.events.values()][0]).toMatchObject({
+      status: "RECONCILIATION_REQUIRED", signature_verified: true, school_id: null, payment_id: null,
+    });
+  });
+
+  it.each([
+    ["amount", { amount: 12.35 }, expectedReference, 456],
+    ["reference", { tx_ref: "fee_unknown1234567" }, "fee_unknown1234567", 456],
+    ["transaction ID", {}, expectedReference, 457],
+    ["currency", { currency: "USD" }, expectedReference, 456],
+  ])("holds a signed Flutterwave %s mismatch for reconciliation", async (_label, verification, reference, webhookId) => {
+    useFlutterwave(verification);
+    const result = await postFlutterwaveWebhook(flutterwaveWebhook({ id: webhookId, tx_ref: reference }));
+
+    expect(result.status).toBe(202);
+    expect(await result.json()).toMatchObject({ outcome: "reconciliation_required" });
+    expect(fake.payment.status).toBe("PENDING");
+    expect(fake.invoice.paid_minor).toBe(0);
+    expect(fake.receipt).toBeNull();
+    expect(fake.events.get(`FLUTTERWAVE:flutterwave:${webhookId}`)).toMatchObject({
+      status: "RECONCILIATION_REQUIRED", signature_verified: true,
+      webhook_transaction_id: String(webhookId),
+    });
+  });
+
+  it("does not replace a transaction already assigned to a failed payment", async () => {
+    useFlutterwave();
+    fake.payment.status = "FAILED";
+    fake.payment.provider_transaction_id = "999";
+    const result = await postFlutterwaveWebhook(flutterwaveWebhook());
+
+    expect(result.status).toBe(200);
+    expect(await result.json()).toMatchObject({ outcome: "reconciliation_required" });
+    expect(fake.payment).toMatchObject({ status: "FAILED", provider_transaction_id: "999" });
+    expect(fake.invoice.paid_minor).toBe(0);
+    expect(fake.receipt).toBeNull();
+  });
+
+  it("re-verifies an authenticated Flutterwave reconciliation event before retry settlement", async () => {
+    useFlutterwave({ amount: 12.35 });
+    const body = flutterwaveWebhook();
+    const held = await postFlutterwaveWebhook(body);
+    expect(held.status).toBe(202);
+    expect(fake.invoice.paid_minor).toBe(0);
+
+    useFlutterwave();
+    const outcome = await retryReconciliationEvent(2, "flutterwave:456");
+
+    expect(outcome).toBe("verified");
+    expect(fake.payment).toMatchObject({ status: "VERIFIED", provider_transaction_id: "456" });
+    expect(fake.invoice).toMatchObject({ paid_minor: 1234, outstanding_minor: 0 });
+    expect(fake.receipt).not.toBeNull();
+    expect(fake.events.get("FLUTTERWAVE:flutterwave:456")).toMatchObject({ status: "VERIFIED" });
+  });
+
+  it("prevents concurrent Flutterwave deliveries from crediting the same invoice twice", async () => {
+    useFlutterwave();
+    const body = flutterwaveWebhook();
+    const [first, second] = await Promise.all([
+      postFlutterwaveWebhook(body), postFlutterwaveWebhook(body),
+    ]);
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(fake.invoice.paid_minor).toBe(1234);
+    expect(fake.audits).toHaveLength(2);
+    expect([...fake.events.values()].filter((event) => event.status === "VERIFIED")).toHaveLength(1);
   });
 });

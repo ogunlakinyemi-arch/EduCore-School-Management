@@ -19,7 +19,10 @@ export interface FeePaymentNotification {
   invoiceNumber: string;
   studentName: string;
   paymentReference: string;
-  amountMinor: number;
+  amountMinor?: number;
+  /** @nullable */
+  refundId: number | null;
+  eventAmountMinor: number;
   currency: string;
   method: string;
 }

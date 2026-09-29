@@ -409,6 +409,7 @@ export const feePaymentNotifications = pgTable("fee_payment_notifications", {
   schoolId: integer("school_id").notNull().references(() => schools.id),
   paymentId: integer("payment_id").notNull(),
   invoiceId: integer("invoice_id").notNull(),
+  eventReferenceId: integer("event_reference_id").notNull().default(0),
   recipientUserId: integer("recipient_user_id").notNull().references(() => appUsers.id),
   recipientRole: text("recipient_role").notNull(),
   eventType: text("event_type").notNull().default("PAYMENT_VERIFIED"),
@@ -419,18 +420,48 @@ export const feePaymentNotifications = pgTable("fee_payment_notifications", {
 }, (t) => [
   unique("fee_payment_notifications_id_school_unique").on(t.id, t.schoolId),
   unique("fee_payment_notifications_delivery_unique")
-    .on(t.paymentId, t.recipientUserId, t.recipientRole, t.eventType),
+    .on(t.paymentId, t.recipientUserId, t.recipientRole, t.eventType, t.eventReferenceId),
   foreignKey({
     columns: [t.paymentId, t.invoiceId, t.schoolId],
     foreignColumns: [feePayments.id, feePayments.invoiceId, feePayments.schoolId],
     name: "fee_payment_notifications_payment_invoice_school_fk",
   }),
   check("fee_payment_notifications_role_check", sql`${t.recipientRole} IN ('PARENT','STUDENT','SCHOOL_ADMIN','ACCOUNTANT')`),
-  check("fee_payment_notifications_event_check", sql`${t.eventType} = 'PAYMENT_VERIFIED'`),
+  check("fee_payment_notifications_event_check", sql`${t.eventType} IN ('PAYMENT_VERIFIED','PAYMENT_REJECTED','REFUND_APPROVED','REVERSAL_APPROVED')`),
+  check("fee_payment_notifications_event_reference_check", sql`
+    (${t.eventType} IN ('PAYMENT_VERIFIED','PAYMENT_REJECTED') AND ${t.eventReferenceId}=0)
+    OR (${t.eventType} IN ('REFUND_APPROVED','REVERSAL_APPROVED') AND ${t.eventReferenceId}>0)
+  `),
   check("fee_payment_notifications_channel_check", sql`${t.channel} = 'IN_APP'`),
   check("fee_payment_notifications_read_check", sql`(${t.isRead} = false AND ${t.readAt} IS NULL) OR (${t.isRead} = true AND ${t.readAt} IS NOT NULL)`),
   index("fee_payment_notifications_recipient_idx").on(t.recipientUserId, t.isRead, t.createdAt),
   index("fee_payment_notifications_school_idx").on(t.schoolId, t.createdAt),
+]);
+
+export const feePaymentNotificationOutbox = pgTable("fee_payment_notification_outbox", {
+  id: serial("id").primaryKey(),
+  schoolId: integer("school_id").notNull().references(() => schools.id),
+  paymentId: integer("payment_id").notNull(),
+  invoiceId: integer("invoice_id").notNull(),
+  eventType: text("event_type").notNull(),
+  eventReferenceId: integer("event_reference_id").notNull().default(0),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+  attempts: integer("attempts").notNull().default(0),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+  lastError: text("last_error").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  unique("fee_payment_notification_outbox_delivery_unique").on(t.paymentId, t.eventType, t.eventReferenceId),
+  foreignKey({
+    columns: [t.paymentId, t.invoiceId, t.schoolId],
+    foreignColumns: [feePayments.id, feePayments.invoiceId, feePayments.schoolId],
+    name: "fee_payment_notification_outbox_payment_invoice_school_fk",
+  }),
+  check("fee_payment_notification_outbox_event_check", sql`
+    (${t.eventType} IN ('PAYMENT_VERIFIED','PAYMENT_REJECTED') AND ${t.eventReferenceId}=0)
+    OR (${t.eventType} IN ('REFUND_APPROVED','REVERSAL_APPROVED') AND ${t.eventReferenceId}>0)
+  `),
+  index("fee_payment_notification_outbox_retry_idx").on(t.schoolId, t.nextAttemptAt, t.createdAt),
 ]);
 
 export const insertFeeCategorySchema = createInsertSchema(feeCategories).omit({ id: true, createdAt: true, updatedAt: true });

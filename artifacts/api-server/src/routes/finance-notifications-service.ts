@@ -1,22 +1,58 @@
+import { logger } from "../lib/logger";
+
 type QueryClient = {
   query: (sql: string, values?: unknown[]) => Promise<{ rows: any[]; rowCount?: number | null }>;
 };
+type ConnectableQueryClient = QueryClient & {
+  connect: () => Promise<{ query: QueryClient["query"]; release: () => void }>;
+};
+
+export const financePaymentNotificationEvents = [
+  "PAYMENT_VERIFIED",
+  "PAYMENT_REJECTED",
+  "REFUND_APPROVED",
+  "REVERSAL_APPROVED",
+] as const;
+export type FinancePaymentNotificationEvent = typeof financePaymentNotificationEvents[number];
+
+export class FinanceNotificationSettlementSafetyError extends Error {
+  constructor() {
+    super("Finance notification intent or savepoint could not be safely persisted");
+    this.name = "FinanceNotificationSettlementSafetyError";
+  }
+}
 
 /**
  * Enqueue role-scoped notifications using only current, active relationships
- * in the payment's own school. Call from the payment settlement transaction.
+ * in the payment's own school. Call from the payment transaction.
  */
-export async function enqueueVerifiedFeePaymentNotifications(
+export async function enqueueFinancePaymentNotifications(
   client: QueryClient,
   paymentId: number,
   schoolId: number,
+  eventType: FinancePaymentNotificationEvent,
+  metadata: Record<string, unknown> = {},
+  eventReferenceId = 0,
 ): Promise<number> {
   const inserted = await client.query(
     `WITH target AS (
        SELECT p.id AS payment_id,p.school_id,p.invoice_id,p.student_id
        FROM fee_payments p
        JOIN fee_invoices i ON i.id=p.invoice_id AND i.school_id=p.school_id
-       WHERE p.id=$1 AND p.school_id=$2 AND p.status='VERIFIED'
+        WHERE p.id=$1 AND p.school_id=$2
+          AND (($3='PAYMENT_VERIFIED' AND p.status='VERIFIED')
+            OR ($3='PAYMENT_REJECTED' AND p.status='REJECTED')
+            OR ($3 IN ('REFUND_APPROVED','REVERSAL_APPROVED')
+              AND p.status IN ('VERIFIED','REFUNDED','REVERSED')
+              AND EXISTS (
+                SELECT 1 FROM fee_refunds fr
+                WHERE fr.id=$4 AND fr.payment_id=p.id AND fr.invoice_id=p.invoice_id
+                  AND fr.school_id=p.school_id AND fr.status='APPROVED'
+                  AND (($3='REFUND_APPROVED' AND fr.transaction_type='REFUND')
+                    OR ($3='REVERSAL_APPROVED' AND fr.transaction_type='REVERSAL'))
+              )))
+          AND (($3 IN ('PAYMENT_VERIFIED','PAYMENT_REJECTED') AND $4=0)
+            OR ($3 IN ('REFUND_APPROVED','REVERSAL_APPROVED') AND $4>0))
      ), recipients AS (
        SELECT DISTINCT t.payment_id,t.school_id,t.invoice_id,pa.user_id AS user_id,'PARENT'::text AS role
        FROM target t
@@ -39,21 +75,161 @@ export async function enqueueVerifiedFeePaymentNotifications(
        JOIN app_users u ON u.id=m.user_id AND u.status='ACTIVE'
      )
      INSERT INTO fee_payment_notifications
-       (school_id,payment_id,invoice_id,recipient_user_id,recipient_role,event_type,channel)
-     SELECT school_id,payment_id,invoice_id,user_id,role,'PAYMENT_VERIFIED','IN_APP'
+        (school_id,payment_id,invoice_id,event_reference_id,recipient_user_id,recipient_role,event_type,channel)
+      SELECT school_id,payment_id,invoice_id,$4,user_id,role,$3,'IN_APP'
      FROM recipients
-     ON CONFLICT (payment_id,recipient_user_id,recipient_role,event_type) DO NOTHING
+      ON CONFLICT (payment_id,recipient_user_id,recipient_role,event_type,event_reference_id) DO NOTHING
      RETURNING id`,
-    [paymentId, schoolId],
+    [paymentId, schoolId, eventType, eventReferenceId],
   );
   const createdCount = inserted.rowCount ?? inserted.rows.length;
   if (createdCount > 0) {
     await client.query(
       `INSERT INTO audit_logs ("user",role,school_id,action,module,record_id,severity,event_type,result,metadata)
-       VALUES ('Finance notification service','SYSTEM',$1,'generated verified-payment notifications',
+       VALUES ('Finance notification service','SYSTEM',$1,'generated in-app finance notifications',
          'Finance',$2,'info','FEE_PAYMENT_NOTIFICATION','SUCCESS',$3)`,
-      [schoolId, paymentId, { createdCount, eventType: "PAYMENT_VERIFIED", channel: "IN_APP" }],
+      [schoolId, paymentId, {
+        ...metadata,
+        createdCount,
+        eventType,
+        channel: "IN_APP",
+        externalChannels: { email: "BLOCKED_UNCONFIGURED", sms: "BLOCKED_UNCONFIGURED" },
+      }],
     );
   }
   return createdCount;
+}
+
+/**
+ * Notification persistence is best-effort relative to a committed financial
+ * operation. A durable outbox row lets a later authorized notification read
+ * retry delivery if either the insert or its success audit fails.
+ */
+export async function enqueueFinancePaymentNotificationsSafely(
+  client: QueryClient,
+  paymentId: number,
+  schoolId: number,
+  eventType: FinancePaymentNotificationEvent,
+  metadata: Record<string, unknown> = {},
+  eventReferenceId = 0,
+): Promise<{ queued: boolean }> {
+  try {
+    await client.query(
+      `INSERT INTO fee_payment_notification_outbox
+        (school_id,payment_id,invoice_id,event_type,event_reference_id,metadata,last_error)
+       SELECT p.school_id,p.id,p.invoice_id,$3,$4,$5,'Notification enqueue pending'
+       FROM fee_payments p
+       WHERE p.id=$1 AND p.school_id=$2
+         AND (($3 IN ('PAYMENT_VERIFIED','PAYMENT_REJECTED') AND $4=0)
+           OR ($3 IN ('REFUND_APPROVED','REVERSAL_APPROVED') AND $4>0
+             AND EXISTS (SELECT 1 FROM fee_refunds fr WHERE fr.id=$4 AND fr.payment_id=p.id
+               AND fr.invoice_id=p.invoice_id AND fr.school_id=p.school_id
+               AND fr.status='APPROVED'
+               AND (($3='REFUND_APPROVED' AND fr.transaction_type='REFUND')
+                 OR ($3='REVERSAL_APPROVED' AND fr.transaction_type='REVERSAL')))))
+       ON CONFLICT (payment_id,event_type,event_reference_id) DO NOTHING`,
+      [paymentId, schoolId, eventType, eventReferenceId, metadata],
+    );
+  } catch {
+    throw new FinanceNotificationSettlementSafetyError();
+  }
+  try {
+    await client.query("SAVEPOINT fee_payment_notification_delivery");
+  } catch {
+    throw new FinanceNotificationSettlementSafetyError();
+  }
+  try {
+    await enqueueFinancePaymentNotifications(client, paymentId, schoolId, eventType, metadata, eventReferenceId);
+    await client.query(
+      `DELETE FROM fee_payment_notification_outbox
+       WHERE payment_id=$1 AND school_id=$2 AND event_type=$3 AND event_reference_id=$4`,
+      [paymentId, schoolId, eventType, eventReferenceId],
+    );
+    await client.query("RELEASE SAVEPOINT fee_payment_notification_delivery");
+    return { queued: false };
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK TO SAVEPOINT fee_payment_notification_delivery");
+      await client.query("RELEASE SAVEPOINT fee_payment_notification_delivery");
+    } catch (rollbackError) {
+      logger.error({ error: rollbackError, paymentId, schoolId, eventType }, "Unable to roll back failed finance notification savepoint");
+      throw new FinanceNotificationSettlementSafetyError();
+    }
+    logger.error({ error, paymentId, schoolId, eventType, eventReferenceId },
+      "Finance notification delivery failed; atomic outbox intent remains pending");
+    return { queued: true };
+  }
+}
+
+export async function retryPendingFinancePaymentNotifications(
+  db: ConnectableQueryClient,
+  schoolIds: number[],
+): Promise<void> {
+  if (!schoolIds.length) return;
+  let pending: any[];
+  try {
+    const result = await db.query(
+      `SELECT id,payment_id,school_id,event_type,event_reference_id,metadata
+       FROM fee_payment_notification_outbox
+       WHERE school_id=ANY($1::integer[]) AND next_attempt_at<=NOW()
+       ORDER BY created_at,id LIMIT 20`,
+      [schoolIds],
+    );
+    pending = result.rows;
+  } catch (error) {
+    logger.error({ error, schoolIds }, "Unable to inspect pending finance notification retries");
+    return;
+  }
+  for (const row of pending) {
+    let client: Awaited<ReturnType<ConnectableQueryClient["connect"]>> | undefined;
+    try {
+      client = await db.connect();
+      await client.query("BEGIN");
+      const locked = await client.query(
+        `SELECT id,payment_id,school_id,event_type,event_reference_id,metadata
+         FROM fee_payment_notification_outbox WHERE id=$1 AND school_id=$2
+           AND next_attempt_at<=NOW() FOR UPDATE SKIP LOCKED`,
+        [row.id, row.school_id],
+      );
+      if (!locked.rows[0]) {
+        await client.query("COMMIT");
+        continue;
+      }
+      const retry = locked.rows[0];
+      await client.query("SAVEPOINT fee_payment_notification_retry");
+      try {
+        await enqueueFinancePaymentNotifications(
+          client,
+          Number(retry.payment_id),
+          Number(retry.school_id),
+          retry.event_type,
+          retry.metadata ?? {},
+          Number(retry.event_reference_id),
+        );
+        await client.query("RELEASE SAVEPOINT fee_payment_notification_retry");
+        await client.query(
+          "DELETE FROM fee_payment_notification_outbox WHERE id=$1 AND school_id=$2",
+          [retry.id, retry.school_id],
+        );
+      } catch (error) {
+        await client.query("ROLLBACK TO SAVEPOINT fee_payment_notification_retry");
+        await client.query("RELEASE SAVEPOINT fee_payment_notification_retry");
+        await client.query(
+          `UPDATE fee_payment_notification_outbox SET attempts=attempts+1,
+             next_attempt_at=NOW()+LEAST(INTERVAL '1 hour',INTERVAL '15 seconds' * POWER(2,LEAST(attempts,8))),
+             last_error='Notification retry failed'
+           WHERE id=$1 AND school_id=$2`,
+          [retry.id, retry.school_id],
+        );
+        logger.error({ error, paymentId: retry.payment_id, schoolId: retry.school_id, eventType: retry.event_type },
+          "Finance notification outbox retry failed");
+      }
+      await client.query("COMMIT");
+    } catch (error) {
+      await client?.query("ROLLBACK").catch(() => undefined);
+      logger.error({ error, outboxId: row.id, schoolId: row.school_id }, "Unable to process finance notification retry");
+    } finally {
+      client?.release();
+    }
+  }
 }

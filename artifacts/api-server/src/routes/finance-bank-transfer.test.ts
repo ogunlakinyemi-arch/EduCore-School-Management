@@ -14,6 +14,9 @@ const state = vi.hoisted(() => ({
   schoolId: 1,
   userId: 20,
   audit: [] as any[][],
+  failNotificationInsert: false,
+  failNotificationOutbox: false,
+  notificationOutbox: [] as any[],
 }));
 
 const makePaymentView = () => ({
@@ -69,6 +72,7 @@ const poolMock = vi.hoisted(() => {
         releaseLocks();
         return result();
       }
+      if (sql.startsWith("SAVEPOINT") || sql.startsWith("RELEASE SAVEPOINT") || sql.startsWith("ROLLBACK TO SAVEPOINT")) return result();
       if (sql.includes("FOR UPDATE") && !sql.includes("SELECT id FROM fee_payments")) {
         const key = sql.includes("FROM fee_payments")
           ? `payment:${values[0]}:${values[1]}`
@@ -175,13 +179,42 @@ const poolMock = vi.hoisted(() => {
         }
         return result();
       }
+      if (sql.includes("SELECT receipt_number,payment_id,invoice_id,school_id")) {
+        return result(state.receipt?.payment_id === Number(values[0]) && state.receipt.school_id === Number(values[1])
+          && state.receipt.invoice_id === Number(values[2])
+          ? [{
+            receipt_number: state.receipt.receipt_number,
+            payment_id: state.receipt.payment_id,
+            invoice_id: state.receipt.invoice_id,
+            school_id: state.receipt.school_id,
+            snapshot_matches: JSON.stringify(state.receipt.snapshot) === values[3],
+          }]
+          : []);
+      }
       if (sql.includes("SELECT receipt_number FROM fee_receipts")) {
         return result(state.receipt?.payment_id === Number(values[0]) && state.receipt.school_id === Number(values[1])
           && state.receipt.invoice_id === Number(values[2])
           ? [{ receipt_number: state.receipt.receipt_number }]
           : []);
       }
-      if (sql.includes("INSERT INTO fee_payment_notifications")) return result();
+      if (sql.includes("INSERT INTO fee_payment_notifications")) {
+        if (state.failNotificationInsert) {
+          state.failNotificationInsert = false;
+          throw new Error("simulated notification insert failure");
+        }
+        return result(values[2] === "PAYMENT_REJECTED" ? [{ id: 81 }] : []);
+      }
+      if (sql.includes("INSERT INTO fee_payment_notification_outbox")) {
+        if (state.failNotificationOutbox) throw new Error("simulated outbox persistence failure");
+        state.notificationOutbox.push({ paymentId: values[0], schoolId: values[1], eventType: values[2], eventReferenceId: values[3] });
+        return result([{ id: state.notificationOutbox.length }]);
+      }
+      if (sql.includes("DELETE FROM fee_payment_notification_outbox")) {
+        state.notificationOutbox = state.notificationOutbox.filter((event) =>
+          !(event.paymentId === values[0] && event.schoolId === values[1]
+            && event.eventType === values[2] && event.eventReferenceId === values[3]));
+        return result();
+      }
       if (sql.includes("INSERT INTO fee_school_settings (school_id) VALUES")) return result();
       if (sql.includes("INSERT INTO fee_school_settings")) {
         state.bankSettings = {
@@ -343,6 +376,9 @@ beforeEach(() => {
   state.role = "SCHOOL_ADMIN";
   state.schoolId = 1;
   state.userId = 20;
+  state.failNotificationInsert = false;
+  state.failNotificationOutbox = false;
+  state.notificationOutbox.length = 0;
   poolMock.connect.mockClear();
   poolMock.query.mockClear();
   poolMock.resetLocks();
@@ -404,11 +440,34 @@ describe("manual bank-transfer review integration", () => {
       snapshot: { invoiceId: 41, schoolId: 1 },
     });
     const notificationIndex = state.calls.findIndex(({ sql }) => sql.includes("INSERT INTO fee_payment_notifications"));
-    const receiptCheckIndex = state.calls.findIndex(({ sql }) => sql.includes("SELECT receipt_number FROM fee_receipts"));
+    const receiptCheckIndex = state.calls.findIndex(({ sql }) => sql.includes("SELECT receipt_number,payment_id,invoice_id,school_id"));
     const commitIndex = state.calls.findIndex(({ sql }) => sql === "COMMIT");
     expect(notificationIndex).toBeGreaterThan(receiptCheckIndex);
     expect(notificationIndex).toBeLessThan(commitIndex);
     expect(state.audit.some((entry) => JSON.stringify(entry[7]).includes(verificationBody.evidenceReference))).toBe(true);
+  });
+
+  it("commits manual verification and receipt while queuing a failed notification delivery", async () => {
+    state.failNotificationInsert = true;
+    const response = await verify();
+    expect(response.status).toBe(200);
+    expect(state.payment.status).toBe("VERIFIED");
+    expect(state.invoice.paid_minor).toBe(30000);
+    expect(state.receipt?.receipt_number).toBe("RCP-1-00000071");
+    expect(state.notificationOutbox).toEqual([{
+      paymentId: 71, schoolId: 1, eventType: "PAYMENT_VERIFIED", eventReferenceId: 0,
+    }]);
+    expect(state.calls.some(({ sql }) => sql === "ROLLBACK TO SAVEPOINT fee_payment_notification_delivery")).toBe(true);
+    expect(state.calls.at(-1)?.sql).toBe("COMMIT");
+  });
+
+  it("rolls manual verification back when the atomic notification intent cannot persist", async () => {
+    state.failNotificationOutbox = true;
+    const response = await verify();
+    expect(response.status).toBe(500);
+    expect(state.calls.some(({ sql }) => sql === "ROLLBACK")).toBe(true);
+    expect(state.calls.some(({ sql }) => sql === "COMMIT")).toBe(false);
+    expect(state.calls.some(({ sql }) => sql.startsWith("SAVEPOINT fee_payment_notification_delivery"))).toBe(false);
   });
 
   it("returns the persisted receipt on an exact double-verify replay without applying funds twice", async () => {
@@ -470,6 +529,21 @@ describe("manual bank-transfer review integration", () => {
     expect(await response.json()).toMatchObject({ error: "Verified payment receipt integrity failure" });
   });
 
+  it("rejects an ON CONFLICT receipt with the expected number but a mismatched canonical snapshot", async () => {
+    state.receipt = {
+      school_id: 1,
+      payment_id: 71,
+      invoice_id: 41,
+      receipt_number: "RCP-1-00000071",
+      snapshot: { invoiceId: 41, schoolId: 1, amountMinor: 1 },
+    };
+    const response = await verify();
+    expect(response.status).toBe(500);
+    expect(await response.json()).toMatchObject({ error: "Verified payment receipt integrity failure" });
+    expect(state.receipt.snapshot).toMatchObject({ amountMinor: 1 });
+    expect(state.calls.some(({ sql }) => sql.includes("ON CONFLICT (payment_id) DO NOTHING"))).toBe(true);
+  });
+
   it("requires and stores a nonempty rejection reason", async () => {
     const blank = await fetch(`${baseUrl}/school/finance/payments/71/reject?schoolId=1`, {
       method: "POST",
@@ -485,6 +559,25 @@ describe("manual bank-transfer review integration", () => {
     });
     expect(rejected.status).toBe(200);
     expect(state.payment).toMatchObject({ status: "REJECTED", rejection_reason: "Transfer reference could not be matched" });
+    const delivery = state.calls.find(({ sql }) => sql.includes("INSERT INTO fee_payment_notifications"));
+    expect(delivery?.values).toEqual([71, 1, "PAYMENT_REJECTED", 0]);
+    const notifications = state.calls.filter(({ sql }) => sql.includes("'FEE_PAYMENT_NOTIFICATION'"));
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0].values[2]).toMatchObject({
+      eventType: "PAYMENT_REJECTED",
+      channel: "IN_APP",
+      createdCount: 1,
+      externalChannels: { email: "BLOCKED_UNCONFIGURED", sms: "BLOCKED_UNCONFIGURED" },
+    });
+    expect(notifications[0].values[2]).toMatchObject({ reason: "Transfer reference could not be matched" });
+
+    const replay = await fetch(`${baseUrl}/school/finance/payments/71/reject?schoolId=1`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason: "Transfer reference could not be matched" }),
+    });
+    expect(replay.status).toBe(200);
+    expect(state.calls.filter(({ sql }) => sql.includes("'FEE_PAYMENT_NOTIFICATION'"))).toHaveLength(1);
   });
 
   it("binds transfer idempotency replays to actor and compares date and proof", async () => {

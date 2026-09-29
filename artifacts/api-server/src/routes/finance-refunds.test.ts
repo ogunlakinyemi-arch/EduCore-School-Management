@@ -7,6 +7,10 @@ const state = vi.hoisted(() => ({
   refunds: [] as Array<Record<string, any>>,
   calls: [] as Array<{ sql: string; values: any[] }>,
   auditCount: 0,
+  notificationAudits: [] as Array<{ schoolId: number; recordId: number; metadata: Record<string, any> }>,
+  failNotificationInsert: false,
+  failNotificationOutbox: false,
+  notificationOutbox: [] as any[],
 }));
 
 const refundView = (refund: Record<string, any>) => ({
@@ -28,7 +32,9 @@ const dbMock = vi.hoisted(() => {
   const result = (rows: any[] = []) => ({ rows, rowCount: rows.length });
   const query = vi.fn(async (sql: string, values: any[] = []) => {
     state.calls.push({ sql, values });
-    if (sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK") return result();
+    if (sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK"
+        || sql.startsWith("SAVEPOINT") || sql.startsWith("RELEASE SAVEPOINT")
+        || sql.startsWith("ROLLBACK TO SAVEPOINT")) return result();
     if (sql.includes("SELECT invoice_id FROM fee_payments")) {
       return result(state.payment.id === Number(values[0]) && state.payment.school_id === Number(values[1])
         ? [{ invoice_id: state.payment.invoice_id }] : []);
@@ -90,8 +96,35 @@ const dbMock = vi.hoisted(() => {
       state.payment.status = values[0];
       return result();
     }
+    if (sql.includes("INSERT INTO fee_payment_notifications")) {
+      if (state.failNotificationInsert) {
+        state.failNotificationInsert = false;
+        throw new Error("simulated notification insert failure");
+      }
+      return result([{ id: 71 }]);
+    }
+    if (sql.includes("INSERT INTO fee_payment_notification_outbox")) {
+      if (state.failNotificationOutbox) throw new Error("simulated outbox persistence failure");
+      state.notificationOutbox.push({
+        paymentId: values[0], schoolId: values[1], eventType: values[2], eventReferenceId: values[3],
+      });
+      return result([{ id: state.notificationOutbox.length }]);
+    }
+    if (sql.includes("DELETE FROM fee_payment_notification_outbox")) {
+      state.notificationOutbox = state.notificationOutbox.filter((event) =>
+        !(event.paymentId === values[0] && event.schoolId === values[1]
+          && event.eventType === values[2] && event.eventReferenceId === values[3]));
+      return result();
+    }
     if (sql.includes("INSERT INTO audit_logs")) {
       state.auditCount += 1;
+      if (sql.includes("'FEE_PAYMENT_NOTIFICATION'")) {
+        state.notificationAudits.push({
+          schoolId: Number(values[0]),
+          recordId: Number(values[1]),
+          metadata: values[2] as Record<string, any>,
+        });
+      }
       return result();
     }
     throw new Error(`Unhandled refund test query: ${sql}`);
@@ -111,7 +144,10 @@ vi.mock("../middlewares/auth", async (importOriginal) => {
       const role = req.header("x-test-role") ?? "SCHOOL_ADMIN";
       const schoolId = Number(req.header("x-test-school") ?? 1);
       (req as any).edupulseUser = {
-        user: { id: 20, clerkUserId: "refund-user", email: "refund@example.test", firstName: "Refund", lastName: "Reviewer" },
+         user: {
+           id: Number(req.header("x-test-user") ?? 20), clerkUserId: "refund-user",
+           email: "refund@example.test", firstName: "Refund", lastName: "Reviewer",
+         },
         roles: [{ id: 1, role, schoolId, status: "ACTIVE" }],
       };
       next();
@@ -147,6 +183,10 @@ beforeEach(() => {
   state.refunds.length = 0;
   state.calls.length = 0;
   state.auditCount = 0;
+  state.notificationAudits.length = 0;
+  state.failNotificationInsert = false;
+  state.failNotificationOutbox = false;
+  state.notificationOutbox.length = 0;
   dbMock.query.mockClear();
 });
 
@@ -154,11 +194,12 @@ const requestRefund = (
   amountMinor: unknown = 3000,
   headers: Record<string, string> = {},
   transactionType: "REFUND" | "REVERSAL" = "REFUND",
+  reason = "Approved credit correction",
 ) =>
   fetch(`${baseUrl}/school/finance/payments/11/refunds?schoolId=1`, {
     method: "POST",
     headers: { "content-type": "application/json", "Idempotency-Key": "refund-request-0001", ...headers },
-    body: JSON.stringify({ amountMinor, reason: "Approved credit correction", transactionType }),
+    body: JSON.stringify({ amountMinor, reason, transactionType }),
   });
 
 describe("school fee refunds", () => {
@@ -182,8 +223,25 @@ describe("school fee refunds", () => {
     expect(await replay.json()).toMatchObject({ id: 101, amountMinor: 3000, status: "PENDING" });
     expect(state.refunds).toHaveLength(1);
     expect(state.payment.status).toBe("VERIFIED");
+    expect(state.refunds[0].idempotency_key).toBe("refund-request-0001");
+    expect(state.refunds[0].requested_by).toBe(20);
     const excess = await requestRefund(3000, { "Idempotency-Key": "refund-request-0002" });
     expect(excess.status).toBe(409);
+  });
+
+  it("scopes idempotency to the school key, replays across actors, and rejects fingerprint changes", async () => {
+    const first = await requestRefund(1000);
+    const crossActorReplay = await requestRefund(1000, { "x-test-user": "21" });
+    expect(first.status).toBe(201);
+    expect(crossActorReplay.status).toBe(201);
+    expect(await crossActorReplay.json()).toMatchObject({ id: 101, amountMinor: 1000 });
+    expect(state.refunds).toHaveLength(1);
+    expect(state.refunds[0].requested_by).toBe(20);
+
+    expect((await requestRefund(1001)).status).toBe(409);
+    expect((await requestRefund(1000, {}, "REVERSAL")).status).toBe(409);
+    expect((await requestRefund(1000, {}, "REFUND", "Different reason")).status).toBe(409);
+    expect(state.refunds).toHaveLength(1);
   });
 
   it("requires approval evidence and idempotently restores invoice balance while preserving payment", async () => {
@@ -201,10 +259,60 @@ describe("school fee refunds", () => {
     expect(approved.status).toBe(200);
     expect(state.invoice).toMatchObject({ paid_minor: 2000, outstanding_minor: 3000, status: "PARTIALLY_PAID" });
     expect(state.payment.status).toBe("VERIFIED");
+    const delivery = state.calls.find(({ sql }) => sql.includes("INSERT INTO fee_payment_notifications"));
+    expect(delivery?.values).toEqual([11, 1, "REFUND_APPROVED", refund.id]);
     const replay = await approve("bank-refund-line-22", "Confirmed external refund transaction");
     expect(replay.status).toBe(200);
     expect(state.invoice.paid_minor).toBe(2000);
-    expect(state.auditCount).toBe(2);
+    expect(state.auditCount).toBe(3);
+    expect(state.notificationAudits).toHaveLength(1);
+    expect(state.notificationAudits[0]).toMatchObject({
+      schoolId: 1,
+      recordId: 11,
+      metadata: {
+        refundId: refund.id,
+        transactionType: "REFUND",
+        amountMinor: 3000,
+        eventType: "REFUND_APPROVED",
+        channel: "IN_APP",
+        createdCount: 1,
+        externalChannels: { email: "BLOCKED_UNCONFIGURED", sms: "BLOCKED_UNCONFIGURED" },
+      },
+    });
+  });
+
+  it("commits approved refund balance updates while queuing a failed notification", async () => {
+    const requested = await requestRefund();
+    const refund = await requested.json() as { id: number };
+    state.failNotificationInsert = true;
+    const approved = await fetch(`${baseUrl}/school/finance/refunds/${refund.id}/approve?schoolId=1`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ evidenceReference: "bank-refund-line-22", reviewerNotes: "Confirmed" }),
+    });
+    expect(approved.status).toBe(200);
+    expect(state.refunds[0].status).toBe("APPROVED");
+    expect(state.invoice).toMatchObject({ paid_minor: 2000, outstanding_minor: 3000 });
+    expect(state.notificationOutbox).toEqual([{
+      paymentId: 11, schoolId: 1, eventType: "REFUND_APPROVED", eventReferenceId: refund.id,
+    }]);
+    expect(state.calls.some(({ sql }) => sql === "ROLLBACK TO SAVEPOINT fee_payment_notification_delivery")).toBe(true);
+    expect(state.calls.at(-1)?.sql).toBe("COMMIT");
+  });
+
+  it("rolls refund approval back when the atomic notification intent cannot persist", async () => {
+    const requested = await requestRefund();
+    const refund = await requested.json() as { id: number };
+    state.calls.length = 0;
+    state.failNotificationOutbox = true;
+    const approved = await fetch(`${baseUrl}/school/finance/refunds/${refund.id}/approve?schoolId=1`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ evidenceReference: "bank-refund-line-22", reviewerNotes: "Confirmed" }),
+    });
+    expect(approved.status).toBe(500);
+    expect(state.calls.some(({ sql }) => sql === "ROLLBACK")).toBe(true);
+    expect(state.calls.some(({ sql }) => sql === "COMMIT")).toBe(false);
   });
 
   it("marks the original payment refunded after a full internal refund while retaining its receipt record", async () => {
@@ -232,5 +340,9 @@ describe("school fee refunds", () => {
     });
     expect(approved.status).toBe(200);
     expect(state.payment.status).toBe("REVERSED");
+    expect(state.notificationAudits).toHaveLength(1);
+    expect(state.notificationAudits[0].metadata).toMatchObject({
+      transactionType: "REVERSAL", eventType: "REVERSAL_APPROVED", refundId: refund.id,
+    });
   });
 });

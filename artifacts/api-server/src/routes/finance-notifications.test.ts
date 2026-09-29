@@ -4,17 +4,25 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 const state = vi.hoisted(() => ({
   calls: [] as Array<{ sql: string; values: any[] }>,
   canRead: true,
+  pendingOutbox: false,
   notification: {
     id: 41, schoolId: 4, eventType: "PAYMENT_VERIFIED", isRead: false,
     createdAt: "2026-09-04T12:00:00.000Z", readAt: null, receiptNumber: "RCP-4-00000031",
     invoiceNumber: "INV-31", studentName: "Linked Student", paymentReference: "PAY-31",
-    amountMinor: 2500, currency: "NGN", method: "PAYSTACK",
+    amountMinor: 2500, refundId: null, eventAmountMinor: 2500, currency: "NGN", method: "PAYSTACK",
   } as Record<string, any>,
 }));
 const dbMock = vi.hoisted(() => {
   const rows = () => state.canRead ? [{ ...state.notification }] : [];
   const query = vi.fn(async (sql: string, values: any[] = []) => {
     state.calls.push({ sql, values });
+    if (sql.includes("FROM fee_payment_notification_outbox")) return {
+      rows: state.pendingOutbox ? [{
+        id: 9, payment_id: 31, school_id: 4, event_type: "PAYMENT_VERIFIED",
+        event_reference_id: 0, metadata: {},
+      }] : [],
+      rowCount: state.pendingOutbox ? 1 : 0,
+    };
     if (sql.includes("FROM fee_payment_notifications n")) return { rows: rows(), rowCount: rows().length };
     throw new Error(`Unexpected notification pool query: ${sql}`);
   });
@@ -76,11 +84,12 @@ afterAll(async () => new Promise<void>((resolve, reject) =>
 beforeEach(() => {
   state.calls.length = 0;
   state.canRead = true;
+  state.pendingOutbox = false;
   state.notification = {
     id: 41, schoolId: 4, eventType: "PAYMENT_VERIFIED", isRead: false,
     createdAt: "2026-09-04T12:00:00.000Z", readAt: null, receiptNumber: "RCP-4-00000031",
     invoiceNumber: "INV-31", studentName: "Linked Student", paymentReference: "PAY-31",
-    amountMinor: 2500, currency: "NGN", method: "PAYSTACK",
+    amountMinor: 2500, refundId: null, eventAmountMinor: 2500, currency: "NGN", method: "PAYSTACK",
   };
   dbMock.query.mockClear();
   dbMock.clientQuery.mockClear();
@@ -97,13 +106,40 @@ describe("recipient-only verified-payment notification reads", () => {
       invoiceNumber: "INV-31", studentName: "Linked Student", isRead: false,
     });
     expect(JSON.stringify(result)).not.toMatch(/transferBank|proofUrl|accountNumber|evidence/i);
-    const query = state.calls[0];
+    const query = state.calls.find(({ sql }) => sql.includes("FROM fee_payment_notifications n"))!;
     expect(query.values).toEqual([7, 4, 4, "PARENT"]);
     expect(query.sql).toContain("n.recipient_user_id=$1");
     expect(query.sql).toContain("pa.status='ACTIVE'");
     expect(query.sql).toContain("rel.status='ACTIVE'");
     expect(query.sql).toContain("linked_payment.school_id=n.school_id");
     expect(query.sql).toContain("fee_receipts r");
+  });
+
+  it("returns the same-school approved refund identity and amount for refund notifications", async () => {
+    state.notification = {
+      ...state.notification,
+      eventType: "REFUND_APPROVED",
+      refundId: 72,
+      eventAmountMinor: 900,
+    };
+    const response = await fetch(`${baseUrl}/me/finance/payment-notifications?schoolId=4`);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject([{
+      eventType: "REFUND_APPROVED", refundId: 72, eventAmountMinor: 900,
+    }]);
+    const query = state.calls.find(({ sql }) => sql.includes("FROM fee_payment_notifications n"))!;
+    expect(query.sql).toContain("fr.id=n.event_reference_id");
+    expect(query.sql).toContain("fr.payment_id=p.id");
+    expect(query.sql).toContain("fr.school_id=n.school_id AND fr.status='APPROVED'");
+  });
+
+  it("continues notification reads when an outbox retry cannot connect", async () => {
+    state.pendingOutbox = true;
+    dbMock.connect.mockRejectedValueOnce(new Error("temporary connection failure"));
+    const response = await fetch(`${baseUrl}/me/finance/payment-notifications?schoolId=4`);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject([{ id: 41, isRead: false }]);
+    expect(state.calls.some(({ sql }) => sql.includes("FROM fee_payment_notifications n"))).toBe(true);
   });
 
   it("does not query for a school the user is not currently assigned or linked to", async () => {

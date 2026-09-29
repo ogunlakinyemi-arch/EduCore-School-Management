@@ -131,6 +131,9 @@ describe("school finance reports", () => {
     expect(state.calls[0].sql).toContain("i.academic_session_id=$2");
     expect(state.calls[0].sql).toContain("i.academic_term_id=$3");
     expect(state.calls[0].sql).toContain("fee_structures fs");
+    expect(state.calls[0].sql).toContain("FROM fee_payments p");
+    expect(state.calls[0].sql).toContain("fr.status='APPROVED'");
+    expect(state.calls[0].sql).toContain("GREATEST(p.amount_minor");
     expect(state.calls[0].values).toEqual([5, 7, 8, 9]);
   });
 
@@ -174,6 +177,8 @@ describe("school finance reports", () => {
     expect(collectionQuery?.values).toContain(19);
     expect(collectionQuery?.values).toContain("BANK_TRANSFER");
     expect(collectionQuery?.values).toContain("MANUAL_BANK_TRANSFER");
+    expect(state.calls[0].sql).toContain("FROM fee_payments p");
+    expect(state.calls[0].sql).toContain("fr.status='APPROVED'");
   });
 
   it("returns tenant-scoped checkout and webhook reconciliation events with sanitized reasons", async () => {
@@ -207,6 +212,8 @@ describe("school finance reports", () => {
     expect(eventsQuery?.values).toEqual([
       5, 19, "PAYSTACK", "PAYSTACK", "2026-10-01", "2026-10-31",
     ]);
+    expect(eventsQuery?.sql).not.toContain("LEFT JOIN fee_provider_checkout_sessions cs ON cs.payment_id=p.id");
+    expect(eventsQuery?.sql).toContain("p.amount_minor::bigint AS \"amountMinor\"");
   });
 
   it("retains refunded status filters and excludes fully refunded payments from net collections", async () => {
@@ -220,6 +227,7 @@ describe("school finance reports", () => {
     expect(body.rows[0]).toMatchObject({ label: "BANK_TRANSFER:REFUNDED", amountMinor: 0 });
     const collectionQuery = state.calls.find((call) => call.sql.includes("AS \"totalCollectedMinor\"") && !call.sql.includes("totalBilledMinor"));
     expect(collectionQuery?.sql).toContain("p.status=$2");
+    expect(collectionQuery?.sql).toContain("GREATEST(p.amount_minor");
     expect(collectionQuery?.values).toContain("REFUNDED");
     const paymentQuery = state.calls.find((call) => call.sql.includes("AS \"paymentDate\""));
     expect(paymentQuery?.sql).toContain("p.status=$2");

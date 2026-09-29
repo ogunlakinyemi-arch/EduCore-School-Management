@@ -141,6 +141,20 @@
       "when": 1790632162536,
       "tag": "0019_phase7_finance_ledger_gaps",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790632163536,
+      "tag": "0020_finance_payment_notification_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790632164536,
+      "tag": "0021_fee_payment_notification_outbox",
+      "breakpoints": true
     }
   ]
 }

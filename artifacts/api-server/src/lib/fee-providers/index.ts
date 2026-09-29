@@ -80,6 +80,18 @@ const CURRENCY_DECIMALS: Readonly<Record<string, number>> = {
 };
 const REFERENCE_PATTERN = /^[A-Za-z0-9_-]{8,100}$/;
 const DEFAULT_TIMEOUT_MS = 8_000;
+const MAX_GET_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 100;
+const RETRY_MAX_DELAY_MS = 500;
+
+function isTransientHttpStatus(status: number): boolean {
+  return status === 429 || (status >= 500 && status <= 599);
+}
+
+function retryDelay(attempt: number): Promise<void> {
+  const delayMs = Math.min(RETRY_BASE_DELAY_MS * 2 ** attempt, RETRY_MAX_DELAY_MS);
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
 
 function normalizeCurrency(value: string): string {
   return value.trim().toUpperCase();
@@ -184,25 +196,43 @@ abstract class HttpPaymentAdapter implements PaymentProviderAdapter {
     if (!validExpected(expected)) throw new PaymentProviderError("Payment amount, currency, or reference is invalid");
   }
 
-  protected async request(path: string, init: RequestInit): Promise<JsonObject> {
+  protected async request(path: string, init: RequestInit, retrySafeRead = false): Promise<JsonObject> {
     const target = new URL(path, this.baseUrl);
     const configured = new URL(this.baseUrl);
     if (target.protocol !== "https:" || target.origin !== configured.origin || target.username || target.password) {
       throw new PaymentProviderError("Payment provider URL is not allowed");
     }
-    try {
-      const response = await this.fetchImpl(target, {
-        ...init,
-        redirect: "error",
-        signal: AbortSignal.timeout(this.timeoutMs),
-      });
-      const text = await response.text();
-      if (!response.ok) throw new PaymentProviderError("Payment provider request failed");
-      const parsed = parseBody(text);
-      return parsed;
-    } catch (error) {
-      if (error instanceof PaymentProviderError) throw error;
-      throw new PaymentProviderError("Payment provider request failed or timed out");
+    // Test adapters enforce test-mode credentials and can use either the real
+    // provider API or an injected test transport. Retry is explicitly opted into
+    // only by verification/status reads; checkout initialization POSTs are never
+    // retried because their outcome may be unknown.
+    const retryableMethod = retrySafeRead && (init.method ?? "GET").toUpperCase() === "GET";
+    let attempt = 0;
+    while (true) {
+      try {
+        const response = await this.fetchImpl(target, {
+          ...init,
+          redirect: "error",
+          signal: AbortSignal.timeout(this.timeoutMs),
+        });
+        if (!response.ok) {
+          if (retryableMethod && isTransientHttpStatus(response.status) && attempt < MAX_GET_ATTEMPTS - 1) {
+            await retryDelay(attempt);
+            attempt += 1;
+            continue;
+          }
+          throw new PaymentProviderError("Payment provider request failed");
+        }
+        return parseBody(await response.text());
+      } catch (error) {
+        if (error instanceof PaymentProviderError) throw error;
+        if (retryableMethod && attempt < MAX_GET_ATTEMPTS - 1) {
+          await retryDelay(attempt);
+          attempt += 1;
+          continue;
+        }
+        throw new PaymentProviderError("Payment provider request failed or timed out");
+      }
     }
   }
 
@@ -268,7 +298,7 @@ export class PaystackTestAdapter extends HttpPaymentAdapter {
     const result = await this.request(`transaction/verify/${encodeURIComponent(input.reference)}`, {
       method: "GET",
       headers: this.authHeaders(),
-    });
+    }, true);
     const data = asObject(result.data);
     if (result.status !== true || !data) throw new PaymentProviderError("Paystack could not verify the payment");
     return verifyFields({
@@ -381,7 +411,7 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
     const result = await this.request(`transactions/${encodeURIComponent(requestTransactionId)}/verify`, {
       method: "GET",
       headers: this.authHeaders(),
-    });
+    }, true);
     const data = asObject(result.data);
     if (result.status !== "success" || !data) throw new PaymentProviderError("Flutterwave could not verify the payment");
     return verifyFields({
@@ -402,7 +432,7 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
     const result = await this.request(`transactions?tx_ref=${encodeURIComponent(input.reference)}`, {
       method: "GET",
       headers: this.authHeaders(),
-    });
+    }, true);
     if (result.status !== "success" || !Array.isArray(result.data)) {
       throw new PaymentProviderError("Flutterwave could not establish checkout status by reference");
     }

@@ -1,7 +1,7 @@
 import { useGetPlatformDashboard, useGetSchoolDashboard, useGetAuthorizedContext, useGetStudentSelfProfile, useGetOwnAttendance } from '@workspace/api-client-react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'wouter';
-import { Building2, GraduationCap, CircleDollarSign, Smartphone, ArrowUpRight, LogIn, LogOut, Calendar, Clock, UsersRound, Briefcase, CreditCard, FileClock } from 'lucide-react';
+import { Building2, GraduationCap, CircleDollarSign, Smartphone, ArrowUpRight, LogIn, LogOut, Calendar, Clock, UsersRound, Briefcase, CreditCard, FileClock, ReceiptText } from 'lucide-react';
 import { PageHeading, Metric, useTenant, SkeletonPage, ErrorState, ActivityFeed, money } from '@/components/shared';
 
 export function Dashboard() {
@@ -14,6 +14,10 @@ export function Dashboard() {
 
   const roles = contextQuery.data?.roles?.map(r => r.role) || [];
   const isOnlyStudent = roles.length === 1 && roles[0] === 'STUDENT';
+  const canOpenSchoolFinance = contextQuery.data?.roles?.some(role =>
+    (role.role === 'SCHOOL_ADMIN' || role.role === 'ACCOUNTANT')
+    && role.status === 'ACTIVE'
+    && role.schoolId === schoolId) === true;
 
   if (isOnlyStudent) {
     return <StudentDashboard />;
@@ -22,7 +26,7 @@ export function Dashboard() {
   if (isPlatformOwner && (!schoolId || schoolId === 0)) {
     return <PlatformDashboard />;
   } else if (schoolId && schoolId !== 0) {
-    return <SchoolDashboard schoolId={schoolId} />;
+    return <SchoolDashboard schoolId={schoolId} canOpenFinance={canOpenSchoolFinance} />;
   } else {
     return <ErrorState retry={() => {}} message="No dashboard access available for your role." />;
   }
@@ -47,6 +51,12 @@ function StudentDashboard() {
         title={`Welcome, ${student.firstName}.`}
         description="View your school information and recent attendance."
       />
+
+      <Link href="/my-fees" className="panel mb-6 flex items-center gap-4 p-5 transition-colors hover:border-[hsl(var(--primary)/.4)] hover:bg-[hsl(var(--secondary))]" data-testid="link-student-fees-receipts">
+        <span className="grid h-11 w-11 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><ReceiptText size={21} /></span>
+        <span className="min-w-0 flex-1"><strong className="block">Fees & receipts</strong><span className="text-xs text-[hsl(var(--muted-foreground))]">Open your fee balance, payment history and receipts.</span></span>
+        <ArrowUpRight size={17} />
+      </Link>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.5fr]">
         <div className="panel p-6 md:p-8">
@@ -245,7 +255,7 @@ function PlatformDashboard() {
   );
 }
 
-function SchoolDashboard({ schoolId }: { schoolId: number }) {
+function SchoolDashboard({ schoolId, canOpenFinance }: { schoolId: number; canOpenFinance: boolean }) {
   const query = useGetSchoolDashboard({ schoolId });
   const data: any = query.data;
   
@@ -262,9 +272,14 @@ function SchoolDashboard({ schoolId }: { schoolId: number }) {
         title={`${school?.name || 'Your School'} Command Centre`} 
         description="The pulse of your students, staff, and daily operations." 
         action={
+          <div className="flex flex-wrap gap-2">
+          {canOpenFinance && <Link href="/finance" className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3 text-sm font-bold transition-colors hover:border-[hsl(var(--primary)/.4)]" data-testid="link-school-finance">
+            <CircleDollarSign size={16} />School finance
+          </Link>}
           <Link href="/students" className="inline-flex items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-5 py-3 text-sm font-bold text-[hsl(var(--primary-foreground))] shadow-[0_4px_14px_hsl(var(--primary)/.25)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_hsl(var(--primary)/.3)]" data-testid="link-directory">
             <GraduationCap size={16} />Open directory
           </Link>
+          </div>
         } 
       />
       

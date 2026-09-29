@@ -3827,6 +3827,9 @@ export type FeePaymentNotificationEventType = typeof FeePaymentNotificationEvent
 
 export const FeePaymentNotificationEventType = {
   PAYMENT_VERIFIED: 'PAYMENT_VERIFIED',
+  PAYMENT_REJECTED: 'PAYMENT_REJECTED',
+  REFUND_APPROVED: 'REFUND_APPROVED',
+  REVERSAL_APPROVED: 'REVERSAL_APPROVED',
 } as const;
 
 export interface FeePaymentNotification {
@@ -3841,7 +3844,10 @@ export interface FeePaymentNotification {
   invoiceNumber: string;
   studentName: string;
   paymentReference: string;
-  amountMinor: number;
+  amountMinor?: number;
+  /** @nullable */
+  refundId: number | null;
+  eventAmountMinor: number;
   currency: string;
   method: string;
 }

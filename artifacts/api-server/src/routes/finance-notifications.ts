@@ -7,6 +7,7 @@ import {
   MarkMyFeePaymentNotificationReadResponse,
 } from "@workspace/api-zod";
 import { AuthError, getUserContext, requireAuthentication } from "../middlewares/auth";
+import { retryPendingFinancePaymentNotifications } from "./finance-notifications-service";
 
 const router: IRouter = Router();
 router.use(requireAuthentication());
@@ -91,13 +92,19 @@ const safeNotificationSelect = `
     to_char(n.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
     CASE WHEN n.read_at IS NULL THEN NULL
       ELSE to_char(n.read_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS "readAt",
-    r.receipt_number AS "receiptNumber",i.invoice_number AS "invoiceNumber",
+    COALESCE(r.receipt_number,p.reference) AS "receiptNumber",i.invoice_number AS "invoiceNumber",
     i.student_name_snapshot AS "studentName",p.reference AS "paymentReference",
-    p.amount_minor AS "amountMinor",p.currency,p.method
+    CASE WHEN n.event_type IN ('REFUND_APPROVED','REVERSAL_APPROVED') THEN fr.id ELSE NULL END AS "refundId",
+    p.amount_minor AS "amountMinor",COALESCE(fr.amount_minor,p.amount_minor) AS "eventAmountMinor",p.currency,p.method
   FROM fee_payment_notifications n
   JOIN fee_payments p ON p.id=n.payment_id AND p.school_id=n.school_id AND p.invoice_id=n.invoice_id
   JOIN fee_invoices i ON i.id=n.invoice_id AND i.school_id=n.school_id AND i.student_id=p.student_id
-  JOIN fee_receipts r ON r.payment_id=p.id AND r.invoice_id=i.id AND r.school_id=n.school_id
+  LEFT JOIN fee_receipts r ON r.payment_id=p.id AND r.invoice_id=i.id AND r.school_id=n.school_id
+  LEFT JOIN fee_refunds fr ON n.event_type IN ('REFUND_APPROVED','REVERSAL_APPROVED')
+    AND fr.id=n.event_reference_id AND fr.payment_id=p.id AND fr.invoice_id=i.id
+    AND fr.school_id=n.school_id AND fr.status='APPROVED'
+    AND ((n.event_type='REFUND_APPROVED' AND fr.transaction_type='REFUND')
+      OR (n.event_type='REVERSAL_APPROVED' AND fr.transaction_type='REVERSAL'))
 `;
 
 async function findNotification(
@@ -127,6 +134,10 @@ router.get("/me/finance/payment-notifications", async (req, res): Promise<void> 
     const context = getUserContext(req);
     const scopes = authorizedScopes(req);
     const schoolId = schoolIdFilter(req, scopes);
+    await retryPendingFinancePaymentNotifications(
+      pool,
+      Array.from(new Set(scopes.map((scope) => scope.schoolId))),
+    );
     const access = recipientAccessSql(context.user.id, scopes, schoolId);
     const result = await pool.query(
       `${safeNotificationSelect} WHERE ${access.where} ORDER BY n.created_at DESC,n.id DESC LIMIT 100`,
@@ -161,12 +172,12 @@ router.patch("/me/finance/payment-notifications/:notificationId/read", async (re
       await client.query(
         `INSERT INTO audit_logs ("user",role,actor_user_id,clerk_user_id,school_id,action,module,
           record_id,severity,event_type,result,metadata)
-         VALUES ($1,$2,$3,$4,$5,'marked verified-payment notification as read','Finance',$6,
+          VALUES ($1,$2,$3,$4,$5,'marked finance payment notification as read','Finance',$6,
           'info','FEE_PAYMENT_NOTIFICATION_READ','SUCCESS',$7)`,
         [
           [context.user.firstName, context.user.lastName].filter(Boolean).join(" ") || context.user.email,
           role, context.user.id, context.user.clerkUserId, updated.rows[0].schoolId, id,
-          { eventType: "PAYMENT_VERIFIED" },
+           { eventType: notification.eventType },
         ],
       );
     }

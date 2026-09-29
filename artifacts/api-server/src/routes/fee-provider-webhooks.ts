@@ -8,7 +8,10 @@ import {
 } from "../lib/fee-providers";
 import { configuredTestAdapter, type ConfigurableFeeProvider } from "../lib/fee-providers/factory";
 import { invoiceStatus } from "./finance-money";
-import { enqueueVerifiedFeePaymentNotifications } from "./finance-notifications-service";
+import {
+  enqueueFinancePaymentNotificationsSafely,
+  FinanceNotificationSettlementSafetyError,
+} from "./finance-notifications-service";
 
 const router: IRouter = Router();
 const providerForRoute = (value: string): ConfigurableFeeProvider | null => {
@@ -58,6 +61,15 @@ router.post("/:provider", async (req: Request, res: Response): Promise<void> => 
       outcome: settlement,
     });
   } catch (error) {
+    if (error instanceof FinanceNotificationSettlementSafetyError) {
+      try {
+        await persistReconciliationFailure(provider, rawBody, error.message);
+        res.status(202).json({ received: true, outcome: "reconciliation_required" });
+      } catch {
+        res.status(500).json({ error: "Webhook processing failed; reconciliation marker could not be persisted" });
+      }
+      return;
+    }
     if (error instanceof PaymentProviderError && error.signatureVerified) {
       await persistReconciliationFailure(provider, rawBody, error.message);
       res.status(202).json({ received: true, outcome: "reconciliation_required" });
@@ -143,7 +155,7 @@ export async function settleVerifiedPayment(
       && Number(payment.invoice_student_id) === Number(payment.student_id)
       && payment.school_id !== null
       && payment.invoice_id !== null
-      && (!payment.provider_transaction_id || payment.status === "FAILED"
+      && (!payment.provider_transaction_id
         || payment.provider_transaction_id === providerPayment.providerTransactionId);
     if (!exactMatch) {
       await markEventForReconciliation(client, eventFields, "Provider payment does not match the persisted payment", parsedEvent, payment);
@@ -216,6 +228,57 @@ export async function settleVerifiedPayment(
     }
     const nextPaid = Number(payment.paid_minor) + providerPayment.amountMinor;
     const nextOutstanding = Number(payment.total_minor) - nextPaid;
+    const receiptNumber = `RCP-${payment.school_id}-${String(payment.id).padStart(8, "0")}`;
+    const receiptSnapshot = {
+      invoiceId: payment.invoice_id,
+      schoolId: payment.school_id,
+      studentId: payment.student_id,
+      schoolName: payment.school_name,
+      schoolLogo: payment.school_logo,
+      invoiceNumber: payment.invoice_number,
+      studentName: payment.student_name_snapshot,
+      admissionNo: payment.admission_no_snapshot,
+      className: payment.class_name_snapshot,
+      sessionId: payment.academic_session_id,
+      termId: payment.academic_term_id,
+      payerName: payment.payer_name,
+      paymentReference: payment.reference,
+      amountMinor: providerPayment.amountMinor,
+      currency: providerPayment.currency,
+      previousBalanceMinor: payment.outstanding_minor,
+      remainingBalanceMinor: nextOutstanding,
+      status: "VERIFIED",
+      method: payment.method,
+      provider,
+    };
+    await client.query(
+      `INSERT INTO fee_receipts (school_id,payment_id,invoice_id,receipt_number,snapshot)
+       VALUES ($1,$2,$3,$4,$5) ON CONFLICT (payment_id) DO NOTHING`,
+      [payment.school_id, payment.id, payment.invoice_id, receiptNumber, receiptSnapshot],
+    );
+    const receipt = await client.query(
+      `SELECT school_id,payment_id,invoice_id,receipt_number,snapshot
+       FROM fee_receipts WHERE payment_id=$1 FOR UPDATE`,
+      [payment.id],
+    );
+    const existingReceipt = receipt.rows[0];
+    if (!existingReceipt || !receiptMatchesCanonicalPayment(
+      existingReceipt, payment, receiptNumber, receiptSnapshot,
+    )) {
+      const message = "Existing receipt does not match the verified payment";
+      await markEventForReconciliation(client, eventFields, message, parsedEvent, payment);
+      await client.query(
+        `INSERT INTO audit_logs ("user",role,school_id,action,module,record_id,severity,event_type,result,metadata)
+         VALUES ('Payment provider verification','SYSTEM',$1,'receipt mismatch requires reconciliation',
+          'Finance',$2,'info',$3,'RECONCILIATION_REQUIRED',$4)`,
+        [payment.school_id, payment.id,
+          source === "SIGNED_WEBHOOK" ? "PAYMENT_PROVIDER_WEBHOOK" : "PAYMENT_PROVIDER_RECONCILIATION",
+          { provider, eventId, reference: payment.reference, receiptNumber: existingReceipt?.receipt_number ?? null }],
+      );
+      await client.query("COMMIT");
+      return "reconciliation_required";
+    }
+    const receiptNumberForAudit = existingReceipt.receipt_number;
     await client.query(
       `UPDATE fee_payments SET status='VERIFIED',provider_transaction_id=$1,verified_at=NOW(),
          provider_metadata=COALESCE(provider_metadata,'{}'::jsonb) || $2::jsonb
@@ -241,39 +304,7 @@ export async function settleVerifiedPayment(
       [payment.id, payment.school_id],
     );
     if (!settledSession.rows[0]) throw new Error("Verified payment checkout session integrity failure");
-    const receiptNumber = `RCP-${payment.school_id}-${String(payment.id).padStart(8, "0")}`;
-    const receiptSnapshot = {
-      invoiceId: payment.invoice_id,
-      schoolId: payment.school_id,
-      schoolName: payment.school_name,
-      schoolLogo: payment.school_logo,
-      invoiceNumber: payment.invoice_number,
-      studentName: payment.student_name_snapshot,
-      admissionNo: payment.admission_no_snapshot,
-      className: payment.class_name_snapshot,
-      sessionId: payment.academic_session_id,
-      termId: payment.academic_term_id,
-      payerName: payment.payer_name,
-      paymentReference: payment.reference,
-      amountMinor: providerPayment.amountMinor,
-      previousBalanceMinor: payment.outstanding_minor,
-      remainingBalanceMinor: nextOutstanding,
-      status: "VERIFIED",
-      method: payment.method,
-      provider,
-    };
-    await client.query(
-      `INSERT INTO fee_receipts (school_id,payment_id,invoice_id,receipt_number,snapshot)
-       VALUES ($1,$2,$3,$4,$5) ON CONFLICT (payment_id) DO NOTHING`,
-      [payment.school_id, payment.id, payment.invoice_id, receiptNumber, receiptSnapshot],
-    );
-    const receipt = await client.query(
-      `SELECT receipt_number FROM fee_receipts
-       WHERE payment_id=$1 AND school_id=$2 AND invoice_id=$3`,
-      [payment.id, payment.school_id, payment.invoice_id],
-    );
-    if (!receipt.rows[0]?.receipt_number) throw new Error("Verified payment receipt integrity failure");
-    await enqueueVerifiedFeePaymentNotifications(client, Number(payment.id), Number(payment.school_id));
+    await enqueueFinancePaymentNotificationsSafely(client, Number(payment.id), Number(payment.school_id), "PAYMENT_VERIFIED");
     await client.query(
       `UPDATE fee_provider_webhook_events SET status='VERIFIED',payment_id=$3,school_id=$4,
           resolved_at=NOW(),updated_at=NOW(),error_message=NULL
@@ -288,14 +319,14 @@ export async function settleVerifiedPayment(
          'info',$4,'SUCCESS',$5)`,
       [payment.school_id, payment.id, auditAction, auditEventType, {
         provider, eventId, reference: payment.reference, amountMinor: providerPayment.amountMinor,
-        currency: providerPayment.currency, receiptNumber,
+        currency: providerPayment.currency, receiptNumber: receiptNumberForAudit,
       }],
     );
     await client.query(
       `INSERT INTO audit_logs ("user",role,school_id,action,module,record_id,severity,event_type,result,metadata)
        VALUES ('Payment provider verification','SYSTEM',$1,'generated fee receipt','Finance',$2,
          'info',$3,'SUCCESS',$4)`,
-      [payment.school_id, payment.id, auditEventType, { provider, eventId, receiptNumber }],
+      [payment.school_id, payment.id, auditEventType, { provider, eventId, receiptNumber: receiptNumberForAudit }],
     );
     await client.query("COMMIT");
     return "verified";
@@ -305,6 +336,29 @@ export async function settleVerifiedPayment(
   } finally {
     client.release();
   }
+}
+
+function receiptMatchesCanonicalPayment(
+  receipt: Record<string, any>,
+  payment: Record<string, any>,
+  receiptNumber: string,
+  receiptSnapshot: Record<string, unknown>,
+): boolean {
+  return Number(receipt.payment_id) === Number(payment.id)
+    && Number(receipt.invoice_id) === Number(payment.invoice_id)
+    && Number(receipt.school_id) === Number(payment.school_id)
+    && receipt.receipt_number === receiptNumber
+    && canonicalJson(receipt.snapshot) === canonicalJson(receiptSnapshot);
+}
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record).sort().map((key) =>
+      `${JSON.stringify(key)}:${canonicalJson(record[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
 
 async function markEventForReconciliation(
@@ -334,8 +388,8 @@ async function persistReconciliationFailure(provider: ConfigurableFeeProvider, r
   let payment: { id: number; school_id: number } | undefined;
   if (fields.reference) {
     const found = await pool.query(
-      `SELECT id,school_id FROM fee_payments WHERE reference=$1`,
-      [fields.reference],
+      `SELECT id,school_id FROM fee_payments WHERE reference=$1 AND provider=$2`,
+      [fields.reference, provider],
     );
     payment = found.rows[0];
   }

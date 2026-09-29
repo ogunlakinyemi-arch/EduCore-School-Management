@@ -116,7 +116,7 @@ import {
   requireAuthentication,
 } from "../middlewares/auth";
 import { invoiceStatus, payableAmount } from "./finance-money";
-import { enqueueVerifiedFeePaymentNotifications } from "./finance-notifications-service";
+import { enqueueFinancePaymentNotificationsSafely } from "./finance-notifications-service";
 
 const router: IRouter = Router();
 router.use(requireAuthentication());
@@ -1174,31 +1174,37 @@ router.post("/school/finance/payments/:paymentId/verify", async (req, res): Prom
     const payer = payment.rows[0].parent_id
       ? await client.query(`SELECT name FROM parents WHERE id=$1 AND school_id=$2`, [payment.rows[0].parent_id, schoolId])
       : { rows: [] };
+    const receiptSnapshot = {
+      invoiceId: invoice.rows[0].id,
+      schoolId,
+      schoolName: schoolInfo.rows[0]?.name ?? null,
+      schoolLogo: schoolInfo.rows[0]?.logo ?? null,
+      invoiceNumber: invoice.rows[0].invoice_number, studentName: invoice.rows[0].student_name_snapshot,
+      admissionNo: invoice.rows[0].admission_no_snapshot, className: invoice.rows[0].class_name_snapshot,
+      sessionId: invoice.rows[0].academic_session_id, termId: invoice.rows[0].academic_term_id,
+      payerName: payer.rows[0]?.name ?? null,
+      paymentReference: payment.rows[0].reference, amountMinor: payment.rows[0].amount_minor,
+      previousBalanceMinor: invoice.rows[0].outstanding_minor, remainingBalanceMinor: nextOutstanding,
+      status: "VERIFIED", method: payment.rows[0].method, provider: payment.rows[0].provider,
+    };
     await client.query(
       `INSERT INTO fee_receipts (school_id,payment_id,invoice_id,receipt_number,snapshot)
        VALUES ($1,$2,$3,$4,$5) ON CONFLICT (payment_id) DO NOTHING`,
-      [schoolId, paymentId, invoice.rows[0].id, receiptNumber, {
-        invoiceId: invoice.rows[0].id,
-        schoolId,
-        schoolName: schoolInfo.rows[0]?.name ?? null,
-        schoolLogo: schoolInfo.rows[0]?.logo ?? null,
-        invoiceNumber: invoice.rows[0].invoice_number, studentName: invoice.rows[0].student_name_snapshot,
-        admissionNo: invoice.rows[0].admission_no_snapshot, className: invoice.rows[0].class_name_snapshot,
-        sessionId: invoice.rows[0].academic_session_id, termId: invoice.rows[0].academic_term_id,
-        payerName: payer.rows[0]?.name ?? null,
-        paymentReference: payment.rows[0].reference, amountMinor: payment.rows[0].amount_minor,
-        previousBalanceMinor: invoice.rows[0].outstanding_minor, remainingBalanceMinor: nextOutstanding,
-        status: "VERIFIED", method: payment.rows[0].method, provider: payment.rows[0].provider,
-      }],
+      [schoolId, paymentId, invoice.rows[0].id, receiptNumber, receiptSnapshot],
     );
     const persistedReceipt = await client.query(
-      `SELECT receipt_number FROM fee_receipts WHERE payment_id=$1 AND school_id=$2 AND invoice_id=$3`,
-      [paymentId, schoolId, invoice.rows[0].id],
+      `SELECT receipt_number,payment_id,invoice_id,school_id,(snapshot=$4::jsonb) AS snapshot_matches
+       FROM fee_receipts WHERE payment_id=$1 AND school_id=$2 AND invoice_id=$3`,
+      [paymentId, schoolId, invoice.rows[0].id, JSON.stringify(receiptSnapshot)],
     );
-    if (persistedReceipt.rows[0]?.receipt_number !== receiptNumber) {
+    if (persistedReceipt.rows[0]?.receipt_number !== receiptNumber
+        || Number(persistedReceipt.rows[0]?.payment_id) !== paymentId
+        || Number(persistedReceipt.rows[0]?.invoice_id) !== Number(invoice.rows[0].id)
+        || Number(persistedReceipt.rows[0]?.school_id) !== schoolId
+        || persistedReceipt.rows[0]?.snapshot_matches !== true) {
       throw new Error("Verified payment receipt integrity failure");
     }
-    await enqueueVerifiedFeePaymentNotifications(client, paymentId, schoolId);
+    await enqueueFinancePaymentNotificationsSafely(client, paymentId, schoolId, "PAYMENT_VERIFIED");
     await audit(req, client, schoolId, "verified manual bank transfer", "payment", paymentId, {
       amountMinor: payment.rows[0].amount_minor, evidenceReference, reviewerNotes,
     });
@@ -1244,6 +1250,7 @@ router.post("/school/finance/payments/:paymentId/reject", async (req, res): Prom
     );
     if (!result.rows[0]) throw new AuthError(404, "Pending payment not found");
     await audit(req, client, schoolId, "rejected manual bank transfer", "payment", paymentId, { reason });
+    await enqueueFinancePaymentNotificationsSafely(client, paymentId, schoolId, "PAYMENT_REJECTED", { reason });
     await client.query("COMMIT");
     res.json(RejectManualBankTransferResponse.parse(result.rows[0]));
   } catch (error) {
@@ -1265,7 +1272,7 @@ router.post("/school/finance/payments/:paymentId/refunds", async (req, res): Pro
     const headers = parsed(RequestFeeRefundHeader, { "Idempotency-Key": req.get("Idempotency-Key") });
     const context = getUserContext(req);
     const reason = body.reason.trim();
-    const idempotencyKey = `REFUND:${context.user.id}:${headers["Idempotency-Key"]}`;
+    const idempotencyKey = headers["Idempotency-Key"];
     await client.query("BEGIN");
     const paymentIdentity = await client.query(
       `SELECT invoice_id FROM fee_payments WHERE id=$1 AND school_id=$2`,
@@ -1286,10 +1293,11 @@ router.post("/school/finance/payments/:paymentId/refunds", async (req, res): Pro
       `SELECT ${refundShape} FROM fee_refunds WHERE school_id=$1 AND idempotency_key=$2`,
       [schoolId, idempotencyKey],
     );
+    const matchesRequest = (refund: any) =>
+      Number(refund.paymentId) === paymentId && Number(refund.amountMinor) === body.amountMinor
+      && refund.transactionType === body.transactionType && refund.reason === reason;
     if (replay.rows[0]) {
-      if (replay.rows[0].paymentId !== paymentId || replay.rows[0].amountMinor !== body.amountMinor
-          || replay.rows[0].transactionType !== body.transactionType
-          || replay.rows[0].reason !== reason) {
+      if (!matchesRequest(replay.rows[0])) {
         throw new AuthError(409, "Idempotency key was already used for a different refund or reversal request");
       }
       await client.query("COMMIT");
@@ -1315,10 +1323,23 @@ router.post("/school/finance/payments/:paymentId/refunds", async (req, res): Pro
     const created = await client.query(
       `INSERT INTO fee_refunds
         (school_id,payment_id,invoice_id,reference,idempotency_key,transaction_type,amount_minor,currency,reason,requested_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING ${refundShape}`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       ON CONFLICT (school_id,idempotency_key) DO NOTHING RETURNING ${refundShape}`,
       [schoolId, paymentId, invoice.rows[0].id, reference, idempotencyKey, body.transactionType,
         body.amountMinor, payment.rows[0].currency, reason, context.user.id],
     );
+    if (!created.rows[0]) {
+      const concurrentReplay = await client.query(
+        `SELECT ${refundShape} FROM fee_refunds WHERE school_id=$1 AND idempotency_key=$2`,
+        [schoolId, idempotencyKey],
+      );
+      if (!concurrentReplay.rows[0] || !matchesRequest(concurrentReplay.rows[0])) {
+        throw new AuthError(409, "Idempotency key was already used for a different refund or reversal request");
+      }
+      await client.query("COMMIT");
+      res.status(201).json(RequestFeeRefundResponse.parse(concurrentReplay.rows[0]));
+      return;
+    }
     await audit(req, client, schoolId, `requested internal ${body.transactionType.toLowerCase()} ledger entry`, "fee refund", created.rows[0].id, {
       paymentId, transactionType: body.transactionType, amountMinor: body.amountMinor, reference,
     });
@@ -1471,6 +1492,18 @@ router.post("/school/finance/refunds/:refundId/approve", async (req, res): Promi
       transactionType: current.rows[0].transaction_type,
       amountMinor: current.rows[0].amount_minor, evidenceReference, reviewerNotes,
     });
+    await enqueueFinancePaymentNotificationsSafely(
+      client,
+      payment.rows[0].id,
+      schoolId,
+      current.rows[0].transaction_type === "REVERSAL" ? "REVERSAL_APPROVED" : "REFUND_APPROVED",
+      {
+        refundId,
+        transactionType: current.rows[0].transaction_type,
+        amountMinor: current.rows[0].amount_minor,
+      },
+      refundId,
+    );
     await client.query("COMMIT");
     res.json(ApproveFeeRefundResponse.parse(updated.rows[0]));
   } catch (error) {
@@ -1654,8 +1687,14 @@ router.get("/school/finance/summary", async (req, res): Promise<void> => {
   try {
     const schoolId = schoolIdFromQuery(req, GetSchoolFinanceSummaryQueryParams);
     const result = await pool.query(
-      `SELECT COALESCE(SUM(total_minor),0)::int AS "totalBilledMinor",
-       COALESCE(SUM(paid_minor),0)::int AS "totalCollectedMinor",
+       `SELECT COALESCE(SUM(total_minor),0)::int AS "totalBilledMinor",
+        COALESCE((SELECT SUM(GREATEST(p.amount_minor-COALESCE((
+          SELECT SUM(fr.amount_minor) FROM fee_refunds fr
+          WHERE fr.school_id=p.school_id AND fr.payment_id=p.id AND fr.status='APPROVED'
+        ),0),0)) FROM fee_payments p
+          JOIN fee_invoices paid_invoice ON paid_invoice.id=p.invoice_id AND paid_invoice.school_id=p.school_id
+          WHERE p.school_id=$1 AND paid_invoice.status <> 'CANCELLED'
+            AND p.status IN ('VERIFIED','REFUNDED','REVERSED')),0)::int AS "totalCollectedMinor",
        COALESCE(SUM(outstanding_minor),0)::int AS "totalOutstandingMinor",
        (SELECT COALESCE(SUM(COALESCE(a.approved_amount_minor,a.amount_minor)),0)::bigint
           FROM fee_adjustments a WHERE a.school_id=$1 AND a.status='APPROVED') AS "totalAdjustmentsMinor",
@@ -1723,7 +1762,12 @@ router.get("/school/finance/reports", async (req, res): Promise<void> => {
     const totals = await pool.query(
       `WITH invoice_scope AS (SELECT i.* FROM fee_invoices i WHERE ${invoiceWhere})
        SELECT COALESCE(SUM(total_minor),0)::bigint AS "totalBilledMinor",
-         COALESCE(SUM(paid_minor),0)::bigint AS "totalCollectedMinor",
+          COALESCE((SELECT SUM(GREATEST(p.amount_minor-COALESCE((
+            SELECT SUM(fr.amount_minor) FROM fee_refunds fr
+            WHERE fr.school_id=p.school_id AND fr.payment_id=p.id AND fr.status='APPROVED'
+          ),0),0)) FROM fee_payments p
+            JOIN invoice_scope si ON si.id=p.invoice_id AND si.school_id=p.school_id
+            WHERE p.status IN ('VERIFIED','REFUNDED','REVERSED')),0)::bigint AS "totalCollectedMinor",
          COALESCE(SUM(outstanding_minor),0)::bigint AS "totalOutstandingMinor",
          COALESCE(SUM(discount_minor),0)::bigint AS "totalDiscountMinor",
          COALESCE(SUM(waiver_minor),0)::bigint AS "totalWaiverMinor",
@@ -1875,7 +1919,7 @@ router.get("/school/finance/reports", async (req, res): Promise<void> => {
              p.student_id AS "studentId",i.student_name_snapshot AS "studentName",
              i.id AS "invoiceId",i.invoice_number AS "invoiceNumber",p.status AS "paymentStatus",
              to_char(cs.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "eventDate",
-             'CHECKOUT:' || cs.state AS label,1::int AS count,0::bigint AS "amountMinor",
+              'CHECKOUT:' || cs.state AS label,1::int AS count,p.amount_minor::bigint AS "amountMinor",
              0::bigint AS "secondaryAmountMinor"
            FROM fee_provider_checkout_sessions cs
            JOIN fee_payments p ON p.id=cs.payment_id AND p.school_id=cs.school_id
@@ -1883,20 +1927,22 @@ router.get("/school/finance/reports", async (req, res): Promise<void> => {
            WHERE ${checkoutPredicates.join(" AND ")}
            UNION ALL
            SELECT 'WEBHOOK'::text AS "sourceType",e.school_id AS "schoolId",e.provider,
-             cs.state AS "checkoutState",e.status AS "reconciliationStatus",e.signature_verified AS "signatureVerified",
+              (SELECT checkout.state FROM fee_provider_checkout_sessions checkout
+                WHERE checkout.payment_id=p.id AND checkout.school_id=e.school_id
+                ORDER BY checkout.created_at DESC LIMIT 1) AS "checkoutState",
+              e.status AS "reconciliationStatus",e.signature_verified AS "signatureVerified",
              e.event_id AS "eventId",e.webhook_transaction_id AS "webhookTransactionId",
              e.verified_transaction_id AS "verifiedTransactionId",
-             COALESCE(e.provider_reference,p.reference,cs.reference) AS reference,
+              COALESCE(e.provider_reference,p.reference) AS reference,
              e.provider_reference AS "providerReference",e.error_message AS reason,
              p.student_id AS "studentId",i.student_name_snapshot AS "studentName",
              i.id AS "invoiceId",i.invoice_number AS "invoiceNumber",p.status AS "paymentStatus",
              to_char(e.received_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "eventDate",
-             'WEBHOOK:' || e.status AS label,1::int AS count,0::bigint AS "amountMinor",
+              'WEBHOOK:' || e.status AS label,1::int AS count,COALESCE(p.amount_minor,0)::bigint AS "amountMinor",
              0::bigint AS "secondaryAmountMinor"
            FROM fee_provider_webhook_events e
            LEFT JOIN fee_payments p ON p.id=e.payment_id AND p.school_id=e.school_id
            LEFT JOIN invoice_scope i ON i.id=p.invoice_id AND i.school_id=p.school_id
-           LEFT JOIN fee_provider_checkout_sessions cs ON cs.payment_id=p.id AND cs.school_id=p.school_id
            WHERE ${webhookPredicates.join(" AND ")}
            ORDER BY "eventDate" DESC,"sourceType"`,
           eventValues,
@@ -2544,19 +2590,13 @@ router.post("/parent/fees/invoices/:invoiceId/providers/:provider/initialize", a
       status: "PENDING", checkoutUrl: initialized.checkoutUrl,
     }));
   } catch {
-    const failed = await pool.query(
-      `UPDATE fee_provider_checkout_sessions SET state='FAILED',last_error='Provider checkout initialization failed',
+    await pool.query(
+      `UPDATE fee_provider_checkout_sessions SET state='FAILED',last_error='Provider checkout initialization outcome is uncertain; reconciliation required',
           updated_at=NOW(),claim_token=NULL,claim_expires_at=NULL
        WHERE payment_id=$1 AND school_id=$2 AND state='INITIALIZING' AND claim_token=$3
        RETURNING payment_id`,
       [paymentId, schoolId, claimToken],
     ).catch(() => undefined);
-    if (failed?.rows[0]) {
-      await pool.query(
-        `UPDATE fee_payments SET status='FAILED' WHERE id=$1 AND school_id=$2 AND status='PENDING'`,
-        [paymentId, schoolId],
-      ).catch(() => undefined);
-    }
     res.status(503).json({ error: "Online payment provider could not initialize checkout" });
   }
 });

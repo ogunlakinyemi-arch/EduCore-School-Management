@@ -293,6 +293,66 @@ describe("fee payment provider adapters", () => {
     await expect(adapter.verifyPayment(expected)).rejects.toThrow("Payment provider request failed");
   });
 
+  it("retries a timed-out verification GET with a fresh bounded request", async () => {
+    const fetch = vi.fn()
+      .mockRejectedValueOnce(Object.assign(new Error("request timed out"), { name: "TimeoutError" }))
+      .mockResolvedValueOnce(jsonResponse({ status: true, data: {
+        id: 456, status: "success", reference: expected.reference, amount: 1234, currency: "NGN",
+      } }));
+    const adapter = new PaystackTestAdapter({ secretKey: paystackSecret }, {
+      fetch: fetch as unknown as typeof globalThis.fetch, timeoutMs: 1_000,
+    });
+
+    await expect(adapter.verifyPayment(expected)).resolves.toMatchObject({
+      ...expected, status: "succeeded", providerTransactionId: "456",
+    });
+    expect(fetch).toHaveBeenCalledTimes(2);
+    for (const [, init] of fetch.mock.calls) {
+      expect(init?.method).toBe("GET");
+      expect(init?.signal).toBeInstanceOf(AbortSignal);
+      expect((init?.signal as AbortSignal).aborted).toBe(false);
+    }
+  });
+
+  it.each([429, 503])("retries verification GET after transient HTTP %i", async (status) => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ message: "transient" }, status))
+      .mockResolvedValueOnce(jsonResponse({ status: true, data: {
+        id: 456, status: "success", reference: expected.reference, amount: 1234, currency: "NGN",
+      } }));
+    const adapter = new PaystackTestAdapter({ secretKey: paystackSecret }, {
+      fetch: fetch as unknown as typeof globalThis.fetch,
+    });
+
+    await expect(adapter.verifyCheckoutStatus(expected)).resolves.toMatchObject({
+      ...expected, status: "succeeded", providerTransactionId: "456",
+    });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("stops after the bounded number of transient verification failures", async () => {
+    const fetch = fetchMock(() => jsonResponse({ message: "transient" }, 503));
+    const adapter = new PaystackTestAdapter({ secretKey: paystackSecret }, { fetch });
+
+    await expect(adapter.verifyPayment(expected)).rejects.toThrow("Payment provider request failed");
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it("never retries checkout initialization POST requests", async () => {
+    const methods: string[] = [];
+    const fetch = fetchMock((_, init) => {
+      methods.push(init?.method ?? "GET");
+      return jsonResponse({ message: "transient" }, 503);
+    });
+    const adapter = new PaystackTestAdapter({ secretKey: paystackSecret }, { fetch });
+
+    await expect(adapter.initializePayment({
+      ...expected, email: "parent@example.test", returnUrl: "https://school.example/fees/return",
+    })).rejects.toThrow("Payment provider request failed");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(methods).toEqual(["POST"]);
+  });
+
   it("fails closed for an absent Paystack key without contacting the provider", () => {
     expect(() => new PaystackTestAdapter({ secretKey: "" }))
       .toThrow(PaymentProviderError);

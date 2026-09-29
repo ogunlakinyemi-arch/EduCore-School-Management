@@ -78,7 +78,7 @@ export const UpdateFinanceSettingsResponse = zod.object({
 
 
 /**
- * @summary List verified-payment notifications currently linked to the authenticated recipient
+ * @summary List finance notifications currently linked to the authenticated recipient
  */
 
 
@@ -90,7 +90,7 @@ export const ListMyFeePaymentNotificationsQueryParams = zod.object({
 export const ListMyFeePaymentNotificationsResponseItem = zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
-  "eventType": zod.enum(['PAYMENT_VERIFIED']),
+  "eventType": zod.enum(['PAYMENT_VERIFIED', 'PAYMENT_REJECTED', 'REFUND_APPROVED', 'REVERSAL_APPROVED']),
   "isRead": zod.boolean(),
   "createdAt": zod.coerce.date(),
   "readAt": zod.coerce.date().nullable(),
@@ -98,7 +98,9 @@ export const ListMyFeePaymentNotificationsResponseItem = zod.object({
   "invoiceNumber": zod.string(),
   "studentName": zod.string(),
   "paymentReference": zod.string(),
-  "amountMinor": zod.number().int(),
+  "amountMinor": zod.number().int().optional(),
+  "refundId": zod.number().int().nullable(),
+  "eventAmountMinor": zod.number().int(),
   "currency": zod.string(),
   "method": zod.string()
 })
@@ -106,7 +108,7 @@ export const ListMyFeePaymentNotificationsResponse = zod.array(ListMyFeePaymentN
 
 
 /**
- * @summary Mark a currently authorized verified-payment notification as read
+ * @summary Mark a currently authorized finance notification as read
  */
 
 
@@ -118,7 +120,7 @@ export const MarkMyFeePaymentNotificationReadParams = zod.object({
 export const MarkMyFeePaymentNotificationReadResponse = zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
-  "eventType": zod.enum(['PAYMENT_VERIFIED']),
+  "eventType": zod.enum(['PAYMENT_VERIFIED', 'PAYMENT_REJECTED', 'REFUND_APPROVED', 'REVERSAL_APPROVED']),
   "isRead": zod.boolean(),
   "createdAt": zod.coerce.date(),
   "readAt": zod.coerce.date().nullable(),
@@ -126,7 +128,9 @@ export const MarkMyFeePaymentNotificationReadResponse = zod.object({
   "invoiceNumber": zod.string(),
   "studentName": zod.string(),
   "paymentReference": zod.string(),
-  "amountMinor": zod.number().int(),
+  "amountMinor": zod.number().int().optional(),
+  "refundId": zod.number().int().nullable(),
+  "eventAmountMinor": zod.number().int(),
   "currency": zod.string(),
   "method": zod.string()
 })

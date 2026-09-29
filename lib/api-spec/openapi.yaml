@@ -64,7 +64,7 @@ paths:
     get:
       operationId: listMyFeePaymentNotifications
       tags: [finance]
-      summary: List verified-payment notifications currently linked to the authenticated recipient
+      summary: List finance notifications currently linked to the authenticated recipient
       parameters:
         - name: schoolId
           in: query
@@ -83,7 +83,7 @@ paths:
     patch:
       operationId: markMyFeePaymentNotificationRead
       tags: [finance]
-      summary: Mark a currently authorized verified-payment notification as read
+      summary: Mark a currently authorized finance notification as read
       parameters:
         - name: notificationId
           in: path
@@ -5740,11 +5740,11 @@ components:
         approvedAt: { type: ["string", "null"], format: date-time }
     FeePaymentNotification:
       type: object
-      required: [id, schoolId, eventType, isRead, createdAt, readAt, receiptNumber, invoiceNumber, studentName, paymentReference, amountMinor, currency, method]
+      required: [id, schoolId, eventType, isRead, createdAt, readAt, receiptNumber, invoiceNumber, studentName, paymentReference, refundId, eventAmountMinor, currency, method]
       properties:
         id: { type: integer }
         schoolId: { type: integer }
-        eventType: { type: string, enum: [PAYMENT_VERIFIED] }
+        eventType: { type: string, enum: [PAYMENT_VERIFIED, PAYMENT_REJECTED, REFUND_APPROVED, REVERSAL_APPROVED] }
         isRead: { type: boolean }
         createdAt: { type: string, format: date-time }
         readAt: { type: ["string", "null"], format: date-time }
@@ -5753,6 +5753,8 @@ components:
         studentName: { type: string }
         paymentReference: { type: string }
         amountMinor: { type: integer }
+        refundId: { type: ["integer", "null"] }
+        eventAmountMinor: { type: integer }
         currency: { type: string }
         method: { type: string }
     FinanceReportRow:

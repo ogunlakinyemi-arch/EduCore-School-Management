@@ -1,0 +1,697 @@
+Continue development of Yemait EduCore under Yemait Technologies Limited.
+
+We are continuing Phase 7 — Finance while the production migration/Publish issue is being handled separately by Replit Support.
+
+CRITICAL PRODUCTION SAFETY RULE
+
+DO NOT modify, migrate, reset, restore, seed, truncate, alter, or otherwise change the production database.
+
+DO NOT click Publish.
+
+DO NOT execute SQL against the production database.
+
+DO NOT create additional production constraints, indexes, tables, triggers, functions, or columns.
+
+All work in this task must be limited to the development/test environment.
+
+Do not attempt to work around the current production migration problem.
+
+Do not reorder migration files simply to try to influence Replit Publish.
+
+Do not expose, request, or hard-code live payment-provider credentials.
+
+---
+
+OBJECTIVE
+
+Complete and harden the remaining Phase 7 Finance functionality in development so that Phase 7 is application-complete and thoroughly tested, while clearly separating anything that is still blocked by external provider credentials or the unresolved production migration.
+
+Preserve the existing Yemait EduCore architecture.
+
+DO NOT rebuild the application.
+
+Do not replace existing working modules.
+
+Reuse the existing React/Vite, Express, PostgreSQL/Drizzle, Clerk, React Query, Zod, OpenAPI and existing RBAC/tenant-isolation architecture.
+
+---
+
+EXISTING STATUS
+
+Current development status includes:
+
+- Phase 1–6 implemented.
+- Phase 6 Academic Operations completed.
+- Phase 7 Finance already has:
+  - fee categories/structures
+  - individual invoices
+  - parent/student fee views
+  - manual bank-transfer workflow
+  - bulk assignment
+  - refunds/reversals
+  - finance reports
+  - parent online checkout
+  - payment-provider abstraction
+  - Paystack/Flutterwave test adapters
+  - hosted checkout
+  - signed webhook handling
+  - server-side verification
+  - idempotent settlement
+  - reconciliation
+  - notifications
+  - backend-confirmed payment methods
+  - partial-payment controls
+  - payment processing states
+
+The development environment has previously reached 257/257 API tests passing.
+
+Do not reduce or remove existing test coverage.
+
+---
+
+TASK 1 — AUDIT CURRENT PHASE 7
+
+First inspect the existing Phase 7 implementation.
+
+Do not immediately modify code.
+
+Produce an internal audit covering:
+
+1. Fee categories
+2. Fee structures
+3. Invoice creation
+4. Bulk invoice assignment
+5. Discounts
+6. Scholarships
+7. Waivers
+8. Partial payments
+9. Manual bank transfer
+10. Online payment checkout
+11. Payment-provider abstraction
+12. Paystack adapter
+13. Flutterwave adapter
+14. Remita adapter
+15. Webhooks
+16. Independent server verification
+17. Idempotency
+18. Payment status transitions
+19. Invoice status transitions
+20. Receipts
+21. Refunds
+22. Reversals
+23. Reconciliation
+24. Finance reports
+25. Parent dashboard
+26. Student dashboard
+27. Accountant dashboard
+28. School Admin dashboard
+29. Platform Owner visibility
+30. Notifications
+31. Tenant isolation
+32. RBAC
+33. Audit logging
+34. Payment security
+35. Existing database constraints/triggers
+36. API tests
+37. Browser/user-flow coverage
+
+Identify anything incomplete, inconsistent, duplicated, insecure, or insufficiently tested.
+
+Do not modify production.
+
+---
+
+TASK 2 — PAYMENT STATE MACHINE
+
+Verify that payment state transitions are backend-authoritative.
+
+Use the existing intended statuses:
+
+- PENDING
+- PROCESSING
+- VERIFIED
+- FAILED
+- REJECTED
+- CANCELLED
+- REVERSED
+- REFUNDED
+
+Prevent invalid transitions.
+
+The frontend must never mark a payment as VERIFIED.
+
+Only the backend may move a payment to VERIFIED after successful server-side verification or an authorized manual verification workflow.
+
+---
+
+TASK 3 — INVOICE STATE MACHINE
+
+Verify:
+
+- UNPAID
+- PARTIALLY_PAID
+- PAID
+- OVERDUE
+- WAIVED
+- CANCELLED
+
+Ensure invoice status is derived from authoritative payment/waiver data.
+
+Examples:
+
+No verified payment → UNPAID
+
+Verified partial payment → PARTIALLY_PAID
+
+Verified payment covering the required balance → PAID
+
+Do not allow frontend-only balance manipulation.
+
+---
+
+TASK 4 — PARTIAL PAYMENTS
+
+Verify that partial payment rules are enforced server-side.
+
+The backend must:
+
+- calculate outstanding balance
+- reject payment amounts below permitted minimum
+- reject payment amounts greater than permitted balance
+- prevent duplicate settlement
+- correctly update invoice balance
+- correctly update student/parent dashboard
+- correctly generate receipts
+- handle multiple verified payments against one invoice
+
+If the existing school settings allow/disallow partial payments, enforce that setting server-side.
+
+---
+
+TASK 5 — MANUAL BANK TRANSFER
+
+Verify this workflow:
+
+Parent:
+
+1. Selects child.
+2. Views invoice.
+3. Selects bank transfer.
+4. Sees the correct payment instructions.
+5. Submits transfer reference/evidence where applicable.
+
+The system must NOT immediately mark the invoice paid.
+
+Authorized school personnel must verify the transfer.
+
+Only after successful verification:
+
+- payment becomes VERIFIED
+- invoice balance updates
+- receipt becomes available
+- notification is generated
+- audit entry is created
+
+Rejecting a transfer must not modify the invoice as paid.
+
+---
+
+TASK 6 — ONLINE PROVIDER PAYMENT
+
+Verify:
+
+Parent:
+
+1. Selects child.
+2. Views invoice.
+3. Selects an available payment provider.
+4. Enters an allowed amount.
+5. Backend initializes payment.
+6. Parent is redirected/served provider checkout.
+7. Provider processes payment.
+8. Backend independently verifies the transaction.
+9. Backend settles payment only after successful verification.
+10. Invoice balance updates.
+11. Receipt becomes available.
+12. Parent/student dashboard reflects the new balance.
+13. Notification is generated.
+
+Do not trust:
+
+- browser redirect
+- frontend callback
+- client-side success message
+- URL parameters
+- manually supplied payment status
+
+as proof of payment.
+
+---
+
+TASK 7 — WEBHOOK SECURITY
+
+Verify webhook handling for supported providers.
+
+Requirements:
+
+- signature verification
+- provider/event validation
+- idempotency
+- duplicate webhook protection
+- transaction/reference matching
+- amount validation
+- currency validation where applicable
+- invoice/payment matching
+- school/tenant validation
+- safe retry behavior
+- audit logging
+
+A duplicate webhook must never create a second payment.
+
+A forged webhook must not settle a payment.
+
+---
+
+TASK 8 — PAYMENT PROVIDER ABSTRACTION
+
+Keep providers isolated behind the existing provider abstraction.
+
+Verify:
+
+- Paystack test adapter
+- Flutterwave test adapter
+- Remita fail-closed behavior
+
+If credentials are unavailable, do not fake real provider success.
+
+Use deterministic test adapters/mocks for development tests.
+
+The application must clearly distinguish:
+
+TEST PROVIDER
+
+from
+
+REAL PROVIDER
+
+Do not place real secrets in source code.
+
+---
+
+TASK 9 — REFUNDS AND REVERSALS
+
+Verify that refunds/reversals preserve financial history.
+
+Never delete the original payment.
+
+Maintain:
+
+- original payment
+- reversal/refund record
+- amount
+- reason
+- actor
+- timestamp
+- audit trail
+- resulting invoice balance
+
+Distinguish:
+
+- internal refund/reversal record
+- provider-executed refund
+
+Do not claim that a provider refund occurred unless the provider actually confirmed it.
+
+---
+
+TASK 10 — RECEIPTS
+
+Verify receipts.
+
+A receipt should only become available after an authoritative verified payment.
+
+Receipt should contain appropriate information such as:
+
+- school
+- student
+- parent/payer
+- invoice
+- payment reference
+- amount
+- payment date
+- payment method
+- transaction status
+- receipt number
+
+Prevent receipt generation for failed, pending or rejected payments.
+
+Preserve historical receipts.
+
+---
+
+TASK 11 — FINANCE REPORTING
+
+Verify finance reports including, where already supported:
+
+- total invoiced
+- total collected
+- outstanding balances
+- paid invoices
+- partially paid invoices
+- overdue invoices
+- manual bank transfers
+- online payments
+- refunds
+- reversals
+- payment-provider breakdown
+- date-range filtering
+- class/section filtering
+- session/term filtering
+
+All reports must respect school tenant boundaries.
+
+Platform Owner may have cross-school visibility according to the existing RBAC model.
+
+School users must never see another school's financial data.
+
+---
+
+TASK 12 — DISCOUNTS, SCHOLARSHIPS AND WAIVERS
+
+Verify that these are separate concepts and are correctly reflected in invoice calculations.
+
+Ensure:
+
+- authorization is enforced
+- reason is recorded
+- actor is recorded
+- audit trail exists
+- calculations are deterministic
+- historical invoice amounts remain explainable
+
+Do not allow unauthorized users to change fee amounts.
+
+---
+
+TASK 13 — RBAC AND TENANT ISOLATION
+
+Perform an explicit security audit of Finance APIs.
+
+Verify that:
+
+PLATFORM_OWNER
+
+Can access permitted cross-school finance information.
+
+SCHOOL_ADMIN
+
+Can access only their school's finance data and authorized finance operations.
+
+ACCOUNTANT
+
+Can perform only permitted finance operations.
+
+TEACHER
+
+Cannot access unauthorized financial information.
+
+PARENT
+
+Can only view/pay fees for their linked children.
+
+STUDENT
+
+Can only view their own permitted financial information.
+
+PARTNER
+
+Must not gain access to school financial records merely because they introduced the school.
+
+Test direct API access, not only UI visibility.
+
+---
+
+TASK 14 — AUDIT LOGGING
+
+Financial actions must be auditable.
+
+Verify audit entries for important actions including:
+
+- invoice creation
+- bulk assignment
+- discount
+- scholarship
+- waiver
+- payment creation
+- payment verification
+- payment rejection
+- refund
+- reversal
+- manual bank-transfer verification
+- provider settlement
+- configuration changes
+
+Do not log sensitive payment secrets.
+
+---
+
+TASK 15 — PAYMENT PROTECTION
+
+Inspect the existing development implementation of:
+
+"fee_payments_verification_metadata_immutable"
+
+Verify that the protection exists and works in development.
+
+Do not attempt to manually add it to production.
+
+Create automated tests proving that protected verification metadata cannot be improperly modified after settlement.
+
+---
+
+TASK 16 — DATABASE INTEGRITY
+
+Inspect Finance foreign keys, unique constraints, indexes and relationships.
+
+Verify:
+
+- payment → invoice
+- payment → school
+- payment → student where applicable
+- payment → payer where applicable
+- receipt → payment
+- refund/reversal → original payment
+- provider transaction → internal payment
+- invoice → student/school/session/term
+
+Check for duplicate payment references and unsafe nullable relationships.
+
+Do not alter production.
+
+Any development migration changes must be tested only in the development/test database.
+
+---
+
+TASK 17 — NOTIFICATIONS
+
+Verify finance notifications for appropriate events.
+
+Examples:
+
+- invoice generated
+- payment initiated
+- payment verified
+- payment failed
+- manual transfer awaiting verification
+- manual transfer approved
+- manual transfer rejected
+- refund/reversal
+- outstanding balance reminder
+
+Use the existing notification architecture.
+
+Do not introduce WhatsApp Business.
+
+SMS should remain supported.
+
+Email should remain supported where configured.
+
+Do not make notification delivery a prerequisite for financial settlement.
+
+---
+
+TASK 18 — TEST COVERAGE
+
+Run the complete existing test suite.
+
+Target:
+
+257/257 existing tests must continue passing.
+
+Then add tests for any uncovered Phase 7 functionality.
+
+At minimum test:
+
+- successful payment
+- failed payment
+- duplicate payment
+- duplicate webhook
+- forged webhook
+- wrong amount
+- wrong invoice
+- wrong school
+- unauthorized verification
+- partial payment
+- full payment
+- refund
+- reversal
+- manual bank transfer
+- receipt generation
+- invoice status
+- tenant isolation
+- RBAC
+- provider failure
+- provider timeout
+- retry
+- idempotency
+
+Do not delete tests merely to obtain a passing result.
+
+---
+
+TASK 19 — AUTHENTICATED BROWSER WALKTHROUGHS
+
+Use development/test accounts only.
+
+Verify these complete user journeys:
+
+Parent
+
+Login → select child → fees → invoice → choose payment method → initiate payment → payment processing → backend confirmation → receipt → updated balance.
+
+Accountant
+
+Login → finance dashboard → invoice → verify manual transfer → payment VERIFIED → receipt → updated balance.
+
+School Admin
+
+Login → finance → create/assign fees → view invoices → reports → reconciliation.
+
+Student
+
+Login → view permitted fee information → view verified payment/receipt.
+
+Platform Owner
+
+Login → cross-school finance visibility according to permissions.
+
+Do not use production credentials.
+
+---
+
+TASK 20 — DEVELOPMENT MIGRATIONS
+
+If any missing Finance development migration is identified:
+
+1. Create the appropriate checked-in migration.
+2. Test it against a disposable development PostgreSQL database.
+3. Verify clean replay.
+4. Verify existing development tests.
+5. Verify no destructive operation.
+6. Do NOT execute it against production.
+7. Do NOT attempt to solve the Replit Publish issue through migration-file reordering.
+
+---
+
+TASK 21 — PRODUCTION MIGRATION BOUNDARY
+
+The current production migration problem is being handled separately with Replit Support.
+
+Therefore:
+
+DO NOT attempt to solve it in this task.
+
+Do not:
+
+- click Publish
+- modify production
+- restore production
+- create a production clone
+- execute production SQL
+- bypass missing triggers
+- bypass missing backfills
+- disable database protections
+- modify production migration state
+
+---
+
+FINAL REPORT
+
+When finished, provide a concise report containing:
+
+A. Completed
+
+List every Phase 7 Finance feature confirmed complete.
+
+B. Tests
+
+Report:
+
+- previous test count
+- new test count
+- passed
+- failed
+- skipped
+
+Do not claim tests passed unless they actually ran.
+
+C. Browser Verification
+
+List each authenticated browser workflow and whether it passed.
+
+D. Provider Status
+
+Separate:
+
+- Paystack test adapter
+- Paystack real sandbox
+- Flutterwave test adapter
+- Flutterwave real sandbox
+- Remita
+- automatic bank-transfer capability
+
+Clearly identify anything requiring external credentials/provider configuration.
+
+E. Production Status
+
+State explicitly:
+
+PRODUCTION WAS NOT MODIFIED.
+
+Also state:
+
+PUBLISH WAS NOT EXECUTED.
+
+F. Remaining Blockers
+
+Separate:
+
+1. Development blockers
+2. External provider blockers
+3. Production migration blocker
+
+Do not mix these categories.
+
+G. Phase 7 Status
+
+Use exactly one of:
+
+PHASE 7 APPLICATION DEVELOPMENT COMPLETE — AWAITING EXTERNAL PROVIDER/PRODUCTION DEPLOYMENT VALIDATION
+
+or
+
+PHASE 7 NOT COMPLETE — DEVELOPMENT WORK REMAINS
+
+Do not call Phase 7 production-ready unless the required production migration and real provider verification have actually been completed and verified.
+
+Begin with the audit. Do not make production changes.

@@ -181,6 +181,7 @@ beforeEach(() => {
           unlockTransaction?.();
           return { rows: [] };
         }
+        if (/^(SAVEPOINT|RELEASE SAVEPOINT|ROLLBACK TO SAVEPOINT)\b/i.test(sql.trim())) return { rows: [] };
         if (sql.includes("FROM fee_invoices i") && sql.includes("JOIN parents p")) {
           return db.linked && Number(values[0]) === db.invoiceId && Number(values[1]) === db.userId
             ? { rows: [{
@@ -294,12 +295,21 @@ beforeEach(() => {
           return { rows: [{ payment_id: db.session.payment_id }] };
         }
         if (sql.includes("INSERT INTO fee_receipts")) {
-          db.receipt = { receipt_number: values[3], snapshot: values[4] };
+          db.receipt = {
+            school_id: values[0], payment_id: values[1], invoice_id: values[2],
+            receipt_number: values[3], snapshot: values[4],
+          };
           return { rows: [] };
+        }
+        if (sql.includes("FROM fee_receipts WHERE payment_id=$1 FOR UPDATE")) {
+          return db.receipt && Number(db.receipt.payment_id) === Number(values[0])
+            ? { rows: [{ ...db.receipt }] }
+            : { rows: [] };
         }
         if (sql.includes("SELECT receipt_number FROM fee_receipts")) {
           return db.receipt ? { rows: [{ receipt_number: db.receipt.receipt_number }] } : { rows: [] };
         }
+        if (sql.includes("fee_payment_notification_outbox")) return { rows: [], rowCount: 0 };
         if (sql.includes("INSERT INTO fee_payment_notifications")) return { rows: [], rowCount: 0 };
         if (sql.includes("SELECT id FROM fee_payments") && sql.includes("provider_transaction_id=$2")) {
           return { rows: [] };
@@ -466,16 +476,26 @@ describe("online checkout reservation and claim safety", () => {
     vi.stubGlobal("fetch", transport);
     expect((await initialize()).status).toBe(503);
     const originalReference = db.session?.reference;
-    expect(db.payment?.status).toBe("FAILED");
+    expect(db.payment?.status).toBe("PENDING");
     expect(db.session?.state).toBe("FAILED");
+    expect(db.poolCalls.some(({ sql }) => sql.includes("UPDATE fee_payments SET status='FAILED'"))).toBe(false);
 
     const replay = await initialize();
     expect(replay.status).toBe(202);
     expect(await replay.json()).toMatchObject({ outcome: "reconciliation_required" });
     expect(db.session).toMatchObject({ state: "FAILED", reference: originalReference });
-    expect(db.payment?.status).toBe("FAILED");
+    expect(db.payment?.status).toBe("PENDING");
     expect(db.clientCalls.filter(({ sql }) => sql.includes("INSERT INTO fee_payments"))).toHaveLength(1);
     expect(transport).toHaveBeenCalledTimes(1);
+
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      status: false, message: "not found",
+    }), { status: 404, headers: { "content-type": "application/json" } })));
+    const reconciliation = await reconcileCheckout();
+    expect(reconciliation.status).toBe(202);
+    expect(await reconciliation.json()).toMatchObject({ outcome: "reconciliation_required" });
+    expect(db.payment?.status).toBe("PENDING");
+    expect(db.session?.state).toBe("FAILED");
   });
 
   it("allows a new checkout for a later remaining balance only after prior settlement", async () => {
@@ -586,14 +606,15 @@ describe("online checkout reservation and claim safety", () => {
     expect(await result.json()).toMatchObject({ outcome: "reconciliation_required" });
     expect(db.session).toMatchObject({ state: "FAILED", claim_token: null });
     expect(db.payment?.status).toBe("FAILED");
-    expect(networkFailure).toHaveBeenCalledTimes(1);
+    expect(networkFailure).toHaveBeenCalledTimes(3);
   });
 
   it("settles a released checkout only after explicit provider-status reconciliation confirms success", async () => {
     db.payment = {
       id: 88, school_id: db.schoolId, invoice_id: db.invoiceId, student_id: 31, parent_id: 51,
-      reference: "fee_0123456789abcdef", amount_minor: 5600, currency: "NGN", provider: "PAYSTACK",
-      status: "FAILED", provider_transaction_id: "455",
+      reference: "fee_0123456789abcdef", amount_minor: 5600, currency: "NGN",
+      method: "PAYSTACK", provider: "PAYSTACK",
+      status: "FAILED", provider_transaction_id: "456",
     };
     db.session = {
       payment_id: 88, school_id: db.schoolId, invoice_id: db.invoiceId, provider: "PAYSTACK",
@@ -611,6 +632,30 @@ describe("online checkout reservation and claim safety", () => {
     expect(db.paidMinor).toBe(5600);
     expect(db.outstandingMinor).toBe(0);
     expect(db.receipt).not.toBeNull();
+  });
+
+  it("requires reconciliation when verified provider transaction identity conflicts with the stored payment", async () => {
+    db.payment = {
+      id: 88, school_id: db.schoolId, invoice_id: db.invoiceId, student_id: 31, parent_id: 51,
+      reference: "fee_0123456789abcdef", amount_minor: 5600, currency: "NGN",
+      method: "PAYSTACK", provider: "PAYSTACK",
+      status: "FAILED", provider_transaction_id: "455",
+    };
+    db.session = {
+      payment_id: 88, school_id: db.schoolId, invoice_id: db.invoiceId, provider: "PAYSTACK",
+      reference: "fee_0123456789abcdef", state: "RELEASED", claim_token: null,
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ status: true, data: {
+      id: 456, status: "success", reference: "fee_0123456789abcdef", amount: 5600, currency: "NGN",
+    } }), { status: 200, headers: { "content-type": "application/json" } })));
+
+    const result = await reconcileCheckout();
+    expect(result.status).toBe(200);
+    expect(await result.json()).toMatchObject({ outcome: "reconciliation_required" });
+    expect(db.payment).toMatchObject({ status: "FAILED", provider_transaction_id: "455" });
+    expect(db.session).toMatchObject({ state: "RELEASED", claim_token: null });
+    expect(db.paidMinor).toBe(0);
+    expect(db.receipt).toBeNull();
   });
 
   it("denies cross-school and unauthorized checkout release attempts", async () => {

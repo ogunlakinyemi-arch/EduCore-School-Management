@@ -538,7 +538,7 @@ export const getListMyFeePaymentNotificationsUrl = (params?: ListMyFeePaymentNot
 }
 
 /**
- * @summary List verified-payment notifications currently linked to the authenticated recipient
+ * @summary List finance notifications currently linked to the authenticated recipient
  */
 export const listMyFeePaymentNotifications = async (params?: ListMyFeePaymentNotificationsParams, options?: Parameters<typeof customFetch>[1]): Promise<FeePaymentNotification[]> => {
 
@@ -585,7 +585,7 @@ export type ListMyFeePaymentNotificationsQueryError = ErrorType<NotFoundResponse
 
 
 /**
- * @summary List verified-payment notifications currently linked to the authenticated recipient
+ * @summary List finance notifications currently linked to the authenticated recipient
  */
 
 export function useListMyFeePaymentNotifications<TData = Awaited<ReturnType<typeof listMyFeePaymentNotifications>>, TError = ErrorType<NotFoundResponse>>(
@@ -615,7 +615,7 @@ export const getMarkMyFeePaymentNotificationReadUrl = (notificationId: number,) 
 }
 
 /**
- * @summary Mark a currently authorized verified-payment notification as read
+ * @summary Mark a currently authorized finance notification as read
  */
 export const markMyFeePaymentNotificationRead = async (notificationId: number, options?: Parameters<typeof customFetch>[1]): Promise<FeePaymentNotification> => {
 
@@ -667,7 +667,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type MarkMyFeePaymentNotificationReadMutationVariables = {notificationId: number}
 
     /**
- * @summary Mark a currently authorized verified-payment notification as read
+ * @summary Mark a currently authorized finance notification as read
  */
 export const useMarkMyFeePaymentNotificationRead = <TError = ErrorType<NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markMyFeePaymentNotificationRead>>, TError,MarkMyFeePaymentNotificationReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
