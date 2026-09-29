@@ -256,8 +256,6 @@ describe("Phase 5 device attendance behavior", () => {
     state.student.schoolId = 11;
     expect((await request(event())).status).toBe(404);
     state.student.schoolId = 10;
-    state.cards[0].schoolId = 11;
-    expect((await request(event())).status).toBe(403);
     state.cards[0].schoolId = 10;
     state.cards[0].status = "INACTIVE";
     expect((await request(event())).status).toBe(403);
@@ -269,6 +267,17 @@ describe("Phase 5 device attendance behavior", () => {
     state.cards[0].studentId = 502;
     expect((await request(event())).status).toBe(403);
     expect((await request(event({ nfcUid: "UNKNOWN-UID" }))).status).toBe(403);
+  });
+
+  it("rejects an NFC card from another school without mutating attendance history", async () => {
+    state.cards[0].schoolId = 11;
+
+    const response = await request(event());
+
+    expect(response.status).toBe(403);
+    expect(state.events).toHaveLength(0);
+    expect(state.notifications).toHaveLength(0);
+    expect(state.discrepancies).toHaveLength(0);
   });
 
   it("accepts school entry and exit and queues their notifications", async () => {

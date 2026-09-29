@@ -1,0 +1,588 @@
+Continue the existing Yemait EduCore project and Phase 7 implementation.
+
+Do NOT rebuild, restart, replace, or redesign the application.
+
+This is a DEVELOPMENT-ONLY remediation and verification task.
+
+Current baseline:
+
+- Phase 1–6 functionality is preserved.
+- Phase 7 finance development is substantially complete.
+- 256 API tests currently pass across 37 files.
+- Workspace typecheck passes.
+- Frontend build passes.
+- Backend workflow build passes.
+- API and web health checks return 200.
+- Protected routes return 401 when signed out.
+- Development migrations 0000–0019 have passed clean and populated disposable PostgreSQL replay.
+- Production has NOT been modified.
+- No Paystack test key is currently configured.
+- No real provider transaction should be attempted.
+- Paystack sandbox verification remains pending external credentials.
+
+Your objectives are:
+
+1. Safely resolve the NFC Publish migration-ordering blocker.
+2. Complete authenticated DEVELOPMENT browser verification for School Admin, Accountant, Parent, and Student.
+3. Preserve all existing Phase 1–7 behavior.
+4. Do not modify production.
+5. Do not publish.
+6. Do not require Paystack credentials.
+7. Do not falsely report Phase 7 as fully complete.
+
+---
+
+PART A — NFC PUBLISH MIGRATION BLOCKER
+
+1. Inspect the current migration chain
+
+Inspect:
+
+- all migrations 0000–0019
+- current schema definitions
+- Drizzle schema/configuration
+- migration generation configuration
+- generated SQL
+- "nfc_cards"
+- "nfc_card_history"
+- all NFC foreign keys
+- all attendance/device/card relationships
+
+Identify exactly why the generated Publish migration can attempt to create a dependent foreign key before the required composite uniqueness exists.
+
+The known relationship involves:
+
+"nfc_card_history"
+
+referencing:
+
+"nfc_cards(id, school_id)"
+
+The referenced "(id, school_id)" key must be backed by a valid PostgreSQL PRIMARY KEY or UNIQUE constraint/index suitable for the foreign key BEFORE the dependent foreign key is created.
+
+---
+
+2. DO NOT MODIFY PRODUCTION
+
+This is critical.
+
+Do NOT:
+
+- alter production schema
+- drop production constraints
+- delete production NFC data
+- remove foreign keys from production
+- manually apply a production prerequisite
+- publish the application
+- use production SQL as a workaround
+
+Production inspection may remain read-only.
+
+If production is currently missing the required composite key, report that fact only.
+
+Do not make the production change yourself.
+
+---
+
+3. Fix the DEVELOPMENT migration/schema source
+
+Make the smallest correct change to the existing schema/migration generation process so that the generated migration order is structurally safe.
+
+The required order must be equivalent to:
+
+1. Ensure "nfc_cards" has the required valid uniqueness for:
+   "(id, school_id)"
+
+2. Then create the dependent foreign key from:
+   "nfc_card_history(id/card reference, school_id)"
+
+Do not use unsafe workarounds.
+
+Do not remove referential integrity.
+
+Do not duplicate constraints unnecessarily.
+
+Preserve historical NFC data.
+
+Preserve school tenant isolation.
+
+---
+
+4. Verify the migration in multiple ways
+
+Run:
+
+Empty database test
+
+Apply the full migration chain to a clean disposable PostgreSQL database.
+
+Populated replay
+
+Replay the migration chain against a populated synthetic database containing:
+
+- schools
+- students
+- NFC cards
+- NFC card history
+- attendance records
+- devices
+- device assignments
+- finance records
+
+Migration ordering inspection
+
+Inspect the actual generated SQL/order that would be used by Publish.
+
+Do not rely only on the local database already containing the constraint.
+
+Confirm that the generated migration itself establishes the prerequisite before creating the dependent foreign key.
+
+Schema verification
+
+Confirm PostgreSQL reports the required composite uniqueness/key before the dependent FK is created.
+
+Verify the final schema contains:
+
+- correct NFC composite uniqueness
+- correct NFC foreign key
+- correct school isolation
+- no duplicated unsafe constraints
+- no orphaned history
+
+---
+
+5. NFC regression testing
+
+Verify that:
+
+- NFC card remains assigned to the correct school.
+- Card history remains intact.
+- Device-to-school binding remains intact.
+- Historical attendance remains intact.
+- Reassigned devices preserve historical records.
+- Cross-school NFC usage remains rejected.
+- Invalid school/card combinations remain rejected.
+- Existing NFC tests continue passing.
+
+Do not sacrifice existing NFC security to make migration pass.
+
+---
+
+PART B — AUTHENTICATED DEVELOPMENT BROWSER VERIFICATION
+
+After the migration issue is safely corrected in DEVELOPMENT, perform actual authenticated browser walkthroughs.
+
+Do not rely only on API tests.
+
+Create or use disposable DEVELOPMENT fixtures/accounts only.
+
+Never use production credentials.
+
+---
+
+6. Required development roles
+
+Ensure there are safe disposable development accounts for:
+
+School Admin
+
+Belongs to School A.
+
+Accountant
+
+Belongs to School A.
+
+Parent
+
+Linked only to a test student in School A.
+
+Student
+
+Belongs only to the test student in School A.
+
+If existing development fixtures already provide these users, reuse them.
+
+Do not create unnecessary duplicate users.
+
+Do not alter production accounts.
+
+---
+
+7. SCHOOL ADMIN BROWSER WALKTHROUGH
+
+Authenticate as the School Admin.
+
+Verify the actual browser UI for:
+
+Finance dashboard
+
+Confirm:
+
+- financial summary
+- invoices
+- payments
+- outstanding balance
+- adjustments
+- reports
+
+Fee management
+
+Verify:
+
+- fee categories
+- fee structures
+- session
+- term
+- class
+- section
+
+Bulk assignment
+
+Perform a safe development assignment.
+
+Confirm:
+
+- created count
+- skipped count
+- skip reasons
+- no duplicate invoice
+
+Invoice
+
+Open an actual test student's invoice.
+
+Verify:
+
+- student
+- session
+- term
+- fee
+- amount
+- adjustments
+- paid amount
+- outstanding amount
+- status
+
+Reports
+
+Verify at least:
+
+- payment report
+- outstanding report
+- adjustment report
+- refund/reversal report
+
+Refund/reversal
+
+Using a safe development payment record, verify the authorized UI workflow and resulting records.
+
+Do not send real money.
+
+Tenant isolation
+
+Attempt to access School B resources through manipulated URLs/API calls if safe in development.
+
+Verify access is rejected.
+
+Capture concrete HTTP/UI outcomes where possible.
+
+---
+
+8. ACCOUNTANT BROWSER WALKTHROUGH
+
+Authenticate as the Accountant.
+
+Verify:
+
+- finance dashboard
+- invoices
+- payments
+- outstanding balances
+- manual bank transfers
+- transfer review
+- receipts
+- reconciliation
+- financial reports
+- authorized refund/reversal workflow
+
+Verify the Accountant cannot access functions outside the permitted role.
+
+Verify all financial records are limited to the Accountant's school.
+
+---
+
+9. PARENT BROWSER WALKTHROUGH
+
+Authenticate as the disposable Parent.
+
+Verify:
+
+Parent Dashboard
+
+- linked child appears
+- no unrelated child appears
+- financial information loads
+
+Fees
+
+Open the child's current invoice.
+
+Verify:
+
+- original amount
+- adjustments
+- paid amount
+- outstanding amount
+- status
+
+Payment methods
+
+Confirm only backend-confirmed available methods appear.
+
+Because no Paystack test key exists:
+
+- Paystack must not falsely appear as an operational verified checkout.
+- The UI should safely indicate that the provider is unavailable/unconfigured where appropriate.
+- No fake payment success should be possible.
+
+Partial payment
+
+If the current business rules permit it, verify the permitted amount can be entered and validated.
+
+Test invalid amount manipulation.
+
+Manual bank transfer
+
+Verify the parent can see approved bank details and submit a transfer according to the existing workflow.
+
+Verify it remains pending until authorized review.
+
+Receipts
+
+Verify existing verified/test payment receipts are visible where appropriate.
+
+Parent-child isolation
+
+Attempt to access another student's invoice.
+
+It must be rejected.
+
+---
+
+10. STUDENT BROWSER WALKTHROUGH
+
+Authenticate as the disposable Student.
+
+Verify:
+
+- student dashboard
+- financial information permitted by the existing design
+- current invoice/balance
+- payment history
+- receipt access where applicable
+- updated status after development test payment changes
+
+Verify another student's financial information cannot be accessed.
+
+---
+
+PART C — PAYMENT VERIFICATION WITHOUT PAYSTACK
+
+Do NOT attempt a real Paystack transaction.
+
+Do NOT invent provider success.
+
+Do NOT use fake production credentials.
+
+Verify only provider-independent behavior:
+
+- payment initialization validation
+- authorization
+- amount validation
+- invoice ownership
+- student ownership
+- school ownership
+- payment state transitions
+- webhook validation logic
+- idempotency
+- receipt generation logic
+- balance update logic
+- failed payment handling
+
+The following remains explicitly pending:
+
+"PAYSTACK SANDBOX VERIFICATION: PENDING EXTERNAL TEST CREDENTIAL"
+
+---
+
+PART D — SECURITY REGRESSION
+
+Run the existing security tests.
+
+Add targeted tests if missing for:
+
+1. Parent A accessing Parent B's child.
+2. Parent accessing another school's child.
+3. Student accessing another student's invoice.
+4. Accountant accessing another school's finance.
+5. School Admin accessing another school's finance.
+6. Manipulated invoice ID.
+7. Manipulated student ID.
+8. Manipulated school ID.
+9. Unauthorized refund.
+10. Unauthorized manual bank-transfer verification.
+11. Payment amount manipulation.
+12. Duplicate settlement.
+13. Duplicate webhook.
+14. Invalid webhook signature.
+15. Invalid NFC school/card combination.
+
+All must be rejected appropriately.
+
+---
+
+PART E — FULL REGRESSION
+
+After all changes:
+
+Run the complete existing test suite.
+
+The previous baseline is:
+
+256 API tests across 37 files passing.
+
+Do not reduce this baseline.
+
+Also run:
+
+- typecheck
+- frontend build
+- backend workflow build
+- migration validation
+- populated database replay
+- API health
+- web health
+- relevant NFC tests
+- finance tests
+- authentication/RBAC tests
+- tenant-isolation tests
+
+---
+
+PART F — PRODUCTION SAFETY CHECK
+
+Before finishing, explicitly confirm:
+
+- No production schema change.
+- No production data change.
+- No production secret change.
+- No production financial record change.
+- No production NFC constraint change.
+- No deployment.
+- No publish.
+- No live payment.
+- No live Paystack transaction.
+- No live Flutterwave transaction.
+- No live Remita transaction.
+
+---
+
+PART G — FINAL REPORT
+
+Return a structured report with exactly these sections:
+
+1. NFC Migration Fix
+
+State:
+
+- root cause
+- exact development fix
+- generated migration order
+- clean database result
+- populated replay result
+- final NFC constraint result
+- NFC regression result
+
+2. Authenticated Browser Verification
+
+School Admin
+
+PASS/FAIL + exact flows tested.
+
+Accountant
+
+PASS/FAIL + exact flows tested.
+
+Parent
+
+PASS/FAIL + exact flows tested.
+
+Student
+
+PASS/FAIL + exact flows tested.
+
+3. Security
+
+List security scenarios tested and results.
+
+4. Regression
+
+Report:
+
+- API tests passed/total
+- typecheck
+- frontend build
+- backend build
+- migration validation
+- health checks
+
+5. Paystack
+
+Explicitly state:
+
+"PAYSTACK SANDBOX VERIFICATION: PENDING EXTERNAL TEST CREDENTIAL"
+
+Do not claim provider transaction verification.
+
+6. Production Safety
+
+Explicitly confirm whether production was untouched.
+
+7. Remaining Phase 7 Blockers
+
+Clearly separate:
+
+Development blockers
+
+Anything that still needs coding/fixing.
+
+External verification blockers
+
+Examples:
+
+- Paystack test credential
+- real sandbox transaction
+- webhook delivery
+- Flutterwave sandbox verification
+- Remita credentials/integration
+- automatic provider bank-transfer verification
+
+FINAL STATUS RULE
+
+If the NFC Publish ordering is fixed safely in development and the authenticated browser walkthroughs pass, but Paystack still lacks credentials, report:
+
+PHASE 7 DEVELOPMENT COMPLETE — EXTERNAL PAYMENT VERIFICATION PENDING
+
+Do NOT report:
+
+PHASE 7 COMPLETE — READY FOR PHASE 8
+
+until the required external payment verification has actually been completed.
+
+If NFC migration ordering or authenticated browser verification still fails, report:
+
+PHASE 7 NOT COMPLETE
+
+with the exact remaining blockers.
+
+Do not start Phase 8 as part of this task.

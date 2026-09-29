@@ -7,4 +7,4 @@ When manually building an artifact from a shell, do not assume the environment m
 
 **Why:** A production-mode build failed twice despite the running preview and passing typechecks because service variables were available to the workflow but not the shell command.
 
-**How to apply:** Before diagnosing a manual build failure as a code issue, check the artifact manifest's service environment and pass the required non-secret values to the shell build. Never print or manually retrieve secrets.
+**How to apply:** Before diagnosing a manual build failure as a code issue, check the artifact manifest's complete service environment and pass every required non-secret value to the shell build together rather than chasing missing-variable errors one by one. Never print or manually retrieve secrets.
