@@ -1,0 +1,97 @@
+The current development schema and checked-in migrations are correct.
+
+The current Replit Publish planner does NOT produce a complete safe production diff because it omits required database functions/triggers/backfill operations.
+
+DO NOT execute Publish.
+DO NOT modify production.
+DO NOT execute production SQL.
+DO NOT change the migration files.
+DO NOT disable or remove any security constraint.
+DO NOT truncate or delete production data.
+
+Prepare a COMPLETE, HUMAN-REVIEWABLE production migration plan that accounts for the Publish planner limitations.
+
+The plan must explicitly establish the correct dependency order for:
+
+1. Required new tables.
+2. Required unique/primary keys.
+3. Payment verification metadata protection function.
+4. Payment verification immutability trigger.
+5. Device-school binding protection functions/triggers.
+6. Device-school historical backfill.
+7. NFC composite key prerequisite (already present in production).
+8. NFC history table and dependent foreign keys.
+9. student_class_assignments composite key prerequisite (already verified in production).
+10. All remaining foreign keys.
+11. All required indexes and constraints.
+12. Any existing-table column changes.
+
+For each operation specify:
+
+- exact SQL or exact supported Replit operation
+- dependency prerequisites
+- whether it is transactional
+- whether it can lock an existing table
+- whether it can fail because of existing data
+- whether it modifies data
+- whether it changes tenant isolation
+- whether it affects payments
+- whether it affects attendance/NFC
+- whether rollback is possible
+
+PRODUCTION SAFETY
+
+The plan must account for:
+
+- Production currently has 3 NFC cards.
+- Production currently has 0 devices.
+- Production has existing schools, students and other application data.
+- PITR is enabled for Production with a 7-day recovery window.
+- No production backup/restore should be executed as part of this task.
+- No payment or device writes should occur during any operation that requires a write-free interval.
+
+TESTING REQUIREMENT
+
+Before recommending production execution:
+
+1. Create or identify a production-like disposable PostgreSQL database.
+2. Reproduce the relevant current production schema/data.
+3. Execute the complete proposed migration sequence against that disposable database.
+4. Verify:
+   - all required tables exist
+   - all functions exist
+   - all triggers exist and are enabled
+   - all required constraints exist
+   - all foreign keys are valid
+   - existing 3 NFC cards remain intact
+   - NFC school isolation remains enforced
+   - payment verification protection exists
+   - device history protection exists
+   - tenant isolation remains intact
+5. Run the existing 257 API tests against the resulting development/test environment.
+6. Do not use the real production database for this test.
+
+IMPORTANT
+
+Do NOT recommend simply:
+
+- running the current 242-statement Publish
+- adding triggers after payment tables become live
+- adding device-history triggers after device functionality becomes live
+- modifying the migration ledger
+- putting database DDL into deployment hooks
+- disabling constraints
+- truncating tables
+- deleting data
+
+If a complete supported production sequence cannot be established and tested, STOP.
+
+Final status must be exactly one of:
+
+PRODUCTION MIGRATION PLAN PREPARED — AWAITING HUMAN REVIEW
+
+or
+
+NO SAFE COMPLETE PRODUCTION MIGRATION PLAN AVAILABLE
+
+No production changes are authorized by this prompt.
