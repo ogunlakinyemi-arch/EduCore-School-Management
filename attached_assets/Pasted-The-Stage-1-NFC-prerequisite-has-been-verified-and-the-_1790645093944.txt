@@ -1,0 +1,90 @@
+The Stage 1 NFC prerequisite has been verified and the fresh Publish diff is now available.
+
+DO NOT execute Publish.
+
+Perform a complete READ-ONLY safety review of the entire current 242-statement Publish diff.
+
+Review every statement and classify it as:
+
+1. Required and safe
+2. Required but needs attention
+3. Unrelated
+4. Potentially destructive
+5. Blocking/error-prone
+
+Pay particular attention to:
+
+- NFC tables, indexes, unique constraints and foreign keys
+- nfc_cards
+- nfc_card_history
+- schools and school_id tenant boundaries
+- students
+- attendance
+- devices/device assignments
+- academic data
+- finance/payment/invoice/receipt data
+- users/RBAC
+- audit data
+- any ALTER TABLE operations
+- nullable/non-nullable changes
+- new foreign keys
+- unique constraints
+- indexes
+- default values
+- type changes
+- column additions/removals
+- table additions/removals
+- DROP
+- TRUNCATE
+- DELETE
+- data transformations
+- destructive or irreversible operations
+
+For every potentially risky statement, explain:
+
+- what it changes
+- why it is being generated
+- whether existing production data could prevent it from succeeding
+- whether it could cause data loss
+- whether it could temporarily lock a table
+- whether it affects tenant isolation
+
+Also perform dependency validation across the complete diff:
+
+- every foreign key must have its referenced table available
+- every composite foreign key must have a matching primary/unique constraint already present
+- every NOT NULL addition must be compatible with existing production rows
+- every unique constraint must be checked against existing production data
+- every type change must be compatible with existing values
+
+DO NOT modify production.
+DO NOT execute SQL.
+DO NOT run Publish.
+DO NOT truncate anything.
+DO NOT delete anything.
+DO NOT alter the migration files.
+
+If possible, test the complete generated SQL against a disposable database that accurately represents the current production schema/data, without using or modifying the real production database.
+
+At the end, provide:
+
+1. Total statements reviewed
+2. Required changes
+3. Potentially risky statements
+4. Any blockers
+5. Disposable-database execution result, if performed
+6. Whether the complete diff appears safe for human Publish approval
+
+Final status must be exactly one of:
+
+FULL PUBLISH DIFF REVIEW — SAFE FOR HUMAN APPROVAL
+
+or
+
+FULL PUBLISH DIFF REVIEW — BLOCKERS FOUND
+
+or
+
+FULL PUBLISH DIFF REVIEW — COULD NOT FULLY VERIFY
+
+Do not claim Publish is safe merely because the NFC ordering issue was resolved.
