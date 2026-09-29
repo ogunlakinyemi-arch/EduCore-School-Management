@@ -14,3 +14,4 @@
 - [Vite cartographer JSX generics](vite-cartographer-jsx-generics.md) — development metadata injection can break generic JSX elements even when typecheck and production build pass.
 - [Same-day class history](same-day-class-history.md) — attendance reports must not attribute an earlier event to a class a student joined later that day.
 - [Disposable PostgreSQL process lifetime](disposable-postgres-lifetime.md) — one-off shell launches can die after the call; use a tracked background task for migration tests.
+- [Schema dump restrict tokens](pg-dump-restrict-tokens.md) — normalize generated pg_dump restrict delimiters before deciding a schema changed.

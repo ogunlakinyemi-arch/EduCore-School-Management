@@ -1,0 +1,578 @@
+PHASE 11D — CONTROLLED DEVELOPMENT MIGRATION RECONCILIATION DESIGN & DISPOSABLE REHEARSAL
+
+PROJECT
+
+Yemait EduCore by Yemait Technologies Limited.
+
+OBJECTIVE
+
+Design and rehearse a safe method for reconciling the current development database's migration history with the 31 checked-in migrations.
+
+The development database currently has:
+
+- 31 checked-in migrations
+- 5 migration-ledger rows
+- 26 migrations absent from the ledger
+- two known historical hash mismatches
+- an existing validated "school_classes_id_school_tenant_key" constraint that causes the normal migration runner to fail at "0005"
+
+Phase 11C and 11C-A/11C-B established that the historical reason for the incomplete ledger is not proven.
+
+Therefore, this phase must NOT attempt to reconstruct history as fact.
+
+The goal is to determine whether the CURRENT SCHEMA can be safely reconciled with the CURRENT MIGRATION SET using a disposable rehearsal.
+
+---
+
+ABSOLUTE SAFETY RULES
+
+DEVELOPMENT DATABASE
+
+DO NOT modify the persistent development database.
+
+DO NOT:
+
+- insert/update/delete migration-ledger rows
+- alter tables
+- create/drop constraints
+- create/drop indexes
+- create/drop functions
+- create/drop triggers
+- run the migration runner against the persistent development database
+- run "drizzle-kit push"
+- run schema synchronization
+- reset the development database
+- modify migration SQL
+
+PRODUCTION
+
+DO NOT:
+
+- query production
+- modify production
+- run migrations
+- run schema push
+- publish
+- deploy
+- create a production clone
+
+APPLICATION
+
+Do not change application functionality.
+
+Do not redesign the migration system during this phase.
+
+Only create temporary scripts/tools if necessary for disposable testing, and do not commit destructive changes to production code.
+
+---
+
+1. CAPTURE CURRENT DEVELOPMENT STATE READ-ONLY
+
+Read the current development database without changing it.
+
+Capture:
+
+Migration ledger
+
+- all 5 rows
+- identifiers
+- hashes
+- timestamps/metadata
+
+Schema
+
+- tables
+- columns
+- indexes
+- unique constraints
+- foreign keys
+- composite foreign keys
+- functions
+- triggers
+- views
+
+Important tenant protections
+
+Specifically capture:
+
+- school tenant keys
+- composite unique constraints
+- cross-school foreign keys
+- NFC constraints
+- maintenance/operations constraints
+- finance constraints
+- communication constraints
+- library constraints
+
+Save the read-only snapshot outside the database.
+
+Do not modify the development database.
+
+---
+
+2. CREATE A DISPOSABLE REHEARSAL DATABASE
+
+Create an isolated disposable PostgreSQL database.
+
+It must NOT be the existing development database.
+
+Reproduce the current development schema and the current five-row migration ledger state as accurately as possible.
+
+The disposable database should represent:
+
+«"The state we have today, with the five known ledger rows and the existing schema."»
+
+Do not simplify away the problem.
+
+In particular, reproduce the existing:
+
+"school_classes_id_school_tenant_key"
+
+constraint that causes "0005" to fail.
+
+Document how the disposable database was constructed.
+
+---
+
+3. VERIFY THE BASELINE
+
+Before attempting reconciliation, prove that the disposable database reproduces the known problem.
+
+Run the normal migration process against the disposable database in a controlled manner.
+
+Expected behavior:
+
+"0005" encounters the already-existing validated unique constraint.
+
+Record the exact failure.
+
+Do NOT modify the persistent development database.
+
+---
+
+4. DESIGN THE RECONCILIATION STRATEGY
+
+Before executing reconciliation, create a proposed strategy.
+
+The strategy must answer:
+
+A. Which migrations are actually represented by the current schema?
+
+Do not claim historical execution.
+
+Instead classify each migration as:
+
+- SCHEMA MATCHES
+- SCHEMA PARTIALLY MATCHES
+- SCHEMA DOES NOT MATCH
+- CANNOT DETERMINE
+
+B. Which migrations can safely be represented as already applied?
+
+Determine this based on current schema equivalence, not assumptions about historical execution.
+
+C. What should happen to the five existing ledger rows?
+
+They must not be silently deleted or replaced.
+
+D. What should happen to the two historical hash mismatches?
+
+Do not overwrite them merely to match current files.
+
+Preserve historical evidence.
+
+E. What audit information is required?
+
+The reconciliation must make it clear that:
+
+«"This ledger entry records that the current schema was reconciled to this migration; it does NOT claim that this migration was historically executed through the migration runner."»
+
+This distinction is mandatory.
+
+---
+
+5. DO NOT AUTOMATICALLY RECONCILE ALL 26 MIGRATIONS
+
+For every migration "0005–0030", independently verify whether the current disposable schema contains the objects expected from that migration.
+
+Check:
+
+- tables
+- columns
+- indexes
+- constraints
+- foreign keys
+- functions
+- triggers
+- backfills
+- data transformations
+
+If a migration contains data-changing SQL, do not mark it reconciled merely because its table exists.
+
+Determine whether the resulting data state is also represented.
+
+---
+
+6. HANDLE 0005 EXPLICITLY
+
+Investigate the existing:
+
+"school_classes_id_school_tenant_key"
+
+constraint.
+
+Compare:
+
+- migration "0005" expected definition
+- current disposable definition
+
+If they are exactly equivalent, document:
+
+"SCHEMA-EQUIVALENT"
+
+If they differ, document the exact difference.
+
+Do NOT drop and recreate the constraint merely to make the migration run.
+
+The rehearsal should demonstrate a safe method for recognizing an already-existing equivalent object.
+
+---
+
+7. DESIGN A RECONCILIATION MARKER
+
+If the project's migration system permits it, design a way to distinguish:
+
+NORMAL MIGRATION EXECUTION
+
+from:
+
+HISTORICAL SCHEMA RECONCILIATION
+
+The reconciliation record must preserve:
+
+- migration identifier
+- current migration hash
+- previous historical hash where known
+- reconciliation timestamp
+- reconciliation reason
+- explicit statement that historical execution is unverified
+- operator/source
+- audit reference
+
+Do not implement this against the real development database.
+
+Only test the concept in the disposable environment.
+
+---
+
+8. HASH MISMATCH HANDLING
+
+For "0001":
+
+Preserve the existing historical hash evidence.
+
+Do not replace it with the current hash without an audit trail.
+
+For "0004":
+
+Because the historical SQL matching the recorded hash was not found, preserve the existing recorded hash.
+
+Do not invent historical SQL.
+
+Determine whether reconciliation can safely proceed while retaining the old hash as historical metadata.
+
+---
+
+9. REHEARSE THE PROPOSED RECONCILIATION
+
+On the disposable database only:
+
+1. Capture baseline schema.
+2. Capture baseline ledger.
+3. Apply the proposed reconciliation procedure.
+4. Verify schema did not unexpectedly change.
+5. Verify all intended ledger/audit changes.
+6. Run the migration runner.
+7. Confirm no migration attempts to recreate existing objects.
+8. Run the migration runner a second time.
+9. Confirm the second run is completely idempotent.
+10. Compare schema before and after both runs.
+
+The second run must produce:
+
+- no duplicate constraints
+- no duplicate indexes
+- no duplicate tables
+- no duplicate columns
+- no unexpected data changes
+- no migration errors
+
+---
+
+10. NEGATIVE TESTS
+
+The rehearsal must also prove that reconciliation does NOT hide genuine schema differences.
+
+Create disposable test cases where:
+
+Case A
+
+A required column is missing.
+
+Expected:
+
+Reconciliation refuses to mark that migration complete.
+
+Case B
+
+A constraint definition differs.
+
+Expected:
+
+Reconciliation flags the migration for manual investigation.
+
+Case C
+
+A required backfill is missing.
+
+Expected:
+
+Reconciliation refuses to mark the migration complete.
+
+Case D
+
+A migration creates a function or trigger that is missing.
+
+Expected:
+
+Reconciliation flags the migration.
+
+Case E
+
+A migration has a partially matching schema.
+
+Expected:
+
+It remains unresolved.
+
+This is important. The reconciliation mechanism must not become a way to blindly mark migrations as complete.
+
+---
+
+11. CROSS-SCHOOL SECURITY REGRESSION
+
+After the disposable reconciliation, rerun the relevant tenant-isolation checks.
+
+Verify that:
+
+- cross-school foreign keys remain blocked
+- NFC cards cannot cross schools
+- NFC devices remain school-bound
+- maintenance/asset relationships remain school-bound
+- library records remain school-scoped
+- finance records remain school-scoped
+- communication records remain school-scoped
+- partner access remains appropriately limited
+
+Do not weaken existing constraints to make reconciliation succeed.
+
+---
+
+12. BACKUP AND ROLLBACK REHEARSAL
+
+On the disposable database:
+
+1. Create a complete database backup.
+2. Capture schema and ledger state.
+3. Perform reconciliation.
+4. Restore the backup to a separate disposable database.
+5. Confirm the restored database matches the pre-reconciliation state.
+6. Verify the API can start against the restored database if practical.
+
+Do not perform a restore against the real development database.
+
+---
+
+13. APPLICATION TESTS
+
+After the disposable reconciliation:
+
+Run:
+
+- all API tests
+- all frontend/web tests
+- typecheck
+- backend build
+- frontend build
+
+The current known baseline is:
+
+574 API tests + 21 web tests = 595 tests
+
+Report the exact current result.
+
+Do not modify application behavior merely to make tests pass.
+
+---
+
+14. SCHEMA DIFF
+
+Produce a before/after schema comparison for the disposable database.
+
+It must show:
+
+Expected changes
+
+Only the intended reconciliation metadata/ledger changes.
+
+Unexpected changes
+
+Anything else.
+
+If schema objects changed unexpectedly, mark the rehearsal as failed.
+
+---
+
+15. CREATE THE RECONCILIATION PLAN
+
+Create:
+
+"docs/phase11d-controlled-reconciliation-plan.md"
+
+Include:
+
+1. Current state
+2. Known uncertainties
+3. Baseline reproduction
+4. Proposed reconciliation method
+5. Migration-by-migration classification
+6. Hash mismatch treatment
+7. Audit approach
+8. Idempotency strategy
+9. Negative tests
+10. Tenant-isolation verification
+11. Backup/rollback procedure
+12. Application verification
+13. Exact procedure that would be used later against development
+14. Preconditions
+15. Stop conditions
+16. Risks
+17. Remaining blockers
+
+---
+
+16. CREATE A REHEARSAL REPORT
+
+Create:
+
+"docs/phase11d-disposable-rehearsal-report.md"
+
+Include:
+
+Baseline
+
+What state was reproduced.
+
+Known Failure
+
+How "0005" failed before reconciliation.
+
+Reconciliation
+
+What was tested on the disposable database.
+
+Migration Results
+
+Migration-by-migration results.
+
+Hash Handling
+
+How "0001" and "0004" were handled.
+
+Idempotency
+
+Results of first and second migration runs.
+
+Negative Tests
+
+Results.
+
+Security Tests
+
+Results.
+
+Backup/Restore
+
+Results.
+
+Application Tests
+
+Exact counts.
+
+Schema Diff
+
+Before/after result.
+
+Final Status
+
+Choose exactly one:
+
+- REHEARSAL PASSED — DEVELOPMENT RECONCILIATION PLAN READY
+- REHEARSAL FAILED — RECONCILIATION BLOCKED
+- REHEARSAL INCONCLUSIVE — MORE EVIDENCE REQUIRED
+
+Do not select "passed" merely because the migration runner eventually completes. All required safety checks must pass.
+
+---
+
+17. IMPORTANT DECISION RULE
+
+Even if the disposable rehearsal succeeds:
+
+DO NOT modify the actual development database.
+
+The result only means:
+
+«"A controlled reconciliation procedure has been demonstrated on a disposable representation of the current state."»
+
+It does NOT mean:
+
+«"The historical migration execution has been proven."»
+
+It does NOT authorize production deployment.
+
+It does NOT authorize Publish.
+
+---
+
+18. REQUIRED FINAL RESPONSE
+
+Return a concise report containing:
+
+1. Disposable database created: YES/NO
+2. Baseline "0005" failure reproduced: YES/NO
+3. Migrations "0005–0030" classified
+4. Reconciliation procedure tested: YES/NO
+5. First migration run result
+6. Second migration run result
+7. Idempotency result
+8. Negative-test result
+9. Tenant-isolation result
+10. Backup/restore result
+11. API test result
+12. Web test result
+13. Typecheck result
+14. Build results
+15. Schema-diff result
+16. Final rehearsal status
+17. Whether persistent development database changed: MUST BE NO
+18. Whether migration ledger changed: MUST BE NO
+19. Whether production was queried: MUST BE NO
+20. Whether production changed: MUST BE NO
+21. Whether Publish executed: MUST BE NO
+
+FINAL SAFETY REQUIREMENT
+
+If any step requires modifying the persistent development database, STOP and report that requirement instead of executing it.
+
+This phase is a disposable rehearsal only.
