@@ -1,0 +1,547 @@
+PHASE 11C — MIGRATION FORENSICS & RELEASE PLAN
+
+PROJECT
+
+Yemait EduCore by Yemait Technologies Limited.
+
+OBJECTIVE
+
+Investigate and document the unresolved migration-history mismatch discovered during Phase 11B.
+
+This phase is FORENSICS AND PLANNING ONLY.
+
+The goal is to determine exactly:
+
+1. Why the development database has only 5 migration-ledger entries while 31 migrations exist in the repository.
+2. Why the recorded hashes for the existing entries do not all match the current checked-in migration files.
+3. Which migration files correspond to the recorded historical hashes.
+4. Whether migrations 0006–0031 were actually applied previously without being recorded.
+5. Whether any migration SQL was modified after being applied.
+6. What the safest controlled reconciliation sequence should be.
+7. What must be verified before any development ledger reconciliation.
+8. What must be verified before production deployment.
+
+ABSOLUTE SAFETY RULES
+
+DO NOT:
+
+- modify production
+- publish/deploy production
+- modify production migrations
+- modify the development migration ledger
+- update migration hashes
+- mark migrations as applied
+- delete migration records
+- recreate existing production objects
+- rewrite migration files merely to make the runner pass
+- change application functionality
+- perform destructive database operations
+- reset the development database
+- run unapproved schema changes
+- bypass migration validation
+- fabricate historical migration evidence
+
+This phase must not alter the application database schema or migration ledger.
+
+Read-only inspection, disposable database experiments, file hashing, SQL parsing, documentation, and test execution are allowed.
+
+If a command could modify the persistent development database, DO NOT run it.
+
+CURRENT KNOWN FACTS
+
+Phase 11B established:
+
+- Repository contains 31 checked-in migrations.
+- Development migration ledger contains only 5 rows.
+- Normal migration execution against the current development database fails because an object from an earlier migration already exists.
+- Two of the five recorded migration hashes differ from the current checked-in SQL.
+- One recorded hash matches an older checked-in migration file.
+- The original SQL corresponding to the other historical hash has not yet been identified.
+- The exact reason migrations 0006–0031 were not recorded has not been verified.
+- Synthetic disposable databases successfully demonstrated historical backfills and cross-school protections.
+- Synthetic reconciliation can adopt migrations 0006–0031 with an explicit audit label while preserving the original five rows.
+- Re-running the reconciled migration sequence on the synthetic database produces no further changes.
+- Backup/restore rehearsal passed.
+- 595 API/web tests passed.
+- Typecheck and builds passed.
+- Production remains untouched.
+
+Treat all of these as evidence, not permission to modify the live development database.
+
+---
+
+TASK 1 — INVENTORY ALL MIGRATIONS
+
+Create a complete inventory of every checked-in migration from 0001 through the current migration.
+
+For each migration record:
+
+- migration number
+- filename
+- file path
+- migration description inferred strictly from its SQL
+- tables created
+- columns added
+- indexes
+- constraints
+- foreign keys
+- unique constraints
+- triggers
+- functions
+- views
+- data backfills
+- ALTER statements
+- potentially non-idempotent statements
+- dependencies on previous migrations
+
+Do not modify any migration.
+
+Save the analysis to:
+
+"docs/phase11c-migration-inventory.md"
+
+---
+
+TASK 2 — INVENTORY THE DEVELOPMENT MIGRATION LEDGER
+
+Read the development database migration ledger without modifying it.
+
+Record:
+
+- all existing ledger rows
+- migration identifiers
+- recorded hashes
+- timestamps if available
+- ordering
+- any metadata
+- current schema/migration state
+
+Compare the ledger against the 31 repository migrations.
+
+Create a table showing:
+
+Migration| Repository file| Ledger entry exists?| Recorded hash| Current hash| Hash matches?| Evidence
+
+Do not update the ledger.
+
+---
+
+TASK 3 — FORENSIC HASH INVESTIGATION
+
+For every migration whose recorded hash differs from the current migration:
+
+1. Calculate the current file hash using the project's actual migration hashing algorithm.
+2. Determine the exact hashing algorithm used by the migration runner.
+3. Search repository history, git objects, branches, tags, backups, generated artifacts, lock files, build artifacts, or other local project evidence for the historical SQL.
+4. If an exact historical SQL version is found, record:
+   - source
+   - commit/version if available
+   - exact hash
+   - differences from current SQL
+5. If it cannot be found, explicitly state:
+   "Historical source not found in available project evidence."
+
+Do NOT invent or reconstruct historical SQL merely to obtain a matching hash.
+
+Create:
+
+"docs/phase11c-migration-hash-forensics.md"
+
+---
+
+TASK 4 — DETERMINE WHETHER MIGRATIONS 0006–0031 WERE APPLIED
+
+Use only available evidence.
+
+Inspect:
+
+- current database schema
+- PostgreSQL catalogs
+- tables
+- columns
+- indexes
+- constraints
+- foreign keys
+- functions
+- triggers
+- views
+- application code assumptions
+- migration SQL
+- existing test fixtures
+- git history
+- migration runner logs
+- development database metadata
+- Phase 11B disposable rehearsal evidence
+
+For every migration 0006–0031 classify it as:
+
+- CONFIRMED APPLIED
+- STRONGLY INDICATED APPLIED
+- NOT VERIFIED
+- CONFIRMED NOT APPLIED
+
+Do not claim "applied" merely because the resulting object exists if that object could have been created another way.
+
+Where possible, identify independent evidence.
+
+---
+
+TASK 5 — DETERMINE WHY THE LEDGER IS INCOMPLETE
+
+Investigate possible causes without guessing.
+
+Check the migration runner implementation for:
+
+- transaction handling
+- ledger insertion timing
+- error handling
+- partial migration behavior
+- startup migration behavior
+- development-only migration paths
+- manual SQL execution paths
+- schema bootstrap logic
+- test database setup
+- environment-specific migration behavior
+- migration ledger table creation
+- migration hash calculation
+- migration naming/ordering
+- migration reconciliation behavior
+
+Search git history for changes involving:
+
+- migration runner
+- migration ledger
+- database initialization
+- schema bootstrap
+- migrations
+- publish/deploy
+- database reset
+- dev database restoration
+
+If the root cause cannot be proven, say so explicitly.
+
+Do not choose a speculative explanation.
+
+---
+
+TASK 6 — ANALYZE THE 0005 FAILURE
+
+Investigate the exact object causing the migration runner to fail when replaying the current development schema.
+
+Document:
+
+- migration number
+- SQL statement
+- object name
+- object type
+- whether the object already exists
+- when the object first appears in repository history
+- whether the current database object matches the migration definition
+- whether the object appears to have been manually created
+- whether it may have been created by an older version of the migration
+- whether the migration is safe to classify as already applied
+
+Do not alter the object.
+
+---
+
+TASK 7 — COMPARE CURRENT SCHEMA AGAINST MIGRATIONS
+
+Build a read-only schema comparison.
+
+For each migration, identify:
+
+- expected objects
+- observed objects
+- expected constraints
+- observed constraints
+- expected indexes
+- observed indexes
+- expected columns
+- observed columns
+
+Highlight:
+
+- missing objects
+- extra objects
+- mismatched definitions
+- renamed objects
+- duplicate constraints
+- unexpected indexes
+- unexpected functions/triggers
+- objects with uncertain provenance
+
+Do not "fix" anything.
+
+Create:
+
+"docs/phase11c-schema-vs-migration-analysis.md"
+
+---
+
+TASK 8 — REVIEW PHASE 11B RECONCILIATION EVIDENCE
+
+Read the Phase 11B documentation and evidence.
+
+Confirm whether the synthetic reconciliation successfully demonstrated:
+
+- preservation of the original five ledger entries
+- adoption of migrations 0006–0031
+- explicit audit labeling
+- idempotent rerun
+- historical backfills
+- cross-school relationship rejection
+- backup/restore preservation
+
+Clearly distinguish:
+
+PROVEN IN SYNTHETIC ENVIRONMENT
+
+from:
+
+NOT YET PROVEN IN DEVELOPMENT DATABASE
+
+Do not treat synthetic success as evidence that the live development ledger is safe to modify.
+
+---
+
+TASK 9 — DESIGN THE SAFE RECONCILIATION PLAN
+
+Based on the forensic evidence, create a proposed reconciliation procedure.
+
+The plan must specify:
+
+1. Preconditions.
+2. Required backup.
+3. Required schema snapshot.
+4. Required ledger snapshot.
+5. Required hash verification.
+6. Exact migrations that may be adopted.
+7. Exact migrations requiring additional investigation.
+8. How already-applied migrations should be recorded without rerunning destructive SQL.
+9. How historical hash mismatches should be represented.
+10. How auditability will be preserved.
+11. How rollback would work.
+12. How the migration runner will be tested afterward.
+13. How a second run will prove idempotency.
+14. How the application test suite will be rerun.
+15. Conditions that would stop the reconciliation.
+
+Do not execute this plan.
+
+---
+
+TASK 10 — DEFINE PRODUCTION RELEASE GATES
+
+Create a final checklist of what must be true before production deployment.
+
+Include at minimum:
+
+Database
+
+- migration history reconciled
+- current schema verified
+- all required constraints verified
+- all required indexes verified
+- functions verified
+- triggers verified
+- composite tenant protections verified
+- migration runner tested twice
+- backup completed
+- restore tested
+
+Authentication
+
+- Clerk production configuration verified
+- owner account verified
+- school admin invitation flow verified
+- role permissions verified
+- session behavior verified
+
+Security
+
+- tenant isolation
+- role isolation
+- object-level authorization
+- cross-school foreign-key protections
+- CORS
+- rate limiting
+- upload limits
+- export limits
+- audit logs
+
+Finance
+
+- provider credentials/configuration
+- webhook verification
+- idempotency
+- payment reconciliation
+- refunds/reversals
+- receipts
+
+Communication
+
+- SMS provider
+- email provider
+- notification preferences
+- retry handling
+- delivery records
+- push readiness
+
+PWA
+
+- installability
+- service worker
+- push registration
+- notification permissions
+- mobile layout
+
+Reporting
+
+- report authorization
+- exports
+- PDF character handling
+- large-report limits
+
+Library & Operations
+
+- tenant isolation
+- role permissions
+- borrower ownership
+- asset isolation
+- maintenance isolation
+
+Owner Portal
+
+Explicitly verify that Platform Owner remains a platform-level role and does not accidentally inherit School Admin permissions.
+
+School Admin
+
+Verify full school-management permissions.
+
+Teacher
+
+Verify teacher-specific academic/attendance permissions.
+
+Accountant
+
+Verify finance permissions without unrelated administrative privileges.
+
+Parent
+
+Verify only linked-child information.
+
+Student
+
+Verify only authorized student information.
+
+Partner
+
+Verify only partner/school referral and commission information.
+
+---
+
+TASK 11 — CREATE THE FINAL PHASE 11C REPORT
+
+Create:
+
+"docs/phase11c-migration-forensics-report.md"
+
+The report must contain:
+
+Executive Summary
+
+Clearly state:
+
+- what is proven
+- what is unresolved
+- what is only synthetic evidence
+- whether development migration reconciliation is safe to perform now
+
+Migration Ledger Findings
+
+Hash Forensics
+
+Schema Findings
+
+Root-Cause Findings
+
+0005 Failure Analysis
+
+Phase 11B Evidence Review
+
+Recommended Reconciliation Procedure
+
+Production Release Plan
+
+Remaining Blockers
+
+Evidence and Commands Used
+
+Files Examined
+
+Final Status
+
+Use one of:
+
+- FORENSICS COMPLETE — RECONCILIATION READY
+- FORENSICS COMPLETE — RECONCILIATION BLOCKED
+- FORENSICS INCOMPLETE
+
+Do not select a status merely to make progress. Base it strictly on evidence.
+
+---
+
+TASK 12 — TESTING
+
+Run only safe/read-only verification:
+
+- API tests
+- frontend tests
+- typecheck
+- production builds
+- migration SQL parsing where safe
+- disposable migration replay if useful
+
+Do not change the persistent development database.
+
+Do not publish.
+
+Do not send real payments.
+
+Do not send real SMS/email/push notifications.
+
+Do not alter production.
+
+---
+
+REQUIRED FINAL RESPONSE
+
+At the end, report:
+
+1. Migration count found.
+2. Ledger rows found.
+3. Hash mismatches found.
+4. Migrations confirmed applied.
+5. Migrations not verified.
+6. Exact cause of the 0005 failure.
+7. Whether the root cause of the incomplete ledger was proven.
+8. Whether development reconciliation is ready.
+9. Remaining blockers.
+10. Test results.
+11. Exact files created.
+12. Confirmation that development schema/ledger was NOT modified.
+13. Confirmation that production was NOT modified.
+14. Confirmation that Publish was NOT executed.
+
+IMPORTANT:
+
+Do not make any database changes during this phase.
+
+Do not "fix" the migration issue.
+
+Do not update the migration ledger.
+
+Do not publish.
+
+The output of Phase 11C is evidence and a controlled release plan only.
