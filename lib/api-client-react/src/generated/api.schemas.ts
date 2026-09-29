@@ -3828,6 +3828,12 @@ export type FeePaymentNotificationEventType = typeof FeePaymentNotificationEvent
 export const FeePaymentNotificationEventType = {
   PAYMENT_VERIFIED: 'PAYMENT_VERIFIED',
   PAYMENT_REJECTED: 'PAYMENT_REJECTED',
+  PROVIDER_CHECKOUT_INITIATED: 'PROVIDER_CHECKOUT_INITIATED',
+  PROVIDER_CHECKOUT_PROCESSING: 'PROVIDER_CHECKOUT_PROCESSING',
+  PROVIDER_PAYMENT_FAILED: 'PROVIDER_PAYMENT_FAILED',
+  MANUAL_TRANSFER_SUBMITTED: 'MANUAL_TRANSFER_SUBMITTED',
+  MANUAL_TRANSFER_APPROVED: 'MANUAL_TRANSFER_APPROVED',
+  MANUAL_TRANSFER_REJECTED: 'MANUAL_TRANSFER_REJECTED',
   REFUND_APPROVED: 'REFUND_APPROVED',
   REVERSAL_APPROVED: 'REVERSAL_APPROVED',
 } as const;
@@ -3850,6 +3856,29 @@ export interface FeePaymentNotification {
   eventAmountMinor: number;
   currency: string;
   method: string;
+}
+
+export type FeeInvoiceNotificationEventType = typeof FeeInvoiceNotificationEventType[keyof typeof FeeInvoiceNotificationEventType];
+
+
+export const FeeInvoiceNotificationEventType = {
+  INVOICE_GENERATED: 'INVOICE_GENERATED',
+} as const;
+
+export interface FeeInvoiceNotification {
+  id: number;
+  schoolId: number;
+  eventType: FeeInvoiceNotificationEventType;
+  isRead: boolean;
+  createdAt: string;
+  /** @nullable */
+  readAt: string | null;
+  invoiceNumber: string;
+  studentName: string;
+  amountMinor: number;
+  outstandingMinor: number;
+  currency: string;
+  status: string;
 }
 
 /**
@@ -4218,6 +4247,13 @@ schoolId: SchoolIdParameter;
 };
 
 export type ListMyFeePaymentNotificationsParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+};
+
+export type ListMyFeeInvoiceNotificationsParams = {
 /**
  * @minimum 1
  */

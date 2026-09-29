@@ -202,7 +202,8 @@ const poolMock = vi.hoisted(() => {
           state.failNotificationInsert = false;
           throw new Error("simulated notification insert failure");
         }
-        return result(values[2] === "PAYMENT_REJECTED" ? [{ id: 81 }] : []);
+        return result(["MANUAL_TRANSFER_SUBMITTED", "MANUAL_TRANSFER_APPROVED", "MANUAL_TRANSFER_REJECTED"]
+          .includes(String(values[2])) ? [{ id: 81 }] : []);
       }
       if (sql.includes("INSERT INTO fee_payment_notification_outbox")) {
         if (state.failNotificationOutbox) throw new Error("simulated outbox persistence failure");
@@ -444,7 +445,7 @@ describe("manual bank-transfer review integration", () => {
     const commitIndex = state.calls.findIndex(({ sql }) => sql === "COMMIT");
     expect(notificationIndex).toBeGreaterThan(receiptCheckIndex);
     expect(notificationIndex).toBeLessThan(commitIndex);
-    expect(state.audit.some((entry) => JSON.stringify(entry[7]).includes(verificationBody.evidenceReference))).toBe(true);
+    expect(state.audit.some((entry) => JSON.stringify(entry).includes(verificationBody.evidenceReference))).toBe(true);
   });
 
   it("commits manual verification and receipt while queuing a failed notification delivery", async () => {
@@ -455,7 +456,7 @@ describe("manual bank-transfer review integration", () => {
     expect(state.invoice.paid_minor).toBe(30000);
     expect(state.receipt?.receipt_number).toBe("RCP-1-00000071");
     expect(state.notificationOutbox).toEqual([{
-      paymentId: 71, schoolId: 1, eventType: "PAYMENT_VERIFIED", eventReferenceId: 0,
+      paymentId: 71, schoolId: 1, eventType: "MANUAL_TRANSFER_APPROVED", eventReferenceId: 0,
     }]);
     expect(state.calls.some(({ sql }) => sql === "ROLLBACK TO SAVEPOINT fee_payment_notification_delivery")).toBe(true);
     expect(state.calls.at(-1)?.sql).toBe("COMMIT");
@@ -560,11 +561,11 @@ describe("manual bank-transfer review integration", () => {
     expect(rejected.status).toBe(200);
     expect(state.payment).toMatchObject({ status: "REJECTED", rejection_reason: "Transfer reference could not be matched" });
     const delivery = state.calls.find(({ sql }) => sql.includes("INSERT INTO fee_payment_notifications"));
-    expect(delivery?.values).toEqual([71, 1, "PAYMENT_REJECTED", 0]);
+    expect(delivery?.values).toEqual([71, 1, "MANUAL_TRANSFER_REJECTED", 0]);
     const notifications = state.calls.filter(({ sql }) => sql.includes("'FEE_PAYMENT_NOTIFICATION'"));
     expect(notifications).toHaveLength(1);
     expect(notifications[0].values[2]).toMatchObject({
-      eventType: "PAYMENT_REJECTED",
+      eventType: "MANUAL_TRANSFER_REJECTED",
       channel: "IN_APP",
       createdCount: 1,
       externalChannels: { email: "BLOCKED_UNCONFIGURED", sms: "BLOCKED_UNCONFIGURED" },
@@ -592,6 +593,17 @@ describe("manual bank-transfer review integration", () => {
     expect(changedProof.status).toBe(409);
     expect(state.payment.transfer_date).toBe("2026-09-01");
     expect(state.payment.proof_url).toBe(transferBody.proofUrl);
+  });
+
+  it("notifies linked recipients when a manual transfer is submitted and retains failed delivery for retry", async () => {
+    state.failNotificationInsert = true;
+    const response = await submitTransfer();
+    expect(response.status).toBe(201);
+    expect(state.notificationOutbox).toEqual([{
+      paymentId: 72, schoolId: 1, eventType: "MANUAL_TRANSFER_SUBMITTED", eventReferenceId: 0,
+    }]);
+    expect(state.calls.some(({ sql }) => sql === "ROLLBACK TO SAVEPOINT fee_payment_notification_delivery")).toBe(true);
+    expect(state.calls.at(-1)?.sql).toBe("COMMIT");
   });
 
   it("prevents the same school/bank/reference transfer from being submitted with a different idempotency key", async () => {

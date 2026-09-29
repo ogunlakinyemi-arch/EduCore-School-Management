@@ -15,6 +15,7 @@ const fake = vi.hoisted(() => ({
   failNotificationOutbox: false,
   failNotificationSavepoint: false,
   notificationOutbox: [] as any[],
+  notificationEvents: [] as string[],
   locks: Promise.resolve() as Promise<void>,
   poolQuery: vi.fn(),
   connect: vi.fn(),
@@ -97,6 +98,7 @@ beforeEach(() => {
   fake.failNotificationOutbox = false;
   fake.failNotificationSavepoint = false;
   fake.notificationOutbox = [];
+  fake.notificationEvents = [];
   fake.locks = Promise.resolve();
 
   fake.poolQuery.mockReset().mockImplementation(async (sql: string, values: unknown[] = []) => {
@@ -239,10 +241,21 @@ beforeEach(() => {
           fake.payment.provider_metadata = JSON.parse(String(values[1]));
           return { rows: [] };
         }
+        if (sql.includes("UPDATE fee_payments SET status='PROCESSING'")) {
+          fake.payment.status = "PROCESSING";
+          return { rows: [{ id: fake.payment.id }] };
+        }
         if (sql.includes("UPDATE fee_payments SET status='FAILED'")) {
           fake.payment.status = "FAILED";
           fake.payment.provider_transaction_id = values[0];
           return { rows: [] };
+        }
+        if (sql.includes("UPDATE fee_provider_checkout_sessions SET state='FAILED'")) {
+          fake.session.state = "FAILED";
+          fake.session.session_state = "FAILED";
+          fake.session.claim_token = null;
+          fake.session.claim_expires_at = null;
+          return { rows: [{ payment_id: fake.payment.id }] };
         }
         if (sql.includes("UPDATE fee_invoices SET paid_minor=$1")) {
           fake.invoice.paid_minor = values[0];
@@ -275,6 +288,7 @@ beforeEach(() => {
             fake.failNotificationOnce = false;
             throw new Error("simulated notification insert failure");
           }
+          fake.notificationEvents.push(String(values[2]));
           return { rows: [], rowCount: 0 };
         }
         if (sql.includes("INSERT INTO fee_payment_notification_outbox")) {
@@ -495,12 +509,32 @@ describe("public fee-provider webhook settlement", () => {
         status: "RECONCILIATION_REQUIRED", signature_verified: true, school_id: 2, payment_id: 11,
       });
     }
-    expect(fake.payment.status).toBe("PENDING");
+    expect(fake.payment.status).toBe(_caseName === "fake success" ? "PROCESSING" : "PENDING");
     expect(fake.invoice.paid_minor).toBe(0);
     expect(fake.receipt).toBeNull();
   });
 
+  it("queues checkout initiation and processing when a verified pending webhook wins the INITIALIZING-to-READY race", async () => {
+    fake.session.state = "INITIALIZING";
+    fake.session.session_state = "INITIALIZING";
+    fake.failNotificationOnce = true;
+    vi.stubGlobal("fetch", vi.fn(async () => response({ status: true, data: {
+      id: 456, status: "pending", reference: expectedReference, amount: 1234, currency: "NGN",
+    } })));
+
+    const result = await postWebhook(signedWebhook({ status: "pending" }));
+    expect(result.status).toBe(200);
+    expect(await result.json()).toMatchObject({ outcome: "pending" });
+    expect(fake.payment.status).toBe("PROCESSING");
+    expect(fake.session.state).toBe("INITIALIZING");
+    expect(fake.notificationOutbox).toEqual([{
+      paymentId: 11, schoolId: 2, eventType: "PROVIDER_CHECKOUT_INITIATED", eventReferenceId: 0,
+    }]);
+    expect(fake.notificationEvents).toEqual(["PROVIDER_CHECKOUT_PROCESSING"]);
+  });
+
   it("records a provider failure without crediting the invoice", async () => {
+    fake.failNotificationOnce = true;
     vi.stubGlobal("fetch", vi.fn(async () => response({ status: true, data: {
       id: 456, status: "failed", reference: expectedReference, amount: 1234, currency: "NGN",
     } })));
@@ -510,6 +544,48 @@ describe("public fee-provider webhook settlement", () => {
     expect(fake.payment.status).toBe("FAILED");
     expect(fake.invoice.paid_minor).toBe(0);
     expect(fake.receipt).toBeNull();
+    expect(fake.notificationOutbox).toEqual([{
+      paymentId: 11, schoolId: 2, eventType: "PROVIDER_PAYMENT_FAILED", eventReferenceId: 0,
+    }]);
+    expect(fake.session.state).toBe("FAILED");
+  });
+
+  it("accepts a terminal provider failure that races checkout initialization and persists both intents", async () => {
+    fake.session.state = "INITIALIZING";
+    fake.session.session_state = "INITIALIZING";
+    fake.failNotificationOnce = true;
+    vi.stubGlobal("fetch", vi.fn(async () => response({ status: true, data: {
+      id: 456, status: "failed", reference: expectedReference, amount: 1234, currency: "NGN",
+    } })));
+    const result = await postWebhook(signedWebhook({ status: "failed" }));
+    expect(result.status).toBe(200);
+    expect(await result.json()).toMatchObject({ outcome: "failed" });
+    expect(fake.payment.status).toBe("FAILED");
+    expect(fake.session.state).toBe("FAILED");
+    expect(fake.notificationOutbox).toEqual([{
+      paymentId: 11, schoolId: 2, eventType: "PROVIDER_CHECKOUT_INITIATED", eventReferenceId: 0,
+    }]);
+    expect(fake.notificationEvents).toEqual(["PROVIDER_PAYMENT_FAILED"]);
+  });
+
+  it("does not regress a terminally failed payment when a later provider callback reports pending", async () => {
+    let providerStatus = "failed";
+    vi.stubGlobal("fetch", vi.fn(async () => response({ status: true, data: {
+      id: 456, status: providerStatus, reference: expectedReference, amount: 1234, currency: "NGN",
+    } })));
+    const body = signedWebhook({ status: "failed" });
+    expect((await postWebhook(body)).status).toBe(200);
+    expect(fake.payment.status).toBe("FAILED");
+    expect(fake.session.state).toBe("FAILED");
+
+    providerStatus = "pending";
+    const stalePending = await postWebhook(body);
+    expect(stalePending.status).toBe(200);
+    expect(await stalePending.json()).toMatchObject({ outcome: "reconciliation_required" });
+    expect(fake.payment.status).toBe("FAILED");
+    expect(fake.session.state).toBe("FAILED");
+    expect([...fake.events.values()][0]).toMatchObject({ status: "RECONCILIATION_REQUIRED" });
+    expect(fake.notificationEvents).not.toContain("PROVIDER_CHECKOUT_PROCESSING");
   });
 
   it("re-verifies a previously failed provider event and settles it atomically after success", async () => {

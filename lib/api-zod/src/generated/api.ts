@@ -90,7 +90,7 @@ export const ListMyFeePaymentNotificationsQueryParams = zod.object({
 export const ListMyFeePaymentNotificationsResponseItem = zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
-  "eventType": zod.enum(['PAYMENT_VERIFIED', 'PAYMENT_REJECTED', 'REFUND_APPROVED', 'REVERSAL_APPROVED']),
+  "eventType": zod.enum(['PAYMENT_VERIFIED', 'PAYMENT_REJECTED', 'PROVIDER_CHECKOUT_INITIATED', 'PROVIDER_CHECKOUT_PROCESSING', 'PROVIDER_PAYMENT_FAILED', 'MANUAL_TRANSFER_SUBMITTED', 'MANUAL_TRANSFER_APPROVED', 'MANUAL_TRANSFER_REJECTED', 'REFUND_APPROVED', 'REVERSAL_APPROVED']),
   "isRead": zod.boolean(),
   "createdAt": zod.coerce.date(),
   "readAt": zod.coerce.date().nullable(),
@@ -108,6 +108,59 @@ export const ListMyFeePaymentNotificationsResponse = zod.array(ListMyFeePaymentN
 
 
 /**
+ * @summary List invoice-generated notifications currently linked to the authenticated recipient
+ */
+
+
+
+export const ListMyFeeInvoiceNotificationsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional()
+})
+
+export const ListMyFeeInvoiceNotificationsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "eventType": zod.enum(['INVOICE_GENERATED']),
+  "isRead": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "readAt": zod.coerce.date().nullable(),
+  "invoiceNumber": zod.string(),
+  "studentName": zod.string(),
+  "amountMinor": zod.number().int(),
+  "outstandingMinor": zod.number().int(),
+  "currency": zod.string(),
+  "status": zod.string()
+})
+export const ListMyFeeInvoiceNotificationsResponse = zod.array(ListMyFeeInvoiceNotificationsResponseItem)
+
+
+/**
+ * @summary Mark a currently authorized invoice notification as read
+ */
+
+
+
+export const MarkMyFeeInvoiceNotificationReadParams = zod.object({
+  "notificationId": zod.coerce.number().int().min(1)
+})
+
+export const MarkMyFeeInvoiceNotificationReadResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "eventType": zod.enum(['INVOICE_GENERATED']),
+  "isRead": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "readAt": zod.coerce.date().nullable(),
+  "invoiceNumber": zod.string(),
+  "studentName": zod.string(),
+  "amountMinor": zod.number().int(),
+  "outstandingMinor": zod.number().int(),
+  "currency": zod.string(),
+  "status": zod.string()
+})
+
+
+/**
  * @summary Mark a currently authorized finance notification as read
  */
 
@@ -120,7 +173,7 @@ export const MarkMyFeePaymentNotificationReadParams = zod.object({
 export const MarkMyFeePaymentNotificationReadResponse = zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
-  "eventType": zod.enum(['PAYMENT_VERIFIED', 'PAYMENT_REJECTED', 'REFUND_APPROVED', 'REVERSAL_APPROVED']),
+  "eventType": zod.enum(['PAYMENT_VERIFIED', 'PAYMENT_REJECTED', 'PROVIDER_CHECKOUT_INITIATED', 'PROVIDER_CHECKOUT_PROCESSING', 'PROVIDER_PAYMENT_FAILED', 'MANUAL_TRANSFER_SUBMITTED', 'MANUAL_TRANSFER_APPROVED', 'MANUAL_TRANSFER_REJECTED', 'REFUND_APPROVED', 'REVERSAL_APPROVED']),
   "isRead": zod.boolean(),
   "createdAt": zod.coerce.date(),
   "readAt": zod.coerce.date().nullable(),

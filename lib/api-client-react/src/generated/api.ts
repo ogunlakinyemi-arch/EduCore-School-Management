@@ -113,6 +113,7 @@ import type {
   FeeCategoryInput,
   FeeCategoryUpdate,
   FeeInvoice,
+  FeeInvoiceNotification,
   FeePayment,
   FeePaymentHistory,
   FeePaymentNotification,
@@ -182,6 +183,7 @@ import type {
   ListMyAcademicAssignmentsParams,
   ListMyAcademicReportCardsParams,
   ListMyAcademicResultsParams,
+  ListMyFeeInvoiceNotificationsParams,
   ListMyFeePaymentNotificationsParams,
   ListOwnerSchoolDirectoryParams,
   ListParentStudentRelationshipsParams,
@@ -605,6 +607,164 @@ export function useListMyFeePaymentNotifications<TData = Awaited<ReturnType<type
 
 
 
+
+export const getListMyFeeInvoiceNotificationsUrl = (params?: ListMyFeeInvoiceNotificationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/me/finance/invoice-notifications?${stringifiedParams}` : `/api/me/finance/invoice-notifications`
+}
+
+/**
+ * @summary List invoice-generated notifications currently linked to the authenticated recipient
+ */
+export const listMyFeeInvoiceNotifications = async (params?: ListMyFeeInvoiceNotificationsParams, options?: Parameters<typeof customFetch>[1]): Promise<FeeInvoiceNotification[]> => {
+
+  return customFetch<FeeInvoiceNotification[]>(getListMyFeeInvoiceNotificationsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMyFeeInvoiceNotificationsQueryKey = (params?: ListMyFeeInvoiceNotificationsParams,) => {
+    return [
+    `/api/me/finance/invoice-notifications`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListMyFeeInvoiceNotificationsQueryOptions = <TData = Awaited<ReturnType<typeof listMyFeeInvoiceNotifications>>, TError = ErrorType<NotFoundResponse>>(params?: ListMyFeeInvoiceNotificationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyFeeInvoiceNotifications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMyFeeInvoiceNotificationsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyFeeInvoiceNotifications>>> = ({ signal }) => listMyFeeInvoiceNotifications(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMyFeeInvoiceNotifications>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMyFeeInvoiceNotificationsQueryResult = NonNullable<Awaited<ReturnType<typeof listMyFeeInvoiceNotifications>>>
+export type ListMyFeeInvoiceNotificationsQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary List invoice-generated notifications currently linked to the authenticated recipient
+ */
+
+export function useListMyFeeInvoiceNotifications<TData = Awaited<ReturnType<typeof listMyFeeInvoiceNotifications>>, TError = ErrorType<NotFoundResponse>>(
+ params?: ListMyFeeInvoiceNotificationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyFeeInvoiceNotifications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMyFeeInvoiceNotificationsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMarkMyFeeInvoiceNotificationReadUrl = (notificationId: number,) => {
+
+
+
+
+  return `/api/me/finance/invoice-notifications/${notificationId}/read`
+}
+
+/**
+ * @summary Mark a currently authorized invoice notification as read
+ */
+export const markMyFeeInvoiceNotificationRead = async (notificationId: number, options?: Parameters<typeof customFetch>[1]): Promise<FeeInvoiceNotification> => {
+
+  return customFetch<FeeInvoiceNotification>(getMarkMyFeeInvoiceNotificationReadUrl(notificationId),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkMyFeeInvoiceNotificationReadMutationKey = () => ['markMyFeeInvoiceNotificationRead'] as const;
+
+export const getMarkMyFeeInvoiceNotificationReadMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markMyFeeInvoiceNotificationRead>>, TError,MarkMyFeeInvoiceNotificationReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markMyFeeInvoiceNotificationRead>>, TError,MarkMyFeeInvoiceNotificationReadMutationVariables, TContext> => {
+
+const mutationKey = getMarkMyFeeInvoiceNotificationReadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markMyFeeInvoiceNotificationRead>>, MarkMyFeeInvoiceNotificationReadMutationVariables> = (props) => {
+          const {notificationId} = props ?? {};
+
+          return  markMyFeeInvoiceNotificationRead(notificationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkMyFeeInvoiceNotificationReadMutationResult = NonNullable<Awaited<ReturnType<typeof markMyFeeInvoiceNotificationRead>>>
+
+    export type MarkMyFeeInvoiceNotificationReadMutationError = ErrorType<NotFoundResponse>
+    export type MarkMyFeeInvoiceNotificationReadMutationVariables = {notificationId: number}
+
+    /**
+ * @summary Mark a currently authorized invoice notification as read
+ */
+export const useMarkMyFeeInvoiceNotificationRead = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markMyFeeInvoiceNotificationRead>>, TError,MarkMyFeeInvoiceNotificationReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markMyFeeInvoiceNotificationRead>>,
+        TError,
+        MarkMyFeeInvoiceNotificationReadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMarkMyFeeInvoiceNotificationReadMutationOptions(options));
+    }
 
 export const getMarkMyFeePaymentNotificationReadUrl = (notificationId: number,) => {
 

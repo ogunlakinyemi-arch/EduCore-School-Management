@@ -10,10 +10,81 @@ type ConnectableQueryClient = QueryClient & {
 export const financePaymentNotificationEvents = [
   "PAYMENT_VERIFIED",
   "PAYMENT_REJECTED",
+  "PROVIDER_CHECKOUT_INITIATED",
+  "PROVIDER_CHECKOUT_PROCESSING",
+  "PROVIDER_PAYMENT_FAILED",
+  "MANUAL_TRANSFER_SUBMITTED",
+  "MANUAL_TRANSFER_APPROVED",
+  "MANUAL_TRANSFER_REJECTED",
   "REFUND_APPROVED",
   "REVERSAL_APPROVED",
 ] as const;
 export type FinancePaymentNotificationEvent = typeof financePaymentNotificationEvents[number];
+
+const notificationEligibility = `(
+  ($3='PAYMENT_VERIFIED' AND p.status='VERIFIED')
+  OR ($3='PAYMENT_REJECTED' AND p.status='REJECTED')
+  OR ($3='MANUAL_TRANSFER_SUBMITTED' AND p.method='BANK_TRANSFER' AND p.status='PENDING')
+  OR ($3='MANUAL_TRANSFER_APPROVED' AND p.method='BANK_TRANSFER' AND p.status='VERIFIED')
+  OR ($3='MANUAL_TRANSFER_REJECTED' AND p.method='BANK_TRANSFER' AND p.status='REJECTED')
+  OR ($3='PROVIDER_CHECKOUT_INITIATED' AND p.provider IN ('PAYSTACK','FLUTTERWAVE')
+    AND p.status IN ('PENDING','PROCESSING','FAILED','VERIFIED') AND EXISTS (
+      SELECT 1 FROM fee_provider_checkout_sessions cs WHERE cs.payment_id=p.id
+        AND cs.school_id=p.school_id
+        AND cs.state IN ('INITIALIZING','READY','FAILED','SETTLED','RELEASED')
+    ))
+  OR ($3='PROVIDER_CHECKOUT_PROCESSING' AND p.provider IN ('PAYSTACK','FLUTTERWAVE')
+    AND p.status='PROCESSING' AND EXISTS (
+      SELECT 1 FROM fee_provider_checkout_sessions cs WHERE cs.payment_id=p.id
+        AND cs.school_id=p.school_id AND cs.state IN ('INITIALIZING','READY','FAILED')
+    ))
+  OR ($3='PROVIDER_PAYMENT_FAILED' AND p.provider IN ('PAYSTACK','FLUTTERWAVE')
+    AND p.status='FAILED' AND p.provider_transaction_id IS NOT NULL
+    AND EXISTS (
+      SELECT 1 FROM fee_provider_checkout_sessions cs WHERE cs.payment_id=p.id
+        AND cs.school_id=p.school_id AND cs.state IN ('INITIALIZING','READY','FAILED','RELEASED')
+    ))
+  OR ($3 IN ('REFUND_APPROVED','REVERSAL_APPROVED')
+    AND p.status IN ('VERIFIED','REFUNDED','REVERSED')
+    AND EXISTS (
+      SELECT 1 FROM fee_refunds fr
+      WHERE fr.id=$4 AND fr.payment_id=p.id AND fr.invoice_id=p.invoice_id
+        AND fr.school_id=p.school_id AND fr.status='APPROVED'
+        AND (($3='REFUND_APPROVED' AND fr.transaction_type='REFUND')
+          OR ($3='REVERSAL_APPROVED' AND fr.transaction_type='REVERSAL'))
+    ))
+)`;
+
+const notificationReferenceEligibility = `(
+  ($3 IN ('PAYMENT_VERIFIED','PAYMENT_REJECTED','PROVIDER_CHECKOUT_INITIATED',
+      'PROVIDER_CHECKOUT_PROCESSING','PROVIDER_PAYMENT_FAILED','MANUAL_TRANSFER_SUBMITTED',
+      'MANUAL_TRANSFER_APPROVED','MANUAL_TRANSFER_REJECTED') AND $4=0)
+  OR ($3 IN ('REFUND_APPROVED','REVERSAL_APPROVED') AND $4>0)
+)`;
+
+// An outbox row is created only after the strict state checks above succeed.
+// During delivery retry, allow subsequent valid state transitions to occur
+// without discarding the already-committed notification intent.
+const notificationRetryEligibility = `(
+  ($3 IN ('PAYMENT_VERIFIED','PAYMENT_REJECTED') AND p.status IN ('VERIFIED','REJECTED','REFUNDED','REVERSED'))
+  OR ($3 IN ('MANUAL_TRANSFER_SUBMITTED','MANUAL_TRANSFER_APPROVED','MANUAL_TRANSFER_REJECTED')
+    AND p.method='BANK_TRANSFER')
+  OR ($3 IN ('PROVIDER_CHECKOUT_INITIATED','PROVIDER_CHECKOUT_PROCESSING','PROVIDER_PAYMENT_FAILED')
+    AND p.provider IN ('PAYSTACK','FLUTTERWAVE')
+    AND EXISTS (
+      SELECT 1 FROM fee_provider_checkout_sessions cs
+      WHERE cs.payment_id=p.id AND cs.school_id=p.school_id
+    ))
+  OR ($3 IN ('REFUND_APPROVED','REVERSAL_APPROVED')
+    AND p.status IN ('VERIFIED','REFUNDED','REVERSED')
+    AND EXISTS (
+      SELECT 1 FROM fee_refunds fr
+      WHERE fr.id=$4 AND fr.payment_id=p.id AND fr.invoice_id=p.invoice_id
+        AND fr.school_id=p.school_id AND fr.status='APPROVED'
+        AND (($3='REFUND_APPROVED' AND fr.transaction_type='REFUND')
+          OR ($3='REVERSAL_APPROVED' AND fr.transaction_type='REVERSAL'))
+    ))
+)`;
 
 export class FinanceNotificationSettlementSafetyError extends Error {
   constructor() {
@@ -33,26 +104,16 @@ export async function enqueueFinancePaymentNotifications(
   eventType: FinancePaymentNotificationEvent,
   metadata: Record<string, unknown> = {},
   eventReferenceId = 0,
+  retryingCommittedIntent = false,
 ): Promise<number> {
   const inserted = await client.query(
     `WITH target AS (
        SELECT p.id AS payment_id,p.school_id,p.invoice_id,p.student_id
        FROM fee_payments p
        JOIN fee_invoices i ON i.id=p.invoice_id AND i.school_id=p.school_id
-        WHERE p.id=$1 AND p.school_id=$2
-          AND (($3='PAYMENT_VERIFIED' AND p.status='VERIFIED')
-            OR ($3='PAYMENT_REJECTED' AND p.status='REJECTED')
-            OR ($3 IN ('REFUND_APPROVED','REVERSAL_APPROVED')
-              AND p.status IN ('VERIFIED','REFUNDED','REVERSED')
-              AND EXISTS (
-                SELECT 1 FROM fee_refunds fr
-                WHERE fr.id=$4 AND fr.payment_id=p.id AND fr.invoice_id=p.invoice_id
-                  AND fr.school_id=p.school_id AND fr.status='APPROVED'
-                  AND (($3='REFUND_APPROVED' AND fr.transaction_type='REFUND')
-                    OR ($3='REVERSAL_APPROVED' AND fr.transaction_type='REVERSAL'))
-              )))
-          AND (($3 IN ('PAYMENT_VERIFIED','PAYMENT_REJECTED') AND $4=0)
-            OR ($3 IN ('REFUND_APPROVED','REVERSAL_APPROVED') AND $4>0))
+         WHERE p.id=$1 AND p.school_id=$2
+           AND ${retryingCommittedIntent ? notificationRetryEligibility : notificationEligibility}
+           AND ${notificationReferenceEligibility}
      ), recipients AS (
        SELECT DISTINCT t.payment_id,t.school_id,t.invoice_id,pa.user_id AS user_id,'PARENT'::text AS role
        FROM target t
@@ -84,7 +145,7 @@ export async function enqueueFinancePaymentNotifications(
   );
   const createdCount = inserted.rowCount ?? inserted.rows.length;
   if (createdCount > 0) {
-    await client.query(
+    const intent = await client.query(
       `INSERT INTO audit_logs ("user",role,school_id,action,module,record_id,severity,event_type,result,metadata)
        VALUES ('Finance notification service','SYSTEM',$1,'generated in-app finance notifications',
          'Finance',$2,'info','FEE_PAYMENT_NOTIFICATION','SUCCESS',$3)`,
@@ -114,23 +175,28 @@ export async function enqueueFinancePaymentNotificationsSafely(
   eventReferenceId = 0,
 ): Promise<{ queued: boolean }> {
   try {
-    await client.query(
+    const intent = await client.query(
       `INSERT INTO fee_payment_notification_outbox
         (school_id,payment_id,invoice_id,event_type,event_reference_id,metadata,last_error)
        SELECT p.school_id,p.id,p.invoice_id,$3,$4,$5,'Notification enqueue pending'
        FROM fee_payments p
-       WHERE p.id=$1 AND p.school_id=$2
-         AND (($3 IN ('PAYMENT_VERIFIED','PAYMENT_REJECTED') AND $4=0)
-           OR ($3 IN ('REFUND_APPROVED','REVERSAL_APPROVED') AND $4>0
-             AND EXISTS (SELECT 1 FROM fee_refunds fr WHERE fr.id=$4 AND fr.payment_id=p.id
-               AND fr.invoice_id=p.invoice_id AND fr.school_id=p.school_id
-               AND fr.status='APPROVED'
-               AND (($3='REFUND_APPROVED' AND fr.transaction_type='REFUND')
-                 OR ($3='REVERSAL_APPROVED' AND fr.transaction_type='REVERSAL')))))
-       ON CONFLICT (payment_id,event_type,event_reference_id) DO NOTHING`,
+        WHERE p.id=$1 AND p.school_id=$2
+          AND ${notificationEligibility}
+          AND ${notificationReferenceEligibility}
+        ON CONFLICT (payment_id,event_type,event_reference_id) DO NOTHING
+        RETURNING id`,
       [paymentId, schoolId, eventType, eventReferenceId, metadata],
     );
-  } catch {
+    if ((intent.rowCount ?? intent.rows.length) === 0) {
+      const existing = await client.query(
+        `SELECT id FROM fee_payment_notification_outbox
+         WHERE payment_id=$1 AND school_id=$2 AND event_type=$3 AND event_reference_id=$4`,
+        [paymentId, schoolId, eventType, eventReferenceId],
+      );
+      if (!existing.rows[0]) throw new FinanceNotificationSettlementSafetyError();
+    }
+  } catch (error) {
+    if (error instanceof FinanceNotificationSettlementSafetyError) throw error;
     throw new FinanceNotificationSettlementSafetyError();
   }
   try {
@@ -205,6 +271,7 @@ export async function retryPendingFinancePaymentNotifications(
           retry.event_type,
           retry.metadata ?? {},
           Number(retry.event_reference_id),
+          true,
         );
         await client.query("RELEASE SAVEPOINT fee_payment_notification_retry");
         await client.query(

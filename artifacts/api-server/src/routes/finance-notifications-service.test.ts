@@ -8,15 +8,24 @@ import {
 
 describe("finance payment notification enqueue", () => {
   it.each([
-    ["PAYMENT_VERIFIED", "p.status='VERIFIED'"],
-    ["PAYMENT_REJECTED", "p.status='REJECTED'"],
-    ["REFUND_APPROVED", "p.status IN ('VERIFIED','REFUNDED','REVERSED')"],
-    ["REVERSAL_APPROVED", "p.status IN ('VERIFIED','REFUNDED','REVERSED')"],
-  ] as const)("delivers %s to current active in-school recipients idempotently", async (eventType, statusGuard) => {
+    ["PAYMENT_VERIFIED", "p.status='VERIFIED'", null],
+    ["PAYMENT_REJECTED", "p.status='REJECTED'", null],
+    ["PROVIDER_CHECKOUT_INITIATED", "p.status IN ('PENDING','PROCESSING','FAILED','VERIFIED')",
+      "cs.state IN ('INITIALIZING','READY','FAILED','SETTLED','RELEASED')"],
+    ["PROVIDER_CHECKOUT_PROCESSING", "p.status='PROCESSING'",
+      "cs.state IN ('INITIALIZING','READY','FAILED')"],
+    ["PROVIDER_PAYMENT_FAILED", "p.provider_transaction_id IS NOT NULL",
+      "cs.state IN ('INITIALIZING','READY','FAILED','RELEASED')"],
+    ["MANUAL_TRANSFER_SUBMITTED", "p.method='BANK_TRANSFER' AND p.status='PENDING'", null],
+    ["MANUAL_TRANSFER_APPROVED", "p.method='BANK_TRANSFER' AND p.status='VERIFIED'", null],
+    ["MANUAL_TRANSFER_REJECTED", "p.method='BANK_TRANSFER' AND p.status='REJECTED'", null],
+    ["REFUND_APPROVED", "p.status IN ('VERIFIED','REFUNDED','REVERSED')", null],
+    ["REVERSAL_APPROVED", "p.status IN ('VERIFIED','REFUNDED','REVERSED')", null],
+  ] as const)("delivers %s to current active in-school recipients idempotently", async (eventType, statusGuard, stateGuard) => {
     const query = vi.fn()
       .mockResolvedValueOnce({ rows: [{ id: 1 }, { id: 2 }], rowCount: 2 })
       .mockResolvedValueOnce({ rows: [], rowCount: 1 });
-    const eventReferenceId = eventType.endsWith("_APPROVED") ? 57 : 0;
+    const eventReferenceId = eventType === "REFUND_APPROVED" || eventType === "REVERSAL_APPROVED" ? 57 : 0;
     const created = await enqueueFinancePaymentNotifications(
       { query }, 31, 4, eventType, { amountMinor: 2500 }, eventReferenceId,
     );
@@ -25,6 +34,7 @@ describe("finance payment notification enqueue", () => {
     const insertSql = query.mock.calls[0][0];
     expect(insertSql).toContain("p.school_id=$2");
     expect(insertSql).toContain(statusGuard);
+    if (stateGuard) expect(insertSql).toContain(stateGuard);
     expect(insertSql).toContain("pa.school_id=t.school_id");
     expect(insertSql).toContain("rel.status='ACTIVE'");
     expect(insertSql).toContain("m.school_id=t.school_id");
@@ -105,6 +115,21 @@ describe("finance payment notification enqueue", () => {
     expect(calls.some((sql) => sql.startsWith("WITH target AS"))).toBe(false);
   });
 
+  it("rejects an ineligible event when no durable intent was inserted or already exists", async () => {
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes("INSERT INTO fee_payment_notification_outbox")) return { rows: [], rowCount: 0 };
+      if (sql.includes("SELECT id FROM fee_payment_notification_outbox")) return { rows: [] };
+      return { rows: [], rowCount: 0 };
+    });
+    await expect(enqueueFinancePaymentNotificationsSafely(
+      { query }, 31, 4, "PROVIDER_CHECKOUT_PROCESSING",
+    )).rejects.toBeInstanceOf(FinanceNotificationSettlementSafetyError);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("SELECT id FROM fee_payment_notification_outbox"),
+      [31, 4, "PROVIDER_CHECKOUT_PROCESSING", 0],
+    );
+  });
+
   it("propagates savepoint setup failure for caller transaction rollback", async () => {
     const calls: string[] = [];
     const query = vi.fn(async (sql: string) => {
@@ -148,6 +173,37 @@ describe("finance payment notification enqueue", () => {
       expect.stringContaining("SELECT id,payment_id,school_id,event_type,event_reference_id,metadata"),
       [9, 4],
     );
+  });
+
+  it("retries an injected terminal provider-failure delivery without changing the event identity", async () => {
+    const pending = {
+      id: 12, payment_id: 32, school_id: 4, event_type: "PROVIDER_PAYMENT_FAILED",
+      event_reference_id: 0, metadata: { provider: "PAYSTACK" },
+    };
+    const calls: Array<{ sql: string; values?: unknown[] }> = [];
+    const clientQuery = vi.fn(async (sql: string, values?: unknown[]) => {
+      calls.push({ sql, values });
+      if (sql.startsWith("SELECT id,payment_id,school_id,event_type,event_reference_id,metadata")) {
+        return { rows: [pending], rowCount: 1 };
+      }
+      if (sql.startsWith("WITH target AS")) return { rows: [{ id: 88 }], rowCount: 1 };
+      return { rows: [], rowCount: 1 };
+    });
+    const db = {
+      query: vi.fn(async (sql: string, values?: unknown[]) => {
+        calls.push({ sql, values });
+        return { rows: [pending], rowCount: 1 };
+      }),
+      connect: vi.fn(async () => ({ query: clientQuery, release: vi.fn() })),
+    };
+    await retryPendingFinancePaymentNotifications(db, [4]);
+    expect(calls.some(({ sql, values }) =>
+      sql.startsWith("WITH target AS") && values?.[2] === "PROVIDER_PAYMENT_FAILED",
+    )).toBe(true);
+    expect(calls.some(({ sql, values }) =>
+      sql.includes("DELETE FROM fee_payment_notification_outbox WHERE id=$1 AND school_id=$2")
+        && values?.[0] === 12 && values?.[1] === 4,
+    )).toBe(true);
   });
 
   it("treats outbox retry connection failure as best-effort", async () => {

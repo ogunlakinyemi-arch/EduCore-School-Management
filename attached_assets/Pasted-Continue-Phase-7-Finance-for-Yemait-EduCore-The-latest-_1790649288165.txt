@@ -1,0 +1,477 @@
+Continue Phase 7 — Finance for Yemait EduCore.
+
+The latest development report shows:
+
+- 294/294 API tests passing
+- 0 failed
+- 0 skipped
+- Typechecks passed
+- Both application builds passed
+- Migrations "0000–0021" replay successfully on disposable PostgreSQL
+- Payment verification immutability trigger regression passed
+- Production was NOT modified
+- Publish was NOT executed
+
+We now need to complete the remaining development-only work required before Phase 7 can be marked application-complete.
+
+CRITICAL SAFETY RULE
+
+DEVELOPMENT/TEST ENVIRONMENT ONLY.
+
+Do NOT:
+
+- modify production
+- execute SQL against production
+- click Publish
+- restore production
+- create or alter production schema
+- change production migration state
+- use production credentials
+- use real payment credentials
+- bypass the unresolved Replit production migration issue
+
+The production migration issue remains with Replit Support and must remain separate from this task.
+
+Do not rebuild Yemait EduCore.
+
+Preserve the existing architecture and working functionality.
+
+---
+
+1. COMPLETE FINANCE NOTIFICATION EVENTS
+
+Audit the existing finance notification implementation and identify every finance event that should already be supported by the Phase 7 specification.
+
+Verify at minimum:
+
+- invoice generated
+- payment initiated
+- payment processing
+- payment verified
+- payment failed
+- payment rejected
+- manual transfer submitted
+- manual transfer approved
+- manual transfer rejected
+- refund approved
+- refund completed where applicable
+- reversal
+- outstanding balance notification where already implemented
+
+Use the existing notification architecture.
+
+Notifications must be:
+
+- recipient-scoped
+- tenant-safe
+- auditable where appropriate
+- idempotent
+- retry-safe
+- atomic with the relevant financial event where required
+
+Do not claim SMS or email delivery is configured unless it is actually configured and tested.
+
+In-app notification records may be fully tested without external SMS/email providers.
+
+---
+
+2. REAL-DATABASE LEDGER TESTS
+
+Create a disposable development/test database containing realistic finance records.
+
+Test actual database behavior rather than only mocked service responses.
+
+Include:
+
+- school
+- student
+- parent
+- invoice
+- fee structure
+- partial payment
+- full payment
+- manual transfer
+- verified payment
+- failed payment
+- refund
+- reversal
+- receipt
+- notification/outbox record
+
+Verify the complete financial lifecycle.
+
+Example:
+
+Invoice created
+
+→ payment initiated
+
+→ payment PROCESSING
+
+→ backend verification
+
+→ payment VERIFIED
+
+→ invoice balance updated
+
+→ invoice status updated
+
+→ receipt generated
+
+→ notification created
+
+→ audit entry created.
+
+Also test:
+
+Partial payment
+
+→ PARTIALLY_PAID
+
+Second verified payment
+
+→ PAID
+
+Then test refund/reversal and verify that historical financial records remain intact.
+
+Do not delete the original payment to represent a refund or reversal.
+
+---
+
+3. IDEMPOTENCY TESTING
+
+Test repeated requests/events.
+
+Verify that:
+
+- duplicate payment initialization does not create duplicate financial records incorrectly
+- duplicate provider webhook does not settle twice
+- duplicate verification does not create a second receipt
+- duplicate refund/reversal request is safely handled
+- notification retry does not create duplicate notification events where idempotency is expected
+
+---
+
+4. SECURITY TESTING
+
+Add or run explicit tests for:
+
+Tenant isolation
+
+School A must never see School B's:
+
+- invoices
+- payments
+- receipts
+- refunds
+- reports
+- notifications
+- financial balances
+
+Parent isolation
+
+Parent A must not access Parent B's child's financial records.
+
+Student isolation
+
+Student A must not access Student B's financial records.
+
+Role authorization
+
+Verify unauthorized roles cannot:
+
+- verify payments
+- approve refunds
+- create unauthorized discounts
+- modify invoices
+- access school-wide finance reports
+
+Test direct API requests, not just UI visibility.
+
+---
+
+5. CREATE NON-PRODUCTION TEST ACCOUNTS
+
+Use only development/test identities.
+
+Create or configure usable test accounts for:
+
+- PLATFORM_OWNER
+- SCHOOL_ADMIN
+- ACCOUNTANT
+- PARENT
+- STUDENT
+
+If the existing authentication system requires Clerk or another authentication provider, use development/test accounts only.
+
+Do not request or use production credentials.
+
+If the environment does not permit creation of these accounts automatically, document exactly what is missing rather than claiming the browser tests passed.
+
+---
+
+6. AUTHENTICATED BROWSER TESTS
+
+Once test accounts are available, run these journeys.
+
+Parent
+
+Login
+
+→ select child
+
+→ open Finance
+
+→ view invoice
+
+→ view outstanding balance
+
+→ select permitted payment method
+
+→ initiate development/test payment
+
+→ backend confirms payment
+
+→ view updated balance
+
+→ open receipt
+
+→ verify receipt details
+
+→ verify finance notification.
+
+Accountant
+
+Login
+
+→ Finance
+
+→ view pending manual transfer
+
+→ inspect transfer
+
+→ approve transfer
+
+→ verify payment becomes VERIFIED
+
+→ verify invoice updates
+
+→ verify receipt
+
+→ verify notification/audit record.
+
+Also test rejection.
+
+School Admin
+
+Login
+
+→ Finance
+
+→ create fee structure
+
+→ assign fee
+
+→ view invoice
+
+→ view payment
+
+→ view outstanding balance
+
+→ view finance report
+
+→ verify tenant isolation.
+
+Student
+
+Login
+
+→ Finance
+
+→ view permitted fee information
+
+→ view verified payment
+
+→ view receipt where permitted.
+
+Platform Owner
+
+Login
+
+→ Finance
+
+→ view permitted cross-school information
+
+→ verify school filtering
+
+→ verify no unauthorized mutation of school finance records.
+
+---
+
+7. PAYMENT UI VERIFICATION
+
+Verify that the frontend reflects backend truth.
+
+The UI must NOT show:
+
+- payment successful
+- invoice paid
+- receipt available
+
+until the backend confirms the appropriate financial state.
+
+While payment is being processed, display the appropriate processing state.
+
+If verification fails, the invoice must remain unpaid/partially paid as appropriate.
+
+Do not implement frontend-only success.
+
+---
+
+8. RECEIPT VERIFICATION
+
+Verify that receipts are generated only after authoritative payment confirmation.
+
+Test:
+
+- full payment
+- partial payment
+- manual transfer
+- provider payment
+- failed payment
+- rejected payment
+- refund/reversal
+
+A failed or pending payment must not generate a completed receipt.
+
+A refund/reversal must preserve the original receipt/payment history.
+
+---
+
+9. FINANCE REPORT VERIFICATION
+
+Use actual development/test records and verify calculations for:
+
+- total invoiced
+- total collected
+- outstanding
+- partially paid
+- paid
+- overdue
+- refunds
+- reversals
+- payment methods
+- date ranges
+- session/term
+- class/section
+
+Cross-check report totals against the underlying test ledger.
+
+Do not rely only on frontend calculations.
+
+---
+
+10. RUN COMPLETE TEST SUITE
+
+Run all existing tests.
+
+The current baseline is:
+
+294/294 passing
+
+The target is:
+
+294+ tests passing, 0 failures, 0 skipped
+
+Do not remove or weaken existing tests to achieve a passing result.
+
+Add tests where necessary.
+
+Run:
+
+- API tests
+- finance tests
+- authorization tests
+- tenant-isolation tests
+- database tests
+- notification tests
+- payment tests
+- migration replay
+- typecheck
+- frontend build
+- backend build
+
+---
+
+11. MIGRATION VALIDATION
+
+Replay migrations "0000–0021" against a disposable PostgreSQL database.
+
+Verify:
+
+- clean database creation
+- migration order
+- foreign keys
+- unique constraints
+- indexes
+- finance tables
+- notification tables
+- payment protection trigger
+- device protections already present in development
+- no destructive operations
+
+Do NOT test this against production.
+
+Do NOT attempt to solve the Replit Publish problem.
+
+---
+
+12. FINAL GAP AUDIT
+
+After completing the above, audit Phase 7 again.
+
+Separate findings into exactly these categories:
+
+A. COMPLETE AND VERIFIED
+
+B. DEVELOPMENT WORK REMAINING
+
+C. EXTERNAL PROVIDER DEPENDENCY
+
+D. PRODUCTION DEPLOYMENT/MIGRATION DEPENDENCY
+
+Do not mix these categories.
+
+---
+
+13. FINAL STATUS
+
+Only mark Phase 7 application development complete if:
+
+- finance functionality is complete
+- required finance notifications are implemented
+- real-database ledger tests pass
+- security tests pass
+- tenant isolation tests pass
+- non-production authenticated browser journeys pass
+- receipts are verified
+- refunds/reversals are verified
+- idempotency is verified
+- migration replay passes
+- typechecks pass
+- builds pass
+- all tests pass
+
+If any of these remain incomplete, report:
+
+PHASE 7 NOT COMPLETE — DEVELOPMENT WORK REMAINS
+
+If all development requirements pass but real provider credentials or production migration remain external blockers, report:
+
+PHASE 7 APPLICATION DEVELOPMENT COMPLETE — AWAITING EXTERNAL PROVIDER/PRODUCTION DEPLOYMENT VALIDATION
+
+Do not call the system production-ready until the actual production migration and required real-provider validation have been completed.
+
+At the end, provide a concise evidence-based report showing exactly what was tested and what was not.
+
+PRODUCTION MUST REMAIN UNTOUCHED.

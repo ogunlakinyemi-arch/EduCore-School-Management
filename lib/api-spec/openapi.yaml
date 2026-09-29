@@ -79,6 +79,42 @@ paths:
                 type: array
                 items: { $ref: "#/components/schemas/FeePaymentNotification" }
         "404": { $ref: "#/components/responses/NotFound" }
+  /me/finance/invoice-notifications:
+    get:
+      operationId: listMyFeeInvoiceNotifications
+      tags: [finance]
+      summary: List invoice-generated notifications currently linked to the authenticated recipient
+      parameters:
+        - name: schoolId
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Recipient-only invoice notices without payment or receipt context
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FeeInvoiceNotification" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /me/finance/invoice-notifications/{notificationId}/read:
+    patch:
+      operationId: markMyFeeInvoiceNotificationRead
+      tags: [finance]
+      summary: Mark a currently authorized invoice notification as read
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: The safe invoice notification representation after marking it read
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeInvoiceNotification" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /me/finance/payment-notifications/{notificationId}/read:
     patch:
       operationId: markMyFeePaymentNotificationRead
@@ -5744,7 +5780,9 @@ components:
       properties:
         id: { type: integer }
         schoolId: { type: integer }
-        eventType: { type: string, enum: [PAYMENT_VERIFIED, PAYMENT_REJECTED, REFUND_APPROVED, REVERSAL_APPROVED] }
+        eventType:
+          type: string
+          enum: [PAYMENT_VERIFIED, PAYMENT_REJECTED, PROVIDER_CHECKOUT_INITIATED, PROVIDER_CHECKOUT_PROCESSING, PROVIDER_PAYMENT_FAILED, MANUAL_TRANSFER_SUBMITTED, MANUAL_TRANSFER_APPROVED, MANUAL_TRANSFER_REJECTED, REFUND_APPROVED, REVERSAL_APPROVED]
         isRead: { type: boolean }
         createdAt: { type: string, format: date-time }
         readAt: { type: ["string", "null"], format: date-time }
@@ -5757,6 +5795,22 @@ components:
         eventAmountMinor: { type: integer }
         currency: { type: string }
         method: { type: string }
+    FeeInvoiceNotification:
+      type: object
+      required: [id, schoolId, eventType, isRead, createdAt, readAt, invoiceNumber, studentName, amountMinor, outstandingMinor, currency, status]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        eventType: { type: string, enum: [INVOICE_GENERATED] }
+        isRead: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        readAt: { type: ["string", "null"], format: date-time }
+        invoiceNumber: { type: string }
+        studentName: { type: string }
+        amountMinor: { type: integer }
+        outstandingMinor: { type: integer }
+        currency: { type: string }
+        status: { type: string }
     FinanceReportRow:
       type: object
       required: [label, count, amountMinor, secondaryAmountMinor]

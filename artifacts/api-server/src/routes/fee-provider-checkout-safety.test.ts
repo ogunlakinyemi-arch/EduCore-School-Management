@@ -158,6 +158,21 @@ beforeEach(() => {
       }
       return { rows: [] };
     }
+    if (sql.includes('AS "paymentStatus"') && sql.includes("fee_provider_checkout_sessions cs")) {
+      return db.payment && db.session
+          && Number(values[0]) === db.payment.id
+          && Number(values[1]) === db.payment.school_id
+          && values[2] === db.payment.reference
+          && values[3] === db.payment.provider
+        ? { rows: [{
+          paymentStatus: db.payment.status,
+          providerTransactionId: db.payment.provider_transaction_id ?? null,
+          sessionState: db.session.state,
+          checkoutUrl: db.session.checkout_url ?? null,
+          hasReceipt: !!db.receipt,
+        }] }
+        : { rows: [] };
+    }
     if (sql.includes("UPDATE fee_payments SET status='FAILED'")) {
       if (db.payment && db.payment.id === values[0] && db.payment.status === "PENDING") db.payment.status = "FAILED";
       return { rows: [] };
@@ -309,6 +324,7 @@ beforeEach(() => {
         if (sql.includes("SELECT receipt_number FROM fee_receipts")) {
           return db.receipt ? { rows: [{ receipt_number: db.receipt.receipt_number }] } : { rows: [] };
         }
+        if (sql.includes("INSERT INTO fee_payment_notification_outbox")) return { rows: [{ id: 1 }], rowCount: 1 };
         if (sql.includes("fee_payment_notification_outbox")) return { rows: [], rowCount: 0 };
         if (sql.includes("INSERT INTO fee_payment_notifications")) return { rows: [], rowCount: 0 };
         if (sql.includes("SELECT id FROM fee_payments") && sql.includes("provider_transaction_id=$2")) {
@@ -344,6 +360,14 @@ beforeEach(() => {
             claim_token: values[6], claim_expires_at: new Date(Date.now() + 30_000),
           };
           return { rows: [] };
+        }
+        if (sql.includes("UPDATE fee_provider_checkout_sessions SET state='READY'")) {
+          if (db.session?.state !== "INITIALIZING" || db.session.claim_token !== values[5]) return { rows: [] };
+          db.session.state = "READY";
+          db.session.checkout_url = values[0];
+          db.session.claim_token = null;
+          db.session.claim_expires_at = null;
+          return { rows: [{ payment_id: db.session.payment_id }] };
         }
         if (sql.includes("INSERT INTO audit_logs")) return { rows: [] };
         if (sql.includes("UPDATE fee_payments SET status='PENDING'")) {
@@ -461,6 +485,85 @@ describe("online checkout reservation and claim safety", () => {
     expect(transport).toHaveBeenCalledTimes(1);
     gate.resolve();
     expect((await first).status).toBe(201);
+  });
+
+  it("returns a settled result safely when the success webhook wins before READY persistence", async () => {
+    const transport = vi.fn(async (_url: URL, init?: RequestInit) => {
+      const providerReference = JSON.parse(String(init?.body)).reference;
+      // Simulate the committed authoritative effects of a verified success webhook.
+      db.payment!.status = "VERIFIED";
+      db.payment!.provider_transaction_id = "456";
+      db.session!.state = "SETTLED";
+      db.session!.claim_token = null;
+      db.session!.claim_expires_at = null;
+      db.receipt = {
+        school_id: db.schoolId, payment_id: db.payment!.id, invoice_id: db.invoiceId,
+        receipt_number: "RCP-7-00000088",
+      };
+      return new Response(JSON.stringify({
+        status: true,
+        data: { reference: providerReference, authorization_url: "https://checkout.paystack.com/already-settled" },
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    });
+    vi.stubGlobal("fetch", transport);
+
+    const response = await initialize();
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      error: expect.stringContaining("verified and settled"),
+    });
+    expect(db.payment).toMatchObject({ status: "VERIFIED", provider_transaction_id: "456" });
+    expect(db.session?.state).toBe("SETTLED");
+    expect(db.clientCalls.some(({ sql }) => sql.includes("UPDATE fee_provider_checkout_sessions SET state='READY'"))).toBe(true);
+    expect(db.poolCalls.some(({ sql, values }) =>
+      sql.includes('AS "paymentStatus"')
+        && values[0] === db.payment?.id && values[1] === db.schoolId
+        && values[2] === db.payment?.reference && values[3] === "PAYSTACK",
+    )).toBe(true);
+  });
+
+  it("does not treat a reported success as settled without the authoritative receipt", async () => {
+    const transport = vi.fn(async (_url: URL, init?: RequestInit) => {
+      const providerReference = JSON.parse(String(init?.body)).reference;
+      db.payment!.status = "VERIFIED";
+      db.payment!.provider_transaction_id = "456";
+      db.session!.state = "SETTLED";
+      db.session!.claim_token = null;
+      db.session!.claim_expires_at = null;
+      return new Response(JSON.stringify({
+        status: true,
+        data: { reference: providerReference, authorization_url: "https://checkout.paystack.com/unconfirmed" },
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    });
+    vi.stubGlobal("fetch", transport);
+
+    const response = await initialize();
+    expect(response.status).toBe(503);
+    expect(db.payment).toMatchObject({ status: "VERIFIED", provider_transaction_id: "456" });
+    expect(db.receipt).toBeNull();
+  });
+
+  it("returns processing when the verified pending webhook wins before READY persistence", async () => {
+    const transport = vi.fn(async (_url: URL, init?: RequestInit) => {
+      const providerReference = JSON.parse(String(init?.body)).reference;
+      // The webhook commits PROCESSING while the provider initialization request is in flight.
+      db.payment!.status = "PROCESSING";
+      return new Response(JSON.stringify({
+        status: true,
+        data: { reference: providerReference, authorization_url: "https://checkout.paystack.com/processing" },
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    });
+    vi.stubGlobal("fetch", transport);
+
+    const response = await initialize();
+    expect(response.status).toBe(202);
+    expect(await response.json()).toMatchObject({
+      outcome: "processing",
+      error: expect.stringContaining("Provider payment is processing"),
+    });
+    expect(db.payment?.status).toBe("PROCESSING");
+    expect(db.session?.state).toBe("READY");
+    expect(db.clientCalls.some(({ sql }) => sql.includes("UPDATE fee_provider_checkout_sessions SET state='READY'"))).toBe(true);
   });
 
   it("keeps an uncertain failed initialization blocked instead of reusing its chargeable reference", async () => {

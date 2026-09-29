@@ -134,7 +134,7 @@ export async function settleVerifiedPayment(
        JOIN schools s ON s.id=p.school_id
        LEFT JOIN parents pa ON pa.id=p.parent_id AND pa.school_id=p.school_id
        WHERE p.reference=$1 AND p.provider=$2
-       FOR UPDATE OF p,i`,
+        FOR UPDATE OF p,i,cs`,
       [providerPayment.reference, provider],
     );
     const payment = rows.rows[0];
@@ -192,12 +192,39 @@ export async function settleVerifiedPayment(
       await client.query("COMMIT");
       return "duplicate";
     }
-    if (payment.status !== "PENDING" && payment.status !== "FAILED") {
+    if (payment.status !== "PENDING" && payment.status !== "PROCESSING" && payment.status !== "FAILED") {
       await markEventForReconciliation(client, eventFields, "Payment is not in a settleable state", parsedEvent, payment);
       await client.query("COMMIT");
       return "reconciliation_required";
     }
+    if (payment.status === "FAILED" && providerPayment.status === "pending") {
+      await markEventForReconciliation(
+        client, eventFields, "Provider reported pending after this payment was terminally failed", parsedEvent, payment,
+      );
+      await client.query("COMMIT");
+      return "reconciliation_required";
+    }
+    // A signed, independently verified provider callback proves checkout was
+    // initiated even if it races the route that persists INITIALIZING -> READY.
+    // READY sessions already enqueue this event atomically with that transition.
+    if (payment.session_state === "INITIALIZING") {
+      await enqueueFinancePaymentNotificationsSafely(
+        client, Number(payment.id), Number(payment.school_id), "PROVIDER_CHECKOUT_INITIATED",
+        { provider },
+      );
+    }
     if (providerPayment.status === "pending") {
+      const processingPayment = await client.query(
+        `UPDATE fee_payments SET status='PROCESSING'
+         WHERE id=$1 AND school_id=$2 AND status IN ('PENDING','PROCESSING')
+         RETURNING id`,
+        [payment.id, payment.school_id],
+      );
+      if (processingPayment.rows[0]) {
+        await enqueueFinancePaymentNotificationsSafely(
+          client, Number(payment.id), Number(payment.school_id), "PROVIDER_CHECKOUT_PROCESSING",
+        );
+      }
       await client.query(
         `UPDATE fee_provider_webhook_events SET status='PENDING',payment_id=$3,school_id=$4,
            updated_at=NOW() WHERE provider=$1 AND event_id=$2`,
@@ -209,8 +236,18 @@ export async function settleVerifiedPayment(
     if (providerPayment.status === "failed") {
       await client.query(
         `UPDATE fee_payments SET status='FAILED',provider_transaction_id=$1
-         WHERE id=$2 AND school_id=$3 AND status IN ('PENDING','FAILED')`,
+         WHERE id=$2 AND school_id=$3 AND status IN ('PENDING','PROCESSING','FAILED')
+         RETURNING id`,
         [providerPayment.providerTransactionId, payment.id, payment.school_id],
+      );
+      await client.query(
+        `UPDATE fee_provider_checkout_sessions SET state='FAILED',claim_token=NULL,claim_expires_at=NULL,
+            last_error='Provider confirmed terminal failure',updated_at=NOW()
+         WHERE payment_id=$1 AND school_id=$2 AND state IN ('INITIALIZING','READY','FAILED')`,
+        [payment.id, payment.school_id],
+      );
+      await enqueueFinancePaymentNotificationsSafely(
+        client, Number(payment.id), Number(payment.school_id), "PROVIDER_PAYMENT_FAILED",
       );
       await client.query(
         `UPDATE fee_provider_webhook_events SET status='FAILED',payment_id=$3,school_id=$4,
@@ -282,7 +319,7 @@ export async function settleVerifiedPayment(
     await client.query(
       `UPDATE fee_payments SET status='VERIFIED',provider_transaction_id=$1,verified_at=NOW(),
          provider_metadata=COALESCE(provider_metadata,'{}'::jsonb) || $2::jsonb
-       WHERE id=$3 AND school_id=$4 AND status IN ('PENDING','FAILED')`,
+       WHERE id=$3 AND school_id=$4 AND status IN ('PENDING','PROCESSING','FAILED')`,
       [providerPayment.providerTransactionId, JSON.stringify({
         providerEventId: eventId,
         paidAt: providerPayment.paidAt ?? null,

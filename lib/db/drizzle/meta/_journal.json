@@ -155,6 +155,20 @@
       "when": 1790632164536,
       "tag": "0021_fee_payment_notification_outbox",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790632165536,
+      "tag": "0022_payment_bound_notification_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790632166536,
+      "tag": "0023_invoice_generated_notifications",
+      "breakpoints": true
     }
   ]
 }

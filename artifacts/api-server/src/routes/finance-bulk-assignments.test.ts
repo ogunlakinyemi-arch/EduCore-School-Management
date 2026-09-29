@@ -59,7 +59,8 @@ const dbMock = vi.hoisted(() => {
   ];
   const query = vi.fn(async (sql: string, values: any[] = []) => {
     state.calls.push({ sql, values });
-    if (["BEGIN", "COMMIT", "ROLLBACK"].includes(sql) || sql.startsWith("SAVEPOINT") || sql.startsWith("RELEASE SAVEPOINT")) return result();
+    if (["BEGIN", "COMMIT", "ROLLBACK"].includes(sql) || sql.startsWith("SAVEPOINT")
+        || sql.startsWith("ROLLBACK TO SAVEPOINT") || sql.startsWith("RELEASE SAVEPOINT")) return result();
     if (sql.includes("FROM fee_structures fs")) {
       return result([{
         id: 7, school_id: 1, academic_session_id: 2, academic_term_id: 3,
@@ -86,6 +87,9 @@ const dbMock = vi.hoisted(() => {
       return result([{ id }]);
     }
     if (sql.includes("INSERT INTO fee_invoice_lines")) return result();
+    if (sql.includes("INSERT INTO fee_invoice_notification_outbox")) return result();
+    if (sql.includes("INSERT INTO fee_invoice_notifications")) return result();
+    if (sql.includes("DELETE FROM fee_invoice_notification_outbox")) return result();
     if (sql.includes("INSERT INTO audit_logs")) {
       state.auditCount += 1;
       return result();
@@ -179,6 +183,10 @@ describe("bulk fee assignments", () => {
     expect(eligibilityQuery?.values).toEqual([1]);
     expect(state.insertedStudentIds).toEqual([31]);
     expect(state.invoiceSnapshots).toEqual([{ studentId: 31, className: "Year 4", section: "A" }]);
+    expect(state.calls.filter(({ sql }) => sql.includes("INSERT INTO fee_invoice_notification_outbox"))).toHaveLength(1);
+    expect(state.calls.some(({ sql }) =>
+      sql.includes("INSERT INTO fee_invoice_notifications") && sql.includes("'INVOICE_GENERATED'"),
+    )).toBe(true);
     expect(state.auditCount).toBe(2);
   });
 

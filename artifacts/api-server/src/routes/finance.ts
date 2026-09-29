@@ -117,6 +117,7 @@ import {
 } from "../middlewares/auth";
 import { invoiceStatus, payableAmount } from "./finance-money";
 import { enqueueFinancePaymentNotificationsSafely } from "./finance-notifications-service";
+import { enqueueInvoiceGeneratedNotificationsSafely } from "./invoice-notifications-service";
 
 const router: IRouter = Router();
 router.use(requireAuthentication());
@@ -429,6 +430,7 @@ async function createInvoiceForStudent(
   await audit(req, client, schoolId, "assigned", "invoice", invoiceId, {
     studentId: student.id, ...(bulk ? { structureId: structure.id, bulk: true } : {}),
   });
+  await enqueueInvoiceGeneratedNotificationsSafely(client, Number(invoiceId), schoolId);
   return invoiceId;
 }
 
@@ -1085,6 +1087,9 @@ router.post("/parent/fees/invoices/:invoiceId/bank-transfer", async (req, res): 
          transferDate, body.proofUrl ?? null, context.user.id],
     );
     await audit(req, client, invoice.rows[0].school_id, "submitted manual bank transfer", "payment", inserted.rows[0].id);
+    await enqueueFinancePaymentNotificationsSafely(
+      client, Number(inserted.rows[0].id), Number(invoice.rows[0].school_id), "MANUAL_TRANSFER_SUBMITTED",
+    );
     await client.query("COMMIT");
     res.status(201).json(SubmitManualBankTransferResponse.parse(inserted.rows[0]));
   } catch (error) {
@@ -1204,7 +1209,7 @@ router.post("/school/finance/payments/:paymentId/verify", async (req, res): Prom
         || persistedReceipt.rows[0]?.snapshot_matches !== true) {
       throw new Error("Verified payment receipt integrity failure");
     }
-    await enqueueFinancePaymentNotificationsSafely(client, paymentId, schoolId, "PAYMENT_VERIFIED");
+    await enqueueFinancePaymentNotificationsSafely(client, paymentId, schoolId, "MANUAL_TRANSFER_APPROVED");
     await audit(req, client, schoolId, "verified manual bank transfer", "payment", paymentId, {
       amountMinor: payment.rows[0].amount_minor, evidenceReference, reviewerNotes,
     });
@@ -1250,7 +1255,7 @@ router.post("/school/finance/payments/:paymentId/reject", async (req, res): Prom
     );
     if (!result.rows[0]) throw new AuthError(404, "Pending payment not found");
     await audit(req, client, schoolId, "rejected manual bank transfer", "payment", paymentId, { reason });
-    await enqueueFinancePaymentNotificationsSafely(client, paymentId, schoolId, "PAYMENT_REJECTED", { reason });
+    await enqueueFinancePaymentNotificationsSafely(client, paymentId, schoolId, "MANUAL_TRANSFER_REJECTED", { reason });
     await client.query("COMMIT");
     res.json(RejectManualBankTransferResponse.parse(result.rows[0]));
   } catch (error) {
@@ -2370,7 +2375,7 @@ async function releaseVerifiedFailedCheckout(
     }
     const paymentUpdate = await client.query(
       `UPDATE fee_payments SET status='FAILED',provider_transaction_id=$1
-       WHERE id=$2 AND school_id=$3 AND status IN ('PENDING','FAILED')
+       WHERE id=$2 AND school_id=$3 AND status IN ('PENDING','PROCESSING','FAILED')
          AND (provider_transaction_id IS NULL OR provider_transaction_id=$1)
        RETURNING id`,
       [verified.providerTransactionId, paymentId, schoolId],
@@ -2387,6 +2392,9 @@ async function releaseVerifiedFailedCheckout(
       await client.query("ROLLBACK");
       return false;
     }
+    await enqueueFinancePaymentNotificationsSafely(
+      client, paymentId, schoolId, "PROVIDER_PAYMENT_FAILED", { provider: claimedCheckout.provider },
+    );
     await audit(req, client, schoolId, "released terminally failed provider checkout", "provider checkout", paymentId, {
       provider: claimedCheckout.provider, reference: verified.reference,
       providerTransactionId: verified.providerTransactionId, status: verified.status,
@@ -2488,12 +2496,13 @@ router.post("/parent/fees/invoices/:invoiceId/providers/:provider/initialize", a
           || row.provider !== provider || row.amount_minor !== amountMinor || row.currency !== currency) {
         throw new AuthError(409, "Idempotency key was already used for a different checkout");
       }
-      if (row.status !== "PENDING" && row.status !== "FAILED") {
+      if (row.status !== "PENDING" && row.status !== "PROCESSING" && row.status !== "FAILED") {
         throw new AuthError(409, "This idempotent checkout is no longer recoverable");
       }
       paymentId = row.id;
       reference = row.reference;
-      if (row.status === "PENDING" && row.session_state === "READY" && row.checkoutUrl) {
+      if ((row.status === "PENDING" || row.status === "PROCESSING")
+          && row.session_state === "READY" && row.checkoutUrl) {
         await client.query("COMMIT");
         res.status(200).json(InitializeFeeProviderPaymentResponse.parse({
           paymentId, invoiceId, reference, provider, amountMinor, currency, status: "PENDING",
@@ -2575,19 +2584,80 @@ router.post("/parent/fees/invoices/:invoiceId/providers/:provider/initialize", a
     const initialized = await adapter.initializePayment({
       reference, amountMinor, currency, email, returnUrl,
     });
-    const update = await pool.query(
-      `UPDATE fee_provider_checkout_sessions SET state='READY',checkout_url=$1,
-          provider_session_metadata=$2,updated_at=NOW(),last_error=NULL,
-          claim_token=NULL,claim_expires_at=NULL
-       WHERE payment_id=$3 AND school_id=$4 AND reference=$5
-         AND state='INITIALIZING' AND claim_token=$6
-       RETURNING payment_id`,
-      [initialized.checkoutUrl, { provider, reference }, paymentId, schoolId, reference, claimToken],
+    let readyPersisted = false;
+    const readyClient = await pool.connect();
+    try {
+      await readyClient.query("BEGIN");
+      const update = await readyClient.query(
+        `UPDATE fee_provider_checkout_sessions SET state='READY',checkout_url=$1,
+            provider_session_metadata=$2,updated_at=NOW(),last_error=NULL,
+            claim_token=NULL,claim_expires_at=NULL
+         WHERE payment_id=$3 AND school_id=$4 AND reference=$5
+           AND state='INITIALIZING' AND claim_token=$6
+         RETURNING payment_id`,
+        [initialized.checkoutUrl, { provider, reference }, paymentId, schoolId, reference, claimToken],
+      );
+      readyPersisted = !!update.rows[0];
+      if (update.rows[0]) {
+        await enqueueFinancePaymentNotificationsSafely(
+          readyClient, paymentId, schoolId, "PROVIDER_CHECKOUT_INITIATED", { provider },
+        );
+      }
+      await readyClient.query("COMMIT");
+    } catch (error) {
+      await readyClient.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      readyClient.release();
+    }
+    const authoritativeResult = await pool.query(
+      `SELECT p.status AS "paymentStatus",p.provider_transaction_id AS "providerTransactionId",
+          cs.state AS "sessionState",cs.checkout_url AS "checkoutUrl",
+          EXISTS (
+            SELECT 1 FROM fee_receipts r
+            WHERE r.payment_id=p.id AND r.school_id=p.school_id AND r.invoice_id=p.invoice_id
+          ) AS "hasReceipt"
+       FROM fee_payments p
+       JOIN fee_provider_checkout_sessions cs
+         ON cs.payment_id=p.id AND cs.school_id=p.school_id AND cs.invoice_id=p.invoice_id
+       WHERE p.id=$1 AND p.school_id=$2 AND p.reference=$3 AND p.provider=$4
+         AND cs.reference=$3 AND cs.provider=$4`,
+      [paymentId, schoolId, reference, provider],
     );
-    if (!update.rows[0]) throw new Error("Checkout session persistence failed");
-    res.status(201).json(InitializeFeeProviderPaymentResponse.parse({
+    const authoritative = authoritativeResult.rows[0];
+    if (!authoritative) throw new Error("Authoritative checkout state could not be confirmed");
+    if (authoritative.paymentStatus === "VERIFIED" && authoritative.sessionState === "SETTLED"
+        && authoritative.providerTransactionId && authoritative.hasReceipt === true) {
+      // The existing OpenAPI checkout response has no settled state. Use its
+      // documented conflict response rather than redirecting to a chargeable
+      // hosted URL after authoritative settlement.
+      res.status(409).json({
+        error: "Payment was verified and settled while checkout was initializing. Check payment history; do not start another checkout.",
+      });
+      return;
+    }
+    if (authoritative.paymentStatus === "PROCESSING") {
+      res.status(202).json({
+        outcome: "processing",
+        error: "Provider payment is processing. Check payment history before attempting another checkout.",
+      });
+      return;
+    }
+    if (authoritative.paymentStatus === "FAILED" && authoritative.sessionState === "FAILED") {
+      res.status(202).json({
+        outcome: "reconciliation_required",
+        error: "The provider reported a terminal failure. Check payment history or contact the school before trying again.",
+      });
+      return;
+    }
+    if (authoritative.paymentStatus !== "PENDING" || authoritative.sessionState !== "READY"
+        || !authoritative.checkoutUrl) {
+      throw new Error("Checkout state changed before it could be safely returned");
+    }
+    const persistedCheckoutUrl = String(authoritative.checkoutUrl);
+    res.status(readyPersisted ? 201 : 200).json(InitializeFeeProviderPaymentResponse.parse({
       paymentId, invoiceId, reference, provider, amountMinor, currency,
-      status: "PENDING", checkoutUrl: initialized.checkoutUrl,
+      status: "PENDING", checkoutUrl: persistedCheckoutUrl,
     }));
   } catch {
     await pool.query(

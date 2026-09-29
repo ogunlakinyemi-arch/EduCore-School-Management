@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   linked: true,
   providerEnabled: true,
   partialPaymentsEnabled: false,
+  receiptIssued: false,
   outstandingMinor: 5600,
   invoiceId: 41,
   schoolId: 7,
@@ -27,6 +28,21 @@ const poolMock = vi.hoisted(() => ({
         }] }
         : { rows: [] };
     }
+    if (sql.includes('AS "paymentStatus"') && sql.includes("fee_provider_checkout_sessions cs")) {
+      return state.payment && state.session
+          && Number(values[0]) === state.payment.id
+          && Number(values[1]) === state.payment.school_id
+          && values[2] === state.payment.reference
+          && values[3] === state.payment.provider
+        ? { rows: [{
+          paymentStatus: state.payment.status,
+          providerTransactionId: state.payment.provider_transaction_id ?? null,
+          sessionState: state.session.state,
+          checkoutUrl: state.session.checkout_url ?? null,
+          hasReceipt: state.receiptIssued,
+        }] }
+        : { rows: [] };
+    }
     if (sql.includes("UPDATE fee_provider_checkout_sessions SET state='READY'")) {
       if (state.session) {
         state.session.state = "READY";
@@ -43,6 +59,7 @@ const poolMock = vi.hoisted(() => ({
       query: async (sql: string, values: unknown[] = []) => {
         state.clientCalls.push({ sql, values });
         if (sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK") return { rows: [] };
+        if (/^(SAVEPOINT|RELEASE SAVEPOINT|ROLLBACK TO SAVEPOINT)\b/i.test(sql.trim())) return { rows: [] };
         if (sql.includes("FROM fee_invoices i") && sql.includes("JOIN parents p")) {
           return state.linked && Number(values[0]) === state.invoiceId && Number(values[1]) === state.userId
             ? { rows: [{
@@ -96,6 +113,16 @@ const poolMock = vi.hoisted(() => ({
           };
           return { rows: [] };
         }
+        if (sql.includes("UPDATE fee_provider_checkout_sessions SET state='READY'")) {
+          if (state.session) {
+            state.session.state = "READY";
+            state.session.checkout_url = values[0];
+          }
+          return { rows: state.session ? [{ payment_id: state.session.payment_id }] : [] };
+        }
+        if (sql.includes("INSERT INTO fee_payment_notifications")) return { rows: [], rowCount: 0 };
+        if (sql.includes("INSERT INTO fee_payment_notification_outbox")) return { rows: [{ id: 1 }], rowCount: 1 };
+        if (sql.includes("DELETE FROM fee_payment_notification_outbox")) return { rows: [], rowCount: 0 };
         if (sql.includes("INSERT INTO audit_logs")) return { rows: [] };
         if (sql.includes("UPDATE fee_provider_checkout_sessions SET state='INITIALIZING'")) {
           if (state.session) state.session.state = "INITIALIZING";
@@ -170,6 +197,7 @@ beforeEach(() => {
   state.linked = true;
   state.providerEnabled = true;
   state.partialPaymentsEnabled = false;
+  state.receiptIssued = false;
   state.outstandingMinor = 5600;
   state.invoiceId = 41;
   state.schoolId = 7;
@@ -215,6 +243,9 @@ describe("parent fee checkout initialization", () => {
       amount_minor: 5600, currency: "NGN", status: "PENDING", provider: "PAYSTACK",
     });
     expect(state.session).toMatchObject({ state: "READY", checkout_url: "https://checkout.paystack.com/test-checkout" });
+    expect(state.clientCalls.some(({ sql, values }) =>
+      sql.includes("INSERT INTO fee_payment_notification_outbox") && values[2] === "PROVIDER_CHECKOUT_INITIATED",
+    )).toBe(true);
     expect(transport).toHaveBeenCalledTimes(1);
   });
 
@@ -232,6 +263,26 @@ describe("parent fee checkout initialization", () => {
     expect(replay.status).toBe(200);
     expect(await replay.json()).toMatchObject({ paymentId: 88, checkoutUrl: "https://checkout.paystack.com/test-checkout" });
     expect(transport).toHaveBeenCalledTimes(1);
+  });
+
+  it("persists the initiation event when a pending webhook advances payment before the session becomes READY", async () => {
+    const transport = vi.fn(async (_url: URL, init?: RequestInit) => {
+      // Simulate an independently verified pending webhook racing provider initialization.
+      if (state.payment) state.payment.status = "PROCESSING";
+      return new Response(JSON.stringify({ status: true, data: {
+        reference: JSON.parse(String(init?.body)).reference,
+        authorization_url: "https://checkout.paystack.com/racing-checkout",
+      } }), { status: 200, headers: { "content-type": "application/json" } });
+    });
+    vi.stubGlobal("fetch", transport);
+    const response = await initialize();
+    expect(response.status).toBe(202);
+    expect(await response.json()).toMatchObject({ outcome: "processing" });
+    expect(state.payment?.status).toBe("PROCESSING");
+    expect(state.session?.state).toBe("READY");
+    expect(state.clientCalls.some(({ sql, values }) =>
+      sql.includes("INSERT INTO fee_payment_notification_outbox") && values[2] === "PROVIDER_CHECKOUT_INITIATED",
+    )).toBe(true);
   });
 
   it("uses the requested partial amount consistently for persistence, provider initialization, and idempotent replay", async () => {
