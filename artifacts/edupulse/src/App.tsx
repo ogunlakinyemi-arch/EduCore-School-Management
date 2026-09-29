@@ -176,7 +176,10 @@ function ProtectedRoutes() {
         <Switch>
           <Route path="/" component={Dashboard} />
           <Route path="/dashboard"><Redirect to="/" /></Route>
-          <Route path="/partners*">
+          <Route path="/partners">
+            <RoleGuard isPlatformOwnerOnly><PartnerManagement /></RoleGuard>
+          </Route>
+          <Route path="/partners/*">
             <RoleGuard isPlatformOwnerOnly><PartnerManagement /></RoleGuard>
           </Route>
           <Route path="/schools">

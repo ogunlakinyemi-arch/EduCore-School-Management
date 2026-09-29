@@ -116,6 +116,11 @@ describe("Platform Owner school-operation boundaries", () => {
     expect((await call("/students?schoolId=1")).status).toBe(200);
   });
 
+  it("accepts the Student Directory's uppercase default status and rejects lowercase active", async () => {
+    expect((await call("/students?schoolId=1&status=ACTIVE")).status).toBe(200);
+    expect((await call("/students?schoolId=1&status=active")).status).toBe(400);
+  });
+
   it("preserves the explicit Platform Owner NFC assignment exception with tenant-bound writes", async () => {
     const response = await call("/cards?schoolId=1", "POST", { uid: "CARD-OWNER", studentId: 11 });
     expect(response.status).toBe(201);

@@ -17,7 +17,7 @@ import {
 export function StudentsPage() {
   const { schoolId, setSchoolId } = useTenant();
   const [search, setSearch] = useState(''); 
-  const [status, setStatus] = useState('active'); 
+  const [status, setStatus] = useState<'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'TRANSFERRED'>('ACTIVE');
   const [modal, setModal] = useState<any>(null); 
   const [idCardStudent, setIdCardStudent] = useState<any>(null);
   const qc = useQueryClient();
@@ -25,7 +25,7 @@ export function StudentsPage() {
   const schoolQuery = useGetSchool(schoolId, { query: { enabled: !!schoolId, queryKey: getGetSchoolQueryKey(schoolId) } });
   const school = schoolQuery.data;
   
-  const query = useListStudents({ schoolId, search: search || undefined, status: status as any }, { query: { enabled: !!schoolId, queryKey: getListStudentsQueryKey({ schoolId, search: search || undefined, status: status as any }) } }); 
+  const query = useListStudents({ schoolId, search: search || undefined, status }, { query: { enabled: !!schoolId, queryKey: getListStudentsQueryKey({ schoolId, search: search || undefined, status }) } });
   const students: any[] = query.data ?? [];
   
   const done = () => { 
@@ -58,7 +58,12 @@ export function StudentsPage() {
       ) : query.isLoading ? (
         <SkeletonPage />
       ) : query.isError ? (
-        <ErrorState retry={() => query.refetch()} />
+        <ErrorState
+          retry={() => query.refetch()}
+          message={(query.error as { status?: number } | null)?.status === 400
+            ? "The selected school or student filters were rejected. Check your selection and retry."
+            : "Student records could not be loaded. Retry when your connection is ready."}
+        />
       ) : (
         <>
           <div className="panel mb-6 flex flex-col gap-4 p-4 md:flex-row">
@@ -73,7 +78,7 @@ export function StudentsPage() {
               />
             </label>
             <div className="flex gap-2 overflow-auto pb-1 md:pb-0">
-              {['ACTIVE', 'INACTIVE', 'GRADUATED', 'TRANSFERRED'].map(item => (
+              {(['ACTIVE', 'INACTIVE', 'GRADUATED', 'TRANSFERRED'] as const).map(item => (
                 <button 
                   key={item} 
                   onClick={() => setStatus(item)} 

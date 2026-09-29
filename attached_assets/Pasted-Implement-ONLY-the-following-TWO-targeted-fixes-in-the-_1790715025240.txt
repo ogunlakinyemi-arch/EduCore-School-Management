@@ -1,0 +1,128 @@
+Implement ONLY the following TWO targeted fixes in the DEVELOPMENT environment.
+
+IMPORTANT:
+
+- Do NOT modify production.
+- Do NOT Publish.
+- Do NOT run "drizzle-kit push".
+- Do NOT modify the migration ledger.
+- Do NOT modify database schema or persistent data.
+- Do NOT change Clerk configuration.
+- Do NOT change RBAC permissions.
+- Do NOT redesign the Platform Owner dashboard.
+- Do NOT modify unrelated modules.
+
+CONFIRMED ISSUE 1 — STUDENT DIRECTORY
+
+Current behavior:
+
+- Owner "/students" renders "StudentsPage".
+- After selecting a school it requests:
+  "GET /api/students?schoolId=<selected ID>&status=active"
+- Backend validation expects uppercase "ACTIVE".
+- The lowercase default "active" causes HTTP 400 before authorization/query execution.
+- The frontend masks the validation error with the generic "operations feed" message.
+- This affects the shared default behavior and is not Owner-specific.
+- Valid Platform Owner student reads are already permitted.
+
+FIX:
+
+Correct the frontend default status value so it matches the existing backend API contract.
+
+Use:
+"ACTIVE"
+
+Do NOT change the backend enum merely to accommodate the incorrect frontend value.
+
+Also improve the frontend error handling only enough to avoid misleadingly calling a parameter-validation failure an "operations feed" error. Preserve existing error handling conventions and do not redesign the page.
+
+Add/update a focused regression test proving:
+
+- default Student Directory request uses "ACTIVE";
+- selecting a school produces a valid student-list request;
+- the request no longer returns the known 400 caused by lowercase "active".
+
+CONFIRMED ISSUE 2 — PARTNER PAYOUTS
+
+Current behavior:
+
+- Platform Owner Partners page links to:
+  "/partners/payouts"
+- "PayoutsOverview" exists and is registered under "PartnerManagement".
+- The outer route in "App.tsx" is:
+  "/partners*"
+- The installed router matcher confirms "/partners*" matches "/partners" but NOT "/partners/payouts".
+- Therefore the frontend falls through to 404 before "PayoutsOverview" mounts.
+- The intended Owner API already exists:
+  "GET /api/platform/partner-payouts"
+- That API requires PLATFORM_OWNER.
+- This is a frontend routing problem, not a missing payout API.
+- "/partner/payouts" is the separate Partner self-service route and must remain unchanged.
+
+FIX:
+
+Correct the Platform Owner route hierarchy so:
+
+"/partners/payouts"
+
+properly reaches the existing "PayoutsOverview" component.
+
+Use the application's existing routing conventions.
+
+Do NOT:
+
+- create a second payout page;
+- rename the existing payout API;
+- change the Partner self-service route;
+- broaden permissions;
+- change payout business logic;
+- change payout calculations;
+- change payout statuses.
+
+Add/update a focused frontend routing regression test proving:
+
+- "/partners/payouts" resolves to "PayoutsOverview";
+- "/partner/payouts" remains the Partner self-service route;
+- "/partners" continues to open the Platform Owner Partners page;
+- no existing Owner route is broken.
+
+VERIFICATION:
+
+Run:
+
+- the relevant Student Directory tests;
+- relevant Partner/Payout API tests;
+- relevant frontend routing tests;
+- full API test suite;
+- full frontend test suite;
+- backend typecheck;
+- frontend typecheck;
+- frontend build.
+
+Then use the development browser if the authenticated session is available.
+
+Verify:
+
+1. Platform Owner → Student Directory.
+2. Select a school.
+3. Students load successfully.
+4. Platform Owner → Partners.
+5. Open Payouts.
+6. "/partners/payouts" loads the payout overview instead of 404.
+7. "/partner/payouts" still behaves as the separate Partner self-service route.
+
+If authenticated browser verification is unavailable, explicitly state that limitation rather than claiming it passed.
+
+FINAL REPORT MUST INCLUDE:
+
+- exact files changed;
+- exact Student Directory change;
+- exact routing change;
+- regression test results;
+- full API test count;
+- full frontend test count;
+- typecheck/build results;
+- whether authenticated browser verification succeeded;
+- confirmation that production, database, migrations, Clerk/RBAC, and Publish were untouched.
+
+Do not make any other fixes in this task.
