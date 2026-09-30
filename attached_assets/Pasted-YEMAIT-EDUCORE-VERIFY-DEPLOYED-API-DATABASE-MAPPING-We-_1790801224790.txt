@@ -1,0 +1,191 @@
+YEMAIT EDUCORE — VERIFY DEPLOYED API DATABASE MAPPING
+
+We are continuing the production-readiness investigation.
+
+The previous audit established that:
+
+- The deployed API uses "DATABASE_URL".
+- The production "DATABASE_URL" secret exists.
+- Its value must remain secret.
+- The exact PostgreSQL database instance behind that secret has NOT been independently verified.
+- The Replit production database view showed "nfc_cards" with "UNIQUE (id, school_id)" and no "nfc_card_history", but this cannot yet be assumed to be the database used by the deployed API.
+- No production migration has been executed.
+- No production data has been changed.
+
+CRITICAL SAFETY RULES
+
+1. Never print, expose, copy, log, or return the "DATABASE_URL" value.
+2. Never expose the database hostname, username, password, port, connection string, or other credentials if they could reveal the secret.
+3. Do not modify the production database.
+4. Do not run migrations.
+5. Do not run "db push", "migrate", "drizzle-kit push", or equivalent.
+6. Do not reset or recreate any database.
+7. Do not create a production clone.
+8. Do not alter application code.
+9. Do not change environment variables.
+10. Do not restart production merely for this investigation.
+11. Do not substitute "PGHOST" or "PGDATABASE" for "DATABASE_URL".
+12. If the mapping cannot be established safely, stop and report that fact.
+
+---
+
+OBJECTIVE
+
+Determine whether the database resource visible in the Replit production database interface is the same PostgreSQL database used by the deployed API through "DATABASE_URL".
+
+We need an independent, non-secret verification.
+
+---
+
+STEP 1 — TRACE THE APPLICATION
+
+Inspect the existing database initialization code.
+
+Confirm:
+
+- "DATABASE_URL" is read by the API.
+- The connection pool is created from it.
+- Identify the exact module that creates the PostgreSQL connection.
+
+Do not display the value.
+
+Report only the code path.
+
+Example:
+
+«API startup → shared database package → PostgreSQL pool → DATABASE_URL»
+
+---
+
+STEP 2 — INSPECT AVAILABLE NON-SECRET DATABASE METADATA
+
+Look for existing Replit/deployment/database metadata that can safely identify the database resource without exposing credentials.
+
+Possible useful identifiers include:
+
+- database resource ID
+- Neon project ID
+- Neon branch ID
+- database name
+- deployment resource ID
+- Replit-managed database identifier
+- provider metadata
+- non-secret environment metadata
+
+Do NOT print connection strings.
+
+Do NOT print passwords.
+
+Do NOT print full hostnames if doing so could expose sensitive infrastructure information.
+
+If a safe resource identifier exists, report only the identifier type and a redacted/non-secret representation.
+
+---
+
+STEP 3 — CHECK WHETHER THE APPLICATION ALREADY EXPOSES SAFE DATABASE IDENTITY
+
+Inspect existing health/debug/diagnostic code.
+
+Determine whether the application already has a safe way to establish database identity, such as:
+
+- PostgreSQL "current_database()"
+- PostgreSQL server version
+- provider/project identifier
+- a safe database resource identifier
+
+Do NOT add a new production endpoint.
+
+Do NOT add debugging code to production.
+
+Do NOT expose database identity publicly.
+
+If an existing authenticated/admin-only diagnostic mechanism exists, determine whether it can safely establish identity without exposing credentials.
+
+If no safe mechanism exists, do not create one merely for this task.
+
+---
+
+STEP 4 — COMPARE WITH THE REPLIT DATABASE RESOURCE
+
+Inspect the metadata of the production database resource visible through Replit.
+
+Do not assume that:
+
+- database name alone proves identity
+- PostgreSQL version alone proves identity
+- region alone proves identity
+
+Prefer a provider/resource identifier.
+
+If there is a definitive identifier connecting:
+
+"DATABASE_URL → PostgreSQL resource → Replit production database"
+
+report it.
+
+---
+
+STEP 5 — IF IDENTITY CANNOT BE PROVEN
+
+STOP.
+
+Do not:
+
+- run migrations
+- create a fork
+- modify production
+- guess
+- use a fresh database as a substitute
+- assume the Replit database view is correct
+
+Report:
+
+«The deployed API database target cannot be independently mapped to the Replit production database resource using currently available non-secret evidence.»
+
+Then identify exactly what non-secret evidence is still required.
+
+---
+
+STEP 6 — IF IDENTITY IS PROVEN
+
+If and only if the mapping is independently verified, report:
+
+API database
+
+"DATABASE_URL"
+
+Verified database resource
+
+Use only a safe non-secret resource identifier/name.
+
+Evidence
+
+Explain exactly why the mapping is conclusive.
+
+Production safety
+
+Confirm:
+
+«No production data was changed.»
+
+«No migrations were executed.»
+
+«No repository files were changed.»
+
+---
+
+FINAL STATUS
+
+Use exactly one:
+
+VERIFIED — READY FOR DISPOSABLE REHEARSAL
+
+Only if the deployed API database and Replit production database are conclusively mapped.
+
+OR
+
+BLOCKED — DATABASE IDENTITY NOT VERIFIED
+
+If the mapping remains uncertain.
+
+Do not proceed to the migration rehearsal in this task even if the database mapping is verified. The migration rehearsal will be a separate controlled step.
