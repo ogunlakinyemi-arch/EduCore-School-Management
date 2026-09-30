@@ -1,0 +1,718 @@
+FINAL PRODUCTION AUDIT & ZERO-WASTE FIX
+
+Yemait EduCore — Production Readiness
+
+You are working on the existing Yemait EduCore school management platform.
+
+This is an existing, substantially developed production-oriented application. Do not rebuild, redesign, migrate to another framework, or replace working modules.
+
+The goal of this task is to identify and resolve only the remaining verified production blockers while using the minimum possible Replit credits and development time.
+
+---
+
+1. CRITICAL RULES
+
+Follow these rules strictly:
+
+1. AUDIT FIRST. DO NOT MODIFY CODE DURING THE INITIAL AUDIT.
+2. Inspect the existing implementation, tests, database migrations, authentication, invitation flow, environment configuration, and production-readiness state.
+3. Do not rebuild any existing module.
+4. Do not replace the current architecture.
+5. Do not migrate the project to Floot or another platform.
+6. Do not introduce a new database system.
+7. Do not rewrite working frontend or backend modules merely for style or architecture preferences.
+8. Do not reset, drop, truncate, recreate, or wipe the production database.
+9. Do not delete production records.
+10. Do not modify production data merely to make tests pass.
+11. Do not create unnecessary migrations.
+12. Do not change working features without evidence of an actual defect.
+13. Reuse the existing test suite and existing utilities wherever possible.
+14. Prefer the smallest safe change that resolves a confirmed defect.
+15. Do not spend credits implementing features that already exist.
+16. If something is a configuration/provider problem rather than a code problem, clearly identify it instead of changing unrelated application code.
+17. If a problem cannot be safely resolved automatically, report exactly what needs to be done rather than guessing.
+18. Protect all existing tenant isolation and role-based authorization.
+
+---
+
+2. PROJECT CONTEXT
+
+The application is Yemait EduCore, owned by Yemait Technologies Limited.
+
+Existing major roles include:
+
+- Platform Owner
+- School Admin
+- Teacher
+- Accountant
+- Parent
+- Student
+- Partner
+
+Existing major functionality includes:
+
+- Platform Owner dashboard
+- School management
+- School Admin dashboard
+- Students
+- Parents
+- Teachers/employees
+- Accountants
+- Classes
+- Subjects
+- Attendance
+- NFC/e-ID cards
+- Devices
+- Academics
+- Assignments
+- Assessments
+- Grading
+- Results/report cards
+- Timetable
+- Finance
+- Subscriptions
+- Communications
+- Library
+- Operations
+- Reporting
+- Notifications
+- Platform company employees
+- Partners
+- Partner portal
+- Partner school registration
+- People imports
+- Invitations
+- Authentication
+- RBAC
+- Audit logs
+- Device/card lifecycle
+- Subscription ledger
+
+The application already contains extensive automated tests and database migrations.
+
+Treat existing functionality as intentional unless testing proves otherwise.
+
+---
+
+3. PHASE A — READ-ONLY PRODUCTION AUDIT
+
+Before changing anything, inspect:
+
+A. Application architecture
+
+Identify:
+
+- frontend framework
+- backend framework
+- database
+- ORM
+- authentication provider
+- authorization/RBAC implementation
+- API structure
+- migration system
+- deployment configuration
+- environment/secrets usage
+
+Do not replace any of these.
+
+B. Existing modules
+
+Confirm which of the following are already implemented and functional:
+
+- Owner
+- School Admin
+- Teacher
+- Accountant
+- Parent
+- Student
+- Partner
+- Schools
+- Students
+- Parents
+- Employees
+- Classes
+- Subjects
+- Attendance
+- NFC cards
+- Devices
+- Academics
+- Results
+- Finance
+- Subscriptions
+- Communications
+- Library
+- Operations
+- Reporting
+- Notifications
+- Invitations
+- Imports
+- Audit logs
+
+Do not rebuild modules that already exist.
+
+C. Existing tests
+
+Inspect and run the most relevant existing tests.
+
+Do not create hundreds of new tests unnecessarily.
+
+Use existing tests to identify actual regressions.
+
+Record:
+
+- tests passed
+- tests failed
+- test names
+- actual failure
+- whether failure is application code, test setup, configuration, database, or external provider
+
+---
+
+4. PRODUCTION DATABASE MIGRATION AUDIT
+
+There has previously been a production migration validation issue involving:
+
+"nfc_card_history"
+
+and a foreign key referencing:
+
+"nfc_cards(id, school_id)"
+
+The PostgreSQL requirement is that the referenced columns have an appropriate unique/primary constraint.
+
+Investigate the current migration chain and determine exactly:
+
+1. Which migration creates "nfc_cards".
+2. Which migration creates or alters "nfc_card_history".
+3. Which migration creates the composite uniqueness required for "(id, school_id)".
+4. The order in which those migrations execute.
+5. Whether the FK is being created before the required unique constraint.
+6. Whether the problem exists only during publish-time validation or also in the development database.
+7. Whether later migrations already address the issue.
+8. Whether the migration chain is internally consistent.
+
+IMPORTANT:
+
+Do not automatically edit the migration.
+
+First identify the exact root cause.
+
+If a migration change is required:
+
+- propose the smallest forward-only migration/change
+- preserve all existing production data
+- do not delete or recreate tables
+- do not reset production
+- do not alter unrelated migrations unnecessarily
+- test the corrected migration on a disposable database/fork before production
+
+If the issue is already resolved by later migrations, do not make another migration.
+
+---
+
+5. INVITATION / EMAIL-LINK AUDIT
+
+There has also been an invitation-link issue where an invitation URL appeared to produce a 404.
+
+Investigate the complete invitation architecture.
+
+Check:
+
+- Clerk invitation configuration
+- application invitation routes
+- partner invitation routes
+- employee invitation routes
+- school invitations
+- student invitations
+- acceptance routes
+- redirect URLs
+- public routes
+- authenticated routes
+- environment variables
+- production URL configuration
+- development URL configuration
+- Clerk-hosted invitation links
+- application-hosted acceptance pages
+
+IMPORTANT:
+
+A route returning HTTP 200 by itself does NOT prove that a real Clerk invitation works.
+
+Determine whether the problem is:
+
+Type A — Application routing bug
+
+The application's route is incorrect or missing.
+
+Type B — Clerk/provider configuration
+
+The Clerk invitation or redirect configuration is incorrect.
+
+Type C — Environment configuration
+
+Production/development URL or environment variables are incorrect.
+
+Type D — Expired/revoked/invalid invitation
+
+The actual invitation ticket is invalid.
+
+Type E — Already fixed
+
+The reported problem no longer exists.
+
+Do not change working application routes merely because an old invitation link was invalid.
+
+If a provider setting is responsible, clearly state the exact provider setting that must be corrected.
+
+Do not invent a workaround that bypasses Clerk's security model.
+
+---
+
+6. AUTHENTICATION AND RBAC SECURITY AUDIT
+
+Verify that users cannot access another school's data.
+
+Test or inspect tenant isolation for:
+
+- Platform Owner
+- School Admin
+- Teacher
+- Accountant
+- Parent
+- Student
+- Partner
+
+Check:
+
+- school_id enforcement
+- server-side authorization
+- API authorization
+- frontend route protection
+- direct URL access
+- object-level authorization
+- role escalation
+- cross-school record access
+- partner access boundaries
+
+Important:
+
+Frontend hiding is not sufficient.
+
+Authorization must be enforced server-side.
+
+Do not weaken any existing security controls.
+
+---
+
+7. OWNER ROLE AUDIT
+
+Verify that Platform Owner can:
+
+- manage schools
+- view appropriate platform-wide data
+- manage subscriptions
+- manage devices
+- manage NFC cards
+- manage partners
+- manage platform employees
+- view audit information
+- perform appropriate administrative actions
+
+But ensure ordinary school users cannot obtain Owner privileges.
+
+---
+
+8. SCHOOL ADMIN ROLE AUDIT
+
+Verify School Admin can only manage the school they belong to.
+
+Check:
+
+- students
+- parents
+- teachers
+- accountants
+- classes
+- subjects
+- attendance
+- academics
+- results
+- finance
+- communications
+- library
+- operations
+- reporting
+
+Confirm they cannot access another school's data.
+
+---
+
+9. PARTNER ROLE AUDIT
+
+Verify that Partners can perform only intended partner functions.
+
+Partners may:
+
+- generate/invite school registration links
+- register schools through the intended workflow
+- view their own partner-related information
+- see appropriate commission/revenue information
+
+Partners must NOT receive unrestricted access to:
+
+- school private data
+- student records
+- parent records
+- teacher records
+- financial records
+- attendance records
+- academic results
+
+unless explicitly authorized by the existing business rules.
+
+---
+
+10. FINANCE AUDIT
+
+Inspect the existing finance implementation.
+
+Confirm that the existing architecture supports the intended subscription model:
+
+- ₦5,000 per student per term
+- ₦2,000 school share
+- ₦3,000 Yemait EduCore share
+- partner commission where already implemented
+
+Check:
+
+- invoices
+- payments
+- payment status
+- manual bank transfer verification
+- receipts
+- discounts
+- scholarships
+- waivers
+- subscription records
+- financial audit records
+
+Do not require production payment API credentials if the system is intentionally designed to operate in development mode until credentials are supplied.
+
+If Paystack, Flutterwave, Remita, bank transfer, or another provider requires production credentials, identify the exact configuration required.
+
+Do not fabricate credentials.
+
+---
+
+11. ATTENDANCE / NFC AUDIT
+
+Inspect the existing attendance architecture.
+
+Verify the intended flow remains intact:
+
+1. NFC/biometric/device event
+2. classroom validation
+3. attendance state
+4. exit state where applicable
+5. parent/student attendance visibility
+
+Confirm:
+
+- device belongs to the correct school
+- NFC card belongs to the correct school
+- cards cannot be incorrectly reused across schools
+- attendance records are tenant-safe
+- historical card assignments remain consistent
+- provider biometric references are stored safely without storing raw biometric fingerprints
+
+Do not redesign the attendance system.
+
+---
+
+12. DATA IMPORT AUDIT
+
+Inspect existing student/people import functionality.
+
+Confirm the system safely handles the formats already supported by the project.
+
+Check:
+
+- validation
+- duplicate handling
+- school assignment
+- role assignment
+- malformed data
+- partial failures
+- auditability
+
+Do not introduce a new import engine if the current one works.
+
+---
+
+13. PRODUCTION CONFIGURATION AUDIT
+
+Inspect production configuration without exposing secret values.
+
+Check whether the project has appropriate configuration for:
+
+- production database
+- Clerk production
+- application URL
+- email
+- SMS
+- payment providers
+- domain
+- HTTPS
+- environment separation
+- error handling
+- logging
+- database migrations
+- backups/PITR where applicable
+
+Never print secret values.
+
+Only report variable names and whether they appear configured/missing.
+
+---
+
+14. DO NOT CONFUSE "NOT CONFIGURED" WITH "BROKEN"
+
+Classify every finding as one of:
+
+BLOCKER
+
+Prevents production operation or causes data/security risk.
+
+HIGH
+
+Important defect that should be fixed before production.
+
+MEDIUM
+
+Non-critical issue that can be fixed after launch.
+
+CONFIGURATION REQUIRED
+
+Application code is ready, but a provider/account/secret/domain setting is required.
+
+OPTIONAL
+
+Improvement that is not necessary for launch.
+
+ALREADY WORKING
+
+No change required.
+
+This classification is important because we are trying to avoid unnecessary Replit credit usage.
+
+---
+
+15. PHASE B — ONLY FIX VERIFIED PROBLEMS
+
+After completing the audit, make changes ONLY for confirmed defects that can safely be fixed in the repository.
+
+For every code change:
+
+1. Make the smallest possible change.
+2. Reuse existing functions/components.
+3. Preserve existing APIs unless a change is absolutely required.
+4. Preserve database compatibility.
+5. Preserve RBAC.
+6. Preserve tenant isolation.
+7. Preserve existing business rules.
+8. Do not refactor unrelated code.
+9. Do not rename large numbers of files.
+10. Do not replace libraries.
+11. Do not rebuild existing screens.
+
+---
+
+16. DATABASE SAFETY REQUIREMENTS
+
+For database changes:
+
+- never reset production
+- never drop production tables
+- never truncate production data
+- never recreate the database
+- never delete existing student, parent, school, finance, attendance, card, or audit data
+- use forward-only migrations
+- test migrations on a disposable database/fork first
+- verify migration ordering
+- verify foreign keys
+- verify unique constraints
+- verify indexes
+- verify rollback/recovery considerations
+
+If there is any uncertainty about production data safety:
+
+STOP the database modification and report the issue.
+
+---
+
+17. TESTING AFTER FIXES
+
+After making verified fixes, run the smallest relevant test groups first.
+
+Then run the full existing test suite if practical.
+
+At minimum verify:
+
+- authentication
+- RBAC
+- tenant isolation
+- invitations
+- school management
+- students
+- parents
+- attendance
+- NFC/devices
+- academics/results
+- finance
+- partners
+- reporting
+- library/operations where relevant
+
+Do not generate unnecessary tests simply to increase test count.
+
+The goal is confidence, not a large number of artificial tests.
+
+---
+
+18. BROWSER / END-TO-END VERIFICATION
+
+Where browser testing is available, verify the most important production workflows:
+
+Owner
+
+Login → Owner dashboard → School management
+
+School Admin
+
+Login → School dashboard → student/teacher/parent management
+
+Teacher
+
+Login → attendance/academics/results
+
+Accountant
+
+Login → finance/subscriptions
+
+Parent
+
+Login → child information → attendance/results/finance
+
+Student
+
+Login → academic information/results
+
+Partner
+
+Login → partner dashboard → intended partner workflow
+
+Invitation
+
+Create/send invitation → open acceptance link → registration/password setup → login → correct dashboard
+
+Do not claim that the invitation workflow is fixed unless the actual relevant flow has been verified.
+
+---
+
+19. FINAL REPORT
+
+At the end, provide a concise production-readiness report containing:
+
+A. CONFIRMED WORKING
+
+List the major areas verified as working.
+
+B. FIXED
+
+For every fix:
+
+- problem
+- root cause
+- file(s) changed
+- migration changed, if any
+- exact type of fix
+- tests run
+- result
+
+C. REMAINING BLOCKERS
+
+Only list genuine blockers.
+
+For each blocker explain:
+
+- exact problem
+- evidence
+- why it cannot be safely fixed automatically
+- exact action required
+
+D. CONFIGURATION REQUIRED
+
+List only external configuration still needed, such as:
+
+- Clerk production settings
+- email provider
+- SMS provider
+- payment credentials
+- domain
+- DNS
+- environment variables
+
+Never expose secret values.
+
+E. DATABASE STATUS
+
+State:
+
+- migration status
+- whether production data was changed
+- whether any migration remains pending
+- whether the migration was tested on a disposable database/fork
+- whether production deployment is safe from the migration perspective
+
+F. TEST RESULTS
+
+Report:
+
+- total relevant tests run
+- passed
+- failed
+- skipped
+- reasons for any remaining failures
+
+G. FILES CHANGED
+
+Provide an exact list of modified files.
+
+H. FINAL STATUS
+
+Use only one of:
+
+- READY FOR PRODUCTION
+- READY AFTER CONFIGURATION
+- BLOCKED — ACTION REQUIRED
+- NOT READY
+
+Do not call the project "production ready" if there is an unresolved security, data integrity, authentication, migration, or critical workflow problem.
+
+---
+
+20. MOST IMPORTANT INSTRUCTION
+
+This is a final hardening and verification task, not a new development phase.
+
+The application already contains substantial functionality.
+
+Do not spend credits rebuilding what already works.
+
+First determine what is actually broken.
+
+Then fix only confirmed problems.
+
+If everything important is already working, make no unnecessary changes and report that clearly.
+
+Protect existing production data and existing functionality at all times.
