@@ -1,0 +1,429 @@
+Create a complete, read-only Production Reconciliation Plan for Yemait EduCore.
+
+IMPORTANT: THIS IS AN AUDIT/PLANNING TASK ONLY.
+
+DO NOT:
+
+- Publish or deploy anything.
+- Execute the 408 pending schema statements.
+- Run database migrations against Production.
+- Modify Production.
+- Create or alter Production tables, columns, indexes, constraints, functions, triggers, or data.
+- Mark migrations as applied.
+- Reset or replace the Production database.
+- Copy Development into Production.
+- Make manual Production fixes.
+- Send real invitations.
+
+The purpose is to determine exactly what must be done to safely bring Production into the required state before final publishing and live testing.
+
+1. IDENTIFY THE TARGET DATABASE
+
+Determine, using read-only diagnostics, the exact Production database/resource currently used by the published EduCore application.
+
+Report:
+
+- database host/resource identity if safely available
+- database name
+- PostgreSQL version
+- deployment/runtime binding information if available
+- how the application obtains DATABASE_URL
+- whether the database inspected in previous audits is definitely the database used by the live application
+
+If exact live API database identity cannot be proven, explicitly state:
+
+LIVE DATABASE IDENTITY: UNVERIFIED
+
+Do not guess.
+
+2. PRODUCTION VS DEVELOPMENT SCHEMA
+
+Compare the current Production schema with the Development schema.
+
+Report:
+
+- Production table count
+- Development table count
+- tables missing from Production
+- Production-only tables
+- missing columns
+- extra columns
+- indexes
+- unique indexes
+- primary keys
+- foreign keys
+- unique constraints
+- check constraints
+- sequences
+- enums/types
+- functions
+- triggers
+
+Do not modify anything.
+
+3. ANALYZE ALL 408 PENDING STATEMENTS
+
+Reconstruct and categorize the current 408 pending schema synchronization statements.
+
+For each category report:
+
+- CREATE TABLE
+- CREATE INDEX
+- CREATE UNIQUE INDEX
+- ALTER TABLE ADD COLUMN
+- ALTER TABLE ADD FOREIGN KEY
+- ALTER TABLE ADD UNIQUE CONSTRAINT
+- any other statement
+
+Confirm whether the current count is still exactly 408.
+
+For each statement, determine:
+
+- what object it affects
+- whether that object already exists in Production
+- whether it is required
+- whether it has dependencies
+- whether another statement must execute first
+- whether it could fail because of an existing Production object
+- whether it could conflict with an existing constraint/index
+- whether it could lock a heavily used table
+- whether it could cause data compatibility problems
+
+Do not execute the statements.
+
+4. FOREIGN KEY DEPENDENCY ANALYSIS
+
+This is critical.
+
+Build a dependency map for ALL proposed foreign keys.
+
+For every proposed FK verify:
+
+1. referenced table exists or will be created first
+2. referenced columns exist
+3. referenced columns have an appropriate PRIMARY KEY or UNIQUE constraint
+4. parent constraint exists before the FK is created
+5. referenced data will satisfy the FK
+6. child and parent column types match
+7. tenant/school scoping is correct
+
+Pay special attention to:
+
+school_operation_categories
+
+because previous analysis found proposed foreign keys referencing:
+
+(id, school_id, category_type)
+
+while the matching composite uniqueness requirement was not present in the 408 preview.
+
+Determine exactly how this must be handled.
+
+Also search for any OTHER foreign keys with similar missing-parent-key problems.
+
+5. NFC / ATTENDANCE / DEVICE RECONCILIATION
+
+Perform a dedicated audit of:
+
+- nfc_cards
+- nfc_card_history
+- platform_devices
+- device_school_bindings
+- attendance records
+- card/student relationships
+- card/device relationships
+- replacement relationships
+
+Verify:
+
+- existing Production NFC cards
+- missing lifecycle columns
+- required indexes
+- composite keys
+- history table requirements
+- foreign-key ordering
+- replacement-card dependencies
+- device dependencies
+- student/school tenant integrity
+
+Specifically determine whether the previous suspected nfc_card_history problem is still a blocker.
+
+Do NOT create nfc_card_history.
+
+6. FUNCTIONS AND TRIGGERS
+
+Compare Development and Production for database-level:
+
+- functions
+- triggers
+- append-only protections
+- immutability protections
+- history protections
+- operational/task history protections
+
+Previous audit found Development functions/triggers that Production does not have.
+
+For each missing function/trigger report:
+
+- name
+- purpose
+- source migration/file
+- whether it is required for application correctness/security
+- whether it is included in the current 408 synchronization
+- if not included, how it should be safely reconciled
+
+Do not create them.
+
+7. DATA BACKFILLS
+
+Identify every migration that contains or requires a historical data backfill.
+
+Especially inspect migrations related to:
+
+- device-school bindings
+- NFC/device relationships
+- attendance
+- academic data
+- finance
+- operations
+- communications
+- library
+- other historical records
+
+For every required backfill report:
+
+- migration/file
+- affected table
+- purpose
+- whether Production currently contains the required source data
+- whether the 408 preview includes the backfill
+- whether it must be performed separately
+
+Do not perform any backfill.
+
+8. EXISTING DATA COMPATIBILITY
+
+Read-only inspect Production data for possible conflicts with the proposed schema.
+
+Check for:
+
+- duplicate values that would violate new unique constraints
+- NULL values where proposed columns are NOT NULL
+- orphan records that would violate FKs
+- invalid tenant/school relationships
+- invalid device/card relationships
+- incompatible enum/check-constraint values
+- duplicate composite keys
+
+Do not modify conflicting data.
+
+Report exact counts and affected tables/columns.
+
+9. CONSTRAINT DIFFERENCES
+
+Pay particular attention to existing-vs-development differences where the logical rule already exists under a different name.
+
+Examples include:
+
+- nfc_cards(id, school_id)
+- student_class_assignments composite uniqueness
+- device status constraints
+
+Determine whether each difference requires:
+
+- no action
+- retaining existing constraint
+- adding a new constraint
+- replacing an existing constraint
+- renaming only
+- a controlled migration
+
+Do not execute anything.
+
+10. MIGRATION HISTORY
+
+Compare:
+
+- checked-in migrations
+- Development migration history
+- Production migration ledger
+- actual Production schema
+
+Determine whether Production appears to have:
+
+- skipped migrations
+- partially applied migrations
+- differently generated migrations
+- manually created objects
+- renamed constraints
+- schema drift
+
+Do not mark anything as applied.
+
+Do not make assumptions where evidence is unavailable.
+
+11. APPLICATION COMPATIBILITY
+
+Inspect current application code for tables/features that are assumed to exist.
+
+Identify application areas that would fail if the corresponding Production schema is missing.
+
+Categorize them:
+
+CRITICAL
+
+- application cannot operate
+
+HIGH
+
+- important workflow fails
+
+MEDIUM
+
+- feature partially fails
+
+LOW
+
+- non-critical discrepancy
+
+Pay particular attention to:
+
+- authentication/invitations
+- school onboarding
+- student/parent management
+- attendance
+- NFC
+- academics
+- finance
+- communications
+- library
+- reporting
+- partner portal
+- company employees
+- device activation
+
+12. INVITATION SYSTEM
+
+Do NOT modify invitation code in this task.
+
+Simply verify that the current source contains:
+
+- canonical PUBLIC_APP_URL strategy
+- production URL validation
+- no private Replit production invitation destination
+- individual invitation resend implementation
+
+Report whether these changes are present in the current source.
+
+Do not send invitations.
+
+13. PRODUCE A SAFE RECONCILIATION ORDER
+
+Based on the evidence, produce a proposed execution order.
+
+Example structure:
+
+PHASE 1 — prerequisites
+PHASE 2 — parent tables
+PHASE 3 — parent keys/indexes
+PHASE 4 — child tables
+PHASE 5 — columns
+PHASE 6 — foreign keys
+PHASE 7 — indexes
+PHASE 8 — functions/triggers
+PHASE 9 — historical backfills
+PHASE 10 — validation
+PHASE 11 — application publish
+PHASE 12 — live testing
+
+The exact order must come from the actual dependency analysis, not this example.
+
+14. DISPOSABLE TEST REQUIREMENTS
+
+Define what must be tested on a disposable database copy before Production.
+
+Include:
+
+- clean schema creation
+- historical Production-schema reconciliation
+- all FK creation
+- unique constraints
+- functions/triggers
+- backfills
+- existing Production data compatibility
+- application smoke tests
+
+15. FINAL DECISION
+
+Return one of:
+
+A. SAFE TO APPLY CURRENT 408 PLAN
+
+B. SAFE ONLY AFTER SPECIFIC CORRECTIONS
+
+C. NOT SAFE — RECONCILIATION PLAN MUST BE REBUILT
+
+Do NOT use "safe" merely because there are no DROP statements.
+
+The final decision must consider:
+
+- dependency ordering
+- parent keys
+- existing data
+- functions/triggers
+- backfills
+- migration history
+- schema drift
+- application compatibility
+
+FINAL REPORT FORMAT
+
+Return:
+
+Executive Summary
+
+1. Database Identity
+
+2. Production vs Development
+
+3. 408 Statement Breakdown
+
+4. Blocking Dependency Problems
+
+5. NFC/Attendance/Device Findings
+
+6. Functions/Triggers
+
+7. Required Backfills
+
+8. Data Compatibility
+
+9. Migration History
+
+10. Application Compatibility
+
+11. Required Corrections
+
+12. Proposed Safe Execution Order
+
+13. Disposable-Database Test Plan
+
+14. Final Decision
+
+15. Production Safety Confirmation
+
+Explicitly report:
+
+Production modified: NO
+
+408 statements executed: NO
+
+Migrations executed: NO
+
+Data modified: NO
+
+Application published: NO
+
+Real invitations sent: NO
+
+Do not make any changes while performing this audit.
