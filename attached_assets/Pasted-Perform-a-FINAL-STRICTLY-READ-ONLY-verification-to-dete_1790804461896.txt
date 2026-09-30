@@ -1,0 +1,97 @@
+Perform a FINAL, STRICTLY READ-ONLY verification to determine whether the Replit Production database currently being inspected is the same PostgreSQL database used by the active deployed Yemait EduCore API.
+
+Do NOT modify code.
+Do NOT modify the database.
+Do NOT run migrations.
+Do NOT create tables, indexes, constraints, endpoints, diagnostics, or test records.
+Do NOT expose DATABASE_URL, passwords, tokens, connection strings, or other secrets.
+
+The previous investigation established that:
+
+- There is an active autoscale deployment.
+- Production DATABASE_URL is runtime-managed.
+- The inspected Production database is accessible through Replit's Production database query interface.
+- The inspected database has the migration ledger.
+- The ledger contains deployment ID:
+  64c14b42-6098-4483-b4fe-7c127b4ba993
+- The inspected database has public.nfc_cards.
+- public.nfc_cards currently has the validated UNIQUE (id, school_id) constraint.
+- public.nfc_card_history does NOT exist in the inspected database.
+- Checked-in application code expects and uses public.nfc_card_history.
+- The existing /api/healthz endpoint only returns {"status":"ok"} and does not identify the database.
+- No authoritative deployment-to-database binding was previously available from the inspected metadata.
+
+Now investigate whether Replit provides ANY existing read-only mechanism, runtime metadata, deployment inspection, logs, environment metadata, deployment details, or other non-secret information that can establish the actual database target of the currently active API.
+
+Specifically determine:
+
+1. CURRENT ACTIVE DEPLOYMENT
+   
+   - Identify the currently active production deployment ID if available.
+   - Identify the current production build ID if available.
+   - Identify the deployment status.
+
+2. PRODUCTION DATABASE IDENTITY
+   
+   - Identify the non-secret resource identifier, database identifier, or equivalent metadata for the database accessible through the Production database interface, if available.
+
+3. RUNTIME DATABASE TARGET
+   
+   - Determine whether the currently running API exposes any safe, existing runtime metadata that identifies which database resource it is connected to.
+   - If available, compare that identifier with the inspected Production database resource.
+   - Do not print DATABASE_URL or any credentials.
+
+4. MIGRATION LEDGER COMPARISON
+   
+   - Determine whether migration-ledger deployment ID:
+     64c14b42-6098-4483-b4fe-7c127b4ba993
+     corresponds to the currently active production deployment.
+   - If it does, explain exactly what evidence establishes that.
+   - If it cannot be established, say so.
+
+5. DEPLOYMENT LOGS / RUNTIME METADATA
+   
+   - Inspect only existing safe metadata or logs if available.
+   - Look for non-secret evidence showing the database target or database resource identity.
+   - Do not create a new diagnostic endpoint or modify the application to obtain this information.
+
+6. FINAL DETERMINATION
+
+Return exactly one of these determinations:
+
+A. CONFIRMED SAME DATABASE
+There is authoritative evidence that the inspected Production database is the database used by the active API.
+
+B. CONFIRMED DIFFERENT DATABASE
+There is authoritative evidence that the inspected Production database is NOT the database used by the active API.
+
+C. STILL UNVERIFIED
+The available Replit metadata cannot conclusively establish the binding.
+
+If the answer is A or B, provide the specific non-secret evidence that proves it.
+
+If the answer is C, clearly state what exact piece of information Replit does not expose and why the available evidence cannot establish the binding.
+
+IMPORTANT:
+
+Do not treat any of the following as proof by themselves:
+
+- matching timestamps
+- matching schema
+- migration ledger timestamps
+- a deployment ID appearing in the database ledger
+- DATABASE_URL being runtime-managed
+- successful /api/healthz
+- the fact that both are described as "Production"
+- schema contents alone
+
+Those may be supporting evidence but are not authoritative binding evidence.
+
+Also explicitly confirm:
+
+- No database changes were made.
+- No application changes were made.
+- No migrations were executed.
+- No secrets were exposed.
+
+The purpose of this investigation is ONLY to establish whether it is safe to treat the inspected Production database as the live API database before addressing the missing nfc_card_history schema.
