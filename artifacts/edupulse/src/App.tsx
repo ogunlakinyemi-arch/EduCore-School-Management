@@ -14,12 +14,12 @@ import { AuthQueryProvider } from '@/components/auth-query-provider';
 // Pages
 import NotFound from '@/pages/not-found';
 import { AuthScreen } from '@/pages/auth-screen';
+import InvitationAcceptance from '@/pages/invitations/acceptance';
 import { PlatformOwnerSetup } from '@/pages/setup/platform-owner';
 import ParentPortal from '@/pages/parent-portal';
 import PartnerPortal from '@/pages/partner/portal';
 import PartnerManagement from '@/pages/partner/management';
 import RegisterSchool from '@/pages/partner/register-school';
-import AcceptInvitation from '@/pages/partner/accept-invitation';
 import { Dashboard } from '@/pages/dashboard';
 import { SchoolsPage, SchoolOverview } from '@/pages/schools';
 import { StudentsPage } from '@/pages/students';
@@ -382,12 +382,14 @@ export default function App() {
             <Switch>
               <Route path="/setup/platform-owner"><PlatformOwnerSetup /></Route>
               <Route path="/sign-in/*?"><AuthScreen mode="sign-in" /></Route>
-              <Route path="/sign-up"><AuthScreen mode="sign-up" /></Route>
+              <Route path="/sign-up/*?"><AuthScreen mode="sign-up" /></Route>
+              <Route path="/accept-invitation"><InvitationAcceptance /></Route>
+              <Route path="/partner/accept-invitation"><InvitationAcceptance /></Route>
+              <Route path="/partner/invitations/:invitationToken/accept"><InvitationAcceptance /></Route>
               <Route path="/school/register"><RegisterSchool /></Route>
               <Route>
                 <AuthGuard>
                   <Switch>
-                    <Route path="/partner/invitations/:invitationToken/accept"><AcceptInvitation /></Route>
                      <Route path="/parent*"><RoleGuard allowedRoles={['PARENT']}><ParentPortal /></RoleGuard></Route>
                     <Route path="/partner*"><PartnerPortal /></Route>
                     <Route><ProtectedRoutes /></Route>

@@ -20,11 +20,17 @@ type CompanyEmployee = {
   status: 'ACTIVE' | 'INACTIVE';
   createdAt: string;
   updatedAt: string;
+  invitationStatus: {
+    employeeId: number;
+    email: string;
+    status: 'ACTIVE' | 'PENDING' | 'EXPIRED' | 'NOT_INVITED';
+    invitation: { status: string; deliveryConfirmed: boolean; expiresAt?: string } | null;
+  };
 };
 
 type EmployeeProfileInput = {
   fullName: string;
-  email: string;
+  email?: string;
   phone?: string;
   jobTitle?: string;
   status?: 'ACTIVE' | 'INACTIVE';
@@ -49,6 +55,24 @@ type InvitationResult = {
   email: string;
   role: 'COMPANY_ACCOUNTANT' | 'DEVICE_ACTIVATION_OFFICER';
   invitation: { status: string; deliveryConfirmed: boolean; expiresAt: string };
+};
+type InvitationDetail = {
+  employeeId: number;
+  email: string;
+  status: 'ACTIVE' | 'PENDING' | 'EXPIRED' | 'NOT_INVITED';
+  invitation: { status: string; deliveryConfirmed: boolean; expiresAt?: string } | null;
+};
+type ResentInvitation = {
+  employeeId: number;
+  email: string;
+  role: 'COMPANY_ACCOUNTANT' | 'DEVICE_ACTIVATION_OFFICER';
+  schoolId: number | null;
+  invitation: {
+    status: 'DISPATCH_REQUEST_ACCEPTED';
+    deliveryConfirmed: false;
+    invitationId: string;
+    expiresAt: string;
+  };
 };
 
 const endpoint = '/api/platform/company-employees';
@@ -87,9 +111,16 @@ export function PlatformCompanyEmployeesPage() {
   const [selectedEmployeeEmail, setSelectedEmployeeEmail] = useState('');
   const [selectedSchoolId, setSelectedSchoolId] = useState('');
   const [lastInvitation, setLastInvitation] = useState<InvitationResult | null>(null);
+  const [invitationEditing, setInvitationEditing] = useState<CompanyEmployee | null>(null);
+  const [invitationNotice, setInvitationNotice] = useState('');
   const employeesQuery = useQuery({
     queryKey,
     queryFn: () => request<CompanyEmployee[]>(endpoint),
+  });
+  const invitationQuery = useQuery({
+    queryKey: [...queryKey, invitationEditing?.id, 'invitation'],
+    queryFn: () => request<InvitationDetail>(`${endpoint}/${invitationEditing!.id}/invitation`),
+    enabled: Boolean(invitationEditing),
   });
   const schoolsQuery = useQuery({
     queryKey: ['platform-school-directory', 'all'],
@@ -134,6 +165,35 @@ export function PlatformCompanyEmployeesPage() {
     onSuccess: async () => {
       setEditing(null);
       await refresh();
+    },
+  });
+  const editInvitation = useMutation({
+    mutationFn: ({ id, email }: { id: number; email: string }) =>
+      request<InvitationDetail>(`${endpoint}/${id}/invitation`, {
+        method: 'PATCH',
+        body: JSON.stringify({ email }),
+      }),
+    onMutate: () => setInvitationNotice(''),
+    onSuccess: async (_, variables) => {
+      setInvitationNotice('Invitation email updated.');
+      await Promise.all([
+        refresh(),
+        queryClient.invalidateQueries({ queryKey: [...queryKey, variables.id, 'invitation'] }),
+      ]);
+    },
+  });
+  const resendInvitation = useMutation({
+    mutationFn: (id: number) => request<ResentInvitation>(`${endpoint}/${id}/invitation/resend`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }),
+    onMutate: () => setInvitationNotice(''),
+    onSuccess: async (result) => {
+      setInvitationNotice(`Clerk accepted the invitation request for ${result.email}. Dispatch and inbox delivery are not confirmed.`);
+      await Promise.all([
+        refresh(),
+        queryClient.invalidateQueries({ queryKey: [...queryKey, result.employeeId, 'invitation'] }),
+      ]);
     },
   });
   const grantActivationAccess = useGrantDeviceActivationOfficer({ mutation: { onSuccess: refreshGrants } });
@@ -270,16 +330,17 @@ export function PlatformCompanyEmployeesPage() {
         />
       ) : (
         <div className="panel overflow-hidden">
-          <div className="hidden grid-cols-[1.5fr_1.2fr_1fr_1fr_auto] gap-4 border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/.3)] px-6 py-4 text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] md:grid">
+          <div className="hidden grid-cols-[1.5fr_1.2fr_1fr_1fr_1fr_auto] gap-4 border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/.3)] px-6 py-4 text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] md:grid">
             <span>Employee</span>
             <span>Contact</span>
             <span>Job title</span>
-            <span>Status</span>
+            <span>Profile status</span>
+            <span>Invitation status</span>
             <span>Actions</span>
           </div>
           <div className="divide-y divide-[hsl(var(--border)/.6)]">
             {employeesQuery.data.map((employee) => (
-              <div key={employee.id} className="grid gap-3 p-5 transition-colors hover:bg-[hsl(var(--muted)/.2)] md:grid-cols-[1.5fr_1.2fr_1fr_1fr_auto] md:items-center md:gap-4 md:px-6">
+              <div key={employee.id} className="grid gap-3 p-5 transition-colors hover:bg-[hsl(var(--muted)/.2)] md:grid-cols-[1.5fr_1.2fr_1fr_1fr_1fr_auto] md:items-center md:gap-4 md:px-6">
                 <div className="min-w-0">
                   <div className="font-bold">{employee.fullName}</div>
                   <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Yemait Technologies</div>
@@ -290,6 +351,14 @@ export function PlatformCompanyEmployeesPage() {
                 </div>
                 <div className="text-sm text-[hsl(var(--muted-foreground))]">{employee.jobTitle || '—'}</div>
                 <div><StatusPill value={employee.status} /></div>
+                <div className="space-y-1">
+                  <StatusPill value={employee.invitationStatus.status} />
+                  {employee.invitationStatus.invitation?.expiresAt && (
+                    <div className="text-xs text-[hsl(var(--muted-foreground))]">
+                      Expires {new Date(employee.invitationStatus.invitation.expiresAt).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variant="outline"
@@ -299,6 +368,21 @@ export function PlatformCompanyEmployeesPage() {
                   >
                     <Pencil size={14} />Edit
                   </Button>
+                  {(employee.invitationStatus.status === 'PENDING' || employee.invitationStatus.status === 'EXPIRED') && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        editInvitation.reset();
+                        resendInvitation.reset();
+                        setInvitationNotice('');
+                        setInvitationEditing(employee);
+                      }}
+                      title={`Edit or resend invitation for ${employee.fullName}`}
+                      testId={`button-edit-invitation-${employee.id}`}
+                    >
+                      Edit invitation
+                    </Button>
+                  )}
                   <Button
                     variant="quiet"
                     disabled={updateEmployee.isPending}
@@ -342,6 +426,48 @@ export function PlatformCompanyEmployeesPage() {
           />
         </Modal>
       )}
+      {invitationEditing && (
+        <Modal
+          title="Manage employee invitation"
+          eyebrow="Invitation email"
+          onClose={() => {
+            setInvitationEditing(null);
+            setInvitationNotice('');
+            editInvitation.reset();
+            resendInvitation.reset();
+          }}
+        >
+          {invitationQuery.isPending ? (
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">Loading invitation…</p>
+          ) : invitationQuery.isError ? (
+            <div className="space-y-4">
+              <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{errorMessage(invitationQuery.error)}</p>
+              <Button variant="outline" onClick={() => invitationQuery.refetch()}>Retry</Button>
+            </div>
+          ) : invitationQuery.data.status === 'PENDING' || invitationQuery.data.status === 'EXPIRED' ? (
+            <InvitationEditor
+              key={`${invitationEditing.id}-${invitationQuery.data.email}`}
+              employee={invitationEditing}
+              invitation={invitationQuery.data}
+              emailPending={editInvitation.isPending}
+              resendPending={resendInvitation.isPending}
+              error={editInvitation.error || resendInvitation.error}
+              notice={invitationNotice}
+              onEmailChange={() => {
+                setInvitationNotice('');
+                editInvitation.reset();
+                resendInvitation.reset();
+              }}
+              onSave={(email) => editInvitation.mutate({ id: invitationEditing.id, email })}
+              onResend={() => resendInvitation.mutate(invitationEditing.id)}
+            />
+          ) : (
+            <p role="status" className="text-sm">
+              This invitation is {invitationQuery.data.status.toLowerCase()}. Email editing and resend are available only for pending or expired invitations.
+            </p>
+          )}
+        </Modal>
+      )}
     </div>
   );
 }
@@ -375,7 +501,7 @@ function CompanyEmployeeForm({
     event.preventDefault();
     onSubmit({
       fullName: form.fullName.trim(),
-      email: form.email.trim(),
+      ...(!initial ? { email: form.email.trim() } : {}),
       phone: form.phone.trim() || undefined,
       jobTitle: form.jobTitle.trim() || undefined,
       ...(initial ? { status: form.status } : {
@@ -406,6 +532,7 @@ function CompanyEmployeeForm({
           autoComplete="email"
           value={form.email}
           onChange={(event) => setForm({ ...form, email: event.target.value })}
+          readOnly={Boolean(initial)}
           placeholder="name@yemait.com"
         />
       </Field>
@@ -491,5 +618,78 @@ function CompanyEmployeeForm({
         </Button>
       </div>
     </form>
+  );
+}
+
+function InvitationEditor({
+  employee,
+  invitation,
+  emailPending,
+  resendPending,
+  error,
+  notice,
+  onEmailChange,
+  onSave,
+  onResend,
+}: {
+  employee: CompanyEmployee;
+  invitation: InvitationDetail;
+  emailPending: boolean;
+  resendPending: boolean;
+  error: unknown;
+  notice: string;
+  onEmailChange: () => void;
+  onSave: (email: string) => void;
+  onResend: () => void;
+}) {
+  const [email, setEmail] = useState(invitation.email);
+
+  const save = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSave(email.trim());
+  };
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="font-semibold">{employee.fullName}</p>
+        <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
+          Invitation status: {invitation.status}. Profile status is managed separately.
+        </p>
+      </div>
+      <form onSubmit={save} className="space-y-4">
+        <Field label="Invitation email">
+          <input
+            required
+            type="email"
+            maxLength={254}
+            autoComplete="email"
+            value={email}
+            onChange={(event) => {
+              setEmail(event.target.value);
+              onEmailChange();
+            }}
+            data-testid={`input-invitation-email-${employee.id}`}
+          />
+        </Field>
+        <Button type="submit" disabled={emailPending || resendPending}>
+          {emailPending ? 'Updating…' : 'Update invitation email'}
+        </Button>
+      </form>
+      <p className="text-xs text-[hsl(var(--muted-foreground))]">
+        Resending requests a replacement invitation for this employee’s existing role and school assignment. Request acceptance is not confirmation of dispatch or inbox delivery.
+      </p>
+      <div className="flex flex-wrap justify-end gap-3 border-t border-[hsl(var(--border))] pt-4">
+        <Button variant="outline" disabled={emailPending || resendPending} onClick={onResend} testId={`button-resend-invitation-${employee.id}`}>
+          {resendPending ? 'Requesting…' : 'Resend invitation'}
+        </Button>
+      </div>
+      {notice && <p role="status" className="text-sm text-[hsl(var(--primary))]">{notice}</p>}
+      {Boolean(error) && (
+        <p role="alert" className="rounded-xl border border-[hsl(var(--destructive)/.25)] bg-[hsl(var(--destructive)/.08)] p-3 text-sm text-[hsl(var(--destructive))]">
+          {errorMessage(error)}
+        </p>
+      )}
+    </div>
   );
 }

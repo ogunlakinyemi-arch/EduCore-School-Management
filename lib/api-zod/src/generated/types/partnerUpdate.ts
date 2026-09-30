@@ -5,15 +5,18 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
-import type { PartnerStatus } from './partnerStatus';
 
 export interface PartnerUpdate {
   /** @minLength 2 */
   fullName?: string;
   businessName?: string;
+  /**
+     * @minLength 1
+     * @maxLength 254
+     */
+  email?: string;
   phone?: string;
   address?: string;
   state?: string;
   lga?: string;
-  status?: PartnerStatus;
 }

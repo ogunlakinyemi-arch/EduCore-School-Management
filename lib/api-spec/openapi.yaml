@@ -1439,6 +1439,71 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/SchoolAdministratorResult" }
         "403": { $ref: "#/components/responses/Forbidden" }
+  /schools/{schoolId}/invitations:
+    get:
+      operationId: listSchoolAdministratorInvitations
+      tags: [schools]
+      summary: List School Administrator invitations and active memberships for a school
+      description: Platform Owner only. Invitation tokens are never returned.
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+      responses:
+        "200":
+          description: School-scoped School Administrator invitation history
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolAdministratorInvitationList" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /schools/{schoolId}/invitations/{invitationId}:
+    patch:
+      operationId: editSchoolAdministratorInvitation
+      tags: [schools]
+      summary: Replace a pending School Administrator invitation with a corrected email
+      description: Platform Owner only. A pending or expired invitation may be replaced; the previous claim is invalidated.
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - name: invitationId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100, pattern: "^[A-Za-z0-9_-]+$" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SchoolAdministratorInvitationEmailUpdate" }
+      responses:
+        "201":
+          description: Replacement invitation request accepted; inbox delivery is unverified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolAdministratorInvitationReplacement" }
+        "400": { description: Invalid replacement email }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: Invitation is no longer eligible for replacement }
+        "503": { description: Invitation replacement could not be safely completed }
+    post:
+      operationId: resendSchoolAdministratorInvitation
+      tags: [schools]
+      summary: Resend a School Administrator invitation
+      description: Platform Owner only. Supersedes the existing invitation and sends a replacement to the same email.
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - name: invitationId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100, pattern: "^[A-Za-z0-9_-]+$" }
+      responses:
+        "201":
+          description: Replacement invitation request accepted; inbox delivery is unverified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolAdministratorInvitationReplacement" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: Invitation is no longer eligible for replacement }
+        "503": { description: Invitation replacement could not be safely completed }
   /people/imports/classes:
     get:
       operationId: listPeopleImportClasses
@@ -1995,7 +2060,7 @@ paths:
           description: Company employee profiles ordered by name
           content:
             application/json:
-              schema: { type: array, items: { $ref: "#/components/schemas/CompanyEmployee" } }
+              schema: { type: array, items: { $ref: "#/components/schemas/CompanyEmployeeWithInvitationStatus" } }
     post:
       operationId: createPlatformCompanyEmployee
       tags: [platform]
@@ -2026,7 +2091,7 @@ paths:
           description: Company employee profile
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/CompanyEmployee" }
+              schema: { $ref: "#/components/schemas/CompanyEmployeeWithInvitationStatus" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
     patch:
@@ -2050,7 +2115,55 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { description: A company employee with this email already exists }
+  /platform/company-employees/invitations:
+    get:
+      operationId: listPlatformCompanyEmployeeInvitations
+      tags: [platform]
+      summary: List company employee profiles with their current internal invitation status
+      responses:
+        "200":
+          description: Company employees and computed invitation status
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/CompanyEmployeeWithInvitationStatus" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /platform/company-employees/{employeeId}/invitation:
+    get:
+      operationId: getPlatformCompanyEmployeeInvitation
+      tags: [platform]
+      summary: Get the current internal invitation status for a company employee
+      parameters:
+        - $ref: "#/components/parameters/EmployeeIdPath"
+      responses:
+        "200":
+          description: Computed invitation status and safe invitation details
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CompanyEmployeeInvitationStatus" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      operationId: editPlatformCompanyEmployeeInvitation
+      tags: [platform]
+      summary: Correct the email of a pending company employee invitation
+      parameters:
+        - $ref: "#/components/parameters/EmployeeIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CompanyEmployeeInvitationEmailUpdate" }
+      responses:
+        "200":
+          description: Replacement invitation request accepted; delivery is unverified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CompanyEmployeeInvitationResult" }
+        "400": { description: Invalid replacement email }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: No current invitation is eligible for editing }
+        "503": { description: Invitation could not be safely replaced }
     post:
       operationId: invitePlatformCompanyEmployee
       tags: [platform]
@@ -2073,6 +2186,23 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "503": { description: Invitation could not be finalized or its status is uncertain }
+  /platform/company-employees/{employeeId}/invitation/resend:
+    post:
+      operationId: resendPlatformCompanyEmployeeInvitation
+      tags: [platform]
+      summary: Resend a company employee invitation
+      parameters:
+        - $ref: "#/components/parameters/EmployeeIdPath"
+      responses:
+        "200":
+          description: Replacement invitation request accepted; delivery is unverified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CompanyEmployeeInvitationResult" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: No current invitation is eligible for resend }
+        "503": { description: Invitation could not be safely replaced }
   /company/accountant/overview:
     get:
       operationId: getCompanyAccountantOverview
@@ -3093,6 +3223,22 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/Partner" } }
   /platform/partners/invitations:
+    get:
+      operationId: listPartnerInvitations
+      tags: [platform-partners]
+      summary: List partner invitations and their current lifecycle status
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [PENDING, ACTIVE, EXPIRED, REVOKED] }
+      responses:
+        "200":
+          description: Invitation records and separate invitation and partner profile statuses; no invitation token is returned
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PartnerInvitationListItem" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
     post:
       operationId: createPartnerInvitation
       tags: [platform-partners]
@@ -3104,10 +3250,27 @@ paths:
             schema: { $ref: "#/components/schemas/PartnerInvitationInput" }
       responses:
         "201":
-          description: Partner invitation created; the token is never returned
+          description: Partner invitation created; the raw invitation token is never returned
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PartnerInvitation" }
+  /platform/partners/{partnerId}/invitations/resend:
+    post:
+      operationId: resendPartnerInvitation
+      tags: [platform-partners]
+      summary: Resend the pending invitation for a partner profile
+      parameters:
+        - $ref: "#/components/parameters/PartnerIdPath"
+      responses:
+        "201":
+          description: Replacement invitation request accepted; the raw token is never returned and delivery is unverified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerInvitation" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: Partner profile is not awaiting invitation acceptance }
+        "503": { description: Invitation could not be safely finalized }
   /platform/partners/{partnerId}:
     get:
       operationId: getPartner
@@ -3350,7 +3513,7 @@ paths:
       tags: [partner]
       summary: Get the authenticated partner profile
       responses:
-        "200": { description: Partner profile, content: { application/json: { schema: { $ref: "#/components/schemas/Partner" } } } }
+        "200": { description: Active authenticated partner profile; this endpoint never returns pending profiles, content: { application/json: { schema: { $ref: "#/components/schemas/PartnerProfile" } } } }
     patch:
       operationId: updatePartnerProfile
       tags: [partner]
@@ -3361,7 +3524,113 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/PartnerSelfUpdate" }
       responses:
-        "200": { description: Partner profile, content: { application/json: { schema: { $ref: "#/components/schemas/Partner" } } } }
+        "200": { description: Active authenticated partner profile, content: { application/json: { schema: { $ref: "#/components/schemas/PartnerProfile" } } } }
+  /partner/staff:
+    get:
+      operationId: listPartnerStaff
+      tags: [partner]
+      summary: List active and inactive staff memberships for the authenticated partner
+      responses:
+        "200":
+          description: Partner staff members with their current permission roles
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PartnerStaffMember" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /partner/staff/{userId}/permissions:
+    patch:
+      operationId: updatePartnerStaffPermissions
+      tags: [partner]
+      summary: Change an active partner staff member's permission level
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerStaffPermissionUpdate" }
+      responses:
+        "200":
+          description: Updated staff membership permission
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerStaffPermissionResult" }
+        "400": { description: "Permission must be STANDARD, FINANCE, or ADMIN" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /partner/staff/invitations:
+    get:
+      operationId: listPartnerStaffInvitations
+      tags: [partner]
+      summary: List current non-expired partner staff invitations
+      responses:
+        "200":
+          description: Current staff invitations without invitation tokens
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PartnerStaffInvitationListItem" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /partner/staff-invitations:
+    post:
+      operationId: createPartnerStaffInvitation
+      tags: [partner]
+      summary: Invite a staff member to the authenticated partner profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerStaffInvitationInput" }
+      responses:
+        "201":
+          description: Invitation request accepted; raw invitation token is never returned and delivery is unverified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerStaffInvitation" }
+        "400": { description: Invalid email or permission }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { description: Email already has a partner invitation or membership }
+        "503": { description: Invitation could not be safely finalized }
+  /partner/staff-invitations/{invitationId}/resend:
+    post:
+      operationId: resendPartnerStaffInvitation
+      tags: [partner]
+      summary: Resend a partner staff invitation
+      parameters:
+        - name: invitationId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "201":
+          description: Replacement invitation request accepted; raw invitation token is never returned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerStaffInvitation" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: Invitation cannot be resent or staff permission cannot be verified }
+        "503": { description: Invitation could not be safely finalized }
+  /partner/staff-invitations/{invitationId}:
+    delete:
+      operationId: revokePartnerStaffInvitation
+      tags: [partner]
+      summary: Revoke a pending partner staff invitation
+      parameters:
+        - name: invitationId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Revoked invitation record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerStaffInvitationRevocation" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /partner/dashboard:
     get:
       operationId: getPartnerDashboard
@@ -3423,14 +3692,36 @@ paths:
             schema: { $ref: "#/components/schemas/PartnerPayoutInformationInput" }
       responses:
         "200": { description: Masked payout information, content: { application/json: { schema: { $ref: "#/components/schemas/PartnerPayoutInformationMasked" } } } }
-  /partner/invitations/{invitationToken}/accept:
+  /partner/invitations/accept:
     post:
       operationId: acceptPartnerInvitation
       tags: [partner-onboarding]
-      summary: Accept an invitation for the authenticated user
+      summary: Accept a partner owner or staff invitation for the authenticated user
+      description: The token may be supplied as the partnerInvitation query parameter or in the JSON request body. It is never returned in the response.
+      parameters:
+        - name: partnerInvitation
+          in: query
+          required: false
+          schema: { type: string, minLength: 32, pattern: "^[A-Za-z0-9_-]+$" }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerInvitationAcceptanceInput" }
+      responses:
+        "200": { description: Activated partner profile and assigned role; no token is returned, content: { application/json: { schema: { $ref: "#/components/schemas/PartnerInvitationAcceptance" } } } }
+        "400": { description: "Invitation token is invalid, expired, or revoked" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { description: Invitation cannot be attached to this account }
+  /partner/invitations/{invitationToken}/accept:
+    post:
+      operationId: acceptPartnerInvitationByPath
+      tags: [partner-onboarding]
+      summary: Accept a partner invitation using the legacy path-token form
+      description: The invitation token is used only for acceptance and is never returned.
       parameters: [{ $ref: "#/components/parameters/InvitationTokenPath" }]
       responses:
-        "200": { description: Activated partner, content: { application/json: { schema: { $ref: "#/components/schemas/Partner" } } } }
+        "200": { description: Activated partner profile and assigned role; no token is returned, content: { application/json: { schema: { $ref: "#/components/schemas/PartnerInvitationAcceptance" } } } }
   /partner/referrals/validate:
     post:
       operationId: validatePartnerReferral
@@ -4949,6 +5240,52 @@ components:
         deliveryStatus: { type: string, enum: [UNVERIFIED] }
         deliveryNote: { type: string }
         membership: { $ref: "#/components/schemas/RoleAssignment" }
+    SchoolAdministratorInvitationList:
+      type: object
+      required: [schoolId, role, invitations]
+      properties:
+        schoolId: { type: integer }
+        role: { type: string, const: SCHOOL_ADMIN }
+        invitations:
+          type: array
+          items: { $ref: "#/components/schemas/SchoolAdministratorInvitation" }
+    SchoolAdministratorInvitation:
+      type: object
+      required: [invitationId, claimId, email, fullName, schoolId, role, status, clerkStatus, isCurrent, membershipId, userId, createdAt, expiresAt]
+      properties:
+        invitationId: { type: ["string", "null"] }
+        claimId: { type: ["string", "null"] }
+        email: { type: string, format: email }
+        fullName: { type: ["string", "null"] }
+        schoolId: { type: integer }
+        role: { type: string, const: SCHOOL_ADMIN }
+        status: { type: string, enum: [PENDING, ACTIVE, EXPIRED, REVOKED, SUPERSEDED] }
+        clerkStatus: { type: ["string", "null"], enum: [pending, accepted, expired, revoked, revoked-or-ignored, null] }
+        isCurrent: { type: boolean }
+        membershipId: { type: ["integer", "null"] }
+        userId: { type: ["integer", "null"] }
+        createdAt: { type: ["string", "null"], format: date-time }
+        expiresAt: { type: ["string", "null"], format: date-time }
+    SchoolAdministratorInvitationEmailUpdate:
+      type: object
+      required: [email]
+      additionalProperties: false
+      properties:
+        email: { type: string, format: email, minLength: 1, maxLength: 254 }
+    SchoolAdministratorInvitationReplacement:
+      type: object
+      required: [status, invitationId, supersededInvitationId, previousInviteRevoked, email, schoolId, role, dispatchStatus, deliveryStatus, expiresAt]
+      properties:
+        status: { type: string, const: PENDING }
+        invitationId: { type: string }
+        supersededInvitationId: { type: string }
+        previousInviteRevoked: { type: boolean }
+        email: { type: string, format: email }
+        schoolId: { type: integer }
+        role: { type: string, const: SCHOOL_ADMIN }
+        dispatchStatus: { type: string, const: REQUEST_ACCEPTED }
+        deliveryStatus: { type: string, const: UNVERIFIED }
+        expiresAt: { type: string, format: date-time }
     InvitationDiagnostics:
       type: object
       required: [invitationId, clerkStatus, expiresAt, dispatchStatus, deliveryStatus, note]
@@ -5488,6 +5825,31 @@ components:
         status: { type: string, enum: [ACTIVE, INACTIVE] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    CompanyEmployeeWithInvitationStatus:
+      allOf:
+        - $ref: "#/components/schemas/CompanyEmployee"
+        - type: object
+          required: [invitationStatus]
+          properties:
+            invitationStatus: { $ref: "#/components/schemas/CompanyEmployeeInvitationStatus" }
+    CompanyEmployeeInvitationStatus:
+      type: object
+      required: [employeeId, email, status, invitation]
+      properties:
+        employeeId: { type: integer }
+        email: { type: string, format: email }
+        status: { type: string, enum: [NOT_INVITED, ACTIVE, PENDING, EXPIRED] }
+        invitation:
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [role, schoolId, invitationId, expiresAt, status]
+              properties:
+                role: { type: ["string", "null"], enum: [COMPANY_ACCOUNTANT, DEVICE_ACTIVATION_OFFICER, null] }
+                schoolId: { type: ["integer", "null"] }
+                invitationId: { type: ["string", "null"] }
+                expiresAt: { type: ["string", "null"], format: date-time }
+                status: { type: string, enum: [NOT_INVITED, ACTIVE, PENDING, EXPIRED] }
     CompanyEmployeeInput:
       type: object
       required: [fullName, email, role]
@@ -5571,7 +5933,14 @@ components:
           properties:
             status: { type: string, enum: [DISPATCH_REQUEST_ACCEPTED] }
             deliveryConfirmed: { type: boolean, enum: [false] }
+            invitationId: { type: string }
             expiresAt: { type: string, format: date-time }
+    CompanyEmployeeInvitationEmailUpdate:
+      type: object
+      required: [email]
+      additionalProperties: false
+      properties:
+        email: { type: string, format: email, minLength: 1, maxLength: 254 }
     CompanyAccountantOverview:
       type: object
       required: [subscriptions, commissions, payouts]
@@ -5709,6 +6078,12 @@ components:
         deactivationDate: { type: ["string", "null"], format: date-time }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: ["string", "null"], format: date-time }
+    PartnerProfile:
+      allOf:
+        - $ref: "#/components/schemas/Partner"
+        - type: object
+          properties:
+            status: { type: string, const: ACTIVE }
     PartnerInvitationInput:
       type: object
       required: [email, fullName]
@@ -5720,27 +6095,42 @@ components:
         partnerType: { $ref: "#/components/schemas/PartnerType" }
     PartnerInvitation:
       type: object
-      required: [id, partnerId, email, status, clerkInvitationId, invitationDispatchStatus, invitationDeliveryStatus, expiresAt, createdAt]
+      required: [id, partnerId, email, status, invitationDispatchStatus, invitationDeliveryStatus, expiresAt, createdAt]
       properties:
         id: { type: integer }
         partnerId: { type: integer }
         email: { type: string, format: email }
         status: { type: string, enum: [PENDING] }
-        clerkInvitationId: { type: string, description: Clerk invitation identifier; does not contain the invitation token }
+        clerkInvitationId: { type: string, description: Clerk invitation identifier; it is not the invitation token }
         invitationDispatchStatus: { type: string, enum: [REQUEST_ACCEPTED] }
         invitationDeliveryStatus: { type: string, enum: [UNVERIFIED] }
         expiresAt: { type: string, format: date-time }
         createdAt: { type: string, format: date-time }
+    PartnerInvitationListItem:
+      type: object
+      required: [id, partnerId, email, invitationStatus, partnerStatus, createdAt, expiresAt, redeemedAt, status]
+      properties:
+        id: { type: integer }
+        partnerId: { type: integer }
+        email: { type: string, format: email }
+        invitationStatus: { type: string, enum: [ACTIVE, ACCEPTED, REVOKED] }
+        partnerStatus: { $ref: "#/components/schemas/PartnerStatus" }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        redeemedAt: { type: ["string", "null"], format: date-time }
+        status: { type: string, enum: [PENDING, ACTIVE, EXPIRED, REVOKED] }
     PartnerUpdate:
       type: object
+      minProperties: 1
+      additionalProperties: false
       properties:
         fullName: { type: string, minLength: 2 }
         businessName: { type: string }
+        email: { type: string, format: email, minLength: 1, maxLength: 254 }
         phone: { type: string }
         address: { type: string }
         state: { type: string }
         lga: { type: string }
-        status: { $ref: "#/components/schemas/PartnerStatus" }
     PartnerSelfUpdate:
       type: object
       properties:
@@ -5755,6 +6145,86 @@ components:
       required: [status]
       properties:
         status: { $ref: "#/components/schemas/PartnerStatus" }
+    PartnerInvitationAcceptanceInput:
+      type: object
+      additionalProperties: false
+      properties:
+        partnerInvitation: { type: string, minLength: 32, pattern: "^[A-Za-z0-9_-]+$" }
+    PartnerInvitationAcceptance:
+      allOf:
+        - $ref: "#/components/schemas/Partner"
+        - type: object
+          required: [role, redirectTo]
+          properties:
+            status: { type: string, const: ACTIVE }
+            role: { type: string, enum: [PARTNER_OWNER, PARTNER_STAFF, PARTNER_FINANCE, PARTNER_ADMIN] }
+            redirectTo: { type: string, const: /partner }
+    PartnerStaffPermission:
+      type: string
+      enum: [STANDARD, FINANCE, ADMIN]
+    PartnerStaffRole:
+      type: string
+      enum: [PARTNER_STAFF, PARTNER_FINANCE, PARTNER_ADMIN]
+    PartnerStaffMember:
+      type: object
+      required: [userId, email, fullName, role, status, joinedAt]
+      properties:
+        userId: { type: integer }
+        email: { type: string, format: email }
+        fullName: { type: string }
+        role: { $ref: "#/components/schemas/PartnerStaffRole" }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        joinedAt: { type: string, format: date-time }
+    PartnerStaffPermissionUpdate:
+      type: object
+      required: [permission]
+      additionalProperties: false
+      properties:
+        permission: { $ref: "#/components/schemas/PartnerStaffPermission" }
+    PartnerStaffPermissionResult:
+      type: object
+      required: [userId, role, status]
+      properties:
+        userId: { type: integer }
+        role: { $ref: "#/components/schemas/PartnerStaffRole" }
+        status: { type: string, const: ACTIVE }
+    PartnerStaffInvitationInput:
+      type: object
+      required: [email]
+      additionalProperties: false
+      properties:
+        email: { type: string, format: email, minLength: 1, maxLength: 254 }
+        permission: { $ref: "#/components/schemas/PartnerStaffPermission" }
+    PartnerStaffInvitation:
+      type: object
+      required: [id, partnerId, email, role, permission, status, invitationDispatchStatus, invitationDeliveryStatus, expiresAt, createdAt]
+      properties:
+        id: { type: integer }
+        partnerId: { type: integer }
+        email: { type: string, format: email }
+        role: { $ref: "#/components/schemas/PartnerStaffRole" }
+        permission: { $ref: "#/components/schemas/PartnerStaffPermission" }
+        status: { type: string, const: PENDING }
+        invitationDispatchStatus: { type: string, const: REQUEST_ACCEPTED }
+        invitationDeliveryStatus: { type: string, const: UNVERIFIED }
+        expiresAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+    PartnerStaffInvitationListItem:
+      type: object
+      required: [id, email, status, createdAt, expiresAt]
+      properties:
+        id: { type: integer }
+        email: { type: string, format: email }
+        status: { type: string, const: ACTIVE }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+    PartnerStaffInvitationRevocation:
+      type: object
+      required: [id, partnerId, status]
+      properties:
+        id: { type: integer }
+        partnerId: { type: integer }
+        status: { type: string, const: REVOKED }
     PartnerSchool:
       type: object
       required: [schoolId, schoolName, attributionStatus, attributionSource, startDate]

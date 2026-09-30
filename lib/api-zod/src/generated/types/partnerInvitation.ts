@@ -14,8 +14,8 @@ export interface PartnerInvitation {
   partnerId: number;
   email: string;
   status: PartnerInvitationStatus;
-  /** Clerk invitation identifier; does not contain the invitation token */
-  clerkInvitationId: string;
+  /** Clerk invitation identifier; it is not the invitation token */
+  clerkInvitationId?: string;
   invitationDispatchStatus: PartnerInvitationInvitationDispatchStatus;
   invitationDeliveryStatus: PartnerInvitationInvitationDeliveryStatus;
   expiresAt: Date;

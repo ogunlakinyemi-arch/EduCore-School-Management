@@ -136,11 +136,18 @@ export function UsersPage() {
                 isPlatformOwner={isPlatformOwner}
                 onDone={(result) => {
                   done();
+                  if (isPlatformOwner) {
+                    qc.invalidateQueries({ queryKey: ['school-admin-invitations', schoolId] });
+                    qc.invalidateQueries({ queryKey: ['platform-school-overview', schoolId] });
+                    qc.invalidateQueries({ queryKey: ['platform-school-directory'] });
+                  }
                   toast({
-                     title: result.status === 'DISPATCH_REQUESTED' ? 'Invitation request accepted' : 'Access granted',
-                     description: result.status === 'DISPATCH_REQUESTED'
-                       ? `Clerk accepted the invitation request for ${result.email}; inbox delivery is not verified. It expires ${date(result.expiresAt)}.`
-                      : `${result.email} was added to this school using their existing account.`,
+                     title: isPlatformOwner ? 'Administrator invitation request completed' : result.status === 'DISPATCH_REQUESTED' ? 'Invitation request accepted' : 'Access granted',
+                     description: isPlatformOwner
+                       ? `Check the school's administrator invitation list for its actual status. Inbox delivery is not verified.${result.expiresAt ? ` The request expires ${date(result.expiresAt)}.` : ''}`
+                       : result.status === 'DISPATCH_REQUESTED'
+                         ? `Clerk accepted the invitation request for ${result.email}; inbox delivery is not verified. It expires ${date(result.expiresAt)}.`
+                         : `${result.email} was added to this school using their existing account.`,
                   });
                 }}
                 onCancel={() => setModal(null)}

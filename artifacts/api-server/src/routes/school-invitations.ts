@@ -91,6 +91,8 @@ async function auditInvitation(
   eventType: string,
   recordId: number | null,
   invitationId?: string,
+  claimId?: string,
+  fullName?: string,
 ) {
   const actorRole = actor.roles.find((item) =>
     item.schoolId === schoolId && item.role === "SCHOOL_ADMIN"
@@ -118,7 +120,13 @@ async function auditInvitation(
           : `Invited ${role.replaceAll("_", " ")}`,
       recordId,
       eventType,
-      JSON.stringify({ invitedEmail: email, role, invitationId: invitationId ?? null }),
+      JSON.stringify({
+        invitedEmail: email,
+        role,
+        invitationId: invitationId ?? null,
+        claimId: claimId ?? null,
+        ...splitName(fullName ?? ""),
+      }),
     ],
   );
 }
@@ -479,6 +487,7 @@ export async function createSchoolInvitation(input: InviteeInput, actor: UserCon
       emailProof: emailProof(email),
       schoolId: input.schoolId,
       role: input.role,
+      ...splitName(fullName),
       studentId: input.role === "STUDENT" ? input.studentId : null,
       employeeNo: input.role === "TEACHER" || input.role === "STAFF" ? employeeNo : null,
     },
@@ -491,7 +500,7 @@ export async function createSchoolInvitation(input: InviteeInput, actor: UserCon
       expiresInDays: INVITATION_DAYS,
       ignoreExisting: false,
       notify: true,
-      redirectUrl: "/",
+      redirectUrl: "/accept-invitation",
       publicMetadata: metadata,
     });
   } catch (error) {
@@ -513,6 +522,8 @@ export async function createSchoolInvitation(input: InviteeInput, actor: UserCon
       input.role === "SCHOOL_ADMIN" ? "SCHOOL_ADMIN_INVITED" : "USER_INVITED",
       null,
       invitation.id,
+      claimId,
+      fullName,
     );
     commitAttempted = true;
     const resolution = await commitInvitationWithRecovery({
@@ -535,7 +546,7 @@ export async function createSchoolInvitation(input: InviteeInput, actor: UserCon
     }
   } catch (error) {
     if (!commitAttempted) {
-      await client?.query("ROLLBACK").catch(() => undefined);
+      await client.query("ROLLBACK").catch(() => undefined);
       try {
         await clerkClient.invitations.revokeInvitation(invitation.id);
       } catch {
@@ -613,16 +624,17 @@ export async function createSchoolWithAdministrator(input: {
     schoolId = created.rows[0]?.id;
     if (!schoolId) throw new AuthError(503, "School could not be created");
     const { firstName, lastName } = splitName(fullName);
+    const claimId = randomUUID();
     const invitation = await clerkClient.invitations.createInvitation({
       emailAddress: email,
       expiresInDays: INVITATION_DAYS,
       ignoreExisting: false,
       notify: true,
-      redirectUrl: "/",
+      redirectUrl: "/accept-invitation",
       publicMetadata: {
         [METADATA_KEY]: {
           version: 1,
-          claimId: randomUUID(),
+          claimId,
           emailProof: emailProof(email),
           schoolId,
           role: "SCHOOL_ADMIN",
@@ -642,6 +654,8 @@ export async function createSchoolWithAdministrator(input: {
       "SCHOOL_ADMIN_INVITED",
       null,
       invitation.id,
+      claimId,
+      fullName,
     );
     commitAttempted = true;
     const resolution = await commitInvitationWithRecovery({
@@ -691,6 +705,326 @@ export async function createSchoolWithAdministrator(input: {
   } finally {
     client.release();
   }
+}
+
+export type ClerkSchoolInvitationStatus = "pending" | "accepted" | "revoked" | "expired";
+
+export async function getClerkSchoolInvitation(invitationId: string) {
+  const statuses: ClerkSchoolInvitationStatus[] = ["pending", "accepted", "revoked", "expired"];
+  try {
+    for (const status of statuses) {
+      const response = await clerkClient.invitations.getInvitationList({
+        query: invitationId,
+        status,
+      });
+      const invitation = response.data.find((item) => item.id === invitationId);
+      if (invitation) return invitation;
+    }
+  } catch {
+    throw new AuthError(503, "Clerk invitation status could not be checked");
+  }
+  throw new AuthError(404, "Invitation not found in Clerk");
+}
+
+export async function getClerkSchoolInvitationStatus(invitationId: string) {
+  const invitation = await getClerkSchoolInvitation(invitationId);
+  return invitation.status as ClerkSchoolInvitationStatus;
+}
+
+export async function replaceSchoolAdminInvitation(input: {
+  schoolId: number;
+  invitationId: string;
+  email?: string;
+}, actor: UserContext) {
+  const target = await pool.query(
+    `SELECT id,school_id AS "schoolId",event_type AS "eventType",metadata
+     FROM audit_logs
+     WHERE school_id=$1 AND metadata->>'invitationId'=$2
+       AND event_type='SCHOOL_ADMIN_INVITED'
+     ORDER BY timestamp DESC LIMIT 1`,
+    [input.schoolId, input.invitationId],
+  );
+  const source = target.rows[0];
+  if (!source) throw new AuthError(404, "School administrator invitation not found");
+  const sourceMetadata = typeof source.metadata === "string"
+    ? JSON.parse(source.metadata)
+    : source.metadata ?? {};
+  let oldClaimId = sourceMetadata.claimId;
+  const oldEmail = normalizeEmail(String(sourceMetadata.invitedEmail ?? ""));
+  const email = normalizeEmail(input.email ?? oldEmail);
+  let fullName = [sourceMetadata.firstName, sourceMetadata.lastName]
+    .filter((name: unknown): name is string => typeof name === "string" && name.trim().length > 0)
+    .join(" ") || oldEmail;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new AuthError(400, "A valid replacement email is required");
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(oldEmail)) {
+    throw new AuthError(409, "This invitation does not contain enough information to safely replace it");
+  }
+  const clerkInvitation = await getClerkSchoolInvitation(input.invitationId);
+  const clerkMarker = (clerkInvitation.publicMetadata as Record<string, any> | undefined)?.[METADATA_KEY];
+  oldClaimId = oldClaimId ?? clerkMarker?.claimId;
+  if (fullName === oldEmail) {
+    fullName = [clerkMarker?.firstName, clerkMarker?.lastName]
+      .filter((name: unknown): name is string => typeof name === "string" && name.trim().length > 0)
+      .join(" ") || oldEmail;
+  }
+  if (!oldClaimId || !/^[0-9a-f-]{36}$/i.test(oldClaimId) || fullName.length < 2) {
+    throw new AuthError(409, "This invitation does not contain enough information to safely replace it");
+  }
+  const alreadySuperseded = await pool.query(
+    `SELECT 1 FROM audit_logs
+     WHERE school_id=$1 AND event_type='SCHOOL_INVITATION_SUPERSEDED'
+       AND metadata->>'supersedesClaimId'=$2 LIMIT 1`,
+    [input.schoolId, oldClaimId],
+  );
+  if (alreadySuperseded.rows[0]) {
+    throw new AuthError(409, "This invitation has already been replaced");
+  }
+  const clerkStatus = clerkInvitation.status as ClerkSchoolInvitationStatus;
+  if (clerkStatus !== "pending" && clerkStatus !== "expired") {
+    throw new AuthError(409, "Only pending or expired invitations may be replaced");
+  }
+  const member = await pool.query(
+    `SELECT sm.id,sm.status FROM app_users au
+     JOIN school_memberships sm ON sm.user_id=au.id
+     WHERE lower(au.email)=lower($1) AND sm.school_id=$2
+       AND sm.role='SCHOOL_ADMIN' LIMIT 1`,
+    [oldEmail, input.schoolId],
+  );
+  if (member.rows[0]?.status === "ACTIVE") {
+    throw new AuthError(409, "This school administrator is already active");
+  }
+  const newClaimId = randomUUID();
+  const metadata = {
+    [METADATA_KEY]: {
+      version: 1,
+      claimId: newClaimId,
+      emailProof: emailProof(email),
+      schoolId: input.schoolId,
+      role: "SCHOOL_ADMIN",
+      studentId: null,
+      employeeNo: null,
+      ...splitName(fullName),
+    },
+  };
+  const sameAddressResend = email === oldEmail && clerkStatus === "pending";
+  let previousInviteRevoked = false;
+  if (sameAddressResend) {
+    try {
+      await clerkClient.invitations.revokeInvitation(input.invitationId);
+      previousInviteRevoked = true;
+    } catch {
+      throw new AuthError(
+        503,
+        "The previous invitation could not be safely revoked; no replacement was sent.",
+        "INVITATION_RECOVERY_REQUIRED",
+      );
+    }
+  }
+  const recordSupersededWithoutReplacement = async () => {
+    if (!previousInviteRevoked) return;
+    let markerClient: any;
+    try {
+      markerClient = await pool.connect();
+      await markerClient.query("BEGIN");
+      await markerClient.query(
+        `UPDATE audit_logs
+         SET metadata=COALESCE(metadata,'{}'::jsonb) ||
+           jsonb_build_object('superseded',true,'supersededByClaimId',$1)
+         WHERE school_id=$2 AND metadata->>'invitationId'=$3
+           AND event_type='SCHOOL_ADMIN_INVITED'`,
+        [oldClaimId, input.schoolId, input.invitationId],
+      );
+      await markerClient.query(
+        `INSERT INTO audit_logs
+          ("user",role,actor_user_id,clerk_user_id,school_id,action,module,record_id,
+           severity,event_type,result,metadata)
+         VALUES($1,'PLATFORM_OWNER',$2,$3,$4,'Superseded revoked School Administrator invitation',
+           'Security',NULL,'info','SCHOOL_INVITATION_SUPERSEDED','SUCCESS',$5)`,
+        [
+          [actor.user.firstName, actor.user.lastName].filter(Boolean).join(" ") || actor.user.email,
+          actor.user.id,
+          actor.user.clerkUserId,
+          input.schoolId,
+          JSON.stringify({
+            supersedesClaimId: oldClaimId,
+            supersededInvitationId: input.invitationId,
+            replacementClaimId: null,
+            replacementInvitationId: null,
+            oldEmail,
+            invitedEmail: email,
+            role: "SCHOOL_ADMIN",
+          }),
+        ],
+      );
+      await markerClient.query("COMMIT");
+    } catch {
+      await markerClient?.query("ROLLBACK").catch(() => undefined);
+      throw new AuthError(
+        503,
+        "The previous invitation was revoked but its local status could not be recorded. Contact platform support before retrying.",
+        "INVITATION_RECOVERY_REQUIRED",
+      );
+    } finally {
+      markerClient?.release();
+    }
+  };
+  let invitation: Awaited<ReturnType<typeof clerkClient.invitations.createInvitation>>;
+  try {
+    invitation = await clerkClient.invitations.createInvitation({
+      emailAddress: email,
+      expiresInDays: INVITATION_DAYS,
+      ignoreExisting: false,
+      notify: true,
+      redirectUrl: "/accept-invitation",
+      publicMetadata: metadata,
+    });
+  } catch (error) {
+    await recordSupersededWithoutReplacement();
+    if (previousInviteRevoked) {
+      throw new AuthError(
+        503,
+        "The previous invitation was revoked but Clerk did not confirm a replacement. Check the invitation list before retrying.",
+        "INVITATION_RECOVERY_REQUIRED",
+      );
+    }
+    throwClerkInvitationError(error);
+  }
+
+  let client: any;
+  let commitAttempted = false;
+  try {
+    client = await pool.connect();
+    await client.query("BEGIN");
+    const locked = await client.query(
+      `SELECT id FROM audit_logs
+       WHERE school_id=$1 AND metadata->>'invitationId'=$2
+         AND (metadata->>'claimId'=$3 OR metadata->>'claimId' IS NULL)
+         AND event_type='SCHOOL_ADMIN_INVITED'
+       FOR UPDATE`,
+      [input.schoolId, input.invitationId, oldClaimId],
+    );
+    if (!locked.rows[0]) throw new AuthError(409, "This invitation changed while it was being replaced");
+    const superseded = await client.query(
+      `SELECT 1 FROM audit_logs
+       WHERE school_id=$1 AND event_type='SCHOOL_INVITATION_SUPERSEDED'
+         AND metadata->>'supersedesClaimId'=$2 LIMIT 1`,
+      [input.schoolId, oldClaimId],
+    );
+    if (superseded.rows[0]) throw new AuthError(409, "This invitation has already been replaced");
+    const activeMembership = await client.query(
+      `SELECT sm.id FROM app_users au
+       JOIN school_memberships sm ON sm.user_id=au.id
+       WHERE lower(au.email)=lower($1) AND sm.school_id=$2
+         AND sm.role='SCHOOL_ADMIN' AND sm.status='ACTIVE' LIMIT 1`,
+      [oldEmail, input.schoolId],
+    );
+    if (activeMembership.rows[0]) throw new AuthError(409, "This school administrator is already active");
+    await client.query(
+      `UPDATE audit_logs
+       SET metadata=COALESCE(metadata,'{}'::jsonb) ||
+         jsonb_build_object('superseded',true,'supersededByClaimId',$1,'supersededByInvitationId',$2)
+       WHERE school_id=$3 AND metadata->>'invitationId'=$4
+         AND event_type='SCHOOL_ADMIN_INVITED'`,
+      [newClaimId, invitation.id, input.schoolId, input.invitationId],
+    );
+    await auditInvitation(
+      client,
+      actor,
+      input.schoolId,
+      "SCHOOL_ADMIN",
+      email,
+      "SCHOOL_ADMIN_INVITED",
+      null,
+      invitation.id,
+      newClaimId,
+      fullName,
+    );
+    await client.query(
+      `INSERT INTO audit_logs
+        ("user",role,actor_user_id,clerk_user_id,school_id,action,module,record_id,
+         severity,event_type,result,metadata)
+       VALUES($1,'PLATFORM_OWNER',$2,$3,$4,'Replaced School Administrator invitation',
+         'Security',NULL,'info','SCHOOL_INVITATION_SUPERSEDED','SUCCESS',$5)`,
+      [
+        [actor.user.firstName, actor.user.lastName].filter(Boolean).join(" ") || actor.user.email,
+        actor.user.id,
+        actor.user.clerkUserId,
+        input.schoolId,
+        JSON.stringify({
+          supersedesClaimId: oldClaimId,
+          supersededInvitationId: input.invitationId,
+          replacementClaimId: newClaimId,
+          replacementInvitationId: invitation.id,
+          oldEmail,
+          invitedEmail: email,
+          role: "SCHOOL_ADMIN",
+        }),
+      ],
+    );
+    commitAttempted = true;
+    const resolution = await commitInvitationWithRecovery({
+      commit: () => client.query("COMMIT"),
+      rollback: () => client.query("ROLLBACK"),
+      isCommitted: async () => Boolean((await pool.query(
+        `SELECT 1 FROM audit_logs WHERE metadata->>'invitationId'=$1 LIMIT 1`,
+        [invitation.id],
+      )).rows[0]),
+      revokeInvitation: () => clerkClient.invitations.revokeInvitation(invitation.id),
+    });
+    if (resolution !== "COMMITTED") {
+      throw new AuthError(
+        503,
+        resolution === "UNKNOWN"
+          ? "Invitation replacement status is uncertain; do not resend. Check the invitation list before retrying."
+          : "Invitation replacement could not be completed; please retry",
+        resolution === "UNKNOWN" ? "INVITATION_RECOVERY_REQUIRED" : undefined,
+      );
+    }
+  } catch (error) {
+    if (!commitAttempted) {
+      await client?.query("ROLLBACK").catch(() => undefined);
+      try {
+        await clerkClient.invitations.revokeInvitation(invitation.id);
+      } catch {
+        await recordSupersededWithoutReplacement();
+        throw new AuthError(
+          503,
+          "The replacement invitation could not be finalized or revoked. Contact platform support before retrying.",
+          "INVITATION_RECOVERY_REQUIRED",
+        );
+      }
+    }
+    await recordSupersededWithoutReplacement();
+    throw error;
+  } finally {
+    client?.release();
+  }
+
+  if (!previousInviteRevoked) {
+    try {
+      await clerkClient.invitations.revokeInvitation(input.invitationId);
+      previousInviteRevoked = true;
+    } catch {
+      previousInviteRevoked = false;
+    }
+  }
+  return {
+    status: "PENDING" as const,
+    invitationId: invitation.id,
+    supersededInvitationId: input.invitationId,
+    previousInviteRevoked,
+    email,
+    schoolId: input.schoolId,
+    role: "SCHOOL_ADMIN" as const,
+    dispatchStatus: "REQUEST_ACCEPTED" as const,
+    deliveryStatus: "UNVERIFIED" as const,
+    expiresAt: new Date(
+      (invitation.createdAt > 1_000_000_000_000 ? invitation.createdAt : invitation.createdAt * 1000) +
+      INVITATION_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString(),
+  };
 }
 
 export type AcceptedInvitation = {
@@ -768,6 +1102,30 @@ export async function activateAcceptedSchoolInvitation(userId: number, clerkUser
     );
     if (!user.rows[0] || normalizeEmail(user.rows[0].email) !== email || user.rows[0].status !== "ACTIVE") {
       throw new AuthError(403, "The invitation does not match an active account");
+    }
+    const liveClaim = await client.query(
+      `SELECT current_invite.id FROM audit_logs current_invite
+       WHERE current_invite.school_id=$1
+         AND (
+           current_invite.metadata->>'claimId'=$2
+           OR (current_invite.metadata->>'claimId' IS NULL
+             AND lower(current_invite.metadata->>'invitedEmail')=lower($3)
+             AND current_invite.metadata->>'role'=$4)
+         )
+         AND current_invite.metadata->>'invitationId' IS NOT NULL
+         AND current_invite.metadata->>'superseded' IS DISTINCT FROM 'true'
+         AND current_invite.event_type IN ('SCHOOL_ADMIN_INVITED','USER_INVITED')
+         AND NOT EXISTS (
+           SELECT 1 FROM audit_logs superseded
+           WHERE superseded.school_id=current_invite.school_id
+             AND superseded.event_type='SCHOOL_INVITATION_SUPERSEDED'
+             AND superseded.metadata->>'supersedesClaimId'=$2
+         )
+       ORDER BY current_invite.timestamp DESC LIMIT 1 FOR UPDATE`,
+      [invite.schoolId, invite.claimId, email, invite.role],
+    );
+    if (!liveClaim.rows[0]) {
+      throw new AuthError(403, "This invitation has been replaced or is no longer active");
     }
     const activationOfficer = await client.query(
       `SELECT 1 FROM school_memberships

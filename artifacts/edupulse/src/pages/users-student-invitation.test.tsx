@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   schoolId: 7,
   studentRequests: [] as Array<{ params: any; enabled: boolean }>,
   invalidateQueries: vi.fn(),
+  toast: vi.fn(),
 }));
 
 vi.mock('@tanstack/react-query', () => ({
@@ -52,7 +53,7 @@ vi.mock('@/components/shared', () => ({
   date: () => '',
 }));
 
-vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
+vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
 
 import { UsersPage } from './users';
 
@@ -80,6 +81,7 @@ describe('school student invitation UI', () => {
     mocks.schoolId = 7;
     mocks.studentRequests = [];
     mocks.invalidateQueries.mockReset();
+    mocks.toast.mockReset();
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ status: 'DISPATCH_REQUESTED', email: 'amara@example.edu' }),
@@ -143,6 +145,31 @@ describe('school student invitation UI', () => {
     expect(host.querySelector('select[name="role"]')).toBeNull();
     expect(host.textContent).not.toContain('Existing student profile');
     expect(mocks.studentRequests.every(request => !request.enabled)).toBe(true);
+  });
+
+  it('does not claim administrator access is Active from the invitation POST response', async () => {
+    mocks.owner = true;
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({ status: 'ACTIVE', email: 'admin@example.edu', expiresAt: null }),
+    } as Response);
+    await renderPage();
+    await act(async () => {
+      [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Invite School Admin'))?.click();
+    });
+    await changeValue(host.querySelector<HTMLInputElement>('input[name="fullName"]')!, 'Morgan Admin');
+    await changeValue(host.querySelector<HTMLInputElement>('input[name="email"]')!, 'admin@example.edu');
+    await act(async () => {
+      host.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+
+    expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Administrator invitation request completed',
+      description: expect.stringContaining("actual status"),
+    }));
+    expect(mocks.toast.mock.calls[0][0].title).not.toBe('Access granted');
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['school-admin-invitations', 7] });
   });
 
   it('preserves teacher invitations and displays explicit server errors', async () => {

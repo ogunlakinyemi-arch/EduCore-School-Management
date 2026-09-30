@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Route, Switch, Link, useLocation } from 'wouter';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { 
   useListPartners, 
   useCreatePartnerInvitation,
@@ -29,7 +30,7 @@ import {
   cx,
   Metric
 } from '@/components/shared';
-import { Handshake, UserPlus, FileCheck, CheckCircle2, XCircle, Search, ExternalLink, RefreshCw, HandCoins, AlertTriangle, AlertCircle } from 'lucide-react';
+import { Handshake, UserPlus, FileCheck, CheckCircle2, XCircle, Search, ExternalLink, RefreshCw, HandCoins, AlertTriangle, AlertCircle, Pencil, Send } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -45,15 +46,93 @@ const inviteSchema = z.object({
   partnerType: z.enum(['INDIVIDUAL', 'BUSINESS']).default('BUSINESS'),
 });
 
+const invitationEmailSchema = z.object({ email: z.string().email() });
+
+type PlatformPartnerInvitation = {
+  invitationId: number;
+  partnerId: number;
+  email: string;
+  status: 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+  createdAt?: string;
+  updatedAt?: string;
+  expiresAt?: string;
+};
+
+async function platformPartnerRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`/api${path}`, {
+    ...init,
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(result?.error || 'Partner invitation request failed');
+  return result as T;
+}
+
 function PartnersOverview() {
   const query = useListPartners();
+  const invitations = useQuery({
+    queryKey: ['platformPartnerInvitations'],
+    queryFn: () => platformPartnerRequest<PlatformPartnerInvitation[]>('/platform/partners/invitations'),
+  });
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [showInvite, setShowInvite] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingInvitation, setEditingInvitation] = useState<PlatformPartnerInvitation | null>(null);
+  const updateInvitationEmail = useMutation({
+    mutationFn: ({ partnerId, email }: { partnerId: number; email: string }) =>
+      platformPartnerRequest(`/platform/partners/${partnerId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ email }),
+      }),
+    onSuccess: async () => {
+      toast({ title: 'Invitation email updated', description: 'The previous invitation was superseded.' });
+      setEditingInvitation(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['platformPartnerInvitations'] }),
+        queryClient.invalidateQueries({ queryKey: ['listPartners'] }),
+      ]);
+    },
+    onError: (error: Error) => toast({
+      title: 'Email update failed',
+      description: error.message,
+      variant: 'destructive',
+    }),
+  });
+  const resendInvitation = useMutation({
+    mutationFn: (partnerId: number) =>
+      platformPartnerRequest(`/platform/partners/${partnerId}/invitations/resend`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      }),
+    onSuccess: async () => {
+      toast({ title: 'Replacement invitation requested', description: 'The invitation list will refresh shortly.' });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['platformPartnerInvitations'] }),
+        queryClient.invalidateQueries({ queryKey: ['listPartners'] }),
+      ]);
+    },
+    onError: (error: Error) => toast({
+      title: 'Resend failed',
+      description: error.message,
+      variant: 'destructive',
+    }),
+  });
   
   if (query.isLoading) return <SkeletonPage />;
   if (query.isError) return <ErrorState retry={() => query.refetch()} />;
 
   const partners = query.data ?? [];
+  const latestInvitationByPartner = new Map<number, PlatformPartnerInvitation>();
+  for (const invitation of invitations.data ?? []) {
+    const current = latestInvitationByPartner.get(invitation.partnerId);
+    const invitationTime = Date.parse(invitation.createdAt || invitation.updatedAt || invitation.expiresAt || '') || invitation.invitationId;
+    const currentTime = current
+      ? Date.parse(current.createdAt || current.updatedAt || current.expiresAt || '') || current.invitationId
+      : -1;
+    if (!current || invitationTime >= currentTime) latestInvitationByPartner.set(invitation.partnerId, invitation);
+  }
   const filtered = partners.filter(p => 
     p.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
     p.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -111,11 +190,48 @@ function PartnersOverview() {
                     <div className="text-[hsl(var(--foreground))]">{partner.email}</div>
                     {partner.phone && <div className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))]">{partner.phone}</div>}
                   </td>
-                  <td className="p-4"><StatusPill value={partner.status} /></td>
+                <td className="p-4">
+                  {(() => {
+                    const invitation = latestInvitationByPartner.get(partner.id);
+                    const status = invitation?.status ?? (partner.status === 'INVITED' ? 'PENDING' : partner.status);
+                    const label = status === 'PENDING' ? 'Pending' : status === 'ACTIVE' ? 'Active' : status;
+                    return <div className="space-y-1">
+                      <StatusPill value={status} />
+                      <div className="text-xs text-[hsl(var(--muted-foreground))]">Invitation: {label}</div>
+                    </div>;
+                  })()}
+                </td>
                   <td className="p-4 text-right">
+                  <div className="flex justify-end gap-2">
+                    {(() => {
+                      const invitation = latestInvitationByPartner.get(partner.id);
+                      const invitationStatus = invitation?.status ?? (partner.status === 'INVITED' ? 'PENDING' : partner.status);
+                      const canManageInvitation = invitationStatus === 'PENDING' || invitationStatus === 'EXPIRED';
+                      return canManageInvitation && <>
+                        {invitationStatus === 'PENDING' && <Button
+                          variant="outline"
+                          className="h-8 px-3 text-xs"
+                          disabled={updateInvitationEmail.isPending || invitations.isError}
+                          onClick={() => setEditingInvitation(invitation ?? {
+                            invitationId: 0,
+                            partnerId: partner.id,
+                            email: partner.email,
+                            status: 'PENDING',
+                          })}
+                          aria-label={`Edit invitation email for ${partner.fullName}`}
+                        ><Pencil size={13} />Edit email</Button>}
+                        <Button
+                          className="h-8 px-3 text-xs"
+                          disabled={resendInvitation.isPending || invitations.isError}
+                          onClick={() => resendInvitation.mutate(partner.id)}
+                          aria-label={`Resend invitation for ${partner.fullName}`}
+                        ><Send size={13} />Resend</Button>
+                      </>;
+                    })()}
                     <Link href={`/partners/${partner.id}`}>
                       <Button variant="outline" className="h-8 text-xs py-0 px-3">View details</Button>
                     </Link>
+                  </div>
                   </td>
                 </tr>
               ))}
@@ -131,8 +247,57 @@ function PartnersOverview() {
         </div>
       </div>
 
+      {invitations.isError && (
+        <div className="mt-4 flex items-center justify-between rounded-xl border border-[hsl(var(--destructive)/.35)] bg-[hsl(var(--destructive)/.06)] p-4 text-sm" role="alert">
+          <span>Invitation statuses could not be loaded: {(invitations.error as Error).message}</span>
+          <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => invitations.refetch()}>
+            <RefreshCw size={13} />Refresh
+          </Button>
+        </div>
+      )}
+
       {showInvite && <InvitePartnerModal onClose={() => setShowInvite(false)} />}
+      {editingInvitation && <EditPartnerInvitationModal
+        invitation={editingInvitation}
+        isPending={updateInvitationEmail.isPending}
+        onClose={() => setEditingInvitation(null)}
+        onSave={(email) => updateInvitationEmail.mutate({ partnerId: editingInvitation.partnerId, email })}
+      />}
     </div>
+  );
+}
+
+function EditPartnerInvitationModal({
+  invitation,
+  isPending,
+  onClose,
+  onSave,
+}: {
+  invitation: PlatformPartnerInvitation;
+  isPending: boolean;
+  onClose: () => void;
+  onSave: (email: string) => void;
+}) {
+  const form = useForm<z.infer<typeof invitationEmailSchema>>({
+    resolver: zodResolver(invitationEmailSchema),
+    defaultValues: { email: invitation.email },
+  });
+
+  return (
+    <Modal title="Edit invitation email" eyebrow="Partner access" onClose={onClose}>
+      <form onSubmit={form.handleSubmit(({ email }) => onSave(email))} className="space-y-5">
+        <Field label="Email address" error={form.formState.errors.email?.message}>
+          <input type="email" {...form.register('email')} />
+        </Field>
+        <p className="text-sm text-[hsl(var(--muted-foreground))]">
+          Saving updates the partner email and supersedes the previous invitation.
+        </p>
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={isPending}>{isPending ? 'Saving…' : 'Save email'}</Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 

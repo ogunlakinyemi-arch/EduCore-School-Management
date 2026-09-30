@@ -58,6 +58,9 @@ function proof(email: string) {
 }
 
 function sqlResult(sql: string) {
+  if (sql.includes("current_invite.id")) {
+    return { rows: [{ id: 501 }] };
+  }
   if (sql.includes("INSERT INTO school_memberships")) {
     return { rows: [{ id: 42, userId: 21, schoolId: 3, role: "SCHOOL_ADMIN", status: "ACTIVE" }] };
   }
@@ -138,6 +141,7 @@ describe("school invitations", () => {
       expiresInDays: 7,
       ignoreExisting: false,
       notify: true,
+      redirectUrl: "/accept-invitation",
     }));
     const metadata = mocks.createInvitation.mock.calls[0][0].publicMetadata;
     expect(metadata.edupulseSchoolInvitation).toEqual(expect.objectContaining({
@@ -295,6 +299,7 @@ describe("school invitations", () => {
       },
     });
     mocks.clientQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      if (sql.includes("current_invite.id")) return { rows: [{ id: 501 }] };
       if (sql.includes("SELECT id,email,status FROM app_users")) {
         return { rows: [{ id: 21, email: "student@example.test", status: "ACTIVE" }] };
       }
@@ -331,6 +336,23 @@ describe("school invitations", () => {
     expect(mocks.connect).not.toHaveBeenCalled();
   });
 
+  it("rejects a replaced claim even when its signed Clerk metadata remains", async () => {
+    mocks.clientQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("SELECT id,email,status FROM app_users")) {
+        return { rows: [{ id: 21, email: "admin@example.test", status: "ACTIVE" }] };
+      }
+      if (sql.includes("current_invite.id")) return { rows: [] };
+      return { rows: [] };
+    });
+
+    await expect(activateAcceptedSchoolInvitation(21, "user_accepted"))
+      .rejects.toMatchObject({ statusCode: 403 });
+    expect(mocks.clientQuery).not.toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO school_memberships"),
+      expect.anything(),
+    );
+  });
+
   it("creates a school and its first administrator invitation in one transaction", async () => {
     mocks.clientQuery.mockImplementation(async (sql: string) => {
       if (sql.includes("INSERT INTO schools")) return { rows: [{ id: 77 }] };
@@ -349,6 +371,7 @@ describe("school invitations", () => {
     expect(mocks.createInvitation).toHaveBeenCalledWith(expect.objectContaining({
       emailAddress: "first.admin@example.test",
       notify: true,
+      redirectUrl: "/accept-invitation",
     }));
     expect(mocks.clientQuery).toHaveBeenCalledWith("COMMIT");
     expect(JSON.stringify(mocks.createInvitation.mock.calls[0][0].publicMetadata))

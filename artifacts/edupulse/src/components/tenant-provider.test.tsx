@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   userId: 'owner' as string | null,
-  requests: [] as string[],
+  requests: [] as (string | null)[],
   mounts: 0,
 }));
 

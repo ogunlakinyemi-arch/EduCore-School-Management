@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
   activeRoles: [] as Array<{ id: number; role: string; schoolId: number | null }>,
   calls: [] as Array<{ sql: string; values: unknown[] }>,
   metadata: {} as Record<string, unknown>,
+  liveClaim: null as { claimId: string; expiresAt: string; employeeId: number } | null,
 }));
 
 const invitationCreate = vi.hoisted(() => vi.fn(async (input: any) => {
@@ -30,6 +31,14 @@ const clerkUpdateMetadata = vi.hoisted(() => vi.fn(async () => undefined));
 
 const clientQuery = vi.hoisted(() => vi.fn(async (sql: string, values: unknown[] = []) => {
   state.calls.push({ sql, values });
+  if (sql.includes("INSERT INTO audit_logs") && sql.includes("'INTERNAL_EMPLOYEE_INVITED'")) {
+    const metadata = JSON.parse(String(values[4]));
+    state.liveClaim = {
+      claimId: metadata.claimId,
+      expiresAt: metadata.expiresAt,
+      employeeId: Number(values[3]),
+    };
+  }
   if (sql.includes("FROM app_users") && sql.includes("FOR UPDATE")) return { rows: [state.user] };
   if (sql.includes("FROM platform_company_employees") && sql.includes("FOR SHARE")) {
     return state.employee.email === values[1]
@@ -51,6 +60,12 @@ const clientQuery = vi.hoisted(() => vi.fn(async (sql: string, values: unknown[]
 const client = vi.hoisted(() => ({ query: clientQuery, release: vi.fn() }));
 const poolQuery = vi.hoisted(() => vi.fn(async (sql: string, values: unknown[] = []) => {
   state.calls.push({ sql, values });
+  if (sql.includes("FROM audit_logs") && sql.includes("claimId")) {
+    const liveClaim = state.liveClaim;
+    return liveClaim && liveClaim.employeeId === values[0] && liveClaim.claimId === values[1]
+      ? { rows: [{ claimId: liveClaim.claimId, expiresAt: liveClaim.expiresAt }] }
+      : { rows: [] };
+  }
   if (sql.includes("FROM platform_company_employees") && sql.includes("WHERE id=$1 AND status='ACTIVE'")) {
     return { rows: [{ ...state.employee, email: state.employee.email }] };
   }
@@ -115,6 +130,7 @@ beforeEach(() => {
   state.activeRoles = [];
   state.calls.length = 0;
   state.metadata = {};
+  state.liveClaim = null;
   state.user = { id: 77, email: "person@example.test", status: "ACTIVE" };
   state.employee = { id: 11, email: "person@example.test", fullName: "Internal Person" };
   vi.clearAllMocks();
@@ -123,6 +139,11 @@ beforeEach(() => {
 function metadataFor(role: "COMPANY_ACCOUNTANT" | "DEVICE_ACTIVATION_OFFICER", schoolId: number | null) {
   const claimId = "2bf3d0d0-07db-40ae-9e57-d905c69e9545";
   const content = ["v1", claimId, 11, "person@example.test", role, schoolId ?? "company"].join("|");
+  state.liveClaim = {
+    claimId,
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    employeeId: 11,
+  };
   return {
     edupulseInternalEmployeeInvitation: {
       version: 1,
@@ -150,6 +171,7 @@ describe("internal employee invitation and activation", () => {
     expect(invitationCreate).toHaveBeenCalledWith(expect.objectContaining({
       emailAddress: "person@example.test",
       notify: true,
+      redirectUrl: "/accept-invitation",
       publicMetadata: expect.objectContaining({
         edupulseInternalEmployeeInvitation: expect.objectContaining({
           employeeId: 11, role: "DEVICE_ACTIVATION_OFFICER", schoolId: 4,
@@ -195,5 +217,16 @@ describe("internal employee invitation and activation", () => {
     state.activeRoles = [{ id: 1, role: "SCHOOL_ADMIN", schoolId: 8 }];
     await expect(activateAcceptedInternalEmployeeInvitation(77, "clerk-person"))
       .rejects.toThrow("cannot be combined");
+  });
+
+  it("rejects a signed claim after the server invalidates it even when Clerk metadata remains", async () => {
+    state.metadata = metadataFor("COMPANY_ACCOUNTANT", null);
+    state.liveClaim = null;
+    await expect(activateAcceptedInternalEmployeeInvitation(77, "clerk-person"))
+      .rejects.toThrow("no longer pending or has expired");
+    expect(clientQuery).not.toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO school_memberships"),
+      expect.anything(),
+    );
   });
 });

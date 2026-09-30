@@ -27,6 +27,7 @@ import reportingRouter from "./reporting";
 import deviceActivationRouter from "./device-activation";
 import studentPhotosRouter from "./student-photos";
 import internalEmployeeInvitationsRouter from "./internal-employee-invitations";
+import schoolInvitationManagementRouter from "./school-invitation-management";
 import companyAccountantRouter from "./company-accountant";
 
 const router: IRouter = Router();
@@ -64,6 +65,7 @@ router.use(reportingRouter);
 router.use(deviceActivationRouter);
 router.use(studentPhotosRouter);
 router.use(internalEmployeeInvitationsRouter);
+router.use(schoolInvitationManagementRouter);
 router.use(companyAccountantRouter);
 
 export default router;

@@ -69,12 +69,281 @@ async function audit(
   );
 }
 
+async function invitationStatus(employee: Record<string, any>) {
+  const result = await pool.query(
+    `SELECT latest.metadata->>'role' AS role,
+            NULLIF(latest.metadata->>'schoolId','')::integer AS "schoolId",
+            latest.metadata->>'claimId' AS "claimId",
+            latest.metadata->>'invitationId' AS "invitationId",
+            latest.metadata->>'expiresAt' AS "expiresAt",
+            EXISTS (
+              SELECT 1 FROM app_users au
+              JOIN school_memberships sm ON sm.user_id=au.id
+              WHERE au.status='ACTIVE' AND lower(au.email)=lower($2)
+                AND sm.status='ACTIVE'
+                AND ((sm.role='COMPANY_ACCOUNTANT' AND sm.school_id IS NULL)
+                  OR (sm.role='DEVICE_ACTIVATION_OFFICER' AND sm.school_id IS NOT NULL))
+            ) AS "hasActiveMembership",
+            EXISTS (
+              SELECT 1 FROM audit_logs invalidation
+              WHERE invalidation.record_id=$1 AND invalidation.module='Company Employees'
+                AND invalidation.event_type='INTERNAL_EMPLOYEE_INVITATION_INVALIDATED'
+                AND invalidation.metadata->>'claimId'=latest.metadata->>'claimId'
+            ) AS invalidated
+     FROM (SELECT 1) seed
+     LEFT JOIN LATERAL (
+       SELECT metadata FROM audit_logs
+       WHERE record_id=$1 AND module='Company Employees'
+         AND event_type IN ('INTERNAL_EMPLOYEE_INVITED','INTERNAL_EMPLOYEE_INVITATION_RESENT')
+       ORDER BY id DESC LIMIT 1
+     ) latest ON TRUE`,
+    [employee.id, employee.email],
+  );
+  const row = result.rows[0];
+  const expiry = row?.expiresAt ? new Date(row.expiresAt).getTime() : 0;
+  const active = row?.hasActiveMembership === true || row?.hasActiveMembership === "t";
+  let status = "NOT_INVITED";
+  if (active) status = "ACTIVE";
+  else if (row && !row.invalidated && expiry > Date.now()) status = "PENDING";
+  else if (row && !row.invalidated && expiry > 0) status = "EXPIRED";
+  return {
+    employeeId: employee.id,
+    email: employee.email,
+    status,
+    invitation: row?.claimId ? {
+      role: row.role,
+      schoolId: row.schoolId,
+      invitationId: row.invitationId,
+      expiresAt: row.expiresAt,
+      status: active ? "ACTIVE" : status,
+    } : null,
+  };
+}
+
+async function insertInvitationAudit(
+  db: { query: (sql: string, values?: unknown[]) => Promise<any> },
+  req: Request,
+  employeeId: number,
+  eventType: string,
+  action: string,
+  metadata: Record<string, unknown>,
+) {
+  const actor = getUserContext(req);
+  await db.query(
+    `INSERT INTO audit_logs
+      ("user",role,actor_user_id,clerk_user_id,action,module,record_id,event_type,result,metadata)
+     VALUES($1,'PLATFORM_OWNER',$2,$3,$4,'Company Employees',$5,$6,'SUCCESS',$7::jsonb)`,
+    [
+      actor.user.email, actor.user.id, actor.user.clerkUserId,
+      action, employeeId, eventType, JSON.stringify(metadata),
+    ],
+  );
+}
+
 router.get("/platform/company-employees", run(async (req, res) => {
   assertRoles(req, ["PLATFORM_OWNER"]);
   const result = await pool.query(
     `SELECT ${fields} FROM platform_company_employees ORDER BY full_name,id`,
   );
-  res.json(result.rows);
+  const employees = await Promise.all(result.rows.map(async (employee: Record<string, any>) => ({
+    ...employee,
+    invitationStatus: await invitationStatus(employee),
+  })));
+  res.json(employees);
+}));
+
+router.get("/platform/company-employees/invitations", run(async (req, res) => {
+  assertRoles(req, ["PLATFORM_OWNER"]);
+  const result = await pool.query(`SELECT ${fields} FROM platform_company_employees ORDER BY full_name,id`);
+  const rows = await Promise.all(result.rows.map(async (employee: Record<string, any>) => ({
+    ...employee,
+    invitationStatus: await invitationStatus(employee),
+  })));
+  res.json(rows);
+}));
+
+router.get("/platform/company-employees/:employeeId/invitation", run(async (req, res) => {
+  assertRoles(req, ["PLATFORM_OWNER"]);
+  const result = await pool.query(
+    `SELECT ${fields} FROM platform_company_employees WHERE id=$1`,
+    [employeeId(req.params.employeeId)],
+  );
+  if (!result.rows[0]) throw new AuthError(404, "Company employee not found");
+  res.json(await invitationStatus(result.rows[0]));
+}));
+
+async function replaceEmployeeInvitation(req: Request, res: any, mode: "edit" | "resend") {
+  assertRoles(req, ["PLATFORM_OWNER"]);
+  const id = employeeId(req.params.employeeId);
+  let email: string | undefined;
+  if (mode === "edit") {
+    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body) ||
+        Object.keys(req.body).length !== 1 || !Object.hasOwn(req.body, "email")) {
+      throw new AuthError(400, "Provide only the replacement invitation email");
+    }
+    email = text(req.body.email, "email", true)!.toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new AuthError(400, "A valid email is required");
+  } else if (req.body && Object.keys(req.body).length) {
+    throw new AuthError(400, "Resend does not accept request fields");
+  }
+
+  const client = await pool.connect();
+  let newInvitationId: string | null = null;
+  let priorInvitationId: string | null = null;
+  let committed = false;
+  let commitAttempted = false;
+  let employee: Record<string, any>;
+  let invitation: Awaited<ReturnType<typeof createInternalEmployeeInvitation>>;
+  let role: InternalEmployeeRole;
+  let schoolId: number | null;
+  try {
+    await client.query("BEGIN");
+    const current = await client.query(
+      `SELECT ${fields} FROM platform_company_employees WHERE id=$1 FOR UPDATE`,
+      [id],
+    );
+    if (!current.rows[0] || current.rows[0].status !== "ACTIVE") {
+      throw new AuthError(404, "Active company employee not found");
+    }
+    employee = current.rows[0];
+    const latest = await client.query(
+      `SELECT metadata,
+              EXISTS (
+                SELECT 1 FROM audit_logs invalidation
+                WHERE invalidation.record_id=$1 AND invalidation.module='Company Employees'
+                  AND invalidation.event_type='INTERNAL_EMPLOYEE_INVITATION_INVALIDATED'
+                  AND invalidation.metadata->>'claimId'=latest.metadata->>'claimId'
+              ) AS invalidated
+       FROM (
+         SELECT metadata FROM audit_logs
+         WHERE record_id=$1 AND module='Company Employees'
+           AND event_type IN ('INTERNAL_EMPLOYEE_INVITED','INTERNAL_EMPLOYEE_INVITATION_RESENT')
+         ORDER BY id DESC LIMIT 1
+       ) latest`,
+      [id],
+    );
+    const previous = latest.rows[0];
+    if (!previous || previous.invalidated) {
+      throw new AuthError(409, "There is no current invitation to edit or resend");
+    }
+    const marker = previous.metadata as Record<string, unknown>;
+    role = marker.role as InternalEmployeeRole;
+    schoolId = marker.schoolId === null ? null : Number(marker.schoolId);
+    if ((role !== "COMPANY_ACCOUNTANT" && role !== "DEVICE_ACTIVATION_OFFICER") ||
+        (role === "COMPANY_ACCOUNTANT" && schoolId !== null) ||
+        (role === "DEVICE_ACTIVATION_OFFICER" && (!Number.isSafeInteger(schoolId) || schoolId! < 1)) ||
+        typeof marker.claimId !== "string" || !marker.claimId ||
+        typeof marker.invitationId !== "string" || !marker.invitationId) {
+      throw new AuthError(409, "The current invitation cannot be safely changed");
+    }
+    const expiry = marker.expiresAt ? new Date(String(marker.expiresAt)).getTime() : 0;
+    if (mode === "edit" && expiry <= Date.now()) {
+      throw new AuthError(409, "An expired invitation can only be resent");
+    }
+    const active = await client.query(
+      `SELECT 1 FROM app_users au
+       JOIN school_memberships sm ON sm.user_id=au.id
+       WHERE au.status='ACTIVE' AND lower(au.email)=lower($1) AND sm.status='ACTIVE'
+         AND ((sm.role='COMPANY_ACCOUNTANT' AND sm.school_id IS NULL)
+           OR (sm.role='DEVICE_ACTIVATION_OFFICER' AND sm.school_id IS NOT NULL))
+       LIMIT 1`,
+      [employee.email],
+    );
+    if (active.rows[0]) throw new AuthError(409, "This employee already has active internal access");
+    priorInvitationId = marker.invitationId;
+    const targetEmail = email ?? employee.email;
+    invitation = await createInternalEmployeeInvitation(client, {
+      employeeId: id,
+      email: targetEmail,
+      fullName: employee.fullName,
+      role,
+      schoolId,
+    });
+    newInvitationId = invitation.id;
+    if (mode === "edit") {
+      const updated = await client.query(
+        `UPDATE platform_company_employees SET email=$1,updated_at=NOW()
+         WHERE id=$2 RETURNING ${fields}`,
+        [targetEmail, id],
+      );
+      employee = updated.rows[0];
+      await insertInvitationAudit(client, req, id, "INTERNAL_EMPLOYEE_INVITATION_EDITED",
+        "Edited pending internal employee invitation email", {
+          previousEmail: current.rows[0].email, email: targetEmail, role, schoolId,
+          oldClaimId: marker.claimId, claimId: invitation.claimId,
+        });
+    }
+    await insertInvitationAudit(client, req, id, "INTERNAL_EMPLOYEE_INVITATION_INVALIDATED",
+      "Invalidated replaced internal employee invitation", {
+        claimId: marker.claimId, invitationId: marker.invitationId, reason: mode,
+      });
+    await insertInvitationAudit(client, req, id, "INTERNAL_EMPLOYEE_INVITATION_RESENT",
+      mode === "edit" ? "Sent edited internal employee invitation" : "Resent internal employee invitation", {
+        invitedEmail: targetEmail, role, schoolId, invitationId: invitation.id,
+        claimId: invitation.claimId, expiresAt: invitation.expiresAt,
+      });
+    commitAttempted = true;
+    const resolution = await commitInvitationWithRecovery({
+      commit: () => client.query("COMMIT"),
+      rollback: () => client.query("ROLLBACK"),
+      isCommitted: async () => Boolean((await pool.query(
+        `SELECT 1 FROM audit_logs
+         WHERE record_id=$1 AND event_type='INTERNAL_EMPLOYEE_INVITATION_RESENT'
+           AND metadata->>'claimId'=$2 LIMIT 1`,
+        [id, invitation.claimId],
+      )).rows[0]),
+      revokeInvitation: () => revokeInternalEmployeeInvitation(newInvitationId!),
+    });
+    if (resolution === "ABORTED") {
+      newInvitationId = null;
+      throw new AuthError(503, "Invitation update failed; the new Clerk invitation was revoked");
+    }
+    if (resolution === "UNKNOWN") {
+      newInvitationId = null;
+      throw new AuthError(503, "Invitation status is uncertain; contact the platform owner before retrying");
+    }
+    committed = true;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    if (newInvitationId && !committed && !commitAttempted) {
+      try {
+        await revokeInternalEmployeeInvitation(newInvitationId);
+      } catch {
+        throw new AuthError(503, "Invitation update failed and Clerk could not revoke the new invitation");
+      }
+    }
+    if ((error as { code?: string })?.code === "23505") {
+      throw new AuthError(409, "A company employee with this email already exists");
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
+  try {
+    await revokeInternalEmployeeInvitation(priorInvitationId!);
+  } catch {
+    throw new AuthError(503, "The previous Clerk invitation may still be open, but its signed claim has been invalidated");
+  }
+  res.json({
+    employeeId: id,
+    email: employee!.email,
+    role: role!,
+    schoolId: schoolId!,
+    invitation: {
+      status: "DISPATCH_REQUEST_ACCEPTED",
+      deliveryConfirmed: false,
+      invitationId: invitation!.id,
+      expiresAt: invitation!.expiresAt,
+    },
+  });
+}
+
+router.patch("/platform/company-employees/:employeeId/invitation", run(async (req, res) => {
+  await replaceEmployeeInvitation(req, res, "edit");
+}));
+
+router.post("/platform/company-employees/:employeeId/invitation/resend", run(async (req, res) => {
+  await replaceEmployeeInvitation(req, res, "resend");
 }));
 
 router.get("/platform/company-employees/:employeeId", run(async (req, res) => {
@@ -84,7 +353,10 @@ router.get("/platform/company-employees/:employeeId", run(async (req, res) => {
     [employeeId(req.params.employeeId)],
   );
   if (!result.rows[0]) throw new AuthError(404, "Company employee not found");
-  res.json(result.rows[0]);
+  res.json({
+    ...result.rows[0],
+    invitationStatus: await invitationStatus(result.rows[0]),
+  });
 }));
 
 router.post("/platform/company-employees", run(async (req, res) => {
@@ -204,6 +476,12 @@ router.patch("/platform/company-employees/:employeeId", run(async (req, res) => 
     text(req.body.email, "email", true)!.toLowerCase();
   if (req.body.email !== undefined && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new AuthError(400, "A valid email is required");
+  }
+  if (req.body.email !== undefined && email !== current.rows[0].email.toLowerCase()) {
+    const invitationState = await invitationStatus(current.rows[0]);
+    if (invitationState.status === "PENDING") {
+      throw new AuthError(409, "Use the pending invitation email edit endpoint to change this employee email");
+    }
   }
   const phone = req.body.phone === undefined ? current.rows[0].phone : text(req.body.phone, "phone");
   const jobTitle = req.body.jobTitle === undefined ? current.rows[0].jobTitle : text(req.body.jobTitle, "jobTitle");

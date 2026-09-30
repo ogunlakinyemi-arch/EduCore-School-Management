@@ -48,6 +48,7 @@ import type {
   AcademicTimetableEntry,
   AcademicTimetableEntryInput,
   AcademicTimetableEntryUpdate,
+  AcceptPartnerInvitationParams,
   ActivationAssignment,
   ActivationAssignmentInput,
   ActivationDevice,
@@ -112,9 +113,12 @@ import type {
   CompanyEmployee,
   CompanyEmployeeCreated,
   CompanyEmployeeInput,
+  CompanyEmployeeInvitationEmailUpdate,
   CompanyEmployeeInvitationInput,
   CompanyEmployeeInvitationResult,
+  CompanyEmployeeInvitationStatus,
   CompanyEmployeeUpdate,
+  CompanyEmployeeWithInvitationStatus,
   ConfirmPeopleImportParams,
   CreateAcademicAssessmentParams,
   CreateAcademicAssessmentTypeParams,
@@ -238,6 +242,7 @@ import type {
   ListOwnerSchoolDirectoryParams,
   ListParentStudentRelationshipsParams,
   ListParentsParams,
+  ListPartnerInvitationsParams,
   ListPartnersParams,
   ListPendingFeeAdjustmentsParams,
   ListPeopleImportClassesParams,
@@ -277,7 +282,10 @@ import type {
   PartnerCommissionStatusUpdate,
   PartnerDashboard,
   PartnerInvitation,
+  PartnerInvitationAcceptance,
+  PartnerInvitationAcceptanceInput,
   PartnerInvitationInput,
+  PartnerInvitationListItem,
   PartnerOnboardingResult,
   PartnerPayout,
   PartnerPayoutInformationInput,
@@ -285,10 +293,18 @@ import type {
   PartnerPayoutInformationPrivate,
   PartnerPayoutInput,
   PartnerPayoutUpdate,
+  PartnerProfile,
   PartnerReferralLink,
   PartnerSchool,
   PartnerSchoolOnboardingInput,
   PartnerSelfUpdate,
+  PartnerStaffInvitation,
+  PartnerStaffInvitationInput,
+  PartnerStaffInvitationListItem,
+  PartnerStaffInvitationRevocation,
+  PartnerStaffMember,
+  PartnerStaffPermissionResult,
+  PartnerStaffPermissionUpdate,
   PartnerStatusUpdate,
   PartnerUpdate,
   PaymentRejectionInput,
@@ -324,6 +340,9 @@ import type {
   RoleAssignment,
   School,
   SchoolAdministratorInput,
+  SchoolAdministratorInvitationEmailUpdate,
+  SchoolAdministratorInvitationList,
+  SchoolAdministratorInvitationReplacement,
   SchoolAdministratorResult,
   SchoolClass,
   SchoolDashboard,
@@ -6840,6 +6859,253 @@ export const useCreateSchoolAdministrator = <TError = ErrorType<ForbiddenRespons
       return useMutation(getCreateSchoolAdministratorMutationOptions(options));
     }
 
+export const getListSchoolAdministratorInvitationsUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/invitations`
+}
+
+/**
+ * Platform Owner only. Invitation tokens are never returned.
+ * @summary List School Administrator invitations and active memberships for a school
+ */
+export const listSchoolAdministratorInvitations = async (schoolId: number, options?: Parameters<typeof customFetch>[1]): Promise<SchoolAdministratorInvitationList> => {
+
+  return customFetch<SchoolAdministratorInvitationList>(getListSchoolAdministratorInvitationsUrl(schoolId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSchoolAdministratorInvitationsQueryKey = (schoolId: number,) => {
+    return [
+    `/api/schools/${schoolId}/invitations`
+    ] as const;
+    }
+
+
+export const getListSchoolAdministratorInvitationsQueryOptions = <TData = Awaited<ReturnType<typeof listSchoolAdministratorInvitations>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse>>(schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolAdministratorInvitations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSchoolAdministratorInvitationsQueryKey(schoolId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSchoolAdministratorInvitations>>> = ({ signal }) => listSchoolAdministratorInvitations(schoolId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSchoolAdministratorInvitations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSchoolAdministratorInvitationsQueryResult = NonNullable<Awaited<ReturnType<typeof listSchoolAdministratorInvitations>>>
+export type ListSchoolAdministratorInvitationsQueryError = ErrorType<ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary List School Administrator invitations and active memberships for a school
+ */
+
+export function useListSchoolAdministratorInvitations<TData = Awaited<ReturnType<typeof listSchoolAdministratorInvitations>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse>>(
+ schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolAdministratorInvitations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSchoolAdministratorInvitationsQueryOptions(schoolId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getEditSchoolAdministratorInvitationUrl = (schoolId: number,
+    invitationId: string,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/invitations/${invitationId}`
+}
+
+/**
+ * Platform Owner only. A pending or expired invitation may be replaced; the previous claim is invalidated.
+ * @summary Replace a pending School Administrator invitation with a corrected email
+ */
+export const editSchoolAdministratorInvitation = async (schoolId: number,
+    invitationId: string,
+    schoolAdministratorInvitationEmailUpdate: SchoolAdministratorInvitationEmailUpdate, options?: Parameters<typeof customFetch>[1]): Promise<SchoolAdministratorInvitationReplacement> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolAdministratorInvitationReplacement>(getEditSchoolAdministratorInvitationUrl(schoolId,invitationId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(schoolAdministratorInvitationEmailUpdate)
+  }
+);}
+
+
+
+
+
+export const getEditSchoolAdministratorInvitationMutationKey = () => ['editSchoolAdministratorInvitation'] as const;
+
+export const getEditSchoolAdministratorInvitationMutationOptions = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof editSchoolAdministratorInvitation>>, TError,EditSchoolAdministratorInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof editSchoolAdministratorInvitation>>, TError,EditSchoolAdministratorInvitationMutationVariables, TContext> => {
+
+const mutationKey = getEditSchoolAdministratorInvitationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof editSchoolAdministratorInvitation>>, EditSchoolAdministratorInvitationMutationVariables> = (props) => {
+          const {schoolId,invitationId,data} = props ?? {};
+
+          return  editSchoolAdministratorInvitation(schoolId,invitationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EditSchoolAdministratorInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof editSchoolAdministratorInvitation>>>
+    export type EditSchoolAdministratorInvitationMutationBody = BodyType<SchoolAdministratorInvitationEmailUpdate>
+    export type EditSchoolAdministratorInvitationMutationError = ErrorType<void | ForbiddenResponse | NotFoundResponse>
+    export type EditSchoolAdministratorInvitationMutationVariables = {schoolId: number;invitationId: string;data: BodyType<SchoolAdministratorInvitationEmailUpdate>}
+
+    /**
+ * @summary Replace a pending School Administrator invitation with a corrected email
+ */
+export const useEditSchoolAdministratorInvitation = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof editSchoolAdministratorInvitation>>, TError,EditSchoolAdministratorInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof editSchoolAdministratorInvitation>>,
+        TError,
+        EditSchoolAdministratorInvitationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getEditSchoolAdministratorInvitationMutationOptions(options));
+    }
+
+export const getResendSchoolAdministratorInvitationUrl = (schoolId: number,
+    invitationId: string,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/invitations/${invitationId}`
+}
+
+/**
+ * Platform Owner only. Supersedes the existing invitation and sends a replacement to the same email.
+ * @summary Resend a School Administrator invitation
+ */
+export const resendSchoolAdministratorInvitation = async (schoolId: number,
+    invitationId: string, options?: Parameters<typeof customFetch>[1]): Promise<SchoolAdministratorInvitationReplacement> => {
+
+  return customFetch<SchoolAdministratorInvitationReplacement>(getResendSchoolAdministratorInvitationUrl(schoolId,invitationId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getResendSchoolAdministratorInvitationMutationKey = () => ['resendSchoolAdministratorInvitation'] as const;
+
+export const getResendSchoolAdministratorInvitationMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendSchoolAdministratorInvitation>>, TError,ResendSchoolAdministratorInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resendSchoolAdministratorInvitation>>, TError,ResendSchoolAdministratorInvitationMutationVariables, TContext> => {
+
+const mutationKey = getResendSchoolAdministratorInvitationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resendSchoolAdministratorInvitation>>, ResendSchoolAdministratorInvitationMutationVariables> = (props) => {
+          const {schoolId,invitationId} = props ?? {};
+
+          return  resendSchoolAdministratorInvitation(schoolId,invitationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResendSchoolAdministratorInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof resendSchoolAdministratorInvitation>>>
+
+    export type ResendSchoolAdministratorInvitationMutationError = ErrorType<ForbiddenResponse | NotFoundResponse | void>
+    export type ResendSchoolAdministratorInvitationMutationVariables = {schoolId: number;invitationId: string}
+
+    /**
+ * @summary Resend a School Administrator invitation
+ */
+export const useResendSchoolAdministratorInvitation = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendSchoolAdministratorInvitation>>, TError,ResendSchoolAdministratorInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resendSchoolAdministratorInvitation>>,
+        TError,
+        ResendSchoolAdministratorInvitationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getResendSchoolAdministratorInvitationMutationOptions(options));
+    }
+
 export const getListPeopleImportClassesUrl = (params: ListPeopleImportClassesParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -9361,9 +9627,9 @@ export const getListPlatformCompanyEmployeesUrl = () => {
 /**
  * @summary List company employee profiles
  */
-export const listPlatformCompanyEmployees = async ( options?: Parameters<typeof customFetch>[1]): Promise<CompanyEmployee[]> => {
+export const listPlatformCompanyEmployees = async ( options?: Parameters<typeof customFetch>[1]): Promise<CompanyEmployeeWithInvitationStatus[]> => {
 
-  return customFetch<CompanyEmployee[]>(getListPlatformCompanyEmployeesUrl(),
+  return customFetch<CompanyEmployeeWithInvitationStatus[]>(getListPlatformCompanyEmployeesUrl(),
   {
     ...options,
     method: 'GET'
@@ -9526,9 +9792,9 @@ export const getGetPlatformCompanyEmployeeUrl = (employeeId: number,) => {
 /**
  * @summary Read a company employee profile
  */
-export const getPlatformCompanyEmployee = async (employeeId: number, options?: Parameters<typeof customFetch>[1]): Promise<CompanyEmployee> => {
+export const getPlatformCompanyEmployee = async (employeeId: number, options?: Parameters<typeof customFetch>[1]): Promise<CompanyEmployeeWithInvitationStatus> => {
 
-  return customFetch<CompanyEmployee>(getGetPlatformCompanyEmployeeUrl(employeeId),
+  return customFetch<CompanyEmployeeWithInvitationStatus>(getGetPlatformCompanyEmployeeUrl(employeeId),
   {
     ...options,
     method: 'GET'
@@ -9681,6 +9947,249 @@ export const useUpdatePlatformCompanyEmployee = <TError = ErrorType<void | Forbi
       return useMutation(getUpdatePlatformCompanyEmployeeMutationOptions(options));
     }
 
+export const getListPlatformCompanyEmployeeInvitationsUrl = () => {
+
+
+
+
+  return `/api/platform/company-employees/invitations`
+}
+
+/**
+ * @summary List company employee profiles with their current internal invitation status
+ */
+export const listPlatformCompanyEmployeeInvitations = async ( options?: Parameters<typeof customFetch>[1]): Promise<CompanyEmployeeWithInvitationStatus[]> => {
+
+  return customFetch<CompanyEmployeeWithInvitationStatus[]>(getListPlatformCompanyEmployeeInvitationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPlatformCompanyEmployeeInvitationsQueryKey = () => {
+    return [
+    `/api/platform/company-employees/invitations`
+    ] as const;
+    }
+
+
+export const getListPlatformCompanyEmployeeInvitationsQueryOptions = <TData = Awaited<ReturnType<typeof listPlatformCompanyEmployeeInvitations>>, TError = ErrorType<ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPlatformCompanyEmployeeInvitations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPlatformCompanyEmployeeInvitationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPlatformCompanyEmployeeInvitations>>> = ({ signal }) => listPlatformCompanyEmployeeInvitations({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPlatformCompanyEmployeeInvitations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPlatformCompanyEmployeeInvitationsQueryResult = NonNullable<Awaited<ReturnType<typeof listPlatformCompanyEmployeeInvitations>>>
+export type ListPlatformCompanyEmployeeInvitationsQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary List company employee profiles with their current internal invitation status
+ */
+
+export function useListPlatformCompanyEmployeeInvitations<TData = Awaited<ReturnType<typeof listPlatformCompanyEmployeeInvitations>>, TError = ErrorType<ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPlatformCompanyEmployeeInvitations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPlatformCompanyEmployeeInvitationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPlatformCompanyEmployeeInvitationUrl = (employeeId: number,) => {
+
+
+
+
+  return `/api/platform/company-employees/${employeeId}/invitation`
+}
+
+/**
+ * @summary Get the current internal invitation status for a company employee
+ */
+export const getPlatformCompanyEmployeeInvitation = async (employeeId: number, options?: Parameters<typeof customFetch>[1]): Promise<CompanyEmployeeInvitationStatus> => {
+
+  return customFetch<CompanyEmployeeInvitationStatus>(getGetPlatformCompanyEmployeeInvitationUrl(employeeId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPlatformCompanyEmployeeInvitationQueryKey = (employeeId: number,) => {
+    return [
+    `/api/platform/company-employees/${employeeId}/invitation`
+    ] as const;
+    }
+
+
+export const getGetPlatformCompanyEmployeeInvitationQueryOptions = <TData = Awaited<ReturnType<typeof getPlatformCompanyEmployeeInvitation>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse>>(employeeId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPlatformCompanyEmployeeInvitation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPlatformCompanyEmployeeInvitationQueryKey(employeeId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPlatformCompanyEmployeeInvitation>>> = ({ signal }) => getPlatformCompanyEmployeeInvitation(employeeId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: employeeId !== null && employeeId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPlatformCompanyEmployeeInvitation>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPlatformCompanyEmployeeInvitationQueryResult = NonNullable<Awaited<ReturnType<typeof getPlatformCompanyEmployeeInvitation>>>
+export type GetPlatformCompanyEmployeeInvitationQueryError = ErrorType<ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary Get the current internal invitation status for a company employee
+ */
+
+export function useGetPlatformCompanyEmployeeInvitation<TData = Awaited<ReturnType<typeof getPlatformCompanyEmployeeInvitation>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse>>(
+ employeeId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPlatformCompanyEmployeeInvitation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPlatformCompanyEmployeeInvitationQueryOptions(employeeId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getEditPlatformCompanyEmployeeInvitationUrl = (employeeId: number,) => {
+
+
+
+
+  return `/api/platform/company-employees/${employeeId}/invitation`
+}
+
+/**
+ * @summary Correct the email of a pending company employee invitation
+ */
+export const editPlatformCompanyEmployeeInvitation = async (employeeId: number,
+    companyEmployeeInvitationEmailUpdate: CompanyEmployeeInvitationEmailUpdate, options?: Parameters<typeof customFetch>[1]): Promise<CompanyEmployeeInvitationResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CompanyEmployeeInvitationResult>(getEditPlatformCompanyEmployeeInvitationUrl(employeeId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(companyEmployeeInvitationEmailUpdate)
+  }
+);}
+
+
+
+
+
+export const getEditPlatformCompanyEmployeeInvitationMutationKey = () => ['editPlatformCompanyEmployeeInvitation'] as const;
+
+export const getEditPlatformCompanyEmployeeInvitationMutationOptions = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof editPlatformCompanyEmployeeInvitation>>, TError,EditPlatformCompanyEmployeeInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof editPlatformCompanyEmployeeInvitation>>, TError,EditPlatformCompanyEmployeeInvitationMutationVariables, TContext> => {
+
+const mutationKey = getEditPlatformCompanyEmployeeInvitationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof editPlatformCompanyEmployeeInvitation>>, EditPlatformCompanyEmployeeInvitationMutationVariables> = (props) => {
+          const {employeeId,data} = props ?? {};
+
+          return  editPlatformCompanyEmployeeInvitation(employeeId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EditPlatformCompanyEmployeeInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof editPlatformCompanyEmployeeInvitation>>>
+    export type EditPlatformCompanyEmployeeInvitationMutationBody = BodyType<CompanyEmployeeInvitationEmailUpdate>
+    export type EditPlatformCompanyEmployeeInvitationMutationError = ErrorType<void | ForbiddenResponse | NotFoundResponse>
+    export type EditPlatformCompanyEmployeeInvitationMutationVariables = {employeeId: number;data: BodyType<CompanyEmployeeInvitationEmailUpdate>}
+
+    /**
+ * @summary Correct the email of a pending company employee invitation
+ */
+export const useEditPlatformCompanyEmployeeInvitation = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof editPlatformCompanyEmployeeInvitation>>, TError,EditPlatformCompanyEmployeeInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof editPlatformCompanyEmployeeInvitation>>,
+        TError,
+        EditPlatformCompanyEmployeeInvitationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getEditPlatformCompanyEmployeeInvitationMutationOptions(options));
+    }
+
 export const getInvitePlatformCompanyEmployeeUrl = (employeeId: number,) => {
 
 
@@ -9769,6 +10278,80 @@ export const useInvitePlatformCompanyEmployee = <TError = ErrorType<void | Forbi
         TContext
       > => {
       return useMutation(getInvitePlatformCompanyEmployeeMutationOptions(options));
+    }
+
+export const getResendPlatformCompanyEmployeeInvitationUrl = (employeeId: number,) => {
+
+
+
+
+  return `/api/platform/company-employees/${employeeId}/invitation/resend`
+}
+
+/**
+ * @summary Resend a company employee invitation
+ */
+export const resendPlatformCompanyEmployeeInvitation = async (employeeId: number, options?: Parameters<typeof customFetch>[1]): Promise<CompanyEmployeeInvitationResult> => {
+
+  return customFetch<CompanyEmployeeInvitationResult>(getResendPlatformCompanyEmployeeInvitationUrl(employeeId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getResendPlatformCompanyEmployeeInvitationMutationKey = () => ['resendPlatformCompanyEmployeeInvitation'] as const;
+
+export const getResendPlatformCompanyEmployeeInvitationMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendPlatformCompanyEmployeeInvitation>>, TError,ResendPlatformCompanyEmployeeInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resendPlatformCompanyEmployeeInvitation>>, TError,ResendPlatformCompanyEmployeeInvitationMutationVariables, TContext> => {
+
+const mutationKey = getResendPlatformCompanyEmployeeInvitationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resendPlatformCompanyEmployeeInvitation>>, ResendPlatformCompanyEmployeeInvitationMutationVariables> = (props) => {
+          const {employeeId} = props ?? {};
+
+          return  resendPlatformCompanyEmployeeInvitation(employeeId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResendPlatformCompanyEmployeeInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof resendPlatformCompanyEmployeeInvitation>>>
+
+    export type ResendPlatformCompanyEmployeeInvitationMutationError = ErrorType<ForbiddenResponse | NotFoundResponse | void>
+    export type ResendPlatformCompanyEmployeeInvitationMutationVariables = {employeeId: number}
+
+    /**
+ * @summary Resend a company employee invitation
+ */
+export const useResendPlatformCompanyEmployeeInvitation = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendPlatformCompanyEmployeeInvitation>>, TError,ResendPlatformCompanyEmployeeInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resendPlatformCompanyEmployeeInvitation>>,
+        TError,
+        ResendPlatformCompanyEmployeeInvitationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getResendPlatformCompanyEmployeeInvitationMutationOptions(options));
     }
 
 export const getGetCompanyAccountantOverviewUrl = () => {
@@ -14910,6 +15493,90 @@ export function useListPartners<TData = Awaited<ReturnType<typeof listPartners>>
 
 
 
+export const getListPartnerInvitationsUrl = (params?: ListPartnerInvitationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/platform/partners/invitations?${stringifiedParams}` : `/api/platform/partners/invitations`
+}
+
+/**
+ * @summary List partner invitations and their current lifecycle status
+ */
+export const listPartnerInvitations = async (params?: ListPartnerInvitationsParams, options?: Parameters<typeof customFetch>[1]): Promise<PartnerInvitationListItem[]> => {
+
+  return customFetch<PartnerInvitationListItem[]>(getListPartnerInvitationsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPartnerInvitationsQueryKey = (params?: ListPartnerInvitationsParams,) => {
+    return [
+    `/api/platform/partners/invitations`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListPartnerInvitationsQueryOptions = <TData = Awaited<ReturnType<typeof listPartnerInvitations>>, TError = ErrorType<ForbiddenResponse>>(params?: ListPartnerInvitationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPartnerInvitations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPartnerInvitationsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPartnerInvitations>>> = ({ signal }) => listPartnerInvitations(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPartnerInvitations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPartnerInvitationsQueryResult = NonNullable<Awaited<ReturnType<typeof listPartnerInvitations>>>
+export type ListPartnerInvitationsQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary List partner invitations and their current lifecycle status
+ */
+
+export function useListPartnerInvitations<TData = Awaited<ReturnType<typeof listPartnerInvitations>>, TError = ErrorType<ForbiddenResponse>>(
+ params?: ListPartnerInvitationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPartnerInvitations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPartnerInvitationsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getCreatePartnerInvitationUrl = () => {
 
 
@@ -14996,6 +15663,80 @@ export const useCreatePartnerInvitation = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreatePartnerInvitationMutationOptions(options));
+    }
+
+export const getResendPartnerInvitationUrl = (partnerId: number,) => {
+
+
+
+
+  return `/api/platform/partners/${partnerId}/invitations/resend`
+}
+
+/**
+ * @summary Resend the pending invitation for a partner profile
+ */
+export const resendPartnerInvitation = async (partnerId: number, options?: Parameters<typeof customFetch>[1]): Promise<PartnerInvitation> => {
+
+  return customFetch<PartnerInvitation>(getResendPartnerInvitationUrl(partnerId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getResendPartnerInvitationMutationKey = () => ['resendPartnerInvitation'] as const;
+
+export const getResendPartnerInvitationMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendPartnerInvitation>>, TError,ResendPartnerInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resendPartnerInvitation>>, TError,ResendPartnerInvitationMutationVariables, TContext> => {
+
+const mutationKey = getResendPartnerInvitationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resendPartnerInvitation>>, ResendPartnerInvitationMutationVariables> = (props) => {
+          const {partnerId} = props ?? {};
+
+          return  resendPartnerInvitation(partnerId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResendPartnerInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof resendPartnerInvitation>>>
+
+    export type ResendPartnerInvitationMutationError = ErrorType<ForbiddenResponse | NotFoundResponse | void>
+    export type ResendPartnerInvitationMutationVariables = {partnerId: number}
+
+    /**
+ * @summary Resend the pending invitation for a partner profile
+ */
+export const useResendPartnerInvitation = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendPartnerInvitation>>, TError,ResendPartnerInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resendPartnerInvitation>>,
+        TError,
+        ResendPartnerInvitationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getResendPartnerInvitationMutationOptions(options));
     }
 
 export const getGetPartnerUrl = (partnerId: number,) => {
@@ -16412,9 +17153,9 @@ export const getGetPartnerProfileUrl = () => {
 /**
  * @summary Get the authenticated partner profile
  */
-export const getPartnerProfile = async ( options?: Parameters<typeof customFetch>[1]): Promise<Partner> => {
+export const getPartnerProfile = async ( options?: Parameters<typeof customFetch>[1]): Promise<PartnerProfile> => {
 
-  return customFetch<Partner>(getGetPartnerProfileUrl(),
+  return customFetch<PartnerProfile>(getGetPartnerProfileUrl(),
   {
     ...options,
     method: 'GET'
@@ -16489,7 +17230,7 @@ export const getUpdatePartnerProfileUrl = () => {
 /**
  * @summary Update the authenticated partner profile
  */
-export const updatePartnerProfile = async (partnerSelfUpdate: PartnerSelfUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Partner> => {
+export const updatePartnerProfile = async (partnerSelfUpdate: PartnerSelfUpdate, options?: Parameters<typeof customFetch>[1]): Promise<PartnerProfile> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -16505,7 +17246,7 @@ export const updatePartnerProfile = async (partnerSelfUpdate: PartnerSelfUpdate,
     }
     return headers;
   };
-return customFetch<Partner>(getUpdatePartnerProfileUrl(),
+return customFetch<PartnerProfile>(getUpdatePartnerProfileUrl(),
   {
     ...options,
     method: 'PATCH',
@@ -16564,6 +17305,485 @@ export const useUpdatePartnerProfile = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdatePartnerProfileMutationOptions(options));
+    }
+
+export const getListPartnerStaffUrl = () => {
+
+
+
+
+  return `/api/partner/staff`
+}
+
+/**
+ * @summary List active and inactive staff memberships for the authenticated partner
+ */
+export const listPartnerStaff = async ( options?: Parameters<typeof customFetch>[1]): Promise<PartnerStaffMember[]> => {
+
+  return customFetch<PartnerStaffMember[]>(getListPartnerStaffUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPartnerStaffQueryKey = () => {
+    return [
+    `/api/partner/staff`
+    ] as const;
+    }
+
+
+export const getListPartnerStaffQueryOptions = <TData = Awaited<ReturnType<typeof listPartnerStaff>>, TError = ErrorType<ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPartnerStaff>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPartnerStaffQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPartnerStaff>>> = ({ signal }) => listPartnerStaff({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPartnerStaff>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPartnerStaffQueryResult = NonNullable<Awaited<ReturnType<typeof listPartnerStaff>>>
+export type ListPartnerStaffQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary List active and inactive staff memberships for the authenticated partner
+ */
+
+export function useListPartnerStaff<TData = Awaited<ReturnType<typeof listPartnerStaff>>, TError = ErrorType<ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPartnerStaff>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPartnerStaffQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdatePartnerStaffPermissionsUrl = (userId: number,) => {
+
+
+
+
+  return `/api/partner/staff/${userId}/permissions`
+}
+
+/**
+ * @summary Change an active partner staff member's permission level
+ */
+export const updatePartnerStaffPermissions = async (userId: number,
+    partnerStaffPermissionUpdate: PartnerStaffPermissionUpdate, options?: Parameters<typeof customFetch>[1]): Promise<PartnerStaffPermissionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PartnerStaffPermissionResult>(getUpdatePartnerStaffPermissionsUrl(userId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(partnerStaffPermissionUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdatePartnerStaffPermissionsMutationKey = () => ['updatePartnerStaffPermissions'] as const;
+
+export const getUpdatePartnerStaffPermissionsMutationOptions = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePartnerStaffPermissions>>, TError,UpdatePartnerStaffPermissionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePartnerStaffPermissions>>, TError,UpdatePartnerStaffPermissionsMutationVariables, TContext> => {
+
+const mutationKey = getUpdatePartnerStaffPermissionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePartnerStaffPermissions>>, UpdatePartnerStaffPermissionsMutationVariables> = (props) => {
+          const {userId,data} = props ?? {};
+
+          return  updatePartnerStaffPermissions(userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePartnerStaffPermissionsMutationResult = NonNullable<Awaited<ReturnType<typeof updatePartnerStaffPermissions>>>
+    export type UpdatePartnerStaffPermissionsMutationBody = BodyType<PartnerStaffPermissionUpdate>
+    export type UpdatePartnerStaffPermissionsMutationError = ErrorType<void | ForbiddenResponse | NotFoundResponse>
+    export type UpdatePartnerStaffPermissionsMutationVariables = {userId: number;data: BodyType<PartnerStaffPermissionUpdate>}
+
+    /**
+ * @summary Change an active partner staff member's permission level
+ */
+export const useUpdatePartnerStaffPermissions = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePartnerStaffPermissions>>, TError,UpdatePartnerStaffPermissionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePartnerStaffPermissions>>,
+        TError,
+        UpdatePartnerStaffPermissionsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdatePartnerStaffPermissionsMutationOptions(options));
+    }
+
+export const getListPartnerStaffInvitationsUrl = () => {
+
+
+
+
+  return `/api/partner/staff/invitations`
+}
+
+/**
+ * @summary List current non-expired partner staff invitations
+ */
+export const listPartnerStaffInvitations = async ( options?: Parameters<typeof customFetch>[1]): Promise<PartnerStaffInvitationListItem[]> => {
+
+  return customFetch<PartnerStaffInvitationListItem[]>(getListPartnerStaffInvitationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPartnerStaffInvitationsQueryKey = () => {
+    return [
+    `/api/partner/staff/invitations`
+    ] as const;
+    }
+
+
+export const getListPartnerStaffInvitationsQueryOptions = <TData = Awaited<ReturnType<typeof listPartnerStaffInvitations>>, TError = ErrorType<ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPartnerStaffInvitations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPartnerStaffInvitationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPartnerStaffInvitations>>> = ({ signal }) => listPartnerStaffInvitations({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPartnerStaffInvitations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPartnerStaffInvitationsQueryResult = NonNullable<Awaited<ReturnType<typeof listPartnerStaffInvitations>>>
+export type ListPartnerStaffInvitationsQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary List current non-expired partner staff invitations
+ */
+
+export function useListPartnerStaffInvitations<TData = Awaited<ReturnType<typeof listPartnerStaffInvitations>>, TError = ErrorType<ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPartnerStaffInvitations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPartnerStaffInvitationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePartnerStaffInvitationUrl = () => {
+
+
+
+
+  return `/api/partner/staff-invitations`
+}
+
+/**
+ * @summary Invite a staff member to the authenticated partner profile
+ */
+export const createPartnerStaffInvitation = async (partnerStaffInvitationInput: PartnerStaffInvitationInput, options?: Parameters<typeof customFetch>[1]): Promise<PartnerStaffInvitation> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PartnerStaffInvitation>(getCreatePartnerStaffInvitationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(partnerStaffInvitationInput)
+  }
+);}
+
+
+
+
+
+export const getCreatePartnerStaffInvitationMutationKey = () => ['createPartnerStaffInvitation'] as const;
+
+export const getCreatePartnerStaffInvitationMutationOptions = <TError = ErrorType<void | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPartnerStaffInvitation>>, TError,CreatePartnerStaffInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPartnerStaffInvitation>>, TError,CreatePartnerStaffInvitationMutationVariables, TContext> => {
+
+const mutationKey = getCreatePartnerStaffInvitationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPartnerStaffInvitation>>, CreatePartnerStaffInvitationMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPartnerStaffInvitation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePartnerStaffInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof createPartnerStaffInvitation>>>
+    export type CreatePartnerStaffInvitationMutationBody = BodyType<PartnerStaffInvitationInput>
+    export type CreatePartnerStaffInvitationMutationError = ErrorType<void | ForbiddenResponse>
+    export type CreatePartnerStaffInvitationMutationVariables = {data: BodyType<PartnerStaffInvitationInput>}
+
+    /**
+ * @summary Invite a staff member to the authenticated partner profile
+ */
+export const useCreatePartnerStaffInvitation = <TError = ErrorType<void | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPartnerStaffInvitation>>, TError,CreatePartnerStaffInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPartnerStaffInvitation>>,
+        TError,
+        CreatePartnerStaffInvitationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreatePartnerStaffInvitationMutationOptions(options));
+    }
+
+export const getResendPartnerStaffInvitationUrl = (invitationId: number,) => {
+
+
+
+
+  return `/api/partner/staff-invitations/${invitationId}/resend`
+}
+
+/**
+ * @summary Resend a partner staff invitation
+ */
+export const resendPartnerStaffInvitation = async (invitationId: number, options?: Parameters<typeof customFetch>[1]): Promise<PartnerStaffInvitation> => {
+
+  return customFetch<PartnerStaffInvitation>(getResendPartnerStaffInvitationUrl(invitationId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getResendPartnerStaffInvitationMutationKey = () => ['resendPartnerStaffInvitation'] as const;
+
+export const getResendPartnerStaffInvitationMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendPartnerStaffInvitation>>, TError,ResendPartnerStaffInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resendPartnerStaffInvitation>>, TError,ResendPartnerStaffInvitationMutationVariables, TContext> => {
+
+const mutationKey = getResendPartnerStaffInvitationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resendPartnerStaffInvitation>>, ResendPartnerStaffInvitationMutationVariables> = (props) => {
+          const {invitationId} = props ?? {};
+
+          return  resendPartnerStaffInvitation(invitationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResendPartnerStaffInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof resendPartnerStaffInvitation>>>
+
+    export type ResendPartnerStaffInvitationMutationError = ErrorType<ForbiddenResponse | NotFoundResponse | void>
+    export type ResendPartnerStaffInvitationMutationVariables = {invitationId: number}
+
+    /**
+ * @summary Resend a partner staff invitation
+ */
+export const useResendPartnerStaffInvitation = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendPartnerStaffInvitation>>, TError,ResendPartnerStaffInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resendPartnerStaffInvitation>>,
+        TError,
+        ResendPartnerStaffInvitationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getResendPartnerStaffInvitationMutationOptions(options));
+    }
+
+export const getRevokePartnerStaffInvitationUrl = (invitationId: number,) => {
+
+
+
+
+  return `/api/partner/staff-invitations/${invitationId}`
+}
+
+/**
+ * @summary Revoke a pending partner staff invitation
+ */
+export const revokePartnerStaffInvitation = async (invitationId: number, options?: Parameters<typeof customFetch>[1]): Promise<PartnerStaffInvitationRevocation> => {
+
+  return customFetch<PartnerStaffInvitationRevocation>(getRevokePartnerStaffInvitationUrl(invitationId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRevokePartnerStaffInvitationMutationKey = () => ['revokePartnerStaffInvitation'] as const;
+
+export const getRevokePartnerStaffInvitationMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokePartnerStaffInvitation>>, TError,RevokePartnerStaffInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokePartnerStaffInvitation>>, TError,RevokePartnerStaffInvitationMutationVariables, TContext> => {
+
+const mutationKey = getRevokePartnerStaffInvitationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokePartnerStaffInvitation>>, RevokePartnerStaffInvitationMutationVariables> = (props) => {
+          const {invitationId} = props ?? {};
+
+          return  revokePartnerStaffInvitation(invitationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokePartnerStaffInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof revokePartnerStaffInvitation>>>
+
+    export type RevokePartnerStaffInvitationMutationError = ErrorType<ForbiddenResponse | NotFoundResponse>
+    export type RevokePartnerStaffInvitationMutationVariables = {invitationId: number}
+
+    /**
+ * @summary Revoke a pending partner staff invitation
+ */
+export const useRevokePartnerStaffInvitation = <TError = ErrorType<ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokePartnerStaffInvitation>>, TError,RevokePartnerStaffInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revokePartnerStaffInvitation>>,
+        TError,
+        RevokePartnerStaffInvitationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRevokePartnerStaffInvitationMutationOptions(options));
     }
 
 export const getGetPartnerDashboardUrl = () => {
@@ -17193,25 +18413,48 @@ export const useUpdatePartnerPayoutInformation = <TError = ErrorType<unknown>,
       return useMutation(getUpdatePartnerPayoutInformationMutationOptions(options));
     }
 
-export const getAcceptPartnerInvitationUrl = (invitationToken: string,) => {
+export const getAcceptPartnerInvitationUrl = (params?: AcceptPartnerInvitationParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/partner/invitations/${invitationToken}/accept`
+  return stringifiedParams.length > 0 ? `/api/partner/invitations/accept?${stringifiedParams}` : `/api/partner/invitations/accept`
 }
 
 /**
- * @summary Accept an invitation for the authenticated user
+ * The token may be supplied as the partnerInvitation query parameter or in the JSON request body. It is never returned in the response.
+ * @summary Accept a partner owner or staff invitation for the authenticated user
  */
-export const acceptPartnerInvitation = async (invitationToken: string, options?: Parameters<typeof customFetch>[1]): Promise<Partner> => {
+export const acceptPartnerInvitation = async (partnerInvitationAcceptanceInput?: PartnerInvitationAcceptanceInput,
+    params?: AcceptPartnerInvitationParams, options?: Parameters<typeof customFetch>[1]): Promise<PartnerInvitationAcceptance> => {
 
-  return customFetch<Partner>(getAcceptPartnerInvitationUrl(invitationToken),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PartnerInvitationAcceptance>(getAcceptPartnerInvitationUrl(params),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(partnerInvitationAcceptanceInput)
   }
 );}
 
@@ -17221,7 +18464,7 @@ export const acceptPartnerInvitation = async (invitationToken: string, options?:
 
 export const getAcceptPartnerInvitationMutationKey = () => ['acceptPartnerInvitation'] as const;
 
-export const getAcceptPartnerInvitationMutationOptions = <TError = ErrorType<unknown>,
+export const getAcceptPartnerInvitationMutationOptions = <TError = ErrorType<void | ForbiddenResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptPartnerInvitation>>, TError,AcceptPartnerInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof acceptPartnerInvitation>>, TError,AcceptPartnerInvitationMutationVariables, TContext> => {
 
@@ -17236,9 +18479,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof acceptPartnerInvitation>>, AcceptPartnerInvitationMutationVariables> = (props) => {
-          const {invitationToken} = props ?? {};
+          const {data,params} = props ?? {};
 
-          return  acceptPartnerInvitation(invitationToken,requestOptions)
+          return  acceptPartnerInvitation(data,params,requestOptions)
         }
 
 
@@ -17249,14 +18492,14 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type AcceptPartnerInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof acceptPartnerInvitation>>>
-
-    export type AcceptPartnerInvitationMutationError = ErrorType<unknown>
-    export type AcceptPartnerInvitationMutationVariables = {invitationToken: string}
+    export type AcceptPartnerInvitationMutationBody = BodyType<PartnerInvitationAcceptanceInput> | undefined
+    export type AcceptPartnerInvitationMutationError = ErrorType<void | ForbiddenResponse>
+    export type AcceptPartnerInvitationMutationVariables = {data?: BodyType<PartnerInvitationAcceptanceInput>;params?: AcceptPartnerInvitationParams}
 
     /**
- * @summary Accept an invitation for the authenticated user
+ * @summary Accept a partner owner or staff invitation for the authenticated user
  */
-export const useAcceptPartnerInvitation = <TError = ErrorType<unknown>,
+export const useAcceptPartnerInvitation = <TError = ErrorType<void | ForbiddenResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptPartnerInvitation>>, TError,AcceptPartnerInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof acceptPartnerInvitation>>,
@@ -17265,6 +18508,81 @@ export const useAcceptPartnerInvitation = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getAcceptPartnerInvitationMutationOptions(options));
+    }
+
+export const getAcceptPartnerInvitationByPathUrl = (invitationToken: string,) => {
+
+
+
+
+  return `/api/partner/invitations/${invitationToken}/accept`
+}
+
+/**
+ * The invitation token is used only for acceptance and is never returned.
+ * @summary Accept a partner invitation using the legacy path-token form
+ */
+export const acceptPartnerInvitationByPath = async (invitationToken: string, options?: Parameters<typeof customFetch>[1]): Promise<PartnerInvitationAcceptance> => {
+
+  return customFetch<PartnerInvitationAcceptance>(getAcceptPartnerInvitationByPathUrl(invitationToken),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAcceptPartnerInvitationByPathMutationKey = () => ['acceptPartnerInvitationByPath'] as const;
+
+export const getAcceptPartnerInvitationByPathMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptPartnerInvitationByPath>>, TError,AcceptPartnerInvitationByPathMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof acceptPartnerInvitationByPath>>, TError,AcceptPartnerInvitationByPathMutationVariables, TContext> => {
+
+const mutationKey = getAcceptPartnerInvitationByPathMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acceptPartnerInvitationByPath>>, AcceptPartnerInvitationByPathMutationVariables> = (props) => {
+          const {invitationToken} = props ?? {};
+
+          return  acceptPartnerInvitationByPath(invitationToken,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AcceptPartnerInvitationByPathMutationResult = NonNullable<Awaited<ReturnType<typeof acceptPartnerInvitationByPath>>>
+
+    export type AcceptPartnerInvitationByPathMutationError = ErrorType<unknown>
+    export type AcceptPartnerInvitationByPathMutationVariables = {invitationToken: string}
+
+    /**
+ * @summary Accept a partner invitation using the legacy path-token form
+ */
+export const useAcceptPartnerInvitationByPath = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptPartnerInvitationByPath>>, TError,AcceptPartnerInvitationByPathMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof acceptPartnerInvitationByPath>>,
+        TError,
+        AcceptPartnerInvitationByPathMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAcceptPartnerInvitationByPathMutationOptions(options));
     }
 
 export const getValidatePartnerReferralUrl = () => {

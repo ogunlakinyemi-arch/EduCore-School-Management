@@ -76,6 +76,7 @@ describe("school invitation account notifications", () => {
     });
     mocks.clientQuery.mockImplementation(async (sql: string) => {
       if (sql === "COMMIT") mocks.steps.push("COMMIT");
+      if (sql.includes("current_invite.id")) return { rows: [{ id: 501 }] };
       if (sql.includes("INSERT INTO school_memberships")) {
         return {
           rows: [{ id: 42, userId: 21, schoolId: 3, role: "SCHOOL_ADMIN", status: "ACTIVE" }],

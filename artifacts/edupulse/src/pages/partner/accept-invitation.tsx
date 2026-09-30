@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useRoute, useLocation } from 'wouter';
-import { useAcceptPartnerInvitation } from '@workspace/api-client-react';
+import { useAcceptPartnerInvitationByPath } from '@workspace/api-client-react';
 import { Button } from '@/components/shared';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 export default function AcceptInvitation() {
   const [match, params] = useRoute('/partner/invitations/:invitationToken/accept');
   const [, setLocation] = useLocation();
-  const accept = useAcceptPartnerInvitation();
+  const accept = useAcceptPartnerInvitationByPath();
   
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');

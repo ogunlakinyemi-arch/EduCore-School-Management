@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   Building2, Plus, Search, Pencil, ArrowLeft, GraduationCap, ShieldCheck,
   CircleAlert, BarChart3, CreditCard, UsersRound, UserRound, Briefcase,
-  Smartphone, FileClock, Link as LinkIcon
+  Smartphone, FileClock, Link as LinkIcon, RefreshCw, Save, X
 } from 'lucide-react';
 import { 
   useGetSchool, useUpdateSchool, useGetSchoolDashboard,
@@ -87,7 +87,7 @@ async function inviteSchoolAdministrator(
   schoolId: number,
   fullName: string,
   email: string,
-): Promise<{ status: 'ACTIVE' | 'DISPATCH_REQUESTED' }> {
+): Promise<any> {
   const response = await fetch(`/api/schools/${schoolId}/administrators`, {
     method: 'POST',
     credentials: 'same-origin',
@@ -100,6 +100,63 @@ async function inviteSchoolAdministrator(
   }
   return response.json();
 }
+
+type SchoolAdminInvitation = {
+  invitationId: number | string;
+  claimId: string | null;
+  email: string;
+  fullName: string | null;
+  status: 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'SUPERSEDED';
+  clerkStatus: string | null;
+  isCurrent: boolean;
+  membershipId: number | string | null;
+  userId: number | string | null;
+  createdAt: string;
+  expiresAt: string | null;
+};
+
+async function fetchSchoolAdminInvitations(schoolId: number): Promise<{
+  schoolId: number;
+  role: 'SCHOOL_ADMIN';
+  invitations: SchoolAdminInvitation[];
+}> {
+  const response = await fetch(`/api/schools/${schoolId}/invitations`, { credentials: 'same-origin' });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result?.error || result?.message || `Could not load administrator invitations (${response.status})`);
+  }
+  return result;
+}
+
+async function updateSchoolAdminInvitation(schoolId: number, invitationId: number | string, email: string) {
+  const response = await fetch(`/api/schools/${schoolId}/invitations/${invitationId}`, {
+    method: 'PATCH',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result?.error || result?.message || `Could not update administrator invitation (${response.status})`);
+  }
+  return result;
+}
+
+async function resendSchoolAdminInvitation(schoolId: number, invitationId: number | string) {
+  const response = await fetch(`/api/schools/${schoolId}/invitations/${invitationId}/resend`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result?.error || result?.message || `Could not resend administrator invitation (${response.status})`);
+  }
+  return result;
+}
+
+const schoolAdminInvitationsQueryKey = (schoolId: number) => ['school-admin-invitations', schoolId];
 
 export function SchoolsPage() {
   const [search, setSearch] = useState(''); 
@@ -338,11 +395,27 @@ function SchoolForm({ initial, onDone, onCancel }: { initial?: any; onDone: () =
 
 function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
   const queryClient = useQueryClient();
+  const invitationsQuery = useQuery({
+    queryKey: schoolAdminInvitationsQueryKey(schoolId),
+    queryFn: () => fetchSchoolAdminInvitations(schoolId),
+    enabled: Number.isSafeInteger(schoolId) && schoolId > 0,
+  });
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [editingInvitationId, setEditingInvitationId] = useState<number | string | null>(null);
+  const [editedEmail, setEditedEmail] = useState('');
+  const [workingInvitationId, setWorkingInvitationId] = useState<number | string | null>(null);
+  const [actionError, setActionError] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
+
+  const refreshInvitations = () => {
+    queryClient.invalidateQueries({ queryKey: schoolAdminInvitationsQueryKey(schoolId) });
+    queryClient.invalidateQueries({ queryKey: ['platform-school-overview', schoolId] });
+    queryClient.invalidateQueries({ queryKey: ['platform-school-directory'] });
+  };
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -350,14 +423,11 @@ function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
     setMessage('');
     setError('');
     try {
-      const result = await inviteSchoolAdministrator(schoolId, name, email);
-      setMessage(result.status === 'ACTIVE'
-        ? 'Existing account granted School Administrator access.'
-        : 'Clerk accepted the invitation request. Inbox delivery is not verified; the administrator will set their own password.');
+      await inviteSchoolAdministrator(schoolId, name, email);
+      setMessage('Administrator invitation request completed. Check the invitation list below for its actual status; inbox delivery is not verified.');
       setName('');
       setEmail('');
-      queryClient.invalidateQueries({ queryKey: ['platform-school-overview', schoolId] });
-      queryClient.invalidateQueries({ queryKey: ['platform-school-directory'] });
+      refreshInvitations();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not invite this administrator.');
     } finally {
@@ -365,15 +435,116 @@ function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
     }
   }
 
+  async function saveEmail(invitation: SchoolAdminInvitation) {
+    setWorkingInvitationId(invitation.invitationId);
+    setActionError('');
+    setActionMessage('');
+    try {
+      await updateSchoolAdminInvitation(schoolId, invitation.invitationId, editedEmail.trim());
+      setEditingInvitationId(null);
+      setEditedEmail('');
+      setActionMessage('Pending invitation email updated.');
+      refreshInvitations();
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : 'Could not update this invitation email.');
+    } finally {
+      setWorkingInvitationId(null);
+    }
+  }
+
+  async function resend(invitation: SchoolAdminInvitation) {
+    setWorkingInvitationId(invitation.invitationId);
+    setActionError('');
+    setActionMessage('');
+    try {
+      const result = await resendSchoolAdminInvitation(schoolId, invitation.invitationId);
+      setActionMessage(
+        `Invitation ${result.status} request accepted for ${result.email}. Inbox delivery is ${result.deliveryStatus === 'UNVERIFIED' ? 'unverified' : String(result.deliveryStatus || 'unverified').toLowerCase()}.`,
+      );
+      refreshInvitations();
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : 'Could not resend this invitation.');
+    } finally {
+      setWorkingInvitationId(null);
+    }
+  }
+
   return (
-    <form onSubmit={submit} className="mt-4 space-y-3 border-t border-[hsl(var(--border))] pt-4">
-      <div className="text-sm font-bold">Invite a school administrator</div>
-      <Field label="Full name"><input required minLength={2} value={name} onChange={e => setName(e.target.value)} /></Field>
-      <Field label="Email"><input required type="email" value={email} onChange={e => setEmail(e.target.value)} /></Field>
-      <Button type="submit" disabled={busy}>{busy ? 'Sending…' : 'Send invitation'}</Button>
-      {message && <p role="status" className="text-sm">{message}</p>}
-      {error && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{error}</p>}
-    </form>
+    <div className="mt-4 space-y-4 border-t border-[hsl(var(--border))] pt-4">
+      <form onSubmit={submit} className="space-y-3">
+        <div className="text-sm font-bold">Invite a school administrator</div>
+        <Field label="Full name"><input required minLength={2} value={name} onChange={e => setName(e.target.value)} /></Field>
+        <Field label="Email"><input required type="email" value={email} onChange={e => setEmail(e.target.value)} /></Field>
+        <Button type="submit" disabled={busy}>{busy ? 'Sending…' : 'Send invitation'}</Button>
+        {message && <p role="status" className="text-sm">{message}</p>}
+        {error && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{error}</p>}
+      </form>
+
+      <section aria-label="School administrator invitations" className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-bold">Administrator invitation status</h3>
+          <Button type="button" variant="quiet" onClick={() => invitationsQuery.refetch()} disabled={invitationsQuery.isFetching}>
+            <RefreshCw size={14} />Refresh
+          </Button>
+        </div>
+        {invitationsQuery.isLoading ? (
+          <p role="status" className="text-sm text-[hsl(var(--muted-foreground))]">Loading invitation status…</p>
+        ) : invitationsQuery.isError ? (
+          <div className="space-y-2">
+            <p role="alert" className="text-sm text-[hsl(var(--destructive))]">
+              {invitationsQuery.error instanceof Error ? invitationsQuery.error.message : 'Could not load administrator invitation status.'}
+            </p>
+            <Button type="button" variant="outline" onClick={() => invitationsQuery.refetch()}>Try again</Button>
+          </div>
+        ) : invitationsQuery.data?.invitations?.length ? (
+          <ul className="divide-y divide-[hsl(var(--border))] rounded-xl border border-[hsl(var(--border))]">
+            {invitationsQuery.data.invitations.map(invitation => (
+              <li key={invitation.invitationId} className="space-y-3 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-bold">{invitation.fullName || invitation.email}</div>
+                    <div className="break-all text-xs text-[hsl(var(--muted-foreground))]">{invitation.email}</div>
+                    <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+                      Created {date(invitation.createdAt)}
+                      {invitation.expiresAt ? ` · Expires ${date(invitation.expiresAt)}` : ''}
+                    </div>
+                  </div>
+                  <StatusPill value={invitation.status} />
+                </div>
+                {editingInvitationId === invitation.invitationId ? (
+                  <div className="flex flex-wrap items-end gap-2">
+                    <Field label="Correct email">
+                      <input type="email" required value={editedEmail} onChange={event => setEditedEmail(event.target.value)} />
+                    </Field>
+                    <Button type="button" onClick={() => saveEmail(invitation)} disabled={workingInvitationId === invitation.invitationId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editedEmail.trim())}>
+                      <Save size={14} />Save email
+                    </Button>
+                    <Button type="button" variant="quiet" onClick={() => { setEditingInvitationId(null); setEditedEmail(''); }}>
+                      <X size={14} />Cancel
+                    </Button>
+                  </div>
+                ) : invitation.status === 'PENDING' || invitation.status === 'EXPIRED' ? (
+                  <div className="flex flex-wrap gap-2">
+                    {invitation.status === 'PENDING' && (
+                      <Button type="button" variant="outline" onClick={() => { setEditingInvitationId(invitation.invitationId); setEditedEmail(invitation.email); setActionError(''); setActionMessage(''); }}>
+                        <Pencil size={14} />Edit email
+                      </Button>
+                    )}
+                    <Button type="button" variant="outline" onClick={() => resend(invitation)} disabled={workingInvitationId === invitation.invitationId}>
+                      <RefreshCw size={14} />{workingInvitationId === invitation.invitationId ? 'Resending…' : 'Resend'}
+                    </Button>
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-[hsl(var(--muted-foreground))]">No school administrator invitations have been recorded.</p>
+        )}
+        {actionMessage && <p role="status" className="text-sm text-[hsl(var(--primary))]">{actionMessage}</p>}
+        {actionError && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{actionError}</p>}
+      </section>
+    </div>
   );
 }
 

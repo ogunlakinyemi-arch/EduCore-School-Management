@@ -2368,6 +2368,106 @@ export const CreateSchoolAdministratorResponse = zod.object({
 
 
 /**
+ * Platform Owner only. Invitation tokens are never returned.
+ * @summary List School Administrator invitations and active memberships for a school
+ */
+
+
+
+export const ListSchoolAdministratorInvitationsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ListSchoolAdministratorInvitationsResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "role": zod.literal("SCHOOL_ADMIN"),
+  "invitations": zod.array(zod.object({
+  "invitationId": zod.string().nullable(),
+  "claimId": zod.string().nullable(),
+  "email": zod.string().email(),
+  "fullName": zod.string().nullable(),
+  "schoolId": zod.number().int(),
+  "role": zod.literal("SCHOOL_ADMIN"),
+  "status": zod.enum(['PENDING', 'ACTIVE', 'EXPIRED', 'REVOKED', 'SUPERSEDED']),
+  "clerkStatus": zod.union([zod.literal('pending'),zod.literal('accepted'),zod.literal('expired'),zod.literal('revoked'),zod.literal('revoked-or-ignored'),zod.literal(null)]).nullable(),
+  "isCurrent": zod.boolean(),
+  "membershipId": zod.number().int().nullable(),
+  "userId": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date().nullable(),
+  "expiresAt": zod.coerce.date().nullable()
+}))
+})
+
+
+/**
+ * Platform Owner only. A pending or expired invitation may be replaced; the previous claim is invalidated.
+ * @summary Replace a pending School Administrator invitation with a corrected email
+ */
+
+export const editSchoolAdministratorInvitationPathInvitationIdMax = 100;
+
+
+export const editSchoolAdministratorInvitationPathInvitationIdRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+
+
+export const EditSchoolAdministratorInvitationParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "invitationId": zod.coerce.string().min(1).max(editSchoolAdministratorInvitationPathInvitationIdMax).regex(editSchoolAdministratorInvitationPathInvitationIdRegExp)
+})
+
+export const editSchoolAdministratorInvitationBodyEmailMax = 254;
+
+
+
+export const EditSchoolAdministratorInvitationBody = zod.object({
+  "email": zod.string().email().min(1).max(editSchoolAdministratorInvitationBodyEmailMax)
+})
+
+export const EditSchoolAdministratorInvitationResponse = zod.object({
+  "status": zod.literal("PENDING"),
+  "invitationId": zod.string(),
+  "supersededInvitationId": zod.string(),
+  "previousInviteRevoked": zod.boolean(),
+  "email": zod.string().email(),
+  "schoolId": zod.number().int(),
+  "role": zod.literal("SCHOOL_ADMIN"),
+  "dispatchStatus": zod.literal("REQUEST_ACCEPTED"),
+  "deliveryStatus": zod.literal("UNVERIFIED"),
+  "expiresAt": zod.coerce.date()
+})
+
+
+/**
+ * Platform Owner only. Supersedes the existing invitation and sends a replacement to the same email.
+ * @summary Resend a School Administrator invitation
+ */
+
+export const resendSchoolAdministratorInvitationPathInvitationIdMax = 100;
+
+
+export const resendSchoolAdministratorInvitationPathInvitationIdRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+
+
+export const ResendSchoolAdministratorInvitationParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "invitationId": zod.coerce.string().min(1).max(resendSchoolAdministratorInvitationPathInvitationIdMax).regex(resendSchoolAdministratorInvitationPathInvitationIdRegExp)
+})
+
+export const ResendSchoolAdministratorInvitationResponse = zod.object({
+  "status": zod.literal("PENDING"),
+  "invitationId": zod.string(),
+  "supersededInvitationId": zod.string(),
+  "previousInviteRevoked": zod.boolean(),
+  "email": zod.string().email(),
+  "schoolId": zod.number().int(),
+  "role": zod.literal("SCHOOL_ADMIN"),
+  "dispatchStatus": zod.literal("REQUEST_ACCEPTED"),
+  "deliveryStatus": zod.literal("UNVERIFIED"),
+  "expiresAt": zod.coerce.date()
+})
+
+
+/**
  * @summary List classes available for a school-admin import
  */
 
@@ -3414,7 +3514,20 @@ export const ListPlatformCompanyEmployeesResponseItem = zod.object({
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "invitationStatus": zod.object({
+  "employeeId": zod.number().int(),
+  "email": zod.string().email(),
+  "status": zod.enum(['NOT_INVITED', 'ACTIVE', 'PENDING', 'EXPIRED']),
+  "invitation": zod.union([zod.null(),zod.object({
+  "role": zod.union([zod.literal('COMPANY_ACCOUNTANT'),zod.literal('DEVICE_ACTIVATION_OFFICER'),zod.literal(null)]).nullable(),
+  "schoolId": zod.number().int().nullable(),
+  "invitationId": zod.string().nullable(),
+  "expiresAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['NOT_INVITED', 'ACTIVE', 'PENDING', 'EXPIRED'])
+})])
 })
+}))
 export const ListPlatformCompanyEmployeesResponse = zod.array(ListPlatformCompanyEmployeesResponseItem)
 
 
@@ -3483,7 +3596,20 @@ export const GetPlatformCompanyEmployeeResponse = zod.object({
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "invitationStatus": zod.object({
+  "employeeId": zod.number().int(),
+  "email": zod.string().email(),
+  "status": zod.enum(['NOT_INVITED', 'ACTIVE', 'PENDING', 'EXPIRED']),
+  "invitation": zod.union([zod.null(),zod.object({
+  "role": zod.union([zod.literal('COMPANY_ACCOUNTANT'),zod.literal('DEVICE_ACTIVATION_OFFICER'),zod.literal(null)]).nullable(),
+  "schoolId": zod.number().int().nullable(),
+  "invitationId": zod.string().nullable(),
+  "expiresAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['NOT_INVITED', 'ACTIVE', 'PENDING', 'EXPIRED'])
+})])
 })
+}))
 
 
 /**
@@ -3527,6 +3653,91 @@ export const UpdatePlatformCompanyEmployeeResponse = zod.object({
 
 
 /**
+ * @summary List company employee profiles with their current internal invitation status
+ */
+export const ListPlatformCompanyEmployeeInvitationsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "fullName": zod.string(),
+  "email": zod.string().email(),
+  "phone": zod.string().nullable(),
+  "jobTitle": zod.string().nullable(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "invitationStatus": zod.object({
+  "employeeId": zod.number().int(),
+  "email": zod.string().email(),
+  "status": zod.enum(['NOT_INVITED', 'ACTIVE', 'PENDING', 'EXPIRED']),
+  "invitation": zod.union([zod.null(),zod.object({
+  "role": zod.union([zod.literal('COMPANY_ACCOUNTANT'),zod.literal('DEVICE_ACTIVATION_OFFICER'),zod.literal(null)]).nullable(),
+  "schoolId": zod.number().int().nullable(),
+  "invitationId": zod.string().nullable(),
+  "expiresAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['NOT_INVITED', 'ACTIVE', 'PENDING', 'EXPIRED'])
+})])
+})
+}))
+export const ListPlatformCompanyEmployeeInvitationsResponse = zod.array(ListPlatformCompanyEmployeeInvitationsResponseItem)
+
+
+/**
+ * @summary Get the current internal invitation status for a company employee
+ */
+
+
+
+export const GetPlatformCompanyEmployeeInvitationParams = zod.object({
+  "employeeId": zod.coerce.number().int().min(1)
+})
+
+export const GetPlatformCompanyEmployeeInvitationResponse = zod.object({
+  "employeeId": zod.number().int(),
+  "email": zod.string().email(),
+  "status": zod.enum(['NOT_INVITED', 'ACTIVE', 'PENDING', 'EXPIRED']),
+  "invitation": zod.union([zod.null(),zod.object({
+  "role": zod.union([zod.literal('COMPANY_ACCOUNTANT'),zod.literal('DEVICE_ACTIVATION_OFFICER'),zod.literal(null)]).nullable(),
+  "schoolId": zod.number().int().nullable(),
+  "invitationId": zod.string().nullable(),
+  "expiresAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['NOT_INVITED', 'ACTIVE', 'PENDING', 'EXPIRED'])
+})])
+})
+
+
+/**
+ * @summary Correct the email of a pending company employee invitation
+ */
+
+
+
+export const EditPlatformCompanyEmployeeInvitationParams = zod.object({
+  "employeeId": zod.coerce.number().int().min(1)
+})
+
+export const editPlatformCompanyEmployeeInvitationBodyEmailMax = 254;
+
+
+
+export const EditPlatformCompanyEmployeeInvitationBody = zod.object({
+  "email": zod.string().email().min(1).max(editPlatformCompanyEmployeeInvitationBodyEmailMax)
+})
+
+export const EditPlatformCompanyEmployeeInvitationResponse = zod.object({
+  "employeeId": zod.number().int(),
+  "email": zod.string().email(),
+  "role": zod.enum(['COMPANY_ACCOUNTANT', 'DEVICE_ACTIVATION_OFFICER']),
+  "schoolId": zod.number().int().nullable(),
+  "invitation": zod.object({
+  "status": zod.enum(['DISPATCH_REQUEST_ACCEPTED']),
+  "deliveryConfirmed": zod.literal(false),
+  "invitationId": zod.string().optional(),
+  "expiresAt": zod.coerce.date()
+})
+})
+
+
+/**
  * Platform Owner only. Company Accountants have no school scope; Device Activation Officers require an active school.
  * @summary Request an internal-role invitation for an active company employee
  */
@@ -3557,6 +3768,31 @@ export const InvitePlatformCompanyEmployeeResponse = zod.object({
   "invitation": zod.object({
   "status": zod.enum(['DISPATCH_REQUEST_ACCEPTED']),
   "deliveryConfirmed": zod.literal(false),
+  "invitationId": zod.string().optional(),
+  "expiresAt": zod.coerce.date()
+})
+})
+
+
+/**
+ * @summary Resend a company employee invitation
+ */
+
+
+
+export const ResendPlatformCompanyEmployeeInvitationParams = zod.object({
+  "employeeId": zod.coerce.number().int().min(1)
+})
+
+export const ResendPlatformCompanyEmployeeInvitationResponse = zod.object({
+  "employeeId": zod.number().int(),
+  "email": zod.string().email(),
+  "role": zod.enum(['COMPANY_ACCOUNTANT', 'DEVICE_ACTIVATION_OFFICER']),
+  "schoolId": zod.number().int().nullable(),
+  "invitation": zod.object({
+  "status": zod.enum(['DISPATCH_REQUEST_ACCEPTED']),
+  "deliveryConfirmed": zod.literal(false),
+  "invitationId": zod.string().optional(),
   "expiresAt": zod.coerce.date()
 })
 })
@@ -5705,6 +5941,27 @@ export const ListPartnersResponse = zod.array(ListPartnersResponseItem)
 
 
 /**
+ * @summary List partner invitations and their current lifecycle status
+ */
+export const ListPartnerInvitationsQueryParams = zod.object({
+  "status": zod.enum(['PENDING', 'ACTIVE', 'EXPIRED', 'REVOKED']).optional()
+})
+
+export const ListPartnerInvitationsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "email": zod.string().email(),
+  "invitationStatus": zod.enum(['ACTIVE', 'ACCEPTED', 'REVOKED']),
+  "partnerStatus": zod.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date(),
+  "redeemedAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['PENDING', 'ACTIVE', 'EXPIRED', 'REVOKED'])
+})
+export const ListPartnerInvitationsResponse = zod.array(ListPartnerInvitationsResponseItem)
+
+
+/**
  * @summary Invite a partner
  */
 export const createPartnerInvitationBodyFullNameMin = 2;
@@ -5724,7 +5981,30 @@ export const CreatePartnerInvitationResponse = zod.object({
   "partnerId": zod.number().int(),
   "email": zod.string().email(),
   "status": zod.enum(['PENDING']),
-  "clerkInvitationId": zod.string().describe('Clerk invitation identifier; does not contain the invitation token'),
+  "clerkInvitationId": zod.string().optional().describe('Clerk invitation identifier; it is not the invitation token'),
+  "invitationDispatchStatus": zod.enum(['REQUEST_ACCEPTED']),
+  "invitationDeliveryStatus": zod.enum(['UNVERIFIED']),
+  "expiresAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Resend the pending invitation for a partner profile
+ */
+
+
+
+export const ResendPartnerInvitationParams = zod.object({
+  "partnerId": zod.coerce.number().int().min(1)
+})
+
+export const ResendPartnerInvitationResponse = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "email": zod.string().email(),
+  "status": zod.enum(['PENDING']),
+  "clerkInvitationId": zod.string().optional().describe('Clerk invitation identifier; it is not the invitation token'),
   "invitationDispatchStatus": zod.enum(['REQUEST_ACCEPTED']),
   "invitationDeliveryStatus": zod.enum(['UNVERIFIED']),
   "expiresAt": zod.coerce.date(),
@@ -5776,16 +6056,18 @@ export const UpdatePartnerParams = zod.object({
 
 export const updatePartnerBodyFullNameMin = 2;
 
+export const updatePartnerBodyEmailMax = 254;
+
 
 
 export const UpdatePartnerBody = zod.object({
   "fullName": zod.string().min(updatePartnerBodyFullNameMin).optional(),
   "businessName": zod.string().optional(),
+  "email": zod.string().email().min(1).max(updatePartnerBodyEmailMax).optional(),
   "phone": zod.string().optional(),
   "address": zod.string().optional(),
   "state": zod.string().optional(),
-  "lga": zod.string().optional(),
-  "status": zod.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED']).optional()
+  "lga": zod.string().optional()
 })
 
 export const UpdatePartnerResponse = zod.object({
@@ -6267,7 +6549,9 @@ export const GetPartnerProfileResponse = zod.object({
   "deactivationDate": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date().nullish()
-})
+}).and(zod.object({
+  "status": zod.literal("ACTIVE")
+}))
 
 
 /**
@@ -6305,6 +6589,123 @@ export const UpdatePartnerProfileResponse = zod.object({
   "deactivationDate": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date().nullish()
+}).and(zod.object({
+  "status": zod.literal("ACTIVE")
+}))
+
+
+/**
+ * @summary List active and inactive staff memberships for the authenticated partner
+ */
+export const ListPartnerStaffResponseItem = zod.object({
+  "userId": zod.number().int(),
+  "email": zod.string().email(),
+  "fullName": zod.string(),
+  "role": zod.enum(['PARTNER_STAFF', 'PARTNER_FINANCE', 'PARTNER_ADMIN']),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "joinedAt": zod.coerce.date()
+})
+export const ListPartnerStaffResponse = zod.array(ListPartnerStaffResponseItem)
+
+
+/**
+ * @summary Change an active partner staff member's permission level
+ */
+
+
+
+export const UpdatePartnerStaffPermissionsParams = zod.object({
+  "userId": zod.coerce.number().int().min(1)
+})
+
+export const UpdatePartnerStaffPermissionsBody = zod.object({
+  "permission": zod.enum(['STANDARD', 'FINANCE', 'ADMIN'])
+})
+
+export const UpdatePartnerStaffPermissionsResponse = zod.object({
+  "userId": zod.number().int(),
+  "role": zod.enum(['PARTNER_STAFF', 'PARTNER_FINANCE', 'PARTNER_ADMIN']),
+  "status": zod.literal("ACTIVE")
+})
+
+
+/**
+ * @summary List current non-expired partner staff invitations
+ */
+export const ListPartnerStaffInvitationsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "email": zod.string().email(),
+  "status": zod.literal("ACTIVE"),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date()
+})
+export const ListPartnerStaffInvitationsResponse = zod.array(ListPartnerStaffInvitationsResponseItem)
+
+
+/**
+ * @summary Invite a staff member to the authenticated partner profile
+ */
+export const createPartnerStaffInvitationBodyEmailMax = 254;
+
+
+
+export const CreatePartnerStaffInvitationBody = zod.object({
+  "email": zod.string().email().min(1).max(createPartnerStaffInvitationBodyEmailMax),
+  "permission": zod.enum(['STANDARD', 'FINANCE', 'ADMIN']).optional()
+})
+
+export const CreatePartnerStaffInvitationResponse = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "email": zod.string().email(),
+  "role": zod.enum(['PARTNER_STAFF', 'PARTNER_FINANCE', 'PARTNER_ADMIN']),
+  "permission": zod.enum(['STANDARD', 'FINANCE', 'ADMIN']),
+  "status": zod.literal("PENDING"),
+  "invitationDispatchStatus": zod.literal("REQUEST_ACCEPTED"),
+  "invitationDeliveryStatus": zod.literal("UNVERIFIED"),
+  "expiresAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Resend a partner staff invitation
+ */
+
+
+
+export const ResendPartnerStaffInvitationParams = zod.object({
+  "invitationId": zod.coerce.number().int().min(1)
+})
+
+export const ResendPartnerStaffInvitationResponse = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "email": zod.string().email(),
+  "role": zod.enum(['PARTNER_STAFF', 'PARTNER_FINANCE', 'PARTNER_ADMIN']),
+  "permission": zod.enum(['STANDARD', 'FINANCE', 'ADMIN']),
+  "status": zod.literal("PENDING"),
+  "invitationDispatchStatus": zod.literal("REQUEST_ACCEPTED"),
+  "invitationDeliveryStatus": zod.literal("UNVERIFIED"),
+  "expiresAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Revoke a pending partner staff invitation
+ */
+
+
+
+export const RevokePartnerStaffInvitationParams = zod.object({
+  "invitationId": zod.coerce.number().int().min(1)
+})
+
+export const RevokePartnerStaffInvitationResponse = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "status": zod.literal("REVOKED")
 })
 
 
@@ -6465,16 +6866,27 @@ export const UpdatePartnerPayoutInformationResponse = zod.object({
 
 
 /**
- * @summary Accept an invitation for the authenticated user
+ * The token may be supplied as the partnerInvitation query parameter or in the JSON request body. It is never returned in the response.
+ * @summary Accept a partner owner or staff invitation for the authenticated user
  */
-export const acceptPartnerInvitationPathInvitationTokenMin = 32;
+export const acceptPartnerInvitationQueryPartnerInvitationMin = 32;
 
 
-export const acceptPartnerInvitationPathInvitationTokenRegExp = new RegExp('^[A-Za-z0-9_-]{32,}$');
+export const acceptPartnerInvitationQueryPartnerInvitationRegExp = new RegExp('^[A-Za-z0-9_-]+$');
 
 
-export const AcceptPartnerInvitationParams = zod.object({
-  "invitationToken": zod.coerce.string().min(acceptPartnerInvitationPathInvitationTokenMin).regex(acceptPartnerInvitationPathInvitationTokenRegExp).describe('Opaque, single-use, high-entropy invitation token. Never a database identifier.')
+export const AcceptPartnerInvitationQueryParams = zod.object({
+  "partnerInvitation": zod.coerce.string().min(acceptPartnerInvitationQueryPartnerInvitationMin).regex(acceptPartnerInvitationQueryPartnerInvitationRegExp).optional()
+})
+
+export const acceptPartnerInvitationBodyPartnerInvitationMin = 32;
+
+
+export const acceptPartnerInvitationBodyPartnerInvitationRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+
+
+export const AcceptPartnerInvitationBody = zod.object({
+  "partnerInvitation": zod.string().min(acceptPartnerInvitationBodyPartnerInvitationMin).regex(acceptPartnerInvitationBodyPartnerInvitationRegExp).optional()
 })
 
 export const AcceptPartnerInvitationResponse = zod.object({
@@ -6496,7 +6908,51 @@ export const AcceptPartnerInvitationResponse = zod.object({
   "deactivationDate": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date().nullish()
+}).and(zod.object({
+  "status": zod.literal("ACTIVE"),
+  "role": zod.enum(['PARTNER_OWNER', 'PARTNER_STAFF', 'PARTNER_FINANCE', 'PARTNER_ADMIN']),
+  "redirectTo": zod.literal("/partner")
+}))
+
+
+/**
+ * The invitation token is used only for acceptance and is never returned.
+ * @summary Accept a partner invitation using the legacy path-token form
+ */
+export const acceptPartnerInvitationByPathPathInvitationTokenMin = 32;
+
+
+export const acceptPartnerInvitationByPathPathInvitationTokenRegExp = new RegExp('^[A-Za-z0-9_-]{32,}$');
+
+
+export const AcceptPartnerInvitationByPathParams = zod.object({
+  "invitationToken": zod.coerce.string().min(acceptPartnerInvitationByPathPathInvitationTokenMin).regex(acceptPartnerInvitationByPathPathInvitationTokenRegExp).describe('Opaque, single-use, high-entropy invitation token. Never a database identifier.')
 })
+
+export const AcceptPartnerInvitationByPathResponse = zod.object({
+  "id": zod.number().int(),
+  "partnerCode": zod.string(),
+  "partnerType": zod.enum(['INDIVIDUAL', 'BUSINESS']),
+  "fullName": zod.string(),
+  "businessName": zod.string().nullish(),
+  "email": zod.string().email(),
+  "phone": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "lga": zod.string().nullish(),
+  "status": zod.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
+  "clerkUserId": zod.string().nullish(),
+  "userId": zod.number().int().nullish(),
+  "registrationDate": zod.coerce.date().nullish(),
+  "activationDate": zod.coerce.date().nullish(),
+  "deactivationDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().nullish()
+}).and(zod.object({
+  "status": zod.literal("ACTIVE"),
+  "role": zod.enum(['PARTNER_OWNER', 'PARTNER_STAFF', 'PARTNER_FINANCE', 'PARTNER_ADMIN']),
+  "redirectTo": zod.literal("/partner")
+}))
 
 
 /**

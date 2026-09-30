@@ -1022,6 +1022,82 @@ export interface SchoolAdministratorResult {
   membership?: RoleAssignment;
 }
 
+export type SchoolAdministratorInvitationStatus = typeof SchoolAdministratorInvitationStatus[keyof typeof SchoolAdministratorInvitationStatus];
+
+
+export const SchoolAdministratorInvitationStatus = {
+  PENDING: 'PENDING',
+  ACTIVE: 'ACTIVE',
+  EXPIRED: 'EXPIRED',
+  REVOKED: 'REVOKED',
+  SUPERSEDED: 'SUPERSEDED',
+} as const;
+
+/**
+ * @nullable
+ */
+export type SchoolAdministratorInvitationClerkStatus = typeof SchoolAdministratorInvitationClerkStatus[keyof typeof SchoolAdministratorInvitationClerkStatus] | null;
+
+
+export const SchoolAdministratorInvitationClerkStatus = {
+  pending: 'pending',
+  accepted: 'accepted',
+  expired: 'expired',
+  revoked: 'revoked',
+  'revoked-or-ignored': 'revoked-or-ignored',
+} as const;
+
+export interface SchoolAdministratorInvitation {
+  /** @nullable */
+  invitationId: string | null;
+  /** @nullable */
+  claimId: string | null;
+  email: string;
+  /** @nullable */
+  fullName: string | null;
+  schoolId: number;
+  role: 'SCHOOL_ADMIN';
+  status: SchoolAdministratorInvitationStatus;
+  /** @nullable */
+  clerkStatus: SchoolAdministratorInvitationClerkStatus;
+  isCurrent: boolean;
+  /** @nullable */
+  membershipId: number | null;
+  /** @nullable */
+  userId: number | null;
+  /** @nullable */
+  createdAt: string | null;
+  /** @nullable */
+  expiresAt: string | null;
+}
+
+export interface SchoolAdministratorInvitationList {
+  schoolId: number;
+  role: 'SCHOOL_ADMIN';
+  invitations: SchoolAdministratorInvitation[];
+}
+
+export interface SchoolAdministratorInvitationEmailUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 254
+     */
+  email: string;
+}
+
+export interface SchoolAdministratorInvitationReplacement {
+  status: 'PENDING';
+  invitationId: string;
+  supersededInvitationId: string;
+  previousInviteRevoked: boolean;
+  email: string;
+  schoolId: number;
+  role: 'SCHOOL_ADMIN';
+  dispatchStatus: 'REQUEST_ACCEPTED';
+  deliveryStatus: 'UNVERIFIED';
+  expiresAt: string;
+}
+
 export type InvitationDiagnosticsDispatchStatus = typeof InvitationDiagnosticsDispatchStatus[keyof typeof InvitationDiagnosticsDispatchStatus];
 
 
@@ -1905,6 +1981,60 @@ export interface CompanyEmployee {
   updatedAt: string;
 }
 
+export type CompanyEmployeeInvitationStatusStatus = typeof CompanyEmployeeInvitationStatusStatus[keyof typeof CompanyEmployeeInvitationStatusStatus];
+
+
+export const CompanyEmployeeInvitationStatusStatus = {
+  NOT_INVITED: 'NOT_INVITED',
+  ACTIVE: 'ACTIVE',
+  PENDING: 'PENDING',
+  EXPIRED: 'EXPIRED',
+} as const;
+
+/**
+ * @nullable
+ */
+export type CompanyEmployeeInvitationStatusInvitationRole = typeof CompanyEmployeeInvitationStatusInvitationRole[keyof typeof CompanyEmployeeInvitationStatusInvitationRole] | null;
+
+
+export const CompanyEmployeeInvitationStatusInvitationRole = {
+  COMPANY_ACCOUNTANT: 'COMPANY_ACCOUNTANT',
+  DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
+} as const;
+
+export type CompanyEmployeeInvitationStatusInvitationStatus = typeof CompanyEmployeeInvitationStatusInvitationStatus[keyof typeof CompanyEmployeeInvitationStatusInvitationStatus];
+
+
+export const CompanyEmployeeInvitationStatusInvitationStatus = {
+  NOT_INVITED: 'NOT_INVITED',
+  ACTIVE: 'ACTIVE',
+  PENDING: 'PENDING',
+  EXPIRED: 'EXPIRED',
+} as const;
+
+export type CompanyEmployeeInvitationStatusInvitation = {
+  /** @nullable */
+  role: CompanyEmployeeInvitationStatusInvitationRole;
+  /** @nullable */
+  schoolId: number | null;
+  /** @nullable */
+  invitationId: string | null;
+  /** @nullable */
+  expiresAt: string | null;
+  status: CompanyEmployeeInvitationStatusInvitationStatus;
+} | null;
+
+export interface CompanyEmployeeInvitationStatus {
+  employeeId: number;
+  email: string;
+  status: CompanyEmployeeInvitationStatusStatus;
+  invitation: CompanyEmployeeInvitationStatusInvitation;
+}
+
+export type CompanyEmployeeWithInvitationStatus = CompanyEmployee & {
+  invitationStatus: CompanyEmployeeInvitationStatus;
+};
+
 export type CompanyEmployeeInputRole = typeof CompanyEmployeeInputRole[keyof typeof CompanyEmployeeInputRole];
 
 
@@ -2057,6 +2187,7 @@ export const CompanyEmployeeInvitationResultInvitationStatus = {
 export type CompanyEmployeeInvitationResultInvitation = {
   status: CompanyEmployeeInvitationResultInvitationStatus;
   deliveryConfirmed: false;
+  invitationId?: string;
   expiresAt: string;
 };
 
@@ -2067,6 +2198,14 @@ export interface CompanyEmployeeInvitationResult {
   /** @nullable */
   schoolId: number | null;
   invitation: CompanyEmployeeInvitationResultInvitation;
+}
+
+export interface CompanyEmployeeInvitationEmailUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 254
+     */
+  email: string;
 }
 
 export type CompanyAccountantOverviewSubscriptions = {
@@ -2222,6 +2361,10 @@ export interface Partner {
   updatedAt?: string | null;
 }
 
+export type PartnerProfile = Partner & {
+  status?: 'ACTIVE';
+};
+
 export interface PartnerInvitationInput {
   email: string;
   /** @minLength 2 */
@@ -2257,23 +2400,59 @@ export interface PartnerInvitation {
   partnerId: number;
   email: string;
   status: PartnerInvitationStatus;
-  /** Clerk invitation identifier; does not contain the invitation token */
-  clerkInvitationId: string;
+  /** Clerk invitation identifier; it is not the invitation token */
+  clerkInvitationId?: string;
   invitationDispatchStatus: PartnerInvitationInvitationDispatchStatus;
   invitationDeliveryStatus: PartnerInvitationInvitationDeliveryStatus;
   expiresAt: string;
   createdAt: string;
 }
 
+export type PartnerInvitationListItemInvitationStatus = typeof PartnerInvitationListItemInvitationStatus[keyof typeof PartnerInvitationListItemInvitationStatus];
+
+
+export const PartnerInvitationListItemInvitationStatus = {
+  ACTIVE: 'ACTIVE',
+  ACCEPTED: 'ACCEPTED',
+  REVOKED: 'REVOKED',
+} as const;
+
+export type PartnerInvitationListItemStatus = typeof PartnerInvitationListItemStatus[keyof typeof PartnerInvitationListItemStatus];
+
+
+export const PartnerInvitationListItemStatus = {
+  PENDING: 'PENDING',
+  ACTIVE: 'ACTIVE',
+  EXPIRED: 'EXPIRED',
+  REVOKED: 'REVOKED',
+} as const;
+
+export interface PartnerInvitationListItem {
+  id: number;
+  partnerId: number;
+  email: string;
+  invitationStatus: PartnerInvitationListItemInvitationStatus;
+  partnerStatus: PartnerStatus;
+  createdAt: string;
+  expiresAt: string;
+  /** @nullable */
+  redeemedAt: string | null;
+  status: PartnerInvitationListItemStatus;
+}
+
 export interface PartnerUpdate {
   /** @minLength 2 */
   fullName?: string;
   businessName?: string;
+  /**
+     * @minLength 1
+     * @maxLength 254
+     */
+  email?: string;
   phone?: string;
   address?: string;
   state?: string;
   lga?: string;
-  status?: PartnerStatus;
 }
 
 export interface PartnerSelfUpdate {
@@ -2288,6 +2467,111 @@ export interface PartnerSelfUpdate {
 
 export interface PartnerStatusUpdate {
   status: PartnerStatus;
+}
+
+export interface PartnerInvitationAcceptanceInput {
+  /**
+     * @minLength 32
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  partnerInvitation?: string;
+}
+
+export type PartnerInvitationAcceptanceRole = typeof PartnerInvitationAcceptanceRole[keyof typeof PartnerInvitationAcceptanceRole];
+
+
+export const PartnerInvitationAcceptanceRole = {
+  PARTNER_OWNER: 'PARTNER_OWNER',
+  PARTNER_STAFF: 'PARTNER_STAFF',
+  PARTNER_FINANCE: 'PARTNER_FINANCE',
+  PARTNER_ADMIN: 'PARTNER_ADMIN',
+} as const;
+
+export type PartnerInvitationAcceptance = Partner & {
+  status?: 'ACTIVE';
+  role: PartnerInvitationAcceptanceRole;
+  redirectTo: '/partner';
+};
+
+export type PartnerStaffPermission = typeof PartnerStaffPermission[keyof typeof PartnerStaffPermission];
+
+
+export const PartnerStaffPermission = {
+  STANDARD: 'STANDARD',
+  FINANCE: 'FINANCE',
+  ADMIN: 'ADMIN',
+} as const;
+
+export type PartnerStaffRole = typeof PartnerStaffRole[keyof typeof PartnerStaffRole];
+
+
+export const PartnerStaffRole = {
+  PARTNER_STAFF: 'PARTNER_STAFF',
+  PARTNER_FINANCE: 'PARTNER_FINANCE',
+  PARTNER_ADMIN: 'PARTNER_ADMIN',
+} as const;
+
+export type PartnerStaffMemberStatus = typeof PartnerStaffMemberStatus[keyof typeof PartnerStaffMemberStatus];
+
+
+export const PartnerStaffMemberStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface PartnerStaffMember {
+  userId: number;
+  email: string;
+  fullName: string;
+  role: PartnerStaffRole;
+  status: PartnerStaffMemberStatus;
+  joinedAt: string;
+}
+
+export interface PartnerStaffPermissionUpdate {
+  permission: PartnerStaffPermission;
+}
+
+export interface PartnerStaffPermissionResult {
+  userId: number;
+  role: PartnerStaffRole;
+  status: 'ACTIVE';
+}
+
+export interface PartnerStaffInvitationInput {
+  /**
+     * @minLength 1
+     * @maxLength 254
+     */
+  email: string;
+  permission?: PartnerStaffPermission;
+}
+
+export interface PartnerStaffInvitation {
+  id: number;
+  partnerId: number;
+  email: string;
+  role: PartnerStaffRole;
+  permission: PartnerStaffPermission;
+  status: 'PENDING';
+  invitationDispatchStatus: 'REQUEST_ACCEPTED';
+  invitationDeliveryStatus: 'UNVERIFIED';
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface PartnerStaffInvitationListItem {
+  id: number;
+  email: string;
+  status: 'ACTIVE';
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface PartnerStaffInvitationRevocation {
+  id: number;
+  partnerId: number;
+  status: 'REVOKED';
 }
 
 export type PartnerSchoolAttributionStatus = typeof PartnerSchoolAttributionStatus[keyof typeof PartnerSchoolAttributionStatus];
@@ -6226,6 +6510,28 @@ search?: SearchParameter;
 export type ListPartnersParams = {
 status?: PartnerStatus;
 search?: SearchParameter;
+};
+
+export type ListPartnerInvitationsParams = {
+status?: ListPartnerInvitationsStatus;
+};
+
+export type ListPartnerInvitationsStatus = typeof ListPartnerInvitationsStatus[keyof typeof ListPartnerInvitationsStatus];
+
+
+export const ListPartnerInvitationsStatus = {
+  PENDING: 'PENDING',
+  ACTIVE: 'ACTIVE',
+  EXPIRED: 'EXPIRED',
+  REVOKED: 'REVOKED',
+} as const;
+
+export type AcceptPartnerInvitationParams = {
+/**
+ * @minLength 32
+ * @pattern ^[A-Za-z0-9_-]+$
+ */
+partnerInvitation?: string;
 };
 
 export type ListAcademicAssignmentsParams = {

@@ -2,16 +2,34 @@ import { useEffect, useRef, useState } from 'react';
 import { SignIn, SignUp, useAuth, useClerk } from '@clerk/react';
 import { Link, useLocation } from 'wouter';
 import { ShieldCheck, Sparkles, Zap } from 'lucide-react';
+import {
+  setInvitationAuthFlow,
+  invitationReturnUrl,
+  readInvitationContext,
+} from '@/pages/invitations/acceptance-context';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
-function SignInSessionGate() {
+function SignInSessionGate({
+  invitationRedirectUrl,
+  signUpUrl,
+}: {
+  invitationRedirectUrl: string | null;
+  signUpUrl: string;
+}) {
   const { isLoaded, isSignedIn } = useAuth();
   const { signOut } = useClerk();
+  const [, setLocation] = useLocation();
   const signOutStarted = useRef(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isLoaded || !isSignedIn || !invitationRedirectUrl) return;
+    setLocation(invitationRedirectUrl, { replace: true });
+  }, [isLoaded, isSignedIn, invitationRedirectUrl, setLocation]);
+
+  useEffect(() => {
+    if (invitationRedirectUrl) return;
     if (!isLoaded || !isSignedIn || signOutStarted.current || signOutError) return;
 
     signOutStarted.current = true;
@@ -25,7 +43,7 @@ function SignInSessionGate() {
         signOutStarted.current = false;
         setSignOutError('We could not end the previous session. Please try again.');
       });
-  }, [isLoaded, isSignedIn, signOut, signOutError]);
+  }, [isLoaded, isSignedIn, signOut, signOutError, invitationRedirectUrl]);
 
   if (signOutError) {
     return (
@@ -57,8 +75,9 @@ function SignInSessionGate() {
     <SignIn
       routing="path"
       path={`${base}/sign-in`}
-      signUpUrl={`${base}/sign-up`}
-      fallbackRedirectUrl={`${base}/`}
+      signUpUrl={signUpUrl}
+      forceRedirectUrl={invitationRedirectUrl ?? undefined}
+      fallbackRedirectUrl={invitationRedirectUrl ?? `${base}/`}
       appearance={{ elements: { rootBox: 'w-full', cardBox: 'w-full shadow-none', card: 'shadow-none border-0' } }}
     />
   );
@@ -68,6 +87,21 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const [, navigate] = useLocation();
   const isSignIn = mode === 'sign-in';
   const [accountType, setAccountType] = useState('');
+  const invitationContext = readInvitationContext(window.location.search);
+  const invitationRedirectUrl = invitationContext.ticket
+    ? invitationReturnUrl(invitationContext, base)
+    : null;
+  const invitationQuery = invitationRedirectUrl
+    ? new URL(invitationRedirectUrl, window.location.origin).search
+    : '';
+  const signInUrl = `${base}/sign-in${invitationQuery}`;
+  const signUpUrl = `${base}/sign-up${invitationQuery}`;
+
+  useEffect(() => {
+    if (invitationContext.ticket) {
+      setInvitationAuthFlow(invitationContext.ticket, isSignIn ? 'signin' : 'signup');
+    }
+  }, [invitationContext.ticket, isSignIn]);
 
   return (
     <main className="min-h-[100dvh] bg-[hsl(var(--background))] p-4 md:p-8">
@@ -122,19 +156,20 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
             </div>
           )}
           {isSignIn ? (
-            <SignInSessionGate />
+            <SignInSessionGate invitationRedirectUrl={invitationRedirectUrl} signUpUrl={signUpUrl} />
           ) : (
             <SignUp
               routing="path"
               path={`${base}/sign-up`}
-              signInUrl={`${base}/sign-in`}
-              fallbackRedirectUrl={`${base}/`}
+              signInUrl={signInUrl}
+              forceRedirectUrl={invitationRedirectUrl ?? undefined}
+              fallbackRedirectUrl={invitationRedirectUrl ?? `${base}/`}
               appearance={{ elements: { rootBox: 'w-full', cardBox: 'w-full shadow-none', card: 'shadow-none border-0' } }}
             />
           )}
           <p className="mt-5 text-center text-xs text-[hsl(var(--muted-foreground))]">
             {isSignIn ? 'Need an account?' : 'Already registered?'}{' '}
-            <Link href={isSignIn ? '/sign-up' : '/sign-in'} className="font-bold text-[hsl(var(--primary))]">
+            <Link href={isSignIn ? (invitationRedirectUrl ?? '/sign-up') : (invitationContext.ticket ? signInUrl : '/sign-in')} className="font-bold text-[hsl(var(--primary))]">
               {isSignIn ? 'Create one' : 'Sign in'}
             </Link>
           </p>

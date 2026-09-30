@@ -88,7 +88,7 @@ export async function createInternalEmployeeInvitation(
       expiresInDays: INVITATION_DAYS,
       ignoreExisting: false,
       notify: true,
-      redirectUrl: "/",
+      redirectUrl: "/accept-invitation",
       publicMetadata,
     });
   } catch (error) {
@@ -105,12 +105,21 @@ export async function createInternalEmployeeInvitation(
     : invitation.createdAt * 1000;
   return {
     id: invitation.id,
+    claimId,
     expiresAt: new Date(createdAt + INVITATION_DAYS * 24 * 60 * 60 * 1000).toISOString(),
   };
 }
 
 export async function revokeInternalEmployeeInvitation(invitationId: string) {
-  await clerkClient.invitations.revokeInvitation(invitationId);
+  try {
+    await clerkClient.invitations.revokeInvitation(invitationId);
+  } catch (error) {
+    const status = (error as { status?: number; statusCode?: number } | null)?.status ??
+      (error as { statusCode?: number } | null)?.statusCode;
+    // Missing, accepted, expired, or already-revoked invitations cannot be used.
+    if (status === 404 || status === 409 || status === 422) return;
+    throw error;
+  }
 }
 
 /**
@@ -151,6 +160,40 @@ export async function activateAcceptedInternalEmployeeInvitation(
         schoolId,
       }), metadata.signature)) {
     throw new AuthError(403, "This internal employee invitation is invalid or does not match this account");
+  }
+
+  // Clerk metadata can persist after an invitation is revoked. Only the latest,
+  // unexpired claim recorded by the server may provision access.
+  const liveClaim = await pool.query(
+    `SELECT metadata->>'claimId' AS "claimId",
+            (metadata->>'expiresAt')::timestamptz AS "expiresAt"
+     FROM audit_logs
+     WHERE record_id=$1 AND module='Company Employees'
+       AND event_type IN ('INTERNAL_EMPLOYEE_INVITED','INTERNAL_EMPLOYEE_INVITATION_RESENT')
+       AND metadata->>'claimId'=$2
+       AND NOT EXISTS (
+         SELECT 1 FROM audit_logs invalidation
+         WHERE invalidation.record_id=$1 AND invalidation.module='Company Employees'
+           AND invalidation.event_type IN (
+             'INTERNAL_EMPLOYEE_INVITATION_INVALIDATED','INTERNAL_EMPLOYEE_INVITATION_ACCEPTED'
+           )
+           AND invalidation.metadata->>'claimId'=$2
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM audit_logs newer
+         WHERE newer.record_id=$1 AND newer.module='Company Employees'
+           AND newer.event_type IN ('INTERNAL_EMPLOYEE_INVITED','INTERNAL_EMPLOYEE_INVITATION_RESENT')
+           AND newer.id > audit_logs.id
+       )
+     ORDER BY id DESC LIMIT 1`,
+    [employeeId, metadata.claimId],
+  );
+  const claimExpiry = liveClaim.rows[0]?.expiresAt
+    ? new Date(liveClaim.rows[0].expiresAt).getTime()
+    : 0;
+  if (!liveClaim.rows[0] || liveClaim.rows[0].claimId !== metadata.claimId ||
+      !Number.isFinite(claimExpiry) || claimExpiry <= Date.now()) {
+    throw new AuthError(403, "This internal employee invitation is no longer pending or has expired");
   }
 
   const client = await pool.connect();
@@ -227,6 +270,19 @@ export async function activateAcceptedInternalEmployeeInvitation(
         ],
       );
     }
+    const contextName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") || email;
+    await client.query(
+      `INSERT INTO audit_logs
+        ("user",role,actor_user_id,clerk_user_id,school_id,action,module,record_id,
+         severity,event_type,result,metadata)
+       VALUES($1,$2,$3,$4,$5,$6,'Company Employees',$7,'info',
+         'INTERNAL_EMPLOYEE_INVITATION_ACCEPTED','SUCCESS',$8::jsonb)`,
+      [
+        contextName, metadata.role, userId, clerkUserId, targetSchoolId,
+        `Accepted ${metadata.role.replaceAll("_", " ")} invitation`, employeeId,
+        JSON.stringify({ employeeId, role: metadata.role, schoolId, claimId: metadata.claimId }),
+      ],
+    );
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
@@ -267,6 +323,17 @@ router.post("/platform/company-employees/:employeeId/invitation", run(async (req
       [employeeId],
     );
     if (!employee.rows[0]) throw new AuthError(404, "Active company employee not found");
+    const existingAccess = await client.query(
+      `SELECT sm.role,sm.school_id AS "schoolId"
+       FROM app_users au
+       JOIN school_memberships sm ON sm.user_id=au.id
+       WHERE au.status='ACTIVE' AND lower(au.email)=lower($1) AND sm.status='ACTIVE'
+       LIMIT 1`,
+      [employee.rows[0].email],
+    );
+    if (existingAccess.rows[0]) {
+      throw new AuthError(409, "This email already belongs to an account with an active role");
+    }
     if (schoolId !== null) {
       const school = await client.query(
         `SELECT id FROM schools WHERE id=$1 AND upper(status)='ACTIVE' FOR SHARE`,
@@ -290,7 +357,14 @@ router.post("/platform/company-employees/:employeeId/invitation", run(async (req
         'INTERNAL_EMPLOYEE_INVITED','SUCCESS',$5::jsonb)`,
       [
         actor.user.email, actor.user.id, actor.user.clerkUserId, employeeId,
-        JSON.stringify({ invitedEmail: employee.rows[0].email, role, schoolId, invitationId: invitation.id }),
+         JSON.stringify({
+           invitedEmail: employee.rows[0].email,
+           role,
+           schoolId,
+           invitationId: invitation.id,
+           claimId: invitation.claimId,
+           expiresAt: invitation.expiresAt,
+         }),
       ],
     );
     commitAttempted = true;

@@ -10,5 +10,6 @@ import type { CompanyEmployeeInvitationResultInvitationStatus } from './companyE
 export type CompanyEmployeeInvitationResultInvitation = {
   status: CompanyEmployeeInvitationResultInvitationStatus;
   deliveryConfirmed: false;
+  invitationId?: string;
   expiresAt: Date;
 };
