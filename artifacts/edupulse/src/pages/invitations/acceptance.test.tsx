@@ -143,6 +143,43 @@ describe('invitation acceptance context', () => {
     expect(host.textContent).not.toContain('do-not-display');
   });
 
+  it.each([
+    ['SCHOOL_ADMIN', '/'],
+    ['TEACHER', '/'],
+    ['ACCOUNTANT', '/'],
+    ['PARENT', '/parent'],
+    ['STUDENT', '/'],
+    ['STAFF', '/'],
+    ['PARTNER', '/partner'],
+    ['DEVICE_ACTIVATION_OFFICER', '/activation'],
+    ['COMPANY_ACCOUNTANT', '/company-finance'],
+  ])('continues a newly verified %s invitee to its authorized dashboard', (role, destination) => {
+    const fresh = { roles: [{ role, schoolId: role === 'PARTNER' || role === 'COMPANY_ACCOUNTANT' ? null : 4, status: 'ACTIVE' }] };
+    expect(destinationForNewlyActivatedRole({ roles: [] }, fresh)).toBe(destination);
+    expect(destinationForAuthorizedContext({
+      roles: [{ role, schoolId: 4, status: 'PENDING' }],
+    })).toBeNull();
+  });
+
+  it('routes a server-verified Owner without granting ownership from invitation context', () => {
+    expect(destinationForAuthorizedContext({ isPlatformOwner: true, roles: [] })).toBe('/');
+    expect(readInvitationContext('?role=PLATFORM_OWNER&schoolId=999')).toEqual({
+      ticket: null, partnerToken: null,
+    });
+  });
+
+  it('does not call partner acceptance before Clerk authentication', async () => {
+    setSearch('?__clerk_ticket=synthetic-clerk-ticket&partnerInvitation=synthetic-partner-context');
+    await renderAcceptance();
+    expect(mocks.mutateAsync).not.toHaveBeenCalled();
+    expect(mocks.refetch).not.toHaveBeenCalled();
+    expect(host.textContent).not.toContain('synthetic-clerk-ticket');
+    expect(host.textContent).not.toContain('synthetic-partner-context');
+    expect(mocks.signUpProps?.forceRedirectUrl).toBe(
+      '/accept-invitation?__clerk_ticket=synthetic-clerk-ticket&partnerInvitation=synthetic-partner-context',
+    );
+  });
+
   it('shows a useful error when required Clerk context is absent', async () => {
     await renderAcceptance();
     expect(host.textContent).toContain('missing its secure Clerk ticket');

@@ -1,0 +1,258 @@
+Do NOT publish the application.
+Do NOT execute any database migration.
+Do NOT apply or modify the 408 pending Production schema statements.
+Do NOT reset, replace, copy, or modify the Production database.
+
+We already fixed the shared invitation builder in:
+
+"artifacts/api-server/src/routes/invitation-redirect.ts"
+
+The previous root cause was that development invitations could use "REPLIT_DEV_DOMAIN", causing recipients to be sent through Replit private-app authentication ("replit.com/silent-auth", "/__replshield", "privateDevDomain=true") instead of directly to the public EduCore application.
+
+I now want a COMPLETE audit and fix of EVERY invitation-link generation path in the entire EduCore application.
+
+IMPORTANT: EduCore has multiple types of users who may receive invitation links. Do not assume the Partner invitation is the only one.
+
+Audit at minimum:
+
+1. Platform Owner-created invitations
+2. School Admin invitations
+3. Teacher invitations
+4. Accountant invitations
+5. Parent invitations
+6. Student invitations
+7. Partner invitations
+8. Partner-generated school invitations
+9. School/internal staff invitations
+10. Any resend-invitation functionality
+11. Any invitation creation from Owner dashboard
+12. Any invitation creation from School Admin dashboard
+13. Any invitation creation from Partner dashboard
+14. Any API endpoint, service, helper, email template, notification service, or frontend action that constructs or redirects an invitation URL
+15. Any legacy invitation route or compatibility route
+
+SEARCH THE ENTIRE REPOSITORY for:
+
+- "invitation"
+- "accept-invitation"
+- "partnerInvitation"
+- "__clerk_ticket"
+- "REPLIT_DEV_DOMAIN"
+- "REPLIT_DOMAINS"
+- "REPLIT_DEPLOYMENT"
+- "riker.replit.dev"
+- ".replit.dev"
+- "replit.com/silent-auth"
+- "__replshield"
+- "privateDevDomain"
+- "window.location.origin"
+- "req.headers.host"
+- "Host"
+- "redirect"
+- "continue"
+- Clerk invitation URLs
+- email invitation templates
+- resend invitation logic
+
+Do not only inspect the known shared helper. Trace the COMPLETE call chain from:
+
+USER ACTION → API ENDPOINT → INVITATION CREATION → URL BUILDER → EMAIL/NOTIFICATION → RECIPIENT
+
+For every invitation type, determine the actual URL that would be sent to the recipient.
+
+PRODUCTION CANONICAL ORIGIN
+
+Use the already verified public production deployment:
+
+"https://edu-pulse-school-management--ogunlakinyemi.replit.app"
+
+Do NOT derive the production origin from:
+
+- incoming request headers
+- browser "window.location.origin"
+- Replit development domains
+- workspace domains
+- preview domains
+- ".riker.replit.dev"
+- ".replit.dev"
+- "replit.com"
+- "replit.com/silent-auth"
+- "/__replshield"
+- "privateDevDomain=true"
+
+Production invitation links must directly target the public EduCore application.
+
+EXPECTED PRODUCTION PATTERN
+
+All recipient types should ultimately receive an invitation URL based on:
+
+"https://edu-pulse-school-management--ogunlakinyemi.replit.app/accept-invitation"
+
+Additional opaque invitation context may be appended when required, for example:
+
+"?partnerInvitation=<opaque-context>"
+
+Do not expose secrets, Clerk secrets, database credentials, or internal identifiers unnecessarily in URLs.
+
+IMPORTANT AUTHENTICATION REQUIREMENT
+
+Do NOT bypass Clerk authentication or weaken invitation validation.
+
+The recipient should be able to:
+
+1. Open the invitation link.
+2. Reach the public EduCore "/accept-invitation" page.
+3. Be able to sign in or sign up when appropriate.
+4. Have the invitation context preserved through authentication.
+5. Have the invitation validated server-side.
+6. Be associated with the correct school/role/account after acceptance.
+7. Continue into the correct dashboard.
+
+The invitation must NOT require the recipient to have a Replit account.
+
+ROLE-SPECIFIC VERIFICATION
+
+Create or update tests covering every supported invitation recipient.
+
+At minimum verify:
+
+- Platform Owner → applicable invitation flow
+- Owner → School Admin
+- School Admin → Teacher
+- School Admin → Accountant
+- School Admin → Parent
+- School Admin → Student
+- Owner/Partner → Partner
+- Partner → School Admin
+- Any other invitation-producing role discovered in the repository
+
+For every test, assert:
+
+- URL uses the public production origin.
+- URL path is "/accept-invitation".
+- URL does not contain "riker.replit.dev".
+- URL does not contain ".replit.dev".
+- URL does not contain "replit.com/silent-auth".
+- URL does not contain "__replshield".
+- URL does not contain "privateDevDomain=true".
+- Required invitation context is preserved.
+- No authentication bypass occurs.
+
+DEVELOPMENT BEHAVIOUR
+
+Do not unnecessarily break development testing.
+
+Development/test environments may continue using their appropriate development routing where required, but production URL generation must NEVER use a private Replit development/workspace URL.
+
+Use an explicit environment-aware URL strategy rather than blindly using the current request host.
+
+CONFIGURATION
+
+Inspect the current environment/configuration system and determine whether the canonical public application origin should be represented by an explicit environment variable such as:
+
+"PUBLIC_APP_URL"
+
+If the existing architecture already has an equivalent setting, reuse it rather than creating a duplicate.
+
+If introducing "PUBLIC_APP_URL" is appropriate, implement it safely with:
+
+Production:
+"https://edu-pulse-school-management--ogunlakinyemi.replit.app"
+
+Development:
+retain the existing development behavior where appropriate.
+
+Do not hard-code the production URL in multiple files. There should be ONE canonical source for invitation URL generation.
+
+IMPORTANT: Do not modify unrelated functionality.
+
+PRESERVE:
+
+- Clerk authentication
+- invitation validation
+- role assignment
+- school/tenant isolation
+- partner invitation context
+- invitation expiration
+- invitation resend behavior
+- existing acceptance page
+- existing security checks
+
+SECURITY AUDIT
+
+Also check whether any invitation-generation path currently:
+
+- trusts an incoming Host header
+- trusts browser origin
+- exposes Clerk tickets unnecessarily
+- puts sensitive credentials in URLs
+- allows one school's invitation to be accepted for another school
+- allows a partner invitation to be used outside its intended context
+- skips server-side invitation validation
+
+If you find such an issue, fix it only if the fix is clearly required for invitation security and does not require a Production database migration.
+
+TESTING
+
+After making code changes:
+
+1. Run all invitation-related tests.
+2. Add missing tests for every invitation type discovered.
+3. Run API typecheck.
+4. Run relevant frontend/type checks.
+5. Verify the public "/accept-invitation" route.
+6. Verify both new invitation creation and resend flows.
+7. Verify partner context preservation.
+8. Verify school/tenant isolation.
+9. Verify no invitation generator can produce a private Replit URL in production.
+
+DO NOT send real invitations.
+DO NOT consume real invitation tokens.
+Do not expose any real Clerk ticket or secret in logs or test output.
+
+FINAL REPORT
+
+Return a concise report containing:
+
+1. Invitation paths discovered
+
+List every invitation type and the file/function responsible.
+
+2. Problems found
+
+List every location that could produce an incorrect/private Replit invitation URL.
+
+3. Fixes made
+
+List the exact files/functions changed.
+
+4. Canonical URL strategy
+
+Explain exactly how production invitation URLs are now generated.
+
+5. Recipient coverage
+
+Confirm which roles were tested:
+Owner, School Admin, Teacher, Accountant, Parent, Student, Partner, and any additional roles discovered.
+
+6. Security
+
+Report whether any invitation security weaknesses were found and fixed.
+
+7. Tests
+
+Give the exact number of tests passed, plus typecheck results.
+
+8. Production safety
+
+Explicitly confirm:
+
+- Published: NO
+- Production database changed: NO
+- 408 schema statements executed: NO
+- Database migrations executed: NO
+- Real invitations sent: NO
+
+If any part cannot be verified, say so explicitly.
+
+Do not publish under any circumstances as part of this task.

@@ -1,4 +1,5 @@
-// Canonical public deployment origin, verified with Replit deployment metadata.
+// Default canonical public origin, verified with Replit deployment metadata.
+// PUBLIC_APP_URL is an optional trusted server setting for a verified new domain.
 // Keep this explicit: request headers and workspace domains must never select
 // the destination of an invitation issued by the production Clerk instance.
 export const PUBLIC_PRODUCTION_ORIGIN =
@@ -36,7 +37,7 @@ export function invitationRedirect(
   path: string,
   environment = process.env.NODE_ENV,
   developmentDomain = process.env.REPLIT_DEV_DOMAIN,
-  productionOrigin = PUBLIC_PRODUCTION_ORIGIN,
+  productionOrigin = process.env.PUBLIC_APP_URL ?? PUBLIC_PRODUCTION_ORIGIN,
 ): string {
   if (!/^\/accept-invitation(?:\?|$)/.test(path)) {
     throw new Error("Invalid invitation acceptance path");

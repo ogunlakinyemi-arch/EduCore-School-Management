@@ -1,5 +1,5 @@
 import express from "express";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import { PUBLIC_PRODUCTION_ORIGIN } from "./invitation-redirect";
 
@@ -13,7 +13,7 @@ const state = vi.hoisted(() => ({
       lastName: "Owner",
       status: "ACTIVE",
     },
-    roles: [{ id: 1, role: "PLATFORM_OWNER", schoolId: null, status: "ACTIVE" }],
+    roles: [{ id: 1, role: "PLATFORM_OWNER", schoolId: null as number | null, status: "ACTIVE" }],
   },
   queries: [] as Array<{ sql: string; values: unknown[] }>,
   createInvitation: vi.fn(),
@@ -22,6 +22,8 @@ const state = vi.hoisted(() => ({
   revokeInvitation: vi.fn(),
   getUser: vi.fn(),
   resendLockHeld: false,
+  partnerIsOwner: true,
+  partnerRole: "PARTNER_OWNER",
 }));
 
 const db = vi.hoisted(() => ({
@@ -48,7 +50,12 @@ vi.mock("../middlewares/auth", async (importOriginal) => {
     ...actual,
     requireAuthentication: () => (_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
     getUserContext: () => state.context,
-    assertRoles: () => state.context,
+    assertRoles: (_req: express.Request, roles: string[]) => {
+      if (!state.context.roles.some(({ role }) => roles.includes(role))) {
+        throw Object.assign(new Error("Forbidden"), { statusCode: 403 });
+      }
+      return state.context;
+    },
   };
 });
 
@@ -83,6 +90,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   state.queries.length = 0;
   state.resendLockHeld = false;
+  state.partnerIsOwner = true;
+  state.partnerRole = "PARTNER_OWNER";
   state.context = {
     user: {
       id: 8, clerkUserId: "user_owner", email: "owner@example.test",
@@ -94,7 +103,9 @@ beforeEach(() => {
     state.queries.push({ sql, values });
     if (sql.includes("SELECT 1 FROM partner_invitations WHERE id=$1")) return { rows: [{ "?column?": 1 }] };
     if (sql.includes("FROM partner_profiles p")) {
-      return { rows: [{ id: 4, status: "ACTIVE", isOwner: true, partnerRole: "PARTNER_OWNER" }] };
+      return { rows: [{
+        id: 4, status: "ACTIVE", isOwner: state.partnerIsOwner, partnerRole: state.partnerRole,
+      }] };
     }
     return { rows: [] };
   });
@@ -152,6 +163,31 @@ beforeEach(() => {
   });
 });
 
+function expectPublicPartnerInvitationUrl(value: string, context: "partner" | "school-admin" | "either" = "partner") {
+  const url = new URL(value);
+  expect(url.origin).toBe(PUBLIC_PRODUCTION_ORIGIN);
+  expect(url.pathname).toBe("/accept-invitation");
+  if (context === "partner") {
+    expect(url.search).toMatch(/^\?partnerInvitation=[A-Za-z0-9_-]{43}$/);
+  } else if (context === "school-admin") {
+    expect(url.search).toBe("");
+  } else {
+    expect(url.search === "" || /^\?partnerInvitation=[A-Za-z0-9_-]{43}$/.test(url.search)).toBe(true);
+  }
+  for (const prohibited of [
+    "riker.replit.dev", ".replit.dev", "replit.com/silent-auth",
+    "__replshield", "privateDevDomain=true", "__clerk_ticket",
+  ]) {
+    expect(value).not.toContain(prohibited);
+  }
+}
+
+afterEach(() => {
+  for (const [request] of state.createInvitation.mock.calls) {
+    expectPublicPartnerInvitationUrl(String(request.redirectUrl), "either");
+  }
+});
+
 async function post(path: string, body: unknown) {
   return fetch(`${baseUrl}${path}`, {
     method: "POST",
@@ -182,9 +218,7 @@ describe("Partner invitation dispatch and activation", () => {
       ignoreExisting: false,
     }));
     const redirectUrl = request.redirectUrl as string;
-    expect(new URL(redirectUrl).origin).toBe(PUBLIC_PRODUCTION_ORIGIN);
-    expect(new URL(redirectUrl).pathname + new URL(redirectUrl).search)
-      .toMatch(/^\/accept-invitation\?partnerInvitation=[A-Za-z0-9_-]{43}$/);
+    expectPublicPartnerInvitationUrl(redirectUrl);
     const opaqueToken = new URL(redirectUrl, "https://example.test").searchParams.get("partnerInvitation")!;
     expect(JSON.stringify(result)).not.toContain(opaqueToken);
     expect(JSON.stringify(state.queries)).not.toContain(opaqueToken);
@@ -266,6 +300,30 @@ describe("Partner invitation dispatch and activation", () => {
     expect(state.queries.some(({ sql }) => sql.includes("INSERT INTO school_memberships"))).toBe(false);
   });
 
+  it("rejects a verified Clerk email that differs from the partner invitation and session", async () => {
+    const token = "f".repeat(48);
+    state.context = {
+      user: {
+        id: 21, clerkUserId: "user_partner", email: "partner@example.test",
+        firstName: "Partner", lastName: "User", status: "ACTIVE",
+      },
+      roles: [],
+    };
+    state.getUser.mockResolvedValue({
+      primaryEmailAddress: {
+        emailAddress: "attacker@example.test",
+        verification: { status: "verified" },
+      },
+    });
+    const response = await post(`/partner/invitations/${token}/accept`, {});
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: "Invitation email does not match authenticated user",
+    });
+    expect(state.queries.some(({ sql }) => sql.includes("INSERT INTO partner_profile_users"))).toBe(false);
+    expect(state.queries.some(({ sql }) => sql.includes("INSERT INTO school_memberships"))).toBe(false);
+  });
+
   it("resends a pending owner invitation by revoking its previous token and known Clerk invite", async () => {
     db.clientQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
       state.queries.push({ sql, values });
@@ -298,12 +356,7 @@ describe("Partner invitation dispatch and activation", () => {
     expect(state.revokeInvitation).toHaveBeenCalledWith("clerk_old");
     expect(state.queries.some(({ sql, values }) =>
       sql.includes("SET status='REVOKED',revoked_at=NOW()") && (values[0] as number[]).includes(9))).toBe(true);
-    expect(new URL(state.createInvitation.mock.calls[0][0].redirectUrl).origin)
-      .toBe(PUBLIC_PRODUCTION_ORIGIN);
-    expect(new URL(state.createInvitation.mock.calls[0][0].redirectUrl).pathname +
-      new URL(state.createInvitation.mock.calls[0][0].redirectUrl).search).toMatch(
-      /^\/accept-invitation\?partnerInvitation=[A-Za-z0-9_-]{43}$/,
-    );
+    expectPublicPartnerInvitationUrl(state.createInvitation.mock.calls[0][0].redirectUrl);
     expect(state.createInvitation.mock.calls[0][0].ignoreExisting).toBe(true);
     expect(state.createInvitation.mock.calls[0][0].publicMetadata.edupulsePartnerInvitation)
       .toMatchObject({ attemptId: expect.any(String), partnerInvitationId: 10 });
@@ -370,6 +423,7 @@ describe("Partner invitation dispatch and activation", () => {
     expect(completed.status).toBe(201);
     expect(state.createInvitation).toHaveBeenCalledTimes(1);
     expect(state.resendLockHeld).toBe(false);
+    expectPublicPartnerInvitationUrl(state.createInvitation.mock.calls[0][0].redirectUrl);
   });
 
   it("treats a fresh orphaned DISPATCHING attempt as in flight rather than absent", async () => {
@@ -724,32 +778,35 @@ describe("Partner invitation dispatch and activation", () => {
       values[0] === createHash("sha256").update(token).digest("hex"))).toBe(true);
   });
 
-  it("keeps partner staff permission and does not claim confirmed email delivery", async () => {
+  it.each([
+    ["STANDARD", "PARTNER_STAFF"],
+    ["FINANCE", "PARTNER_FINANCE"],
+    ["ADMIN", "PARTNER_ADMIN"],
+  ])("keeps %s partner staff permission without claiming confirmed delivery", async (permission, role) => {
     const response = await post("/partner/staff-invitations", {
       email: "staff@example.test",
-      permission: "FINANCE",
+      permission,
     });
     expect(response.status).toBe(201);
     const result = await response.json() as Record<string, unknown>;
     expect(result).toMatchObject({
       email: "staff@example.test",
-      role: "PARTNER_FINANCE",
-      permission: "FINANCE",
+      role,
+      permission,
       status: "PENDING",
       invitationDispatchStatus: "REQUEST_ACCEPTED",
       invitationDeliveryStatus: "UNVERIFIED",
     });
     expect(result.invitationUrl).toBeUndefined();
     expect(result.emailSent).toBeUndefined();
-    expect(new URL(state.createInvitation.mock.calls[0][0].redirectUrl).origin)
-      .toBe(PUBLIC_PRODUCTION_ORIGIN);
-    expect(new URL(state.createInvitation.mock.calls[0][0].redirectUrl).pathname +
-      new URL(state.createInvitation.mock.calls[0][0].redirectUrl).search).toMatch(
-      /^\/accept-invitation\?partnerInvitation=[A-Za-z0-9_-]{43}$/,
-    );
+    expectPublicPartnerInvitationUrl(state.createInvitation.mock.calls[0][0].redirectUrl);
   });
 
-  it("recovers the requested staff role from the invitation audit claim for opaque tokens", async () => {
+  it.each([
+    ["STANDARD", "PARTNER_STAFF"],
+    ["FINANCE", "PARTNER_FINANCE"],
+    ["ADMIN", "PARTNER_ADMIN"],
+  ])("recovers the %s staff role from the opaque invitation audit claim", async (permission, role) => {
     const token = "d".repeat(48);
     state.context = {
       user: { id: 22, clerkUserId: "user_staff", email: "staff@example.test",
@@ -768,7 +825,7 @@ describe("Partner invitation dispatch and activation", () => {
         id: 12, partner_profile_id: 4, invited_email: "staff@example.test",
         expires_at: new Date(Date.now() + 7 * 86400000), partnerStatus: "ACTIVE",
       }] };
-      if (sql.includes("metadata->>'permission'")) return { rows: [{ permission: "FINANCE" }] };
+      if (sql.includes("metadata->>'permission'")) return { rows: [{ permission }] };
       return { rows: [] };
     });
     db.query.mockImplementation(async (sql: string, values: unknown[] = []) => {
@@ -780,9 +837,78 @@ describe("Partner invitation dispatch and activation", () => {
     });
     const response = await post("/partner/invitations/accept", { partnerInvitation: token });
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ role: "PARTNER_FINANCE" });
+    expect(await response.json()).toMatchObject({ role });
     expect(state.queries.some(({ sql, values }) =>
-      sql.includes("INSERT INTO partner_profile_users") && values[2] === "PARTNER_FINANCE")).toBe(true);
+      sql.includes("INSERT INTO partner_profile_users") && values[2] === role)).toBe(true);
+  });
+
+  it("rejects a staff invitation permission that attempts to grant an unrelated platform role", async () => {
+    const token = "e".repeat(48);
+    state.context = {
+      user: { id: 23, clerkUserId: "user_staff", email: "staff@example.test",
+        firstName: "Staff", lastName: "Member", status: "ACTIVE" },
+      roles: [],
+    };
+    state.getUser.mockResolvedValue({
+      primaryEmailAddress: {
+        emailAddress: "staff@example.test",
+        verification: { status: "verified" },
+      },
+    });
+    db.clientQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      state.queries.push({ sql, values });
+      if (sql.includes("SELECT i.id,i.partner_profile_id")) return { rows: [{
+        id: 12, partner_profile_id: 4, invited_email: "staff@example.test",
+        expires_at: new Date(Date.now() + 7 * 86400000), partnerStatus: "ACTIVE",
+      }] };
+      if (sql.includes("metadata->>'permission'")) return { rows: [{ permission: "PLATFORM_OWNER" }] };
+      return { rows: [] };
+    });
+
+    const response = await post("/partner/invitations/accept", { partnerInvitation: token });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: expect.stringContaining("cannot be verified") });
+    expect(state.queries.some(({ sql }) => sql.includes("INSERT INTO partner_profile_users"))).toBe(false);
+    expect(state.queries.some(({ sql }) => sql.includes("INSERT INTO school_memberships"))).toBe(false);
+  });
+
+  it("denies partner staff invitation creation by a non-owner partner role", async () => {
+    state.partnerIsOwner = false;
+    state.partnerRole = "PARTNER_STAFF";
+    const response = await post("/partner/staff-invitations", {
+      email: "staff@example.test",
+      permission: "FINANCE",
+    });
+    expect(response.status).toBe(403);
+    expect(state.createInvitation).not.toHaveBeenCalled();
+    expect(state.queries.some(({ sql }) => sql.includes("INSERT INTO partner_invitations"))).toBe(false);
+  });
+
+  it("denies Platform Owner partner invitation creation and resend to another role", async () => {
+    state.context.roles = [{ id: 2, role: "SCHOOL_ADMIN", schoolId: 1, status: "ACTIVE" }];
+    const created = await post("/platform/partners/invitations", {
+      email: "new-partner@example.test", fullName: "New Partner",
+    });
+    const resent = await post("/platform/partners/4/invitations/resend", {});
+    expect(created.status).toBe(403);
+    expect(resent.status).toBe(403);
+    expect(state.createInvitation).not.toHaveBeenCalled();
+  });
+
+  it("rejects Partner-to-School-Admin onboarding for a revoked referral without dispatching", async () => {
+    db.clientQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      state.queries.push({ sql, values });
+      if (sql.includes("SELECT l.id,l.partner_profile_id")) return { rows: [] };
+      return { rows: [] };
+    });
+    const response = await post("/partner/onboarding", {
+      referralToken: "x".repeat(48),
+      school: { code: "REJECTED-SCHOOL", name: "Rejected School", city: "Lagos", state: "Lagos" },
+      administrator: { fullName: "School Administrator", email: "admin@example.test" },
+    });
+    expect(response.status).toBe(400);
+    expect(state.createInvitation).not.toHaveBeenCalled();
+    expect(state.queries.some(({ sql }) => sql.includes("INSERT INTO schools"))).toBe(false);
   });
 
   it("creates a referral School Admin invitation with the canonical redirect and activation claim audit", async () => {
@@ -819,7 +945,8 @@ describe("Partner invitation dispatch and activation", () => {
       const result = await response.json() as { school: { status: string } };
       expect(result.school.status).toBe("pending");
       const clerkRequest = state.createInvitation.mock.calls[0][0];
-      expect(clerkRequest.redirectUrl).toBe(`${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`);
+      const redirectUrl = clerkRequest.redirectUrl as string;
+      expectPublicPartnerInvitationUrl(redirectUrl, "school-admin");
       const claim = clerkRequest.publicMetadata.edupulseSchoolInvitation;
       expect(claim).toMatchObject({ schoolId: 33, role: "SCHOOL_ADMIN", emailProof: expect.any(String) });
       const audit = state.queries.find(({ sql }) => sql.includes("'SCHOOL_ADMIN_INVITED'"));

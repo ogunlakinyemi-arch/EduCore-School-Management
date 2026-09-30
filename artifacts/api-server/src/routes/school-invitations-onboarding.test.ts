@@ -26,7 +26,7 @@ function invitationMetadata(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe("partner-created School Administrator invitation claims", () => {
+describe("school invitation claims", () => {
   afterEach(() => {
     if (originalClerkSecret === undefined) delete process.env.CLERK_SECRET_KEY;
     else process.env.CLERK_SECRET_KEY = originalClerkSecret;
@@ -58,6 +58,29 @@ describe("partner-created School Administrator invitation claims", () => {
     expect(() =>
       acceptedInvitationFromMetadata(invitationMetadata({ firstName: 42 }), invitedEmail),
     ).toThrow("does not match the authenticated account");
+  });
+
+  it.each([
+    { role: "SCHOOL_ADMIN", employeeNo: null, studentId: null },
+    { role: "TEACHER", employeeNo: "INV-0123456789ABCDEF", studentId: null },
+    { role: "ACCOUNTANT", employeeNo: null, studentId: null },
+    { role: "STAFF", employeeNo: "INV-0123456789ABCDEF", studentId: null },
+    { role: "PARENT", employeeNo: null, studentId: null },
+    { role: "STUDENT", employeeNo: null, studentId: 55 },
+  ])("preserves $role school and profile claims for activation", ({ role, employeeNo, studentId }) => {
+    process.env.CLERK_SECRET_KEY = testSecret;
+    const claim = acceptedInvitationFromMetadata(invitationMetadata({
+      role,
+      employeeNo,
+      studentId,
+    }), invitedEmail);
+
+    expect(claim).toMatchObject({
+      schoolId: 123,
+      role,
+      employeeNo,
+      studentId,
+    });
   });
 
   it("continues to accept older school invitation claims without optional name fields", () => {

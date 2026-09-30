@@ -54,8 +54,35 @@ const owner = {
   roles: [{ id: 1, role: "PLATFORM_OWNER", schoolId: null, status: "ACTIVE" }],
 } as UserContext;
 
+const schoolAdmin = {
+  user: {
+    id: 21,
+    clerkUserId: "user_school_admin",
+    email: "admin@example.test",
+    firstName: "School",
+    lastName: "Admin",
+    status: "ACTIVE",
+  },
+  roles: [{ id: 2, role: "SCHOOL_ADMIN", schoolId: 3, status: "ACTIVE" }],
+} as UserContext;
+
 function proof(email: string) {
   return createHmac("sha256", key).update(email.trim().toLowerCase()).digest("hex");
+}
+
+function expectPublicInvitationUrl(value: string) {
+  const url = new URL(value);
+  expect(url.origin).toBe(PUBLIC_PRODUCTION_ORIGIN);
+  expect(url.pathname).toBe("/accept-invitation");
+  for (const forbidden of [
+    "riker.replit.dev",
+    ".replit.dev",
+    "replit.com/silent-auth",
+    "__replshield",
+    "privateDevDomain=true",
+  ]) {
+    expect(value).not.toContain(forbidden);
+  }
 }
 
 function sqlResult(sql: string) {
@@ -78,6 +105,7 @@ function sqlResult(sql: string) {
 describe("school invitations", () => {
   beforeEach(() => {
     vi.stubEnv("CLERK_SECRET_KEY", key);
+    vi.stubEnv("NODE_ENV", "test");
     vi.clearAllMocks();
     mocks.poolQuery.mockImplementation(async (sql: string) => {
       if (sql.includes("FROM schools")) return { rows: [{ id: 3 }] };
@@ -147,6 +175,7 @@ describe("school invitations", () => {
       notify: true,
       redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
     }));
+    expectPublicInvitationUrl(mocks.createInvitation.mock.calls[0][0].redirectUrl);
     const metadata = mocks.createInvitation.mock.calls[0][0].publicMetadata;
     expect(metadata.edupulseSchoolInvitation).toEqual(expect.objectContaining({
       schoolId: 3,
@@ -159,6 +188,116 @@ describe("school invitations", () => {
     expect(mocks.clientQuery).not.toHaveBeenCalledWith(
       expect.stringContaining("UPDATE schools SET status='active'"),
       expect.anything(),
+    );
+  });
+
+  it.each([
+    { role: "SCHOOL_ADMIN" as const, actor: owner, email: "new-admin@example.test" },
+    { role: "TEACHER" as const, actor: schoolAdmin, email: "teacher@example.test" },
+    { role: "ACCOUNTANT" as const, actor: schoolAdmin, email: "accountant@example.test" },
+    { role: "PARENT" as const, actor: schoolAdmin, email: "parent@example.test", phone: "+15551234567" },
+    { role: "STUDENT" as const, actor: schoolAdmin, email: "student@example.test", studentId: 55 },
+    { role: "STAFF" as const, actor: schoolAdmin, email: "staff@example.test" },
+  ])("binds the $role invitation to its verified-email claim and correct school", async (flow) => {
+    if (flow.role === "STUDENT") {
+      mocks.clientQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
+        if (sql.includes("FROM students") && sql.includes("FOR UPDATE")) {
+          return { rows: values[0] === 55 && values[1] === 3 ? [{ id: 55, userId: null }] : [] };
+        }
+        return sqlResult(sql);
+      });
+    }
+
+    await createSchoolInvitation({
+      schoolId: 3,
+      email: flow.email,
+      fullName: `${flow.role} Invitee`,
+      phone: "phone" in flow ? flow.phone ?? null : null,
+      role: flow.role,
+      studentId: "studentId" in flow ? flow.studentId ?? null : null,
+    }, flow.actor);
+
+    const clerkRequest = mocks.createInvitation.mock.calls[0][0];
+    expectPublicInvitationUrl(clerkRequest.redirectUrl);
+    expect(clerkRequest).toMatchObject({
+      emailAddress: flow.email,
+      expiresInDays: 7,
+      ignoreExisting: false,
+      notify: true,
+    });
+    const claim = clerkRequest.publicMetadata.edupulseSchoolInvitation;
+    expect(claim).toMatchObject({
+      version: 1,
+      schoolId: 3,
+      role: flow.role,
+      emailProof: proof(flow.email),
+    });
+    expect(claim.claimId).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(JSON.stringify(claim)).not.toContain(flow.email);
+    if (flow.role === "STUDENT") expect(claim.studentId).toBe(55);
+    else expect(claim.studentId).toBeNull();
+    if (flow.role === "TEACHER" || flow.role === "STAFF") {
+      expect(claim.employeeNo).toMatch(/^INV-[A-F0-9]{16}$/);
+    }
+    const invitationAudit = mocks.clientQuery.mock.calls.find(([sql]) =>
+      typeof sql === "string" && sql.includes("INSERT INTO audit_logs") &&
+      !sql.includes("SCHOOL_ACTIVATED")
+    );
+    expect(invitationAudit).toBeDefined();
+    expect(invitationAudit?.[1]).toContain(flow.role === "SCHOOL_ADMIN" ? "PLATFORM_OWNER" : "SCHOOL_ADMIN");
+  });
+
+  it.each([
+    { role: "SCHOOL_ADMIN" as const, studentId: null, employeeNo: null },
+    { role: "TEACHER" as const, studentId: null, employeeNo: "INV-ABCDEF0123456789" },
+    { role: "ACCOUNTANT" as const, studentId: null, employeeNo: null },
+    { role: "PARENT" as const, studentId: null, employeeNo: null },
+    { role: "STUDENT" as const, studentId: 55, employeeNo: null },
+    { role: "STAFF" as const, studentId: null, employeeNo: "INV-ABCDEF0123456789" },
+  ])("activates $role membership only for the invitation school", async ({ role, studentId, employeeNo }) => {
+    mocks.getUser.mockResolvedValue({
+      id: "user_accepted",
+      primaryEmailAddress: {
+        emailAddress: "admin@example.test",
+        verification: { status: "verified" },
+      },
+      phoneNumbers: [],
+      publicMetadata: {
+        edupulseSchoolInvitation: {
+          version: 1,
+          claimId: "f8b933d3-9144-48ca-996a-30af76c10a22",
+          emailProof: proof("admin@example.test"),
+          schoolId: 3,
+          role,
+          employeeNo,
+          studentId,
+        },
+      },
+    });
+    if (role === "STUDENT") {
+      mocks.clientQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
+        if (sql.includes("FROM students") && sql.includes("FOR UPDATE")) {
+          return { rows: values[0] === 55 && values[1] === 3 ? [{ id: 55, userId: null }] : [] };
+        }
+        return sqlResult(sql);
+      });
+    } else if (role === "PARENT") {
+      mocks.clientQuery.mockImplementation(async (sql: string) => {
+        if (sql.includes("FROM parents") && sql.includes("school_id=$1")) {
+          return { rows: [{ id: 76, userId: null }] };
+        }
+        return sqlResult(sql);
+      });
+    }
+
+    expect(await activateAcceptedSchoolInvitation(21, "user_accepted")).toBe(true);
+    expect(mocks.clientQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO school_memberships"),
+      [21, 3, role],
+    );
+    expect(mocks.clientQuery).toHaveBeenCalledWith(
+      expect.stringContaining("current_invite.id"),
+      [3, "f8b933d3-9144-48ca-996a-30af76c10a22", "admin@example.test", role],
     );
   });
 
@@ -509,6 +648,14 @@ describe("school invitations", () => {
       notify: true,
       redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
     }));
+    const invitation = mocks.createInvitation.mock.calls[0][0];
+    expectPublicInvitationUrl(invitation.redirectUrl);
+    expect(invitation.publicMetadata.edupulseSchoolInvitation).toMatchObject({
+      schoolId: 77,
+      role: "SCHOOL_ADMIN",
+      emailProof: proof("first.admin@example.test"),
+    });
+    expect(invitation.publicMetadata.edupulseSchoolInvitation.claimId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(mocks.clientQuery).toHaveBeenCalledWith(
       expect.stringContaining("VALUES($1,$2,$3,$4,'pending')"),
       ["NEW01", "New School", "Lagos", "Lagos"],

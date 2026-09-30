@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 import { PUBLIC_PRODUCTION_ORIGIN } from "./invitation-redirect";
 import express from "express";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
   role: "PLATFORM_OWNER",
@@ -11,6 +11,9 @@ const state = vi.hoisted(() => ({
   calls: [] as Array<{ sql: string; values: unknown[] }>,
   metadata: {} as Record<string, unknown>,
   liveClaim: null as { claimId: string; expiresAt: string; employeeId: number } | null,
+  clerkEmail: "person@example.test",
+  clerkEmailVerified: true,
+  schoolExists: true,
 }));
 
 const invitationCreate = vi.hoisted(() => vi.fn(async (input: any) => {
@@ -20,10 +23,10 @@ const invitationCreate = vi.hoisted(() => vi.fn(async (input: any) => {
 const invitationRevoke = vi.hoisted(() => vi.fn(async () => undefined));
 const clerkGetUser = vi.hoisted(() => vi.fn(async () => ({
   primaryEmailAddress: {
-    emailAddress: "person@example.test",
-    verification: { status: "verified" },
+    emailAddress: state.clerkEmail,
+    verification: { status: state.clerkEmailVerified ? "verified" : "unverified" },
   },
-  emailAddresses: [{ emailAddress: "person@example.test" }],
+  emailAddresses: [{ emailAddress: state.clerkEmail }],
   firstName: "Internal",
   lastName: "Person",
   publicMetadata: state.metadata,
@@ -49,7 +52,9 @@ const clientQuery = vi.hoisted(() => vi.fn(async (sql: string, values: unknown[]
   if (sql.includes("FROM platform_company_employees") && sql.includes("status='ACTIVE' FOR UPDATE")) {
     return { rows: [{ ...state.employee }] };
   }
-  if (sql.includes("FROM schools WHERE id=$1")) return { rows: [{ id: values[0] }] };
+  if (sql.includes("FROM schools WHERE id=$1")) {
+    return state.schoolExists ? { rows: [{ id: values[0] }] } : { rows: [] };
+  }
   if (sql.includes("SELECT id,role,school_id AS")) return { rows: state.activeRoles };
   if (sql.includes("SELECT id FROM school_memberships")) return { rows: [] };
   if (sql.includes("INSERT INTO school_memberships")) {
@@ -134,7 +139,29 @@ beforeEach(() => {
   state.liveClaim = null;
   state.user = { id: 77, email: "person@example.test", status: "ACTIVE" };
   state.employee = { id: 11, email: "person@example.test", fullName: "Internal Person" };
+  state.clerkEmail = "person@example.test";
+  state.clerkEmailVerified = true;
+  state.schoolExists = true;
   vi.clearAllMocks();
+});
+
+function expectPublicInternalInvitationUrl(value: string) {
+  const url = new URL(value);
+  expect(url.origin).toBe(PUBLIC_PRODUCTION_ORIGIN);
+  expect(url.pathname).toBe("/accept-invitation");
+  expect(url.search).toBe("");
+  for (const prohibited of [
+    "riker.replit.dev", ".replit.dev", "replit.com/silent-auth",
+    "__replshield", "privateDevDomain=true", "__clerk_ticket",
+  ]) {
+    expect(value).not.toContain(prohibited);
+  }
+}
+
+afterEach(() => {
+  for (const [request] of invitationCreate.mock.calls) {
+    expectPublicInternalInvitationUrl(String(request.redirectUrl));
+  }
 });
 
 function metadataFor(role: "COMPANY_ACCOUNTANT" | "DEVICE_ACTIVATION_OFFICER", schoolId: number | null) {
@@ -172,13 +199,25 @@ describe("internal employee invitation and activation", () => {
     expect(invitationCreate).toHaveBeenCalledWith(expect.objectContaining({
       emailAddress: "person@example.test",
       notify: true,
-      redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
       publicMetadata: expect.objectContaining({
         edupulseInternalEmployeeInvitation: expect.objectContaining({
           employeeId: 11, role: "DEVICE_ACTIVATION_OFFICER", schoolId: 4,
         }),
       }),
     }));
+    expectPublicInternalInvitationUrl(invitationCreate.mock.calls[0][0].redirectUrl);
+  });
+
+  it("denies non-Owner invitation creation without calling Clerk", async () => {
+    state.role = "SCHOOL_ADMIN";
+    const response = await fetch(`${baseUrl}/platform/company-employees/11/invitation`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ role: "COMPANY_ACCOUNTANT" }),
+    });
+    expect(response.status).toBe(403);
+    expect(invitationCreate).not.toHaveBeenCalled();
+    expect(state.calls.some(({ sql }) => sql.includes("INSERT INTO audit_logs"))).toBe(false);
   });
 
   it("activates the exact signed accountant role globally, never as school staff", async () => {
@@ -218,6 +257,27 @@ describe("internal employee invitation and activation", () => {
     state.activeRoles = [{ id: 1, role: "SCHOOL_ADMIN", schoolId: 8 }];
     await expect(activateAcceptedInternalEmployeeInvitation(77, "clerk-person"))
       .rejects.toThrow("cannot be combined");
+  });
+
+  it("rejects email substitution and refuses activation when the signed school is inactive", async () => {
+    state.metadata = metadataFor("COMPANY_ACCOUNTANT", null);
+    state.clerkEmail = "attacker@example.test";
+    await expect(activateAcceptedInternalEmployeeInvitation(77, "clerk-person"))
+      .rejects.toThrow("invalid or does not match");
+    expect(clientQuery).not.toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO school_memberships"),
+      expect.anything(),
+    );
+
+    state.clerkEmail = "person@example.test";
+    state.metadata = metadataFor("DEVICE_ACTIVATION_OFFICER", 8);
+    state.schoolExists = false;
+    await expect(activateAcceptedInternalEmployeeInvitation(77, "clerk-person"))
+      .rejects.toThrow("school is no longer active");
+    expect(clientQuery).not.toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO school_memberships"),
+      expect.anything(),
+    );
   });
 
   it("rejects a signed claim after the server invalidates it even when Clerk metadata remains", async () => {

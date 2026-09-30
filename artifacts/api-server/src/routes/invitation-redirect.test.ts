@@ -1,7 +1,23 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { invitationRedirect, PUBLIC_PRODUCTION_ORIGIN } from "./invitation-redirect";
 
 describe("Clerk invitation return URL", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("supports one trusted PUBLIC_APP_URL setting without reading request origins", () => {
+    vi.stubEnv("PUBLIC_APP_URL", PUBLIC_PRODUCTION_ORIGIN);
+    expect(invitationRedirect("/accept-invitation?partnerInvitation=synthetic-context", "production", "private.riker.replit.dev"))
+      .toBe(`${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation?partnerInvitation=synthetic-context`);
+  });
+
+  it("fails closed for a private PUBLIC_APP_URL instead of falling back silently", () => {
+    vi.stubEnv("PUBLIC_APP_URL", "https://private.riker.replit.dev");
+    expect(() => invitationRedirect("/accept-invitation", "production"))
+      .toThrow("Invalid public production invitation origin");
+    expect(invitationRedirect("/accept-invitation", "development", "sample.replit.dev"))
+      .toBe("https://sample.replit.dev/accept-invitation");
+  });
+
   it("uses the explicit development host for test invitations", () => {
     expect(invitationRedirect("/accept-invitation", "development", "sample.replit.dev"))
       .toBe("https://sample.replit.dev/accept-invitation");

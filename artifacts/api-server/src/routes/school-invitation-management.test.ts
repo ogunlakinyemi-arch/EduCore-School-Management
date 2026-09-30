@@ -1,5 +1,6 @@
 import express from "express";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { PUBLIC_PRODUCTION_ORIGIN } from "./invitation-redirect";
 
 const state = vi.hoisted(() => ({
   context: {
@@ -77,6 +78,7 @@ afterAll(async () => new Promise<void>((resolve, reject) =>
 
 beforeEach(() => {
   vi.stubEnv("CLERK_SECRET_KEY", "test-clerk-server-key");
+  vi.stubEnv("NODE_ENV", "test");
   vi.clearAllMocks();
   state.context = {
     user: {
@@ -204,6 +206,21 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllEnvs());
 
+function expectPublicInvitationUrl(value: string) {
+  const url = new URL(value);
+  expect(url.origin).toBe(PUBLIC_PRODUCTION_ORIGIN);
+  expect(url.pathname).toBe("/accept-invitation");
+  for (const forbidden of [
+    "riker.replit.dev",
+    ".replit.dev",
+    "replit.com/silent-auth",
+    "__replshield",
+    "privateDevDomain=true",
+  ]) {
+    expect(value).not.toContain(forbidden);
+  }
+}
+
 async function request(path: string, method = "GET", body?: unknown) {
   return fetch(`${baseUrl}${path}`, {
     method,
@@ -292,9 +309,18 @@ describe("Platform Owner school invitation management", () => {
     });
     expect(state.createInvitation).toHaveBeenCalledWith(expect.objectContaining({
       emailAddress: "correct@example.test",
-      redirectUrl: "/accept-invitation",
+      redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
       ignoreExisting: false,
     }));
+    const replacement = state.createInvitation.mock.calls[0][0];
+    expectPublicInvitationUrl(replacement.redirectUrl);
+    expect(replacement.publicMetadata.edupulseSchoolInvitation).toMatchObject({
+      schoolId: 3,
+      role: "SCHOOL_ADMIN",
+      emailProof: expect.any(String),
+    });
+    expect(replacement.publicMetadata.edupulseSchoolInvitation.claimId).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(replacement.publicMetadata.edupulseSchoolInvitation.emailProof).toMatch(/^[a-f0-9]{64}$/);
     expect(state.revokeInvitation).toHaveBeenCalledWith("inv_pending");
     expect(state.clientQuery).toHaveBeenCalledWith(
       expect.stringContaining("SCHOOL_INVITATION_SUPERSEDED"),
@@ -339,20 +365,113 @@ describe("Platform Owner school invitation management", () => {
     });
     expect(state.createInvitation).toHaveBeenCalledWith(expect.objectContaining({
       emailAddress: "pending@example.test",
-      redirectUrl: "/accept-invitation",
+      redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
     }));
+    const resent = state.createInvitation.mock.calls[0][0];
+    expectPublicInvitationUrl(resent.redirectUrl);
+    expect(resent.publicMetadata.edupulseSchoolInvitation).toMatchObject({
+      schoolId: 3,
+      role: "SCHOOL_ADMIN",
+      emailProof: expect.any(String),
+    });
+    expect(resent.publicMetadata.edupulseSchoolInvitation.claimId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(state.revokeInvitation).toHaveBeenCalledWith("inv_pending");
   });
 
-  it("does not allow a School Admin to manage school administrator invitations", async () => {
+  it("does not allow an invitation from another school to be replaced or resent", async () => {
+    state.query.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      if (sql.includes("FROM audit_logs") && sql.includes("SCHOOL_ADMIN_INVITED")) {
+        return values[0] === 4 ? { rows: [] } : { rows: [] };
+      }
+      return { rows: [] };
+    });
+
+    const replaced = await request("/schools/4/invitations/inv_pending", "PATCH", {
+      email: "replacement@example.test",
+    });
+    const resent = await request("/schools/4/invitations/inv_pending/resend", "POST", {});
+
+    expect(replaced.status).toBe(404);
+    expect(resent.status).toBe(404);
+    expect(state.getInvitationList).not.toHaveBeenCalled();
+    expect(state.createInvitation).not.toHaveBeenCalled();
+    expect(state.query.mock.calls.filter(([sql]) =>
+      String(sql).includes("SCHOOL_ADMIN_INVITED")
+    )).toEqual(expect.arrayContaining([
+      [expect.any(String), [4, "inv_pending"]],
+    ]));
+  });
+
+  it("does not resend a Clerk invitation that is already accepted", async () => {
+    state.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("FROM audit_logs") && sql.includes("SCHOOL_ADMIN_INVITED")) {
+        return {
+          rows: [{
+            id: 12,
+            metadata: {
+              invitationId: "inv_pending",
+              claimId: "22222222-2222-4222-8222-222222222222",
+              invitedEmail: "pending@example.test",
+              firstName: "Pending",
+              lastName: "Admin",
+            },
+          }],
+        };
+      }
+      return { rows: [] };
+    });
+    state.getInvitationList.mockImplementation(async ({ query, status }: { query: string; status: string }) => ({
+      data: query === "inv_pending" && status === "accepted"
+        ? [{ id: query, status: "accepted", publicMetadata: {} }]
+        : [],
+    }));
+
+    const response = await request("/schools/3/invitations/inv_pending/resend", "POST", {});
+
+    expect(response.status).toBe(409);
+    expect(state.createInvitation).not.toHaveBeenCalled();
+    expect(state.revokeInvitation).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { role: "SCHOOL_ADMIN", schoolId: 3, status: "ACTIVE" },
+    { role: "PLATFORM_OWNER", schoolId: 3, status: "ACTIVE" },
+    { role: "PLATFORM_OWNER", schoolId: null, status: "INACTIVE" },
+  ])("rejects non-global/active owner authorization for list, replace, and resend ($role, $schoolId, $status)", async (assignment) => {
+    state.context.roles = [{ id: 2, ...assignment }];
+    const endpoints = [
+      ["/schools/3/invitations", "GET", undefined],
+      ["/schools/3/invitations/inv_pending", "PATCH", { email: "replacement@example.test" }],
+      ["/schools/3/invitations/inv_pending/resend", "POST", {}],
+    ] as const;
+
+    for (const [path, method, body] of endpoints) {
+      expect((await request(path, method, body)).status).toBe(403);
+    }
+    expect(state.query).toHaveBeenCalledTimes(endpoints.length);
+    expect(state.query.mock.calls.every(([sql]) =>
+      String(sql).includes("INSERT INTO audit_logs") && String(sql).includes("'DENIED'")
+    )).toBe(true);
+    expect(state.clientQuery).not.toHaveBeenCalled();
+    expect(state.createInvitation).not.toHaveBeenCalled();
+  });
+
+  it("does not permit a School Admin to resend a School Admin invitation", async () => {
     state.context.roles = [{
       id: 2,
       role: "SCHOOL_ADMIN",
       schoolId: 3,
       status: "ACTIVE",
     }];
-    const response = await request("/schools/3/invitations");
+
+    const response = await request("/schools/3/invitations/inv_pending/resend", "POST", {});
+
     expect(response.status).toBe(403);
-    expect(state.query.mock.calls.some(([sql]) => String(sql).includes("FROM schools"))).toBe(false);
+    expect(state.query).toHaveBeenCalledTimes(1);
+    expect(state.query.mock.calls.every(([sql]) =>
+      String(sql).includes("INSERT INTO audit_logs") && String(sql).includes("'DENIED'")
+    )).toBe(true);
+    expect(state.getInvitationList).not.toHaveBeenCalled();
+    expect(state.createInvitation).not.toHaveBeenCalled();
   });
 });

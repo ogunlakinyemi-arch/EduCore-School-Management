@@ -1,5 +1,6 @@
 import express from "express";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { PUBLIC_PRODUCTION_ORIGIN } from "./invitation-redirect";
 
 const state = vi.hoisted(() => ({
   role: "PLATFORM_OWNER",
@@ -65,7 +66,8 @@ const client = vi.hoisted(() => ({
 vi.mock("@workspace/db", () => ({
   pool: { query, connect: vi.fn(async () => client) },
 }));
-const createInvitation = vi.hoisted(() => vi.fn(async () => state.invitation));
+const createInvitation = vi.hoisted(() => vi.fn(async (_input: { redirectUrl: string; [key: string]: any }) =>
+  state.invitation));
 const revokeInvitation = vi.hoisted(() => vi.fn(async () => undefined));
 vi.mock("@clerk/express", () => ({
   clerkClient: {
@@ -125,6 +127,25 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+function expectPublicInternalInvitationUrl(value: string) {
+  const url = new URL(value);
+  expect(url.origin).toBe(PUBLIC_PRODUCTION_ORIGIN);
+  expect(url.pathname).toBe("/accept-invitation");
+  expect(url.search).toBe("");
+  for (const prohibited of [
+    "riker.replit.dev", ".replit.dev", "replit.com/silent-auth",
+    "__replshield", "privateDevDomain=true", "__clerk_ticket",
+  ]) {
+    expect(value).not.toContain(prohibited);
+  }
+}
+
+afterEach(() => {
+  for (const [request] of createInvitation.mock.calls) {
+    expectPublicInternalInvitationUrl(String(request.redirectUrl));
+  }
+});
+
 describe("platform company employee profiles", () => {
   it("allows only Platform Owners to list and read company profiles", async () => {
     const list = await fetch(`${baseUrl}/platform/company-employees`);
@@ -171,6 +192,7 @@ describe("platform company employee profiles", () => {
     expect(createInvitation).toHaveBeenCalledWith(expect.objectContaining({
       emailAddress: "grace@example.test",
       notify: true,
+      redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
       publicMetadata: expect.objectContaining({
         edupulseInternalEmployeeInvitation: expect.objectContaining({
           employeeId: 42, role: "COMPANY_ACCOUNTANT", schoolId: null,
@@ -192,6 +214,27 @@ describe("platform company employee profiles", () => {
       }),
     });
     expect(response.status).toBe(400);
+    expect(createInvitation).not.toHaveBeenCalled();
+  });
+
+  it("denies internal invitation creation and resend to non-Platform-Owners", async () => {
+    state.role = "SCHOOL_ADMIN";
+    const created = await fetch(`${baseUrl}/platform/company-employees`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        fullName: "Unauthorized Employee",
+        email: "unauthorized@example.test",
+        role: "COMPANY_ACCOUNTANT",
+      }),
+    });
+    const resent = await fetch(`${baseUrl}/platform/company-employees/7/invitation/resend`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(created.status).toBe(403);
+    expect(resent.status).toBe(403);
     expect(createInvitation).not.toHaveBeenCalled();
   });
 
@@ -261,7 +304,7 @@ describe("platform company employee profiles", () => {
     });
     expect(createInvitation).toHaveBeenCalledWith(expect.objectContaining({
       emailAddress: "new@example.test",
-      redirectUrl: "/accept-invitation",
+      redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
       publicMetadata: expect.objectContaining({
         edupulseInternalEmployeeInvitation: expect.objectContaining({
           role: "DEVICE_ACTIVATION_OFFICER", schoolId: 4,
@@ -297,5 +340,32 @@ describe("platform company employee profiles", () => {
       }),
     }));
     expect(revokeInvitation).toHaveBeenCalledWith("expired-invitation");
+  });
+
+  it("resends a company accountant invitation without adding a school scope", async () => {
+    process.env.CLERK_SECRET_KEY = "test-clerk-secret";
+    state.latestInvite = {
+      role: "COMPANY_ACCOUNTANT",
+      schoolId: null,
+      claimId: "expired-accountant-claim",
+      invitationId: "expired-accountant-invitation",
+      expiresAt: new Date(Date.now() - 86_400_000).toISOString(),
+    };
+    const response = await fetch(`${baseUrl}/platform/company-employees/7/invitation/resend`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(response.status).toBe(200);
+    expect(createInvitation).toHaveBeenCalledWith(expect.objectContaining({
+      emailAddress: "ada@example.test",
+      redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
+      publicMetadata: expect.objectContaining({
+        edupulseInternalEmployeeInvitation: expect.objectContaining({
+          role: "COMPANY_ACCOUNTANT", schoolId: null,
+        }),
+      }),
+    }));
+    expect(revokeInvitation).toHaveBeenCalledWith("expired-accountant-invitation");
   });
 });
