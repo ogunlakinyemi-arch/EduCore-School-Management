@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useLocation, useParams, Link } from 'wouter';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
@@ -154,6 +154,12 @@ async function resendSchoolAdminInvitation(schoolId: number, invitationId: numbe
     throw new Error(result?.error || result?.message || `Could not resend administrator invitation (${response.status})`);
   }
   return result;
+}
+
+function hasStableSchoolInvitationId(invitationId: unknown) {
+  return typeof invitationId === 'number'
+    ? Number.isSafeInteger(invitationId) && invitationId > 0
+    : typeof invitationId === 'string' && invitationId.trim().length > 0;
 }
 
 const schoolAdminInvitationsQueryKey = (schoolId: number) => ['school-admin-invitations', schoolId];
@@ -454,9 +460,22 @@ function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
   const [error, setError] = useState('');
   const [editingInvitationId, setEditingInvitationId] = useState<number | string | null>(null);
   const [editedEmail, setEditedEmail] = useState('');
-  const [workingInvitationId, setWorkingInvitationId] = useState<number | string | null>(null);
+  const [workingInvitationIds, setWorkingInvitationIds] = useState<Set<string>>(() => new Set());
+  const workingInvitationIdsRef = useRef(new Set<string>());
   const [actionError, setActionError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
+
+  const startInvitationAction = (invitationId: number | string) => {
+    const key = String(invitationId);
+    if (workingInvitationIdsRef.current.has(key)) return false;
+    workingInvitationIdsRef.current.add(key);
+    setWorkingInvitationIds(new Set(workingInvitationIdsRef.current));
+    return true;
+  };
+  const finishInvitationAction = (invitationId: number | string) => {
+    workingInvitationIdsRef.current.delete(String(invitationId));
+    setWorkingInvitationIds(new Set(workingInvitationIdsRef.current));
+  };
 
   const refreshInvitations = () => {
     queryClient.invalidateQueries({ queryKey: schoolAdminInvitationsQueryKey(schoolId) });
@@ -483,7 +502,7 @@ function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
   }
 
   async function saveEmail(invitation: SchoolAdminInvitation) {
-    setWorkingInvitationId(invitation.invitationId);
+    if (!startInvitationAction(invitation.invitationId)) return;
     setActionError('');
     setActionMessage('');
     try {
@@ -495,12 +514,13 @@ function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
     } catch (reason) {
       setActionError(reason instanceof Error ? reason.message : 'Could not update this invitation email.');
     } finally {
-      setWorkingInvitationId(null);
+      finishInvitationAction(invitation.invitationId);
     }
   }
 
   async function resend(invitation: SchoolAdminInvitation) {
-    setWorkingInvitationId(invitation.invitationId);
+    if (!hasStableSchoolInvitationId(invitation.invitationId)) return;
+    if (!startInvitationAction(invitation.invitationId)) return;
     setActionError('');
     setActionMessage('');
     try {
@@ -512,7 +532,7 @@ function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
     } catch (reason) {
       setActionError(reason instanceof Error ? reason.message : 'Could not resend this invitation.');
     } finally {
-      setWorkingInvitationId(null);
+      finishInvitationAction(invitation.invitationId);
     }
   }
 
@@ -563,7 +583,7 @@ function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
                     <Field label="Correct email">
                       <input type="email" required value={editedEmail} onChange={event => setEditedEmail(event.target.value)} />
                     </Field>
-                    <Button type="button" onClick={() => saveEmail(invitation)} disabled={workingInvitationId === invitation.invitationId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editedEmail.trim())}>
+                    <Button type="button" onClick={() => saveEmail(invitation)} disabled={workingInvitationIds.has(String(invitation.invitationId)) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editedEmail.trim())}>
                       <Save size={14} />Save email
                     </Button>
                     <Button type="button" variant="quiet" onClick={() => { setEditingInvitationId(null); setEditedEmail(''); }}>
@@ -577,8 +597,8 @@ function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
                         <Pencil size={14} />Edit email
                       </Button>
                     )}
-                    <Button type="button" variant="outline" onClick={() => resend(invitation)} disabled={workingInvitationId === invitation.invitationId}>
-                      <RefreshCw size={14} />{workingInvitationId === invitation.invitationId ? 'Resending…' : 'Resend'}
+                    <Button type="button" variant="outline" onClick={() => resend(invitation)} disabled={!hasStableSchoolInvitationId(invitation.invitationId) || workingInvitationIds.has(String(invitation.invitationId))}>
+                      <RefreshCw size={14} />{workingInvitationIds.has(String(invitation.invitationId)) ? 'Resending…' : 'Resend'}
                     </Button>
                   </div>
                 ) : null}

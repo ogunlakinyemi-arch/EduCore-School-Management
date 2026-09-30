@@ -2193,12 +2193,19 @@ paths:
       summary: Resend a company employee invitation
       parameters:
         - $ref: "#/components/parameters/EmployeeIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyEmployeeInvitationSelection"
       responses:
         "200":
           description: Replacement invitation request accepted; delivery is unverified
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CompanyEmployeeInvitationResult" }
+        "400": { description: A specific current invitation ID is required }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { description: No current invitation is eligible for resend }
@@ -3261,12 +3268,19 @@ paths:
       summary: Resend the pending invitation for a partner profile
       parameters:
         - $ref: "#/components/parameters/PartnerIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerInvitationSelection"
       responses:
         "201":
           description: Replacement invitation request accepted; the raw token is never returned and delivery is unverified
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PartnerInvitation" }
+        "400": { description: A specific local invitation ID is required }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { description: Partner profile is not awaiting invitation acceptance }
@@ -5919,6 +5933,24 @@ components:
                 required: [schoolId]
       properties:
         role: { type: string, enum: [COMPANY_ACCOUNTANT, DEVICE_ACTIVATION_OFFICER] }
+    CompanyEmployeeInvitationSelection:
+      type: object
+      additionalProperties: false
+      required: [invitationId]
+      properties:
+        invitationId:
+          type: string
+          minLength: 1
+          description: Current Clerk invitation ID returned by the selected employee's invitation status; stale IDs are rejected.
+    PartnerInvitationSelection:
+      type: object
+      additionalProperties: false
+      required: [invitationId]
+      properties:
+        invitationId:
+          type: integer
+          minimum: 1
+          description: Selected local owner invitation ID from the platform invitation list, scoped to the partner in the route.
     CompanyEmployeeInvitationResult:
       type: object
       required: [employeeId, email, role, schoolId, invitation]

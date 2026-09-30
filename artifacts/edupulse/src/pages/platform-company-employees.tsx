@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BriefcaseBusiness, Pencil, Plus, ShieldCheck } from 'lucide-react';
 import {
@@ -24,7 +24,7 @@ type CompanyEmployee = {
     employeeId: number;
     email: string;
     status: 'ACTIVE' | 'PENDING' | 'EXPIRED' | 'NOT_INVITED';
-    invitation: { status: string; deliveryConfirmed: boolean; expiresAt?: string } | null;
+    invitation: { status: string; deliveryConfirmed: boolean; invitationId?: string; expiresAt?: string } | null;
   };
 };
 
@@ -60,7 +60,7 @@ type InvitationDetail = {
   employeeId: number;
   email: string;
   status: 'ACTIVE' | 'PENDING' | 'EXPIRED' | 'NOT_INVITED';
-  invitation: { status: string; deliveryConfirmed: boolean; expiresAt?: string } | null;
+  invitation: { status: string; deliveryConfirmed: boolean; invitationId?: string; expiresAt?: string } | null;
 };
 type ResentInvitation = {
   employeeId: number;
@@ -113,6 +113,8 @@ export function PlatformCompanyEmployeesPage() {
   const [lastInvitation, setLastInvitation] = useState<InvitationResult | null>(null);
   const [invitationEditing, setInvitationEditing] = useState<CompanyEmployee | null>(null);
   const [invitationNotice, setInvitationNotice] = useState('');
+  const resendingInvitationIdsRef = useRef(new Set<string>());
+  const [resendingInvitationIds, setResendingInvitationIds] = useState<Set<string>>(() => new Set());
   const employeesQuery = useQuery({
     queryKey,
     queryFn: () => request<CompanyEmployee[]>(endpoint),
@@ -183,10 +185,11 @@ export function PlatformCompanyEmployeesPage() {
     },
   });
   const resendInvitation = useMutation({
-    mutationFn: (id: number) => request<ResentInvitation>(`${endpoint}/${id}/invitation/resend`, {
-      method: 'POST',
-      body: JSON.stringify({}),
-    }),
+    mutationFn: ({ employeeId, invitationId }: { employeeId: number; invitationId: string }) =>
+      request<ResentInvitation>(`${endpoint}/${employeeId}/invitation/resend`, {
+        method: 'POST',
+        body: JSON.stringify({ invitationId }),
+      }),
     onMutate: () => setInvitationNotice(''),
     onSuccess: async (result) => {
       setInvitationNotice(`Clerk accepted the invitation request for ${result.email}. Dispatch and inbox delivery are not confirmed.`);
@@ -203,6 +206,18 @@ export function PlatformCompanyEmployeesPage() {
   const canManageActivation = Boolean(selectedEmployeeEmail && selectedSchoolId);
   const activeGrantExists = grantsQuery.data?.some((grant) => grant.status === 'ACTIVE') ?? false;
   const activationError = grantActivationAccess.error || revokeActivationAccess.error || grantsQuery.error || schoolsQuery.error;
+  const requestInvitationResend = (employeeId: number, invitationId: string) => {
+    const key = `${employeeId}:${invitationId}`;
+    if (resendingInvitationIdsRef.current.has(key)) return;
+    resendingInvitationIdsRef.current.add(key);
+    setResendingInvitationIds(new Set(resendingInvitationIdsRef.current));
+    void resendInvitation.mutateAsync({ employeeId, invitationId })
+      .finally(() => {
+        resendingInvitationIdsRef.current.delete(key);
+        setResendingInvitationIds(new Set(resendingInvitationIdsRef.current));
+      })
+      .catch(() => undefined);
+  };
 
   return (
     <div className="fade-up">
@@ -450,7 +465,7 @@ export function PlatformCompanyEmployeesPage() {
               employee={invitationEditing}
               invitation={invitationQuery.data}
               emailPending={editInvitation.isPending}
-              resendPending={resendInvitation.isPending}
+              resendPending={resendingInvitationIds.has(`${invitationEditing.id}:${invitationQuery.data.invitation?.invitationId ?? ''}`)}
               error={editInvitation.error || resendInvitation.error}
               notice={invitationNotice}
               onEmailChange={() => {
@@ -459,7 +474,12 @@ export function PlatformCompanyEmployeesPage() {
                 resendInvitation.reset();
               }}
               onSave={(email) => editInvitation.mutate({ id: invitationEditing.id, email })}
-              onResend={() => resendInvitation.mutate(invitationEditing.id)}
+              onResend={() => {
+                const invitationId = invitationQuery.data?.invitation?.invitationId;
+                if (typeof invitationId === 'string' && invitationId.trim()) {
+                  requestInvitationResend(invitationEditing.id, invitationId);
+                }
+              }}
             />
           ) : (
             <p role="status" className="text-sm">
@@ -643,6 +663,8 @@ function InvitationEditor({
   onResend: () => void;
 }) {
   const [email, setEmail] = useState(invitation.email);
+  const invitationId = invitation.invitation?.invitationId;
+  const hasInvitationId = typeof invitationId === 'string' && invitationId.trim().length > 0;
 
   const save = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -656,6 +678,11 @@ function InvitationEditor({
         <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
           Invitation status: {invitation.status}. Profile status is managed separately.
         </p>
+        {hasInvitationId && (
+          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+            Invitation ID: <span data-testid={`invitation-id-${employee.id}`}>{invitationId}</span>
+          </p>
+        )}
       </div>
       <form onSubmit={save} className="space-y-4">
         <Field label="Invitation email">
@@ -679,8 +706,19 @@ function InvitationEditor({
       <p className="text-xs text-[hsl(var(--muted-foreground))]">
         Resending requests a replacement invitation for this employee’s existing role and school assignment. Request acceptance is not confirmation of dispatch or inbox delivery.
       </p>
+      {!hasInvitationId && (
+        <p role="status" className="text-sm text-[hsl(var(--muted-foreground))]">
+          Invitation ID is unavailable. Refresh invitation status before attempting a resend.
+        </p>
+      )}
       <div className="flex flex-wrap justify-end gap-3 border-t border-[hsl(var(--border))] pt-4">
-        <Button variant="outline" disabled={emailPending || resendPending} onClick={onResend} testId={`button-resend-invitation-${employee.id}`}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={emailPending || resendPending || !hasInvitationId}
+          onClick={onResend}
+          testId={`button-resend-invitation-${employee.id}`}
+        >
           {resendPending ? 'Requesting…' : 'Resend invitation'}
         </Button>
       </div>

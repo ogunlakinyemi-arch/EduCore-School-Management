@@ -176,6 +176,7 @@ async function replaceEmployeeInvitation(req: Request, res: any, mode: "edit" | 
   assertRoles(req, ["PLATFORM_OWNER"]);
   const id = employeeId(req.params.employeeId);
   let email: string | undefined;
+  let expectedInvitationId: string | undefined;
   if (mode === "edit") {
     if (!req.body || typeof req.body !== "object" || Array.isArray(req.body) ||
         Object.keys(req.body).length !== 1 || !Object.hasOwn(req.body, "email")) {
@@ -183,8 +184,15 @@ async function replaceEmployeeInvitation(req: Request, res: any, mode: "edit" | 
     }
     email = text(req.body.email, "email", true)!.toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new AuthError(400, "A valid email is required");
-  } else if (req.body && Object.keys(req.body).length) {
-    throw new AuthError(400, "Resend does not accept request fields");
+  } else {
+    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body) ||
+        Object.keys(req.body).length !== 1 || !Object.hasOwn(req.body, "invitationId")) {
+      throw new AuthError(400, "Provide only the current invitationId");
+    }
+    if (typeof req.body.invitationId !== "string" || !req.body.invitationId.trim()) {
+      throw new AuthError(400, "invitationId must be a nonempty string");
+    }
+    expectedInvitationId = req.body.invitationId;
   }
 
   const client = await pool.connect();
@@ -227,6 +235,9 @@ async function replaceEmployeeInvitation(req: Request, res: any, mode: "edit" | 
       throw new AuthError(409, "There is no current invitation to edit or resend");
     }
     const marker = previous.metadata as Record<string, unknown>;
+    if (mode === "resend" && marker.invitationId !== expectedInvitationId) {
+      throw new AuthError(409, "The invitation is no longer current; refresh before resending");
+    }
     role = marker.role as InternalEmployeeRole;
     schoolId = marker.schoolId === null ? null : Number(marker.schoolId);
     if ((role !== "COMPANY_ACCOUNTANT" && role !== "DEVICE_ACTIVATION_OFFICER") ||
@@ -258,6 +269,7 @@ async function replaceEmployeeInvitation(req: Request, res: any, mode: "edit" | 
       fullName: employee.fullName,
       role,
       schoolId,
+      ...(mode === "resend" ? { ignoreExisting: true } : {}),
     });
     newInvitationId = invitation.id;
     if (mode === "edit") {

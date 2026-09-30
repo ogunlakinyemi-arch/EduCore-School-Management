@@ -15,6 +15,21 @@ export const publicPartnersRouter = Router();
 const router = Router();
 const hash = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
 const normalizedEmail = (value: string) => value.trim().toLowerCase();
+const ownerPartnerInvitationActions = [
+  "Created partner invitation",
+  "Started partner invitation resend",
+  "Resent partner invitation",
+  "Partner invitation resend requires provider recovery",
+  "Partner invitation finalization requires recovery",
+  "Recovered partner invitation resend",
+  "Resolved partner invitation resend attempt",
+  "Partner invitation resend rejected by provider",
+  "Corrected pending partner invitation email",
+];
+const staffPartnerInvitationActions = [
+  "Created partner staff invitation",
+  "Resent partner staff invitation",
+];
 const idOf = (value: unknown, label = "Resource") => {
   const id = Number(value);
   if (!Number.isInteger(id) || id < 1) throw new AuthError(404, `${label} not found`);
@@ -187,14 +202,19 @@ async function audit(
 }
 async function knownClerkInvitationIds(
   db: { query: (text: string, values?: any[]) => Promise<any> },
+  partnerId: number,
+  email: string,
   invitationIds: number[],
+  context: "owner" | "staff" = "owner",
 ) : Promise<string[]> {
   if (!invitationIds.length) return [];
+  const actions = context === "owner" ? ownerPartnerInvitationActions : staffPartnerInvitationActions;
   const known = await db.query(
     `SELECT DISTINCT metadata->>'clerkInvitationId' AS "clerkInvitationId"
      FROM audit_logs WHERE module='Partners' AND record_id=ANY($1::int[])
-       AND metadata ? 'clerkInvitationId'`,
-    [invitationIds],
+       AND action=ANY($4::text[]) AND metadata ? 'clerkInvitationId'
+       AND metadata->>'partnerId'=$2 AND lower(trim(metadata->>'invitedEmail'))=$3`,
+    [invitationIds, String(partnerId), normalizedEmail(email), actions],
   );
   const ids = known.rows.map((row: any) => row.clerkInvitationId)
     .filter((id: unknown): id is string => typeof id === "string" && id.length > 0);
@@ -245,6 +265,7 @@ async function finalizePartnerInvitationResend(
   details: {
     partnerId: number;
     email: string;
+    selectedInvitationId: number;
     invitation: any;
     clerkInvitationId: string;
     attemptId: string;
@@ -257,11 +278,24 @@ async function finalizePartnerInvitationResend(
   let commitAttempted = false;
   try {
     await client.query("BEGIN");
-    const partner = await client.query(`SELECT status,user_id AS "userId"
+    const partner = await client.query(`SELECT email,status,user_id AS "userId"
       FROM partner_profiles WHERE id=$1 FOR UPDATE`, [details.partnerId]);
     if (!partner.rows[0] || partner.rows[0].status !== "INVITED" || partner.rows[0].userId) {
       throw new AuthError(409, "The partner invitation was accepted or changed before this resend could be finalized");
     }
+    if (normalizedEmail(partner.rows[0].email) !== details.email) {
+      throw new AuthError(409, "The partner email changed before this resend could be finalized");
+    }
+    const source = await client.query(`SELECT i.id FROM partner_invitations i
+      WHERE i.id=$1 AND i.partner_profile_id=$2 AND lower(trim(i.invited_email))=$3
+        AND i.status='ACTIVE'
+        AND EXISTS (SELECT 1 FROM audit_logs a WHERE a.module='Partners' AND a.record_id=i.id
+          AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::text
+          AND lower(trim(a.metadata->>'invitedEmail'))=$3)
+      FOR UPDATE`,
+      [details.selectedInvitationId, details.partnerId, details.email, ownerPartnerInvitationActions]);
+    if (!source.rows[0]) throw new AuthError(409,
+      "The selected owner invitation changed before this resend could be finalized");
     const current = await client.query(`SELECT id,status FROM partner_invitations
       WHERE id=$1 AND partner_profile_id=$2 AND status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE') FOR UPDATE`,
       [details.invitation.id, details.partnerId]);
@@ -282,12 +316,13 @@ async function finalizePartnerInvitationResend(
         createdAt: details.invitation.createdAt,
       };
     }
-    const supersededIds = await supersedePartnerInvitations(client, details.partnerId);
+    const supersededIds = await supersedePartnerInvitations(client, details.partnerId, details.email);
     await client.query(`UPDATE partner_invitations SET status='ACTIVE' WHERE id=$1
       AND status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')`, [details.invitation.id]);
     await audit(req, details.recovered ? "Recovered partner invitation resend" : "Resent partner invitation",
       "Partners", details.invitation.id, {
         partnerId: details.partnerId, invitedEmail: details.email,
+        selectedInvitationId: details.selectedInvitationId,
         clerkInvitationId: details.clerkInvitationId, attemptId: details.attemptId,
         recoveryStatus: details.recovered ? "RECONCILED_FROM_CLERK_METADATA" : undefined,
         supersededInvitationIds: supersededIds,
@@ -329,7 +364,8 @@ async function finalizePartnerInvitationResend(
         WHERE id=$1 AND status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')`,
         [details.invitation.id, recoveryStatus]).catch(() => undefined);
       await audit(req, "Partner invitation finalization requires recovery", "Partners", details.invitation.id,
-        { partnerId: details.partnerId, invitedEmail: details.email, attemptId: details.attemptId,
+        { partnerId: details.partnerId, invitedEmail: details.email,
+          selectedInvitationId: details.selectedInvitationId, attemptId: details.attemptId,
           clerkInvitationId: details.clerkInvitationId, dispatchStatus: recoveryStatus }, pool).catch(() => undefined);
     }
     throw error;
@@ -358,16 +394,24 @@ async function revokeClerkInvitations(ids: string[], operation: "replacement" | 
 async function supersedePartnerInvitations(
   db: { query: (text: string, values?: any[]) => Promise<any> },
   partnerId: number,
+  email: string,
 ) {
   const current = await db.query(
     `SELECT id FROM partner_invitations
-     WHERE partner_profile_id=$1 AND status='ACTIVE' FOR UPDATE`,
-    [partnerId],
+     WHERE partner_profile_id=$1 AND lower(trim(invited_email))=$2 AND status='ACTIVE'
+       AND EXISTS (SELECT 1 FROM audit_logs a
+         WHERE a.module='Partners' AND a.record_id=partner_invitations.id
+           AND a.action=ANY($3::text[]) AND a.metadata->>'partnerId'=$1::text
+           AND lower(trim(a.metadata->>'invitedEmail'))=$2)
+     FOR UPDATE`,
+    [partnerId, normalizedEmail(email), ownerPartnerInvitationActions],
   );
   const ids = current.rows.map((row: any) => Number(row.id)).filter(Number.isInteger);
   if (ids.length) {
     await db.query(`UPDATE partner_invitations SET status='REVOKED',revoked_at=NOW()
-      WHERE id=ANY($1::int[]) AND status='ACTIVE'`, [ids]);
+      WHERE id=ANY($1::int[]) AND partner_profile_id=$2
+        AND lower(trim(invited_email))=$3 AND status='ACTIVE'`,
+      [ids, partnerId, normalizedEmail(email)]);
   }
   return ids;
 }
@@ -581,8 +625,14 @@ router.get("/platform/partners/invitations", run(async (req, res) => {
                AND (p.user_id IS NULL OR pu.user_id<>p.user_id OR pu.role='PARTNER')
            ) THEN 'ACTIVE'
            WHEN i.status='ACCEPTED' THEN 'ACCEPTED'
-           ELSE i.status END=$1)
-    ORDER BY i.created_at DESC`, [filter]);
+            ELSE i.status END=$1)
+       AND lower(trim(i.invited_email))=lower(trim(p.email))
+       AND EXISTS (SELECT 1 FROM audit_logs owner_invitation
+         WHERE owner_invitation.module='Partners' AND owner_invitation.record_id=i.id
+           AND owner_invitation.action=ANY($2::text[])
+           AND owner_invitation.metadata->>'partnerId'=p.id::text
+           AND lower(trim(owner_invitation.metadata->>'invitedEmail'))=lower(trim(p.email)))
+     ORDER BY i.created_at DESC`, [filter, ownerPartnerInvitationActions]);
   res.json(r.rows);
 }));
 router.post("/platform/partners/invitations", run(async (req, res) => {
@@ -660,6 +710,11 @@ router.post("/platform/partners/invitations", run(async (req, res) => {
 router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, res) => {
   const c = assertRoles(req, ["PLATFORM_OWNER"]);
   const partnerId = idOf(req.params.partnerId, "Partner");
+  const requestedInvitationId = req.body?.invitationId;
+  if (!Number.isInteger(requestedInvitationId) || requestedInvitationId < 1) {
+    throw new AuthError(400, "A valid invitationId is required to resend a partner invitation");
+  }
+  let selectedInvitationId = requestedInvitationId;
   const ownershipClient = await pool.connect();
   let ownershipLocked = false;
   try {
@@ -691,12 +746,58 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
     if (row.status !== "INVITED" || row.userId) {
       throw new AuthError(409, "Only a pending partner invitation can be resent");
     }
+    let selected = await client.query(`SELECT i.id,i.invited_email AS email,i.status
+      FROM partner_invitations i
+      WHERE i.id=$1 AND i.partner_profile_id=$2 AND lower(trim(i.invited_email))=$3
+        AND i.status='ACTIVE'
+        AND EXISTS (SELECT 1 FROM audit_logs a
+          WHERE a.module='Partners' AND a.record_id=i.id
+            AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::text
+            AND lower(trim(a.metadata->>'invitedEmail'))=$3)
+      FOR UPDATE`,
+      [requestedInvitationId, partnerId, normalizedEmail(row.email), ownerPartnerInvitationActions]);
+    if (!selected.rows[0]) {
+      const selectedAttempt = await client.query(`SELECT i.id,i.status,
+          a.metadata->>'selectedInvitationId' AS "selectedInvitationId"
+        FROM partner_invitations i
+        JOIN LATERAL (SELECT metadata FROM audit_logs
+          WHERE module='Partners' AND record_id=i.id
+            AND action=ANY($4::text[]) AND metadata->>'partnerId'=$2::text
+            AND lower(trim(metadata->>'invitedEmail'))=$3
+          ORDER BY timestamp DESC LIMIT 1) a ON true
+        WHERE i.id=$1 AND i.partner_profile_id=$2
+          AND lower(trim(i.invited_email))=$3
+          AND i.status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE','FAILED','RATE_LIMITED')
+        FOR UPDATE OF i`,
+        [requestedInvitationId, partnerId, normalizedEmail(row.email), ownerPartnerInvitationActions]);
+      const sourceId = Number(selectedAttempt.rows[0]?.selectedInvitationId);
+      if (sourceId > 0) {
+        selected = await client.query(`SELECT i.id,i.invited_email AS email,i.status
+          FROM partner_invitations i
+          WHERE i.id=$1 AND i.partner_profile_id=$2 AND lower(trim(i.invited_email))=$3
+            AND i.status='ACTIVE'
+            AND EXISTS (SELECT 1 FROM audit_logs a
+              WHERE a.module='Partners' AND a.record_id=i.id
+                AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::text
+                AND lower(trim(a.metadata->>'invitedEmail'))=$3)
+          FOR UPDATE`,
+          [sourceId, partnerId, normalizedEmail(row.email), ownerPartnerInvitationActions]);
+        if (selected.rows[0]) selectedInvitationId = sourceId;
+      }
+    }
+    if (!selected.rows[0]) {
+      throw new AuthError(404, "The selected owner invitation attempt or its active source was not found for this partner");
+    }
     await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1,0))`,
       [`partner-invitation:${normalizedEmail(row.email)}`]);
     email = normalizedEmail(row.email);
-    const rateLimited = await client.query(`SELECT GREATEST(1,CEIL(EXTRACT(EPOCH FROM (expires_at-NOW()))))::int AS "retryAfterSeconds"
-      FROM partner_invitations WHERE partner_profile_id=$1 AND status='RATE_LIMITED' AND expires_at>NOW()
-      ORDER BY created_at DESC LIMIT 1`, [partnerId]);
+    const rateLimited = await client.query(`SELECT GREATEST(1,CEIL(EXTRACT(EPOCH FROM (i.expires_at-NOW()))))::int AS "retryAfterSeconds"
+      FROM partner_invitations i WHERE i.partner_profile_id=$1
+        AND lower(trim(i.invited_email))=$2 AND i.status='RATE_LIMITED' AND i.expires_at>NOW()
+        AND EXISTS (SELECT 1 FROM audit_logs a WHERE a.module='Partners' AND a.record_id=i.id
+          AND a.action='Partner invitation resend rejected by provider'
+          AND a.metadata->>'partnerId'=$1::text AND lower(trim(a.metadata->>'invitedEmail'))=$2)
+      ORDER BY i.created_at DESC LIMIT 1`, [partnerId, email]);
     if (rateLimited.rows[0]) {
       const retrySeconds = Number(rateLimited.rows[0].retryAfterSeconds) || 1;
       res.set("Retry-After", String(retrySeconds));
@@ -705,12 +806,29 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
       await client.query("ROLLBACK");
       return;
     }
-    const unresolved = await client.query(`SELECT id,status,created_at AS "createdAt",
-        expires_at AS "expiresAt" FROM partner_invitations
-      WHERE partner_profile_id=$1 AND status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')
-      ORDER BY created_at DESC LIMIT 1 FOR UPDATE`, [partnerId]);
+    const unresolved = await client.query(`SELECT i.id,i.status,i.created_at AS "createdAt",
+        i.expires_at AS "expiresAt",a.metadata->>'selectedInvitationId' AS "selectedInvitationId"
+      FROM partner_invitations i
+      JOIN LATERAL (SELECT metadata FROM audit_logs
+        WHERE module='Partners' AND record_id=i.id
+          AND action=ANY($3::text[]) AND metadata->>'partnerId'=$1::text
+          AND lower(trim(metadata->>'invitedEmail'))=$2
+        ORDER BY timestamp DESC LIMIT 1) a ON true
+      WHERE i.partner_profile_id=$1 AND lower(trim(i.invited_email))=$2
+        AND i.status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')
+      ORDER BY i.created_at DESC LIMIT 1 FOR UPDATE OF i`,
+      [partnerId, email, [
+        "Started partner invitation resend",
+        "Partner invitation resend requires provider recovery",
+        "Partner invitation finalization requires recovery",
+      ]]);
     if (unresolved.rows[0]) {
       invitation = unresolved.rows[0];
+      if (Number(invitation.selectedInvitationId) !== selectedInvitationId) {
+        throw new AuthError(503,
+          "An unresolved partner invitation attempt cannot be matched to this selected invitation. Do not resend; a Platform Owner must reconcile it manually.",
+          "INVITATION_RECOVERY_REQUIRED");
+      }
       if (invitation.status === "DISPATCHING") {
         const stillFresh = await client.query(`SELECT 1 FROM partner_invitations
           WHERE id=$1 AND created_at>NOW()-INTERVAL '5 minutes'`, [invitation.id]);
@@ -743,10 +861,15 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
       if (appUser.rows[0]) {
         throw new AuthError(409, "This email already has an active application account or role; do not create another invitation.");
       }
-      const historical = await client.query(`SELECT id FROM partner_invitations
-        WHERE partner_profile_id=$1 AND status IN ('ACTIVE','REVOKED') FOR UPDATE`, [partnerId]);
+      const historical = await client.query(`SELECT id FROM partner_invitations i
+        WHERE i.partner_profile_id=$1 AND lower(trim(i.invited_email))=$2
+          AND i.status IN ('ACTIVE','REVOKED')
+          AND EXISTS (SELECT 1 FROM audit_logs a WHERE a.module='Partners' AND a.record_id=i.id
+            AND a.action=ANY($3::text[]) AND a.metadata->>'partnerId'=$1::text
+            AND lower(trim(a.metadata->>'invitedEmail'))=$2)
+        FOR UPDATE OF i`, [partnerId, email, ownerPartnerInvitationActions]);
       const historicalIds = historical.rows.map((item: any) => Number(item.id)).filter(Number.isInteger);
-      oldClerkInvitationIds = await knownClerkInvitationIds(client, historicalIds);
+      oldClerkInvitationIds = await knownClerkInvitationIds(client, partnerId, email, historicalIds);
       const inserted = await client.query(`INSERT INTO partner_invitations
           (partner_profile_id,invited_email,token_hash,status,expires_at,created_by)
         VALUES($1,$2,$3,'DISPATCHING',NOW()+INTERVAL '7 days',$4)
@@ -754,7 +877,7 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
         [partnerId, email, hash(token), c.user.id]);
       invitation = inserted.rows[0];
       await audit(req, "Started partner invitation resend", "Partners", invitation.id,
-        { partnerId, invitedEmail: email, attemptId, dispatchStatus: "DISPATCHING" }, client);
+        { partnerId, invitedEmail: email, selectedInvitationId, attemptId, dispatchStatus: "DISPATCHING" }, client);
       await client.query("COMMIT");
     }
     } catch (error) {
@@ -784,7 +907,8 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
       await pool.query(`INSERT INTO audit_logs ("user",role,actor_user_id,clerk_user_id,action,module,record_id,metadata)
         VALUES($1,$2,$3,$4,'Resolved partner invitation resend attempt','Partners',$5,$6)`,
         [c.user.email, c.roles[0]?.role ?? "AUTHENTICATED", c.user.id, c.user.clerkUserId,
-          invitation.id, { partnerId, attemptId: recoveryAttemptId, recoveryStatus }]);
+          invitation.id, { partnerId, invitedEmail: email, selectedInvitationId,
+            attemptId: recoveryAttemptId, recoveryStatus }]);
       throw new AuthError(409,
         "Clerk confirms the prior resend has no usable invitation. The previous local invitation remains unchanged; it is safe to retry the resend.",
         "INVITATION_PROVIDER_ABSENT");
@@ -796,12 +920,17 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
           : "Clerk returned ambiguous invitation state for this attempt. No replacement was sent; a Platform Owner must reconcile it manually.",
         "INVITATION_RECOVERY_REQUIRED");
     }
-    const history = await pool.query(`SELECT id FROM partner_invitations
-      WHERE partner_profile_id=$1 AND status IN ('ACTIVE','REVOKED')`, [partnerId]);
-    oldClerkInvitationIds = await knownClerkInvitationIds(pool,
+    const history = await pool.query(`SELECT id FROM partner_invitations i
+      WHERE i.partner_profile_id=$1 AND lower(trim(i.invited_email))=$2
+        AND i.status IN ('ACTIVE','REVOKED')
+        AND EXISTS (SELECT 1 FROM audit_logs a WHERE a.module='Partners' AND a.record_id=i.id
+          AND a.action=ANY($3::text[]) AND a.metadata->>'partnerId'=$1::text
+          AND lower(trim(a.metadata->>'invitedEmail'))=$2)`,
+      [partnerId, email, ownerPartnerInvitationActions]);
+    oldClerkInvitationIds = await knownClerkInvitationIds(pool, partnerId, email,
       history.rows.map((item: any) => Number(item.id)).filter(Number.isInteger));
     const result = await finalizePartnerInvitationResend(req, {
-      partnerId, email, invitation, clerkInvitationId: reconciliation.invitation.id,
+      partnerId, email, selectedInvitationId, invitation, clerkInvitationId: reconciliation.invitation.id,
       attemptId: recoveryAttemptId, priorClerkInvitationIds: oldClerkInvitationIds, recovered: true,
     });
     res.status(201).json(result);
@@ -838,7 +967,7 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
       await pool.query(`INSERT INTO audit_logs ("user",role,actor_user_id,clerk_user_id,action,module,record_id,metadata)
         VALUES($1,$2,$3,$4,'Partner invitation resend rejected by provider','Partners',$5,$6)`,
         [c.user.email, c.roles[0]?.role ?? "AUTHENTICATED", c.user.id, c.user.clerkUserId,
-          invitation.id, { partnerId, attemptId, providerStatus: status }]);
+          invitation.id, { partnerId, invitedEmail: email, selectedInvitationId, attemptId, providerStatus: status }]);
       if (status === 429) {
         res.set("Retry-After", String(retrySeconds));
         res.status(429).json({ error: "Clerk rate-limited the invitation request; the previous invitation remains usable.",
@@ -852,7 +981,8 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
     await pool.query(`INSERT INTO audit_logs ("user",role,actor_user_id,clerk_user_id,action,module,record_id,metadata)
       VALUES($1,$2,$3,$4,'Partner invitation resend requires provider recovery','Partners',$5,$6)`,
       [c.user.email, c.roles[0]?.role ?? "AUTHENTICATED", c.user.id, c.user.clerkUserId,
-        invitation.id, { partnerId, attemptId, dispatchStatus: "UNKNOWN_PROVIDER_STATE" }]);
+        invitation.id, { partnerId, invitedEmail: email, selectedInvitationId,
+          attemptId, dispatchStatus: "UNKNOWN_PROVIDER_STATE" }]);
     throw new AuthError(503,
       "Clerk did not confirm whether the invitation was accepted. Recovery is required; do not retry because the provider may already have created it.",
       "INVITATION_RECOVERY_REQUIRED");
@@ -863,21 +993,34 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
   let commitAttempted = false;
   try {
     await client.query("BEGIN");
-    const currentPartner = await client.query(`SELECT status,user_id AS "userId"
+    const currentPartner = await client.query(`SELECT email,status,user_id AS "userId"
       FROM partner_profiles WHERE id=$1 FOR UPDATE`, [partnerId]);
     if (!currentPartner.rows[0] || currentPartner.rows[0].status !== "INVITED" ||
         currentPartner.rows[0].userId) {
       throw new AuthError(409, "The partner invitation was accepted or changed before this resend could be finalized");
     }
+    if (normalizedEmail(currentPartner.rows[0].email) !== email) {
+      throw new AuthError(409, "The partner email changed before this resend could be finalized");
+    }
+    const currentSource = await client.query(`SELECT i.id FROM partner_invitations i
+      WHERE i.id=$1 AND i.partner_profile_id=$2 AND lower(trim(i.invited_email))=$3
+        AND i.status='ACTIVE'
+        AND EXISTS (SELECT 1 FROM audit_logs a WHERE a.module='Partners' AND a.record_id=i.id
+          AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$2::text
+          AND lower(trim(a.metadata->>'invitedEmail'))=$3)
+      FOR UPDATE`,
+      [selectedInvitationId, partnerId, email, ownerPartnerInvitationActions]);
+    if (!currentSource.rows[0]) throw new AuthError(409,
+      "The selected owner invitation changed before this resend could be finalized");
     const current = await client.query(`SELECT id FROM partner_invitations
       WHERE id=$1 AND partner_profile_id=$2 AND status='DISPATCHING' FOR UPDATE`, [invitation.id, partnerId]);
     if (!current.rows[0]) throw new AuthError(503, "Invitation recovery is required before finalizing this resend",
       "INVITATION_RECOVERY_REQUIRED");
-    supersededIds = await supersedePartnerInvitations(client, partnerId);
+    supersededIds = await supersedePartnerInvitations(client, partnerId, email);
     await client.query(`UPDATE partner_invitations SET status='ACTIVE'
       WHERE id=$1 AND status='DISPATCHING'`, [invitation.id]);
     await audit(req, "Resent partner invitation", "Partners", invitation.id,
-      { partnerId, invitedEmail: email, clerkInvitationId: clerkInvitation.id, attemptId,
+      { partnerId, invitedEmail: email, selectedInvitationId, clerkInvitationId: clerkInvitation.id, attemptId,
         supersededInvitationIds: supersededIds }, client);
     commitAttempted = true;
     const resolution = await commitInvitationWithRecovery({
@@ -928,14 +1071,21 @@ router.delete("/platform/partners/invitations/:invitationId", run(async (req, re
   let committed = false;
   try {
     await client.query("BEGIN");
-    const invitation = await client.query(`SELECT id,partner_profile_id AS "partnerId",status
+    const invitation = await client.query(`SELECT id,partner_profile_id AS "partnerId",
+        invited_email AS email,status
       FROM partner_invitations WHERE id=$1 FOR UPDATE`, [invitationId]);
     const row = invitation.rows[0];
     if (!row) throw new AuthError(404, "Invitation not found");
     if (!["ACTIVE", "REVOKED"].includes(row.status)) {
       throw new AuthError(409, "Only a pending or expired invitation can be revoked");
     }
-    const oldClerkInvitationIds = await knownClerkInvitationIds(client, [invitationId]);
+    const ownerClerkIds = await knownClerkInvitationIds(
+      client, row.partnerId, row.email, [invitationId],
+    );
+    const staffClerkIds = await knownClerkInvitationIds(
+      client, row.partnerId, row.email, [invitationId], "staff",
+    );
+    const oldClerkInvitationIds = Array.from(new Set([...ownerClerkIds, ...staffClerkIds]));
     if (row.status === "ACTIVE") {
       await client.query(`UPDATE partner_invitations SET status='REVOKED',revoked_at=NOW()
         WHERE id=$1 AND status='ACTIVE'`, [invitationId]);
@@ -961,47 +1111,76 @@ router.get("/platform/partners/:partnerId", run(async (req,res) => {
 router.patch("/platform/partners/:partnerId", run(async(req,res)=>{
   assertRoles(req,["PLATFORM_OWNER"]);
   const id=idOf(req.params.partnerId,"Partner"), b=req.body??{};
-  const client=await pool.connect();
-  let committed=false;
-  let oldClerkInvitationIds:string[]=[];
+  const ownershipClient=await pool.connect();
+  let ownershipLocked=false;
   try {
-    await client.query("BEGIN");
-    const existing=await client.query(`SELECT id,email,status,user_id AS "userId"
-      FROM partner_profiles WHERE id=$1 FOR UPDATE`,[id]);
-    if(!existing.rows[0])throw new AuthError(404,"Partner not found");
-    const oldEmail=normalizedEmail(existing.rows[0].email);
-    const emailProvided=Object.prototype.hasOwnProperty.call(b,"email");
-    const email=emailProvided?normalizedEmail(String(b.email??"")):oldEmail;
-    let supersededInvitationIds:number[]=[];
-    if(emailProvided && email!==oldEmail) {
-      if(!validEmail(email))throw new AuthError(400,"A valid partner email is required");
-      if(existing.rows[0].status!=="INVITED" || existing.rows[0].userId) {
-        throw new AuthError(409,"Only a pending partner email can be corrected");
+    await ownershipClient.query(
+      `SELECT pg_advisory_lock(hashtextextended($1,0))`,
+      [`partner-invitation-resend:${id}`],
+    );
+    ownershipLocked=true;
+    const client=await pool.connect();
+    let committed=false;
+    let oldClerkInvitationIds:string[]=[];
+    try {
+      await client.query("BEGIN");
+      const existing=await client.query(`SELECT id,email,status,user_id AS "userId"
+        FROM partner_profiles WHERE id=$1 FOR UPDATE`,[id]);
+      if(!existing.rows[0])throw new AuthError(404,"Partner not found");
+      const oldEmail=normalizedEmail(existing.rows[0].email);
+      const emailProvided=Object.prototype.hasOwnProperty.call(b,"email");
+      const email=emailProvided?normalizedEmail(String(b.email??"")):oldEmail;
+      let supersededInvitationIds:number[]=[];
+      if(emailProvided && email!==oldEmail) {
+        if(!validEmail(email))throw new AuthError(400,"A valid partner email is required");
+        if(existing.rows[0].status!=="INVITED" || existing.rows[0].userId) {
+          throw new AuthError(409,"Only a pending partner email can be corrected");
+        }
+        await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1,0))`,
+          [`partner-invitation:${email}`]);
+        const duplicate=await client.query(`SELECT id FROM partner_profiles
+          WHERE lower(email)=lower($1) AND status='INVITED' AND id<>$2 LIMIT 1`,[email,id]);
+        if(duplicate.rows[0])throw new AuthError(409,"Another pending partner already uses this email");
+        supersededInvitationIds=await supersedePartnerInvitations(client,id,oldEmail);
+        oldClerkInvitationIds=await knownClerkInvitationIds(
+          client,id,oldEmail,supersededInvitationIds,
+        );
       }
-      await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1,0))`,
-        [`partner-invitation:${email}`]);
-      const duplicate=await client.query(`SELECT id FROM partner_profiles
-        WHERE lower(email)=lower($1) AND status='INVITED' AND id<>$2 LIMIT 1`,[email,id]);
-      if(duplicate.rows[0])throw new AuthError(409,"Another pending partner already uses this email");
-      supersededInvitationIds=await supersedePartnerInvitations(client,id);
-      oldClerkInvitationIds=await knownClerkInvitationIds(client,supersededInvitationIds);
+      const updated=await client.query(`UPDATE partner_profiles SET full_name=COALESCE($1,full_name),
+        business_name=COALESCE($2,business_name),phone=COALESCE($3,phone),address=COALESCE($4,address),
+        state=COALESCE($5,state),lga=COALESCE($6,lga),email=$7,updated_at=NOW()
+        WHERE id=$8 RETURNING id`,[b.fullName,b.businessName,b.phone,b.address,b.state,b.lga,email,id]);
+      if(!updated.rows[0])throw new AuthError(404,"Partner not found");
+      if(emailProvided && email!==oldEmail) {
+        const replacementToken=crypto.randomBytes(32).toString("base64url");
+        const replacement=await client.query(`INSERT INTO partner_invitations
+            (partner_profile_id,invited_email,token_hash,status,expires_at,created_by)
+          VALUES($1,$2,$3,'ACTIVE',NOW()+INTERVAL '7 days',$4)
+          RETURNING id`,[id,email,hash(replacementToken),getUserContext(req).user.id]);
+        await audit(req,"Corrected pending partner invitation email","Partners",replacement.rows[0].id,
+          {partnerId:id,invitedEmail:email,oldEmail,newEmail:email,
+            supersededInvitationIds},client);
+      }
+      await audit(req,emailProvided && email!==oldEmail?"Corrected pending partner invitation email":"Updated partner",
+        "Partners",id,emailProvided && email!==oldEmail?{oldEmail,newEmail:email,supersededInvitationIds}:null,client);
+      await client.query("COMMIT");
+      committed=true;
+      if(emailProvided && email!==oldEmail)await revokeClerkInvitations(oldClerkInvitationIds,"email correction");
+    } catch(error) {
+      if(!committed)await client.query("ROLLBACK").catch(()=>undefined);
+      throw error;
+    } finally { client.release(); }
+    const out=await pool.query(`SELECT ${partnerFields} FROM partner_profiles p LEFT JOIN app_users u ON u.id=p.user_id WHERE p.id=$1`,[id]);
+    res.json(out.rows[0]);
+  } finally {
+    if(ownershipLocked) {
+      await ownershipClient.query(
+        `SELECT pg_advisory_unlock(hashtextextended($1,0))`,
+        [`partner-invitation-resend:${id}`],
+      ).catch(()=>undefined);
     }
-    const updated=await client.query(`UPDATE partner_profiles SET full_name=COALESCE($1,full_name),
-      business_name=COALESCE($2,business_name),phone=COALESCE($3,phone),address=COALESCE($4,address),
-      state=COALESCE($5,state),lga=COALESCE($6,lga),email=$7,updated_at=NOW()
-      WHERE id=$8 RETURNING id`,[b.fullName,b.businessName,b.phone,b.address,b.state,b.lga,email,id]);
-    if(!updated.rows[0])throw new AuthError(404,"Partner not found");
-    await audit(req,emailProvided && email!==oldEmail?"Corrected pending partner invitation email":"Updated partner",
-      "Partners",id,emailProvided && email!==oldEmail?{oldEmail,newEmail:email,supersededInvitationIds}:null,client);
-    await client.query("COMMIT");
-    committed=true;
-    if(emailProvided && email!==oldEmail)await revokeClerkInvitations(oldClerkInvitationIds,"email correction");
-  } catch(error) {
-    if(!committed)await client.query("ROLLBACK").catch(()=>undefined);
-    throw error;
-  } finally { client.release(); }
-  const out=await pool.query(`SELECT ${partnerFields} FROM partner_profiles p LEFT JOIN app_users u ON u.id=p.user_id WHERE p.id=$1`,[id]);
-  res.json(out.rows[0]);
+    ownershipClient.release();
+  }
 }));
 router.patch("/platform/partners/:partnerId/status", run(async(req,res)=>{
   assertRoles(req,["PLATFORM_OWNER"]); const id=idOf(req.params.partnerId,"Partner"), status=req.body?.status;
@@ -1329,8 +1508,10 @@ router.post("/partner/staff-invitations/:invitationId/resend", run(async (req, r
     if (old.status !== "ACTIVE") throw new AuthError(409, "Only a pending or expired staff invitation can be resent");
     const auditRecord = await client.query(`SELECT metadata->>'permission' AS permission
       FROM audit_logs WHERE module='Partners' AND record_id=$1
-        AND action IN ('Created partner staff invitation','Resent partner staff invitation')
-      ORDER BY timestamp DESC LIMIT 1`, [invitationId]);
+        AND action=ANY($4::text[]) AND metadata->>'partnerId'=$2::text
+        AND lower(trim(metadata->>'invitedEmail'))=lower(trim($3))
+      ORDER BY timestamp DESC LIMIT 1`,
+      [invitationId, partner.id, old.email, staffPartnerInvitationActions]);
     const permission = String(auditRecord.rows[0]?.permission ?? "").toUpperCase();
     const permissionRoles: Record<string, string> = {
       STANDARD: "PARTNER_STAFF", FINANCE: "PARTNER_FINANCE", ADMIN: "PARTNER_ADMIN",
@@ -1345,18 +1526,38 @@ router.post("/partner/staff-invitations/:invitationId/resend", run(async (req, r
       WHERE pu.partner_profile_id=$1 AND lower(u.email)=lower($2) AND pu.status='ACTIVE' LIMIT 1`,
       [partner.id, email]);
     if (membership.rows[0]) throw new AuthError(409, "This email already has an active partner membership");
-    const historical = await client.query(`SELECT id FROM partner_invitations
-      WHERE partner_profile_id=$1 AND lower(invited_email)=lower($2)
-        AND status IN ('ACTIVE','REVOKED') FOR UPDATE`,
-      [partner.id, email]);
+    const historical = await client.query(`SELECT i.id FROM partner_invitations i
+      WHERE i.partner_profile_id=$1 AND lower(trim(i.invited_email))=$2
+        AND i.status IN ('ACTIVE','REVOKED')
+        AND EXISTS (SELECT 1 FROM audit_logs a WHERE a.module='Partners' AND a.record_id=i.id
+          AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$1::text
+          AND lower(trim(a.metadata->>'invitedEmail'))=$2
+          AND upper(a.metadata->>'permission')=$3)
+      FOR UPDATE OF i`,
+      [partner.id, email, permission, staffPartnerInvitationActions]);
     const historicalIds = historical.rows.map((row: any) => Number(row.id)).filter(Number.isInteger);
-    const oldClerkInvitationIds = await knownClerkInvitationIds(client, historicalIds);
-    const prior = await client.query(`SELECT id FROM partner_invitations
-      WHERE partner_profile_id=$1 AND lower(invited_email)=lower($2) AND status='ACTIVE' FOR UPDATE`,
-      [partner.id, email]);
+    const oldClerkInvitationIds = await knownClerkInvitationIds(
+      client, partner.id, email, historicalIds, "staff",
+    );
+    const prior = await client.query(`SELECT i.id FROM partner_invitations i
+      WHERE i.partner_profile_id=$1 AND lower(trim(i.invited_email))=$2 AND i.status='ACTIVE'
+        AND EXISTS (SELECT 1 FROM audit_logs a WHERE a.module='Partners' AND a.record_id=i.id
+          AND a.action=ANY($4::text[]) AND a.metadata->>'partnerId'=$1::text
+          AND lower(trim(a.metadata->>'invitedEmail'))=$2
+          AND upper(a.metadata->>'permission')=$3)
+      FOR UPDATE OF i`,
+      [partner.id, email, permission, staffPartnerInvitationActions]);
     const supersededIds = prior.rows.map((row: any) => Number(row.id)).filter(Number.isInteger);
     if (supersededIds.length) await client.query(`UPDATE partner_invitations
-      SET status='REVOKED',revoked_at=NOW() WHERE id=ANY($1::int[]) AND status='ACTIVE'`, [supersededIds]);
+      SET status='REVOKED',revoked_at=NOW()
+      WHERE id=ANY($1::int[]) AND partner_profile_id=$2
+        AND lower(trim(invited_email))=$3 AND status='ACTIVE'
+        AND EXISTS (SELECT 1 FROM audit_logs a WHERE a.module='Partners'
+          AND a.record_id=partner_invitations.id AND a.action=ANY($5::text[])
+          AND a.metadata->>'partnerId'=$2::text
+          AND lower(trim(a.metadata->>'invitedEmail'))=$3
+          AND upper(a.metadata->>'permission')=$4)`,
+      [supersededIds, partner.id, email, permission, staffPartnerInvitationActions]);
     const token = crypto.randomBytes(32).toString("base64url");
     const created = await client.query(`INSERT INTO partner_invitations
         (partner_profile_id,invited_email,token_hash,status,expires_at,created_by)
@@ -1410,11 +1611,13 @@ router.delete("/partner/staff-invitations/:invitationId", run(async (req, res) =
   let committed = false;
   try {
     await client.query("BEGIN");
-    const invitation = await client.query(`SELECT id,status FROM partner_invitations
+    const invitation = await client.query(`SELECT id,invited_email AS email,status FROM partner_invitations
       WHERE id=$1 AND partner_profile_id=$2 AND status IN ('ACTIVE','REVOKED') FOR UPDATE`,
       [invitationId, partner.id]);
     if (!invitation.rows[0]) throw new AuthError(404, "Pending staff invitation not found");
-    const oldClerkInvitationIds = await knownClerkInvitationIds(client, [invitationId]);
+    const oldClerkInvitationIds = await knownClerkInvitationIds(
+      client, partner.id, String(invitation.rows[0].email), [invitationId], "staff",
+    );
     if (invitation.rows[0].status === "ACTIVE") {
       await client.query(`UPDATE partner_invitations SET status='REVOKED',revoked_at=NOW()
         WHERE id=$1 AND status='ACTIVE'`, [invitationId]);

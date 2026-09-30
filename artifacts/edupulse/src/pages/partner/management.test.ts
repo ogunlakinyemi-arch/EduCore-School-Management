@@ -24,13 +24,14 @@ describe('Owner partner invitation management', () => {
     expect(source).toContain('Saving updates the partner email and supersedes the previous invitation.');
   });
 
-  it('resends using the replacement invitation endpoint and refreshes after mutations', () => {
+  it('resends the selected invitation ID using the replacement endpoint and refreshes after mutations', () => {
     expect(source).toContain('`/platform/partners/${partnerId}/invitations/resend`');
     expect(source).toContain("method: 'POST'");
-    expect(source).toContain('body: JSON.stringify({})');
+    expect(source).toContain('body: JSON.stringify({ invitationId })');
+    expect(source).toContain('invitationId: number; reconcile: boolean');
     expect(source).toContain("invitationStatus === 'DISPATCHING' || invitationStatus === 'UNKNOWN_PROVIDER_STATE'");
     expect(source).toContain("isUnresolved ? 'Retry reconciliation' : 'Resend'");
-    expect(source).toContain('resendInvitation.mutate({ partnerId: partner.id, reconcile: isUnresolved })');
+    expect(source).toContain('requestInvitationResend({ partnerId: partner.id, invitationId: invitation.id, reconcile: isUnresolved })');
     expect(source).toContain('Provider state is unresolved. Do not send another invitation; reconcile the existing attempt.');
     expect(source).toContain('No blind resend was attempted; use Retry reconciliation again when provider state is available.');
     expect(source).toContain("const canResendInvitation = invitationStatus === 'PENDING' || invitationStatus === 'EXPIRED' ||");

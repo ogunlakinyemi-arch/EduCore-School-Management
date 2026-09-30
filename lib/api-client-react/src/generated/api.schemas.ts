@@ -2169,6 +2169,22 @@ export type CompanyEmployeeInvitationInput = ({
   role: CompanyEmployeeInvitationInputRole;
 };
 
+export interface CompanyEmployeeInvitationSelection {
+  /**
+     * Current Clerk invitation ID returned by the selected employee's invitation status; stale IDs are rejected.
+     * @minLength 1
+     */
+  invitationId: string;
+}
+
+export interface PartnerInvitationSelection {
+  /**
+     * Selected local owner invitation ID from the platform invitation list, scoped to the partner in the route.
+     * @minimum 1
+     */
+  invitationId: number;
+}
+
 export type CompanyEmployeeInvitationResultRole = typeof CompanyEmployeeInvitationResultRole[keyof typeof CompanyEmployeeInvitationResultRole];
 
 

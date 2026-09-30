@@ -48,6 +48,32 @@ const fixtures = vi.hoisted(() => ({
       createdAt: '2024-01-01T00:00:00.000Z',
       expiresAt: '2024-01-08T00:00:00.000Z',
     },
+    {
+      invitationId: 104,
+      claimId: 'claim-pending-b',
+      email: 'pending-b@school.edu',
+      fullName: 'Morgan Pending',
+      status: 'PENDING',
+      clerkStatus: 'pending',
+      isCurrent: true,
+      membershipId: null,
+      userId: null,
+      createdAt: '2024-01-02T00:00:00.000Z',
+      expiresAt: '2024-01-09T00:00:00.000Z',
+    },
+    {
+      invitationId: 105,
+      claimId: 'claim-pending-c',
+      email: 'pending-c@school.edu',
+      fullName: 'Casey Pending',
+      status: 'PENDING',
+      clerkStatus: 'pending',
+      isCurrent: true,
+      membershipId: null,
+      userId: null,
+      createdAt: '2024-01-03T00:00:00.000Z',
+      expiresAt: '2024-01-10T00:00:00.000Z',
+    },
   ],
 }));
 
@@ -214,6 +240,52 @@ describe('Platform Owner school administrator invitation status', () => {
     expect(fixtures.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['school-admin-invitations', 12] });
     expect(host.textContent).toContain('Invitation PENDING request accepted');
     expect(host.textContent).toContain('unverified');
+  });
+
+  it('isolates a selected row and blocks a rapid duplicate resend before the next render', async () => {
+    let finishResend!: () => void;
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith('/invitations/104/resend')) {
+        return new Promise<Response>((resolve) => {
+          finishResend = () => resolve({
+            ok: true,
+            json: async () => ({
+              status: 'PENDING', invitationId: 104, email: 'pending-b@school.edu',
+              deliveryStatus: 'UNVERIFIED',
+            }),
+          } as Response);
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({}),
+      } as Response);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await renderPage();
+
+    const rowA = [...host.querySelectorAll('li')].find(row => row.textContent?.includes('incorrect@school.edu'))!;
+    const rowB = [...host.querySelectorAll('li')].find(row => row.textContent?.includes('pending-b@school.edu'))!;
+    const rowC = [...host.querySelectorAll('li')].find(row => row.textContent?.includes('pending-c@school.edu'))!;
+    const resendB = [...rowB.querySelectorAll('button')].find(button => button.textContent?.includes('Resend'))!;
+
+    await act(async () => {
+      resendB.click();
+      resendB.click();
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('/api/schools/12/invitations/104/resend', expect.objectContaining({
+      method: 'POST',
+      body: '{}',
+    }));
+    expect(rowA.textContent).toContain('Resend');
+    expect(rowA.textContent).not.toContain('Resending');
+    expect(rowB.textContent).toContain('Resending…');
+    expect(rowC.textContent).toContain('Resend');
+    expect(rowC.textContent).not.toContain('Resending');
+
+    await act(async () => finishResend());
   });
 
   it('does not expose invitation management to School Admins', async () => {

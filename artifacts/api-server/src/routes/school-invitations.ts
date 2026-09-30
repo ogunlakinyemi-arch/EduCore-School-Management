@@ -800,6 +800,50 @@ export async function replaceSchoolAdminInvitation(input: {
   invitationId: string;
   email?: string;
 }, actor: UserContext) {
+  const guardClient = await pool.connect();
+  const lockKey = `school-admin-invitation:${input.schoolId}:${input.invitationId}`;
+  let lockResultReceived = false;
+  let lockHeld = false;
+  let releaseError: Error | undefined;
+  try {
+    const result = await guardClient.query(
+      `SELECT pg_try_advisory_lock(hashtextextended($1,0)) AS locked`,
+      [lockKey],
+    );
+    lockResultReceived = true;
+    lockHeld = result.rows[0]?.locked === true;
+    if (!lockHeld) {
+      throw new AuthError(409, "This invitation is already being replaced; retry after the current request finishes");
+    }
+    return await replaceSchoolAdminInvitationUnderGuard(input, actor);
+  } catch (error) {
+    if (!lockResultReceived) {
+      releaseError = error instanceof Error ? error : new Error("Invitation lock acquisition failed");
+    }
+    throw error;
+  } finally {
+    if (lockHeld) {
+      try {
+        const result = await guardClient.query(
+          `SELECT pg_advisory_unlock(hashtextextended($1,0)) AS unlocked`,
+          [lockKey],
+        );
+        if (result.rows[0]?.unlocked !== true) {
+          releaseError = new Error("Invitation replacement lock could not be released");
+        }
+      } catch (error) {
+        releaseError = error instanceof Error ? error : new Error("Invitation replacement lock could not be released");
+      }
+    }
+    guardClient.release(releaseError);
+  }
+}
+
+async function replaceSchoolAdminInvitationUnderGuard(input: {
+  schoolId: number;
+  invitationId: string;
+  email?: string;
+}, actor: UserContext) {
   const target = await pool.query(
     `SELECT id,school_id AS "schoolId",event_type AS "eventType",metadata
      FROM audit_logs

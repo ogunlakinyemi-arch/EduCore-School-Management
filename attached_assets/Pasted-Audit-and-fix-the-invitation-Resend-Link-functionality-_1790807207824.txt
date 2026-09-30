@@ -1,0 +1,343 @@
+Audit and fix the invitation “Resend Link” functionality across the entire Yemait EduCore application.
+
+IMPORTANT SAFETY RULES:
+
+- Do NOT publish/deploy to production.
+- Do NOT run or modify the 408 pending production schema synchronization statements.
+- Do NOT run database migrations.
+- Do NOT reset, push, copy, or modify the Production database.
+- Do NOT change Clerk production configuration.
+- Do NOT send any real invitation emails during testing.
+- Use mocks/test doubles for invitation sending.
+- Preserve the existing invitation URL/security fix using "PUBLIC_APP_URL".
+- Do not rewrite unrelated working invitation/authentication code.
+
+BUG TO FIX
+
+Currently, when I click the “Resend Link” button for one pending invitation, the system appears to resend invitation links to all pending invitations instead of only the selected recipient.
+
+The required behavior is:
+
+«Clicking Resend Link on one pending invitation must resend ONLY that specific invitation.»
+
+For example:
+
+- Pending invitation A — Teacher
+- Pending invitation B — Parent
+- Pending invitation C — Student
+
+If I click Resend on invitation B, ONLY invitation B should be resent.
+
+A single resend action must never loop through or resend every pending invitation.
+
+STEP 1 — TRACE THE COMPLETE RESEND FLOW
+
+Trace the actual flow from:
+
+USER CLICKS RESEND
+→ frontend handler
+→ API request
+→ invitation/resend backend handler
+→ invitation lookup
+→ Clerk invitation creation/resend
+→ invitation URL builder
+→ notification/email dispatch
+
+Identify exactly why one button click is affecting multiple pending invitations.
+
+Do not assume the problem is in the shared URL builder. The URL builder should continue to generate the correct canonical public production URL.
+
+Search all relevant code for:
+
+- resend
+- resend invitation
+- resend link
+- pending invitation
+- invitation status
+- invitation ID
+- invitation token
+- Clerk invitation
+- notify
+- create invitation
+- replace invitation
+- bulk resend
+- Promise.all
+- loops over pending invitations
+- queries selecting all pending invitations
+
+STEP 2 — VERIFY INVITATION IDENTITY
+
+Every resend action must identify ONE specific invitation.
+
+Verify that each pending invitation displayed in the UI has a stable unique identifier.
+
+The frontend Resend button must pass that specific invitation identifier to the backend.
+
+Do NOT identify the invitation only by:
+
+- role
+- email
+- school
+- status
+- name
+- "all pending"
+- array position
+
+unless the existing architecture explicitly requires it and uniqueness is guaranteed.
+
+Prefer the application's existing invitation ID/database ID/Clerk invitation ID, whichever is the authoritative identifier for that invitation.
+
+STEP 3 — BACKEND RESEND LOGIC
+
+The backend resend endpoint/function must:
+
+1. Receive the specific invitation ID.
+2. Validate that invitation exists.
+3. Validate that it is eligible for resend.
+4. Validate that the authenticated user has permission to resend that invitation.
+5. Load ONLY that invitation.
+6. Preserve its:
+   - recipient
+   - role
+   - school/tenant
+   - partner context where applicable
+   - expiration/security rules
+   - authorization scope
+7. Generate/send ONLY the replacement invitation for that record.
+8. Update only that invitation's resend state/timestamp/status where applicable.
+9. Return success for that single invitation.
+
+There must be NO code path where a normal single-invitation resend automatically executes something equivalent to:
+
+- select all pending invitations
+- loop through all pending invitations
+- resend all pending invitations
+- Promise.all(allPendingInvitations.map(...))
+
+unless that code belongs to a separately named and explicitly bulk-resend feature.
+
+STEP 4 — CHECK ALL RESEND FLOWS
+
+Audit and correct every supported resend path, including:
+
+- Owner → School Admin
+- School Admin → Teacher
+- School Admin → Accountant
+- School Admin → Parent
+- School Admin → Student
+- School Admin → School Staff
+- Owner → Partner
+- Partner → Partner Staff
+- Partner Staff where authorized
+- Owner → Device Activation Officer
+- Owner → Company Accountant
+- School Admin replacement/resend
+- Partner invitation resend
+- Partner staff invitation resend
+- Internal employee invitation resend
+
+Also check any legacy resend handlers that remain reachable.
+
+STEP 5 — FRONTEND UI
+
+Inspect every Resend Link button.
+
+Confirm that the button handler is bound to the individual invitation row.
+
+For example, conceptually:
+
+Resend Link for invitation A → resend(A)
+
+Resend Link for invitation B → resend(B)
+
+NOT:
+
+Resend Link → resendAllPending()
+
+Check for accidental use of:
+
+- the entire pending-invitations array
+- a parent component's global resend handler
+- stale selected state
+- incorrect ID variable
+- undefined ID causing backend fallback to "all pending"
+- form submission triggering a bulk action
+- shared mutation that receives no invitation ID
+
+If the UI uses React Query mutations, ensure the mutation receives the selected invitation ID as its variable.
+
+STEP 6 — BACKEND SAFETY
+
+A single-invitation resend endpoint must fail closed if the invitation ID is missing or invalid.
+
+Do NOT implement behavior such as:
+
+"If invitation ID is missing, resend all pending invitations."
+
+Instead:
+
+"If invitation ID is missing, return a validation error."
+
+Also verify tenant isolation.
+
+A user must not be able to resend another school's invitation merely by changing an invitation ID.
+
+Verify authorization according to the existing role and school/tenant permissions.
+
+STEP 7 — PRESERVE THE PREVIOUS INVITATION URL FIX
+
+Do not undo the previously implemented canonical invitation URL strategy.
+
+Production invitation URLs must continue to use:
+
+PUBLIC_APP_URL
+
+with the existing validated production fallback.
+
+Do NOT generate:
+
+- *.riker.replit.dev
+- *.replit.dev
+- workspace URLs
+- private development URLs
+- replit.com/silent-auth
+- /__replshield
+
+The resend fix must use the same secure shared invitation URL builder.
+
+STEP 8 — TESTS
+
+Create or update automated tests proving the bug is fixed.
+
+At minimum test:
+
+Test A — One of three
+
+Create three pending invitations:
+
+A
+B
+C
+
+Click/execute resend for B.
+
+Assert:
+
+- B was resent exactly once.
+- A was not resent.
+- C was not resent.
+
+Test B — Multiple roles
+
+Create pending invitations for:
+
+- School Admin
+- Teacher
+- Parent
+- Student
+- Partner
+
+Resend only the Parent invitation.
+
+Assert only Parent was resent.
+
+Test C — Missing ID
+
+Call the resend endpoint without an invitation ID.
+
+Expected:
+
+- validation error
+- zero invitations resent
+
+It must NOT resend all pending invitations.
+
+Test D — Wrong ID / unauthorized ID
+
+Attempt to resend an invitation outside the user's authorized school/tenant.
+
+Expected:
+
+- authorization failure
+- zero invitations resent
+
+Test E — URL security
+
+The resent invitation must still use the existing canonical public invitation URL strategy.
+
+Test F — Double click protection
+
+If practical within the existing UI architecture, prevent accidental duplicate resend requests caused by rapid double-clicking.
+
+Do not create duplicate invitations simply because the user clicked the button twice rapidly.
+
+STEP 9 — CHECK FOR DUPLICATE INVITATION CREATION
+
+Determine whether the current resend implementation:
+
+- updates/replaces the existing invitation, or
+- creates a new invitation while leaving the old one pending.
+
+Follow the existing intended architecture.
+
+Do not change invitation lifecycle semantics unnecessarily.
+
+If the system intentionally replaces an invitation, verify the old invitation becomes invalid/superseded according to the existing rules.
+
+STEP 10 — DO NOT CHANGE THESE AREAS
+
+Do not modify:
+
+- production database
+- 408 migration preview
+- database migration history
+- Clerk production settings
+- tenant authorization architecture
+- role assignment rules
+- invitation expiration/security rules
+- verified-email binding
+- partner invitation context
+- canonical PUBLIC_APP_URL strategy
+
+unless the resend bug cannot be fixed without a minimal related change. If such a change is necessary, explain it before making it.
+
+STEP 11 — VERIFICATION
+
+Run the relevant:
+
+- backend tests
+- frontend tests
+- invitation tests
+- TypeScript/typecheck
+- lint/static checks where available
+
+Also perform a source-level audit confirming that every normal single-invitation resend path receives and uses a specific invitation ID.
+
+Do not send real emails.
+
+Do not publish.
+
+Do not touch Production.
+
+FINAL REPORT
+
+Return a concise report containing:
+
+1. Root cause
+2. Exact files/functions affected
+3. What was changed
+4. How the selected invitation is now identified
+5. Confirmation that one resend cannot resend all pending invitations
+6. Roles/resend flows audited
+7. Tests added/updated
+8. Test results
+9. Typecheck result
+10. Confirmation that PUBLIC_APP_URL invitation security remains intact
+11. Confirmation:
+
+- Published: NO
+- Production DB changed: NO
+- 408 migration executed: NO
+- Real invitations sent: NO
+
+Do not stop after identifying the bug. Fix it, test it, and report the exact result.

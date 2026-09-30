@@ -116,6 +116,7 @@ import type {
   CompanyEmployeeInvitationEmailUpdate,
   CompanyEmployeeInvitationInput,
   CompanyEmployeeInvitationResult,
+  CompanyEmployeeInvitationSelection,
   CompanyEmployeeInvitationStatus,
   CompanyEmployeeUpdate,
   CompanyEmployeeWithInvitationStatus,
@@ -286,6 +287,7 @@ import type {
   PartnerInvitationAcceptanceInput,
   PartnerInvitationInput,
   PartnerInvitationListItem,
+  PartnerInvitationSelection,
   PartnerOnboardingResult,
   PartnerPayout,
   PartnerPayoutInformationInput,
@@ -10291,14 +10293,29 @@ export const getResendPlatformCompanyEmployeeInvitationUrl = (employeeId: number
 /**
  * @summary Resend a company employee invitation
  */
-export const resendPlatformCompanyEmployeeInvitation = async (employeeId: number, options?: Parameters<typeof customFetch>[1]): Promise<CompanyEmployeeInvitationResult> => {
+export const resendPlatformCompanyEmployeeInvitation = async (employeeId: number,
+    companyEmployeeInvitationSelection: CompanyEmployeeInvitationSelection, options?: Parameters<typeof customFetch>[1]): Promise<CompanyEmployeeInvitationResult> => {
 
-  return customFetch<CompanyEmployeeInvitationResult>(getResendPlatformCompanyEmployeeInvitationUrl(employeeId),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CompanyEmployeeInvitationResult>(getResendPlatformCompanyEmployeeInvitationUrl(employeeId),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(companyEmployeeInvitationSelection)
   }
 );}
 
@@ -10308,7 +10325,7 @@ export const resendPlatformCompanyEmployeeInvitation = async (employeeId: number
 
 export const getResendPlatformCompanyEmployeeInvitationMutationKey = () => ['resendPlatformCompanyEmployeeInvitation'] as const;
 
-export const getResendPlatformCompanyEmployeeInvitationMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+export const getResendPlatformCompanyEmployeeInvitationMutationOptions = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendPlatformCompanyEmployeeInvitation>>, TError,ResendPlatformCompanyEmployeeInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof resendPlatformCompanyEmployeeInvitation>>, TError,ResendPlatformCompanyEmployeeInvitationMutationVariables, TContext> => {
 
@@ -10323,9 +10340,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof resendPlatformCompanyEmployeeInvitation>>, ResendPlatformCompanyEmployeeInvitationMutationVariables> = (props) => {
-          const {employeeId} = props ?? {};
+          const {employeeId,data} = props ?? {};
 
-          return  resendPlatformCompanyEmployeeInvitation(employeeId,requestOptions)
+          return  resendPlatformCompanyEmployeeInvitation(employeeId,data,requestOptions)
         }
 
 
@@ -10336,14 +10353,14 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type ResendPlatformCompanyEmployeeInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof resendPlatformCompanyEmployeeInvitation>>>
-
-    export type ResendPlatformCompanyEmployeeInvitationMutationError = ErrorType<ForbiddenResponse | NotFoundResponse | void>
-    export type ResendPlatformCompanyEmployeeInvitationMutationVariables = {employeeId: number}
+    export type ResendPlatformCompanyEmployeeInvitationMutationBody = BodyType<CompanyEmployeeInvitationSelection>
+    export type ResendPlatformCompanyEmployeeInvitationMutationError = ErrorType<void | ForbiddenResponse | NotFoundResponse>
+    export type ResendPlatformCompanyEmployeeInvitationMutationVariables = {employeeId: number;data: BodyType<CompanyEmployeeInvitationSelection>}
 
     /**
  * @summary Resend a company employee invitation
  */
-export const useResendPlatformCompanyEmployeeInvitation = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+export const useResendPlatformCompanyEmployeeInvitation = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendPlatformCompanyEmployeeInvitation>>, TError,ResendPlatformCompanyEmployeeInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof resendPlatformCompanyEmployeeInvitation>>,
@@ -15676,14 +15693,29 @@ export const getResendPartnerInvitationUrl = (partnerId: number,) => {
 /**
  * @summary Resend the pending invitation for a partner profile
  */
-export const resendPartnerInvitation = async (partnerId: number, options?: Parameters<typeof customFetch>[1]): Promise<PartnerInvitation> => {
+export const resendPartnerInvitation = async (partnerId: number,
+    partnerInvitationSelection: PartnerInvitationSelection, options?: Parameters<typeof customFetch>[1]): Promise<PartnerInvitation> => {
 
-  return customFetch<PartnerInvitation>(getResendPartnerInvitationUrl(partnerId),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PartnerInvitation>(getResendPartnerInvitationUrl(partnerId),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(partnerInvitationSelection)
   }
 );}
 
@@ -15693,7 +15725,7 @@ export const resendPartnerInvitation = async (partnerId: number, options?: Param
 
 export const getResendPartnerInvitationMutationKey = () => ['resendPartnerInvitation'] as const;
 
-export const getResendPartnerInvitationMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+export const getResendPartnerInvitationMutationOptions = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendPartnerInvitation>>, TError,ResendPartnerInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof resendPartnerInvitation>>, TError,ResendPartnerInvitationMutationVariables, TContext> => {
 
@@ -15708,9 +15740,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof resendPartnerInvitation>>, ResendPartnerInvitationMutationVariables> = (props) => {
-          const {partnerId} = props ?? {};
+          const {partnerId,data} = props ?? {};
 
-          return  resendPartnerInvitation(partnerId,requestOptions)
+          return  resendPartnerInvitation(partnerId,data,requestOptions)
         }
 
 
@@ -15721,14 +15753,14 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type ResendPartnerInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof resendPartnerInvitation>>>
-
-    export type ResendPartnerInvitationMutationError = ErrorType<ForbiddenResponse | NotFoundResponse | void>
-    export type ResendPartnerInvitationMutationVariables = {partnerId: number}
+    export type ResendPartnerInvitationMutationBody = BodyType<PartnerInvitationSelection>
+    export type ResendPartnerInvitationMutationError = ErrorType<void | ForbiddenResponse | NotFoundResponse>
+    export type ResendPartnerInvitationMutationVariables = {partnerId: number;data: BodyType<PartnerInvitationSelection>}
 
     /**
  * @summary Resend the pending invitation for a partner profile
  */
-export const useResendPartnerInvitation = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+export const useResendPartnerInvitation = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendPartnerInvitation>>, TError,ResendPartnerInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof resendPartnerInvitation>>,

@@ -23,6 +23,7 @@ const state = vi.hoisted(() => ({
   connect: vi.fn(),
   clientQuery: vi.fn(),
   release: vi.fn(),
+  advisoryLocks: new Set<string>(),
   createInvitation: vi.fn(),
   revokeInvitation: vi.fn(),
   getInvitationList: vi.fn(),
@@ -80,6 +81,7 @@ beforeEach(() => {
   vi.stubEnv("CLERK_SECRET_KEY", "test-clerk-server-key");
   vi.stubEnv("NODE_ENV", "test");
   vi.clearAllMocks();
+  state.advisoryLocks.clear();
   state.context = {
     user: {
       id: 8, clerkUserId: "user_owner", email: "owner@example.test",
@@ -177,7 +179,18 @@ beforeEach(() => {
     if (sql.includes("metadata->>'invitationId'=$1")) return { rows: [{ "?column?": 1 }] };
     return { rows: [] };
   });
-  state.clientQuery.mockImplementation(async (sql: string) => {
+  state.clientQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
+    if (sql.includes("pg_try_advisory_lock")) {
+      const lockKey = String(values[0]);
+      if (state.advisoryLocks.has(lockKey)) return { rows: [{ locked: false }] };
+      state.advisoryLocks.add(lockKey);
+      return { rows: [{ locked: true }] };
+    }
+    if (sql.includes("pg_advisory_unlock")) {
+      const lockKey = String(values[0]);
+      const unlocked = state.advisoryLocks.delete(lockKey);
+      return { rows: [{ unlocked }] };
+    }
     if (sql.includes("metadata->>'invitationId'=$2")) return { rows: [{ id: 11 }] };
     return { rows: [] };
   });
@@ -329,19 +342,44 @@ describe("Platform Owner school invitation management", () => {
   });
 
   it("resends an expired invitation without treating it as confirmed email delivery", async () => {
-    state.query.mockImplementation(async (sql: string) => {
+    const schoolAdminInvitations = [
+      {
+        id: 13,
+        metadata: {
+          invitationId: "inv_a",
+          claimId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          invitedEmail: "a@example.test",
+          firstName: "Invitee",
+          lastName: "A",
+        },
+      },
+      {
+        id: 12,
+        metadata: {
+          invitationId: "inv_pending",
+          claimId: "22222222-2222-4222-8222-222222222222",
+          invitedEmail: "pending@example.test",
+          firstName: "Pending",
+          lastName: "Admin",
+        },
+      },
+      {
+        id: 11,
+        metadata: {
+          invitationId: "inv_c",
+          claimId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          invitedEmail: "c@example.test",
+          firstName: "Invitee",
+          lastName: "C",
+        },
+      },
+    ];
+    state.query.mockImplementation(async (sql: string, values: unknown[] = []) => {
       if (sql.includes("FROM audit_logs") && sql.includes("SCHOOL_ADMIN_INVITED")) {
         return {
-          rows: [{
-            id: 12,
-            metadata: {
-              invitationId: "inv_pending",
-              claimId: "22222222-2222-4222-8222-222222222222",
-              invitedEmail: "pending@example.test",
-              firstName: "Pending",
-              lastName: "Admin",
-            },
-          }],
+          rows: schoolAdminInvitations.filter((row) =>
+            row.metadata.invitationId === values[1]
+          ),
         };
       }
       if (sql.includes("metadata->>'supersedesClaimId'")) return { rows: [] };
@@ -376,6 +414,68 @@ describe("Platform Owner school invitation management", () => {
     });
     expect(resent.publicMetadata.edupulseSchoolInvitation.claimId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(state.revokeInvitation).toHaveBeenCalledWith("inv_pending");
+    expect(state.createInvitation).toHaveBeenCalledTimes(1);
+    expect(state.createInvitation.mock.calls[0][0].emailAddress).not.toBe("inv_a@example.test");
+    expect(state.createInvitation.mock.calls[0][0].emailAddress).not.toBe("inv_c@example.test");
+    expect(state.getInvitationList.mock.calls.every(([query]) =>
+      (query as { query: string }).query === "inv_pending"
+    )).toBe(true);
+    expect(state.query.mock.calls.filter(([sql]) =>
+      String(sql).includes("event_type='SCHOOL_ADMIN_INVITED'")
+    )).toEqual(expect.arrayContaining([
+      [expect.any(String), [3, "inv_pending"]],
+    ]));
+    const sourceMetadataUpdate = state.clientQuery.mock.calls.find(([sql]) =>
+      String(sql).includes("supersededByInvitationId")
+    );
+    expect(sourceMetadataUpdate?.[1]).toEqual([
+      expect.any(String),
+      "inv_replacement",
+      3,
+      "inv_pending",
+    ]);
+    expect(state.clientQuery.mock.calls.some(([sql, values]) =>
+      String(sql).includes("supersededByInvitationId") &&
+      (values as unknown[])[3] === "inv_a"
+    )).toBe(false);
+    expect(state.clientQuery.mock.calls.some(([sql, values]) =>
+      String(sql).includes("supersededByInvitationId") &&
+      (values as unknown[])[3] === "inv_c"
+    )).toBe(false);
+  });
+
+  it("serializes concurrent replacement requests for the same School Admin invitation", async () => {
+    let releaseDispatch!: () => void;
+    let signalDispatch!: () => void;
+    const dispatchStarted = new Promise<void>((resolve) => {
+      signalDispatch = resolve;
+    });
+    const dispatchGate = new Promise<void>((resolve) => {
+      releaseDispatch = resolve;
+    });
+    state.createInvitation.mockImplementationOnce(async () => {
+      signalDispatch();
+      await dispatchGate;
+      return { id: "inv_replacement", createdAt: Date.now(), status: "pending" };
+    });
+
+    const firstRequest = request("/schools/3/invitations/inv_pending/resend", "POST", {});
+    await dispatchStarted;
+    const concurrentResponse = await request(
+      "/schools/3/invitations/inv_pending/resend",
+      "POST",
+      {},
+    );
+    expect(concurrentResponse.status).toBe(409);
+    expect(state.createInvitation).toHaveBeenCalledTimes(1);
+    expect(state.revokeInvitation).toHaveBeenCalledTimes(1);
+
+    releaseDispatch();
+    const firstResponse = await firstRequest;
+    expect(firstResponse.status).toBe(201);
+    expect(state.createInvitation).toHaveBeenCalledTimes(1);
+    expect(state.revokeInvitation).toHaveBeenCalledTimes(1);
+    expect(state.advisoryLocks.size).toBe(0);
   });
 
   it("does not allow an invitation from another school to be replaced or resent", async () => {

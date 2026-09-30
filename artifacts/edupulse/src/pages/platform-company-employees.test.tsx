@@ -32,9 +32,12 @@ describe('internal company employee invitation form', () => {
     expect(source).toContain('`${endpoint}/${id}/invitation`');
     expect(source).toContain("method: 'PATCH'");
     expect(source).toContain('body: JSON.stringify({ email })');
-    expect(source).toContain('`${endpoint}/${id}/invitation/resend`');
+    expect(source).toContain('`${endpoint}/${employeeId}/invitation/resend`');
     expect(source).toContain("method: 'POST'");
-    expect(source).toContain('body: JSON.stringify({})');
+    expect(source).toContain('body: JSON.stringify({ invitationId })');
+    expect(source).toContain('invitationId?: string');
+    expect(source).toContain('invitation.invitation?.invitationId');
+    expect(source).toContain('disabled={emailPending || resendPending || !hasInvitationId}');
   });
 
   it('does not send edited employee profile emails through the generic profile patch', () => {
@@ -46,7 +49,6 @@ describe('internal company employee invitation form', () => {
   it('refreshes employee and invitation state after invitation mutations without changing role or school', () => {
     expect(source).toContain('await Promise.all([');
     expect(source).toContain('await refresh()');
-    expect(source).toContain('body: JSON.stringify({})');
     expect(source).toContain('ResentInvitation');
     expect(source).toContain('role:');
     expect(source).toContain('schoolId:');

@@ -6,23 +6,30 @@ const state = vi.hoisted(() => ({
   role: "PLATFORM_OWNER",
   rows: [] as Array<Record<string, any>>,
   calls: [] as Array<{ sql: string; values: unknown[] }>,
-  invitation: { id: "inv_company_1", createdAt: Date.now() },
+  createdInvitationCount: 0,
   latestInvite: null as Record<string, any> | null,
+  latestInvites: {} as Record<number, Record<string, any>>,
   activeMembership: false,
+  pendingClerkInvitationEmail: null as string | null,
+  registeredClerkEmails: [] as string[],
 }));
 
 const query = vi.hoisted(() => vi.fn(async (sql: string, values: unknown[] = []) => {
   state.calls.push({ sql, values });
   if (sql.includes("FROM (\n         SELECT metadata FROM audit_logs")) {
-    return { rows: state.latestInvite ? [{ metadata: state.latestInvite, invalidated: false }] : [] };
+    const invitation = state.latestInvites[Number(values[0])] ??
+      (state.rows[0]?.id === Number(values[0]) ? state.latestInvite : null);
+    return { rows: invitation ? [{ metadata: invitation, invalidated: false }] : [] };
   }
   if (sql.includes("FROM (SELECT 1) seed")) {
+    const invitation = state.latestInvites[Number(values[0])] ??
+      (state.rows[0]?.id === Number(values[0]) ? state.latestInvite : null);
     return { rows: [{
-      role: state.latestInvite?.role ?? null,
-      schoolId: state.latestInvite?.schoolId ?? null,
-      claimId: state.latestInvite?.claimId ?? null,
-      invitationId: state.latestInvite?.invitationId ?? null,
-      expiresAt: state.latestInvite?.expiresAt ?? null,
+      role: invitation?.role ?? null,
+      schoolId: invitation?.schoolId ?? null,
+      claimId: invitation?.claimId ?? null,
+      invitationId: invitation?.invitationId ?? null,
+      expiresAt: invitation?.expiresAt ?? null,
       hasActiveMembership: state.activeMembership,
       invalidated: false,
     }] };
@@ -34,7 +41,10 @@ const query = vi.hoisted(() => vi.fn(async (sql: string, values: unknown[] = [])
     const metadataIndex = sql.includes("'INTERNAL_EMPLOYEE_INVITED'") ? 4 : 6;
     if (typeof values[metadataIndex] === "string") {
       const metadata = JSON.parse(String(values[metadataIndex]));
-      if (metadata.claimId) state.latestInvite = metadata;
+      if (metadata.claimId) {
+        state.latestInvites[Number(values[4])] = metadata;
+        if (state.rows[0]?.id === Number(values[4])) state.latestInvite = metadata;
+      }
     }
     return { rows: [] };
   }
@@ -66,12 +76,23 @@ const client = vi.hoisted(() => ({
 vi.mock("@workspace/db", () => ({
   pool: { query, connect: vi.fn(async () => client) },
 }));
-const createInvitation = vi.hoisted(() => vi.fn(async (_input: { redirectUrl: string; [key: string]: any }) =>
-  state.invitation));
+const createInvitation = vi.hoisted(() => vi.fn(async (_input: { redirectUrl: string; [key: string]: any }) => {
+  if (state.pendingClerkInvitationEmail === _input.emailAddress && _input.ignoreExisting !== true) {
+    throw Object.assign(new Error("Pending invitation already exists"), { status: 409 });
+  }
+  state.createdInvitationCount += 1;
+  return { id: `inv_company_${state.createdInvitationCount}`, createdAt: Date.now() };
+}));
 const revokeInvitation = vi.hoisted(() => vi.fn(async () => undefined));
+const getUserList = vi.hoisted(() => vi.fn(async ({ emailAddress }: { emailAddress: string[] }) => {
+  const registeredEmail = state.registeredClerkEmails.find((candidate) =>
+    candidate.trim().toLowerCase() === emailAddress[0]);
+  return { data: registeredEmail ? [{ emailAddresses: [{ emailAddress: registeredEmail }] }] : [] };
+}));
 vi.mock("@clerk/express", () => ({
   clerkClient: {
     invitations: { createInvitation, revokeInvitation },
+    users: { getUserList },
   },
 }));
 vi.mock("../middlewares/auth", () => ({
@@ -123,7 +144,11 @@ beforeEach(() => {
   }];
   state.calls.length = 0;
   state.latestInvite = null;
+  state.latestInvites = {};
+  state.createdInvitationCount = 0;
   state.activeMembership = false;
+  state.pendingClerkInvitationEmail = null;
+  state.registeredClerkEmails = [];
   vi.clearAllMocks();
 });
 
@@ -191,6 +216,7 @@ describe("platform company employee profiles", () => {
     });
     expect(createInvitation).toHaveBeenCalledWith(expect.objectContaining({
       emailAddress: "grace@example.test",
+      ignoreExisting: false,
       notify: true,
       redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
       publicMetadata: expect.objectContaining({
@@ -231,11 +257,12 @@ describe("platform company employee profiles", () => {
     const resent = await fetch(`${baseUrl}/platform/company-employees/7/invitation/resend`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ invitationId: "current-invitation" }),
     });
     expect(created.status).toBe(403);
     expect(resent.status).toBe(403);
     expect(createInvitation).not.toHaveBeenCalled();
+    expect(revokeInvitation).not.toHaveBeenCalled();
   });
 
   it("updates profile fields with an audit event and rejects account or school fields", async () => {
@@ -274,7 +301,10 @@ describe("platform company employee profiles", () => {
     };
     const response = await fetch(`${baseUrl}/platform/company-employees/7/invitation`);
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ status: "PENDING" });
+    expect(await response.json()).toMatchObject({
+      status: "PENDING",
+      invitation: { invitationId: "pending-invitation" },
+    });
 
     state.role = "SCHOOL_ADMIN";
     const denied = await fetch(`${baseUrl}/platform/company-employees/7/invitation`);
@@ -304,6 +334,7 @@ describe("platform company employee profiles", () => {
     });
     expect(createInvitation).toHaveBeenCalledWith(expect.objectContaining({
       emailAddress: "new@example.test",
+      ignoreExisting: false,
       redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
       publicMetadata: expect.objectContaining({
         edupulseInternalEmployeeInvitation: expect.objectContaining({
@@ -318,6 +349,7 @@ describe("platform company employee profiles", () => {
 
   it("resends an expired invitation with the same signed role and school", async () => {
     process.env.CLERK_SECRET_KEY = "test-clerk-secret";
+    state.pendingClerkInvitationEmail = "ada@example.test";
     state.latestInvite = {
       role: "DEVICE_ACTIVATION_OFFICER",
       schoolId: 9,
@@ -328,18 +360,114 @@ describe("platform company employee profiles", () => {
     const response = await fetch(`${baseUrl}/platform/company-employees/7/invitation/resend`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ invitationId: "expired-invitation" }),
     });
     expect(response.status).toBe(200);
     expect(createInvitation).toHaveBeenCalledWith(expect.objectContaining({
       emailAddress: "ada@example.test",
+      ignoreExisting: true,
       publicMetadata: expect.objectContaining({
         edupulseInternalEmployeeInvitation: expect.objectContaining({
           role: "DEVICE_ACTIVATION_OFFICER", schoolId: 9,
         }),
       }),
     }));
+    expect(getUserList).toHaveBeenCalledWith({ emailAddress: ["ada@example.test"], limit: 100 });
     expect(revokeInvitation).toHaveBeenCalledWith("expired-invitation");
+  });
+
+  it("resends only the selected employee invitation and rejects a repeated stale request", async () => {
+    process.env.CLERK_SECRET_KEY = "test-clerk-secret";
+    state.rows = [
+      { ...state.rows[0], id: 7, email: "a@example.test" },
+      { ...state.rows[0], id: 8, email: "b@example.test" },
+      { ...state.rows[0], id: 9, email: "c@example.test" },
+    ];
+    const expiration = new Date(Date.now() + 86_400_000).toISOString();
+    state.pendingClerkInvitationEmail = "b@example.test";
+    state.latestInvites = {
+      7: { role: "COMPANY_ACCOUNTANT", schoolId: null, claimId: "claim-a", invitationId: "inv-a", expiresAt: expiration },
+      8: { role: "DEVICE_ACTIVATION_OFFICER", schoolId: 3, claimId: "claim-b", invitationId: "inv-b", expiresAt: expiration },
+      9: { role: "COMPANY_ACCOUNTANT", schoolId: null, claimId: "claim-c", invitationId: "inv-c", expiresAt: expiration },
+    };
+
+    const request = () => fetch(`${baseUrl}/platform/company-employees/8/invitation/resend`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ invitationId: "inv-b" }),
+    });
+    const first = await request();
+    expect(first.status).toBe(200);
+    const second = await request();
+    expect(second.status).toBe(409);
+
+    expect(createInvitation).toHaveBeenCalledTimes(1);
+    expect(getUserList).toHaveBeenCalledTimes(1);
+    expect(createInvitation).toHaveBeenCalledWith(expect.objectContaining({
+      emailAddress: "b@example.test",
+      ignoreExisting: true,
+      redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
+      publicMetadata: expect.objectContaining({
+        edupulseInternalEmployeeInvitation: expect.objectContaining({
+          employeeId: 8, role: "DEVICE_ACTIVATION_OFFICER", schoolId: 3,
+        }),
+      }),
+    }));
+    expect(getUserList).toHaveBeenCalledWith({ emailAddress: ["b@example.test"], limit: 100 });
+    expect(revokeInvitation).toHaveBeenCalledTimes(1);
+    expect(revokeInvitation).toHaveBeenCalledWith("inv-b");
+    expect(state.latestInvites[7].invitationId).toBe("inv-a");
+    expect(state.latestInvites[9].invitationId).toBe("inv-c");
+  });
+
+  it("rejects missing, malformed, and stale invitation identities without provider mutations", async () => {
+    state.latestInvite = {
+      role: "COMPANY_ACCOUNTANT",
+      schoolId: null,
+      claimId: "current-claim",
+      invitationId: "current-invitation",
+      expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+    };
+    const endpoint = `${baseUrl}/platform/company-employees/7/invitation/resend`;
+    const post = (body: Record<string, unknown>) => fetch(endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const missing = await post({});
+    expect(missing.status).toBe(400);
+    expect(state.calls).toHaveLength(0);
+    const emptyIdentity = await post({ invitationId: "  " });
+    expect(emptyIdentity.status).toBe(400);
+    expect(state.calls).toHaveLength(0);
+
+    const extraField = await post({ invitationId: "current-invitation", email: "other@example.test" });
+    expect(extraField.status).toBe(400);
+    const wrongIdentity = await post({ invitationId: "another-invitation" });
+    expect(wrongIdentity.status).toBe(409);
+    expect(createInvitation).not.toHaveBeenCalled();
+    expect(revokeInvitation).not.toHaveBeenCalled();
+  });
+
+  it("refuses a registered Clerk account before replacement creation", async () => {
+    state.latestInvite = {
+      role: "COMPANY_ACCOUNTANT",
+      schoolId: null,
+      claimId: "registered-claim",
+      invitationId: "registered-old-invitation",
+      expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+    };
+    state.registeredClerkEmails = ["Ada@Example.Test"];
+    const response = await fetch(`${baseUrl}/platform/company-employees/7/invitation/resend`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ invitationId: "registered-old-invitation" }),
+    });
+    expect(response.status).toBe(409);
+    expect(getUserList).toHaveBeenCalledWith({ emailAddress: ["ada@example.test"], limit: 100 });
+    expect(createInvitation).not.toHaveBeenCalled();
+    expect(revokeInvitation).not.toHaveBeenCalled();
   });
 
   it("resends a company accountant invitation without adding a school scope", async () => {
@@ -354,11 +482,12 @@ describe("platform company employee profiles", () => {
     const response = await fetch(`${baseUrl}/platform/company-employees/7/invitation/resend`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ invitationId: "expired-accountant-invitation" }),
     });
     expect(response.status).toBe(200);
     expect(createInvitation).toHaveBeenCalledWith(expect.objectContaining({
       emailAddress: "ada@example.test",
+      ignoreExisting: true,
       redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
       publicMetadata: expect.objectContaining({
         edupulseInternalEmployeeInvitation: expect.objectContaining({

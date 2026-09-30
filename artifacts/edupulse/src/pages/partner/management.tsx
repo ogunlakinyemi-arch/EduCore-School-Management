@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Route, Switch, Link, useLocation } from 'wouter';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { 
@@ -80,6 +80,8 @@ function PartnersOverview() {
   const [showInvite, setShowInvite] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingInvitation, setEditingInvitation] = useState<PlatformPartnerInvitation | null>(null);
+  const [resendingInvitationIds, setResendingInvitationIds] = useState<Set<number>>(() => new Set());
+  const resendingInvitationIdsRef = useRef(new Set<number>());
   const updateInvitationEmail = useMutation({
     mutationFn: ({ partnerId, email }: { partnerId: number; email: string }) =>
       platformPartnerRequest(`/platform/partners/${partnerId}`, {
@@ -101,10 +103,10 @@ function PartnersOverview() {
     }),
   });
   const resendInvitation = useMutation({
-    mutationFn: ({ partnerId }: { partnerId: number; reconcile: boolean }) =>
+    mutationFn: ({ partnerId, invitationId }: { partnerId: number; invitationId: number; reconcile: boolean }) =>
       platformPartnerRequest(`/platform/partners/${partnerId}/invitations/resend`, {
         method: 'POST',
-        body: JSON.stringify({}),
+        body: JSON.stringify({ invitationId }),
       }),
     onSuccess: async (_result, { reconcile }) => {
       toast(reconcile
@@ -131,6 +133,18 @@ function PartnersOverview() {
       }
     },
   });
+
+  const requestInvitationResend = (variables: { partnerId: number; invitationId: number; reconcile: boolean }) => {
+    if (resendingInvitationIdsRef.current.has(variables.invitationId)) return;
+    resendingInvitationIdsRef.current.add(variables.invitationId);
+    setResendingInvitationIds(new Set(resendingInvitationIdsRef.current));
+    void resendInvitation.mutateAsync(variables)
+      .finally(() => {
+        resendingInvitationIdsRef.current.delete(variables.invitationId);
+        setResendingInvitationIds(new Set(resendingInvitationIdsRef.current));
+      })
+      .catch(() => undefined);
+  };
   
   if (query.isLoading) return <SkeletonPage />;
   if (query.isError) return <ErrorState retry={() => query.refetch()} />;
@@ -232,6 +246,10 @@ function PartnersOverview() {
                       const canResendInvitation = invitationStatus === 'PENDING' || invitationStatus === 'EXPIRED' ||
                         invitationStatus === 'FAILED' || invitationStatus === 'RATE_LIMITED';
                       const canManageInvitation = canResendInvitation || isUnresolved;
+                      const hasStableInvitationId = !!invitation && Number.isSafeInteger(invitation.id) && invitation.id > 0;
+                      const isResending = invitation
+                        ? hasStableInvitationId && resendingInvitationIds.has(invitation.id)
+                        : false;
                       return canManageInvitation && <>
                         {invitationStatus === 'PENDING' && <Button
                           variant="outline"
@@ -245,14 +263,15 @@ function PartnersOverview() {
                           })}
                           aria-label={`Edit invitation email for ${partner.fullName}`}
                         ><Pencil size={13} />Edit email</Button>}
-                        <Button
+                        {hasStableInvitationId && invitation && <Button
                           className="h-8 px-3 text-xs"
-                          disabled={resendInvitation.isPending || invitations.isError}
-                          onClick={() => resendInvitation.mutate({ partnerId: partner.id, reconcile: isUnresolved })}
+                          type="button"
+                          disabled={isResending || invitations.isError}
+                          onClick={() => requestInvitationResend({ partnerId: partner.id, invitationId: invitation.id, reconcile: isUnresolved })}
                           aria-label={isUnresolved
                             ? `Retry invitation reconciliation for ${partner.fullName}`
                             : `Resend invitation for ${partner.fullName}`}
-                        ><Send size={13} />{isUnresolved ? 'Retry reconciliation' : 'Resend'}</Button>
+                        ><Send size={13} />{isResending ? (isUnresolved ? 'Reconciling…' : 'Resending…') : isUnresolved ? 'Retry reconciliation' : 'Resend'}</Button>}
                       </>;
                     })()}
                     <Link href={`/partners/${partner.id}`}>

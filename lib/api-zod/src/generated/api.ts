@@ -3784,6 +3784,13 @@ export const ResendPlatformCompanyEmployeeInvitationParams = zod.object({
   "employeeId": zod.coerce.number().int().min(1)
 })
 
+
+
+
+export const ResendPlatformCompanyEmployeeInvitationBody = zod.object({
+  "invitationId": zod.string().min(1).describe('Current Clerk invitation ID returned by the selected employee\'s invitation status; stale IDs are rejected.')
+})
+
 export const ResendPlatformCompanyEmployeeInvitationResponse = zod.object({
   "employeeId": zod.number().int(),
   "email": zod.string().email(),
@@ -5997,6 +6004,13 @@ export const CreatePartnerInvitationResponse = zod.object({
 
 export const ResendPartnerInvitationParams = zod.object({
   "partnerId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ResendPartnerInvitationBody = zod.object({
+  "invitationId": zod.number().int().min(1).describe('Selected local owner invitation ID from the platform invitation list, scoped to the partner in the route.')
 })
 
 export const ResendPartnerInvitationResponse = zod.object({

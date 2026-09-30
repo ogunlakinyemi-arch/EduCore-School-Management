@@ -21,3 +21,4 @@
 - [Restricted employee isolation](internal-officer-isolation.md) — internal officer and company accountant roles stay exclusive, with live verified identity checks before restricted operations.
 - [Invitation link evidence](invitation-link-evidence.md) — a working app acceptance route does not prove a recipient's emailed Clerk link lands on that host and path.
 - [Vitest file completeness](vitest-file-completeness.md) — explicitly naming a test file does not override include filters; compare requested files with executed-file summaries.
+- [Mutation cleanup ownership](mutation-cleanup-ownership.md) — observer-level settlement callbacks can disappear after another mutation or reset; own keyed cleanup per execution.

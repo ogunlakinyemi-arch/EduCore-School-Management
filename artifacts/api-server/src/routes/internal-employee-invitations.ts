@@ -57,6 +57,7 @@ export async function createInternalEmployeeInvitation(
     fullName: string;
     role: InternalEmployeeRole;
     schoolId: number | null;
+    ignoreExisting?: boolean;
   },
 ) {
   if (!validRole(input.role) ||
@@ -65,6 +66,19 @@ export async function createInternalEmployeeInvitation(
     throw new AuthError(400, "The internal employee role or school assignment is invalid");
   }
   const email = normalizeEmail(input.email);
+  if (input.ignoreExisting === true) {
+    let clerkUsers: Awaited<ReturnType<typeof clerkClient.users.getUserList>>;
+    try {
+      clerkUsers = await clerkClient.users.getUserList({ emailAddress: [email], limit: 100 });
+    } catch {
+      throw new AuthError(503, "Unable to verify the invitation email against Clerk; no invitation was created");
+    }
+    const registeredClerkUser = clerkUsers.data.some((user: any) =>
+      user.emailAddresses?.some((address: any) => normalizeEmail(address.emailAddress) === email));
+    if (registeredClerkUser) {
+      throw new AuthError(409, "This email already has a Clerk account; do not create another invitation");
+    }
+  }
   const claimId = randomUUID();
   const publicMetadata = {
     [METADATA_KEY]: {
@@ -87,7 +101,7 @@ export async function createInternalEmployeeInvitation(
     invitation = await clerkClient.invitations.createInvitation({
       emailAddress: email,
       expiresInDays: INVITATION_DAYS,
-      ignoreExisting: false,
+      ignoreExisting: input.ignoreExisting ?? false,
       notify: true,
       redirectUrl: invitationRedirect("/accept-invitation"),
       publicMetadata,
