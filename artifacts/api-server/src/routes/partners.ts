@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { clerkClient } from "@clerk/express";
 import { pool } from "@workspace/db";
 import { commitInvitationWithRecovery } from "./partner-commit-recovery";
+import { invitationRedirect } from "./invitation-redirect";
 import {
   AuthError,
   assertRoles,
@@ -149,7 +150,7 @@ function requirePartnerFinanceAccess(partner: any) {
   }
 }
 function invitationRedirectUrl(token: string) {
-  return `/accept-invitation?partnerInvitation=${encodeURIComponent(token)}`;
+  return invitationRedirect(`/accept-invitation?partnerInvitation=${encodeURIComponent(token)}`);
 }
 const validEmail = (email: string) =>
   email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -158,6 +159,12 @@ function clerkInvitationFailure(error: unknown, failureMessage: string) {
     (error as { statusCode?: number } | null)?.statusCode;
   if (status === 409 || status === 422) {
     return new AuthError(409, "This email already has an EduCore account or a pending invitation.");
+  }
+  if (status === 429) {
+    return new AuthError(429 as any, failureMessage, "INVITATION_PROVIDER_RATE_LIMITED");
+  }
+  if (typeof status === "number" && status >= 400 && status < 500) {
+    return new AuthError(status as any, failureMessage, "INVITATION_PROVIDER_REJECTED");
   }
   return new AuthError(
     503,
@@ -192,6 +199,143 @@ async function knownClerkInvitationIds(
   const ids = known.rows.map((row: any) => row.clerkInvitationId)
     .filter((id: unknown): id is string => typeof id === "string" && id.length > 0);
   return Array.from(new Set<string>(ids));
+}
+async function reconcileClerkInvitationAttempt(email: string, partnerInvitationId: number, attemptId: string) {
+  const statuses = ["pending", "accepted", "revoked", "expired"] as const;
+  const matches: any[] = [];
+  for (const status of statuses) {
+    let offset = 0;
+    let totalCount: number | null = null;
+    while (totalCount === null || offset < totalCount) {
+      const response = await clerkClient.invitations.getInvitationList({
+        query: email, status, limit: 100, offset,
+      });
+      if (!Array.isArray(response.data) || !Number.isInteger(response.totalCount) ||
+          response.totalCount < 0) {
+        throw new Error("Clerk returned incomplete invitation pagination data");
+      }
+      totalCount = response.totalCount;
+      for (const invitation of response.data as any[]) {
+        const marker = invitation.publicMetadata?.edupulsePartnerInvitation;
+        if (normalizedEmail(invitation.emailAddress) === email &&
+            marker?.attemptId === attemptId &&
+            Number(marker?.partnerInvitationId) === partnerInvitationId) {
+          matches.push(invitation);
+        }
+      }
+      if (response.data.length === 0 && offset < totalCount) {
+        throw new Error("Clerk invitation list pagination ended before all results were read");
+      }
+      offset += response.data.length;
+    }
+  }
+  if (!matches.length) return { state: "ABSENT" as const, invitation: null };
+  if (matches.length !== 1) return { state: "AMBIGUOUS" as const, invitation: null };
+  const invitation = matches[0];
+  if (invitation.status === "pending" && !invitation.revoked) {
+    return { state: "PENDING" as const, invitation };
+  }
+  if (invitation.status === "revoked" || invitation.status === "expired" || invitation.revoked) {
+    return { state: "TERMINAL" as const, invitation };
+  }
+  return { state: "ACCEPTED" as const, invitation };
+}
+async function finalizePartnerInvitationResend(
+  req: Request,
+  details: {
+    partnerId: number;
+    email: string;
+    invitation: any;
+    clerkInvitationId: string;
+    attemptId: string;
+    priorClerkInvitationIds: string[];
+    recovered?: boolean;
+  },
+) {
+  const client = await pool.connect();
+  let committed = false;
+  let commitAttempted = false;
+  try {
+    await client.query("BEGIN");
+    const partner = await client.query(`SELECT status,user_id AS "userId"
+      FROM partner_profiles WHERE id=$1 FOR UPDATE`, [details.partnerId]);
+    if (!partner.rows[0] || partner.rows[0].status !== "INVITED" || partner.rows[0].userId) {
+      throw new AuthError(409, "The partner invitation was accepted or changed before this resend could be finalized");
+    }
+    const current = await client.query(`SELECT id,status FROM partner_invitations
+      WHERE id=$1 AND partner_profile_id=$2 AND status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE') FOR UPDATE`,
+      [details.invitation.id, details.partnerId]);
+    if (!current.rows[0]) {
+      const alreadyCommitted = await client.query(`SELECT 1 FROM partner_invitations i
+        JOIN audit_logs a ON a.module='Partners' AND a.record_id=i.id
+        WHERE i.id=$1 AND i.status='ACTIVE' AND a.metadata->>'attemptId'=$2
+          AND a.metadata->>'clerkInvitationId'=$3 LIMIT 1`,
+        [details.invitation.id, details.attemptId, details.clerkInvitationId]);
+      if (!alreadyCommitted.rows[0]) throw new AuthError(503,
+        "Invitation recovery is required before finalizing this resend", "INVITATION_RECOVERY_REQUIRED");
+      await client.query("COMMIT");
+      committed = true;
+      return {
+        id: details.invitation.id, partnerId: details.partnerId, email: details.email,
+        status: "PENDING", invitationDispatchStatus: "REQUEST_ACCEPTED",
+        invitationDeliveryStatus: "UNVERIFIED", expiresAt: details.invitation.expiresAt,
+        createdAt: details.invitation.createdAt,
+      };
+    }
+    const supersededIds = await supersedePartnerInvitations(client, details.partnerId);
+    await client.query(`UPDATE partner_invitations SET status='ACTIVE' WHERE id=$1
+      AND status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')`, [details.invitation.id]);
+    await audit(req, details.recovered ? "Recovered partner invitation resend" : "Resent partner invitation",
+      "Partners", details.invitation.id, {
+        partnerId: details.partnerId, invitedEmail: details.email,
+        clerkInvitationId: details.clerkInvitationId, attemptId: details.attemptId,
+        recoveryStatus: details.recovered ? "RECONCILED_FROM_CLERK_METADATA" : undefined,
+        supersededInvitationIds: supersededIds,
+      }, client);
+    commitAttempted = true;
+    const resolution = await commitInvitationWithRecovery({
+      commit: () => client.query("COMMIT"),
+      rollback: () => client.query("ROLLBACK"),
+      isCommitted: async () => Boolean((await pool.query(
+        `SELECT 1 FROM partner_invitations WHERE id=$1 AND status='ACTIVE'`, [details.invitation.id],
+      )).rows[0]),
+      revokeInvitation: () => clerkClient.invitations.revokeInvitation(details.clerkInvitationId),
+    });
+    if (resolution !== "COMMITTED") throw new AuthError(503,
+      resolution === "UNKNOWN" ? "Invitation finalization status is uncertain; recovery is required before retrying" :
+        "Partner invitation could not be finalized; please retry");
+    committed = true;
+    await revokeClerkInvitations(details.priorClerkInvitationIds, "replacement");
+    return {
+      id: details.invitation.id, partnerId: details.partnerId, email: details.email,
+      status: "PENDING", invitationDispatchStatus: "REQUEST_ACCEPTED",
+      invitationDeliveryStatus: "UNVERIFIED", expiresAt: details.invitation.expiresAt,
+      createdAt: details.invitation.createdAt,
+    };
+  } catch (error) {
+    if (!committed) await client.query("ROLLBACK").catch(() => undefined);
+    let providerInvitationRevoked = false;
+    if (!committed && !commitAttempted) {
+      try {
+        await clerkClient.invitations.revokeInvitation(details.clerkInvitationId);
+        providerInvitationRevoked = true;
+      } catch {
+        // Keep the durable attempt recoverable if the provider did not confirm revocation.
+      }
+    }
+    if (!committed) {
+      const recoveryStatus = providerInvitationRevoked ? "FAILED" : "UNKNOWN_PROVIDER_STATE";
+      await pool.query(`UPDATE partner_invitations SET status=$2,revoked_at=CASE WHEN $2='FAILED' THEN NOW() ELSE revoked_at END
+        WHERE id=$1 AND status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')`,
+        [details.invitation.id, recoveryStatus]).catch(() => undefined);
+      await audit(req, "Partner invitation finalization requires recovery", "Partners", details.invitation.id,
+        { partnerId: details.partnerId, invitedEmail: details.email, attemptId: details.attemptId,
+          clerkInvitationId: details.clerkInvitationId, dispatchStatus: recoveryStatus }, pool).catch(() => undefined);
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 async function revokeClerkInvitations(ids: string[], operation: "replacement" | "email correction" | "revocation") {
   const failures: string[] = [];
@@ -316,10 +460,10 @@ publicPartnersRouter.post("/partner/onboarding", run(async (req, res) => {
     }
     const school = await client.query(`INSERT INTO schools
       (code,name,city,state,registration_number,address,lga,phone,email,website,logo,school_type,status)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,COALESCE($13,'active'))
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'pending')
       RETURNING id,code,name,city,state,status,created_at AS "createdAt"`,
       [s.code,s.name,s.city,s.state,s.registrationNumber ?? null,s.address ?? null,s.lga ?? null,s.phone ?? null,
-       s.email ?? null,s.website ?? null,s.logoUrl ?? null,s.schoolType ?? null,s.status ?? null]);
+       s.email ?? null,s.website ?? null,s.logoUrl ?? null,s.schoolType ?? null]);
     let clerkInvitation;
     try {
       clerkInvitation = await clerkClient.invitations.createInvitation({
@@ -327,7 +471,7 @@ publicPartnersRouter.post("/partner/onboarding", run(async (req, res) => {
         expiresInDays: 7,
         notify: true,
         ignoreExisting: false,
-        redirectUrl: "/accept-invitation",
+        redirectUrl: invitationRedirect("/accept-invitation"),
         publicMetadata: {
           edupulseSchoolInvitation: {
             version: 1,
@@ -516,11 +660,29 @@ router.post("/platform/partners/invitations", run(async (req, res) => {
 router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, res) => {
   const c = assertRoles(req, ["PLATFORM_OWNER"]);
   const partnerId = idOf(req.params.partnerId, "Partner");
-  const client = await pool.connect();
-  let clerkInvitationId: string | null = null;
-  let committed = false;
-  let commitAttempted = false;
+  const ownershipClient = await pool.connect();
+  let ownershipLocked = false;
   try {
+    const lock = await ownershipClient.query(
+      `SELECT pg_try_advisory_lock(hashtextextended($1,0)) AS locked`,
+      [`partner-invitation-resend:${partnerId}`],
+    );
+    ownershipLocked = lock.rows[0]?.locked === true;
+    if (!ownershipLocked) {
+      throw new AuthError(409,
+        "A resend or recovery for this partner is already in progress. Wait for it to finish; no second provider request was made.",
+        "INVITATION_DISPATCH_IN_PROGRESS");
+    }
+  let email = "";
+  const token = crypto.randomBytes(32).toString("base64url");
+  const attemptId = crypto.randomUUID();
+  let invitation: any;
+  let oldClerkInvitationIds: string[] = [];
+  let supersededIds: number[] = [];
+  let recoveryAttemptId: string | null = null;
+  try {
+    const client = await pool.connect();
+    try {
     await client.query("BEGIN");
     const partner = await client.query(`SELECT id,email,status,user_id AS "userId"
       FROM partner_profiles WHERE id=$1 FOR UPDATE`, [partnerId]);
@@ -531,55 +693,232 @@ router.post("/platform/partners/:partnerId/invitations/resend", run(async (req, 
     }
     await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1,0))`,
       [`partner-invitation:${normalizedEmail(row.email)}`]);
-    const historical = await client.query(`SELECT id FROM partner_invitations
-      WHERE partner_profile_id=$1 AND status IN ('ACTIVE','REVOKED') FOR UPDATE`, [partnerId]);
-    const historicalIds = historical.rows.map((item: any) => Number(item.id)).filter(Number.isInteger);
-    const oldClerkInvitationIds = await knownClerkInvitationIds(client, historicalIds);
-    const supersededIds = await supersedePartnerInvitations(client, partnerId);
-    const token = crypto.randomBytes(32).toString("base64url");
-    const invitation = await client.query(`INSERT INTO partner_invitations
-        (partner_profile_id,invited_email,token_hash,status,expires_at,created_by)
-      VALUES($1,$2,$3,'ACTIVE',NOW()+INTERVAL '7 days',$4)
-      RETURNING id,created_at AS "createdAt",expires_at AS "expiresAt"`,
-      [partnerId, normalizedEmail(row.email), hash(token), c.user.id]);
-    let clerkInvitation;
-    try {
-      clerkInvitation = await clerkClient.invitations.createInvitation({
-        emailAddress: normalizedEmail(row.email), expiresInDays: 7, ignoreExisting: false,
-        notify: true, redirectUrl: invitationRedirectUrl(token),
-      });
-    } catch (error) {
-      throw clerkInvitationFailure(error, "The partner invitation was not finalized locally.");
+    email = normalizedEmail(row.email);
+    const rateLimited = await client.query(`SELECT GREATEST(1,CEIL(EXTRACT(EPOCH FROM (expires_at-NOW()))))::int AS "retryAfterSeconds"
+      FROM partner_invitations WHERE partner_profile_id=$1 AND status='RATE_LIMITED' AND expires_at>NOW()
+      ORDER BY created_at DESC LIMIT 1`, [partnerId]);
+    if (rateLimited.rows[0]) {
+      const retrySeconds = Number(rateLimited.rows[0].retryAfterSeconds) || 1;
+      res.set("Retry-After", String(retrySeconds));
+      res.status(429).json({ error: "Clerk rate-limited this invitation; retry after the indicated delay.",
+        code: "INVITATION_PROVIDER_RATE_LIMITED", retryAfterSeconds: retrySeconds });
+      await client.query("ROLLBACK");
+      return;
     }
-    clerkInvitationId = clerkInvitation.id;
-    await audit(req, "Resent partner invitation", "Partners", invitation.rows[0].id,
-      { partnerId, invitedEmail: normalizedEmail(row.email), clerkInvitationId, supersededInvitationIds: supersededIds }, client);
+    const unresolved = await client.query(`SELECT id,status,created_at AS "createdAt",
+        expires_at AS "expiresAt" FROM partner_invitations
+      WHERE partner_profile_id=$1 AND status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')
+      ORDER BY created_at DESC LIMIT 1 FOR UPDATE`, [partnerId]);
+    if (unresolved.rows[0]) {
+      invitation = unresolved.rows[0];
+      if (invitation.status === "DISPATCHING") {
+        const stillFresh = await client.query(`SELECT 1 FROM partner_invitations
+          WHERE id=$1 AND created_at>NOW()-INTERVAL '5 minutes'`, [invitation.id]);
+        if (stillFresh.rows[0]) {
+          throw new AuthError(409,
+            "The partner invitation provider request may still be in flight. Wait five minutes before attempting recovery; no second provider request was made.",
+            "INVITATION_DISPATCH_IN_PROGRESS");
+        }
+      }
+      const attempt = await client.query(`SELECT metadata->>'attemptId' AS "attemptId"
+        FROM audit_logs WHERE module='Partners' AND record_id=$1
+          AND metadata->>'dispatchStatus' IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')
+        ORDER BY timestamp DESC LIMIT 1`, [invitation.id]);
+      recoveryAttemptId = attempt.rows[0]?.attemptId ?? null;
+      if (!recoveryAttemptId) {
+        throw new AuthError(503,
+          "This invitation has an unresolved provider attempt without a recovery marker. Do not resend; a Platform Owner must reconcile it manually.",
+          "INVITATION_RECOVERY_REQUIRED");
+      }
+      await client.query("COMMIT");
+    } else {
+      const clerkUsers = await clerkClient.users.getUserList({ emailAddress: [email], limit: 100 });
+      const registeredClerkUser = clerkUsers.data.some((user: any) =>
+        user.emailAddresses?.some((address: any) => normalizedEmail(address.emailAddress) === email));
+      if (registeredClerkUser) {
+        throw new AuthError(409, "This email already has an EduCore account; do not create another invitation.");
+      }
+      const appUser = await client.query(`SELECT id FROM app_users
+        WHERE lower(trim(email))=$1 LIMIT 1`, [email]);
+      if (appUser.rows[0]) {
+        throw new AuthError(409, "This email already has an active application account or role; do not create another invitation.");
+      }
+      const historical = await client.query(`SELECT id FROM partner_invitations
+        WHERE partner_profile_id=$1 AND status IN ('ACTIVE','REVOKED') FOR UPDATE`, [partnerId]);
+      const historicalIds = historical.rows.map((item: any) => Number(item.id)).filter(Number.isInteger);
+      oldClerkInvitationIds = await knownClerkInvitationIds(client, historicalIds);
+      const inserted = await client.query(`INSERT INTO partner_invitations
+          (partner_profile_id,invited_email,token_hash,status,expires_at,created_by)
+        VALUES($1,$2,$3,'DISPATCHING',NOW()+INTERVAL '7 days',$4)
+        RETURNING id,created_at AS "createdAt",expires_at AS "expiresAt"`,
+        [partnerId, email, hash(token), c.user.id]);
+      invitation = inserted.rows[0];
+      await audit(req, "Started partner invitation resend", "Partners", invitation.id,
+        { partnerId, invitedEmail: email, attemptId, dispatchStatus: "DISPATCHING" }, client);
+      await client.query("COMMIT");
+    }
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    throw error;
+  }
+
+  if (recoveryAttemptId) {
+    let reconciliation: Awaited<ReturnType<typeof reconcileClerkInvitationAttempt>>;
+    try {
+      reconciliation = await reconcileClerkInvitationAttempt(email, Number(invitation.id), recoveryAttemptId);
+    } catch {
+      throw new AuthError(503,
+        "Clerk invitation reconciliation could not verify every status and page. No new invitation was sent; retry Owner recovery later.",
+        "INVITATION_RECOVERY_REQUIRED");
+    }
+    if (reconciliation.state === "ABSENT" || reconciliation.state === "TERMINAL") {
+      const recoveryStatus = reconciliation.state === "ABSENT"
+        ? "PROVIDER_INVITATION_ABSENT" : `PROVIDER_INVITATION_${String(reconciliation.invitation.status).toUpperCase()}`;
+      await pool.query(`UPDATE partner_invitations SET status='FAILED',revoked_at=NOW()
+        WHERE id=$1 AND status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')`, [invitation.id]);
+      await pool.query(`INSERT INTO audit_logs ("user",role,actor_user_id,clerk_user_id,action,module,record_id,metadata)
+        VALUES($1,$2,$3,$4,'Resolved partner invitation resend attempt','Partners',$5,$6)`,
+        [c.user.email, c.roles[0]?.role ?? "AUTHENTICATED", c.user.id, c.user.clerkUserId,
+          invitation.id, { partnerId, attemptId: recoveryAttemptId, recoveryStatus }]);
+      throw new AuthError(409,
+        "Clerk confirms the prior resend has no usable invitation. The previous local invitation remains unchanged; it is safe to retry the resend.",
+        "INVITATION_PROVIDER_ABSENT");
+    }
+    if (reconciliation.state !== "PENDING") {
+      throw new AuthError(503,
+        reconciliation.state === "ACCEPTED"
+          ? "Clerk reports this invitation was accepted. Do not resend; a Platform Owner must reconcile the partner account state."
+          : "Clerk returned ambiguous invitation state for this attempt. No replacement was sent; a Platform Owner must reconcile it manually.",
+        "INVITATION_RECOVERY_REQUIRED");
+    }
+    const history = await pool.query(`SELECT id FROM partner_invitations
+      WHERE partner_profile_id=$1 AND status IN ('ACTIVE','REVOKED')`, [partnerId]);
+    oldClerkInvitationIds = await knownClerkInvitationIds(pool,
+      history.rows.map((item: any) => Number(item.id)).filter(Number.isInteger));
+    const result = await finalizePartnerInvitationResend(req, {
+      partnerId, email, invitation, clerkInvitationId: reconciliation.invitation.id,
+      attemptId: recoveryAttemptId, priorClerkInvitationIds: oldClerkInvitationIds, recovered: true,
+    });
+    res.status(201).json(result);
+    return;
+  }
+
+  let clerkInvitation: any;
+  try {
+    clerkInvitation = await clerkClient.invitations.createInvitation({
+      emailAddress: email, expiresInDays: 7, ignoreExisting: true,
+      notify: true, redirectUrl: invitationRedirectUrl(token),
+      publicMetadata: { edupulsePartnerInvitation: { attemptId, partnerInvitationId: invitation.id } },
+    });
+  } catch (error) {
+    const status = (error as { status?: number; statusCode?: number } | null)?.status ??
+      (error as { statusCode?: number } | null)?.statusCode;
+    if (status === 429 || status === 409 || status === 422 ||
+        (typeof status === "number" && status >= 400 && status < 500)) {
+      const retryAfter = (error as { retryAfter?: number; headers?: { get?: (name: string) => string | null } })
+        ?.retryAfter;
+      const headerValue = (error as { headers?: { get?: (name: string) => string | null } })
+        ?.headers?.get?.("retry-after");
+      const retrySeconds = status === 429
+        ? Math.max(1, Math.min(3600, Number(retryAfter ?? headerValue) || 60))
+        : undefined;
+      if (status === 429) {
+        await pool.query(`UPDATE partner_invitations SET status='RATE_LIMITED',
+          expires_at=NOW()+($2::int * INTERVAL '1 second'),revoked_at=NOW()
+          WHERE id=$1 AND status='DISPATCHING'`, [invitation.id, retrySeconds]);
+      } else {
+        await pool.query(`UPDATE partner_invitations SET status='FAILED',revoked_at=NOW()
+          WHERE id=$1 AND status='DISPATCHING'`, [invitation.id]);
+      }
+      await pool.query(`INSERT INTO audit_logs ("user",role,actor_user_id,clerk_user_id,action,module,record_id,metadata)
+        VALUES($1,$2,$3,$4,'Partner invitation resend rejected by provider','Partners',$5,$6)`,
+        [c.user.email, c.roles[0]?.role ?? "AUTHENTICATED", c.user.id, c.user.clerkUserId,
+          invitation.id, { partnerId, attemptId, providerStatus: status }]);
+      if (status === 429) {
+        res.set("Retry-After", String(retrySeconds));
+        res.status(429).json({ error: "Clerk rate-limited the invitation request; the previous invitation remains usable.",
+          code: "INVITATION_PROVIDER_RATE_LIMITED", retryAfterSeconds: retrySeconds });
+        return;
+      }
+      throw clerkInvitationFailure(error, "Clerk rejected the partner invitation request; the previous invitation remains usable.");
+    }
+    await pool.query(`UPDATE partner_invitations SET status='UNKNOWN_PROVIDER_STATE'
+      WHERE id=$1 AND status='DISPATCHING'`, [invitation.id]);
+    await pool.query(`INSERT INTO audit_logs ("user",role,actor_user_id,clerk_user_id,action,module,record_id,metadata)
+      VALUES($1,$2,$3,$4,'Partner invitation resend requires provider recovery','Partners',$5,$6)`,
+      [c.user.email, c.roles[0]?.role ?? "AUTHENTICATED", c.user.id, c.user.clerkUserId,
+        invitation.id, { partnerId, attemptId, dispatchStatus: "UNKNOWN_PROVIDER_STATE" }]);
+    throw new AuthError(503,
+      "Clerk did not confirm whether the invitation was accepted. Recovery is required; do not retry because the provider may already have created it.",
+      "INVITATION_RECOVERY_REQUIRED");
+  }
+
+  const client = await pool.connect();
+  let committed = false;
+  let commitAttempted = false;
+  try {
+    await client.query("BEGIN");
+    const currentPartner = await client.query(`SELECT status,user_id AS "userId"
+      FROM partner_profiles WHERE id=$1 FOR UPDATE`, [partnerId]);
+    if (!currentPartner.rows[0] || currentPartner.rows[0].status !== "INVITED" ||
+        currentPartner.rows[0].userId) {
+      throw new AuthError(409, "The partner invitation was accepted or changed before this resend could be finalized");
+    }
+    const current = await client.query(`SELECT id FROM partner_invitations
+      WHERE id=$1 AND partner_profile_id=$2 AND status='DISPATCHING' FOR UPDATE`, [invitation.id, partnerId]);
+    if (!current.rows[0]) throw new AuthError(503, "Invitation recovery is required before finalizing this resend",
+      "INVITATION_RECOVERY_REQUIRED");
+    supersededIds = await supersedePartnerInvitations(client, partnerId);
+    await client.query(`UPDATE partner_invitations SET status='ACTIVE'
+      WHERE id=$1 AND status='DISPATCHING'`, [invitation.id]);
+    await audit(req, "Resent partner invitation", "Partners", invitation.id,
+      { partnerId, invitedEmail: email, clerkInvitationId: clerkInvitation.id, attemptId,
+        supersededInvitationIds: supersededIds }, client);
     commitAttempted = true;
     const resolution = await commitInvitationWithRecovery({
       commit: () => client.query("COMMIT"),
       rollback: () => client.query("ROLLBACK"),
       isCommitted: async () => Boolean((await pool.query(
-        `SELECT 1 FROM partner_invitations WHERE id=$1`, [invitation.rows[0].id],
+        `SELECT 1 FROM partner_invitations WHERE id=$1 AND status='ACTIVE'`, [invitation.id],
       )).rows[0]),
-      revokeInvitation: () => clerkClient.invitations.revokeInvitation(clerkInvitationId!),
+      revokeInvitation: () => clerkClient.invitations.revokeInvitation(clerkInvitation.id),
     });
     if (resolution !== "COMMITTED") throw new AuthError(503,
-      resolution === "UNKNOWN" ? "Invitation status is uncertain; check the partner directory before retrying" :
-        "Partner invitation could not be completed; please retry");
+      resolution === "UNKNOWN" ? "Invitation finalization status is uncertain; recovery is required before retrying" :
+        "Partner invitation could not be finalized; please retry");
     committed = true;
     await revokeClerkInvitations(oldClerkInvitationIds, "replacement");
-    res.status(201).json({ id: invitation.rows[0].id, partnerId, email: normalizedEmail(row.email),
+    res.status(201).json({ id: invitation.id, partnerId, email,
       status: "PENDING", invitationDispatchStatus: "REQUEST_ACCEPTED",
-      invitationDeliveryStatus: "UNVERIFIED", expiresAt: invitation.rows[0].expiresAt,
-      createdAt: invitation.rows[0].createdAt });
+      invitationDeliveryStatus: "UNVERIFIED", expiresAt: invitation.expiresAt,
+      createdAt: invitation.createdAt });
   } catch (error) {
     if (!committed) await client.query("ROLLBACK").catch(() => undefined);
-    if (clerkInvitationId && !committed && !commitAttempted) {
-      await clerkClient.invitations.revokeInvitation(clerkInvitationId).catch(() => undefined);
+    if (!committed && !commitAttempted) {
+      await clerkClient.invitations.revokeInvitation(clerkInvitation.id).catch(() => undefined);
     }
     throw error;
   } finally {
     client.release();
+  }
+  } finally {
+    let unlockError: Error | undefined;
+    if (ownershipLocked) {
+      try {
+        await ownershipClient.query(
+          `SELECT pg_advisory_unlock(hashtextextended($1,0))`,
+          [`partner-invitation-resend:${partnerId}`],
+        );
+      } catch {
+        unlockError = new Error("Could not release partner invitation resend lock");
+      }
+    }
+    ownershipClient.release(unlockError);
   }
 }));
 router.delete("/platform/partners/invitations/:invitationId", run(async (req, res) => {

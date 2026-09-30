@@ -16,8 +16,11 @@ const state = vi.hoisted(() => ({
   },
   queries: [] as Array<{ sql: string; values: unknown[] }>,
   createInvitation: vi.fn(),
+  listInvitations: vi.fn(),
+  getUserList: vi.fn(),
   revokeInvitation: vi.fn(),
   getUser: vi.fn(),
+  resendLockHeld: false,
 }));
 
 const db = vi.hoisted(() => ({
@@ -32,9 +35,10 @@ vi.mock("@clerk/express", () => ({
   clerkClient: {
     invitations: {
       createInvitation: state.createInvitation,
+      getInvitationList: state.listInvitations,
       revokeInvitation: state.revokeInvitation,
     },
-    users: { getUser: state.getUser },
+    users: { getUser: state.getUser, getUserList: state.getUserList },
   },
 }));
 vi.mock("../middlewares/auth", async (importOriginal) => {
@@ -77,6 +81,7 @@ afterAll(async () => new Promise<void>((resolve, reject) =>
 beforeEach(() => {
   vi.clearAllMocks();
   state.queries.length = 0;
+  state.resendLockHeld = false;
   state.context = {
     user: {
       id: 8, clerkUserId: "user_owner", email: "owner@example.test",
@@ -113,12 +118,30 @@ beforeEach(() => {
     if (sql.includes("RETURNING id")) return { rows: [{ id: 9 }] };
     return { rows: [] };
   });
-  db.connect.mockResolvedValue({ query: db.clientQuery, release: db.release });
+  db.connect.mockImplementation(async () => ({
+    query: async (sql: string, values: unknown[] = []) => {
+      if (sql.includes("pg_try_advisory_lock")) {
+        state.queries.push({ sql, values });
+        if (state.resendLockHeld) return { rows: [{ locked: false }] };
+        state.resendLockHeld = true;
+        return { rows: [{ locked: true }] };
+      }
+      if (sql.includes("pg_advisory_unlock")) {
+        state.queries.push({ sql, values });
+        state.resendLockHeld = false;
+        return { rows: [{ pg_advisory_unlock: true }] };
+      }
+      return db.clientQuery(sql, values);
+    },
+    release: db.release,
+  }));
   state.createInvitation.mockResolvedValue({
     id: "clerk_invitation_1",
     createdAt: Date.now(),
     status: "pending",
   });
+  state.listInvitations.mockResolvedValue({ data: [], totalCount: 0 });
+  state.getUserList.mockResolvedValue({ data: [] });
   state.revokeInvitation.mockResolvedValue({});
   state.getUser.mockResolvedValue({
     primaryEmailAddress: {
@@ -247,9 +270,11 @@ describe("Partner invitation dispatch and activation", () => {
         return { rows: [{ id: 4, email: "partner@example.test", status: "INVITED", userId: null }] };
       }
       if (sql.includes("SELECT id FROM partner_invitations")) return { rows: [{ id: 9 }] };
+      if (sql.includes("status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')")) return { rows: [] };
       if (sql.includes("SELECT DISTINCT metadata->>'clerkInvitationId'")) {
         return { rows: [{ clerkInvitationId: "clerk_old" }] };
       }
+      if (sql.includes("status='DISPATCHING' FOR UPDATE")) return { rows: [{ id: 10 }] };
       if (sql.includes("INSERT INTO partner_invitations")) {
         return { rows: [{ id: 10, expiresAt: new Date(Date.now() + 7 * 86400000), createdAt: new Date() }] };
       }
@@ -273,13 +298,114 @@ describe("Partner invitation dispatch and activation", () => {
     expect(state.createInvitation.mock.calls[0][0].redirectUrl).toMatch(
       /^\/accept-invitation\?partnerInvitation=[A-Za-z0-9_-]{43}$/,
     );
+    expect(state.createInvitation.mock.calls[0][0].ignoreExisting).toBe(true);
+    expect(state.createInvitation.mock.calls[0][0].publicMetadata.edupulsePartnerInvitation)
+      .toMatchObject({ attemptId: expect.any(String), partnerInvitationId: 10 });
   });
 
-  it("leaves the old Clerk invitation intact on create failure, then commits replacement before revocation", async () => {
+  it("does not use ignoreExisting when a Clerk account already exists for the partner email", async () => {
     db.clientQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
       state.queries.push({ sql, values });
       if (sql.includes("FROM partner_profiles WHERE id=$1 FOR UPDATE")) {
         return { rows: [{ id: 4, email: "partner@example.test", status: "INVITED", userId: null }] };
+      }
+      if (sql.includes("status='RATE_LIMITED'")) return { rows: [] };
+      if (sql.includes("status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')")) return { rows: [] };
+      return { rows: [] };
+    });
+    state.getUserList.mockResolvedValueOnce({ data: [{
+      emailAddresses: [{ emailAddress: "Partner@Example.Test" }],
+    }] });
+
+    const response = await post("/platform/partners/4/invitations/resend", {});
+    expect(response.status).toBe(409);
+    expect(state.createInvitation).not.toHaveBeenCalled();
+    expect(state.queries.some(({ sql }) => sql.includes("INSERT INTO partner_invitations"))).toBe(false);
+    expect(state.getUserList).toHaveBeenCalledWith({
+      emailAddress: ["partner@example.test"], limit: 100,
+    });
+  });
+
+  it("serializes concurrent resend while Clerk is pending and keeps the old invitation usable", async () => {
+    db.clientQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      state.queries.push({ sql, values });
+      if (sql.includes("FROM partner_profiles WHERE id=$1 FOR UPDATE")) {
+        return { rows: [{ id: 4, email: "partner@example.test", status: "INVITED", userId: null }] };
+      }
+      if (sql.includes("status='RATE_LIMITED'")) return { rows: [] };
+      if (sql.includes("status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')")) return { rows: [] };
+      if (sql.includes("SELECT id FROM partner_invitations")) return { rows: [{ id: 9 }] };
+      if (sql.includes("SELECT DISTINCT metadata->>'clerkInvitationId'")) {
+        return { rows: [{ clerkInvitationId: "clerk_old" }] };
+      }
+      if (sql.includes("INSERT INTO partner_invitations")) {
+        return { rows: [{ id: 10, expiresAt: new Date(Date.now() + 7 * 86400000), createdAt: new Date() }] };
+      }
+      if (sql.includes("status='DISPATCHING' FOR UPDATE")) return { rows: [{ id: 10 }] };
+      return { rows: [] };
+    });
+    let resolveProvider!: (invitation: { id: string }) => void;
+    state.createInvitation.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveProvider = resolve;
+    }));
+
+    const firstRequest = post("/platform/partners/4/invitations/resend", {});
+    await vi.waitFor(() => expect(state.createInvitation).toHaveBeenCalledTimes(1));
+    const concurrent = await post("/platform/partners/4/invitations/resend", {});
+    expect(concurrent.status).toBe(409);
+    expect(await concurrent.json()).toMatchObject({ code: "INVITATION_DISPATCH_IN_PROGRESS" });
+    expect(state.createInvitation).toHaveBeenCalledTimes(1);
+    expect(state.queries.some(({ sql }) => sql.includes("SET status='REVOKED',revoked_at=NOW()"))).toBe(false);
+    expect(state.queries.some(({ sql }) => sql.includes("UPDATE partner_invitations SET status='ACTIVE'"))).toBe(false);
+    expect(state.resendLockHeld).toBe(true);
+
+    resolveProvider({ id: "clerk_new" });
+    const completed = await firstRequest;
+    expect(completed.status).toBe(201);
+    expect(state.createInvitation).toHaveBeenCalledTimes(1);
+    expect(state.resendLockHeld).toBe(false);
+  });
+
+  it("treats a fresh orphaned DISPATCHING attempt as in flight rather than absent", async () => {
+    db.clientQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      state.queries.push({ sql, values });
+      if (sql.includes("FROM partner_profiles WHERE id=$1 FOR UPDATE")) {
+        return { rows: [{ id: 4, email: "partner@example.test", status: "INVITED", userId: null }] };
+      }
+      if (sql.includes("status='RATE_LIMITED'")) return { rows: [] };
+      if (sql.includes("status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')")) {
+        return { rows: [{ id: 10, status: "DISPATCHING", createdAt: new Date(), expiresAt: new Date() }] };
+      }
+      if (sql.includes("created_at>NOW()-INTERVAL '5 minutes'")) return { rows: [{ "?column?": 1 }] };
+      return { rows: [] };
+    });
+
+    const response = await post("/platform/partners/4/invitations/resend", {});
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: "INVITATION_DISPATCH_IN_PROGRESS" });
+    expect(state.queries.some(({ sql }) =>
+      sql.includes("created_at>NOW()-INTERVAL '5 minutes'"))).toBe(true);
+    expect(state.listInvitations).not.toHaveBeenCalled();
+    expect(state.createInvitation).not.toHaveBeenCalled();
+    expect(state.queries.some(({ sql }) => sql.includes("SET status='FAILED'"))).toBe(false);
+  });
+
+  it("persists an unknown provider attempt, retains the old invitation, and blocks duplicate provider calls", async () => {
+    db.clientQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      state.queries.push({ sql, values });
+      if (sql.includes("FROM partner_profiles WHERE id=$1 FOR UPDATE")) {
+        return { rows: [{ id: 4, email: "partner@example.test", status: "INVITED", userId: null }] };
+      }
+      if (sql.includes("status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')")) {
+        return { rows: state.queries.some(({ sql: seen }) =>
+          seen.includes("UPDATE partner_invitations SET status='UNKNOWN_PROVIDER_STATE'"))
+          ? [{ id: 10, status: "UNKNOWN_PROVIDER_STATE", createdAt: new Date(), expiresAt: new Date() }] : [] };
+      }
+      if (sql.includes("SELECT metadata->>'attemptId'")) {
+        expect(sql).toContain("ORDER BY timestamp DESC");
+        expect(sql).not.toContain("ORDER BY created_at");
+        return { rows: [{ attemptId: state.createInvitation.mock.calls[0][0]
+          .publicMetadata.edupulsePartnerInvitation.attemptId }] };
       }
       if (sql.includes("SELECT id FROM partner_invitations")) return { rows: [{ id: 9 }] };
       if (sql.includes("SELECT DISTINCT metadata->>'clerkInvitationId'")) {
@@ -293,28 +419,228 @@ describe("Partner invitation dispatch and activation", () => {
     state.createInvitation.mockRejectedValueOnce(new Error("provider unavailable"));
     const failed = await post("/platform/partners/4/invitations/resend", {});
     expect(failed.status).toBe(503);
-    expect(state.revokeInvitation).not.toHaveBeenCalled();
-    expect(state.queries.some(({ sql }) => sql === "ROLLBACK")).toBe(true);
-
-    state.queries.length = 0;
-    state.createInvitation.mockResolvedValueOnce({ id: "clerk_new" });
-    state.revokeInvitation.mockImplementationOnce(async (id: string) => {
-      state.queries.push({ sql: "MOCK_REVOKE", values: [id] });
-      throw new Error("provider revoke unavailable");
-    });
-    const recovered = await post("/platform/partners/4/invitations/resend", {});
-    expect(recovered.status).toBe(503);
-    expect(await recovered.json()).toMatchObject({
-      code: "INVITATION_RECOVERY_REQUIRED",
-      error: expect.stringContaining("replacement is committed"),
-    });
-    const commitIndex = state.queries.findIndex(({ sql }) => sql === "COMMIT");
-    const revokeIndex = state.queries.findIndex(({ sql }) => sql === "MOCK_REVOKE");
-    expect(commitIndex).toBeGreaterThanOrEqual(0);
-    expect(revokeIndex).toBeGreaterThan(commitIndex);
+    expect(await failed.json()).toMatchObject({ code: "INVITATION_RECOVERY_REQUIRED" });
+    expect(state.queries.some(({ sql }) => sql === "COMMIT")).toBe(true);
     expect(state.queries.some(({ sql, values }) =>
-      sql.includes("SET status='REVOKED',revoked_at=NOW()") &&
-      Array.isArray(values[0]) && (values[0] as number[]).includes(9))).toBe(true);
+      sql.includes("INSERT INTO partner_invitations") &&
+      sql.includes("'DISPATCHING'") && typeof values[2] === "string" &&
+      values[2] === createHash("sha256").update(String(state.createInvitation.mock.calls[0][0].redirectUrl)
+        .split("partnerInvitation=")[1]).digest("hex"))).toBe(true);
+    expect(state.queries.some(({ sql }) => sql.includes("UPDATE partner_invitations SET status='UNKNOWN_PROVIDER_STATE'"))).toBe(true);
+    expect(state.revokeInvitation).not.toHaveBeenCalled();
+    expect(state.queries.some(({ sql }) => sql.includes("SET status='REVOKED',revoked_at=NOW()"))).toBe(false);
+    state.listInvitations.mockRejectedValueOnce(new Error("Clerk list temporarily unavailable"));
+    const retry = await post("/platform/partners/4/invitations/resend", {});
+    expect(retry.status).toBe(503);
+    expect(await retry.json()).toMatchObject({ code: "INVITATION_RECOVERY_REQUIRED" });
+    expect(state.createInvitation).toHaveBeenCalledTimes(1);
+    expect(state.listInvitations).toHaveBeenCalledTimes(1);
+    const rawToken = new URL(String(state.createInvitation.mock.calls[0][0].redirectUrl),
+      "https://example.test").searchParams.get("partnerInvitation")!;
+    expect(JSON.stringify(state.queries)).not.toContain(rawToken);
+    expect(JSON.stringify(state.queries)).not.toContain("test-secret");
+    expect(JSON.stringify(state.queries)).not.toContain("clerk_sk_");
+  });
+
+  it("reconciles a previously accepted Clerk request by exact attempt metadata without sending again", async () => {
+    db.query.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      state.queries.push({ sql, values });
+      if (sql.includes("SELECT id FROM partner_invitations") && sql.includes("status IN ('ACTIVE','REVOKED')")) {
+        return { rows: [{ id: 9 }] };
+      }
+      if (sql.includes("SELECT DISTINCT metadata->>'clerkInvitationId'")) {
+        return { rows: [{ clerkInvitationId: "clerk_old" }] };
+      }
+      return { rows: [] };
+    });
+    db.clientQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      state.queries.push({ sql, values });
+      if (sql.includes("FROM partner_profiles WHERE id=$1 FOR UPDATE")) {
+        return { rows: [{ id: 4, email: "partner@example.test", status: "INVITED", userId: null }] };
+      }
+      if (sql.includes("status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')")) {
+        return { rows: state.queries.some(({ sql: seen }) =>
+          seen.includes("UPDATE partner_invitations SET status='UNKNOWN_PROVIDER_STATE'"))
+          ? [{ id: 10, status: "UNKNOWN_PROVIDER_STATE", createdAt: new Date(), expiresAt: new Date() }] : [] };
+      }
+      if (sql.includes("SELECT metadata->>'attemptId'")) {
+        return { rows: [{ attemptId: state.createInvitation.mock.calls[0][0]
+          .publicMetadata.edupulsePartnerInvitation.attemptId }] };
+      }
+      if (sql.includes("SELECT DISTINCT metadata->>'clerkInvitationId'")) {
+        return { rows: [{ clerkInvitationId: "clerk_old" }] };
+      }
+      if (sql.includes("status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE') FOR UPDATE")) {
+        return { rows: [{ id: 10 }] };
+      }
+      if (sql.includes("SELECT id FROM partner_invitations")) return { rows: [{ id: 9 }] };
+      if (sql.includes("INSERT INTO partner_invitations")) {
+        return { rows: [{ id: 10, expiresAt: new Date(Date.now() + 7 * 86400000), createdAt: new Date() }] };
+      }
+      return { rows: [] };
+    });
+    state.createInvitation.mockRejectedValueOnce(new Error("provider accepted but response was lost"));
+    const uncertain = await post("/platform/partners/4/invitations/resend", {});
+    expect(uncertain.status).toBe(503);
+    const attemptId = state.createInvitation.mock.calls[0][0].publicMetadata.edupulsePartnerInvitation.attemptId;
+    state.listInvitations.mockResolvedValueOnce({ data: [{
+      id: "clerk_reconciled",
+      emailAddress: "partner@example.test",
+      status: "pending",
+      revoked: false,
+      publicMetadata: { edupulsePartnerInvitation: { attemptId, partnerInvitationId: 10 } },
+    }], totalCount: 1 });
+
+    const recovered = await post("/platform/partners/4/invitations/resend", {});
+    expect(recovered.status).toBe(201);
+    expect(await recovered.json()).toMatchObject({
+      id: 10, invitationDispatchStatus: "REQUEST_ACCEPTED", status: "PENDING",
+    });
+    expect(state.createInvitation).toHaveBeenCalledTimes(1);
+    expect(state.listInvitations).toHaveBeenCalledWith({
+      query: "partner@example.test", status: "pending", limit: 100, offset: 0,
+    });
+    expect(state.queries.some(({ sql }) => sql.includes("SET status='ACTIVE'"))).toBe(true);
+    expect(state.queries.some(({ sql, values }) =>
+      sql.includes("INSERT INTO audit_logs") && values[4] === "Recovered partner invitation resend" &&
+      (values.at(-1) as any)?.recoveryStatus === "RECONCILED_FROM_CLERK_METADATA")).toBe(true);
+    expect(state.revokeInvitation).toHaveBeenCalledWith("clerk_old");
+  });
+
+  it("marks a definitively revoked Clerk attempt retryable without superseding the old invitation", async () => {
+    db.clientQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      state.queries.push({ sql, values });
+      if (sql.includes("FROM partner_profiles WHERE id=$1 FOR UPDATE")) {
+        return { rows: [{ id: 4, email: "partner@example.test", status: "INVITED", userId: null }] };
+      }
+      if (sql.includes("status='RATE_LIMITED'")) return { rows: [] };
+      if (sql.includes("status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')")) {
+        const failed = state.queries.some(({ sql: seen }) => seen.includes("SET status='FAILED'"));
+        return { rows: !failed && state.queries.some(({ sql: seen }) =>
+          seen.includes("UPDATE partner_invitations SET status='UNKNOWN_PROVIDER_STATE'"))
+          ? [{ id: 10, status: "UNKNOWN_PROVIDER_STATE", createdAt: new Date(), expiresAt: new Date() }] : [] };
+      }
+      if (sql.includes("SELECT metadata->>'attemptId'")) {
+        expect(sql).toContain("ORDER BY timestamp DESC");
+        expect(sql).not.toContain("ORDER BY created_at");
+        return { rows: [{ attemptId: state.createInvitation.mock.calls[0][0]
+          .publicMetadata.edupulsePartnerInvitation.attemptId }] };
+      }
+      if (sql.includes("SELECT id FROM partner_invitations")) return { rows: [{ id: 9 }] };
+      if (sql.includes("SELECT DISTINCT metadata->>'clerkInvitationId'")) {
+        return { rows: [{ clerkInvitationId: "clerk_old" }] };
+      }
+      if (sql.includes("INSERT INTO partner_invitations")) {
+        return { rows: [{ id: 10, expiresAt: new Date(Date.now() + 7 * 86400000), createdAt: new Date() }] };
+      }
+      return { rows: [] };
+    });
+    state.createInvitation.mockRejectedValueOnce(new Error("provider response unavailable"));
+    const ambiguous = await post("/platform/partners/4/invitations/resend", {});
+    expect(ambiguous.status).toBe(503);
+    const marker = state.createInvitation.mock.calls[0][0].publicMetadata.edupulsePartnerInvitation;
+    state.listInvitations.mockImplementation(async ({ status }: { status: string }) => ({
+      data: status === "revoked" ? [{
+        id: "clerk_revoked_attempt",
+        emailAddress: "partner@example.test",
+        status: "revoked",
+        revoked: true,
+        publicMetadata: { edupulsePartnerInvitation: marker },
+      }] : [],
+      totalCount: status === "revoked" ? 1 : 0,
+    }));
+
+    const resolved = await post("/platform/partners/4/invitations/resend", {});
+    expect(resolved.status).toBe(409);
+    expect(await resolved.json()).toMatchObject({ code: "INVITATION_PROVIDER_ABSENT" });
+    expect(state.queries.some(({ sql }) => sql.includes("SET status='FAILED',revoked_at=NOW()"))).toBe(true);
+    expect(state.queries.some(({ sql }) => sql.includes("SET status='REVOKED',revoked_at=NOW()"))).toBe(false);
+    expect(state.createInvitation).toHaveBeenCalledTimes(1);
+    expect(state.listInvitations.mock.calls.map(([params]) => params.status)).toEqual([
+      "pending", "accepted", "revoked", "expired",
+    ]);
+
+    const safeRetry = await post("/platform/partners/4/invitations/resend", {});
+    expect(safeRetry.status).toBe(201);
+    expect(state.createInvitation).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not conclude an attempt is absent until every invitation-list page is read", async () => {
+    db.clientQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      state.queries.push({ sql, values });
+      if (sql.includes("FROM partner_profiles WHERE id=$1 FOR UPDATE")) {
+        return { rows: [{ id: 4, email: "partner@example.test", status: "INVITED", userId: null }] };
+      }
+      if (sql.includes("status='RATE_LIMITED'")) return { rows: [] };
+      if (sql.includes("status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')")) {
+        return { rows: state.queries.some(({ sql: seen }) =>
+          seen.includes("UPDATE partner_invitations SET status='UNKNOWN_PROVIDER_STATE'"))
+          ? [{ id: 10, status: "UNKNOWN_PROVIDER_STATE", createdAt: new Date(), expiresAt: new Date() }] : [] };
+      }
+      if (sql.includes("SELECT metadata->>'attemptId'")) {
+        return { rows: [{ attemptId: state.createInvitation.mock.calls[0][0]
+          .publicMetadata.edupulsePartnerInvitation.attemptId }] };
+      }
+      if (sql.includes("SELECT id FROM partner_invitations")) return { rows: [{ id: 9 }] };
+      if (sql.includes("INSERT INTO partner_invitations")) {
+        return { rows: [{ id: 10, expiresAt: new Date(Date.now() + 7 * 86400000), createdAt: new Date() }] };
+      }
+      return { rows: [] };
+    });
+    state.createInvitation.mockRejectedValueOnce(new Error("provider response unavailable"));
+    expect((await post("/platform/partners/4/invitations/resend", {})).status).toBe(503);
+    state.listInvitations.mockImplementation(async ({ status, offset }: { status: string; offset: number }) => ({
+      data: status === "pending" && offset === 0 ? Array.from({ length: 100 }, (_, index) => ({
+        id: `other-${index}`, emailAddress: "partner@example.test", status: "pending",
+        publicMetadata: {},
+      })) : status === "pending" && offset === 100 ? [{
+        id: "other-last", emailAddress: "partner@example.test", status: "pending", publicMetadata: {},
+      }] : [],
+      totalCount: status === "pending" ? 101 : 0,
+    }));
+
+    const unresolved = await post("/platform/partners/4/invitations/resend", {});
+    expect(unresolved.status).toBe(409);
+    expect(await unresolved.json()).toMatchObject({ code: "INVITATION_PROVIDER_ABSENT" });
+    expect(state.listInvitations.mock.calls.map(([params]) => params.offset)).toEqual([0, 100, 0, 0, 0]);
+    expect(state.queries.some(({ sql }) => sql.includes("SET status='FAILED',revoked_at=NOW()"))).toBe(true);
+    expect(state.createInvitation).toHaveBeenCalledTimes(1);
+  });
+
+  it("records a definitive Clerk 429 separately and returns Retry-After while keeping the old invite usable", async () => {
+    db.clientQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      state.queries.push({ sql, values });
+      if (sql.includes("FROM partner_profiles WHERE id=$1 FOR UPDATE")) {
+        return { rows: [{ id: 4, email: "partner@example.test", status: "INVITED", userId: null }] };
+      }
+      if (sql.includes("status='RATE_LIMITED'")) {
+        return { rows: state.queries.some(({ sql: seen }) =>
+          seen.includes("SET status='RATE_LIMITED'")) ? [{ retryAfterSeconds: 37 }] : [] };
+      }
+      if (sql.includes("status IN ('DISPATCHING','UNKNOWN_PROVIDER_STATE')")) return { rows: [] };
+      if (sql.includes("SELECT id FROM partner_invitations")) return { rows: [{ id: 9 }] };
+      if (sql.includes("SELECT DISTINCT metadata->>'clerkInvitationId'")) {
+        return { rows: [{ clerkInvitationId: "clerk_old" }] };
+      }
+      if (sql.includes("INSERT INTO partner_invitations")) {
+        return { rows: [{ id: 10, expiresAt: new Date(Date.now() + 7 * 86400000), createdAt: new Date() }] };
+      }
+      return { rows: [] };
+    });
+    state.createInvitation.mockRejectedValueOnce({ status: 429, headers: { get: () => "37" } });
+    const response = await post("/platform/partners/4/invitations/resend", {});
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("37");
+    expect(await response.json()).toMatchObject({
+      code: "INVITATION_PROVIDER_RATE_LIMITED", retryAfterSeconds: 37,
+    });
+    expect(state.queries.some(({ sql }) => sql.includes("SET status='RATE_LIMITED'"))).toBe(true);
+    expect(state.queries.some(({ sql }) => sql.includes("SET status='REVOKED',revoked_at=NOW()"))).toBe(false);
+    expect(state.revokeInvitation).not.toHaveBeenCalled();
+    const retry = await post("/platform/partners/4/invitations/resend", {});
+    expect(retry.status).toBe(429);
+    expect(retry.headers.get("retry-after")).toBe("37");
+    expect(state.createInvitation).toHaveBeenCalledTimes(1);
   });
 
   it("lists invitation lifecycle states through the Platform Owner directory endpoint", async () => {
@@ -462,7 +788,7 @@ describe("Partner invitation dispatch and activation", () => {
       }
       if (sql.includes("SELECT id FROM schools")) return { rows: [] };
       if (sql.includes("INSERT INTO schools")) {
-        return { rows: [{ id: 33, code: "REF-SCHOOL", name: "Referral School", status: "active" }] };
+        return { rows: [{ id: 33, code: "REF-SCHOOL", name: "Referral School", status: "pending" }] };
       }
       return { rows: [] };
     });
@@ -478,6 +804,11 @@ describe("Partner invitation dispatch and activation", () => {
         administrator: { fullName: "School Administrator", email: "admin@example.test" },
       });
       expect(response.status).toBe(201);
+      const schoolInsert = state.queries.find(({ sql }) => sql.includes("INSERT INTO schools"));
+      expect(schoolInsert?.sql).toContain("VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'pending')");
+      expect(schoolInsert?.values).not.toContain("active");
+      const result = await response.json() as { school: { status: string } };
+      expect(result.school.status).toBe("pending");
       const clerkRequest = state.createInvitation.mock.calls[0][0];
       expect(clerkRequest.redirectUrl).toBe("/accept-invitation");
       const claim = clerkRequest.publicMetadata.edupulseSchoolInvitation;

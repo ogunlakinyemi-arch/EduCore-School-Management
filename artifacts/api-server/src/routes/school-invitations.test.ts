@@ -61,6 +61,9 @@ function sqlResult(sql: string) {
   if (sql.includes("current_invite.id")) {
     return { rows: [{ id: 501 }] };
   }
+  if (sql.includes("UPDATE schools SET status='active'")) {
+    return { rows: [{ id: 3 }] };
+  }
   if (sql.includes("INSERT INTO school_memberships")) {
     return { rows: [{ id: 42, userId: 21, schoolId: 3, role: "SCHOOL_ADMIN", status: "ACTIVE" }] };
   }
@@ -152,6 +155,10 @@ describe("school invitations", () => {
     expect(JSON.stringify(metadata)).not.toContain("new.admin@example.test");
     expect(JSON.stringify(mocks.createInvitation.mock.calls[0][0])).not.toContain("password");
     expect(mocks.clientQuery).toHaveBeenCalledWith("COMMIT");
+    expect(mocks.clientQuery).not.toHaveBeenCalledWith(
+      expect.stringContaining("UPDATE schools SET status='active'"),
+      expect.anything(),
+    );
   });
 
   it("revokes the Clerk invitation if local profile/audit persistence fails", async () => {
@@ -187,9 +194,49 @@ describe("school invitations", () => {
       expect.stringContaining("USER_ACTIVATED"),
       expect.any(Array),
     );
+    expect(mocks.clientQuery).toHaveBeenCalledWith(
+      expect.stringContaining("UPDATE schools SET status='active'"),
+      [3],
+    );
+    expect(mocks.clientQuery).toHaveBeenCalledWith(
+      expect.stringContaining("SCHOOL_ACTIVATED"),
+      expect.arrayContaining([3, 42]),
+    );
+    const activationUpdate = mocks.clientQuery.mock.calls.findIndex(([sql]) =>
+      typeof sql === "string" && sql.includes("UPDATE schools SET status='active'")
+    );
+    const commit = mocks.clientQuery.mock.calls.findIndex(([sql]) => sql === "COMMIT");
+    expect(activationUpdate).toBeGreaterThan(-1);
+    expect(commit).toBeGreaterThan(activationUpdate);
     expect(mocks.updateUserMetadata).toHaveBeenCalledWith("user_accepted", {
       publicMetadata: { edupulseSchoolInvitation: null },
     });
+  });
+
+  it("preserves an owner-changed school status instead of overriding it during admin acceptance", async () => {
+    mocks.clientQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("current_invite.id")) return { rows: [{ id: 501 }] };
+      if (sql.includes("SELECT id,email,status FROM app_users")) {
+        return { rows: [{ id: 21, email: "admin@example.test", status: "ACTIVE" }] };
+      }
+      if (sql.includes("INSERT INTO school_memberships")) {
+        return { rows: [{ id: 42 }] };
+      }
+      // An owner changed the school to inactive/suspended before the invite was accepted.
+      if (sql.includes("UPDATE schools SET status='active'")) return { rows: [] };
+      return { rows: [] };
+    });
+
+    expect(await activateAcceptedSchoolInvitation(21, "user_accepted")).toBe(true);
+    expect(mocks.clientQuery).toHaveBeenCalledWith(
+      expect.stringContaining("WHERE id=$1 AND status='pending'"),
+      [3],
+    );
+    expect(mocks.clientQuery).not.toHaveBeenCalledWith(
+      expect.stringContaining("SCHOOL_ACTIVATED"),
+      expect.anything(),
+    );
+    expect(mocks.clientQuery).toHaveBeenCalledWith("COMMIT");
   });
 
   it("does not activate invitation metadata for a different email address", async () => {
@@ -215,6 +262,80 @@ describe("school invitations", () => {
     await expect(activateAcceptedSchoolInvitation(21, "user_accepted"))
       .rejects.toMatchObject({ statusCode: 403 });
     expect(mocks.connect).not.toHaveBeenCalled();
+  });
+
+  it("activates a pending school once when granting its verified existing School Admin account", async () => {
+    mocks.poolQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("FROM schools")) return { rows: [{ id: 3 }] };
+      if (sql.includes("FROM app_users")) {
+        return { rows: [{ id: 21, clerkUserId: "user_existing", status: "ACTIVE" }] };
+      }
+      return { rows: [] };
+    });
+
+    const result = await createSchoolInvitation({
+      schoolId: 3,
+      email: "admin@example.test",
+      fullName: "School Admin",
+      phone: null,
+      role: "SCHOOL_ADMIN",
+    }, owner);
+
+    expect(result).toMatchObject({ status: "ACTIVE", role: "SCHOOL_ADMIN", schoolId: 3 });
+    expect(mocks.getUser).toHaveBeenCalledWith("user_existing");
+    expect(mocks.createInvitation).not.toHaveBeenCalled();
+    expect(mocks.clientQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO school_memberships"),
+      [21, 3, "SCHOOL_ADMIN"],
+    );
+    const schoolActivationAudits = mocks.clientQuery.mock.calls.filter(([sql]) =>
+      typeof sql === "string" && sql.includes("SCHOOL_ACTIVATED")
+    );
+    expect(schoolActivationAudits).toHaveLength(1);
+    const activationAuditValues = schoolActivationAudits[0][1] as unknown[];
+    expect(JSON.parse(String(activationAuditValues[6]))).toMatchObject({
+      role: "SCHOOL_ADMIN",
+      activationSource: "VERIFIED_EXISTING_ACCOUNT",
+    });
+    expect(JSON.parse(String(activationAuditValues[6])).claimId).toMatch(
+      /^[0-9a-f-]{36}$/i,
+    );
+    const activationUpdate = mocks.clientQuery.mock.calls.findIndex(([sql]) =>
+      typeof sql === "string" && sql.includes("UPDATE schools SET status='active'")
+    );
+    const commit = mocks.clientQuery.mock.calls.findIndex(([sql]) => sql === "COMMIT");
+    expect(activationUpdate).toBeGreaterThan(-1);
+    expect(commit).toBeGreaterThan(activationUpdate);
+  });
+
+  it("does not provision an existing School Admin without a verified primary email", async () => {
+    mocks.poolQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("FROM schools")) return { rows: [{ id: 3 }] };
+      if (sql.includes("FROM app_users")) {
+        return { rows: [{ id: 21, clerkUserId: "user_existing", status: "ACTIVE" }] };
+      }
+      return { rows: [] };
+    });
+    mocks.getUser.mockResolvedValue({
+      id: "user_existing",
+      primaryEmailAddress: {
+        emailAddress: "admin@example.test",
+        verification: { status: "unverified" },
+      },
+    });
+
+    await expect(createSchoolInvitation({
+      schoolId: 3,
+      email: "admin@example.test",
+      fullName: "School Admin",
+      phone: null,
+      role: "SCHOOL_ADMIN",
+    }, owner)).rejects.toMatchObject({ statusCode: 403 });
+    expect(mocks.connect).not.toHaveBeenCalled();
+    expect(mocks.clientQuery).not.toHaveBeenCalledWith(
+      expect.stringContaining("UPDATE schools SET status='active'"),
+      expect.anything(),
+    );
   });
 
   it("does not reactivate a previously inactive membership from an invitation request", async () => {
@@ -321,6 +442,14 @@ describe("school invitations", () => {
       expect.stringContaining("INSERT INTO school_memberships"),
       [21, 3, "STUDENT"],
     );
+    expect(mocks.clientQuery).not.toHaveBeenCalledWith(
+      expect.stringContaining("UPDATE schools SET status='active'"),
+      expect.anything(),
+    );
+    expect(mocks.clientQuery).not.toHaveBeenCalledWith(
+      expect.stringContaining("SCHOOL_ACTIVATED"),
+      expect.anything(),
+    );
   });
 
   it("does not activate school access when the Clerk primary email is unverified", async () => {
@@ -359,7 +488,13 @@ describe("school invitations", () => {
       return { rows: [] };
     });
     const result = await createSchoolWithAdministrator({
-      school: { code: "NEW01", name: "New School", city: "Lagos", state: "Lagos" },
+      school: {
+        code: "NEW01",
+        name: "New School",
+        city: "Lagos",
+        state: "Lagos",
+        status: "suspended",
+      },
       administrator: { fullName: "First Admin", email: "first.admin@example.test" },
     }, owner);
     expect(result.schoolId).toBe(77);
@@ -373,6 +508,14 @@ describe("school invitations", () => {
       notify: true,
       redirectUrl: "/accept-invitation",
     }));
+    expect(mocks.clientQuery).toHaveBeenCalledWith(
+      expect.stringContaining("VALUES($1,$2,$3,$4,'pending')"),
+      ["NEW01", "New School", "Lagos", "Lagos"],
+    );
+    expect(mocks.clientQuery).not.toHaveBeenCalledWith(
+      expect.stringContaining("UPDATE schools SET status='active'"),
+      expect.anything(),
+    );
     expect(mocks.clientQuery).toHaveBeenCalledWith("COMMIT");
     expect(JSON.stringify(mocks.createInvitation.mock.calls[0][0].publicMetadata))
       .not.toContain("first.admin@example.test");

@@ -49,10 +49,10 @@ const inviteSchema = z.object({
 const invitationEmailSchema = z.object({ email: z.string().email() });
 
 type PlatformPartnerInvitation = {
-  invitationId: number;
+  id: number;
   partnerId: number;
   email: string;
-  status: 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+  status: 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'DISPATCHING' | 'UNKNOWN_PROVIDER_STATE' | 'FAILED' | 'RATE_LIMITED';
   createdAt?: string;
   updatedAt?: string;
   expiresAt?: string;
@@ -101,23 +101,35 @@ function PartnersOverview() {
     }),
   });
   const resendInvitation = useMutation({
-    mutationFn: (partnerId: number) =>
+    mutationFn: ({ partnerId }: { partnerId: number; reconcile: boolean }) =>
       platformPartnerRequest(`/platform/partners/${partnerId}/invitations/resend`, {
         method: 'POST',
         body: JSON.stringify({}),
       }),
-    onSuccess: async () => {
-      toast({ title: 'Replacement invitation requested', description: 'The invitation list will refresh shortly.' });
+    onSuccess: async (_result, { reconcile }) => {
+      toast(reconcile
+        ? { title: 'Invitation reconciliation completed', description: 'The existing provider attempt was reconciled; no new invitation was sent.' }
+        : { title: 'Replacement invitation requested', description: 'The invitation list will refresh shortly.' });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['platformPartnerInvitations'] }),
         queryClient.invalidateQueries({ queryKey: ['listPartners'] }),
       ]);
     },
-    onError: (error: Error) => toast({
-      title: 'Resend failed',
-      description: error.message,
-      variant: 'destructive',
-    }),
+    onError: async (error: Error, { reconcile }) => {
+      toast({
+        title: reconcile ? 'Invitation remains unresolved' : 'Resend failed',
+        description: reconcile
+          ? `${error.message} No blind resend was attempted; use Retry reconciliation again when provider state is available.`
+          : error.message,
+        variant: 'destructive',
+      });
+      if (reconcile) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['platformPartnerInvitations'] }),
+          queryClient.invalidateQueries({ queryKey: ['listPartners'] }),
+        ]);
+      }
+    },
   });
   
   if (query.isLoading) return <SkeletonPage />;
@@ -127,9 +139,9 @@ function PartnersOverview() {
   const latestInvitationByPartner = new Map<number, PlatformPartnerInvitation>();
   for (const invitation of invitations.data ?? []) {
     const current = latestInvitationByPartner.get(invitation.partnerId);
-    const invitationTime = Date.parse(invitation.createdAt || invitation.updatedAt || invitation.expiresAt || '') || invitation.invitationId;
+    const invitationTime = Date.parse(invitation.createdAt || invitation.updatedAt || invitation.expiresAt || '') || invitation.id;
     const currentTime = current
-      ? Date.parse(current.createdAt || current.updatedAt || current.expiresAt || '') || current.invitationId
+      ? Date.parse(current.createdAt || current.updatedAt || current.expiresAt || '') || current.id
       : -1;
     if (!current || invitationTime >= currentTime) latestInvitationByPartner.set(invitation.partnerId, invitation);
   }
@@ -194,10 +206,20 @@ function PartnersOverview() {
                   {(() => {
                     const invitation = latestInvitationByPartner.get(partner.id);
                     const status = invitation?.status ?? (partner.status === 'INVITED' ? 'PENDING' : partner.status);
-                    const label = status === 'PENDING' ? 'Pending' : status === 'ACTIVE' ? 'Active' : status;
+                    const isUnresolved = status === 'DISPATCHING' || status === 'UNKNOWN_PROVIDER_STATE';
+                    const label = status === 'PENDING' ? 'Pending' : status === 'ACTIVE' ? 'Active' :
+                      status === 'DISPATCHING' ? 'Dispatch in progress' :
+                        status === 'UNKNOWN_PROVIDER_STATE' ? 'Provider state unknown' :
+                          status === 'RATE_LIMITED' ? 'Rate limited' : status === 'FAILED' ? 'Failed' : status;
                     return <div className="space-y-1">
                       <StatusPill value={status} />
                       <div className="text-xs text-[hsl(var(--muted-foreground))]">Invitation: {label}</div>
+                      {isUnresolved && <div className="max-w-xs text-xs text-amber-700 dark:text-amber-300" role="status">
+                        Provider state is unresolved. Do not send another invitation; reconcile the existing attempt.
+                      </div>}
+                      {status === 'RATE_LIMITED' && <div className="max-w-xs text-xs text-[hsl(var(--muted-foreground))]">
+                        Resend is available; the server enforces the provider cooldown.
+                      </div>}
                     </div>;
                   })()}
                 </td>
@@ -206,14 +228,17 @@ function PartnersOverview() {
                     {(() => {
                       const invitation = latestInvitationByPartner.get(partner.id);
                       const invitationStatus = invitation?.status ?? (partner.status === 'INVITED' ? 'PENDING' : partner.status);
-                      const canManageInvitation = invitationStatus === 'PENDING' || invitationStatus === 'EXPIRED';
+                      const isUnresolved = invitationStatus === 'DISPATCHING' || invitationStatus === 'UNKNOWN_PROVIDER_STATE';
+                      const canResendInvitation = invitationStatus === 'PENDING' || invitationStatus === 'EXPIRED' ||
+                        invitationStatus === 'FAILED' || invitationStatus === 'RATE_LIMITED';
+                      const canManageInvitation = canResendInvitation || isUnresolved;
                       return canManageInvitation && <>
                         {invitationStatus === 'PENDING' && <Button
                           variant="outline"
                           className="h-8 px-3 text-xs"
                           disabled={updateInvitationEmail.isPending || invitations.isError}
                           onClick={() => setEditingInvitation(invitation ?? {
-                            invitationId: 0,
+                            id: 0,
                             partnerId: partner.id,
                             email: partner.email,
                             status: 'PENDING',
@@ -223,9 +248,11 @@ function PartnersOverview() {
                         <Button
                           className="h-8 px-3 text-xs"
                           disabled={resendInvitation.isPending || invitations.isError}
-                          onClick={() => resendInvitation.mutate(partner.id)}
-                          aria-label={`Resend invitation for ${partner.fullName}`}
-                        ><Send size={13} />Resend</Button>
+                          onClick={() => resendInvitation.mutate({ partnerId: partner.id, reconcile: isUnresolved })}
+                          aria-label={isUnresolved
+                            ? `Retry invitation reconciliation for ${partner.fullName}`
+                            : `Resend invitation for ${partner.fullName}`}
+                        ><Send size={13} />{isUnresolved ? 'Retry reconciliation' : 'Resend'}</Button>
                       </>;
                     })()}
                     <Link href={`/partners/${partner.id}`}>

@@ -1,0 +1,466 @@
+DEVELOPMENT-ONLY FIX — INVITATION 404, RESEND, AND REGISTRATION STATUS
+
+Fix the invitation system for Yemait EduCore. Do not publish, deploy to production, change production data, or modify production configuration.
+
+The current development problems are:
+
+1. Partner invitation links open a 404 Page Not Found.
+2. School Admin invitation links open a 404 Page Not Found.
+3. Company Employee invitation links open a 404 Page Not Found.
+4. Other invited users are also affected by the invitation-link 404.
+5. Partner → Resend currently shows:
+   "Resend failed — The partner invitation was not finalized locally. Clerk did not confirm whether the request was accepted; check before retrying."
+6. Platform Owner must be able to resend School Administrator invitations.
+7. The School invitation currently exposes operational/invitation status information too early.
+8. A school must NOT appear operational merely because the Platform Owner entered the administrator's information or generated an invitation.
+9. The school's operational status should change only after the invited School Administrator actually completes registration through the invitation link and the backend successfully links the Clerk account to the school administrator role.
+
+1. FIRST: INVESTIGATE THE REAL ROOT CAUSE
+
+Do not simply hide the 404 or create a superficial frontend redirect.
+
+Trace the complete invitation lifecycle:
+
+Platform Owner creates invitation
+→ backend creates/records invitation
+→ Clerk invitation is created
+→ recipient receives email
+→ recipient clicks Clerk invitation URL
+→ application loads invitation acceptance route
+→ Clerk registration/sign-in completes
+→ backend verifies Clerk identity
+→ backend resolves the server-side invitation
+→ correct role/membership is created or activated
+→ correct dashboard is selected
+→ invitation becomes accepted
+→ school/partner/company employee status becomes Active/Registered.
+
+Determine exactly why the current emailed links result in 404.
+
+Check:
+
+- React/Vite routes
+- Express routes
+- Clerk invitation configuration
+- Clerk ticket handling
+- "/accept-invitation"
+- legacy invitation routes
+- Partner invitation routes
+- School Admin invitation routes
+- Company Employee invitation routes
+- Student/Parent invitation routes
+- authentication guards
+- role guards
+- frontend fallback routing
+- deployment/base-path handling
+- direct browser navigation to invitation URLs
+- whether Clerk's ticket parameter is being preserved
+- whether the application incorrectly requires authentication before processing an invitation ticket.
+
+Do not assume the previous canonical route fix actually works. Reproduce and fix the actual failure.
+
+2. CREATE ONE RELIABLE CANONICAL ACCEPTANCE FLOW
+
+Use one canonical application route:
+
+"/accept-invitation"
+
+It must be publicly reachable before the recipient has an application account.
+
+It must NOT be blocked by:
+
+- authenticated-only guards
+- existing role guards
+- school membership guards
+- Platform Owner guards
+- Parent/Student/Partner dashboard guards.
+
+It must correctly receive and preserve the Clerk invitation ticket/query parameters.
+
+The route must never render a blank page.
+
+If the invitation is invalid, expired, already used, or missing required context, display a proper human-readable error page explaining the problem.
+
+Never display a generic 404 for a valid invitation URL.
+
+3. HANDLE CLERK INVITATION TICKETS CORRECTLY
+
+Do not invent or expose invitation tokens.
+
+Use the actual Clerk invitation mechanism.
+
+When the recipient opens the emailed link:
+
+1. Preserve the Clerk invitation ticket.
+2. Preserve the server-side invitation reference where applicable.
+3. Allow the recipient to complete registration/sign-in.
+4. After Clerk confirms the identity, send the authenticated identity to the backend.
+5. Backend resolves the invitation from its own database/server-side invitation record.
+6. Backend verifies that the authenticated Clerk email/account corresponds to the intended invitation.
+7. Backend links the account to the intended role and school/company/partner scope.
+8. Mark the invitation accepted only after successful backend linking.
+
+Do NOT determine the final role from an arbitrary URL parameter.
+
+The backend invitation record must be authoritative.
+
+4. PARTNER INVITATION
+
+Fix the Partner flow completely.
+
+Required flow:
+
+Platform Owner creates Partner
+→ Partner record is Pending
+→ Clerk invitation is generated
+→ Partner receives invitation
+→ Partner clicks invitation
+→ "/accept-invitation" loads
+→ Partner completes registration
+→ backend links Clerk identity to Partner record
+→ Partner becomes Active
+→ Partner is redirected to Partner Dashboard.
+
+Legacy Partner invitation URLs must not produce 404.
+
+If an older Partner URL format exists, safely forward it to the canonical acceptance flow while preserving the necessary invitation context.
+
+Do not expose sensitive invitation tokens in the frontend unnecessarily.
+
+5. PARTNER RESEND MUST WORK
+
+Fix the exact error shown in the screenshot:
+
+«"Resend failed
+The partner invitation was not finalized locally.
+Clerk did not confirm whether the request was accepted; check before retrying."»
+
+The current implementation must not leave the application in an ambiguous state where Clerk may have accepted the request but the local database did not finalize it.
+
+Implement a safe resend operation with proper idempotency.
+
+Required behavior:
+
+- Only an active Platform Owner can resend Partner invitations.
+- Verify the Partner is still Pending.
+- Verify there is no already-linked active Partner account.
+- If an existing invitation is expired/invalid, safely create a replacement invitation.
+- If the previous Clerk request may have succeeded but local finalization failed, reconcile the state before creating another invitation.
+- Never create duplicate active Partner memberships.
+- Never accidentally revoke the only usable invitation before a replacement has been successfully created.
+- Store the new invitation reference correctly.
+- Audit the resend.
+- Return a clear success/failure response.
+
+If Clerk cannot confirm the request, do NOT pretend that the resend succeeded.
+
+Instead, safely reconcile the invitation state and provide a meaningful error.
+
+6. SCHOOL ADMIN INVITATION + RESEND
+
+Platform Owner must be able to:
+
+- Create a school with first administrator details.
+- Automatically generate the first School Admin invitation.
+- See the invitation as Pending.
+- Resend the invitation.
+- Correct the pending administrator email.
+- Resend after correcting the email.
+- Handle expired invitations.
+- Replace/supersede an old invitation safely.
+
+The Platform Owner must NOT need to create the first School Admin twice.
+
+Separate "Invite School Administrator" functionality can remain for additional administrators.
+
+7. SCHOOL OPERATIONAL STATUS — IMPORTANT
+
+Change the current school onboarding status behavior.
+
+When the Platform Owner enters:
+
+- School name
+- School information
+- First administrator name
+- First administrator email
+
+the school is created, but the school must NOT be considered operational/activated merely because the invitation was created.
+
+Do NOT display an "Operational" status as if the administrator has completed onboarding.
+
+The state should clearly distinguish:
+
+- School created
+- Invitation pending
+- Registration completed
+- Active/Operational
+
+The important rule is:
+
+Creating the school or sending the invitation does NOT make the school operational.
+
+The school becomes operational/active only after:
+
+1. The invited School Administrator clicks the invitation.
+2. The administrator successfully completes Clerk registration/sign-in.
+3. Backend verifies the Clerk identity.
+4. Backend successfully links the account to the intended School Admin role and school.
+5. The onboarding/activation transaction succeeds.
+
+Only then should the Platform Owner see the school as operational/active.
+
+8. REMOVE THE CURRENT INVITATION DETAIL FROM THE OPERATIONAL STATUS SECTION
+
+The Platform Owner's school creation/onboarding interface currently exposes invitation/operational details too early.
+
+Remove the invitation-detail information from the Operational Status section.
+
+Do not show something implying:
+
+"Operational because invitation was created."
+
+Instead, keep invitation information in the appropriate administrator/invitation area.
+
+Operational status should reflect actual onboarding completion, not invitation dispatch.
+
+Recommended conceptual display:
+
+School Status
+
+- Pending Administrator Registration
+- Active
+
+And separately:
+
+Administrator Invitation
+
+- Pending
+- Accepted
+- Expired
+- Resend
+- Edit Email
+
+Do not mix these two concepts.
+
+9. COMPANY EMPLOYEE INVITATIONS
+
+Apply the same canonical acceptance system to:
+
+- Company Accountant
+- Device Activation Officer
+
+Flow:
+
+Owner creates employee
+→ selects internal role
+→ invitation sent
+→ employee clicks link
+→ "/accept-invitation"
+→ registration
+→ backend links employee to role
+→ employee becomes Active
+→ employee receives the restricted role-specific dashboard.
+
+Do not give internal employees the full Platform Owner dashboard.
+
+10. ROLE-BASED FINAL REDIRECTION
+
+After successful invitation acceptance, determine the destination from the backend-authorized active role.
+
+Required destinations:
+
+- School Admin → School Admin Dashboard
+- Teacher → Teacher Dashboard
+- School Accountant → School Finance Dashboard
+- Parent → Parent Portal
+- Student → Student Dashboard
+- Partner → Partner Dashboard
+- Company Accountant → Company Finance Dashboard
+- Device Activation Officer → NFC Activation Dashboard
+- Platform Owner → Platform Owner Dashboard
+
+Do not trust a role supplied by the invitation URL.
+
+11. INVITATION STATUS
+
+Use these concepts separately:
+
+Invitation status
+
+- Pending
+- Accepted
+- Expired
+- Superseded
+- Cancelled
+
+Account/role status
+
+- Pending registration
+- Active
+- Suspended
+
+School operational status
+
+- Pending Administrator Registration
+- Active
+
+Do not mark an invitation as Accepted merely because the invitation email was dispatched.
+
+Do not mark a school Active merely because an invitation was dispatched.
+
+12. OWNER UI
+
+Verify all Platform Owner controls:
+
+School
+
+- Add School
+- View School
+- View Administrator Invitation Status
+- Edit pending administrator email
+- Resend invitation
+- View registration status
+
+Partner
+
+- Invite Partner
+- Edit pending email
+- Resend invitation
+- View details
+- View registration/activation status
+
+Company Employee
+
+- Create Employee
+- Select Company Accountant or Device Activation Officer
+- Resend invitation
+- Edit pending email
+- View activation status
+
+All controls must work from the actual Owner UI.
+
+13. SECURITY
+
+Maintain all existing security requirements.
+
+Invitation acceptance must verify:
+
+- Clerk authenticated identity
+- invited email/account
+- server-side invitation record
+- intended school/company/partner scope
+- invitation status
+- expiration/supersession
+- role eligibility.
+
+A user must not be able to modify URL parameters to become:
+
+- Platform Owner
+- another school's administrator
+- another partner
+- Company Accountant
+- Device Activation Officer
+- another student
+- another parent.
+
+Do not expose invitation secrets, Clerk tickets, or activation credentials in logs or API responses.
+
+14. TEST THE ACTUAL ROUTES
+
+Create automated tests for:
+
+- "/accept-invitation"
+- valid invitation ticket
+- invalid ticket
+- expired ticket
+- missing ticket
+- Partner invitation
+- School Admin invitation
+- Company Accountant invitation
+- Device Activation Officer invitation
+- legacy Partner invitation URL
+- unauthenticated access to acceptance page
+- authenticated recipient completing acceptance
+- wrong email/account
+- already-used invitation
+- superseded invitation
+- resend
+- email correction + resend
+- duplicate resend
+- school operational status before registration
+- school operational status after successful registration
+- Partner Pending → Active
+- Employee Pending → Active.
+
+15. REAL BROWSER VERIFICATION
+
+Do not stop at API tests.
+
+Use the development browser to verify:
+
+1. Create a fresh Partner invitation.
+2. Open the actual invitation URL.
+3. Confirm it does NOT return 404.
+4. Create a fresh School Admin invitation.
+5. Open the actual invitation URL.
+6. Confirm it does NOT return 404.
+7. Create a fresh Company Employee invitation.
+8. Open the actual invitation URL.
+9. Confirm it does NOT return 404.
+10. Verify the acceptance screen loads instead of blank/404.
+11. Verify resend works from Owner UI.
+12. Verify school remains Pending Administrator Registration before acceptance.
+13. Complete a real development registration.
+14. Verify the correct dashboard.
+15. Verify Owner sees the account as Active only after successful registration.
+
+Do not claim end-to-end invitation acceptance is fixed unless the actual recipient flow has been tested.
+
+16. IMPORTANT — DO NOT BREAK EXISTING SYSTEM
+
+Preserve:
+
+- Clerk authentication
+- existing RBAC
+- existing school/partner/company employee records
+- existing NFC activation
+- Platform Owner NFC access
+- Company Accountant separation from School Accountant
+- student photo/e-ID functionality
+- permanent e-ID card rules
+- existing dashboards
+- existing finance functionality
+- existing communication system
+- existing audit logs.
+
+Do not change production.
+
+Do not run production migrations.
+
+Do not publish.
+
+Do not modify production Clerk configuration.
+
+17. FINAL VERIFICATION REPORT
+
+After implementation, report:
+
+- exact root cause of the 404
+- exact root cause of Partner resend failure
+- files changed
+- routes changed
+- backend changes
+- frontend changes
+- invitation lifecycle changes
+- school status changes
+- automated test count
+- frontend test count
+- typecheck result
+- build result
+- real browser results
+- whether actual recipient registration was verified
+- whether Partner resend was verified
+- whether School Admin resend was verified
+- whether production was untouched.
+
+If any real recipient step cannot be verified, state that clearly instead of claiming it works.

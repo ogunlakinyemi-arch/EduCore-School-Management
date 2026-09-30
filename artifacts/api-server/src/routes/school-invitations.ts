@@ -5,6 +5,7 @@ import { AuthError, type Role, type UserContext } from "../middlewares/auth";
 import { logger } from "../lib/logger";
 import { queueCommunicationNotification } from "../services/communication-service";
 import { commitInvitationWithRecovery } from "./partner-commit-recovery";
+import { invitationRedirect } from "./invitation-redirect";
 
 export const INVITABLE_SCHOOL_ROLES = [
   "SCHOOL_ADMIN",
@@ -129,6 +130,41 @@ async function auditInvitation(
       }),
     ],
   );
+}
+
+async function activatePendingSchool(
+  client: any,
+  schoolId: number,
+  actor: { name: string; role: string; userId: number; clerkUserId: string },
+  membershipId: number,
+  role: InvitationRole,
+  claimId: string,
+  activationSource: "CLERK_INVITATION" | "VERIFIED_EXISTING_ACCOUNT",
+) {
+  const activated = await client.query(
+    `UPDATE schools SET status='active'
+     WHERE id=$1 AND status='pending'
+     RETURNING id`,
+    [schoolId],
+  );
+  if (!activated.rows[0]) return false;
+  await client.query(
+    `INSERT INTO audit_logs
+      ("user",role,actor_user_id,clerk_user_id,school_id,action,module,record_id,
+       severity,event_type,result,metadata)
+     VALUES($1,$2,$3,$4,$5,'Activated school after administrator verification',
+       'Security',$6,'info','SCHOOL_ACTIVATED','SUCCESS',$7)`,
+    [
+      actor.name,
+      actor.role,
+      actor.userId,
+      actor.clerkUserId,
+      schoolId,
+      membershipId,
+      JSON.stringify({ role, activationSource, claimId }),
+    ],
+  );
+  return true;
 }
 
 async function queueSchoolAccountNotification(input: {
@@ -368,7 +404,11 @@ async function provisionExistingAccount(
   input: InviteeInput,
   user: { id: number; clerkUserId: string },
   actor: UserContext,
+  claim: { claimId: string; emailProof: string },
 ) {
+  if (!/^[0-9a-f-]{36}$/i.test(claim.claimId) || !matchesEmailProof(input.email, claim.emailProof)) {
+    throw new AuthError(403, "This invitation claim does not match the verified account");
+  }
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -406,6 +446,27 @@ async function provisionExistingAccount(
       "USER_ROLE_CHANGED",
       membership.rows[0].id,
     );
+    if (input.role === "SCHOOL_ADMIN") {
+      const actorRole = actor.roles.find((item) =>
+        item.schoolId === input.schoolId && item.role === "SCHOOL_ADMIN"
+      )?.role ?? actor.roles.find((item) =>
+        item.role === "PLATFORM_OWNER" && item.schoolId === null
+      )?.role ?? "AUTHENTICATED";
+      await activatePendingSchool(
+        client,
+        input.schoolId,
+        {
+          name: [actor.user.firstName, actor.user.lastName].filter(Boolean).join(" ") || actor.user.email,
+          role: actorRole,
+          userId: actor.user.id,
+          clerkUserId: actor.user.clerkUserId,
+        },
+        membership.rows[0].id,
+        input.role,
+        claim.claimId,
+        "VERIFIED_EXISTING_ACCOUNT",
+      );
+    }
     await client.query("COMMIT");
     await queueSchoolAccountNotification({
       recipientUserId: user.id,
@@ -475,7 +536,10 @@ export async function createSchoolInvitation(input: InviteeInput, actor: UserCon
     if (!verifiedEmail || verifiedEmail !== email) {
       throw new AuthError(403, "The requested email must be the existing account's primary verified Clerk email");
     }
-    return provisionExistingAccount(normalizedInput, localUsers.rows[0], actor);
+    return provisionExistingAccount(normalizedInput, localUsers.rows[0], actor, {
+      claimId: randomUUID(),
+      emailProof: emailProof(verifiedEmail),
+    });
   }
 
   const claimId = randomUUID();
@@ -500,7 +564,7 @@ export async function createSchoolInvitation(input: InviteeInput, actor: UserCon
       expiresInDays: INVITATION_DAYS,
       ignoreExisting: false,
       notify: true,
-      redirectUrl: "/accept-invitation",
+      redirectUrl: invitationRedirect("/accept-invitation"),
       publicMetadata: metadata,
     });
   } catch (error) {
@@ -593,7 +657,7 @@ export async function createSchoolWithAdministrator(input: {
     name: input.school.name.trim(),
     city: input.school.city.trim(),
     state: input.school.state.trim(),
-    status: input.school.status?.trim() || "active",
+    requestedStatus: input.school.status?.trim() || "active",
   };
   const email = normalizeEmail(input.administrator.email);
   const fullName = input.administrator.fullName.trim().replace(/\s+/g, " ");
@@ -602,7 +666,7 @@ export async function createSchoolWithAdministrator(input: {
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new AuthError(400, "A valid school and first administrator name and email are required");
   }
-  if (!["active", "inactive", "suspended"].includes(school.status)) {
+  if (!["active", "inactive", "suspended"].includes(school.requestedStatus)) {
     throw new AuthError(400, "Invalid school status");
   }
 
@@ -618,8 +682,8 @@ export async function createSchoolWithAdministrator(input: {
     );
     const created = await client.query(
       `INSERT INTO schools(code,name,city,state,status)
-       VALUES($1,$2,$3,$4,$5) RETURNING id`,
-      [school.code, school.name, school.city, school.state, school.status],
+       VALUES($1,$2,$3,$4,'pending') RETURNING id`,
+      [school.code, school.name, school.city, school.state],
     );
     schoolId = created.rows[0]?.id;
     if (!schoolId) throw new AuthError(503, "School could not be created");
@@ -630,7 +694,7 @@ export async function createSchoolWithAdministrator(input: {
       expiresInDays: INVITATION_DAYS,
       ignoreExisting: false,
       notify: true,
-      redirectUrl: "/accept-invitation",
+      redirectUrl: invitationRedirect("/accept-invitation"),
       publicMetadata: {
         [METADATA_KEY]: {
           version: 1,
@@ -877,7 +941,7 @@ export async function replaceSchoolAdminInvitation(input: {
       expiresInDays: INVITATION_DAYS,
       ignoreExisting: false,
       notify: true,
-      redirectUrl: "/accept-invitation",
+      redirectUrl: invitationRedirect("/accept-invitation"),
       publicMetadata: metadata,
     });
   } catch (error) {
@@ -1187,6 +1251,22 @@ export async function activateAcceptedSchoolInvitation(userId: number, clerkUser
             JSON.stringify({ role: invite.role, activationSource: "CLERK_INVITATION", claimId: invite.claimId }),
           ],
         );
+        if (invite.role === "SCHOOL_ADMIN") {
+          await activatePendingSchool(
+            client,
+            invite.schoolId,
+            {
+              name: [firstName, lastName].filter(Boolean).join(" ") || email,
+              role: invite.role,
+              userId,
+              clerkUserId,
+            },
+            membership.rows[0].id,
+            invite.role,
+            invite.claimId,
+            "CLERK_INVITATION",
+          );
+        }
       }
     } else if (existing.rows[0].status !== "ACTIVE") {
       // A prior explicit deactivation wins over stale accepted-invitation metadata.

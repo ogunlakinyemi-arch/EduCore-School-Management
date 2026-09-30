@@ -3,6 +3,7 @@ import { Router, type NextFunction, type Request } from "express";
 import { clerkClient } from "@clerk/express";
 import { pool } from "@workspace/db";
 import { commitInvitationWithRecovery } from "./partner-commit-recovery";
+import { invitationRedirect } from "./invitation-redirect";
 import {
   AuthError,
   assertRoles,
@@ -88,7 +89,7 @@ export async function createInternalEmployeeInvitation(
       expiresInDays: INVITATION_DAYS,
       ignoreExisting: false,
       notify: true,
-      redirectUrl: "/accept-invitation",
+      redirectUrl: invitationRedirect("/accept-invitation"),
       publicMetadata,
     });
   } catch (error) {

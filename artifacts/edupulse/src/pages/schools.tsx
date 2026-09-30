@@ -158,6 +158,16 @@ async function resendSchoolAdminInvitation(schoolId: number, invitationId: numbe
 
 const schoolAdminInvitationsQueryKey = (schoolId: number) => ['school-admin-invitations', schoolId];
 
+function isPendingAdministratorRegistration(school: any) {
+  return String(school?.status ?? '').toLowerCase() === 'pending';
+}
+
+function operationalStatusLabel(school: any) {
+  return isPendingAdministratorRegistration(school)
+    ? 'Pending Administrator Registration'
+    : school?.status;
+}
+
 export function SchoolsPage() {
   const [search, setSearch] = useState(''); 
   const [status, setStatus] = useState('all'); 
@@ -269,7 +279,10 @@ export function SchoolsPage() {
                 : <span className="text-[hsl(var(--muted-foreground))]">Direct / unassigned</span>}
               <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Joined {date(school.createdAt)}</div>
             </div>
-            <div className="space-y-1"><StatusPill value={school.status} /><StatusPill value={school.subscriptionStatus} /></div>
+            <div className="space-y-1" aria-label="School and subscription status">
+              <StatusPill value={operationalStatusLabel(school)} />
+              <StatusPill value={school.subscriptionStatus} />
+            </div>
             <Button variant="quiet" onClick={() => setModal(school)} testId={`button-edit-school-${school.id}`}>
               <Pencil size={15} />Edit
             </Button>
@@ -304,14 +317,21 @@ function SchoolForm({ initial, onDone, onCancel }: { initial?: any; onDone: () =
   const [inviting, setInviting] = useState(false);
   const [invitationError, setInvitationError] = useState('');
   const [invitationNotice, setInvitationNotice] = useState('');
+  const [createdSchoolId, setCreatedSchoolId] = useState<number | null>(null);
   const [creationNeedsReview, setCreationNeedsReview] = useState(false);
+  const isPendingRegistration = !!initial && isPendingAdministratorRegistration(initial);
+  const createdSchoolQuery = useQuery({
+    queryKey: ['platform-school-overview', createdSchoolId],
+    queryFn: () => fetchOwnerSchoolOverview(createdSchoolId!),
+    enabled: createdSchoolId !== null,
+  });
   
   const [form, setForm] = useState({ 
     code: initial?.code ?? '',
     name: initial?.name ?? '', 
     city: initial?.city ?? '', 
     state: initial?.state ?? '', 
-    status: initial?.status ?? 'active' 
+    status: initial?.status ?? ''
   });
   
   const pending = update.isPending || inviting;
@@ -325,10 +345,14 @@ function SchoolForm({ initial, onDone, onCancel }: { initial?: any; onDone: () =
       if (creationNeedsReview) return;
       setInviting(true);
       try {
-        const result = await createSchoolWithAdministrator(form, administrator);
-        setInvitationNotice(
-          `School ${result.schoolId} was created. Clerk accepted the administrator invitation request; inbox delivery is not verified.`,
-        );
+        const result = await createSchoolWithAdministrator({
+          code: form.code,
+          name: form.name,
+          city: form.city,
+          state: form.state,
+        }, administrator);
+        setCreatedSchoolId(result.schoolId);
+        setInvitationNotice('Clerk accepted the administrator invitation request; inbox delivery is not verified.');
         setCreationNeedsReview(true);
         queryClient.invalidateQueries({ queryKey: ['platform-school-directory'] });
       } catch (error) {
@@ -363,13 +387,29 @@ function SchoolForm({ initial, onDone, onCancel }: { initial?: any; onDone: () =
           <input required value={form.state} onChange={e => setForm({ ...form, state: e.target.value })} placeholder="Lagos" data-testid="input-school-state" />
         </Field>
       </div>
-      <Field label="Operational status">
-        <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} data-testid="select-school-status">
-          <option value="active">Active</option>
-          <option value="suspended">Suspended</option>
-          <option value="inactive">Inactive</option>
-        </select>
-      </Field>
+      {initial && !isPendingRegistration ? (
+        <Field label="Operational status">
+          <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} data-testid="select-school-status">
+            <option value="active">Active</option>
+            <option value="suspended">Suspended</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </Field>
+      ) : initial ? (
+        <section aria-label="Operational status" data-testid="operational-school-status" className="rounded-xl border border-[hsl(var(--border))] p-4">
+          <div className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Operational status</div>
+          <p className="mt-1 text-sm font-bold">{operationalStatusLabel(initial)}</p>
+        </section>
+      ) : null}
+      {!initial && createdSchoolId !== null && createdSchoolQuery.data && (
+        <section aria-label="Operational status" data-testid="operational-school-status" className="rounded-xl border border-[hsl(var(--border))] p-4">
+          <div className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Operational status</div>
+          <p className="mt-1 text-sm font-bold">{operationalStatusLabel(createdSchoolQuery.data)}</p>
+        </section>
+      )}
+      {!initial && createdSchoolId !== null && createdSchoolQuery.isError && (
+        <p role="alert" className="text-sm text-[hsl(var(--destructive))]">Could not confirm operational status. Refresh the school directory to check the latest backend status.</p>
+      )}
       {!initial && (
         <div className="grid gap-5 border-t border-[hsl(var(--border))] pt-5 sm:grid-cols-2">
           <Field label="School Administrator name">
@@ -387,7 +427,14 @@ function SchoolForm({ initial, onDone, onCancel }: { initial?: any; onDone: () =
         </Button>
       </div>
       {invitationError && <p role="alert" className="text-sm font-medium text-[hsl(var(--destructive))]">{invitationError}</p>}
-      {invitationNotice && <p role="status" className="text-sm font-medium text-[hsl(var(--primary))]">{invitationNotice}</p>}
+      {invitationNotice && (
+        <section aria-label="Administrator invitation" className="rounded-xl border border-[hsl(var(--border))] p-4">
+          <div className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Administrator invitation</div>
+          <p role="status" className="mt-1 text-sm font-medium text-[hsl(var(--primary))]">
+            {createdSchoolId ? `School ${createdSchoolId} was created. ` : ''}{invitationNotice}
+          </p>
+        </section>
+      )}
       {update.isError && <p className="text-sm font-medium text-[hsl(var(--destructive))]">Could not save this school. Check the fields and try again.</p>}
     </form>
   );
@@ -632,7 +679,7 @@ export function SchoolOverview() {
           
           <div className="grid gap-4 sm:grid-cols-2">
             <Info label="School code" value={<span className="font-mono">{school?.code}</span>} />
-            <Info label="School status" value={<StatusPill value={school?.status} />} />
+            <Info label="Operational status" value={<span data-testid="operational-school-status"><StatusPill value={isPlatformOwner ? operationalStatusLabel(school) : school?.status} /></span>} />
             <Info label="Subscription health" value={<StatusPill value={school?.subscriptionStatus} />} />
             <Info label={isPlatformOwner ? "Active staff" : "Staff on record"} value={isPlatformOwner ? data?.staffCount ?? 0 : school?.staffCount ?? 0} />
             {isPlatformOwner && <Info label="Parents" value={data?.parentCount ?? 0} />}

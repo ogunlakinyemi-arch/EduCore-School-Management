@@ -311,7 +311,7 @@ router.post("/schools", async (req, res) => {
       RETURNING id
     `, [code, body.name, body.city, body.state, body.registrationNumber ?? null, body.address ?? null,
       body.lga ?? null, body.phone ?? null, body.email ?? null, body.website ?? null, body.logoUrl ?? null,
-      body.schoolType ?? null, body.status ?? "active"]);
+      body.schoolType ?? null, body.status === "active" ? "pending" : body.status ?? "pending"]);
     const school = await pool.query(`SELECT ${schoolFields}, ${administrators} FROM schools s WHERE s.id = $1`, [result.rows[0].id]);
     await audit(req, null, "Created school", "Schools", result.rows[0].id, "info", "SCHOOL_CREATED");
     res.status(201).json({ ...school.rows[0], createdAt: dateString(school.rows[0].createdAt) });
@@ -348,10 +348,25 @@ router.patch("/schools/:schoolId", async (req, res) => {
       } as Record<string, string>)[key] ?? key, value])),
       logo: body.logoUrl ?? current.rows[0].logo };
     const result = await pool.query(`
-      UPDATE schools SET code=$1,name=$2,city=$3,state=$4,registration_number=$5,address=$6,lga=$7,phone=$8,
-        email=$9,website=$10,logo=$11,school_type=$12,status=$13,updated_at=NOW() WHERE id=$14 RETURNING id
+      UPDATE schools s SET code=$1,name=$2,city=$3,state=$4,registration_number=$5,address=$6,lga=$7,phone=$8,
+        email=$9,website=$10,logo=$11,school_type=$12,status=$13,updated_at=NOW()
+      WHERE s.id=$14 AND ($13 <> 'active' OR EXISTS (
+        SELECT 1
+        FROM school_memberships sm
+        JOIN app_users au ON au.id = sm.user_id
+        WHERE sm.school_id = s.id
+          AND sm.role = 'SCHOOL_ADMIN'
+          AND sm.status = 'ACTIVE'
+          AND au.status = 'ACTIVE'
+      ))
+      RETURNING s.id
     `, [next.code,next.name,next.city,next.state,next.registration_number,next.address,next.lga,next.phone,
       next.email,next.website,next.logo,next.school_type,next.status,params.schoolId]);
+    if (!result.rows[0]) {
+      return res.status(409).json({
+        error: "School cannot be activated until an active School Admin is linked",
+      });
+    }
     const school = await pool.query(`SELECT ${schoolFields}, ${administrators} FROM schools s WHERE s.id = $1`, [result.rows[0].id]);
     await audit(req, params.schoolId, "Updated school", "Schools", params.schoolId, "info", "SCHOOL_UPDATED");
     res.json({ ...school.rows[0], createdAt: dateString(school.rows[0].createdAt) });
@@ -365,9 +380,25 @@ router.patch("/schools/:schoolId/status", async (req, res) => {
     const params = UpdateSchoolStatusParams.parse(req.params);
     const body = UpdateSchoolStatusBody.parse(req.body);
     assertRoles(req, ["PLATFORM_OWNER"]);
-    const result = await pool.query(`UPDATE schools SET status = $1, updated_at = NOW()
-      WHERE id = $2 RETURNING id`, [body.status, params.schoolId]);
-    if (!result.rows[0]) { res.status(404).json({ error: "School not found" }); return; }
+    const result = await pool.query(`UPDATE schools s SET status = $1, updated_at = NOW()
+      WHERE s.id = $2
+        AND ($1 <> 'active' OR EXISTS (
+          SELECT 1
+          FROM school_memberships sm
+          JOIN app_users au ON au.id = sm.user_id
+          WHERE sm.school_id = s.id
+            AND sm.role = 'SCHOOL_ADMIN'
+            AND sm.status = 'ACTIVE'
+            AND au.status = 'ACTIVE'
+        ))
+      RETURNING s.id`, [body.status, params.schoolId]);
+    if (!result.rows[0]) {
+      const school = await pool.query(`SELECT id FROM schools WHERE id = $1`, [params.schoolId]);
+      if (!school.rows[0]) return res.status(404).json({ error: "School not found" });
+      return res.status(409).json({
+        error: "School cannot be activated until an active School Admin is linked",
+      });
+    }
     const school = await pool.query(`SELECT ${schoolFields}, ${administrators} FROM schools s WHERE s.id = $1`, [params.schoolId]);
     await audit(req, params.schoolId, `Changed school status to ${body.status}`, "Schools", params.schoolId, "info", "SCHOOL_STATUS_CHANGED");
     res.json({ ...school.rows[0], createdAt: dateString(school.rows[0].createdAt) });

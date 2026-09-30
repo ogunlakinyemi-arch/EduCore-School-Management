@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const fixtures = vi.hoisted(() => ({
   owner: true,
+  schoolStatus: 'pending',
+  administrators: [] as Array<{ id: number; name: string; email: string }>,
   invalidateQueries: vi.fn(),
   invitations: [
     {
@@ -55,8 +57,8 @@ vi.mock('@tanstack/react-query', () => ({
     ? { data: { schoolId: 12, role: 'SCHOOL_ADMIN', invitations: fixtures.invitations }, isLoading: false, isError: false, isFetching: false, refetch: vi.fn() }
     : { data: {
         id: 12, code: 'NORTH-12', name: 'North School', city: 'Lagos', state: 'Lagos',
-        status: 'active', subscriptionStatus: 'active', createdAt: '2024-01-01T00:00:00.000Z',
-        administrators: [], partnerReferral: null,
+        status: fixtures.schoolStatus, subscriptionStatus: 'active', createdAt: '2024-01-01T00:00:00.000Z',
+        administrators: fixtures.administrators, partnerReferral: null,
       }, isLoading: false, isError: false, refetch: vi.fn() },
 }));
 
@@ -116,6 +118,8 @@ describe('Platform Owner school administrator invitation status', () => {
     document.body.appendChild(host);
     root = createRoot(host);
     fixtures.owner = true;
+    fixtures.schoolStatus = 'pending';
+    fixtures.administrators = [];
     fixtures.invalidateQueries.mockReset();
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -149,6 +153,36 @@ describe('Platform Owner school administrator invitation status', () => {
     const activeRow = [...host.querySelectorAll('li')].find(row => row.textContent?.includes('active@school.edu'))!;
     expect(activeRow.querySelector('button')).toBeNull();
     expect([...host.querySelectorAll('button')].some(button => button.textContent?.includes('Edit email'))).toBe(true);
+  });
+
+  it('shows Pending Administrator Registration until the backend reports Active', async () => {
+    await renderPage();
+
+    const operationalStatus = host.querySelector('[data-testid="operational-school-status"]')!;
+    expect(operationalStatus.textContent).toBe('Pending Administrator Registration');
+
+    fixtures.schoolStatus = 'active';
+    fixtures.administrators = [{ id: 1, name: 'Jordan Doe', email: 'incorrect@school.edu' }];
+    await renderPage();
+    expect(host.querySelector('[data-testid="operational-school-status"]')?.textContent).toBe('active');
+  });
+
+  it('keeps an established inactive school labeled Inactive without an administrator', async () => {
+    fixtures.schoolStatus = 'inactive';
+    await renderPage();
+
+    expect(host.querySelector('[data-testid="operational-school-status"]')?.textContent).toBe('inactive');
+  });
+
+  it('keeps invitation status and delivery details outside Operational status', async () => {
+    await renderPage();
+
+    const operationalStatus = host.querySelector('[data-testid="operational-school-status"]')!;
+    const invitationArea = host.querySelector('[aria-label="School administrator invitations"]')!;
+    expect(operationalStatus.textContent).toBe('Pending Administrator Registration');
+    expect(operationalStatus.textContent).not.toContain('PENDING');
+    expect(invitationArea.textContent).toContain('PENDING');
+    expect(invitationArea.textContent).toContain('Administrator invitation status');
   });
 
   it('lets the Owner correct pending email and resend pending or expired invitations', async () => {
