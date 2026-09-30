@@ -1,6 +1,7 @@
 import express from "express";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
+import { PUBLIC_PRODUCTION_ORIGIN } from "./invitation-redirect";
 
 const state = vi.hoisted(() => ({
   context: {
@@ -181,7 +182,9 @@ describe("Partner invitation dispatch and activation", () => {
       ignoreExisting: false,
     }));
     const redirectUrl = request.redirectUrl as string;
-    expect(redirectUrl).toMatch(/^\/accept-invitation\?partnerInvitation=[A-Za-z0-9_-]{43}$/);
+    expect(new URL(redirectUrl).origin).toBe(PUBLIC_PRODUCTION_ORIGIN);
+    expect(new URL(redirectUrl).pathname + new URL(redirectUrl).search)
+      .toMatch(/^\/accept-invitation\?partnerInvitation=[A-Za-z0-9_-]{43}$/);
     const opaqueToken = new URL(redirectUrl, "https://example.test").searchParams.get("partnerInvitation")!;
     expect(JSON.stringify(result)).not.toContain(opaqueToken);
     expect(JSON.stringify(state.queries)).not.toContain(opaqueToken);
@@ -295,7 +298,10 @@ describe("Partner invitation dispatch and activation", () => {
     expect(state.revokeInvitation).toHaveBeenCalledWith("clerk_old");
     expect(state.queries.some(({ sql, values }) =>
       sql.includes("SET status='REVOKED',revoked_at=NOW()") && (values[0] as number[]).includes(9))).toBe(true);
-    expect(state.createInvitation.mock.calls[0][0].redirectUrl).toMatch(
+    expect(new URL(state.createInvitation.mock.calls[0][0].redirectUrl).origin)
+      .toBe(PUBLIC_PRODUCTION_ORIGIN);
+    expect(new URL(state.createInvitation.mock.calls[0][0].redirectUrl).pathname +
+      new URL(state.createInvitation.mock.calls[0][0].redirectUrl).search).toMatch(
       /^\/accept-invitation\?partnerInvitation=[A-Za-z0-9_-]{43}$/,
     );
     expect(state.createInvitation.mock.calls[0][0].ignoreExisting).toBe(true);
@@ -735,7 +741,10 @@ describe("Partner invitation dispatch and activation", () => {
     });
     expect(result.invitationUrl).toBeUndefined();
     expect(result.emailSent).toBeUndefined();
-    expect(state.createInvitation.mock.calls[0][0].redirectUrl).toMatch(
+    expect(new URL(state.createInvitation.mock.calls[0][0].redirectUrl).origin)
+      .toBe(PUBLIC_PRODUCTION_ORIGIN);
+    expect(new URL(state.createInvitation.mock.calls[0][0].redirectUrl).pathname +
+      new URL(state.createInvitation.mock.calls[0][0].redirectUrl).search).toMatch(
       /^\/accept-invitation\?partnerInvitation=[A-Za-z0-9_-]{43}$/,
     );
   });
@@ -810,7 +819,7 @@ describe("Partner invitation dispatch and activation", () => {
       const result = await response.json() as { school: { status: string } };
       expect(result.school.status).toBe("pending");
       const clerkRequest = state.createInvitation.mock.calls[0][0];
-      expect(clerkRequest.redirectUrl).toBe("/accept-invitation");
+      expect(clerkRequest.redirectUrl).toBe(`${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`);
       const claim = clerkRequest.publicMetadata.edupulseSchoolInvitation;
       expect(claim).toMatchObject({ schoolId: 33, role: "SCHOOL_ADMIN", emailProof: expect.any(String) });
       const audit = state.queries.find(({ sql }) => sql.includes("'SCHOOL_ADMIN_INVITED'"));

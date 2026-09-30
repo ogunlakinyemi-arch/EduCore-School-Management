@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { PUBLIC_PRODUCTION_ORIGIN } from "./invitation-redirect";
 import express from "express";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -171,7 +172,7 @@ describe("internal employee invitation and activation", () => {
     expect(invitationCreate).toHaveBeenCalledWith(expect.objectContaining({
       emailAddress: "person@example.test",
       notify: true,
-      redirectUrl: "/accept-invitation",
+      redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
       publicMetadata: expect.objectContaining({
         edupulseInternalEmployeeInvitation: expect.objectContaining({
           employeeId: 11, role: "DEVICE_ACTIVATION_OFFICER", schoolId: 4,

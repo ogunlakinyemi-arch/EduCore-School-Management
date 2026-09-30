@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHmac } from "node:crypto";
+import { PUBLIC_PRODUCTION_ORIGIN } from "./invitation-redirect";
 
 const mocks = vi.hoisted(() => ({
   poolQuery: vi.fn(),
@@ -144,7 +145,7 @@ describe("school invitations", () => {
       expiresInDays: 7,
       ignoreExisting: false,
       notify: true,
-      redirectUrl: "/accept-invitation",
+      redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
     }));
     const metadata = mocks.createInvitation.mock.calls[0][0].publicMetadata;
     expect(metadata.edupulseSchoolInvitation).toEqual(expect.objectContaining({
@@ -506,7 +507,7 @@ describe("school invitations", () => {
     expect(mocks.createInvitation).toHaveBeenCalledWith(expect.objectContaining({
       emailAddress: "first.admin@example.test",
       notify: true,
-      redirectUrl: "/accept-invitation",
+      redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
     }));
     expect(mocks.clientQuery).toHaveBeenCalledWith(
       expect.stringContaining("VALUES($1,$2,$3,$4,'pending')"),
