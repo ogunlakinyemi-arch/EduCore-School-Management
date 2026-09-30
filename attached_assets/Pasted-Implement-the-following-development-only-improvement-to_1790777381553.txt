@@ -1,0 +1,114 @@
+Implement the following development-only improvement to the Yemait EduCore NFC Card Activation workflow.
+
+Objective
+
+When a Device Activation Officer assigns a provisional/physical NFC ID card to a student, the officer should NOT manually enter the Hardware UID or Student ID when those relationships can already be determined by the system.
+
+Required workflow
+
+1. The Device Activation Officer selects the school.
+
+2. The system loads all NFC devices currently assigned to that school.
+
+3. Hardware UID must be automatically populated from the selected school/device.
+   
+   - Hardware UID must be read-only.
+   - Do not require manual typing.
+   - If the school has multiple active NFC devices, provide a device selector.
+   - Only devices assigned to the selected school may appear.
+
+4. Provide a searchable Student dropdown.
+   
+   - Only students belonging to the selected school may appear.
+   - Display student name, Student ID and class/section where useful.
+   - Do not require the officer to manually enter Student ID.
+
+5. Provide an NFC Card Number field.
+   
+   - This is the physical NFC card identifier that the officer enters or scans.
+   - Validate that the card is not already actively assigned to another student.
+   - Prevent duplicate active card assignments.
+
+6. When the officer submits the assignment, the backend must independently validate:
+   
+   - selected device belongs to the selected school;
+   - selected student belongs to the selected school;
+   - NFC card is available for assignment;
+   - no conflicting active assignment exists;
+   - the officer has permission to perform the activation.
+
+7. Create the NFC assignment using the existing NFC-card/device relationship and preserve activation history/audit history.
+
+8. After successful assignment, immediately update the student's e-ID card data.
+
+E-ID card
+
+The generated student e-ID must use the latest student information and display, where configured:
+
+- School logo
+- Student passport/photo
+- Student full name
+- Student ID
+- Class/section
+- Academic/session information where applicable
+- NFC card number/reference
+- Any existing approved e-ID fields
+- QR/reference information if already supported by the existing design
+
+The student's uploaded passport/photo must be used on the e-ID card.
+
+If the student's photo is changed later, newly generated e-ID cards must use the latest approved photo.
+
+Printing workflow
+
+After successful NFC assignment:
+
+1. Show a confirmation that the card was successfully assigned.
+2. Show the updated e-ID card preview.
+3. Provide a clear "Generate/Send for Printing" action.
+4. The printing output must use the latest persisted student, school, photo and NFC assignment data.
+5. Do not require the officer to re-enter any student or hardware information.
+
+Security and tenancy
+
+Do not weaken existing tenant isolation.
+
+The server must never trust school/device/student IDs supplied only by the frontend.
+
+Enforce school ownership/authorization server-side for every assignment.
+
+A device belonging to School A must not be assignable to a student in School B.
+
+A student belonging to School A must not be assignable through a School B device.
+
+An NFC card already actively assigned to one student must not be silently reassigned. Use the existing replacement/deactivation workflow if one exists.
+
+Maintain the existing audit trail and activation history.
+
+UI
+
+Make the activation form simple:
+
+School
+↓
+NFC Device / Hardware UID (automatically populated)
+↓
+Student (searchable dropdown)
+↓
+NFC Card Number
+↓
+Assign Card
+↓
+Updated E-ID Preview
+↓
+Generate/Send for Printing
+
+Do not redesign unrelated dashboards.
+
+Do not modify production.
+
+Do not alter the migration ledger or perform production migrations.
+
+Before changing code, inspect the existing NFC device, NFC card, student, e-ID and activation models/routes so this integrates with the existing implementation rather than creating duplicate systems.
+
+After implementation run the relevant API/frontend tests, typechecks and build. Report exactly what was changed and any remaining verification limitation.
