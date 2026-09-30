@@ -1,0 +1,114 @@
+Do NOT modify code, database schema, migrations, production data, or deployment settings. Do NOT publish anything.
+
+Using the complete read-only audit you just generated for the 408 pending Production schema statements, produce a concise Production Reconciliation Decision Report.
+
+I cannot paste the full 408-statement audit into another chat because it is too long, so summarize the important findings from the complete audit.
+
+Use exactly these sections:
+
+1. DATABASE IDENTITY
+
+- Identify whether you were able to verify that the database inspected by the audit is the same Production database used by the live EduCore application.
+- State VERIFIED, PARTIALLY VERIFIED, or UNVERIFIED.
+- Explain briefly why.
+
+2. PRODUCTION VS DEVELOPMENT
+   Provide only the important numbers:
+
+- Production table count
+- Development/expected table count
+- Missing Production tables
+- Missing columns
+- Missing indexes/unique constraints
+- Missing foreign keys
+- Missing functions
+- Missing triggers
+- Any other important schema differences
+
+3. 408-STATEMENT SUMMARY
+   Give the counts by category:
+
+- CREATE TABLE
+- CREATE INDEX
+- CREATE UNIQUE INDEX
+- ALTER ADD COLUMN
+- ALTER ADD FOREIGN KEY
+- ALTER ADD UNIQUE CONSTRAINT
+- DROP
+- INSERT/UPDATE/DELETE/TRUNCATE
+- Total
+
+4. BLOCKING PROBLEMS
+   List every issue that could cause the 408-statement publish to fail or create an unsafe/incomplete Production schema.
+
+For each issue provide:
+
+- Object/table name
+- Pending statement number if known
+- What it depends on
+- Why the current preview is insufficient
+- What prerequisite is required
+
+5. NFC / ATTENDANCE
+   State specifically:
+
+- Whether nfc_cards is missing anything
+- Whether nfc_card_history exists in Production
+- Whether (nfc_cards.id, nfc_cards.school_id) has the required uniqueness
+- Whether the NFC foreign keys have correct prerequisites
+- Whether any NFC migration ordering problem remains
+
+6. FUNCTIONS, TRIGGERS AND BACKFILLS
+   List any functions, triggers, or data backfills that exist in Development/migration history but are missing from Production and are NOT represented in the 408 preview.
+
+7. DATA SAFETY
+   Confirm:
+
+- Whether the preview contains DROP statements
+- Whether it contains INSERT/UPDATE/DELETE/TRUNCATE
+- Whether existing Production data was checked for conflicts
+- Any known data conflicts
+- Any risks involving locks, constraints, or non-null columns
+
+8. MIGRATION HISTORY
+   Explain:
+
+- How many checked-in SQL migrations exist
+- What Production's migration ledger contains
+- Whether the ledger can be reliably mapped to the checked-in migrations
+- Whether there is evidence of partially applied or historically different migrations
+- Do not speculate; clearly label anything that remains unknown.
+
+9. RECOMMENDED SAFE ORDER
+   Give the proposed high-level order for reconciling Production, WITHOUT executing anything.
+
+Example:
+A. Verify live application database identity
+B. Back up/verify recovery capability
+C. Create prerequisite parent keys
+D. Create required tables
+E. Add required columns
+F. Add indexes/unique constraints
+G. Add foreign keys in dependency order
+H. Apply required functions/triggers
+I. Perform required historical backfills
+J. Validate
+K. Only then complete remaining synchronization
+
+Adjust this order according to the actual audit findings.
+
+10. FINAL DECISION
+    Choose exactly one:
+
+- DO NOT PUBLISH
+- SAFE TO PREPARE BUT DO NOT PUBLISH
+- READY FOR CONTROLLED PRODUCTION EXECUTION
+
+Base this only on the audit evidence.
+
+If the result is anything other than "READY FOR CONTROLLED PRODUCTION EXECUTION", clearly state what must be resolved first.
+
+IMPORTANT:
+This is an audit and planning task only. Do not execute migrations, repair the schema, mark migrations as applied, reset Production, copy Development to Production, or publish the application.
+
+Keep the final report under approximately 2,000 words so I can copy it into ChatGPT for review.
