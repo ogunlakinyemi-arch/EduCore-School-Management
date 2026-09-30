@@ -1,0 +1,303 @@
+READ-ONLY AUDIT OF THE 408 PENDING PRODUCTION SCHEMA STATEMENTS
+
+The previous investigation discovered that a fresh Replit publish preview reports:
+
+408 pending production schema statements.
+
+Publishing is currently prohibited because we do not want those statements applied blindly to production.
+
+The purpose of this task is ONLY to inspect and classify the pending schema diff.
+
+ABSOLUTE RULES
+
+This is a READ-ONLY investigation.
+
+DO NOT:
+
+- publish
+- deploy
+- run migrations
+- execute any pending schema statement
+- modify the production database
+- modify the development database
+- create tables
+- alter tables
+- create indexes
+- create constraints
+- drop objects
+- insert/update/delete records
+- change application code
+- change migration files
+- change Replit deployment configuration
+- enable or disable migrations
+- restart the production deployment
+
+Do not approve the current publish.
+
+Do not attempt to bypass Replit's migration safety mechanism.
+
+---
+
+1. IDENTIFY THE 408 STATEMENTS
+
+Inspect the publish preview/diff that reports:
+
+408 pending schema statements
+
+Determine exactly where these statements come from.
+
+Report:
+
+- migration files involved
+- migration numbers/names
+- number of statements contributed by each migration
+- whether the statements are generated from checked-in migrations, schema synchronization, or another mechanism
+
+Do NOT execute them.
+
+---
+
+2. CLASSIFY EVERY STATEMENT
+
+Classify the 408 statements into categories:
+
+CREATE
+
+- CREATE TABLE
+- CREATE INDEX
+- CREATE UNIQUE INDEX
+- CREATE SEQUENCE
+- etc.
+
+ALTER
+
+- ADD COLUMN
+- ALTER COLUMN
+- ADD CONSTRAINT
+- ALTER TYPE
+- etc.
+
+DROP
+
+- DROP TABLE
+- DROP COLUMN
+- DROP INDEX
+- DROP CONSTRAINT
+- etc.
+
+DATA CHANGES
+
+- INSERT
+- UPDATE
+- DELETE
+
+OTHER
+
+Provide totals for each category.
+
+If any statement could destroy or remove existing data/schema objects, clearly identify it.
+
+---
+
+3. NFC-RELATED STATEMENTS
+
+Identify every pending statement involving:
+
+- "nfc_cards"
+- "nfc_card_history"
+- "nfc_devices"
+- attendance-related tables
+- NFC-related indexes
+- NFC-related foreign keys
+- replacement-card relationships
+- device/card relationships
+
+For each NFC statement, report:
+
+- migration file
+- statement number if available
+- exact operation in concise form
+- whether the referenced object currently exists in Production
+- whether the statement would create, alter, or drop something
+
+DO NOT execute anything.
+
+---
+
+4. SPECIFICALLY INVESTIGATE NFC CARD HISTORY
+
+We previously established from the Production database query interface:
+
+- "public.nfc_cards" exists.
+- "(id, school_id)" uniqueness exists and is validated.
+- "public.nfc_card_history" does NOT exist.
+
+Now determine from the pending diff:
+
+1. Is there a statement that creates "public.nfc_card_history"?
+2. Is there a statement creating its indexes?
+3. Is there a statement creating the composite foreign key:
+
+"(nfc_card_id, school_id) → nfc_cards(id, school_id)"
+
+4. Is the "(id, school_id)" unique constraint/index created before that foreign key?
+5. Does the pending diff attempt to create the already-existing "(id, school_id)" uniqueness again?
+6. If yes, would that statement fail because the equivalent production constraint already exists?
+7. Are there any naming differences between the production constraint and the pending migration?
+
+---
+
+5. MIGRATION ORDER
+
+Construct a dependency/order analysis for the NFC-related statements.
+
+Specifically determine whether the pending publish sequence would do something equivalent to:
+
+1. create/ensure "nfc_cards"
+2. create "(id, school_id)" uniqueness
+3. create "nfc_card_history"
+4. create history indexes
+5. create history foreign key
+
+or whether it attempts to create the foreign key before the required unique constraint exists.
+
+Do NOT change the order.
+
+This is analysis only.
+
+---
+
+6. PRODUCTION VS CHECKED-IN SCHEMA
+
+Compare the known Production schema with the expected schema from the checked-in migrations.
+
+Pay particular attention to:
+
+- "nfc_cards"
+- "nfc_card_history"
+- "nfc_cards" columns
+- unique constraints
+- foreign keys
+- attendance tables
+- device tables
+- academic tables
+- finance tables
+- library tables
+- communication tables
+
+Identify objects that:
+
+A. Exist in both.
+
+B. Exist in production but are absent from the checked-in expected schema.
+
+C. Exist in the checked-in expected schema but are absent from production.
+
+D. Have structural differences.
+
+Do not attempt to repair anything.
+
+---
+
+7. DETERMINE WHY 408 STATEMENTS ARE PENDING
+
+Based on the evidence, classify the likely reason for the 408 statements as one or more of:
+
+A. Production database is significantly behind the checked-in migration history.
+
+B. Migration ledger does not correspond cleanly to the checked-in migrations.
+
+C. Production contains objects that the migration system does not recognize.
+
+D. Migration history was partially applied.
+
+E. Migration history was applied under a different migration/build history.
+
+F. Replit publish is generating statements from schema differences rather than simply applying missing migration files.
+
+G. Other.
+
+Do not guess. Mark uncertain conclusions as uncertain.
+
+---
+
+8. DESTRUCTIVE-RISK REVIEW
+
+Search the 408 statements specifically for:
+
+- DROP TABLE
+- DROP COLUMN
+- DROP INDEX
+- DROP CONSTRAINT
+- DELETE
+- TRUNCATE
+- data type changes
+- NOT NULL changes that could fail on existing data
+- UNIQUE constraints that could fail due to duplicates
+- foreign keys that could fail due to orphaned data
+
+Report each potentially dangerous statement or group.
+
+---
+
+9. DO NOT RECOMMEND PUBLISHING YET
+
+The final report must NOT recommend publishing the current 408-statement diff merely because it appears valid.
+
+Instead, determine whether the diff can be safely reduced or whether it requires a controlled migration/reconciliation plan.
+
+---
+
+REQUIRED FINAL REPORT
+
+Return:
+
+A. 408-STATEMENT SUMMARY
+
+- Total statements:
+- Migration files involved:
+- CREATE:
+- ALTER:
+- DROP:
+- DATA changes:
+- Other:
+
+B. NFC ANALYSIS
+
+- nfc_cards:
+- nfc_card_history:
+- "(id, school_id)" uniqueness:
+- history indexes:
+- history foreign key:
+- migration order:
+- potential NFC migration failure:
+
+C. PRODUCTION VS EXPECTED SCHEMA
+
+Summarize important differences.
+
+D. DESTRUCTIVE / HIGH-RISK STATEMENTS
+
+List any identified risks.
+
+E. WHY 408 STATEMENTS ARE PENDING
+
+Select the evidence-supported explanation(s).
+
+F. RECOMMENDED NEXT STEP
+
+Provide a safe, non-executing migration/reconciliation strategy.
+
+Do NOT execute it.
+
+G. SAFETY CONFIRMATION
+
+Explicitly confirm:
+
+- No publish performed.
+- No deployment performed.
+- No migration executed.
+- No database objects changed.
+- No records changed.
+- No code changed.
+- No production restart performed.

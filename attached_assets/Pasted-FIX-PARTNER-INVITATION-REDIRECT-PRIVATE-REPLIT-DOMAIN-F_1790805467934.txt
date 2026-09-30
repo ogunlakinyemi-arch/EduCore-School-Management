@@ -1,0 +1,309 @@
+FIX PARTNER INVITATION REDIRECT — PRIVATE REPLIT DOMAIN FOUND
+
+We have now identified the actual problem with partner invitation links.
+
+The partner's invitation link is being routed through Replit's private development authentication flow instead of the public production EduCore application.
+
+The affected URL contains:
+
+- "replit.com/silent-auth"
+- "privateDevDomain=true"
+- "/__replshield"
+- a destination on a "*.riker.replit.dev" host
+- "/accept-invitation"
+
+This causes the invited partner to see:
+
+"Verifying session..."
+
+and then:
+
+"Log in to Replit to access a private app."
+
+A partner must NEVER be required to log into Replit.
+
+OBJECTIVE
+
+Fix the invitation URL generation so that partner invitations always point to the publicly accessible production EduCore application.
+
+The partner invitation should ultimately open:
+
+"PUBLIC_PRODUCTION_URL/accept-invitation?partnerInvitation=..."
+
+and must NOT point to:
+
+- "*.riker.replit.dev"
+- "*.replit.dev"
+- a Replit workspace URL
+- a Replit preview/private-development URL
+- "replit.com/silent-auth"
+- "/__replshield"
+
+Do NOT change the Clerk authentication architecture unnecessarily.
+
+---
+
+1. INSPECT THE CURRENT INVITATION URL GENERATION
+
+Inspect:
+
+"artifacts/api-server/src/routes/invitation-redirect.ts"
+
+and all code responsible for:
+
+- partner invitation creation
+- Clerk invitation creation
+- invitation redirect URL generation
+- production/development URL selection
+- "partnerInvitation"
+- "/accept-invitation"
+
+Also inspect:
+
+"artifacts/api-server/src/routes/partners.ts"
+
+and the relevant invitation creation code.
+
+Determine exactly why the current partner invitation resolves to a "*.riker.replit.dev" URL.
+
+---
+
+2. IMPORTANT ENVIRONMENT RULE
+
+The production invitation URL MUST be based on the application's actual public production origin.
+
+Do NOT use:
+
+- request Host headers supplied by arbitrary clients
+- Replit preview URLs
+- development URLs
+- "riker.replit.dev"
+- "replit.dev"
+- workspace URLs
+- "replit.com"
+
+unless Replit specifically requires a trusted production application URL for the deployment mechanism.
+
+Do not allow an arbitrary incoming Host header to determine the invitation destination.
+
+---
+
+3. DETERMINE THE CORRECT PUBLIC PRODUCTION URL
+
+Inspect the existing project/deployment configuration and determine the canonical public production URL already intended for EduCore.
+
+Check existing configuration for:
+
+- production application URL
+- custom domain
+- Replit deployment URL
+- environment variables
+- Clerk allowed origins/redirect URLs
+- invitation redirect configuration
+
+Do NOT invent a URL.
+
+Do NOT use the private development domain.
+
+If the production URL is already configured, use that.
+
+If no canonical public production URL exists, STOP and report exactly what configuration is missing rather than guessing.
+
+---
+
+4. DEVELOPMENT BEHAVIOR
+
+Development behavior may continue using a development URL where appropriate.
+
+However, ensure that:
+
+Production
+
+uses:
+
+"PUBLIC_PRODUCTION_URL/accept-invitation"
+
+Development
+
+may use the appropriate development/preview URL for testing.
+
+The production branch must NEVER accidentally select the "riker.replit.dev" development URL.
+
+---
+
+5. PARTNER INVITATION
+
+For partner invitations, ensure the generated Clerk invitation acceptance URL is equivalent to:
+
+"PUBLIC_PRODUCTION_URL/accept-invitation?partnerInvitation=<opaque-token>"
+
+The existing opaque "partnerInvitation" value must be preserved.
+
+Do not expose or log the actual invitation token.
+
+Do not change the partner invitation validation logic unless required.
+
+---
+
+6. SCHOOL AND INTERNAL INVITATIONS
+
+Inspect school and internal employee invitations as well.
+
+Determine whether they have the same private-development-domain problem.
+
+They should similarly resolve to the public production:
+
+"PUBLIC_PRODUCTION_URL/accept-invitation"
+
+when created in production.
+
+Do not assume only partners are affected.
+
+---
+
+7. CLERK CONFIGURATION
+
+Verify that the public production origin is compatible with the existing Clerk configuration.
+
+Check:
+
+- allowed origins
+- redirect URLs
+- invitation acceptance URLs
+- sign-up continuation URLs
+
+Do NOT modify Clerk settings unless the code/configuration inspection demonstrates that a change is actually required.
+
+If a Clerk Dashboard change is required, report the exact setting and value that needs to be changed, but do not make unrelated changes.
+
+---
+
+8. SECURITY REQUIREMENTS
+
+Do NOT:
+
+- expose Clerk invitation tickets
+- log invitation tokens
+- expose DATABASE_URL
+- expose credentials
+- weaken authentication
+- disable Clerk authentication
+- make "/accept-invitation" private
+- make partners authenticate with Replit
+- bypass invitation validation
+
+The invitation must remain authenticated and validated through Clerk.
+
+---
+
+9. TEST WITHOUT USING A REAL PARTNER TOKEN
+
+Create a safe test using a synthetic/placeholder invitation context.
+
+Verify that production URL generation produces:
+
+"PUBLIC_PRODUCTION_URL/accept-invitation?..."
+
+and NOT:
+
+"https://replit.com/silent-auth?..."
+
+and NOT:
+
+"https://*.riker.replit.dev/..."
+
+and NOT:
+
+"https://*.replit.dev/..."
+
+Do not consume a real invitation.
+
+---
+
+10. IMPORTANT PUBLISH SAFETY
+
+Before making any code change, inspect the current Replit publish behavior.
+
+The previous investigation found:
+
+408 pending production schema statements
+
+and publishing may apply those schema statements.
+
+Therefore:
+
+DO NOT publish the application if doing so would apply the 408 pending schema statements.
+
+Do NOT run migrations.
+
+Do NOT approve the current production schema diff merely to deploy this fix.
+
+If the invitation URL fix can be verified through code/tests without production publishing, do that.
+
+If deployment is required but Replit cannot deploy without applying the 408 schema statements, STOP and report that blocker.
+
+Do not bypass the migration safety mechanism.
+
+---
+
+11. REQUIRED FINAL REPORT
+
+Return:
+
+Root cause
+
+State exactly why the partner invitation was resolving to:
+
+"replit.com/silent-auth"
+
+and:
+
+"*.riker.replit.dev/accept-invitation"
+
+Current URL generation
+
+Report the relevant configuration/code responsible.
+
+Do not print any real invitation tokens.
+
+Correct production URL source
+
+State which existing configuration should be used for the canonical production origin.
+
+Code changes
+
+If safely made, list exactly what changed.
+
+If no code was changed because deployment would trigger the 408 pending schema statements, say so.
+
+Verification
+
+Confirm whether synthetic tests now generate:
+
+"PUBLIC_PRODUCTION_URL/accept-invitation"
+
+instead of a private Replit URL.
+
+Production deployment
+
+State:
+
+- Published: YES/NO
+- Migration executed: YES/NO
+- 408 schema statements applied: YES/NO
+- Database changed: YES/NO
+
+Do NOT publish or modify production if doing so would apply the pending 408 schema statements.
+
+Security
+
+Confirm:
+
+- No invitation tokens logged.
+- No secrets exposed.
+- No authentication bypass added.
+- Replit login is not required for invited partners.
+
+IMPORTANT:
+
+The immediate objective is to fix the URL destination. Do not redesign the invitation authentication flow. The existing Clerk signup/invitation flow should remain intact.
