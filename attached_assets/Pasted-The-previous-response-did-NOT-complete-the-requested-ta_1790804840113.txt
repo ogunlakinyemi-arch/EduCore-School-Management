@@ -1,0 +1,298 @@
+The previous response did NOT complete the requested task.
+
+It repeated the earlier deployment-metadata investigation and concluded that no existing diagnostic was found.
+
+That is not what was requested.
+
+The purpose of this task is specifically to CREATE a temporary, secure, authenticated, read-only diagnostic so that the live API itself can report the identity of the PostgreSQL database it is connected to.
+
+Do not repeat the previous metadata investigation.
+
+SAFETY RULES
+
+This must remain strictly read-only.
+
+DO NOT:
+
+- run migrations
+- create or alter database tables
+- create indexes or constraints
+- insert, update, or delete records
+- change database schema
+- expose DATABASE_URL
+- expose passwords
+- expose API keys
+- expose Clerk secrets
+- expose connection strings
+- disable authentication
+- weaken authorization
+- make the endpoint publicly accessible
+- change existing business logic
+
+The only application change permitted is a temporary authenticated diagnostic endpoint.
+
+---
+
+1. INSPECT THE EXISTING DATABASE CONNECTION
+
+Inspect the existing source code and identify the module that creates the PostgreSQL connection used by the API.
+
+Determine:
+
+- PostgreSQL driver
+- connection/pool module
+- DATABASE_URL usage
+- existing authentication mechanism
+- existing Platform Owner authorization mechanism
+
+Do not modify this connection code.
+
+---
+
+2. CREATE A TEMPORARY OWNER-ONLY DIAGNOSTIC
+
+Create a temporary endpoint such as:
+
+"GET /api/owner/database-identity-check"
+
+Use the existing authentication and authorization system.
+
+The endpoint MUST:
+
+- require a valid Clerk-authenticated session
+- require Platform Owner authorization
+- reject unauthenticated users
+- reject non-owner users
+- perform only SELECT/read-only operations
+- use the application's existing PostgreSQL connection
+- return safe database identity information only
+
+Do NOT create a new authentication mechanism.
+
+Do NOT create a public endpoint.
+
+---
+
+3. DATABASE IDENTITY INFORMATION
+
+Use safe PostgreSQL read-only functions/metadata to identify the database connection.
+
+At minimum, obtain suitable non-secret values such as:
+
+- "current_database()"
+- "current_schema()"
+- PostgreSQL server/version information where safe
+
+If any value could expose sensitive infrastructure information, do not return it.
+
+Do NOT return:
+
+- DATABASE_URL
+- hostname
+- password
+- connection string
+- credentials
+- tokens
+
+---
+
+4. CREATE A NON-SECRET FINGERPRINT
+
+Create a deterministic fingerprint from the safe database identity values.
+
+For example:
+
+"SHA-256(current_database + current_schema + safe server identity)"
+
+The exact inputs must be documented.
+
+The fingerprint must NOT use:
+
+- DATABASE_URL
+- password
+- API key
+- Clerk secret
+- session token
+- any secret
+
+Return the fingerprint to the authenticated Platform Owner.
+
+---
+
+5. CHECK THE NFC SCHEMA READ-ONLY
+
+Using PostgreSQL metadata queries only, also report:
+
+"public.nfc_cards"
+
+"public.nfc_card_history"
+
+and whether "public.nfc_cards" has a valid uniqueness rule covering:
+
+"(id, school_id)"
+
+Return only:
+
+- present/absent
+- present/absent
+- present/absent
+
+Do not create anything.
+
+---
+
+6. DEPLOY ONLY THE MINIMUM NECESSARY CHANGE
+
+If the project requires a deployment for the diagnostic to be accessible, make the smallest possible application deployment containing ONLY this temporary diagnostic.
+
+Do NOT modify the database.
+
+Do NOT run migrations.
+
+Do NOT modify existing routes or business logic.
+
+Before deployment, confirm that the diagnostic cannot be accessed anonymously.
+
+---
+
+7. AFTER DEPLOYMENT
+
+Do NOT simply report that the endpoint exists.
+
+Actually perform the following verification:
+
+A. Access the diagnostic through the LIVE DEPLOYED EduCore application as an authenticated Platform Owner.
+
+Record:
+
+- database fingerprint
+- nfc_cards status
+- nfc_card_history status
+- id/school_id uniqueness status
+
+B. Separately use Replit's Production database query interface.
+
+Run equivalent READ-ONLY PostgreSQL identity queries against that database.
+
+Use exactly the same documented identity inputs to calculate the comparison fingerprint.
+
+Record:
+
+- database fingerprint
+- nfc_cards status
+- nfc_card_history status
+- id/school_id uniqueness status
+
+---
+
+8. COMPARE
+
+If the fingerprints are identical using the same documented identity inputs, report:
+
+A — CONFIRMED SAME DATABASE
+
+If they differ, report:
+
+B — CONFIRMED DIFFERENT DATABASE
+
+If the comparison cannot be performed reliably, report:
+
+C — STILL UNVERIFIED
+
+Do NOT infer identity from:
+
+- matching schema
+- matching timestamps
+- migration IDs
+- deployment IDs
+- database names alone
+- DATABASE_URL being runtime-managed
+
+The fingerprint comparison is the purpose of this exercise.
+
+---
+
+9. IMPORTANT: DO NOT FIX NFC YET
+
+Even if the live API and Production database are confirmed to be the same database:
+
+DO NOT create "nfc_card_history".
+
+DO NOT run any migration.
+
+DO NOT repair the NFC schema.
+
+Only report the result.
+
+We will handle the schema repair separately after database identity has been conclusively established.
+
+---
+
+10. REMOVE THE TEMPORARY DIAGNOSTIC
+
+After the identity comparison is complete:
+
+- remove the temporary endpoint
+- remove any temporary frontend code
+- remove temporary logging
+- remove temporary diagnostic code
+- leave the application in its previous functional state
+
+If removal requires another deployment, do that only after recording the diagnostic result.
+
+---
+
+REQUIRED FINAL REPORT
+
+Return:
+
+A. What was actually implemented
+
+- Temporary endpoint:
+- Authentication:
+- Platform Owner authorization:
+- Read-only database queries:
+- Secret exposure: NONE
+
+B. LIVE API DATABASE
+
+- Fingerprint:
+- nfc_cards:
+- nfc_card_history:
+- id/school_id uniqueness:
+
+C. REPLIT PRODUCTION DATABASE
+
+- Fingerprint:
+- nfc_cards:
+- nfc_card_history:
+- id/school_id uniqueness:
+
+D. FINAL DATABASE DETERMINATION
+
+Exactly one:
+
+A — CONFIRMED SAME DATABASE
+
+B — CONFIRMED DIFFERENT DATABASE
+
+C — STILL UNVERIFIED
+
+Explain the evidence.
+
+E. CLEANUP
+
+Confirm:
+
+- Temporary diagnostic removed: YES/NO
+- Database schema changed: NO
+- Migrations executed: NO
+- Records changed: NO
+- Credentials exposed: NO
+- Business logic changed: NO
+
+IMPORTANT:
+
+If you cannot safely implement the temporary diagnostic using the existing authentication and database infrastructure, STOP and report the exact blocker.
+
+Do not replace the requested diagnostic with another metadata-only investigation.
