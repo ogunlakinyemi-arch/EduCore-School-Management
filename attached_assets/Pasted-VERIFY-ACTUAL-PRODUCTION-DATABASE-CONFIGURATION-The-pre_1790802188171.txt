@@ -1,0 +1,69 @@
+VERIFY ACTUAL PRODUCTION DATABASE CONFIGURATION
+
+The previous audit assumed that a production "DATABASE_URL" secret existed, but when checking the Replit Production Secrets panel, "DATABASE_URL" is not listed.
+
+Do not make any changes yet.
+
+SAFETY
+
+- Do not create a new DATABASE_URL.
+- Do not delete or modify existing secrets.
+- Do not reveal any secret values.
+- Do not run migrations.
+- Do not run database push/reset commands.
+- Do not modify production data.
+- Do not modify application code.
+
+TASK
+
+Inspect the existing deployed application configuration and determine exactly how the production API obtains its PostgreSQL connection.
+
+We already know the application code uses:
+
+"DATABASE_URL"
+
+through:
+
+"API startup → @workspace/db → PostgreSQL pool → DATABASE_URL"
+
+Now determine whether Replit supplies this variable through:
+
+1. Production Secrets
+2. Replit-managed database integration
+3. Deployment environment configuration
+4. Automatically injected environment variables
+5. Another existing configuration mechanism
+
+Do not print the actual value.
+
+Report only:
+
+- Whether "DATABASE_URL" exists at runtime for the deployed API.
+- Where it is supplied from.
+- Whether it is automatically generated/injected by Replit.
+- Whether the Production Database resource is explicitly connected to the deployment.
+- Whether the Development and Production environments use different database configurations.
+
+IMPORTANT
+
+If "DATABASE_URL" is available to the running application but not visible in the Secrets panel, explain how it is being injected.
+
+If "DATABASE_URL" is NOT available to the deployed application, report that as a configuration problem.
+
+Do not fix it automatically.
+
+FINAL STATUS
+
+Return exactly one:
+
+PRODUCTION DATABASE CONFIGURATION VERIFIED
+
+if the deployed API's database configuration and its relationship to the Production Database resource are established.
+
+OR
+
+PRODUCTION DATABASE CONFIGURATION NOT VERIFIED
+
+if the source of the deployed API's database connection remains uncertain.
+
+No files, secrets, database schemas, migrations, or production data should be changed during this investigation.
