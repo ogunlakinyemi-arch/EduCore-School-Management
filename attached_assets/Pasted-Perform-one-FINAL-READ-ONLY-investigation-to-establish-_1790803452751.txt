@@ -1,0 +1,180 @@
+Perform one FINAL READ-ONLY investigation to establish whether the Replit Production Database resource currently being inspected is the SAME PostgreSQL database used by the currently deployed API.
+
+IMPORTANT:
+
+- READ-ONLY ONLY.
+- Do NOT run migrations.
+- Do NOT create, alter, drop, rename, or repair anything.
+- Do NOT modify production data.
+- Do NOT modify secrets.
+- Do NOT change application code.
+- Do NOT restart or republish the application.
+- Do NOT expose DATABASE_URL, passwords, tokens, hostnames containing credentials, or connection strings.
+
+We already know:
+
+1. The inspected Replit Production Database contains:
+   
+   - "public.nfc_cards"
+   - 3 cards
+   - "UNIQUE (id, school_id)"
+   - NO "public.nfc_card_history"
+   - NO Phase-5 NFC lifecycle columns on "nfc_cards"
+
+2. The checked-in application code requires:
+   
+   - "nfc_card_history"
+   - the Phase-5 NFC lifecycle columns
+
+3. "DATABASE_URL" is runtime-managed by Replit.
+
+4. The current uncertainty is whether the inspected Production Database resource is actually the PostgreSQL database used by the deployed API.
+
+==================================================
+
+1. REPLIT DEPLOYMENT METADATA
+   ==================================================
+
+Inspect available Replit deployment metadata and database-resource metadata.
+
+Look for any NON-SECRET identifiers that can establish a relationship between:
+
+A. The currently deployed API
+B. The runtime-managed DATABASE_URL
+C. The inspected Production Database resource
+
+Examples of useful evidence may include:
+
+- database resource ID
+- deployment ID
+- deployment environment ID
+- database binding ID
+- managed-resource ID
+- project/resource association
+- deployment configuration reference
+- Replit-managed database attachment/binding
+- any other documented non-secret identifier
+
+Do NOT print credentials or the actual DATABASE_URL.
+
+==================================================
+2. DEPLOYMENT ID COMPARISON
+
+The production migration ledger currently contains:
+
+Deployment ID:
+"64c14b42-6098-4483-b4fe-7c127b4ba993"
+
+Determine whether this deployment ID can be authoritatively associated with:
+
+- the currently deployed API
+- the inspected Production Database
+- or both.
+
+If there is no authoritative relationship, say so.
+
+Do NOT assume that matching timestamps or project names prove database identity.
+
+==================================================
+3. DATABASE RESOURCE IDENTITY
+
+Determine the exact non-secret identity/metadata of the Production Database resource being inspected.
+
+Then determine whether Replit provides an authoritative mapping from that resource to the deployed API's runtime database.
+
+If Replit does NOT expose such a mapping, state:
+
+"Replit metadata available to this inspection does not provide an authoritative API-deployment-to-database-resource binding."
+
+Do not attempt to infer the relationship from schema contents alone.
+
+==================================================
+4. SAFE DEPLOYED-API VERIFICATION
+
+Determine whether there is an existing SAFE diagnostic endpoint, Replit deployment diagnostic, or platform-provided database status that can prove the deployed API's database identity WITHOUT:
+
+- exposing credentials
+- modifying the application
+- adding diagnostics
+- restarting the deployment
+- changing environment variables
+
+If no such mechanism exists, state that clearly.
+
+Do NOT create a new diagnostic endpoint.
+
+==================================================
+5. DO NOT MAKE CODE CHANGES
+
+Do not add temporary logging or database diagnostics.
+
+Do not print DATABASE_URL.
+
+Do not inspect or output:
+
+- passwords
+- connection strings
+- secret values
+- tokens
+
+Only report non-secret metadata.
+
+==================================================
+6. FINAL DETERMINATION
+
+Choose exactly ONE:
+
+A. VERIFIED SAME DATABASE
+There is authoritative non-secret evidence that the inspected Production Database is the database used by the currently deployed API.
+
+B. VERIFIED DIFFERENT DATABASE
+There is authoritative evidence that the inspected Production Database is NOT the database used by the currently deployed API.
+
+C. STILL UNVERIFIED
+No authoritative binding is available from the current Replit metadata/tools.
+
+Do not choose based on inference.
+
+==================================================
+7. RECOMMENDED NEXT STEP
+
+If A:
+State that the NFC schema gap is confirmed in the deployed API's database, but DO NOT execute a migration. Recommend preparing a targeted migration/rehearsal.
+
+If B:
+State that no changes should be made to the inspected database because it is not the deployed API's database.
+
+If C:
+State that no production migration should be executed yet and identify the exact information/action required from Replit to establish the database binding.
+
+FINAL REPORT:
+
+PRODUCTION DATABASE BINDING RESULT
+
+Deployment metadata
+
+...
+
+Database resource metadata
+
+...
+
+Binding evidence
+
+...
+
+Determination
+
+A / B / C
+
+NFC implication
+
+...
+
+Recommended next step
+
+...
+
+Changes made
+
+NONE — READ-ONLY
