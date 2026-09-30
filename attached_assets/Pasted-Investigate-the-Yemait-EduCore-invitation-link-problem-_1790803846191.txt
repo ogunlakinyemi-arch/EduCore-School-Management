@@ -1,0 +1,211 @@
+Investigate the Yemait EduCore invitation-link problem using READ-ONLY inspection first.
+
+PROBLEM:
+
+When a newly invited user opens an invitation link:
+
+1. The invitation link opens.
+2. It shows "Loading session..." or a similar session-loading state.
+3. Instead of opening the intended password/setup page for the invited user, it redirects to the Replit login page.
+
+EXPECTED BEHAVIOR:
+
+Invitation link
+→ invitation/session validation
+→ EduCore password/setup page
+→ user creates password
+→ account setup completes
+→ user is redirected to the appropriate EduCore dashboard.
+
+IMPORTANT:
+
+- Do NOT modify application code yet.
+- Do NOT change Clerk configuration.
+- Do NOT change Replit authentication settings.
+- Do NOT revoke or recreate invitations.
+- Do NOT modify database data.
+- Do NOT change secrets.
+- Do NOT republish or restart the deployment.
+- READ-ONLY investigation only.
+
+==================================================
+
+1. TRACE THE INVITATION FLOW
+   ==================================================
+
+Inspect the current checked-in code and identify:
+
+- invitation creation
+- invitation email/link generation
+- invitation acceptance route
+- invitation/session validation
+- password/setup page
+- Clerk authentication handling
+- redirects after invitation acceptance
+- any Replit authentication handling involved
+
+Document the complete route sequence.
+
+For example:
+
+Invitation link
+→ route A
+→ Clerk/session step
+→ route B
+→ password page
+→ dashboard
+
+Use the actual routes from the application.
+
+==================================================
+2. FIND THE REDIRECT TO REPLIT LOGIN
+
+Search the application and deployment configuration for anything that could cause an invitation user to be redirected to Replit authentication.
+
+Check for:
+
+- Replit authentication middleware
+- Replit login routes
+- Clerk middleware
+- authentication guards
+- redirects
+- protected-route handling
+- unauthenticated redirects
+- invitation-token handling
+- session-loading logic
+- callback URLs
+- return URLs
+- origin/host checks
+
+Determine exactly which component is responsible for the redirect, if identifiable.
+
+Do NOT change it.
+
+==================================================
+3. CLERK INVITATION FLOW
+
+Inspect how the application currently handles Clerk invitation tickets or invitation sessions.
+
+Determine:
+
+- whether the invitation link contains a Clerk ticket/session parameter
+- which route receives it
+- whether the application passes it correctly to Clerk
+- whether the ticket is consumed before the password page
+- whether an unauthenticated invited user is incorrectly being sent through the normal login flow
+- whether the application expects an existing authenticated Clerk session before accepting the invitation
+
+Do not expose actual invitation tokens or secret values.
+
+==================================================
+4. REPLIT AUTHENTICATION
+
+Determine whether the deployed application is accidentally using Replit authentication for this invitation flow.
+
+Specifically check whether:
+
+- Replit login protects the invitation route
+- Replit login protects the password/setup route
+- deployment authentication is enabled in a way that intercepts unauthenticated invitation users
+- the invitation route is publicly accessible
+- the password/setup route is publicly accessible
+
+Clearly distinguish:
+
+REPLIT AUTHENTICATION
+
+from
+
+CLERK / EDUPULSE AUTHENTICATION.
+
+==================================================
+5. LIVE ROUTE CHECK
+
+If safe read-only HTTP/browser inspection is available, test the invitation-related routes without using a real user's private invitation token.
+
+Determine:
+
+- HTTP status
+- redirect destination
+- whether the route loads
+- whether the route requires Replit authentication
+- whether the route requires Clerk authentication
+
+Do NOT create an account or modify authentication state.
+
+==================================================
+6. IDENTIFY THE ROOT CAUSE
+
+Classify the result as exactly one:
+
+A. Replit authentication is incorrectly protecting the invitation/setup route.
+
+B. Clerk invitation handling is incorrectly redirecting to normal login.
+
+C. The invitation route is missing or incorrectly configured.
+
+D. The invitation ticket/session is not being passed correctly.
+
+E. Deployment/authentication configuration is intercepting the invitation flow.
+
+F. Multiple issues exist.
+
+G. Root cause cannot yet be determined.
+
+Do not guess.
+
+==================================================
+7. RECOMMENDED FIX
+
+Provide the smallest verified fix that would make:
+
+Invitation link
+→ Loading session
+→ Password/setup page
+
+work correctly.
+
+DO NOT implement the fix yet.
+
+If the issue is caused by Replit deployment authentication rather than application code, clearly say so.
+
+If the issue is caused by Clerk configuration, clearly identify the specific configuration involved.
+
+If the issue is caused by application code, identify the exact file/route that would need modification.
+
+==================================================
+FINAL REPORT
+
+INVITATION REDIRECT INVESTIGATION
+
+Expected flow
+
+...
+
+Actual flow
+
+...
+
+Replit authentication involvement
+
+...
+
+Clerk authentication involvement
+
+...
+
+Root cause
+
+A / B / C / D / E / F / G
+
+Exact affected route/file/configuration
+
+...
+
+Recommended fix
+
+...
+
+Changes made
+
+NONE — READ-ONLY INVESTIGATION
