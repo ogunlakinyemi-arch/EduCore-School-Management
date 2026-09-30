@@ -1,6 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BriefcaseBusiness, Pencil, Plus } from 'lucide-react';
+import { BriefcaseBusiness, Pencil, Plus, ShieldCheck } from 'lucide-react';
+import {
+  getListDeviceActivationOfficersQueryKey,
+  useGrantDeviceActivationOfficer,
+  useListDeviceActivationOfficers,
+  useRevokeDeviceActivationOfficer,
+} from '@workspace/api-client-react';
 import {
   Button, EmptyState, ErrorState, Field, Modal, PageHeading, SkeletonPage, StatusPill
 } from '@/components/shared';
@@ -31,6 +37,8 @@ type EmployeeFormValues = {
   jobTitle: string;
   status: 'ACTIVE' | 'INACTIVE';
 };
+
+type OwnerSchool = { id: number; name: string; status: string };
 
 const endpoint = '/api/platform/company-employees';
 const queryKey = ['platform', 'company-employees'];
@@ -65,12 +73,35 @@ export function PlatformCompanyEmployeesPage() {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<CompanyEmployee | null>(null);
   const [creating, setCreating] = useState(false);
+  const [selectedEmployeeEmail, setSelectedEmployeeEmail] = useState('');
+  const [selectedSchoolId, setSelectedSchoolId] = useState('');
   const employeesQuery = useQuery({
     queryKey,
     queryFn: () => request<CompanyEmployee[]>(endpoint),
   });
+  const schoolsQuery = useQuery({
+    queryKey: ['platform-school-directory', 'all'],
+    queryFn: async () => {
+      const directory = await request<{ schools: OwnerSchool[] }>('/api/platform/schools/directory?status=all');
+      return directory.schools.filter((school) => school.status.toUpperCase() === 'ACTIVE');
+    },
+  });
+  const selectedSchoolNumber = Number(selectedSchoolId);
+  const grantsQuery = useListDeviceActivationOfficers(
+    selectedSchoolNumber,
+    { email: selectedEmployeeEmail },
+    {
+      query: {
+        enabled: Boolean(selectedSchoolId && selectedEmployeeEmail),
+        queryKey: getListDeviceActivationOfficersQueryKey(selectedSchoolNumber, { email: selectedEmployeeEmail }),
+      },
+    },
+  );
 
   const refresh = () => queryClient.invalidateQueries({ queryKey });
+  const refreshGrants = () => queryClient.invalidateQueries({
+    queryKey: getListDeviceActivationOfficersQueryKey(selectedSchoolNumber),
+  });
   const createEmployee = useMutation({
     mutationFn: (input: EmployeeProfileInput) => request<CompanyEmployee>(endpoint, {
       method: 'POST',
@@ -92,7 +123,13 @@ export function PlatformCompanyEmployeesPage() {
       await refresh();
     },
   });
+  const grantActivationAccess = useGrantDeviceActivationOfficer({ mutation: { onSuccess: refreshGrants } });
+  const revokeActivationAccess = useRevokeDeviceActivationOfficer({ mutation: { onSuccess: refreshGrants } });
   const activeError = createEmployee.error || updateEmployee.error;
+  const activeEmployees = employeesQuery.data?.filter((employee) => employee.status === 'ACTIVE') ?? [];
+  const canManageActivation = Boolean(selectedEmployeeEmail && selectedSchoolId);
+  const activeGrantExists = grantsQuery.data?.some((grant) => grant.status === 'ACTIVE') ?? false;
+  const activationError = grantActivationAccess.error || revokeActivationAccess.error || grantsQuery.error || schoolsQuery.error;
 
   return (
     <div className="fade-up">
@@ -106,6 +143,93 @@ export function PlatformCompanyEmployeesPage() {
           </Button>
         }
       />
+
+      <section className="panel mb-6 p-5 sm:p-6" aria-labelledby="activation-access-heading">
+        <div className="mb-4 flex items-start gap-3">
+          <div className="rounded-xl bg-[hsl(var(--primary)/.1)] p-2 text-[hsl(var(--primary))]"><ShieldCheck size={20} /></div>
+          <div>
+            <h2 id="activation-access-heading" className="font-bold">Device activation access</h2>
+            <p className="mt-1 max-w-3xl text-sm text-[hsl(var(--muted-foreground))]">
+              Grant an active company employee access to activate NFC cards at a selected school. The employee must sign in once to create an app account; this does not invite them or send email.
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+          <Field label="Active company employee">
+            <select
+              value={selectedEmployeeEmail}
+              onChange={(event) => { setSelectedEmployeeEmail(event.target.value); grantActivationAccess.reset(); revokeActivationAccess.reset(); }}
+              data-testid="select-activation-employee"
+            >
+              <option value="">Choose an employee</option>
+              {activeEmployees.map((employee) => (
+                <option key={employee.id} value={employee.email}>{employee.fullName} — {employee.email}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="School">
+            <select
+              value={selectedSchoolId}
+              onChange={(event) => { setSelectedSchoolId(event.target.value); grantActivationAccess.reset(); revokeActivationAccess.reset(); }}
+              data-testid="select-activation-school"
+            >
+              <option value="">Choose an active school</option>
+              {(schoolsQuery.data ?? []).map((school) => (
+                <option key={school.id} value={school.id}>{school.name}</option>
+              ))}
+            </select>
+          </Field>
+          <Button
+            disabled={!canManageActivation || activeGrantExists || grantActivationAccess.isPending || grantsQuery.isPending}
+            onClick={() => grantActivationAccess.mutate({
+              schoolId: selectedSchoolNumber,
+              data: { email: selectedEmployeeEmail },
+            })}
+            testId="button-grant-activation-access"
+          >
+            <ShieldCheck size={15} />{grantActivationAccess.isPending ? 'Granting…' : activeGrantExists ? 'Access already active' : 'Grant access'}
+          </Button>
+        </div>
+        {schoolsQuery.isError && (
+          <p role="alert" className="mt-4 text-sm text-[hsl(var(--destructive))]">{errorMessage(schoolsQuery.error)}</p>
+        )}
+        {activationError && !schoolsQuery.isError && (
+          <p role="alert" className="mt-4 text-sm text-[hsl(var(--destructive))]">{errorMessage(activationError)}</p>
+        )}
+        {canManageActivation && (
+          <div className="mt-5 border-t border-[hsl(var(--border))] pt-4" aria-live="polite">
+            <h3 className="mb-3 text-sm font-bold">Current access</h3>
+            {grantsQuery.isPending ? (
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">Checking current access…</p>
+            ) : grantsQuery.isError ? null : grantsQuery.data?.length ? (
+              <div className="space-y-2">
+                {grantsQuery.data.map((grant) => (
+                  <div key={grant.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[hsl(var(--muted)/.35)] px-4 py-3" data-testid={`activation-grant-${grant.id}`}>
+                    <div>
+                      <div className="text-sm font-semibold">{grant.fullName || selectedEmployeeEmail}</div>
+                      <div className="text-xs text-[hsl(var(--muted-foreground))]">{grant.email} · {grant.status === 'ACTIVE' ? 'Access active' : 'Access revoked'}</div>
+                    </div>
+                    {grant.status === 'ACTIVE' && (
+                      <Button
+                        variant="outline"
+                        disabled={revokeActivationAccess.isPending}
+                        onClick={() => revokeActivationAccess.mutate({ schoolId: selectedSchoolNumber, userId: grant.userId })}
+                        testId={`button-revoke-activation-access-${grant.userId}`}
+                      >
+                        Revoke access
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                No access grant for this employee at this school. If they have not signed in before, ask them to sign in once so their app account can be matched; no invitation or email is sent here.
+              </p>
+            )}
+          </div>
+        )}
+      </section>
 
       {activeError && !creating && !editing && (
         <p role="alert" className="mb-5 rounded-xl border border-[hsl(var(--destructive)/.25)] bg-[hsl(var(--destructive)/.08)] p-4 text-sm text-[hsl(var(--destructive))]">

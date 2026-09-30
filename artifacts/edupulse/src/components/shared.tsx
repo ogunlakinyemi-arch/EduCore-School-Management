@@ -36,7 +36,7 @@ export function IconLogo({ compact = false }: { compact?: boolean }) {
   );
 }
 
-type AppRole = 'PLATFORM_OWNER' | 'SCHOOL_ADMIN' | 'TEACHER' | 'ACCOUNTANT' | 'PARENT' | 'STUDENT' | 'STAFF';
+type AppRole = 'PLATFORM_OWNER' | 'SCHOOL_ADMIN' | 'TEACHER' | 'ACCOUNTANT' | 'PARENT' | 'STUDENT' | 'STAFF' | 'DEVICE_ACTIVATION_OFFICER';
 type NavItem = { href: string; label: string; icon: typeof Activity; roles?: AppRole[] };
 
 const nav: NavItem[] = [
@@ -68,6 +68,8 @@ const nav: NavItem[] = [
   { href: '/devices', label: 'Devices', icon: Smartphone, roles: ['PLATFORM_OWNER'] },
   { href: '/subscriptions', label: 'Subscriptions', icon: WalletCards, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/cards', label: 'NFC Cards', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'STAFF'] },
+  { href: '/activation', label: 'Card Activation', icon: CreditCard, roles: ['DEVICE_ACTIVATION_OFFICER'] },
+  { href: '/activation/history', label: 'Activation History', icon: FileClock, roles: ['DEVICE_ACTIVATION_OFFICER'] },
   { href: '/audit', label: 'Audit Log', icon: FileClock, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
 ];
 const ownerNavPaths = new Set([
@@ -84,21 +86,23 @@ export function Shell({ children }: { children: ReactNode }) {
   
   if (contextQuery.isLoading) return <div className="min-h-[100dvh] bg-[hsl(var(--background))]" />;
 
-  const roles = context?.roles?.filter(r => r.status === 'ACTIVE').map(r => r.role) || [];
-  const isPlatformOwner = context?.isPlatformOwner || false;
+  const roles = context?.roles?.filter(r => r.status === 'ACTIVE').map(r => r.role as string) || [];
+  const isActivationOfficer = roles.includes('DEVICE_ACTIVATION_OFFICER');
+  const isPlatformOwner = !isActivationOfficer && (context?.isPlatformOwner || false);
   const financeRole = !!schoolId && context?.roles?.some(r => r.schoolId === schoolId && r.status === 'ACTIVE' && (r.role === 'SCHOOL_ADMIN' || r.role === 'ACCOUNTANT')) === true;
   const studentRole = context?.roles?.some(r => r.role === 'STUDENT' && r.status === 'ACTIVE') === true;
   if (isPlatformOwner && !roles.includes('PLATFORM_OWNER')) roles.push('PLATFORM_OWNER');
 
   const visibleNav = nav.filter(item => {
+    if (isActivationOfficer) return item.roles?.includes('DEVICE_ACTIVATION_OFFICER') === true;
     if (isPlatformOwner) return ownerNavPaths.has(item.href);
     return !item.roles || item.roles.some(role => roles.includes(role));
   });
   const name = context?.user?.name ?? 'Yemait EduCore user';
-  const roleDisplay = isPlatformOwner ? 'Platform Owner' : (roles[0]?.replaceAll('_', ' ') ?? 'User').toLowerCase();
+  const roleDisplay = isActivationOfficer ? 'Device Activation Officer' : isPlatformOwner ? 'Platform Owner' : (roles[0]?.replaceAll('_', ' ') ?? 'User').toLowerCase();
   const initials = name.split(' ').slice(0, 2).map(part => part[0]).join('').toUpperCase();
   
-  const userSchoolsQuery = useGetCurrentUserSchools({ query: { enabled: !isPlatformOwner && !!contextQuery.data, queryKey: getGetCurrentUserSchoolsQueryKey() } });
+  const userSchoolsQuery = useGetCurrentUserSchools({ query: { enabled: !isPlatformOwner && !isActivationOfficer && !!contextQuery.data, queryKey: getGetCurrentUserSchoolsQueryKey() } });
   const ownerSchoolsQuery = useListOwnerSchoolDirectory(
     { status: 'all' },
     { query: { enabled: isPlatformOwner, queryKey: getListOwnerSchoolDirectoryQueryKey({ status: 'all' }) } },
@@ -127,7 +131,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <nav className="space-y-1 overflow-y-auto scrollbar-thin">
           {visibleNav.map(item => {
             const Icon = item.icon; 
-            const active = item.href === '/' ? location === '/' : location.startsWith(item.href);
+            const active = item.href === '/' ? location === '/' : item.href === '/activation' ? location === '/activation' : location.startsWith(item.href);
             return (
               <Link key={item.href} href={item.href} onClick={() => setOpen(false)} className={cx('group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[hsl(var(--sidebar-foreground)/.7)] hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-foreground))]', active && 'bg-[hsl(var(--sidebar-primary))] font-bold text-[hsl(var(--sidebar-primary-foreground))] hover:bg-[hsl(var(--sidebar-primary))]')} data-testid={`link-nav-${item.label.toLowerCase().replaceAll(' ', '-')}`}>
                 <Icon size={18} strokeWidth={active ? 2.4 : 1.8} />
@@ -142,9 +146,9 @@ export function Shell({ children }: { children: ReactNode }) {
             <div className="mb-2 flex items-center gap-2 text-[hsl(var(--sidebar-accent-foreground))]"><ShieldCheck size={16} /><span className="text-xs font-bold">Secure operations</span></div>
             <p className="text-xs leading-5 text-[hsl(var(--sidebar-foreground)/.6)]">Your actions are bound to your active tenant permissions.</p>
           </div>
-          <Link href="/settings" className="mt-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[hsl(var(--sidebar-foreground)/.7)] hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-foreground))]" data-testid="link-nav-settings">
+          {!isActivationOfficer && <Link href="/settings" className="mt-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[hsl(var(--sidebar-foreground)/.7)] hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-foreground))]" data-testid="link-nav-settings">
             <Settings2 size={18} /> Settings
-          </Link>
+          </Link>}
         </div>
       </aside>
       {open && <button className="fixed inset-0 z-30 bg-[hsl(var(--foreground)/.4)] backdrop-blur-sm md:hidden" onClick={() => setOpen(false)} aria-label="Close menu" data-testid="button-dismiss-menu" />}
@@ -167,7 +171,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 <TenantPicker />
               </div>
             )}
-            {!isPlatformOwner && <CommunicationInboxBadge />}
+            {!isPlatformOwner && !isActivationOfficer && <CommunicationInboxBadge />}
             {isPlatformOwner ? (
               <Link href="/notifications">
                 <button className="relative grid h-10 w-10 place-items-center rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] transition-colors hover:border-[hsl(var(--primary)/.3)] hover:text-[hsl(var(--primary))]" aria-label="Notifications" data-testid="button-notifications">
@@ -175,7 +179,7 @@ export function Shell({ children }: { children: ReactNode }) {
                   {hasUnread && <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full border-2 border-[hsl(var(--card))] bg-[hsl(var(--destructive))]" />}
                 </button>
               </Link>
-            ) : studentRole && (location.startsWith('/my-fees') || location.startsWith('/my-academics')) ? <FeePaymentNotifications audience="student" /> : financeRole ? <FeePaymentNotifications key={`school-${schoolId}`} audience="school" schoolId={schoolId} /> : studentRole ? <FeePaymentNotifications audience="student" /> : null}
+            ) : !isActivationOfficer && studentRole && (location.startsWith('/my-fees') || location.startsWith('/my-academics')) ? <FeePaymentNotifications audience="student" /> : !isActivationOfficer && financeRole ? <FeePaymentNotifications key={`school-${schoolId}`} audience="school" schoolId={schoolId} /> : !isActivationOfficer && studentRole ? <FeePaymentNotifications audience="student" /> : null}
             <div className="hidden h-8 w-px bg-[hsl(var(--border))] sm:block" />
             <div className="hidden text-right sm:block">
               <div className="text-xs font-bold">{name}</div>

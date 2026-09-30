@@ -917,6 +917,20 @@ router.patch("/cards/:cardId/status", async (req, res) => {
     if (terminalCardStatuses.has(previousStatus) && status !== previousStatus) {
       throw new AuthError(409, `A ${previousStatus} card cannot change status`);
     }
+    if (status === "active" && card.rows[0].studentId !== null) {
+      const student = await client.query(
+        `SELECT id FROM students WHERE id = $1 AND school_id = $2 FOR UPDATE`,
+        [card.rows[0].studentId, card.rows[0].schoolId],
+      );
+      if (!student.rows[0]) throw new AuthError(404, "Student not found in card's school");
+      const activeCard = await client.query(
+        `SELECT id FROM nfc_cards
+         WHERE school_id = $1 AND student_id = $2 AND lower(status) = 'active' AND id <> $3
+         LIMIT 1`,
+        [card.rows[0].schoolId, card.rows[0].studentId, cardId],
+      );
+      if (activeCard.rows[0]) throw new AuthError(409, "Student already has an active NFC card");
+    }
     const result = await client.query(`
       UPDATE nfc_cards
       SET status = $1,

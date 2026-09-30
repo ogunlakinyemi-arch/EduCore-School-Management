@@ -1,0 +1,351 @@
+Implement Task #24: Secure NFC Card Activation and E-ID Workflow for Yemait EduCore.
+
+IMPORTANT: This is a targeted development fix so I can continue dashboard smoke testing.
+
+DO NOT implement the remaining Phase 7 backlog.
+DO NOT implement or verify Flutterwave.
+DO NOT implement or verify Termii.
+DO NOT perform the production audit.
+DO NOT perform migration reconciliation.
+DO NOT publish.
+DO NOT modify production.
+DO NOT change the migration ledger.
+DO NOT refactor unrelated parts of the application.
+
+Only implement the scope below.
+
+1. Device Activation Officer role
+
+Create/use a dedicated restricted internal role:
+
+"DEVICE_ACTIVATION_OFFICER"
+
+This is a Yemait Technologies internal employee role.
+
+It is NOT:
+
+- a School Staff membership;
+- a Platform Owner account.
+
+The officer must have a restricted dashboard and only the permissions necessary for NFC/device activation.
+
+The officer should be able to:
+
+- view authorized schools/devices needed for activation;
+- link/activate NFC cards to students;
+- view the minimum student information required for activation;
+- view student passport/photo needed for e-ID;
+- preview/generate the student's e-ID;
+- access activation history/audit information.
+
+The officer must NOT receive the full Platform Owner dashboard or unrestricted school administration access.
+
+Do not weaken existing RBAC or tenant isolation.
+
+2. NFC activation workflow
+
+Implement the workflow:
+
+School
+→ NFC Device
+→ Student
+→ NFC Card
+→ Assign
+→ Updated E-ID
+→ Print
+
+School
+
+Allow the authorized Device Activation Officer to select an authorized school.
+
+Only schools the logged-in officer is permitted to access may be returned.
+
+NFC Device
+
+After selecting the school:
+
+- Load NFC devices already linked to that school.
+- If there is only one active device, automatically select it.
+- If there are multiple active devices, allow the officer to select the device.
+- Automatically populate the device's serial/hardware UID.
+- Hardware UID must be read-only.
+- Do not require manual Hardware UID entry.
+
+The device serial/hardware UID identifies the physical NFC hardware device.
+
+Never allow a device belonging to School A to be used for activation against School B.
+
+The backend must independently verify the device-school relationship.
+
+Student
+
+Replace manual Student ID entry with a searchable Student dropdown.
+
+Only students belonging to the selected school may appear.
+
+Display useful information such as:
+
+- Student name
+- Student ID
+- Class/section
+
+The officer selects the student.
+
+The system obtains the actual student ID from the selected student record.
+
+Do not require manual Student ID entry.
+
+The backend must independently verify that the selected student belongs to the selected school.
+
+NFC Card Number
+
+The officer enters or scans the physical NFC card number.
+
+Keep the card number separate from the Hardware UID.
+
+Hardware UID = NFC device identifier.
+
+Card number = physical student NFC card identifier.
+
+Validate server-side that:
+
+- the card is valid according to the existing NFC implementation;
+- the card is not already actively assigned to another student;
+- the selected student belongs to the selected school;
+- the selected device belongs to the selected school;
+- the authorized officer can perform the operation.
+
+Do not silently overwrite an existing active card assignment.
+
+Use the existing replacement/deactivation process if one exists.
+
+3. Secure server-side assignment
+
+Do not rely on frontend validation.
+
+When the assignment is submitted, the backend must independently validate:
+
+1. Current user authorization.
+2. Officer role.
+3. School access.
+4. Device belongs to selected school.
+5. Student belongs to selected school.
+6. Card is available.
+7. No conflicting active assignment exists.
+
+Reject cross-school attempts.
+
+Examples that MUST fail:
+
+- School A device + School B student.
+- School A student + School B device.
+- Card already actively assigned to another student.
+- Unauthorized officer attempting activation.
+
+Preserve existing audit and activation history.
+
+Do not remove existing security constraints.
+
+4. Student passport/photo
+
+Ensure the student profile supports a passport/photo if this is currently missing.
+
+Support the existing application's appropriate image format(s), including:
+
+- JPG/JPEG
+- PNG
+- WebP where supported
+
+Include reasonable file-size validation.
+
+Allow the authorized school user to:
+
+- upload photo;
+- preview photo;
+- replace/update photo;
+- remove photo where appropriate.
+
+Store/access the photo using existing secure storage patterns.
+
+Student photos must remain school-scoped and must not be exposed across schools.
+
+Do not redesign the Student Profile.
+
+Only add the minimum functionality required.
+
+5. E-ID card
+
+After successful NFC assignment, the student's E-ID card must immediately use the latest persisted information.
+
+The E-ID should include the existing approved fields and, where supported:
+
+- School logo
+- Student passport/photo
+- Student full name
+- Student ID
+- Class/section
+- NFC card number/reference
+- Existing session information where appropriate
+- Existing QR/reference information where already supported
+
+Do not create a duplicate student identity system.
+
+Reuse the existing student/e-ID/NFC models where possible.
+
+If the student photo is later changed, newly generated E-ID cards must use the latest persisted photo.
+
+6. E-ID preview and printing
+
+After successful card assignment:
+
+Show confirmation.
+
+Then show the updated E-ID preview.
+
+Provide a clear action:
+
+"Generate / Send for Printing"
+
+The printable card must use the latest persisted:
+
+- school information;
+- school logo;
+- student information;
+- student passport/photo;
+- class/section;
+- NFC card assignment.
+
+The officer must not re-enter these details.
+
+Do not create a separate duplicate data-entry process.
+
+7. UI flow
+
+Keep the UI simple:
+
+School
+↓
+NFC Device
+↓
+Hardware UID (automatic/read-only)
+↓
+Student (searchable dropdown)
+↓
+NFC Card Number
+↓
+Assign Card
+↓
+Updated E-ID Preview
+↓
+Generate / Send for Printing
+
+Do not redesign unrelated dashboards.
+
+8. Existing fixes that must not regress
+
+Preserve these existing fixes:
+
+Student Directory
+
+The previous lowercase "active" filter issue was corrected to use the valid "ACTIVE" status.
+
+Do not reintroduce the issue.
+
+Owner Partner Payouts
+
+Keep "/partners/payouts" reachable from the Platform Owner dashboard.
+
+Do not remove its existing Platform Owner authorization.
+
+Do not change the separate Partner self-service payout workflow.
+
+TenantProvider
+
+Do not reintroduce the previous repeated "/api/me/authorized-context" request loop.
+
+Do not restore query-reset behavior that caused the loop.
+
+9. Development-only safety
+
+This task is DEVELOPMENT ONLY.
+
+Do not:
+
+- Publish;
+- modify production;
+- modify production database;
+- run destructive production operations;
+- alter the production migration history;
+- change the development migration ledger simply to make tests pass.
+
+If a database migration is genuinely required, stop and explain why before making migration changes rather than silently modifying migration history.
+
+10. Testing
+
+After implementation, run relevant tests for:
+
+- Device Activation Officer authorization.
+- School/device relationship.
+- School/student relationship.
+- NFC card uniqueness.
+- Duplicate active card rejection.
+- Cross-school device/student rejection.
+- Unauthorized activation rejection.
+- Student photo upload/access.
+- E-ID generation.
+- E-ID updated data.
+- E-ID photo rendering.
+- Printing/preview.
+- Existing Student Directory behavior.
+- Existing Owner Partner Payout route.
+- TenantProvider regression.
+
+Also run:
+
+- relevant API tests;
+- relevant frontend tests;
+- backend typecheck;
+- frontend typecheck;
+- applicable builds.
+
+Do not claim real email delivery or external-provider delivery unless actually verified.
+
+11. Final report
+
+When finished, report:
+
+Fixed
+
+List exactly what was changed.
+
+Tests
+
+Report exact passed/failed counts.
+
+Typechecks/builds
+
+Report the actual results.
+
+Security
+
+Confirm the tested cross-school/unauthorized cases.
+
+E-ID
+
+Confirm whether passport/photo and latest NFC information appear correctly.
+
+Printing
+
+Confirm whether the preview/printing workflow was verified.
+
+Not verified
+
+Clearly identify anything that could not be verified.
+
+Deferred
+
+Confirm that all unrelated Phase 7 work remains untouched.
+
+Do not Publish.
+
+Do not implement unrelated issues discovered during testing. If another issue is discovered, report it separately for a later consolidated fix.

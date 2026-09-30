@@ -18,4 +18,5 @@ export const RoleAssignmentRole = {
   STUDENT: 'STUDENT',
   STAFF: 'STAFF',
   PARTNER: 'PARTNER',
+  DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
 } as const;

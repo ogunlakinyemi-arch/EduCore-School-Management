@@ -49,6 +49,7 @@ import { NotificationSettings } from '@/pages/notification-settings';
 import { LibraryPage } from '@/pages/library';
 import { OperationsPage } from '@/pages/operations';
 import { ReportingPage } from '@/pages/reporting';
+import { ActivationHistoryPage, EidActivationPage } from '@/pages/e-id-activation';
 
 import './index.css';
 
@@ -161,6 +162,21 @@ function ProtectedRoutes() {
   }
   const isOnlyParent = !context.isPlatformOwner && roles.includes('PARENT') && (roles.length === 1 || requestedPortal === 'PARENT');
   const isOnlyPartner = !context.isPlatformOwner && roles.includes('PARTNER') && (roles.length === 1 || requestedPortal === 'PARTNER');
+  const isActivationOfficer = context.roles?.some(
+    role => (role.role as string) === 'DEVICE_ACTIVATION_OFFICER' && role.status === 'ACTIVE',
+  ) === true;
+
+  if (isActivationOfficer) {
+    return (
+      <Shell>
+        <Switch>
+          <Route path="/activation/history" component={ActivationHistoryPage} />
+          <Route path="/activation" component={EidActivationPage} />
+          <Route><Redirect to="/activation" /></Route>
+        </Switch>
+      </Shell>
+    );
+  }
 
   if (isOnlyParent) {
     return <ParentPortal />;
@@ -268,6 +284,12 @@ function ProtectedRoutes() {
           <Route path="/cards">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'STAFF']} ownerCanView><CardsPage /></RoleGuard>
           </Route>
+          <Route path="/activation">
+            <RoleGuard allowedRoles={['DEVICE_ACTIVATION_OFFICER']}><EidActivationPage /></RoleGuard>
+          </Route>
+          <Route path="/activation/history">
+            <RoleGuard allowedRoles={['DEVICE_ACTIVATION_OFFICER']}><ActivationHistoryPage /></RoleGuard>
+          </Route>
           <Route path="/settings">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><SettingsPage /></RoleGuard>
           </Route>
@@ -283,8 +305,14 @@ function ProtectedRoutes() {
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isSignedIn, isLoaded } = useAuth();
+  const contextQuery = useGetAuthorizedContext();
   if (!isLoaded) return <div className="min-h-[100dvh] bg-[hsl(var(--background))]" />;
   if (!isSignedIn) return <Redirect to="/sign-in" />;
+  if (contextQuery.isLoading) return <div className="min-h-[100dvh] bg-[hsl(var(--background))]" />;
+  const isActivationOfficer = contextQuery.data?.roles?.some(
+    role => (role.role as string) === 'DEVICE_ACTIVATION_OFFICER' && role.status === 'ACTIVE',
+  ) === true;
+  if (isActivationOfficer) return <ProtectedRoutes />;
   return <>{children}</>;
 }
 

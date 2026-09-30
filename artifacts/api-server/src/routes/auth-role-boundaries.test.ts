@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 const state = vi.hoisted(() => ({
   caller: "PLATFORM_OWNER",
+  activeOfficer: false,
   queries: [] as Array<{ sql: string; values: unknown[] }>,
   createSchoolInvitation: vi.fn(async (input: Record<string, unknown>) => ({
     status: "INVITATION_SENT",
@@ -38,6 +39,9 @@ const poolMock = vi.hoisted(() => ({
       return { rows: [{ id: 90 }] };
     }
     if (sql.includes("SELECT id FROM app_users WHERE id = $1")) return { rows: [{ id: 70 }] };
+    if (sql.includes("SELECT id, user_id AS \"userId\" FROM school_memberships")) {
+      return { rows: [{ id: 68, userId: 90 }] };
+    }
     if (sql.includes("INSERT INTO parent_student_relationships")) {
       return { rows: [{ id: 31, parentId: 21, studentId: 11, relationshipType: "Guardian", status: "ACTIVE" }] };
     }
@@ -52,6 +56,41 @@ const poolMock = vi.hoisted(() => ({
     }
     return { rows: [] };
   }),
+  connect: vi.fn(async () => ({
+    query: vi.fn(async (sql: string, values: unknown[] = []) => {
+      state.queries.push({ sql, values });
+      if (["BEGIN", "COMMIT", "ROLLBACK"].includes(sql)) return { rows: [] };
+      if (sql.includes("SELECT id FROM app_users WHERE id = $1 FOR UPDATE")) {
+        return { rows: [{ id: Number(values[0]) }] };
+      }
+      if (sql.includes("SELECT 1 FROM school_memberships") &&
+          sql.includes("WHERE user_id = $1 AND role = 'DEVICE_ACTIVATION_OFFICER'")) {
+        return { rows: state.activeOfficer ? [{ "?column?": 1 }] : [] };
+      }
+      if (sql.includes("SELECT id, role FROM school_memberships")) {
+        return {
+          rows: Number(values[0]) === 77
+            ? [{ id: 63, role: "TEACHER" }, { id: 62, role: "SCHOOL_ADMIN" }]
+            : [{ id: 61, role: "TEACHER" }],
+        };
+      }
+      if (sql.includes("INSERT INTO school_memberships")) {
+        return { rows: [{ id: 62, userId: Number(values[0]), schoolId: values[1], role: values[2], status: "ACTIVE" }] };
+      }
+      if (sql.includes("UPDATE school_memberships SET status")) {
+        return {
+          rows: Number(values[1]) === 77
+            ? []
+            : [{ id: 61, userId: Number(values[1]), schoolId: Number(values[2]), role: "TEACHER", status: values[0] }],
+        };
+      }
+      if (sql.includes("UPDATE school_memberships")) {
+        return { rows: [{ id: Number(values.at(-1)), userId: Number(values[1]), schoolId: 1, role: "TEACHER", status: "ACTIVE" }] };
+      }
+      return { rows: [] };
+    }),
+    release: vi.fn(),
+  })),
 }));
 
 vi.mock("@workspace/db", () => ({ pool: poolMock }));
@@ -127,6 +166,7 @@ afterAll(async () => new Promise<void>((resolve, reject) =>
 
 beforeEach(() => {
   state.caller = "PLATFORM_OWNER";
+  state.activeOfficer = false;
   state.queries.length = 0;
   poolMock.query.mockClear();
   state.createSchoolInvitation.mockClear();
@@ -180,7 +220,9 @@ describe("school role and parent relationship authorization", () => {
       expect.anything(),
     );
     expect((await call("/school-users", "POST", { schoolId: 1, userId: 71, role: "TEACHER" }, "SCHOOL_ADMIN")).status).toBe(201);
-    expect((await call("/school-users/71/status", "PATCH", { schoolId: 1, status: "INACTIVE" }, "SCHOOL_ADMIN")).status).toBe(200);
+    expect((await call("/school-users/71/status", "PATCH", {
+      schoolId: 1, status: "INACTIVE",
+    }, "SCHOOL_ADMIN")).status).toBe(200);
     expect((await call("/school-memberships/61/role", "PATCH", { role: "STAFF" }, "SCHOOL_ADMIN")).status).toBe(200);
   });
 
@@ -205,5 +247,28 @@ describe("school role and parent relationship authorization", () => {
     expect((await call("/platform-users", "POST", {
       email: "platform@example.test", role: "PLATFORM_OWNER",
     })).status).toBe(201);
+  });
+
+  it("prevents active officers from being granted or reactivated into owner or school roles", async () => {
+    state.activeOfficer = true;
+    const ownerGrant = await call("/platform-users", "POST", {
+      email: "platform@example.test", role: "PLATFORM_OWNER",
+    });
+    expect(ownerGrant.status).toBe(403);
+
+    const ownerReactivation = await call("/platform-memberships/68/status", "PATCH", { status: "ACTIVE" });
+    expect(ownerReactivation.status).toBe(403);
+
+    const schoolReactivation = await call(
+      "/school-users/90/status",
+      "PATCH",
+      { schoolId: 1, status: "ACTIVE" },
+      "SCHOOL_ADMIN",
+    );
+    expect(schoolReactivation.status).toBe(403);
+
+    expect(state.queries.some(({ sql }) =>
+      sql.includes("UPDATE school_memberships SET status") &&
+      !sql.includes("FOR UPDATE"))).toBe(false);
   });
 });

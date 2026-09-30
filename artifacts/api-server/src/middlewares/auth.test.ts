@@ -1,5 +1,28 @@
 import { describe, expect, it, vi } from "vitest";
 
+const dbState = vi.hoisted(() => ({
+  roles: [] as Array<{ id: number; role: string; schoolId: number | null; status: string }>,
+}));
+const dbMock = vi.hoisted(() => ({
+  query: vi.fn(async (sql: string) => {
+    if (sql.includes("FROM app_users WHERE clerk_user_id")) {
+      return {
+        rows: [{
+          id: 10,
+          clerkUserId: "user_test",
+          email: "test@example.com",
+          firstName: "Test",
+          lastName: "User",
+          phone: null,
+          status: "ACTIVE",
+        }],
+      };
+    }
+    return { rows: dbState.roles };
+  }),
+}));
+
+vi.mock("@workspace/db", () => ({ pool: dbMock }));
 vi.mock("@clerk/express", () => ({
   getAuth: vi.fn(() => ({ userId: null })),
   clerkClient: { users: { getUser: vi.fn() } },
@@ -7,6 +30,7 @@ vi.mock("@clerk/express", () => ({
 
 import {
   AuthError,
+  loadUserContext,
   assertRoles,
   assertSchoolAccess,
   assertSchoolOperationalAccess,
@@ -57,6 +81,23 @@ describe("authentication and user status", () => {
     } catch (error) {
       expect((error as AuthError).statusCode).toBe(403);
     }
+  });
+
+  it("fails closed when an activation officer also has any other active role", async () => {
+    dbState.roles = [
+      { id: 1, role: "DEVICE_ACTIVATION_OFFICER", schoolId: 4, status: "ACTIVE" },
+      { id: 2, role: "PLATFORM_OWNER", schoolId: null, status: "ACTIVE" },
+    ];
+    await expect(loadUserContext("user_test")).rejects.toMatchObject({
+      statusCode: 403,
+    });
+
+    dbState.roles = [
+      { id: 1, role: "DEVICE_ACTIVATION_OFFICER", schoolId: 4, status: "ACTIVE" },
+    ];
+    await expect(loadUserContext("user_test")).resolves.toMatchObject({
+      roles: [{ role: "DEVICE_ACTIVATION_OFFICER" }],
+    });
   });
 });
 

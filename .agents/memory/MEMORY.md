@@ -18,3 +18,4 @@
 - [Webhook-independent test checkout](webhook-independent-test-checkout.md) — TEST checkout can use independent backend verification while missing webhook authentication fails closed.
 - [Owner membership history](owner-membership-history.md) — preserve an earlier Owner's membership as inactive history when reconciling a verified replacement identity.
 - [Authorization cache lifecycle](authorization-cache-lifecycle.md) — do not reset an active parent auth query when a child mounts; isolate cached authorization by signed-in identity.
+- [Internal officer isolation](internal-officer-isolation.md) — a restricted internal role must stay exclusive, and its employee identity must match the live verified sign-in email.

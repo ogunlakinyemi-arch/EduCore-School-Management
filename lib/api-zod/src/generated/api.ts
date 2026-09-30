@@ -9,6 +9,299 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary List schools with an active grant for the authenticated Device Activation Officer
+ */
+export const ListActivationSchoolsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "code": zod.string(),
+  "city": zod.string(),
+  "state": zod.string(),
+  "logo": zod.string().nullable()
+})
+export const ListActivationSchoolsResponse = zod.array(ListActivationSchoolsResponseItem)
+
+
+/**
+ * @summary List active NFC and HYBRID devices bound to an authorized school
+ */
+
+
+
+export const ListActivationDevicesParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ListActivationDevicesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "serialNumber": zod.string(),
+  "name": zod.string(),
+  "deviceType": zod.enum(['NFC', 'HYBRID']),
+  "status": zod.string(),
+  "location": zod.string().nullable()
+})
+export const ListActivationDevicesResponse = zod.array(ListActivationDevicesResponseItem)
+
+
+/**
+ * @summary Search students in an authorized school for card activation
+ */
+
+
+
+export const SearchActivationStudentsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const searchActivationStudentsQuerySearchMax = 100;
+
+
+
+export const SearchActivationStudentsQueryParams = zod.object({
+  "search": zod.coerce.string().max(searchActivationStudentsQuerySearchMax).optional()
+})
+
+export const SearchActivationStudentsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "admissionNo": zod.string(),
+  "firstName": zod.string(),
+  "middleName": zod.string().nullable(),
+  "lastName": zod.string(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "photo": zod.string().nullable()
+})
+export const SearchActivationStudentsResponse = zod.array(SearchActivationStudentsResponseItem)
+
+
+/**
+ * @summary List NFC card activation history for an authorized school
+ */
+
+
+
+export const ListActivationHistoryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ListActivationHistoryResponseItem = zod.object({
+  "id": zod.number().int(),
+  "cardId": zod.number().int(),
+  "cardNumber": zod.string(),
+  "studentId": zod.number().int().nullable(),
+  "admissionNo": zod.string().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "action": zod.string(),
+  "previousStatus": zod.string().nullable(),
+  "newStatus": zod.string().nullable(),
+  "reason": zod.string().nullable(),
+  "actorUserId": zod.number().int().nullable(),
+  "createdAt": zod.coerce.date(),
+  "deviceId": zod.number().int().nullable(),
+  "deviceSerialNumber": zod.string().nullable()
+})
+export const ListActivationHistoryResponse = zod.array(ListActivationHistoryResponseItem)
+
+
+/**
+ * @summary Activate an unassigned NFC card for a same-school student
+ */
+
+
+
+export const AssignActivationCardParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+export const assignActivationCardBodyCardNumberMin = 4;
+
+
+
+export const AssignActivationCardBody = zod.object({
+  "deviceId": zod.number().int().min(1),
+  "studentId": zod.number().int().min(1),
+  "cardNumber": zod.string().min(assignActivationCardBodyCardNumberMin)
+})
+
+export const AssignActivationCardResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "uid": zod.string(),
+  "studentId": zod.number().int(),
+  "status": zod.enum(['active']),
+  "scans": zod.number().int(),
+  "lastScan": zod.coerce.date().nullable(),
+  "activatedAt": zod.coerce.date().nullable(),
+  "student": zod.object({
+  "id": zod.number().int(),
+  "admissionNo": zod.string(),
+  "firstName": zod.string(),
+  "middleName": zod.string().nullable(),
+  "lastName": zod.string(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "photo": zod.string().nullable()
+}),
+  "device": zod.object({
+  "id": zod.number().int(),
+  "serialNumber": zod.string(),
+  "name": zod.string(),
+  "deviceType": zod.enum(['NFC', 'HYBRID']),
+  "status": zod.string(),
+  "location": zod.string().nullable()
+}),
+  "eId": zod.object({
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "schoolCode": zod.string(),
+  "schoolLogo": zod.string().nullable(),
+  "schoolAddress": zod.string().nullable(),
+  "studentId": zod.number().int(),
+  "admissionNo": zod.string(),
+  "firstName": zod.string(),
+  "middleName": zod.string().nullable(),
+  "lastName": zod.string(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "photo": zod.string().nullable(),
+  "cardId": zod.number().int().nullable(),
+  "cardNumber": zod.string().nullable(),
+  "activatedAt": zod.coerce.date().nullable()
+})
+})
+
+
+/**
+ * @summary Get the student's current E-ID data using the latest active NFC card
+ */
+
+
+
+
+export const GetActivationStudentEIdParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const GetActivationStudentEIdResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "schoolCode": zod.string(),
+  "schoolLogo": zod.string().nullable(),
+  "schoolAddress": zod.string().nullable(),
+  "studentId": zod.number().int(),
+  "admissionNo": zod.string(),
+  "firstName": zod.string(),
+  "middleName": zod.string().nullable(),
+  "lastName": zod.string(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "photo": zod.string().nullable(),
+  "cardId": zod.number().int().nullable(),
+  "cardNumber": zod.string().nullable(),
+  "activatedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * Platform Owner only. Returns active and inactive grants, optionally filtered to an employee email.
+ * @summary List school-scoped Device Activation Officer grants
+ */
+
+
+
+export const ListDeviceActivationOfficersParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const listDeviceActivationOfficersQueryEmailMax = 254;
+
+
+
+export const ListDeviceActivationOfficersQueryParams = zod.object({
+  "email": zod.coerce.string().email().max(listDeviceActivationOfficersQueryEmailMax).optional()
+})
+
+export const ListDeviceActivationOfficersResponseItem = zod.object({
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "role": zod.enum(['DEVICE_ACTIVATION_OFFICER']),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "email": zod.string().email(),
+  "fullName": zod.string().nullable()
+})
+export const ListDeviceActivationOfficersResponse = zod.array(ListDeviceActivationOfficersResponseItem)
+
+
+/**
+ * Platform Owner only. Email grants require exactly one active app user matching an ACTIVE platform company employee and that app user must have no other active roles.
+ * @summary Grant activation access by app user ID or company employee email
+ */
+
+
+
+export const GrantDeviceActivationOfficerParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+export const grantDeviceActivationOfficerBodyOneEmailMax = 254;
+
+
+export const grantDeviceActivationOfficerBodyTwoEmailMax = 254;
+
+
+export const grantDeviceActivationOfficerBodyThreeEmailMax = 254;
+
+
+
+export const GrantDeviceActivationOfficerBody = zod.union([zod.object({
+  "userId": zod.number().int().min(1),
+  "email": zod.string().email().max(grantDeviceActivationOfficerBodyOneEmailMax).optional()
+}),zod.object({
+  "userId": zod.number().int().min(1).optional(),
+  "email": zod.string().email().max(grantDeviceActivationOfficerBodyTwoEmailMax)
+})]).and(zod.object({
+  "userId": zod.number().int().min(1).optional(),
+  "email": zod.string().email().max(grantDeviceActivationOfficerBodyThreeEmailMax).optional()
+}))
+
+export const GrantDeviceActivationOfficerResponse = zod.object({
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "role": zod.enum(['DEVICE_ACTIVATION_OFFICER']),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+
+
+/**
+ * Platform Owner only.
+ * @summary Revoke a school-scoped Device Activation Officer grant
+ */
+
+
+
+
+export const RevokeDeviceActivationOfficerParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "userId": zod.coerce.number().int().min(1)
+})
+
+export const RevokeDeviceActivationOfficerResponse = zod.object({
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "role": zod.enum(['DEVICE_ACTIVATION_OFFICER']),
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+
+
+/**
  * @summary Get school payment controls and school-admin-approved bank transfer details
  */
 
@@ -1517,7 +1810,7 @@ export const GetCurrentUserResponse = zod.object({
   "name": zod.string(),
   "roles": zod.array(zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 }))
@@ -1529,7 +1822,7 @@ export const GetCurrentUserResponse = zod.object({
  */
 export const GetCurrentUserRolesResponseItem = zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 })
@@ -1565,7 +1858,7 @@ export const GetAuthorizedContextResponse = zod.object({
   "isPlatformOwner": zod.boolean(),
   "roles": zod.array(zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 }))
@@ -1844,7 +2137,7 @@ export const ListUsersResponseItem = zod.object({
   "createdAt": zod.string().optional(),
   "memberships": zod.array(zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 }))
@@ -1862,7 +2155,7 @@ export const CreatePlatformMembershipBody = zod.object({
 
 export const CreatePlatformMembershipResponse = zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 })
@@ -1899,7 +2192,7 @@ export const InviteSchoolUserResponse = zod.object({
   "expiresAt": zod.coerce.date().optional(),
   "membership": zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 }).optional()
@@ -1946,7 +2239,7 @@ export const CreateSchoolMembershipBody = zod.object({
 
 export const CreateSchoolMembershipResponse = zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 })
@@ -1987,7 +2280,7 @@ export const CreateSchoolAdministratorResponse = zod.object({
   "expiresAt": zod.coerce.date().optional(),
   "membership": zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 }).optional()
@@ -3845,6 +4138,96 @@ export const UpdateStudentStatusResponse = zod.object({
   "cardStatus": zod.enum(['active', 'locked', 'unassigned', 'lost']),
   "joinedAt": zod.string()
 })
+
+
+/**
+ * @summary Request a private student photo upload URL
+ */
+
+
+
+export const RequestStudentPhotoUploadParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+export const requestStudentPhotoUploadBodySizeMax = 3145728;
+
+
+
+export const RequestStudentPhotoUploadBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "contentType": zod.enum(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']),
+  "size": zod.number().int().min(1).max(requestStudentPhotoUploadBodySizeMax)
+})
+
+export const RequestStudentPhotoUploadResponse = zod.object({
+  "uploadURL": zod.string().url(),
+  "objectPath": zod.string()
+})
+
+
+/**
+ * @summary Verify and save an uploaded student photo
+ */
+
+
+
+export const ConfirmStudentPhotoParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ConfirmStudentPhotoBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "objectPath": zod.string()
+})
+
+export const ConfirmStudentPhotoResponse = zod.object({
+  "passportUrl": zod.string()
+})
+
+
+/**
+ * @summary Serve the current student photo to an authorized school user
+ */
+
+
+
+export const GetStudentPhotoParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GetStudentPhotoQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const GetStudentPhotoResponse = zod.unknown()
+
+
+/**
+ * @summary Remove a student photo
+ */
+
+
+
+export const DeleteStudentPhotoParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const DeleteStudentPhotoQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const DeleteStudentPhotoResponse = zod.void()
 
 
 /**

@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { flushSync } from 'react-dom';
 import { useLocation, Link } from 'wouter';
 import { useQueryClient } from '@tanstack/react-query';
 import { 
@@ -7,12 +8,14 @@ import {
 } from 'lucide-react';
 import { 
   useListStudents, useCreateStudent, useUpdateStudent, 
-  getListStudentsQueryKey, useGetSchool, getGetSchoolQueryKey
+  getListStudentsQueryKey, useGetSchool, getGetSchoolQueryKey,
+  getStudent, getSchool, listCards
 } from '@workspace/api-client-react';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, 
   Modal, Field, Info, TenantPicker, useTenant, cx, date, useSchoolAdminAccess
 } from '@/components/shared';
+import { StudentPhotoField } from '@/components/student-photo-field';
 
 export function StudentsPage() {
   const { schoolId, setSchoolId } = useTenant();
@@ -151,24 +154,7 @@ export function StudentsPage() {
           )}
           {idCardStudent && (
             <Modal title="Student e-ID card" eyebrow="Printable student identification" onClose={() => setIdCardStudent(null)}>
-              <style>{`@media print { body * { visibility: hidden !important; } .student-eid-card, .student-eid-card * { visibility: visible !important; } .student-eid-card { position: fixed; inset: 0 auto auto 0; margin: 24px; width: 340px; } .student-eid-actions { display: none !important; } }`}</style>
-              <div className="student-eid-card mx-auto w-full max-w-sm rounded-2xl border-2 border-[hsl(var(--primary))] bg-white p-5 text-slate-900 shadow-lg">
-                <div className="mb-4 flex items-center gap-3 border-b border-slate-200 pb-3">
-                  {school?.logoUrl ? <img src={school.logoUrl} alt={`${school.name} logo`} className="h-12 w-12 object-contain" /> : <div className="grid h-12 w-12 place-items-center rounded-lg bg-slate-100 text-xs font-bold">Logo</div>}
-                  <div><div className="font-bold">{school?.name || idCardStudent.schoolName || 'School'}</div><div className="text-xs uppercase tracking-wider text-slate-500">Student Identification</div></div>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="text-xl font-bold">{idCardStudent.firstName} {idCardStudent.lastName}</div>
-                  <div><strong>Admission No.:</strong> {idCardStudent.admissionNo || '—'}</div>
-                  <div><strong>Class:</strong> {idCardStudent.className || '—'} {idCardStudent.section || ''}</div>
-                  <div><strong>Status:</strong> {idCardStudent.status || '—'}</div>
-                  <div><strong>School:</strong> {school?.name || idCardStudent.schoolName || '—'}</div>
-                </div>
-              </div>
-              <div className="student-eid-actions mt-5 flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setIdCardStudent(null)}>Close</Button>
-                <Button onClick={() => window.print()}>Print / Save as PDF</Button>
-              </div>
+              <StudentEIdCard studentId={idCardStudent.id} schoolId={schoolId} onClose={() => setIdCardStudent(null)} />
             </Modal>
           )}
         </>
@@ -177,9 +163,143 @@ export function StudentsPage() {
   );
 }
 
+type EIdSnapshot = {
+  student: any;
+  school: any;
+  card: any | null;
+  logoSrc: string | null;
+  passportSrc: string | null;
+};
+
+function withEIdRefreshToken(src: string, token: number): string {
+  const hashIndex = src.indexOf('#');
+  const path = hashIndex === -1 ? src : src.slice(0, hashIndex);
+  const hash = hashIndex === -1 ? '' : src.slice(hashIndex);
+  return `${path}${path.includes('?') ? '&' : '?'}eidRefresh=${token}${hash}`;
+}
+
+function getPassportSource(student: any, schoolId: number, token: number): string | null {
+  const passportUrl = student.passportUrl;
+  if (!passportUrl) return null;
+  const source = passportUrl.startsWith('/objects/student-photos/')
+    ? `/api/students/${student.id}/photo?schoolId=${schoolId}`
+    : passportUrl;
+  return withEIdRefreshToken(source, token);
+}
+
+async function waitForImage(image: HTMLImageElement | null): Promise<void> {
+  if (!image) return;
+  if (!image.complete) {
+    await new Promise<void>((resolve, reject) => {
+      image.addEventListener('load', () => resolve(), { once: true });
+      image.addEventListener('error', () => reject(new Error(`Could not load ${image.alt || 'an e-ID image'}.`)), { once: true });
+    });
+  }
+  if (image.naturalWidth === 0) throw new Error(`Could not load ${image.alt || 'an e-ID image'}.`);
+  if (typeof image.decode === 'function') await image.decode();
+}
+
+function StudentEIdCard({ studentId, schoolId, onClose }: { studentId: number; schoolId: number; onClose: () => void }) {
+  const [snapshot, setSnapshot] = useState<EIdSnapshot | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [printing, setPrinting] = useState(false);
+  const [error, setError] = useState('');
+  const cardRef = useRef<HTMLDivElement>(null);
+  const requestId = useRef(0);
+
+  const refresh = async () => {
+    const request = ++requestId.current;
+    setLoading(true);
+    setError('');
+    setSnapshot(null);
+    try {
+      const [student, school, cards] = await Promise.all([
+        getStudent(studentId, { schoolId }),
+        getSchool(schoolId),
+        listCards({ schoolId }),
+      ]);
+      if (request !== requestId.current) return null;
+      const currentCard = cards.find((card: any) =>
+        Number(card.studentId) === student.id && String(card.status).toLowerCase() === 'active',
+      ) ?? null;
+      const freshSnapshot = {
+        student,
+        school,
+        card: currentCard,
+        logoSrc: school.logoUrl ? withEIdRefreshToken(school.logoUrl, request) : null,
+        passportSrc: getPassportSource(student, schoolId, request),
+      };
+      setSnapshot(freshSnapshot);
+      return freshSnapshot;
+    } catch {
+      if (request === requestId.current) {
+        setSnapshot(null);
+        setError('The latest student, school, and card information could not be loaded. Retry before printing.');
+      }
+      return null;
+    } finally {
+      if (request === requestId.current) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void refresh();
+    return () => { requestId.current += 1; };
+  }, [studentId, schoolId]);
+
+  const printLatest = async () => {
+    setPrinting(true);
+    try {
+      const freshSnapshot = await refresh();
+      if (!freshSnapshot) return;
+      flushSync(() => setSnapshot(freshSnapshot));
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      const images = Array.from(cardRef.current?.querySelectorAll('img') ?? []);
+      await Promise.all(images.map(image => waitForImage(image)));
+      window.print();
+    } catch (cause) {
+      setSnapshot(null);
+      setError(cause instanceof Error ? cause.message : 'An e-ID image could not be loaded. Printing was cancelled.');
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  return (
+    <>
+      <style>{`@media print { body * { visibility: hidden !important; } .student-eid-card, .student-eid-card * { visibility: visible !important; } .student-eid-card { position: fixed; inset: 0 auto auto 0; margin: 24px; width: 340px; } .student-eid-actions { display: none !important; } }`}</style>
+      {loading && <p role="status" className="py-6 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading the latest student e-ID…</p>}
+      {error && <p role="alert" className="py-4 text-sm font-medium text-[hsl(var(--destructive))]">{error}</p>}
+      {snapshot && (
+        <div ref={cardRef} className="student-eid-card mx-auto w-full max-w-sm rounded-2xl border-2 border-[hsl(var(--primary))] bg-white p-5 text-slate-900 shadow-lg">
+          <div className="mb-4 flex items-center gap-3 border-b border-slate-200 pb-3">
+            {snapshot.logoSrc ? <img src={snapshot.logoSrc} alt={`${snapshot.school.name} logo`} className="h-12 w-12 object-contain" /> : <div className="grid h-12 w-12 place-items-center rounded-lg bg-slate-100 text-xs font-bold">Logo</div>}
+            <div><div className="font-bold">{snapshot.school.name || 'School'}</div><div className="text-xs uppercase tracking-wider text-slate-500">Student Identification</div></div>
+          </div>
+          <div className="flex gap-4">
+            {snapshot.passportSrc ? <img src={snapshot.passportSrc} alt={`${snapshot.student.firstName} ${snapshot.student.lastName} passport photo`} className="h-24 w-20 rounded-lg bg-slate-100 object-cover" /> : <div className="grid h-24 w-20 place-items-center rounded-lg bg-slate-100 text-center text-xs text-slate-500">No photo</div>}
+            <div className="space-y-2 text-sm">
+              <div className="text-xl font-bold">{snapshot.student.firstName} {snapshot.student.lastName}</div>
+              <div><strong>Admission No.:</strong> {snapshot.student.admissionNo || '—'}</div>
+              <div><strong>Student ID:</strong> {snapshot.student.id}</div>
+              <div><strong>Class / Section:</strong> {snapshot.student.className || '—'}{snapshot.student.section ? ` / ${snapshot.student.section}` : ''}</div>
+              <div><strong>Active Card UID:</strong> {snapshot.card?.uid || '—'}</div>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="student-eid-actions mt-5 flex justify-end gap-3">
+        <Button variant="outline" onClick={onClose}>Close</Button>
+        <Button onClick={printLatest} disabled={loading || printing || !snapshot}>{printing ? 'Preparing…' : 'Print / Save as PDF'}</Button>
+      </div>
+    </>
+  );
+}
+
 function StudentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number; initial?: any; onDone: () => void; onCancel: () => void }) {
   const create = useCreateStudent(); 
   const update = useUpdateStudent(); 
+  const queryClient = useQueryClient();
   
   const [form, setForm] = useState({ 
     admissionNo: initial?.admissionNo ?? '', 
@@ -238,6 +358,16 @@ function StudentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number
           <input required value={form.section} onChange={e => setForm({ ...form, section: e.target.value })} placeholder="e.g. A" />
         </Field>
       </div>
+      {initial && (
+        <StudentPhotoField
+          schoolId={schoolId}
+          studentId={initial.id}
+          passportUrl={initial.passportUrl}
+          onUpdated={() => {
+            void queryClient.invalidateQueries({ queryKey: getListStudentsQueryKey() });
+          }}
+        />
+      )}
 
       {!initial && (
         <div className="grid gap-5 sm:grid-cols-2 pt-4 border-t border-[hsl(var(--border))]">

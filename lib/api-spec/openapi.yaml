@@ -33,6 +33,191 @@ tags:
   - name: finance
   - name: communication
 paths:
+  /activation/schools:
+    get:
+      operationId: listActivationSchools
+      tags: [platform]
+      summary: List schools with an active grant for the authenticated Device Activation Officer
+      responses:
+        "200":
+          description: Only schools available to the officer with a matching active company employee record
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/ActivationSchool" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /activation/schools/{schoolId}/devices:
+    get:
+      operationId: listActivationDevices
+      tags: [platform]
+      summary: List active NFC and HYBRID devices bound to an authorized school
+      parameters:
+        - name: schoolId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Authorized-school activation devices only
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/ActivationDevice" } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /activation/schools/{schoolId}/students:
+    get:
+      operationId: searchActivationStudents
+      tags: [platform]
+      summary: Search students in an authorized school for card activation
+      parameters:
+        - name: schoolId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string, maxLength: 100 }
+      responses:
+        "200":
+          description: Minimal student identity information for card assignment
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/ActivationStudent" } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /activation/schools/{schoolId}/history:
+    get:
+      operationId: listActivationHistory
+      tags: [platform]
+      summary: List NFC card activation history for an authorized school
+      parameters:
+        - name: schoolId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Recent school-scoped card history and device metadata
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/ActivationHistory" } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /activation/schools/{schoolId}/assign:
+    post:
+      operationId: assignActivationCard
+      tags: [platform]
+      summary: Activate an unassigned NFC card for a same-school student
+      parameters:
+        - name: schoolId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ActivationAssignmentInput" }
+      responses:
+        "201":
+          description: Persisted active card assignment with current student and device details
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ActivationAssignment" }
+        "400": { description: Invalid assignment input }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: Card UID is unavailable or student already has an active card }
+  /activation/schools/{schoolId}/students/{studentId}/e-id:
+    get:
+      operationId: getActivationStudentEId
+      tags: [platform]
+      summary: Get the student's current E-ID data using the latest active NFC card
+      parameters:
+        - name: schoolId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: studentId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Fresh school, student, photo, and active-card data for E-ID preview/printing
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ActivationEId" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /platform/schools/{schoolId}/device-activation-officers:
+    get:
+      operationId: listDeviceActivationOfficers
+      tags: [platform]
+      summary: List school-scoped Device Activation Officer grants
+      description: Platform Owner only. Returns active and inactive grants, optionally filtered to an employee email.
+      parameters:
+        - name: schoolId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: email
+          in: query
+          required: false
+          schema: { type: string, format: email, maxLength: 254 }
+      responses:
+        "200":
+          description: Grants for the school
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/DeviceActivationOfficerGrantListItem" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      operationId: grantDeviceActivationOfficer
+      tags: [platform]
+      summary: Grant activation access by app user ID or company employee email
+      description: Platform Owner only. Email grants require exactly one active app user matching an ACTIVE platform company employee and that app user must have no other active roles.
+      parameters:
+        - name: schoolId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeviceActivationOfficerGrantInput" }
+      responses:
+        "201":
+          description: School-scoped activation membership
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeviceActivationOfficerGrant" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: Active employee or restricted-role requirement is not met }
+  /platform/schools/{schoolId}/device-activation-officers/{userId}:
+    delete:
+      operationId: revokeDeviceActivationOfficer
+      tags: [platform]
+      summary: Revoke a school-scoped Device Activation Officer grant
+      description: Platform Owner only.
+      parameters:
+        - name: schoolId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Inactive activation membership
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeviceActivationOfficerGrant" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /school/finance/settings:
     get:
       operationId: getFinanceSettings
@@ -2054,6 +2239,70 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Student" }
+  /students/{studentId}/photo-upload-request:
+    post:
+      operationId: requestStudentPhotoUpload
+      tags: [students]
+      summary: Request a private student photo upload URL
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentPhotoUploadIntent" }
+      responses:
+        "200":
+          description: Short-lived upload URL for this school's student
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentPhotoUploadTarget" }
+  /students/{studentId}/photo-confirm:
+    post:
+      operationId: confirmStudentPhoto
+      tags: [students]
+      summary: Verify and save an uploaded student photo
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentPhotoConfirmation" }
+      responses:
+        "200":
+          description: Current protected photo URL
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentPhotoResult" }
+  /students/{studentId}/photo:
+    get:
+      operationId: getStudentPhoto
+      tags: [students]
+      summary: Serve the current student photo to an authorized school user
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Protected student photo
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/png:
+              schema: { type: string, format: binary }
+            image/webp:
+              schema: { type: string, format: binary }
+    delete:
+      operationId: deleteStudentPhoto
+      tags: [students]
+      summary: Remove a student photo
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "204":
+          description: Student photo removed
   /students/{studentId}/class-assignments:
     get:
       operationId: listStudentClassAssignments
@@ -4431,6 +4680,32 @@ components:
       required: [status]
       properties:
         status: { type: string, enum: [ACTIVE, INACTIVE, GRADUATED, TRANSFERRED, WITHDRAWN] }
+    StudentPhotoUploadIntent:
+      type: object
+      required: [schoolId, contentType, size]
+      additionalProperties: false
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        contentType: { type: string, enum: [image/jpeg, image/jpg, image/png, image/webp] }
+        size: { type: integer, minimum: 1, maximum: 3145728 }
+    StudentPhotoUploadTarget:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL: { type: string, format: uri }
+        objectPath: { type: string }
+    StudentPhotoConfirmation:
+      type: object
+      required: [schoolId, objectPath]
+      additionalProperties: false
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        objectPath: { type: string }
+    StudentPhotoResult:
+      type: object
+      required: [passportUrl]
+      properties:
+        passportUrl: { type: string }
     Parent:
       type: object
       required: [id, schoolId, name, email, phone, childrenCount, activeChildren]
@@ -4455,7 +4730,7 @@ components:
         id: { type: integer }
         role:
           type: string
-          enum: [PLATFORM_OWNER, SCHOOL_ADMIN, TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF, PARTNER]
+          enum: [PLATFORM_OWNER, SCHOOL_ADMIN, TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF, PARTNER, DEVICE_ACTIVATION_OFFICER]
         schoolId: { type: ["integer", "null"] }
         status:
           type: string
@@ -6680,3 +6955,126 @@ components:
       properties:
         schoolId: { type: ["integer", "null"], minimum: 1 }
         opaqueDeviceReference: { type: string, minLength: 1, maxLength: 256 }
+    ActivationSchool:
+      type: object
+      required: [id, name, code, city, state, logo]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        code: { type: string }
+        city: { type: string }
+        state: { type: string }
+        logo: { type: ["string", "null"] }
+    ActivationDevice:
+      type: object
+      required: [id, serialNumber, name, deviceType, status, location]
+      properties:
+        id: { type: integer }
+        serialNumber: { type: string }
+        name: { type: string }
+        deviceType: { type: string, enum: [NFC, HYBRID] }
+        status: { type: string }
+        location: { type: ["string", "null"] }
+    ActivationStudent:
+      type: object
+      required: [id, admissionNo, firstName, middleName, lastName, className, section, photo]
+      properties:
+        id: { type: integer }
+        admissionNo: { type: string }
+        firstName: { type: string }
+        middleName: { type: ["string", "null"] }
+        lastName: { type: string }
+        className: { type: string }
+        section: { type: string }
+        photo: { type: ["string", "null"] }
+    ActivationHistory:
+      type: object
+      required: [id, cardId, cardNumber, studentId, admissionNo, firstName, lastName, action, previousStatus, newStatus, reason, actorUserId, createdAt, deviceId, deviceSerialNumber]
+      properties:
+        id: { type: integer }
+        cardId: { type: integer }
+        cardNumber: { type: string }
+        studentId: { type: ["integer", "null"] }
+        admissionNo: { type: ["string", "null"] }
+        firstName: { type: ["string", "null"] }
+        lastName: { type: ["string", "null"] }
+        action: { type: string }
+        previousStatus: { type: ["string", "null"] }
+        newStatus: { type: ["string", "null"] }
+        reason: { type: ["string", "null"] }
+        actorUserId: { type: ["integer", "null"] }
+        createdAt: { type: string, format: date-time }
+        deviceId: { type: ["integer", "null"] }
+        deviceSerialNumber: { type: ["string", "null"] }
+    ActivationAssignmentInput:
+      type: object
+      required: [deviceId, studentId, cardNumber]
+      additionalProperties: false
+      properties:
+        deviceId: { type: integer, minimum: 1 }
+        studentId: { type: integer, minimum: 1 }
+        cardNumber: { type: string, minLength: 4 }
+    ActivationAssignment:
+      type: object
+      required: [id, schoolId, uid, studentId, status, scans, lastScan, activatedAt, student, device, eId]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        uid: { type: string }
+        studentId: { type: integer }
+        status: { type: string, enum: [active] }
+        scans: { type: integer }
+        lastScan: { type: ["string", "null"], format: date-time }
+        activatedAt: { type: ["string", "null"], format: date-time }
+        student: { $ref: "#/components/schemas/ActivationStudent" }
+        device: { $ref: "#/components/schemas/ActivationDevice" }
+        eId: { $ref: "#/components/schemas/ActivationEId" }
+    ActivationEId:
+      type: object
+      required: [schoolId, schoolName, schoolCode, schoolLogo, schoolAddress, studentId, admissionNo, firstName, middleName, lastName, className, section, photo, cardId, cardNumber, activatedAt]
+      properties:
+        schoolId: { type: integer }
+        schoolName: { type: string }
+        schoolCode: { type: string }
+        schoolLogo: { type: ["string", "null"] }
+        schoolAddress: { type: ["string", "null"] }
+        studentId: { type: integer }
+        admissionNo: { type: string }
+        firstName: { type: string }
+        middleName: { type: ["string", "null"] }
+        lastName: { type: string }
+        className: { type: string }
+        section: { type: string }
+        photo: { type: ["string", "null"] }
+        cardId: { type: ["integer", "null"] }
+        cardNumber: { type: ["string", "null"] }
+        activatedAt: { type: ["string", "null"], format: date-time }
+    DeviceActivationOfficerGrantInput:
+      type: object
+      additionalProperties: false
+      oneOf:
+        - required: [userId]
+        - required: [email]
+      properties:
+        userId: { type: integer, minimum: 1 }
+        email: { type: string, format: email, maxLength: 254 }
+    DeviceActivationOfficerGrant:
+      type: object
+      required: [id, userId, schoolId, role, status]
+      properties:
+        id: { type: integer }
+        userId: { type: integer }
+        schoolId: { type: integer }
+        role: { type: string, enum: [DEVICE_ACTIVATION_OFFICER] }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+    DeviceActivationOfficerGrantListItem:
+      type: object
+      required: [id, userId, schoolId, role, status, email, fullName]
+      properties:
+        id: { type: integer }
+        userId: { type: integer }
+        schoolId: { type: integer }
+        role: { type: string, enum: [DEVICE_ACTIVATION_OFFICER] }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        email: { type: string, format: email }
+        fullName: { type: ["string", "null"] }

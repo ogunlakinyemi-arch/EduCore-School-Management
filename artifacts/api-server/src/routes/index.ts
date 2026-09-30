@@ -24,6 +24,8 @@ import communicationCampaignsRouter from "./communication-campaigns";
 import libraryRouter from "./library";
 import operationsRouter from "./operations";
 import reportingRouter from "./reporting";
+import deviceActivationRouter from "./device-activation";
+import studentPhotosRouter from "./student-photos";
 
 const router: IRouter = Router();
 
@@ -57,5 +59,7 @@ router.use(communicationCampaignsRouter);
 router.use(libraryRouter);
 router.use(operationsRouter);
 router.use(reportingRouter);
+router.use(deviceActivationRouter);
+router.use(studentPhotosRouter);
 
 export default router;

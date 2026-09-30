@@ -559,6 +559,15 @@ export async function activateAcceptedSchoolInvitation(userId: number, clerkUser
     if (!user.rows[0] || normalizeEmail(user.rows[0].email) !== email || user.rows[0].status !== "ACTIVE") {
       throw new AuthError(403, "The invitation does not match an active account");
     }
+    const activationOfficer = await client.query(
+      `SELECT 1 FROM school_memberships
+       WHERE user_id = $1 AND role = 'DEVICE_ACTIVATION_OFFICER'
+         AND status = 'ACTIVE' LIMIT 1`,
+      [userId],
+    );
+    if (activationOfficer.rows[0]) {
+      throw new AuthError(403, "Device Activation Officer accounts cannot be activated through ordinary school invitations");
+    }
     const existing = await client.query(
       `SELECT id,status FROM school_memberships
        WHERE user_id=$1 AND school_id=$2 AND role=$3 FOR UPDATE`,

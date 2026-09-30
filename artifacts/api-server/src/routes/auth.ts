@@ -78,10 +78,51 @@ async function parentForUser(req: Request) {
 }
 
 function parseRole(value: unknown): Role {
-  if (typeof value !== "string" || !ROLES.includes(value as Role)) {
+  if (typeof value !== "string" || !ROLES.includes(value as (typeof ROLES)[number])) {
     throw new AuthError(400, "Unsupported role");
   }
   return value as Role;
+}
+
+async function withLockedUser<T>(
+  userId: number,
+  work: (client: { query: (sql: string, values?: unknown[]) => Promise<any> }) => Promise<T>,
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const user = await client.query(
+      `SELECT id FROM app_users WHERE id = $1 FOR UPDATE`,
+      [userId],
+    );
+    if (!user.rows[0]) throw new AuthError(404, "User not found");
+    const result = await work(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function assertNoActiveOfficerRole(
+  db: { query: (sql: string, values?: unknown[]) => Promise<any> },
+  userId: number,
+) {
+  const officer = await db.query(
+    `SELECT 1 FROM school_memberships
+     WHERE user_id = $1 AND role = 'DEVICE_ACTIVATION_OFFICER'
+       AND status = 'ACTIVE' LIMIT 1`,
+    [userId],
+  );
+  if (officer.rows[0]) {
+    throw new AuthError(
+      403,
+      "A Device Activation Officer account cannot be assigned or reactivated with another role",
+    );
+  }
 }
 
 router.get(
@@ -424,14 +465,17 @@ router.post(
     if (userId === context.user.id) {
       throw new AuthError(403, "You cannot change your own platform role");
     }
-    const result = await pool.query(
-      `INSERT INTO school_memberships (user_id, school_id, role)
-       VALUES ($1, NULL, 'PLATFORM_OWNER')
-       ON CONFLICT (user_id, role) WHERE school_id IS NULL
-       DO UPDATE SET status = 'ACTIVE', updated_at = NOW()
-       RETURNING id, user_id AS "userId", school_id AS "schoolId", role, status`,
-      [userId],
-    );
+    const result = await withLockedUser(Number(userId), async (client) => {
+      await assertNoActiveOfficerRole(client, Number(userId));
+      return client.query(
+        `INSERT INTO school_memberships (user_id, school_id, role)
+         VALUES ($1, NULL, 'PLATFORM_OWNER')
+         ON CONFLICT (user_id, role) WHERE school_id IS NULL
+         DO UPDATE SET status = 'ACTIVE', updated_at = NOW()
+         RETURNING id, user_id AS "userId", school_id AS "schoolId", role, status`,
+        [userId],
+      );
+    });
     await auditSecurityEvent(
       req,
       null,
@@ -459,12 +503,17 @@ router.patch(
     if (existing.rows[0].userId === context.user.id) {
       throw new AuthError(403, "You cannot change your own platform role");
     }
-    const result = await pool.query(
-      `UPDATE school_memberships SET status = $1, updated_at = NOW()
-       WHERE id = $2
-       RETURNING id, user_id AS "userId", school_id AS "schoolId", role, status`,
-      [status, membershipId],
-    );
+    const result = await withLockedUser(Number(existing.rows[0].userId), async (client) => {
+      if (status === "ACTIVE") {
+        await assertNoActiveOfficerRole(client, Number(existing.rows[0].userId));
+      }
+      return client.query(
+        `UPDATE school_memberships SET status = $1, updated_at = NOW()
+         WHERE id = $2
+         RETURNING id, user_id AS "userId", school_id AS "schoolId", role, status`,
+        [status, membershipId],
+      );
+    });
     await auditSecurityEvent(
       req,
       null,
@@ -490,7 +539,8 @@ router.get(
           sm.role, sm.status AS "membershipStatus", sm.school_id AS "schoolId"
        FROM school_memberships sm
        JOIN app_users au ON au.id = sm.user_id
-       WHERE sm.school_id = $1 ORDER BY au.last_name, au.first_name, au.email`,
+        WHERE sm.school_id = $1 AND sm.role <> 'DEVICE_ACTIVATION_OFFICER'
+        ORDER BY au.last_name, au.first_name, au.email`,
       [schoolId],
     );
     res.json(result.rows);
@@ -514,6 +564,17 @@ router.post(
     }
     if (phone && !/^\+?[0-9][0-9\s()-]{7,24}$/.test(phone)) {
       throw new AuthError(400, "A valid phone is required");
+    }
+    const officer = await pool.query(
+      `SELECT 1 FROM app_users au
+       JOIN school_memberships sm ON sm.user_id = au.id
+       WHERE lower(au.email) = lower($1)
+         AND sm.role = 'DEVICE_ACTIVATION_OFFICER' AND sm.status = 'ACTIVE'
+       LIMIT 1`,
+      [email],
+    );
+    if (officer.rows[0]) {
+      throw new AuthError(403, "A Device Activation Officer cannot be invited to an ordinary school role");
     }
     const created = await createSchoolInvitation(
       { schoolId, fullName, email, phone: phone || null, role: "SCHOOL_ADMIN" },
@@ -547,6 +608,17 @@ router.post(
     if (phone && !/^\+?[0-9][0-9\s()-]{7,24}$/.test(phone)) {
       throw new AuthError(400, "A valid phone is required");
     }
+    const activationOfficer = await pool.query(
+      `SELECT 1 FROM app_users au
+       JOIN school_memberships sm ON sm.user_id = au.id
+       WHERE lower(au.email) = lower($1)
+         AND sm.role = 'DEVICE_ACTIVATION_OFFICER' AND sm.status = 'ACTIVE'
+       LIMIT 1`,
+      [email],
+    );
+    if (activationOfficer.rows[0]) {
+      throw new AuthError(403, "A Device Activation Officer cannot be invited to an ordinary school role");
+    }
     const created = await createSchoolInvitation(
       { schoolId, fullName, email, phone: phone || null, role: role as
         "TEACHER" | "ACCOUNTANT" | "STAFF" | "PARENT" },
@@ -570,25 +642,27 @@ router.post(
     if (userId === context.user.id) {
       throw new AuthError(403, "You cannot change your own role");
     }
-    const user = await pool.query(`SELECT id FROM app_users WHERE id = $1`, [userId]);
-    if (!user.rows[0]) throw new AuthError(404, "User not found");
-    const result = await pool.query(
-      `INSERT INTO school_memberships (user_id, school_id, role)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (user_id, school_id, role) DO UPDATE SET status = 'ACTIVE', updated_at = NOW()
-       RETURNING id, user_id AS "userId", school_id AS "schoolId", role, status`,
-      [userId, schoolId, role],
-    );
-    if (role === "PARENT") {
-      await pool.query(
-        `UPDATE parents p
-         SET user_id = $1
-         FROM app_users au
-         WHERE au.id = $1 AND p.school_id = $2 AND lower(p.email) = lower(au.email)
-           AND p.user_id IS NULL`,
-        [userId, schoolId],
+    const result = await withLockedUser(userId, async (client) => {
+      await assertNoActiveOfficerRole(client, userId);
+      const inserted = await client.query(
+        `INSERT INTO school_memberships (user_id, school_id, role)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id, school_id, role) DO UPDATE SET status = 'ACTIVE', updated_at = NOW()
+         RETURNING id, user_id AS "userId", school_id AS "schoolId", role, status`,
+        [userId, schoolId, role],
       );
-    }
+      if (role === "PARENT") {
+        await client.query(
+          `UPDATE parents p
+           SET user_id = $1
+           FROM app_users au
+           WHERE au.id = $1 AND p.school_id = $2 AND lower(p.email) = lower(au.email)
+             AND p.user_id IS NULL`,
+          [userId, schoolId],
+        );
+      }
+      return inserted;
+    });
     await auditSecurityEvent(
       req,
       schoolId,
@@ -610,34 +684,41 @@ router.patch(
     if (userId === getUserContext(req).user.id) {
       throw new AuthError(403, "You cannot change your own membership status");
     }
-    const memberships = await pool.query(
-      `SELECT id, role FROM school_memberships
-       WHERE user_id = $1 AND school_id = $2`,
-      [userId, schoolId],
-    );
-    if (memberships.rows.some((membership) => membership.role === "SCHOOL_ADMIN")) {
-      throw new AuthError(403, "School Admin memberships cannot be changed through ordinary school-user controls");
-    }
-    const result = await pool.query(
-      `UPDATE school_memberships SET status = $1, updated_at = NOW()
-       WHERE user_id = $2 AND school_id = $3
-         AND NOT EXISTS (
-           SELECT 1 FROM school_memberships admin
-           WHERE admin.user_id = school_memberships.user_id
-             AND admin.school_id = school_memberships.school_id
-             AND admin.role = 'SCHOOL_ADMIN'
-         )
-       RETURNING id, user_id AS "userId", school_id AS "schoolId", role, status`,
-      [status, userId, schoolId],
-    );
+    const result = await withLockedUser(userId, async (client) => {
+      const memberships: { rows: Array<{ id: number; role: string }> } = await client.query(
+        `SELECT id, role FROM school_memberships
+         WHERE user_id = $1 AND school_id = $2`,
+        [userId, schoolId],
+      );
+      if (memberships.rows.some((membership) => membership.role === "DEVICE_ACTIVATION_OFFICER")) {
+        throw new AuthError(403, "Device Activation Officer memberships can only be changed by a Platform Owner");
+      }
+      if (status === "ACTIVE") await assertNoActiveOfficerRole(client, userId);
+      if (memberships.rows.some((membership) => membership.role === "SCHOOL_ADMIN")) {
+        throw new AuthError(403, "School Admin memberships cannot be changed through ordinary school-user controls");
+      }
+      return client.query(
+        `UPDATE school_memberships SET status = $1, updated_at = NOW()
+         WHERE user_id = $2 AND school_id = $3
+           AND NOT EXISTS (
+             SELECT 1 FROM school_memberships admin
+             WHERE admin.user_id = school_memberships.user_id
+               AND admin.school_id = school_memberships.school_id
+                AND admin.role IN ('SCHOOL_ADMIN', 'DEVICE_ACTIVATION_OFFICER')
+           )
+         RETURNING id, user_id AS "userId", school_id AS "schoolId", role, status`,
+        [status, userId, schoolId],
+      );
+    });
     if (!result.rows[0]) {
       const adminMembership = await pool.query(
         `SELECT 1 FROM school_memberships
-         WHERE user_id = $1 AND school_id = $2 AND role = 'SCHOOL_ADMIN' LIMIT 1`,
+          WHERE user_id = $1 AND school_id = $2
+            AND role IN ('SCHOOL_ADMIN', 'DEVICE_ACTIVATION_OFFICER') LIMIT 1`,
         [userId, schoolId],
       );
       if (adminMembership.rows[0]) {
-        throw new AuthError(403, "School Admin memberships cannot be changed through ordinary school-user controls");
+        throw new AuthError(403, "Privileged school memberships cannot be changed through ordinary school-user controls");
       }
       throw new AuthError(404, "School user not found");
     }
@@ -667,23 +748,32 @@ router.patch(
     );
     if (!existing.rows[0]) throw new AuthError(404, "Membership not found");
     assertSchoolOperationalAccess(req, existing.rows[0].schoolId, ["SCHOOL_ADMIN"]);
+    if (existing.rows[0].role === "DEVICE_ACTIVATION_OFFICER") {
+      throw new AuthError(403, "Device Activation Officer memberships can only be changed by a Platform Owner");
+    }
     if (existing.rows[0].role === "SCHOOL_ADMIN") {
       throw new AuthError(403, "School Admin memberships cannot be changed through ordinary school-user controls");
     }
     if (existing.rows[0].userId === getUserContext(req).user.id) {
       throw new AuthError(403, "You cannot change your own role");
     }
-    const result = await pool.query(
-      `UPDATE school_memberships SET role = $1, updated_at = NOW()
-       WHERE id = $2 AND role <> 'SCHOOL_ADMIN'
-       RETURNING id, user_id AS "userId", school_id AS "schoolId", role, status`,
-      [role, membershipId],
-    );
+    const result = await withLockedUser(Number(existing.rows[0].userId), async (client) => {
+      await assertNoActiveOfficerRole(client, Number(existing.rows[0].userId));
+      return client.query(
+        `UPDATE school_memberships SET role = $1, updated_at = NOW()
+         WHERE id = $2 AND role NOT IN ('SCHOOL_ADMIN', 'DEVICE_ACTIVATION_OFFICER')
+         RETURNING id, user_id AS "userId", school_id AS "schoolId", role, status`,
+        [role, membershipId],
+      );
+    });
     if (!result.rows[0]) {
       const current = await pool.query(
-        `SELECT role FROM school_memberships WHERE id = $1`,
+       `SELECT role FROM school_memberships WHERE id = $1`,
         [membershipId],
       );
+      if (current.rows[0]?.role === "DEVICE_ACTIVATION_OFFICER") {
+        throw new AuthError(403, "Device Activation Officer memberships can only be changed by a Platform Owner");
+      }
       if (current.rows[0]?.role === "SCHOOL_ADMIN") {
         throw new AuthError(403, "School Admin memberships cannot be changed through ordinary school-user controls");
       }

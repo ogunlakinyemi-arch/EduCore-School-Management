@@ -736,6 +736,42 @@ export interface StudentStatusUpdate {
   status: StudentStatusUpdateStatus;
 }
 
+export type StudentPhotoUploadIntentContentType = typeof StudentPhotoUploadIntentContentType[keyof typeof StudentPhotoUploadIntentContentType];
+
+
+export const StudentPhotoUploadIntentContentType = {
+  'image/jpeg': 'image/jpeg',
+  'image/jpg': 'image/jpg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+} as const;
+
+export interface StudentPhotoUploadIntent {
+  /** @minimum 1 */
+  schoolId: number;
+  contentType: StudentPhotoUploadIntentContentType;
+  /**
+     * @minimum 1
+     * @maximum 3145728
+     */
+  size: number;
+}
+
+export interface StudentPhotoUploadTarget {
+  uploadURL: string;
+  objectPath: string;
+}
+
+export interface StudentPhotoConfirmation {
+  /** @minimum 1 */
+  schoolId: number;
+  objectPath: string;
+}
+
+export interface StudentPhotoResult {
+  passportUrl: string;
+}
+
 /**
  * @nullable
  */
@@ -791,6 +827,7 @@ export const RoleAssignmentRole = {
   STUDENT: 'STUDENT',
   STAFF: 'STAFF',
   PARTNER: 'PARTNER',
+  DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
 } as const;
 
 export type RoleAssignmentStatus = typeof RoleAssignmentStatus[keyof typeof RoleAssignmentStatus];
@@ -4726,6 +4763,189 @@ export interface CommunicationPushDeviceInput {
   opaqueDeviceReference: string;
 }
 
+export interface ActivationSchool {
+  id: number;
+  name: string;
+  code: string;
+  city: string;
+  state: string;
+  /** @nullable */
+  logo: string | null;
+}
+
+export type ActivationDeviceDeviceType = typeof ActivationDeviceDeviceType[keyof typeof ActivationDeviceDeviceType];
+
+
+export const ActivationDeviceDeviceType = {
+  NFC: 'NFC',
+  HYBRID: 'HYBRID',
+} as const;
+
+export interface ActivationDevice {
+  id: number;
+  serialNumber: string;
+  name: string;
+  deviceType: ActivationDeviceDeviceType;
+  status: string;
+  /** @nullable */
+  location: string | null;
+}
+
+export interface ActivationStudent {
+  id: number;
+  admissionNo: string;
+  firstName: string;
+  /** @nullable */
+  middleName: string | null;
+  lastName: string;
+  className: string;
+  section: string;
+  /** @nullable */
+  photo: string | null;
+}
+
+export interface ActivationHistory {
+  id: number;
+  cardId: number;
+  cardNumber: string;
+  /** @nullable */
+  studentId: number | null;
+  /** @nullable */
+  admissionNo: string | null;
+  /** @nullable */
+  firstName: string | null;
+  /** @nullable */
+  lastName: string | null;
+  action: string;
+  /** @nullable */
+  previousStatus: string | null;
+  /** @nullable */
+  newStatus: string | null;
+  /** @nullable */
+  reason: string | null;
+  /** @nullable */
+  actorUserId: number | null;
+  createdAt: string;
+  /** @nullable */
+  deviceId: number | null;
+  /** @nullable */
+  deviceSerialNumber: string | null;
+}
+
+export interface ActivationAssignmentInput {
+  /** @minimum 1 */
+  deviceId: number;
+  /** @minimum 1 */
+  studentId: number;
+  /** @minLength 4 */
+  cardNumber: string;
+}
+
+export type ActivationAssignmentStatus = typeof ActivationAssignmentStatus[keyof typeof ActivationAssignmentStatus];
+
+
+export const ActivationAssignmentStatus = {
+  active: 'active',
+} as const;
+
+export interface ActivationEId {
+  schoolId: number;
+  schoolName: string;
+  schoolCode: string;
+  /** @nullable */
+  schoolLogo: string | null;
+  /** @nullable */
+  schoolAddress: string | null;
+  studentId: number;
+  admissionNo: string;
+  firstName: string;
+  /** @nullable */
+  middleName: string | null;
+  lastName: string;
+  className: string;
+  section: string;
+  /** @nullable */
+  photo: string | null;
+  /** @nullable */
+  cardId: number | null;
+  /** @nullable */
+  cardNumber: string | null;
+  /** @nullable */
+  activatedAt: string | null;
+}
+
+export interface ActivationAssignment {
+  id: number;
+  schoolId: number;
+  uid: string;
+  studentId: number;
+  status: ActivationAssignmentStatus;
+  scans: number;
+  /** @nullable */
+  lastScan: string | null;
+  /** @nullable */
+  activatedAt: string | null;
+  student: ActivationStudent;
+  device: ActivationDevice;
+  eId: ActivationEId;
+}
+
+export type DeviceActivationOfficerGrantInput = (unknown & {
+  /** @minimum 1 */
+  userId?: number;
+  /** @maxLength 254 */
+  email?: string;
+});
+
+export type DeviceActivationOfficerGrantRole = typeof DeviceActivationOfficerGrantRole[keyof typeof DeviceActivationOfficerGrantRole];
+
+
+export const DeviceActivationOfficerGrantRole = {
+  DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
+} as const;
+
+export type DeviceActivationOfficerGrantStatus = typeof DeviceActivationOfficerGrantStatus[keyof typeof DeviceActivationOfficerGrantStatus];
+
+
+export const DeviceActivationOfficerGrantStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface DeviceActivationOfficerGrant {
+  id: number;
+  userId: number;
+  schoolId: number;
+  role: DeviceActivationOfficerGrantRole;
+  status: DeviceActivationOfficerGrantStatus;
+}
+
+export type DeviceActivationOfficerGrantListItemRole = typeof DeviceActivationOfficerGrantListItemRole[keyof typeof DeviceActivationOfficerGrantListItemRole];
+
+
+export const DeviceActivationOfficerGrantListItemRole = {
+  DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
+} as const;
+
+export type DeviceActivationOfficerGrantListItemStatus = typeof DeviceActivationOfficerGrantListItemStatus[keyof typeof DeviceActivationOfficerGrantListItemStatus];
+
+
+export const DeviceActivationOfficerGrantListItemStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface DeviceActivationOfficerGrantListItem {
+  id: number;
+  userId: number;
+  schoolId: number;
+  role: DeviceActivationOfficerGrantListItemRole;
+  status: DeviceActivationOfficerGrantListItemStatus;
+  email: string;
+  /** @nullable */
+  fullName: string | null;
+}
+
 /**
  * Invalid request or rejected school/device/student relationship
  */
@@ -4760,6 +4980,20 @@ export const StatusFilterParameter = {
 } as const;
 
 export type SearchParameter = string;
+
+export type SearchActivationStudentsParams = {
+/**
+ * @maxLength 100
+ */
+search?: string;
+};
+
+export type ListDeviceActivationOfficersParams = {
+/**
+ * @maxLength 254
+ */
+email?: string;
+};
 
 export type GetFinanceSettingsParams = {
 /**
@@ -5338,6 +5572,20 @@ schoolId: SchoolIdParameter;
 };
 
 export type UpdateStudentStatusParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type GetStudentPhotoParams = {
+/**
+ * @minimum 1
+ */
+schoolId: SchoolIdParameter;
+};
+
+export type DeleteStudentPhotoParams = {
 /**
  * @minimum 1
  */

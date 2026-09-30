@@ -13,7 +13,7 @@ export const ROLES = [
   "PARTNER",
 ] as const;
 
-export type Role = (typeof ROLES)[number];
+export type Role = (typeof ROLES)[number] | "DEVICE_ACTIVATION_OFFICER";
 export type UserStatus = "ACTIVE" | "INACTIVE";
 
 export type UserContext = {
@@ -103,7 +103,83 @@ export async function loadUserContext(clerkUserId: string): Promise<UserContext>
     [user.id],
   );
 
+  const officer = roles.rows.some(
+    (assignment) =>
+      assignment.role === "DEVICE_ACTIVATION_OFFICER" &&
+      assignment.status === "ACTIVE",
+  );
+  if (
+    officer &&
+    roles.rows.some((assignment) => assignment.role !== "DEVICE_ACTIVATION_OFFICER")
+  ) {
+    throw new AuthError(
+      403,
+      "Device Activation Officer accounts cannot have other active roles",
+      "ACCESS_DENIED",
+    );
+  }
+
   return { user, roles: roles.rows };
+}
+
+/**
+ * Revalidates the external identity and employee status for privileged officer
+ * operations. Deliberately not called by generic authentication middleware so
+ * ordinary users do not incur a Clerk API request on every request.
+ */
+export async function assertDeviceActivationOfficer(req: Request): Promise<UserContext> {
+  const context = getUserContext(req);
+  const hasOfficerRole = context.roles.some(
+    (assignment) =>
+      assignment.role === "DEVICE_ACTIVATION_OFFICER" &&
+      assignment.schoolId !== null &&
+      assignment.status === "ACTIVE",
+  );
+  if (!hasOfficerRole) {
+    throw new AuthError(403, "Device Activation Officer access is required");
+  }
+
+  let clerkUser;
+  try {
+    clerkUser = await clerkClient.users.getUser(context.user.clerkUserId);
+  } catch {
+    throw new AuthError(503, "Unable to verify the Device Activation Officer identity");
+  }
+  const primaryEmail = clerkUser.primaryEmailAddress;
+  const verifiedEmail =
+    primaryEmail?.verification?.status === "verified"
+      ? primaryEmail.emailAddress.trim().toLowerCase()
+      : "";
+  if (!verifiedEmail || verifiedEmail !== context.user.email.trim().toLowerCase()) {
+    throw new AuthError(
+      403,
+      "The current primary verified Clerk email must match the Device Activation Officer account",
+    );
+  }
+
+  const eligible = await pool.query(
+    `SELECT 1
+     FROM app_users au
+     JOIN platform_company_employees pce
+       ON lower(pce.email) = lower(au.email) AND pce.status = 'ACTIVE'
+     WHERE au.id = $1 AND au.status = 'ACTIVE'
+       AND lower(au.email) = lower($2)
+       AND EXISTS (
+         SELECT 1 FROM school_memberships sm
+         WHERE sm.user_id = au.id
+           AND sm.role = 'DEVICE_ACTIVATION_OFFICER'
+           AND sm.status = 'ACTIVE'
+       )
+     LIMIT 1`,
+    [context.user.id, verifiedEmail],
+  );
+  if (!eligible.rows[0]) {
+    throw new AuthError(
+      403,
+      "An active matching Yemait Technologies employee record and officer grant are required",
+    );
+  }
+  return context;
 }
 
 export function assertUserActive(status: string) {

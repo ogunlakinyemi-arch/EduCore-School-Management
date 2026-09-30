@@ -48,6 +48,13 @@ import type {
   AcademicTimetableEntry,
   AcademicTimetableEntryInput,
   AcademicTimetableEntryUpdate,
+  ActivationAssignment,
+  ActivationAssignmentInput,
+  ActivationDevice,
+  ActivationEId,
+  ActivationHistory,
+  ActivationSchool,
+  ActivationStudent,
   ApiBadRequestResponse,
   ApiError,
   AppUser,
@@ -117,6 +124,10 @@ import type {
   CreateSubjectParams,
   CreateSubscriptionParams,
   CurrentUser,
+  DeleteStudentPhotoParams,
+  DeviceActivationOfficerGrant,
+  DeviceActivationOfficerGrantInput,
+  DeviceActivationOfficerGrantListItem,
   DeviceAssignmentInput,
   DeviceAttendanceEventInput,
   DeviceCredentialRotation,
@@ -179,6 +190,7 @@ import type {
   GetStudentAttendanceParams,
   GetStudentOwnAttendanceByIdParams,
   GetStudentParams,
+  GetStudentPhotoParams,
   GetSubjectParams,
   HealthStatus,
   InspectPeopleImportParams,
@@ -203,6 +215,7 @@ import type {
   ListCommunicationNotificationsParams,
   ListCommunicationPushDevicesParams,
   ListCommunicationTemplatesParams,
+  ListDeviceActivationOfficersParams,
   ListEmployeesParams,
   ListFeeCategoriesParams,
   ListFeeInvoicesParams,
@@ -312,12 +325,17 @@ import type {
   SchoolUpdate,
   SchoolUser,
   SchoolUserInvitationInput,
+  SearchActivationStudentsParams,
   Student,
   StudentClassAssignment,
   StudentClassAssignmentInput,
   StudentIdentificationPolicy,
   StudentIdentificationPolicyInput,
   StudentInput,
+  StudentPhotoConfirmation,
+  StudentPhotoResult,
+  StudentPhotoUploadIntent,
+  StudentPhotoUploadTarget,
   StudentStatusUpdate,
   StudentUpdate,
   Subject,
@@ -371,6 +389,754 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getListActivationSchoolsUrl = () => {
+
+
+
+
+  return `/api/activation/schools`
+}
+
+/**
+ * @summary List schools with an active grant for the authenticated Device Activation Officer
+ */
+export const listActivationSchools = async ( options?: Parameters<typeof customFetch>[1]): Promise<ActivationSchool[]> => {
+
+  return customFetch<ActivationSchool[]>(getListActivationSchoolsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListActivationSchoolsQueryKey = () => {
+    return [
+    `/api/activation/schools`
+    ] as const;
+    }
+
+
+export const getListActivationSchoolsQueryOptions = <TData = Awaited<ReturnType<typeof listActivationSchools>>, TError = ErrorType<ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listActivationSchools>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListActivationSchoolsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listActivationSchools>>> = ({ signal }) => listActivationSchools({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listActivationSchools>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListActivationSchoolsQueryResult = NonNullable<Awaited<ReturnType<typeof listActivationSchools>>>
+export type ListActivationSchoolsQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary List schools with an active grant for the authenticated Device Activation Officer
+ */
+
+export function useListActivationSchools<TData = Awaited<ReturnType<typeof listActivationSchools>>, TError = ErrorType<ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listActivationSchools>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListActivationSchoolsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListActivationDevicesUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/activation/schools/${schoolId}/devices`
+}
+
+/**
+ * @summary List active NFC and HYBRID devices bound to an authorized school
+ */
+export const listActivationDevices = async (schoolId: number, options?: Parameters<typeof customFetch>[1]): Promise<ActivationDevice[]> => {
+
+  return customFetch<ActivationDevice[]>(getListActivationDevicesUrl(schoolId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListActivationDevicesQueryKey = (schoolId: number,) => {
+    return [
+    `/api/activation/schools/${schoolId}/devices`
+    ] as const;
+    }
+
+
+export const getListActivationDevicesQueryOptions = <TData = Awaited<ReturnType<typeof listActivationDevices>>, TError = ErrorType<NotFoundResponse>>(schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listActivationDevices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListActivationDevicesQueryKey(schoolId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listActivationDevices>>> = ({ signal }) => listActivationDevices(schoolId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listActivationDevices>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListActivationDevicesQueryResult = NonNullable<Awaited<ReturnType<typeof listActivationDevices>>>
+export type ListActivationDevicesQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary List active NFC and HYBRID devices bound to an authorized school
+ */
+
+export function useListActivationDevices<TData = Awaited<ReturnType<typeof listActivationDevices>>, TError = ErrorType<NotFoundResponse>>(
+ schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listActivationDevices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListActivationDevicesQueryOptions(schoolId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSearchActivationStudentsUrl = (schoolId: number,
+    params?: SearchActivationStudentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/activation/schools/${schoolId}/students?${stringifiedParams}` : `/api/activation/schools/${schoolId}/students`
+}
+
+/**
+ * @summary Search students in an authorized school for card activation
+ */
+export const searchActivationStudents = async (schoolId: number,
+    params?: SearchActivationStudentsParams, options?: Parameters<typeof customFetch>[1]): Promise<ActivationStudent[]> => {
+
+  return customFetch<ActivationStudent[]>(getSearchActivationStudentsUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSearchActivationStudentsQueryKey = (schoolId: number,
+    params?: SearchActivationStudentsParams,) => {
+    return [
+    `/api/activation/schools/${schoolId}/students`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSearchActivationStudentsQueryOptions = <TData = Awaited<ReturnType<typeof searchActivationStudents>>, TError = ErrorType<NotFoundResponse>>(schoolId: number,
+    params?: SearchActivationStudentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchActivationStudents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchActivationStudentsQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchActivationStudents>>> = ({ signal }) => searchActivationStudents(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchActivationStudents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type SearchActivationStudentsQueryResult = NonNullable<Awaited<ReturnType<typeof searchActivationStudents>>>
+export type SearchActivationStudentsQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Search students in an authorized school for card activation
+ */
+
+export function useSearchActivationStudents<TData = Awaited<ReturnType<typeof searchActivationStudents>>, TError = ErrorType<NotFoundResponse>>(
+ schoolId: number,
+    params?: SearchActivationStudentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchActivationStudents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getSearchActivationStudentsQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListActivationHistoryUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/activation/schools/${schoolId}/history`
+}
+
+/**
+ * @summary List NFC card activation history for an authorized school
+ */
+export const listActivationHistory = async (schoolId: number, options?: Parameters<typeof customFetch>[1]): Promise<ActivationHistory[]> => {
+
+  return customFetch<ActivationHistory[]>(getListActivationHistoryUrl(schoolId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListActivationHistoryQueryKey = (schoolId: number,) => {
+    return [
+    `/api/activation/schools/${schoolId}/history`
+    ] as const;
+    }
+
+
+export const getListActivationHistoryQueryOptions = <TData = Awaited<ReturnType<typeof listActivationHistory>>, TError = ErrorType<NotFoundResponse>>(schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listActivationHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListActivationHistoryQueryKey(schoolId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listActivationHistory>>> = ({ signal }) => listActivationHistory(schoolId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listActivationHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListActivationHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof listActivationHistory>>>
+export type ListActivationHistoryQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary List NFC card activation history for an authorized school
+ */
+
+export function useListActivationHistory<TData = Awaited<ReturnType<typeof listActivationHistory>>, TError = ErrorType<NotFoundResponse>>(
+ schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listActivationHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListActivationHistoryQueryOptions(schoolId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAssignActivationCardUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/activation/schools/${schoolId}/assign`
+}
+
+/**
+ * @summary Activate an unassigned NFC card for a same-school student
+ */
+export const assignActivationCard = async (schoolId: number,
+    activationAssignmentInput: ActivationAssignmentInput, options?: Parameters<typeof customFetch>[1]): Promise<ActivationAssignment> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ActivationAssignment>(getAssignActivationCardUrl(schoolId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(activationAssignmentInput)
+  }
+);}
+
+
+
+
+
+export const getAssignActivationCardMutationKey = () => ['assignActivationCard'] as const;
+
+export const getAssignActivationCardMutationOptions = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignActivationCard>>, TError,AssignActivationCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assignActivationCard>>, TError,AssignActivationCardMutationVariables, TContext> => {
+
+const mutationKey = getAssignActivationCardMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assignActivationCard>>, AssignActivationCardMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  assignActivationCard(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssignActivationCardMutationResult = NonNullable<Awaited<ReturnType<typeof assignActivationCard>>>
+    export type AssignActivationCardMutationBody = BodyType<ActivationAssignmentInput>
+    export type AssignActivationCardMutationError = ErrorType<void | ForbiddenResponse | NotFoundResponse>
+    export type AssignActivationCardMutationVariables = {schoolId: number;data: BodyType<ActivationAssignmentInput>}
+
+    /**
+ * @summary Activate an unassigned NFC card for a same-school student
+ */
+export const useAssignActivationCard = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignActivationCard>>, TError,AssignActivationCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assignActivationCard>>,
+        TError,
+        AssignActivationCardMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAssignActivationCardMutationOptions(options));
+    }
+
+export const getGetActivationStudentEIdUrl = (schoolId: number,
+    studentId: number,) => {
+
+
+
+
+  return `/api/activation/schools/${schoolId}/students/${studentId}/e-id`
+}
+
+/**
+ * @summary Get the student's current E-ID data using the latest active NFC card
+ */
+export const getActivationStudentEId = async (schoolId: number,
+    studentId: number, options?: Parameters<typeof customFetch>[1]): Promise<ActivationEId> => {
+
+  return customFetch<ActivationEId>(getGetActivationStudentEIdUrl(schoolId,studentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetActivationStudentEIdQueryKey = (schoolId: number,
+    studentId: number,) => {
+    return [
+    `/api/activation/schools/${schoolId}/students/${studentId}/e-id`
+    ] as const;
+    }
+
+
+export const getGetActivationStudentEIdQueryOptions = <TData = Awaited<ReturnType<typeof getActivationStudentEId>>, TError = ErrorType<NotFoundResponse>>(schoolId: number,
+    studentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getActivationStudentEId>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetActivationStudentEIdQueryKey(schoolId,studentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getActivationStudentEId>>> = ({ signal }) => getActivationStudentEId(schoolId,studentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined && studentId !== null && studentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getActivationStudentEId>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetActivationStudentEIdQueryResult = NonNullable<Awaited<ReturnType<typeof getActivationStudentEId>>>
+export type GetActivationStudentEIdQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Get the student's current E-ID data using the latest active NFC card
+ */
+
+export function useGetActivationStudentEId<TData = Awaited<ReturnType<typeof getActivationStudentEId>>, TError = ErrorType<NotFoundResponse>>(
+ schoolId: number,
+    studentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getActivationStudentEId>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetActivationStudentEIdQueryOptions(schoolId,studentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListDeviceActivationOfficersUrl = (schoolId: number,
+    params?: ListDeviceActivationOfficersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/platform/schools/${schoolId}/device-activation-officers?${stringifiedParams}` : `/api/platform/schools/${schoolId}/device-activation-officers`
+}
+
+/**
+ * Platform Owner only. Returns active and inactive grants, optionally filtered to an employee email.
+ * @summary List school-scoped Device Activation Officer grants
+ */
+export const listDeviceActivationOfficers = async (schoolId: number,
+    params?: ListDeviceActivationOfficersParams, options?: Parameters<typeof customFetch>[1]): Promise<DeviceActivationOfficerGrantListItem[]> => {
+
+  return customFetch<DeviceActivationOfficerGrantListItem[]>(getListDeviceActivationOfficersUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDeviceActivationOfficersQueryKey = (schoolId: number,
+    params?: ListDeviceActivationOfficersParams,) => {
+    return [
+    `/api/platform/schools/${schoolId}/device-activation-officers`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListDeviceActivationOfficersQueryOptions = <TData = Awaited<ReturnType<typeof listDeviceActivationOfficers>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse>>(schoolId: number,
+    params?: ListDeviceActivationOfficersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDeviceActivationOfficers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDeviceActivationOfficersQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDeviceActivationOfficers>>> = ({ signal }) => listDeviceActivationOfficers(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDeviceActivationOfficers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDeviceActivationOfficersQueryResult = NonNullable<Awaited<ReturnType<typeof listDeviceActivationOfficers>>>
+export type ListDeviceActivationOfficersQueryError = ErrorType<ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary List school-scoped Device Activation Officer grants
+ */
+
+export function useListDeviceActivationOfficers<TData = Awaited<ReturnType<typeof listDeviceActivationOfficers>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse>>(
+ schoolId: number,
+    params?: ListDeviceActivationOfficersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDeviceActivationOfficers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDeviceActivationOfficersQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGrantDeviceActivationOfficerUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/platform/schools/${schoolId}/device-activation-officers`
+}
+
+/**
+ * Platform Owner only. Email grants require exactly one active app user matching an ACTIVE platform company employee and that app user must have no other active roles.
+ * @summary Grant activation access by app user ID or company employee email
+ */
+export const grantDeviceActivationOfficer = async (schoolId: number,
+    deviceActivationOfficerGrantInput: DeviceActivationOfficerGrantInput, options?: Parameters<typeof customFetch>[1]): Promise<DeviceActivationOfficerGrant> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<DeviceActivationOfficerGrant>(getGrantDeviceActivationOfficerUrl(schoolId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(deviceActivationOfficerGrantInput)
+  }
+);}
+
+
+
+
+
+export const getGrantDeviceActivationOfficerMutationKey = () => ['grantDeviceActivationOfficer'] as const;
+
+export const getGrantDeviceActivationOfficerMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof grantDeviceActivationOfficer>>, TError,GrantDeviceActivationOfficerMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof grantDeviceActivationOfficer>>, TError,GrantDeviceActivationOfficerMutationVariables, TContext> => {
+
+const mutationKey = getGrantDeviceActivationOfficerMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof grantDeviceActivationOfficer>>, GrantDeviceActivationOfficerMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  grantDeviceActivationOfficer(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GrantDeviceActivationOfficerMutationResult = NonNullable<Awaited<ReturnType<typeof grantDeviceActivationOfficer>>>
+    export type GrantDeviceActivationOfficerMutationBody = BodyType<DeviceActivationOfficerGrantInput>
+    export type GrantDeviceActivationOfficerMutationError = ErrorType<ForbiddenResponse | NotFoundResponse | void>
+    export type GrantDeviceActivationOfficerMutationVariables = {schoolId: number;data: BodyType<DeviceActivationOfficerGrantInput>}
+
+    /**
+ * @summary Grant activation access by app user ID or company employee email
+ */
+export const useGrantDeviceActivationOfficer = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof grantDeviceActivationOfficer>>, TError,GrantDeviceActivationOfficerMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof grantDeviceActivationOfficer>>,
+        TError,
+        GrantDeviceActivationOfficerMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGrantDeviceActivationOfficerMutationOptions(options));
+    }
+
+export const getRevokeDeviceActivationOfficerUrl = (schoolId: number,
+    userId: number,) => {
+
+
+
+
+  return `/api/platform/schools/${schoolId}/device-activation-officers/${userId}`
+}
+
+/**
+ * Platform Owner only.
+ * @summary Revoke a school-scoped Device Activation Officer grant
+ */
+export const revokeDeviceActivationOfficer = async (schoolId: number,
+    userId: number, options?: Parameters<typeof customFetch>[1]): Promise<DeviceActivationOfficerGrant> => {
+
+  return customFetch<DeviceActivationOfficerGrant>(getRevokeDeviceActivationOfficerUrl(schoolId,userId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRevokeDeviceActivationOfficerMutationKey = () => ['revokeDeviceActivationOfficer'] as const;
+
+export const getRevokeDeviceActivationOfficerMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeDeviceActivationOfficer>>, TError,RevokeDeviceActivationOfficerMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokeDeviceActivationOfficer>>, TError,RevokeDeviceActivationOfficerMutationVariables, TContext> => {
+
+const mutationKey = getRevokeDeviceActivationOfficerMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeDeviceActivationOfficer>>, RevokeDeviceActivationOfficerMutationVariables> = (props) => {
+          const {schoolId,userId} = props ?? {};
+
+          return  revokeDeviceActivationOfficer(schoolId,userId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokeDeviceActivationOfficerMutationResult = NonNullable<Awaited<ReturnType<typeof revokeDeviceActivationOfficer>>>
+
+    export type RevokeDeviceActivationOfficerMutationError = ErrorType<ForbiddenResponse | NotFoundResponse>
+    export type RevokeDeviceActivationOfficerMutationVariables = {schoolId: number;userId: number}
+
+    /**
+ * @summary Revoke a school-scoped Device Activation Officer grant
+ */
+export const useRevokeDeviceActivationOfficer = <TError = ErrorType<ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeDeviceActivationOfficer>>, TError,RevokeDeviceActivationOfficerMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revokeDeviceActivationOfficer>>,
+        TError,
+        RevokeDeviceActivationOfficerMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRevokeDeviceActivationOfficerMutationOptions(options));
+    }
 
 export const getGetFinanceSettingsUrl = (params: GetFinanceSettingsParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -9862,6 +10628,356 @@ export const useUpdateStudentStatus = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdateStudentStatusMutationOptions(options));
+    }
+
+export const getRequestStudentPhotoUploadUrl = (studentId: number,) => {
+
+
+
+
+  return `/api/students/${studentId}/photo-upload-request`
+}
+
+/**
+ * @summary Request a private student photo upload URL
+ */
+export const requestStudentPhotoUpload = async (studentId: number,
+    studentPhotoUploadIntent: StudentPhotoUploadIntent, options?: Parameters<typeof customFetch>[1]): Promise<StudentPhotoUploadTarget> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<StudentPhotoUploadTarget>(getRequestStudentPhotoUploadUrl(studentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(studentPhotoUploadIntent)
+  }
+);}
+
+
+
+
+
+export const getRequestStudentPhotoUploadMutationKey = () => ['requestStudentPhotoUpload'] as const;
+
+export const getRequestStudentPhotoUploadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestStudentPhotoUpload>>, TError,RequestStudentPhotoUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestStudentPhotoUpload>>, TError,RequestStudentPhotoUploadMutationVariables, TContext> => {
+
+const mutationKey = getRequestStudentPhotoUploadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestStudentPhotoUpload>>, RequestStudentPhotoUploadMutationVariables> = (props) => {
+          const {studentId,data} = props ?? {};
+
+          return  requestStudentPhotoUpload(studentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestStudentPhotoUploadMutationResult = NonNullable<Awaited<ReturnType<typeof requestStudentPhotoUpload>>>
+    export type RequestStudentPhotoUploadMutationBody = BodyType<StudentPhotoUploadIntent>
+    export type RequestStudentPhotoUploadMutationError = ErrorType<unknown>
+    export type RequestStudentPhotoUploadMutationVariables = {studentId: number;data: BodyType<StudentPhotoUploadIntent>}
+
+    /**
+ * @summary Request a private student photo upload URL
+ */
+export const useRequestStudentPhotoUpload = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestStudentPhotoUpload>>, TError,RequestStudentPhotoUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestStudentPhotoUpload>>,
+        TError,
+        RequestStudentPhotoUploadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestStudentPhotoUploadMutationOptions(options));
+    }
+
+export const getConfirmStudentPhotoUrl = (studentId: number,) => {
+
+
+
+
+  return `/api/students/${studentId}/photo-confirm`
+}
+
+/**
+ * @summary Verify and save an uploaded student photo
+ */
+export const confirmStudentPhoto = async (studentId: number,
+    studentPhotoConfirmation: StudentPhotoConfirmation, options?: Parameters<typeof customFetch>[1]): Promise<StudentPhotoResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<StudentPhotoResult>(getConfirmStudentPhotoUrl(studentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(studentPhotoConfirmation)
+  }
+);}
+
+
+
+
+
+export const getConfirmStudentPhotoMutationKey = () => ['confirmStudentPhoto'] as const;
+
+export const getConfirmStudentPhotoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmStudentPhoto>>, TError,ConfirmStudentPhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmStudentPhoto>>, TError,ConfirmStudentPhotoMutationVariables, TContext> => {
+
+const mutationKey = getConfirmStudentPhotoMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmStudentPhoto>>, ConfirmStudentPhotoMutationVariables> = (props) => {
+          const {studentId,data} = props ?? {};
+
+          return  confirmStudentPhoto(studentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmStudentPhotoMutationResult = NonNullable<Awaited<ReturnType<typeof confirmStudentPhoto>>>
+    export type ConfirmStudentPhotoMutationBody = BodyType<StudentPhotoConfirmation>
+    export type ConfirmStudentPhotoMutationError = ErrorType<unknown>
+    export type ConfirmStudentPhotoMutationVariables = {studentId: number;data: BodyType<StudentPhotoConfirmation>}
+
+    /**
+ * @summary Verify and save an uploaded student photo
+ */
+export const useConfirmStudentPhoto = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmStudentPhoto>>, TError,ConfirmStudentPhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmStudentPhoto>>,
+        TError,
+        ConfirmStudentPhotoMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfirmStudentPhotoMutationOptions(options));
+    }
+
+export const getGetStudentPhotoUrl = (studentId: number,
+    params: GetStudentPhotoParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/students/${studentId}/photo?${stringifiedParams}` : `/api/students/${studentId}/photo`
+}
+
+/**
+ * @summary Serve the current student photo to an authorized school user
+ */
+export const getStudentPhoto = async (studentId: number,
+    params: GetStudentPhotoParams, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetStudentPhotoUrl(studentId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStudentPhotoQueryKey = (studentId: number,
+    params?: GetStudentPhotoParams,) => {
+    return [
+    `/api/students/${studentId}/photo`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetStudentPhotoQueryOptions = <TData = Awaited<ReturnType<typeof getStudentPhoto>>, TError = ErrorType<unknown>>(studentId: number,
+    params: GetStudentPhotoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStudentPhoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStudentPhotoQueryKey(studentId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStudentPhoto>>> = ({ signal }) => getStudentPhoto(studentId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: studentId !== null && studentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStudentPhoto>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStudentPhotoQueryResult = NonNullable<Awaited<ReturnType<typeof getStudentPhoto>>>
+export type GetStudentPhotoQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Serve the current student photo to an authorized school user
+ */
+
+export function useGetStudentPhoto<TData = Awaited<ReturnType<typeof getStudentPhoto>>, TError = ErrorType<unknown>>(
+ studentId: number,
+    params: GetStudentPhotoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStudentPhoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStudentPhotoQueryOptions(studentId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDeleteStudentPhotoUrl = (studentId: number,
+    params: DeleteStudentPhotoParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/students/${studentId}/photo?${stringifiedParams}` : `/api/students/${studentId}/photo`
+}
+
+/**
+ * @summary Remove a student photo
+ */
+export const deleteStudentPhoto = async (studentId: number,
+    params: DeleteStudentPhotoParams, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteStudentPhotoUrl(studentId,params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteStudentPhotoMutationKey = () => ['deleteStudentPhoto'] as const;
+
+export const getDeleteStudentPhotoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteStudentPhoto>>, TError,DeleteStudentPhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteStudentPhoto>>, TError,DeleteStudentPhotoMutationVariables, TContext> => {
+
+const mutationKey = getDeleteStudentPhotoMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteStudentPhoto>>, DeleteStudentPhotoMutationVariables> = (props) => {
+          const {studentId,params} = props ?? {};
+
+          return  deleteStudentPhoto(studentId,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteStudentPhotoMutationResult = NonNullable<Awaited<ReturnType<typeof deleteStudentPhoto>>>
+
+    export type DeleteStudentPhotoMutationError = ErrorType<unknown>
+    export type DeleteStudentPhotoMutationVariables = {studentId: number;params: DeleteStudentPhotoParams}
+
+    /**
+ * @summary Remove a student photo
+ */
+export const useDeleteStudentPhoto = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteStudentPhoto>>, TError,DeleteStudentPhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteStudentPhoto>>,
+        TError,
+        DeleteStudentPhotoMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteStudentPhotoMutationOptions(options));
     }
 
 export const getListStudentClassAssignmentsUrl = (studentId: number,
