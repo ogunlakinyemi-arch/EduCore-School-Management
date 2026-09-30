@@ -1,0 +1,307 @@
+SAFE PRODUCTION DATABASE TARGET CHECK + DISPOSABLE MIGRATION REHEARSAL
+
+We are continuing the Yemait EduCore production-readiness audit.
+
+The previous audit found:
+
+- 709 backend tests passed.
+- 75 frontend tests passed.
+- Focused 58-test backend run passed.
+- Application typechecks passed.
+- No application code was changed.
+- No production data was changed.
+- No production migration was executed.
+- The checked-in migration history does not show an obvious ordering defect for the "nfc_card_history" migration.
+- The production database view shows "nfc_cards" has the required "UNIQUE (id, school_id)" constraint but does not yet contain "nfc_card_history".
+- Replit's publish schema preview contains approximately 408 statements.
+- The deployed API's exact database connection target has not yet been independently established.
+
+CRITICAL SAFETY RULES
+
+1. DO NOT modify production.
+2. DO NOT run "push", "migrate", "db push", or equivalent against the production database.
+3. DO NOT reset the database.
+4. DO NOT drop tables.
+5. DO NOT truncate data.
+6. DO NOT delete production records.
+7. DO NOT change production migrations.
+8. DO NOT change application code unless a separate confirmed defect is discovered.
+9. DO NOT expose database passwords, connection strings, Clerk secrets, API keys, or other secret values.
+10. If the environment does not provide a safe disposable database/fork, STOP rather than improvising.
+11. Never assume that the Replit database UI and deployed API use the same database.
+12. This task is strictly for identifying the database target and rehearsing the migration safely.
+
+---
+
+PHASE 1 — IDENTIFY THE DEPLOYED API DATABASE TARGET
+
+Inspect the existing deployment configuration and application code.
+
+Determine which environment variable(s) the deployed API uses to connect to PostgreSQL.
+
+Examples may include:
+
+- DATABASE_URL
+- DATABASE_URL_UNPOOLED
+- PGDATABASE
+- PGHOST
+- other existing database configuration
+
+Do NOT print the values.
+
+Instead report only:
+
+- variable name
+- whether it exists
+- whether the application actually reads it
+- which server/database initialization code consumes it
+
+Trace the actual code path from application startup to database connection.
+
+Do not rely only on the Replit database UI.
+
+REQUIRED RESULT
+
+Report:
+
+«"The deployed API database target is controlled by: ______"»
+
+Do not provide the secret value.
+
+If the exact target cannot be established safely, STOP PHASE 2 and report why.
+
+---
+
+PHASE 2 — INSPECT THE CURRENT MIGRATION STATE
+
+Inspect the checked-in migration files.
+
+Specifically verify:
+
+- "0000_brainy_moon_knight.sql"
+- "0009_phase5_attendance.sql"
+- migrations after "0009"
+- the current latest migration
+
+Confirm:
+
+1. Where "nfc_cards" is created.
+2. Where "UNIQUE (id, school_id)" is created.
+3. Where "nfc_card_history" is created.
+4. Where the composite foreign key is created.
+5. Whether later migrations modify either table.
+6. Whether any migration depends on "nfc_card_history".
+7. Whether the production migration history could differ from a clean replay.
+
+Do not modify any migration files.
+
+---
+
+PHASE 3 — CREATE/USE A DISPOSABLE REHEARSAL DATABASE
+
+Only continue if a safe disposable database, fork, branch, or equivalent isolated database is available.
+
+The rehearsal must NOT be the production database.
+
+Prefer this order:
+
+1. Disposable production fork/clone if available.
+2. Disposable database containing a representative copy of production schema/data.
+3. Fresh disposable PostgreSQL database only if the migration system requires it.
+
+Do not create a production-like copy containing secrets unnecessarily.
+
+If using a production fork, ensure it is isolated and disposable.
+
+---
+
+PHASE 4 — REHEARSE THE MIGRATION
+
+Run the existing migration chain against the disposable database using the project's existing migration mechanism.
+
+Do NOT change the migrations first.
+
+The objective is to determine whether the current migration sequence succeeds in a realistic database state.
+
+Pay particular attention to:
+
+- "nfc_cards"
+- existing "(id, school_id)" uniqueness
+- "nfc_card_history"
+- composite foreign keys
+- indexes
+- existing historical data
+- migration ordering
+
+If the migration fails, capture the exact failing statement and error.
+
+Do not immediately fix it.
+
+First determine whether the failure is:
+
+- migration ordering
+- existing data
+- missing constraint
+- duplicate data
+- incompatible schema
+- migration-history mismatch
+- environment issue
+- deployment/publish issue
+
+---
+
+PHASE 5 — IF A FAILURE OCCURS
+
+If the disposable rehearsal fails:
+
+DO NOT modify production.
+
+DO NOT modify the existing migrations immediately.
+
+Report:
+
+Exact failure
+
+The exact migration and database operation that failed.
+
+Root cause
+
+Explain why PostgreSQL rejected it.
+
+Production risk
+
+Explain whether the same condition could affect the real production database.
+
+Minimal safe fix
+
+Describe the smallest forward-only change that would resolve it.
+
+Verification
+
+Explain how the proposed fix would be tested again on the disposable database.
+
+Only after this report should a migration change be considered.
+
+---
+
+PHASE 6 — IF THE REHEARSAL SUCCEEDS
+
+If the complete migration chain succeeds on the disposable database:
+
+Report:
+
+- migration chain successfully replayed
+- "nfc_cards" constraint verified
+- "nfc_card_history" created successfully
+- composite foreign key created successfully
+- no migration ordering failure observed
+- no production database was modified
+
+Then inspect whether the disposable database accurately represents the relevant production schema.
+
+Do NOT publish the migration yet.
+
+---
+
+PHASE 7 — COMPARE RELEVANT PRODUCTION SCHEMA
+
+If safe read-only access is available, compare only the relevant objects:
+
+"nfc_cards"
+
+Check:
+
+- table exists
+- primary key
+- "(id, school_id)" uniqueness
+- relevant indexes
+- columns
+
+"nfc_card_history"
+
+Check:
+
+- whether table exists
+- columns
+- constraints
+- foreign keys
+- indexes
+
+Migration metadata
+
+Determine whether the production database has a migration-history record showing which migrations have already been applied.
+
+Do not alter migration metadata.
+
+Do not manually mark migrations as completed.
+
+Do not delete migration records.
+
+---
+
+PHASE 8 — FINAL DECISION
+
+At the end, give exactly one of these statuses:
+
+SAFE TO PROCEED TO A SEPARATE PRODUCTION PUBLISH REVIEW
+
+Only if:
+
+- deployed API database target is known
+- disposable rehearsal succeeded
+- relevant production schema has been safely inspected
+- no data-integrity issue was found
+- no unresolved migration ambiguity remains
+
+OR:
+
+BLOCKED — DO NOT PUBLISH
+
+If any of the above cannot be established.
+
+---
+
+FINAL REPORT FORMAT
+
+Return:
+
+1. DEPLOYED API DATABASE TARGET
+
+Only variable names and non-secret identification.
+
+2. MIGRATION ANALYSIS
+
+Relevant migration files and ordering.
+
+3. DISPOSABLE REHEARSAL
+
+- database type
+- migration result
+- failure/success
+- relevant constraints verified
+
+4. PRODUCTION SCHEMA COMPARISON
+
+Only relevant schema information.
+
+5. CHANGES MADE
+
+Must say:
+
+«No production changes were made.»
+
+Also list any repository files changed. Ideally this should be:
+
+«None.»
+
+6. RECOMMENDATION
+
+One of:
+
+«SAFE TO PROCEED TO A SEPARATE PRODUCTION PUBLISH REVIEW»
+
+or
+
+«BLOCKED — DO NOT PUBLISH»
+
+Do not execute any production migration as part of this task.
