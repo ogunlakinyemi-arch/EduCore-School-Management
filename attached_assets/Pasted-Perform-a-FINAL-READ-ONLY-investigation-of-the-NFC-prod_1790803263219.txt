@@ -1,0 +1,223 @@
+Perform a FINAL READ-ONLY investigation of the NFC production schema and migration state.
+
+IMPORTANT SAFETY RULES:
+
+- Do NOT run any migration.
+- Do NOT create, alter, drop, rename, or repair any database object.
+- Do NOT insert, update, delete, or modify production data.
+- Do NOT reset, fork, restore, or recreate the production database.
+- Do NOT change secrets or environment variables.
+- Do NOT change application code.
+- Do NOT restart or republish the deployment.
+- Do NOT spend time implementing a fix.
+- Inspection only.
+
+We have already confirmed from the Production Database resource:
+
+- "public.nfc_cards" exists.
+- It contains 3 records:
+  - id 1, school_id 1
+  - id 2, school_id 1
+  - id 3, school_id 1
+- "UNIQUE (id, school_id)" exists and is validated.
+- "public.nfc_card_history" does NOT exist.
+- No "nfc_card_history" table exists in another schema.
+- No production data or schema has been changed during this investigation.
+
+Now investigate ONLY the following.
+
+==================================================
+
+1. REPOSITORY MIGRATION REQUIREMENT
+   ==================================================
+
+Inspect the checked-in migration files and identify exactly which migration creates:
+
+- "nfc_cards"
+- "nfc_card_history"
+- "UNIQUE (id, school_id)" on "nfc_cards"
+- the foreign key from "nfc_card_history" to "nfc_cards"
+
+Specifically inspect the migration around:
+
+"0009_phase5_attendance.sql"
+
+Report:
+
+- exact migration filename
+- tables created
+- constraints/indexes created
+- foreign keys created
+- dependency/order between the unique constraint and the history-table foreign key
+
+Do NOT modify the migration.
+
+==================================================
+2. CURRENT APPLICATION CODE REQUIREMENT
+
+Search the current application code for references to:
+
+"nfc_card_history"
+
+Determine whether the currently checked-in application code:
+
+- reads from it
+- writes to it
+- joins it
+- requires it for NFC functionality
+- only references it in migrations/tests
+- or does not currently use it at runtime
+
+Report the exact relevant files and explain the runtime dependency.
+
+Do not change any files.
+
+==================================================
+3. PRODUCTION MIGRATION LEDGER
+
+Inspect the Replit production migration ledger:
+
+"_system.replit_database_migrations_v1"
+
+Read-only only.
+
+Report:
+
+- all available rows
+- timestamps
+- statement counts
+- any migration identifiers, names, hashes, or SQL metadata available
+- whether the ledger provides enough information to determine whether migration "0009_phase5_attendance.sql" was applied
+- whether the ledger indicates a failed/partial migration
+
+Do NOT modify this ledger.
+
+If individual SQL statements can be inspected safely, inspect them read-only.
+
+==================================================
+4. DEPLOYED API DATABASE TARGET
+
+Determine, without exposing any secrets:
+
+- how the deployed API obtains "DATABASE_URL"
+- whether the production database inspected above is demonstrably the same database used by the deployed API
+- whether there is any Replit deployment/database resource identifier or other non-secret metadata that can establish the connection
+- whether the current evidence is sufficient to prove the database identity
+
+Do NOT print:
+
+- DATABASE_URL
+- passwords
+- tokens
+- credentials
+- connection strings
+
+If database identity cannot be proven, clearly state that.
+
+==================================================
+5. MIGRATION STATUS COMPARISON
+
+Compare:
+
+A. Current repository migration requirements
+B. Actual Production NFC schema
+C. Production migration ledger
+D. Current application runtime references
+
+Determine which of these is true:
+
+CASE A:
+"nfc_card_history" is not required by the current runtime and its absence is harmless.
+
+CASE B:
+"nfc_card_history" is required by the current runtime and is genuinely missing from Production.
+
+CASE C:
+The production schema and migration state cannot yet be safely determined because the inspected Production database may not be the deployed API database.
+
+CASE D:
+There is another specific explanation supported by the evidence.
+
+Do not guess. Choose only a case supported by evidence.
+
+==================================================
+6. ORIGINAL MIGRATION ERROR
+
+Determine whether the original suspected error involving:
+
+"nfc_card_history"
+
+and the foreign key:
+
+"(id, school_id)"
+
+referencing:
+
+"nfc_cards(id, school_id)"
+
+is:
+
+- resolved
+- still present
+- unrelated to the current production schema
+- or cannot yet be determined
+
+Remember that Production already has:
+
+"UNIQUE (id, school_id)"
+
+and therefore do not report the missing composite unique constraint as a current problem.
+
+==================================================
+7. FINAL RECOMMENDATION
+
+Give ONE recommended next step based strictly on the evidence.
+
+The recommendation must be one of:
+
+- No action required
+- Continue with a targeted read-only investigation
+- Prepare a targeted migration for review, but DO NOT execute it
+- Another clearly justified option
+
+Do NOT execute any fix.
+
+FINAL REPORT FORMAT:
+
+FINAL NFC PRODUCTION INVESTIGATION
+
+Repository migration
+
+...
+
+Runtime dependency
+
+...
+
+Production migration ledger
+
+...
+
+Production database identity
+
+...
+
+Schema comparison
+
+...
+
+Original migration issue
+
+...
+
+Conclusion
+
+CASE A / B / C / D
+
+Recommended next step
+
+...
+
+Changes made
+
+NONE — READ-ONLY INVESTIGATION
