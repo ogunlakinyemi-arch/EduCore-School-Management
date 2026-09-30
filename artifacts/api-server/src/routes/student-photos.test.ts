@@ -5,6 +5,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 const state = vi.hoisted(() => ({
   queries: [] as Array<{ sql: string; values: unknown[] }>,
   photo: null as string | null,
+  photoStudentId: 10,
+  photoSchoolId: 1,
   metadata: { size: "0", contentType: "image/png" } as Record<string, unknown>,
   bytes: Buffer.alloc(0),
   employeeMembership: true,
@@ -39,8 +41,10 @@ vi.mock("@workspace/db", () => ({
       if (sql.includes("FROM students") && sql.includes("SELECT id")) {
         return { rows: [{ id: 10 }] };
       }
-      if (sql.includes("FROM students") && sql.includes("SELECT photo")) {
-        return { rows: [{ photo: state.photo }] };
+      if (sql.includes("SELECT photo FROM students WHERE id = $1 AND school_id = $2")) {
+        return Number(values[0]) === state.photoStudentId && Number(values[1]) === state.photoSchoolId
+          ? { rows: [{ photo: state.photo }] }
+          : { rows: [] };
       }
       if (sql.includes("UPDATE students")) return { rows: [{ previousPhoto: null }] };
       if (sql.includes("FROM school_memberships")) {
@@ -79,10 +83,10 @@ vi.mock("../middlewares/auth", () => {
       _res: express.Response,
       next: express.NextFunction,
     ) => {
-      const role = req.header("x-test-role") ?? "SCHOOL_ADMIN";
+        const role = req.header("x-test-role") ?? "SCHOOL_ADMIN";
       (req as any).edupulseUser = {
         user: { id: 42, clerkUserId: "clerk-user", email: "staff@example.test" },
-        roles: [{ role, schoolId: 1, status: "ACTIVE" }],
+          roles: [{ role, schoolId: role === "PLATFORM_OWNER" ? null : 1, status: "ACTIVE" }],
       };
       next();
     },
@@ -119,6 +123,8 @@ afterAll(async () => new Promise<void>((resolve, reject) =>
 beforeEach(() => {
   state.queries = [];
   state.photo = null;
+  state.photoStudentId = 10;
+  state.photoSchoolId = 1;
   state.bytes = Buffer.from(validPngBytes);
   state.metadata = { size: String(state.bytes.length), contentType: "image/png" };
   state.employeeMembership = true;
@@ -250,5 +256,71 @@ describe("student photo endpoints", () => {
     expect(response.status).toBe(404);
     expect(fileMock.getMetadata).not.toHaveBeenCalled();
     expect(state.officerChecks).toBe(1);
+  });
+
+  it("allows an active global Platform Owner to read the persisted photo for the requested student and school", async () => {
+    state.photo = "/objects/student-photos/1/10/44b6e0bf-4b47-4c1f-9f70-df7d0ad030b4";
+    const response = await fetch(`${baseUrl}/students/10/photo?schoolId=1`, {
+      headers: { "x-test-role": "PLATFORM_OWNER" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(Buffer.from(await response.arrayBuffer())).toEqual(state.bytes);
+    expect(state.queries).toContainEqual(expect.objectContaining({
+      sql: "SELECT photo FROM students WHERE id = $1 AND school_id = $2",
+      values: [10, 1],
+    }));
+    expect(state.fileAccesses).toEqual([
+      "student-photo-test-bucket/private/student-photos/1/10/44b6e0bf-4b47-4c1f-9f70-df7d0ad030b4",
+    ]);
+    expect(state.officerChecks).toBe(0);
+  });
+
+  it("does not let Owner photo reads escape the exact school/student row scope", async () => {
+    state.photo = "/objects/student-photos/1/10/44b6e0bf-4b47-4c1f-9f70-df7d0ad030b4";
+    const wrongStudent = await fetch(`${baseUrl}/students/11/photo?schoolId=1`, {
+      headers: { "x-test-role": "PLATFORM_OWNER" },
+    });
+    expect(wrongStudent.status).toBe(404);
+    const wrongSchool = await fetch(`${baseUrl}/students/10/photo?schoolId=2`, {
+      headers: { "x-test-role": "PLATFORM_OWNER" },
+    });
+    expect(wrongSchool.status).toBe(404);
+    expect(state.queries).toContainEqual(expect.objectContaining({
+      sql: "SELECT photo FROM students WHERE id = $1 AND school_id = $2",
+      values: [11, 1],
+    }));
+    expect(state.queries).toContainEqual(expect.objectContaining({
+      sql: "SELECT photo FROM students WHERE id = $1 AND school_id = $2",
+      values: [10, 2],
+    }));
+    expect(state.fileAccesses).toEqual([]);
+  });
+
+  it("does not allow Owner photo upload or mutation", async () => {
+    const headers = { "Content-Type": "application/json", "x-test-role": "PLATFORM_OWNER" };
+    const upload = await fetch(`${baseUrl}/students/10/photo-upload-request`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ schoolId: 1, contentType: "image/png", size: 100 }),
+    });
+    const confirmation = await fetch(`${baseUrl}/students/10/photo-confirm`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        schoolId: 1,
+        objectPath: "/objects/student-photos/1/10/44b6e0bf-4b47-4c1f-9f70-df7d0ad030b4",
+      }),
+    });
+    const deletion = await fetch(`${baseUrl}/students/10/photo?schoolId=1`, {
+      method: "DELETE",
+      headers: { "x-test-role": "PLATFORM_OWNER" },
+    });
+
+    expect(upload.status).toBe(404);
+    expect(confirmation.status).toBe(404);
+    expect(deletion.status).toBe(404);
+    expect(fileMock.getMetadata).not.toHaveBeenCalled();
+    expect(state.fileAccesses).toEqual([]);
   });
 });

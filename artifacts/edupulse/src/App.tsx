@@ -26,6 +26,7 @@ import { StudentsPage } from '@/pages/students';
 import { ParentsPage } from '@/pages/parents';
 import { EmployeesPage } from '@/pages/employees';
 import { PlatformCompanyEmployeesPage } from '@/pages/platform-company-employees';
+import { CompanyAccountantPage } from '@/pages/company-accountant';
 import { AcademicsPage } from '@/pages/academics';
 import { SubjectsPage } from '@/pages/subjects';
 import { AcademicWorkPage } from '@/pages/academic-work';
@@ -165,6 +166,9 @@ function ProtectedRoutes() {
   const isActivationOfficer = context.roles?.some(
     role => (role.role as string) === 'DEVICE_ACTIVATION_OFFICER' && role.status === 'ACTIVE',
   ) === true;
+  const isCompanyAccountant = context.roles?.some(
+    role => (role.role as string) === 'COMPANY_ACCOUNTANT' && role.status === 'ACTIVE',
+  ) === true;
 
   if (isActivationOfficer) {
     return (
@@ -173,6 +177,17 @@ function ProtectedRoutes() {
           <Route path="/activation/history" component={ActivationHistoryPage} />
           <Route path="/activation" component={EidActivationPage} />
           <Route><Redirect to="/activation" /></Route>
+        </Switch>
+      </Shell>
+    );
+  }
+
+  if (isCompanyAccountant) {
+    return (
+      <Shell>
+        <Switch>
+          <Route path="/company-finance" component={CompanyAccountantPage} />
+          <Route><Redirect to="/company-finance" /></Route>
         </Switch>
       </Shell>
     );
@@ -285,10 +300,10 @@ function ProtectedRoutes() {
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'STAFF']} ownerCanView><CardsPage /></RoleGuard>
           </Route>
           <Route path="/activation">
-            <RoleGuard allowedRoles={['DEVICE_ACTIVATION_OFFICER']}><EidActivationPage /></RoleGuard>
+            <RoleGuard allowedRoles={['DEVICE_ACTIVATION_OFFICER']} ownerCanView><EidActivationPage /></RoleGuard>
           </Route>
           <Route path="/activation/history">
-            <RoleGuard allowedRoles={['DEVICE_ACTIVATION_OFFICER']}><ActivationHistoryPage /></RoleGuard>
+            <RoleGuard allowedRoles={['DEVICE_ACTIVATION_OFFICER']} ownerCanView><ActivationHistoryPage /></RoleGuard>
           </Route>
           <Route path="/settings">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><SettingsPage /></RoleGuard>
@@ -312,7 +327,10 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const isActivationOfficer = contextQuery.data?.roles?.some(
     role => (role.role as string) === 'DEVICE_ACTIVATION_OFFICER' && role.status === 'ACTIVE',
   ) === true;
-  if (isActivationOfficer) return <ProtectedRoutes />;
+  const isCompanyAccountant = contextQuery.data?.roles?.some(
+    role => (role.role as string) === 'COMPANY_ACCOUNTANT' && role.status === 'ACTIVE',
+  ) === true;
+  if (isActivationOfficer || isCompanyAccountant) return <ProtectedRoutes />;
   return <>{children}</>;
 }
 

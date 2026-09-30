@@ -35,6 +35,7 @@ vi.mock("@clerk/express", () => ({
 import {
   activateAcceptedSchoolInvitation,
   createSchoolInvitation,
+  createSchoolWithAdministrator,
 } from "./school-invitations";
 import type { UserContext } from "../middlewares/auth";
 
@@ -89,7 +90,10 @@ describe("school invitations", () => {
     mocks.revokeInvitation.mockResolvedValue({});
     mocks.getUser.mockResolvedValue({
       id: "user_accepted",
-      primaryEmailAddress: { emailAddress: "admin@example.test" },
+      primaryEmailAddress: {
+        emailAddress: "admin@example.test",
+        verification: { status: "verified" },
+      },
       emailAddresses: [{ emailAddress: "admin@example.test" }],
       firstName: "School",
       lastName: "Admin",
@@ -124,7 +128,11 @@ describe("school invitations", () => {
       owner,
     );
 
-    expect(result.status).toBe("INVITATION_SENT");
+    expect(result.status).toBe("DISPATCH_REQUESTED");
+    expect(result).toMatchObject({
+      dispatchStatus: "REQUEST_ACCEPTED",
+      deliveryStatus: "UNVERIFIED",
+    });
     expect(mocks.createInvitation).toHaveBeenCalledWith(expect.objectContaining({
       emailAddress: "new.admin@example.test",
       expiresInDays: 7,
@@ -157,7 +165,7 @@ describe("school invitations", () => {
         role: "PARENT",
       },
       owner,
-    )).rejects.toThrow("database unavailable");
+    )).rejects.toMatchObject({ statusCode: 503 });
 
     expect(mocks.revokeInvitation).toHaveBeenCalledWith(inviteId);
     expect(mocks.clientQuery).toHaveBeenCalledWith("ROLLBACK");
@@ -183,7 +191,10 @@ describe("school invitations", () => {
   it("does not activate invitation metadata for a different email address", async () => {
     mocks.getUser.mockResolvedValue({
       id: "user_accepted",
-      primaryEmailAddress: { emailAddress: "other@example.test" },
+      primaryEmailAddress: {
+        emailAddress: "other@example.test",
+        verification: { status: "verified" },
+      },
       emailAddresses: [{ emailAddress: "other@example.test" }],
       publicMetadata: {
         edupulseSchoolInvitation: {
@@ -233,5 +244,128 @@ describe("school invitations", () => {
       expect.anything(),
     );
     expect(mocks.createInvitation).not.toHaveBeenCalled();
+  });
+
+  it("binds a Student invitation to an existing school-scoped profile without adding an email column", async () => {
+    mocks.clientQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      if (sql.includes("FROM students") && sql.includes("FOR UPDATE")) {
+        return { rows: values[0] === 55 && values[1] === 3 ? [{ id: 55, userId: null }] : [] };
+      }
+      if (sql.includes("INSERT INTO audit_logs")) return { rows: [] };
+      return { rows: [] };
+    });
+    const result = await createSchoolInvitation(
+      {
+        schoolId: 3,
+        fullName: "Student Example",
+        email: "student@example.test",
+        phone: null,
+        role: "STUDENT",
+        studentId: 55,
+      },
+      owner,
+    );
+    expect(result).toMatchObject({ deliveryStatus: "UNVERIFIED" });
+    const marker = mocks.createInvitation.mock.calls[0][0].publicMetadata.edupulseSchoolInvitation;
+    expect(marker).toEqual(expect.objectContaining({ schoolId: 3, role: "STUDENT", studentId: 55 }));
+    expect(mocks.clientQuery).toHaveBeenCalledWith(
+      expect.stringContaining("WHERE id=$1 AND school_id=$2 FOR UPDATE"),
+      [55, 3],
+    );
+  });
+
+  it("activates a Student invitation only for the exact verified primary Clerk email and keeps STUDENT role", async () => {
+    mocks.getUser.mockResolvedValue({
+      id: "user_student",
+      primaryEmailAddress: {
+        emailAddress: "student@example.test",
+        verification: { status: "verified" },
+      },
+      emailAddresses: [],
+      phoneNumbers: [],
+      publicMetadata: {
+        edupulseSchoolInvitation: {
+          version: 1,
+          claimId: "f8b933d3-9144-48ca-996a-30af76c10a22",
+          emailProof: proof("student@example.test"),
+          schoolId: 3,
+          role: "STUDENT",
+          studentId: 55,
+        },
+      },
+    });
+    mocks.clientQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      if (sql.includes("SELECT id,email,status FROM app_users")) {
+        return { rows: [{ id: 21, email: "student@example.test", status: "ACTIVE" }] };
+      }
+      if (sql.includes("SELECT id,status FROM school_memberships")) return { rows: [] };
+      if (sql.includes("FROM students") && sql.includes("FOR UPDATE")) {
+        return { rows: [{ id: 55, userId: null }] };
+      }
+      if (sql.includes("INSERT INTO school_memberships")) {
+        return { rows: [{ id: 42 }] };
+      }
+      return { rows: [] };
+    });
+    expect(await activateAcceptedSchoolInvitation(21, "user_student")).toBe(true);
+    expect(mocks.clientQuery).toHaveBeenCalledWith(
+      expect.stringContaining("UPDATE students SET user_id=$1"),
+      [21, 55, 3],
+    );
+    expect(mocks.clientQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO school_memberships"),
+      [21, 3, "STUDENT"],
+    );
+  });
+
+  it("does not activate school access when the Clerk primary email is unverified", async () => {
+    mocks.getUser.mockResolvedValue({
+      id: "user_unverified",
+      primaryEmailAddress: {
+        emailAddress: "admin@example.test",
+        verification: { status: "unverified" },
+      },
+      emailAddresses: [],
+    });
+    expect(await activateAcceptedSchoolInvitation(21, "user_unverified")).toBe(false);
+    expect(mocks.connect).not.toHaveBeenCalled();
+  });
+
+  it("creates a school and its first administrator invitation in one transaction", async () => {
+    mocks.clientQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("INSERT INTO schools")) return { rows: [{ id: 77 }] };
+      return { rows: [] };
+    });
+    const result = await createSchoolWithAdministrator({
+      school: { code: "NEW01", name: "New School", city: "Lagos", state: "Lagos" },
+      administrator: { fullName: "First Admin", email: "first.admin@example.test" },
+    }, owner);
+    expect(result.schoolId).toBe(77);
+    expect(result.administratorInvitation).toMatchObject({
+      status: "DISPATCH_REQUESTED",
+      dispatchStatus: "REQUEST_ACCEPTED",
+      deliveryStatus: "UNVERIFIED",
+    });
+    expect(mocks.createInvitation).toHaveBeenCalledWith(expect.objectContaining({
+      emailAddress: "first.admin@example.test",
+      notify: true,
+    }));
+    expect(mocks.clientQuery).toHaveBeenCalledWith("COMMIT");
+    expect(JSON.stringify(mocks.createInvitation.mock.calls[0][0].publicMetadata))
+      .not.toContain("first.admin@example.test");
+  });
+
+  it("rolls back school creation when Clerk refuses the first administrator invitation", async () => {
+    mocks.clientQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("INSERT INTO schools")) return { rows: [{ id: 77 }] };
+      return { rows: [] };
+    });
+    mocks.createInvitation.mockRejectedValue({ status: 503 });
+    await expect(createSchoolWithAdministrator({
+      school: { code: "NEW01", name: "New School", city: "Lagos", state: "Lagos" },
+      administrator: { fullName: "First Admin", email: "first.admin@example.test" },
+    }, owner)).rejects.toMatchObject({ statusCode: 503 });
+    expect(mocks.clientQuery).toHaveBeenCalledWith("ROLLBACK");
+    expect(mocks.clientQuery).not.toHaveBeenCalledWith("COMMIT");
   });
 });

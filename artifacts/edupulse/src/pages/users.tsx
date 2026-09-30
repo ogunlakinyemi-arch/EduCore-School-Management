@@ -1,9 +1,9 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { UserCog, Plus, ShieldCheck, UserPlus } from 'lucide-react';
 import { 
   useListUsers, useListSchoolUsers, getListUsersQueryKey, getListSchoolUsersQueryKey,
-  useGetAuthorizedContext
+  useGetAuthorizedContext, useListStudents, getListStudentsQueryKey
 } from '@workspace/api-client-react';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, 
@@ -137,9 +137,9 @@ export function UsersPage() {
                 onDone={(result) => {
                   done();
                   toast({
-                    title: result.status === 'INVITATION_SENT' ? 'Invitation sent' : 'Access granted',
-                    description: result.status === 'INVITATION_SENT'
-                      ? `Clerk sent an invitation to ${result.email}. It expires ${date(result.expiresAt)}.`
+                     title: result.status === 'DISPATCH_REQUESTED' ? 'Invitation request accepted' : 'Access granted',
+                     description: result.status === 'DISPATCH_REQUESTED'
+                       ? `Clerk accepted the invitation request for ${result.email}; inbox delivery is not verified. It expires ${date(result.expiresAt)}.`
                       : `${result.email} was added to this school using their existing account.`,
                   });
                 }}
@@ -157,14 +157,18 @@ const schoolInvitationSchema = z.object({
   fullName: z.string().min(2, 'Full name is required'),
   email: z.string().email('Valid email required'),
   phone: z.string().optional(),
-  role: z.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STAFF', 'PARENT'])
+  role: z.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STAFF', 'PARENT', 'STUDENT']),
+  studentId: z.coerce.number().optional(),
 }).refine(data => data.role !== 'PARENT' || !!data.phone?.trim(), {
   message: 'A phone number is required for parent invitations',
   path: ['phone']
+}).refine(data => data.role !== 'STUDENT' || (Number.isInteger(data.studentId) && Number(data.studentId) > 0), {
+  message: 'Select an existing student profile',
+  path: ['studentId']
 });
 
 async function postAuthInvitation(path: string, data: Record<string, unknown>) {
-  const response = await fetch(`/api/auth${path}`, {
+  const response = await fetch(`/api${path}`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -189,6 +193,7 @@ function SchoolInvitationForm({
   onCancel: () => void;
 }) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [studentSearch, setStudentSearch] = useState('');
 
   const form = useForm<z.infer<typeof schoolInvitationSchema>>({
     resolver: zodResolver(schoolInvitationSchema),
@@ -197,11 +202,34 @@ function SchoolInvitationForm({
       email: '',
       phone: '',
       role: isPlatformOwner ? 'SCHOOL_ADMIN' : 'TEACHER',
+      studentId: undefined,
     }
+  });
+  const role = form.watch('role');
+  useEffect(() => {
+    form.setValue('studentId', undefined, { shouldValidate: true });
+    form.clearErrors('studentId');
+    setStudentSearch('');
+  }, [schoolId, role]);
+
+  const studentParams = {
+    schoolId,
+    status: 'ACTIVE' as const,
+    search: studentSearch.trim() || undefined,
+  };
+  const students = useListStudents(studentParams, {
+    query: {
+      enabled: !isPlatformOwner && role === 'STUDENT',
+      queryKey: getListStudentsQueryKey(studentParams),
+    },
   });
 
   const onSubmit = async (data: z.infer<typeof schoolInvitationSchema>) => {
     setErrorMsg(null);
+    if (isPlatformOwner && data.role === 'STUDENT') {
+      setErrorMsg('Platform owners can only invite school administrators.');
+      return;
+    }
     try {
       const result = isPlatformOwner
         ? await postAuthInvitation(`/schools/${schoolId}/administrators`, {
@@ -215,6 +243,7 @@ function SchoolInvitationForm({
             email: data.email,
             phone: data.phone,
             role: data.role,
+            ...(data.role === 'STUDENT' ? { studentId: data.studentId } : {}),
           });
       onDone(result);
     } catch (err: unknown) {
@@ -238,24 +267,69 @@ function SchoolInvitationForm({
       {!isPlatformOwner && (
         <div className="space-y-1">
           <label className="text-xs font-bold text-[hsl(var(--muted-foreground))]">School Role</label>
-          <select {...form.register('role')} className="w-full">
+          <select {...form.register('role', {
+            onChange: () => {
+              form.setValue('studentId', undefined);
+              form.clearErrors('studentId');
+            },
+          })} className="w-full">
             <option value="TEACHER">Teacher</option>
             <option value="ACCOUNTANT">Accountant</option>
             <option value="STAFF">Staff</option>
             <option value="PARENT">Parent</option>
+            <option value="STUDENT">Student</option>
           </select>
           {form.formState.errors.role && <p className="text-xs text-[hsl(var(--destructive))]">{form.formState.errors.role.message}</p>}
         </div>
       )}
+      {!isPlatformOwner && role === 'STUDENT' && (
+        <div className="space-y-1">
+          <label className="text-xs font-bold text-[hsl(var(--muted-foreground))]">Existing student profile</label>
+          <input
+            type="search"
+            value={studentSearch}
+            onChange={event => {
+              setStudentSearch(event.target.value);
+              form.setValue('studentId', undefined, { shouldValidate: true });
+            }}
+            className="w-full"
+            placeholder="Search active students by name or admission number"
+            aria-label="Search active students"
+          />
+          <select
+            {...form.register('studentId')}
+            value={form.watch('studentId') ?? ''}
+            onChange={event => form.setValue('studentId', event.target.value ? Number(event.target.value) : undefined, { shouldValidate: true })}
+            className="w-full"
+            aria-label="Existing student profile"
+          >
+            <option value="" disabled>Select a student</option>
+            {(students.data ?? []).map((student: any) => (
+              <option key={student.id} value={student.id}>
+                {student.firstName} {student.lastName} · {student.admissionNo}
+              </option>
+            ))}
+          </select>
+          {students.isLoading && <p role="status" className="text-xs text-[hsl(var(--muted-foreground))]">Loading active student profiles…</p>}
+          {students.isError && <p className="text-xs text-[hsl(var(--destructive))]">Could not load this school&apos;s student profiles.</p>}
+          {!students.isLoading && !students.isError && !(students.data ?? []).length && (
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+              {studentSearch ? 'No active student profiles match this search.' : 'No active student profiles are available in this school.'}
+            </p>
+          )}
+          {form.formState.errors.studentId && <p className="text-xs text-[hsl(var(--destructive))]">{form.formState.errors.studentId.message}</p>}
+          <p className="text-xs text-[hsl(var(--muted-foreground))]">Student access links to this existing school profile. The profile has no student email field; enter the invitee&apos;s email above.</p>
+        </div>
+      )}
       <div className="space-y-1">
         <label className="text-xs font-bold text-[hsl(var(--muted-foreground))]">
-          Phone {form.watch('role') === 'PARENT' ? '(required)' : '(optional)'}
+          Phone {role === 'PARENT' ? '(required)' : '(optional)'}
         </label>
         <input type="tel" {...form.register('phone')} className="w-full" placeholder="+1234567890" autoComplete="tel" />
         {form.formState.errors.phone && <p className="text-xs text-[hsl(var(--destructive))]">{form.formState.errors.phone.message}</p>}
       </div>
       <p className="text-xs text-[hsl(var(--muted-foreground))]">
-        Clerk emails a single-use invitation that expires in seven days. The invitee creates their own password.
+        Clerk accepts a single-use invitation dispatch request that expires in seven days. Inbox delivery is not verified; the invitee creates their own password.
       </p>
 
       <div className="flex justify-end gap-3 pt-5 border-t border-[hsl(var(--border))]">

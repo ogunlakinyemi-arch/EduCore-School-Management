@@ -28,6 +28,8 @@ type EmployeeProfileInput = {
   phone?: string;
   jobTitle?: string;
   status?: 'ACTIVE' | 'INACTIVE';
+  role?: 'COMPANY_ACCOUNTANT' | 'DEVICE_ACTIVATION_OFFICER';
+  schoolId?: number;
 };
 
 type EmployeeFormValues = {
@@ -36,9 +38,18 @@ type EmployeeFormValues = {
   phone: string;
   jobTitle: string;
   status: 'ACTIVE' | 'INACTIVE';
+  role: '' | 'COMPANY_ACCOUNTANT' | 'DEVICE_ACTIVATION_OFFICER';
+  schoolId: string;
 };
 
 type OwnerSchool = { id: number; name: string; status: string };
+type InvitationResult = {
+  id: number;
+  fullName: string;
+  email: string;
+  role: 'COMPANY_ACCOUNTANT' | 'DEVICE_ACTIVATION_OFFICER';
+  invitation: { status: string; deliveryConfirmed: boolean; expiresAt: string };
+};
 
 const endpoint = '/api/platform/company-employees';
 const queryKey = ['platform', 'company-employees'];
@@ -75,6 +86,7 @@ export function PlatformCompanyEmployeesPage() {
   const [creating, setCreating] = useState(false);
   const [selectedEmployeeEmail, setSelectedEmployeeEmail] = useState('');
   const [selectedSchoolId, setSelectedSchoolId] = useState('');
+  const [lastInvitation, setLastInvitation] = useState<InvitationResult | null>(null);
   const employeesQuery = useQuery({
     queryKey,
     queryFn: () => request<CompanyEmployee[]>(endpoint),
@@ -103,12 +115,13 @@ export function PlatformCompanyEmployeesPage() {
     queryKey: getListDeviceActivationOfficersQueryKey(selectedSchoolNumber),
   });
   const createEmployee = useMutation({
-    mutationFn: (input: EmployeeProfileInput) => request<CompanyEmployee>(endpoint, {
+    mutationFn: (input: EmployeeProfileInput) => request<InvitationResult>(endpoint, {
       method: 'POST',
       body: JSON.stringify(input),
     }),
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       setCreating(false);
+      setLastInvitation(result);
       await refresh();
     },
   });
@@ -136,13 +149,20 @@ export function PlatformCompanyEmployeesPage() {
       <PageHeading
         eyebrow="Platform / Yemait Technologies"
         title="Company Employees."
-        description="Maintain basic profiles for the Yemait Technologies team. These profiles are separate from school staff and do not create sign-in accounts."
+        description="Invite internal Yemait Technologies employees into one restricted role. Company finance and school-scoped device activation are separate from school staff access."
         action={
           <Button onClick={() => { createEmployee.reset(); setCreating(true); }} testId="button-add-company-employee">
             <Plus size={16} />Add employee
           </Button>
         }
       />
+
+      {lastInvitation && (
+        <p className="mb-5 rounded-xl border border-[hsl(var(--primary)/.25)] bg-[hsl(var(--primary)/.06)] p-4 text-sm" role="status">
+          Clerk accepted the {lastInvitation.role.replaceAll('_', ' ').toLowerCase()} invitation request for {lastInvitation.email} with notifications enabled
+          (expires {new Date(lastInvitation.invitation.expiresAt).toLocaleDateString()}). Email dispatch and inbox delivery are not independently confirmed.
+        </p>
+      )}
 
       <section className="panel mb-6 p-5 sm:p-6" aria-labelledby="activation-access-heading">
         <div className="mb-4 flex items-start gap-3">
@@ -313,6 +333,7 @@ export function PlatformCompanyEmployeesPage() {
             initial={editing ?? undefined}
             pending={creating ? createEmployee.isPending : updateEmployee.isPending}
             error={creating ? createEmployee.error : updateEmployee.error}
+            schools={schoolsQuery.data ?? []}
             onCancel={() => { setCreating(false); setEditing(null); }}
             onSubmit={(values) => {
               if (editing) updateEmployee.mutate({ id: editing.id, input: values });
@@ -329,12 +350,14 @@ function CompanyEmployeeForm({
   initial,
   pending,
   error,
+  schools,
   onSubmit,
   onCancel,
 }: {
   initial?: CompanyEmployee;
   pending: boolean;
   error: unknown;
+  schools: OwnerSchool[];
   onSubmit: (values: EmployeeProfileInput) => void;
   onCancel: () => void;
 }) {
@@ -344,6 +367,8 @@ function CompanyEmployeeForm({
     phone: initial?.phone ?? '',
     jobTitle: initial?.jobTitle ?? '',
     status: initial?.status ?? 'ACTIVE',
+    role: '',
+    schoolId: '',
   });
 
   const save = (event: FormEvent<HTMLFormElement>) => {
@@ -353,7 +378,10 @@ function CompanyEmployeeForm({
       email: form.email.trim(),
       phone: form.phone.trim() || undefined,
       jobTitle: form.jobTitle.trim() || undefined,
-      ...(initial ? { status: form.status } : {}),
+      ...(initial ? { status: form.status } : {
+        ...(form.role ? { role: form.role } : {}),
+        ...(form.role === 'DEVICE_ACTIVATION_OFFICER' ? { schoolId: Number(form.schoolId) } : {}),
+      }),
     });
   };
 
@@ -401,6 +429,45 @@ function CompanyEmployeeForm({
           />
         </Field>
       </div>
+      {!initial && (
+        <>
+          <Field label="Restricted employee role">
+            <select
+              required
+              value={form.role}
+              onChange={(event) => setForm({
+                ...form,
+                role: event.target.value as EmployeeFormValues['role'],
+                schoolId: '',
+              })}
+              data-testid="select-company-employee-role"
+            >
+              <option value="" disabled>Choose an employee role</option>
+              <option value="COMPANY_ACCOUNTANT">Company Accountant — company financial views only</option>
+              <option value="DEVICE_ACTIVATION_OFFICER">Device Activation Officer — selected school only</option>
+            </select>
+          </Field>
+          {form.role === 'DEVICE_ACTIVATION_OFFICER' && (
+            <Field label="Authorized school">
+              <select
+                required
+                value={form.schoolId}
+                onChange={(event) => setForm({ ...form, schoolId: event.target.value })}
+                data-testid="select-company-employee-authorized-school"
+              >
+                <option value="">Choose an active school</option>
+                {schools.map((school) => (
+                  <option key={school.id} value={school.id}>{school.name}</option>
+                ))}
+              </select>
+            </Field>
+          )}
+          <p className="text-xs text-[hsl(var(--muted-foreground))]">
+            The invitation request asks Clerk to send an email. The app reports Clerk request acceptance, not confirmed dispatch or inbox delivery.
+            Employees are not added as school STAFF or OWNER accounts.
+          </p>
+        </>
+      )}
       {initial && (
         <Field label="Profile status">
           <select

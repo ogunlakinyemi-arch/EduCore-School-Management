@@ -13,7 +13,7 @@ export const ROLES = [
   "PARTNER",
 ] as const;
 
-export type Role = (typeof ROLES)[number] | "DEVICE_ACTIVATION_OFFICER";
+export type Role = (typeof ROLES)[number] | "DEVICE_ACTIVATION_OFFICER" | "COMPANY_ACCOUNTANT";
 export type UserStatus = "ACTIVE" | "INACTIVE";
 
 export type UserContext = {
@@ -103,18 +103,22 @@ export async function loadUserContext(clerkUserId: string): Promise<UserContext>
     [user.id],
   );
 
-  const officer = roles.rows.some(
+  const restrictedInternal = roles.rows.some(
     (assignment) =>
-      assignment.role === "DEVICE_ACTIVATION_OFFICER" &&
+      ["DEVICE_ACTIVATION_OFFICER", "COMPANY_ACCOUNTANT"].includes(assignment.role) &&
       assignment.status === "ACTIVE",
   );
   if (
-    officer &&
-    roles.rows.some((assignment) => assignment.role !== "DEVICE_ACTIVATION_OFFICER")
+    restrictedInternal &&
+    (roles.rows.some((assignment) =>
+      !["DEVICE_ACTIVATION_OFFICER", "COMPANY_ACCOUNTANT"].includes(assignment.role)) ||
+      roles.rows.some((assignment) => assignment.role === "COMPANY_ACCOUNTANT") &&
+      roles.rows.some((assignment) => assignment.role === "DEVICE_ACTIVATION_OFFICER") ||
+      roles.rows.some((assignment) => assignment.role === "COMPANY_ACCOUNTANT" && assignment.schoolId !== null))
   ) {
     throw new AuthError(
       403,
-      "Device Activation Officer accounts cannot have other active roles",
+      "Restricted internal employee accounts cannot have other active roles",
       "ACCESS_DENIED",
     );
   }

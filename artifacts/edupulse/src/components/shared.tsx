@@ -36,7 +36,7 @@ export function IconLogo({ compact = false }: { compact?: boolean }) {
   );
 }
 
-type AppRole = 'PLATFORM_OWNER' | 'SCHOOL_ADMIN' | 'TEACHER' | 'ACCOUNTANT' | 'PARENT' | 'STUDENT' | 'STAFF' | 'DEVICE_ACTIVATION_OFFICER';
+type AppRole = 'PLATFORM_OWNER' | 'SCHOOL_ADMIN' | 'TEACHER' | 'ACCOUNTANT' | 'PARENT' | 'STUDENT' | 'STAFF' | 'DEVICE_ACTIVATION_OFFICER' | 'COMPANY_ACCOUNTANT';
 type NavItem = { href: string; label: string; icon: typeof Activity; roles?: AppRole[] };
 
 const nav: NavItem[] = [
@@ -68,13 +68,14 @@ const nav: NavItem[] = [
   { href: '/devices', label: 'Devices', icon: Smartphone, roles: ['PLATFORM_OWNER'] },
   { href: '/subscriptions', label: 'Subscriptions', icon: WalletCards, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/cards', label: 'NFC Cards', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'STAFF'] },
-  { href: '/activation', label: 'Card Activation', icon: CreditCard, roles: ['DEVICE_ACTIVATION_OFFICER'] },
-  { href: '/activation/history', label: 'Activation History', icon: FileClock, roles: ['DEVICE_ACTIVATION_OFFICER'] },
+  { href: '/activation', label: 'Card Activation', icon: CreditCard, roles: ['PLATFORM_OWNER', 'DEVICE_ACTIVATION_OFFICER'] },
+  { href: '/activation/history', label: 'Activation History', icon: FileClock, roles: ['PLATFORM_OWNER', 'DEVICE_ACTIVATION_OFFICER'] },
+  { href: '/company-finance', label: 'Company Finance', icon: CircleDollarSign, roles: ['COMPANY_ACCOUNTANT'] },
   { href: '/audit', label: 'Audit Log', icon: FileClock, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
 ];
 const ownerNavPaths = new Set([
   '/', '/schools', '/students', '/company-employees', '/users', '/partners',
-  '/devices', '/subscriptions', '/cards', '/audit', '/reporting',
+  '/devices', '/subscriptions', '/cards', '/audit', '/reporting', '/activation', '/activation/history',
 ]);
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -88,21 +89,23 @@ export function Shell({ children }: { children: ReactNode }) {
 
   const roles = context?.roles?.filter(r => r.status === 'ACTIVE').map(r => r.role as string) || [];
   const isActivationOfficer = roles.includes('DEVICE_ACTIVATION_OFFICER');
-  const isPlatformOwner = !isActivationOfficer && (context?.isPlatformOwner || false);
+  const isCompanyAccountant = roles.includes('COMPANY_ACCOUNTANT');
+  const isPlatformOwner = !isActivationOfficer && !isCompanyAccountant && (context?.isPlatformOwner || false);
   const financeRole = !!schoolId && context?.roles?.some(r => r.schoolId === schoolId && r.status === 'ACTIVE' && (r.role === 'SCHOOL_ADMIN' || r.role === 'ACCOUNTANT')) === true;
   const studentRole = context?.roles?.some(r => r.role === 'STUDENT' && r.status === 'ACTIVE') === true;
   if (isPlatformOwner && !roles.includes('PLATFORM_OWNER')) roles.push('PLATFORM_OWNER');
 
   const visibleNav = nav.filter(item => {
     if (isActivationOfficer) return item.roles?.includes('DEVICE_ACTIVATION_OFFICER') === true;
+    if (isCompanyAccountant) return item.roles?.includes('COMPANY_ACCOUNTANT') === true;
     if (isPlatformOwner) return ownerNavPaths.has(item.href);
     return !item.roles || item.roles.some(role => roles.includes(role));
   });
   const name = context?.user?.name ?? 'Yemait EduCore user';
-  const roleDisplay = isActivationOfficer ? 'Device Activation Officer' : isPlatformOwner ? 'Platform Owner' : (roles[0]?.replaceAll('_', ' ') ?? 'User').toLowerCase();
+  const roleDisplay = isActivationOfficer ? 'Device Activation Officer' : isCompanyAccountant ? 'Company Accountant' : isPlatformOwner ? 'Platform Owner' : (roles[0]?.replaceAll('_', ' ') ?? 'User').toLowerCase();
   const initials = name.split(' ').slice(0, 2).map(part => part[0]).join('').toUpperCase();
   
-  const userSchoolsQuery = useGetCurrentUserSchools({ query: { enabled: !isPlatformOwner && !isActivationOfficer && !!contextQuery.data, queryKey: getGetCurrentUserSchoolsQueryKey() } });
+  const userSchoolsQuery = useGetCurrentUserSchools({ query: { enabled: !isPlatformOwner && !isActivationOfficer && !isCompanyAccountant && !!contextQuery.data, queryKey: getGetCurrentUserSchoolsQueryKey() } });
   const ownerSchoolsQuery = useListOwnerSchoolDirectory(
     { status: 'all' },
     { query: { enabled: isPlatformOwner, queryKey: getListOwnerSchoolDirectoryQueryKey({ status: 'all' }) } },
@@ -146,7 +149,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <div className="mb-2 flex items-center gap-2 text-[hsl(var(--sidebar-accent-foreground))]"><ShieldCheck size={16} /><span className="text-xs font-bold">Secure operations</span></div>
             <p className="text-xs leading-5 text-[hsl(var(--sidebar-foreground)/.6)]">Your actions are bound to your active tenant permissions.</p>
           </div>
-          {!isActivationOfficer && <Link href="/settings" className="mt-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[hsl(var(--sidebar-foreground)/.7)] hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-foreground))]" data-testid="link-nav-settings">
+          {!isActivationOfficer && !isCompanyAccountant && <Link href="/settings" className="mt-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[hsl(var(--sidebar-foreground)/.7)] hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-foreground))]" data-testid="link-nav-settings">
             <Settings2 size={18} /> Settings
           </Link>}
         </div>

@@ -9,7 +9,7 @@ import * as zod from 'zod';
 
 
 /**
- * @summary List schools with an active grant for the authenticated Device Activation Officer
+ * @summary List schools available to the authenticated Platform Owner or Device Activation Officer
  */
 export const ListActivationSchoolsResponseItem = zod.object({
   "id": zod.number().int(),
@@ -2162,34 +2162,111 @@ export const CreatePlatformMembershipResponse = zod.object({
 
 
 /**
- * @summary Send a password-free school user invitation or grant an existing user access by email
+ * Platform Owner only. Passwords are created by the invitee and must not be submitted.
+ * @summary Create a school and request an invitation for its first School Administrator
  */
+export const createSchoolWithAdministratorBodySchoolCodeMax = 10;
 
-export const inviteSchoolUserBodyFullNameMin = 2;
-export const inviteSchoolUserBodyFullNameMax = 120;
-
-export const inviteSchoolUserBodyEmailMax = 254;
-
-export const inviteSchoolUserBodyPhoneMin = 8;
-export const inviteSchoolUserBodyPhoneMax = 25;
+export const createSchoolWithAdministratorBodySchoolNameMin = 2;
 
 
 
-export const InviteSchoolUserBody = zod.object({
-  "schoolId": zod.number().int().min(1),
-  "fullName": zod.string().min(inviteSchoolUserBodyFullNameMin).max(inviteSchoolUserBodyFullNameMax),
-  "email": zod.string().email().max(inviteSchoolUserBodyEmailMax),
-  "phone": zod.string().min(inviteSchoolUserBodyPhoneMin).max(inviteSchoolUserBodyPhoneMax).optional(),
-  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'STAFF', 'PARENT'])
+export const createSchoolWithAdministratorBodyAdministratorFullNameMin = 2;
+
+export const createSchoolWithAdministratorBodyAdministratorEmailMax = 254;
+
+
+
+export const CreateSchoolWithAdministratorBody = zod.object({
+  "school": zod.object({
+  "code": zod.string().min(1).max(createSchoolWithAdministratorBodySchoolCodeMax),
+  "name": zod.string().min(createSchoolWithAdministratorBodySchoolNameMin),
+  "city": zod.string().min(1),
+  "state": zod.string().min(1),
+  "status": zod.enum(['active', 'inactive', 'suspended']).optional()
+}),
+  "administrator": zod.object({
+  "fullName": zod.string().min(createSchoolWithAdministratorBodyAdministratorFullNameMin),
+  "email": zod.string().email().max(createSchoolWithAdministratorBodyAdministratorEmailMax)
+})
 })
 
+export const CreateSchoolWithAdministratorResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "administratorInvitation": zod.object({
+  "invitationId": zod.string(),
+  "email": zod.string().email(),
+  "role": zod.enum(['SCHOOL_ADMIN']),
+  "status": zod.enum(['DISPATCH_REQUESTED']),
+  "dispatchStatus": zod.enum(['REQUEST_ACCEPTED']),
+  "deliveryStatus": zod.enum(['UNVERIFIED']),
+  "deliveryNote": zod.string()
+})
+})
+
+
+/**
+ * Available only when NODE_ENV is development, for a Platform Owner or the School Administrator of the invitation's school. Clerk invitation state does not verify inbox delivery or link use.
+ * @summary Read development-only Clerk invitation state and dispatch diagnostics
+ */
+export const getInvitationDiagnosticsPathInvitationIdMax = 100;
+
+
+export const getInvitationDiagnosticsPathInvitationIdRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+
+
+export const GetInvitationDiagnosticsParams = zod.object({
+  "invitationId": zod.coerce.string().min(1).max(getInvitationDiagnosticsPathInvitationIdMax).regex(getInvitationDiagnosticsPathInvitationIdRegExp)
+})
+
+export const GetInvitationDiagnosticsResponse = zod.object({
+  "invitationId": zod.string(),
+  "clerkStatus": zod.string(),
+  "expiresAt": zod.coerce.date().nullable(),
+  "dispatchStatus": zod.enum(['REQUEST_ACCEPTED']),
+  "deliveryStatus": zod.enum(['UNVERIFIED']),
+  "note": zod.string()
+})
+
+
+/**
+ * @summary Request a password-free school user invitation or grant a verified existing user access by email
+ */
+
+
+export const inviteSchoolUserBodyTwoFullNameMin = 2;
+export const inviteSchoolUserBodyTwoFullNameMax = 120;
+
+export const inviteSchoolUserBodyTwoEmailMax = 254;
+
+export const inviteSchoolUserBodyTwoPhoneMin = 8;
+export const inviteSchoolUserBodyTwoPhoneMax = 25;
+
+
+
+export const InviteSchoolUserBody = zod.union([zod.object({
+  "role": zod.literal("STUDENT").optional(),
+  "studentId": zod.number().int().min(1)
+}),zod.object({
+  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'STAFF', 'PARENT']).optional()
+})]).and(zod.object({
+  "schoolId": zod.number().int().min(1),
+  "fullName": zod.string().min(inviteSchoolUserBodyTwoFullNameMin).max(inviteSchoolUserBodyTwoFullNameMax),
+  "email": zod.string().email().max(inviteSchoolUserBodyTwoEmailMax),
+  "phone": zod.string().min(inviteSchoolUserBodyTwoPhoneMin).max(inviteSchoolUserBodyTwoPhoneMax).optional(),
+  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'STAFF', 'PARENT', 'STUDENT'])
+}))
+
 export const InviteSchoolUserResponse = zod.object({
-  "status": zod.enum(['INVITATION_SENT', 'ACTIVE']),
+  "status": zod.enum(['DISPATCH_REQUESTED', 'ACTIVE']),
   "email": zod.string().email(),
   "schoolId": zod.number().int(),
-  "role": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STAFF', 'PARENT']),
+  "role": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STAFF', 'PARENT', 'STUDENT']),
   "invitationId": zod.string().optional(),
   "expiresAt": zod.coerce.date().optional(),
+  "dispatchStatus": zod.enum(['REQUEST_ACCEPTED']).optional(),
+  "deliveryStatus": zod.enum(['UNVERIFIED']).optional(),
+  "deliveryNote": zod.string().optional(),
   "membership": zod.object({
   "id": zod.number().int(),
   "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
@@ -2272,12 +2349,15 @@ export const CreateSchoolAdministratorBody = zod.object({
 })
 
 export const CreateSchoolAdministratorResponse = zod.object({
-  "status": zod.enum(['INVITATION_SENT', 'ACTIVE']),
+  "status": zod.enum(['DISPATCH_REQUESTED', 'ACTIVE']),
   "email": zod.string().email(),
   "schoolId": zod.number().int(),
-  "role": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STAFF', 'PARENT']),
+  "role": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STAFF', 'PARENT', 'STUDENT']),
   "invitationId": zod.string().optional(),
   "expiresAt": zod.coerce.date().optional(),
+  "dispatchStatus": zod.enum(['REQUEST_ACCEPTED']).optional(),
+  "deliveryStatus": zod.enum(['UNVERIFIED']).optional(),
+  "deliveryNote": zod.string().optional(),
   "membership": zod.object({
   "id": zod.number().int(),
   "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
@@ -3341,22 +3421,29 @@ export const ListPlatformCompanyEmployeesResponse = zod.array(ListPlatformCompan
 /**
  * @summary Create a company employee profile
  */
-export const createPlatformCompanyEmployeeBodyFullNameMax = 160;
 
-export const createPlatformCompanyEmployeeBodyEmailMax = 254;
+export const createPlatformCompanyEmployeeBodyTwoFullNameMax = 160;
 
-export const createPlatformCompanyEmployeeBodyPhoneMax = 160;
+export const createPlatformCompanyEmployeeBodyTwoEmailMax = 254;
 
-export const createPlatformCompanyEmployeeBodyJobTitleMax = 160;
+export const createPlatformCompanyEmployeeBodyTwoPhoneMax = 160;
+
+export const createPlatformCompanyEmployeeBodyTwoJobTitleMax = 160;
 
 
 
-export const CreatePlatformCompanyEmployeeBody = zod.object({
-  "fullName": zod.string().min(1).max(createPlatformCompanyEmployeeBodyFullNameMax),
-  "email": zod.string().email().min(1).max(createPlatformCompanyEmployeeBodyEmailMax),
-  "phone": zod.string().max(createPlatformCompanyEmployeeBodyPhoneMax).nullish(),
-  "jobTitle": zod.string().max(createPlatformCompanyEmployeeBodyJobTitleMax).nullish()
-})
+export const CreatePlatformCompanyEmployeeBody = zod.union([zod.object({
+  "role": zod.literal("DEVICE_ACTIVATION_OFFICER").optional(),
+  "schoolId": zod.number().int().min(1)
+}),zod.object({
+  "role": zod.literal("COMPANY_ACCOUNTANT").optional()
+})]).and(zod.object({
+  "fullName": zod.string().min(1).max(createPlatformCompanyEmployeeBodyTwoFullNameMax),
+  "email": zod.string().email().min(1).max(createPlatformCompanyEmployeeBodyTwoEmailMax),
+  "phone": zod.string().max(createPlatformCompanyEmployeeBodyTwoPhoneMax).nullish(),
+  "jobTitle": zod.string().max(createPlatformCompanyEmployeeBodyTwoJobTitleMax).nullish(),
+  "role": zod.enum(['COMPANY_ACCOUNTANT', 'DEVICE_ACTIVATION_OFFICER'])
+}))
 
 export const CreatePlatformCompanyEmployeeResponse = zod.object({
   "id": zod.number().int(),
@@ -3366,7 +3453,14 @@ export const CreatePlatformCompanyEmployeeResponse = zod.object({
   "jobTitle": zod.string().nullable(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "role": zod.enum(['COMPANY_ACCOUNTANT', 'DEVICE_ACTIVATION_OFFICER']),
+  "schoolId": zod.number().int().nullable(),
+  "invitation": zod.object({
+  "status": zod.enum(['DISPATCH_REQUEST_ACCEPTED']),
+  "deliveryConfirmed": zod.literal(false),
+  "expiresAt": zod.coerce.date()
+})
 })
 
 
@@ -3430,6 +3524,143 @@ export const UpdatePlatformCompanyEmployeeResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
+
+
+/**
+ * Platform Owner only. Company Accountants have no school scope; Device Activation Officers require an active school.
+ * @summary Request an internal-role invitation for an active company employee
+ */
+
+
+
+export const InvitePlatformCompanyEmployeeParams = zod.object({
+  "employeeId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const InvitePlatformCompanyEmployeeBody = zod.union([zod.object({
+  "role": zod.literal("DEVICE_ACTIVATION_OFFICER").optional(),
+  "schoolId": zod.number().int().min(1)
+}),zod.object({
+  "role": zod.literal("COMPANY_ACCOUNTANT").optional()
+})]).and(zod.object({
+  "role": zod.enum(['COMPANY_ACCOUNTANT', 'DEVICE_ACTIVATION_OFFICER'])
+}))
+
+export const InvitePlatformCompanyEmployeeResponse = zod.object({
+  "employeeId": zod.number().int(),
+  "email": zod.string().email(),
+  "role": zod.enum(['COMPANY_ACCOUNTANT', 'DEVICE_ACTIVATION_OFFICER']),
+  "schoolId": zod.number().int().nullable(),
+  "invitation": zod.object({
+  "status": zod.enum(['DISPATCH_REQUEST_ACCEPTED']),
+  "deliveryConfirmed": zod.literal(false),
+  "expiresAt": zod.coerce.date()
+})
+})
+
+
+/**
+ * Requires an active eligible Company Accountant membership and employee profile.
+ * @summary Read company-wide subscription, commission, and payout totals
+ */
+export const GetCompanyAccountantOverviewResponse = zod.object({
+  "subscriptions": zod.object({
+  "verifiedSubscriptionCount": zod.number().int(),
+  "verifiedRevenue": zod.string(),
+  "verifiedEduPulseShare": zod.string(),
+  "unverifiedSubscriptionCount": zod.number().int(),
+  "activeVerifiedCount": zod.number().int()
+}),
+  "commissions": zod.array(zod.object({
+  "status": zod.string(),
+  "currency": zod.string(),
+  "count": zod.number().int(),
+  "amount": zod.string()
+})),
+  "payouts": zod.array(zod.object({
+  "status": zod.string(),
+  "currency": zod.string(),
+  "count": zod.number().int(),
+  "amount": zod.string()
+}))
+})
+
+
+/**
+ * Requires an active eligible Company Accountant membership and employee profile. Results are limited to 500.
+ * @summary List recent company subscription records
+ */
+export const ListCompanyAccountantSubscriptionsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "term": zod.string(),
+  "amount": zod.string(),
+  "edupulseShare": zod.string(),
+  "provider": zod.string(),
+  "providerReference": zod.string().nullable(),
+  "status": zod.string(),
+  "verificationStatus": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+export const ListCompanyAccountantSubscriptionsResponse = zod.array(ListCompanyAccountantSubscriptionsResponseItem)
+
+
+/**
+ * Requires an active eligible Company Accountant membership and employee profile. Results are limited to 500.
+ * @summary List recent subscriptions that are not verified or reconciled
+ */
+export const ListCompanyAccountantReconciliationResponseItem = zod.object({
+  "id": zod.number().int(),
+  "term": zod.string(),
+  "amount": zod.string(),
+  "provider": zod.string(),
+  "providerReference": zod.string().nullable(),
+  "status": zod.string(),
+  "verificationStatus": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+export const ListCompanyAccountantReconciliationResponse = zod.array(ListCompanyAccountantReconciliationResponseItem)
+
+
+/**
+ * Requires an active eligible Company Accountant membership and employee profile. Results are limited to 500.
+ * @summary List recent partner commission ledger records
+ */
+export const ListCompanyAccountantCommissionsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "partnerCode": zod.string(),
+  "partnerName": zod.string(),
+  "term": zod.string(),
+  "amount": zod.string(),
+  "currency": zod.string(),
+  "status": zod.string(),
+  "paymentReference": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "paidAt": zod.coerce.date().nullable()
+})
+export const ListCompanyAccountantCommissionsResponse = zod.array(ListCompanyAccountantCommissionsResponseItem)
+
+
+/**
+ * Requires an active eligible Company Accountant membership and employee profile. Results are limited to 500.
+ * @summary List recent partner payout records
+ */
+export const ListCompanyAccountantPayoutsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "partnerCode": zod.string(),
+  "partnerName": zod.string(),
+  "amount": zod.string(),
+  "currency": zod.string(),
+  "status": zod.string(),
+  "paymentReference": zod.string().nullable(),
+  "periodStart": zod.coerce.date(),
+  "periodEnd": zod.coerce.date(),
+  "paidAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+export const ListCompanyAccountantPayoutsResponse = zod.array(ListCompanyAccountantPayoutsResponseItem)
 
 
 /**
@@ -5492,10 +5723,11 @@ export const CreatePartnerInvitationResponse = zod.object({
   "id": zod.number().int(),
   "partnerId": zod.number().int(),
   "email": zod.string().email(),
-  "status": zod.enum(['PENDING', 'ACCEPTED', 'EXPIRED', 'REVOKED']),
-  "invitationUrl": zod.string().url().describe('Copyable single-use invitation URL; returned exactly once at creation and never persisted or returned again'),
+  "status": zod.enum(['PENDING']),
+  "clerkInvitationId": zod.string().describe('Clerk invitation identifier; does not contain the invitation token'),
+  "invitationDispatchStatus": zod.enum(['REQUEST_ACCEPTED']),
+  "invitationDeliveryStatus": zod.enum(['UNVERIFIED']),
   "expiresAt": zod.coerce.date(),
-  "acceptedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
 })
 
@@ -6332,38 +6564,17 @@ export const OnboardSchoolThroughPartnerReferralResponse = zod.object({
   "name": zod.string(),
   "city": zod.string(),
   "state": zod.string(),
-  "registrationNumber": zod.string().nullish(),
-  "address": zod.string().nullish(),
-  "lga": zod.string().nullish(),
-  "phone": zod.string().nullish(),
-  "email": zod.string().email().nullish(),
-  "website": zod.string().url().nullish(),
-  "logoUrl": zod.string().url().nullish(),
-  "schoolType": zod.string().nullish(),
-  "administrators": zod.array(zod.object({
-  "id": zod.number().int(),
-  "email": zod.string(),
-  "firstName": zod.string().nullish(),
-  "lastName": zod.string().nullish(),
-  "phone": zod.string().nullish(),
-  "userStatus": zod.string(),
-  "membershipId": zod.number().int(),
-  "role": zod.string(),
-  "membershipStatus": zod.string(),
-  "schoolId": zod.number().int()
-})).optional(),
-  "academicSetupStatus": zod.string().nullish(),
-  "status": zod.enum(['active', 'suspended', 'inactive']),
-  "studentCount": zod.number().int(),
-  "staffCount": zod.number().int(),
-  "subscriptionStatus": zod.enum(['active', 'attention', 'expired']),
-  "createdAt": zod.string()
+  "status": zod.string(),
+  "createdAt": zod.coerce.date()
 }),
-  "attributionStatus": zod.enum(['CREATED', 'CONFLICT']),
-  "conflictId": zod.number().int().nullish(),
+  "attributionStatus": zod.enum(['CREATED']),
   "administratorInvitation": zod.object({
+  "invitationId": zod.string(),
   "email": zod.string().email(),
-  "status": zod.enum(['SENT']),
+  "status": zod.enum(['DISPATCH_REQUESTED']),
+  "dispatchStatus": zod.enum(['REQUEST_ACCEPTED']),
+  "deliveryStatus": zod.enum(['UNVERIFIED']),
+  "deliveryNote": zod.string(),
   "expiresInDays": zod.number().int()
 })
 })

@@ -71,6 +71,34 @@ async function assertOfficerSchool(
   return context;
 }
 
+function isActivePlatformOwner(req: Request) {
+  return getUserContext(req).roles.some(
+    (assignment) =>
+      assignment.role === "PLATFORM_OWNER" &&
+      assignment.schoolId === null &&
+      assignment.status === "ACTIVE",
+  );
+}
+
+async function assertActivationSchool(
+  req: Request,
+  schoolId: number,
+  db: { query: (sql: string, values?: unknown[]) => Promise<any> } = pool,
+  lock = false,
+) {
+  if (isActivePlatformOwner(req)) {
+    const school = await db.query(
+      `SELECT id FROM schools WHERE id = $1${lock ? " FOR SHARE" : ""}`,
+      [schoolId],
+    );
+    if (!school.rows[0]) {
+      throw new AuthError(404, "School not found", "CROSS_TENANT_ACCESS_ATTEMPT");
+    }
+    return getUserContext(req);
+  }
+  return assertOfficerSchool(req, schoolId, db, lock);
+}
+
 async function auditActivation(
   req: Request,
   db: { query: (sql: string, values?: unknown[]) => Promise<any> },
@@ -80,14 +108,15 @@ async function auditActivation(
 ) {
   const context = getUserContext(req);
   const name = [context.user.firstName, context.user.lastName].filter(Boolean).join(" ") || context.user.email;
+  const role = isActivePlatformOwner(req) ? "PLATFORM_OWNER" : "DEVICE_ACTIVATION_OFFICER";
   await db.query(
     `INSERT INTO audit_logs
       ("user", role, actor_user_id, clerk_user_id, school_id, action, module,
        record_id, severity, event_type, result, metadata)
-     VALUES ($1, 'DEVICE_ACTIVATION_OFFICER', $2, $3, $4,
+      VALUES ($1, $7, $2, $3, $4,
        'Activated NFC card for student', 'NFC Activation', $5, 'info',
        'NFC_CARD_ACTIVATED', 'SUCCESS', $6::jsonb)`,
-    [name, context.user.id, context.user.clerkUserId, schoolId, cardId, JSON.stringify(metadata)],
+    [name, context.user.id, context.user.clerkUserId, schoolId, cardId, JSON.stringify(metadata), role],
   );
 }
 
@@ -259,6 +288,15 @@ router.delete("/platform/schools/:schoolId/device-activation-officers/:userId", 
 }));
 
 router.get("/activation/schools", run(async (req, res) => {
+  if (isActivePlatformOwner(req)) {
+    const result = await pool.query(
+      `SELECT id, name, code, city, state, logo
+       FROM schools
+       ORDER BY name, id`,
+    );
+    res.json(result.rows);
+    return;
+  }
   const context = await assertDeviceActivationOfficer(req);
   const result = await pool.query(
     `SELECT DISTINCT s.id, s.name, s.code, s.city, s.state, s.logo
@@ -278,7 +316,7 @@ router.get("/activation/schools", run(async (req, res) => {
 
 router.get("/activation/schools/:schoolId/devices", run(async (req, res) => {
   const schoolId = id(req.params.schoolId, "schoolId");
-  await assertOfficerSchool(req, schoolId);
+  await assertActivationSchool(req, schoolId);
   const result = await pool.query(
     `SELECT DISTINCT d.id, d.serial_number AS "serialNumber", d.name,
        d.device_type AS "deviceType", d.status, d.location
@@ -294,7 +332,7 @@ router.get("/activation/schools/:schoolId/devices", run(async (req, res) => {
 
 router.get("/activation/schools/:schoolId/students", run(async (req, res) => {
   const schoolId = id(req.params.schoolId, "schoolId");
-  await assertOfficerSchool(req, schoolId);
+  await assertActivationSchool(req, schoolId);
   const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
   if (search.length > 100) throw new AuthError(400, "search must be at most 100 characters");
   const result = await pool.query(
@@ -318,7 +356,7 @@ router.get("/activation/schools/:schoolId/students", run(async (req, res) => {
 
 router.get("/activation/schools/:schoolId/history", run(async (req, res) => {
   const schoolId = id(req.params.schoolId, "schoolId");
-  await assertOfficerSchool(req, schoolId);
+  await assertActivationSchool(req, schoolId);
   const result = await pool.query(
     `SELECT h.id, h.nfc_card_id AS "cardId", nc.uid AS "cardNumber",
        h.student_id AS "studentId", st.admission_no AS "admissionNo",
@@ -366,11 +404,11 @@ router.post("/activation/schools/:schoolId/assign", run(async (req, res) => {
   if (cardNumber.length < 4) {
     throw new AuthError(400, "cardNumber must contain at least 4 characters");
   }
-  const context = await assertOfficerSchool(req, schoolId);
+  const context = await assertActivationSchool(req, schoolId);
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    await assertOfficerSchool(req, schoolId, client, true);
+    await assertActivationSchool(req, schoolId, client, true);
     const device = await client.query(
       `SELECT d.id, d.serial_number AS "serialNumber", d.name,
          d.device_type AS "deviceType", d.status, d.location
@@ -482,7 +520,7 @@ router.post("/activation/schools/:schoolId/assign", run(async (req, res) => {
 router.get("/activation/schools/:schoolId/students/:studentId/e-id", run(async (req, res) => {
   const schoolId = id(req.params.schoolId, "schoolId");
   const studentId = id(req.params.studentId, "studentId");
-  await assertOfficerSchool(req, schoolId);
+  await assertActivationSchool(req, schoolId);
   const result = await pool.query(activationEIdQuery, [schoolId, studentId]);
   if (!result.rows[0]) throw new AuthError(404, "Student not found in this school");
   res.json(result.rows[0]);

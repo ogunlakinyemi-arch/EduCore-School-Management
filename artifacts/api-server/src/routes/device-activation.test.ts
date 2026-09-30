@@ -49,6 +49,16 @@ const poolMock = vi.hoisted(() => {
     if (sql.includes("FROM school_memberships sm") && sql.includes("JOIN schools s")) {
       return { rows: state.employeeActive ? [{ id: state.allowedSchoolId, name: "Test School", code: "T-1", city: "City", state: "State", logo: null }] : [] };
     }
+    if (sql.includes("FROM schools") && sql.includes("ORDER BY name, id")) {
+      return { rows: [{ id: 4, name: "Test School", code: "T-1", city: "City", state: "State", logo: null }] };
+    }
+    if (sql.includes("FROM platform_devices d") && sql.includes("device_school_bindings")) {
+      return {
+        rows: state.deviceAvailable && Number(values[0]) === state.allowedSchoolId
+          ? [{ id: 8, serialNumber: "HW-8", name: "NFC Reader", deviceType: "NFC", status: "ACTIVE", location: "Front gate" }]
+          : [],
+      };
+    }
     if (sql.includes("FROM nfc_card_history h")) {
       return { rows: state.historyRows };
     }
@@ -341,6 +351,58 @@ describe("restricted Device Activation Officer API", () => {
     const response = await fetch(`${baseUrl}/activation/schools/4/devices`);
     expect(response.status).toBe(403);
     expect(poolMock.connect).not.toHaveBeenCalled();
+  });
+
+  it("lets Platform Owners use the same activation endpoints without an employee/officer grant", async () => {
+    state.role = "PLATFORM_OWNER";
+    state.employeeActive = false;
+
+    const schools = await fetch(`${baseUrl}/activation/schools`);
+    expect(schools.status).toBe(200);
+    expect(await schools.json()).toMatchObject([{ id: 4, name: "Test School" }]);
+    expect(state.queries.some(({ sql }) => sql.includes("FROM schools") && sql.includes("ORDER BY name, id"))).toBe(true);
+
+    const devices = await fetch(`${baseUrl}/activation/schools/4/devices`);
+    expect(devices.status).toBe(200);
+    expect(await devices.json()).toMatchObject([{ id: 8, serialNumber: "HW-8" }]);
+    const students = await fetch(`${baseUrl}/activation/schools/4/students?search=First`);
+    expect(students.status).toBe(200);
+    const history = await fetch(`${baseUrl}/activation/schools/4/history`);
+    expect(history.status).toBe(200);
+    const eid = await fetch(`${baseUrl}/activation/schools/4/students/19/e-id`);
+    expect(eid.status).toBe(200);
+
+    state.deviceAvailable = false;
+    expect((await assign()).status).toBe(404);
+    state.deviceAvailable = true;
+    state.studentAvailable = false;
+    expect((await assign()).status).toBe(404);
+    state.studentAvailable = true;
+    state.existingCard = { id: 9, schoolId: 5, studentId: null, status: "unassigned" };
+    expect((await assign()).status).toBe(409);
+    state.existingCard = null;
+
+    const activated = await assign();
+    expect(activated.status).toBe(201);
+    const activationAudit = state.queries.find(({ sql }) =>
+      sql.includes("INSERT INTO audit_logs") && sql.includes("NFC_CARD_ACTIVATED"));
+    expect(activationAudit?.values).toContain("PLATFORM_OWNER");
+    expect(state.queries.some(({ sql }) => sql.includes("INSERT INTO school_memberships"))).toBe(false);
+    expect(state.queries.some(({ sql }) => sql.includes("FROM school_memberships sm") && sql.includes("platform_company_employees"))).toBe(false);
+  });
+
+  it("keeps company accountants and other non-owner staff outside activation access", async () => {
+    state.role = "ACCOUNTANT";
+    const response = await fetch(`${baseUrl}/activation/schools`);
+    expect(response.status).toBe(403);
+    expect(state.queries.some(({ sql }) => sql.includes("ORDER BY name, id"))).toBe(false);
+  });
+
+  it("requires an existing school for Owner activation access", async () => {
+    state.role = "PLATFORM_OWNER";
+    const response = await fetch(`${baseUrl}/activation/schools/5/devices`);
+    expect(response.status).toBe(404);
+    expect(state.queries.some(({ sql }) => sql.includes("FROM platform_devices d"))).toBe(false);
   });
 
   it("requires an active matching platform company employee", async () => {

@@ -5,8 +5,9 @@ const state = vi.hoisted(() => ({
   caller: "PLATFORM_OWNER",
   activeOfficer: false,
   queries: [] as Array<{ sql: string; values: unknown[] }>,
+  getInvitationList: vi.fn(),
   createSchoolInvitation: vi.fn(async (input: Record<string, unknown>) => ({
-    status: "INVITATION_SENT",
+    status: "DISPATCH_REQUESTED",
     invitationId: "inv-test",
     schoolId: input.schoolId,
     role: input.role,
@@ -21,6 +22,9 @@ const poolMock = vi.hoisted(() => ({
     }
     if (sql.includes("SELECT id, school_id AS \"schoolId\" FROM parents")) {
       return { rows: Number(values[0]) === 21 ? [{ id: 21, schoolId: 1 }] : [] };
+    }
+    if (sql.includes("FROM parents WHERE user_id")) {
+      return { rows: [{ id: 21, schoolId: 1, name: "Parent One", email: "parent@example.test", phone: "12345678" }] };
     }
     if (sql.includes("FROM parent_student_relationships psr")) {
       return { rows: Number(values[0]) === 31 ? [{ id: 31, schoolId: 1 }] : [] };
@@ -64,7 +68,8 @@ const poolMock = vi.hoisted(() => ({
         return { rows: [{ id: Number(values[0]) }] };
       }
       if (sql.includes("SELECT 1 FROM school_memberships") &&
-          sql.includes("WHERE user_id = $1 AND role = 'DEVICE_ACTIVATION_OFFICER'")) {
+          (sql.includes("role = 'DEVICE_ACTIVATION_OFFICER'") ||
+            sql.includes("role IN ('DEVICE_ACTIVATION_OFFICER'"))) {
         return { rows: state.activeOfficer ? [{ "?column?": 1 }] : [] };
       }
       if (sql.includes("SELECT id, role FROM school_memberships")) {
@@ -94,10 +99,13 @@ const poolMock = vi.hoisted(() => ({
 }));
 
 vi.mock("@workspace/db", () => ({ pool: poolMock }));
+vi.mock("@clerk/express", () => ({
+  clerkClient: { invitations: { getInvitationList: state.getInvitationList } },
+}));
 vi.mock("./school-invitations", () => ({
   activateAcceptedSchoolInvitation: vi.fn(),
   createSchoolInvitation: state.createSchoolInvitation,
-  INVITABLE_SCHOOL_ROLES: ["SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "STAFF", "PARENT"],
+  INVITABLE_SCHOOL_ROLES: ["SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "STAFF", "PARENT", "STUDENT"],
 }));
 vi.mock("../middlewares/auth", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../middlewares/auth")>();
@@ -115,6 +123,8 @@ vi.mock("../middlewares/auth", async (importOriginal) => {
           ? [{ id: 2, role, schoolId: 1, status: "ACTIVE" }]
           : role === "SCHOOL_ADMIN_OTHER"
             ? [{ id: 3, role: "SCHOOL_ADMIN", schoolId: 2, status: "ACTIVE" }]
+          : role === "PARENT"
+            ? [{ id: 6, role, schoolId: 1, status: "ACTIVE" }]
             : [
                 { id: 4, role: "SCHOOL_ADMIN", schoolId: 2, status: "ACTIVE" },
                 { id: 5, role: "TEACHER", schoolId: 1, status: "ACTIVE" },
@@ -170,6 +180,10 @@ beforeEach(() => {
   state.queries.length = 0;
   poolMock.query.mockClear();
   state.createSchoolInvitation.mockClear();
+  state.getInvitationList.mockReset();
+  state.getInvitationList.mockResolvedValue({
+    data: [{ id: "inv_test", status: "pending", expiresAt: 123 }],
+  });
 });
 
 async function call(path: string, method = "GET", body?: Record<string, unknown>, caller = state.caller) {
@@ -199,6 +213,13 @@ describe("school role and parent relationship authorization", () => {
     expect((await call("/parent-student-relationships", "POST", relationship, "SCHOOL_ADMIN_OTHER")).status).toBe(404);
   });
 
+  it("limits a parent's relationship dashboard query to active linked children", async () => {
+    const response = await call("/parent-student-relationships", "GET", undefined, "PARENT");
+    expect(response.status).toBe(200);
+    expect(state.queries.some(({ sql }) =>
+      sql.includes("WHERE psr.parent_id = $1 AND psr.status = 'ACTIVE'"))).toBe(true);
+  });
+
   it("denies Owner ordinary school-role invitation, grant, reactivation, and role changes", async () => {
     expect((await call("/school-users/invitations", "POST", {
       schoolId: 1, email: "teacher@example.test", fullName: "School Teacher", role: "TEACHER",
@@ -226,6 +247,24 @@ describe("school role and parent relationship authorization", () => {
     expect((await call("/school-memberships/61/role", "PATCH", { role: "STAFF" }, "SCHOOL_ADMIN")).status).toBe(200);
   });
 
+  it("allows only a School Admin to invite an existing Student profile", async () => {
+    expect((await call("/school-users/invitations", "POST", {
+      schoolId: 1, email: "student@example.test", fullName: "Student One", role: "STUDENT", studentId: 11,
+    }, "SCHOOL_ADMIN")).status).toBe(202);
+    expect(state.createSchoolInvitation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        schoolId: 1,
+        email: "student@example.test",
+        role: "STUDENT",
+        studentId: 11,
+      }),
+      expect.anything(),
+    );
+    expect((await call("/school-users/invitations", "POST", {
+      schoolId: 1, email: "student@example.test", fullName: "Student One", role: "STUDENT", studentId: 11,
+    })).status).toBe(404);
+  });
+
   it("blocks School Admins from changing another School Admin membership", async () => {
     expect((await call("/school-users/77/status", "PATCH", {
       schoolId: 1, status: "INACTIVE",
@@ -247,6 +286,24 @@ describe("school role and parent relationship authorization", () => {
     expect((await call("/platform-users", "POST", {
       email: "platform@example.test", role: "PLATFORM_OWNER",
     })).status).toBe(201);
+  });
+
+  it("exposes Clerk-only invitation diagnostics to an owner in development without claiming delivery", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    poolMock.query.mockResolvedValueOnce({ rows: [{ schoolId: 1 }] } as any);
+    const response = await call("/invitation-diagnostics/inv_test");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      invitationId: "inv_test",
+      clerkStatus: "pending",
+      dispatchStatus: "REQUEST_ACCEPTED",
+      deliveryStatus: "UNVERIFIED",
+    });
+    expect(state.getInvitationList).toHaveBeenCalledWith({
+      query: "inv_test",
+      status: "pending",
+    });
+    vi.unstubAllEnvs();
   });
 
   it("prevents active officers from being granted or reactivated into owner or school roles", async () => {

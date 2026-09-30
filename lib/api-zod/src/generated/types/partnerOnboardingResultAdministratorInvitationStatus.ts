@@ -10,5 +10,5 @@ export type PartnerOnboardingResultAdministratorInvitationStatus = typeof Partne
 
 
 export const PartnerOnboardingResultAdministratorInvitationStatus = {
-  SENT: 'SENT',
+  DISPATCH_REQUESTED: 'DISPATCH_REQUESTED',
 } as const;

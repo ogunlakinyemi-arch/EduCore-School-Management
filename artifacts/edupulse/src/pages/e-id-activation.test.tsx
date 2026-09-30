@@ -56,14 +56,14 @@ describe('restricted activation officer flow', () => {
     expect(appSource).toContain('<Route path="/activation/history" component={ActivationHistoryPage} />');
     expect(appSource).toContain('<Route path="/activation" component={EidActivationPage} />');
     expect(appSource).toContain('<Route><Redirect to="/activation" /></Route>');
-    expect(appSource).toContain('if (isActivationOfficer) return <ProtectedRoutes />;');
+    expect(appSource).toContain('if (isActivationOfficer || isCompanyAccountant) return <ProtectedRoutes />;');
   });
 
   it('gives the officer only the two activation navigation links and no settings link', () => {
     expect(sharedSource).toContain("if (isActivationOfficer) return item.roles?.includes('DEVICE_ACTIVATION_OFFICER') === true;");
     expect(sharedSource).toContain("href: '/activation', label: 'Card Activation'");
     expect(sharedSource).toContain("href: '/activation/history', label: 'Activation History'");
-    expect(sharedSource).toContain('{!isActivationOfficer && <Link href="/settings"');
+    expect(sharedSource).toContain('{!isActivationOfficer && !isCompanyAccountant && <Link href="/settings"');
   });
 
   it('keeps hardware UID read-only, posts the selected records, and refreshes e-ID data before printing', () => {
@@ -72,5 +72,18 @@ describe('restricted activation officer flow', () => {
     expect(activationSource).toContain('const fresh = await fetchEid(schoolId, selectedStudent.id);');
     expect(activationSource).toContain('window.print();');
     expect(activationSource).toContain('Generate / Send for Printing');
+  });
+
+  it('keeps class, section, and session off the physical activation card while retaining searchable students', () => {
+    const printTemplate = activationSource.slice(
+      activationSource.indexOf('function EidCardPreview'),
+      activationSource.indexOf('export function EidActivationPage'),
+    );
+    expect(printTemplate).not.toContain('details.className');
+    expect(printTemplate).not.toContain('details.section');
+    expect(printTemplate).not.toContain('details.session');
+    expect(printTemplate).toContain('details.photo');
+    expect(activationSource).toContain('data-testid="input-activation-student-search"');
+    expect(activationSource).toContain('data-testid="select-activation-student"');
   });
 });

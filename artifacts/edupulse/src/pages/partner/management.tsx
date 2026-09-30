@@ -148,7 +148,10 @@ function InvitePartnerModal({ onClose }: { onClose: () => void }) {
   const onSubmit = form.handleSubmit((data) => {
     invite.mutate({ data: data as any }, {
       onSuccess: () => {
-        toast({ title: 'Invitation sent', description: `An invitation has been sent to ${data.email}` });
+        toast({
+          title: 'Invitation request accepted',
+          description: `Clerk accepted the invitation request for ${data.email}; inbox delivery is not verified.`,
+        });
         queryClient.invalidateQueries({ queryKey: ['listPartners'] });
         onClose();
       },

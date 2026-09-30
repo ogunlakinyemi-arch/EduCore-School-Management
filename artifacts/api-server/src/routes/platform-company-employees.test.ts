@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({
   role: "PLATFORM_OWNER",
   rows: [] as Array<Record<string, any>>,
   calls: [] as Array<{ sql: string; values: unknown[] }>,
+  invitation: { id: "inv_company_1", createdAt: Date.now() },
 }));
 
 const query = vi.hoisted(() => vi.fn(async (sql: string, values: unknown[] = []) => {
@@ -12,6 +13,7 @@ const query = vi.hoisted(() => vi.fn(async (sql: string, values: unknown[] = [])
   if (sql.includes("INSERT INTO platform_company_employees")) {
     return { rows: [{ ...state.rows[0], id: 42, fullName: values[0], email: values[1], phone: values[2], jobTitle: values[3], status: "ACTIVE" }] };
   }
+  if (sql.includes("FROM schools WHERE id=$1")) return { rows: [{ id: values[0] }] };
   if (sql.includes("UPDATE platform_company_employees")) {
     return { rows: [{ ...state.rows[0], fullName: values[0], email: values[1], phone: values[2], jobTitle: values[3], status: values[4] }] };
   }
@@ -27,6 +29,13 @@ const client = vi.hoisted(() => ({
 
 vi.mock("@workspace/db", () => ({
   pool: { query, connect: vi.fn(async () => client) },
+}));
+const createInvitation = vi.hoisted(() => vi.fn(async () => state.invitation));
+const revokeInvitation = vi.hoisted(() => vi.fn(async () => undefined));
+vi.mock("@clerk/express", () => ({
+  clerkClient: {
+    invitations: { createInvitation, revokeInvitation },
+  },
 }));
 vi.mock("../middlewares/auth", () => ({
   AuthError: class AuthError extends Error {
@@ -106,17 +115,47 @@ describe("platform company employee profiles", () => {
     expect(deniedUpdate.status).toBe(403);
   });
 
-  it("creates basic profiles and writes an owner audit record without creating auth users", async () => {
+  it("creates the company profile and dispatches the selected role invitation without creating a school account", async () => {
+    process.env.CLERK_SECRET_KEY = "test-clerk-secret";
     const response = await fetch(`${baseUrl}/platform/company-employees`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ fullName: "Grace Employee", email: "GRACE@example.test", jobTitle: "Support" }),
+      body: JSON.stringify({
+        fullName: "Grace Employee", email: "GRACE@example.test", jobTitle: "Support",
+        role: "COMPANY_ACCOUNTANT",
+      }),
     });
     expect(response.status).toBe(201);
-    expect(await response.json()).toMatchObject({ id: 42, fullName: "Grace Employee", email: "grace@example.test" });
+    expect(await response.json()).toMatchObject({
+      id: 42, fullName: "Grace Employee", email: "grace@example.test",
+      role: "COMPANY_ACCOUNTANT", schoolId: null,
+      invitation: { status: "DISPATCH_REQUEST_ACCEPTED", deliveryConfirmed: false },
+    });
+    expect(createInvitation).toHaveBeenCalledWith(expect.objectContaining({
+      emailAddress: "grace@example.test",
+      notify: true,
+      publicMetadata: expect.objectContaining({
+        edupulseInternalEmployeeInvitation: expect.objectContaining({
+          employeeId: 42, role: "COMPANY_ACCOUNTANT", schoolId: null,
+        }),
+      }),
+    }));
     expect(state.calls.some(({ sql }) => sql.includes("INSERT INTO audit_logs"))).toBe(true);
     expect(state.calls.some(({ sql }) => /INSERT INTO (app_users|school_memberships|employees)/.test(sql))).toBe(false);
     expect(state.calls.some(({ sql }) => sql === "COMMIT")).toBe(true);
+  });
+
+  it("requires an authorized school when creating an activation officer invitation", async () => {
+    const response = await fetch(`${baseUrl}/platform/company-employees`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        fullName: "Activation Officer", email: "officer@example.test",
+        role: "DEVICE_ACTIVATION_OFFICER",
+      }),
+    });
+    expect(response.status).toBe(400);
+    expect(createInvitation).not.toHaveBeenCalled();
   });
 
   it("updates profile fields with an audit event and rejects account or school fields", async () => {

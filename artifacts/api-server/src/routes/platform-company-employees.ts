@@ -1,6 +1,12 @@
 import { Router, type NextFunction, type Request } from "express";
 import { pool } from "@workspace/db";
 import { AuthError, assertRoles, getUserContext, requireAuthentication } from "../middlewares/auth";
+import {
+  createInternalEmployeeInvitation,
+  revokeInternalEmployeeInvitation,
+  type InternalEmployeeRole,
+} from "./internal-employee-invitations";
+import { commitInvitationWithRecovery } from "./partner-commit-recovery";
 
 const router = Router();
 const run = (handler: (req: Request, res: any) => Promise<void>) =>
@@ -83,25 +89,92 @@ router.get("/platform/company-employees/:employeeId", run(async (req, res) => {
 
 router.post("/platform/company-employees", run(async (req, res) => {
   assertRoles(req, ["PLATFORM_OWNER"]);
+  const allowed = ["fullName", "email", "phone", "jobTitle", "role", "schoolId"];
+  if (!req.body || typeof req.body !== "object" || Array.isArray(req.body) ||
+      Object.keys(req.body).some((key) => !allowed.includes(key))) {
+    throw new AuthError(400, "Provide only employee profile fields, role, and the authorized school");
+  }
   const fullName = text(req.body?.fullName, "fullName", true)!;
   const email = text(req.body?.email, "email", true)!.toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new AuthError(400, "A valid email is required");
   const phone = text(req.body?.phone, "phone");
   const jobTitle = text(req.body?.jobTitle, "jobTitle");
+  const role = req.body?.role;
+  const schoolId = req.body?.schoolId === undefined ? null : employeeId(req.body.schoolId);
+  if (role !== "COMPANY_ACCOUNTANT" && role !== "DEVICE_ACTIVATION_OFFICER") {
+    throw new AuthError(400, "role must be COMPANY_ACCOUNTANT or DEVICE_ACTIVATION_OFFICER");
+  }
+  if (role === "DEVICE_ACTIVATION_OFFICER" && schoolId === null) {
+    throw new AuthError(400, "An authorized school is required for a Device Activation Officer");
+  }
+  if (role === "COMPANY_ACCOUNTANT" && schoolId !== null) {
+    throw new AuthError(400, "A Company Accountant cannot be assigned to a school");
+  }
   const client = await pool.connect();
+  let clerkInvitationId: string | null = null;
+  let committed = false;
+  let commitAttempted = false;
   try {
     await client.query("BEGIN");
+    if (schoolId !== null) {
+      const school = await client.query(
+        `SELECT id FROM schools WHERE id=$1 AND upper(status)='ACTIVE' FOR SHARE`,
+        [schoolId],
+      );
+      if (!school.rows[0]) throw new AuthError(404, "Active school not found");
+    }
     const result = await client.query(
       `INSERT INTO platform_company_employees(full_name,email,phone,job_title)
        VALUES($1,$2,$3,$4) RETURNING ${fields}`,
       [fullName, email, phone, jobTitle],
     );
     const employee = result.rows[0];
+    const invitation = await createInternalEmployeeInvitation(client, {
+      employeeId: employee.id,
+      email,
+      fullName,
+      role: role as InternalEmployeeRole,
+      schoolId,
+    });
+    clerkInvitationId = invitation.id;
     await audit(req, client, "Created company employee", employee.id);
-    await client.query("COMMIT");
-    res.status(201).json(employee);
+    commitAttempted = true;
+    const resolution = await commitInvitationWithRecovery({
+      commit: () => client.query("COMMIT"),
+      rollback: () => client.query("ROLLBACK"),
+      isCommitted: async () => Boolean((await pool.query(
+        `SELECT 1 FROM platform_company_employees WHERE id=$1`,
+        [employee.id],
+      )).rows[0]),
+      revokeInvitation: () => revokeInternalEmployeeInvitation(clerkInvitationId!),
+    });
+    if (resolution === "ABORTED") {
+      clerkInvitationId = null;
+      throw new AuthError(503, "Employee invitation could not be finalized; the invitation was revoked and no profile was created");
+    }
+    if (resolution === "UNKNOWN") {
+      clerkInvitationId = null;
+      throw new AuthError(503, "Employee invitation status is uncertain; contact the platform owner before retrying");
+    }
+    committed = true;
+    res.status(201).json({
+      ...employee,
+      role,
+      schoolId,
+      invitation: { status: "DISPATCH_REQUEST_ACCEPTED", deliveryConfirmed: false, expiresAt: invitation.expiresAt },
+    });
   } catch (error) {
-    await client.query("ROLLBACK");
+    await client.query("ROLLBACK").catch(() => undefined);
+    if (clerkInvitationId && !committed && !commitAttempted) {
+      try {
+        await revokeInternalEmployeeInvitation(clerkInvitationId);
+      } catch {
+        throw new AuthError(
+          503,
+          "Employee invitation finalization failed and Clerk could not revoke the invitation; contact platform support before retrying",
+        );
+      }
+    }
     if ((error as { code?: string })?.code === "23505") {
       throw new AuthError(409, "A company employee with this email already exists");
     }

@@ -7,7 +7,13 @@
  */
 import type { SchoolUserInvitationInputRole } from './schoolUserInvitationInputRole';
 
-export interface SchoolUserInvitationInput {
+export type SchoolUserInvitationInput = ({
+  role?: 'STUDENT';
+  /** @minimum 1 */
+  studentId: number;
+} | {
+  role?: 'TEACHER' | 'ACCOUNTANT' | 'STAFF' | 'PARENT';
+}) & {
   /** @minimum 1 */
   schoolId: number;
   /**
@@ -23,4 +29,4 @@ export interface SchoolUserInvitationInput {
      */
   phone?: string;
   role: SchoolUserInvitationInputRole;
-}
+};

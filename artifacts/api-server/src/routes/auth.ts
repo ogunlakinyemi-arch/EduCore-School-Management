@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request } from "express";
+import { clerkClient } from "@clerk/express";
 import { pool } from "@workspace/db";
 import {
   AuthError,
@@ -14,8 +15,10 @@ import {
 import {
   activateAcceptedSchoolInvitation,
   createSchoolInvitation,
+  createSchoolWithAdministrator,
   INVITABLE_SCHOOL_ROLES,
 } from "./school-invitations";
+import { activateAcceptedInternalEmployeeInvitation } from "./internal-employee-invitations";
 
 const router: IRouter = Router();
 router.use(requireAuthentication());
@@ -113,14 +116,14 @@ async function assertNoActiveOfficerRole(
 ) {
   const officer = await db.query(
     `SELECT 1 FROM school_memberships
-     WHERE user_id = $1 AND role = 'DEVICE_ACTIVATION_OFFICER'
+     WHERE user_id = $1 AND role IN ('DEVICE_ACTIVATION_OFFICER', 'COMPANY_ACCOUNTANT')
        AND status = 'ACTIVE' LIMIT 1`,
     [userId],
   );
   if (officer.rows[0]) {
     throw new AuthError(
       403,
-      "A Device Activation Officer account cannot be assigned or reactivated with another role",
+      "A restricted internal employee account cannot be assigned or reactivated with another role",
     );
   }
 }
@@ -172,6 +175,10 @@ router.get(
   asyncRoute(async (req, res) => {
     const initialContext = getUserContext(req);
     if (!initialContext.roles.length) {
+      await activateAcceptedInternalEmployeeInvitation(
+        initialContext.user.id,
+        initialContext.user.clerkUserId,
+      );
       await activateAcceptedSchoolInvitation(
         initialContext.user.id,
         initialContext.user.clerkUserId,
@@ -272,7 +279,8 @@ router.get(
          FROM parent_student_relationships psr
          JOIN students st ON st.id = psr.student_id
          JOIN parents p ON p.id = psr.parent_id
-         WHERE psr.parent_id = $1 ORDER BY psr.created_at DESC`,
+         WHERE psr.parent_id = $1 AND psr.status = 'ACTIVE'
+         ORDER BY psr.created_at DESC`,
         [parent.id],
       );
       return res.json(result.rows);
@@ -548,6 +556,83 @@ router.get(
 );
 
 router.post(
+  "/schools/with-administrator",
+  asyncRoute(async (req, res) => {
+    assertRoles(req, ["PLATFORM_OWNER"]);
+    if (Object.hasOwn(req.body ?? {}, "password") || Object.hasOwn(req.body ?? {}, "confirmPassword")) {
+      throw new AuthError(400, "Passwords are created by the invitee and must not be submitted by an administrator");
+    }
+    if (!req.body?.school || !req.body?.administrator) {
+      throw new AuthError(400, "School details and the first administrator are required");
+    }
+    const result = await createSchoolWithAdministrator(
+      {
+        school: req.body?.school,
+        administrator: req.body?.administrator,
+      },
+      getUserContext(req),
+    );
+    res.status(201).json(result);
+  }),
+);
+
+router.get(
+  "/invitation-diagnostics/:invitationId",
+  asyncRoute(async (req, res) => {
+    assertRoles(req, ["PLATFORM_OWNER", "SCHOOL_ADMIN"]);
+    if (process.env.NODE_ENV !== "development") {
+      throw new AuthError(404, "Invitation diagnostics are available only in development");
+    }
+    const invitationId = String(req.params.invitationId);
+    if (!/^[A-Za-z0-9_-]{1,100}$/.test(invitationId)) {
+      throw new AuthError(400, "Invalid Clerk invitation ID");
+    }
+    const auditRecord = await pool.query(
+      `SELECT school_id AS "schoolId" FROM audit_logs
+       WHERE metadata->>'invitationId'=$1
+          OR metadata->>'clerkInvitationId'=$1
+       ORDER BY timestamp DESC LIMIT 1`,
+      [invitationId],
+    );
+    const schoolId = auditRecord.rows[0]?.schoolId;
+    const context = getUserContext(req);
+    const isOwner = context.roles.some(
+      (assignment) => assignment.role === "PLATFORM_OWNER" && assignment.schoolId === null,
+    );
+    if (!auditRecord.rows[0] || (!isOwner && !context.roles.some(
+      (assignment) => assignment.role === "SCHOOL_ADMIN" && assignment.schoolId === schoolId,
+    ))) {
+      throw new AuthError(404, "Invitation not found");
+    }
+    const statuses = ["pending", "accepted", "revoked", "expired"] as const;
+    let invitation: Awaited<
+      ReturnType<typeof clerkClient.invitations.getInvitationList>
+    >["data"][number] | undefined;
+    try {
+      for (const status of statuses) {
+        const response = await clerkClient.invitations.getInvitationList({
+          query: invitationId,
+          status,
+        });
+        invitation = response.data.find((item) => item.id === invitationId);
+        if (invitation) break;
+      }
+    } catch {
+      throw new AuthError(503, "Clerk invitation status could not be checked");
+    }
+    if (!invitation) throw new AuthError(404, "Invitation not found");
+    res.json({
+      invitationId,
+      clerkStatus: invitation.status,
+      expiresAt: null,
+      dispatchStatus: "REQUEST_ACCEPTED",
+      deliveryStatus: "UNVERIFIED",
+      note: "Clerk invitation state does not verify inbox delivery or link use by an intended recipient.",
+    });
+  }),
+);
+
+router.post(
   "/schools/:schoolId/administrators",
   asyncRoute(async (req, res) => {
     assertRoles(req, ["PLATFORM_OWNER"]);
@@ -580,7 +665,7 @@ router.post(
       { schoolId, fullName, email, phone: phone || null, role: "SCHOOL_ADMIN" },
       getUserContext(req),
     );
-    res.status(created.status === "INVITATION_SENT" ? 202 : 201).json(created);
+    res.status(created.status === "DISPATCH_REQUESTED" ? 202 : 201).json(created);
   }),
 );
 
@@ -592,6 +677,7 @@ router.post(
     const fullName = String(req.body?.fullName ?? "").trim().replace(/\s+/g, " ");
     const phone = String(req.body?.phone ?? "").trim();
     const role = parseRole(req.body?.role);
+    const studentId = req.body?.studentId === undefined ? null : Number(req.body.studentId);
     if (Object.hasOwn(req.body ?? {}, "password") || Object.hasOwn(req.body ?? {}, "confirmPassword")) {
       throw new AuthError(400, "Passwords are created by the invitee and must not be submitted by an administrator");
     }
@@ -601,6 +687,13 @@ router.post(
     assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN"]);
     if (!(INVITABLE_SCHOOL_ROLES as readonly string[]).includes(role) || role === "SCHOOL_ADMIN") {
       throw new AuthError(403, "This role cannot be assigned through a school invitation");
+    }
+    if (role === "STUDENT" &&
+        (studentId === null || !Number.isInteger(studentId) || studentId < 1)) {
+      throw new AuthError(400, "Select the existing student profile to invite");
+    }
+    if (role !== "STUDENT" && studentId !== null) {
+      throw new AuthError(400, "A student profile may only be supplied for a Student invitation");
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || fullName.length < 2) {
       throw new AuthError(400, "A valid full name and email are required");
@@ -621,10 +714,10 @@ router.post(
     }
     const created = await createSchoolInvitation(
       { schoolId, fullName, email, phone: phone || null, role: role as
-        "TEACHER" | "ACCOUNTANT" | "STAFF" | "PARENT" },
+        "TEACHER" | "ACCOUNTANT" | "STAFF" | "PARENT" | "STUDENT", studentId },
       getUserContext(req),
     );
-    res.status(created.status === "INVITATION_SENT" ? 202 : 201).json(created);
+    res.status(created.status === "DISPATCH_REQUESTED" ? 202 : 201).json(created);
   }),
 );
 

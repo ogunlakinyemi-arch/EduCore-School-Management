@@ -4,6 +4,7 @@ import { pool } from "@workspace/db";
 import { AuthError, type Role, type UserContext } from "../middlewares/auth";
 import { logger } from "../lib/logger";
 import { queueCommunicationNotification } from "../services/communication-service";
+import { commitInvitationWithRecovery } from "./partner-commit-recovery";
 
 export const INVITABLE_SCHOOL_ROLES = [
   "SCHOOL_ADMIN",
@@ -11,6 +12,7 @@ export const INVITABLE_SCHOOL_ROLES = [
   "ACCOUNTANT",
   "STAFF",
   "PARENT",
+  "STUDENT",
 ] as const satisfies readonly Role[];
 
 const INVITATION_DAYS = 7;
@@ -24,6 +26,7 @@ type InviteeInput = {
   fullName: string;
   phone: string | null;
   role: InvitationRole;
+  studentId?: number | null;
 };
 
 function normalizeEmail(email: string) {
@@ -74,8 +77,8 @@ function throwClerkInvitationError(error: unknown): never {
   }
   throw new AuthError(
     503,
-    "The invitation email could not be sent. No access was granted.",
-    "INVITATION_DELIVERY_FAILED",
+    "Clerk did not confirm the invitation request; its status may be uncertain. Check before retrying.",
+    "INVITATION_DELIVERY_UNCERTAIN",
   );
 }
 
@@ -175,6 +178,17 @@ async function ensureInviteProfile(client: any, input: InviteeInput, employeeNo:
     }
   }
 
+  if (input.role === "STUDENT") {
+    if (!input.studentId) throw new AuthError(400, "A student profile is required for student invitations");
+    const student = await client.query(
+      `SELECT id,user_id AS "userId" FROM students
+       WHERE id=$1 AND school_id=$2 FOR UPDATE`,
+      [input.studentId, input.schoolId],
+    );
+    if (!student.rows[0]) throw new AuthError(404, "Student profile not found in this school");
+    if (student.rows[0].userId) throw new AuthError(409, "This student profile is already linked to an account");
+  }
+
   if (input.role === "TEACHER" || input.role === "STAFF") {
     const employee = await client.query(
       `SELECT id,user_id AS "userId",employee_type AS "type",
@@ -232,6 +246,31 @@ async function ensureActivatedProfile(
   userId: number,
   employeeNo?: string,
 ) {
+  if (input.role === "STUDENT") {
+    if (!input.studentId) throw new AuthError(409, "Student profile information is missing from this invitation");
+    const existingStudent = await client.query(
+      `SELECT id,school_id AS "schoolId" FROM students WHERE user_id=$1 FOR UPDATE`,
+      [userId],
+    );
+    if (existingStudent.rows[0] && existingStudent.rows[0].id !== input.studentId) {
+      throw new AuthError(409, "This account is already linked to a different student profile");
+    }
+    const student = await client.query(
+      `SELECT id,user_id AS "userId" FROM students
+       WHERE id=$1 AND school_id=$2 FOR UPDATE`,
+      [input.studentId, input.schoolId],
+    );
+    if (!student.rows[0]) throw new AuthError(409, "Student profile is no longer available in this school");
+    if (student.rows[0].userId && student.rows[0].userId !== userId) {
+      throw new AuthError(409, "This student profile is already linked to another account");
+    }
+    await client.query(
+      `UPDATE students SET user_id=$1,updated_at=NOW()
+       WHERE id=$2 AND school_id=$3 AND (user_id IS NULL OR user_id=$1)`,
+      [userId, input.studentId, input.schoolId],
+    );
+  }
+
   if (input.role === "PARENT") {
     const owned = await client.query(
       `SELECT id,school_id AS "schoolId" FROM parents WHERE user_id=$1 FOR UPDATE`,
@@ -396,6 +435,9 @@ export async function createSchoolInvitation(input: InviteeInput, actor: UserCon
   if (input.role === "PARENT" && !phone) {
     throw new AuthError(400, "A phone number is required for parent invitations");
   }
+  if (input.role === "STUDENT" && (!Number.isInteger(input.studentId) || Number(input.studentId) < 1)) {
+    throw new AuthError(400, "A valid student profile is required for student invitations");
+  }
 
   const school = await pool.query(`SELECT id FROM schools WHERE id=$1`, [input.schoolId]);
   if (!school.rows[0]) throw new AuthError(404, "School not found");
@@ -413,6 +455,18 @@ export async function createSchoolInvitation(input: InviteeInput, actor: UserCon
     if (localUsers.rows[0].status !== "ACTIVE") {
       throw new AuthError(409, "This account is inactive; a Platform Owner must reactivate it first");
     }
+    let clerkUser;
+    try {
+      clerkUser = await clerkClient.users.getUser(localUsers.rows[0].clerkUserId);
+    } catch {
+      throw new AuthError(503, "Unable to verify the existing account email before granting school access");
+    }
+    const verifiedEmail = clerkUser.primaryEmailAddress?.verification?.status === "verified"
+      ? normalizeEmail(clerkUser.primaryEmailAddress.emailAddress)
+      : "";
+    if (!verifiedEmail || verifiedEmail !== email) {
+      throw new AuthError(403, "The requested email must be the existing account's primary verified Clerk email");
+    }
     return provisionExistingAccount(normalizedInput, localUsers.rows[0], actor);
   }
 
@@ -425,6 +479,7 @@ export async function createSchoolInvitation(input: InviteeInput, actor: UserCon
       emailProof: emailProof(email),
       schoolId: input.schoolId,
       role: input.role,
+      studentId: input.role === "STUDENT" ? input.studentId : null,
       employeeNo: input.role === "TEACHER" || input.role === "STAFF" ? employeeNo : null,
     },
   };
@@ -444,6 +499,7 @@ export async function createSchoolInvitation(input: InviteeInput, actor: UserCon
   }
 
   let client: any;
+  let commitAttempted = false;
   try {
     client = await pool.connect();
     await client.query("BEGIN");
@@ -458,17 +514,37 @@ export async function createSchoolInvitation(input: InviteeInput, actor: UserCon
       null,
       invitation.id,
     );
-    await client.query("COMMIT");
-  } catch (error) {
-    await client.query("ROLLBACK").catch(() => undefined);
-    try {
-      await clerkClient.invitations.revokeInvitation(invitation.id);
-    } catch {
+    commitAttempted = true;
+    const resolution = await commitInvitationWithRecovery({
+      commit: () => client.query("COMMIT"),
+      rollback: () => client.query("ROLLBACK"),
+      isCommitted: async () => Boolean((await pool.query(
+        `SELECT 1 FROM audit_logs WHERE metadata->>'invitationId'=$1 LIMIT 1`,
+        [invitation.id],
+      )).rows[0]),
+      revokeInvitation: () => clerkClient.invitations.revokeInvitation(invitation.id),
+    });
+    if (resolution !== "COMMITTED") {
       throw new AuthError(
         503,
-        "The invitation could not be finalized or revoked. Contact platform support before retrying.",
-        "INVITATION_RECOVERY_REQUIRED",
+        resolution === "UNKNOWN"
+          ? "Invitation status is uncertain; check the account before retrying"
+          : "Invitation could not be completed; please retry",
+        resolution === "UNKNOWN" ? "INVITATION_RECOVERY_REQUIRED" : undefined,
       );
+    }
+  } catch (error) {
+    if (!commitAttempted) {
+      await client?.query("ROLLBACK").catch(() => undefined);
+      try {
+        await clerkClient.invitations.revokeInvitation(invitation.id);
+      } catch {
+        throw new AuthError(
+          503,
+          "The invitation could not be finalized or revoked. Contact platform support before retrying.",
+          "INVITATION_RECOVERY_REQUIRED",
+        );
+      }
     }
     throw error;
   } finally {
@@ -476,7 +552,10 @@ export async function createSchoolInvitation(input: InviteeInput, actor: UserCon
   }
 
   return {
-    status: "INVITATION_SENT" as const,
+    status: "DISPATCH_REQUESTED" as const,
+    dispatchStatus: "REQUEST_ACCEPTED" as const,
+    deliveryStatus: "UNVERIFIED" as const,
+    deliveryNote: "Clerk accepted the invitation request; inbox delivery is not verified.",
     invitationId: invitation.id,
     email,
     schoolId: input.schoolId,
@@ -488,6 +567,132 @@ export async function createSchoolInvitation(input: InviteeInput, actor: UserCon
   };
 }
 
+export async function createSchoolWithAdministrator(input: {
+  school: {
+    code: string;
+    name: string;
+    city: string;
+    state: string;
+    status?: string;
+  };
+  administrator: { fullName: string; email: string };
+}, actor: UserContext) {
+  const school = {
+    code: input.school.code.trim().toUpperCase(),
+    name: input.school.name.trim(),
+    city: input.school.city.trim(),
+    state: input.school.state.trim(),
+    status: input.school.status?.trim() || "active",
+  };
+  const email = normalizeEmail(input.administrator.email);
+  const fullName = input.administrator.fullName.trim().replace(/\s+/g, " ");
+  if (!school.code || school.code.length > 10 || school.name.length < 2 ||
+      !school.city || !school.state || fullName.length < 2 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new AuthError(400, "A valid school and first administrator name and email are required");
+  }
+  if (!["active", "inactive", "suspended"].includes(school.status)) {
+    throw new AuthError(400, "Invalid school status");
+  }
+
+  const client = await pool.connect();
+  let invitationId: string | null = null;
+  let schoolId: number | null = null;
+  let commitAttempted = false;
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`,
+      [`first-school-admin:${email}`],
+    );
+    const created = await client.query(
+      `INSERT INTO schools(code,name,city,state,status)
+       VALUES($1,$2,$3,$4,$5) RETURNING id`,
+      [school.code, school.name, school.city, school.state, school.status],
+    );
+    schoolId = created.rows[0]?.id;
+    if (!schoolId) throw new AuthError(503, "School could not be created");
+    const { firstName, lastName } = splitName(fullName);
+    const invitation = await clerkClient.invitations.createInvitation({
+      emailAddress: email,
+      expiresInDays: INVITATION_DAYS,
+      ignoreExisting: false,
+      notify: true,
+      redirectUrl: "/",
+      publicMetadata: {
+        [METADATA_KEY]: {
+          version: 1,
+          claimId: randomUUID(),
+          emailProof: emailProof(email),
+          schoolId,
+          role: "SCHOOL_ADMIN",
+          employeeNo: null,
+          firstName,
+          lastName,
+        },
+      },
+    }).catch((error) => throwClerkInvitationError(error));
+    invitationId = invitation.id;
+    await auditInvitation(
+      client,
+      actor,
+      schoolId,
+      "SCHOOL_ADMIN",
+      email,
+      "SCHOOL_ADMIN_INVITED",
+      null,
+      invitation.id,
+    );
+    commitAttempted = true;
+    const resolution = await commitInvitationWithRecovery({
+      commit: () => client.query("COMMIT"),
+      rollback: () => client.query("ROLLBACK"),
+      isCommitted: async () => Boolean((await pool.query(
+        `SELECT 1 FROM schools WHERE id=$1`,
+        [schoolId],
+      )).rows[0]),
+      revokeInvitation: () => clerkClient.invitations.revokeInvitation(invitation.id),
+    });
+    if (resolution !== "COMMITTED") {
+      throw new AuthError(
+        503,
+        resolution === "UNKNOWN"
+          ? "School and administrator invitation status is uncertain; check the school directory before retrying"
+          : "School creation and administrator invitation could not be completed; please retry",
+        resolution === "UNKNOWN" ? "INVITATION_RECOVERY_REQUIRED" : undefined,
+      );
+    }
+    return {
+      schoolId,
+      administratorInvitation: {
+        invitationId: invitation.id,
+        email,
+        role: "SCHOOL_ADMIN",
+        status: "DISPATCH_REQUESTED" as const,
+        dispatchStatus: "REQUEST_ACCEPTED" as const,
+        deliveryStatus: "UNVERIFIED" as const,
+        deliveryNote: "Clerk accepted the invitation request; inbox delivery is not verified.",
+      },
+    };
+  } catch (error) {
+    if (!commitAttempted) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      if (invitationId) {
+        await clerkClient.invitations.revokeInvitation(invitationId).catch(() => {
+          throw new AuthError(
+            503,
+            "School creation failed and its invitation could not be revoked. Contact platform support before retrying.",
+            "INVITATION_RECOVERY_REQUIRED",
+          );
+        });
+      }
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export type AcceptedInvitation = {
   claimId: string;
   emailProof: string;
@@ -496,6 +701,7 @@ export type AcceptedInvitation = {
   employeeNo: string | null;
   firstName: string | null;
   lastName: string | null;
+  studentId: number | null;
 };
 
 export function acceptedInvitationFromMetadata(metadata: unknown, email: string): AcceptedInvitation | null {
@@ -513,6 +719,10 @@ export function acceptedInvitationFromMetadata(metadata: unknown, email: string)
     (invite.firstName !== undefined && (typeof invite.firstName !== "string" || invite.firstName.length > 100)) ||
     (invite.lastName !== undefined && invite.lastName !== null &&
       (typeof invite.lastName !== "string" || invite.lastName.length > 100)) ||
+    (invite.studentId !== undefined && invite.studentId !== null &&
+      (!Number.isInteger(invite.studentId) || Number(invite.studentId) < 1)) ||
+    (invite.role === "STUDENT" && (!Number.isInteger(invite.studentId) || Number(invite.studentId) < 1)) ||
+    (invite.role !== "STUDENT" && invite.studentId !== undefined && invite.studentId !== null) ||
     !matchesEmailProof(email, invite.emailProof)
   ) {
     throw new AuthError(403, "This invitation does not match the authenticated account");
@@ -531,16 +741,16 @@ export function acceptedInvitationFromMetadata(metadata: unknown, email: string)
     employeeNo: typeof invite.employeeNo === "string" ? invite.employeeNo : null,
     firstName: typeof invite.firstName === "string" ? invite.firstName.trim() || null : null,
     lastName: typeof invite.lastName === "string" ? invite.lastName.trim() || null : null,
+    studentId: Number.isInteger(invite.studentId) ? Number(invite.studentId) : null,
   };
 }
 
 export async function activateAcceptedSchoolInvitation(userId: number, clerkUserId: string) {
   const clerkUser = await clerkClient.users.getUser(clerkUserId);
-  const email = normalizeEmail(
-    clerkUser.primaryEmailAddress?.emailAddress ??
-      clerkUser.emailAddresses[0]?.emailAddress ??
-      "",
-  );
+  const primaryEmail = clerkUser.primaryEmailAddress;
+  const email = primaryEmail?.verification?.status === "verified"
+    ? normalizeEmail(primaryEmail.emailAddress)
+    : "";
   if (!email) return false;
   const invite = acceptedInvitationFromMetadata(clerkUser.publicMetadata, email);
   if (!invite) return false;
@@ -590,6 +800,7 @@ export async function activateAcceptedSchoolInvitation(userId: number, clerkUser
         fullName: [firstName, lastName].filter(Boolean).join(" ") || email,
         phone,
         role: invite.role,
+        studentId: invite.studentId,
       };
       await ensureActivatedProfile(client, activationInput, userId, invite.employeeNo ?? undefined);
       const membership = await client.query(

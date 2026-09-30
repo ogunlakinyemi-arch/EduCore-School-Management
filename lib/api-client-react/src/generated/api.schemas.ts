@@ -466,6 +466,85 @@ export interface SchoolDashboard {
   recentActivity: AuditLog[];
 }
 
+export type SchoolWithAdministratorInputSchoolStatus = typeof SchoolWithAdministratorInputSchoolStatus[keyof typeof SchoolWithAdministratorInputSchoolStatus];
+
+
+export const SchoolWithAdministratorInputSchoolStatus = {
+  active: 'active',
+  inactive: 'inactive',
+  suspended: 'suspended',
+} as const;
+
+export type SchoolWithAdministratorInputSchool = {
+  /**
+     * @minLength 1
+     * @maxLength 10
+     */
+  code: string;
+  /** @minLength 2 */
+  name: string;
+  /** @minLength 1 */
+  city: string;
+  /** @minLength 1 */
+  state: string;
+  status?: SchoolWithAdministratorInputSchoolStatus;
+};
+
+export type SchoolWithAdministratorInputAdministrator = {
+  /** @minLength 2 */
+  fullName: string;
+  /** @maxLength 254 */
+  email: string;
+};
+
+export interface SchoolWithAdministratorInput {
+  school: SchoolWithAdministratorInputSchool;
+  administrator: SchoolWithAdministratorInputAdministrator;
+}
+
+export type SchoolWithAdministratorResultAdministratorInvitationRole = typeof SchoolWithAdministratorResultAdministratorInvitationRole[keyof typeof SchoolWithAdministratorResultAdministratorInvitationRole];
+
+
+export const SchoolWithAdministratorResultAdministratorInvitationRole = {
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+} as const;
+
+export type SchoolWithAdministratorResultAdministratorInvitationStatus = typeof SchoolWithAdministratorResultAdministratorInvitationStatus[keyof typeof SchoolWithAdministratorResultAdministratorInvitationStatus];
+
+
+export const SchoolWithAdministratorResultAdministratorInvitationStatus = {
+  DISPATCH_REQUESTED: 'DISPATCH_REQUESTED',
+} as const;
+
+export type SchoolWithAdministratorResultAdministratorInvitationDispatchStatus = typeof SchoolWithAdministratorResultAdministratorInvitationDispatchStatus[keyof typeof SchoolWithAdministratorResultAdministratorInvitationDispatchStatus];
+
+
+export const SchoolWithAdministratorResultAdministratorInvitationDispatchStatus = {
+  REQUEST_ACCEPTED: 'REQUEST_ACCEPTED',
+} as const;
+
+export type SchoolWithAdministratorResultAdministratorInvitationDeliveryStatus = typeof SchoolWithAdministratorResultAdministratorInvitationDeliveryStatus[keyof typeof SchoolWithAdministratorResultAdministratorInvitationDeliveryStatus];
+
+
+export const SchoolWithAdministratorResultAdministratorInvitationDeliveryStatus = {
+  UNVERIFIED: 'UNVERIFIED',
+} as const;
+
+export type SchoolWithAdministratorResultAdministratorInvitation = {
+  invitationId: string;
+  email: string;
+  role: SchoolWithAdministratorResultAdministratorInvitationRole;
+  status: SchoolWithAdministratorResultAdministratorInvitationStatus;
+  dispatchStatus: SchoolWithAdministratorResultAdministratorInvitationDispatchStatus;
+  deliveryStatus: SchoolWithAdministratorResultAdministratorInvitationDeliveryStatus;
+  deliveryNote: string;
+};
+
+export interface SchoolWithAdministratorResult {
+  schoolId: number;
+  administratorInvitation: SchoolWithAdministratorResultAdministratorInvitation;
+}
+
 export type SchoolInputStatus = typeof SchoolInputStatus[keyof typeof SchoolInputStatus];
 
 
@@ -869,9 +948,16 @@ export const SchoolUserInvitationInputRole = {
   ACCOUNTANT: 'ACCOUNTANT',
   STAFF: 'STAFF',
   PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
 } as const;
 
-export interface SchoolUserInvitationInput {
+export type SchoolUserInvitationInput = ({
+  role?: 'STUDENT';
+  /** @minimum 1 */
+  studentId: number;
+} | {
+  role?: 'TEACHER' | 'ACCOUNTANT' | 'STAFF' | 'PARENT';
+}) & {
   /** @minimum 1 */
   schoolId: number;
   /**
@@ -887,13 +973,13 @@ export interface SchoolUserInvitationInput {
      */
   phone?: string;
   role: SchoolUserInvitationInputRole;
-}
+};
 
 export type SchoolAdministratorResultStatus = typeof SchoolAdministratorResultStatus[keyof typeof SchoolAdministratorResultStatus];
 
 
 export const SchoolAdministratorResultStatus = {
-  INVITATION_SENT: 'INVITATION_SENT',
+  DISPATCH_REQUESTED: 'DISPATCH_REQUESTED',
   ACTIVE: 'ACTIVE',
 } as const;
 
@@ -906,6 +992,21 @@ export const SchoolAdministratorResultRole = {
   ACCOUNTANT: 'ACCOUNTANT',
   STAFF: 'STAFF',
   PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+} as const;
+
+export type SchoolAdministratorResultDispatchStatus = typeof SchoolAdministratorResultDispatchStatus[keyof typeof SchoolAdministratorResultDispatchStatus];
+
+
+export const SchoolAdministratorResultDispatchStatus = {
+  REQUEST_ACCEPTED: 'REQUEST_ACCEPTED',
+} as const;
+
+export type SchoolAdministratorResultDeliveryStatus = typeof SchoolAdministratorResultDeliveryStatus[keyof typeof SchoolAdministratorResultDeliveryStatus];
+
+
+export const SchoolAdministratorResultDeliveryStatus = {
+  UNVERIFIED: 'UNVERIFIED',
 } as const;
 
 export interface SchoolAdministratorResult {
@@ -915,7 +1016,34 @@ export interface SchoolAdministratorResult {
   role: SchoolAdministratorResultRole;
   invitationId?: string;
   expiresAt?: string;
+  dispatchStatus?: SchoolAdministratorResultDispatchStatus;
+  deliveryStatus?: SchoolAdministratorResultDeliveryStatus;
+  deliveryNote?: string;
   membership?: RoleAssignment;
+}
+
+export type InvitationDiagnosticsDispatchStatus = typeof InvitationDiagnosticsDispatchStatus[keyof typeof InvitationDiagnosticsDispatchStatus];
+
+
+export const InvitationDiagnosticsDispatchStatus = {
+  REQUEST_ACCEPTED: 'REQUEST_ACCEPTED',
+} as const;
+
+export type InvitationDiagnosticsDeliveryStatus = typeof InvitationDiagnosticsDeliveryStatus[keyof typeof InvitationDiagnosticsDeliveryStatus];
+
+
+export const InvitationDiagnosticsDeliveryStatus = {
+  UNVERIFIED: 'UNVERIFIED',
+} as const;
+
+export interface InvitationDiagnostics {
+  invitationId: string;
+  clerkStatus: string;
+  /** @nullable */
+  expiresAt: string | null;
+  dispatchStatus: InvitationDiagnosticsDispatchStatus;
+  deliveryStatus: InvitationDiagnosticsDeliveryStatus;
+  note: string;
 }
 
 export type PlatformDeviceDeviceType = typeof PlatformDeviceDeviceType[keyof typeof PlatformDeviceDeviceType];
@@ -1777,7 +1905,21 @@ export interface CompanyEmployee {
   updatedAt: string;
 }
 
-export interface CompanyEmployeeInput {
+export type CompanyEmployeeInputRole = typeof CompanyEmployeeInputRole[keyof typeof CompanyEmployeeInputRole];
+
+
+export const CompanyEmployeeInputRole = {
+  COMPANY_ACCOUNTANT: 'COMPANY_ACCOUNTANT',
+  DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
+} as const;
+
+export type CompanyEmployeeInput = ({
+  role?: 'DEVICE_ACTIVATION_OFFICER';
+  /** @minimum 1 */
+  schoolId: number;
+} | {
+  role?: 'COMPANY_ACCOUNTANT';
+}) & ({
   /**
      * @minLength 1
      * @maxLength 160
@@ -1798,7 +1940,8 @@ export interface CompanyEmployeeInput {
      * @nullable
      */
   jobTitle?: string | null;
-}
+  role: CompanyEmployeeInputRole;
+});
 
 export type CompanyEmployeeUpdateStatus = typeof CompanyEmployeeUpdateStatus[keyof typeof CompanyEmployeeUpdateStatus];
 
@@ -1830,6 +1973,177 @@ export interface CompanyEmployeeUpdate {
      */
   jobTitle?: string | null;
   status?: CompanyEmployeeUpdateStatus;
+}
+
+export type CompanyEmployeeCreatedStatus = typeof CompanyEmployeeCreatedStatus[keyof typeof CompanyEmployeeCreatedStatus];
+
+
+export const CompanyEmployeeCreatedStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export type CompanyEmployeeCreatedRole = typeof CompanyEmployeeCreatedRole[keyof typeof CompanyEmployeeCreatedRole];
+
+
+export const CompanyEmployeeCreatedRole = {
+  COMPANY_ACCOUNTANT: 'COMPANY_ACCOUNTANT',
+  DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
+} as const;
+
+export type CompanyEmployeeCreatedInvitationStatus = typeof CompanyEmployeeCreatedInvitationStatus[keyof typeof CompanyEmployeeCreatedInvitationStatus];
+
+
+export const CompanyEmployeeCreatedInvitationStatus = {
+  DISPATCH_REQUEST_ACCEPTED: 'DISPATCH_REQUEST_ACCEPTED',
+} as const;
+
+export type CompanyEmployeeCreatedInvitation = {
+  status: CompanyEmployeeCreatedInvitationStatus;
+  deliveryConfirmed: false;
+  expiresAt: string;
+};
+
+export interface CompanyEmployeeCreated {
+  id: number;
+  fullName: string;
+  email: string;
+  /** @nullable */
+  phone: string | null;
+  /** @nullable */
+  jobTitle: string | null;
+  status: CompanyEmployeeCreatedStatus;
+  createdAt: string;
+  updatedAt: string;
+  role: CompanyEmployeeCreatedRole;
+  /** @nullable */
+  schoolId: number | null;
+  invitation: CompanyEmployeeCreatedInvitation;
+}
+
+export type CompanyEmployeeInvitationInputRole = typeof CompanyEmployeeInvitationInputRole[keyof typeof CompanyEmployeeInvitationInputRole];
+
+
+export const CompanyEmployeeInvitationInputRole = {
+  COMPANY_ACCOUNTANT: 'COMPANY_ACCOUNTANT',
+  DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
+} as const;
+
+export type CompanyEmployeeInvitationInput = ({
+  role?: 'DEVICE_ACTIVATION_OFFICER';
+  /** @minimum 1 */
+  schoolId: number;
+} | {
+  role?: 'COMPANY_ACCOUNTANT';
+}) & {
+  role: CompanyEmployeeInvitationInputRole;
+};
+
+export type CompanyEmployeeInvitationResultRole = typeof CompanyEmployeeInvitationResultRole[keyof typeof CompanyEmployeeInvitationResultRole];
+
+
+export const CompanyEmployeeInvitationResultRole = {
+  COMPANY_ACCOUNTANT: 'COMPANY_ACCOUNTANT',
+  DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
+} as const;
+
+export type CompanyEmployeeInvitationResultInvitationStatus = typeof CompanyEmployeeInvitationResultInvitationStatus[keyof typeof CompanyEmployeeInvitationResultInvitationStatus];
+
+
+export const CompanyEmployeeInvitationResultInvitationStatus = {
+  DISPATCH_REQUEST_ACCEPTED: 'DISPATCH_REQUEST_ACCEPTED',
+} as const;
+
+export type CompanyEmployeeInvitationResultInvitation = {
+  status: CompanyEmployeeInvitationResultInvitationStatus;
+  deliveryConfirmed: false;
+  expiresAt: string;
+};
+
+export interface CompanyEmployeeInvitationResult {
+  employeeId: number;
+  email: string;
+  role: CompanyEmployeeInvitationResultRole;
+  /** @nullable */
+  schoolId: number | null;
+  invitation: CompanyEmployeeInvitationResultInvitation;
+}
+
+export type CompanyAccountantOverviewSubscriptions = {
+  verifiedSubscriptionCount: number;
+  verifiedRevenue: string;
+  verifiedEduPulseShare: string;
+  unverifiedSubscriptionCount: number;
+  activeVerifiedCount: number;
+};
+
+export interface CompanyAccountantStatusTotal {
+  status: string;
+  currency: string;
+  count: number;
+  amount: string;
+}
+
+export interface CompanyAccountantOverview {
+  subscriptions: CompanyAccountantOverviewSubscriptions;
+  commissions: CompanyAccountantStatusTotal[];
+  payouts: CompanyAccountantStatusTotal[];
+}
+
+export interface CompanyAccountantSubscription {
+  id: number;
+  term: string;
+  amount: string;
+  edupulseShare: string;
+  provider: string;
+  /** @nullable */
+  providerReference: string | null;
+  status: string;
+  verificationStatus: string;
+  createdAt: string;
+}
+
+export interface CompanyAccountantReconciliationItem {
+  id: number;
+  term: string;
+  amount: string;
+  provider: string;
+  /** @nullable */
+  providerReference: string | null;
+  status: string;
+  verificationStatus: string;
+  createdAt: string;
+}
+
+export interface CompanyAccountantCommission {
+  id: number;
+  partnerCode: string;
+  partnerName: string;
+  term: string;
+  amount: string;
+  currency: string;
+  status: string;
+  /** @nullable */
+  paymentReference: string | null;
+  createdAt: string;
+  /** @nullable */
+  paidAt: string | null;
+}
+
+export interface CompanyAccountantPayout {
+  id: number;
+  partnerCode: string;
+  partnerName: string;
+  amount: string;
+  currency: string;
+  status: string;
+  /** @nullable */
+  paymentReference: string | null;
+  periodStart: string;
+  periodEnd: string;
+  /** @nullable */
+  paidAt: string | null;
+  createdAt: string;
 }
 
 export interface CardInput {
@@ -1922,9 +2236,20 @@ export type PartnerInvitationStatus = typeof PartnerInvitationStatus[keyof typeo
 
 export const PartnerInvitationStatus = {
   PENDING: 'PENDING',
-  ACCEPTED: 'ACCEPTED',
-  EXPIRED: 'EXPIRED',
-  REVOKED: 'REVOKED',
+} as const;
+
+export type PartnerInvitationInvitationDispatchStatus = typeof PartnerInvitationInvitationDispatchStatus[keyof typeof PartnerInvitationInvitationDispatchStatus];
+
+
+export const PartnerInvitationInvitationDispatchStatus = {
+  REQUEST_ACCEPTED: 'REQUEST_ACCEPTED',
+} as const;
+
+export type PartnerInvitationInvitationDeliveryStatus = typeof PartnerInvitationInvitationDeliveryStatus[keyof typeof PartnerInvitationInvitationDeliveryStatus];
+
+
+export const PartnerInvitationInvitationDeliveryStatus = {
+  UNVERIFIED: 'UNVERIFIED',
 } as const;
 
 export interface PartnerInvitation {
@@ -1932,11 +2257,11 @@ export interface PartnerInvitation {
   partnerId: number;
   email: string;
   status: PartnerInvitationStatus;
-  /** Copyable single-use invitation URL; returned exactly once at creation and never persisted or returned again */
-  invitationUrl: string;
+  /** Clerk invitation identifier; does not contain the invitation token */
+  clerkInvitationId: string;
+  invitationDispatchStatus: PartnerInvitationInvitationDispatchStatus;
+  invitationDeliveryStatus: PartnerInvitationInvitationDeliveryStatus;
   expiresAt: string;
-  /** @nullable */
-  acceptedAt?: string | null;
   createdAt: string;
 }
 
@@ -2382,32 +2707,57 @@ export interface PartnerSchoolOnboardingInput {
   administrator: PartnerSchoolOnboardingInputAdministrator;
 }
 
+export type PartnerOnboardingResultSchool = {
+  id: number;
+  code: string;
+  name: string;
+  city: string;
+  state: string;
+  status: string;
+  createdAt: string;
+};
+
 export type PartnerOnboardingResultAttributionStatus = typeof PartnerOnboardingResultAttributionStatus[keyof typeof PartnerOnboardingResultAttributionStatus];
 
 
 export const PartnerOnboardingResultAttributionStatus = {
   CREATED: 'CREATED',
-  CONFLICT: 'CONFLICT',
 } as const;
 
 export type PartnerOnboardingResultAdministratorInvitationStatus = typeof PartnerOnboardingResultAdministratorInvitationStatus[keyof typeof PartnerOnboardingResultAdministratorInvitationStatus];
 
 
 export const PartnerOnboardingResultAdministratorInvitationStatus = {
-  SENT: 'SENT',
+  DISPATCH_REQUESTED: 'DISPATCH_REQUESTED',
+} as const;
+
+export type PartnerOnboardingResultAdministratorInvitationDispatchStatus = typeof PartnerOnboardingResultAdministratorInvitationDispatchStatus[keyof typeof PartnerOnboardingResultAdministratorInvitationDispatchStatus];
+
+
+export const PartnerOnboardingResultAdministratorInvitationDispatchStatus = {
+  REQUEST_ACCEPTED: 'REQUEST_ACCEPTED',
+} as const;
+
+export type PartnerOnboardingResultAdministratorInvitationDeliveryStatus = typeof PartnerOnboardingResultAdministratorInvitationDeliveryStatus[keyof typeof PartnerOnboardingResultAdministratorInvitationDeliveryStatus];
+
+
+export const PartnerOnboardingResultAdministratorInvitationDeliveryStatus = {
+  UNVERIFIED: 'UNVERIFIED',
 } as const;
 
 export type PartnerOnboardingResultAdministratorInvitation = {
+  invitationId: string;
   email: string;
   status: PartnerOnboardingResultAdministratorInvitationStatus;
+  dispatchStatus: PartnerOnboardingResultAdministratorInvitationDispatchStatus;
+  deliveryStatus: PartnerOnboardingResultAdministratorInvitationDeliveryStatus;
+  deliveryNote: string;
   expiresInDays: number;
 };
 
 export interface PartnerOnboardingResult {
-  school: School;
+  school: PartnerOnboardingResultSchool;
   attributionStatus: PartnerOnboardingResultAttributionStatus;
-  /** @nullable */
-  conflictId?: number | null;
   administratorInvitation: PartnerOnboardingResultAdministratorInvitation;
 }
 

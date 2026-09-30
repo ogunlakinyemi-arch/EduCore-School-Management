@@ -36,7 +36,7 @@ export default function RegisterSchool() {
   const [validatedPartner, setValidatedPartner] = useState<{ code: string } | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState('');
-  const [success, setSuccess] = useState<{ administratorEmail: string } | null>(null);
+  const [success, setSuccess] = useState<{ administratorEmail: string; deliveryStatus: string } | null>(null);
 
   const form = useForm<z.infer<typeof onboardSchema>>({
     resolver: zodResolver(onboardSchema),
@@ -96,7 +96,10 @@ export default function RegisterSchool() {
     
     onboard.mutate({ data: data as any }, {
       onSuccess: (result: any) => {
-        setSuccess({ administratorEmail: result.administratorInvitation?.email ?? data.administrator.email });
+        setSuccess({
+          administratorEmail: result.administratorInvitation?.email ?? data.administrator.email,
+          deliveryStatus: result.administratorInvitation?.deliveryStatus ?? 'UNVERIFIED',
+        });
       },
       onError: (err: any) => {
         toast({ title: "Registration failed", description: err.error || "An error occurred", variant: "destructive" });
@@ -111,11 +114,11 @@ export default function RegisterSchool() {
           <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[hsl(157_37%_43%/.15)] text-[hsl(157_37%_43%)] dark:text-[hsl(157_37%_55%)] mb-6">
             <CheckCircle2 size={32} />
           </div>
-          <h1 className="display-font text-3xl font-bold mb-3">Administrator Invitation Sent</h1>
+          <h1 className="display-font text-3xl font-bold mb-3">Administrator Invitation Requested</h1>
           <p className="text-[hsl(var(--muted-foreground))] mb-8 leading-relaxed">
-            Your school has been registered through the partner referral. A secure invitation was sent to
+            Your school has been registered through the partner referral. Clerk accepted the secure invitation request for
             <strong className="block mt-2 text-[hsl(var(--foreground))]">{success.administratorEmail}</strong>
-            <span className="block mt-2">The School Administrator will use that link to activate the account and create their own password.</span>
+            <span className="block mt-2">Inbox delivery is not verified. The School Administrator can use the invitation to activate the account and create their own password.</span>
           </p>
         </div>
       </main>

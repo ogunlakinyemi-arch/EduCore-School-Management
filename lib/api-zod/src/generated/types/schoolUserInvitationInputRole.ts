@@ -14,4 +14,5 @@ export const SchoolUserInvitationInputRole = {
   ACCOUNTANT: 'ACCOUNTANT',
   STAFF: 'STAFF',
   PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
 } as const;

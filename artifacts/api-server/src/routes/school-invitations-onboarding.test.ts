@@ -18,6 +18,7 @@ function invitationMetadata(overrides: Record<string, unknown> = {}) {
       schoolId: 123,
       role: "SCHOOL_ADMIN",
       employeeNo: null,
+      studentId: null,
       firstName: "Ada",
       lastName: "Okafor",
       ...overrides,
@@ -39,6 +40,7 @@ describe("partner-created School Administrator invitation claims", () => {
       schoolId: 123,
       role: "SCHOOL_ADMIN",
       employeeNo: null,
+      studentId: null,
       firstName: "Ada",
       lastName: "Okafor",
     });
@@ -68,6 +70,7 @@ describe("partner-created School Administrator invitation claims", () => {
       role: "SCHOOL_ADMIN",
       firstName: null,
       lastName: null,
+      studentId: null,
     });
   });
 });

@@ -102,7 +102,10 @@ describe("school invitation account notifications", () => {
     });
     mocks.getUser.mockResolvedValue({
       id: "user_accepted",
-      primaryEmailAddress: { emailAddress: "admin@example.test" },
+      primaryEmailAddress: {
+        emailAddress: "admin@example.test",
+        verification: { status: "verified" },
+      },
       emailAddresses: [{ emailAddress: "admin@example.test" }],
       firstName: "School",
       lastName: "Admin",
@@ -167,7 +170,11 @@ describe("school invitation account notifications", () => {
       actor,
     );
 
-    expect(result.status).toBe("INVITATION_SENT");
+    expect(result.status).toBe("DISPATCH_REQUESTED");
+    expect(result).toMatchObject({
+      dispatchStatus: "REQUEST_ACCEPTED",
+      deliveryStatus: "UNVERIFIED",
+    });
     expect(mocks.clientQuery).toHaveBeenCalledWith("COMMIT");
     expect(mocks.queueCommunicationNotification).not.toHaveBeenCalled();
     expect(mocks.createInvitation).toHaveBeenCalledWith(expect.objectContaining({ notify: true }));

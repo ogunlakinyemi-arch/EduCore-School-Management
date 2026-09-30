@@ -159,7 +159,11 @@ function clerkInvitationFailure(error: unknown, failureMessage: string) {
   if (status === 409 || status === 422) {
     return new AuthError(409, "This email already has an EduCore account or a pending invitation.");
   }
-  return new AuthError(503, failureMessage);
+  return new AuthError(
+    503,
+    `${failureMessage} Clerk did not confirm whether the request was accepted; check before retrying.`,
+    "INVITATION_DELIVERY_UNCERTAIN",
+  );
 }
 async function audit(
   req: Request,
@@ -298,8 +302,8 @@ publicPartnersRouter.post("/partner/onboarding", run(async (req, res) => {
     await client.query(`INSERT INTO audit_logs("user",role,school_id,action,module,record_id,event_type,metadata)
       VALUES('Referral onboarding','PUBLIC_REFERRAL',$1,'Created school through partner referral','Partners',$1,
       'PARTNER_SCHOOL_ONBOARDED',jsonb_build_object('partnerProfileId',$2,'referralLinkId',$3,
-      'administratorEmail',$4,'administratorInvitationStatus','PENDING'))`,
-      [school.rows[0].id, link.rows[0].partner_profile_id, link.rows[0].id, administratorEmail]);
+      'administratorEmail',$4,'administratorInvitationStatus','DISPATCH_REQUESTED','invitationId',$5))`,
+      [school.rows[0].id, link.rows[0].partner_profile_id, link.rows[0].id, administratorEmail, clerkInvitation.id]);
     commitAttempted = true;
     const resolution = await commitInvitationWithRecovery({
       commit: () => client.query("COMMIT"),
@@ -316,7 +320,15 @@ publicPartnersRouter.post("/partner/onboarding", run(async (req, res) => {
     res.status(201).json({
       school: school.rows[0],
       attributionStatus: "CREATED",
-      administratorInvitation: { email: administratorEmail, status: "SENT", expiresInDays: 7 },
+      administratorInvitation: {
+        invitationId: clerkInvitation.id,
+        email: administratorEmail,
+        status: "DISPATCH_REQUESTED",
+        dispatchStatus: "REQUEST_ACCEPTED",
+        deliveryStatus: "UNVERIFIED",
+        deliveryNote: "Clerk accepted the invitation request; inbox delivery is not verified.",
+        expiresInDays: 7,
+      },
       conflictId: null,
     });
   } catch (e) {
@@ -350,6 +362,21 @@ router.post("/platform/partners/invitations", run(async (req, res) => {
   let commitAttempted = false;
   try {
     await client.query("BEGIN");
+    await client.query(
+      `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`,
+      [`partner-invitation:${email}`],
+    );
+    const duplicate = await client.query(
+      `SELECT 1 FROM partner_invitations i
+       JOIN partner_profiles p ON p.id=i.partner_profile_id
+       WHERE lower(i.invited_email)=lower($1) AND i.status='ACTIVE'
+         AND i.expires_at > NOW() AND p.status='INVITED'
+       LIMIT 1`,
+      [email],
+    );
+    if (duplicate.rows[0]) {
+      throw new AuthError(409, "An active partner invitation already exists for this email; check its status before retrying");
+    }
     const p = await client.query(`INSERT INTO partner_profiles(partner_code,type,full_name,business_name,email,phone,status,invited_at,created_by)
       VALUES('PENDING-'||upper(substr(md5(random()::text),1,12)),COALESCE($1,'INDIVIDUAL'),$2,$3,$4,$5,'INVITED',NOW(),$6)
       RETURNING id,partner_code AS "partnerCode",email,status,created_at AS "createdAt"`,
@@ -362,15 +389,17 @@ router.post("/platform/partners/invitations", run(async (req, res) => {
       clerkInvitation = await clerkClient.invitations.createInvitation({
         emailAddress: email,
         expiresInDays: 7,
+        ignoreExisting: false,
         notify: true,
         redirectUrl: invitationRedirectUrl(token),
       });
     } catch (error) {
       throw clerkInvitationFailure(error,
-        "The partner invitation could not be sent. No partner profile was created; please retry.");
+        "The partner invitation was not finalized locally.");
     }
     clerkInvitationId = clerkInvitation.id;
-    await audit(req,"Created partner invitation","Partners",invitation.rows[0].id,{partnerId:p.rows[0].id,invitedEmail:email},client);
+    await audit(req,"Created partner invitation","Partners",invitation.rows[0].id,
+      {partnerId:p.rows[0].id,invitedEmail:email,clerkInvitationId:clerkInvitation.id},client);
     commitAttempted = true;
     const resolution = await commitInvitationWithRecovery({
       commit: () => client.query("COMMIT"),
@@ -385,7 +414,8 @@ router.post("/platform/partners/invitations", run(async (req, res) => {
         "Partner invitation could not be completed; please retry");
     committed = true;
     res.status(201).json({ id: invitation.rows[0].id, partnerId: p.rows[0].id, email, status: "PENDING",
-      invitationUrl: invitationRedirectUrl(token), invitationEmailSent: true,
+      clerkInvitationId: clerkInvitationId, invitationDispatchStatus: "REQUEST_ACCEPTED",
+      invitationDeliveryStatus: "UNVERIFIED",
       expiresAt: invitation.rows[0].expiresAt, createdAt: invitation.rows[0].createdAt });
   } catch (e) {
     await client.query("ROLLBACK").catch(() => undefined);
@@ -515,7 +545,17 @@ router.post("/partner/invitations/:invitationToken/accept", run(async (req, res)
       WHERE i.token_hash=$1 AND i.status='ACTIVE' FOR UPDATE OF i`, [hash(token)]);
     const row = invitation.rows[0];
     if (!row || row.expires_at < new Date()) throw new AuthError(400, "Invitation is expired or revoked");
-    if (normalizedEmail(context.user.email) !== normalizedEmail(row.invited_email)) {
+    let clerkUser;
+    try {
+      clerkUser = await clerkClient.users.getUser(context.user.clerkUserId);
+    } catch {
+      throw new AuthError(503, "Unable to verify the invited partner email");
+    }
+    const verifiedEmail = clerkUser.primaryEmailAddress?.verification?.status === "verified"
+      ? normalizedEmail(clerkUser.primaryEmailAddress.emailAddress)
+      : "";
+    if (!verifiedEmail || verifiedEmail !== normalizedEmail(row.invited_email) ||
+        verifiedEmail !== normalizedEmail(context.user.email)) {
       throw new AuthError(403, "Invitation email does not match authenticated user");
     }
     const staffPermission = token.match(/^staff_(standard|finance|admin)_/)?.[1];
@@ -660,7 +700,7 @@ router.post("/partner/staff-invitations", run(async (req, res) => {
       clerkInvitationId = clerkInvitation.id;
     } catch (error) {
       throw clerkInvitationFailure(error,
-        "The partner staff invitation could not be sent. No invitation was saved; please retry.");
+        "The partner staff invitation was not finalized locally.");
     }
     await audit(req, "Created partner staff invitation", "Partners", invitation.rows[0].id,
       { partnerId: partner.id, invitedEmail: email, role, permission }, client);

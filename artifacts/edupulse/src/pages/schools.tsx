@@ -7,7 +7,7 @@ import {
   Smartphone, FileClock, Link as LinkIcon
 } from 'lucide-react';
 import { 
-  useGetSchool, useCreateSchool, useUpdateSchool, useGetSchoolDashboard,
+  useGetSchool, useUpdateSchool, useGetSchoolDashboard,
   useGetAuthorizedContext, getListSchoolsQueryKey
 } from '@workspace/api-client-react';
 import { 
@@ -67,7 +67,27 @@ async function fetchOwnerSchoolOverview(schoolId: number) {
   return response.json();
 }
 
-async function inviteSchoolAdministrator(schoolId: number, fullName: string, email: string) {
+async function createSchoolWithAdministrator(school: any, administrator: { fullName: string; email: string }) {
+  const response = await fetch('/api/schools/with-administrator', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ school, administrator }),
+  });
+  if (!response.ok) {
+    const details = await response.json().catch(() => null);
+    const error = new Error(details?.message || details?.error || `School and administrator invitation could not be completed (${response.status})`);
+    (error as any).status = response.status;
+    throw error;
+  }
+  return response.json();
+}
+
+async function inviteSchoolAdministrator(
+  schoolId: number,
+  fullName: string,
+  email: string,
+): Promise<{ status: 'ACTIVE' | 'DISPATCH_REQUESTED' }> {
   const response = await fetch(`/api/schools/${schoolId}/administrators`, {
     method: 'POST',
     credentials: 'same-origin',
@@ -76,7 +96,7 @@ async function inviteSchoolAdministrator(schoolId: number, fullName: string, ema
   });
   if (!response.ok) {
     const details = await response.json().catch(() => null);
-    throw new Error(details?.message || details?.error || `Invitation could not be sent (${response.status})`);
+    throw new Error(details?.error || details?.message || `Administrator invitation could not be completed (${response.status})`);
   }
   return response.json();
 }
@@ -221,13 +241,13 @@ export function SchoolsPage() {
 }
 
 function SchoolForm({ initial, onDone, onCancel }: { initial?: any; onDone: () => void; onCancel: () => void }) {
-  const create = useCreateSchool();
   const update = useUpdateSchool();
   const queryClient = useQueryClient();
   const [administrator, setAdministrator] = useState({ fullName: '', email: '' });
-  const [createdSchoolId, setCreatedSchoolId] = useState<number | null>(null);
   const [inviting, setInviting] = useState(false);
   const [invitationError, setInvitationError] = useState('');
+  const [invitationNotice, setInvitationNotice] = useState('');
+  const [creationNeedsReview, setCreationNeedsReview] = useState(false);
   
   const [form, setForm] = useState({ 
     code: initial?.code ?? '',
@@ -237,7 +257,7 @@ function SchoolForm({ initial, onDone, onCancel }: { initial?: any; onDone: () =
     status: initial?.status ?? 'active' 
   });
   
-  const pending = create.isPending || update.isPending || inviting;
+  const pending = update.isPending || inviting;
   
   const save = async (event: FormEvent) => {
     event.preventDefault(); 
@@ -245,22 +265,22 @@ function SchoolForm({ initial, onDone, onCancel }: { initial?: any; onDone: () =
       update.mutate({ schoolId: initial.id, data: form }, { onSuccess: onDone }); 
     } else {
       setInvitationError('');
+      if (creationNeedsReview) return;
       setInviting(true);
-      let schoolId = createdSchoolId;
       try {
-        if (!schoolId) {
-          const school = await create.mutateAsync({ data: form });
-          schoolId = school.id;
-          setCreatedSchoolId(schoolId);
-          queryClient.invalidateQueries({ queryKey: ['platform-school-directory'] });
-        }
-        await inviteSchoolAdministrator(schoolId, administrator.fullName, administrator.email);
-        onDone();
+        const result = await createSchoolWithAdministrator(form, administrator);
+        setInvitationNotice(
+          `School ${result.schoolId} was created. Clerk accepted the administrator invitation request; inbox delivery is not verified.`,
+        );
+        setCreationNeedsReview(true);
+        queryClient.invalidateQueries({ queryKey: ['platform-school-directory'] });
       } catch (error) {
-        if (schoolId) {
-          setInvitationError(`School created, but its administrator was not invited: ${error instanceof Error ? error.message : 'Please retry the invitation.'} Retry below or open the school later to send the invitation.`);
+        const status = (error as any)?.status;
+        if (status >= 500 || status === undefined) {
+          setCreationNeedsReview(true);
+          setInvitationError(`${error instanceof Error ? error.message : 'School creation status could not be confirmed.'} Check the school directory before retrying; the school and invitation may already exist.`);
         } else {
-          setInvitationError(error instanceof Error ? error.message : 'Could not create the school.');
+          setInvitationError(error instanceof Error ? error.message : 'Could not create the school and invite its administrator.');
         }
       } finally {
         setInviting(false);
@@ -304,11 +324,14 @@ function SchoolForm({ initial, onDone, onCancel }: { initial?: any; onDone: () =
         </div>
       )}
       <div className="flex justify-end gap-3 pt-4 border-t border-[hsl(var(--border))]">
-        <Button variant="outline" onClick={onCancel} testId="button-cancel-school">Cancel</Button>
-        <Button type="submit" disabled={pending} testId="button-save-school">{pending ? 'Saving…' : initial ? 'Save changes' : createdSchoolId ? 'Retry administrator invitation' : 'Create school & invite administrator'}</Button>
+        <Button variant="outline" onClick={onCancel} testId="button-cancel-school">{invitationNotice ? 'Done' : 'Cancel'}</Button>
+        <Button type="submit" disabled={pending || creationNeedsReview} testId="button-save-school">
+          {pending ? 'Saving…' : initial ? 'Save changes' : invitationNotice ? 'Invitation request accepted' : 'Create school & invite administrator'}
+        </Button>
       </div>
       {invitationError && <p role="alert" className="text-sm font-medium text-[hsl(var(--destructive))]">{invitationError}</p>}
-      {(create.isError || update.isError) && <p className="text-sm font-medium text-[hsl(var(--destructive))]">Could not save this school. Check the fields and try again.</p>}
+      {invitationNotice && <p role="status" className="text-sm font-medium text-[hsl(var(--primary))]">{invitationNotice}</p>}
+      {update.isError && <p className="text-sm font-medium text-[hsl(var(--destructive))]">Could not save this school. Check the fields and try again.</p>}
     </form>
   );
 }
@@ -328,8 +351,9 @@ function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
     setError('');
     try {
       const result = await inviteSchoolAdministrator(schoolId, name, email);
-      setMessage(result.status === 'ACTIVE' ? 'Existing account granted School Administrator access.' :
-        'Invitation sent. The administrator will set their own password.');
+      setMessage(result.status === 'ACTIVE'
+        ? 'Existing account granted School Administrator access.'
+        : 'Clerk accepted the invitation request. Inbox delivery is not verified; the administrator will set their own password.');
       setName('');
       setEmail('');
       queryClient.invalidateQueries({ queryKey: ['platform-school-overview', schoolId] });

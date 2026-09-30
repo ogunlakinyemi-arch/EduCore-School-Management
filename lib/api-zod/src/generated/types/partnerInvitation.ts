@@ -5,6 +5,8 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { PartnerInvitationInvitationDeliveryStatus } from './partnerInvitationInvitationDeliveryStatus';
+import type { PartnerInvitationInvitationDispatchStatus } from './partnerInvitationInvitationDispatchStatus';
 import type { PartnerInvitationStatus } from './partnerInvitationStatus';
 
 export interface PartnerInvitation {
@@ -12,10 +14,10 @@ export interface PartnerInvitation {
   partnerId: number;
   email: string;
   status: PartnerInvitationStatus;
-  /** Copyable single-use invitation URL; returned exactly once at creation and never persisted or returned again */
-  invitationUrl: string;
+  /** Clerk invitation identifier; does not contain the invitation token */
+  clerkInvitationId: string;
+  invitationDispatchStatus: PartnerInvitationInvitationDispatchStatus;
+  invitationDeliveryStatus: PartnerInvitationInvitationDeliveryStatus;
   expiresAt: Date;
-  /** @nullable */
-  acceptedAt?: Date | null;
   createdAt: Date;
 }

@@ -7,12 +7,10 @@
  */
 import type { PartnerOnboardingResultAdministratorInvitation } from './partnerOnboardingResultAdministratorInvitation';
 import type { PartnerOnboardingResultAttributionStatus } from './partnerOnboardingResultAttributionStatus';
-import type { School } from './school';
+import type { PartnerOnboardingResultSchool } from './partnerOnboardingResultSchool';
 
 export interface PartnerOnboardingResult {
-  school: School;
+  school: PartnerOnboardingResultSchool;
   attributionStatus: PartnerOnboardingResultAttributionStatus;
-  /** @nullable */
-  conflictId?: number | null;
   administratorInvitation: PartnerOnboardingResultAdministratorInvitation;
 }

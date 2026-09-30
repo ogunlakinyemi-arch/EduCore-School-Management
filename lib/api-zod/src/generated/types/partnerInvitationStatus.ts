@@ -11,7 +11,4 @@ export type PartnerInvitationStatus = typeof PartnerInvitationStatus[keyof typeo
 
 export const PartnerInvitationStatus = {
   PENDING: 'PENDING',
-  ACCEPTED: 'ACCEPTED',
-  EXPIRED: 'EXPIRED',
-  REVOKED: 'REVOKED',
 } as const;

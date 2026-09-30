@@ -104,8 +104,16 @@ import type {
   CommunicationTemplate,
   CommunicationTemplateInput,
   CommunicationTemplateUpdate,
+  CompanyAccountantCommission,
+  CompanyAccountantOverview,
+  CompanyAccountantPayout,
+  CompanyAccountantReconciliationItem,
+  CompanyAccountantSubscription,
   CompanyEmployee,
+  CompanyEmployeeCreated,
   CompanyEmployeeInput,
+  CompanyEmployeeInvitationInput,
+  CompanyEmployeeInvitationResult,
   CompanyEmployeeUpdate,
   ConfirmPeopleImportParams,
   CreateAcademicAssessmentParams,
@@ -194,6 +202,7 @@ import type {
   GetSubjectParams,
   HealthStatus,
   InspectPeopleImportParams,
+  InvitationDiagnostics,
   ListAcademicAssessmentTypesParams,
   ListAcademicAssessmentsParams,
   ListAcademicAssignmentsParams,
@@ -325,6 +334,8 @@ import type {
   SchoolUpdate,
   SchoolUser,
   SchoolUserInvitationInput,
+  SchoolWithAdministratorInput,
+  SchoolWithAdministratorResult,
   SearchActivationStudentsParams,
   Student,
   StudentClassAssignment,
@@ -399,7 +410,7 @@ export const getListActivationSchoolsUrl = () => {
 }
 
 /**
- * @summary List schools with an active grant for the authenticated Device Activation Officer
+ * @summary List schools available to the authenticated Platform Owner or Device Activation Officer
  */
 export const listActivationSchools = async ( options?: Parameters<typeof customFetch>[1]): Promise<ActivationSchool[]> => {
 
@@ -446,7 +457,7 @@ export type ListActivationSchoolsQueryError = ErrorType<ForbiddenResponse>
 
 
 /**
- * @summary List schools with an active grant for the authenticated Device Activation Officer
+ * @summary List schools available to the authenticated Platform Owner or Device Activation Officer
  */
 
 export function useListActivationSchools<TData = Awaited<ReturnType<typeof listActivationSchools>>, TError = ErrorType<ForbiddenResponse>>(
@@ -6313,6 +6324,173 @@ export const useCreatePlatformMembership = <TError = ErrorType<ForbiddenResponse
       return useMutation(getCreatePlatformMembershipMutationOptions(options));
     }
 
+export const getCreateSchoolWithAdministratorUrl = () => {
+
+
+
+
+  return `/api/schools/with-administrator`
+}
+
+/**
+ * Platform Owner only. Passwords are created by the invitee and must not be submitted.
+ * @summary Create a school and request an invitation for its first School Administrator
+ */
+export const createSchoolWithAdministrator = async (schoolWithAdministratorInput: SchoolWithAdministratorInput, options?: Parameters<typeof customFetch>[1]): Promise<SchoolWithAdministratorResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolWithAdministratorResult>(getCreateSchoolWithAdministratorUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(schoolWithAdministratorInput)
+  }
+);}
+
+
+
+
+
+export const getCreateSchoolWithAdministratorMutationKey = () => ['createSchoolWithAdministrator'] as const;
+
+export const getCreateSchoolWithAdministratorMutationOptions = <TError = ErrorType<void | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSchoolWithAdministrator>>, TError,CreateSchoolWithAdministratorMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSchoolWithAdministrator>>, TError,CreateSchoolWithAdministratorMutationVariables, TContext> => {
+
+const mutationKey = getCreateSchoolWithAdministratorMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSchoolWithAdministrator>>, CreateSchoolWithAdministratorMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSchoolWithAdministrator(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSchoolWithAdministratorMutationResult = NonNullable<Awaited<ReturnType<typeof createSchoolWithAdministrator>>>
+    export type CreateSchoolWithAdministratorMutationBody = BodyType<SchoolWithAdministratorInput>
+    export type CreateSchoolWithAdministratorMutationError = ErrorType<void | ForbiddenResponse>
+    export type CreateSchoolWithAdministratorMutationVariables = {data: BodyType<SchoolWithAdministratorInput>}
+
+    /**
+ * @summary Create a school and request an invitation for its first School Administrator
+ */
+export const useCreateSchoolWithAdministrator = <TError = ErrorType<void | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSchoolWithAdministrator>>, TError,CreateSchoolWithAdministratorMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSchoolWithAdministrator>>,
+        TError,
+        CreateSchoolWithAdministratorMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateSchoolWithAdministratorMutationOptions(options));
+    }
+
+export const getGetInvitationDiagnosticsUrl = (invitationId: string,) => {
+
+
+
+
+  return `/api/invitation-diagnostics/${invitationId}`
+}
+
+/**
+ * Available only when NODE_ENV is development, for a Platform Owner or the School Administrator of the invitation's school. Clerk invitation state does not verify inbox delivery or link use.
+ * @summary Read development-only Clerk invitation state and dispatch diagnostics
+ */
+export const getInvitationDiagnostics = async (invitationId: string, options?: Parameters<typeof customFetch>[1]): Promise<InvitationDiagnostics> => {
+
+  return customFetch<InvitationDiagnostics>(getGetInvitationDiagnosticsUrl(invitationId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetInvitationDiagnosticsQueryKey = (invitationId: string,) => {
+    return [
+    `/api/invitation-diagnostics/${invitationId}`
+    ] as const;
+    }
+
+
+export const getGetInvitationDiagnosticsQueryOptions = <TData = Awaited<ReturnType<typeof getInvitationDiagnostics>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>>(invitationId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInvitationDiagnostics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetInvitationDiagnosticsQueryKey(invitationId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInvitationDiagnostics>>> = ({ signal }) => getInvitationDiagnostics(invitationId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: invitationId !== null && invitationId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getInvitationDiagnostics>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetInvitationDiagnosticsQueryResult = NonNullable<Awaited<ReturnType<typeof getInvitationDiagnostics>>>
+export type GetInvitationDiagnosticsQueryError = ErrorType<ForbiddenResponse | NotFoundResponse | void>
+
+
+/**
+ * @summary Read development-only Clerk invitation state and dispatch diagnostics
+ */
+
+export function useGetInvitationDiagnostics<TData = Awaited<ReturnType<typeof getInvitationDiagnostics>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>>(
+ invitationId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInvitationDiagnostics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetInvitationDiagnosticsQueryOptions(invitationId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getInviteSchoolUserUrl = () => {
 
 
@@ -6322,7 +6500,7 @@ export const getInviteSchoolUserUrl = () => {
 }
 
 /**
- * @summary Send a password-free school user invitation or grant an existing user access by email
+ * @summary Request a password-free school user invitation or grant a verified existing user access by email
  */
 export const inviteSchoolUser = async (schoolUserInvitationInput: SchoolUserInvitationInput, options?: Parameters<typeof customFetch>[1]): Promise<SchoolAdministratorResult> => {
 
@@ -6355,7 +6533,7 @@ return customFetch<SchoolAdministratorResult>(getInviteSchoolUserUrl(),
 
 export const getInviteSchoolUserMutationKey = () => ['inviteSchoolUser'] as const;
 
-export const getInviteSchoolUserMutationOptions = <TError = ErrorType<ForbiddenResponse>,
+export const getInviteSchoolUserMutationOptions = <TError = ErrorType<void | ForbiddenResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof inviteSchoolUser>>, TError,InviteSchoolUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof inviteSchoolUser>>, TError,InviteSchoolUserMutationVariables, TContext> => {
 
@@ -6384,13 +6562,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type InviteSchoolUserMutationResult = NonNullable<Awaited<ReturnType<typeof inviteSchoolUser>>>
     export type InviteSchoolUserMutationBody = BodyType<SchoolUserInvitationInput>
-    export type InviteSchoolUserMutationError = ErrorType<ForbiddenResponse>
+    export type InviteSchoolUserMutationError = ErrorType<void | ForbiddenResponse>
     export type InviteSchoolUserMutationVariables = {data: BodyType<SchoolUserInvitationInput>}
 
     /**
- * @summary Send a password-free school user invitation or grant an existing user access by email
+ * @summary Request a password-free school user invitation or grant a verified existing user access by email
  */
-export const useInviteSchoolUser = <TError = ErrorType<ForbiddenResponse>,
+export const useInviteSchoolUser = <TError = ErrorType<void | ForbiddenResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof inviteSchoolUser>>, TError,InviteSchoolUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof inviteSchoolUser>>,
@@ -9260,7 +9438,7 @@ export const getCreatePlatformCompanyEmployeeUrl = () => {
 /**
  * @summary Create a company employee profile
  */
-export const createPlatformCompanyEmployee = async (companyEmployeeInput: CompanyEmployeeInput, options?: Parameters<typeof customFetch>[1]): Promise<CompanyEmployee> => {
+export const createPlatformCompanyEmployee = async (companyEmployeeInput: CompanyEmployeeInput, options?: Parameters<typeof customFetch>[1]): Promise<CompanyEmployeeCreated> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -9276,7 +9454,7 @@ export const createPlatformCompanyEmployee = async (companyEmployeeInput: Compan
     }
     return headers;
   };
-return customFetch<CompanyEmployee>(getCreatePlatformCompanyEmployeeUrl(),
+return customFetch<CompanyEmployeeCreated>(getCreatePlatformCompanyEmployeeUrl(),
   {
     ...options,
     method: 'POST',
@@ -9502,6 +9680,486 @@ export const useUpdatePlatformCompanyEmployee = <TError = ErrorType<void | Forbi
       > => {
       return useMutation(getUpdatePlatformCompanyEmployeeMutationOptions(options));
     }
+
+export const getInvitePlatformCompanyEmployeeUrl = (employeeId: number,) => {
+
+
+
+
+  return `/api/platform/company-employees/${employeeId}/invitation`
+}
+
+/**
+ * Platform Owner only. Company Accountants have no school scope; Device Activation Officers require an active school.
+ * @summary Request an internal-role invitation for an active company employee
+ */
+export const invitePlatformCompanyEmployee = async (employeeId: number,
+    companyEmployeeInvitationInput: CompanyEmployeeInvitationInput, options?: Parameters<typeof customFetch>[1]): Promise<CompanyEmployeeInvitationResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CompanyEmployeeInvitationResult>(getInvitePlatformCompanyEmployeeUrl(employeeId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(companyEmployeeInvitationInput)
+  }
+);}
+
+
+
+
+
+export const getInvitePlatformCompanyEmployeeMutationKey = () => ['invitePlatformCompanyEmployee'] as const;
+
+export const getInvitePlatformCompanyEmployeeMutationOptions = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof invitePlatformCompanyEmployee>>, TError,InvitePlatformCompanyEmployeeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof invitePlatformCompanyEmployee>>, TError,InvitePlatformCompanyEmployeeMutationVariables, TContext> => {
+
+const mutationKey = getInvitePlatformCompanyEmployeeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof invitePlatformCompanyEmployee>>, InvitePlatformCompanyEmployeeMutationVariables> = (props) => {
+          const {employeeId,data} = props ?? {};
+
+          return  invitePlatformCompanyEmployee(employeeId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InvitePlatformCompanyEmployeeMutationResult = NonNullable<Awaited<ReturnType<typeof invitePlatformCompanyEmployee>>>
+    export type InvitePlatformCompanyEmployeeMutationBody = BodyType<CompanyEmployeeInvitationInput>
+    export type InvitePlatformCompanyEmployeeMutationError = ErrorType<void | ForbiddenResponse | NotFoundResponse>
+    export type InvitePlatformCompanyEmployeeMutationVariables = {employeeId: number;data: BodyType<CompanyEmployeeInvitationInput>}
+
+    /**
+ * @summary Request an internal-role invitation for an active company employee
+ */
+export const useInvitePlatformCompanyEmployee = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof invitePlatformCompanyEmployee>>, TError,InvitePlatformCompanyEmployeeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof invitePlatformCompanyEmployee>>,
+        TError,
+        InvitePlatformCompanyEmployeeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getInvitePlatformCompanyEmployeeMutationOptions(options));
+    }
+
+export const getGetCompanyAccountantOverviewUrl = () => {
+
+
+
+
+  return `/api/company/accountant/overview`
+}
+
+/**
+ * Requires an active eligible Company Accountant membership and employee profile.
+ * @summary Read company-wide subscription, commission, and payout totals
+ */
+export const getCompanyAccountantOverview = async ( options?: Parameters<typeof customFetch>[1]): Promise<CompanyAccountantOverview> => {
+
+  return customFetch<CompanyAccountantOverview>(getGetCompanyAccountantOverviewUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCompanyAccountantOverviewQueryKey = () => {
+    return [
+    `/api/company/accountant/overview`
+    ] as const;
+    }
+
+
+export const getGetCompanyAccountantOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getCompanyAccountantOverview>>, TError = ErrorType<ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCompanyAccountantOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCompanyAccountantOverviewQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCompanyAccountantOverview>>> = ({ signal }) => getCompanyAccountantOverview({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCompanyAccountantOverview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCompanyAccountantOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof getCompanyAccountantOverview>>>
+export type GetCompanyAccountantOverviewQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary Read company-wide subscription, commission, and payout totals
+ */
+
+export function useGetCompanyAccountantOverview<TData = Awaited<ReturnType<typeof getCompanyAccountantOverview>>, TError = ErrorType<ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCompanyAccountantOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCompanyAccountantOverviewQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListCompanyAccountantSubscriptionsUrl = () => {
+
+
+
+
+  return `/api/company/accountant/subscriptions`
+}
+
+/**
+ * Requires an active eligible Company Accountant membership and employee profile. Results are limited to 500.
+ * @summary List recent company subscription records
+ */
+export const listCompanyAccountantSubscriptions = async ( options?: Parameters<typeof customFetch>[1]): Promise<CompanyAccountantSubscription[]> => {
+
+  return customFetch<CompanyAccountantSubscription[]>(getListCompanyAccountantSubscriptionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCompanyAccountantSubscriptionsQueryKey = () => {
+    return [
+    `/api/company/accountant/subscriptions`
+    ] as const;
+    }
+
+
+export const getListCompanyAccountantSubscriptionsQueryOptions = <TData = Awaited<ReturnType<typeof listCompanyAccountantSubscriptions>>, TError = ErrorType<ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyAccountantSubscriptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCompanyAccountantSubscriptionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCompanyAccountantSubscriptions>>> = ({ signal }) => listCompanyAccountantSubscriptions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCompanyAccountantSubscriptions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCompanyAccountantSubscriptionsQueryResult = NonNullable<Awaited<ReturnType<typeof listCompanyAccountantSubscriptions>>>
+export type ListCompanyAccountantSubscriptionsQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary List recent company subscription records
+ */
+
+export function useListCompanyAccountantSubscriptions<TData = Awaited<ReturnType<typeof listCompanyAccountantSubscriptions>>, TError = ErrorType<ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyAccountantSubscriptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCompanyAccountantSubscriptionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListCompanyAccountantReconciliationUrl = () => {
+
+
+
+
+  return `/api/company/accountant/reconciliation`
+}
+
+/**
+ * Requires an active eligible Company Accountant membership and employee profile. Results are limited to 500.
+ * @summary List recent subscriptions that are not verified or reconciled
+ */
+export const listCompanyAccountantReconciliation = async ( options?: Parameters<typeof customFetch>[1]): Promise<CompanyAccountantReconciliationItem[]> => {
+
+  return customFetch<CompanyAccountantReconciliationItem[]>(getListCompanyAccountantReconciliationUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCompanyAccountantReconciliationQueryKey = () => {
+    return [
+    `/api/company/accountant/reconciliation`
+    ] as const;
+    }
+
+
+export const getListCompanyAccountantReconciliationQueryOptions = <TData = Awaited<ReturnType<typeof listCompanyAccountantReconciliation>>, TError = ErrorType<ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyAccountantReconciliation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCompanyAccountantReconciliationQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCompanyAccountantReconciliation>>> = ({ signal }) => listCompanyAccountantReconciliation({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCompanyAccountantReconciliation>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCompanyAccountantReconciliationQueryResult = NonNullable<Awaited<ReturnType<typeof listCompanyAccountantReconciliation>>>
+export type ListCompanyAccountantReconciliationQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary List recent subscriptions that are not verified or reconciled
+ */
+
+export function useListCompanyAccountantReconciliation<TData = Awaited<ReturnType<typeof listCompanyAccountantReconciliation>>, TError = ErrorType<ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyAccountantReconciliation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCompanyAccountantReconciliationQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListCompanyAccountantCommissionsUrl = () => {
+
+
+
+
+  return `/api/company/accountant/commissions`
+}
+
+/**
+ * Requires an active eligible Company Accountant membership and employee profile. Results are limited to 500.
+ * @summary List recent partner commission ledger records
+ */
+export const listCompanyAccountantCommissions = async ( options?: Parameters<typeof customFetch>[1]): Promise<CompanyAccountantCommission[]> => {
+
+  return customFetch<CompanyAccountantCommission[]>(getListCompanyAccountantCommissionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCompanyAccountantCommissionsQueryKey = () => {
+    return [
+    `/api/company/accountant/commissions`
+    ] as const;
+    }
+
+
+export const getListCompanyAccountantCommissionsQueryOptions = <TData = Awaited<ReturnType<typeof listCompanyAccountantCommissions>>, TError = ErrorType<ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyAccountantCommissions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCompanyAccountantCommissionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCompanyAccountantCommissions>>> = ({ signal }) => listCompanyAccountantCommissions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCompanyAccountantCommissions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCompanyAccountantCommissionsQueryResult = NonNullable<Awaited<ReturnType<typeof listCompanyAccountantCommissions>>>
+export type ListCompanyAccountantCommissionsQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary List recent partner commission ledger records
+ */
+
+export function useListCompanyAccountantCommissions<TData = Awaited<ReturnType<typeof listCompanyAccountantCommissions>>, TError = ErrorType<ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyAccountantCommissions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCompanyAccountantCommissionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListCompanyAccountantPayoutsUrl = () => {
+
+
+
+
+  return `/api/company/accountant/payouts`
+}
+
+/**
+ * Requires an active eligible Company Accountant membership and employee profile. Results are limited to 500.
+ * @summary List recent partner payout records
+ */
+export const listCompanyAccountantPayouts = async ( options?: Parameters<typeof customFetch>[1]): Promise<CompanyAccountantPayout[]> => {
+
+  return customFetch<CompanyAccountantPayout[]>(getListCompanyAccountantPayoutsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCompanyAccountantPayoutsQueryKey = () => {
+    return [
+    `/api/company/accountant/payouts`
+    ] as const;
+    }
+
+
+export const getListCompanyAccountantPayoutsQueryOptions = <TData = Awaited<ReturnType<typeof listCompanyAccountantPayouts>>, TError = ErrorType<ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyAccountantPayouts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCompanyAccountantPayoutsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCompanyAccountantPayouts>>> = ({ signal }) => listCompanyAccountantPayouts({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCompanyAccountantPayouts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCompanyAccountantPayoutsQueryResult = NonNullable<Awaited<ReturnType<typeof listCompanyAccountantPayouts>>>
+export type ListCompanyAccountantPayoutsQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary List recent partner payout records
+ */
+
+export function useListCompanyAccountantPayouts<TData = Awaited<ReturnType<typeof listCompanyAccountantPayouts>>, TError = ErrorType<ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyAccountantPayouts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCompanyAccountantPayoutsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getMarkPlatformNotificationReadUrl = (notificationId: number,) => {
 

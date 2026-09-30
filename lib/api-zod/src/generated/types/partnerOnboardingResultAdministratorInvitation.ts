@@ -5,10 +5,16 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { PartnerOnboardingResultAdministratorInvitationDeliveryStatus } from './partnerOnboardingResultAdministratorInvitationDeliveryStatus';
+import type { PartnerOnboardingResultAdministratorInvitationDispatchStatus } from './partnerOnboardingResultAdministratorInvitationDispatchStatus';
 import type { PartnerOnboardingResultAdministratorInvitationStatus } from './partnerOnboardingResultAdministratorInvitationStatus';
 
 export type PartnerOnboardingResultAdministratorInvitation = {
+  invitationId: string;
   email: string;
   status: PartnerOnboardingResultAdministratorInvitationStatus;
+  dispatchStatus: PartnerOnboardingResultAdministratorInvitationDispatchStatus;
+  deliveryStatus: PartnerOnboardingResultAdministratorInvitationDeliveryStatus;
+  deliveryNote: string;
   expiresInDays: number;
 };

@@ -79,6 +79,10 @@ function assertSchoolAdmin(req: Request, schoolId: number) {
 
 async function assertPhotoReader(req: Request, schoolId: number) {
   const context = getUserContext(req);
+  if (context.roles.some((role) =>
+    role.role === "PLATFORM_OWNER" && role.schoolId === null && role.status === "ACTIVE"
+  )) return;
+
   const schoolRoles = context.roles.filter((role) =>
     role.schoolId === schoolId && role.status === "ACTIVE"
   );

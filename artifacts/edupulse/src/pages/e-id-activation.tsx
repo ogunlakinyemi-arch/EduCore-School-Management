@@ -219,9 +219,7 @@ function EidCardPreview({ record }: { record: EidRecord }) {
           <div className="text-xl font-bold" data-testid="text-eid-student-name">{details.fullName || 'Student'}</div>
           {details.studentId && <div><strong>Student ID:</strong> {details.studentId}</div>}
           {details.admissionNo && <div><strong>Admission No.:</strong> {details.admissionNo}</div>}
-          <div><strong>Class:</strong> {[details.className, details.section].filter(Boolean).join(' ') || '—'}</div>
           <div><strong>NFC Card:</strong> {details.cardNumber || '—'}</div>
-          {details.session && <div><strong>Session:</strong> {details.session}</div>}
         </div>
       </div>
       {details.qr && <img src={details.qr} alt="Student identification QR code" className="ml-auto mt-3 h-16 w-16 object-contain" data-testid="img-eid-qr" />}

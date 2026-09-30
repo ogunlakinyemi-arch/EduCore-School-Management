@@ -11,5 +11,4 @@ export type PartnerOnboardingResultAttributionStatus = typeof PartnerOnboardingR
 
 export const PartnerOnboardingResultAttributionStatus = {
   CREATED: 'CREATED',
-  CONFLICT: 'CONFLICT',
 } as const;

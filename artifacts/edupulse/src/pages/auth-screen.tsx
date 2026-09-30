@@ -108,6 +108,8 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
                 <option value="SCHOOL_ADMIN">School Administrator</option>
                 <option value="TEACHER">Teacher</option>
                 <option value="ACCOUNTANT">Accountant</option>
+                <option value="COMPANY_ACCOUNTANT">Company Accountant</option>
+                <option value="DEVICE_ACTIVATION_OFFICER">Device Activation Officer</option>
                 <option value="STAFF">Staff</option>
                 <option value="PARENT">Parent</option>
                 <option value="STUDENT">Student</option>

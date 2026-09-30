@@ -10,6 +10,6 @@ export type SchoolAdministratorResultStatus = typeof SchoolAdministratorResultSt
 
 
 export const SchoolAdministratorResultStatus = {
-  INVITATION_SENT: 'INVITATION_SENT',
+  DISPATCH_REQUESTED: 'DISPATCH_REQUESTED',
   ACTIVE: 'ACTIVE',
 } as const;

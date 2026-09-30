@@ -282,7 +282,6 @@ function StudentEIdCard({ studentId, schoolId, onClose }: { studentId: number; s
               <div className="text-xl font-bold">{snapshot.student.firstName} {snapshot.student.lastName}</div>
               <div><strong>Admission No.:</strong> {snapshot.student.admissionNo || '—'}</div>
               <div><strong>Student ID:</strong> {snapshot.student.id}</div>
-              <div><strong>Class / Section:</strong> {snapshot.student.className || '—'}{snapshot.student.section ? ` / ${snapshot.student.section}` : ''}</div>
               <div><strong>Active Card UID:</strong> {snapshot.card?.uid || '—'}</div>
             </div>
           </div>

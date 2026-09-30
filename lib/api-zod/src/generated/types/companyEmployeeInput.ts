@@ -5,8 +5,15 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { CompanyEmployeeInputRole } from './companyEmployeeInputRole';
 
-export interface CompanyEmployeeInput {
+export type CompanyEmployeeInput = ({
+  role?: 'DEVICE_ACTIVATION_OFFICER';
+  /** @minimum 1 */
+  schoolId: number;
+} | {
+  role?: 'COMPANY_ACCOUNTANT';
+}) & ({
   /**
      * @minLength 1
      * @maxLength 160
@@ -27,4 +34,5 @@ export interface CompanyEmployeeInput {
      * @nullable
      */
   jobTitle?: string | null;
-}
+  role: CompanyEmployeeInputRole;
+});

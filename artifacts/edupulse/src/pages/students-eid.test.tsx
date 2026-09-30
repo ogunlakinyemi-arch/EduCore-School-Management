@@ -102,6 +102,11 @@ describe('Student Directory e-ID freshness', () => {
     ]);
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => setTimeout(callback, 0));
     vi.spyOn(window, 'print').mockImplementation(() => {});
+    Object.defineProperty(HTMLImageElement.prototype, 'decode', {
+      configurable: true,
+      writable: true,
+      value: () => Promise.resolve(),
+    });
     vi.spyOn(HTMLImageElement.prototype, 'decode').mockResolvedValue(undefined);
     vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true);
     vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(1);
@@ -124,7 +129,10 @@ describe('Student Directory e-ID freshness', () => {
     expect(host.textContent).toContain('Current Student');
     expect(host.textContent).toContain('ADM-12');
     expect(host.textContent).toContain('Student ID: 12');
-    expect(host.textContent).toContain('Year 6 / B');
+    expect(host.textContent).toContain('Old class');
+    expect(host.textContent).toContain('Z');
+    expect(host.querySelector('.student-eid-card')?.textContent).not.toContain('Class / Section');
+    expect(host.querySelector('.student-eid-card')?.textContent).not.toContain('Year 6');
     expect(host.textContent).toContain('ACTIVE-UID');
     expect(host.textContent).not.toContain('OLD-UID');
     expect(host.textContent).toContain('Current School');
@@ -159,7 +167,7 @@ describe('Student Directory e-ID freshness', () => {
     expect(mocks.listCards).toHaveBeenCalledTimes(2);
     expect(host.textContent).toContain('Updated Student');
     expect(host.textContent).toContain('Updated School');
-    expect(host.textContent).toContain('Year 7');
+    expect(host.querySelector('.student-eid-card')?.textContent).not.toContain('Year 7');
     expect(host.textContent).toContain('LATEST-CARD');
     expect(host.querySelector('img[alt="Updated Student passport photo"]')?.getAttribute('src'))
       .toBe('https://legacy.example/photo.jpg?eidRefresh=2');

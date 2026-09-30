@@ -1,0 +1,416 @@
+Fix the Yemait EduCore account invitation/activation workflow and apply the following specific role and NFC/e-ID corrections.
+
+IMPORTANT SCOPE:
+This is a targeted development fix to unblock dashboard testing.
+
+DO NOT implement the remaining Phase 7 Finance backlog.
+DO NOT implement Flutterwave.
+DO NOT implement Termii.
+DO NOT perform the production audit.
+DO NOT perform migration reconciliation.
+DO NOT modify production.
+DO NOT Publish.
+DO NOT change the migration ledger.
+DO NOT redesign unrelated dashboards.
+
+==================================================
+
+1. INTERNAL YEMAIT TECHNOLOGIES EMPLOYEE ROLES
+   ==================================================
+
+Yemait Technologies internal employees must have restricted employee roles.
+
+There are currently two internal employee roles:
+
+A. COMPANY_ACCOUNTANT
+
+This is the internal Yemait Technologies Accountant.
+
+The Company Accountant is NOT a School Accountant.
+
+The Company Accountant must have access only to authorized company-level financial functions, such as:
+
+- platform subscription revenue;
+- partner commissions;
+- partner payouts;
+- payment reconciliation;
+- company financial reports;
+- relevant company transaction/receipt records.
+
+The Company Accountant must NOT automatically receive:
+
+- Platform Owner dashboard;
+- school administration;
+- student administration;
+- parent management;
+- teacher management;
+- attendance;
+- academic results;
+- school finance;
+- NFC/device activation;
+- unrestricted school data.
+
+B. DEVICE_ACTIVATION_OFFICER
+
+This is the internal Yemait Technologies employee responsible for NFC/card/device activation.
+
+The officer can access only the restricted activation functionality already implemented in Task #24.
+
+Do not make either employee a School Staff membership merely because they interact with schools.
+
+Do not give either employee the full Platform Owner dashboard.
+
+==================================================
+2. PLATFORM OWNER NFC ACCESS
+
+Platform Owner must also have access to the SAME NFC card activation workflow as the Device Activation Officer.
+
+The Platform Owner should be able to:
+
+School
+→ select linked NFC device
+→ Hardware UID automatically populated/read-only
+→ select student
+→ enter/scan NFC card number
+→ assign card
+→ view updated e-ID
+→ generate/send for printing.
+
+The Platform Owner must NOT need to create or impersonate a Device Activation Officer to perform this operation.
+
+However, this does NOT mean that Device Activation Officer permissions should be added to every Platform Owner permission.
+
+Instead:
+
+- Platform Owner retains existing Platform Owner permissions.
+- Platform Owner is additionally authorized to use the NFC activation workflow.
+- Device Activation Officer remains restricted to NFC/device activation.
+- Both roles use the same backend activation service and security checks.
+- Do not duplicate the NFC activation implementation.
+
+The existing server-side validation must apply to both roles.
+
+==================================================
+3. NFC ACTIVATION WORKFLOW
+
+Preserve the Task #24 workflow:
+
+School
+→ NFC Device
+→ Student
+→ NFC Card
+→ Assign
+→ Updated E-ID
+→ Print.
+
+Hardware UID
+
+The Hardware UID/device serial must automatically come from an NFC device already linked to the selected school.
+
+It must be:
+
+- automatically populated;
+- read-only;
+- never manually typed.
+
+If multiple active NFC devices belong to the school, allow the authorized user to select the device.
+
+The backend must independently verify:
+
+- device belongs to selected school;
+- user has authorization to use the device.
+
+Student
+
+Use a searchable Student dropdown.
+
+Only students belonging to the selected school may appear.
+
+Do not require manual Student ID entry.
+
+NFC Card Number
+
+The officer/Owner enters or scans the physical NFC card number.
+
+Keep:
+
+Hardware UID = physical NFC device identifier
+
+NFC Card Number = physical student card identifier
+
+Prevent duplicate active card assignments.
+
+Do not silently reassign an active card.
+
+Preserve existing card replacement/deactivation and activation history where available.
+
+==================================================
+4. PERMANENT STUDENT E-ID CARD DESIGN
+
+IMPORTANT CORRECTION:
+
+The permanent student NFC/e-ID card must NOT contain Class or Section.
+
+Students use the same physical card throughout their time at the school, potentially from admission until graduation.
+
+Therefore, do NOT print/change these academic fields on the permanent physical card:
+
+- Class
+- Section
+- Current academic session
+- Current term
+
+The card should contain stable student identity information instead.
+
+The permanent e-ID should include, where supported:
+
+- School logo
+- Student passport/photo
+- Student full name
+- Student ID
+- NFC card number/reference
+- School identity information
+- Any other permanent/stable identifier already supported
+- QR/reference information if already supported
+
+Do not put temporary academic information such as current class or section on the permanent physical card.
+
+The student's current class/section should remain available inside the digital Student Profile and other authorized dashboards.
+
+If the existing e-ID template currently prints Class/Section, remove those fields from the permanent card template.
+
+Do NOT create a separate physical card every time the student changes class.
+
+==================================================
+5. STUDENT PHOTO
+
+The student's passport/photo must be stored against the student profile and available to the authorized e-ID generation workflow.
+
+Allow:
+
+- upload;
+- preview;
+- replace/update;
+- secure school-scoped access.
+
+Use the latest persisted photo when generating the e-ID.
+
+Do not expose student photos across schools.
+
+==================================================
+6. SCHOOL ADMINISTRATOR INVITATION
+
+When Platform Owner creates a school and enters the first administrator:
+
+School created
+→ first School Administrator invitation generated
+→ invitation email dispatched
+→ administrator opens invitation
+→ creates password
+→ account activated
+→ School Admin can sign in.
+
+The Owner should NOT have to create the same first administrator separately.
+
+Keep separate administrator invitation functionality for:
+
+- additional administrators;
+- resend;
+- expired invitation;
+- replacing/inviting another administrator.
+
+==================================================
+7. PARTNER INVITATION
+
+When Platform Owner creates and activates/approves a Partner:
+
+Partner created
+→ activated/approved
+→ invitation generated
+→ invitation email dispatched
+→ Partner creates password
+→ Partner account activated
+→ Partner signs in
+→ Partner sees Partner dashboard.
+
+Partner must never receive Platform Owner permissions.
+
+==================================================
+8. INTERNAL EMPLOYEE INVITATION
+
+When Platform Owner creates an internal employee:
+
+Owner creates employee
+→ selects role:
+COMPANY_ACCOUNTANT
+OR
+DEVICE_ACTIVATION_OFFICER
+→ invitation generated
+→ invitation email dispatched
+→ employee creates password
+→ employee account activated
+→ employee signs in
+→ restricted dashboard appears.
+
+The employee must not automatically receive Platform Owner permissions.
+
+For Device Activation Officer, preserve the existing school-scoped authorization mechanism.
+
+For Company Accountant, restrict access to company-level financial functions.
+
+==================================================
+9. STUDENT AND PARENT ACTIVATION
+
+Inspect the existing Student and Parent invitation/activation implementation.
+
+Where invitations are required:
+
+- create the correct invitation;
+- generate secure activation link/token;
+- send through the existing email infrastructure;
+- allow password creation;
+- activate the correct account;
+- assign the correct role;
+- route the user to the correct dashboard.
+
+Do not create a second authentication system.
+
+Continue using the existing Clerk architecture.
+
+==================================================
+10. EMAIL DELIVERY
+
+Investigate the complete invitation pipeline:
+
+Account creation
+→ invitation record
+→ token/link
+→ email message
+→ email adapter/provider
+→ dispatch result.
+
+Do not mark an invitation as successfully sent if no dispatch occurred.
+
+If external email delivery is not configured, provide a safe development-only way to verify the generated invitation without weakening production security.
+
+Do not expose secrets.
+
+Do not claim real email delivery unless it was actually verified.
+
+==================================================
+11. SECURITY
+
+Preserve existing tenant isolation.
+
+Test:
+
+- Platform Owner can use NFC activation.
+- Device Activation Officer can use NFC activation only within granted school scope.
+- Company Accountant cannot use NFC activation.
+- School Staff cannot gain Device Activation Officer permissions.
+- Partner cannot gain Platform Owner permissions.
+- Device Activation Officer cannot gain Platform Owner permissions.
+- Cross-school device/student assignments fail.
+- Duplicate active card assignment fails.
+- Unauthorized users cannot activate cards.
+
+Platform Owner NFC access should be an explicit permission/capability, not a reason to broaden the Device Activation Officer role.
+
+==================================================
+12. TESTING
+
+Run focused tests for:
+
+Invitations
+
+- First School Administrator
+- Partner
+- Company Accountant
+- Device Activation Officer
+- Student
+- Parent
+
+NFC
+
+- Platform Owner activation
+- Device Activation Officer activation
+- School/device validation
+- Student/device school validation
+- Duplicate card rejection
+- Cross-school rejection
+- Hardware UID automatic population
+- Student dropdown
+- Card assignment
+- Activation history
+
+E-ID
+
+- Student photo
+- Stable student identity information
+- NFC card number
+- No Class/Section on permanent physical card
+- Updated card data
+- Print-ready output
+
+RBAC
+
+Verify that:
+
+Platform Owner → full existing Owner access + NFC activation capability
+
+Device Activation Officer → restricted NFC activation
+
+Company Accountant → restricted company finance
+
+School Admin → school administration
+
+Partner → partner portal
+
+Student → student portal
+
+Parent → parent portal
+
+Do not grant unrelated permissions.
+
+Also run:
+
+- relevant API tests;
+- relevant frontend tests;
+- backend typecheck;
+- frontend typecheck;
+- applicable builds.
+
+==================================================
+13. PRODUCTION SAFETY
+
+Development only.
+
+DO NOT:
+
+- Publish;
+- modify production;
+- modify production database;
+- alter production migration history;
+- perform destructive operations;
+- send unintended production emails.
+
+==================================================
+14. FINAL REPORT
+
+Report:
+
+1. Invitation flows fixed.
+2. Invitation generation/dispatch status.
+3. Platform Owner NFC access result.
+4. Device Activation Officer NFC access result.
+5. Company Accountant access result.
+6. Student/Parent activation result.
+7. E-ID card fields verified.
+8. Confirmation that Class/Section was removed from the permanent physical e-ID.
+9. Tests passed/failed.
+10. Typecheck/build results.
+11. Any remaining limitations.
+12. Anything intentionally deferred.
+
+Do not implement unrelated Phase 7 work.
+Do not Publish.

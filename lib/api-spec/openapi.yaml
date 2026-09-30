@@ -37,10 +37,10 @@ paths:
     get:
       operationId: listActivationSchools
       tags: [platform]
-      summary: List schools with an active grant for the authenticated Device Activation Officer
+      summary: List schools available to the authenticated Platform Owner or Device Activation Officer
       responses:
         "200":
-          description: Only schools available to the officer with a matching active company employee record
+          description: Platform Owners receive all schools; officers receive only granted schools with a matching active company employee record
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/ActivationSchool" } }
@@ -1322,11 +1322,51 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/RoleAssignment" }
         "403": { $ref: "#/components/responses/Forbidden" }
+  /schools/with-administrator:
+    post:
+      operationId: createSchoolWithAdministrator
+      tags: [schools]
+      summary: Create a school and request an invitation for its first School Administrator
+      description: Platform Owner only. Passwords are created by the invitee and must not be submitted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SchoolWithAdministratorInput" }
+      responses:
+        "201":
+          description: School created and Clerk accepted the administrator invitation request; inbox delivery is unverified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolWithAdministratorResult" }
+        "400": { description: Invalid school or administrator details }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "503": { description: Invitation request or transaction finalization failed or is uncertain }
+  /invitation-diagnostics/{invitationId}:
+    get:
+      operationId: getInvitationDiagnostics
+      tags: [users]
+      summary: Read development-only Clerk invitation state and dispatch diagnostics
+      description: Available only when NODE_ENV is development, for a Platform Owner or the School Administrator of the invitation's school. Clerk invitation state does not verify inbox delivery or link use.
+      parameters:
+        - name: invitationId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100, pattern: "^[A-Za-z0-9_-]+$" }
+      responses:
+        "200":
+          description: Clerk state plus an explicit unverified delivery result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvitationDiagnostics" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { description: Clerk invitation status could not be checked }
   /school-users/invitations:
     post:
       operationId: inviteSchoolUser
       tags: [users]
-      summary: Send a password-free school user invitation or grant an existing user access by email
+      summary: Request a password-free school user invitation or grant a verified existing user access by email
       requestBody:
         required: true
         content:
@@ -1339,10 +1379,11 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/SchoolAdministratorResult" }
         "202":
-          description: Clerk invitation emailed
+          description: Clerk accepted the invitation request; inbox delivery is unverified
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SchoolAdministratorResult" }
+        "400": { description: "Invalid input, including missing studentId for a STUDENT invitation" }
         "403": { $ref: "#/components/responses/Forbidden" }
   /school-users:
     get:
@@ -1393,7 +1434,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/SchoolAdministratorResult" }
         "202":
-          description: School Administrator invitation emailed
+          description: Clerk accepted the School Administrator invitation request; inbox delivery is unverified
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SchoolAdministratorResult" }
@@ -1966,10 +2007,10 @@ paths:
             schema: { $ref: "#/components/schemas/CompanyEmployeeInput" }
       responses:
         "201":
-          description: Created company employee profile
+          description: Created employee profile and internal-role invitation request; delivery is unverified
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/CompanyEmployee" }
+              schema: { $ref: "#/components/schemas/CompanyEmployeeCreated" }
         "400": { description: Invalid employee fields or email }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { description: A company employee with this email already exists }
@@ -2009,6 +2050,102 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { description: A company employee with this email already exists }
+  /platform/company-employees/{employeeId}/invitation:
+    post:
+      operationId: invitePlatformCompanyEmployee
+      tags: [platform]
+      summary: Request an internal-role invitation for an active company employee
+      description: Platform Owner only. Company Accountants have no school scope; Device Activation Officers require an active school.
+      parameters:
+        - $ref: "#/components/parameters/EmployeeIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CompanyEmployeeInvitationInput" }
+      responses:
+        "201":
+          description: Invitation request accepted by Clerk; delivery is not confirmed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CompanyEmployeeInvitationResult" }
+        "400": { description: Invalid role or school scope }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { description: Invitation could not be finalized or its status is uncertain }
+  /company/accountant/overview:
+    get:
+      operationId: getCompanyAccountantOverview
+      tags: [platform]
+      summary: Read company-wide subscription, commission, and payout totals
+      description: Requires an active eligible Company Accountant membership and employee profile.
+      responses:
+        "200":
+          description: Aggregate company-wide accounting overview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CompanyAccountantOverview" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /company/accountant/subscriptions:
+    get:
+      operationId: listCompanyAccountantSubscriptions
+      tags: [platform]
+      summary: List recent company subscription records
+      description: Requires an active eligible Company Accountant membership and employee profile. Results are limited to 500.
+      responses:
+        "200":
+          description: Subscriptions ordered newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CompanyAccountantSubscription" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /company/accountant/reconciliation:
+    get:
+      operationId: listCompanyAccountantReconciliation
+      tags: [platform]
+      summary: List recent subscriptions that are not verified or reconciled
+      description: Requires an active eligible Company Accountant membership and employee profile. Results are limited to 500.
+      responses:
+        "200":
+          description: Unverified subscription records ordered newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CompanyAccountantReconciliationItem" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /company/accountant/commissions:
+    get:
+      operationId: listCompanyAccountantCommissions
+      tags: [platform]
+      summary: List recent partner commission ledger records
+      description: Requires an active eligible Company Accountant membership and employee profile. Results are limited to 500.
+      responses:
+        "200":
+          description: Commission records ordered newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CompanyAccountantCommission" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /company/accountant/payouts:
+    get:
+      operationId: listCompanyAccountantPayouts
+      tags: [platform]
+      summary: List recent partner payout records
+      description: Requires an active eligible Company Accountant membership and employee profile. Results are limited to 500.
+      responses:
+        "200":
+          description: Payout records ordered newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CompanyAccountantPayout" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /platform/notifications/{notificationId}/read:
     patch:
       operationId: markPlatformNotificationRead
@@ -4549,6 +4686,41 @@ components:
           type: string
           enum: [active, attention, expired]
         createdAt: { type: string }
+    SchoolWithAdministratorInput:
+      type: object
+      required: [school, administrator]
+      properties:
+        school:
+          type: object
+          required: [code, name, city, state]
+          properties:
+            code: { type: string, minLength: 1, maxLength: 10 }
+            name: { type: string, minLength: 2 }
+            city: { type: string, minLength: 1 }
+            state: { type: string, minLength: 1 }
+            status: { type: string, enum: [active, inactive, suspended] }
+        administrator:
+          type: object
+          required: [fullName, email]
+          properties:
+            fullName: { type: string, minLength: 2 }
+            email: { type: string, format: email, maxLength: 254 }
+    SchoolWithAdministratorResult:
+      type: object
+      required: [schoolId, administratorInvitation]
+      properties:
+        schoolId: { type: integer }
+        administratorInvitation:
+          type: object
+          required: [invitationId, email, role, status, dispatchStatus, deliveryStatus, deliveryNote]
+          properties:
+            invitationId: { type: string }
+            email: { type: string, format: email }
+            role: { type: string, enum: [SCHOOL_ADMIN] }
+            status: { type: string, enum: [DISPATCH_REQUESTED] }
+            dispatchStatus: { type: string, enum: [REQUEST_ACCEPTED] }
+            deliveryStatus: { type: string, enum: [UNVERIFIED] }
+            deliveryNote: { type: string }
     SchoolInput:
       type: object
       required: [name, city, state, code]
@@ -4745,23 +4917,48 @@ components:
     SchoolUserInvitationInput:
       type: object
       required: [schoolId, fullName, email, role]
+      allOf:
+        - oneOf:
+            - type: object
+              required: [studentId]
+              properties:
+                role: { const: STUDENT }
+                studentId: { type: integer, minimum: 1 }
+            - type: object
+              properties:
+                role: { type: string, enum: [TEACHER, ACCOUNTANT, STAFF, PARENT] }
+              not:
+                required: [studentId]
       properties:
         schoolId: { type: integer, minimum: 1 }
         fullName: { type: string, minLength: 2, maxLength: 120 }
         email: { type: string, format: email, maxLength: 254 }
         phone: { type: string, minLength: 8, maxLength: 25 }
-        role: { type: string, enum: [TEACHER, ACCOUNTANT, STAFF, PARENT] }
+        role: { type: string, enum: [TEACHER, ACCOUNTANT, STAFF, PARENT, STUDENT] }
     SchoolAdministratorResult:
       type: object
       required: [status, email, schoolId, role]
       properties:
-        status: { type: string, enum: [INVITATION_SENT, ACTIVE] }
+        status: { type: string, enum: [DISPATCH_REQUESTED, ACTIVE] }
         email: { type: string, format: email }
         schoolId: { type: integer }
-        role: { type: string, enum: [SCHOOL_ADMIN, TEACHER, ACCOUNTANT, STAFF, PARENT] }
+        role: { type: string, enum: [SCHOOL_ADMIN, TEACHER, ACCOUNTANT, STAFF, PARENT, STUDENT] }
         invitationId: { type: string }
         expiresAt: { type: string, format: date-time }
+        dispatchStatus: { type: string, enum: [REQUEST_ACCEPTED] }
+        deliveryStatus: { type: string, enum: [UNVERIFIED] }
+        deliveryNote: { type: string }
         membership: { $ref: "#/components/schemas/RoleAssignment" }
+    InvitationDiagnostics:
+      type: object
+      required: [invitationId, clerkStatus, expiresAt, dispatchStatus, deliveryStatus, note]
+      properties:
+        invitationId: { type: string }
+        clerkStatus: { type: string }
+        expiresAt: { type: ["string", "null"], format: date-time }
+        dispatchStatus: { type: string, enum: [REQUEST_ACCEPTED] }
+        deliveryStatus: { type: string, enum: [UNVERIFIED] }
+        note: { type: string }
     PlatformDevice:
       type: object
       required: [id, serialNumber, name, deviceType, status, createdAt, updatedAt]
@@ -5293,13 +5490,25 @@ components:
         updatedAt: { type: string, format: date-time }
     CompanyEmployeeInput:
       type: object
-      required: [fullName, email]
-      additionalProperties: false
+      required: [fullName, email, role]
+      allOf:
+        - oneOf:
+            - type: object
+              required: [schoolId]
+              properties:
+                role: { const: DEVICE_ACTIVATION_OFFICER }
+                schoolId: { type: integer, minimum: 1 }
+            - type: object
+              properties:
+                role: { const: COMPANY_ACCOUNTANT }
+              not:
+                required: [schoolId]
       properties:
         fullName: { type: string, minLength: 1, maxLength: 160 }
         email: { type: string, format: email, minLength: 1, maxLength: 254 }
         phone: { type: ["string", "null"], maxLength: 160 }
         jobTitle: { type: ["string", "null"], maxLength: 160 }
+        role: { type: string, enum: [COMPANY_ACCOUNTANT, DEVICE_ACTIVATION_OFFICER] }
     CompanyEmployeeUpdate:
       type: object
       minProperties: 1
@@ -5310,6 +5519,140 @@ components:
         phone: { type: ["string", "null"], maxLength: 160 }
         jobTitle: { type: ["string", "null"], maxLength: 160 }
         status: { type: string, enum: [ACTIVE, INACTIVE] }
+    CompanyEmployeeCreated:
+      type: object
+      required: [id, fullName, email, phone, jobTitle, status, createdAt, updatedAt, role, schoolId, invitation]
+      properties:
+        id: { type: integer }
+        fullName: { type: string }
+        email: { type: string, format: email }
+        phone: { type: ["string", "null"] }
+        jobTitle: { type: ["string", "null"] }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        role: { type: string, enum: [COMPANY_ACCOUNTANT, DEVICE_ACTIVATION_OFFICER] }
+        schoolId: { type: ["integer", "null"] }
+        invitation:
+          type: object
+          required: [status, deliveryConfirmed, expiresAt]
+          properties:
+            status: { type: string, enum: [DISPATCH_REQUEST_ACCEPTED] }
+            deliveryConfirmed: { type: boolean, enum: [false] }
+            expiresAt: { type: string, format: date-time }
+    CompanyEmployeeInvitationInput:
+      type: object
+      required: [role]
+      allOf:
+        - oneOf:
+            - type: object
+              required: [schoolId]
+              properties:
+                role: { const: DEVICE_ACTIVATION_OFFICER }
+                schoolId: { type: integer, minimum: 1 }
+            - type: object
+              properties:
+                role: { const: COMPANY_ACCOUNTANT }
+              not:
+                required: [schoolId]
+      properties:
+        role: { type: string, enum: [COMPANY_ACCOUNTANT, DEVICE_ACTIVATION_OFFICER] }
+    CompanyEmployeeInvitationResult:
+      type: object
+      required: [employeeId, email, role, schoolId, invitation]
+      properties:
+        employeeId: { type: integer }
+        email: { type: string, format: email }
+        role: { type: string, enum: [COMPANY_ACCOUNTANT, DEVICE_ACTIVATION_OFFICER] }
+        schoolId: { type: ["integer", "null"] }
+        invitation:
+          type: object
+          required: [status, deliveryConfirmed, expiresAt]
+          properties:
+            status: { type: string, enum: [DISPATCH_REQUEST_ACCEPTED] }
+            deliveryConfirmed: { type: boolean, enum: [false] }
+            expiresAt: { type: string, format: date-time }
+    CompanyAccountantOverview:
+      type: object
+      required: [subscriptions, commissions, payouts]
+      properties:
+        subscriptions:
+          type: object
+          required: [verifiedSubscriptionCount, verifiedRevenue, verifiedEduPulseShare, unverifiedSubscriptionCount, activeVerifiedCount]
+          properties:
+            verifiedSubscriptionCount: { type: integer }
+            verifiedRevenue: { type: string }
+            verifiedEduPulseShare: { type: string }
+            unverifiedSubscriptionCount: { type: integer }
+            activeVerifiedCount: { type: integer }
+        commissions:
+          type: array
+          items: { $ref: "#/components/schemas/CompanyAccountantStatusTotal" }
+        payouts:
+          type: array
+          items: { $ref: "#/components/schemas/CompanyAccountantStatusTotal" }
+    CompanyAccountantStatusTotal:
+      type: object
+      required: [status, currency, count, amount]
+      properties:
+        status: { type: string }
+        currency: { type: string }
+        count: { type: integer }
+        amount: { type: string }
+    CompanyAccountantSubscription:
+      type: object
+      required: [id, term, amount, edupulseShare, provider, providerReference, status, verificationStatus, createdAt]
+      properties:
+        id: { type: integer }
+        term: { type: string }
+        amount: { type: string }
+        edupulseShare: { type: string }
+        provider: { type: string }
+        providerReference: { type: ["string", "null"] }
+        status: { type: string }
+        verificationStatus: { type: string }
+        createdAt: { type: string, format: date-time }
+    CompanyAccountantReconciliationItem:
+      type: object
+      required: [id, term, amount, provider, providerReference, status, verificationStatus, createdAt]
+      properties:
+        id: { type: integer }
+        term: { type: string }
+        amount: { type: string }
+        provider: { type: string }
+        providerReference: { type: ["string", "null"] }
+        status: { type: string }
+        verificationStatus: { type: string }
+        createdAt: { type: string, format: date-time }
+    CompanyAccountantCommission:
+      type: object
+      required: [id, partnerCode, partnerName, term, amount, currency, status, paymentReference, createdAt, paidAt]
+      properties:
+        id: { type: integer }
+        partnerCode: { type: string }
+        partnerName: { type: string }
+        term: { type: string }
+        amount: { type: string }
+        currency: { type: string }
+        status: { type: string }
+        paymentReference: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        paidAt: { type: ["string", "null"], format: date-time }
+    CompanyAccountantPayout:
+      type: object
+      required: [id, partnerCode, partnerName, amount, currency, status, paymentReference, periodStart, periodEnd, paidAt, createdAt]
+      properties:
+        id: { type: integer }
+        partnerCode: { type: string }
+        partnerName: { type: string }
+        amount: { type: string }
+        currency: { type: string }
+        status: { type: string }
+        paymentReference: { type: ["string", "null"] }
+        periodStart: { type: string, format: date-time }
+        periodEnd: { type: string, format: date-time }
+        paidAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
     CardInput:
       type: object
       required: [uid]
@@ -5377,15 +5720,16 @@ components:
         partnerType: { $ref: "#/components/schemas/PartnerType" }
     PartnerInvitation:
       type: object
-      required: [id, partnerId, email, status, invitationUrl, expiresAt, createdAt]
+      required: [id, partnerId, email, status, clerkInvitationId, invitationDispatchStatus, invitationDeliveryStatus, expiresAt, createdAt]
       properties:
         id: { type: integer }
         partnerId: { type: integer }
         email: { type: string, format: email }
-        status: { type: string, enum: [PENDING, ACCEPTED, EXPIRED, REVOKED] }
-        invitationUrl: { type: string, format: uri, description: Copyable single-use invitation URL; returned exactly once at creation and never persisted or returned again }
+        status: { type: string, enum: [PENDING] }
+        clerkInvitationId: { type: string, description: Clerk invitation identifier; does not contain the invitation token }
+        invitationDispatchStatus: { type: string, enum: [REQUEST_ACCEPTED] }
+        invitationDeliveryStatus: { type: string, enum: [UNVERIFIED] }
         expiresAt: { type: string, format: date-time }
-        acceptedAt: { type: ["string", "null"], format: date-time }
         createdAt: { type: string, format: date-time }
     PartnerUpdate:
       type: object
@@ -5618,15 +5962,28 @@ components:
       type: object
       required: [school, attributionStatus, administratorInvitation]
       properties:
-        school: { $ref: "#/components/schemas/School" }
-        attributionStatus: { type: string, enum: [CREATED, CONFLICT] }
-        conflictId: { type: ["integer", "null"] }
+        school:
+          type: object
+          required: [id, code, name, city, state, status, createdAt]
+          properties:
+            id: { type: integer }
+            code: { type: string }
+            name: { type: string }
+            city: { type: string }
+            state: { type: string }
+            status: { type: string }
+            createdAt: { type: string, format: date-time }
+        attributionStatus: { type: string, enum: [CREATED] }
         administratorInvitation:
           type: object
-          required: [email, status, expiresInDays]
+          required: [invitationId, email, status, dispatchStatus, deliveryStatus, deliveryNote, expiresInDays]
           properties:
+            invitationId: { type: string }
             email: { type: string, format: email }
-            status: { type: string, enum: [SENT] }
+            status: { type: string, enum: [DISPATCH_REQUESTED] }
+            dispatchStatus: { type: string, enum: [REQUEST_ACCEPTED] }
+            deliveryStatus: { type: string, enum: [UNVERIFIED] }
+            deliveryNote: { type: string }
             expiresInDays: { type: integer }
     DeviceAssignmentInput:
       type: object
