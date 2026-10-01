@@ -1,0 +1,109 @@
+IMMEDIATE FIX — UNBLOCK YEMAIT EDUCORE PUBLISH
+
+Fix ONLY the current Production publish blocker. Do not rebuild, redesign, or audit unrelated parts of the application.
+
+CURRENT BLOCKER
+
+The generated 259-statement migration currently does this:
+
+1. Statement 35:
+
+DROP INDEX "parent_student_relationship_unique";
+
+2. Statement 132:
+   creates the Transport foreign key referencing:
+
+parent_student_relationships(parent_id, student_id)
+
+3. Statement 259:
+   creates the replacement UNIQUE constraint.
+
+This order is invalid because PostgreSQL requires the referenced "(parent_id, student_id)" uniqueness to exist BEFORE the Transport foreign key is created.
+
+FIX
+
+Make the smallest possible migration/schema correction so the generated publish plan has this dependency order:
+
+EXISTING/REPLACEMENT UNIQUE(parent_id, student_id)
+        ↓
+TRANSPORT FOREIGN KEY(parent_id, student_id)
+
+Important
+
+- Preserve the existing "parent_student_relationship_unique".
+- Do NOT create a duplicate unique index.
+- Do NOT unnecessarily drop/rebuild the existing index.
+- If the existing unique index can be reused by the explicit UNIQUE constraint, use it.
+- Do NOT modify historical migrations.
+- Do NOT modify the migration ledger.
+- Do NOT rebuild the application.
+- Do NOT change unrelated features.
+- Do NOT run unnecessary tests across the entire application.
+- Do NOT change Production data.
+- Do NOT delete or truncate anything.
+
+FASTEST SAFE IMPLEMENTATION
+
+Use the existing corrected Development schema and make the minimum migration-order correction required by the schema generator.
+
+If the migration generator insists on dropping the existing index before creating the Transport foreign key, create/preserve the required UNIQUE constraint BEFORE that foreign key is generated.
+
+The final generated SQL must NOT have:
+
+DROP INDEX parent_student_relationship_unique
+→ Transport FOREIGN KEY
+→ replacement UNIQUE
+
+It must instead ensure:
+
+UNIQUE(parent_id, student_id)
+→ Transport FOREIGN KEY
+
+VERIFY ONLY THE BLOCKER
+
+Do one focused disposable PostgreSQL rehearsal of the corrected statements involving:
+
+- "parent_student_relationships"
+- the existing unique index/constraint
+- the Transport foreign key
+
+Confirm:
+
+1. Migration succeeds.
+2. Duplicate "(parent_id, student_id)" remains rejected.
+3. Transport foreign key is created successfully.
+4. No duplicate unique index is created.
+
+Do not run a large unrelated audit.
+
+THEN REGENERATE AND PUBLISH
+
+After the focused rehearsal passes:
+
+1. Regenerate the Production publish schema plan.
+2. Confirm the Transport foreign key is no longer created before its required uniqueness.
+3. Confirm there is no destructive DROP/TRUNCATE operation.
+4. Proceed with the normal Replit Publish.
+5. Do NOT stop merely because the schema is being updated — the required additive schema migration is now authorized.
+6. Do NOT enable LIVE Flutterwave credentials.
+7. Do NOT initiate any payment, refund, settlement, payroll transfer, or real-money transaction.
+
+After successful publication, perform only a basic health check and stop.
+
+I will begin manual testing immediately after publication.
+
+DO NOT WASTE CREDIT
+
+Do not:
+
+- rebuild existing modules
+- rerun the full historical migration chain
+- run a full application audit
+- rewrite unrelated code
+- regenerate unrelated schemas
+- create new features
+- perform extensive browser testing
+
+Fix the single migration dependency-order problem, regenerate the publish plan, and publish the latest Yemait EduCore build.
+
+If the corrected plan still has the Transport foreign key before the required uniqueness, stop and report that exact issue rather than making unrelated changes.
