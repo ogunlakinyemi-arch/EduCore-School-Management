@@ -11,6 +11,7 @@ import {
   serial,
   text,
   timestamp,
+  unique,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import {
@@ -200,7 +201,7 @@ export const staffNfcPayments = pgTable(
       .where(sql`${table.providerTransactionId} IS NOT NULL`),
     uniqueIndex("staff_nfc_payments_employee_idempotency_uq").on(table.employeeId, table.idempotencyKey),
     uniqueIndex("staff_nfc_payments_id_subscription_school_uq").on(table.id, table.subscriptionId, table.schoolId),
-    uniqueIndex("staff_nfc_payments_id_school_uq").on(table.id, table.schoolId),
+    unique("staff_nfc_payments_id_school_uq").on(table.id, table.schoolId),
     uniqueIndex("staff_nfc_payments_one_pending_attempt_per_subscription_uq")
       .on(table.subscriptionId)
       .where(sql`${table.status} IN ('PENDING','RECONCILIATION_REQUIRED')`),

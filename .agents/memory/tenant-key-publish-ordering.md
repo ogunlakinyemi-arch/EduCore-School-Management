@@ -28,3 +28,9 @@ A verified operator prerequisite that attaches a sole legacy unique index as the
 **Why:** Converting only Development exposed a replacement constraint but left Publish dropping the Production index before a dependent foreign key. After the operator attached the Production index, the fresh plan omitted both the drop and replacement, retaining the existing prerequisite.
 
 **How to apply:** Rehearse index attachment before foreign-key creation in disposable PostgreSQL. Require verified Production targeting and recovery protection for the operator step, then inspect a fresh Publish diff; do not assume that changing Development alone fixes ordering or ask the operator to repeat an already successful attachment.
+
+Non-destructive SQL is not sufficient evidence that all composite foreign-key prerequisites were generated.
+
+**Why:** A disposable Publish validation rejected a new table's `(id, school_id)` foreign key even though Development had its valid supporting index. The planner omitted that FK-bound standalone index; the parent's single-column primary key and a different three-column UNIQUE constraint did not satisfy the requested composite reference.
+
+**How to apply:** Check exact referenced column sets for newly created parent tables. When a required standalone key is omitted, align both the ORM declaration and Development catalog as an explicit UNIQUE constraint by reusing the original index, then require a fresh Publish validation. Do not rebuild the index, add duplicate uniqueness, or infer migration safety solely from an absence of DROP operations.
