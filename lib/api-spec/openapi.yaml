@@ -1483,6 +1483,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { description: Invitation is no longer eligible for replacement }
         "503": { description: Invitation replacement could not be safely completed }
+  /schools/{schoolId}/invitations/{invitationId}/resend:
     post:
       operationId: resendSchoolAdministratorInvitation
       tags: [schools]
@@ -1504,6 +1505,119 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { description: Invitation is no longer eligible for replacement }
         "503": { description: Invitation replacement could not be safely completed }
+  /schools/{schoolId}/users/invitations:
+    get:
+      operationId: listSchoolUserInvitations
+      tags: [users]
+      summary: List eligible pending school-user invitations for the active School Admin
+      description: School Admin of the selected tenant only. Platform Owners are read-only here. Accepted, registered and superseded identities are omitted.
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+      responses:
+        "200":
+          description: Current pending and expired invitations
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolUserInvitationList" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "503": { description: Provider invitation state cannot be safely determined }
+  /schools/{schoolId}/users/invitations/{invitationId}:
+    patch:
+      operationId: editSchoolUserInvitation
+      tags: [users]
+      summary: Replace only the selected school-user invitation with a corrected email
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - name: invitationId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100, pattern: "^[A-Za-z0-9_-]+$" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SchoolAdministratorInvitationEmailUpdate" }
+      responses:
+        "201":
+          description: Replacement request accepted; delivery remains unverified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolUserInvitationReplacement" }
+        "400": { description: Invalid replacement email }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: "Selected invitation is ineligible, stale or already being replaced" }
+        "503": { description: Provider or commit result requires reconciliation before another attempt }
+  /schools/{schoolId}/users/invitations/{invitationId}/resend:
+    post:
+      operationId: resendSchoolUserInvitation
+      tags: [users]
+      summary: Reissue exactly one selected school-user invitation to its current email
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - name: invitationId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100, pattern: "^[A-Za-z0-9_-]+$" }
+      responses:
+        "201":
+          description: Replacement request accepted; delivery remains unverified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolUserInvitationReplacement" }
+        "400": { description: Use PATCH rather than resend to change an email }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: "Selected invitation is ineligible, stale or already being replaced" }
+        "503": { description: Provider or commit result requires reconciliation before another attempt }
+  /schools/{schoolId}/invitations/{invitationId}/reconcile:
+    post:
+      operationId: reconcileSchoolAdministratorInvitation
+      tags: [schools]
+      summary: Reconcile one unresolved School Administrator replacement without sending another invitation
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - name: invitationId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100, pattern: "^[A-Za-z0-9_-]+$" }
+      responses:
+        "200":
+          description: Existing notification reconciled or a definitely unsent staged request safely resumed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolInvitationRecoveryResult" }
+        "202":
+          description: Provider outcome remains unresolved; no new invitation sent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolInvitationRecovery" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /schools/{schoolId}/users/invitations/{invitationId}/reconcile:
+    post:
+      operationId: reconcileSchoolUserInvitation
+      tags: [users]
+      summary: Reconcile one unresolved school-user replacement without sending another invitation
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - name: invitationId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100, pattern: "^[A-Za-z0-9_-]+$" }
+      responses:
+        "200":
+          description: Existing notification reconciled or a definitely unsent staged request safely resumed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolInvitationRecoveryResult" }
+        "202":
+          description: Provider outcome remains unresolved; no new invitation sent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolInvitationRecovery" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /people/imports/classes:
     get:
       operationId: listPeopleImportClasses
@@ -3261,6 +3375,25 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PartnerInvitation" }
+  /platform/partners/invitations/{invitationId}:
+    delete:
+      operationId: revokePlatformPartnerInvitation
+      tags: [partners]
+      summary: Revoke only the selected pending partner invitation
+      parameters:
+        - name: invitationId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Selected invitation revoked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerStaffInvitationRevocation" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: Invitation is not eligible for revocation }
   /platform/partners/{partnerId}/invitations/resend:
     post:
       operationId: resendPartnerInvitation
@@ -3275,6 +3408,11 @@ paths:
             schema:
               $ref: "#/components/schemas/PartnerInvitationSelection"
       responses:
+        "200":
+          description: Existing dispatch was reconciled without sending another invitation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartnerInvitationReconciliation" }
         "201":
           description: Replacement invitation request accepted; the raw token is never returned and delivery is unverified
           content:
@@ -3579,10 +3717,10 @@ paths:
     get:
       operationId: listPartnerStaffInvitations
       tags: [partner]
-      summary: List current non-expired partner staff invitations
+      summary: List pending and expired partner staff invitations with original permission
       responses:
         "200":
-          description: Current staff invitations without invitation tokens
+          description: Eligible staff invitations without tokens; registered members are excluded
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/PartnerStaffInvitationListItem" } }
@@ -3617,6 +3755,11 @@ paths:
           in: path
           required: true
           schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerStaffInvitationRecoveryInput" }
       responses:
         "201":
           description: Replacement invitation request accepted; raw invitation token is never returned
@@ -5273,13 +5416,15 @@ components:
         fullName: { type: ["string", "null"] }
         schoolId: { type: integer }
         role: { type: string, const: SCHOOL_ADMIN }
-        status: { type: string, enum: [PENDING, ACTIVE, EXPIRED, REVOKED, SUPERSEDED] }
+        status: { type: string, enum: [PENDING, ACTIVE, ACCEPTED, EXPIRED, REVOKED, SUPERSEDED, RECOVERY_REQUIRED] }
         clerkStatus: { type: ["string", "null"], enum: [pending, accepted, expired, revoked, revoked-or-ignored, null] }
         isCurrent: { type: boolean }
         membershipId: { type: ["integer", "null"] }
         userId: { type: ["integer", "null"] }
         createdAt: { type: ["string", "null"], format: date-time }
         expiresAt: { type: ["string", "null"], format: date-time }
+        recoveryAttemptId: { type: string }
+        recoveryState: { type: string, enum: [PREPARED, REVOCATION_REJECTED, REVOCATION_UNKNOWN, DISPATCHING, DISPATCH_REJECTED, OUTCOME_UNKNOWN, MULTIPLE_MATCHES] }
     SchoolAdministratorInvitationEmailUpdate:
       type: object
       required: [email]
@@ -5299,7 +5444,64 @@ components:
         role: { type: string, const: SCHOOL_ADMIN }
         dispatchStatus: { type: string, const: REQUEST_ACCEPTED }
         deliveryStatus: { type: string, const: UNVERIFIED }
-        expiresAt: { type: string, format: date-time }
+        expiresAt: { type: ["string", "null"], format: date-time }
+        recoveryStatus: { type: string, const: COMPLETED }
+    SchoolUserInvitationList:
+      type: object
+      required: [schoolId, invitations]
+      properties:
+        schoolId: { type: integer }
+        invitations:
+          type: array
+          items: { $ref: "#/components/schemas/SchoolUserInvitation" }
+    SchoolUserInvitation:
+      type: object
+      required: [invitationId, claimId, email, fullName, schoolId, role, status, clerkStatus, isCurrent, createdAt]
+      properties:
+        invitationId: { type: string, minLength: 1 }
+        claimId: { type: ["string", "null"] }
+        email: { type: string, format: email }
+        fullName: { type: ["string", "null"] }
+        schoolId: { type: integer }
+        role: { type: string, enum: [TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF] }
+        status: { type: string, enum: [PENDING, EXPIRED, RECOVERY_REQUIRED] }
+        clerkStatus: { type: ["string", "null"], enum: [pending, expired, null] }
+        isCurrent: { type: boolean, const: true }
+        createdAt: { type: ["string", "null"], format: date-time }
+        recoveryAttemptId: { type: string }
+        recoveryState: { type: string, enum: [PREPARED, REVOCATION_REJECTED, REVOCATION_UNKNOWN, DISPATCHING, DISPATCH_REJECTED, OUTCOME_UNKNOWN, MULTIPLE_MATCHES] }
+    SchoolUserInvitationReplacement:
+      type: object
+      required: [status, invitationId, supersededInvitationId, previousInviteRevoked, email, schoolId, role, dispatchStatus, deliveryStatus, expiresAt]
+      properties:
+        status: { type: string, const: PENDING }
+        invitationId: { type: string }
+        supersededInvitationId: { type: string }
+        previousInviteRevoked: { type: boolean }
+        email: { type: string, format: email }
+        schoolId: { type: integer }
+        role: { type: string, enum: [TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF] }
+        dispatchStatus: { type: string, const: REQUEST_ACCEPTED }
+        deliveryStatus: { type: string, const: UNVERIFIED }
+        expiresAt: { type: ["string", "null"], format: date-time }
+        recoveryStatus: { type: string, const: COMPLETED }
+    SchoolInvitationRecovery:
+      type: object
+      required: [status, attemptId, invitationId, email, role, recoveryState]
+      properties:
+        status: { type: string, enum: [RECOVERED, RECOVERY_REQUIRED] }
+        attemptId: { type: string }
+        invitationId: { type: ["string", "null"] }
+        email: { type: string, format: email }
+        role: { type: string, enum: [SCHOOL_ADMIN, TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF] }
+        clerkStatus: { type: ["string", "null"], enum: [pending, accepted, expired, revoked, null] }
+        previousInviteRevoked: { type: boolean }
+        recoveryState: { type: string, enum: [PREPARED, REVOCATION_REJECTED, REVOCATION_UNKNOWN, DISPATCHING, DISPATCH_REJECTED, OUTCOME_UNKNOWN, MULTIPLE_MATCHES, COMPLETED] }
+    SchoolInvitationRecoveryResult:
+      oneOf:
+        - $ref: "#/components/schemas/SchoolInvitationRecovery"
+        - $ref: "#/components/schemas/SchoolAdministratorInvitationReplacement"
+        - $ref: "#/components/schemas/SchoolUserInvitationReplacement"
     InvitationDiagnostics:
       type: object
       required: [invitationId, clerkStatus, expiresAt, dispatchStatus, deliveryStatus, note]
@@ -5862,6 +6064,7 @@ components:
                 role: { type: ["string", "null"], enum: [COMPANY_ACCOUNTANT, DEVICE_ACTIVATION_OFFICER, null] }
                 schoolId: { type: ["integer", "null"] }
                 invitationId: { type: ["string", "null"] }
+                createdAt: { type: ["string", "null"], format: date-time, description: Creation time of the invitation audit record, not the employee profile }
                 expiresAt: { type: ["string", "null"], format: date-time }
                 status: { type: string, enum: [NOT_INVITED, ACTIVE, PENDING, EXPIRED] }
     CompanyEmployeeInput:
@@ -6138,6 +6341,15 @@ components:
         invitationDeliveryStatus: { type: string, enum: [UNVERIFIED] }
         expiresAt: { type: string, format: date-time }
         createdAt: { type: string, format: date-time }
+    PartnerInvitationReconciliation:
+      allOf:
+        - oneOf:
+            - $ref: "#/components/schemas/PartnerInvitation"
+            - $ref: "#/components/schemas/Partner"
+        - type: object
+          required: [reconciliationOnly]
+          properties:
+            reconciliationOnly: { type: boolean, const: true }
     PartnerInvitationListItem:
       type: object
       required: [id, partnerId, email, invitationStatus, partnerStatus, createdAt, expiresAt, redeemedAt, status]
@@ -6145,12 +6357,12 @@ components:
         id: { type: integer }
         partnerId: { type: integer }
         email: { type: string, format: email }
-        invitationStatus: { type: string, enum: [ACTIVE, ACCEPTED, REVOKED] }
+        invitationStatus: { type: string, enum: [ACTIVE, ACCEPTED, REVOKED, DISPATCHING, UNKNOWN_PROVIDER_STATE, FAILED, RATE_LIMITED] }
         partnerStatus: { $ref: "#/components/schemas/PartnerStatus" }
         createdAt: { type: string, format: date-time }
         expiresAt: { type: string, format: date-time }
         redeemedAt: { type: ["string", "null"], format: date-time }
-        status: { type: string, enum: [PENDING, ACTIVE, EXPIRED, REVOKED] }
+        status: { type: string, enum: [PENDING, ACTIVE, ACCEPTED, EXPIRED, REVOKED, DISPATCHING, UNKNOWN_PROVIDER_STATE, FAILED, RATE_LIMITED] }
     PartnerUpdate:
       type: object
       minProperties: 1
@@ -6159,6 +6371,7 @@ components:
         fullName: { type: string, minLength: 2 }
         businessName: { type: string }
         email: { type: string, format: email, minLength: 1, maxLength: 254 }
+        invitationId: { type: integer, minimum: 1, description: Required when changing a pending invitation email; binds replacement to the selected invitation }
         phone: { type: string }
         address: { type: string }
         state: { type: string }
@@ -6239,17 +6452,29 @@ components:
         status: { type: string, const: PENDING }
         invitationDispatchStatus: { type: string, const: REQUEST_ACCEPTED }
         invitationDeliveryStatus: { type: string, const: UNVERIFIED }
+        invitationAttemptId: { type: string }
+        invitationAttemptStatus: { type: string, enum: [FINALIZED, RECOVERED] }
         expiresAt: { type: string, format: date-time }
         createdAt: { type: string, format: date-time }
+    PartnerStaffInvitationRecoveryInput:
+      type: object
+      additionalProperties: false
+      properties:
+        mode: { type: string, const: reconcile }
     PartnerStaffInvitationListItem:
       type: object
-      required: [id, email, status, createdAt, expiresAt]
+      required: [id, recipient, email, role, permission, status, createdAt, expiresAt]
       properties:
         id: { type: integer }
+        recipient: { type: string }
         email: { type: string, format: email }
-        status: { type: string, const: ACTIVE }
+        role: { $ref: "#/components/schemas/PartnerStaffRole" }
+        permission: { $ref: "#/components/schemas/PartnerStaffPermission" }
+        status: { type: string, enum: [PENDING, EXPIRED, DISPATCHING, UNKNOWN_PROVIDER_STATE] }
         createdAt: { type: string, format: date-time }
         expiresAt: { type: string, format: date-time }
+        invitationAttemptId: { type: string }
+        selectedInvitationId: { type: ["integer", "null"] }
     PartnerStaffInvitationRevocation:
       type: object
       required: [id, partnerId, status]

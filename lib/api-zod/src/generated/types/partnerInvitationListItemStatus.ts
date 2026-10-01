@@ -12,6 +12,11 @@ export type PartnerInvitationListItemStatus = typeof PartnerInvitationListItemSt
 export const PartnerInvitationListItemStatus = {
   PENDING: 'PENDING',
   ACTIVE: 'ACTIVE',
+  ACCEPTED: 'ACCEPTED',
   EXPIRED: 'EXPIRED',
   REVOKED: 'REVOKED',
+  DISPATCHING: 'DISPATCHING',
+  UNKNOWN_PROVIDER_STATE: 'UNKNOWN_PROVIDER_STATE',
+  FAILED: 'FAILED',
+  RATE_LIMITED: 'RATE_LIMITED',
 } as const;

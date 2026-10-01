@@ -2,7 +2,8 @@ import { useRef, useState } from 'react';
 import { Route, Switch, Link, useLocation } from 'wouter';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { 
-  useListPartners, 
+  useListPartners,
+  getListPartnersQueryKey,
   useCreatePartnerInvitation,
   useGetPartner,
   useUpdatePartnerStatus,
@@ -52,7 +53,7 @@ type PlatformPartnerInvitation = {
   id: number;
   partnerId: number;
   email: string;
-  status: 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'DISPATCHING' | 'UNKNOWN_PROVIDER_STATE' | 'FAILED' | 'RATE_LIMITED';
+  status: 'PENDING' | 'ACTIVE' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED' | 'DISPATCHING' | 'UNKNOWN_PROVIDER_STATE' | 'FAILED' | 'RATE_LIMITED';
   createdAt?: string;
   updatedAt?: string;
   expiresAt?: string;
@@ -81,40 +82,43 @@ function PartnersOverview() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingInvitation, setEditingInvitation] = useState<PlatformPartnerInvitation | null>(null);
   const [resendingInvitationIds, setResendingInvitationIds] = useState<Set<number>>(() => new Set());
+  const [revokingInvitationIds, setRevokingInvitationIds] = useState<Set<number>>(() => new Set());
   const resendingInvitationIdsRef = useRef(new Set<number>());
   const updateInvitationEmail = useMutation({
-    mutationFn: ({ partnerId, email }: { partnerId: number; email: string }) =>
+    mutationFn: ({ partnerId, invitationId, email }: { partnerId: number; invitationId: number; email: string }) =>
       platformPartnerRequest(`/platform/partners/${partnerId}`, {
         method: 'PATCH',
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, invitationId }),
       }),
     onSuccess: async () => {
       toast({ title: 'Invitation email updated', description: 'The previous invitation was superseded.' });
       setEditingInvitation(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['platformPartnerInvitations'] }),
-        queryClient.invalidateQueries({ queryKey: ['listPartners'] }),
+        queryClient.invalidateQueries({ queryKey: getListPartnersQueryKey() }),
       ]);
     },
-    onError: (error: Error) => toast({
-      title: 'Email update failed',
-      description: error.message,
-      variant: 'destructive',
-    }),
+    onError: async (error: Error) => {
+      toast({ title: 'Email update failed', description: error.message, variant: 'destructive' });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['platformPartnerInvitations'] }),
+        queryClient.invalidateQueries({ queryKey: getListPartnersQueryKey() }),
+      ]);
+    },
   });
   const resendInvitation = useMutation({
     mutationFn: ({ partnerId, invitationId }: { partnerId: number; invitationId: number; reconcile: boolean }) =>
-      platformPartnerRequest(`/platform/partners/${partnerId}/invitations/resend`, {
+      platformPartnerRequest<{ reconciliationOnly?: boolean }>(`/platform/partners/${partnerId}/invitations/resend`, {
         method: 'POST',
         body: JSON.stringify({ invitationId }),
       }),
     onSuccess: async (_result, { reconcile }) => {
-      toast(reconcile
+      toast(reconcile || _result.reconciliationOnly
         ? { title: 'Invitation reconciliation completed', description: 'The existing provider attempt was reconciled; no new invitation was sent.' }
         : { title: 'Replacement invitation requested', description: 'The invitation list will refresh shortly.' });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['platformPartnerInvitations'] }),
-        queryClient.invalidateQueries({ queryKey: ['listPartners'] }),
+        queryClient.invalidateQueries({ queryKey: getListPartnersQueryKey() }),
       ]);
     },
     onError: async (error: Error, { reconcile }) => {
@@ -125,13 +129,20 @@ function PartnersOverview() {
           : error.message,
         variant: 'destructive',
       });
-      if (reconcile) {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ['platformPartnerInvitations'] }),
-          queryClient.invalidateQueries({ queryKey: ['listPartners'] }),
-        ]);
-      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['platformPartnerInvitations'] }),
+        queryClient.invalidateQueries({ queryKey: getListPartnersQueryKey() }),
+      ]);
     },
+  });
+  const revokeInvitation = useMutation({
+    mutationFn: (invitationId: number) =>
+      platformPartnerRequest(`/platform/partners/invitations/${invitationId}`, { method: 'DELETE' }),
+    onSuccess: async () => {
+      toast({ title: 'Invitation cancelled', description: 'Only the selected invitation was revoked.' });
+      await queryClient.invalidateQueries({ queryKey: ['platformPartnerInvitations'] });
+    },
+    onError: (error: Error) => toast({ title: 'Cancellation failed', description: error.message, variant: 'destructive' }),
   });
 
   const requestInvitationResend = (variables: { partnerId: number; invitationId: number; reconcile: boolean }) => {
@@ -142,6 +153,21 @@ function PartnersOverview() {
       .finally(() => {
         resendingInvitationIdsRef.current.delete(variables.invitationId);
         setResendingInvitationIds(new Set(resendingInvitationIdsRef.current));
+      })
+      .catch(() => undefined);
+  };
+  const requestInvitationRevocation = (invitationId: number) => {
+    if (resendingInvitationIdsRef.current.has(invitationId)) return;
+    resendingInvitationIdsRef.current.add(invitationId);
+    setRevokingInvitationIds(current => new Set(current).add(invitationId));
+    void revokeInvitation.mutateAsync(invitationId)
+      .finally(() => {
+        resendingInvitationIdsRef.current.delete(invitationId);
+        setRevokingInvitationIds(current => {
+          const next = new Set(current);
+          next.delete(invitationId);
+          return next;
+        });
       })
       .catch(() => undefined);
   };
@@ -221,13 +247,18 @@ function PartnersOverview() {
                     const invitation = latestInvitationByPartner.get(partner.id);
                     const status = invitation?.status ?? (partner.status === 'INVITED' ? 'PENDING' : partner.status);
                     const isUnresolved = status === 'DISPATCHING' || status === 'UNKNOWN_PROVIDER_STATE';
-                    const label = status === 'PENDING' ? 'Pending' : status === 'ACTIVE' ? 'Active' :
+                      const label = status === 'PENDING' ? 'Pending' : status === 'ACTIVE' ? 'Active' : status === 'ACCEPTED' ? 'Accepted' :
                       status === 'DISPATCHING' ? 'Dispatch in progress' :
                         status === 'UNKNOWN_PROVIDER_STATE' ? 'Provider state unknown' :
                           status === 'RATE_LIMITED' ? 'Rate limited' : status === 'FAILED' ? 'Failed' : status;
                     return <div className="space-y-1">
                       <StatusPill value={status} />
                       <div className="text-xs text-[hsl(var(--muted-foreground))]">Invitation: {label}</div>
+                      {invitation && <>
+                        <div className="text-xs text-[hsl(var(--muted-foreground))]">Recipient: {invitation.email}</div>
+                        <div className="text-xs text-[hsl(var(--muted-foreground))]">Role: Partner</div>
+                        {invitation.createdAt && <div className="text-xs text-[hsl(var(--muted-foreground))]">Requested: {new Date(invitation.createdAt).toLocaleString()}</div>}
+                      </>}
                       {isUnresolved && <div className="max-w-xs text-xs text-amber-700 dark:text-amber-300" role="status">
                         Provider state is unresolved. Do not send another invitation; reconcile the existing attempt.
                       </div>}
@@ -250,28 +281,31 @@ function PartnersOverview() {
                       const isResending = invitation
                         ? hasStableInvitationId && resendingInvitationIds.has(invitation.id)
                         : false;
+                       const isRevoking = !!invitation && revokingInvitationIds.has(invitation.id);
                       return canManageInvitation && <>
-                        {invitationStatus === 'PENDING' && <Button
+                        {invitationStatus === 'PENDING' && hasStableInvitationId && invitation && <Button
                           variant="outline"
                           className="h-8 px-3 text-xs"
-                          disabled={updateInvitationEmail.isPending || invitations.isError}
-                          onClick={() => setEditingInvitation(invitation ?? {
-                            id: 0,
-                            partnerId: partner.id,
-                            email: partner.email,
-                            status: 'PENDING',
-                          })}
+                          disabled={updateInvitationEmail.isPending || isResending || isRevoking || invitations.isError}
+                          onClick={() => setEditingInvitation(invitation)}
                           aria-label={`Edit invitation email for ${partner.fullName}`}
                         ><Pencil size={13} />Edit email</Button>}
                         {hasStableInvitationId && invitation && <Button
                           className="h-8 px-3 text-xs"
                           type="button"
-                          disabled={isResending || invitations.isError}
+                           disabled={isResending || isRevoking || invitations.isError || (updateInvitationEmail.isPending && editingInvitation?.id === invitation.id)}
                           onClick={() => requestInvitationResend({ partnerId: partner.id, invitationId: invitation.id, reconcile: isUnresolved })}
                           aria-label={isUnresolved
                             ? `Retry invitation reconciliation for ${partner.fullName}`
                             : `Resend invitation for ${partner.fullName}`}
-                        ><Send size={13} />{isResending ? (isUnresolved ? 'Reconciling…' : 'Resending…') : isUnresolved ? 'Retry reconciliation' : 'Resend'}</Button>}
+                         ><Send size={13} />{isResending ? (isUnresolved ? 'Reconciling…' : 'Resending…') : isUnresolved ? 'Retry reconciliation' : 'Resend Link'}</Button>}
+                        {hasStableInvitationId && invitation && (invitationStatus === 'PENDING' || invitationStatus === 'EXPIRED') && <Button
+                          variant="outline"
+                          className="h-8 px-3 text-xs"
+                          disabled={isResending || isRevoking || invitations.isError || (updateInvitationEmail.isPending && editingInvitation?.id === invitation.id)}
+                          onClick={() => requestInvitationRevocation(invitation.id)}
+                          aria-label={`Cancel invitation for ${partner.fullName}`}
+                        >{isRevoking ? 'Cancelling…' : 'Cancel invitation'}</Button>}
                       </>;
                     })()}
                     <Link href={`/partners/${partner.id}`}>
@@ -305,9 +339,12 @@ function PartnersOverview() {
       {showInvite && <InvitePartnerModal onClose={() => setShowInvite(false)} />}
       {editingInvitation && <EditPartnerInvitationModal
         invitation={editingInvitation}
-        isPending={updateInvitationEmail.isPending}
+        isPending={updateInvitationEmail.isPending || resendingInvitationIds.has(editingInvitation.id) || revokingInvitationIds.has(editingInvitation.id)}
         onClose={() => setEditingInvitation(null)}
-        onSave={(email) => updateInvitationEmail.mutate({ partnerId: editingInvitation.partnerId, email })}
+        onSave={(email) => {
+          if (resendingInvitationIdsRef.current.has(editingInvitation.id)) return;
+          updateInvitationEmail.mutate({ partnerId: editingInvitation.partnerId, invitationId: editingInvitation.id, email });
+        }}
       />}
     </div>
   );
@@ -363,7 +400,8 @@ function InvitePartnerModal({ onClose }: { onClose: () => void }) {
           title: 'Invitation request accepted',
           description: `Clerk accepted the invitation request for ${data.email}; inbox delivery is not verified.`,
         });
-        queryClient.invalidateQueries({ queryKey: ['listPartners'] });
+        void queryClient.invalidateQueries({ queryKey: getListPartnersQueryKey() });
+        void queryClient.invalidateQueries({ queryKey: ['platformPartnerInvitations'] });
         onClose();
       },
       onError: (err: any) => {

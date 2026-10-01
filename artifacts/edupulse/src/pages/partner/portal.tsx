@@ -25,7 +25,6 @@ import {
   School as SchoolIcon,
   Copy,
   Check,
-  Users,
   FileSpreadsheet
 } from 'lucide-react';
 import { 
@@ -50,6 +49,7 @@ import { useState } from 'react';
 import { CommunicationInbox, CommunicationInboxBadge } from '@/pages/communication-inbox';
 import { NotificationSettings } from '@/pages/notification-settings';
 import { ReportingPage } from '@/pages/reporting';
+import PartnerStaff from '@/pages/partner/partner-staff';
 
 function Loading() {
   return (
@@ -621,166 +621,6 @@ function InviteSchool() {
           </ul>
         </div>
       </div>
-    </div>
-  );
-}
-
-async function partnerApi<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, {
-    ...init,
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-  });
-  const result = await response.json();
-  if (!response.ok) throw new Error(result?.error || 'Partner request failed');
-  return result as T;
-}
-
-function PartnerStaff() {
-  const profile = useGetPartnerProfile();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const [email, setEmail] = useState('');
-  const [permission, setPermission] = useState('STANDARD');
-  const staff = useQuery({
-    queryKey: ['partner-staff'],
-    queryFn: () => partnerApi<Array<{ userId: number; email: string; fullName: string; role: string; status: string }>>('/partner/staff'),
-  });
-  const invitations = useQuery({
-    queryKey: ['partner-staff-invitations'],
-    queryFn: () => partnerApi<Array<{ id: number; email: string; status: string; expiresAt: string }>>('/partner/staff/invitations'),
-  });
-  const invite = useMutation({
-    mutationFn: (inviteEmail: string) => partnerApi('/partner/staff-invitations', {
-      method: 'POST',
-      body: JSON.stringify({ email: inviteEmail, permission }),
-    }),
-    onSuccess: () => {
-      toast({ title: 'Invitation sent', description: `A secure Clerk invitation was sent to ${email}.` });
-      setEmail('');
-      setPermission('STANDARD');
-      queryClient.invalidateQueries({ queryKey: ['partner-staff-invitations'] });
-    },
-    onError: (error: Error) => toast({
-      title: 'Invitation failed', description: error.message, variant: 'destructive',
-    }),
-  });
-
-  const isOwner = (profile.data as any)?.isOwner ||
-    ['PARTNER_OWNER', 'PARTNER_ADMIN'].includes((profile.data as any)?.partnerRole);
-  if (profile.isLoading || staff.isLoading || invitations.isLoading) return <SkeletonPage />;
-  if (!isOwner) {
-    return <div className="mx-auto max-w-3xl p-8"><div className="panel p-8 text-center">
-      <h1 className="display-font text-2xl font-bold">Partner owner access required</h1>
-      <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Only a partner owner or administrator can manage staff invitations.</p>
-    </div></div>;
-  }
-  if (staff.isError) return <ErrorState message={(staff.error as Error).message} retry={() => staff.refetch()} />;
-
-  return (
-    <div className="mx-auto max-w-5xl p-5 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="mb-7">
-        <div className="eyebrow">Partner access</div>
-        <h1 className="display-font mt-2 text-3xl font-bold">Partner Staff</h1>
-        <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Invite staff through Clerk. Recipients set their own password; staff do not receive partner-owner controls.</p>
-      </div>
-      <form className="panel mb-6 flex flex-col gap-4 p-5 sm:flex-row sm:items-end"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (email.trim()) invite.mutate(email.trim());
-        }}>
-        <div className="flex-1">
-          <Field label="Staff email address">
-            <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)}
-              placeholder="staff@example.com" autoComplete="email" />
-          </Field>
-        </div>
-        <div className="sm:w-56">
-          <Field label="Access level">
-            <select value={permission} onChange={(event) => setPermission(event.target.value)}>
-              <option value="STANDARD">Standard staff</option>
-              <option value="FINANCE">Finance reports</option>
-              <option value="ADMIN">Partner administrator</option>
-            </select>
-          </Field>
-        </div>
-        <Button type="submit" disabled={invite.isPending || !email.trim()}>
-          {invite.isPending ? 'Sending invitation…' : 'Invite staff'}
-        </Button>
-      </form>
-      {invitations.isError && <div className="mb-4 text-sm text-[hsl(var(--destructive))]">{(invitations.error as Error).message}</div>}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="panel overflow-hidden">
-          <div className="border-b border-[hsl(var(--border))] p-5">
-            <h2 className="display-font text-xl font-bold">Active staff</h2>
-          </div>
-          {(staff.data ?? []).length ? (staff.data ?? []).map((member) => (
-            <div key={member.userId} className="border-b border-[hsl(var(--border)/.6)] p-4 last:border-0">
-              <div className="mb-3 flex items-center justify-between">
-                <div><div className="font-semibold">{member.fullName || member.email}</div><div className="text-sm text-[hsl(var(--muted-foreground))]">{member.email}</div></div>
-                <StatusPill value={member.status} />
-              </div>
-              <StaffAccessControl member={member} />
-            </div>
-          )) : <EmptyState icon={Users} title="No staff yet" description="Send a secure invitation to add a partner staff member." />}
-        </section>
-        <section className="panel overflow-hidden">
-          <div className="border-b border-[hsl(var(--border))] p-5">
-            <h2 className="display-font text-xl font-bold">Pending invitations</h2>
-          </div>
-          {(invitations.data ?? []).length ? (invitations.data ?? []).map((pending) => (
-            <div key={pending.id} className="flex items-center justify-between border-b border-[hsl(var(--border)/.6)] p-4 last:border-0">
-              <div><div className="font-semibold">{pending.email}</div><div className="text-xs text-[hsl(var(--muted-foreground))]">Expires {date(pending.expiresAt)}</div></div>
-              <StatusPill value="PENDING" />
-            </div>
-          )) : <div className="p-6 text-sm text-[hsl(var(--muted-foreground))]">No pending invitations.</div>}
-        </section>
-      </div>
-    </div>
-  );
-}
-
-function StaffAccessControl({ member }: {
-  member: { userId: number; role: string };
-}) {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const permissionForRole: Record<string, string> = {
-    PARTNER_STAFF: 'STANDARD',
-    PARTNER_FINANCE: 'FINANCE',
-    PARTNER_ADMIN: 'ADMIN',
-  };
-  const [permission, setPermission] = useState(permissionForRole[member.role] ?? 'STANDARD');
-  const [savedPermission, setSavedPermission] = useState(permissionForRole[member.role] ?? 'STANDARD');
-  const update = useMutation({
-    mutationFn: () => partnerApi(`/partner/staff/${member.userId}/permissions`, {
-      method: 'PATCH',
-      body: JSON.stringify({ permission }),
-    }),
-    onSuccess: () => {
-      setSavedPermission(permission);
-      toast({ title: 'Staff access updated' });
-      queryClient.invalidateQueries({ queryKey: ['partner-staff'] });
-    },
-    onError: (error: Error) => toast({
-      title: 'Could not update access', description: error.message, variant: 'destructive',
-    }),
-  });
-  return (
-    <div className="flex items-end gap-3">
-      <div className="flex-1">
-        <Field label="Permissions">
-          <select value={permission} onChange={(event) => setPermission(event.target.value)}>
-            <option value="STANDARD">Standard staff — schools & referrals</option>
-            <option value="FINANCE">Finance — commissions & payout reports</option>
-            <option value="ADMIN">Administrator — staff, profile & payout settings</option>
-          </select>
-        </Field>
-      </div>
-      <Button type="button" variant="outline" disabled={update.isPending || permission === savedPermission}
-        onClick={() => update.mutate()}>
-        {update.isPending ? 'Saving…' : 'Save'}
-      </Button>
     </div>
   );
 }

@@ -28,7 +28,7 @@ describe('internal company employee invitation form', () => {
   });
 
   it('supports editing and resending only pending or expired invitations through invitation routes', () => {
-    expect(source).toContain("employee.invitationStatus.status === 'PENDING' || employee.invitationStatus.status === 'EXPIRED'");
+    expect(source).toContain("['PENDING', 'EXPIRED'].includes(employee.invitationStatus.status)");
     expect(source).toContain('`${endpoint}/${id}/invitation`');
     expect(source).toContain("method: 'PATCH'");
     expect(source).toContain('body: JSON.stringify({ email })');

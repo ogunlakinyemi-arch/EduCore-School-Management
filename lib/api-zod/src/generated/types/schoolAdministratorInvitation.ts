@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { SchoolAdministratorInvitationClerkStatus } from './schoolAdministratorInvitationClerkStatus';
+import type { SchoolAdministratorInvitationRecoveryState } from './schoolAdministratorInvitationRecoveryState';
 import type { SchoolAdministratorInvitationStatus } from './schoolAdministratorInvitationStatus';
 
 export interface SchoolAdministratorInvitation {
@@ -30,4 +31,6 @@ export interface SchoolAdministratorInvitation {
   createdAt: Date | null;
   /** @nullable */
   expiresAt: Date | null;
+  recoveryAttemptId?: string;
+  recoveryState?: SchoolAdministratorInvitationRecoveryState;
 }

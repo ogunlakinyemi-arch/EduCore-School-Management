@@ -215,7 +215,7 @@ describe('school student invitation UI', () => {
       await new Promise(resolve => setTimeout(resolve, 0));
     });
     expect(host.textContent).toContain('Select an existing student profile');
-    expect(fetch).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalledWith('/api/school-users/invitations', expect.anything());
   });
 
   it('clears the selected student when the role or school changes', async () => {

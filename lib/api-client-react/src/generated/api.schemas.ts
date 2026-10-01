@@ -1028,9 +1028,11 @@ export type SchoolAdministratorInvitationStatus = typeof SchoolAdministratorInvi
 export const SchoolAdministratorInvitationStatus = {
   PENDING: 'PENDING',
   ACTIVE: 'ACTIVE',
+  ACCEPTED: 'ACCEPTED',
   EXPIRED: 'EXPIRED',
   REVOKED: 'REVOKED',
   SUPERSEDED: 'SUPERSEDED',
+  RECOVERY_REQUIRED: 'RECOVERY_REQUIRED',
 } as const;
 
 /**
@@ -1045,6 +1047,19 @@ export const SchoolAdministratorInvitationClerkStatus = {
   expired: 'expired',
   revoked: 'revoked',
   'revoked-or-ignored': 'revoked-or-ignored',
+} as const;
+
+export type SchoolAdministratorInvitationRecoveryState = typeof SchoolAdministratorInvitationRecoveryState[keyof typeof SchoolAdministratorInvitationRecoveryState];
+
+
+export const SchoolAdministratorInvitationRecoveryState = {
+  PREPARED: 'PREPARED',
+  REVOCATION_REJECTED: 'REVOCATION_REJECTED',
+  REVOCATION_UNKNOWN: 'REVOCATION_UNKNOWN',
+  DISPATCHING: 'DISPATCHING',
+  DISPATCH_REJECTED: 'DISPATCH_REJECTED',
+  OUTCOME_UNKNOWN: 'OUTCOME_UNKNOWN',
+  MULTIPLE_MATCHES: 'MULTIPLE_MATCHES',
 } as const;
 
 export interface SchoolAdministratorInvitation {
@@ -1069,6 +1084,8 @@ export interface SchoolAdministratorInvitation {
   createdAt: string | null;
   /** @nullable */
   expiresAt: string | null;
+  recoveryAttemptId?: string;
+  recoveryState?: SchoolAdministratorInvitationRecoveryState;
 }
 
 export interface SchoolAdministratorInvitationList {
@@ -1095,8 +1112,167 @@ export interface SchoolAdministratorInvitationReplacement {
   role: 'SCHOOL_ADMIN';
   dispatchStatus: 'REQUEST_ACCEPTED';
   deliveryStatus: 'UNVERIFIED';
-  expiresAt: string;
+  /** @nullable */
+  expiresAt: string | null;
+  recoveryStatus?: 'COMPLETED';
 }
+
+export type SchoolUserInvitationRole = typeof SchoolUserInvitationRole[keyof typeof SchoolUserInvitationRole];
+
+
+export const SchoolUserInvitationRole = {
+  TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+  STAFF: 'STAFF',
+} as const;
+
+export type SchoolUserInvitationStatus = typeof SchoolUserInvitationStatus[keyof typeof SchoolUserInvitationStatus];
+
+
+export const SchoolUserInvitationStatus = {
+  PENDING: 'PENDING',
+  EXPIRED: 'EXPIRED',
+  RECOVERY_REQUIRED: 'RECOVERY_REQUIRED',
+} as const;
+
+/**
+ * @nullable
+ */
+export type SchoolUserInvitationClerkStatus = typeof SchoolUserInvitationClerkStatus[keyof typeof SchoolUserInvitationClerkStatus] | null;
+
+
+export const SchoolUserInvitationClerkStatus = {
+  pending: 'pending',
+  expired: 'expired',
+} as const;
+
+export type SchoolUserInvitationRecoveryState = typeof SchoolUserInvitationRecoveryState[keyof typeof SchoolUserInvitationRecoveryState];
+
+
+export const SchoolUserInvitationRecoveryState = {
+  PREPARED: 'PREPARED',
+  REVOCATION_REJECTED: 'REVOCATION_REJECTED',
+  REVOCATION_UNKNOWN: 'REVOCATION_UNKNOWN',
+  DISPATCHING: 'DISPATCHING',
+  DISPATCH_REJECTED: 'DISPATCH_REJECTED',
+  OUTCOME_UNKNOWN: 'OUTCOME_UNKNOWN',
+  MULTIPLE_MATCHES: 'MULTIPLE_MATCHES',
+} as const;
+
+export interface SchoolUserInvitation {
+  /** @minLength 1 */
+  invitationId: string;
+  /** @nullable */
+  claimId: string | null;
+  email: string;
+  /** @nullable */
+  fullName: string | null;
+  schoolId: number;
+  role: SchoolUserInvitationRole;
+  status: SchoolUserInvitationStatus;
+  /** @nullable */
+  clerkStatus: SchoolUserInvitationClerkStatus;
+  isCurrent: true;
+  /** @nullable */
+  createdAt: string | null;
+  recoveryAttemptId?: string;
+  recoveryState?: SchoolUserInvitationRecoveryState;
+}
+
+export interface SchoolUserInvitationList {
+  schoolId: number;
+  invitations: SchoolUserInvitation[];
+}
+
+export type SchoolUserInvitationReplacementRole = typeof SchoolUserInvitationReplacementRole[keyof typeof SchoolUserInvitationReplacementRole];
+
+
+export const SchoolUserInvitationReplacementRole = {
+  TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+  STAFF: 'STAFF',
+} as const;
+
+export interface SchoolUserInvitationReplacement {
+  status: 'PENDING';
+  invitationId: string;
+  supersededInvitationId: string;
+  previousInviteRevoked: boolean;
+  email: string;
+  schoolId: number;
+  role: SchoolUserInvitationReplacementRole;
+  dispatchStatus: 'REQUEST_ACCEPTED';
+  deliveryStatus: 'UNVERIFIED';
+  /** @nullable */
+  expiresAt: string | null;
+  recoveryStatus?: 'COMPLETED';
+}
+
+export type SchoolInvitationRecoveryStatus = typeof SchoolInvitationRecoveryStatus[keyof typeof SchoolInvitationRecoveryStatus];
+
+
+export const SchoolInvitationRecoveryStatus = {
+  RECOVERED: 'RECOVERED',
+  RECOVERY_REQUIRED: 'RECOVERY_REQUIRED',
+} as const;
+
+export type SchoolInvitationRecoveryRole = typeof SchoolInvitationRecoveryRole[keyof typeof SchoolInvitationRecoveryRole];
+
+
+export const SchoolInvitationRecoveryRole = {
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+  TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+  STAFF: 'STAFF',
+} as const;
+
+/**
+ * @nullable
+ */
+export type SchoolInvitationRecoveryClerkStatus = typeof SchoolInvitationRecoveryClerkStatus[keyof typeof SchoolInvitationRecoveryClerkStatus] | null;
+
+
+export const SchoolInvitationRecoveryClerkStatus = {
+  pending: 'pending',
+  accepted: 'accepted',
+  expired: 'expired',
+  revoked: 'revoked',
+} as const;
+
+export type SchoolInvitationRecoveryRecoveryState = typeof SchoolInvitationRecoveryRecoveryState[keyof typeof SchoolInvitationRecoveryRecoveryState];
+
+
+export const SchoolInvitationRecoveryRecoveryState = {
+  PREPARED: 'PREPARED',
+  REVOCATION_REJECTED: 'REVOCATION_REJECTED',
+  REVOCATION_UNKNOWN: 'REVOCATION_UNKNOWN',
+  DISPATCHING: 'DISPATCHING',
+  DISPATCH_REJECTED: 'DISPATCH_REJECTED',
+  OUTCOME_UNKNOWN: 'OUTCOME_UNKNOWN',
+  MULTIPLE_MATCHES: 'MULTIPLE_MATCHES',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export interface SchoolInvitationRecovery {
+  status: SchoolInvitationRecoveryStatus;
+  attemptId: string;
+  /** @nullable */
+  invitationId: string | null;
+  email: string;
+  role: SchoolInvitationRecoveryRole;
+  /** @nullable */
+  clerkStatus?: SchoolInvitationRecoveryClerkStatus;
+  previousInviteRevoked?: boolean;
+  recoveryState: SchoolInvitationRecoveryRecoveryState;
+}
+
+export type SchoolInvitationRecoveryResult = SchoolInvitationRecovery | SchoolAdministratorInvitationReplacement | SchoolUserInvitationReplacement;
 
 export type InvitationDiagnosticsDispatchStatus = typeof InvitationDiagnosticsDispatchStatus[keyof typeof InvitationDiagnosticsDispatchStatus];
 
@@ -2019,6 +2195,11 @@ export type CompanyEmployeeInvitationStatusInvitation = {
   schoolId: number | null;
   /** @nullable */
   invitationId: string | null;
+  /**
+     * Creation time of the invitation audit record
+     * @nullable
+     */
+  createdAt?: string | null;
   /** @nullable */
   expiresAt: string | null;
   status: CompanyEmployeeInvitationStatusInvitationStatus;
@@ -2424,6 +2605,10 @@ export interface PartnerInvitation {
   createdAt: string;
 }
 
+export type PartnerInvitationReconciliation = (PartnerInvitation | Partner) & {
+  reconciliationOnly: true;
+};
+
 export type PartnerInvitationListItemInvitationStatus = typeof PartnerInvitationListItemInvitationStatus[keyof typeof PartnerInvitationListItemInvitationStatus];
 
 
@@ -2431,6 +2616,10 @@ export const PartnerInvitationListItemInvitationStatus = {
   ACTIVE: 'ACTIVE',
   ACCEPTED: 'ACCEPTED',
   REVOKED: 'REVOKED',
+  DISPATCHING: 'DISPATCHING',
+  UNKNOWN_PROVIDER_STATE: 'UNKNOWN_PROVIDER_STATE',
+  FAILED: 'FAILED',
+  RATE_LIMITED: 'RATE_LIMITED',
 } as const;
 
 export type PartnerInvitationListItemStatus = typeof PartnerInvitationListItemStatus[keyof typeof PartnerInvitationListItemStatus];
@@ -2439,8 +2628,13 @@ export type PartnerInvitationListItemStatus = typeof PartnerInvitationListItemSt
 export const PartnerInvitationListItemStatus = {
   PENDING: 'PENDING',
   ACTIVE: 'ACTIVE',
+  ACCEPTED: 'ACCEPTED',
   EXPIRED: 'EXPIRED',
   REVOKED: 'REVOKED',
+  DISPATCHING: 'DISPATCHING',
+  UNKNOWN_PROVIDER_STATE: 'UNKNOWN_PROVIDER_STATE',
+  FAILED: 'FAILED',
+  RATE_LIMITED: 'RATE_LIMITED',
 } as const;
 
 export interface PartnerInvitationListItem {
@@ -2465,6 +2659,11 @@ export interface PartnerUpdate {
      * @maxLength 254
      */
   email?: string;
+  /**
+     * Required when changing a pending invitation email; binds replacement to the selected invitation
+     * @minimum 1
+     */
+  invitationId?: number;
   phone?: string;
   address?: string;
   state?: string;
@@ -2563,6 +2762,14 @@ export interface PartnerStaffInvitationInput {
   permission?: PartnerStaffPermission;
 }
 
+export type PartnerStaffInvitationInvitationAttemptStatus = typeof PartnerStaffInvitationInvitationAttemptStatus[keyof typeof PartnerStaffInvitationInvitationAttemptStatus];
+
+
+export const PartnerStaffInvitationInvitationAttemptStatus = {
+  FINALIZED: 'FINALIZED',
+  RECOVERED: 'RECOVERED',
+} as const;
+
 export interface PartnerStaffInvitation {
   id: number;
   partnerId: number;
@@ -2572,16 +2779,39 @@ export interface PartnerStaffInvitation {
   status: 'PENDING';
   invitationDispatchStatus: 'REQUEST_ACCEPTED';
   invitationDeliveryStatus: 'UNVERIFIED';
+  invitationAttemptId?: string;
+  invitationAttemptStatus?: PartnerStaffInvitationInvitationAttemptStatus;
   expiresAt: string;
   createdAt: string;
 }
 
+export const PartnerStaffInvitationRecoveryInputValue = {
+  mode: 'reconcile',
+} as const;
+export type PartnerStaffInvitationRecoveryInput = typeof PartnerStaffInvitationRecoveryInputValue;
+
+export type PartnerStaffInvitationListItemStatus = typeof PartnerStaffInvitationListItemStatus[keyof typeof PartnerStaffInvitationListItemStatus];
+
+
+export const PartnerStaffInvitationListItemStatus = {
+  PENDING: 'PENDING',
+  EXPIRED: 'EXPIRED',
+  DISPATCHING: 'DISPATCHING',
+  UNKNOWN_PROVIDER_STATE: 'UNKNOWN_PROVIDER_STATE',
+} as const;
+
 export interface PartnerStaffInvitationListItem {
   id: number;
+  recipient: string;
   email: string;
-  status: 'ACTIVE';
+  role: PartnerStaffRole;
+  permission: PartnerStaffPermission;
+  status: PartnerStaffInvitationListItemStatus;
   createdAt: string;
   expiresAt: string;
+  invitationAttemptId?: string;
+  /** @nullable */
+  selectedInvitationId?: number | null;
 }
 
 export interface PartnerStaffInvitationRevocation {

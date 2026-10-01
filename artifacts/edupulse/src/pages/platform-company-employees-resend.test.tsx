@@ -9,17 +9,17 @@ const state = vi.hoisted(() => ({
     {
       id: 1, fullName: 'Staff A', email: 'a@yemait.test', phone: null, jobTitle: 'Accountant',
       status: 'ACTIVE', role: 'COMPANY_ACCOUNTANT', schoolId: null, createdAt: '', updatedAt: '',
-      invitationStatus: { employeeId: 1, email: 'a@yemait.test', status: 'PENDING', invitation: { status: 'PENDING', deliveryConfirmed: false } },
+      invitationStatus: { employeeId: 1, email: 'a@yemait.test', status: 'PENDING', invitation: { email: 'a@yemait.test', role: 'COMPANY_ACCOUNTANT', status: 'PENDING', deliveryConfirmed: false, invitationId: 'clerk-invitation-a', createdAt: '2026-02-03T11:42:18.000Z' } },
     },
     {
       id: 2, fullName: 'Staff B', email: 'b@yemait.test', phone: null, jobTitle: 'Activation Officer',
       status: 'ACTIVE', role: 'DEVICE_ACTIVATION_OFFICER', schoolId: 72, createdAt: '', updatedAt: '',
-      invitationStatus: { employeeId: 2, email: 'b@yemait.test', status: 'PENDING', invitation: { status: 'PENDING', deliveryConfirmed: false } },
+      invitationStatus: { employeeId: 2, email: 'b@yemait.test', status: 'PENDING', invitation: { email: 'b@yemait.test', role: 'DEVICE_ACTIVATION_OFFICER', status: 'PENDING', deliveryConfirmed: false, invitationId: 'clerk-invitation-selected-b', createdAt: '2026-02-03T11:42:18.000Z' } },
     },
     {
       id: 3, fullName: 'Staff C', email: 'c@yemait.test', phone: null, jobTitle: 'Accountant',
       status: 'ACTIVE', role: 'COMPANY_ACCOUNTANT', schoolId: null, createdAt: '', updatedAt: '',
-      invitationStatus: { employeeId: 3, email: 'c@yemait.test', status: 'PENDING', invitation: { status: 'PENDING', deliveryConfirmed: false } },
+      invitationStatus: { employeeId: 3, email: 'c@yemait.test', status: 'PENDING', invitation: { email: 'c@yemait.test', role: 'COMPANY_ACCOUNTANT', status: 'PENDING', deliveryConfirmed: false, invitationId: 'clerk-invitation-c', createdAt: '2026-02-03T11:42:18.000Z' } },
     },
   ] as any[],
   invitationIdByEmployee: {
@@ -37,12 +37,14 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       if (queryKey.includes('invitation')) {
         const employeeId = Number(queryKey[2]);
         const invitationId = state.invitationIdByEmployee[employeeId];
+        const employee = state.employees.find((candidate) => candidate.id === employeeId);
+        const summary = employee?.invitationStatus.invitation;
         return {
           data: {
             employeeId,
-            email: state.employees.find((employee) => employee.id === employeeId)?.email ?? '',
+            email: summary?.email ?? employee?.email ?? '',
             status: 'PENDING',
-            invitation: invitationId ? { status: 'PENDING', deliveryConfirmed: false, invitationId } : null,
+            invitation: invitationId ? { ...summary, status: 'PENDING', deliveryConfirmed: false, invitationId } : null,
           },
           isPending: false,
           isError: false,
@@ -92,6 +94,32 @@ describe('internal employee resend invitation identity', () => {
       2: 'clerk-invitation-selected-b',
       3: 'clerk-invitation-c',
     };
+    state.employees[0].invitationStatus = {
+      employeeId: 1,
+      email: 'a@yemait.test',
+      status: 'PENDING',
+      invitation: {
+        email: 'a@yemait.test',
+        role: 'COMPANY_ACCOUNTANT',
+        status: 'PENDING',
+        deliveryConfirmed: false,
+        invitationId: 'clerk-invitation-a',
+        createdAt: '2026-02-03T11:42:18.000Z',
+      },
+    };
+    state.employees[1].invitationStatus = {
+      employeeId: 2,
+      email: 'b@yemait.test',
+      status: 'PENDING',
+      invitation: {
+        email: 'b@yemait.test',
+        role: 'DEVICE_ACTIVATION_OFFICER',
+        status: 'PENDING',
+        deliveryConfirmed: false,
+        invitationId: 'clerk-invitation-selected-b',
+        createdAt: '2026-02-03T11:42:18.000Z',
+      },
+    };
     vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})));
   });
 
@@ -102,18 +130,42 @@ describe('internal employee resend invitation identity', () => {
     vi.unstubAllGlobals();
   });
 
-  it('uses the selected staff role/context invitation ID and ignores other rows on a rapid double click', async () => {
+  it('shows the current invitation details and requested time while keeping active invitations out of resend management', async () => {
+    state.employees[0].invitationStatus.status = 'ACTIVE';
+    await act(async () => root.render(<QueryClientProvider client={queryClient}><PlatformCompanyEmployeesPage /></QueryClientProvider>));
+
+    const pendingRow = [...host.querySelectorAll('div')].find((row) =>
+      row.textContent?.includes('Staff B') && row.querySelector('[data-testid="button-edit-invitation-2"]'),
+    )!;
+    expect(pendingRow.textContent).toContain('PENDING');
+    expect(pendingRow.textContent).toContain('Role: DEVICE ACTIVATION OFFICER');
+    expect(pendingRow.textContent).toContain('Invitation email: b@yemait.test');
+    expect(pendingRow.textContent).toContain(`Requested ${new Date('2026-02-03T11:42:18.000Z').toLocaleString()}`);
+    expect(host.querySelector('[data-testid="button-edit-invitation-1"]')).toBeNull();
+    expect(host.querySelector('[data-testid="button-resend-invitation-row-1"]')).toBeNull();
+    expect(host.querySelector('[data-testid="button-resend-invitation-1"]')).toBeNull();
+
+    await act(async () => pendingRow.querySelector<HTMLButtonElement>('[data-testid="button-edit-invitation-2"]')!.click());
+    const dialog = host.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain('Invitation status: PENDING');
+    expect(dialog.textContent).toContain('Role: DEVICE ACTIVATION OFFICER');
+    expect(dialog.textContent).toContain(`Requested ${new Date('2026-02-03T11:42:18.000Z').toLocaleString()}`);
+    expect(dialog.textContent).toContain('Resend Link');
+  });
+
+  it('resends directly from the selected row once on a rapid double click without affecting other rows', async () => {
     let finishRequest!: (response: Response) => void;
     vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => { finishRequest = resolve; })));
     await act(async () => root.render(<QueryClientProvider client={queryClient}><PlatformCompanyEmployeesPage /></QueryClientProvider>));
 
     const selectedRow = [...host.querySelectorAll('div')].find((row) =>
-      row.textContent?.includes('Staff B') && row.querySelector('[data-testid="button-edit-invitation-2"]'),
+      row.textContent?.includes('Staff B') && row.querySelector('[data-testid="button-resend-invitation-row-2"]'),
     )!;
-    await act(async () => selectedRow.querySelector<HTMLButtonElement>('[data-testid="button-edit-invitation-2"]')!.click());
+    const resend = selectedRow.querySelector<HTMLButtonElement>('[data-testid="button-resend-invitation-row-2"]')!;
+    expect(resend.textContent).toBe('Resend Link');
+    expect(host.querySelector('[data-testid="button-resend-invitation-row-1"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="button-resend-invitation-row-3"]')).not.toBeNull();
 
-    expect(host.querySelector('[data-testid="invitation-id-2"]')?.textContent).toBe('clerk-invitation-selected-b');
-    const resend = host.querySelector<HTMLButtonElement>('[data-testid="button-resend-invitation-2"]')!;
     await act(async () => {
       resend.click();
       resend.click();
@@ -125,6 +177,8 @@ describe('internal employee resend invitation identity', () => {
       method: 'POST',
       body: JSON.stringify({ invitationId: 'clerk-invitation-selected-b' }),
     }));
+    expect(fetch).not.toHaveBeenCalledWith('/api/platform/company-employees/1/invitation/resend', expect.anything());
+    expect(fetch).not.toHaveBeenCalledWith('/api/platform/company-employees/3/invitation/resend', expect.anything());
     expect(host.textContent).toContain('Requesting…');
     await act(async () => {
       finishRequest({
@@ -139,13 +193,62 @@ describe('internal employee resend invitation identity', () => {
       } as Response);
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
+    expect(host.textContent).toContain(
+      'Clerk accepted the invitation request for b@yemait.test. Dispatch and inbox delivery are not confirmed.',
+    );
+  });
+
+  it('resends a selected Company Accountant row once without dispatching neighboring invitations', async () => {
+    state.employees[1].invitationStatus.invitation.role = 'COMPANY_ACCOUNTANT';
+    state.employees[1].invitationStatus.invitation.invitationId = 'clerk-accountant-middle';
+    let finishRequest!: (response: Response) => void;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => { finishRequest = resolve; })));
+    await act(async () => root.render(<QueryClientProvider client={queryClient}><PlatformCompanyEmployeesPage /></QueryClientProvider>));
+
+    const selectedRow = [...host.querySelectorAll('div')].find((row) =>
+      row.textContent?.includes('Staff B') && row.querySelector('[data-testid="button-resend-invitation-row-2"]'),
+    )!;
+    const resend = selectedRow.querySelector<HTMLButtonElement>('[data-testid="button-resend-invitation-row-2"]')!;
+    await act(async () => {
+      resend.click();
+      resend.click();
+      await Promise.resolve();
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith('/api/platform/company-employees/2/invitation/resend', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ invitationId: 'clerk-accountant-middle' }),
+    }));
+    expect(fetch).not.toHaveBeenCalledWith('/api/platform/company-employees/1/invitation/resend', expect.anything());
+    expect(fetch).not.toHaveBeenCalledWith('/api/platform/company-employees/3/invitation/resend', expect.anything());
+    expect(host.textContent).toContain('Requesting…');
+
+    await act(async () => {
+      finishRequest({
+        ok: true,
+        json: async () => ({
+          employeeId: 2,
+          email: 'b@yemait.test',
+          role: 'COMPANY_ACCOUNTANT',
+          schoolId: null,
+          invitation: { status: 'DISPATCH_REQUEST_ACCEPTED', deliveryConfirmed: false, invitationId: 'new-accountant-id', expiresAt: '' },
+        }),
+      } as Response);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(host.textContent).toContain(
+      'Clerk accepted the invitation request for b@yemait.test. Dispatch and inbox delivery are not confirmed.',
+    );
   });
 
   it('fails closed when the selected invitation status has no stable invitation ID', async () => {
     state.invitationIdByEmployee[2] = null;
+    state.employees[1].invitationStatus.invitation.invitationId = null;
     const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
     vi.stubGlobal('fetch', fetchMock);
     await act(async () => root.render(<QueryClientProvider client={queryClient}><PlatformCompanyEmployeesPage /></QueryClientProvider>));
+    expect(host.querySelector('[data-testid="button-resend-invitation-row-2"]')).toBeNull();
     const selectedRow = [...host.querySelectorAll('div')].find((row) =>
       row.textContent?.includes('Staff B') && row.querySelector('[data-testid="button-edit-invitation-2"]'),
     )!;
@@ -195,7 +298,7 @@ describe('internal employee resend invitation identity', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(resend.disabled).toBe(false);
-    expect(host.textContent).toContain('Resend invitation');
+    expect(host.textContent).toContain('Resend Link');
 
     await act(async () => resend.click());
     expect(fetchMock).toHaveBeenCalledTimes(2);

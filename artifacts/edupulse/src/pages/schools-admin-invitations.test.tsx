@@ -76,6 +76,7 @@ const fixtures = vi.hoisted(() => ({
     },
   ],
 }));
+const defaultInvitations = fixtures.invitations;
 
 vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: fixtures.invalidateQueries }),
@@ -168,6 +169,7 @@ describe('Platform Owner school administrator invitation status', () => {
     await act(async () => root.unmount());
     host.remove();
     vi.unstubAllGlobals();
+    fixtures.invitations = defaultInvitations;
   });
 
   it('shows actual backend states and does not offer actions for Active invitations', async () => {
@@ -286,6 +288,45 @@ describe('Platform Owner school administrator invitation status', () => {
     expect(rowC.textContent).not.toContain('Resending');
 
     await act(async () => finishResend());
+  });
+
+  it('shows accepted and unverified delivery feedback when a staged attempt is retried', async () => {
+    const recoveryInvitation = {
+      ...fixtures.invitations[0],
+      status: 'RECOVERY_REQUIRED',
+      recoveryState: 'DISPATCH_REJECTED',
+      recoveryAttemptId: 'attempt-owner-recovery',
+    };
+    fixtures.invitations = [recoveryInvitation];
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: 'PENDING',
+        invitationId: 206,
+        email: 'corrected@school.edu',
+        deliveryStatus: 'UNVERIFIED',
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await renderPage();
+
+    const recoveryRow = [...host.querySelectorAll('li')].find(row =>
+      row.textContent?.includes('incorrect@school.edu')
+    )!;
+    await act(async () => {
+      [...recoveryRow.querySelectorAll('button')]
+        .find(button => button.textContent?.includes('Retry staged attempt'))?.click();
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/schools/12/invitations/101/reconcile', expect.objectContaining({
+      method: 'POST',
+      body: '{}',
+    }));
+    const feedback = [...host.querySelectorAll('[role="status"]')]
+      .map(element => element.textContent)
+      .find(message => message?.includes('Invitation request accepted'));
+    expect(feedback).toBe('Invitation request accepted for corrected@school.edu; inbox delivery is unverified.');
+    expect(feedback).not.toContain('no new invitation was sent');
   });
 
   it('does not expose invitation management to School Admins', async () => {

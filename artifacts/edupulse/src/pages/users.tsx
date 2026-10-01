@@ -13,6 +13,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useToast } from '@/hooks/use-toast';
+import { SchoolUserInvitationManagement } from '@/components/school-user-invitation-management';
 
 export function UsersPage() {
   const { schoolId, setSchoolId } = useTenant();
@@ -75,6 +76,9 @@ export function UsersPage() {
         <ErrorState retry={() => isViewingSchool ? schoolQuery.refetch() : platformQuery.refetch()} />
       ) : (
         <>
+          {isViewingSchool && !isPlatformOwner && isSchoolAdmin && schoolId && (
+            <SchoolUserInvitationManagement schoolId={schoolId} />
+          )}
           <div className="mb-4 text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
             {isViewingPlatform ? 'Platform-wide identities' : 'Tenant-scoped access'}
           </div>

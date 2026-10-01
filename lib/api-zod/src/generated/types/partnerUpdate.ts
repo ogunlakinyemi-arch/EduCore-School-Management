@@ -15,6 +15,11 @@ export interface PartnerUpdate {
      * @maxLength 254
      */
   email?: string;
+  /**
+     * Required when changing a pending invitation email; binds replacement to the selected invitation
+     * @minimum 1
+     */
+  invitationId?: number;
   phone?: string;
   address?: string;
   state?: string;

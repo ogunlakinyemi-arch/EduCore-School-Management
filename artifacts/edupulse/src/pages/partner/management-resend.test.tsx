@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   location: '/partners',
+  toast: vi.fn(),
   partners: [
     { id: 11, fullName: 'Partner A', email: 'a@partners.test', partnerCode: 'A', partnerType: 'BUSINESS', status: 'INVITED' },
     { id: 22, fullName: 'Partner B', email: 'b@partners.test', partnerCode: 'B', partnerType: 'BUSINESS', status: 'INVITED' },
@@ -27,6 +28,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 });
 
 vi.mock('@workspace/api-client-react', () => ({
+  getListPartnersQueryKey: () => ['/api/platform/partners'],
   useListPartners: () => ({ data: state.partners, isLoading: false, isError: false, refetch: vi.fn() }),
   useCreatePartnerInvitation: () => ({}),
   useGetPartner: () => ({}),
@@ -67,7 +69,7 @@ vi.mock('@/components/shared', () => ({
   Metric: () => <div />,
 }));
 
-vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
+vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: state.toast }) }));
 vi.mock('@/pages/not-found', () => ({ default: () => <div>Not found</div> }));
 
 import PartnerManagement from './management';
@@ -75,6 +77,7 @@ import PartnerManagement from './management';
 let root: Root;
 let host: HTMLDivElement;
 let queryClient: QueryClient;
+const originalInvitations = structuredClone(state.invitations);
 
 describe('partner invitation resend row isolation', () => {
   beforeEach(() => {
@@ -83,6 +86,8 @@ describe('partner invitation resend row isolation', () => {
     root = createRoot(host);
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
     state.location = '/partners';
+    state.invitations = structuredClone(originalInvitations);
+    state.toast.mockReset();
   });
 
   afterEach(async () => {
@@ -122,6 +127,7 @@ describe('partner invitation resend row isolation', () => {
       finishRequest({ ok: true, json: async () => ({}) } as Response);
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
+    expect(state.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Replacement invitation requested' }));
   });
 
   it('keeps overlapping rows independent and allows the first row to resend after its own request settles', async () => {
@@ -169,5 +175,62 @@ describe('partner invitation resend row isolation', () => {
       deferred[2].resolve({ ok: true, json: async () => ({}) } as Response);
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
+  });
+
+  it.each(['ACTIVE', 'ACCEPTED'])('shows Resend Link metadata but omits actions for %s invitations', async (status) => {
+    state.invitations[1].status = status;
+    vi.stubGlobal('fetch', vi.fn());
+    await act(async () => root.render(<QueryClientProvider client={queryClient}><PartnerManagement /></QueryClientProvider>));
+    const rowA = [...host.querySelectorAll('tr')].find(row => row.textContent?.includes('Partner A'))!;
+    const rowB = [...host.querySelectorAll('tr')].find(row => row.textContent?.includes('Partner B'))!;
+    expect(rowA.textContent).toContain('Resend Link');
+    expect(rowA.textContent).toContain('Recipient: a@partners.test');
+    expect(rowA.textContent).toContain('Role: Partner');
+    expect(rowB.querySelector('[aria-label="Resend invitation for Partner B"]')).toBeNull();
+    expect(rowB.querySelector('[aria-label="Edit invitation email for Partner B"]')).toBeNull();
+    expect(rowB.querySelector('[aria-label="Cancel invitation for Partner B"]')).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('fails closed for all invitation actions when a stable invitation record is missing', async () => {
+    state.invitations = [];
+    vi.stubGlobal('fetch', vi.fn());
+    await act(async () => root.render(<QueryClientProvider client={queryClient}><PartnerManagement /></QueryClientProvider>));
+    expect(host.querySelector('[aria-label^="Resend invitation"]')).toBeNull();
+    expect(host.querySelector('[aria-label^="Edit invitation email"]')).toBeNull();
+    expect(host.querySelector('[aria-label^="Cancel invitation"]')).toBeNull();
+  });
+
+  it('cancels only the selected middle invitation and reports success', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, json: async () => ({ id: 202, partnerId: 22, status: 'REVOKED' }),
+    } as Response)));
+    await act(async () => root.render(<QueryClientProvider client={queryClient}><PartnerManagement /></QueryClientProvider>));
+    const rowB = [...host.querySelectorAll('tr')].find(row => row.textContent?.includes('Partner B'))!;
+    await act(async () => {
+      rowB.querySelector<HTMLButtonElement>('[aria-label="Cancel invitation for Partner B"]')!.click();
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith('/api/platform/partners/invitations/202', expect.objectContaining({ method: 'DELETE' }));
+    expect(state.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Invitation cancelled' }));
+    expect(state.invitations[0]).toEqual(originalInvitations[0]);
+    expect(state.invitations[2]).toEqual(originalInvitations[2]);
+  });
+
+  it('reports recovery without claiming another invitation was sent when the server reconciles a stale pending row', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true, json: async () => ({ reconciliationOnly: true }),
+    } as Response)));
+    await act(async () => root.render(<QueryClientProvider client={queryClient}><PartnerManagement /></QueryClientProvider>));
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('[aria-label="Resend invitation for Partner B"]')!.click();
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(state.toast).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Invitation reconciliation completed',
+      description: expect.stringContaining('no new invitation was sent'),
+    }));
   });
 });

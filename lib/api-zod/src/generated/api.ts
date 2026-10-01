@@ -2388,13 +2388,15 @@ export const ListSchoolAdministratorInvitationsResponse = zod.object({
   "fullName": zod.string().nullable(),
   "schoolId": zod.number().int(),
   "role": zod.literal("SCHOOL_ADMIN"),
-  "status": zod.enum(['PENDING', 'ACTIVE', 'EXPIRED', 'REVOKED', 'SUPERSEDED']),
+  "status": zod.enum(['PENDING', 'ACTIVE', 'ACCEPTED', 'EXPIRED', 'REVOKED', 'SUPERSEDED', 'RECOVERY_REQUIRED']),
   "clerkStatus": zod.union([zod.literal('pending'),zod.literal('accepted'),zod.literal('expired'),zod.literal('revoked'),zod.literal('revoked-or-ignored'),zod.literal(null)]).nullable(),
   "isCurrent": zod.boolean(),
   "membershipId": zod.number().int().nullable(),
   "userId": zod.number().int().nullable(),
   "createdAt": zod.coerce.date().nullable(),
-  "expiresAt": zod.coerce.date().nullable()
+  "expiresAt": zod.coerce.date().nullable(),
+  "recoveryAttemptId": zod.string().optional(),
+  "recoveryState": zod.enum(['PREPARED', 'REVOCATION_REJECTED', 'REVOCATION_UNKNOWN', 'DISPATCHING', 'DISPATCH_REJECTED', 'OUTCOME_UNKNOWN', 'MULTIPLE_MATCHES']).optional()
 }))
 })
 
@@ -2433,7 +2435,8 @@ export const EditSchoolAdministratorInvitationResponse = zod.object({
   "role": zod.literal("SCHOOL_ADMIN"),
   "dispatchStatus": zod.literal("REQUEST_ACCEPTED"),
   "deliveryStatus": zod.literal("UNVERIFIED"),
-  "expiresAt": zod.coerce.date()
+  "expiresAt": zod.coerce.date().nullable(),
+  "recoveryStatus": zod.literal("COMPLETED").optional()
 })
 
 
@@ -2463,8 +2466,212 @@ export const ResendSchoolAdministratorInvitationResponse = zod.object({
   "role": zod.literal("SCHOOL_ADMIN"),
   "dispatchStatus": zod.literal("REQUEST_ACCEPTED"),
   "deliveryStatus": zod.literal("UNVERIFIED"),
-  "expiresAt": zod.coerce.date()
+  "expiresAt": zod.coerce.date().nullable(),
+  "recoveryStatus": zod.literal("COMPLETED").optional()
 })
+
+
+/**
+ * School Admin of the selected tenant only. Platform Owners are read-only here. Accepted, registered and superseded identities are omitted.
+ * @summary List eligible pending school-user invitations for the active School Admin
+ */
+
+
+
+export const ListSchoolUserInvitationsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ListSchoolUserInvitationsResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "invitations": zod.array(zod.object({
+  "invitationId": zod.string().min(1),
+  "claimId": zod.string().nullable(),
+  "email": zod.string().email(),
+  "fullName": zod.string().nullable(),
+  "schoolId": zod.number().int(),
+  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "status": zod.enum(['PENDING', 'EXPIRED', 'RECOVERY_REQUIRED']),
+  "clerkStatus": zod.union([zod.literal('pending'),zod.literal('expired'),zod.literal(null)]).nullable(),
+  "isCurrent": zod.literal(true),
+  "createdAt": zod.coerce.date().nullable(),
+  "recoveryAttemptId": zod.string().optional(),
+  "recoveryState": zod.enum(['PREPARED', 'REVOCATION_REJECTED', 'REVOCATION_UNKNOWN', 'DISPATCHING', 'DISPATCH_REJECTED', 'OUTCOME_UNKNOWN', 'MULTIPLE_MATCHES']).optional()
+}))
+})
+
+
+/**
+ * @summary Replace only the selected school-user invitation with a corrected email
+ */
+
+export const editSchoolUserInvitationPathInvitationIdMax = 100;
+
+
+export const editSchoolUserInvitationPathInvitationIdRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+
+
+export const EditSchoolUserInvitationParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "invitationId": zod.coerce.string().min(1).max(editSchoolUserInvitationPathInvitationIdMax).regex(editSchoolUserInvitationPathInvitationIdRegExp)
+})
+
+export const editSchoolUserInvitationBodyEmailMax = 254;
+
+
+
+export const EditSchoolUserInvitationBody = zod.object({
+  "email": zod.string().email().min(1).max(editSchoolUserInvitationBodyEmailMax)
+})
+
+export const EditSchoolUserInvitationResponse = zod.object({
+  "status": zod.literal("PENDING"),
+  "invitationId": zod.string(),
+  "supersededInvitationId": zod.string(),
+  "previousInviteRevoked": zod.boolean(),
+  "email": zod.string().email(),
+  "schoolId": zod.number().int(),
+  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "dispatchStatus": zod.literal("REQUEST_ACCEPTED"),
+  "deliveryStatus": zod.literal("UNVERIFIED"),
+  "expiresAt": zod.coerce.date().nullable(),
+  "recoveryStatus": zod.literal("COMPLETED").optional()
+})
+
+
+/**
+ * @summary Reissue exactly one selected school-user invitation to its current email
+ */
+
+export const resendSchoolUserInvitationPathInvitationIdMax = 100;
+
+
+export const resendSchoolUserInvitationPathInvitationIdRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+
+
+export const ResendSchoolUserInvitationParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "invitationId": zod.coerce.string().min(1).max(resendSchoolUserInvitationPathInvitationIdMax).regex(resendSchoolUserInvitationPathInvitationIdRegExp)
+})
+
+export const ResendSchoolUserInvitationResponse = zod.object({
+  "status": zod.literal("PENDING"),
+  "invitationId": zod.string(),
+  "supersededInvitationId": zod.string(),
+  "previousInviteRevoked": zod.boolean(),
+  "email": zod.string().email(),
+  "schoolId": zod.number().int(),
+  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "dispatchStatus": zod.literal("REQUEST_ACCEPTED"),
+  "deliveryStatus": zod.literal("UNVERIFIED"),
+  "expiresAt": zod.coerce.date().nullable(),
+  "recoveryStatus": zod.literal("COMPLETED").optional()
+})
+
+
+/**
+ * @summary Reconcile one unresolved School Administrator replacement without sending another invitation
+ */
+
+export const reconcileSchoolAdministratorInvitationPathInvitationIdMax = 100;
+
+
+export const reconcileSchoolAdministratorInvitationPathInvitationIdRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+
+
+export const ReconcileSchoolAdministratorInvitationParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "invitationId": zod.coerce.string().min(1).max(reconcileSchoolAdministratorInvitationPathInvitationIdMax).regex(reconcileSchoolAdministratorInvitationPathInvitationIdRegExp)
+})
+
+export const ReconcileSchoolAdministratorInvitationResponse = zod.union([zod.object({
+  "status": zod.enum(['RECOVERED', 'RECOVERY_REQUIRED']),
+  "attemptId": zod.string(),
+  "invitationId": zod.string().nullable(),
+  "email": zod.string().email(),
+  "role": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "clerkStatus": zod.union([zod.literal('pending'),zod.literal('accepted'),zod.literal('expired'),zod.literal('revoked'),zod.literal(null)]).nullish(),
+  "previousInviteRevoked": zod.boolean().optional(),
+  "recoveryState": zod.enum(['PREPARED', 'REVOCATION_REJECTED', 'REVOCATION_UNKNOWN', 'DISPATCHING', 'DISPATCH_REJECTED', 'OUTCOME_UNKNOWN', 'MULTIPLE_MATCHES', 'COMPLETED'])
+}),zod.object({
+  "status": zod.literal("PENDING"),
+  "invitationId": zod.string(),
+  "supersededInvitationId": zod.string(),
+  "previousInviteRevoked": zod.boolean(),
+  "email": zod.string().email(),
+  "schoolId": zod.number().int(),
+  "role": zod.literal("SCHOOL_ADMIN"),
+  "dispatchStatus": zod.literal("REQUEST_ACCEPTED"),
+  "deliveryStatus": zod.literal("UNVERIFIED"),
+  "expiresAt": zod.coerce.date().nullable(),
+  "recoveryStatus": zod.literal("COMPLETED").optional()
+}),zod.object({
+  "status": zod.literal("PENDING"),
+  "invitationId": zod.string(),
+  "supersededInvitationId": zod.string(),
+  "previousInviteRevoked": zod.boolean(),
+  "email": zod.string().email(),
+  "schoolId": zod.number().int(),
+  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "dispatchStatus": zod.literal("REQUEST_ACCEPTED"),
+  "deliveryStatus": zod.literal("UNVERIFIED"),
+  "expiresAt": zod.coerce.date().nullable(),
+  "recoveryStatus": zod.literal("COMPLETED").optional()
+})])
+
+
+/**
+ * @summary Reconcile one unresolved school-user replacement without sending another invitation
+ */
+
+export const reconcileSchoolUserInvitationPathInvitationIdMax = 100;
+
+
+export const reconcileSchoolUserInvitationPathInvitationIdRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+
+
+export const ReconcileSchoolUserInvitationParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "invitationId": zod.coerce.string().min(1).max(reconcileSchoolUserInvitationPathInvitationIdMax).regex(reconcileSchoolUserInvitationPathInvitationIdRegExp)
+})
+
+export const ReconcileSchoolUserInvitationResponse = zod.union([zod.object({
+  "status": zod.enum(['RECOVERED', 'RECOVERY_REQUIRED']),
+  "attemptId": zod.string(),
+  "invitationId": zod.string().nullable(),
+  "email": zod.string().email(),
+  "role": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "clerkStatus": zod.union([zod.literal('pending'),zod.literal('accepted'),zod.literal('expired'),zod.literal('revoked'),zod.literal(null)]).nullish(),
+  "previousInviteRevoked": zod.boolean().optional(),
+  "recoveryState": zod.enum(['PREPARED', 'REVOCATION_REJECTED', 'REVOCATION_UNKNOWN', 'DISPATCHING', 'DISPATCH_REJECTED', 'OUTCOME_UNKNOWN', 'MULTIPLE_MATCHES', 'COMPLETED'])
+}),zod.object({
+  "status": zod.literal("PENDING"),
+  "invitationId": zod.string(),
+  "supersededInvitationId": zod.string(),
+  "previousInviteRevoked": zod.boolean(),
+  "email": zod.string().email(),
+  "schoolId": zod.number().int(),
+  "role": zod.literal("SCHOOL_ADMIN"),
+  "dispatchStatus": zod.literal("REQUEST_ACCEPTED"),
+  "deliveryStatus": zod.literal("UNVERIFIED"),
+  "expiresAt": zod.coerce.date().nullable(),
+  "recoveryStatus": zod.literal("COMPLETED").optional()
+}),zod.object({
+  "status": zod.literal("PENDING"),
+  "invitationId": zod.string(),
+  "supersededInvitationId": zod.string(),
+  "previousInviteRevoked": zod.boolean(),
+  "email": zod.string().email(),
+  "schoolId": zod.number().int(),
+  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "dispatchStatus": zod.literal("REQUEST_ACCEPTED"),
+  "deliveryStatus": zod.literal("UNVERIFIED"),
+  "expiresAt": zod.coerce.date().nullable(),
+  "recoveryStatus": zod.literal("COMPLETED").optional()
+})])
 
 
 /**
@@ -3523,6 +3730,7 @@ export const ListPlatformCompanyEmployeesResponseItem = zod.object({
   "role": zod.union([zod.literal('COMPANY_ACCOUNTANT'),zod.literal('DEVICE_ACTIVATION_OFFICER'),zod.literal(null)]).nullable(),
   "schoolId": zod.number().int().nullable(),
   "invitationId": zod.string().nullable(),
+  "createdAt": zod.coerce.date().nullish().describe('Creation time of the invitation audit record'),
   "expiresAt": zod.coerce.date().nullable(),
   "status": zod.enum(['NOT_INVITED', 'ACTIVE', 'PENDING', 'EXPIRED'])
 })])
@@ -3605,6 +3813,7 @@ export const GetPlatformCompanyEmployeeResponse = zod.object({
   "role": zod.union([zod.literal('COMPANY_ACCOUNTANT'),zod.literal('DEVICE_ACTIVATION_OFFICER'),zod.literal(null)]).nullable(),
   "schoolId": zod.number().int().nullable(),
   "invitationId": zod.string().nullable(),
+  "createdAt": zod.coerce.date().nullish().describe('Creation time of the invitation audit record'),
   "expiresAt": zod.coerce.date().nullable(),
   "status": zod.enum(['NOT_INVITED', 'ACTIVE', 'PENDING', 'EXPIRED'])
 })])
@@ -3673,6 +3882,7 @@ export const ListPlatformCompanyEmployeeInvitationsResponseItem = zod.object({
   "role": zod.union([zod.literal('COMPANY_ACCOUNTANT'),zod.literal('DEVICE_ACTIVATION_OFFICER'),zod.literal(null)]).nullable(),
   "schoolId": zod.number().int().nullable(),
   "invitationId": zod.string().nullable(),
+  "createdAt": zod.coerce.date().nullish().describe('Creation time of the invitation audit record'),
   "expiresAt": zod.coerce.date().nullable(),
   "status": zod.enum(['NOT_INVITED', 'ACTIVE', 'PENDING', 'EXPIRED'])
 })])
@@ -3699,6 +3909,7 @@ export const GetPlatformCompanyEmployeeInvitationResponse = zod.object({
   "role": zod.union([zod.literal('COMPANY_ACCOUNTANT'),zod.literal('DEVICE_ACTIVATION_OFFICER'),zod.literal(null)]).nullable(),
   "schoolId": zod.number().int().nullable(),
   "invitationId": zod.string().nullable(),
+  "createdAt": zod.coerce.date().nullish().describe('Creation time of the invitation audit record'),
   "expiresAt": zod.coerce.date().nullable(),
   "status": zod.enum(['NOT_INVITED', 'ACTIVE', 'PENDING', 'EXPIRED'])
 })])
@@ -5958,12 +6169,12 @@ export const ListPartnerInvitationsResponseItem = zod.object({
   "id": zod.number().int(),
   "partnerId": zod.number().int(),
   "email": zod.string().email(),
-  "invitationStatus": zod.enum(['ACTIVE', 'ACCEPTED', 'REVOKED']),
+  "invitationStatus": zod.enum(['ACTIVE', 'ACCEPTED', 'REVOKED', 'DISPATCHING', 'UNKNOWN_PROVIDER_STATE', 'FAILED', 'RATE_LIMITED']),
   "partnerStatus": zod.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
   "createdAt": zod.coerce.date(),
   "expiresAt": zod.coerce.date(),
   "redeemedAt": zod.coerce.date().nullable(),
-  "status": zod.enum(['PENDING', 'ACTIVE', 'EXPIRED', 'REVOKED'])
+  "status": zod.enum(['PENDING', 'ACTIVE', 'ACCEPTED', 'EXPIRED', 'REVOKED', 'DISPATCHING', 'UNKNOWN_PROVIDER_STATE', 'FAILED', 'RATE_LIMITED'])
 })
 export const ListPartnerInvitationsResponse = zod.array(ListPartnerInvitationsResponseItem)
 
@@ -5997,6 +6208,23 @@ export const CreatePartnerInvitationResponse = zod.object({
 
 
 /**
+ * @summary Revoke only the selected pending partner invitation
+ */
+
+
+
+export const RevokePlatformPartnerInvitationParams = zod.object({
+  "invitationId": zod.coerce.number().int().min(1)
+})
+
+export const RevokePlatformPartnerInvitationResponse = zod.object({
+  "id": zod.number().int(),
+  "partnerId": zod.number().int(),
+  "status": zod.literal("REVOKED")
+})
+
+
+/**
  * @summary Resend the pending invitation for a partner profile
  */
 
@@ -6013,7 +6241,7 @@ export const ResendPartnerInvitationBody = zod.object({
   "invitationId": zod.number().int().min(1).describe('Selected local owner invitation ID from the platform invitation list, scoped to the partner in the route.')
 })
 
-export const ResendPartnerInvitationResponse = zod.object({
+export const ResendPartnerInvitationResponse = zod.union([zod.object({
   "id": zod.number().int(),
   "partnerId": zod.number().int(),
   "email": zod.string().email(),
@@ -6023,7 +6251,28 @@ export const ResendPartnerInvitationResponse = zod.object({
   "invitationDeliveryStatus": zod.enum(['UNVERIFIED']),
   "expiresAt": zod.coerce.date(),
   "createdAt": zod.coerce.date()
-})
+}),zod.object({
+  "id": zod.number().int(),
+  "partnerCode": zod.string(),
+  "partnerType": zod.enum(['INDIVIDUAL', 'BUSINESS']),
+  "fullName": zod.string(),
+  "businessName": zod.string().nullish(),
+  "email": zod.string().email(),
+  "phone": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "lga": zod.string().nullish(),
+  "status": zod.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
+  "clerkUserId": zod.string().nullish(),
+  "userId": zod.number().int().nullish(),
+  "registrationDate": zod.coerce.date().nullish(),
+  "activationDate": zod.coerce.date().nullish(),
+  "deactivationDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().nullish()
+})]).and(zod.object({
+  "reconciliationOnly": zod.literal(true)
+}))
 
 
 /**
@@ -6074,10 +6323,12 @@ export const updatePartnerBodyEmailMax = 254;
 
 
 
+
 export const UpdatePartnerBody = zod.object({
   "fullName": zod.string().min(updatePartnerBodyFullNameMin).optional(),
   "businessName": zod.string().optional(),
   "email": zod.string().email().min(1).max(updatePartnerBodyEmailMax).optional(),
+  "invitationId": zod.number().int().min(1).optional().describe('Required when changing a pending invitation email; binds replacement to the selected invitation'),
   "phone": zod.string().optional(),
   "address": zod.string().optional(),
   "state": zod.string().optional(),
@@ -6644,14 +6895,19 @@ export const UpdatePartnerStaffPermissionsResponse = zod.object({
 
 
 /**
- * @summary List current non-expired partner staff invitations
+ * @summary List pending and expired partner staff invitations with original permission
  */
 export const ListPartnerStaffInvitationsResponseItem = zod.object({
   "id": zod.number().int(),
+  "recipient": zod.string(),
   "email": zod.string().email(),
-  "status": zod.literal("ACTIVE"),
+  "role": zod.enum(['PARTNER_STAFF', 'PARTNER_FINANCE', 'PARTNER_ADMIN']),
+  "permission": zod.enum(['STANDARD', 'FINANCE', 'ADMIN']),
+  "status": zod.enum(['PENDING', 'EXPIRED', 'DISPATCHING', 'UNKNOWN_PROVIDER_STATE']),
   "createdAt": zod.coerce.date(),
-  "expiresAt": zod.coerce.date()
+  "expiresAt": zod.coerce.date(),
+  "invitationAttemptId": zod.string().optional(),
+  "selectedInvitationId": zod.number().int().nullish()
 })
 export const ListPartnerStaffInvitationsResponse = zod.array(ListPartnerStaffInvitationsResponseItem)
 
@@ -6677,6 +6933,8 @@ export const CreatePartnerStaffInvitationResponse = zod.object({
   "status": zod.literal("PENDING"),
   "invitationDispatchStatus": zod.literal("REQUEST_ACCEPTED"),
   "invitationDeliveryStatus": zod.literal("UNVERIFIED"),
+  "invitationAttemptId": zod.string().optional(),
+  "invitationAttemptStatus": zod.enum(['FINALIZED', 'RECOVERED']).optional(),
   "expiresAt": zod.coerce.date(),
   "createdAt": zod.coerce.date()
 })
@@ -6692,6 +6950,10 @@ export const ResendPartnerStaffInvitationParams = zod.object({
   "invitationId": zod.coerce.number().int().min(1)
 })
 
+export const ResendPartnerStaffInvitationBody = zod.object({
+  "mode": zod.literal("reconcile").optional()
+})
+
 export const ResendPartnerStaffInvitationResponse = zod.object({
   "id": zod.number().int(),
   "partnerId": zod.number().int(),
@@ -6701,6 +6963,8 @@ export const ResendPartnerStaffInvitationResponse = zod.object({
   "status": zod.literal("PENDING"),
   "invitationDispatchStatus": zod.literal("REQUEST_ACCEPTED"),
   "invitationDeliveryStatus": zod.literal("UNVERIFIED"),
+  "invitationAttemptId": zod.string().optional(),
+  "invitationAttemptStatus": zod.enum(['FINALIZED', 'RECOVERED']).optional(),
   "expiresAt": zod.coerce.date(),
   "createdAt": zod.coerce.date()
 })

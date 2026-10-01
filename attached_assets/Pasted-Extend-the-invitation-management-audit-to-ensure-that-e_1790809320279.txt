@@ -1,0 +1,186 @@
+Extend the invitation-management audit to ensure that every part of Yemait EduCore that sends an invitation link also provides a Resend Link action for pending invitations, where the user has permission to manage that invitation.
+
+REQUIRED RESEND COVERAGE
+
+Audit the complete application and identify every place where an invitation is:
+
+- created
+- sent
+- resent
+- replaced
+- regenerated
+- accepted
+- pending
+
+For every invitation-producing workflow, verify that the corresponding pending-invitation management UI has:
+
+Resend Link
+
+The Resend Link must operate ONLY on the selected pending invitation.
+
+REQUIRED ROLE/WORKFLOW COVERAGE
+
+Verify Resend Link support for:
+
+Platform Owner
+
+Owner should be able to manage/resend applicable pending invitations for:
+
+- School Admin
+- Partner
+- Device Activation Officer
+- Company Accountant
+
+School Admin
+
+School Admin should have Resend Link for applicable pending invitations for:
+
+- Teacher
+- Accountant
+- Parent
+- Student
+- School Staff
+
+Partner
+
+Partner should have Resend Link for applicable pending invitations for:
+
+- Partner Staff
+- Partner Staff with Finance permissions
+- Partner Staff with Admin permissions
+
+Partner onboarding
+
+Where a Partner creates/onboards a school and sends a School Admin invitation, the pending invitation must have an appropriate Resend Link management path.
+
+Internal company employees
+
+Verify Resend Link for:
+
+- Device Activation Officer
+- Company Accountant
+
+IMPORTANT UI RULE
+
+If a pending invitation is displayed in a table/list/card, that specific row should have:
+
+- recipient
+- email
+- role
+- invitation status
+- sent date/time where available
+- resend status/progress
+- Resend Link
+- email-edit option where supported
+- appropriate cancel/revoke action where supported
+
+The Resend Link must be associated with that exact invitation record.
+
+Example:
+
+Recipient| Role| Status| Action
+A| Teacher| Pending| Resend Link
+B| Parent| Pending| Resend Link
+C| Student| Pending| Resend Link
+
+Clicking B's Resend Link must affect only B.
+
+DO NOT ADD RESEND TO ALREADY REGISTERED USERS
+
+Resend Link should be available when the invitation is genuinely pending/eligible for resend.
+
+It should not appear as a normal action for an invitation that has already been successfully accepted and converted into an active account.
+
+Use the existing invitation lifecycle/status rules.
+
+EMAIL UPDATE
+
+Where an invitation supports changing the recipient email:
+
+- provide the existing email-edit function
+- validate the new email
+- safely supersede/reissue the invitation according to existing lifecycle rules
+- send only the replacement invitation to the new email
+- keep unrelated pending invitations unchanged
+- show clear success/failure status
+
+After an email update succeeds, the pending invitation should continue to have a working Resend Link action.
+
+MISSING RESEND ENDPOINTS
+
+The previous audit found that:
+
+- Teacher
+- Parent
+- Student
+- School Accountant
+- School Staff
+
+currently have no existing resend endpoint/button.
+
+Do NOT simply report this as a limitation.
+
+Determine whether these roles are intended to receive invitations from School Admin.
+
+If they are invitation-based users, implement the missing Resend Link capability using the existing secure invitation architecture.
+
+Use the same:
+
+- invitation identity rules
+- tenant isolation
+- authorization
+- expiration
+- replacement behavior
+- Clerk/provider integration
+- PUBLIC_APP_URL strategy
+
+Do not create a separate invitation architecture for these roles.
+
+TEST EVERY NEW RESEND FLOW
+
+For each newly added resend workflow, test:
+
+1. Create three pending invitations.
+2. Resend only the middle invitation.
+3. Confirm only the selected invitation is replaced/sent.
+4. Confirm the other two remain unchanged.
+5. Test unauthorized access.
+6. Test wrong/stale invitation ID.
+7. Test duplicate clicks.
+8. Test concurrent resend requests.
+9. Confirm the generated invitation uses the canonical URL strategy.
+10. Confirm the frontend shows success.
+
+NO REAL EMAILS
+
+Use mocked provider calls.
+
+Do not send real invitations.
+
+DATABASE/PRODUCTION SAFETY
+
+Do NOT:
+
+- publish
+- modify Production
+- execute the 408 statements
+- run migrations
+- change Production database schema
+- change Clerk production configuration
+
+FINAL REPORT
+
+Report:
+
+1. Every invitation-producing workflow discovered.
+2. Which workflows already had Resend Link.
+3. Which workflows were missing Resend Link.
+4. Which missing workflows were added.
+5. Where each Resend Link appears in the UI.
+6. Confirmation that every Resend Link operates on one specific invitation.
+7. Email-update behavior.
+8. Tests for every role/workflow.
+9. Test results.
+10. Typecheck results.
+11. Confirmation that PUBLIC_APP_URL remains unchanged.
+12. Confirmation that no Production/database changes were made.

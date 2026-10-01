@@ -287,6 +287,7 @@ import type {
   PartnerInvitationAcceptanceInput,
   PartnerInvitationInput,
   PartnerInvitationListItem,
+  PartnerInvitationReconciliation,
   PartnerInvitationSelection,
   PartnerOnboardingResult,
   PartnerPayout,
@@ -303,6 +304,7 @@ import type {
   PartnerStaffInvitation,
   PartnerStaffInvitationInput,
   PartnerStaffInvitationListItem,
+  PartnerStaffInvitationRecoveryInput,
   PartnerStaffInvitationRevocation,
   PartnerStaffMember,
   PartnerStaffPermissionResult,
@@ -350,11 +352,15 @@ import type {
   SchoolDashboard,
   SchoolFeeRefund,
   SchoolInput,
+  SchoolInvitationRecovery,
+  SchoolInvitationRecoveryResult,
   SchoolMembershipInput,
   SchoolStatusUpdate,
   SchoolUpdate,
   SchoolUser,
   SchoolUserInvitationInput,
+  SchoolUserInvitationList,
+  SchoolUserInvitationReplacement,
   SchoolWithAdministratorInput,
   SchoolWithAdministratorResult,
   SearchActivationStudentsParams,
@@ -7037,7 +7043,7 @@ export const getResendSchoolAdministratorInvitationUrl = (schoolId: number,
 
 
 
-  return `/api/schools/${schoolId}/invitations/${invitationId}`
+  return `/api/schools/${schoolId}/invitations/${invitationId}/resend`
 }
 
 /**
@@ -7106,6 +7112,403 @@ export const useResendSchoolAdministratorInvitation = <TError = ErrorType<Forbid
         TContext
       > => {
       return useMutation(getResendSchoolAdministratorInvitationMutationOptions(options));
+    }
+
+export const getListSchoolUserInvitationsUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/users/invitations`
+}
+
+/**
+ * School Admin of the selected tenant only. Platform Owners are read-only here. Accepted, registered and superseded identities are omitted.
+ * @summary List eligible pending school-user invitations for the active School Admin
+ */
+export const listSchoolUserInvitations = async (schoolId: number, options?: Parameters<typeof customFetch>[1]): Promise<SchoolUserInvitationList> => {
+
+  return customFetch<SchoolUserInvitationList>(getListSchoolUserInvitationsUrl(schoolId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSchoolUserInvitationsQueryKey = (schoolId: number,) => {
+    return [
+    `/api/schools/${schoolId}/users/invitations`
+    ] as const;
+    }
+
+
+export const getListSchoolUserInvitationsQueryOptions = <TData = Awaited<ReturnType<typeof listSchoolUserInvitations>>, TError = ErrorType<ForbiddenResponse | void>>(schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolUserInvitations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSchoolUserInvitationsQueryKey(schoolId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSchoolUserInvitations>>> = ({ signal }) => listSchoolUserInvitations(schoolId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSchoolUserInvitations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSchoolUserInvitationsQueryResult = NonNullable<Awaited<ReturnType<typeof listSchoolUserInvitations>>>
+export type ListSchoolUserInvitationsQueryError = ErrorType<ForbiddenResponse | void>
+
+
+/**
+ * @summary List eligible pending school-user invitations for the active School Admin
+ */
+
+export function useListSchoolUserInvitations<TData = Awaited<ReturnType<typeof listSchoolUserInvitations>>, TError = ErrorType<ForbiddenResponse | void>>(
+ schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolUserInvitations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSchoolUserInvitationsQueryOptions(schoolId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getEditSchoolUserInvitationUrl = (schoolId: number,
+    invitationId: string,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/users/invitations/${invitationId}`
+}
+
+/**
+ * @summary Replace only the selected school-user invitation with a corrected email
+ */
+export const editSchoolUserInvitation = async (schoolId: number,
+    invitationId: string,
+    schoolAdministratorInvitationEmailUpdate: SchoolAdministratorInvitationEmailUpdate, options?: Parameters<typeof customFetch>[1]): Promise<SchoolUserInvitationReplacement> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolUserInvitationReplacement>(getEditSchoolUserInvitationUrl(schoolId,invitationId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(schoolAdministratorInvitationEmailUpdate)
+  }
+);}
+
+
+
+
+
+export const getEditSchoolUserInvitationMutationKey = () => ['editSchoolUserInvitation'] as const;
+
+export const getEditSchoolUserInvitationMutationOptions = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof editSchoolUserInvitation>>, TError,EditSchoolUserInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof editSchoolUserInvitation>>, TError,EditSchoolUserInvitationMutationVariables, TContext> => {
+
+const mutationKey = getEditSchoolUserInvitationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof editSchoolUserInvitation>>, EditSchoolUserInvitationMutationVariables> = (props) => {
+          const {schoolId,invitationId,data} = props ?? {};
+
+          return  editSchoolUserInvitation(schoolId,invitationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EditSchoolUserInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof editSchoolUserInvitation>>>
+    export type EditSchoolUserInvitationMutationBody = BodyType<SchoolAdministratorInvitationEmailUpdate>
+    export type EditSchoolUserInvitationMutationError = ErrorType<void | ForbiddenResponse | NotFoundResponse>
+    export type EditSchoolUserInvitationMutationVariables = {schoolId: number;invitationId: string;data: BodyType<SchoolAdministratorInvitationEmailUpdate>}
+
+    /**
+ * @summary Replace only the selected school-user invitation with a corrected email
+ */
+export const useEditSchoolUserInvitation = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof editSchoolUserInvitation>>, TError,EditSchoolUserInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof editSchoolUserInvitation>>,
+        TError,
+        EditSchoolUserInvitationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getEditSchoolUserInvitationMutationOptions(options));
+    }
+
+export const getResendSchoolUserInvitationUrl = (schoolId: number,
+    invitationId: string,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/users/invitations/${invitationId}/resend`
+}
+
+/**
+ * @summary Reissue exactly one selected school-user invitation to its current email
+ */
+export const resendSchoolUserInvitation = async (schoolId: number,
+    invitationId: string, options?: Parameters<typeof customFetch>[1]): Promise<SchoolUserInvitationReplacement> => {
+
+  return customFetch<SchoolUserInvitationReplacement>(getResendSchoolUserInvitationUrl(schoolId,invitationId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getResendSchoolUserInvitationMutationKey = () => ['resendSchoolUserInvitation'] as const;
+
+export const getResendSchoolUserInvitationMutationOptions = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendSchoolUserInvitation>>, TError,ResendSchoolUserInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resendSchoolUserInvitation>>, TError,ResendSchoolUserInvitationMutationVariables, TContext> => {
+
+const mutationKey = getResendSchoolUserInvitationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resendSchoolUserInvitation>>, ResendSchoolUserInvitationMutationVariables> = (props) => {
+          const {schoolId,invitationId} = props ?? {};
+
+          return  resendSchoolUserInvitation(schoolId,invitationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResendSchoolUserInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof resendSchoolUserInvitation>>>
+
+    export type ResendSchoolUserInvitationMutationError = ErrorType<void | ForbiddenResponse | NotFoundResponse>
+    export type ResendSchoolUserInvitationMutationVariables = {schoolId: number;invitationId: string}
+
+    /**
+ * @summary Reissue exactly one selected school-user invitation to its current email
+ */
+export const useResendSchoolUserInvitation = <TError = ErrorType<void | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendSchoolUserInvitation>>, TError,ResendSchoolUserInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resendSchoolUserInvitation>>,
+        TError,
+        ResendSchoolUserInvitationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getResendSchoolUserInvitationMutationOptions(options));
+    }
+
+export const getReconcileSchoolAdministratorInvitationUrl = (schoolId: number,
+    invitationId: string,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/invitations/${invitationId}/reconcile`
+}
+
+/**
+ * @summary Reconcile one unresolved School Administrator replacement without sending another invitation
+ */
+export const reconcileSchoolAdministratorInvitation = async (schoolId: number,
+    invitationId: string, options?: Parameters<typeof customFetch>[1]): Promise<SchoolInvitationRecoveryResult | SchoolInvitationRecovery> => {
+
+  return customFetch<SchoolInvitationRecoveryResult | SchoolInvitationRecovery>(getReconcileSchoolAdministratorInvitationUrl(schoolId,invitationId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReconcileSchoolAdministratorInvitationMutationKey = () => ['reconcileSchoolAdministratorInvitation'] as const;
+
+export const getReconcileSchoolAdministratorInvitationMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileSchoolAdministratorInvitation>>, TError,ReconcileSchoolAdministratorInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reconcileSchoolAdministratorInvitation>>, TError,ReconcileSchoolAdministratorInvitationMutationVariables, TContext> => {
+
+const mutationKey = getReconcileSchoolAdministratorInvitationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reconcileSchoolAdministratorInvitation>>, ReconcileSchoolAdministratorInvitationMutationVariables> = (props) => {
+          const {schoolId,invitationId} = props ?? {};
+
+          return  reconcileSchoolAdministratorInvitation(schoolId,invitationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReconcileSchoolAdministratorInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof reconcileSchoolAdministratorInvitation>>>
+
+    export type ReconcileSchoolAdministratorInvitationMutationError = ErrorType<ForbiddenResponse | NotFoundResponse>
+    export type ReconcileSchoolAdministratorInvitationMutationVariables = {schoolId: number;invitationId: string}
+
+    /**
+ * @summary Reconcile one unresolved School Administrator replacement without sending another invitation
+ */
+export const useReconcileSchoolAdministratorInvitation = <TError = ErrorType<ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileSchoolAdministratorInvitation>>, TError,ReconcileSchoolAdministratorInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reconcileSchoolAdministratorInvitation>>,
+        TError,
+        ReconcileSchoolAdministratorInvitationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReconcileSchoolAdministratorInvitationMutationOptions(options));
+    }
+
+export const getReconcileSchoolUserInvitationUrl = (schoolId: number,
+    invitationId: string,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/users/invitations/${invitationId}/reconcile`
+}
+
+/**
+ * @summary Reconcile one unresolved school-user replacement without sending another invitation
+ */
+export const reconcileSchoolUserInvitation = async (schoolId: number,
+    invitationId: string, options?: Parameters<typeof customFetch>[1]): Promise<SchoolInvitationRecoveryResult | SchoolInvitationRecovery> => {
+
+  return customFetch<SchoolInvitationRecoveryResult | SchoolInvitationRecovery>(getReconcileSchoolUserInvitationUrl(schoolId,invitationId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReconcileSchoolUserInvitationMutationKey = () => ['reconcileSchoolUserInvitation'] as const;
+
+export const getReconcileSchoolUserInvitationMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileSchoolUserInvitation>>, TError,ReconcileSchoolUserInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reconcileSchoolUserInvitation>>, TError,ReconcileSchoolUserInvitationMutationVariables, TContext> => {
+
+const mutationKey = getReconcileSchoolUserInvitationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reconcileSchoolUserInvitation>>, ReconcileSchoolUserInvitationMutationVariables> = (props) => {
+          const {schoolId,invitationId} = props ?? {};
+
+          return  reconcileSchoolUserInvitation(schoolId,invitationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReconcileSchoolUserInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof reconcileSchoolUserInvitation>>>
+
+    export type ReconcileSchoolUserInvitationMutationError = ErrorType<ForbiddenResponse | NotFoundResponse>
+    export type ReconcileSchoolUserInvitationMutationVariables = {schoolId: number;invitationId: string}
+
+    /**
+ * @summary Reconcile one unresolved school-user replacement without sending another invitation
+ */
+export const useReconcileSchoolUserInvitation = <TError = ErrorType<ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileSchoolUserInvitation>>, TError,ReconcileSchoolUserInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reconcileSchoolUserInvitation>>,
+        TError,
+        ReconcileSchoolUserInvitationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReconcileSchoolUserInvitationMutationOptions(options));
     }
 
 export const getListPeopleImportClassesUrl = (params: ListPeopleImportClassesParams,) => {
@@ -15682,6 +16085,80 @@ export const useCreatePartnerInvitation = <TError = ErrorType<unknown>,
       return useMutation(getCreatePartnerInvitationMutationOptions(options));
     }
 
+export const getRevokePlatformPartnerInvitationUrl = (invitationId: number,) => {
+
+
+
+
+  return `/api/platform/partners/invitations/${invitationId}`
+}
+
+/**
+ * @summary Revoke only the selected pending partner invitation
+ */
+export const revokePlatformPartnerInvitation = async (invitationId: number, options?: Parameters<typeof customFetch>[1]): Promise<PartnerStaffInvitationRevocation> => {
+
+  return customFetch<PartnerStaffInvitationRevocation>(getRevokePlatformPartnerInvitationUrl(invitationId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRevokePlatformPartnerInvitationMutationKey = () => ['revokePlatformPartnerInvitation'] as const;
+
+export const getRevokePlatformPartnerInvitationMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokePlatformPartnerInvitation>>, TError,RevokePlatformPartnerInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokePlatformPartnerInvitation>>, TError,RevokePlatformPartnerInvitationMutationVariables, TContext> => {
+
+const mutationKey = getRevokePlatformPartnerInvitationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokePlatformPartnerInvitation>>, RevokePlatformPartnerInvitationMutationVariables> = (props) => {
+          const {invitationId} = props ?? {};
+
+          return  revokePlatformPartnerInvitation(invitationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokePlatformPartnerInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof revokePlatformPartnerInvitation>>>
+
+    export type RevokePlatformPartnerInvitationMutationError = ErrorType<ForbiddenResponse | NotFoundResponse | void>
+    export type RevokePlatformPartnerInvitationMutationVariables = {invitationId: number}
+
+    /**
+ * @summary Revoke only the selected pending partner invitation
+ */
+export const useRevokePlatformPartnerInvitation = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokePlatformPartnerInvitation>>, TError,RevokePlatformPartnerInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revokePlatformPartnerInvitation>>,
+        TError,
+        RevokePlatformPartnerInvitationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRevokePlatformPartnerInvitationMutationOptions(options));
+    }
+
 export const getResendPartnerInvitationUrl = (partnerId: number,) => {
 
 
@@ -15694,7 +16171,7 @@ export const getResendPartnerInvitationUrl = (partnerId: number,) => {
  * @summary Resend the pending invitation for a partner profile
  */
 export const resendPartnerInvitation = async (partnerId: number,
-    partnerInvitationSelection: PartnerInvitationSelection, options?: Parameters<typeof customFetch>[1]): Promise<PartnerInvitation> => {
+    partnerInvitationSelection: PartnerInvitationSelection, options?: Parameters<typeof customFetch>[1]): Promise<PartnerInvitationReconciliation | PartnerInvitation> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -15710,7 +16187,7 @@ export const resendPartnerInvitation = async (partnerId: number,
     }
     return headers;
   };
-return customFetch<PartnerInvitation>(getResendPartnerInvitationUrl(partnerId),
+return customFetch<PartnerInvitationReconciliation | PartnerInvitation>(getResendPartnerInvitationUrl(partnerId),
   {
     ...options,
     method: 'POST',
@@ -17514,7 +17991,7 @@ export const getListPartnerStaffInvitationsUrl = () => {
 }
 
 /**
- * @summary List current non-expired partner staff invitations
+ * @summary List pending and expired partner staff invitations with original permission
  */
 export const listPartnerStaffInvitations = async ( options?: Parameters<typeof customFetch>[1]): Promise<PartnerStaffInvitationListItem[]> => {
 
@@ -17561,7 +18038,7 @@ export type ListPartnerStaffInvitationsQueryError = ErrorType<ForbiddenResponse>
 
 
 /**
- * @summary List current non-expired partner staff invitations
+ * @summary List pending and expired partner staff invitations with original permission
  */
 
 export function useListPartnerStaffInvitations<TData = Awaited<ReturnType<typeof listPartnerStaffInvitations>>, TError = ErrorType<ForbiddenResponse>>(
@@ -17681,14 +18158,29 @@ export const getResendPartnerStaffInvitationUrl = (invitationId: number,) => {
 /**
  * @summary Resend a partner staff invitation
  */
-export const resendPartnerStaffInvitation = async (invitationId: number, options?: Parameters<typeof customFetch>[1]): Promise<PartnerStaffInvitation> => {
+export const resendPartnerStaffInvitation = async (invitationId: number,
+    partnerStaffInvitationRecoveryInput?: PartnerStaffInvitationRecoveryInput, options?: Parameters<typeof customFetch>[1]): Promise<PartnerStaffInvitation> => {
 
-  return customFetch<PartnerStaffInvitation>(getResendPartnerStaffInvitationUrl(invitationId),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PartnerStaffInvitation>(getResendPartnerStaffInvitationUrl(invitationId),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(partnerStaffInvitationRecoveryInput)
   }
 );}
 
@@ -17713,9 +18205,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof resendPartnerStaffInvitation>>, ResendPartnerStaffInvitationMutationVariables> = (props) => {
-          const {invitationId} = props ?? {};
+          const {invitationId,data} = props ?? {};
 
-          return  resendPartnerStaffInvitation(invitationId,requestOptions)
+          return  resendPartnerStaffInvitation(invitationId,data,requestOptions)
         }
 
 
@@ -17726,9 +18218,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type ResendPartnerStaffInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof resendPartnerStaffInvitation>>>
-
+    export type ResendPartnerStaffInvitationMutationBody = BodyType<PartnerStaffInvitationRecoveryInput> | undefined
     export type ResendPartnerStaffInvitationMutationError = ErrorType<ForbiddenResponse | NotFoundResponse | void>
-    export type ResendPartnerStaffInvitationMutationVariables = {invitationId: number}
+    export type ResendPartnerStaffInvitationMutationVariables = {invitationId: number;data?: BodyType<PartnerStaffInvitationRecoveryInput>}
 
     /**
  * @summary Resend a partner staff invitation

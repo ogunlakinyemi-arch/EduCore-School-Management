@@ -72,10 +72,12 @@ async function audit(
 async function invitationStatus(employee: Record<string, any>) {
   const result = await pool.query(
     `SELECT latest.metadata->>'role' AS role,
+            latest.metadata->>'invitedEmail' AS "invitedEmail",
             NULLIF(latest.metadata->>'schoolId','')::integer AS "schoolId",
             latest.metadata->>'claimId' AS "claimId",
             latest.metadata->>'invitationId' AS "invitationId",
             latest.metadata->>'expiresAt' AS "expiresAt",
+            latest.timestamp AS "createdAt",
             EXISTS (
               SELECT 1 FROM app_users au
               JOIN school_memberships sm ON sm.user_id=au.id
@@ -92,7 +94,7 @@ async function invitationStatus(employee: Record<string, any>) {
             ) AS invalidated
      FROM (SELECT 1) seed
      LEFT JOIN LATERAL (
-       SELECT metadata FROM audit_logs
+       SELECT metadata,timestamp FROM audit_logs
        WHERE record_id=$1 AND module='Company Employees'
          AND event_type IN ('INTERNAL_EMPLOYEE_INVITED','INTERNAL_EMPLOYEE_INVITATION_RESENT')
        ORDER BY id DESC LIMIT 1
@@ -108,13 +110,15 @@ async function invitationStatus(employee: Record<string, any>) {
   else if (row && !row.invalidated && expiry > 0) status = "EXPIRED";
   return {
     employeeId: employee.id,
-    email: employee.email,
+    email: row?.invitedEmail ?? employee.email,
     status,
     invitation: row?.claimId ? {
+      email: row.invitedEmail ?? employee.email,
       role: row.role,
       schoolId: row.schoolId,
       invitationId: row.invitationId,
       expiresAt: row.expiresAt,
+      createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null,
       status: active ? "ACTIVE" : status,
     } : null,
   };

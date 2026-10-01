@@ -5,11 +5,20 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { PartnerStaffInvitationListItemStatus } from './partnerStaffInvitationListItemStatus';
+import type { PartnerStaffPermission } from './partnerStaffPermission';
+import type { PartnerStaffRole } from './partnerStaffRole';
 
 export interface PartnerStaffInvitationListItem {
   id: number;
+  recipient: string;
   email: string;
-  status: 'ACTIVE';
+  role: PartnerStaffRole;
+  permission: PartnerStaffPermission;
+  status: PartnerStaffInvitationListItemStatus;
   createdAt: Date;
   expiresAt: Date;
+  invitationAttemptId?: string;
+  /** @nullable */
+  selectedInvitationId?: number | null;
 }

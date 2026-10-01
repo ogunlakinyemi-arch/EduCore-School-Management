@@ -119,6 +119,7 @@ export default function RegisterSchool() {
             Your school has been registered through the partner referral. Clerk accepted the secure invitation request for
             <strong className="block mt-2 text-[hsl(var(--foreground))]">{success.administratorEmail}</strong>
             <span className="block mt-2">Inbox delivery is not verified. The School Administrator can use the invitation to activate the account and create their own password.</span>
+             <span className="block mt-3">If a replacement link or email correction is needed, the Platform Owner can manage this specific pending administrator invitation under Schools → Manage invitations. Registered administrators are not sent another invitation.</span>
           </p>
         </div>
       </main>

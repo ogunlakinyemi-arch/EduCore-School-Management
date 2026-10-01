@@ -15,6 +15,11 @@ export type CompanyEmployeeInvitationStatusInvitation = {
   schoolId: number | null;
   /** @nullable */
   invitationId: string | null;
+  /**
+     * Creation time of the invitation audit record
+     * @nullable
+     */
+  createdAt?: Date | null;
   /** @nullable */
   expiresAt: Date | null;
   status: CompanyEmployeeInvitationStatusInvitationStatus;

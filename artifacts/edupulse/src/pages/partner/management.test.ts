@@ -6,7 +6,7 @@ const source = readFileSync(new URL('./management.tsx', import.meta.url), 'utf8'
 describe('Owner partner invitation management', () => {
   it('loads platform invitation rows and makes invitation state explicit', () => {
     expect(source).toContain("'/platform/partners/invitations'");
-    expect(source).toContain("status: 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'DISPATCHING' | 'UNKNOWN_PROVIDER_STATE' | 'FAILED' | 'RATE_LIMITED'");
+    expect(source).toContain("status: 'PENDING' | 'ACTIVE' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED' | 'DISPATCHING' | 'UNKNOWN_PROVIDER_STATE' | 'FAILED' | 'RATE_LIMITED'");
     expect(source).toContain('Invitation: {label}');
     expect(source).toContain("partner.status === 'INVITED' ? 'PENDING' : partner.status");
     expect(source).toContain("status === 'PENDING' ? 'Pending' : status === 'ACTIVE' ? 'Active' :");
@@ -18,9 +18,9 @@ describe('Owner partner invitation management', () => {
   it('edits pending invitation email through the partner PATCH contract', () => {
     expect(source).toContain('`/platform/partners/${partnerId}`');
     expect(source).toContain("method: 'PATCH'");
-    expect(source).toContain('JSON.stringify({ email })');
+    expect(source).toContain('JSON.stringify({ email, invitationId })');
     expect(source).toContain("invitationStatus === 'PENDING' || invitationStatus === 'EXPIRED'");
-    expect(source).toContain("{invitationStatus === 'PENDING' && <Button");
+    expect(source).toContain("{invitationStatus === 'PENDING' && hasStableInvitationId && invitation && <Button");
     expect(source).toContain('Saving updates the partner email and supersedes the previous invitation.');
   });
 
@@ -30,7 +30,7 @@ describe('Owner partner invitation management', () => {
     expect(source).toContain('body: JSON.stringify({ invitationId })');
     expect(source).toContain('invitationId: number; reconcile: boolean');
     expect(source).toContain("invitationStatus === 'DISPATCHING' || invitationStatus === 'UNKNOWN_PROVIDER_STATE'");
-    expect(source).toContain("isUnresolved ? 'Retry reconciliation' : 'Resend'");
+    expect(source).toContain("isUnresolved ? 'Retry reconciliation' : 'Resend Link'");
     expect(source).toContain('requestInvitationResend({ partnerId: partner.id, invitationId: invitation.id, reconcile: isUnresolved })');
     expect(source).toContain('Provider state is unresolved. Do not send another invitation; reconcile the existing attempt.');
     expect(source).toContain('No blind resend was attempted; use Retry reconciliation again when provider state is available.');
@@ -38,9 +38,9 @@ describe('Owner partner invitation management', () => {
     expect(source).toContain("invitationStatus === 'FAILED' || invitationStatus === 'RATE_LIMITED'");
     expect(source).toContain('const canManageInvitation = canResendInvitation || isUnresolved');
     expect(source).toContain('Resend is available; the server enforces the provider cooldown.');
-    expect(source).toContain("isUnresolved ? 'Retry reconciliation' : 'Resend'");
+    expect(source).toContain("isUnresolved ? 'Retry reconciliation' : 'Resend Link'");
     expect(source).toContain("queryClient.invalidateQueries({ queryKey: ['platformPartnerInvitations'] })");
-    expect(source).toContain("queryClient.invalidateQueries({ queryKey: ['listPartners'] })");
+    expect(source).toContain("queryClient.invalidateQueries({ queryKey: getListPartnersQueryKey() })");
   });
 
   it('surfaces request failures and offers a refresh when invitation status cannot load', () => {

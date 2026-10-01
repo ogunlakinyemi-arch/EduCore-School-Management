@@ -103,10 +103,12 @@ async function inviteSchoolAdministrator(
 
 type SchoolAdminInvitation = {
   invitationId: number | string;
+  recoveryAttemptId?: string;
+  recoveryState?: string;
   claimId: string | null;
   email: string;
   fullName: string | null;
-  status: 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'SUPERSEDED';
+  status: 'PENDING' | 'ACTIVE' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED' | 'SUPERSEDED' | 'RECOVERY_REQUIRED';
   clerkStatus: string | null;
   isCurrent: boolean;
   membershipId: number | string | null;
@@ -152,6 +154,20 @@ async function resendSchoolAdminInvitation(schoolId: number, invitationId: numbe
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(result?.error || result?.message || `Could not resend administrator invitation (${response.status})`);
+  }
+  return result;
+}
+
+async function reconcileSchoolAdminInvitation(schoolId: number, invitationId: number | string) {
+  const response = await fetch(`/api/schools/${schoolId}/invitations/${invitationId}/reconcile`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result?.error || result?.message || `Could not reconcile administrator invitation (${response.status})`);
   }
   return result;
 }
@@ -536,6 +552,25 @@ function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
     }
   }
 
+  async function reconcile(invitation: SchoolAdminInvitation) {
+    if (!startInvitationAction(invitation.invitationId)) return;
+    setActionError('');
+    setActionMessage('');
+    try {
+      const result = await reconcileSchoolAdminInvitation(schoolId, invitation.invitationId);
+      setActionMessage(result.status === 'RECOVERY_REQUIRED'
+        ? `Replacement ${invitation.email} remains unresolved (${result.recoveryState}); no new invitation was sent.`
+        : result.status === 'PENDING'
+          ? `Invitation request accepted for ${result.email ?? invitation.email}; inbox delivery is unverified.`
+          : `Replacement invitation was reconciled for ${invitation.email}; no new invitation was sent.`);
+      refreshInvitations();
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : 'Could not reconcile this invitation.');
+    } finally {
+      finishInvitationAction(invitation.invitationId);
+    }
+  }
+
   return (
     <div className="mt-4 space-y-4 border-t border-[hsl(var(--border))] pt-4">
       <form onSubmit={submit} className="space-y-3">
@@ -572,7 +607,7 @@ function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
                     <div className="truncate text-sm font-bold">{invitation.fullName || invitation.email}</div>
                     <div className="break-all text-xs text-[hsl(var(--muted-foreground))]">{invitation.email}</div>
                     <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                      Created {date(invitation.createdAt)}
+                      Requested {new Date(invitation.createdAt).toLocaleString()}
                       {invitation.expiresAt ? ` · Expires ${date(invitation.expiresAt)}` : ''}
                     </div>
                   </div>
@@ -590,6 +625,29 @@ function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
                       <X size={14} />Cancel
                     </Button>
                   </div>
+                ) : invitation.status === 'RECOVERY_REQUIRED' ? (
+                  <div className="space-y-2">
+                    <p role="status" className="text-xs text-[hsl(var(--muted-foreground))]">
+                      {invitation.recoveryState === 'DISPATCH_REJECTED'
+                        ? 'Clerk definitely rejected the staged request. The old invitation was revoked; retrying here safely reuses the same replacement attempt.'
+                        : invitation.recoveryState === 'REVOCATION_REJECTED'
+                          ? 'Clerk rejected revoking the selected invitation. No replacement was sent; retrying here rechecks and safely retries revocation.'
+                          : invitation.recoveryState === 'PREPARED' || invitation.recoveryState === 'REVOCATION_UNKNOWN'
+                            ? 'No replacement notification was dispatched. Retrying first verifies the selected invitation and then safely resumes its staged send.'
+                            : `Provider outcome ${invitation.recoveryState?.toLowerCase().replaceAll('_', ' ') ?? 'unknown'}; fresh sends are blocked until reconciliation.`}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => reconcile(invitation)}
+                      disabled={workingInvitationIds.has(String(invitation.invitationId))}
+                    >
+                      <RefreshCw size={14} />
+                      {invitation.recoveryState === 'DISPATCH_REJECTED' || invitation.recoveryState === 'REVOCATION_REJECTED'
+                        ? 'Retry staged attempt'
+                        : 'Reconcile delivery'}
+                    </Button>
+                  </div>
                 ) : invitation.status === 'PENDING' || invitation.status === 'EXPIRED' ? (
                   <div className="flex flex-wrap gap-2">
                     {invitation.status === 'PENDING' && (
@@ -598,7 +656,7 @@ function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
                       </Button>
                     )}
                     <Button type="button" variant="outline" onClick={() => resend(invitation)} disabled={!hasStableSchoolInvitationId(invitation.invitationId) || workingInvitationIds.has(String(invitation.invitationId))}>
-                      <RefreshCw size={14} />{workingInvitationIds.has(String(invitation.invitationId)) ? 'Resending…' : 'Resend'}
+                      <RefreshCw size={14} />{workingInvitationIds.has(String(invitation.invitationId)) ? 'Resending…' : 'Resend Link'}
                     </Button>
                   </div>
                 ) : null}

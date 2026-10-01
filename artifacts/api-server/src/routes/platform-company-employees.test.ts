@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
   createdInvitationCount: 0,
   latestInvite: null as Record<string, any> | null,
   latestInvites: {} as Record<number, Record<string, any>>,
+  latestInviteTimestamps: {} as Record<number, string>,
   activeMembership: false,
   pendingClerkInvitationEmail: null as string | null,
   registeredClerkEmails: [] as string[],
@@ -26,10 +27,12 @@ const query = vi.hoisted(() => vi.fn(async (sql: string, values: unknown[] = [])
       (state.rows[0]?.id === Number(values[0]) ? state.latestInvite : null);
     return { rows: [{
       role: invitation?.role ?? null,
+      invitedEmail: invitation?.invitedEmail ?? null,
       schoolId: invitation?.schoolId ?? null,
       claimId: invitation?.claimId ?? null,
       invitationId: invitation?.invitationId ?? null,
       expiresAt: invitation?.expiresAt ?? null,
+      createdAt: state.latestInviteTimestamps[Number(values[0])] ?? null,
       hasActiveMembership: state.activeMembership,
       invalidated: false,
     }] };
@@ -145,6 +148,7 @@ beforeEach(() => {
   state.calls.length = 0;
   state.latestInvite = null;
   state.latestInvites = {};
+  state.latestInviteTimestamps = {};
   state.createdInvitationCount = 0;
   state.activeMembership = false;
   state.pendingClerkInvitationEmail = null;
@@ -292,19 +296,30 @@ describe("platform company employee profiles", () => {
   });
 
   it("reports PENDING from an unexpired invitation and keeps invitation status owner-only", async () => {
+    const requestedAt = "2026-02-03T11:42:18.000Z";
     state.latestInvite = {
+      invitedEmail: "ada.invited@example.test",
       role: "COMPANY_ACCOUNTANT",
       schoolId: null,
       claimId: "pending-claim",
       invitationId: "pending-invitation",
       expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
     };
+    state.latestInviteTimestamps[7] = requestedAt;
     const response = await fetch(`${baseUrl}/platform/company-employees/7/invitation`);
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
+      email: "ada.invited@example.test",
       status: "PENDING",
-      invitation: { invitationId: "pending-invitation" },
+      invitation: {
+        email: "ada.invited@example.test",
+        role: "COMPANY_ACCOUNTANT",
+        invitationId: "pending-invitation",
+        createdAt: requestedAt,
+      },
     });
+    const summarySql = state.calls.find(({ sql }) => sql.includes("FROM (SELECT 1) seed"))?.sql;
+    expect(summarySql).toContain('latest.timestamp AS "createdAt"');
 
     state.role = "SCHOOL_ADMIN";
     const denied = await fetch(`${baseUrl}/platform/company-employees/7/invitation`);

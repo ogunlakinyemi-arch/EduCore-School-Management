@@ -12,7 +12,9 @@ export type SchoolAdministratorInvitationStatus = typeof SchoolAdministratorInvi
 export const SchoolAdministratorInvitationStatus = {
   PENDING: 'PENDING',
   ACTIVE: 'ACTIVE',
+  ACCEPTED: 'ACCEPTED',
   EXPIRED: 'EXPIRED',
   REVOKED: 'REVOKED',
   SUPERSEDED: 'SUPERSEDED',
+  RECOVERY_REQUIRED: 'RECOVERY_REQUIRED',
 } as const;

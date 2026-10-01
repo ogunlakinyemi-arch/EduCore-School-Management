@@ -5,15 +5,16 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { SchoolUserInvitationReplacementRole } from './schoolUserInvitationReplacementRole';
 
-export interface SchoolAdministratorInvitationReplacement {
+export interface SchoolUserInvitationReplacement {
   status: 'PENDING';
   invitationId: string;
   supersededInvitationId: string;
   previousInviteRevoked: boolean;
   email: string;
   schoolId: number;
-  role: 'SCHOOL_ADMIN';
+  role: SchoolUserInvitationReplacementRole;
   dispatchStatus: 'REQUEST_ACCEPTED';
   deliveryStatus: 'UNVERIFIED';
   /** @nullable */

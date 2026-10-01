@@ -24,7 +24,15 @@ type CompanyEmployee = {
     employeeId: number;
     email: string;
     status: 'ACTIVE' | 'PENDING' | 'EXPIRED' | 'NOT_INVITED';
-    invitation: { status: string; deliveryConfirmed: boolean; invitationId?: string; expiresAt?: string } | null;
+    invitation: {
+      email?: string;
+      role?: string;
+      status: string;
+      deliveryConfirmed: boolean;
+      invitationId?: string;
+      expiresAt?: string;
+      createdAt?: string | null;
+    } | null;
   };
 };
 
@@ -60,7 +68,15 @@ type InvitationDetail = {
   employeeId: number;
   email: string;
   status: 'ACTIVE' | 'PENDING' | 'EXPIRED' | 'NOT_INVITED';
-  invitation: { status: string; deliveryConfirmed: boolean; invitationId?: string; expiresAt?: string } | null;
+  invitation: {
+    email?: string;
+    role?: string;
+    status: string;
+    deliveryConfirmed: boolean;
+    invitationId?: string;
+    expiresAt?: string;
+    createdAt?: string | null;
+  } | null;
 };
 type ResentInvitation = {
   employeeId: number;
@@ -104,6 +120,12 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
 }
 
+function formatRequestedAt(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toLocaleString();
+}
+
 export function PlatformCompanyEmployeesPage() {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<CompanyEmployee | null>(null);
@@ -113,6 +135,10 @@ export function PlatformCompanyEmployeesPage() {
   const [lastInvitation, setLastInvitation] = useState<InvitationResult | null>(null);
   const [invitationEditing, setInvitationEditing] = useState<CompanyEmployee | null>(null);
   const [invitationNotice, setInvitationNotice] = useState('');
+  const [rowResendFeedback, setRowResendFeedback] = useState<Record<number, {
+    kind: 'success' | 'error';
+    message: string;
+  }>>({});
   const resendingInvitationIdsRef = useRef(new Set<string>());
   const [resendingInvitationIds, setResendingInvitationIds] = useState<Set<string>>(() => new Set());
   const employeesQuery = useQuery({
@@ -190,14 +216,30 @@ export function PlatformCompanyEmployeesPage() {
         method: 'POST',
         body: JSON.stringify({ invitationId }),
       }),
-    onMutate: () => setInvitationNotice(''),
+    onMutate: ({ employeeId }) => {
+      setInvitationNotice('');
+      setRowResendFeedback((previous) => {
+        const next = { ...previous };
+        delete next[employeeId];
+        return next;
+      });
+    },
     onSuccess: async (result) => {
-      setInvitationNotice(`Clerk accepted the invitation request for ${result.email}. Dispatch and inbox delivery are not confirmed.`);
+      const message = `Clerk accepted the invitation request for ${result.email}. Dispatch and inbox delivery are not confirmed.`;
+      setInvitationNotice(message);
+      setRowResendFeedback((previous) => ({
+        ...previous,
+        [result.employeeId]: { kind: 'success', message },
+      }));
       await Promise.all([
         refresh(),
         queryClient.invalidateQueries({ queryKey: [...queryKey, result.employeeId, 'invitation'] }),
       ]);
     },
+    onError: (error, variables) => setRowResendFeedback((previous) => ({
+      ...previous,
+      [variables.employeeId]: { kind: 'error', message: errorMessage(error) },
+    })),
   });
   const grantActivationAccess = useGrantDeviceActivationOfficer({ mutation: { onSuccess: refreshGrants } });
   const revokeActivationAccess = useRevokeDeviceActivationOfficer({ mutation: { onSuccess: refreshGrants } });
@@ -368,6 +410,21 @@ export function PlatformCompanyEmployeesPage() {
                 <div><StatusPill value={employee.status} /></div>
                 <div className="space-y-1">
                   <StatusPill value={employee.invitationStatus.status} />
+                  {employee.invitationStatus.invitation?.role && (
+                    <div className="text-xs text-[hsl(var(--muted-foreground))]">
+                      Role: {employee.invitationStatus.invitation.role.replaceAll('_', ' ')}
+                    </div>
+                  )}
+                  {employee.invitationStatus.invitation?.email && (
+                    <div className="break-all text-xs text-[hsl(var(--muted-foreground))]">
+                      Invitation email: {employee.invitationStatus.invitation.email}
+                    </div>
+                  )}
+                  {formatRequestedAt(employee.invitationStatus.invitation?.createdAt) && (
+                    <div className="text-xs text-[hsl(var(--muted-foreground))]">
+                      Requested {formatRequestedAt(employee.invitationStatus.invitation?.createdAt)}
+                    </div>
+                  )}
                   {employee.invitationStatus.invitation?.expiresAt && (
                     <div className="text-xs text-[hsl(var(--muted-foreground))]">
                       Expires {new Date(employee.invitationStatus.invitation.expiresAt).toLocaleDateString()}
@@ -383,7 +440,25 @@ export function PlatformCompanyEmployeesPage() {
                   >
                     <Pencil size={14} />Edit
                   </Button>
-                  {(employee.invitationStatus.status === 'PENDING' || employee.invitationStatus.status === 'EXPIRED') && (
+                  {(['PENDING', 'EXPIRED'].includes(employee.invitationStatus.status) &&
+                    typeof employee.invitationStatus.invitation?.invitationId === 'string' &&
+                    employee.invitationStatus.invitation.invitationId.trim().length > 0) && (
+                    <Button
+                      variant="outline"
+                      disabled={resendingInvitationIds.has(`${employee.id}:${employee.invitationStatus.invitation.invitationId}`)}
+                      onClick={() => requestInvitationResend(
+                        employee.id,
+                        employee.invitationStatus.invitation!.invitationId!,
+                      )}
+                      title={`Resend invitation to ${employee.invitationStatus.invitation.email ?? employee.invitationStatus.email}`}
+                      testId={`button-resend-invitation-row-${employee.id}`}
+                    >
+                      {resendingInvitationIds.has(`${employee.id}:${employee.invitationStatus.invitation.invitationId}`)
+                        ? 'Requesting…'
+                        : 'Resend Link'}
+                    </Button>
+                  )}
+                  {(['PENDING', 'EXPIRED'].includes(employee.invitationStatus.status)) && (
                     <Button
                       variant="outline"
                       onClick={() => {
@@ -397,6 +472,14 @@ export function PlatformCompanyEmployeesPage() {
                     >
                       Edit invitation
                     </Button>
+                  )}
+                  {rowResendFeedback[employee.id] && (
+                    <p
+                      role={rowResendFeedback[employee.id].kind === 'success' ? 'status' : 'alert'}
+                      className={`basis-full text-xs ${rowResendFeedback[employee.id].kind === 'error' ? 'text-[hsl(var(--destructive))]' : 'text-[hsl(var(--primary))]'}`}
+                    >
+                      {rowResendFeedback[employee.id].message}
+                    </p>
                   )}
                   <Button
                     variant="quiet"
@@ -678,6 +761,16 @@ function InvitationEditor({
         <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
           Invitation status: {invitation.status}. Profile status is managed separately.
         </p>
+        {invitation.invitation?.role && (
+          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+            Role: {invitation.invitation.role.replaceAll('_', ' ')}
+          </p>
+        )}
+        {formatRequestedAt(invitation.invitation?.createdAt) && (
+          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+            Requested {formatRequestedAt(invitation.invitation?.createdAt)}
+          </p>
+        )}
         {hasInvitationId && (
           <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
             Invitation ID: <span data-testid={`invitation-id-${employee.id}`}>{invitationId}</span>
@@ -719,7 +812,7 @@ function InvitationEditor({
           onClick={onResend}
           testId={`button-resend-invitation-${employee.id}`}
         >
-          {resendPending ? 'Requesting…' : 'Resend invitation'}
+          {resendPending ? 'Requesting…' : 'Resend Link'}
         </Button>
       </div>
       {notice && <p role="status" className="text-sm text-[hsl(var(--primary))]">{notice}</p>}

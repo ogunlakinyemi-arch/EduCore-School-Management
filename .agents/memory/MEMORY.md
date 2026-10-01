@@ -22,3 +22,5 @@
 - [Invitation link evidence](invitation-link-evidence.md) — a working app acceptance route does not prove a recipient's emailed Clerk link lands on that host and path.
 - [Vitest file completeness](vitest-file-completeness.md) — explicitly naming a test file does not override include filters; compare requested files with executed-file summaries.
 - [Mutation cleanup ownership](mutation-cleanup-ownership.md) — observer-level settlement callbacks can disappear after another mutation or reset; own keyed cleanup per execution.
+- [Provider contract mocks](provider-contract-mocks.md) — provider mocks must enforce duplicate-invitation rules and model acceptance followed by a lost response.
+- [Invitation activation evidence](invitation-activation-evidence.md) — recovered invitations need positive role evidence; missing staff evidence must never imply ownership.
