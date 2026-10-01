@@ -1,0 +1,64 @@
+The fresh Development → Production schema-diff investigation has confirmed that the current Publish migration generator is producing an incomplete migration plan.
+
+Confirmed root cause:
+
+The current 257-statement Publish plan adds these two foreign keys but omits the composite unique indexes required by their referenced columns:
+
+1. Missing Production prerequisite:
+   "subscriptions_id_school_student_uq"
+   UNIQUE INDEX on:
+   "(id, school_id, student_id)"
+   
+   Dependent foreign key:
+   "student_subscription_payments_subscription_owner_fk"
+
+2. Missing Production prerequisite:
+   "school_partner_attributions_id_partner_uq"
+   UNIQUE INDEX on:
+   "(id, partner_profile_id)"
+   
+   Dependent foreign key:
+   "student_subscription_allocations_attribution_partner_fk"
+
+Confirmed facts:
+
+- Both composite unique indexes already exist and are valid in Development.
+- Their source declarations are present in the Development schema.
+- All 438 Development foreign keys are validated.
+- Relevant relationship checks found zero orphan rows.
+- The current Production database does not contain these two composite indexes.
+- The corresponding child tables/foreign keys are also absent from Production.
+- The existing single-column primary keys do not satisfy the composite foreign-key references.
+- No Development schema correction is required.
+- No Production schema or data was modified.
+- No migration was published.
+- The previous parent/student uniqueness prerequisite has already been handled separately and must not be reverted or recreated.
+- The two Development foreign keys must remain intact.
+
+A review-only 259-statement plan was prepared which places the two missing unique indexes before their dependent foreign keys. Static checking found no other missing uniqueness prerequisites among the 134 foreign-key additions.
+
+Do NOT:
+
+- manually execute the proposed SQL,
+- modify Production,
+- remove or disable Development foreign keys,
+- add deployment-time DDL,
+- bypass the normal Publish flow,
+- publish the current 257-statement plan,
+- or convert the standalone unique indexes into UNIQUE constraints unless the schema source explicitly requires that change.
+
+Required action:
+
+1. Escalate this as a Publish/schema-diff generation defect.
+2. Have the Publish generation logic recognize the two existing Development composite unique-index prerequisites.
+3. Regenerate the normal Development → Production schema diff.
+4. Verify that the regenerated plan contains:
+   - creation of "subscriptions_id_school_student_uq" before "student_subscription_payments_subscription_owner_fk";
+   - creation of "school_partner_attributions_id_partner_uq" before "student_subscription_allocations_attribution_partner_fk".
+5. Verify that no destructive statements or unrelated schema changes have been introduced.
+6. Validate the regenerated migration on the disposable Production fork.
+7. Do NOT publish until the regenerated plan passes validation.
+
+Return the regenerated statement count and specifically show the statements responsible for these two prerequisites and their dependent foreign keys.
+
+If the Publish generator cannot be corrected from the available Agent permissions, stop and provide the captured evidence in a Support-ready format rather than attempting a manual workaround.

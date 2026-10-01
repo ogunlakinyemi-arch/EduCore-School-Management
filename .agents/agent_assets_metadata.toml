@@ -84,3 +84,17 @@ mtime_ms = 1790871038659
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/2d13e200-e703-4374-84ef-602f0894eb6d/83fe3eef-1402-4020-b217-d29367dfad08"
 storage_version_token = "1790871039380639"
 content_type = "text/html"
+
+[[outputs]]
+id = "rOpLgNCevTl8hGoZmAmjw"
+uri = "file://reports/publish-schema-diff-support.html"
+type = "html"
+title = "Support-ready Publish defect report"
+description = "Latest 257-statement generated plan, the omitted composite-key prerequisites, read-only catalog evidence, and required validation checks. Prepared only; no support ticket or publication was submitted."
+logical_id = "7d342fae-4a96-4249-8f14-3cb4eee558dd"
+content_hash = "sha256:99f4686b6577c6b042f324986c7e3879470e7b5da5bcd05bc01aca375f9ac8ec"
+size = 110137
+mtime_ms = 1790871732019
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/7d342fae-4a96-4249-8f14-3cb4eee558dd/a9eeb386-2230-4fe5-8790-b00982d9dc6f"
+storage_version_token = "1790871733219284"
+content_type = "text/html"

@@ -1,0 +1,1645 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Publish schema-diff defect: Support evidence</title><style>body{font:16px/1.5 system-ui,sans-serif;color:#182332;max-width:1050px;margin:40px auto;padding:0 24px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f5f9;padding:20px;font:14px/1.55 ui-monospace,monospace}summary{font-weight:650;cursor:pointer}details{margin:24px 0}.notice{padding:14px;background:#fffbeb;border-left:5px solid #b45309}</style><h1>Publish schema-diff defect: Support evidence</h1><p class="notice">Prepared for Support submission. Not submitted. No generator correction, schema change, migration execution, or publication was performed. SQL is evidence only; do not execute manually.</p><pre>Technical defect: Publish schema-diff generation omits FK-supporting composite unique indexes
+
+STATUS
+Fresh explainSchemaDiff succeeded and still returns 257 statements. No generator correction is available through the exposed Agent tools. No corrected normal Publish plan has been produced. No fork validation was initiated and no publication was initiated. This report is prepared for submission; Agent has not submitted a support ticket.
+
+OBSERVED
+Production is missing two composite unique indexes that are present, valid, ready, immediate, non-partial and non-expression in Development. Development source declares both indexes. Both dependent Development FKs are validated and bound to these indexes. The latest normal Publish diff includes both FK additions but neither index creation.
+
+MISSING PREREQUISITES
+1. subscriptions_id_school_student_uq: CREATE UNIQUE INDEX subscriptions_id_school_student_uq ON public.subscriptions USING btree (id, school_id, student_id). Required by student_subscription_payments_subscription_owner_fk.
+2. school_partner_attributions_id_partner_uq: CREATE UNIQUE INDEX school_partner_attributions_id_partner_uq ON public.school_partner_attributions USING btree (id, partner_profile_id). Required by student_subscription_allocations_attribution_partner_fk.
+
+LATEST DEPENDENT STATEMENTS
+Position 106: ALTER TABLE "student_subscription_allocations" ADD CONSTRAINT "student_subscription_allocations_attribution_partner_fk" FOREIGN KEY ("attribution_id","recipient_id") REFERENCES "public"."school_partner_attributions"("id","partner_profile_id") ON DELETE restrict ON UPDATE no action;
+Position 141: ALTER TABLE "student_subscription_payments" ADD CONSTRAINT "student_subscription_payments_subscription_owner_fk" FOREIGN KEY ("subscription_id","school_id","student_id") REFERENCES "public"."subscriptions"("id","school_id","student_id") ON DELETE restrict ON UPDATE no action;
+
+EXPECTED
+Normal Publish generation must create each missing unique index before creating its dependent foreign key. A review-only proposal adding both index creations before the existing plan has 259 statements, but it is not a regenerated platform plan and has not passed fork validation. No Development source correction is required to make the existing indexes legitimate PostgreSQL FK targets.
+
+CLASSIFICATION
+Incomplete generated diff plus missing Production prerequisites. This is not merely ordering of existing statements: the index creation statements are absent entirely. Existing single-column primary keys do not satisfy the referenced composite tuples. The internal implementation reason why the generator omits these indexes has not been established.
+
+REPRODUCTION EVIDENCE
+- Read-only Development catalogs: heliumdb, not a replica, 125 public tables; both composite indexes present; both dependent child tables and FKs present.
+- Read-only Production replica catalogs: neondb, 91 public tables; both composite indexes absent; both corresponding child tables/FKs absent.
+- Production commission_ledger_subscription_id_subscriptions_id_fk remains validated and uses subscriptions_pkey.
+- Run explainSchemaDiff against this unchanged state: 257 statements; 134 FK additions; no creation of either missing composite key.
+- Uploaded disposable-fork failure: ALTER TABLE student_subscription_payments ADD CONSTRAINT student_subscription_payments_subscription_owner_fk ... REFERENCES subscriptions(id,school_id,student_id); error: there is no unique constraint matching given keys for referenced table subscriptions.
+- The latest statement order differs from the prior preview, but normalized SQL statement sets are unchanged: zero added or removed statements.
+
+SAFETY / PRIOR VALIDATION
+Latest generated plan: hasStructuralDataLoss=false, maybeNonBackwardsCompatible=false, warnings=[], no DROP or TRUNCATE statements. Prior static checking found exactly these two missing uniqueness prerequisites among 134 FK additions. Prior Development integrity checks: all 438 public FKs marked validated; zero orphan rows across five relevant relationships; matching before/after fingerprints of 126 public/drizzle tables with 408 total rows, including migration history. These are prior read-only verification results, not a new executed migration or fork validation.
+
+REQUIRED RESOLUTION
+Correct the Publish/schema-diff generator to emit both unique-index prerequisites without altering the valid Development source. Recompute normal Publish SQL, confirm both prerequisites precede their dependent FK additions, check for destructive or unrelated additions/removals, and validate on the disposable Production fork. Do not publish until validation passes.
+
+PROHIBITED WORKAROUNDS
+Do not modify Production manually, execute this report SQL, remove/disable/recreate Development FKs, introduce deployment-time DDL, convert standalone unique indexes into UNIQUE constraints without an explicit schema requirement, or revert/recreate the already-handled parent/student prerequisite.
+
+ATTACHMENTS
+- reports/publish-schema-diff-support.html (this report, fresh full plan, and captured read-only catalog evidence)
+- reports/publish-prerequisite-review.html (earlier detailed review and review-only 259-statement proposal)
+- attached_assets/migration-failure-diagnostics-1790869937030.txt (actual disposable-fork failure diagnostics)
+
+SUPPORT
+Submit through https://replit.com/support and include the Replit project URL. No ticket has been submitted by Agent.
+</pre><details><summary>Latest fresh normal Publish plan: 257 statements</summary><pre>-- Position 1
+CREATE TABLE "staff_nfc_billing_rules" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"version" integer NOT NULL,
+	"product" text DEFAULT 'TEACHER_STAFF_NFC_EID' NOT NULL,
+	"billing_frequency" text DEFAULT 'ACADEMIC_TERM' NOT NULL,
+	"price_minor" integer NOT NULL,
+	"school_share_minor" integer NOT NULL,
+	"platform_share_minor" integer NOT NULL,
+	"partner_commission_minor" integer NOT NULL,
+	"no_partner_platform_share_minor" integer NOT NULL,
+	"currency" text DEFAULT 'NGN' NOT NULL,
+	"status" text DEFAULT 'ACTIVE' NOT NULL,
+	"effective_at" timestamp with time zone NOT NULL,
+	"created_by" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "staff_nfc_billing_rules_id_product_uq" UNIQUE("id","product"),
+	CONSTRAINT "staff_nfc_billing_rules_id_version_uq" UNIQUE("id","version"),
+	CONSTRAINT "staff_nfc_billing_rules_product_effective_uq" UNIQUE("product","effective_at"),
+	CONSTRAINT "staff_nfc_billing_rules_product_version_uq" UNIQUE("product","version"),
+	CONSTRAINT "staff_nfc_billing_rules_amounts_ck" CHECK ((price_minor &gt; 0) AND (school_share_minor &gt;= 0) AND (platform_share_minor &gt;= 0) AND (partner_commission_minor &gt;= 0) AND (no_partner_platform_share_minor &gt;= 0) AND (((school_share_minor + platform_share_minor) + partner_commission_minor) = price_minor) AND ((school_share_minor + no_partner_platform_share_minor) = price_minor)),
+	CONSTRAINT "staff_nfc_billing_rules_currency_ck" CHECK (currency = 'NGN'::text),
+	CONSTRAINT "staff_nfc_billing_rules_frequency_ck" CHECK (billing_frequency = 'ACADEMIC_TERM'::text),
+	CONSTRAINT "staff_nfc_billing_rules_product_ck" CHECK (product = 'TEACHER_STAFF_NFC_EID'::text),
+	CONSTRAINT "staff_nfc_billing_rules_status_ck" CHECK (status = 'ACTIVE'::text)
+);
+
+
+-- Position 2
+CREATE TABLE "staff_nfc_subscriptions" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"school_id" integer NOT NULL,
+	"employee_id" integer NOT NULL,
+	"academic_session_id" integer NOT NULL,
+	"academic_term_id" integer NOT NULL,
+	"product" text DEFAULT 'TEACHER_STAFF_NFC_EID' NOT NULL,
+	"billing_rule_id" integer NOT NULL,
+	"billing_rule_version" integer NOT NULL,
+	"price_minor" integer NOT NULL,
+	"school_share_minor" integer NOT NULL,
+	"platform_share_minor" integer NOT NULL,
+	"partner_share_minor" integer DEFAULT 0 NOT NULL,
+	"partner_profile_id" integer,
+	"attribution_id" integer,
+	"currency" text DEFAULT 'NGN' NOT NULL,
+	"status" text DEFAULT 'UNPAID' NOT NULL,
+	"due_date" date NOT NULL,
+	"created_by" integer,
+	"paid_at" timestamp with time zone,
+	"refunded_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "staff_nfc_subscriptions_employee_term_uq" UNIQUE("employee_id","school_id","academic_session_id","academic_term_id"),
+	CONSTRAINT "staff_nfc_subscriptions_id_employee_school_term_uq" UNIQUE("id","employee_id","school_id","academic_session_id","academic_term_id"),
+	CONSTRAINT "staff_nfc_subscriptions_id_school_uq" UNIQUE("id","school_id"),
+	CONSTRAINT "staff_nfc_subscriptions_allocation_ck" CHECK ((price_minor &gt; 0) AND (school_share_minor &gt;= 0) AND (platform_share_minor &gt;= 0) AND (partner_share_minor &gt;= 0) AND (((school_share_minor + platform_share_minor) + partner_share_minor) = price_minor) AND (((partner_profile_id IS NULL) AND (partner_share_minor = 0) AND (attribution_id IS NULL)) OR ((partner_profile_id IS NOT NULL) AND (attribution_id IS NOT NULL)))),
+	CONSTRAINT "staff_nfc_subscriptions_currency_ck" CHECK (currency = 'NGN'::text),
+	CONSTRAINT "staff_nfc_subscriptions_product_ck" CHECK (product = 'TEACHER_STAFF_NFC_EID'::text),
+	CONSTRAINT "staff_nfc_subscriptions_status_ck" CHECK (status = ANY (ARRAY['UNPAID'::text, 'PENDING'::text, 'PAID'::text, 'FAILED'::text, 'CANCELLED'::text, 'REFUNDED'::text, 'PARTIALLY_REFUNDED'::text]))
+);
+
+
+-- Position 3
+CREATE TABLE "staff_nfc_refunds" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"payment_id" integer NOT NULL,
+	"school_id" integer NOT NULL,
+	"amount_minor" integer NOT NULL,
+	"idempotency_key" text NOT NULL,
+	"reason" text NOT NULL,
+	"status" text DEFAULT 'REQUESTED' NOT NULL,
+	"provider_refund_id" text,
+	"created_by" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"completed_at" timestamp with time zone,
+	"provider_verified_at" timestamp with time zone,
+	"failure_code" text,
+	CONSTRAINT "staff_nfc_refunds_id_payment_school_uq" UNIQUE("id","payment_id","school_id"),
+	CONSTRAINT "staff_nfc_refunds_payment_idempotency_uq" UNIQUE("payment_id","idempotency_key"),
+	CONSTRAINT "staff_nfc_refunds_amount_minor_check" CHECK (amount_minor &gt; 0),
+	CONSTRAINT "staff_nfc_refunds_reason_ck" CHECK ((char_length(btrim(reason)) &gt;= 5) AND (char_length(btrim(reason)) &lt;= 500)),
+	CONSTRAINT "staff_nfc_refunds_status_ck" CHECK (status = ANY (ARRAY['REQUESTED'::text, 'PENDING'::text, 'SUCCEEDED'::text, 'FAILED'::text, 'RECONCILIATION_REQUIRED'::text]))
+);
+
+
+-- Position 4
+CREATE TABLE "staff_nfc_payments" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"subscription_id" integer NOT NULL,
+	"employee_id" integer NOT NULL,
+	"school_id" integer NOT NULL,
+	"academic_session_id" integer NOT NULL,
+	"academic_term_id" integer NOT NULL,
+	"provider" text NOT NULL,
+	"provider_mode" text NOT NULL,
+	"reference" text NOT NULL,
+	"idempotency_key" text NOT NULL,
+	"gross_amount_minor" integer NOT NULL,
+	"provider_fee_minor" integer,
+	"settlement_amount_minor" integer,
+	"refunded_amount_minor" integer DEFAULT 0 NOT NULL,
+	"currency" text DEFAULT 'NGN' NOT NULL,
+	"status" text DEFAULT 'PENDING' NOT NULL,
+	"settlement_status" text DEFAULT 'PENDING' NOT NULL,
+	"reconciliation_status" text DEFAULT 'PENDING' NOT NULL,
+	"refund_status" text DEFAULT 'NONE' NOT NULL,
+	"checkout_url" text,
+	"provider_transaction_id" text,
+	"provider_paid_at" timestamp with time zone,
+	"paid_at" timestamp with time zone,
+	"failure_code" text,
+	"created_by" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "staff_nfc_payments_employee_idempotency_uq" UNIQUE("employee_id","idempotency_key"),
+	CONSTRAINT "staff_nfc_payments_id_school_uq" UNIQUE("id","school_id"),
+	CONSTRAINT "staff_nfc_payments_id_subscription_school_uq" UNIQUE("id","subscription_id","school_id"),
+	CONSTRAINT "staff_nfc_payments_reference_uq" UNIQUE("reference"),
+	CONSTRAINT "staff_nfc_payments_money_ck" CHECK ((gross_amount_minor &gt; 0) AND ((provider_fee_minor IS NULL) OR (provider_fee_minor &gt;= 0)) AND ((settlement_amount_minor IS NULL) OR (settlement_amount_minor &gt;= 0)) AND (refunded_amount_minor &gt;= 0) AND (refunded_amount_minor &lt;= gross_amount_minor) AND (currency = 'NGN'::text)),
+	CONSTRAINT "staff_nfc_payments_provider_ck" CHECK (provider = ANY (ARRAY['FLUTTERWAVE'::text, 'MOCK'::text])),
+	CONSTRAINT "staff_nfc_payments_provider_mode_ck" CHECK (provider_mode = ANY (ARRAY['SANDBOX'::text, 'DEVELOPMENT_MOCK'::text])),
+	CONSTRAINT "staff_nfc_payments_reconciliation_ck" CHECK (reconciliation_status = ANY (ARRAY['PENDING'::text, 'RECONCILED'::text, 'RECONCILIATION_REQUIRED'::text, 'NOT_APPLICABLE'::text])),
+	CONSTRAINT "staff_nfc_payments_refund_ck" CHECK (refund_status = ANY (ARRAY['NONE'::text, 'PENDING'::text, 'PARTIALLY_REFUNDED'::text, 'REFUNDED'::text, 'RECONCILIATION_REQUIRED'::text])),
+	CONSTRAINT "staff_nfc_payments_settlement_ck" CHECK (settlement_status = ANY (ARRAY['PENDING'::text, 'RECONCILED'::text, 'RECONCILIATION_REQUIRED'::text, 'NOT_APPLICABLE'::text])),
+	CONSTRAINT "staff_nfc_payments_status_ck" CHECK (status = ANY (ARRAY['PENDING'::text, 'PAID'::text, 'FAILED'::text, 'CANCELLED'::text, 'REFUNDED'::text, 'PARTIALLY_REFUNDED'::text, 'RECONCILIATION_REQUIRED'::text]))
+);
+
+
+-- Position 5
+CREATE TABLE "staff_nfc_partner_commissions" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"allocation_id" integer NOT NULL,
+	"partner_profile_id" integer NOT NULL,
+	"school_id" integer NOT NULL,
+	"employee_id" integer NOT NULL,
+	"academic_session_id" integer NOT NULL,
+	"academic_term_id" integer NOT NULL,
+	"subscription_id" integer NOT NULL,
+	"payment_id" integer NOT NULL,
+	"recipient_type" text DEFAULT 'PARTNER' NOT NULL,
+	"commission_minor" integer NOT NULL,
+	"currency" text DEFAULT 'NGN' NOT NULL,
+	"status" text DEFAULT 'PENDING' NOT NULL,
+	"paid_at" timestamp with time zone,
+	"payment_reference" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "staff_nfc_partner_commissions_allocation_id_key" UNIQUE("allocation_id"),
+	CONSTRAINT "staff_nfc_partner_commissions_subscription_uq" UNIQUE("subscription_id"),
+	CONSTRAINT "staff_nfc_partner_commissions_commission_minor_check" CHECK (commission_minor &gt; 0),
+	CONSTRAINT "staff_nfc_partner_commissions_currency_check" CHECK (currency = 'NGN'::text),
+	CONSTRAINT "staff_nfc_partner_commissions_recipient_ck" CHECK (recipient_type = 'PARTNER'::text),
+	CONSTRAINT "staff_nfc_partner_commissions_status_ck" CHECK (status = ANY (ARRAY['PENDING'::text, 'PAID'::text, 'REVERSED'::text]))
+);
+
+
+-- Position 6
+CREATE TABLE "staff_nfc_allocations" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"idempotency_key" text NOT NULL,
+	"entry_type" text DEFAULT 'CREDIT' NOT NULL,
+	"product" text DEFAULT 'TEACHER_STAFF_NFC_EID' NOT NULL,
+	"recipient_type" text NOT NULL,
+	"recipient_id" integer,
+	"school_id" integer NOT NULL,
+	"employee_id" integer NOT NULL,
+	"academic_session_id" integer NOT NULL,
+	"academic_term_id" integer NOT NULL,
+	"subscription_id" integer NOT NULL,
+	"payment_id" integer NOT NULL,
+	"refund_id" integer,
+	"allocation_rule_id" integer NOT NULL,
+	"billing_rule_version" integer NOT NULL,
+	"attribution_id" integer,
+	"amount_minor" integer NOT NULL,
+	"currency" text DEFAULT 'NGN' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "staff_nfc_allocations_id_payment_type_uq" UNIQUE("id","payment_id","recipient_type"),
+	CONSTRAINT "staff_nfc_allocations_idempotency_key_key" UNIQUE("idempotency_key"),
+	CONSTRAINT "staff_nfc_allocations_amount_minor_check" CHECK (amount_minor &gt; 0),
+	CONSTRAINT "staff_nfc_allocations_currency_ck" CHECK (currency = 'NGN'::text),
+	CONSTRAINT "staff_nfc_allocations_entry_ck" CHECK (entry_type = ANY (ARRAY['CREDIT'::text, 'REVERSAL'::text, 'EXPENSE'::text])),
+	CONSTRAINT "staff_nfc_allocations_product_ck" CHECK (product = 'TEACHER_STAFF_NFC_EID'::text),
+	CONSTRAINT "staff_nfc_allocations_provider_fee_expense_ck" CHECK (((recipient_type = 'PLATFORM_PROVIDER_FEE'::text) AND (entry_type = 'EXPENSE'::text) AND (refund_id IS NULL)) OR ((recipient_type &lt;&gt; 'PLATFORM_PROVIDER_FEE'::text) AND (entry_type = ANY (ARRAY['CREDIT'::text, 'REVERSAL'::text])))),
+	CONSTRAINT "staff_nfc_allocations_refund_entry_ck" CHECK (((entry_type = 'CREDIT'::text) AND (recipient_type = ANY (ARRAY['SCHOOL'::text, 'PLATFORM'::text, 'PARTNER'::text])) AND (refund_id IS NULL)) OR ((entry_type = 'REVERSAL'::text) AND (recipient_type = ANY (ARRAY['SCHOOL'::text, 'PLATFORM'::text, 'PARTNER'::text])) AND (refund_id IS NOT NULL)) OR ((entry_type = 'EXPENSE'::text) AND (recipient_type = 'PLATFORM_PROVIDER_FEE'::text) AND (refund_id IS NULL))),
+	CONSTRAINT "staff_nfc_allocations_type_ck" CHECK (recipient_type = ANY (ARRAY['SCHOOL'::text, 'PLATFORM'::text, 'PARTNER'::text, 'PLATFORM_PROVIDER_FEE'::text]))
+);
+
+
+-- Position 7
+CREATE TABLE "employee_nfc_card_bindings" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"school_id" integer NOT NULL,
+	"nfc_card_id" integer NOT NULL,
+	"employee_id" integer NOT NULL,
+	"status" text DEFAULT 'ASSIGNED' NOT NULL,
+	"created_by_user_id" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "employee_nfc_card_bindings_id_school_id_key" UNIQUE("id","school_id"),
+	CONSTRAINT "employee_nfc_card_bindings_status_check" CHECK (status = ANY (ARRAY['ASSIGNED'::text, 'ACTIVE'::text, 'LOCKED'::text, 'DEACTIVATED'::text, 'REPLACED'::text]))
+);
+
+
+-- Position 8
+CREATE TABLE "staff_nfc_receipts" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"payment_id" integer NOT NULL,
+	"subscription_id" integer NOT NULL,
+	"school_id" integer NOT NULL,
+	"receipt_number" text NOT NULL,
+	"issued_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"snapshot" jsonb NOT NULL,
+	CONSTRAINT "staff_nfc_receipts_payment_id_key" UNIQUE("payment_id"),
+	CONSTRAINT "staff_nfc_receipts_payment_owner_uq" UNIQUE("payment_id","subscription_id","school_id"),
+	CONSTRAINT "staff_nfc_receipts_receipt_number_key" UNIQUE("receipt_number"),
+	CONSTRAINT "staff_nfc_receipts_snapshot_check" CHECK (jsonb_typeof(snapshot) = 'object'::text)
+);
+
+
+-- Position 9
+CREATE TABLE "staff_nfc_provider_events" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"provider" text DEFAULT 'FLUTTERWAVE' NOT NULL,
+	"event_id" text NOT NULL,
+	"provider_reference" text NOT NULL,
+	"provider_transaction_id" text NOT NULL,
+	"payload_sha256" text NOT NULL,
+	"signature_verified" boolean DEFAULT true NOT NULL,
+	"outcome" text DEFAULT 'RECEIVED' NOT NULL,
+	"payment_id" integer,
+	"school_id" integer,
+	"failure_code" text,
+	"received_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"resolved_at" timestamp with time zone,
+	CONSTRAINT "staff_nfc_provider_events_provider_event_uq" UNIQUE("provider","event_id"),
+	CONSTRAINT "staff_nfc_provider_events_digest_ck" CHECK (payload_sha256 ~ '^[a-f0-9]{64}$'::text),
+	CONSTRAINT "staff_nfc_provider_events_outcome_ck" CHECK (outcome = ANY (ARRAY['RECEIVED'::text, 'VERIFIED'::text, 'PENDING'::text, 'FAILED'::text, 'DUPLICATE'::text, 'RECONCILIATION_REQUIRED'::text, 'REFUND_PENDING'::text, 'REFUNDED'::text, 'PARTIAL_REFUND'::text])),
+	CONSTRAINT "staff_nfc_provider_events_provider_ck" CHECK (provider = 'FLUTTERWAVE'::text)
+);
+
+
+-- Position 10
+CREATE TABLE "employee_nfc_card_history" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"school_id" integer NOT NULL,
+	"binding_id" integer NOT NULL,
+	"nfc_card_id" integer NOT NULL,
+	"employee_id" integer NOT NULL,
+	"action" text NOT NULL,
+	"previous_status" text,
+	"new_status" text,
+	"replacement_nfc_card_id" integer,
+	"reason" text,
+	"actor_user_id" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "employee_nfc_card_history_id_school_id_key" UNIQUE("id","school_id")
+);
+
+
+-- Position 11
+CREATE TABLE "employee_nfc_discrepancy_actions" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"school_id" integer NOT NULL,
+	"discrepancy_id" integer NOT NULL,
+	"resolution" text NOT NULL,
+	"reason" text NOT NULL,
+	"actor_user_id" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+-- Position 12
+CREATE TABLE "school_branding_logos" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"school_id" integer NOT NULL,
+	"object_path" text NOT NULL,
+	"content_type" text NOT NULL,
+	"byte_size" integer NOT NULL,
+	"is_current" boolean DEFAULT true NOT NULL,
+	"updated_by_user_id" integer NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "school_branding_logos_byte_size_check" CHECK ((byte_size &gt;= 1) AND (byte_size &lt;= 3145728)),
+	CONSTRAINT "school_branding_logos_content_type_check" CHECK (content_type = ANY (ARRAY['image/jpeg'::text, 'image/png'::text, 'image/webp'::text]))
+);
+
+
+-- Position 13
+CREATE TABLE "employee_nfc_attendance_discrepancies" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"school_id" integer NOT NULL,
+	"employee_id" integer NOT NULL,
+	"attendance_event_id" integer NOT NULL,
+	"kind" text NOT NULL,
+	"status" text DEFAULT 'OPEN' NOT NULL,
+	"details" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"resolved_at" timestamp with time zone,
+	"resolved_by_user_id" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "employee_nfc_attendance_discrepancies_id_school_id_key" UNIQUE("id","school_id"),
+	CONSTRAINT "employee_nfc_attendance_discrepancies_status_check" CHECK (status = ANY (ARRAY['OPEN'::text, 'RESOLVED'::text]))
+);
+
+
+-- Position 14
+CREATE TABLE "teacher_subject_assignments" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"school_id" integer NOT NULL,
+	"employee_id" integer NOT NULL,
+	"subject_id" integer NOT NULL,
+	"academic_session_id" integer NOT NULL,
+	"start_date" date NOT NULL,
+	"end_date" date,
+	"status" text DEFAULT 'ACTIVE' NOT NULL,
+	"created_by_user_id" integer NOT NULL,
+	"updated_by_user_id" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "teacher_subject_assignments_id_school_tenant_key" UNIQUE("id","school_id"),
+	CONSTRAINT "teacher_subject_assignments_dates_check" CHECK ((end_date IS NULL) OR (end_date &gt;= start_date)),
+	CONSTRAINT "teacher_subject_assignments_status_check" CHECK (status = ANY (ARRAY['ACTIVE'::text, 'INACTIVE'::text]))
+);
+
+
+-- Position 15
+CREATE TABLE "school_calendar_events" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"school_id" integer NOT NULL,
+	"academic_session_id" integer,
+	"academic_term_id" integer,
+	"source" text NOT NULL,
+	"source_key" text NOT NULL,
+	"title" text NOT NULL,
+	"category" text NOT NULL,
+	"start_date" date NOT NULL,
+	"end_date" date,
+	"is_academic" boolean DEFAULT true NOT NULL,
+	"audience" text[] DEFAULT '{"TEACHER","STUDENT","PARENT","STAFF"}' NOT NULL,
+	"status" text DEFAULT 'ACTIVE' NOT NULL,
+	"notes" text,
+	"created_by_user_id" integer NOT NULL,
+	"updated_by_user_id" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "school_calendar_events_id_school_tenant_key" UNIQUE("id","school_id"),
+	CONSTRAINT "school_calendar_events_audience_check" CHECK ((cardinality(audience) &gt; 0) AND (audience &lt;@ ARRAY['TEACHER'::text, 'STUDENT'::text, 'PARENT'::text, 'STAFF'::text])),
+	CONSTRAINT "school_calendar_events_category_check" CHECK (category = ANY (ARRAY['RESUMPTION'::text, 'MID_TERM_BREAK'::text, 'HOLIDAY'::text, 'EXAMINATION'::text, 'RESULT_PUBLICATION'::text, 'SCHOOL_EVENT'::text, 'OTHER'::text])),
+	CONSTRAINT "school_calendar_events_dates_check" CHECK ((end_date IS NULL) OR (end_date &gt;= start_date)),
+	CONSTRAINT "school_calendar_events_source_check" CHECK (source = ANY (ARRAY['GENERATED'::text, 'SCHOOL_EVENT'::text])),
+	CONSTRAINT "school_calendar_events_status_check" CHECK (status = ANY (ARRAY['ACTIVE'::text, 'INACTIVE'::text]))
+);
+
+
+-- Position 16
+CREATE TABLE "settlement_payroll_profiles" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"scope" text NOT NULL,
+	"school_id" integer,
+	"business_name" text NOT NULL,
+	"business_registration_number" text,
+	"settlement_contact_email" text NOT NULL,
+	"settlement_contact_phone" text,
+	"bank_name_encrypted" text NOT NULL,
+	"bank_code_encrypted" text NOT NULL,
+	"account_name_encrypted" text NOT NULL,
+	"account_number_encrypted" text NOT NULL,
+	"account_last4" text NOT NULL,
+	"encryption_key_version" text NOT NULL,
+	"currency" text DEFAULT 'NGN' NOT NULL,
+	"provider" text DEFAULT 'FLUTTERWAVE' NOT NULL,
+	"provider_business_id" text,
+	"provider_subaccount_id" text,
+	"verification_status" text DEFAULT 'PENDING_VERIFICATION' NOT NULL,
+	"verified_at" timestamp with time zone,
+	"verified_by" integer,
+	"created_by" integer NOT NULL,
+	"updated_by" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "settlement_payroll_profiles_id_scope_school_unique" UNIQUE("id","scope","school_id"),
+	CONSTRAINT "settlement_payroll_profiles_account_last4_check" CHECK (account_last4 ~ '^[0-9]{4}$'::text),
+	CONSTRAINT "settlement_payroll_profiles_currency_check" CHECK (currency = 'NGN'::text),
+	CONSTRAINT "settlement_payroll_profiles_encrypted_fields_check" CHECK ((length(btrim(bank_name_encrypted)) &gt; 0) AND (length(btrim(bank_code_encrypted)) &gt; 0) AND (length(btrim(account_name_encrypted)) &gt; 0) AND (length(btrim(account_number_encrypted)) &gt; 0) AND (length(btrim(encryption_key_version)) &gt; 0)),
+	CONSTRAINT "settlement_payroll_profiles_provider_check" CHECK (provider = 'FLUTTERWAVE'::text),
+	CONSTRAINT "settlement_payroll_profiles_tenant_check" CHECK (((scope = 'SCHOOL'::text) AND (school_id IS NOT NULL)) OR ((scope = 'YEMAIT_COMPANY'::text) AND (school_id IS NULL))),
+	CONSTRAINT "settlement_payroll_profiles_verification_check" CHECK (((verification_status = 'VERIFIED'::text) AND (verified_at IS NOT NULL) AND (verified_by IS NOT NULL)) OR ((verification_status &lt;&gt; 'VERIFIED'::text) AND (verified_at IS NULL) AND (verified_by IS NULL)))
+);
+
+
+-- Position 17
+CREATE TABLE "transport_parent_requests" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"school_id" integer NOT NULL,
+	"student_id" integer NOT NULL,
+	"parent_id" integer NOT NULL,
+	"assignment_id" integer,
+	"request_type" text NOT NULL,
+	"request_date" timestamp with time zone DEFAULT now() NOT NULL,
+	"effective_date" date NOT NULL,
+	"reason" text NOT NULL,
+	"status" text DEFAULT 'PENDING' NOT NULL,
+	"school_action" text,
+	"school_note" text,
+	"reviewed_by" integer,
+	"reviewed_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "transport_parent_requests_id_school_unique" UNIQUE("id","school_id"),
+	CONSTRAINT "transport_parent_requests_action_check" CHECK ((school_action IS NULL) OR (school_action = ANY (ARRAY['ACTIVATE'::text, 'SUSPEND'::text, 'DEACTIVATE'::text, 'NO_CHANGE'::text]))),
+	CONSTRAINT "transport_parent_requests_reason_check" CHECK ((length(btrim(reason)) &gt;= 3) AND (length(btrim(reason)) &lt;= 1000)),
+	CONSTRAINT "transport_parent_requests_review_check" CHECK (((status = 'PENDING'::text) AND (reviewed_by IS NULL) AND (reviewed_at IS NULL)) OR ((status &lt;&gt; 'PENDING'::text) AND (reviewed_by IS NOT NULL) AND (reviewed_at IS NOT NULL))),
+	CONSTRAINT "transport_parent_requests_school_note_check" CHECK ((school_note IS NULL) OR ((length(btrim(school_note)) &gt;= 3) AND (length(btrim(school_note)) &lt;= 1000))),
+	CONSTRAINT "transport_parent_requests_status_check" CHECK (status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text, 'WITHDRAWN'::text])),
+	CONSTRAINT "transport_parent_requests_type_check" CHECK (request_type = ANY (ARRAY['ACTIVATE'::text, 'DEACTIVATE'::text]))
+);
+
+
+-- Position 18
+CREATE TABLE "transport_buses" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"school_id" integer NOT NULL,
+	"name" text NOT NULL,
+	"registration_number" text NOT NULL,
+	"make" text,
+	"capacity" integer NOT NULL,
+	"status" text DEFAULT 'ACTIVE' NOT NULL,
+	"notes" text,
+	"created_by" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "transport_buses_id_school_unique" UNIQUE("id","school_id"),
+	CONSTRAINT "transport_buses_capacity_check" CHECK ((capacity &gt;= 1) AND (capacity &lt;= 250)),
+	CONSTRAINT "transport_buses_make_check" CHECK ((make IS NULL) OR (length(btrim(make)) &lt;= 100)),
+	CONSTRAINT "transport_buses_name_check" CHECK ((length(btrim(name)) &gt;= 2) AND (length(btrim(name)) &lt;= 100)),
+	CONSTRAINT "transport_buses_registration_check" CHECK ((length(btrim(registration_number)) &gt;= 3) AND (length(btrim(registration_number)) &lt;= 30)),
+	CONSTRAINT "transport_buses_status_check" CHECK (status = ANY (ARRAY['ACTIVE'::text, 'INACTIVE'::text, 'MAINTENANCE'::text]))
+);
+
+
+-- Position 19
+CREATE TABLE "transport_student_assignments" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"school_id" integer NOT NULL,
+	"student_id" integer NOT NULL,
+	"route_id" integer NOT NULL,
+	"pickup_stop_id" integer NOT NULL,
+	"dropoff_stop_id" integer NOT NULL,
+	"status" text DEFAULT 'ACTIVE' NOT NULL,
+	"effective_date" date NOT NULL,
+	"end_date" date,
+	"reason" text NOT NULL,
+	"created_by" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "transport_student_assignments_id_school_unique" UNIQUE("id","school_id"),
+	CONSTRAINT "transport_student_assignments_dates_check" CHECK ((end_date IS NULL) OR (end_date &gt;= effective_date)),
+	CONSTRAINT "transport_student_assignments_reason_check" CHECK ((length(btrim(reason)) &gt;= 3) AND (length(btrim(reason)) &lt;= 500)),
+	CONSTRAINT "transport_student_assignments_status_check" CHECK (status = ANY (ARRAY['ACTIVE'::text, 'SUSPENDED'::text, 'DEACTIVATED'::text])),
+	CONSTRAINT "transport_student_assignments_stops_check" CHECK (pickup_stop_id &lt;&gt; dropoff_stop_id)
+);
+
+
+-- Position 20
+CREATE TABLE "student_subscription_allocations" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"idempotency_key" text NOT NULL,
+	"entry_type" text DEFAULT 'CREDIT' NOT NULL,
+	"recipient_type" text NOT NULL,
+	"recipient_id" integer,
+	"school_id" integer NOT NULL,
+	"student_id" integer NOT NULL,
+	"payer_user_id" integer NOT NULL,
+	"academic_session_id" integer NOT NULL,
+	"academic_term_id" integer NOT NULL,
+	"subscription_id" integer NOT NULL,
+	"payment_id" integer NOT NULL,
+	"attribution_id" integer,
+	"commission_rule_id" integer,
+	"amount_minor" integer NOT NULL,
+	"currency" text DEFAULT 'NGN' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "student_subscription_allocations_id_payment_entry_recipient_uq" UNIQUE("id","payment_id","entry_type","recipient_type"),
+	CONSTRAINT "student_subscription_allocations_amount_ck" CHECK ((amount_minor &gt; 0) AND (currency = 'NGN'::text) AND (((entry_type = 'CREDIT'::text) AND (recipient_type = ANY (ARRAY['SCHOOL'::text, 'PLATFORM'::text, 'PARTNER'::text]))) OR ((entry_type = 'REVERSAL'::text) AND (recipient_type = ANY (ARRAY['SCHOOL'::text, 'PLATFORM'::text, 'PARTNER'::text]))) OR ((entry_type = 'EXPENSE'::text) AND (recipient_type = 'PLATFORM_PROVIDER_FEE'::text)))),
+	CONSTRAINT "student_subscription_allocations_entry_ck" CHECK (entry_type = ANY (ARRAY['CREDIT'::text, 'REVERSAL'::text, 'EXPENSE'::text])),
+	CONSTRAINT "student_subscription_allocations_partner_ck" CHECK (((recipient_type = 'PARTNER'::text) AND (recipient_id IS NOT NULL) AND (attribution_id IS NOT NULL) AND (commission_rule_id IS NOT NULL)) OR ((recipient_type &lt;&gt; 'PARTNER'::text) AND (recipient_id IS NULL))),
+	CONSTRAINT "student_subscription_allocations_recipient_ck" CHECK (recipient_type = ANY (ARRAY['SCHOOL'::text, 'PLATFORM'::text, 'PARTNER'::text, 'PLATFORM_PROVIDER_FEE'::text]))
+);
+
+
+-- Position 21
+CREATE TABLE "teacher_duty_roster" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"school_id" integer NOT NULL,
+	"employee_id" integer NOT NULL,
+	"duty_role" text NOT NULL,
+	"start_date" date NOT NULL,
+	"end_date" date NOT NULL,
+	"status" text DEFAULT 'ACTIVE' NOT NULL,
+	"notes" text,
+	"created_by_user_id" integer NOT NULL,
+	"updated_by_user_id" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "teacher_duty_roster_id_school_tenant_key" UNIQUE("id","school_id"),
+	CONSTRAINT "teacher_duty_roster_dates_check" CHECK (end_date &gt;= start_date),
+	CONSTRAINT "teacher_duty_roster_status_check" CHECK (status = ANY (ARRAY['ACTIVE'::text, 'INACTIVE'::text]))
+);
+
+
+-- Position 22
+CREATE TABLE "transport_route_staff" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"school_id" integer NOT NULL,
+	"route_id" integer NOT NULL,
+	"employee_id" integer NOT NULL,
+	"role" text DEFAULT 'ACCOMPANIER' NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"assigned_by" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "transport_route_staff_id_school_unique" UNIQUE("id","school_id"),
+	CONSTRAINT "transport_route_staff_role_check" CHECK (role = ANY (ARRAY['TEACHER'::text, 'STAFF'::text, 'ACCOMPANIER'::text]))
+);
+
+
+-- Position 23
+CREATE TABLE "transport_routes" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"school_id" integer NOT NULL,
+	"bus_id" integer NOT NULL,
+	"driver_employee_id" integer NOT NULL,
+	"name" text NOT NULL,
+	"weekdays" text[] NOT NULL,
+	"departure_time" text NOT NULL,
+	"arrival_time" text NOT NULL,
+	"fare_minor" integer DEFAULT 0 NOT NULL,
+	"currency" text DEFAULT 'NGN' NOT NULL,
+	"status" text DEFAULT 'ACTIVE' NOT NULL,
+	"created_by" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "transport_routes_id_school_unique" UNIQUE("id","school_id"),
+	CONSTRAINT "transport_routes_arrival_time_check" CHECK (arrival_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$'::text),
+	CONSTRAINT "transport_routes_departure_time_check" CHECK (departure_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$'::text),
+	CONSTRAINT "transport_routes_fare_currency_check" CHECK ((fare_minor &gt;= 0) AND (currency = 'NGN'::text)),
+	CONSTRAINT "transport_routes_name_check" CHECK ((length(btrim(name)) &gt;= 2) AND (length(btrim(name)) &lt;= 120)),
+	CONSTRAINT "transport_routes_schedule_order_check" CHECK (arrival_time &gt; departure_time),
+	CONSTRAINT "transport_routes_status_check" CHECK (status = ANY (ARRAY['ACTIVE'::text, 'INACTIVE'::text])),
+	CONSTRAINT "transport_routes_weekdays_check" CHECK (((cardinality(weekdays) &gt;= 1) AND (cardinality(weekdays) &lt;= 7)) AND (weekdays &lt;@ ARRAY['MONDAY'::text, 'TUESDAY'::text, 'WEDNESDAY'::text, 'THURSDAY'::text, 'FRIDAY'::text, 'SATURDAY'::text, 'SUNDAY'::text]))
+);
+
+
+-- Position 24
+CREATE TABLE "transport_route_stops" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"school_id" integer NOT NULL,
+	"route_id" integer NOT NULL,
+	"name" text NOT NULL,
+	"stop_type" text NOT NULL,
+	"sequence" integer NOT NULL,
+	"notes" text,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_by" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "transport_route_stops_id_route_school_unique" UNIQUE("id","route_id","school_id"),
+	CONSTRAINT "transport_route_stops_route_sequence_unique" UNIQUE("route_id","sequence"),
+	CONSTRAINT "transport_route_stops_name_check" CHECK ((length(btrim(name)) &gt;= 2) AND (length(btrim(name)) &lt;= 120)),
+	CONSTRAINT "transport_route_stops_notes_check" CHECK ((notes IS NULL) OR (length(notes) &lt;= 500)),
+	CONSTRAINT "transport_route_stops_sequence_check" CHECK (sequence &gt; 0),
+	CONSTRAINT "transport_route_stops_type_check" CHECK (stop_type = ANY (ARRAY['PICKUP'::text, 'DROPOFF'::text, 'BOTH'::text]))
+);
+
+
+-- Position 25
+CREATE TABLE "transport_history" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"school_id" integer NOT NULL,
+	"assignment_id" integer,
+	"route_id" integer,
+	"bus_id" integer,
+	"request_id" integer,
+	"route_staff_id" integer,
+	"student_id" integer,
+	"event_type" text NOT NULL,
+	"effective_date" date NOT NULL,
+	"reason" text NOT NULL,
+	"actor_user_id" integer,
+	"actor_role" text NOT NULL,
+	"before_state" jsonb,
+	"after_state" jsonb,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "transport_history_event_reason_check" CHECK (((length(btrim(event_type)) &gt;= 3) AND (length(btrim(event_type)) &lt;= 80)) AND ((length(btrim(reason)) &gt;= 3) AND (length(btrim(reason)) &lt;= 1000))),
+	CONSTRAINT "transport_history_one_event_entity_check" CHECK (num_nonnulls(assignment_id, route_id, bus_id, request_id, route_staff_id) = 1)
+);
+
+
+-- Position 26
+CREATE TABLE "settlement_payroll_audit_events" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"scope" text NOT NULL,
+	"school_id" integer,
+	"actor_user_id" integer NOT NULL,
+	"actor_role" text NOT NULL,
+	"record_type" text NOT NULL,
+	"record_id" integer,
+	"action" text NOT NULL,
+	"amount_minor" integer,
+	"currency" text,
+	"provider_reference" text,
+	"previous_status" text,
+	"new_status" text,
+	"metadata" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"occurred_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "settlement_payroll_audit_amount_check" CHECK (((amount_minor IS NULL) AND (currency IS NULL)) OR ((amount_minor &gt;= 0) AND (currency = 'NGN'::text))),
+	CONSTRAINT "settlement_payroll_audit_record_type_check" CHECK (record_type = ANY (ARRAY['SETTLEMENT_PROFILE'::text, 'PAYROLL_PROFILE'::text, 'PAYROLL_PERIOD'::text, 'PAYROLL_ITEM'::text, 'PAYROLL_TRANSFER'::text, 'PAYSLIP'::text])),
+	CONSTRAINT "settlement_payroll_audit_scope_check" CHECK (((scope = 'SCHOOL'::text) AND (school_id IS NOT NULL)) OR ((scope = ANY (ARRAY['YEMAIT_COMPANY'::text, 'PLATFORM'::text])) AND (school_id IS NULL)))
+);
+
+
+-- Position 27
+CREATE TABLE "student_subscription_payments" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"subscription_id" integer NOT NULL,
+	"school_id" integer NOT NULL,
+	"student_id" integer NOT NULL,
+	"academic_session_id" integer NOT NULL,
+	"academic_term_id" integer NOT NULL,
+	"payer_user_id" integer NOT NULL,
+	"provider" text DEFAULT 'FLUTTERWAVE' NOT NULL,
+	"provider_mode" text DEFAULT 'SANDBOX' NOT NULL,
+	"reference" text NOT NULL,
+	"idempotency_key" text NOT NULL,
+	"gross_amount_minor" integer DEFAULT 500000 NOT NULL,
+	"provider_fee_minor" integer,
+	"settlement_amount_minor" integer,
+	"currency" text DEFAULT 'NGN' NOT NULL,
+	"status" text DEFAULT 'PENDING' NOT NULL,
+	"settlement_status" text DEFAULT 'PENDING' NOT NULL,
+	"reconciliation_status" text DEFAULT 'PENDING' NOT NULL,
+	"checkout_url" text,
+	"provider_transaction_id" text,
+	"provider_paid_at" timestamp with time zone,
+	"paid_at" timestamp with time zone,
+	"failure_code" text,
+	"receipt_snapshot" jsonb,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "student_subscription_payments_id_owner_term_uq" UNIQUE("id","subscription_id","school_id","student_id","academic_session_id","academic_term_id"),
+	CONSTRAINT "student_subscription_payments_money_ck" CHECK ((gross_amount_minor = 500000) AND (currency = 'NGN'::text) AND ((provider_fee_minor IS NULL) OR (provider_fee_minor &gt;= 0)) AND ((settlement_amount_minor IS NULL) OR ((settlement_amount_minor &gt;= 0) AND (settlement_amount_minor &lt;= gross_amount_minor)))),
+	CONSTRAINT "student_subscription_payments_provider_ck" CHECK (provider = 'FLUTTERWAVE'::text),
+	CONSTRAINT "student_subscription_payments_provider_mode_ck" CHECK (provider_mode = 'SANDBOX'::text),
+	CONSTRAINT "student_subscription_payments_reconciliation_ck" CHECK (reconciliation_status = ANY (ARRAY['PENDING'::text, 'RECONCILED'::text, 'RECONCILIATION_REQUIRED'::text, 'NOT_APPLICABLE'::text])),
+	CONSTRAINT "student_subscription_payments_reference_ck" CHECK (reference ~ '^[A-Za-z0-9_-]{8,100}$'::text),
+	CONSTRAINT "student_subscription_payments_settlement_ck" CHECK (settlement_status = ANY (ARRAY['PENDING'::text, 'RECONCILED'::text, 'RECONCILIATION_REQUIRED'::text, 'NOT_APPLICABLE'::text])),
+	CONSTRAINT "student_subscription_payments_status_ck" CHECK (status = ANY (ARRAY['PENDING'::text, 'PAID'::text, 'FAILED'::text, 'RECONCILIATION_REQUIRED'::text]))
+);
+
+
+-- Position 28
+CREATE TABLE "transport_school_policies" (
+	"school_id" integer PRIMARY KEY NOT NULL,
+	"payment_required" boolean DEFAULT false NOT NULL,
+	"suspend_when_overdue" boolean DEFAULT false NOT NULL,
+	"updated_by" integer NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "transport_school_policies_payment_gate_check" CHECK ((NOT suspend_when_overdue) OR payment_required)
+);
+
+
+-- Position 29
+CREATE TABLE "transport_fee_invoices" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"school_id" integer NOT NULL,
+	"assignment_id" integer NOT NULL,
+	"academic_session_id" integer NOT NULL,
+	"academic_term_id" integer NOT NULL,
+	"fee_category_id" integer,
+	"amount_minor" integer NOT NULL,
+	"due_date" date NOT NULL,
+	"status" text DEFAULT 'PLANNED' NOT NULL,
+	"fee_invoice_id" integer,
+	"created_by" integer NOT NULL,
+	"updated_by" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "transport_fee_invoices_assignment_term_unique" UNIQUE("assignment_id","academic_term_id"),
+	CONSTRAINT "transport_fee_invoices_fee_invoice_unique" UNIQUE("fee_invoice_id"),
+	CONSTRAINT "transport_fee_invoices_id_school_unique" UNIQUE("id","school_id"),
+	CONSTRAINT "transport_fee_invoices_amount_check" CHECK (amount_minor &gt;= 0),
+	CONSTRAINT "transport_fee_invoices_category_check" CHECK ((amount_minor = 0) OR (fee_category_id IS NOT NULL)),
+	CONSTRAINT "transport_fee_invoices_invoice_state_check" CHECK (((status = 'INVOICED'::text) AND (fee_invoice_id IS NOT NULL) AND (amount_minor &gt; 0)) OR ((status = ANY (ARRAY['PLANNED'::text, 'CANCELLED'::text])) AND (fee_invoice_id IS NULL))),
+	CONSTRAINT "transport_fee_invoices_status_check" CHECK (status = ANY (ARRAY['PLANNED'::text, 'INVOICED'::text, 'CANCELLED'::text]))
+);
+
+
+-- Position 30
+CREATE TABLE "payroll_employee_profiles" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"scope" text NOT NULL,
+	"school_id" integer,
+	"employee_id" integer,
+	"company_employee_id" integer,
+	"monthly_salary_minor" integer NOT NULL,
+	"allowance_minor" integer DEFAULT 0 NOT NULL,
+	"deduction_minor" integer DEFAULT 0 NOT NULL,
+	"currency" text DEFAULT 'NGN' NOT NULL,
+	"bank_name_encrypted" text NOT NULL,
+	"bank_code_encrypted" text NOT NULL,
+	"account_name_encrypted" text NOT NULL,
+	"account_number_encrypted" text NOT NULL,
+	"account_last4" text NOT NULL,
+	"encryption_key_version" text NOT NULL,
+	"status" text DEFAULT 'ACTIVE' NOT NULL,
+	"created_by" integer NOT NULL,
+	"updated_by" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "payroll_employee_profiles_id_scope_school_unique" UNIQUE("id","scope","school_id"),
+	CONSTRAINT "payroll_employee_profiles_account_last4_check" CHECK (account_last4 ~ '^[0-9]{4}$'::text),
+	CONSTRAINT "payroll_employee_profiles_currency_check" CHECK (currency = 'NGN'::text),
+	CONSTRAINT "payroll_employee_profiles_encrypted_fields_check" CHECK ((length(btrim(bank_name_encrypted)) &gt; 0) AND (length(btrim(bank_code_encrypted)) &gt; 0) AND (length(btrim(account_name_encrypted)) &gt; 0) AND (length(btrim(account_number_encrypted)) &gt; 0) AND (length(btrim(encryption_key_version)) &gt; 0)),
+	CONSTRAINT "payroll_employee_profiles_salary_check" CHECK ((monthly_salary_minor &gt;= 0) AND (allowance_minor &gt;= 0) AND (deduction_minor &gt;= 0) AND (deduction_minor &lt;= (monthly_salary_minor + allowance_minor))),
+	CONSTRAINT "payroll_employee_profiles_status_check" CHECK (status = ANY (ARRAY['ACTIVE'::text, 'INACTIVE'::text])),
+	CONSTRAINT "payroll_employee_profiles_tenant_check" CHECK (((scope = 'SCHOOL'::text) AND (school_id IS NOT NULL) AND (employee_id IS NOT NULL) AND (company_employee_id IS NULL)) OR ((scope = 'YEMAIT_COMPANY'::text) AND (school_id IS NULL) AND (employee_id IS NULL) AND (company_employee_id IS NOT NULL)))
+);
+
+
+-- Position 31
+CREATE TABLE "payroll_periods" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"scope" text NOT NULL,
+	"school_id" integer,
+	"period_month" text NOT NULL,
+	"status" text DEFAULT 'DRAFT' NOT NULL,
+	"employee_count" integer NOT NULL,
+	"gross_salary_minor" integer NOT NULL,
+	"allowance_minor" integer NOT NULL,
+	"bonus_minor" integer DEFAULT 0 NOT NULL,
+	"deduction_minor" integer NOT NULL,
+	"adjustment_minor" integer DEFAULT 0 NOT NULL,
+	"net_salary_minor" integer NOT NULL,
+	"created_by" integer NOT NULL,
+	"submitted_by" integer,
+	"submitted_at" timestamp with time zone,
+	"approved_by" integer,
+	"approved_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "payroll_periods_id_scope_school_unique" UNIQUE("id","scope","school_id"),
+	CONSTRAINT "payroll_periods_approval_state_check" CHECK ((status &lt;&gt; ALL (ARRAY['APPROVED'::text, 'PROCESSING'::text, 'COMPLETED'::text, 'PARTIALLY_COMPLETED'::text])) OR ((approved_by IS NOT NULL) AND (approved_at IS NOT NULL))),
+	CONSTRAINT "payroll_periods_month_check" CHECK (period_month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'::text),
+	CONSTRAINT "payroll_periods_status_check" CHECK (status = ANY (ARRAY['DRAFT'::text, 'PENDING_APPROVAL'::text, 'APPROVED'::text, 'PROCESSING'::text, 'COMPLETED'::text, 'PARTIALLY_COMPLETED'::text, 'FAILED'::text, 'CANCELLED'::text])),
+	CONSTRAINT "payroll_periods_submit_state_check" CHECK (((status = ANY (ARRAY['DRAFT'::text, 'FAILED'::text, 'CANCELLED'::text])) AND (submitted_at IS NULL)) OR ((status &lt;&gt; ALL (ARRAY['DRAFT'::text, 'FAILED'::text, 'CANCELLED'::text])) AND (submitted_at IS NOT NULL) AND (submitted_by IS NOT NULL))),
+	CONSTRAINT "payroll_periods_tenant_check" CHECK (((scope = 'SCHOOL'::text) AND (school_id IS NOT NULL)) OR ((scope = 'YEMAIT_COMPANY'::text) AND (school_id IS NULL))),
+	CONSTRAINT "payroll_periods_totals_check" CHECK ((employee_count &gt; 0) AND (gross_salary_minor &gt;= 0) AND (allowance_minor &gt;= 0) AND (bonus_minor &gt;= 0) AND (deduction_minor &gt;= 0) AND (net_salary_minor &gt;= 0) AND ((((gross_salary_minor + allowance_minor) + bonus_minor) + adjustment_minor) &gt;= deduction_minor) AND (net_salary_minor = ((((gross_salary_minor + allowance_minor) + bonus_minor) + adjustment_minor) - deduction_minor)))
+);
+
+
+-- Position 32
+CREATE TABLE "payroll_transfers" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"scope" text NOT NULL,
+	"school_id" integer,
+	"period_id" integer NOT NULL,
+	"payroll_item_id" integer NOT NULL,
+	"attempt_number" integer DEFAULT 1 NOT NULL,
+	"idempotency_key_hash" text NOT NULL,
+	"provider" text NOT NULL,
+	"provider_mode" text NOT NULL,
+	"provider_reference" text NOT NULL,
+	"provider_transaction_id" text,
+	"amount_minor" integer NOT NULL,
+	"provider_fee_minor" integer DEFAULT 0 NOT NULL,
+	"settlement_amount_minor" integer DEFAULT 0 NOT NULL,
+	"currency" text DEFAULT 'NGN' NOT NULL,
+	"status" text DEFAULT 'CLAIMED' NOT NULL,
+	"requires_reconciliation" boolean DEFAULT false NOT NULL,
+	"external_transfer_verified" boolean DEFAULT false NOT NULL,
+	"provider_status" text,
+	"failure_message" text,
+	"requested_by" integer NOT NULL,
+	"verified_by" integer,
+	"verified_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "payroll_transfers_id_scope_school_unique" UNIQUE("id","scope","school_id"),
+	CONSTRAINT "payroll_transfers_ambiguous_no_retry_check" CHECK ((NOT requires_reconciliation) OR (status = ANY (ARRAY['UNCERTAIN'::text, 'RECONCILIATION_REQUIRED'::text]))),
+	CONSTRAINT "payroll_transfers_amount_check" CHECK ((amount_minor &gt; 0) AND (provider_fee_minor &gt;= 0) AND (settlement_amount_minor &gt;= 0) AND (currency = 'NGN'::text) AND (settlement_amount_minor &lt;= amount_minor)),
+	CONSTRAINT "payroll_transfers_mock_never_paid_check" CHECK ((provider &lt;&gt; 'MOCK'::text) OR ((status = 'MOCK_PENDING'::text) AND (external_transfer_verified = false))),
+	CONSTRAINT "payroll_transfers_paid_verification_check" CHECK ((status &lt;&gt; 'PAID'::text) OR ((provider = 'FLUTTERWAVE'::text) AND (provider_mode &lt;&gt; 'MOCK'::text) AND (external_transfer_verified = true) AND (verified_at IS NOT NULL) AND (verified_by IS NOT NULL) AND (provider_transaction_id IS NOT NULL))),
+	CONSTRAINT "payroll_transfers_provider_check" CHECK (((provider = 'FLUTTERWAVE'::text) AND (provider_mode = ANY (ARRAY['TEST'::text, 'LIVE'::text]))) OR ((provider = 'MOCK'::text) AND (provider_mode = 'MOCK'::text))),
+	CONSTRAINT "payroll_transfers_reference_check" CHECK ((NULLIF(btrim(idempotency_key_hash), ''::text) IS NOT NULL) AND (NULLIF(btrim(provider_reference), ''::text) IS NOT NULL) AND (attempt_number &gt; 0)),
+	CONSTRAINT "payroll_transfers_status_check" CHECK (status = ANY (ARRAY['CLAIMED'::text, 'PROCESSING'::text, 'PENDING'::text, 'MOCK_PENDING'::text, 'PAID'::text, 'FAILED'::text, 'UNCERTAIN'::text, 'RECONCILIATION_REQUIRED'::text])),
+	CONSTRAINT "payroll_transfers_tenant_check" CHECK (((scope = 'SCHOOL'::text) AND (school_id IS NOT NULL)) OR ((scope = 'YEMAIT_COMPANY'::text) AND (school_id IS NULL)))
+);
+
+
+-- Position 33
+CREATE TABLE "payroll_payslips" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"scope" text NOT NULL,
+	"school_id" integer,
+	"period_id" integer NOT NULL,
+	"payroll_item_id" integer NOT NULL,
+	"transfer_id" integer NOT NULL,
+	"payslip_number" text NOT NULL,
+	"employee_name_snapshot" text NOT NULL,
+	"employee_role_snapshot" text NOT NULL,
+	"period_month" text NOT NULL,
+	"base_salary_minor" integer NOT NULL,
+	"allowance_minor" integer NOT NULL,
+	"bonus_minor" integer NOT NULL,
+	"deduction_minor" integer NOT NULL,
+	"adjustment_minor" integer NOT NULL,
+	"net_salary_minor" integer NOT NULL,
+	"currency" text DEFAULT 'NGN' NOT NULL,
+	"issued_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "payroll_payslips_id_scope_school_unique" UNIQUE("id","scope","school_id"),
+	CONSTRAINT "payroll_payslips_amounts_check" CHECK ((base_salary_minor &gt;= 0) AND (allowance_minor &gt;= 0) AND (bonus_minor &gt;= 0) AND (deduction_minor &gt;= 0) AND (net_salary_minor &gt; 0)),
+	CONSTRAINT "payroll_payslips_currency_check" CHECK (currency = 'NGN'::text),
+	CONSTRAINT "payroll_payslips_period_month_check" CHECK (period_month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'::text),
+	CONSTRAINT "payroll_payslips_role_check" CHECK (employee_role_snapshot = ANY (ARRAY['TEACHER'::text, 'STAFF'::text, 'COMPANY_EMPLOYEE'::text])),
+	CONSTRAINT "payroll_payslips_scope_check" CHECK (((scope = 'SCHOOL'::text) AND (school_id IS NOT NULL)) OR ((scope = 'YEMAIT_COMPANY'::text) AND (school_id IS NULL)))
+);
+
+
+-- Position 34
+CREATE TABLE "payroll_items" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"scope" text NOT NULL,
+	"school_id" integer,
+	"period_id" integer NOT NULL,
+	"employee_profile_id" integer NOT NULL,
+	"period_month" text NOT NULL,
+	"employee_name_snapshot" text NOT NULL,
+	"employee_number_snapshot" text,
+	"role_snapshot" text NOT NULL,
+	"base_salary_minor" integer NOT NULL,
+	"allowance_minor" integer DEFAULT 0 NOT NULL,
+	"bonus_minor" integer DEFAULT 0 NOT NULL,
+	"deduction_minor" integer DEFAULT 0 NOT NULL,
+	"adjustment_minor" integer DEFAULT 0 NOT NULL,
+	"adjustment_reason" text,
+	"net_salary_minor" integer NOT NULL,
+	"currency" text DEFAULT 'NGN' NOT NULL,
+	"bank_name_encrypted" text NOT NULL,
+	"bank_code_encrypted" text NOT NULL,
+	"account_name_encrypted" text NOT NULL,
+	"account_number_encrypted" text NOT NULL,
+	"account_last4" text NOT NULL,
+	"encryption_key_version" text NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "payroll_items_id_period_unique" UNIQUE("id","period_id"),
+	CONSTRAINT "payroll_items_adjustment_audit_check" CHECK (((adjustment_minor = 0) AND (adjustment_reason IS NULL)) OR ((adjustment_minor &lt;&gt; 0) AND (NULLIF(btrim(adjustment_reason), ''::text) IS NOT NULL))),
+	CONSTRAINT "payroll_items_amounts_check" CHECK ((base_salary_minor &gt;= 0) AND (allowance_minor &gt;= 0) AND (bonus_minor &gt;= 0) AND (deduction_minor &gt;= 0) AND (net_salary_minor = ((((base_salary_minor + allowance_minor) + bonus_minor) + adjustment_minor) - deduction_minor)) AND (net_salary_minor &gt;= 0)),
+	CONSTRAINT "payroll_items_bank_snapshot_check" CHECK ((length(btrim(bank_name_encrypted)) &gt; 0) AND (length(btrim(bank_code_encrypted)) &gt; 0) AND (length(btrim(account_name_encrypted)) &gt; 0) AND (length(btrim(account_number_encrypted)) &gt; 0) AND (account_last4 ~ '^[0-9]{4}$'::text) AND (length(btrim(encryption_key_version)) &gt; 0)),
+	CONSTRAINT "payroll_items_currency_check" CHECK (currency = 'NGN'::text),
+	CONSTRAINT "payroll_items_period_month_check" CHECK (period_month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'::text),
+	CONSTRAINT "payroll_items_role_check" CHECK (role_snapshot = ANY (ARRAY['TEACHER'::text, 'STAFF'::text, 'COMPANY_EMPLOYEE'::text])),
+	CONSTRAINT "payroll_items_tenant_check" CHECK (((scope = 'SCHOOL'::text) AND (school_id IS NOT NULL)) OR ((scope = 'YEMAIT_COMPANY'::text) AND (school_id IS NULL)))
+);
+
+
+-- Position 35
+ALTER TABLE "staff_nfc_billing_rules" ADD CONSTRAINT "staff_nfc_billing_rules_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 36
+ALTER TABLE "staff_nfc_subscriptions" ADD CONSTRAINT "staff_nfc_subscriptions_attribution_id_fkey" FOREIGN KEY ("attribution_id") REFERENCES "public"."school_partner_attributions"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 37
+ALTER TABLE "staff_nfc_subscriptions" ADD CONSTRAINT "staff_nfc_subscriptions_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 38
+ALTER TABLE "staff_nfc_subscriptions" ADD CONSTRAINT "staff_nfc_subscriptions_employee_school_fk" FOREIGN KEY ("employee_id","school_id") REFERENCES "public"."employees"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 39
+ALTER TABLE "staff_nfc_subscriptions" ADD CONSTRAINT "staff_nfc_subscriptions_partner_profile_id_fkey" FOREIGN KEY ("partner_profile_id") REFERENCES "public"."partner_profiles"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 40
+ALTER TABLE "staff_nfc_subscriptions" ADD CONSTRAINT "staff_nfc_subscriptions_rule_version_fk" FOREIGN KEY ("billing_rule_id","billing_rule_version") REFERENCES "public"."staff_nfc_billing_rules"("id","version") ON DELETE restrict ON UPDATE no action;
+
+-- Position 41
+ALTER TABLE "staff_nfc_subscriptions" ADD CONSTRAINT "staff_nfc_subscriptions_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 42
+ALTER TABLE "staff_nfc_subscriptions" ADD CONSTRAINT "staff_nfc_subscriptions_session_school_fk" FOREIGN KEY ("academic_session_id","school_id") REFERENCES "public"."academic_sessions"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 43
+ALTER TABLE "staff_nfc_subscriptions" ADD CONSTRAINT "staff_nfc_subscriptions_term_school_fk" FOREIGN KEY ("academic_term_id","school_id") REFERENCES "public"."academic_terms"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 44
+ALTER TABLE "staff_nfc_refunds" ADD CONSTRAINT "staff_nfc_refunds_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 45
+ALTER TABLE "staff_nfc_refunds" ADD CONSTRAINT "staff_nfc_refunds_payment_school_fk" FOREIGN KEY ("payment_id","school_id") REFERENCES "public"."staff_nfc_payments"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 46
+ALTER TABLE "staff_nfc_payments" ADD CONSTRAINT "staff_nfc_payments_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 47
+ALTER TABLE "staff_nfc_payments" ADD CONSTRAINT "staff_nfc_payments_subscription_owner_term_fk" FOREIGN KEY ("subscription_id","employee_id","school_id","academic_session_id","academic_term_id") REFERENCES "public"."staff_nfc_subscriptions"("id","employee_id","school_id","academic_session_id","academic_term_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 48
+ALTER TABLE "staff_nfc_partner_commissions" ADD CONSTRAINT "staff_nfc_partner_commissions_allocation_fk" FOREIGN KEY ("allocation_id","payment_id","recipient_type") REFERENCES "public"."staff_nfc_allocations"("id","payment_id","recipient_type") ON DELETE restrict ON UPDATE no action;
+
+-- Position 49
+ALTER TABLE "staff_nfc_partner_commissions" ADD CONSTRAINT "staff_nfc_partner_commissions_partner_profile_id_fkey" FOREIGN KEY ("partner_profile_id") REFERENCES "public"."partner_profiles"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 50
+ALTER TABLE "staff_nfc_partner_commissions" ADD CONSTRAINT "staff_nfc_partner_commissions_payment_tenant_fk" FOREIGN KEY ("payment_id","subscription_id","school_id") REFERENCES "public"."staff_nfc_payments"("id","subscription_id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 51
+ALTER TABLE "staff_nfc_partner_commissions" ADD CONSTRAINT "staff_nfc_partner_commissions_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 52
+ALTER TABLE "staff_nfc_partner_commissions" ADD CONSTRAINT "staff_nfc_partner_commissions_subscription_tenant_fk" FOREIGN KEY ("subscription_id","employee_id","school_id","academic_session_id","academic_term_id") REFERENCES "public"."staff_nfc_subscriptions"("id","employee_id","school_id","academic_session_id","academic_term_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 53
+ALTER TABLE "staff_nfc_allocations" ADD CONSTRAINT "staff_nfc_allocations_attribution_id_fkey" FOREIGN KEY ("attribution_id") REFERENCES "public"."school_partner_attributions"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 54
+ALTER TABLE "staff_nfc_allocations" ADD CONSTRAINT "staff_nfc_allocations_payment_subscription_school_fk" FOREIGN KEY ("payment_id","subscription_id","school_id") REFERENCES "public"."staff_nfc_payments"("id","subscription_id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 55
+ALTER TABLE "staff_nfc_allocations" ADD CONSTRAINT "staff_nfc_allocations_refund_payment_school_fk" FOREIGN KEY ("refund_id","payment_id","school_id") REFERENCES "public"."staff_nfc_refunds"("id","payment_id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 56
+ALTER TABLE "staff_nfc_allocations" ADD CONSTRAINT "staff_nfc_allocations_rule_product_fk" FOREIGN KEY ("allocation_rule_id","product") REFERENCES "public"."staff_nfc_billing_rules"("id","product") ON DELETE restrict ON UPDATE no action;
+
+-- Position 57
+ALTER TABLE "staff_nfc_allocations" ADD CONSTRAINT "staff_nfc_allocations_subscription_owner_term_fk" FOREIGN KEY ("subscription_id","employee_id","school_id","academic_session_id","academic_term_id") REFERENCES "public"."staff_nfc_subscriptions"("id","employee_id","school_id","academic_session_id","academic_term_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 58
+ALTER TABLE "employee_nfc_card_bindings" ADD CONSTRAINT "employee_nfc_card_bindings_card_school_fk" FOREIGN KEY ("nfc_card_id","school_id") REFERENCES "public"."nfc_cards"("id","school_id") ON DELETE no action ON UPDATE no action;
+
+-- Position 59
+ALTER TABLE "employee_nfc_card_bindings" ADD CONSTRAINT "employee_nfc_card_bindings_created_by_user_id_fkey" FOREIGN KEY ("created_by_user_id") REFERENCES "public"."app_users"("id") ON DELETE no action ON UPDATE no action;
+
+-- Position 60
+ALTER TABLE "employee_nfc_card_bindings" ADD CONSTRAINT "employee_nfc_card_bindings_employee_school_fk" FOREIGN KEY ("employee_id","school_id") REFERENCES "public"."employees"("id","school_id") ON DELETE no action ON UPDATE no action;
+
+-- Position 61
+ALTER TABLE "employee_nfc_card_bindings" ADD CONSTRAINT "employee_nfc_card_bindings_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE no action ON UPDATE no action;
+
+-- Position 62
+ALTER TABLE "staff_nfc_receipts" ADD CONSTRAINT "staff_nfc_receipts_payment_owner_fk" FOREIGN KEY ("payment_id","subscription_id","school_id") REFERENCES "public"."staff_nfc_payments"("id","subscription_id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 63
+ALTER TABLE "staff_nfc_provider_events" ADD CONSTRAINT "staff_nfc_provider_events_payment_school_fk" FOREIGN KEY ("payment_id","school_id") REFERENCES "public"."staff_nfc_payments"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 64
+ALTER TABLE "employee_nfc_card_history" ADD CONSTRAINT "employee_nfc_card_history_actor_user_id_fkey" FOREIGN KEY ("actor_user_id") REFERENCES "public"."app_users"("id") ON DELETE no action ON UPDATE no action;
+
+-- Position 65
+ALTER TABLE "employee_nfc_card_history" ADD CONSTRAINT "employee_nfc_card_history_binding_school_fk" FOREIGN KEY ("binding_id","school_id") REFERENCES "public"."employee_nfc_card_bindings"("id","school_id") ON DELETE no action ON UPDATE no action;
+
+-- Position 66
+ALTER TABLE "employee_nfc_card_history" ADD CONSTRAINT "employee_nfc_card_history_card_school_fk" FOREIGN KEY ("nfc_card_id","school_id") REFERENCES "public"."nfc_cards"("id","school_id") ON DELETE no action ON UPDATE no action;
+
+-- Position 67
+ALTER TABLE "employee_nfc_card_history" ADD CONSTRAINT "employee_nfc_card_history_employee_school_fk" FOREIGN KEY ("employee_id","school_id") REFERENCES "public"."employees"("id","school_id") ON DELETE no action ON UPDATE no action;
+
+-- Position 68
+ALTER TABLE "employee_nfc_card_history" ADD CONSTRAINT "employee_nfc_card_history_replacement_card_school_fk" FOREIGN KEY ("replacement_nfc_card_id","school_id") REFERENCES "public"."nfc_cards"("id","school_id") ON DELETE no action ON UPDATE no action;
+
+-- Position 69
+ALTER TABLE "employee_nfc_card_history" ADD CONSTRAINT "employee_nfc_card_history_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE no action ON UPDATE no action;
+
+-- Position 70
+ALTER TABLE "employee_nfc_discrepancy_actions" ADD CONSTRAINT "employee_nfc_discrepancy_actions_actor_user_id_fkey" FOREIGN KEY ("actor_user_id") REFERENCES "public"."app_users"("id") ON DELETE no action ON UPDATE no action;
+
+-- Position 71
+ALTER TABLE "employee_nfc_discrepancy_actions" ADD CONSTRAINT "employee_nfc_discrepancy_actions_discrepancy_school_fk" FOREIGN KEY ("discrepancy_id","school_id") REFERENCES "public"."employee_nfc_attendance_discrepancies"("id","school_id") ON DELETE no action ON UPDATE no action;
+
+-- Position 72
+ALTER TABLE "employee_nfc_discrepancy_actions" ADD CONSTRAINT "employee_nfc_discrepancy_actions_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE no action ON UPDATE no action;
+
+-- Position 73
+ALTER TABLE "school_branding_logos" ADD CONSTRAINT "school_branding_logos_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 74
+ALTER TABLE "school_branding_logos" ADD CONSTRAINT "school_branding_logos_updated_by_user_id_app_users_id_fk" FOREIGN KEY ("updated_by_user_id") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 75
+ALTER TABLE "employee_nfc_attendance_discrepancies" ADD CONSTRAINT "employee_nfc_attendance_discrepancies_employee_school_fk" FOREIGN KEY ("employee_id","school_id") REFERENCES "public"."employees"("id","school_id") ON DELETE no action ON UPDATE no action;
+
+-- Position 76
+ALTER TABLE "employee_nfc_attendance_discrepancies" ADD CONSTRAINT "employee_nfc_attendance_discrepancies_event_school_fk" FOREIGN KEY ("attendance_event_id","school_id") REFERENCES "public"."attendance_events"("id","school_id") ON DELETE no action ON UPDATE no action;
+
+-- Position 77
+ALTER TABLE "employee_nfc_attendance_discrepancies" ADD CONSTRAINT "employee_nfc_attendance_discrepancies_resolved_by_user_id_fkey" FOREIGN KEY ("resolved_by_user_id") REFERENCES "public"."app_users"("id") ON DELETE no action ON UPDATE no action;
+
+-- Position 78
+ALTER TABLE "employee_nfc_attendance_discrepancies" ADD CONSTRAINT "employee_nfc_attendance_discrepancies_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE no action ON UPDATE no action;
+
+-- Position 79
+ALTER TABLE "teacher_subject_assignments" ADD CONSTRAINT "teacher_subject_assignments_created_by_user_id_app_users_id_fk" FOREIGN KEY ("created_by_user_id") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 80
+ALTER TABLE "teacher_subject_assignments" ADD CONSTRAINT "teacher_subject_assignments_employee_school_fk" FOREIGN KEY ("employee_id","school_id") REFERENCES "public"."employees"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 81
+ALTER TABLE "teacher_subject_assignments" ADD CONSTRAINT "teacher_subject_assignments_session_school_fk" FOREIGN KEY ("academic_session_id","school_id") REFERENCES "public"."academic_sessions"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 82
+ALTER TABLE "teacher_subject_assignments" ADD CONSTRAINT "teacher_subject_assignments_subject_school_fk" FOREIGN KEY ("subject_id","school_id") REFERENCES "public"."subjects"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 83
+ALTER TABLE "teacher_subject_assignments" ADD CONSTRAINT "teacher_subject_assignments_updated_by_user_id_app_users_id_fk" FOREIGN KEY ("updated_by_user_id") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 84
+ALTER TABLE "school_calendar_events" ADD CONSTRAINT "school_calendar_events_created_by_user_id_app_users_id_fk" FOREIGN KEY ("created_by_user_id") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 85
+ALTER TABLE "school_calendar_events" ADD CONSTRAINT "school_calendar_events_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 86
+ALTER TABLE "school_calendar_events" ADD CONSTRAINT "school_calendar_events_session_school_fk" FOREIGN KEY ("academic_session_id","school_id") REFERENCES "public"."academic_sessions"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 87
+ALTER TABLE "school_calendar_events" ADD CONSTRAINT "school_calendar_events_term_school_fk" FOREIGN KEY ("academic_term_id","school_id") REFERENCES "public"."academic_terms"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 88
+ALTER TABLE "school_calendar_events" ADD CONSTRAINT "school_calendar_events_updated_by_user_id_app_users_id_fk" FOREIGN KEY ("updated_by_user_id") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 89
+ALTER TABLE "settlement_payroll_profiles" ADD CONSTRAINT "settlement_payroll_profiles_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 90
+ALTER TABLE "settlement_payroll_profiles" ADD CONSTRAINT "settlement_payroll_profiles_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 91
+ALTER TABLE "settlement_payroll_profiles" ADD CONSTRAINT "settlement_payroll_profiles_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 92
+ALTER TABLE "settlement_payroll_profiles" ADD CONSTRAINT "settlement_payroll_profiles_verified_by_fkey" FOREIGN KEY ("verified_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 93
+ALTER TABLE "transport_parent_requests" ADD CONSTRAINT "transport_parent_requests_active_relationship_fk" FOREIGN KEY ("parent_id","student_id") REFERENCES "public"."parent_student_relationships"("parent_id","student_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 94
+ALTER TABLE "transport_parent_requests" ADD CONSTRAINT "transport_parent_requests_assignment_school_fk" FOREIGN KEY ("assignment_id","school_id") REFERENCES "public"."transport_student_assignments"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 95
+ALTER TABLE "transport_parent_requests" ADD CONSTRAINT "transport_parent_requests_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 96
+ALTER TABLE "transport_parent_requests" ADD CONSTRAINT "transport_parent_requests_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 97
+ALTER TABLE "transport_parent_requests" ADD CONSTRAINT "transport_parent_requests_student_school_fk" FOREIGN KEY ("student_id","school_id") REFERENCES "public"."students"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 98
+ALTER TABLE "transport_buses" ADD CONSTRAINT "transport_buses_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 99
+ALTER TABLE "transport_buses" ADD CONSTRAINT "transport_buses_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 100
+ALTER TABLE "transport_student_assignments" ADD CONSTRAINT "transport_student_assignments_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 101
+ALTER TABLE "transport_student_assignments" ADD CONSTRAINT "transport_student_assignments_dropoff_route_school_fk" FOREIGN KEY ("dropoff_stop_id","route_id","school_id") REFERENCES "public"."transport_route_stops"("id","route_id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 102
+ALTER TABLE "transport_student_assignments" ADD CONSTRAINT "transport_student_assignments_pickup_route_school_fk" FOREIGN KEY ("pickup_stop_id","route_id","school_id") REFERENCES "public"."transport_route_stops"("id","route_id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 103
+ALTER TABLE "transport_student_assignments" ADD CONSTRAINT "transport_student_assignments_route_school_fk" FOREIGN KEY ("route_id","school_id") REFERENCES "public"."transport_routes"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 104
+ALTER TABLE "transport_student_assignments" ADD CONSTRAINT "transport_student_assignments_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 105
+ALTER TABLE "transport_student_assignments" ADD CONSTRAINT "transport_student_assignments_student_school_fk" FOREIGN KEY ("student_id","school_id") REFERENCES "public"."students"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 106
+ALTER TABLE "student_subscription_allocations" ADD CONSTRAINT "student_subscription_allocations_attribution_partner_fk" FOREIGN KEY ("attribution_id","recipient_id") REFERENCES "public"."school_partner_attributions"("id","partner_profile_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 107
+ALTER TABLE "student_subscription_allocations" ADD CONSTRAINT "student_subscription_allocations_commission_rule_id_fkey" FOREIGN KEY ("commission_rule_id") REFERENCES "public"."commission_rules"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 108
+ALTER TABLE "student_subscription_allocations" ADD CONSTRAINT "student_subscription_allocations_payer_user_id_fkey" FOREIGN KEY ("payer_user_id") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 109
+ALTER TABLE "student_subscription_allocations" ADD CONSTRAINT "student_subscription_allocations_payment_owner_term_fk" FOREIGN KEY ("payment_id","subscription_id","school_id","student_id","academic_session_id","academic_term_id") REFERENCES "public"."student_subscription_payments"("id","subscription_id","school_id","student_id","academic_session_id","academic_term_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 110
+ALTER TABLE "student_subscription_allocations" ADD CONSTRAINT "student_subscription_allocations_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 111
+ALTER TABLE "student_subscription_allocations" ADD CONSTRAINT "student_subscription_allocations_session_school_fk" FOREIGN KEY ("academic_session_id","school_id") REFERENCES "public"."academic_sessions"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 112
+ALTER TABLE "student_subscription_allocations" ADD CONSTRAINT "student_subscription_allocations_student_school_fk" FOREIGN KEY ("student_id","school_id") REFERENCES "public"."students"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 113
+ALTER TABLE "student_subscription_allocations" ADD CONSTRAINT "student_subscription_allocations_term_school_fk" FOREIGN KEY ("academic_term_id","school_id") REFERENCES "public"."academic_terms"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 114
+ALTER TABLE "teacher_duty_roster" ADD CONSTRAINT "teacher_duty_roster_created_by_user_id_app_users_id_fk" FOREIGN KEY ("created_by_user_id") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 115
+ALTER TABLE "teacher_duty_roster" ADD CONSTRAINT "teacher_duty_roster_employee_school_fk" FOREIGN KEY ("employee_id","school_id") REFERENCES "public"."employees"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 116
+ALTER TABLE "teacher_duty_roster" ADD CONSTRAINT "teacher_duty_roster_school_id_schools_id_fk" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 117
+ALTER TABLE "teacher_duty_roster" ADD CONSTRAINT "teacher_duty_roster_updated_by_user_id_app_users_id_fk" FOREIGN KEY ("updated_by_user_id") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 118
+ALTER TABLE "transport_route_staff" ADD CONSTRAINT "transport_route_staff_assigned_by_fkey" FOREIGN KEY ("assigned_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 119
+ALTER TABLE "transport_route_staff" ADD CONSTRAINT "transport_route_staff_employee_school_fk" FOREIGN KEY ("employee_id","school_id") REFERENCES "public"."employees"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 120
+ALTER TABLE "transport_route_staff" ADD CONSTRAINT "transport_route_staff_route_school_fk" FOREIGN KEY ("route_id","school_id") REFERENCES "public"."transport_routes"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 121
+ALTER TABLE "transport_route_staff" ADD CONSTRAINT "transport_route_staff_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 122
+ALTER TABLE "transport_routes" ADD CONSTRAINT "transport_routes_bus_school_fk" FOREIGN KEY ("bus_id","school_id") REFERENCES "public"."transport_buses"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 123
+ALTER TABLE "transport_routes" ADD CONSTRAINT "transport_routes_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 124
+ALTER TABLE "transport_routes" ADD CONSTRAINT "transport_routes_driver_school_fk" FOREIGN KEY ("driver_employee_id","school_id") REFERENCES "public"."employees"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 125
+ALTER TABLE "transport_routes" ADD CONSTRAINT "transport_routes_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 126
+ALTER TABLE "transport_route_stops" ADD CONSTRAINT "transport_route_stops_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 127
+ALTER TABLE "transport_route_stops" ADD CONSTRAINT "transport_route_stops_route_school_fk" FOREIGN KEY ("route_id","school_id") REFERENCES "public"."transport_routes"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 128
+ALTER TABLE "transport_route_stops" ADD CONSTRAINT "transport_route_stops_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 129
+ALTER TABLE "transport_history" ADD CONSTRAINT "transport_history_actor_user_id_fkey" FOREIGN KEY ("actor_user_id") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 130
+ALTER TABLE "transport_history" ADD CONSTRAINT "transport_history_assignment_school_fk" FOREIGN KEY ("assignment_id","school_id") REFERENCES "public"."transport_student_assignments"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 131
+ALTER TABLE "transport_history" ADD CONSTRAINT "transport_history_bus_school_fk" FOREIGN KEY ("bus_id","school_id") REFERENCES "public"."transport_buses"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 132
+ALTER TABLE "transport_history" ADD CONSTRAINT "transport_history_request_school_fk" FOREIGN KEY ("request_id","school_id") REFERENCES "public"."transport_parent_requests"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 133
+ALTER TABLE "transport_history" ADD CONSTRAINT "transport_history_route_school_fk" FOREIGN KEY ("route_id","school_id") REFERENCES "public"."transport_routes"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 134
+ALTER TABLE "transport_history" ADD CONSTRAINT "transport_history_route_staff_school_fk" FOREIGN KEY ("route_staff_id","school_id") REFERENCES "public"."transport_route_staff"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 135
+ALTER TABLE "transport_history" ADD CONSTRAINT "transport_history_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 136
+ALTER TABLE "transport_history" ADD CONSTRAINT "transport_history_student_school_fk" FOREIGN KEY ("student_id","school_id") REFERENCES "public"."students"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 137
+ALTER TABLE "settlement_payroll_audit_events" ADD CONSTRAINT "settlement_payroll_audit_events_actor_user_id_fkey" FOREIGN KEY ("actor_user_id") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 138
+ALTER TABLE "settlement_payroll_audit_events" ADD CONSTRAINT "settlement_payroll_audit_events_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 139
+ALTER TABLE "student_subscription_payments" ADD CONSTRAINT "student_subscription_payments_payer_user_id_fkey" FOREIGN KEY ("payer_user_id") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 140
+ALTER TABLE "student_subscription_payments" ADD CONSTRAINT "student_subscription_payments_session_school_fk" FOREIGN KEY ("academic_session_id","school_id") REFERENCES "public"."academic_sessions"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 141
+ALTER TABLE "student_subscription_payments" ADD CONSTRAINT "student_subscription_payments_subscription_owner_fk" FOREIGN KEY ("subscription_id","school_id","student_id") REFERENCES "public"."subscriptions"("id","school_id","student_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 142
+ALTER TABLE "student_subscription_payments" ADD CONSTRAINT "student_subscription_payments_term_school_fk" FOREIGN KEY ("academic_term_id","school_id") REFERENCES "public"."academic_terms"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 143
+ALTER TABLE "transport_school_policies" ADD CONSTRAINT "transport_school_policies_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 144
+ALTER TABLE "transport_school_policies" ADD CONSTRAINT "transport_school_policies_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 145
+ALTER TABLE "transport_fee_invoices" ADD CONSTRAINT "transport_fee_invoices_assignment_school_fk" FOREIGN KEY ("assignment_id","school_id") REFERENCES "public"."transport_student_assignments"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 146
+ALTER TABLE "transport_fee_invoices" ADD CONSTRAINT "transport_fee_invoices_category_school_fk" FOREIGN KEY ("fee_category_id","school_id") REFERENCES "public"."fee_categories"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 147
+ALTER TABLE "transport_fee_invoices" ADD CONSTRAINT "transport_fee_invoices_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 148
+ALTER TABLE "transport_fee_invoices" ADD CONSTRAINT "transport_fee_invoices_finance_invoice_school_fk" FOREIGN KEY ("fee_invoice_id","school_id") REFERENCES "public"."fee_invoices"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 149
+ALTER TABLE "transport_fee_invoices" ADD CONSTRAINT "transport_fee_invoices_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 150
+ALTER TABLE "transport_fee_invoices" ADD CONSTRAINT "transport_fee_invoices_session_school_fk" FOREIGN KEY ("academic_session_id","school_id") REFERENCES "public"."academic_sessions"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 151
+ALTER TABLE "transport_fee_invoices" ADD CONSTRAINT "transport_fee_invoices_term_school_fk" FOREIGN KEY ("academic_term_id","school_id") REFERENCES "public"."academic_terms"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 152
+ALTER TABLE "transport_fee_invoices" ADD CONSTRAINT "transport_fee_invoices_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 153
+ALTER TABLE "payroll_employee_profiles" ADD CONSTRAINT "payroll_employee_profiles_company_employee_id_fkey" FOREIGN KEY ("company_employee_id") REFERENCES "public"."platform_company_employees"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 154
+ALTER TABLE "payroll_employee_profiles" ADD CONSTRAINT "payroll_employee_profiles_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 155
+ALTER TABLE "payroll_employee_profiles" ADD CONSTRAINT "payroll_employee_profiles_employee_school_fk" FOREIGN KEY ("employee_id","school_id") REFERENCES "public"."employees"("id","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 156
+ALTER TABLE "payroll_employee_profiles" ADD CONSTRAINT "payroll_employee_profiles_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 157
+ALTER TABLE "payroll_employee_profiles" ADD CONSTRAINT "payroll_employee_profiles_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 158
+ALTER TABLE "payroll_periods" ADD CONSTRAINT "payroll_periods_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 159
+ALTER TABLE "payroll_periods" ADD CONSTRAINT "payroll_periods_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 160
+ALTER TABLE "payroll_periods" ADD CONSTRAINT "payroll_periods_school_id_fkey" FOREIGN KEY ("school_id") REFERENCES "public"."schools"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 161
+ALTER TABLE "payroll_periods" ADD CONSTRAINT "payroll_periods_submitted_by_fkey" FOREIGN KEY ("submitted_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 162
+ALTER TABLE "payroll_transfers" ADD CONSTRAINT "payroll_transfers_item_period_fk" FOREIGN KEY ("payroll_item_id","period_id") REFERENCES "public"."payroll_items"("id","period_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 163
+ALTER TABLE "payroll_transfers" ADD CONSTRAINT "payroll_transfers_requested_by_fkey" FOREIGN KEY ("requested_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 164
+ALTER TABLE "payroll_transfers" ADD CONSTRAINT "payroll_transfers_verified_by_fkey" FOREIGN KEY ("verified_by") REFERENCES "public"."app_users"("id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 165
+ALTER TABLE "payroll_payslips" ADD CONSTRAINT "payroll_payslips_item_period_fk" FOREIGN KEY ("payroll_item_id","period_id") REFERENCES "public"."payroll_items"("id","period_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 166
+ALTER TABLE "payroll_payslips" ADD CONSTRAINT "payroll_payslips_verified_transfer_scope_fk" FOREIGN KEY ("transfer_id","scope","school_id") REFERENCES "public"."payroll_transfers"("id","scope","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 167
+ALTER TABLE "payroll_items" ADD CONSTRAINT "payroll_items_period_scope_school_fk" FOREIGN KEY ("period_id","scope","school_id") REFERENCES "public"."payroll_periods"("id","scope","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 168
+ALTER TABLE "payroll_items" ADD CONSTRAINT "payroll_items_profile_scope_school_fk" FOREIGN KEY ("employee_profile_id","scope","school_id") REFERENCES "public"."payroll_employee_profiles"("id","scope","school_id") ON DELETE restrict ON UPDATE no action;
+
+-- Position 169
+CREATE INDEX "staff_nfc_billing_rules_effective_idx" ON "staff_nfc_billing_rules" USING btree ("product","effective_at" DESC NULLS FIRST);
+
+-- Position 170
+CREATE INDEX "staff_nfc_subscriptions_partner_term_idx" ON "staff_nfc_subscriptions" USING btree ("partner_profile_id","academic_session_id","academic_term_id") WHERE (partner_profile_id IS NOT NULL);
+
+-- Position 171
+CREATE INDEX "staff_nfc_subscriptions_school_term_status_idx" ON "staff_nfc_subscriptions" USING btree ("school_id","academic_session_id","academic_term_id","status");
+
+-- Position 172
+CREATE UNIQUE INDEX "staff_nfc_refunds_provider_id_uq" ON "staff_nfc_refunds" USING btree ("provider_refund_id") WHERE (provider_refund_id IS NOT NULL);
+
+-- Position 173
+CREATE INDEX "staff_nfc_refunds_school_status_idx" ON "staff_nfc_refunds" USING btree ("school_id","status","created_at" DESC NULLS FIRST);
+
+-- Position 174
+CREATE UNIQUE INDEX "staff_nfc_payments_one_pending_attempt_per_subscription_uq" ON "staff_nfc_payments" USING btree ("subscription_id") WHERE (status = ANY (ARRAY['PENDING'::text, 'RECONCILIATION_REQUIRED'::text]));
+
+-- Position 175
+CREATE UNIQUE INDEX "staff_nfc_payments_provider_transaction_uq" ON "staff_nfc_payments" USING btree ("provider","provider_transaction_id") WHERE (provider_transaction_id IS NOT NULL);
+
+-- Position 176
+CREATE INDEX "staff_nfc_payments_school_status_idx" ON "staff_nfc_payments" USING btree ("school_id","status","created_at" DESC NULLS FIRST);
+
+-- Position 177
+CREATE INDEX "staff_nfc_payments_term_idx" ON "staff_nfc_payments" USING btree ("school_id","academic_session_id","academic_term_id");
+
+-- Position 178
+CREATE INDEX "staff_nfc_partner_commissions_partner_idx" ON "staff_nfc_partner_commissions" USING btree ("partner_profile_id","status","created_at" DESC NULLS FIRST);
+
+-- Position 179
+CREATE UNIQUE INDEX "staff_nfc_allocations_credit_payment_type_uq" ON "staff_nfc_allocations" USING btree ("payment_id","recipient_type") WHERE (entry_type = 'CREDIT'::text);
+
+-- Position 180
+CREATE INDEX "staff_nfc_allocations_partner_idx" ON "staff_nfc_allocations" USING btree ("recipient_id","created_at" DESC NULLS FIRST) WHERE (recipient_type = 'PARTNER'::text);
+
+-- Position 181
+CREATE INDEX "staff_nfc_allocations_school_term_idx" ON "staff_nfc_allocations" USING btree ("school_id","academic_session_id","academic_term_id","created_at" DESC NULLS FIRST);
+
+-- Position 182
+CREATE UNIQUE INDEX "employee_nfc_card_bindings_card_unique" ON "employee_nfc_card_bindings" USING btree ("nfc_card_id");
+
+-- Position 183
+CREATE UNIQUE INDEX "employee_nfc_card_bindings_one_current_per_employee" ON "employee_nfc_card_bindings" USING btree ("school_id","employee_id") WHERE (status = ANY (ARRAY['ASSIGNED'::text, 'ACTIVE'::text, 'LOCKED'::text]));
+
+-- Position 184
+CREATE INDEX "employee_nfc_card_bindings_school_status_idx" ON "employee_nfc_card_bindings" USING btree ("school_id","status");
+
+-- Position 185
+CREATE INDEX "staff_nfc_receipts_school_issue_idx" ON "staff_nfc_receipts" USING btree ("school_id","issued_at" DESC NULLS FIRST);
+
+-- Position 186
+CREATE INDEX "staff_nfc_provider_events_payment_idx" ON "staff_nfc_provider_events" USING btree ("payment_id","outcome");
+
+-- Position 187
+CREATE INDEX "employee_nfc_card_history_card_idx" ON "employee_nfc_card_history" USING btree ("nfc_card_id","created_at");
+
+-- Position 188
+CREATE INDEX "employee_nfc_card_history_employee_idx" ON "employee_nfc_card_history" USING btree ("school_id","employee_id","created_at");
+
+-- Position 189
+CREATE INDEX "employee_nfc_discrepancy_actions_history_idx" ON "employee_nfc_discrepancy_actions" USING btree ("school_id","discrepancy_id","created_at");
+
+-- Position 190
+CREATE UNIQUE INDEX "school_branding_logos_object_path_unique" ON "school_branding_logos" USING btree ("object_path");
+
+-- Position 191
+CREATE UNIQUE INDEX "school_branding_logos_school_current_unique" ON "school_branding_logos" USING btree ("school_id") WHERE (is_current = true);
+
+-- Position 192
+CREATE INDEX "school_branding_logos_school_versions_idx" ON "school_branding_logos" USING btree ("school_id","id");
+
+-- Position 193
+CREATE INDEX "school_branding_logos_updated_by_idx" ON "school_branding_logos" USING btree ("updated_by_user_id","updated_at");
+
+-- Position 194
+CREATE UNIQUE INDEX "employee_nfc_attendance_discrepancies_event_kind_unique" ON "employee_nfc_attendance_discrepancies" USING btree ("school_id","attendance_event_id","kind");
+
+-- Position 195
+CREATE INDEX "employee_nfc_attendance_discrepancies_school_status_idx" ON "employee_nfc_attendance_discrepancies" USING btree ("school_id","status","created_at");
+
+-- Position 196
+CREATE UNIQUE INDEX "teacher_subject_assignments_active_unique" ON "teacher_subject_assignments" USING btree ("school_id","employee_id","subject_id","academic_session_id") WHERE (status = 'ACTIVE'::text);
+
+-- Position 197
+CREATE INDEX "teacher_subject_assignments_school_session_status_idx" ON "teacher_subject_assignments" USING btree ("school_id","academic_session_id","status");
+
+-- Position 198
+CREATE INDEX "school_calendar_events_school_dates_status_idx" ON "school_calendar_events" USING btree ("school_id","start_date","status");
+
+-- Position 199
+CREATE INDEX "school_calendar_events_school_session_term_idx" ON "school_calendar_events" USING btree ("school_id","academic_session_id","academic_term_id");
+
+-- Position 200
+CREATE UNIQUE INDEX "school_calendar_events_school_source_key_unique" ON "school_calendar_events" USING btree ("school_id","source_key");
+
+-- Position 201
+CREATE UNIQUE INDEX "settlement_payroll_profiles_company_unique" ON "settlement_payroll_profiles" USING btree ("scope") WHERE (scope = 'YEMAIT_COMPANY'::text);
+
+-- Position 202
+CREATE UNIQUE INDEX "settlement_payroll_profiles_school_unique" ON "settlement_payroll_profiles" USING btree ("school_id") WHERE (scope = 'SCHOOL'::text);
+
+-- Position 203
+CREATE INDEX "settlement_payroll_profiles_verification_idx" ON "settlement_payroll_profiles" USING btree ("verification_status","updated_at");
+
+-- Position 204
+CREATE UNIQUE INDEX "transport_parent_requests_one_pending_student" ON "transport_parent_requests" USING btree ("student_id") WHERE (status = 'PENDING'::text);
+
+-- Position 205
+CREATE INDEX "transport_parent_requests_parent_student_created_idx" ON "transport_parent_requests" USING btree ("parent_id","student_id","created_at");
+
+-- Position 206
+CREATE INDEX "transport_parent_requests_school_status_created_idx" ON "transport_parent_requests" USING btree ("school_id","status","created_at");
+
+-- Position 207
+CREATE UNIQUE INDEX "transport_buses_school_registration_unique" ON "transport_buses" USING btree ("school_id",lower(btrim(registration_number)));
+
+-- Position 208
+CREATE INDEX "transport_buses_school_status_idx" ON "transport_buses" USING btree ("school_id","status");
+
+-- Position 209
+CREATE UNIQUE INDEX "transport_student_assignments_one_current_per_student" ON "transport_student_assignments" USING btree ("student_id") WHERE (status = ANY (ARRAY['ACTIVE'::text, 'SUSPENDED'::text]));
+
+-- Position 210
+CREATE INDEX "transport_student_assignments_route_status_idx" ON "transport_student_assignments" USING btree ("school_id","route_id","status");
+
+-- Position 211
+CREATE INDEX "transport_student_assignments_school_status_student_idx" ON "transport_student_assignments" USING btree ("school_id","status","student_id");
+
+-- Position 212
+CREATE UNIQUE INDEX "student_subscription_allocations_idempotency_uq" ON "student_subscription_allocations" USING btree ("idempotency_key");
+
+-- Position 213
+CREATE INDEX "student_subscription_allocations_partner_idx" ON "student_subscription_allocations" USING btree ("recipient_id","created_at" DESC NULLS FIRST) WHERE (recipient_type = 'PARTNER'::text);
+
+-- Position 214
+CREATE UNIQUE INDEX "student_subscription_allocations_payment_credit_recipient_uq" ON "student_subscription_allocations" USING btree ("payment_id","recipient_type") WHERE (entry_type = 'CREDIT'::text);
+
+-- Position 215
+CREATE UNIQUE INDEX "student_subscription_allocations_payment_fee_expense_uq" ON "student_subscription_allocations" USING btree ("payment_id") WHERE ((entry_type = 'EXPENSE'::text) AND (recipient_type = 'PLATFORM_PROVIDER_FEE'::text));
+
+-- Position 216
+CREATE INDEX "student_subscription_allocations_school_term_idx" ON "student_subscription_allocations" USING btree ("school_id","academic_session_id","academic_term_id","created_at" DESC NULLS FIRST);
+
+-- Position 217
+CREATE UNIQUE INDEX "teacher_duty_roster_employee_exact_active_unique" ON "teacher_duty_roster" USING btree ("school_id","employee_id","start_date","end_date") WHERE (status = 'ACTIVE'::text);
+
+-- Position 218
+CREATE INDEX "teacher_duty_roster_employee_history_idx" ON "teacher_duty_roster" USING btree ("school_id","employee_id","start_date");
+
+-- Position 219
+CREATE INDEX "teacher_duty_roster_school_dates_status_idx" ON "teacher_duty_roster" USING btree ("school_id","start_date","end_date","status");
+
+-- Position 220
+CREATE UNIQUE INDEX "transport_route_staff_route_employee_active_unique" ON "transport_route_staff" USING btree ("route_id","employee_id") WHERE is_active;
+
+-- Position 221
+CREATE INDEX "transport_route_staff_school_route_active_idx" ON "transport_route_staff" USING btree ("school_id","route_id","is_active");
+
+-- Position 222
+CREATE INDEX "transport_routes_school_bus_status_idx" ON "transport_routes" USING btree ("school_id","bus_id","status");
+
+-- Position 223
+CREATE INDEX "transport_routes_school_driver_idx" ON "transport_routes" USING btree ("school_id","driver_employee_id","status");
+
+-- Position 224
+CREATE INDEX "transport_route_stops_school_route_active_idx" ON "transport_route_stops" USING btree ("school_id","route_id","is_active");
+
+-- Position 225
+CREATE INDEX "transport_history_school_assignment_created_idx" ON "transport_history" USING btree ("school_id","assignment_id","created_at");
+
+-- Position 226
+CREATE INDEX "transport_history_school_request_created_idx" ON "transport_history" USING btree ("school_id","request_id","created_at");
+
+-- Position 227
+CREATE INDEX "transport_history_school_route_created_idx" ON "transport_history" USING btree ("school_id","route_id","created_at");
+
+-- Position 228
+CREATE INDEX "transport_history_school_student_created_idx" ON "transport_history" USING btree ("school_id","student_id","created_at");
+
+-- Position 229
+CREATE INDEX "settlement_payroll_audit_actor_timeline_idx" ON "settlement_payroll_audit_events" USING btree ("actor_user_id","occurred_at","id");
+
+-- Position 230
+CREATE INDEX "settlement_payroll_audit_record_timeline_idx" ON "settlement_payroll_audit_events" USING btree ("record_type","record_id","occurred_at","id");
+
+-- Position 231
+CREATE INDEX "settlement_payroll_audit_scope_timeline_idx" ON "settlement_payroll_audit_events" USING btree ("scope","school_id","occurred_at","id");
+
+-- Position 232
+CREATE UNIQUE INDEX "student_subscription_payments_one_business_term_uq" ON "student_subscription_payments" USING btree ("school_id","student_id","academic_session_id","academic_term_id") WHERE ((status = ANY (ARRAY['PENDING'::text, 'RECONCILIATION_REQUIRED'::text, 'PAID'::text])) OR (reconciliation_status = 'RECONCILIATION_REQUIRED'::text));
+
+-- Position 233
+CREATE UNIQUE INDEX "student_subscription_payments_one_open_attempt_uq" ON "student_subscription_payments" USING btree ("subscription_id") WHERE (status = ANY (ARRAY['PENDING'::text, 'RECONCILIATION_REQUIRED'::text]));
+
+-- Position 234
+CREATE UNIQUE INDEX "student_subscription_payments_provider_transaction_uq" ON "student_subscription_payments" USING btree ("provider","provider_transaction_id") WHERE (provider_transaction_id IS NOT NULL);
+
+-- Position 235
+CREATE UNIQUE INDEX "student_subscription_payments_reference_uq" ON "student_subscription_payments" USING btree ("reference");
+
+-- Position 236
+CREATE INDEX "student_subscription_payments_school_status_idx" ON "student_subscription_payments" USING btree ("school_id","status","created_at" DESC NULLS FIRST);
+
+-- Position 237
+CREATE UNIQUE INDEX "student_subscription_payments_subscription_idempotency_uq" ON "student_subscription_payments" USING btree ("subscription_id","idempotency_key");
+
+-- Position 238
+CREATE INDEX "student_subscription_payments_term_idx" ON "student_subscription_payments" USING btree ("school_id","academic_session_id","academic_term_id");
+
+-- Position 239
+CREATE INDEX "transport_fee_invoices_school_term_idx" ON "transport_fee_invoices" USING btree ("school_id","academic_term_id");
+
+-- Position 240
+CREATE UNIQUE INDEX "payroll_employee_profiles_company_employee_unique" ON "payroll_employee_profiles" USING btree ("company_employee_id") WHERE (scope = 'YEMAIT_COMPANY'::text);
+
+-- Position 241
+CREATE INDEX "payroll_employee_profiles_company_status_idx" ON "payroll_employee_profiles" USING btree ("company_employee_id","status");
+
+-- Position 242
+CREATE UNIQUE INDEX "payroll_employee_profiles_school_employee_unique" ON "payroll_employee_profiles" USING btree ("school_id","employee_id") WHERE (scope = 'SCHOOL'::text);
+
+-- Position 243
+CREATE INDEX "payroll_employee_profiles_school_status_idx" ON "payroll_employee_profiles" USING btree ("school_id","status","updated_at");
+
+-- Position 244
+CREATE UNIQUE INDEX "payroll_periods_company_month_unique" ON "payroll_periods" USING btree ("scope","period_month") WHERE (scope = 'YEMAIT_COMPANY'::text);
+
+-- Position 245
+CREATE INDEX "payroll_periods_company_status_month_idx" ON "payroll_periods" USING btree ("scope","status","period_month");
+
+-- Position 246
+CREATE UNIQUE INDEX "payroll_periods_school_month_unique" ON "payroll_periods" USING btree ("school_id","period_month") WHERE (scope = 'SCHOOL'::text);
+
+-- Position 247
+CREATE INDEX "payroll_periods_school_status_month_idx" ON "payroll_periods" USING btree ("school_id","status","period_month");
+
+-- Position 248
+CREATE UNIQUE INDEX "payroll_transfers_idempotency_period_unique" ON "payroll_transfers" USING btree ("period_id","idempotency_key_hash");
+
+-- Position 249
+CREATE UNIQUE INDEX "payroll_transfers_item_attempt_unique" ON "payroll_transfers" USING btree ("payroll_item_id","attempt_number");
+
+-- Position 250
+CREATE UNIQUE INDEX "payroll_transfers_provider_reference_unique" ON "payroll_transfers" USING btree ("provider","provider_reference");
+
+-- Position 251
+CREATE INDEX "payroll_transfers_provider_transaction_idx" ON "payroll_transfers" USING btree ("provider","provider_transaction_id");
+
+-- Position 252
+CREATE INDEX "payroll_transfers_scope_school_period_status_idx" ON "payroll_transfers" USING btree ("scope","school_id","period_id","status");
+
+-- Position 253
+CREATE UNIQUE INDEX "payroll_payslips_item_unique" ON "payroll_payslips" USING btree ("payroll_item_id");
+
+-- Position 254
+CREATE UNIQUE INDEX "payroll_payslips_number_unique" ON "payroll_payslips" USING btree ("payslip_number");
+
+-- Position 255
+CREATE UNIQUE INDEX "payroll_items_employee_period_unique" ON "payroll_items" USING btree ("period_id","employee_profile_id");
+
+-- Position 256
+CREATE INDEX "payroll_items_scope_school_period_idx" ON "payroll_items" USING btree ("scope","school_id","period_id");
+
+-- Position 257
+CREATE UNIQUE INDEX "student_class_assignments_id_school_unique" ON "student_class_assignments" USING btree ("id","school_id");</pre></details><details><summary>Captured read-only Development and Production catalog evidence from prior investigation</summary><pre>[
+  {
+    "environment": "development",
+    "identity": {
+      "exitCode": 0,
+      "exitReason": null,
+      "output": "database,replica,public_tables,payments,allocations\nheliumdb,f,125,student_subscription_payments,student_subscription_allocations\n",
+      "success": true
+    },
+    "keys": {
+      "exitCode": 0,
+      "exitReason": null,
+      "output": "parent,name,definition,indisunique,indisvalid,indisready,indimmediate,partial,expression,constraints\nschool_partner_attributions,school_partner_attributions_current_unique,CREATE UNIQUE INDEX school_partner_attributions_current_unique ON public.school_partner_attributions USING btree (school_id) WHERE (is_current = true),t,t,t,t,t,f,\nschool_partner_attributions,school_partner_attributions_id_partner_uq,\"CREATE UNIQUE INDEX school_partner_attributions_id_partner_uq ON public.school_partner_attributions USING btree (id, partner_profile_id)\",t,t,t,t,f,f,\nschool_partner_attributions,school_partner_attributions_partner_idx,\"CREATE INDEX school_partner_attributions_partner_idx ON public.school_partner_attributions USING btree (partner_profile_id, status)\",f,t,t,t,f,f,\nschool_partner_attributions,school_partner_attributions_pkey,CREATE UNIQUE INDEX school_partner_attributions_pkey ON public.school_partner_attributions USING btree (id),t,t,t,t,f,f,\"[{\"\"name\"\" : \"\"school_partner_attributions_pkey\"\", \"\"definition\"\" : \"\"PRIMARY KEY (id)\"\"}]\"\nschool_partner_attributions,school_partner_attributions_school_history_idx,\"CREATE INDEX school_partner_attributions_school_history_idx ON public.school_partner_attributions USING btree (school_id, starts_at)\",f,t,t,t,f,f,\nsubscriptions,subscriptions_id_school_student_uq,\"CREATE UNIQUE INDEX subscriptions_id_school_student_uq ON public.subscriptions USING btree (id, school_id, student_id)\",t,t,t,t,f,f,\nsubscriptions,subscriptions_partner_profile_idx,CREATE INDEX subscriptions_partner_profile_idx ON public.subscriptions USING btree (partner_profile_id),f,t,t,t,f,f,\nsubscriptions,subscriptions_pkey,CREATE UNIQUE INDEX subscriptions_pkey ON public.subscriptions USING btree (id),t,t,t,t,f,f,\"[{\"\"name\"\" : \"\"subscriptions_pkey\"\", \"\"definition\"\" : \"\"PRIMARY KEY (id)\"\"}]\"\nsubscriptions,subscriptions_provider_reference_unique,CREATE UNIQUE INDEX subscriptions_provider_reference_unique ON public.subscriptions USING btree (provider_reference),t,t,t,t,f,f,\nsubscriptions,subscriptions_school_idx,CREATE INDEX subscriptions_school_idx ON public.subscriptions USING btree (school_id),f,t,t,t,f,f,\n",
+      "success": true
+    },
+    "dependencies": {
+      "exitCode": 0,
+      "exitReason": null,
+      "output": "child,conname,definition,convalidated,supporting_index\ncommission_ledger,commission_ledger_subscription_id_subscriptions_id_fk,FOREIGN KEY (subscription_id) REFERENCES subscriptions(id),t,subscriptions_pkey\nstaff_nfc_allocations,staff_nfc_allocations_attribution_id_fkey,FOREIGN KEY (attribution_id) REFERENCES school_partner_attributions(id) ON DELETE RESTRICT,t,school_partner_attributions_pkey\nstaff_nfc_subscriptions,staff_nfc_subscriptions_attribution_id_fkey,FOREIGN KEY (attribution_id) REFERENCES school_partner_attributions(id) ON DELETE RESTRICT,t,school_partner_attributions_pkey\nstudent_subscription_allocations,student_subscription_allocations_attribution_partner_fk,\"FOREIGN KEY (attribution_id, recipient_id) REFERENCES school_partner_attributions(id, partner_profile_id) ON DELETE RESTRICT\",t,school_partner_attributions_id_partner_uq\nstudent_subscription_payments,student_subscription_payments_subscription_owner_fk,\"FOREIGN KEY (subscription_id, school_id, student_id) REFERENCES subscriptions(id, school_id, student_id) ON DELETE RESTRICT\",t,subscriptions_id_school_student_uq\n",
+      "success": true
+    }
+  },
+  {
+    "environment": "production",
+    "identity": {
+      "exitCode": 0,
+      "exitReason": null,
+      "output": "database,replica,public_tables,payments,allocations\nneondb,t,91,,\n",
+      "success": true
+    },
+    "keys": {
+      "exitCode": 0,
+      "exitReason": null,
+      "output": "parent,name,definition,indisunique,indisvalid,indisready,indimmediate,partial,expression,constraints\nschool_partner_attributions,school_partner_attributions_current_unique,CREATE UNIQUE INDEX school_partner_attributions_current_unique ON public.school_partner_attributions USING btree (school_id) WHERE (is_current = true),t,t,t,t,t,f,\nschool_partner_attributions,school_partner_attributions_partner_idx,\"CREATE INDEX school_partner_attributions_partner_idx ON public.school_partner_attributions USING btree (partner_profile_id, status)\",f,t,t,t,f,f,\nschool_partner_attributions,school_partner_attributions_pkey,CREATE UNIQUE INDEX school_partner_attributions_pkey ON public.school_partner_attributions USING btree (id),t,t,t,t,f,f,\"[{\"\"name\"\" : \"\"school_partner_attributions_pkey\"\", \"\"definition\"\" : \"\"PRIMARY KEY (id)\"\"}]\"\nschool_partner_attributions,school_partner_attributions_school_history_idx,\"CREATE INDEX school_partner_attributions_school_history_idx ON public.school_partner_attributions USING btree (school_id, starts_at)\",f,t,t,t,f,f,\nsubscriptions,subscriptions_partner_profile_idx,CREATE INDEX subscriptions_partner_profile_idx ON public.subscriptions USING btree (partner_profile_id),f,t,t,t,f,f,\nsubscriptions,subscriptions_pkey,CREATE UNIQUE INDEX subscriptions_pkey ON public.subscriptions USING btree (id),t,t,t,t,f,f,\"[{\"\"name\"\" : \"\"subscriptions_pkey\"\", \"\"definition\"\" : \"\"PRIMARY KEY (id)\"\"}]\"\nsubscriptions,subscriptions_provider_reference_unique,CREATE UNIQUE INDEX subscriptions_provider_reference_unique ON public.subscriptions USING btree (provider_reference),t,t,t,t,f,f,\nsubscriptions,subscriptions_school_idx,CREATE INDEX subscriptions_school_idx ON public.subscriptions USING btree (school_id),f,t,t,t,f,f,\n",
+      "success": true
+    },
+    "dependencies": {
+      "exitCode": 0,
+      "exitReason": null,
+      "output": "child,conname,definition,convalidated,supporting_index\ncommission_ledger,commission_ledger_subscription_id_subscriptions_id_fk,FOREIGN KEY (subscription_id) REFERENCES subscriptions(id),t,subscriptions_pkey\n",
+      "success": true
+    }
+  }
+]</pre></details><details><summary>Latest schema-diff summary and comparison</summary><pre>{
+  "latest": {
+    "success": true,
+    "statementCount": 257,
+    "hasStructuralDataLoss": false,
+    "maybeNonBackwardsCompatible": false,
+    "warnings": [],
+    "relevant": [
+      {
+        "position": 106,
+        "sql": "ALTER TABLE \"student_subscription_allocations\" ADD CONSTRAINT \"student_subscription_allocations_attribution_partner_fk\" FOREIGN KEY (\"attribution_id\",\"recipient_id\") REFERENCES \"public\".\"school_partner_attributions\"(\"id\",\"partner_profile_id\") ON DELETE restrict ON UPDATE no action;"
+      },
+      {
+        "position": 141,
+        "sql": "ALTER TABLE \"student_subscription_payments\" ADD CONSTRAINT \"student_subscription_payments_subscription_owner_fk\" FOREIGN KEY (\"subscription_id\",\"school_id\",\"student_id\") REFERENCES \"public\".\"subscriptions\"(\"id\",\"school_id\",\"student_id\") ON DELETE restrict ON UPDATE no action;"
+      }
+    ],
+    "dropOrTruncateStatements": []
+  },
+  "changesSincePreviousReview": {
+    "added": [],
+    "removed": []
+  }
+}</pre></details></html>
