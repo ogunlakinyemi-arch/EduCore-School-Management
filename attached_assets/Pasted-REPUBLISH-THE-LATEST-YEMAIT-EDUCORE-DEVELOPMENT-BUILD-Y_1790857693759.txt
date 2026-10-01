@@ -1,0 +1,247 @@
+REPUBLISH THE LATEST YEMAIT EDUCORE DEVELOPMENT BUILD
+
+You are working on the existing Yemait EduCore school management system.
+
+The latest Development correction set has already been implemented and verified. Do not rebuild the application from scratch and do not undo or redesign existing functionality.
+
+1. OBJECTIVE
+
+Republish/redeploy the current latest Development version of Yemait EduCore so that I can begin a fresh end-to-end testing cycle using the latest changes.
+
+The goal is deployment of the existing latest code only.
+
+2. IMPORTANT — DO NOT MAKE UNNECESSARY CHANGES
+
+Before publishing:
+
+- Do NOT rewrite the application.
+- Do NOT rebuild existing modules.
+- Do NOT remove existing functionality.
+- Do NOT revert migrations.
+- Do NOT create duplicate migrations.
+- Do NOT run historical migrations again.
+- Do NOT modify the migration journal/ledger.
+- Do NOT perform an unnecessary database schema push.
+- Do NOT reset, truncate, seed, or delete existing data.
+- Do NOT change Production database data.
+- Do NOT enable live payment processing.
+- Do NOT introduce new features during this deployment.
+
+The Development correction set and migrations 0031–0036 have already been implemented.
+
+No additional Development migration is expected to be required for this republish.
+
+3. VERIFY THE CURRENT BUILD
+
+Before publishing, verify that the current source contains the latest completed Development work, including:
+
+- School branding/logo functionality
+- Receipt printing
+- Employee/Teacher/Staff NFC E-ID management
+- Staff NFC termly billing
+- Student subscription billing safeguards
+- Partner commission allocation
+- Academic calendar workflows
+- Teacher assignment management
+- Teacher-on-duty roster
+- School Bus/Transport Management
+- School settlement/payment controls
+- School payroll controls
+- Company payroll controls
+- Role-filtered navigation
+- Platform Owner functionality
+- School Admin functionality
+- Teacher functionality
+- Accountant functionality
+- Parent functionality
+- Student functionality
+- Partner functionality
+- Existing attendance, academics, finance, communication, library, operations and reporting functionality
+
+4. PRESERVE THE EXISTING DATABASE
+
+The previous Development verification confirmed:
+
+- 396 pre-existing records preserved
+- 91 tables present
+- Original columns and constraints preserved
+- Five historical migration-ledger entries preserved
+- No data-loss operation was required
+
+Maintain this state.
+
+Do not execute destructive SQL.
+
+Do not recreate the database.
+
+Do not drop or truncate tables.
+
+5. PAYMENT SAFETY
+
+Keep all payment integrations in sandbox/test mode only.
+
+Do NOT:
+
+- enable Flutterwave LIVE credentials
+- replace sandbox credentials with live credentials
+- move real money
+- initiate real bank transfers
+- modify Production settlement configuration
+- bypass payment verification
+- mark transactions as successfully settled without provider evidence
+
+The following remain testing items for the next testing phase:
+
+- Staff NFC payment with eligible Partner
+- Staff NFC payment without eligible Partner
+- Student subscription payment
+- Partner commission allocation
+- Platform/school allocation
+- Flutterwave webhook verification
+- Duplicate webhook replay
+- Payment idempotency
+- Refund handling
+- Settlement status
+- Payroll transfer reconciliation
+
+6. EXPECTED STAFF NFC BILLING RULES
+
+Do not change these rules during publishing.
+
+For staff NFC subscription:
+
+Eligible Partner
+
+Total: ₦2,000 per staff per academic term
+
+Allocation:
+
+- School: ₦800
+- Platform: ₦1,100
+- Partner: ₦100
+
+No Eligible Partner
+
+Total: ₦2,000 per staff per academic term
+
+Allocation:
+
+- School: ₦800
+- Platform: ₦1,200
+- Partner: ₦0
+
+Provider/payment processing fees must remain separate from these allocations.
+
+7. STUDENT SUBSCRIPTION
+
+Maintain the existing student subscription model:
+
+- ₦5,000 per student per term
+- School share: ₦2,000
+- Platform share: ₦3,000
+- Eligible Partner commission: ₦100 where applicable
+- Payment/provider fees handled separately according to the existing implementation
+
+Do not change these rules during deployment.
+
+8. ENVIRONMENT AND SECURITY
+
+Confirm that:
+
+- Development environment variables remain correctly configured.
+- Sandbox payment credentials remain server-side.
+- No secret keys are exposed in frontend code.
+- No credentials are hard-coded into source files.
+- LIVE payment credentials are not enabled.
+- Production credentials are not copied into Development.
+- Existing authentication/RBAC configuration remains intact.
+
+Do not print or expose secret values in logs, reports, screenshots, or responses.
+
+9. BUILD AND HEALTH CHECK
+
+Before declaring the deployment successful:
+
+1. Install/use the existing project dependencies.
+2. Run the existing typecheck.
+3. Run the existing relevant automated tests.
+4. Confirm the API starts successfully.
+5. Confirm the frontend loads successfully.
+6. Confirm "/api/healthz" returns HTTP 200.
+7. Confirm the platform-owner bootstrap/status endpoint responds correctly.
+8. Confirm authentication routes load.
+9. Confirm role-based navigation is available.
+10. Confirm there are no new build/runtime errors introduced by the deployment.
+
+Do not modify application logic merely to make a test pass.
+
+If an existing test fails because of an actual defect, report it rather than hiding or bypassing it.
+
+10. PUBLISH
+
+If the build and health checks pass, publish/redeploy the current latest Development build.
+
+Use the existing Yemait EduCore deployment configuration.
+
+Do not create a new unrelated application.
+
+Do not change the application's public identity or domain unless the existing deployment process requires it.
+
+11. POST-PUBLISH SMOKE TEST
+
+After publishing, perform only a safe smoke test.
+
+Verify:
+
+- Public application loads
+- Login page loads
+- Platform Owner login route loads
+- School Admin login route loads
+- Main dashboard loads
+- Navigation loads
+- API health remains HTTP 200
+- No database reset occurred
+- Existing Development data remains available
+
+Do not perform destructive actions.
+
+Do not perform real payment transactions.
+
+12. IMPORTANT TESTING STATE
+
+After successful publication, stop making feature changes.
+
+I will begin a fresh manual testing cycle.
+
+During that testing cycle, I will report every issue I discover.
+
+Do not automatically fix those issues one by one unless I specifically request a correction.
+
+Instead, preserve the current published state so that the reported issues can be accumulated and corrected together later.
+
+13. FINAL DEPLOYMENT REPORT
+
+After publishing, provide a concise report containing:
+
+- Build status
+- Typecheck status
+- Automated test status
+- API health status
+- Frontend status
+- Database status
+- Deployment/publish status
+- Environment used
+- Confirmation that no Production database migration was performed
+- Confirmation that no live payment credentials were enabled
+- Confirmation that no real funds were moved
+- Public application URL
+
+If anything prevents publication, clearly identify the exact blocker and stop rather than making an unrelated workaround.
+
+FINAL REQUIREMENT
+
+The objective is simply:
+
+Publish the latest existing Yemait EduCore Development build safely and make it available for manual testing.
+
+Do not redesign, rebuild, migrate unnecessarily, or introduce new functionality during this operation.
