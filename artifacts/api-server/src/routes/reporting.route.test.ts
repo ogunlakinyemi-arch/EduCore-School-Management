@@ -134,6 +134,19 @@ beforeEach(() => {
   state.run.mockReset().mockImplementation(async () => reportResult);
   state.query.mockReset().mockImplementation(async (sql: string, values: unknown[] = []) => {
     if (sql.includes("INSERT INTO audit_logs")) return { rows: [] };
+    if (sql.includes("LEFT JOIN school_branding_logos")) {
+      return {
+        rows: [{
+          name: "Test School",
+          address: "1 Test Road",
+          city: "Lagos",
+          state: "Lagos",
+          phone: null,
+          email: null,
+          logoObjectPath: null,
+        }],
+      };
+    }
     if (sql.includes("SELECT id FROM schools")) return { rows: [{ id: values[0] }] };
     if (sql.includes("FROM school_classes WHERE id=$1")) {
       return { rows: [{ id: values[0], schoolId: state.classSchoolId }] };
@@ -283,6 +296,7 @@ describe("report route authorization and exports", () => {
       expect(exportedText).toContain("12");
       expect(exportedText).not.toContain("Internal field");
       expect(exportedText).not.toContain("must not leave server");
+      if (format === "pdf") expect(exportedText).toContain("Test School");
       expect(response.headers.get("cache-control")).toBe("private, no-store");
       expect(state.run).toHaveBeenCalledTimes(2);
     },

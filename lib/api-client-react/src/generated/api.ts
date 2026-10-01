@@ -56,12 +56,15 @@ import type {
   ActivationHistory,
   ActivationSchool,
   ActivationStudent,
+  AddTransportStopParams,
   ApiBadRequestResponse,
   ApiError,
+  ApiError0a0c478,
   AppUser,
   ApproveFeeAdjustmentParams,
   ApproveFeeRefundParams,
   AssignClassSubjectParams,
+  AssignEmployeeNfcCardBody,
   AssignFeeStructureParams,
   AssignStudentClassParams,
   AssignTeacherClassParams,
@@ -83,6 +86,7 @@ import type {
   CardReassignmentInput,
   CardReplacementInput,
   CardStatusInput,
+  ChangeEmployeeNfcCardStatusBody,
   ClassInput,
   ClassSubjectAssignment,
   ClassSubjectAssignmentInput,
@@ -120,7 +124,10 @@ import type {
   CompanyEmployeeInvitationStatus,
   CompanyEmployeeUpdate,
   CompanyEmployeeWithInvitationStatus,
+  CompanyPayrollEmployeeInput,
+  CompanySettlementInput,
   ConfirmPeopleImportParams,
+  ConfirmSchoolLogoUploadBody,
   CreateAcademicAssessmentParams,
   CreateAcademicAssessmentTypeParams,
   CreateAcademicAssignmentParams,
@@ -133,9 +140,16 @@ import type {
   CreateFeeCategoryParams,
   CreateFeeStructureParams,
   CreateParentParams,
+  CreateSchoolCalendarEventBody,
+  CreateSchoolTeacherAssignmentBody,
+  CreateStaffNfcCheckoutParams,
   CreateStudentParams,
   CreateSubjectParams,
   CreateSubscriptionParams,
+  CreateTeacherDutyBody,
+  CreateTransportAssignmentParams,
+  CreateTransportBusParams,
+  CreateTransportRouteParams,
   CurrentUser,
   DeleteStudentPhotoParams,
   DeviceActivationOfficerGrant,
@@ -148,6 +162,14 @@ import type {
   DiscrepancyResolutionInput,
   Employee,
   EmployeeInput,
+  EmployeeNfcAttendanceDaily,
+  EmployeeNfcAttendanceEvent,
+  EmployeeNfcAttendanceMonthly,
+  EmployeeNfcCardHistory,
+  EmployeeNfcCardView,
+  EmployeeNfcDiscrepancy,
+  EmployeeNfcError,
+  EmployeeNfcProfile,
   EmployeeStatusUpdate,
   EmployeeUpdate,
   EmptyInput,
@@ -184,29 +206,42 @@ import type {
   FinanceSettingsUpdate,
   FinanceSummary,
   ForbiddenResponse,
+  GenerateSchoolCalendarBody,
+  GenerateStaffNfcTermSubscriptionsParams,
   GetChildAcademicTimetableParams,
   GetClassAttendanceParams,
   GetCommunicationPreferencesParams,
+  GetCompanyPayrollReportParams,
   GetEmployeeParams,
   GetFeePaymentReceiptParams,
   GetFinanceSettingsParams,
   GetMyAcademicTimetableParams,
+  GetMyStaffNfcPartnerCommissionsParams,
+  GetMyStaffNfcSubscriptionsParams,
   GetOwnAttendanceParams,
   GetParentChildAttendanceParams,
   GetParentFeeInvoicePaymentMethods200Item,
   GetParentParams,
+  GetPlatformTransportOverviewParams,
   GetSchoolAttendanceTodayParams,
   GetSchoolDashboardParams,
+  GetSchoolEmployeeNfcAttendanceDailyParams,
+  GetSchoolEmployeeNfcAttendanceMonthlyParams,
   GetSchoolFeeRefundParams,
   GetSchoolFinancePaymentParams,
   GetSchoolFinanceReportParams,
   GetSchoolFinanceSummaryParams,
+  GetSchoolPayrollReportParams,
+  GetStaffNfcReceiptParams,
   GetStudentAttendanceParams,
   GetStudentOwnAttendanceByIdParams,
   GetStudentParams,
   GetStudentPhotoParams,
   GetSubjectParams,
+  GetTransportAssignmentHistoryParams,
+  HandleStaffNfcFlutterwaveWebhookBody,
   HealthStatus,
+  IngestEmployeeNfcAttendanceBody,
   InspectPeopleImportParams,
   InvitationDiagnostics,
   ListAcademicAssessmentTypesParams,
@@ -230,7 +265,10 @@ import type {
   ListCommunicationNotificationsParams,
   ListCommunicationPushDevicesParams,
   ListCommunicationTemplatesParams,
+  ListCompanyPayrollEmployeesParams,
+  ListCompanyPayrollPeriodsParams,
   ListDeviceActivationOfficersParams,
+  ListEmployeeNfcCardsParams,
   ListEmployeesParams,
   ListFeeCategoriesParams,
   ListFeeInvoicesParams,
@@ -239,8 +277,10 @@ import type {
   ListMyAcademicAssignmentsParams,
   ListMyAcademicReportCardsParams,
   ListMyAcademicResultsParams,
+  ListMyEmployeeNfcAttendanceParams,
   ListMyFeeInvoiceNotificationsParams,
   ListMyFeePaymentNotificationsParams,
+  ListMyPayrollPayslipsParams,
   ListOwnerSchoolDirectoryParams,
   ListParentStudentRelationshipsParams,
   ListParentsParams,
@@ -248,20 +288,37 @@ import type {
   ListPartnersParams,
   ListPendingFeeAdjustmentsParams,
   ListPeopleImportClassesParams,
+  ListPlatformSchoolSettlementsParams,
+  ListPlatformSettlementHistoryParams,
+  ListSchoolAcademicCalendarParams,
   ListSchoolAttendanceEventsParams,
+  ListSchoolEmployeeNfcAttendanceDiscrepanciesParams,
+  ListSchoolEmployeeNfcAttendanceParams,
   ListSchoolFeeRefundsParams,
   ListSchoolFinancePaymentsParams,
+  ListSchoolPayrollEmployeesParams,
+  ListSchoolPayrollPeriodsParams,
+  ListSchoolSettlementHistoryParams,
+  ListSchoolTeacherAssignmentsParams,
+  ListSchoolTeacherDutyParams,
   ListSchoolUsersParams,
   ListSchoolsParams,
+  ListStaffNfcBillingRulesParams,
+  ListStaffNfcFinanceParams,
   ListStudentClassAssignmentsParams,
   ListStudentIdentificationMethodsParams,
   ListStudentsParams,
   ListSubjectsParams,
   ListSubscriptionsParams,
   ListTeacherClassAssignmentsParams,
+  ListTransportAssignmentsParams,
+  ListTransportBusesParams,
+  ListTransportRequestsParams,
+  ListTransportRoutesParams,
   ManualAttendanceInput,
   NfcCard,
   NotFoundResponse,
+  OwnPayrollPayslip,
   OwnerSchoolDirectory,
   OwnerSchoolOverview,
   Parent,
@@ -314,7 +371,19 @@ import type {
   PartnerStatusUpdate,
   PartnerUpdate,
   PaymentRejectionInput,
+  PaymentSettlementProfile,
   PaymentVerificationInput,
+  PayrollEmployeeProfile,
+  PayrollEmployeeProfileInput,
+  PayrollError,
+  PayrollItemsUpdate,
+  PayrollPeriod,
+  PayrollPeriodInput,
+  PayrollPeriodSummary,
+  PayrollReportRow,
+  PayrollTransfer,
+  PayrollTransfersInput,
+  PayrollTransfersResponse,
   PendingFeeAdjustment,
   PeopleImportClasses,
   PeopleImportConfirmationInput,
@@ -336,13 +405,18 @@ import type {
   PublishFeeStructureParams,
   ReceiveFeeProviderWebhookBody,
   ReconcileFeeProviderCheckoutParams,
+  ReconcileStaffNfcPaymentParams,
   ReferralValidation,
   ReferralValidationInput,
   RegisterCardParams,
   RejectManualBankTransferParams,
+  ReplaceEmployeeNfcCardBody,
   RequestFeeAdjustmentParams,
   RequestFeeRefundParams,
+  RequestStaffNfcRefundParams,
+  ResolveSchoolEmployeeNfcAttendanceDiscrepancyBody,
   RetryFeeProviderReconciliationEventParams,
+  ReviewTransportRequestParams,
   RoleAssignment,
   School,
   SchoolAdministratorInput,
@@ -350,6 +424,8 @@ import type {
   SchoolAdministratorInvitationList,
   SchoolAdministratorInvitationReplacement,
   SchoolAdministratorResult,
+  SchoolBranding,
+  SchoolCalendarEntry,
   SchoolClass,
   SchoolDashboard,
   SchoolFeeRefund,
@@ -357,8 +433,13 @@ import type {
   SchoolInvitationRecovery,
   SchoolInvitationRecoveryResult,
   SchoolInvitationReplacementResult,
+  SchoolLogoUploadRequest,
+  SchoolLogoUploadResponse,
   SchoolMembershipInput,
+  SchoolSettlementInput,
+  SchoolSettlementSummary,
   SchoolStatusUpdate,
+  SchoolTeacherAssignment,
   SchoolUpdate,
   SchoolUser,
   SchoolUserInvitationInput,
@@ -367,6 +448,23 @@ import type {
   SchoolWithAdministratorInput,
   SchoolWithAdministratorResult,
   SearchActivationStudentsParams,
+  SearchTransportDriversParams,
+  SearchTransportStudentsParams,
+  SettlementHistoryEntry,
+  StaffNfcBillingRule,
+  StaffNfcBillingRuleInput,
+  StaffNfcCheckoutResponse,
+  StaffNfcError,
+  StaffNfcFinanceResponse,
+  StaffNfcGenerationResponse,
+  StaffNfcMineResponse,
+  StaffNfcPartnerResponse,
+  StaffNfcPaymentResponse,
+  StaffNfcReceipt,
+  StaffNfcRefundInput,
+  StaffNfcRefundResponse,
+  StaffNfcVerificationInput,
+  StaffNfcWebhookAck,
   Student,
   StudentClassAssignment,
   StudentClassAssignmentInput,
@@ -386,6 +484,27 @@ import type {
   SubscriptionInput,
   TeacherClassAssignment,
   TeacherClassAssignmentInput,
+  TeacherDuty,
+  TransportAssignment,
+  TransportAssignmentInput,
+  TransportAssignmentUpdate,
+  TransportBus,
+  TransportBusInput,
+  TransportBusUpdate,
+  TransportDriver,
+  TransportError,
+  TransportHistoryEntry,
+  TransportOwnerSchoolSummary,
+  TransportRequest,
+  TransportRequestDecision,
+  TransportRequestInput,
+  TransportRoute,
+  TransportRouteInput,
+  TransportRouteUpdate,
+  TransportSelfView,
+  TransportStop,
+  TransportStopInput,
+  TransportStudentOption,
   UnauthenticatedResponse,
   UpdateAcademicAssessmentParams,
   UpdateAcademicAssignmentParams,
@@ -397,11 +516,20 @@ import type {
   UpdateFeeCategoryParams,
   UpdateFinanceSettingsParams,
   UpdateParentParams,
+  UpdateSchoolBrandingBody,
+  UpdateSchoolCalendarEventBody,
+  UpdateSchoolTeacherAssignmentBody,
   UpdateStudentIdentificationMethodsParams,
   UpdateStudentParams,
   UpdateStudentStatusParams,
   UpdateSubjectParams,
-  VerifyManualBankTransferParams
+  UpdateTeacherDutyBody,
+  UpdateTransportAssignmentParams,
+  UpdateTransportBusParams,
+  UpdateTransportRouteParams,
+  UpdateTransportStopParams,
+  VerifyManualBankTransferParams,
+  VerifyMyStaffNfcPaymentParams
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -23390,4 +23518,8249 @@ export const useRevokeCommunicationPushDevice = <TError = ErrorType<NotFoundResp
       > => {
       return useMutation(getRevokeCommunicationPushDeviceMutationOptions(options));
     }
+
+export const getListEmployeeNfcCardsUrl = (schoolId: number,
+    params?: ListEmployeeNfcCardsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/schools/${schoolId}/employee-nfc/cards?${stringifiedParams}` : `/api/schools/${schoolId}/employee-nfc/cards`
+}
+
+/**
+ * @summary List employees' NFC cards and term eligibility for a school
+ */
+export const listEmployeeNfcCards = async (schoolId: number,
+    params?: ListEmployeeNfcCardsParams, options?: Parameters<typeof customFetch>[1]): Promise<EmployeeNfcCardView[]> => {
+
+  return customFetch<EmployeeNfcCardView[]>(getListEmployeeNfcCardsUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListEmployeeNfcCardsQueryKey = (schoolId: number,
+    params?: ListEmployeeNfcCardsParams,) => {
+    return [
+    `/api/schools/${schoolId}/employee-nfc/cards`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListEmployeeNfcCardsQueryOptions = <TData = Awaited<ReturnType<typeof listEmployeeNfcCards>>, TError = ErrorType<EmployeeNfcError>>(schoolId: number,
+    params?: ListEmployeeNfcCardsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmployeeNfcCards>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListEmployeeNfcCardsQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listEmployeeNfcCards>>> = ({ signal }) => listEmployeeNfcCards(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listEmployeeNfcCards>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListEmployeeNfcCardsQueryResult = NonNullable<Awaited<ReturnType<typeof listEmployeeNfcCards>>>
+export type ListEmployeeNfcCardsQueryError = ErrorType<EmployeeNfcError>
+
+
+/**
+ * @summary List employees' NFC cards and term eligibility for a school
+ */
+
+export function useListEmployeeNfcCards<TData = Awaited<ReturnType<typeof listEmployeeNfcCards>>, TError = ErrorType<EmployeeNfcError>>(
+ schoolId: number,
+    params?: ListEmployeeNfcCardsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmployeeNfcCards>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListEmployeeNfcCardsQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAssignEmployeeNfcCardUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/employee-nfc/cards/assign`
+}
+
+/**
+ * @summary Assign a provisioned card to a school employee without activating it
+ */
+export const assignEmployeeNfcCard = async (schoolId: number,
+    assignEmployeeNfcCardBody: AssignEmployeeNfcCardBody, options?: Parameters<typeof customFetch>[1]): Promise<EmployeeNfcCardView> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<EmployeeNfcCardView>(getAssignEmployeeNfcCardUrl(schoolId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(assignEmployeeNfcCardBody)
+  }
+);}
+
+
+
+
+
+export const getAssignEmployeeNfcCardMutationKey = () => ['assignEmployeeNfcCard'] as const;
+
+export const getAssignEmployeeNfcCardMutationOptions = <TError = ErrorType<EmployeeNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignEmployeeNfcCard>>, TError,AssignEmployeeNfcCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assignEmployeeNfcCard>>, TError,AssignEmployeeNfcCardMutationVariables, TContext> => {
+
+const mutationKey = getAssignEmployeeNfcCardMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assignEmployeeNfcCard>>, AssignEmployeeNfcCardMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  assignEmployeeNfcCard(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssignEmployeeNfcCardMutationResult = NonNullable<Awaited<ReturnType<typeof assignEmployeeNfcCard>>>
+    export type AssignEmployeeNfcCardMutationBody = BodyType<AssignEmployeeNfcCardBody>
+    export type AssignEmployeeNfcCardMutationError = ErrorType<EmployeeNfcError>
+    export type AssignEmployeeNfcCardMutationVariables = {schoolId: number;data: BodyType<AssignEmployeeNfcCardBody>}
+
+    /**
+ * @summary Assign a provisioned card to a school employee without activating it
+ */
+export const useAssignEmployeeNfcCard = <TError = ErrorType<EmployeeNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignEmployeeNfcCard>>, TError,AssignEmployeeNfcCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assignEmployeeNfcCard>>,
+        TError,
+        AssignEmployeeNfcCardMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAssignEmployeeNfcCardMutationOptions(options));
+    }
+
+export const getChangeEmployeeNfcCardStatusUrl = (schoolId: number,
+    cardId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/employee-nfc/cards/${cardId}`
+}
+
+/**
+ * @summary Activate, lock or deactivate an employee-bound NFC card without modifying student cards
+ */
+export const changeEmployeeNfcCardStatus = async (schoolId: number,
+    cardId: number,
+    changeEmployeeNfcCardStatusBody: ChangeEmployeeNfcCardStatusBody, options?: Parameters<typeof customFetch>[1]): Promise<EmployeeNfcCardView> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<EmployeeNfcCardView>(getChangeEmployeeNfcCardStatusUrl(schoolId,cardId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(changeEmployeeNfcCardStatusBody)
+  }
+);}
+
+
+
+
+
+export const getChangeEmployeeNfcCardStatusMutationKey = () => ['changeEmployeeNfcCardStatus'] as const;
+
+export const getChangeEmployeeNfcCardStatusMutationOptions = <TError = ErrorType<EmployeeNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changeEmployeeNfcCardStatus>>, TError,ChangeEmployeeNfcCardStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof changeEmployeeNfcCardStatus>>, TError,ChangeEmployeeNfcCardStatusMutationVariables, TContext> => {
+
+const mutationKey = getChangeEmployeeNfcCardStatusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof changeEmployeeNfcCardStatus>>, ChangeEmployeeNfcCardStatusMutationVariables> = (props) => {
+          const {schoolId,cardId,data} = props ?? {};
+
+          return  changeEmployeeNfcCardStatus(schoolId,cardId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ChangeEmployeeNfcCardStatusMutationResult = NonNullable<Awaited<ReturnType<typeof changeEmployeeNfcCardStatus>>>
+    export type ChangeEmployeeNfcCardStatusMutationBody = BodyType<ChangeEmployeeNfcCardStatusBody>
+    export type ChangeEmployeeNfcCardStatusMutationError = ErrorType<EmployeeNfcError>
+    export type ChangeEmployeeNfcCardStatusMutationVariables = {schoolId: number;cardId: number;data: BodyType<ChangeEmployeeNfcCardStatusBody>}
+
+    /**
+ * @summary Activate, lock or deactivate an employee-bound NFC card without modifying student cards
+ */
+export const useChangeEmployeeNfcCardStatus = <TError = ErrorType<EmployeeNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changeEmployeeNfcCardStatus>>, TError,ChangeEmployeeNfcCardStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof changeEmployeeNfcCardStatus>>,
+        TError,
+        ChangeEmployeeNfcCardStatusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getChangeEmployeeNfcCardStatusMutationOptions(options));
+    }
+
+export const getReplaceEmployeeNfcCardUrl = (schoolId: number,
+    cardId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/employee-nfc/cards/${cardId}/replace`
+}
+
+/**
+ * @summary Preserve employee history and replace one employee's card with an unused prepared UID
+ */
+export const replaceEmployeeNfcCard = async (schoolId: number,
+    cardId: number,
+    replaceEmployeeNfcCardBody: ReplaceEmployeeNfcCardBody, options?: Parameters<typeof customFetch>[1]): Promise<EmployeeNfcCardView> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<EmployeeNfcCardView>(getReplaceEmployeeNfcCardUrl(schoolId,cardId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(replaceEmployeeNfcCardBody)
+  }
+);}
+
+
+
+
+
+export const getReplaceEmployeeNfcCardMutationKey = () => ['replaceEmployeeNfcCard'] as const;
+
+export const getReplaceEmployeeNfcCardMutationOptions = <TError = ErrorType<EmployeeNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceEmployeeNfcCard>>, TError,ReplaceEmployeeNfcCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof replaceEmployeeNfcCard>>, TError,ReplaceEmployeeNfcCardMutationVariables, TContext> => {
+
+const mutationKey = getReplaceEmployeeNfcCardMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof replaceEmployeeNfcCard>>, ReplaceEmployeeNfcCardMutationVariables> = (props) => {
+          const {schoolId,cardId,data} = props ?? {};
+
+          return  replaceEmployeeNfcCard(schoolId,cardId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReplaceEmployeeNfcCardMutationResult = NonNullable<Awaited<ReturnType<typeof replaceEmployeeNfcCard>>>
+    export type ReplaceEmployeeNfcCardMutationBody = BodyType<ReplaceEmployeeNfcCardBody>
+    export type ReplaceEmployeeNfcCardMutationError = ErrorType<EmployeeNfcError>
+    export type ReplaceEmployeeNfcCardMutationVariables = {schoolId: number;cardId: number;data: BodyType<ReplaceEmployeeNfcCardBody>}
+
+    /**
+ * @summary Preserve employee history and replace one employee's card with an unused prepared UID
+ */
+export const useReplaceEmployeeNfcCard = <TError = ErrorType<EmployeeNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceEmployeeNfcCard>>, TError,ReplaceEmployeeNfcCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof replaceEmployeeNfcCard>>,
+        TError,
+        ReplaceEmployeeNfcCardMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReplaceEmployeeNfcCardMutationOptions(options));
+    }
+
+export const getListEmployeeNfcCardHistoryUrl = (schoolId: number,
+    cardId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/employee-nfc/cards/${cardId}/history`
+}
+
+/**
+ * @summary Read the authorized employee card's append-only status and replacement history
+ */
+export const listEmployeeNfcCardHistory = async (schoolId: number,
+    cardId: number, options?: Parameters<typeof customFetch>[1]): Promise<EmployeeNfcCardHistory[]> => {
+
+  return customFetch<EmployeeNfcCardHistory[]>(getListEmployeeNfcCardHistoryUrl(schoolId,cardId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListEmployeeNfcCardHistoryQueryKey = (schoolId: number,
+    cardId: number,) => {
+    return [
+    `/api/schools/${schoolId}/employee-nfc/cards/${cardId}/history`
+    ] as const;
+    }
+
+
+export const getListEmployeeNfcCardHistoryQueryOptions = <TData = Awaited<ReturnType<typeof listEmployeeNfcCardHistory>>, TError = ErrorType<EmployeeNfcError>>(schoolId: number,
+    cardId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmployeeNfcCardHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListEmployeeNfcCardHistoryQueryKey(schoolId,cardId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listEmployeeNfcCardHistory>>> = ({ signal }) => listEmployeeNfcCardHistory(schoolId,cardId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined && cardId !== null && cardId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listEmployeeNfcCardHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListEmployeeNfcCardHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof listEmployeeNfcCardHistory>>>
+export type ListEmployeeNfcCardHistoryQueryError = ErrorType<EmployeeNfcError>
+
+
+/**
+ * @summary Read the authorized employee card's append-only status and replacement history
+ */
+
+export function useListEmployeeNfcCardHistory<TData = Awaited<ReturnType<typeof listEmployeeNfcCardHistory>>, TError = ErrorType<EmployeeNfcError>>(
+ schoolId: number,
+    cardId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmployeeNfcCardHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListEmployeeNfcCardHistoryQueryOptions(schoolId,cardId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSchoolEmployeeNfcIdUrl = (schoolId: number,
+    employeeId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/employee-nfc/${employeeId}/e-id`
+}
+
+/**
+ * A school employee may only retrieve their own E-ID, while an authorized School Admin or global Owner may read records within the allowed school scope.
+ * @summary Return an authorized school's employee E-ID with verified school branding
+ */
+export const getSchoolEmployeeNfcId = async (schoolId: number,
+    employeeId: number, options?: Parameters<typeof customFetch>[1]): Promise<EmployeeNfcProfile> => {
+
+  return customFetch<EmployeeNfcProfile>(getGetSchoolEmployeeNfcIdUrl(schoolId,employeeId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolEmployeeNfcIdQueryKey = (schoolId: number,
+    employeeId: number,) => {
+    return [
+    `/api/schools/${schoolId}/employee-nfc/${employeeId}/e-id`
+    ] as const;
+    }
+
+
+export const getGetSchoolEmployeeNfcIdQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolEmployeeNfcId>>, TError = ErrorType<EmployeeNfcError>>(schoolId: number,
+    employeeId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolEmployeeNfcId>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolEmployeeNfcIdQueryKey(schoolId,employeeId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolEmployeeNfcId>>> = ({ signal }) => getSchoolEmployeeNfcId(schoolId,employeeId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined && employeeId !== null && employeeId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolEmployeeNfcId>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchoolEmployeeNfcIdQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolEmployeeNfcId>>>
+export type GetSchoolEmployeeNfcIdQueryError = ErrorType<EmployeeNfcError>
+
+
+/**
+ * @summary Return an authorized school's employee E-ID with verified school branding
+ */
+
+export function useGetSchoolEmployeeNfcId<TData = Awaited<ReturnType<typeof getSchoolEmployeeNfcId>>, TError = ErrorType<EmployeeNfcError>>(
+ schoolId: number,
+    employeeId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolEmployeeNfcId>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchoolEmployeeNfcIdQueryOptions(schoolId,employeeId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMyEmployeeNfcProfileUrl = () => {
+
+
+
+
+  return `/api/me/employee-nfc`
+}
+
+/**
+ * @summary Return only the authenticated employee's profile, logo, card status and current verified term entitlement
+ */
+export const getMyEmployeeNfcProfile = async ( options?: Parameters<typeof customFetch>[1]): Promise<EmployeeNfcProfile> => {
+
+  return customFetch<EmployeeNfcProfile>(getGetMyEmployeeNfcProfileUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyEmployeeNfcProfileQueryKey = () => {
+    return [
+    `/api/me/employee-nfc`
+    ] as const;
+    }
+
+
+export const getGetMyEmployeeNfcProfileQueryOptions = <TData = Awaited<ReturnType<typeof getMyEmployeeNfcProfile>>, TError = ErrorType<EmployeeNfcError>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyEmployeeNfcProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyEmployeeNfcProfileQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyEmployeeNfcProfile>>> = ({ signal }) => getMyEmployeeNfcProfile({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyEmployeeNfcProfile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyEmployeeNfcProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getMyEmployeeNfcProfile>>>
+export type GetMyEmployeeNfcProfileQueryError = ErrorType<EmployeeNfcError>
+
+
+/**
+ * @summary Return only the authenticated employee's profile, logo, card status and current verified term entitlement
+ */
+
+export function useGetMyEmployeeNfcProfile<TData = Awaited<ReturnType<typeof getMyEmployeeNfcProfile>>, TError = ErrorType<EmployeeNfcError>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyEmployeeNfcProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyEmployeeNfcProfileQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListMyEmployeeNfcAttendanceUrl = (params?: ListMyEmployeeNfcAttendanceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/me/employee-nfc/attendance?${stringifiedParams}` : `/api/me/employee-nfc/attendance`
+}
+
+/**
+ * @summary Return only attendance for the authenticated employee identity
+ */
+export const listMyEmployeeNfcAttendance = async (params?: ListMyEmployeeNfcAttendanceParams, options?: Parameters<typeof customFetch>[1]): Promise<EmployeeNfcAttendanceEvent[]> => {
+
+  return customFetch<EmployeeNfcAttendanceEvent[]>(getListMyEmployeeNfcAttendanceUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMyEmployeeNfcAttendanceQueryKey = (params?: ListMyEmployeeNfcAttendanceParams,) => {
+    return [
+    `/api/me/employee-nfc/attendance`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListMyEmployeeNfcAttendanceQueryOptions = <TData = Awaited<ReturnType<typeof listMyEmployeeNfcAttendance>>, TError = ErrorType<EmployeeNfcError>>(params?: ListMyEmployeeNfcAttendanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyEmployeeNfcAttendance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMyEmployeeNfcAttendanceQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyEmployeeNfcAttendance>>> = ({ signal }) => listMyEmployeeNfcAttendance(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMyEmployeeNfcAttendance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMyEmployeeNfcAttendanceQueryResult = NonNullable<Awaited<ReturnType<typeof listMyEmployeeNfcAttendance>>>
+export type ListMyEmployeeNfcAttendanceQueryError = ErrorType<EmployeeNfcError>
+
+
+/**
+ * @summary Return only attendance for the authenticated employee identity
+ */
+
+export function useListMyEmployeeNfcAttendance<TData = Awaited<ReturnType<typeof listMyEmployeeNfcAttendance>>, TError = ErrorType<EmployeeNfcError>>(
+ params?: ListMyEmployeeNfcAttendanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyEmployeeNfcAttendance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMyEmployeeNfcAttendanceQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListSchoolEmployeeNfcAttendanceUrl = (schoolId: number,
+    params?: ListSchoolEmployeeNfcAttendanceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/schools/${schoolId}/employee-nfc/attendance/events?${stringifiedParams}` : `/api/schools/${schoolId}/employee-nfc/attendance/events`
+}
+
+/**
+ * @summary List staff check-ins, check-outs and discrepancies within the authorized school
+ */
+export const listSchoolEmployeeNfcAttendance = async (schoolId: number,
+    params?: ListSchoolEmployeeNfcAttendanceParams, options?: Parameters<typeof customFetch>[1]): Promise<EmployeeNfcAttendanceEvent[]> => {
+
+  return customFetch<EmployeeNfcAttendanceEvent[]>(getListSchoolEmployeeNfcAttendanceUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSchoolEmployeeNfcAttendanceQueryKey = (schoolId: number,
+    params?: ListSchoolEmployeeNfcAttendanceParams,) => {
+    return [
+    `/api/schools/${schoolId}/employee-nfc/attendance/events`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSchoolEmployeeNfcAttendanceQueryOptions = <TData = Awaited<ReturnType<typeof listSchoolEmployeeNfcAttendance>>, TError = ErrorType<EmployeeNfcError>>(schoolId: number,
+    params?: ListSchoolEmployeeNfcAttendanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolEmployeeNfcAttendance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSchoolEmployeeNfcAttendanceQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSchoolEmployeeNfcAttendance>>> = ({ signal }) => listSchoolEmployeeNfcAttendance(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSchoolEmployeeNfcAttendance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSchoolEmployeeNfcAttendanceQueryResult = NonNullable<Awaited<ReturnType<typeof listSchoolEmployeeNfcAttendance>>>
+export type ListSchoolEmployeeNfcAttendanceQueryError = ErrorType<EmployeeNfcError>
+
+
+/**
+ * @summary List staff check-ins, check-outs and discrepancies within the authorized school
+ */
+
+export function useListSchoolEmployeeNfcAttendance<TData = Awaited<ReturnType<typeof listSchoolEmployeeNfcAttendance>>, TError = ErrorType<EmployeeNfcError>>(
+ schoolId: number,
+    params?: ListSchoolEmployeeNfcAttendanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolEmployeeNfcAttendance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSchoolEmployeeNfcAttendanceQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getIngestEmployeeNfcAttendanceUrl = () => {
+
+
+
+
+  return `/api/devices/employee-nfc/attendance/events`
+}
+
+/**
+ * Pending, failed or expired current-term staff subscriptions and mismatched person types are explicitly denied. NFC reads can never turn employee cards into student records.
+ * @summary Recognize and log a correctly typed, tenant-bound employee NFC card at an authorized device
+ */
+export const ingestEmployeeNfcAttendance = async (ingestEmployeeNfcAttendanceBody: IngestEmployeeNfcAttendanceBody, options?: Parameters<typeof customFetch>[1]): Promise<EmployeeNfcAttendanceEvent> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<EmployeeNfcAttendanceEvent>(getIngestEmployeeNfcAttendanceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(ingestEmployeeNfcAttendanceBody)
+  }
+);}
+
+
+
+
+
+export const getIngestEmployeeNfcAttendanceMutationKey = () => ['ingestEmployeeNfcAttendance'] as const;
+
+export const getIngestEmployeeNfcAttendanceMutationOptions = <TError = ErrorType<EmployeeNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestEmployeeNfcAttendance>>, TError,IngestEmployeeNfcAttendanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof ingestEmployeeNfcAttendance>>, TError,IngestEmployeeNfcAttendanceMutationVariables, TContext> => {
+
+const mutationKey = getIngestEmployeeNfcAttendanceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ingestEmployeeNfcAttendance>>, IngestEmployeeNfcAttendanceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  ingestEmployeeNfcAttendance(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IngestEmployeeNfcAttendanceMutationResult = NonNullable<Awaited<ReturnType<typeof ingestEmployeeNfcAttendance>>>
+    export type IngestEmployeeNfcAttendanceMutationBody = BodyType<IngestEmployeeNfcAttendanceBody>
+    export type IngestEmployeeNfcAttendanceMutationError = ErrorType<EmployeeNfcError>
+    export type IngestEmployeeNfcAttendanceMutationVariables = {data: BodyType<IngestEmployeeNfcAttendanceBody>}
+
+    /**
+ * @summary Recognize and log a correctly typed, tenant-bound employee NFC card at an authorized device
+ */
+export const useIngestEmployeeNfcAttendance = <TError = ErrorType<EmployeeNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestEmployeeNfcAttendance>>, TError,IngestEmployeeNfcAttendanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof ingestEmployeeNfcAttendance>>,
+        TError,
+        IngestEmployeeNfcAttendanceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getIngestEmployeeNfcAttendanceMutationOptions(options));
+    }
+
+export const getGetSchoolEmployeeNfcAttendanceDailyUrl = (schoolId: number,
+    params?: GetSchoolEmployeeNfcAttendanceDailyParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/schools/${schoolId}/employee-nfc/attendance/daily?${stringifiedParams}` : `/api/schools/${schoolId}/employee-nfc/attendance/daily`
+}
+
+/**
+ * @summary Summarize teacher/staff attendance for one school and local date
+ */
+export const getSchoolEmployeeNfcAttendanceDaily = async (schoolId: number,
+    params?: GetSchoolEmployeeNfcAttendanceDailyParams, options?: Parameters<typeof customFetch>[1]): Promise<EmployeeNfcAttendanceDaily> => {
+
+  return customFetch<EmployeeNfcAttendanceDaily>(getGetSchoolEmployeeNfcAttendanceDailyUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolEmployeeNfcAttendanceDailyQueryKey = (schoolId: number,
+    params?: GetSchoolEmployeeNfcAttendanceDailyParams,) => {
+    return [
+    `/api/schools/${schoolId}/employee-nfc/attendance/daily`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSchoolEmployeeNfcAttendanceDailyQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolEmployeeNfcAttendanceDaily>>, TError = ErrorType<EmployeeNfcError>>(schoolId: number,
+    params?: GetSchoolEmployeeNfcAttendanceDailyParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolEmployeeNfcAttendanceDaily>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolEmployeeNfcAttendanceDailyQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolEmployeeNfcAttendanceDaily>>> = ({ signal }) => getSchoolEmployeeNfcAttendanceDaily(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolEmployeeNfcAttendanceDaily>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchoolEmployeeNfcAttendanceDailyQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolEmployeeNfcAttendanceDaily>>>
+export type GetSchoolEmployeeNfcAttendanceDailyQueryError = ErrorType<EmployeeNfcError>
+
+
+/**
+ * @summary Summarize teacher/staff attendance for one school and local date
+ */
+
+export function useGetSchoolEmployeeNfcAttendanceDaily<TData = Awaited<ReturnType<typeof getSchoolEmployeeNfcAttendanceDaily>>, TError = ErrorType<EmployeeNfcError>>(
+ schoolId: number,
+    params?: GetSchoolEmployeeNfcAttendanceDailyParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolEmployeeNfcAttendanceDaily>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchoolEmployeeNfcAttendanceDailyQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSchoolEmployeeNfcAttendanceMonthlyUrl = (schoolId: number,
+    params: GetSchoolEmployeeNfcAttendanceMonthlyParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/schools/${schoolId}/employee-nfc/attendance/monthly?${stringifiedParams}` : `/api/schools/${schoolId}/employee-nfc/attendance/monthly`
+}
+
+/**
+ * @summary Summarize teacher/staff NFC attendance for one school and academic month
+ */
+export const getSchoolEmployeeNfcAttendanceMonthly = async (schoolId: number,
+    params: GetSchoolEmployeeNfcAttendanceMonthlyParams, options?: Parameters<typeof customFetch>[1]): Promise<EmployeeNfcAttendanceMonthly[]> => {
+
+  return customFetch<EmployeeNfcAttendanceMonthly[]>(getGetSchoolEmployeeNfcAttendanceMonthlyUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolEmployeeNfcAttendanceMonthlyQueryKey = (schoolId: number,
+    params?: GetSchoolEmployeeNfcAttendanceMonthlyParams,) => {
+    return [
+    `/api/schools/${schoolId}/employee-nfc/attendance/monthly`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSchoolEmployeeNfcAttendanceMonthlyQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolEmployeeNfcAttendanceMonthly>>, TError = ErrorType<EmployeeNfcError>>(schoolId: number,
+    params: GetSchoolEmployeeNfcAttendanceMonthlyParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolEmployeeNfcAttendanceMonthly>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolEmployeeNfcAttendanceMonthlyQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolEmployeeNfcAttendanceMonthly>>> = ({ signal }) => getSchoolEmployeeNfcAttendanceMonthly(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolEmployeeNfcAttendanceMonthly>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchoolEmployeeNfcAttendanceMonthlyQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolEmployeeNfcAttendanceMonthly>>>
+export type GetSchoolEmployeeNfcAttendanceMonthlyQueryError = ErrorType<EmployeeNfcError>
+
+
+/**
+ * @summary Summarize teacher/staff NFC attendance for one school and academic month
+ */
+
+export function useGetSchoolEmployeeNfcAttendanceMonthly<TData = Awaited<ReturnType<typeof getSchoolEmployeeNfcAttendanceMonthly>>, TError = ErrorType<EmployeeNfcError>>(
+ schoolId: number,
+    params: GetSchoolEmployeeNfcAttendanceMonthlyParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolEmployeeNfcAttendanceMonthly>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchoolEmployeeNfcAttendanceMonthlyQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListSchoolEmployeeNfcAttendanceDiscrepanciesUrl = (schoolId: number,
+    params?: ListSchoolEmployeeNfcAttendanceDiscrepanciesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/schools/${schoolId}/employee-nfc/attendance/discrepancies?${stringifiedParams}` : `/api/schools/${schoolId}/employee-nfc/attendance/discrepancies`
+}
+
+/**
+ * @summary List open or historical NFC discrepancies for that school's employees
+ */
+export const listSchoolEmployeeNfcAttendanceDiscrepancies = async (schoolId: number,
+    params?: ListSchoolEmployeeNfcAttendanceDiscrepanciesParams, options?: Parameters<typeof customFetch>[1]): Promise<EmployeeNfcDiscrepancy[]> => {
+
+  return customFetch<EmployeeNfcDiscrepancy[]>(getListSchoolEmployeeNfcAttendanceDiscrepanciesUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSchoolEmployeeNfcAttendanceDiscrepanciesQueryKey = (schoolId: number,
+    params?: ListSchoolEmployeeNfcAttendanceDiscrepanciesParams,) => {
+    return [
+    `/api/schools/${schoolId}/employee-nfc/attendance/discrepancies`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSchoolEmployeeNfcAttendanceDiscrepanciesQueryOptions = <TData = Awaited<ReturnType<typeof listSchoolEmployeeNfcAttendanceDiscrepancies>>, TError = ErrorType<EmployeeNfcError>>(schoolId: number,
+    params?: ListSchoolEmployeeNfcAttendanceDiscrepanciesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolEmployeeNfcAttendanceDiscrepancies>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSchoolEmployeeNfcAttendanceDiscrepanciesQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSchoolEmployeeNfcAttendanceDiscrepancies>>> = ({ signal }) => listSchoolEmployeeNfcAttendanceDiscrepancies(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSchoolEmployeeNfcAttendanceDiscrepancies>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSchoolEmployeeNfcAttendanceDiscrepanciesQueryResult = NonNullable<Awaited<ReturnType<typeof listSchoolEmployeeNfcAttendanceDiscrepancies>>>
+export type ListSchoolEmployeeNfcAttendanceDiscrepanciesQueryError = ErrorType<EmployeeNfcError>
+
+
+/**
+ * @summary List open or historical NFC discrepancies for that school's employees
+ */
+
+export function useListSchoolEmployeeNfcAttendanceDiscrepancies<TData = Awaited<ReturnType<typeof listSchoolEmployeeNfcAttendanceDiscrepancies>>, TError = ErrorType<EmployeeNfcError>>(
+ schoolId: number,
+    params?: ListSchoolEmployeeNfcAttendanceDiscrepanciesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolEmployeeNfcAttendanceDiscrepancies>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSchoolEmployeeNfcAttendanceDiscrepanciesQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getResolveSchoolEmployeeNfcAttendanceDiscrepancyUrl = (schoolId: number,
+    discrepancyId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/employee-nfc/attendance/discrepancies/${discrepancyId}/resolve`
+}
+
+/**
+ * @summary Append a school-admin decision to an employee attendance discrepancy without changing the original event
+ */
+export const resolveSchoolEmployeeNfcAttendanceDiscrepancy = async (schoolId: number,
+    discrepancyId: number,
+    resolveSchoolEmployeeNfcAttendanceDiscrepancyBody: ResolveSchoolEmployeeNfcAttendanceDiscrepancyBody, options?: Parameters<typeof customFetch>[1]): Promise<EmployeeNfcDiscrepancy> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<EmployeeNfcDiscrepancy>(getResolveSchoolEmployeeNfcAttendanceDiscrepancyUrl(schoolId,discrepancyId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(resolveSchoolEmployeeNfcAttendanceDiscrepancyBody)
+  }
+);}
+
+
+
+
+
+export const getResolveSchoolEmployeeNfcAttendanceDiscrepancyMutationKey = () => ['resolveSchoolEmployeeNfcAttendanceDiscrepancy'] as const;
+
+export const getResolveSchoolEmployeeNfcAttendanceDiscrepancyMutationOptions = <TError = ErrorType<EmployeeNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveSchoolEmployeeNfcAttendanceDiscrepancy>>, TError,ResolveSchoolEmployeeNfcAttendanceDiscrepancyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resolveSchoolEmployeeNfcAttendanceDiscrepancy>>, TError,ResolveSchoolEmployeeNfcAttendanceDiscrepancyMutationVariables, TContext> => {
+
+const mutationKey = getResolveSchoolEmployeeNfcAttendanceDiscrepancyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveSchoolEmployeeNfcAttendanceDiscrepancy>>, ResolveSchoolEmployeeNfcAttendanceDiscrepancyMutationVariables> = (props) => {
+          const {schoolId,discrepancyId,data} = props ?? {};
+
+          return  resolveSchoolEmployeeNfcAttendanceDiscrepancy(schoolId,discrepancyId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResolveSchoolEmployeeNfcAttendanceDiscrepancyMutationResult = NonNullable<Awaited<ReturnType<typeof resolveSchoolEmployeeNfcAttendanceDiscrepancy>>>
+    export type ResolveSchoolEmployeeNfcAttendanceDiscrepancyMutationBody = BodyType<ResolveSchoolEmployeeNfcAttendanceDiscrepancyBody>
+    export type ResolveSchoolEmployeeNfcAttendanceDiscrepancyMutationError = ErrorType<EmployeeNfcError>
+    export type ResolveSchoolEmployeeNfcAttendanceDiscrepancyMutationVariables = {schoolId: number;discrepancyId: number;data: BodyType<ResolveSchoolEmployeeNfcAttendanceDiscrepancyBody>}
+
+    /**
+ * @summary Append a school-admin decision to an employee attendance discrepancy without changing the original event
+ */
+export const useResolveSchoolEmployeeNfcAttendanceDiscrepancy = <TError = ErrorType<EmployeeNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveSchoolEmployeeNfcAttendanceDiscrepancy>>, TError,ResolveSchoolEmployeeNfcAttendanceDiscrepancyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resolveSchoolEmployeeNfcAttendanceDiscrepancy>>,
+        TError,
+        ResolveSchoolEmployeeNfcAttendanceDiscrepancyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getResolveSchoolEmployeeNfcAttendanceDiscrepancyMutationOptions(options));
+    }
+
+export const getGetPlatformPaymentSettlementUrl = () => {
+
+
+
+
+  return `/api/platform/finance/payment-settlement`
+}
+
+/**
+ * @summary Read global company settlement configuration and provider capability without revealing bank numbers or credentials
+ */
+export const getPlatformPaymentSettlement = async ( options?: Parameters<typeof customFetch>[1]): Promise<PaymentSettlementProfile> => {
+
+  return customFetch<PaymentSettlementProfile>(getGetPlatformPaymentSettlementUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPlatformPaymentSettlementQueryKey = () => {
+    return [
+    `/api/platform/finance/payment-settlement`
+    ] as const;
+    }
+
+
+export const getGetPlatformPaymentSettlementQueryOptions = <TData = Awaited<ReturnType<typeof getPlatformPaymentSettlement>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPlatformPaymentSettlement>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPlatformPaymentSettlementQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPlatformPaymentSettlement>>> = ({ signal }) => getPlatformPaymentSettlement({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPlatformPaymentSettlement>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPlatformPaymentSettlementQueryResult = NonNullable<Awaited<ReturnType<typeof getPlatformPaymentSettlement>>>
+export type GetPlatformPaymentSettlementQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read global company settlement configuration and provider capability without revealing bank numbers or credentials
+ */
+
+export function useGetPlatformPaymentSettlement<TData = Awaited<ReturnType<typeof getPlatformPaymentSettlement>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPlatformPaymentSettlement>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPlatformPaymentSettlementQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdatePlatformPaymentSettlementUrl = () => {
+
+
+
+
+  return `/api/platform/finance/payment-settlement`
+}
+
+/**
+ * Stores encrypted bank-account fields server-side, returns masks only, and never implies that entering a bank account creates a Flutterwave subaccount or settles funds.
+ * @summary Configure the Yemait Technologies Limited Flutterwave settlement recipient (Platform Owner)
+ */
+export const updatePlatformPaymentSettlement = async (companySettlementInput: CompanySettlementInput, options?: Parameters<typeof customFetch>[1]): Promise<PaymentSettlementProfile> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PaymentSettlementProfile>(getUpdatePlatformPaymentSettlementUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(companySettlementInput)
+  }
+);}
+
+
+
+
+
+export const getUpdatePlatformPaymentSettlementMutationKey = () => ['updatePlatformPaymentSettlement'] as const;
+
+export const getUpdatePlatformPaymentSettlementMutationOptions = <TError = ErrorType<PayrollError | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePlatformPaymentSettlement>>, TError,UpdatePlatformPaymentSettlementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePlatformPaymentSettlement>>, TError,UpdatePlatformPaymentSettlementMutationVariables, TContext> => {
+
+const mutationKey = getUpdatePlatformPaymentSettlementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePlatformPaymentSettlement>>, UpdatePlatformPaymentSettlementMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updatePlatformPaymentSettlement(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePlatformPaymentSettlementMutationResult = NonNullable<Awaited<ReturnType<typeof updatePlatformPaymentSettlement>>>
+    export type UpdatePlatformPaymentSettlementMutationBody = BodyType<CompanySettlementInput>
+    export type UpdatePlatformPaymentSettlementMutationError = ErrorType<PayrollError | void>
+    export type UpdatePlatformPaymentSettlementMutationVariables = {data: BodyType<CompanySettlementInput>}
+
+    /**
+ * @summary Configure the Yemait Technologies Limited Flutterwave settlement recipient (Platform Owner)
+ */
+export const useUpdatePlatformPaymentSettlement = <TError = ErrorType<PayrollError | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePlatformPaymentSettlement>>, TError,UpdatePlatformPaymentSettlementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePlatformPaymentSettlement>>,
+        TError,
+        UpdatePlatformPaymentSettlementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdatePlatformPaymentSettlementMutationOptions(options));
+    }
+
+export const getListPlatformSchoolSettlementsUrl = (params?: ListPlatformSchoolSettlementsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/platform/finance/payment-settlement/schools?${stringifiedParams}` : `/api/platform/finance/payment-settlement/schools`
+}
+
+/**
+ * @summary Read Platform Owner school-settlement oversight across tenants, with bank details masked
+ */
+export const listPlatformSchoolSettlements = async (params?: ListPlatformSchoolSettlementsParams, options?: Parameters<typeof customFetch>[1]): Promise<SchoolSettlementSummary[]> => {
+
+  return customFetch<SchoolSettlementSummary[]>(getListPlatformSchoolSettlementsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPlatformSchoolSettlementsQueryKey = (params?: ListPlatformSchoolSettlementsParams,) => {
+    return [
+    `/api/platform/finance/payment-settlement/schools`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListPlatformSchoolSettlementsQueryOptions = <TData = Awaited<ReturnType<typeof listPlatformSchoolSettlements>>, TError = ErrorType<void>>(params?: ListPlatformSchoolSettlementsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPlatformSchoolSettlements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPlatformSchoolSettlementsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPlatformSchoolSettlements>>> = ({ signal }) => listPlatformSchoolSettlements(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPlatformSchoolSettlements>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPlatformSchoolSettlementsQueryResult = NonNullable<Awaited<ReturnType<typeof listPlatformSchoolSettlements>>>
+export type ListPlatformSchoolSettlementsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read Platform Owner school-settlement oversight across tenants, with bank details masked
+ */
+
+export function useListPlatformSchoolSettlements<TData = Awaited<ReturnType<typeof listPlatformSchoolSettlements>>, TError = ErrorType<void>>(
+ params?: ListPlatformSchoolSettlementsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPlatformSchoolSettlements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPlatformSchoolSettlementsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPlatformSchoolSettlementUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/platform/finance/payment-settlement/schools/${schoolId}`
+}
+
+/**
+ * @summary Read a school's masked settlement recipient for platform-level financial oversight only
+ */
+export const getPlatformSchoolSettlement = async (schoolId: number, options?: Parameters<typeof customFetch>[1]): Promise<SchoolSettlementSummary> => {
+
+  return customFetch<SchoolSettlementSummary>(getGetPlatformSchoolSettlementUrl(schoolId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPlatformSchoolSettlementQueryKey = (schoolId: number,) => {
+    return [
+    `/api/platform/finance/payment-settlement/schools/${schoolId}`
+    ] as const;
+    }
+
+
+export const getGetPlatformSchoolSettlementQueryOptions = <TData = Awaited<ReturnType<typeof getPlatformSchoolSettlement>>, TError = ErrorType<void>>(schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPlatformSchoolSettlement>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPlatformSchoolSettlementQueryKey(schoolId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPlatformSchoolSettlement>>> = ({ signal }) => getPlatformSchoolSettlement(schoolId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPlatformSchoolSettlement>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPlatformSchoolSettlementQueryResult = NonNullable<Awaited<ReturnType<typeof getPlatformSchoolSettlement>>>
+export type GetPlatformSchoolSettlementQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read a school's masked settlement recipient for platform-level financial oversight only
+ */
+
+export function useGetPlatformSchoolSettlement<TData = Awaited<ReturnType<typeof getPlatformSchoolSettlement>>, TError = ErrorType<void>>(
+ schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPlatformSchoolSettlement>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPlatformSchoolSettlementQueryOptions(schoolId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getVerifyPlatformSchoolSettlementUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/platform/finance/payment-settlement/schools/${schoolId}`
+}
+
+/**
+ * Owner-only platform action. Requires explicit test-mode credentials in Development or explicitly configured live mode outside Development. Fails closed if mode/credentials/API response are ambiguous. A successful account-name resolution or subaccount creation is not proof of a fund transfer or settlement.
+ * @summary Verify and onboard an expressly approved school bank beneficiary through the documented Flutterwave v3 API
+ */
+export const verifyPlatformSchoolSettlement = async (schoolId: number, options?: Parameters<typeof customFetch>[1]): Promise<SchoolSettlementSummary> => {
+
+  return customFetch<SchoolSettlementSummary>(getVerifyPlatformSchoolSettlementUrl(schoolId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getVerifyPlatformSchoolSettlementMutationKey = () => ['verifyPlatformSchoolSettlement'] as const;
+
+export const getVerifyPlatformSchoolSettlementMutationOptions = <TError = ErrorType<void | PayrollError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyPlatformSchoolSettlement>>, TError,VerifyPlatformSchoolSettlementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyPlatformSchoolSettlement>>, TError,VerifyPlatformSchoolSettlementMutationVariables, TContext> => {
+
+const mutationKey = getVerifyPlatformSchoolSettlementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyPlatformSchoolSettlement>>, VerifyPlatformSchoolSettlementMutationVariables> = (props) => {
+          const {schoolId} = props ?? {};
+
+          return  verifyPlatformSchoolSettlement(schoolId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyPlatformSchoolSettlementMutationResult = NonNullable<Awaited<ReturnType<typeof verifyPlatformSchoolSettlement>>>
+
+    export type VerifyPlatformSchoolSettlementMutationError = ErrorType<void | PayrollError>
+    export type VerifyPlatformSchoolSettlementMutationVariables = {schoolId: number}
+
+    /**
+ * @summary Verify and onboard an expressly approved school bank beneficiary through the documented Flutterwave v3 API
+ */
+export const useVerifyPlatformSchoolSettlement = <TError = ErrorType<void | PayrollError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyPlatformSchoolSettlement>>, TError,VerifyPlatformSchoolSettlementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyPlatformSchoolSettlement>>,
+        TError,
+        VerifyPlatformSchoolSettlementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getVerifyPlatformSchoolSettlementMutationOptions(options));
+    }
+
+export const getGetSchoolPaymentSettlementUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/finance/payment-settlement`
+}
+
+/**
+ * An Owner session, including a mixed-role Owner, cannot use school operational routes.
+ * @summary Read the authenticated School Admin's own masked settlement configuration and school settlement history
+ */
+export const getSchoolPaymentSettlement = async (schoolId: number, options?: Parameters<typeof customFetch>[1]): Promise<SchoolSettlementSummary> => {
+
+  return customFetch<SchoolSettlementSummary>(getGetSchoolPaymentSettlementUrl(schoolId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolPaymentSettlementQueryKey = (schoolId: number,) => {
+    return [
+    `/api/schools/${schoolId}/finance/payment-settlement`
+    ] as const;
+    }
+
+
+export const getGetSchoolPaymentSettlementQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolPaymentSettlement>>, TError = ErrorType<void>>(schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolPaymentSettlement>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolPaymentSettlementQueryKey(schoolId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolPaymentSettlement>>> = ({ signal }) => getSchoolPaymentSettlement(schoolId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolPaymentSettlement>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchoolPaymentSettlementQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolPaymentSettlement>>>
+export type GetSchoolPaymentSettlementQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read the authenticated School Admin's own masked settlement configuration and school settlement history
+ */
+
+export function useGetSchoolPaymentSettlement<TData = Awaited<ReturnType<typeof getSchoolPaymentSettlement>>, TError = ErrorType<void>>(
+ schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolPaymentSettlement>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchoolPaymentSettlementQueryOptions(schoolId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateSchoolPaymentSettlementUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/finance/payment-settlement`
+}
+
+/**
+ * This is a tenant operational write and explicitly rejects PLATFORM_OWNER identities, including users who also have a school membership. Bank numbers are encrypted and only their last four digits are returned.
+ * @summary Submit or update settlement details for the authenticated School Admin's own school
+ */
+export const updateSchoolPaymentSettlement = async (schoolId: number,
+    schoolSettlementInput: SchoolSettlementInput, options?: Parameters<typeof customFetch>[1]): Promise<SchoolSettlementSummary> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolSettlementSummary>(getUpdateSchoolPaymentSettlementUrl(schoolId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(schoolSettlementInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateSchoolPaymentSettlementMutationKey = () => ['updateSchoolPaymentSettlement'] as const;
+
+export const getUpdateSchoolPaymentSettlementMutationOptions = <TError = ErrorType<PayrollError | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolPaymentSettlement>>, TError,UpdateSchoolPaymentSettlementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSchoolPaymentSettlement>>, TError,UpdateSchoolPaymentSettlementMutationVariables, TContext> => {
+
+const mutationKey = getUpdateSchoolPaymentSettlementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSchoolPaymentSettlement>>, UpdateSchoolPaymentSettlementMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  updateSchoolPaymentSettlement(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSchoolPaymentSettlementMutationResult = NonNullable<Awaited<ReturnType<typeof updateSchoolPaymentSettlement>>>
+    export type UpdateSchoolPaymentSettlementMutationBody = BodyType<SchoolSettlementInput>
+    export type UpdateSchoolPaymentSettlementMutationError = ErrorType<PayrollError | void>
+    export type UpdateSchoolPaymentSettlementMutationVariables = {schoolId: number;data: BodyType<SchoolSettlementInput>}
+
+    /**
+ * @summary Submit or update settlement details for the authenticated School Admin's own school
+ */
+export const useUpdateSchoolPaymentSettlement = <TError = ErrorType<PayrollError | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolPaymentSettlement>>, TError,UpdateSchoolPaymentSettlementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSchoolPaymentSettlement>>,
+        TError,
+        UpdateSchoolPaymentSettlementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateSchoolPaymentSettlementMutationOptions(options));
+    }
+
+export const getListSchoolSettlementHistoryUrl = (schoolId: number,
+    params?: ListSchoolSettlementHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/schools/${schoolId}/finance/payment-settlement/history?${stringifiedParams}` : `/api/schools/${schoolId}/finance/payment-settlement/history`
+}
+
+/**
+ * @summary List settlement and reconciliation records within the authorized school; excludes company and other-school funds
+ */
+export const listSchoolSettlementHistory = async (schoolId: number,
+    params?: ListSchoolSettlementHistoryParams, options?: Parameters<typeof customFetch>[1]): Promise<SettlementHistoryEntry[]> => {
+
+  return customFetch<SettlementHistoryEntry[]>(getListSchoolSettlementHistoryUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSchoolSettlementHistoryQueryKey = (schoolId: number,
+    params?: ListSchoolSettlementHistoryParams,) => {
+    return [
+    `/api/schools/${schoolId}/finance/payment-settlement/history`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSchoolSettlementHistoryQueryOptions = <TData = Awaited<ReturnType<typeof listSchoolSettlementHistory>>, TError = ErrorType<void>>(schoolId: number,
+    params?: ListSchoolSettlementHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolSettlementHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSchoolSettlementHistoryQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSchoolSettlementHistory>>> = ({ signal }) => listSchoolSettlementHistory(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSchoolSettlementHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSchoolSettlementHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof listSchoolSettlementHistory>>>
+export type ListSchoolSettlementHistoryQueryError = ErrorType<void>
+
+
+/**
+ * @summary List settlement and reconciliation records within the authorized school; excludes company and other-school funds
+ */
+
+export function useListSchoolSettlementHistory<TData = Awaited<ReturnType<typeof listSchoolSettlementHistory>>, TError = ErrorType<void>>(
+ schoolId: number,
+    params?: ListSchoolSettlementHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolSettlementHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSchoolSettlementHistoryQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListPlatformSettlementHistoryUrl = (params?: ListPlatformSettlementHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/platform/finance/payment-settlement/history?${stringifiedParams}` : `/api/platform/finance/payment-settlement/history`
+}
+
+/**
+ * @summary Platform-wide masked collection, transfer, settlement and reconciliation history
+ */
+export const listPlatformSettlementHistory = async (params?: ListPlatformSettlementHistoryParams, options?: Parameters<typeof customFetch>[1]): Promise<SettlementHistoryEntry[]> => {
+
+  return customFetch<SettlementHistoryEntry[]>(getListPlatformSettlementHistoryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPlatformSettlementHistoryQueryKey = (params?: ListPlatformSettlementHistoryParams,) => {
+    return [
+    `/api/platform/finance/payment-settlement/history`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListPlatformSettlementHistoryQueryOptions = <TData = Awaited<ReturnType<typeof listPlatformSettlementHistory>>, TError = ErrorType<void>>(params?: ListPlatformSettlementHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPlatformSettlementHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPlatformSettlementHistoryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPlatformSettlementHistory>>> = ({ signal }) => listPlatformSettlementHistory(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPlatformSettlementHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPlatformSettlementHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof listPlatformSettlementHistory>>>
+export type ListPlatformSettlementHistoryQueryError = ErrorType<void>
+
+
+/**
+ * @summary Platform-wide masked collection, transfer, settlement and reconciliation history
+ */
+
+export function useListPlatformSettlementHistory<TData = Awaited<ReturnType<typeof listPlatformSettlementHistory>>, TError = ErrorType<void>>(
+ params?: ListPlatformSettlementHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPlatformSettlementHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPlatformSettlementHistoryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListSchoolPayrollEmployeesUrl = (schoolId: number,
+    params?: ListSchoolPayrollEmployeesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/schools/${schoolId}/finance/payroll/employees?${stringifiedParams}` : `/api/schools/${schoolId}/finance/payroll/employees`
+}
+
+/**
+ * @summary List only this school's current teacher/staff compensation and masked bank profiles
+ */
+export const listSchoolPayrollEmployees = async (schoolId: number,
+    params?: ListSchoolPayrollEmployeesParams, options?: Parameters<typeof customFetch>[1]): Promise<PayrollEmployeeProfile[]> => {
+
+  return customFetch<PayrollEmployeeProfile[]>(getListSchoolPayrollEmployeesUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSchoolPayrollEmployeesQueryKey = (schoolId: number,
+    params?: ListSchoolPayrollEmployeesParams,) => {
+    return [
+    `/api/schools/${schoolId}/finance/payroll/employees`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSchoolPayrollEmployeesQueryOptions = <TData = Awaited<ReturnType<typeof listSchoolPayrollEmployees>>, TError = ErrorType<void>>(schoolId: number,
+    params?: ListSchoolPayrollEmployeesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolPayrollEmployees>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSchoolPayrollEmployeesQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSchoolPayrollEmployees>>> = ({ signal }) => listSchoolPayrollEmployees(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSchoolPayrollEmployees>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSchoolPayrollEmployeesQueryResult = NonNullable<Awaited<ReturnType<typeof listSchoolPayrollEmployees>>>
+export type ListSchoolPayrollEmployeesQueryError = ErrorType<void>
+
+
+/**
+ * @summary List only this school's current teacher/staff compensation and masked bank profiles
+ */
+
+export function useListSchoolPayrollEmployees<TData = Awaited<ReturnType<typeof listSchoolPayrollEmployees>>, TError = ErrorType<void>>(
+ schoolId: number,
+    params?: ListSchoolPayrollEmployeesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolPayrollEmployees>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSchoolPayrollEmployeesQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateSchoolPayrollEmployeeUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/finance/payroll/employees`
+}
+
+/**
+ * Active same-school School Admin or Accountant only; PLATFORM_OWNER and mixed-role Owners are explicitly excluded. Bank values are AES-GCM encrypted using versioned server-only keys and never included in responses or ordinary audit/log fields.
+ * @summary Securely configure salary and bank information for an employee of this school
+ */
+export const updateSchoolPayrollEmployee = async (schoolId: number,
+    payrollEmployeeProfileInput: PayrollEmployeeProfileInput, options?: Parameters<typeof customFetch>[1]): Promise<PayrollEmployeeProfile> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PayrollEmployeeProfile>(getUpdateSchoolPayrollEmployeeUrl(schoolId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(payrollEmployeeProfileInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateSchoolPayrollEmployeeMutationKey = () => ['updateSchoolPayrollEmployee'] as const;
+
+export const getUpdateSchoolPayrollEmployeeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolPayrollEmployee>>, TError,UpdateSchoolPayrollEmployeeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSchoolPayrollEmployee>>, TError,UpdateSchoolPayrollEmployeeMutationVariables, TContext> => {
+
+const mutationKey = getUpdateSchoolPayrollEmployeeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSchoolPayrollEmployee>>, UpdateSchoolPayrollEmployeeMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  updateSchoolPayrollEmployee(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSchoolPayrollEmployeeMutationResult = NonNullable<Awaited<ReturnType<typeof updateSchoolPayrollEmployee>>>
+    export type UpdateSchoolPayrollEmployeeMutationBody = BodyType<PayrollEmployeeProfileInput>
+    export type UpdateSchoolPayrollEmployeeMutationError = ErrorType<void>
+    export type UpdateSchoolPayrollEmployeeMutationVariables = {schoolId: number;data: BodyType<PayrollEmployeeProfileInput>}
+
+    /**
+ * @summary Securely configure salary and bank information for an employee of this school
+ */
+export const useUpdateSchoolPayrollEmployee = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolPayrollEmployee>>, TError,UpdateSchoolPayrollEmployeeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSchoolPayrollEmployee>>,
+        TError,
+        UpdateSchoolPayrollEmployeeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateSchoolPayrollEmployeeMutationOptions(options));
+    }
+
+export const getListSchoolPayrollPeriodsUrl = (schoolId: number,
+    params?: ListSchoolPayrollPeriodsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/schools/${schoolId}/finance/payroll/periods?${stringifiedParams}` : `/api/schools/${schoolId}/finance/payroll/periods`
+}
+
+/**
+ * @summary List salary periods for one authorized school only
+ */
+export const listSchoolPayrollPeriods = async (schoolId: number,
+    params?: ListSchoolPayrollPeriodsParams, options?: Parameters<typeof customFetch>[1]): Promise<PayrollPeriodSummary[]> => {
+
+  return customFetch<PayrollPeriodSummary[]>(getListSchoolPayrollPeriodsUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSchoolPayrollPeriodsQueryKey = (schoolId: number,
+    params?: ListSchoolPayrollPeriodsParams,) => {
+    return [
+    `/api/schools/${schoolId}/finance/payroll/periods`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSchoolPayrollPeriodsQueryOptions = <TData = Awaited<ReturnType<typeof listSchoolPayrollPeriods>>, TError = ErrorType<void>>(schoolId: number,
+    params?: ListSchoolPayrollPeriodsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolPayrollPeriods>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSchoolPayrollPeriodsQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSchoolPayrollPeriods>>> = ({ signal }) => listSchoolPayrollPeriods(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSchoolPayrollPeriods>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSchoolPayrollPeriodsQueryResult = NonNullable<Awaited<ReturnType<typeof listSchoolPayrollPeriods>>>
+export type ListSchoolPayrollPeriodsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List salary periods for one authorized school only
+ */
+
+export function useListSchoolPayrollPeriods<TData = Awaited<ReturnType<typeof listSchoolPayrollPeriods>>, TError = ErrorType<void>>(
+ schoolId: number,
+    params?: ListSchoolPayrollPeriodsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolPayrollPeriods>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSchoolPayrollPeriodsQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateSchoolPayrollPeriodUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/finance/payroll/periods`
+}
+
+/**
+ * Server derives school, employee and actor IDs. Month is unique within the tenant. The run starts DRAFT and no money is transmitted.
+ * @summary Create a new monthly salary run with a frozen active school employee/salary snapshot
+ */
+export const createSchoolPayrollPeriod = async (schoolId: number,
+    payrollPeriodInput: PayrollPeriodInput, options?: Parameters<typeof customFetch>[1]): Promise<PayrollPeriod> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PayrollPeriod>(getCreateSchoolPayrollPeriodUrl(schoolId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(payrollPeriodInput)
+  }
+);}
+
+
+
+
+
+export const getCreateSchoolPayrollPeriodMutationKey = () => ['createSchoolPayrollPeriod'] as const;
+
+export const getCreateSchoolPayrollPeriodMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSchoolPayrollPeriod>>, TError,CreateSchoolPayrollPeriodMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSchoolPayrollPeriod>>, TError,CreateSchoolPayrollPeriodMutationVariables, TContext> => {
+
+const mutationKey = getCreateSchoolPayrollPeriodMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSchoolPayrollPeriod>>, CreateSchoolPayrollPeriodMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  createSchoolPayrollPeriod(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSchoolPayrollPeriodMutationResult = NonNullable<Awaited<ReturnType<typeof createSchoolPayrollPeriod>>>
+    export type CreateSchoolPayrollPeriodMutationBody = BodyType<PayrollPeriodInput>
+    export type CreateSchoolPayrollPeriodMutationError = ErrorType<void>
+    export type CreateSchoolPayrollPeriodMutationVariables = {schoolId: number;data: BodyType<PayrollPeriodInput>}
+
+    /**
+ * @summary Create a new monthly salary run with a frozen active school employee/salary snapshot
+ */
+export const useCreateSchoolPayrollPeriod = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSchoolPayrollPeriod>>, TError,CreateSchoolPayrollPeriodMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSchoolPayrollPeriod>>,
+        TError,
+        CreateSchoolPayrollPeriodMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateSchoolPayrollPeriodMutationOptions(options));
+    }
+
+export const getGetSchoolPayrollPeriodUrl = (schoolId: number,
+    periodId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/finance/payroll/periods/${periodId}`
+}
+
+/**
+ * @summary Read one same-school payroll period, employee item snapshots and masked transfer statuses
+ */
+export const getSchoolPayrollPeriod = async (schoolId: number,
+    periodId: number, options?: Parameters<typeof customFetch>[1]): Promise<PayrollPeriod> => {
+
+  return customFetch<PayrollPeriod>(getGetSchoolPayrollPeriodUrl(schoolId,periodId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolPayrollPeriodQueryKey = (schoolId: number,
+    periodId: number,) => {
+    return [
+    `/api/schools/${schoolId}/finance/payroll/periods/${periodId}`
+    ] as const;
+    }
+
+
+export const getGetSchoolPayrollPeriodQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolPayrollPeriod>>, TError = ErrorType<void>>(schoolId: number,
+    periodId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolPayrollPeriod>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolPayrollPeriodQueryKey(schoolId,periodId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolPayrollPeriod>>> = ({ signal }) => getSchoolPayrollPeriod(schoolId,periodId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined && periodId !== null && periodId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolPayrollPeriod>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchoolPayrollPeriodQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolPayrollPeriod>>>
+export type GetSchoolPayrollPeriodQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read one same-school payroll period, employee item snapshots and masked transfer statuses
+ */
+
+export function useGetSchoolPayrollPeriod<TData = Awaited<ReturnType<typeof getSchoolPayrollPeriod>>, TError = ErrorType<void>>(
+ schoolId: number,
+    periodId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolPayrollPeriod>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchoolPayrollPeriodQueryOptions(schoolId,periodId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateSchoolPayrollPeriodItemsUrl = (schoolId: number,
+    periodId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/finance/payroll/periods/${periodId}`
+}
+
+/**
+ * Rejects every submitted employee unless that employee has a same-school item in this draft. Computes net in integer minor currency units and preserves auditable old values. Only DRAFT runs may be changed.
+ * @summary Review/update adjustments and deductions in a draft school payroll only
+ */
+export const updateSchoolPayrollPeriodItems = async (schoolId: number,
+    periodId: number,
+    payrollItemsUpdate: PayrollItemsUpdate, options?: Parameters<typeof customFetch>[1]): Promise<PayrollPeriod> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PayrollPeriod>(getUpdateSchoolPayrollPeriodItemsUrl(schoolId,periodId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(payrollItemsUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateSchoolPayrollPeriodItemsMutationKey = () => ['updateSchoolPayrollPeriodItems'] as const;
+
+export const getUpdateSchoolPayrollPeriodItemsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolPayrollPeriodItems>>, TError,UpdateSchoolPayrollPeriodItemsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSchoolPayrollPeriodItems>>, TError,UpdateSchoolPayrollPeriodItemsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateSchoolPayrollPeriodItemsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSchoolPayrollPeriodItems>>, UpdateSchoolPayrollPeriodItemsMutationVariables> = (props) => {
+          const {schoolId,periodId,data} = props ?? {};
+
+          return  updateSchoolPayrollPeriodItems(schoolId,periodId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSchoolPayrollPeriodItemsMutationResult = NonNullable<Awaited<ReturnType<typeof updateSchoolPayrollPeriodItems>>>
+    export type UpdateSchoolPayrollPeriodItemsMutationBody = BodyType<PayrollItemsUpdate>
+    export type UpdateSchoolPayrollPeriodItemsMutationError = ErrorType<void>
+    export type UpdateSchoolPayrollPeriodItemsMutationVariables = {schoolId: number;periodId: number;data: BodyType<PayrollItemsUpdate>}
+
+    /**
+ * @summary Review/update adjustments and deductions in a draft school payroll only
+ */
+export const useUpdateSchoolPayrollPeriodItems = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolPayrollPeriodItems>>, TError,UpdateSchoolPayrollPeriodItemsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSchoolPayrollPeriodItems>>,
+        TError,
+        UpdateSchoolPayrollPeriodItemsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateSchoolPayrollPeriodItemsMutationOptions(options));
+    }
+
+export const getSubmitSchoolPayrollPeriodUrl = (schoolId: number,
+    periodId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/finance/payroll/periods/${periodId}/submit`
+}
+
+/**
+ * @summary Submit a complete school payroll draft for independent approval
+ */
+export const submitSchoolPayrollPeriod = async (schoolId: number,
+    periodId: number, options?: Parameters<typeof customFetch>[1]): Promise<PayrollPeriod> => {
+
+  return customFetch<PayrollPeriod>(getSubmitSchoolPayrollPeriodUrl(schoolId,periodId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSubmitSchoolPayrollPeriodMutationKey = () => ['submitSchoolPayrollPeriod'] as const;
+
+export const getSubmitSchoolPayrollPeriodMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSchoolPayrollPeriod>>, TError,SubmitSchoolPayrollPeriodMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitSchoolPayrollPeriod>>, TError,SubmitSchoolPayrollPeriodMutationVariables, TContext> => {
+
+const mutationKey = getSubmitSchoolPayrollPeriodMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitSchoolPayrollPeriod>>, SubmitSchoolPayrollPeriodMutationVariables> = (props) => {
+          const {schoolId,periodId} = props ?? {};
+
+          return  submitSchoolPayrollPeriod(schoolId,periodId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitSchoolPayrollPeriodMutationResult = NonNullable<Awaited<ReturnType<typeof submitSchoolPayrollPeriod>>>
+
+    export type SubmitSchoolPayrollPeriodMutationError = ErrorType<void>
+    export type SubmitSchoolPayrollPeriodMutationVariables = {schoolId: number;periodId: number}
+
+    /**
+ * @summary Submit a complete school payroll draft for independent approval
+ */
+export const useSubmitSchoolPayrollPeriod = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSchoolPayrollPeriod>>, TError,SubmitSchoolPayrollPeriodMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitSchoolPayrollPeriod>>,
+        TError,
+        SubmitSchoolPayrollPeriodMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSubmitSchoolPayrollPeriodMutationOptions(options));
+    }
+
+export const getApproveSchoolPayrollPeriodUrl = (schoolId: number,
+    periodId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/finance/payroll/periods/${periodId}/approve`
+}
+
+/**
+ * @summary Authorize an independent same-school finance approver; cannot approve one's own payroll submission
+ */
+export const approveSchoolPayrollPeriod = async (schoolId: number,
+    periodId: number, options?: Parameters<typeof customFetch>[1]): Promise<PayrollPeriod> => {
+
+  return customFetch<PayrollPeriod>(getApproveSchoolPayrollPeriodUrl(schoolId,periodId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getApproveSchoolPayrollPeriodMutationKey = () => ['approveSchoolPayrollPeriod'] as const;
+
+export const getApproveSchoolPayrollPeriodMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveSchoolPayrollPeriod>>, TError,ApproveSchoolPayrollPeriodMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveSchoolPayrollPeriod>>, TError,ApproveSchoolPayrollPeriodMutationVariables, TContext> => {
+
+const mutationKey = getApproveSchoolPayrollPeriodMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveSchoolPayrollPeriod>>, ApproveSchoolPayrollPeriodMutationVariables> = (props) => {
+          const {schoolId,periodId} = props ?? {};
+
+          return  approveSchoolPayrollPeriod(schoolId,periodId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveSchoolPayrollPeriodMutationResult = NonNullable<Awaited<ReturnType<typeof approveSchoolPayrollPeriod>>>
+
+    export type ApproveSchoolPayrollPeriodMutationError = ErrorType<void>
+    export type ApproveSchoolPayrollPeriodMutationVariables = {schoolId: number;periodId: number}
+
+    /**
+ * @summary Authorize an independent same-school finance approver; cannot approve one's own payroll submission
+ */
+export const useApproveSchoolPayrollPeriod = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveSchoolPayrollPeriod>>, TError,ApproveSchoolPayrollPeriodMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveSchoolPayrollPeriod>>,
+        TError,
+        ApproveSchoolPayrollPeriodMutationVariables,
+        TContext
+      > => {
+      return useMutation(getApproveSchoolPayrollPeriodMutationOptions(options));
+    }
+
+export const getCreateSchoolPayrollTransfersUrl = (schoolId: number,
+    periodId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/finance/payroll/periods/${periodId}/transfers`
+}
+
+/**
+ * Uses the documented Flutterwave v3 transfer API in the explicitly configured sandbox or live provider only. An amount is marked paid only after retrieving and validating the provider transfer response. Ambiguous sends are durably frozen in RECONCILIATION_REQUIRED and never automatically retried. Explicit development MOCK returns MOCK_PENDING and makes no assertion of payment.
+ * @summary Initiate selected approved school salary transfers in an audited idempotent bulk operation
+ */
+export const createSchoolPayrollTransfers = async (schoolId: number,
+    periodId: number,
+    payrollTransfersInput: PayrollTransfersInput, options?: Parameters<typeof customFetch>[1]): Promise<PayrollTransfersResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PayrollTransfersResponse>(getCreateSchoolPayrollTransfersUrl(schoolId,periodId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(payrollTransfersInput)
+  }
+);}
+
+
+
+
+
+export const getCreateSchoolPayrollTransfersMutationKey = () => ['createSchoolPayrollTransfers'] as const;
+
+export const getCreateSchoolPayrollTransfersMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSchoolPayrollTransfers>>, TError,CreateSchoolPayrollTransfersMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSchoolPayrollTransfers>>, TError,CreateSchoolPayrollTransfersMutationVariables, TContext> => {
+
+const mutationKey = getCreateSchoolPayrollTransfersMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSchoolPayrollTransfers>>, CreateSchoolPayrollTransfersMutationVariables> = (props) => {
+          const {schoolId,periodId,data} = props ?? {};
+
+          return  createSchoolPayrollTransfers(schoolId,periodId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSchoolPayrollTransfersMutationResult = NonNullable<Awaited<ReturnType<typeof createSchoolPayrollTransfers>>>
+    export type CreateSchoolPayrollTransfersMutationBody = BodyType<PayrollTransfersInput>
+    export type CreateSchoolPayrollTransfersMutationError = ErrorType<void>
+    export type CreateSchoolPayrollTransfersMutationVariables = {schoolId: number;periodId: number;data: BodyType<PayrollTransfersInput>}
+
+    /**
+ * @summary Initiate selected approved school salary transfers in an audited idempotent bulk operation
+ */
+export const useCreateSchoolPayrollTransfers = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSchoolPayrollTransfers>>, TError,CreateSchoolPayrollTransfersMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSchoolPayrollTransfers>>,
+        TError,
+        CreateSchoolPayrollTransfersMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateSchoolPayrollTransfersMutationOptions(options));
+    }
+
+export const getReconcileSchoolPayrollTransferUrl = (schoolId: number,
+    transferId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/finance/payroll/transfers/${transferId}/reconcile`
+}
+
+/**
+ * @summary Reconcile one ambiguous salary transfer via its existing Flutterwave reference without submitting another payout
+ */
+export const reconcileSchoolPayrollTransfer = async (schoolId: number,
+    transferId: number, options?: Parameters<typeof customFetch>[1]): Promise<PayrollTransfer> => {
+
+  return customFetch<PayrollTransfer>(getReconcileSchoolPayrollTransferUrl(schoolId,transferId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReconcileSchoolPayrollTransferMutationKey = () => ['reconcileSchoolPayrollTransfer'] as const;
+
+export const getReconcileSchoolPayrollTransferMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileSchoolPayrollTransfer>>, TError,ReconcileSchoolPayrollTransferMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reconcileSchoolPayrollTransfer>>, TError,ReconcileSchoolPayrollTransferMutationVariables, TContext> => {
+
+const mutationKey = getReconcileSchoolPayrollTransferMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reconcileSchoolPayrollTransfer>>, ReconcileSchoolPayrollTransferMutationVariables> = (props) => {
+          const {schoolId,transferId} = props ?? {};
+
+          return  reconcileSchoolPayrollTransfer(schoolId,transferId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReconcileSchoolPayrollTransferMutationResult = NonNullable<Awaited<ReturnType<typeof reconcileSchoolPayrollTransfer>>>
+
+    export type ReconcileSchoolPayrollTransferMutationError = ErrorType<void>
+    export type ReconcileSchoolPayrollTransferMutationVariables = {schoolId: number;transferId: number}
+
+    /**
+ * @summary Reconcile one ambiguous salary transfer via its existing Flutterwave reference without submitting another payout
+ */
+export const useReconcileSchoolPayrollTransfer = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileSchoolPayrollTransfer>>, TError,ReconcileSchoolPayrollTransferMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reconcileSchoolPayrollTransfer>>,
+        TError,
+        ReconcileSchoolPayrollTransferMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReconcileSchoolPayrollTransferMutationOptions(options));
+    }
+
+export const getGetSchoolPayrollReportUrl = (schoolId: number,
+    params: GetSchoolPayrollReportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/schools/${schoolId}/finance/payroll/reports?${stringifiedParams}` : `/api/schools/${schoolId}/finance/payroll/reports`
+}
+
+/**
+ * @summary Aggregate school-only payroll expense, deduction and payment status by month
+ */
+export const getSchoolPayrollReport = async (schoolId: number,
+    params: GetSchoolPayrollReportParams, options?: Parameters<typeof customFetch>[1]): Promise<PayrollReportRow[]> => {
+
+  return customFetch<PayrollReportRow[]>(getGetSchoolPayrollReportUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolPayrollReportQueryKey = (schoolId: number,
+    params?: GetSchoolPayrollReportParams,) => {
+    return [
+    `/api/schools/${schoolId}/finance/payroll/reports`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSchoolPayrollReportQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolPayrollReport>>, TError = ErrorType<void>>(schoolId: number,
+    params: GetSchoolPayrollReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolPayrollReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolPayrollReportQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolPayrollReport>>> = ({ signal }) => getSchoolPayrollReport(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolPayrollReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchoolPayrollReportQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolPayrollReport>>>
+export type GetSchoolPayrollReportQueryError = ErrorType<void>
+
+
+/**
+ * @summary Aggregate school-only payroll expense, deduction and payment status by month
+ */
+
+export function useGetSchoolPayrollReport<TData = Awaited<ReturnType<typeof getSchoolPayrollReport>>, TError = ErrorType<void>>(
+ schoolId: number,
+    params: GetSchoolPayrollReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolPayrollReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchoolPayrollReportQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListCompanyPayrollEmployeesUrl = (params?: ListCompanyPayrollEmployeesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/platform/finance/company-payroll/employees?${stringifiedParams}` : `/api/platform/finance/company-payroll/employees`
+}
+
+/**
+ * @summary List company-only payroll profiles with individually masked account numbers
+ */
+export const listCompanyPayrollEmployees = async (params?: ListCompanyPayrollEmployeesParams, options?: Parameters<typeof customFetch>[1]): Promise<PayrollEmployeeProfile[]> => {
+
+  return customFetch<PayrollEmployeeProfile[]>(getListCompanyPayrollEmployeesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCompanyPayrollEmployeesQueryKey = (params?: ListCompanyPayrollEmployeesParams,) => {
+    return [
+    `/api/platform/finance/company-payroll/employees`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCompanyPayrollEmployeesQueryOptions = <TData = Awaited<ReturnType<typeof listCompanyPayrollEmployees>>, TError = ErrorType<void>>(params?: ListCompanyPayrollEmployeesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyPayrollEmployees>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCompanyPayrollEmployeesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCompanyPayrollEmployees>>> = ({ signal }) => listCompanyPayrollEmployees(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCompanyPayrollEmployees>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCompanyPayrollEmployeesQueryResult = NonNullable<Awaited<ReturnType<typeof listCompanyPayrollEmployees>>>
+export type ListCompanyPayrollEmployeesQueryError = ErrorType<void>
+
+
+/**
+ * @summary List company-only payroll profiles with individually masked account numbers
+ */
+
+export function useListCompanyPayrollEmployees<TData = Awaited<ReturnType<typeof listCompanyPayrollEmployees>>, TError = ErrorType<void>>(
+ params?: ListCompanyPayrollEmployeesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyPayrollEmployees>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCompanyPayrollEmployeesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpsertCompanyPayrollEmployeeUrl = () => {
+
+
+
+
+  return `/api/platform/finance/company-payroll/employees`
+}
+
+/**
+ * Platform Owner only. Company payroll uses the existing platform_company_employees directory and a separate company tenancy from school employees.
+ * @summary Securely create/update a Yemait Technologies Limited company employee monthly salary and bank profile
+ */
+export const upsertCompanyPayrollEmployee = async (companyPayrollEmployeeInput: CompanyPayrollEmployeeInput, options?: Parameters<typeof customFetch>[1]): Promise<PayrollEmployeeProfile> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PayrollEmployeeProfile>(getUpsertCompanyPayrollEmployeeUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(companyPayrollEmployeeInput)
+  }
+);}
+
+
+
+
+
+export const getUpsertCompanyPayrollEmployeeMutationKey = () => ['upsertCompanyPayrollEmployee'] as const;
+
+export const getUpsertCompanyPayrollEmployeeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertCompanyPayrollEmployee>>, TError,UpsertCompanyPayrollEmployeeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof upsertCompanyPayrollEmployee>>, TError,UpsertCompanyPayrollEmployeeMutationVariables, TContext> => {
+
+const mutationKey = getUpsertCompanyPayrollEmployeeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upsertCompanyPayrollEmployee>>, UpsertCompanyPayrollEmployeeMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  upsertCompanyPayrollEmployee(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpsertCompanyPayrollEmployeeMutationResult = NonNullable<Awaited<ReturnType<typeof upsertCompanyPayrollEmployee>>>
+    export type UpsertCompanyPayrollEmployeeMutationBody = BodyType<CompanyPayrollEmployeeInput>
+    export type UpsertCompanyPayrollEmployeeMutationError = ErrorType<void>
+    export type UpsertCompanyPayrollEmployeeMutationVariables = {data: BodyType<CompanyPayrollEmployeeInput>}
+
+    /**
+ * @summary Securely create/update a Yemait Technologies Limited company employee monthly salary and bank profile
+ */
+export const useUpsertCompanyPayrollEmployee = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertCompanyPayrollEmployee>>, TError,UpsertCompanyPayrollEmployeeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof upsertCompanyPayrollEmployee>>,
+        TError,
+        UpsertCompanyPayrollEmployeeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpsertCompanyPayrollEmployeeMutationOptions(options));
+    }
+
+export const getListCompanyPayrollPeriodsUrl = (params?: ListCompanyPayrollPeriodsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/platform/finance/company-payroll/periods?${stringifiedParams}` : `/api/platform/finance/company-payroll/periods`
+}
+
+/**
+ * @summary List Yemait Technologies monthly payroll runs, with school payroll completely excluded
+ */
+export const listCompanyPayrollPeriods = async (params?: ListCompanyPayrollPeriodsParams, options?: Parameters<typeof customFetch>[1]): Promise<PayrollPeriodSummary[]> => {
+
+  return customFetch<PayrollPeriodSummary[]>(getListCompanyPayrollPeriodsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCompanyPayrollPeriodsQueryKey = (params?: ListCompanyPayrollPeriodsParams,) => {
+    return [
+    `/api/platform/finance/company-payroll/periods`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCompanyPayrollPeriodsQueryOptions = <TData = Awaited<ReturnType<typeof listCompanyPayrollPeriods>>, TError = ErrorType<void>>(params?: ListCompanyPayrollPeriodsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyPayrollPeriods>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCompanyPayrollPeriodsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCompanyPayrollPeriods>>> = ({ signal }) => listCompanyPayrollPeriods(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCompanyPayrollPeriods>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCompanyPayrollPeriodsQueryResult = NonNullable<Awaited<ReturnType<typeof listCompanyPayrollPeriods>>>
+export type ListCompanyPayrollPeriodsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List Yemait Technologies monthly payroll runs, with school payroll completely excluded
+ */
+
+export function useListCompanyPayrollPeriods<TData = Awaited<ReturnType<typeof listCompanyPayrollPeriods>>, TError = ErrorType<void>>(
+ params?: ListCompanyPayrollPeriodsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyPayrollPeriods>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCompanyPayrollPeriodsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCompanyPayrollPeriodUrl = () => {
+
+
+
+
+  return `/api/platform/finance/company-payroll/periods`
+}
+
+/**
+ * Uses only existing active platform_company_employees with company salary profiles. Does not read school employees.
+ * @summary Create one draft monthly company-payroll snapshot
+ */
+export const createCompanyPayrollPeriod = async (payrollPeriodInput: PayrollPeriodInput, options?: Parameters<typeof customFetch>[1]): Promise<PayrollPeriod> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PayrollPeriod>(getCreateCompanyPayrollPeriodUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(payrollPeriodInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCompanyPayrollPeriodMutationKey = () => ['createCompanyPayrollPeriod'] as const;
+
+export const getCreateCompanyPayrollPeriodMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCompanyPayrollPeriod>>, TError,CreateCompanyPayrollPeriodMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCompanyPayrollPeriod>>, TError,CreateCompanyPayrollPeriodMutationVariables, TContext> => {
+
+const mutationKey = getCreateCompanyPayrollPeriodMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCompanyPayrollPeriod>>, CreateCompanyPayrollPeriodMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCompanyPayrollPeriod(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCompanyPayrollPeriodMutationResult = NonNullable<Awaited<ReturnType<typeof createCompanyPayrollPeriod>>>
+    export type CreateCompanyPayrollPeriodMutationBody = BodyType<PayrollPeriodInput>
+    export type CreateCompanyPayrollPeriodMutationError = ErrorType<void>
+    export type CreateCompanyPayrollPeriodMutationVariables = {data: BodyType<PayrollPeriodInput>}
+
+    /**
+ * @summary Create one draft monthly company-payroll snapshot
+ */
+export const useCreateCompanyPayrollPeriod = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCompanyPayrollPeriod>>, TError,CreateCompanyPayrollPeriodMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCompanyPayrollPeriod>>,
+        TError,
+        CreateCompanyPayrollPeriodMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateCompanyPayrollPeriodMutationOptions(options));
+    }
+
+export const getGetCompanyPayrollPeriodUrl = (periodId: number,) => {
+
+
+
+
+  return `/api/platform/finance/company-payroll/periods/${periodId}`
+}
+
+/**
+ * @summary Read company-only salary period and immutable employee salary snapshots
+ */
+export const getCompanyPayrollPeriod = async (periodId: number, options?: Parameters<typeof customFetch>[1]): Promise<PayrollPeriod> => {
+
+  return customFetch<PayrollPeriod>(getGetCompanyPayrollPeriodUrl(periodId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCompanyPayrollPeriodQueryKey = (periodId: number,) => {
+    return [
+    `/api/platform/finance/company-payroll/periods/${periodId}`
+    ] as const;
+    }
+
+
+export const getGetCompanyPayrollPeriodQueryOptions = <TData = Awaited<ReturnType<typeof getCompanyPayrollPeriod>>, TError = ErrorType<void>>(periodId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCompanyPayrollPeriod>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCompanyPayrollPeriodQueryKey(periodId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCompanyPayrollPeriod>>> = ({ signal }) => getCompanyPayrollPeriod(periodId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: periodId !== null && periodId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCompanyPayrollPeriod>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCompanyPayrollPeriodQueryResult = NonNullable<Awaited<ReturnType<typeof getCompanyPayrollPeriod>>>
+export type GetCompanyPayrollPeriodQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read company-only salary period and immutable employee salary snapshots
+ */
+
+export function useGetCompanyPayrollPeriod<TData = Awaited<ReturnType<typeof getCompanyPayrollPeriod>>, TError = ErrorType<void>>(
+ periodId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCompanyPayrollPeriod>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCompanyPayrollPeriodQueryOptions(periodId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateCompanyPayrollPeriodItemsUrl = (periodId: number,) => {
+
+
+
+
+  return `/api/platform/finance/company-payroll/periods/${periodId}`
+}
+
+/**
+ * @summary Update named allowances, deductions, bonuses and adjustments in a draft company run
+ */
+export const updateCompanyPayrollPeriodItems = async (periodId: number,
+    payrollItemsUpdate: PayrollItemsUpdate, options?: Parameters<typeof customFetch>[1]): Promise<PayrollPeriod> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PayrollPeriod>(getUpdateCompanyPayrollPeriodItemsUrl(periodId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(payrollItemsUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateCompanyPayrollPeriodItemsMutationKey = () => ['updateCompanyPayrollPeriodItems'] as const;
+
+export const getUpdateCompanyPayrollPeriodItemsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCompanyPayrollPeriodItems>>, TError,UpdateCompanyPayrollPeriodItemsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCompanyPayrollPeriodItems>>, TError,UpdateCompanyPayrollPeriodItemsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateCompanyPayrollPeriodItemsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCompanyPayrollPeriodItems>>, UpdateCompanyPayrollPeriodItemsMutationVariables> = (props) => {
+          const {periodId,data} = props ?? {};
+
+          return  updateCompanyPayrollPeriodItems(periodId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCompanyPayrollPeriodItemsMutationResult = NonNullable<Awaited<ReturnType<typeof updateCompanyPayrollPeriodItems>>>
+    export type UpdateCompanyPayrollPeriodItemsMutationBody = BodyType<PayrollItemsUpdate>
+    export type UpdateCompanyPayrollPeriodItemsMutationError = ErrorType<void>
+    export type UpdateCompanyPayrollPeriodItemsMutationVariables = {periodId: number;data: BodyType<PayrollItemsUpdate>}
+
+    /**
+ * @summary Update named allowances, deductions, bonuses and adjustments in a draft company run
+ */
+export const useUpdateCompanyPayrollPeriodItems = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCompanyPayrollPeriodItems>>, TError,UpdateCompanyPayrollPeriodItemsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCompanyPayrollPeriodItems>>,
+        TError,
+        UpdateCompanyPayrollPeriodItemsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateCompanyPayrollPeriodItemsMutationOptions(options));
+    }
+
+export const getSubmitCompanyPayrollPeriodUrl = (periodId: number,) => {
+
+
+
+
+  return `/api/platform/finance/company-payroll/periods/${periodId}/submit`
+}
+
+/**
+ * @summary Submit a complete draft Company Payroll run to a different Platform Owner for review
+ */
+export const submitCompanyPayrollPeriod = async (periodId: number, options?: Parameters<typeof customFetch>[1]): Promise<PayrollPeriod> => {
+
+  return customFetch<PayrollPeriod>(getSubmitCompanyPayrollPeriodUrl(periodId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSubmitCompanyPayrollPeriodMutationKey = () => ['submitCompanyPayrollPeriod'] as const;
+
+export const getSubmitCompanyPayrollPeriodMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitCompanyPayrollPeriod>>, TError,SubmitCompanyPayrollPeriodMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitCompanyPayrollPeriod>>, TError,SubmitCompanyPayrollPeriodMutationVariables, TContext> => {
+
+const mutationKey = getSubmitCompanyPayrollPeriodMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitCompanyPayrollPeriod>>, SubmitCompanyPayrollPeriodMutationVariables> = (props) => {
+          const {periodId} = props ?? {};
+
+          return  submitCompanyPayrollPeriod(periodId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitCompanyPayrollPeriodMutationResult = NonNullable<Awaited<ReturnType<typeof submitCompanyPayrollPeriod>>>
+
+    export type SubmitCompanyPayrollPeriodMutationError = ErrorType<void>
+    export type SubmitCompanyPayrollPeriodMutationVariables = {periodId: number}
+
+    /**
+ * @summary Submit a complete draft Company Payroll run to a different Platform Owner for review
+ */
+export const useSubmitCompanyPayrollPeriod = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitCompanyPayrollPeriod>>, TError,SubmitCompanyPayrollPeriodMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitCompanyPayrollPeriod>>,
+        TError,
+        SubmitCompanyPayrollPeriodMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSubmitCompanyPayrollPeriodMutationOptions(options));
+    }
+
+export const getApproveCompanyPayrollPeriodUrl = (periodId: number,) => {
+
+
+
+
+  return `/api/platform/finance/company-payroll/periods/${periodId}/approve`
+}
+
+/**
+ * @summary Require independent Platform Owner review; block approval by the payroll preparer
+ */
+export const approveCompanyPayrollPeriod = async (periodId: number, options?: Parameters<typeof customFetch>[1]): Promise<PayrollPeriod> => {
+
+  return customFetch<PayrollPeriod>(getApproveCompanyPayrollPeriodUrl(periodId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getApproveCompanyPayrollPeriodMutationKey = () => ['approveCompanyPayrollPeriod'] as const;
+
+export const getApproveCompanyPayrollPeriodMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveCompanyPayrollPeriod>>, TError,ApproveCompanyPayrollPeriodMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveCompanyPayrollPeriod>>, TError,ApproveCompanyPayrollPeriodMutationVariables, TContext> => {
+
+const mutationKey = getApproveCompanyPayrollPeriodMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveCompanyPayrollPeriod>>, ApproveCompanyPayrollPeriodMutationVariables> = (props) => {
+          const {periodId} = props ?? {};
+
+          return  approveCompanyPayrollPeriod(periodId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveCompanyPayrollPeriodMutationResult = NonNullable<Awaited<ReturnType<typeof approveCompanyPayrollPeriod>>>
+
+    export type ApproveCompanyPayrollPeriodMutationError = ErrorType<void>
+    export type ApproveCompanyPayrollPeriodMutationVariables = {periodId: number}
+
+    /**
+ * @summary Require independent Platform Owner review; block approval by the payroll preparer
+ */
+export const useApproveCompanyPayrollPeriod = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveCompanyPayrollPeriod>>, TError,ApproveCompanyPayrollPeriodMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveCompanyPayrollPeriod>>,
+        TError,
+        ApproveCompanyPayrollPeriodMutationVariables,
+        TContext
+      > => {
+      return useMutation(getApproveCompanyPayrollPeriodMutationOptions(options));
+    }
+
+export const getCreateCompanyPayrollTransfersUrl = (periodId: number,) => {
+
+
+
+
+  return `/api/platform/finance/company-payroll/periods/${periodId}/transfers`
+}
+
+/**
+ * Calls only the officially documented Flutterwave v3 transfer endpoint when mode and credentials explicitly permit it. Development mock mode cannot produce a PAID salary. Ambiguous provider outcomes are durably held until server-side provider verification; no repeated transfer is sent automatically.
+ * @summary Initiate individually tracked idempotent, approved company salary transfers
+ */
+export const createCompanyPayrollTransfers = async (periodId: number,
+    payrollTransfersInput: PayrollTransfersInput, options?: Parameters<typeof customFetch>[1]): Promise<PayrollTransfersResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PayrollTransfersResponse>(getCreateCompanyPayrollTransfersUrl(periodId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(payrollTransfersInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCompanyPayrollTransfersMutationKey = () => ['createCompanyPayrollTransfers'] as const;
+
+export const getCreateCompanyPayrollTransfersMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCompanyPayrollTransfers>>, TError,CreateCompanyPayrollTransfersMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCompanyPayrollTransfers>>, TError,CreateCompanyPayrollTransfersMutationVariables, TContext> => {
+
+const mutationKey = getCreateCompanyPayrollTransfersMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCompanyPayrollTransfers>>, CreateCompanyPayrollTransfersMutationVariables> = (props) => {
+          const {periodId,data} = props ?? {};
+
+          return  createCompanyPayrollTransfers(periodId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCompanyPayrollTransfersMutationResult = NonNullable<Awaited<ReturnType<typeof createCompanyPayrollTransfers>>>
+    export type CreateCompanyPayrollTransfersMutationBody = BodyType<PayrollTransfersInput>
+    export type CreateCompanyPayrollTransfersMutationError = ErrorType<void>
+    export type CreateCompanyPayrollTransfersMutationVariables = {periodId: number;data: BodyType<PayrollTransfersInput>}
+
+    /**
+ * @summary Initiate individually tracked idempotent, approved company salary transfers
+ */
+export const useCreateCompanyPayrollTransfers = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCompanyPayrollTransfers>>, TError,CreateCompanyPayrollTransfersMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCompanyPayrollTransfers>>,
+        TError,
+        CreateCompanyPayrollTransfersMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateCompanyPayrollTransfersMutationOptions(options));
+    }
+
+export const getReconcileCompanyPayrollTransferUrl = (transferId: number,) => {
+
+
+
+
+  return `/api/platform/finance/company-payroll/transfers/${transferId}/reconcile`
+}
+
+/**
+ * @summary Reconcile an existing company transfer by querying the same verified Flutterwave v3 reference
+ */
+export const reconcileCompanyPayrollTransfer = async (transferId: number, options?: Parameters<typeof customFetch>[1]): Promise<PayrollTransfer> => {
+
+  return customFetch<PayrollTransfer>(getReconcileCompanyPayrollTransferUrl(transferId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReconcileCompanyPayrollTransferMutationKey = () => ['reconcileCompanyPayrollTransfer'] as const;
+
+export const getReconcileCompanyPayrollTransferMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileCompanyPayrollTransfer>>, TError,ReconcileCompanyPayrollTransferMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reconcileCompanyPayrollTransfer>>, TError,ReconcileCompanyPayrollTransferMutationVariables, TContext> => {
+
+const mutationKey = getReconcileCompanyPayrollTransferMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reconcileCompanyPayrollTransfer>>, ReconcileCompanyPayrollTransferMutationVariables> = (props) => {
+          const {transferId} = props ?? {};
+
+          return  reconcileCompanyPayrollTransfer(transferId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReconcileCompanyPayrollTransferMutationResult = NonNullable<Awaited<ReturnType<typeof reconcileCompanyPayrollTransfer>>>
+
+    export type ReconcileCompanyPayrollTransferMutationError = ErrorType<void>
+    export type ReconcileCompanyPayrollTransferMutationVariables = {transferId: number}
+
+    /**
+ * @summary Reconcile an existing company transfer by querying the same verified Flutterwave v3 reference
+ */
+export const useReconcileCompanyPayrollTransfer = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileCompanyPayrollTransfer>>, TError,ReconcileCompanyPayrollTransferMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reconcileCompanyPayrollTransfer>>,
+        TError,
+        ReconcileCompanyPayrollTransferMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReconcileCompanyPayrollTransferMutationOptions(options));
+    }
+
+export const getGetCompanyPayrollReportUrl = (params: GetCompanyPayrollReportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/platform/finance/company-payroll/reports?${stringifiedParams}` : `/api/platform/finance/company-payroll/reports`
+}
+
+/**
+ * @summary Show Platform Owner Yemait Technologies Limited monthly salary expense and transfer status independently from all school runs
+ */
+export const getCompanyPayrollReport = async (params: GetCompanyPayrollReportParams, options?: Parameters<typeof customFetch>[1]): Promise<PayrollReportRow[]> => {
+
+  return customFetch<PayrollReportRow[]>(getGetCompanyPayrollReportUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCompanyPayrollReportQueryKey = (params?: GetCompanyPayrollReportParams,) => {
+    return [
+    `/api/platform/finance/company-payroll/reports`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCompanyPayrollReportQueryOptions = <TData = Awaited<ReturnType<typeof getCompanyPayrollReport>>, TError = ErrorType<void>>(params: GetCompanyPayrollReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCompanyPayrollReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCompanyPayrollReportQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCompanyPayrollReport>>> = ({ signal }) => getCompanyPayrollReport(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCompanyPayrollReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCompanyPayrollReportQueryResult = NonNullable<Awaited<ReturnType<typeof getCompanyPayrollReport>>>
+export type GetCompanyPayrollReportQueryError = ErrorType<void>
+
+
+/**
+ * @summary Show Platform Owner Yemait Technologies Limited monthly salary expense and transfer status independently from all school runs
+ */
+
+export function useGetCompanyPayrollReport<TData = Awaited<ReturnType<typeof getCompanyPayrollReport>>, TError = ErrorType<void>>(
+ params: GetCompanyPayrollReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCompanyPayrollReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCompanyPayrollReportQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListMyPayrollPayslipsUrl = (params?: ListMyPayrollPayslipsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/me/payroll/payslips?${stringifiedParams}` : `/api/me/payroll/payslips`
+}
+
+/**
+ * @summary List only the authenticated staff member's own verified payslips and payment history, whether employed by a school or the company
+ */
+export const listMyPayrollPayslips = async (params?: ListMyPayrollPayslipsParams, options?: Parameters<typeof customFetch>[1]): Promise<OwnPayrollPayslip[]> => {
+
+  return customFetch<OwnPayrollPayslip[]>(getListMyPayrollPayslipsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMyPayrollPayslipsQueryKey = (params?: ListMyPayrollPayslipsParams,) => {
+    return [
+    `/api/me/payroll/payslips`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListMyPayrollPayslipsQueryOptions = <TData = Awaited<ReturnType<typeof listMyPayrollPayslips>>, TError = ErrorType<void>>(params?: ListMyPayrollPayslipsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyPayrollPayslips>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMyPayrollPayslipsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyPayrollPayslips>>> = ({ signal }) => listMyPayrollPayslips(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMyPayrollPayslips>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMyPayrollPayslipsQueryResult = NonNullable<Awaited<ReturnType<typeof listMyPayrollPayslips>>>
+export type ListMyPayrollPayslipsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List only the authenticated staff member's own verified payslips and payment history, whether employed by a school or the company
+ */
+
+export function useListMyPayrollPayslips<TData = Awaited<ReturnType<typeof listMyPayrollPayslips>>, TError = ErrorType<void>>(
+ params?: ListMyPayrollPayslipsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyPayrollPayslips>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMyPayrollPayslipsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMyPayrollPayslipUrl = (payslipId: number,) => {
+
+
+
+
+  return `/api/me/payroll/payslips/${payslipId}`
+}
+
+/**
+ * @summary Retrieve one generated payslip only when its active school or company employee is linked to the current user
+ */
+export const getMyPayrollPayslip = async (payslipId: number, options?: Parameters<typeof customFetch>[1]): Promise<OwnPayrollPayslip> => {
+
+  return customFetch<OwnPayrollPayslip>(getGetMyPayrollPayslipUrl(payslipId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyPayrollPayslipQueryKey = (payslipId: number,) => {
+    return [
+    `/api/me/payroll/payslips/${payslipId}`
+    ] as const;
+    }
+
+
+export const getGetMyPayrollPayslipQueryOptions = <TData = Awaited<ReturnType<typeof getMyPayrollPayslip>>, TError = ErrorType<void>>(payslipId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyPayrollPayslip>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyPayrollPayslipQueryKey(payslipId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyPayrollPayslip>>> = ({ signal }) => getMyPayrollPayslip(payslipId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: payslipId !== null && payslipId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyPayrollPayslip>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyPayrollPayslipQueryResult = NonNullable<Awaited<ReturnType<typeof getMyPayrollPayslip>>>
+export type GetMyPayrollPayslipQueryError = ErrorType<void>
+
+
+/**
+ * @summary Retrieve one generated payslip only when its active school or company employee is linked to the current user
+ */
+
+export function useGetMyPayrollPayslip<TData = Awaited<ReturnType<typeof getMyPayrollPayslip>>, TError = ErrorType<void>>(
+ payslipId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyPayrollPayslip>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyPayrollPayslipQueryOptions(payslipId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSchoolBrandingUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/branding`
+}
+
+/**
+ * @summary Get school branding for an explicitly authorized school
+ */
+export const getSchoolBranding = async (schoolId: number, options?: Parameters<typeof customFetch>[1]): Promise<SchoolBranding> => {
+
+  return customFetch<SchoolBranding>(getGetSchoolBrandingUrl(schoolId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolBrandingQueryKey = (schoolId: number,) => {
+    return [
+    `/api/schools/${schoolId}/branding`
+    ] as const;
+    }
+
+
+export const getGetSchoolBrandingQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolBranding>>, TError = ErrorType<ApiError0a0c478>>(schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolBranding>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolBrandingQueryKey(schoolId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolBranding>>> = ({ signal }) => getSchoolBranding(schoolId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolBranding>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchoolBrandingQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolBranding>>>
+export type GetSchoolBrandingQueryError = ErrorType<ApiError0a0c478>
+
+
+/**
+ * @summary Get school branding for an explicitly authorized school
+ */
+
+export function useGetSchoolBranding<TData = Awaited<ReturnType<typeof getSchoolBranding>>, TError = ErrorType<ApiError0a0c478>>(
+ schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolBranding>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchoolBrandingQueryOptions(schoolId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateSchoolBrandingUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/branding`
+}
+
+/**
+ * Platform Owner access, including mixed-role Owner access, is explicitly denied for ordinary school operational writes.
+ * @summary Update existing school identity fields (School Admin only)
+ */
+export const updateSchoolBranding = async (schoolId: number,
+    updateSchoolBrandingBody: UpdateSchoolBrandingBody, options?: Parameters<typeof customFetch>[1]): Promise<SchoolBranding> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolBranding>(getUpdateSchoolBrandingUrl(schoolId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateSchoolBrandingBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateSchoolBrandingMutationKey = () => ['updateSchoolBranding'] as const;
+
+export const getUpdateSchoolBrandingMutationOptions = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolBranding>>, TError,UpdateSchoolBrandingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSchoolBranding>>, TError,UpdateSchoolBrandingMutationVariables, TContext> => {
+
+const mutationKey = getUpdateSchoolBrandingMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSchoolBranding>>, UpdateSchoolBrandingMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  updateSchoolBranding(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSchoolBrandingMutationResult = NonNullable<Awaited<ReturnType<typeof updateSchoolBranding>>>
+    export type UpdateSchoolBrandingMutationBody = BodyType<UpdateSchoolBrandingBody>
+    export type UpdateSchoolBrandingMutationError = ErrorType<ApiError0a0c478>
+    export type UpdateSchoolBrandingMutationVariables = {schoolId: number;data: BodyType<UpdateSchoolBrandingBody>}
+
+    /**
+ * @summary Update existing school identity fields (School Admin only)
+ */
+export const useUpdateSchoolBranding = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolBranding>>, TError,UpdateSchoolBrandingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSchoolBranding>>,
+        TError,
+        UpdateSchoolBrandingMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateSchoolBrandingMutationOptions(options));
+    }
+
+export const getRequestSchoolLogoUploadUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/branding/logo-upload-url`
+}
+
+/**
+ * Only same-school School Admins can request a school-scoped private object. SVG and other active or scriptable content is never accepted.
+ * @summary Request a short-lived private PNG, JPEG, or WebP school logo upload
+ */
+export const requestSchoolLogoUpload = async (schoolId: number,
+    schoolLogoUploadRequest: SchoolLogoUploadRequest, options?: Parameters<typeof customFetch>[1]): Promise<SchoolLogoUploadResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolLogoUploadResponse>(getRequestSchoolLogoUploadUrl(schoolId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(schoolLogoUploadRequest)
+  }
+);}
+
+
+
+
+
+export const getRequestSchoolLogoUploadMutationKey = () => ['requestSchoolLogoUpload'] as const;
+
+export const getRequestSchoolLogoUploadMutationOptions = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestSchoolLogoUpload>>, TError,RequestSchoolLogoUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestSchoolLogoUpload>>, TError,RequestSchoolLogoUploadMutationVariables, TContext> => {
+
+const mutationKey = getRequestSchoolLogoUploadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestSchoolLogoUpload>>, RequestSchoolLogoUploadMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  requestSchoolLogoUpload(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestSchoolLogoUploadMutationResult = NonNullable<Awaited<ReturnType<typeof requestSchoolLogoUpload>>>
+    export type RequestSchoolLogoUploadMutationBody = BodyType<SchoolLogoUploadRequest>
+    export type RequestSchoolLogoUploadMutationError = ErrorType<ApiError0a0c478>
+    export type RequestSchoolLogoUploadMutationVariables = {schoolId: number;data: BodyType<SchoolLogoUploadRequest>}
+
+    /**
+ * @summary Request a short-lived private PNG, JPEG, or WebP school logo upload
+ */
+export const useRequestSchoolLogoUpload = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestSchoolLogoUpload>>, TError,RequestSchoolLogoUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestSchoolLogoUpload>>,
+        TError,
+        RequestSchoolLogoUploadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestSchoolLogoUploadMutationOptions(options));
+    }
+
+export const getConfirmSchoolLogoUploadUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/branding/logo`
+}
+
+/**
+ * Validates stored length, MIME, actual PNG/JPEG/WebP magic, complete image decoding and bounded dimensions before replacement.
+ * @summary Validate uploaded logo bytes and atomically set the official logo
+ */
+export const confirmSchoolLogoUpload = async (schoolId: number,
+    confirmSchoolLogoUploadBody: ConfirmSchoolLogoUploadBody, options?: Parameters<typeof customFetch>[1]): Promise<SchoolBranding> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolBranding>(getConfirmSchoolLogoUploadUrl(schoolId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(confirmSchoolLogoUploadBody)
+  }
+);}
+
+
+
+
+
+export const getConfirmSchoolLogoUploadMutationKey = () => ['confirmSchoolLogoUpload'] as const;
+
+export const getConfirmSchoolLogoUploadMutationOptions = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmSchoolLogoUpload>>, TError,ConfirmSchoolLogoUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmSchoolLogoUpload>>, TError,ConfirmSchoolLogoUploadMutationVariables, TContext> => {
+
+const mutationKey = getConfirmSchoolLogoUploadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmSchoolLogoUpload>>, ConfirmSchoolLogoUploadMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  confirmSchoolLogoUpload(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmSchoolLogoUploadMutationResult = NonNullable<Awaited<ReturnType<typeof confirmSchoolLogoUpload>>>
+    export type ConfirmSchoolLogoUploadMutationBody = BodyType<ConfirmSchoolLogoUploadBody>
+    export type ConfirmSchoolLogoUploadMutationError = ErrorType<ApiError0a0c478>
+    export type ConfirmSchoolLogoUploadMutationVariables = {schoolId: number;data: BodyType<ConfirmSchoolLogoUploadBody>}
+
+    /**
+ * @summary Validate uploaded logo bytes and atomically set the official logo
+ */
+export const useConfirmSchoolLogoUpload = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmSchoolLogoUpload>>, TError,ConfirmSchoolLogoUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmSchoolLogoUpload>>,
+        TError,
+        ConfirmSchoolLogoUploadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfirmSchoolLogoUploadMutationOptions(options));
+    }
+
+export const getGetSchoolLogoUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/branding/logo`
+}
+
+/**
+ * @summary Read private school logo bytes after same-school authorization
+ */
+export const getSchoolLogo = async (schoolId: number, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetSchoolLogoUrl(schoolId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolLogoQueryKey = (schoolId: number,) => {
+    return [
+    `/api/schools/${schoolId}/branding/logo`
+    ] as const;
+    }
+
+
+export const getGetSchoolLogoQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolLogo>>, TError = ErrorType<ApiError0a0c478>>(schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolLogo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolLogoQueryKey(schoolId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolLogo>>> = ({ signal }) => getSchoolLogo(schoolId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolLogo>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchoolLogoQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolLogo>>>
+export type GetSchoolLogoQueryError = ErrorType<ApiError0a0c478>
+
+
+/**
+ * @summary Read private school logo bytes after same-school authorization
+ */
+
+export function useGetSchoolLogo<TData = Awaited<ReturnType<typeof getSchoolLogo>>, TError = ErrorType<ApiError0a0c478>>(
+ schoolId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolLogo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchoolLogoQueryOptions(schoolId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListSchoolAcademicCalendarUrl = (schoolId: number,
+    params?: ListSchoolAcademicCalendarParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/schools/${schoolId}/academic-calendar?${stringifiedParams}` : `/api/schools/${schoolId}/academic-calendar`
+}
+
+/**
+ * Term start and end dates are projected from existing academic sessions and terms. Other entries are filtered against each user's audience. Parents, students and teachers cannot see entries restricted to another audience.
+ * @summary List term- and school-specific calendar entries visible to the authorized role
+ */
+export const listSchoolAcademicCalendar = async (schoolId: number,
+    params?: ListSchoolAcademicCalendarParams, options?: Parameters<typeof customFetch>[1]): Promise<SchoolCalendarEntry[]> => {
+
+  return customFetch<SchoolCalendarEntry[]>(getListSchoolAcademicCalendarUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSchoolAcademicCalendarQueryKey = (schoolId: number,
+    params?: ListSchoolAcademicCalendarParams,) => {
+    return [
+    `/api/schools/${schoolId}/academic-calendar`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSchoolAcademicCalendarQueryOptions = <TData = Awaited<ReturnType<typeof listSchoolAcademicCalendar>>, TError = ErrorType<ApiError0a0c478>>(schoolId: number,
+    params?: ListSchoolAcademicCalendarParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolAcademicCalendar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSchoolAcademicCalendarQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSchoolAcademicCalendar>>> = ({ signal }) => listSchoolAcademicCalendar(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSchoolAcademicCalendar>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSchoolAcademicCalendarQueryResult = NonNullable<Awaited<ReturnType<typeof listSchoolAcademicCalendar>>>
+export type ListSchoolAcademicCalendarQueryError = ErrorType<ApiError0a0c478>
+
+
+/**
+ * @summary List term- and school-specific calendar entries visible to the authorized role
+ */
+
+export function useListSchoolAcademicCalendar<TData = Awaited<ReturnType<typeof listSchoolAcademicCalendar>>, TError = ErrorType<ApiError0a0c478>>(
+ schoolId: number,
+    params?: ListSchoolAcademicCalendarParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolAcademicCalendar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSchoolAcademicCalendarQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateSchoolCalendarEventUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/academic-calendar`
+}
+
+/**
+ * @summary Create one same-school event (School Admin only)
+ */
+export const createSchoolCalendarEvent = async (schoolId: number,
+    createSchoolCalendarEventBody: CreateSchoolCalendarEventBody, options?: Parameters<typeof customFetch>[1]): Promise<SchoolCalendarEntry> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolCalendarEntry>(getCreateSchoolCalendarEventUrl(schoolId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createSchoolCalendarEventBody)
+  }
+);}
+
+
+
+
+
+export const getCreateSchoolCalendarEventMutationKey = () => ['createSchoolCalendarEvent'] as const;
+
+export const getCreateSchoolCalendarEventMutationOptions = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSchoolCalendarEvent>>, TError,CreateSchoolCalendarEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSchoolCalendarEvent>>, TError,CreateSchoolCalendarEventMutationVariables, TContext> => {
+
+const mutationKey = getCreateSchoolCalendarEventMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSchoolCalendarEvent>>, CreateSchoolCalendarEventMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  createSchoolCalendarEvent(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSchoolCalendarEventMutationResult = NonNullable<Awaited<ReturnType<typeof createSchoolCalendarEvent>>>
+    export type CreateSchoolCalendarEventMutationBody = BodyType<CreateSchoolCalendarEventBody>
+    export type CreateSchoolCalendarEventMutationError = ErrorType<ApiError0a0c478>
+    export type CreateSchoolCalendarEventMutationVariables = {schoolId: number;data: BodyType<CreateSchoolCalendarEventBody>}
+
+    /**
+ * @summary Create one same-school event (School Admin only)
+ */
+export const useCreateSchoolCalendarEvent = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSchoolCalendarEvent>>, TError,CreateSchoolCalendarEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSchoolCalendarEvent>>,
+        TError,
+        CreateSchoolCalendarEventMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateSchoolCalendarEventMutationOptions(options));
+    }
+
+export const getGenerateSchoolAcademicCalendarUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/academic-calendar/generate`
+}
+
+/**
+ * Replaces dates for the same deterministic session/term/type/sequence keys without creating duplicate entries; retains custom school events and session/term history.
+ * @summary Idempotently generate term and configured academic calendar entries (School Admin only)
+ */
+export const generateSchoolAcademicCalendar = async (schoolId: number,
+    generateSchoolCalendarBody: GenerateSchoolCalendarBody, options?: Parameters<typeof customFetch>[1]): Promise<SchoolCalendarEntry[]> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolCalendarEntry[]>(getGenerateSchoolAcademicCalendarUrl(schoolId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(generateSchoolCalendarBody)
+  }
+);}
+
+
+
+
+
+export const getGenerateSchoolAcademicCalendarMutationKey = () => ['generateSchoolAcademicCalendar'] as const;
+
+export const getGenerateSchoolAcademicCalendarMutationOptions = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateSchoolAcademicCalendar>>, TError,GenerateSchoolAcademicCalendarMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateSchoolAcademicCalendar>>, TError,GenerateSchoolAcademicCalendarMutationVariables, TContext> => {
+
+const mutationKey = getGenerateSchoolAcademicCalendarMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateSchoolAcademicCalendar>>, GenerateSchoolAcademicCalendarMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  generateSchoolAcademicCalendar(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateSchoolAcademicCalendarMutationResult = NonNullable<Awaited<ReturnType<typeof generateSchoolAcademicCalendar>>>
+    export type GenerateSchoolAcademicCalendarMutationBody = BodyType<GenerateSchoolCalendarBody>
+    export type GenerateSchoolAcademicCalendarMutationError = ErrorType<ApiError0a0c478>
+    export type GenerateSchoolAcademicCalendarMutationVariables = {schoolId: number;data: BodyType<GenerateSchoolCalendarBody>}
+
+    /**
+ * @summary Idempotently generate term and configured academic calendar entries (School Admin only)
+ */
+export const useGenerateSchoolAcademicCalendar = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateSchoolAcademicCalendar>>, TError,GenerateSchoolAcademicCalendarMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateSchoolAcademicCalendar>>,
+        TError,
+        GenerateSchoolAcademicCalendarMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGenerateSchoolAcademicCalendarMutationOptions(options));
+    }
+
+export const getUpdateSchoolCalendarEventUrl = (schoolId: number,
+    eventId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/academic-calendar/${eventId}`
+}
+
+/**
+ * @summary Update one authorized school event without changing deterministic generated period records
+ */
+export const updateSchoolCalendarEvent = async (schoolId: number,
+    eventId: number,
+    updateSchoolCalendarEventBody: UpdateSchoolCalendarEventBody, options?: Parameters<typeof customFetch>[1]): Promise<SchoolCalendarEntry> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolCalendarEntry>(getUpdateSchoolCalendarEventUrl(schoolId,eventId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateSchoolCalendarEventBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateSchoolCalendarEventMutationKey = () => ['updateSchoolCalendarEvent'] as const;
+
+export const getUpdateSchoolCalendarEventMutationOptions = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolCalendarEvent>>, TError,UpdateSchoolCalendarEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSchoolCalendarEvent>>, TError,UpdateSchoolCalendarEventMutationVariables, TContext> => {
+
+const mutationKey = getUpdateSchoolCalendarEventMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSchoolCalendarEvent>>, UpdateSchoolCalendarEventMutationVariables> = (props) => {
+          const {schoolId,eventId,data} = props ?? {};
+
+          return  updateSchoolCalendarEvent(schoolId,eventId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSchoolCalendarEventMutationResult = NonNullable<Awaited<ReturnType<typeof updateSchoolCalendarEvent>>>
+    export type UpdateSchoolCalendarEventMutationBody = BodyType<UpdateSchoolCalendarEventBody>
+    export type UpdateSchoolCalendarEventMutationError = ErrorType<ApiError0a0c478>
+    export type UpdateSchoolCalendarEventMutationVariables = {schoolId: number;eventId: number;data: BodyType<UpdateSchoolCalendarEventBody>}
+
+    /**
+ * @summary Update one authorized school event without changing deterministic generated period records
+ */
+export const useUpdateSchoolCalendarEvent = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolCalendarEvent>>, TError,UpdateSchoolCalendarEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSchoolCalendarEvent>>,
+        TError,
+        UpdateSchoolCalendarEventMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateSchoolCalendarEventMutationOptions(options));
+    }
+
+export const getListSchoolTeacherAssignmentsUrl = (schoolId: number,
+    params?: ListSchoolTeacherAssignmentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/schools/${schoolId}/teacher-assignments?${stringifiedParams}` : `/api/schools/${schoolId}/teacher-assignments`
+}
+
+/**
+ * Teachers cannot query another employee's assignments. School Admins may search by teacher, class, subject, session or status. Returns named records and date/history fields, not only IDs.
+ * @summary List named, school-scoped class/subject teacher assignments or a teacher's own assignments
+ */
+export const listSchoolTeacherAssignments = async (schoolId: number,
+    params?: ListSchoolTeacherAssignmentsParams, options?: Parameters<typeof customFetch>[1]): Promise<SchoolTeacherAssignment[]> => {
+
+  return customFetch<SchoolTeacherAssignment[]>(getListSchoolTeacherAssignmentsUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSchoolTeacherAssignmentsQueryKey = (schoolId: number,
+    params?: ListSchoolTeacherAssignmentsParams,) => {
+    return [
+    `/api/schools/${schoolId}/teacher-assignments`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSchoolTeacherAssignmentsQueryOptions = <TData = Awaited<ReturnType<typeof listSchoolTeacherAssignments>>, TError = ErrorType<ApiError0a0c478>>(schoolId: number,
+    params?: ListSchoolTeacherAssignmentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolTeacherAssignments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSchoolTeacherAssignmentsQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSchoolTeacherAssignments>>> = ({ signal }) => listSchoolTeacherAssignments(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSchoolTeacherAssignments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSchoolTeacherAssignmentsQueryResult = NonNullable<Awaited<ReturnType<typeof listSchoolTeacherAssignments>>>
+export type ListSchoolTeacherAssignmentsQueryError = ErrorType<ApiError0a0c478>
+
+
+/**
+ * @summary List named, school-scoped class/subject teacher assignments or a teacher's own assignments
+ */
+
+export function useListSchoolTeacherAssignments<TData = Awaited<ReturnType<typeof listSchoolTeacherAssignments>>, TError = ErrorType<ApiError0a0c478>>(
+ schoolId: number,
+    params?: ListSchoolTeacherAssignmentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolTeacherAssignments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSchoolTeacherAssignmentsQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateSchoolTeacherAssignmentUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/teacher-assignments`
+}
+
+/**
+ * A replacement atomically marks prior active slot assignments inactive before creating the new dated record. Platform Owner is denied from ordinary school writes, even with another role attached.
+ * @summary Create or replace a same-school class, subject, or class-plus-subject teacher assignment
+ */
+export const createSchoolTeacherAssignment = async (schoolId: number,
+    createSchoolTeacherAssignmentBody: CreateSchoolTeacherAssignmentBody, options?: Parameters<typeof customFetch>[1]): Promise<SchoolTeacherAssignment> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolTeacherAssignment>(getCreateSchoolTeacherAssignmentUrl(schoolId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createSchoolTeacherAssignmentBody)
+  }
+);}
+
+
+
+
+
+export const getCreateSchoolTeacherAssignmentMutationKey = () => ['createSchoolTeacherAssignment'] as const;
+
+export const getCreateSchoolTeacherAssignmentMutationOptions = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSchoolTeacherAssignment>>, TError,CreateSchoolTeacherAssignmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSchoolTeacherAssignment>>, TError,CreateSchoolTeacherAssignmentMutationVariables, TContext> => {
+
+const mutationKey = getCreateSchoolTeacherAssignmentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSchoolTeacherAssignment>>, CreateSchoolTeacherAssignmentMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  createSchoolTeacherAssignment(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSchoolTeacherAssignmentMutationResult = NonNullable<Awaited<ReturnType<typeof createSchoolTeacherAssignment>>>
+    export type CreateSchoolTeacherAssignmentMutationBody = BodyType<CreateSchoolTeacherAssignmentBody>
+    export type CreateSchoolTeacherAssignmentMutationError = ErrorType<ApiError0a0c478>
+    export type CreateSchoolTeacherAssignmentMutationVariables = {schoolId: number;data: BodyType<CreateSchoolTeacherAssignmentBody>}
+
+    /**
+ * @summary Create or replace a same-school class, subject, or class-plus-subject teacher assignment
+ */
+export const useCreateSchoolTeacherAssignment = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSchoolTeacherAssignment>>, TError,CreateSchoolTeacherAssignmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSchoolTeacherAssignment>>,
+        TError,
+        CreateSchoolTeacherAssignmentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateSchoolTeacherAssignmentMutationOptions(options));
+    }
+
+export const getUpdateSchoolTeacherAssignmentUrl = (schoolId: number,
+    assignmentKind: 'CLASS' | 'SUBJECT',
+    assignmentId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/teacher-assignments/${assignmentKind}/${assignmentId}`
+}
+
+/**
+ * @summary Change the teacher of, or deactivate, one same-school active assignment
+ */
+export const updateSchoolTeacherAssignment = async (schoolId: number,
+    assignmentKind: 'CLASS' | 'SUBJECT',
+    assignmentId: number,
+    updateSchoolTeacherAssignmentBody: UpdateSchoolTeacherAssignmentBody, options?: Parameters<typeof customFetch>[1]): Promise<SchoolTeacherAssignment> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolTeacherAssignment>(getUpdateSchoolTeacherAssignmentUrl(schoolId,assignmentKind,assignmentId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateSchoolTeacherAssignmentBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateSchoolTeacherAssignmentMutationKey = () => ['updateSchoolTeacherAssignment'] as const;
+
+export const getUpdateSchoolTeacherAssignmentMutationOptions = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolTeacherAssignment>>, TError,UpdateSchoolTeacherAssignmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSchoolTeacherAssignment>>, TError,UpdateSchoolTeacherAssignmentMutationVariables, TContext> => {
+
+const mutationKey = getUpdateSchoolTeacherAssignmentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSchoolTeacherAssignment>>, UpdateSchoolTeacherAssignmentMutationVariables> = (props) => {
+          const {schoolId,assignmentKind,assignmentId,data} = props ?? {};
+
+          return  updateSchoolTeacherAssignment(schoolId,assignmentKind,assignmentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSchoolTeacherAssignmentMutationResult = NonNullable<Awaited<ReturnType<typeof updateSchoolTeacherAssignment>>>
+    export type UpdateSchoolTeacherAssignmentMutationBody = BodyType<UpdateSchoolTeacherAssignmentBody>
+    export type UpdateSchoolTeacherAssignmentMutationError = ErrorType<ApiError0a0c478>
+    export type UpdateSchoolTeacherAssignmentMutationVariables = {schoolId: number;assignmentKind: 'CLASS' | 'SUBJECT';assignmentId: number;data: BodyType<UpdateSchoolTeacherAssignmentBody>}
+
+    /**
+ * @summary Change the teacher of, or deactivate, one same-school active assignment
+ */
+export const useUpdateSchoolTeacherAssignment = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolTeacherAssignment>>, TError,UpdateSchoolTeacherAssignmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSchoolTeacherAssignment>>,
+        TError,
+        UpdateSchoolTeacherAssignmentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateSchoolTeacherAssignmentMutationOptions(options));
+    }
+
+export const getListSchoolTeacherDutyUrl = (schoolId: number,
+    params?: ListSchoolTeacherDutyParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/schools/${schoolId}/duty-roster?${stringifiedParams}` : `/api/schools/${schoolId}/duty-roster`
+}
+
+/**
+ * @summary View a school duty roster or the authenticated teacher's own duties
+ */
+export const listSchoolTeacherDuty = async (schoolId: number,
+    params?: ListSchoolTeacherDutyParams, options?: Parameters<typeof customFetch>[1]): Promise<TeacherDuty[]> => {
+
+  return customFetch<TeacherDuty[]>(getListSchoolTeacherDutyUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSchoolTeacherDutyQueryKey = (schoolId: number,
+    params?: ListSchoolTeacherDutyParams,) => {
+    return [
+    `/api/schools/${schoolId}/duty-roster`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSchoolTeacherDutyQueryOptions = <TData = Awaited<ReturnType<typeof listSchoolTeacherDuty>>, TError = ErrorType<ApiError0a0c478>>(schoolId: number,
+    params?: ListSchoolTeacherDutyParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolTeacherDuty>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSchoolTeacherDutyQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSchoolTeacherDuty>>> = ({ signal }) => listSchoolTeacherDuty(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSchoolTeacherDuty>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSchoolTeacherDutyQueryResult = NonNullable<Awaited<ReturnType<typeof listSchoolTeacherDuty>>>
+export type ListSchoolTeacherDutyQueryError = ErrorType<ApiError0a0c478>
+
+
+/**
+ * @summary View a school duty roster or the authenticated teacher's own duties
+ */
+
+export function useListSchoolTeacherDuty<TData = Awaited<ReturnType<typeof listSchoolTeacherDuty>>, TError = ErrorType<ApiError0a0c478>>(
+ schoolId: number,
+    params?: ListSchoolTeacherDutyParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSchoolTeacherDuty>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSchoolTeacherDutyQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateSchoolTeacherDutyUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/duty-roster`
+}
+
+/**
+ * A school-wide advisory transaction lock and intersecting date-range check prevent a teacher receiving overlapping active duties.
+ * @summary Create a dated weekly teacher on-duty assignment (School Admin only)
+ */
+export const createSchoolTeacherDuty = async (schoolId: number,
+    createTeacherDutyBody: CreateTeacherDutyBody, options?: Parameters<typeof customFetch>[1]): Promise<TeacherDuty> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TeacherDuty>(getCreateSchoolTeacherDutyUrl(schoolId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createTeacherDutyBody)
+  }
+);}
+
+
+
+
+
+export const getCreateSchoolTeacherDutyMutationKey = () => ['createSchoolTeacherDuty'] as const;
+
+export const getCreateSchoolTeacherDutyMutationOptions = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSchoolTeacherDuty>>, TError,CreateSchoolTeacherDutyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSchoolTeacherDuty>>, TError,CreateSchoolTeacherDutyMutationVariables, TContext> => {
+
+const mutationKey = getCreateSchoolTeacherDutyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSchoolTeacherDuty>>, CreateSchoolTeacherDutyMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  createSchoolTeacherDuty(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSchoolTeacherDutyMutationResult = NonNullable<Awaited<ReturnType<typeof createSchoolTeacherDuty>>>
+    export type CreateSchoolTeacherDutyMutationBody = BodyType<CreateTeacherDutyBody>
+    export type CreateSchoolTeacherDutyMutationError = ErrorType<ApiError0a0c478>
+    export type CreateSchoolTeacherDutyMutationVariables = {schoolId: number;data: BodyType<CreateTeacherDutyBody>}
+
+    /**
+ * @summary Create a dated weekly teacher on-duty assignment (School Admin only)
+ */
+export const useCreateSchoolTeacherDuty = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSchoolTeacherDuty>>, TError,CreateSchoolTeacherDutyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSchoolTeacherDuty>>,
+        TError,
+        CreateSchoolTeacherDutyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateSchoolTeacherDutyMutationOptions(options));
+    }
+
+export const getUpdateSchoolTeacherDutyUrl = (schoolId: number,
+    dutyId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/duty-roster/${dutyId}`
+}
+
+/**
+ * @summary Edit or deactivate one same-school teacher duty assignment
+ */
+export const updateSchoolTeacherDuty = async (schoolId: number,
+    dutyId: number,
+    updateTeacherDutyBody: UpdateTeacherDutyBody, options?: Parameters<typeof customFetch>[1]): Promise<TeacherDuty> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TeacherDuty>(getUpdateSchoolTeacherDutyUrl(schoolId,dutyId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateTeacherDutyBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateSchoolTeacherDutyMutationKey = () => ['updateSchoolTeacherDuty'] as const;
+
+export const getUpdateSchoolTeacherDutyMutationOptions = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolTeacherDuty>>, TError,UpdateSchoolTeacherDutyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSchoolTeacherDuty>>, TError,UpdateSchoolTeacherDutyMutationVariables, TContext> => {
+
+const mutationKey = getUpdateSchoolTeacherDutyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSchoolTeacherDuty>>, UpdateSchoolTeacherDutyMutationVariables> = (props) => {
+          const {schoolId,dutyId,data} = props ?? {};
+
+          return  updateSchoolTeacherDuty(schoolId,dutyId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSchoolTeacherDutyMutationResult = NonNullable<Awaited<ReturnType<typeof updateSchoolTeacherDuty>>>
+    export type UpdateSchoolTeacherDutyMutationBody = BodyType<UpdateTeacherDutyBody>
+    export type UpdateSchoolTeacherDutyMutationError = ErrorType<ApiError0a0c478>
+    export type UpdateSchoolTeacherDutyMutationVariables = {schoolId: number;dutyId: number;data: BodyType<UpdateTeacherDutyBody>}
+
+    /**
+ * @summary Edit or deactivate one same-school teacher duty assignment
+ */
+export const useUpdateSchoolTeacherDuty = <TError = ErrorType<ApiError0a0c478>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolTeacherDuty>>, TError,UpdateSchoolTeacherDutyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSchoolTeacherDuty>>,
+        TError,
+        UpdateSchoolTeacherDutyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateSchoolTeacherDutyMutationOptions(options));
+    }
+
+export const getGetMyStaffNfcSubscriptionsUrl = (params: GetMyStaffNfcSubscriptionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/staff-nfc/subscriptions/me?${stringifiedParams}` : `/api/staff-nfc/subscriptions/me`
+}
+
+/**
+ * @summary List only the authenticated staff member's term subscriptions, cards, receipts and recent payments
+ */
+export const getMyStaffNfcSubscriptions = async (params: GetMyStaffNfcSubscriptionsParams, options?: Parameters<typeof customFetch>[1]): Promise<StaffNfcMineResponse> => {
+
+  return customFetch<StaffNfcMineResponse>(getGetMyStaffNfcSubscriptionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyStaffNfcSubscriptionsQueryKey = (params?: GetMyStaffNfcSubscriptionsParams,) => {
+    return [
+    `/api/staff-nfc/subscriptions/me`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMyStaffNfcSubscriptionsQueryOptions = <TData = Awaited<ReturnType<typeof getMyStaffNfcSubscriptions>>, TError = ErrorType<StaffNfcError>>(params: GetMyStaffNfcSubscriptionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyStaffNfcSubscriptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyStaffNfcSubscriptionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyStaffNfcSubscriptions>>> = ({ signal }) => getMyStaffNfcSubscriptions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyStaffNfcSubscriptions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyStaffNfcSubscriptionsQueryResult = NonNullable<Awaited<ReturnType<typeof getMyStaffNfcSubscriptions>>>
+export type GetMyStaffNfcSubscriptionsQueryError = ErrorType<StaffNfcError>
+
+
+/**
+ * @summary List only the authenticated staff member's term subscriptions, cards, receipts and recent payments
+ */
+
+export function useGetMyStaffNfcSubscriptions<TData = Awaited<ReturnType<typeof getMyStaffNfcSubscriptions>>, TError = ErrorType<StaffNfcError>>(
+ params: GetMyStaffNfcSubscriptionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyStaffNfcSubscriptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyStaffNfcSubscriptionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGenerateStaffNfcTermSubscriptionsUrl = (params: GenerateStaffNfcTermSubscriptionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/staff-nfc/subscriptions/generate?${stringifiedParams}` : `/api/staff-nfc/subscriptions/generate`
+}
+
+/**
+ * @summary Idempotently generate term subscriptions for active school employees using effective billing rules
+ */
+export const generateStaffNfcTermSubscriptions = async (params: GenerateStaffNfcTermSubscriptionsParams, options?: Parameters<typeof customFetch>[1]): Promise<StaffNfcGenerationResponse> => {
+
+  return customFetch<StaffNfcGenerationResponse>(getGenerateStaffNfcTermSubscriptionsUrl(params),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getGenerateStaffNfcTermSubscriptionsMutationKey = () => ['generateStaffNfcTermSubscriptions'] as const;
+
+export const getGenerateStaffNfcTermSubscriptionsMutationOptions = <TError = ErrorType<StaffNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateStaffNfcTermSubscriptions>>, TError,GenerateStaffNfcTermSubscriptionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateStaffNfcTermSubscriptions>>, TError,GenerateStaffNfcTermSubscriptionsMutationVariables, TContext> => {
+
+const mutationKey = getGenerateStaffNfcTermSubscriptionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateStaffNfcTermSubscriptions>>, GenerateStaffNfcTermSubscriptionsMutationVariables> = (props) => {
+          const {params} = props ?? {};
+
+          return  generateStaffNfcTermSubscriptions(params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateStaffNfcTermSubscriptionsMutationResult = NonNullable<Awaited<ReturnType<typeof generateStaffNfcTermSubscriptions>>>
+
+    export type GenerateStaffNfcTermSubscriptionsMutationError = ErrorType<StaffNfcError>
+    export type GenerateStaffNfcTermSubscriptionsMutationVariables = {params: GenerateStaffNfcTermSubscriptionsParams}
+
+    /**
+ * @summary Idempotently generate term subscriptions for active school employees using effective billing rules
+ */
+export const useGenerateStaffNfcTermSubscriptions = <TError = ErrorType<StaffNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateStaffNfcTermSubscriptions>>, TError,GenerateStaffNfcTermSubscriptionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateStaffNfcTermSubscriptions>>,
+        TError,
+        GenerateStaffNfcTermSubscriptionsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGenerateStaffNfcTermSubscriptionsMutationOptions(options));
+    }
+
+export const getCreateStaffNfcCheckoutUrl = (subscriptionId: number,
+    params: CreateStaffNfcCheckoutParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/staff-nfc/subscriptions/${subscriptionId}/checkout?${stringifiedParams}` : `/api/staff-nfc/subscriptions/${subscriptionId}/checkout`
+}
+
+/**
+ * @summary Idempotently initialize payment for the authenticated employee's unpaid term subscription
+ */
+export const createStaffNfcCheckout = async (subscriptionId: number,
+    params: CreateStaffNfcCheckoutParams, options?: Parameters<typeof customFetch>[1]): Promise<StaffNfcCheckoutResponse> => {
+
+  return customFetch<StaffNfcCheckoutResponse>(getCreateStaffNfcCheckoutUrl(subscriptionId,params),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCreateStaffNfcCheckoutMutationKey = () => ['createStaffNfcCheckout'] as const;
+
+export const getCreateStaffNfcCheckoutMutationOptions = <TError = ErrorType<StaffNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStaffNfcCheckout>>, TError,CreateStaffNfcCheckoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createStaffNfcCheckout>>, TError,CreateStaffNfcCheckoutMutationVariables, TContext> => {
+
+const mutationKey = getCreateStaffNfcCheckoutMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createStaffNfcCheckout>>, CreateStaffNfcCheckoutMutationVariables> = (props) => {
+          const {subscriptionId,params} = props ?? {};
+
+          return  createStaffNfcCheckout(subscriptionId,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateStaffNfcCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof createStaffNfcCheckout>>>
+
+    export type CreateStaffNfcCheckoutMutationError = ErrorType<StaffNfcError>
+    export type CreateStaffNfcCheckoutMutationVariables = {subscriptionId: number;params: CreateStaffNfcCheckoutParams}
+
+    /**
+ * @summary Idempotently initialize payment for the authenticated employee's unpaid term subscription
+ */
+export const useCreateStaffNfcCheckout = <TError = ErrorType<StaffNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStaffNfcCheckout>>, TError,CreateStaffNfcCheckoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createStaffNfcCheckout>>,
+        TError,
+        CreateStaffNfcCheckoutMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateStaffNfcCheckoutMutationOptions(options));
+    }
+
+export const getVerifyMyStaffNfcPaymentUrl = (params: VerifyMyStaffNfcPaymentParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/staff-nfc/payments/verify?${stringifiedParams}` : `/api/staff-nfc/payments/verify`
+}
+
+/**
+ * @summary Server-side verify an already-reserved Flutterwave payment; never trust a browser success callback
+ */
+export const verifyMyStaffNfcPayment = async (staffNfcVerificationInput: StaffNfcVerificationInput,
+    params: VerifyMyStaffNfcPaymentParams, options?: Parameters<typeof customFetch>[1]): Promise<StaffNfcPaymentResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<StaffNfcPaymentResponse>(getVerifyMyStaffNfcPaymentUrl(params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(staffNfcVerificationInput)
+  }
+);}
+
+
+
+
+
+export const getVerifyMyStaffNfcPaymentMutationKey = () => ['verifyMyStaffNfcPayment'] as const;
+
+export const getVerifyMyStaffNfcPaymentMutationOptions = <TError = ErrorType<StaffNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyMyStaffNfcPayment>>, TError,VerifyMyStaffNfcPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyMyStaffNfcPayment>>, TError,VerifyMyStaffNfcPaymentMutationVariables, TContext> => {
+
+const mutationKey = getVerifyMyStaffNfcPaymentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyMyStaffNfcPayment>>, VerifyMyStaffNfcPaymentMutationVariables> = (props) => {
+          const {data,params} = props ?? {};
+
+          return  verifyMyStaffNfcPayment(data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyMyStaffNfcPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof verifyMyStaffNfcPayment>>>
+    export type VerifyMyStaffNfcPaymentMutationBody = BodyType<StaffNfcVerificationInput>
+    export type VerifyMyStaffNfcPaymentMutationError = ErrorType<StaffNfcError>
+    export type VerifyMyStaffNfcPaymentMutationVariables = {data: BodyType<StaffNfcVerificationInput>;params: VerifyMyStaffNfcPaymentParams}
+
+    /**
+ * @summary Server-side verify an already-reserved Flutterwave payment; never trust a browser success callback
+ */
+export const useVerifyMyStaffNfcPayment = <TError = ErrorType<StaffNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyMyStaffNfcPayment>>, TError,VerifyMyStaffNfcPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyMyStaffNfcPayment>>,
+        TError,
+        VerifyMyStaffNfcPaymentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getVerifyMyStaffNfcPaymentMutationOptions(options));
+    }
+
+export const getGetStaffNfcReceiptUrl = (paymentId: number,
+    params: GetStaffNfcReceiptParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/staff-nfc/payments/${paymentId}/receipt?${stringifiedParams}` : `/api/staff-nfc/payments/${paymentId}/receipt`
+}
+
+/**
+ * @summary Return the immutable verified receipt within the employee, school or Owner Finance authorization scope
+ */
+export const getStaffNfcReceipt = async (paymentId: number,
+    params: GetStaffNfcReceiptParams, options?: Parameters<typeof customFetch>[1]): Promise<StaffNfcReceipt> => {
+
+  return customFetch<StaffNfcReceipt>(getGetStaffNfcReceiptUrl(paymentId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStaffNfcReceiptQueryKey = (paymentId: number,
+    params?: GetStaffNfcReceiptParams,) => {
+    return [
+    `/api/staff-nfc/payments/${paymentId}/receipt`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetStaffNfcReceiptQueryOptions = <TData = Awaited<ReturnType<typeof getStaffNfcReceipt>>, TError = ErrorType<StaffNfcError>>(paymentId: number,
+    params: GetStaffNfcReceiptParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStaffNfcReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStaffNfcReceiptQueryKey(paymentId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStaffNfcReceipt>>> = ({ signal }) => getStaffNfcReceipt(paymentId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: paymentId !== null && paymentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStaffNfcReceipt>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStaffNfcReceiptQueryResult = NonNullable<Awaited<ReturnType<typeof getStaffNfcReceipt>>>
+export type GetStaffNfcReceiptQueryError = ErrorType<StaffNfcError>
+
+
+/**
+ * @summary Return the immutable verified receipt within the employee, school or Owner Finance authorization scope
+ */
+
+export function useGetStaffNfcReceipt<TData = Awaited<ReturnType<typeof getStaffNfcReceipt>>, TError = ErrorType<StaffNfcError>>(
+ paymentId: number,
+    params: GetStaffNfcReceiptParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStaffNfcReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStaffNfcReceiptQueryOptions(paymentId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListStaffNfcBillingRulesUrl = (params?: ListStaffNfcBillingRulesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/finance/staff-nfc/billing-rules?${stringifiedParams}` : `/api/finance/staff-nfc/billing-rules`
+}
+
+/**
+ * @summary Owner-only version history of effective-dated immutable Teacher/Staff NFC per-term billing rules
+ */
+export const listStaffNfcBillingRules = async (params?: ListStaffNfcBillingRulesParams, options?: Parameters<typeof customFetch>[1]): Promise<StaffNfcBillingRule[]> => {
+
+  return customFetch<StaffNfcBillingRule[]>(getListStaffNfcBillingRulesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStaffNfcBillingRulesQueryKey = (params?: ListStaffNfcBillingRulesParams,) => {
+    return [
+    `/api/finance/staff-nfc/billing-rules`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListStaffNfcBillingRulesQueryOptions = <TData = Awaited<ReturnType<typeof listStaffNfcBillingRules>>, TError = ErrorType<StaffNfcError>>(params?: ListStaffNfcBillingRulesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStaffNfcBillingRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStaffNfcBillingRulesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStaffNfcBillingRules>>> = ({ signal }) => listStaffNfcBillingRules(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStaffNfcBillingRules>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListStaffNfcBillingRulesQueryResult = NonNullable<Awaited<ReturnType<typeof listStaffNfcBillingRules>>>
+export type ListStaffNfcBillingRulesQueryError = ErrorType<StaffNfcError>
+
+
+/**
+ * @summary Owner-only version history of effective-dated immutable Teacher/Staff NFC per-term billing rules
+ */
+
+export function useListStaffNfcBillingRules<TData = Awaited<ReturnType<typeof listStaffNfcBillingRules>>, TError = ErrorType<StaffNfcError>>(
+ params?: ListStaffNfcBillingRulesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStaffNfcBillingRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListStaffNfcBillingRulesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateStaffNfcBillingRuleUrl = () => {
+
+
+
+
+  return `/api/finance/staff-nfc/billing-rules`
+}
+
+/**
+ * @summary Owner-only create a new append-only effective-dated version; never rewrite historic subscriptions
+ */
+export const createStaffNfcBillingRule = async (staffNfcBillingRuleInput: StaffNfcBillingRuleInput, options?: Parameters<typeof customFetch>[1]): Promise<StaffNfcBillingRule> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<StaffNfcBillingRule>(getCreateStaffNfcBillingRuleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(staffNfcBillingRuleInput)
+  }
+);}
+
+
+
+
+
+export const getCreateStaffNfcBillingRuleMutationKey = () => ['createStaffNfcBillingRule'] as const;
+
+export const getCreateStaffNfcBillingRuleMutationOptions = <TError = ErrorType<StaffNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStaffNfcBillingRule>>, TError,CreateStaffNfcBillingRuleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createStaffNfcBillingRule>>, TError,CreateStaffNfcBillingRuleMutationVariables, TContext> => {
+
+const mutationKey = getCreateStaffNfcBillingRuleMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createStaffNfcBillingRule>>, CreateStaffNfcBillingRuleMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createStaffNfcBillingRule(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateStaffNfcBillingRuleMutationResult = NonNullable<Awaited<ReturnType<typeof createStaffNfcBillingRule>>>
+    export type CreateStaffNfcBillingRuleMutationBody = BodyType<StaffNfcBillingRuleInput>
+    export type CreateStaffNfcBillingRuleMutationError = ErrorType<StaffNfcError>
+    export type CreateStaffNfcBillingRuleMutationVariables = {data: BodyType<StaffNfcBillingRuleInput>}
+
+    /**
+ * @summary Owner-only create a new append-only effective-dated version; never rewrite historic subscriptions
+ */
+export const useCreateStaffNfcBillingRule = <TError = ErrorType<StaffNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStaffNfcBillingRule>>, TError,CreateStaffNfcBillingRuleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createStaffNfcBillingRule>>,
+        TError,
+        CreateStaffNfcBillingRuleMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateStaffNfcBillingRuleMutationOptions(options));
+    }
+
+export const getListStaffNfcFinanceUrl = (params?: ListStaffNfcFinanceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/finance/staff-nfc/subscriptions?${stringifiedParams}` : `/api/finance/staff-nfc/subscriptions`
+}
+
+/**
+ * @summary Role-scoped Finance subscription and allocation ledger; School Admin sees only its school and school share
+ */
+export const listStaffNfcFinance = async (params?: ListStaffNfcFinanceParams, options?: Parameters<typeof customFetch>[1]): Promise<StaffNfcFinanceResponse> => {
+
+  return customFetch<StaffNfcFinanceResponse>(getListStaffNfcFinanceUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStaffNfcFinanceQueryKey = (params?: ListStaffNfcFinanceParams,) => {
+    return [
+    `/api/finance/staff-nfc/subscriptions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListStaffNfcFinanceQueryOptions = <TData = Awaited<ReturnType<typeof listStaffNfcFinance>>, TError = ErrorType<StaffNfcError>>(params?: ListStaffNfcFinanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStaffNfcFinance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStaffNfcFinanceQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStaffNfcFinance>>> = ({ signal }) => listStaffNfcFinance(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStaffNfcFinance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListStaffNfcFinanceQueryResult = NonNullable<Awaited<ReturnType<typeof listStaffNfcFinance>>>
+export type ListStaffNfcFinanceQueryError = ErrorType<StaffNfcError>
+
+
+/**
+ * @summary Role-scoped Finance subscription and allocation ledger; School Admin sees only its school and school share
+ */
+
+export function useListStaffNfcFinance<TData = Awaited<ReturnType<typeof listStaffNfcFinance>>, TError = ErrorType<StaffNfcError>>(
+ params?: ListStaffNfcFinanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStaffNfcFinance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListStaffNfcFinanceQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRequestStaffNfcRefundUrl = (subscriptionId: number,
+    params: RequestStaffNfcRefundParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/finance/staff-nfc/subscriptions/${subscriptionId}/refunds?${stringifiedParams}` : `/api/finance/staff-nfc/subscriptions/${subscriptionId}/refunds`
+}
+
+/**
+ * @summary Owner/school-tenant-scoped request for an actual Flutterwave transaction refund; pending requests do not imply refund or reverse allocations
+ */
+export const requestStaffNfcRefund = async (subscriptionId: number,
+    staffNfcRefundInput: StaffNfcRefundInput,
+    params: RequestStaffNfcRefundParams, options?: Parameters<typeof customFetch>[1]): Promise<StaffNfcRefundResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<StaffNfcRefundResponse>(getRequestStaffNfcRefundUrl(subscriptionId,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(staffNfcRefundInput)
+  }
+);}
+
+
+
+
+
+export const getRequestStaffNfcRefundMutationKey = () => ['requestStaffNfcRefund'] as const;
+
+export const getRequestStaffNfcRefundMutationOptions = <TError = ErrorType<StaffNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestStaffNfcRefund>>, TError,RequestStaffNfcRefundMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestStaffNfcRefund>>, TError,RequestStaffNfcRefundMutationVariables, TContext> => {
+
+const mutationKey = getRequestStaffNfcRefundMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestStaffNfcRefund>>, RequestStaffNfcRefundMutationVariables> = (props) => {
+          const {subscriptionId,data,params} = props ?? {};
+
+          return  requestStaffNfcRefund(subscriptionId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestStaffNfcRefundMutationResult = NonNullable<Awaited<ReturnType<typeof requestStaffNfcRefund>>>
+    export type RequestStaffNfcRefundMutationBody = BodyType<StaffNfcRefundInput>
+    export type RequestStaffNfcRefundMutationError = ErrorType<StaffNfcError>
+    export type RequestStaffNfcRefundMutationVariables = {subscriptionId: number;data: BodyType<StaffNfcRefundInput>;params: RequestStaffNfcRefundParams}
+
+    /**
+ * @summary Owner/school-tenant-scoped request for an actual Flutterwave transaction refund; pending requests do not imply refund or reverse allocations
+ */
+export const useRequestStaffNfcRefund = <TError = ErrorType<StaffNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestStaffNfcRefund>>, TError,RequestStaffNfcRefundMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestStaffNfcRefund>>,
+        TError,
+        RequestStaffNfcRefundMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestStaffNfcRefundMutationOptions(options));
+    }
+
+export const getReconcileStaffNfcPaymentUrl = (paymentId: number,
+    params: ReconcileStaffNfcPaymentParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/finance/staff-nfc/payments/${paymentId}/reconcile?${stringifiedParams}` : `/api/finance/staff-nfc/payments/${paymentId}/reconcile`
+}
+
+/**
+ * @summary Safely recheck one ambiguous/pending persisted Flutterwave reference/transaction; cannot override status or allocate a client-supplied transaction
+ */
+export const reconcileStaffNfcPayment = async (paymentId: number,
+    params: ReconcileStaffNfcPaymentParams, options?: Parameters<typeof customFetch>[1]): Promise<StaffNfcPaymentResponse> => {
+
+  return customFetch<StaffNfcPaymentResponse>(getReconcileStaffNfcPaymentUrl(paymentId,params),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReconcileStaffNfcPaymentMutationKey = () => ['reconcileStaffNfcPayment'] as const;
+
+export const getReconcileStaffNfcPaymentMutationOptions = <TError = ErrorType<StaffNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileStaffNfcPayment>>, TError,ReconcileStaffNfcPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reconcileStaffNfcPayment>>, TError,ReconcileStaffNfcPaymentMutationVariables, TContext> => {
+
+const mutationKey = getReconcileStaffNfcPaymentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reconcileStaffNfcPayment>>, ReconcileStaffNfcPaymentMutationVariables> = (props) => {
+          const {paymentId,params} = props ?? {};
+
+          return  reconcileStaffNfcPayment(paymentId,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReconcileStaffNfcPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof reconcileStaffNfcPayment>>>
+
+    export type ReconcileStaffNfcPaymentMutationError = ErrorType<StaffNfcError>
+    export type ReconcileStaffNfcPaymentMutationVariables = {paymentId: number;params: ReconcileStaffNfcPaymentParams}
+
+    /**
+ * @summary Safely recheck one ambiguous/pending persisted Flutterwave reference/transaction; cannot override status or allocate a client-supplied transaction
+ */
+export const useReconcileStaffNfcPayment = <TError = ErrorType<StaffNfcError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileStaffNfcPayment>>, TError,ReconcileStaffNfcPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reconcileStaffNfcPayment>>,
+        TError,
+        ReconcileStaffNfcPaymentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReconcileStaffNfcPaymentMutationOptions(options));
+    }
+
+export const getGetMyStaffNfcPartnerCommissionsUrl = (params?: GetMyStaffNfcPartnerCommissionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/partner/staff-nfc/commissions?${stringifiedParams}` : `/api/partner/staff-nfc/commissions`
+}
+
+/**
+ * @summary Signed-in Partner's own valid-attribution staff NFC commission and term history only
+ */
+export const getMyStaffNfcPartnerCommissions = async (params?: GetMyStaffNfcPartnerCommissionsParams, options?: Parameters<typeof customFetch>[1]): Promise<StaffNfcPartnerResponse> => {
+
+  return customFetch<StaffNfcPartnerResponse>(getGetMyStaffNfcPartnerCommissionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyStaffNfcPartnerCommissionsQueryKey = (params?: GetMyStaffNfcPartnerCommissionsParams,) => {
+    return [
+    `/api/partner/staff-nfc/commissions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMyStaffNfcPartnerCommissionsQueryOptions = <TData = Awaited<ReturnType<typeof getMyStaffNfcPartnerCommissions>>, TError = ErrorType<StaffNfcError>>(params?: GetMyStaffNfcPartnerCommissionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyStaffNfcPartnerCommissions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyStaffNfcPartnerCommissionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyStaffNfcPartnerCommissions>>> = ({ signal }) => getMyStaffNfcPartnerCommissions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyStaffNfcPartnerCommissions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyStaffNfcPartnerCommissionsQueryResult = NonNullable<Awaited<ReturnType<typeof getMyStaffNfcPartnerCommissions>>>
+export type GetMyStaffNfcPartnerCommissionsQueryError = ErrorType<StaffNfcError>
+
+
+/**
+ * @summary Signed-in Partner's own valid-attribution staff NFC commission and term history only
+ */
+
+export function useGetMyStaffNfcPartnerCommissions<TData = Awaited<ReturnType<typeof getMyStaffNfcPartnerCommissions>>, TError = ErrorType<StaffNfcError>>(
+ params?: GetMyStaffNfcPartnerCommissionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyStaffNfcPartnerCommissions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyStaffNfcPartnerCommissionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getHandleStaffNfcFlutterwaveWebhookUrl = () => {
+
+
+
+
+  return `/api/webhooks/staff-nfc/flutterwave`
+}
+
+/**
+ * @summary Idempotently process only Flutterwave's signed event and independently verified matching persisted staff NFC transaction
+ */
+export const handleStaffNfcFlutterwaveWebhook = async (handleStaffNfcFlutterwaveWebhookBody: HandleStaffNfcFlutterwaveWebhookBody, options?: Parameters<typeof customFetch>[1]): Promise<StaffNfcWebhookAck> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<StaffNfcWebhookAck>(getHandleStaffNfcFlutterwaveWebhookUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(handleStaffNfcFlutterwaveWebhookBody)
+  }
+);}
+
+
+
+
+
+export const getHandleStaffNfcFlutterwaveWebhookMutationKey = () => ['handleStaffNfcFlutterwaveWebhook'] as const;
+
+export const getHandleStaffNfcFlutterwaveWebhookMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof handleStaffNfcFlutterwaveWebhook>>, TError,HandleStaffNfcFlutterwaveWebhookMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof handleStaffNfcFlutterwaveWebhook>>, TError,HandleStaffNfcFlutterwaveWebhookMutationVariables, TContext> => {
+
+const mutationKey = getHandleStaffNfcFlutterwaveWebhookMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof handleStaffNfcFlutterwaveWebhook>>, HandleStaffNfcFlutterwaveWebhookMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  handleStaffNfcFlutterwaveWebhook(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type HandleStaffNfcFlutterwaveWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof handleStaffNfcFlutterwaveWebhook>>>
+    export type HandleStaffNfcFlutterwaveWebhookMutationBody = BodyType<HandleStaffNfcFlutterwaveWebhookBody>
+    export type HandleStaffNfcFlutterwaveWebhookMutationError = ErrorType<void>
+    export type HandleStaffNfcFlutterwaveWebhookMutationVariables = {data: BodyType<HandleStaffNfcFlutterwaveWebhookBody>}
+
+    /**
+ * @summary Idempotently process only Flutterwave's signed event and independently verified matching persisted staff NFC transaction
+ */
+export const useHandleStaffNfcFlutterwaveWebhook = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof handleStaffNfcFlutterwaveWebhook>>, TError,HandleStaffNfcFlutterwaveWebhookMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof handleStaffNfcFlutterwaveWebhook>>,
+        TError,
+        HandleStaffNfcFlutterwaveWebhookMutationVariables,
+        TContext
+      > => {
+      return useMutation(getHandleStaffNfcFlutterwaveWebhookMutationOptions(options));
+    }
+
+export const getListTransportBusesUrl = (params: ListTransportBusesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/buses?${stringifiedParams}` : `/api/transport/buses`
+}
+
+export const listTransportBuses = async (params: ListTransportBusesParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportBus[]> => {
+
+  return customFetch<TransportBus[]>(getListTransportBusesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTransportBusesQueryKey = (params?: ListTransportBusesParams,) => {
+    return [
+    `/api/transport/buses`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListTransportBusesQueryOptions = <TData = Awaited<ReturnType<typeof listTransportBuses>>, TError = ErrorType<TransportError>>(params: ListTransportBusesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransportBuses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTransportBusesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTransportBuses>>> = ({ signal }) => listTransportBuses(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTransportBuses>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTransportBusesQueryResult = NonNullable<Awaited<ReturnType<typeof listTransportBuses>>>
+export type ListTransportBusesQueryError = ErrorType<TransportError>
+
+
+
+export function useListTransportBuses<TData = Awaited<ReturnType<typeof listTransportBuses>>, TError = ErrorType<TransportError>>(
+ params: ListTransportBusesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransportBuses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTransportBusesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateTransportBusUrl = (params: CreateTransportBusParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/buses?${stringifiedParams}` : `/api/transport/buses`
+}
+
+export const createTransportBus = async (transportBusInput: TransportBusInput,
+    params: CreateTransportBusParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportBus> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TransportBus>(getCreateTransportBusUrl(params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(transportBusInput)
+  }
+);}
+
+
+
+
+
+export const getCreateTransportBusMutationKey = () => ['createTransportBus'] as const;
+
+export const getCreateTransportBusMutationOptions = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTransportBus>>, TError,CreateTransportBusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTransportBus>>, TError,CreateTransportBusMutationVariables, TContext> => {
+
+const mutationKey = getCreateTransportBusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTransportBus>>, CreateTransportBusMutationVariables> = (props) => {
+          const {data,params} = props ?? {};
+
+          return  createTransportBus(data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTransportBusMutationResult = NonNullable<Awaited<ReturnType<typeof createTransportBus>>>
+    export type CreateTransportBusMutationBody = BodyType<TransportBusInput>
+    export type CreateTransportBusMutationError = ErrorType<TransportError>
+    export type CreateTransportBusMutationVariables = {data: BodyType<TransportBusInput>;params: CreateTransportBusParams}
+
+    export const useCreateTransportBus = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTransportBus>>, TError,CreateTransportBusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createTransportBus>>,
+        TError,
+        CreateTransportBusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateTransportBusMutationOptions(options));
+    }
+
+export const getUpdateTransportBusUrl = (busId: number,
+    params: UpdateTransportBusParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/buses/${busId}?${stringifiedParams}` : `/api/transport/buses/${busId}`
+}
+
+export const updateTransportBus = async (busId: number,
+    transportBusUpdate: TransportBusUpdate,
+    params: UpdateTransportBusParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportBus> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TransportBus>(getUpdateTransportBusUrl(busId,params),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(transportBusUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateTransportBusMutationKey = () => ['updateTransportBus'] as const;
+
+export const getUpdateTransportBusMutationOptions = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTransportBus>>, TError,UpdateTransportBusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateTransportBus>>, TError,UpdateTransportBusMutationVariables, TContext> => {
+
+const mutationKey = getUpdateTransportBusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateTransportBus>>, UpdateTransportBusMutationVariables> = (props) => {
+          const {busId,data,params} = props ?? {};
+
+          return  updateTransportBus(busId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateTransportBusMutationResult = NonNullable<Awaited<ReturnType<typeof updateTransportBus>>>
+    export type UpdateTransportBusMutationBody = BodyType<TransportBusUpdate>
+    export type UpdateTransportBusMutationError = ErrorType<TransportError>
+    export type UpdateTransportBusMutationVariables = {busId: number;data: BodyType<TransportBusUpdate>;params: UpdateTransportBusParams}
+
+    export const useUpdateTransportBus = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTransportBus>>, TError,UpdateTransportBusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateTransportBus>>,
+        TError,
+        UpdateTransportBusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateTransportBusMutationOptions(options));
+    }
+
+export const getSearchTransportDriversUrl = (params: SearchTransportDriversParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/drivers?${stringifiedParams}` : `/api/transport/drivers`
+}
+
+export const searchTransportDrivers = async (params: SearchTransportDriversParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportDriver[]> => {
+
+  return customFetch<TransportDriver[]>(getSearchTransportDriversUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSearchTransportDriversQueryKey = (params?: SearchTransportDriversParams,) => {
+    return [
+    `/api/transport/drivers`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSearchTransportDriversQueryOptions = <TData = Awaited<ReturnType<typeof searchTransportDrivers>>, TError = ErrorType<TransportError>>(params: SearchTransportDriversParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchTransportDrivers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchTransportDriversQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchTransportDrivers>>> = ({ signal }) => searchTransportDrivers(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchTransportDrivers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type SearchTransportDriversQueryResult = NonNullable<Awaited<ReturnType<typeof searchTransportDrivers>>>
+export type SearchTransportDriversQueryError = ErrorType<TransportError>
+
+
+
+export function useSearchTransportDrivers<TData = Awaited<ReturnType<typeof searchTransportDrivers>>, TError = ErrorType<TransportError>>(
+ params: SearchTransportDriversParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchTransportDrivers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getSearchTransportDriversQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListTransportRoutesUrl = (params: ListTransportRoutesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/routes?${stringifiedParams}` : `/api/transport/routes`
+}
+
+export const listTransportRoutes = async (params: ListTransportRoutesParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportRoute[]> => {
+
+  return customFetch<TransportRoute[]>(getListTransportRoutesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTransportRoutesQueryKey = (params?: ListTransportRoutesParams,) => {
+    return [
+    `/api/transport/routes`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListTransportRoutesQueryOptions = <TData = Awaited<ReturnType<typeof listTransportRoutes>>, TError = ErrorType<TransportError>>(params: ListTransportRoutesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransportRoutes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTransportRoutesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTransportRoutes>>> = ({ signal }) => listTransportRoutes(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTransportRoutes>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTransportRoutesQueryResult = NonNullable<Awaited<ReturnType<typeof listTransportRoutes>>>
+export type ListTransportRoutesQueryError = ErrorType<TransportError>
+
+
+
+export function useListTransportRoutes<TData = Awaited<ReturnType<typeof listTransportRoutes>>, TError = ErrorType<TransportError>>(
+ params: ListTransportRoutesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransportRoutes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTransportRoutesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateTransportRouteUrl = (params: CreateTransportRouteParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/routes?${stringifiedParams}` : `/api/transport/routes`
+}
+
+export const createTransportRoute = async (transportRouteInput: TransportRouteInput,
+    params: CreateTransportRouteParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportRoute> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TransportRoute>(getCreateTransportRouteUrl(params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(transportRouteInput)
+  }
+);}
+
+
+
+
+
+export const getCreateTransportRouteMutationKey = () => ['createTransportRoute'] as const;
+
+export const getCreateTransportRouteMutationOptions = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTransportRoute>>, TError,CreateTransportRouteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTransportRoute>>, TError,CreateTransportRouteMutationVariables, TContext> => {
+
+const mutationKey = getCreateTransportRouteMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTransportRoute>>, CreateTransportRouteMutationVariables> = (props) => {
+          const {data,params} = props ?? {};
+
+          return  createTransportRoute(data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTransportRouteMutationResult = NonNullable<Awaited<ReturnType<typeof createTransportRoute>>>
+    export type CreateTransportRouteMutationBody = BodyType<TransportRouteInput>
+    export type CreateTransportRouteMutationError = ErrorType<TransportError>
+    export type CreateTransportRouteMutationVariables = {data: BodyType<TransportRouteInput>;params: CreateTransportRouteParams}
+
+    export const useCreateTransportRoute = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTransportRoute>>, TError,CreateTransportRouteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createTransportRoute>>,
+        TError,
+        CreateTransportRouteMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateTransportRouteMutationOptions(options));
+    }
+
+export const getUpdateTransportRouteUrl = (routeId: number,
+    params: UpdateTransportRouteParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/routes/${routeId}?${stringifiedParams}` : `/api/transport/routes/${routeId}`
+}
+
+export const updateTransportRoute = async (routeId: number,
+    transportRouteUpdate: TransportRouteUpdate,
+    params: UpdateTransportRouteParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportRoute> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TransportRoute>(getUpdateTransportRouteUrl(routeId,params),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(transportRouteUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateTransportRouteMutationKey = () => ['updateTransportRoute'] as const;
+
+export const getUpdateTransportRouteMutationOptions = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTransportRoute>>, TError,UpdateTransportRouteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateTransportRoute>>, TError,UpdateTransportRouteMutationVariables, TContext> => {
+
+const mutationKey = getUpdateTransportRouteMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateTransportRoute>>, UpdateTransportRouteMutationVariables> = (props) => {
+          const {routeId,data,params} = props ?? {};
+
+          return  updateTransportRoute(routeId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateTransportRouteMutationResult = NonNullable<Awaited<ReturnType<typeof updateTransportRoute>>>
+    export type UpdateTransportRouteMutationBody = BodyType<TransportRouteUpdate>
+    export type UpdateTransportRouteMutationError = ErrorType<TransportError>
+    export type UpdateTransportRouteMutationVariables = {routeId: number;data: BodyType<TransportRouteUpdate>;params: UpdateTransportRouteParams}
+
+    export const useUpdateTransportRoute = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTransportRoute>>, TError,UpdateTransportRouteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateTransportRoute>>,
+        TError,
+        UpdateTransportRouteMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateTransportRouteMutationOptions(options));
+    }
+
+export const getAddTransportStopUrl = (routeId: number,
+    params: AddTransportStopParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/routes/${routeId}/stops?${stringifiedParams}` : `/api/transport/routes/${routeId}/stops`
+}
+
+export const addTransportStop = async (routeId: number,
+    transportStopInput: TransportStopInput,
+    params: AddTransportStopParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportStop> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TransportStop>(getAddTransportStopUrl(routeId,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(transportStopInput)
+  }
+);}
+
+
+
+
+
+export const getAddTransportStopMutationKey = () => ['addTransportStop'] as const;
+
+export const getAddTransportStopMutationOptions = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addTransportStop>>, TError,AddTransportStopMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addTransportStop>>, TError,AddTransportStopMutationVariables, TContext> => {
+
+const mutationKey = getAddTransportStopMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addTransportStop>>, AddTransportStopMutationVariables> = (props) => {
+          const {routeId,data,params} = props ?? {};
+
+          return  addTransportStop(routeId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddTransportStopMutationResult = NonNullable<Awaited<ReturnType<typeof addTransportStop>>>
+    export type AddTransportStopMutationBody = BodyType<TransportStopInput>
+    export type AddTransportStopMutationError = ErrorType<TransportError>
+    export type AddTransportStopMutationVariables = {routeId: number;data: BodyType<TransportStopInput>;params: AddTransportStopParams}
+
+    export const useAddTransportStop = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addTransportStop>>, TError,AddTransportStopMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addTransportStop>>,
+        TError,
+        AddTransportStopMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAddTransportStopMutationOptions(options));
+    }
+
+export const getUpdateTransportStopUrl = (routeId: number,
+    stopId: number,
+    params: UpdateTransportStopParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/routes/${routeId}/stops/${stopId}?${stringifiedParams}` : `/api/transport/routes/${routeId}/stops/${stopId}`
+}
+
+export const updateTransportStop = async (routeId: number,
+    stopId: number,
+    transportStopInput: TransportStopInput,
+    params: UpdateTransportStopParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportStop> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TransportStop>(getUpdateTransportStopUrl(routeId,stopId,params),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(transportStopInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateTransportStopMutationKey = () => ['updateTransportStop'] as const;
+
+export const getUpdateTransportStopMutationOptions = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTransportStop>>, TError,UpdateTransportStopMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateTransportStop>>, TError,UpdateTransportStopMutationVariables, TContext> => {
+
+const mutationKey = getUpdateTransportStopMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateTransportStop>>, UpdateTransportStopMutationVariables> = (props) => {
+          const {routeId,stopId,data,params} = props ?? {};
+
+          return  updateTransportStop(routeId,stopId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateTransportStopMutationResult = NonNullable<Awaited<ReturnType<typeof updateTransportStop>>>
+    export type UpdateTransportStopMutationBody = BodyType<TransportStopInput>
+    export type UpdateTransportStopMutationError = ErrorType<TransportError>
+    export type UpdateTransportStopMutationVariables = {routeId: number;stopId: number;data: BodyType<TransportStopInput>;params: UpdateTransportStopParams}
+
+    export const useUpdateTransportStop = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTransportStop>>, TError,UpdateTransportStopMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateTransportStop>>,
+        TError,
+        UpdateTransportStopMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateTransportStopMutationOptions(options));
+    }
+
+export const getSearchTransportStudentsUrl = (params: SearchTransportStudentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/students?${stringifiedParams}` : `/api/transport/students`
+}
+
+/**
+ * School-staff-only searchable view over existing same-school student and active parent records. Does not create or modify student records.
+ */
+export const searchTransportStudents = async (params: SearchTransportStudentsParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportStudentOption[]> => {
+
+  return customFetch<TransportStudentOption[]>(getSearchTransportStudentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSearchTransportStudentsQueryKey = (params?: SearchTransportStudentsParams,) => {
+    return [
+    `/api/transport/students`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSearchTransportStudentsQueryOptions = <TData = Awaited<ReturnType<typeof searchTransportStudents>>, TError = ErrorType<TransportError>>(params: SearchTransportStudentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchTransportStudents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchTransportStudentsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchTransportStudents>>> = ({ signal }) => searchTransportStudents(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchTransportStudents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type SearchTransportStudentsQueryResult = NonNullable<Awaited<ReturnType<typeof searchTransportStudents>>>
+export type SearchTransportStudentsQueryError = ErrorType<TransportError>
+
+
+
+export function useSearchTransportStudents<TData = Awaited<ReturnType<typeof searchTransportStudents>>, TError = ErrorType<TransportError>>(
+ params: SearchTransportStudentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchTransportStudents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getSearchTransportStudentsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListTransportAssignmentsUrl = (params: ListTransportAssignmentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/assignments?${stringifiedParams}` : `/api/transport/assignments`
+}
+
+export const listTransportAssignments = async (params: ListTransportAssignmentsParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportAssignment[]> => {
+
+  return customFetch<TransportAssignment[]>(getListTransportAssignmentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTransportAssignmentsQueryKey = (params?: ListTransportAssignmentsParams,) => {
+    return [
+    `/api/transport/assignments`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListTransportAssignmentsQueryOptions = <TData = Awaited<ReturnType<typeof listTransportAssignments>>, TError = ErrorType<TransportError>>(params: ListTransportAssignmentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransportAssignments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTransportAssignmentsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTransportAssignments>>> = ({ signal }) => listTransportAssignments(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTransportAssignments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTransportAssignmentsQueryResult = NonNullable<Awaited<ReturnType<typeof listTransportAssignments>>>
+export type ListTransportAssignmentsQueryError = ErrorType<TransportError>
+
+
+
+export function useListTransportAssignments<TData = Awaited<ReturnType<typeof listTransportAssignments>>, TError = ErrorType<TransportError>>(
+ params: ListTransportAssignmentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransportAssignments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTransportAssignmentsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateTransportAssignmentUrl = (params: CreateTransportAssignmentParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/assignments?${stringifiedParams}` : `/api/transport/assignments`
+}
+
+export const createTransportAssignment = async (transportAssignmentInput: TransportAssignmentInput,
+    params: CreateTransportAssignmentParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportAssignment> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TransportAssignment>(getCreateTransportAssignmentUrl(params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(transportAssignmentInput)
+  }
+);}
+
+
+
+
+
+export const getCreateTransportAssignmentMutationKey = () => ['createTransportAssignment'] as const;
+
+export const getCreateTransportAssignmentMutationOptions = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTransportAssignment>>, TError,CreateTransportAssignmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTransportAssignment>>, TError,CreateTransportAssignmentMutationVariables, TContext> => {
+
+const mutationKey = getCreateTransportAssignmentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTransportAssignment>>, CreateTransportAssignmentMutationVariables> = (props) => {
+          const {data,params} = props ?? {};
+
+          return  createTransportAssignment(data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTransportAssignmentMutationResult = NonNullable<Awaited<ReturnType<typeof createTransportAssignment>>>
+    export type CreateTransportAssignmentMutationBody = BodyType<TransportAssignmentInput>
+    export type CreateTransportAssignmentMutationError = ErrorType<TransportError>
+    export type CreateTransportAssignmentMutationVariables = {data: BodyType<TransportAssignmentInput>;params: CreateTransportAssignmentParams}
+
+    export const useCreateTransportAssignment = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTransportAssignment>>, TError,CreateTransportAssignmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createTransportAssignment>>,
+        TError,
+        CreateTransportAssignmentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateTransportAssignmentMutationOptions(options));
+    }
+
+export const getUpdateTransportAssignmentUrl = (assignmentId: number,
+    params: UpdateTransportAssignmentParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/assignments/${assignmentId}?${stringifiedParams}` : `/api/transport/assignments/${assignmentId}`
+}
+
+/**
+ * Changes school-controlled assignment status or bus, route, pickup and drop-off; each successful change records a separate immutable history event and effective date/reason.
+ */
+export const updateTransportAssignment = async (assignmentId: number,
+    transportAssignmentUpdate: TransportAssignmentUpdate,
+    params: UpdateTransportAssignmentParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportAssignment> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TransportAssignment>(getUpdateTransportAssignmentUrl(assignmentId,params),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(transportAssignmentUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateTransportAssignmentMutationKey = () => ['updateTransportAssignment'] as const;
+
+export const getUpdateTransportAssignmentMutationOptions = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTransportAssignment>>, TError,UpdateTransportAssignmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateTransportAssignment>>, TError,UpdateTransportAssignmentMutationVariables, TContext> => {
+
+const mutationKey = getUpdateTransportAssignmentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateTransportAssignment>>, UpdateTransportAssignmentMutationVariables> = (props) => {
+          const {assignmentId,data,params} = props ?? {};
+
+          return  updateTransportAssignment(assignmentId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateTransportAssignmentMutationResult = NonNullable<Awaited<ReturnType<typeof updateTransportAssignment>>>
+    export type UpdateTransportAssignmentMutationBody = BodyType<TransportAssignmentUpdate>
+    export type UpdateTransportAssignmentMutationError = ErrorType<TransportError>
+    export type UpdateTransportAssignmentMutationVariables = {assignmentId: number;data: BodyType<TransportAssignmentUpdate>;params: UpdateTransportAssignmentParams}
+
+    export const useUpdateTransportAssignment = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTransportAssignment>>, TError,UpdateTransportAssignmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateTransportAssignment>>,
+        TError,
+        UpdateTransportAssignmentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateTransportAssignmentMutationOptions(options));
+    }
+
+export const getGetTransportAssignmentHistoryUrl = (assignmentId: number,
+    params: GetTransportAssignmentHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/assignments/${assignmentId}/history?${stringifiedParams}` : `/api/transport/assignments/${assignmentId}/history`
+}
+
+export const getTransportAssignmentHistory = async (assignmentId: number,
+    params: GetTransportAssignmentHistoryParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportHistoryEntry[]> => {
+
+  return customFetch<TransportHistoryEntry[]>(getGetTransportAssignmentHistoryUrl(assignmentId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTransportAssignmentHistoryQueryKey = (assignmentId: number,
+    params?: GetTransportAssignmentHistoryParams,) => {
+    return [
+    `/api/transport/assignments/${assignmentId}/history`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetTransportAssignmentHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getTransportAssignmentHistory>>, TError = ErrorType<TransportError>>(assignmentId: number,
+    params: GetTransportAssignmentHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTransportAssignmentHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTransportAssignmentHistoryQueryKey(assignmentId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTransportAssignmentHistory>>> = ({ signal }) => getTransportAssignmentHistory(assignmentId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: assignmentId !== null && assignmentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTransportAssignmentHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTransportAssignmentHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getTransportAssignmentHistory>>>
+export type GetTransportAssignmentHistoryQueryError = ErrorType<TransportError>
+
+
+
+export function useGetTransportAssignmentHistory<TData = Awaited<ReturnType<typeof getTransportAssignmentHistory>>, TError = ErrorType<TransportError>>(
+ assignmentId: number,
+    params: GetTransportAssignmentHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTransportAssignmentHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTransportAssignmentHistoryQueryOptions(assignmentId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListTransportRequestsUrl = (params: ListTransportRequestsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/requests?${stringifiedParams}` : `/api/transport/requests`
+}
+
+export const listTransportRequests = async (params: ListTransportRequestsParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportRequest[]> => {
+
+  return customFetch<TransportRequest[]>(getListTransportRequestsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTransportRequestsQueryKey = (params?: ListTransportRequestsParams,) => {
+    return [
+    `/api/transport/requests`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListTransportRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listTransportRequests>>, TError = ErrorType<TransportError>>(params: ListTransportRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransportRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTransportRequestsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTransportRequests>>> = ({ signal }) => listTransportRequests(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTransportRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTransportRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listTransportRequests>>>
+export type ListTransportRequestsQueryError = ErrorType<TransportError>
+
+
+
+export function useListTransportRequests<TData = Awaited<ReturnType<typeof listTransportRequests>>, TError = ErrorType<TransportError>>(
+ params: ListTransportRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransportRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTransportRequestsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReviewTransportRequestUrl = (params: ReviewTransportRequestParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/requests?${stringifiedParams}` : `/api/transport/requests`
+}
+
+export const reviewTransportRequest = async (transportRequestDecision: TransportRequestDecision,
+    params: ReviewTransportRequestParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportRequest> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TransportRequest>(getReviewTransportRequestUrl(params),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(transportRequestDecision)
+  }
+);}
+
+
+
+
+
+export const getReviewTransportRequestMutationKey = () => ['reviewTransportRequest'] as const;
+
+export const getReviewTransportRequestMutationOptions = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewTransportRequest>>, TError,ReviewTransportRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewTransportRequest>>, TError,ReviewTransportRequestMutationVariables, TContext> => {
+
+const mutationKey = getReviewTransportRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewTransportRequest>>, ReviewTransportRequestMutationVariables> = (props) => {
+          const {data,params} = props ?? {};
+
+          return  reviewTransportRequest(data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewTransportRequestMutationResult = NonNullable<Awaited<ReturnType<typeof reviewTransportRequest>>>
+    export type ReviewTransportRequestMutationBody = BodyType<TransportRequestDecision>
+    export type ReviewTransportRequestMutationError = ErrorType<TransportError>
+    export type ReviewTransportRequestMutationVariables = {data: BodyType<TransportRequestDecision>;params: ReviewTransportRequestParams}
+
+    export const useReviewTransportRequest = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewTransportRequest>>, TError,ReviewTransportRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewTransportRequest>>,
+        TError,
+        ReviewTransportRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReviewTransportRequestMutationOptions(options));
+    }
+
+export const getGetChildTransportUrl = (studentId: number,) => {
+
+
+
+
+  return `/api/parent/children/${studentId}/transport`
+}
+
+export const getChildTransport = async (studentId: number, options?: Parameters<typeof customFetch>[1]): Promise<TransportSelfView> => {
+
+  return customFetch<TransportSelfView>(getGetChildTransportUrl(studentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChildTransportQueryKey = (studentId: number,) => {
+    return [
+    `/api/parent/children/${studentId}/transport`
+    ] as const;
+    }
+
+
+export const getGetChildTransportQueryOptions = <TData = Awaited<ReturnType<typeof getChildTransport>>, TError = ErrorType<TransportError>>(studentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChildTransport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChildTransportQueryKey(studentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChildTransport>>> = ({ signal }) => getChildTransport(studentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: studentId !== null && studentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChildTransport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChildTransportQueryResult = NonNullable<Awaited<ReturnType<typeof getChildTransport>>>
+export type GetChildTransportQueryError = ErrorType<TransportError>
+
+
+
+export function useGetChildTransport<TData = Awaited<ReturnType<typeof getChildTransport>>, TError = ErrorType<TransportError>>(
+ studentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChildTransport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChildTransportQueryOptions(studentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListChildTransportRequestsUrl = (studentId: number,) => {
+
+
+
+
+  return `/api/parent/children/${studentId}/transport/requests`
+}
+
+export const listChildTransportRequests = async (studentId: number, options?: Parameters<typeof customFetch>[1]): Promise<TransportRequest[]> => {
+
+  return customFetch<TransportRequest[]>(getListChildTransportRequestsUrl(studentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListChildTransportRequestsQueryKey = (studentId: number,) => {
+    return [
+    `/api/parent/children/${studentId}/transport/requests`
+    ] as const;
+    }
+
+
+export const getListChildTransportRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listChildTransportRequests>>, TError = ErrorType<TransportError>>(studentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listChildTransportRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListChildTransportRequestsQueryKey(studentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listChildTransportRequests>>> = ({ signal }) => listChildTransportRequests(studentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: studentId !== null && studentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listChildTransportRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListChildTransportRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listChildTransportRequests>>>
+export type ListChildTransportRequestsQueryError = ErrorType<TransportError>
+
+
+
+export function useListChildTransportRequests<TData = Awaited<ReturnType<typeof listChildTransportRequests>>, TError = ErrorType<TransportError>>(
+ studentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listChildTransportRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListChildTransportRequestsQueryOptions(studentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRequestChildTransportChangeUrl = (studentId: number,) => {
+
+
+
+
+  return `/api/parent/children/${studentId}/transport/requests`
+}
+
+/**
+ * Submits a request only; it does not erase, activate, suspend, or deactivate a student assignment. The school retains operational control and explicitly approves or declines the request.
+ */
+export const requestChildTransportChange = async (studentId: number,
+    transportRequestInput: TransportRequestInput, options?: Parameters<typeof customFetch>[1]): Promise<TransportRequest> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TransportRequest>(getRequestChildTransportChangeUrl(studentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(transportRequestInput)
+  }
+);}
+
+
+
+
+
+export const getRequestChildTransportChangeMutationKey = () => ['requestChildTransportChange'] as const;
+
+export const getRequestChildTransportChangeMutationOptions = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestChildTransportChange>>, TError,RequestChildTransportChangeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestChildTransportChange>>, TError,RequestChildTransportChangeMutationVariables, TContext> => {
+
+const mutationKey = getRequestChildTransportChangeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestChildTransportChange>>, RequestChildTransportChangeMutationVariables> = (props) => {
+          const {studentId,data} = props ?? {};
+
+          return  requestChildTransportChange(studentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestChildTransportChangeMutationResult = NonNullable<Awaited<ReturnType<typeof requestChildTransportChange>>>
+    export type RequestChildTransportChangeMutationBody = BodyType<TransportRequestInput>
+    export type RequestChildTransportChangeMutationError = ErrorType<TransportError>
+    export type RequestChildTransportChangeMutationVariables = {studentId: number;data: BodyType<TransportRequestInput>}
+
+    export const useRequestChildTransportChange = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestChildTransportChange>>, TError,RequestChildTransportChangeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestChildTransportChange>>,
+        TError,
+        RequestChildTransportChangeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestChildTransportChangeMutationOptions(options));
+    }
+
+export const getGetChildTransportHistoryUrl = (studentId: number,) => {
+
+
+
+
+  return `/api/parent/children/${studentId}/transport/history`
+}
+
+export const getChildTransportHistory = async (studentId: number, options?: Parameters<typeof customFetch>[1]): Promise<TransportHistoryEntry[]> => {
+
+  return customFetch<TransportHistoryEntry[]>(getGetChildTransportHistoryUrl(studentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChildTransportHistoryQueryKey = (studentId: number,) => {
+    return [
+    `/api/parent/children/${studentId}/transport/history`
+    ] as const;
+    }
+
+
+export const getGetChildTransportHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getChildTransportHistory>>, TError = ErrorType<TransportError>>(studentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChildTransportHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChildTransportHistoryQueryKey(studentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChildTransportHistory>>> = ({ signal }) => getChildTransportHistory(studentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: studentId !== null && studentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChildTransportHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChildTransportHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getChildTransportHistory>>>
+export type GetChildTransportHistoryQueryError = ErrorType<TransportError>
+
+
+
+export function useGetChildTransportHistory<TData = Awaited<ReturnType<typeof getChildTransportHistory>>, TError = ErrorType<TransportError>>(
+ studentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChildTransportHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChildTransportHistoryQueryOptions(studentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetOwnStudentTransportUrl = () => {
+
+
+
+
+  return `/api/student/transport`
+}
+
+export const getOwnStudentTransport = async ( options?: Parameters<typeof customFetch>[1]): Promise<TransportSelfView> => {
+
+  return customFetch<TransportSelfView>(getGetOwnStudentTransportUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOwnStudentTransportQueryKey = () => {
+    return [
+    `/api/student/transport`
+    ] as const;
+    }
+
+
+export const getGetOwnStudentTransportQueryOptions = <TData = Awaited<ReturnType<typeof getOwnStudentTransport>>, TError = ErrorType<TransportError>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnStudentTransport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOwnStudentTransportQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnStudentTransport>>> = ({ signal }) => getOwnStudentTransport({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOwnStudentTransport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOwnStudentTransportQueryResult = NonNullable<Awaited<ReturnType<typeof getOwnStudentTransport>>>
+export type GetOwnStudentTransportQueryError = ErrorType<TransportError>
+
+
+
+export function useGetOwnStudentTransport<TData = Awaited<ReturnType<typeof getOwnStudentTransport>>, TError = ErrorType<TransportError>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnStudentTransport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOwnStudentTransportQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetOwnStudentTransportHistoryUrl = () => {
+
+
+
+
+  return `/api/student/transport/history`
+}
+
+export const getOwnStudentTransportHistory = async ( options?: Parameters<typeof customFetch>[1]): Promise<TransportHistoryEntry[]> => {
+
+  return customFetch<TransportHistoryEntry[]>(getGetOwnStudentTransportHistoryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOwnStudentTransportHistoryQueryKey = () => {
+    return [
+    `/api/student/transport/history`
+    ] as const;
+    }
+
+
+export const getGetOwnStudentTransportHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getOwnStudentTransportHistory>>, TError = ErrorType<TransportError>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnStudentTransportHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOwnStudentTransportHistoryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnStudentTransportHistory>>> = ({ signal }) => getOwnStudentTransportHistory({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOwnStudentTransportHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOwnStudentTransportHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getOwnStudentTransportHistory>>>
+export type GetOwnStudentTransportHistoryQueryError = ErrorType<TransportError>
+
+
+
+export function useGetOwnStudentTransportHistory<TData = Awaited<ReturnType<typeof getOwnStudentTransportHistory>>, TError = ErrorType<TransportError>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnStudentTransportHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOwnStudentTransportHistoryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPlatformTransportOverviewUrl = (params?: GetPlatformTransportOverviewParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/platform/transport-overview?${stringifiedParams}` : `/api/platform/transport-overview`
+}
+
+/**
+ * Explicit read-only global Platform Owner aggregate. Does not confer school operating access or expose parent contact, salary or bank details.
+ */
+export const getPlatformTransportOverview = async (params?: GetPlatformTransportOverviewParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportOwnerSchoolSummary[]> => {
+
+  return customFetch<TransportOwnerSchoolSummary[]>(getGetPlatformTransportOverviewUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPlatformTransportOverviewQueryKey = (params?: GetPlatformTransportOverviewParams,) => {
+    return [
+    `/api/platform/transport-overview`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPlatformTransportOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getPlatformTransportOverview>>, TError = ErrorType<TransportError>>(params?: GetPlatformTransportOverviewParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPlatformTransportOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPlatformTransportOverviewQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPlatformTransportOverview>>> = ({ signal }) => getPlatformTransportOverview(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPlatformTransportOverview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPlatformTransportOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof getPlatformTransportOverview>>>
+export type GetPlatformTransportOverviewQueryError = ErrorType<TransportError>
+
+
+
+export function useGetPlatformTransportOverview<TData = Awaited<ReturnType<typeof getPlatformTransportOverview>>, TError = ErrorType<TransportError>>(
+ params?: GetPlatformTransportOverviewParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPlatformTransportOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPlatformTransportOverviewQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

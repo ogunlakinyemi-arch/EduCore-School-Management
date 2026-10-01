@@ -13,7 +13,13 @@ import {
   type ReportFilters,
   type ReportResult,
 } from "./reporting/core";
-import { serializeReportExport, type ReportExportFormat } from "./reporting/exports";
+import {
+  serializeReportExport,
+  serializeSchoolBrandedPdfExport,
+  type ReportExportFormat,
+  type SerializedReportExport,
+} from "./reporting/exports";
+import { readValidatedSchoolLogo } from "../lib/schoolLogoStorage";
 
 const router = Router();
 router.use("/reports", requireAuthentication());
@@ -108,7 +114,35 @@ router.get("/reports/:reportId/export", asyncRoute(async (req, res) => {
   const filters = authorizedFilters(req, definition, true);
   const context = await resolveReportContext(req, definition.roles, filters);
   const result = visibleResult(await definition.run(context, filters), filters.limit);
-  const file = serializeReportExport(format as ReportExportFormat, result);
+  let file: SerializedReportExport;
+  if (format === "pdf" && context.schoolId !== null) {
+    const brandingResult = await pool.query(
+      `SELECT s.name,s.address,s.city,s.state,s.phone,s.email,
+              l.object_path AS "logoObjectPath"
+         FROM schools s
+         LEFT JOIN school_branding_logos l ON l.school_id=s.id
+        WHERE s.id=$1`,
+      [context.schoolId],
+    );
+    const branding = brandingResult.rows[0];
+    if (!branding) throw new AuthError(404, "School not found", "CROSS_TENANT_ACCESS_ATTEMPT");
+    let logoBytes: Buffer | undefined;
+    if (branding.logoObjectPath) {
+      const logo = await readValidatedSchoolLogo(context.schoolId, branding.logoObjectPath);
+      logoBytes = logo.bytes;
+    }
+    file = await serializeSchoolBrandedPdfExport(result, {
+      name: branding.name,
+      address: branding.address,
+      city: branding.city,
+      state: branding.state,
+      phone: branding.phone,
+      email: branding.email,
+      logoBytes,
+    });
+  } else {
+    file = serializeReportExport(format as ReportExportFormat, result);
+  }
   await auditReport(req, context, req.params.reportId as string, filters, true);
   res.setHeader("Content-Type", file.contentType);
   res.setHeader("Content-Disposition", file.contentDisposition);

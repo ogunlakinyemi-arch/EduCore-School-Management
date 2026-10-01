@@ -29,6 +29,11 @@ import studentPhotosRouter from "./student-photos";
 import internalEmployeeInvitationsRouter from "./internal-employee-invitations";
 import schoolInvitationManagementRouter from "./school-invitation-management";
 import companyAccountantRouter from "./company-accountant";
+import employeeNfcRouter from "./employee-nfc";
+import { staffNfcBillingRouter } from "./staff-nfc-billing";
+import schoolWorkflowsRouter from "./school-workflows";
+import transportRouter from "./transport";
+import settlementPayrollRouter from "./settlement-payroll";
 
 const router: IRouter = Router();
 
@@ -41,6 +46,7 @@ router.use(publicPartnersRouter);
 // Device credentials authenticate independently of Clerk. Every human-facing
 // attendance handler applies requireAuthentication() explicitly.
 router.use(attendanceRouter);
+router.use(employeeNfcRouter);
 router.use(authRouter);
 router.use(peopleRouter);
 router.use(academicRouter);
@@ -67,5 +73,9 @@ router.use(studentPhotosRouter);
 router.use(internalEmployeeInvitationsRouter);
 router.use(schoolInvitationManagementRouter);
 router.use(companyAccountantRouter);
+router.use(staffNfcBillingRouter);
+router.use(schoolWorkflowsRouter);
+router.use(transportRouter);
+router.use(settlementPayrollRouter);
 
 export default router;

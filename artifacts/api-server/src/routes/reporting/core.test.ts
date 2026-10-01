@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import sharp from "sharp";
 import { parseReportFilters } from "./core";
-import { serializeReportExport } from "./exports";
+import { serializeReportExport, serializeSchoolBrandedPdfExport } from "./exports";
 
 describe("reporting foundation", () => {
   it("parses bounded, calendar-valid report filters", () => {
@@ -57,5 +58,34 @@ describe("reporting foundation", () => {
     const pdf = serializeReportExport("pdf", result);
     expect(pdf.body.toString("ascii")).toContain("%PDF-1.4");
     expect(pdf.body.toString("ascii")).not.toContain("not for export");
+  });
+
+  it("embeds validated school identity and a private logo in report PDFs", async () => {
+    const result = {
+      title: "Annual student report",
+      columns: [{ key: "name", label: "Name" }],
+      rows: [{ name: "Ade O." }],
+      total: 1,
+    };
+    const logoBytes = await sharp({
+      create: { width: 4, height: 3, channels: 4, background: "#2675b8" },
+    }).png().toBuffer();
+    const exported = await serializeSchoolBrandedPdfExport(result, {
+      name: "Test Academy",
+      address: "12 Main Street",
+      city: "Lagos",
+      state: "Lagos",
+      phone: "+234 800 000 0000",
+      email: "school@example.test",
+      logoBytes,
+    });
+    const pdf = exported.body;
+    expect(pdf.toString("ascii")).toContain("/Subtype /Image");
+    expect(pdf.toString("ascii")).toContain("/SchoolLogo Do Q");
+    expect(pdf.toString("ascii")).toContain("Test Academy");
+    expect(pdf.toString("ascii")).toContain("Annual student report");
+    const startXref = Number(/startxref\n(\d+)/.exec(pdf.toString("latin1"))?.[1]);
+    expect(pdf.subarray(startXref, startXref + 4).toString("ascii")).toBe("xref");
+    expect(exported.contentType).toBe("application/pdf");
   });
 });

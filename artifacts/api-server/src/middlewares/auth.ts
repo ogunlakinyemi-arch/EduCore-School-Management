@@ -36,7 +36,7 @@ export type UserContext = {
 
 export class AuthError extends Error {
   constructor(
-    public readonly statusCode: 400 | 401 | 403 | 404 | 409 | 503,
+    public readonly statusCode: 400 | 401 | 403 | 404 | 409 | 500 | 503,
     message: string,
     public readonly eventType = "ACCESS_DENIED",
   ) {

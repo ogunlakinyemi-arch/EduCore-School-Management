@@ -5992,6 +5992,2643 @@ export interface DeviceActivationOfficerGrantListItem {
   fullName: string | null;
 }
 
+export interface EmployeeNfcError {
+  error: string;
+  code?: string;
+}
+
+export type EmployeeNfcCardViewPersonType = typeof EmployeeNfcCardViewPersonType[keyof typeof EmployeeNfcCardViewPersonType];
+
+
+export const EmployeeNfcCardViewPersonType = {
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+} as const;
+
+export type EmployeeNfcCardViewStatus = typeof EmployeeNfcCardViewStatus[keyof typeof EmployeeNfcCardViewStatus];
+
+
+export const EmployeeNfcCardViewStatus = {
+  UNASSIGNED: 'UNASSIGNED',
+  LOCKED: 'LOCKED',
+  ACTIVE: 'ACTIVE',
+  DEACTIVATED: 'DEACTIVATED',
+  REPLACED: 'REPLACED',
+} as const;
+
+export type EmployeeNfcCardViewTermEligibility = typeof EmployeeNfcCardViewTermEligibility[keyof typeof EmployeeNfcCardViewTermEligibility];
+
+
+export const EmployeeNfcCardViewTermEligibility = {
+  PAID: 'PAID',
+  PENDING: 'PENDING',
+  UNPAID: 'UNPAID',
+  FAILED: 'FAILED',
+  EXPIRED: 'EXPIRED',
+  NOT_CONFIGURED: 'NOT_CONFIGURED',
+} as const;
+
+/**
+ * @nullable
+ */
+export type EmployeeNfcCardViewCurrentTerm = {
+  termId: number;
+  termName: string;
+  academicYear: string;
+} | null;
+
+export interface EmployeeNfcCardView {
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  cardId: number | null;
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  employeeId: number;
+  personType: EmployeeNfcCardViewPersonType;
+  employeeName: string;
+  employeeNo: string;
+  /** @nullable */
+  uid: string | null;
+  status: EmployeeNfcCardViewStatus;
+  termEligibility: EmployeeNfcCardViewTermEligibility;
+  paymentRequired: boolean;
+  nfcEligible: boolean;
+  /** @minimum 0 */
+  scans: number;
+  /** @nullable */
+  currentTerm?: EmployeeNfcCardViewCurrentTerm;
+  /** @nullable */
+  activatedAt?: string | null;
+}
+
+export interface EmployeeNfcCardHistory {
+  id: number;
+  schoolId: number;
+  cardId: number;
+  employeeId: number;
+  action: string;
+  /** @nullable */
+  previousStatus?: string | null;
+  /** @nullable */
+  newStatus?: string | null;
+  /** @nullable */
+  replacedByCardId?: number | null;
+  /** @nullable */
+  reason?: string | null;
+  /** @nullable */
+  actorId?: number | null;
+  occurredAt: string;
+}
+
+export type EmployeeNfcProfile = EmployeeNfcCardView & ({
+  /** @nullable */
+  roleTitle?: string | null;
+  /** @nullable */
+  photo?: string | null;
+  schoolName?: string;
+  /** @nullable */
+  schoolLogo?: string | null;
+  /** @nullable */
+  schoolAddress?: string | null;
+  /** @nullable */
+  schoolPhone?: string | null;
+  /** @nullable */
+  nextTerm?: { [key: string]: unknown } | null;
+  [key: string]: unknown;
+ });
+
+export type EmployeeNfcAttendanceEventPersonType = typeof EmployeeNfcAttendanceEventPersonType[keyof typeof EmployeeNfcAttendanceEventPersonType];
+
+
+export const EmployeeNfcAttendanceEventPersonType = {
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+} as const;
+
+export type EmployeeNfcAttendanceEventEventType = typeof EmployeeNfcAttendanceEventEventType[keyof typeof EmployeeNfcAttendanceEventEventType];
+
+
+export const EmployeeNfcAttendanceEventEventType = {
+  SCHOOL_ENTRY: 'SCHOOL_ENTRY',
+  SCHOOL_EXIT: 'SCHOOL_EXIT',
+} as const;
+
+export type EmployeeNfcAttendanceEventIdentificationMethod = typeof EmployeeNfcAttendanceEventIdentificationMethod[keyof typeof EmployeeNfcAttendanceEventIdentificationMethod];
+
+
+export const EmployeeNfcAttendanceEventIdentificationMethod = {
+  NFC: 'NFC',
+  MANUAL: 'MANUAL',
+} as const;
+
+export type EmployeeNfcAttendanceEventStatus = typeof EmployeeNfcAttendanceEventStatus[keyof typeof EmployeeNfcAttendanceEventStatus];
+
+
+export const EmployeeNfcAttendanceEventStatus = {
+  PRESENT: 'PRESENT',
+  LATE: 'LATE',
+  LEFT_EARLY: 'LEFT_EARLY',
+  EXCUSED: 'EXCUSED',
+  UNKNOWN: 'UNKNOWN',
+  MISMATCH: 'MISMATCH',
+} as const;
+
+export interface EmployeeNfcAttendanceEvent {
+  id: number;
+  schoolId: number;
+  employeeId: number;
+  personType: EmployeeNfcAttendanceEventPersonType;
+  eventType: EmployeeNfcAttendanceEventEventType;
+  identificationMethod: EmployeeNfcAttendanceEventIdentificationMethod;
+  status: EmployeeNfcAttendanceEventStatus;
+  occurredAt: string;
+  discrepancy: boolean;
+  /** @nullable */
+  deviceId?: number | null;
+  result?: string;
+}
+
+export interface EmployeeNfcAttendanceDaily {
+  date: string;
+  schoolId: number;
+  employees: number;
+  entries: number;
+  exits: number;
+  late: number;
+  discrepancies: number;
+}
+
+export type EmployeeNfcAttendanceMonthlyPersonType = typeof EmployeeNfcAttendanceMonthlyPersonType[keyof typeof EmployeeNfcAttendanceMonthlyPersonType];
+
+
+export const EmployeeNfcAttendanceMonthlyPersonType = {
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+} as const;
+
+export interface EmployeeNfcAttendanceMonthly {
+  schoolId: number;
+  employeeId: number;
+  employeeName: string;
+  employeeNo: string;
+  personType: EmployeeNfcAttendanceMonthlyPersonType;
+  attendanceDays: number;
+  late: number;
+  earlyDeparture: number;
+  entries: number;
+  exits: number;
+}
+
+export type EmployeeNfcDiscrepancyEventType = typeof EmployeeNfcDiscrepancyEventType[keyof typeof EmployeeNfcDiscrepancyEventType];
+
+
+export const EmployeeNfcDiscrepancyEventType = {
+  SCHOOL_ENTRY: 'SCHOOL_ENTRY',
+  SCHOOL_EXIT: 'SCHOOL_EXIT',
+} as const;
+
+export type EmployeeNfcDiscrepancyStatus = typeof EmployeeNfcDiscrepancyStatus[keyof typeof EmployeeNfcDiscrepancyStatus];
+
+
+export const EmployeeNfcDiscrepancyStatus = {
+  OPEN: 'OPEN',
+  RESOLVED: 'RESOLVED',
+} as const;
+
+export type EmployeeNfcDiscrepancyResolutionHistoryItem = {
+  resolution: string;
+  reason: string;
+  actorId: number;
+  occurredAt: string;
+};
+
+export interface EmployeeNfcDiscrepancy {
+  id: number;
+  schoolId: number;
+  employeeId: number;
+  employeeName: string;
+  attendanceEventId: number;
+  eventType: EmployeeNfcDiscrepancyEventType;
+  status: EmployeeNfcDiscrepancyStatus;
+  detectedAt: string;
+  reason?: string;
+  resolutionHistory: EmployeeNfcDiscrepancyResolutionHistoryItem[];
+}
+
+export interface PayrollError {
+  error: string;
+  code?: string;
+}
+
+export type SettlementProviderCapabilityProvider = typeof SettlementProviderCapabilityProvider[keyof typeof SettlementProviderCapabilityProvider];
+
+
+export const SettlementProviderCapabilityProvider = {
+  FLUTTERWAVE: 'FLUTTERWAVE',
+} as const;
+
+export type SettlementProviderCapabilityMode = typeof SettlementProviderCapabilityMode[keyof typeof SettlementProviderCapabilityMode];
+
+
+export const SettlementProviderCapabilityMode = {
+  TEST: 'TEST',
+  LIVE: 'LIVE',
+  MOCK: 'MOCK',
+  NOT_CONFIGURED: 'NOT_CONFIGURED',
+} as const;
+
+export type SettlementProviderCapabilityTransferCapability = typeof SettlementProviderCapabilityTransferCapability[keyof typeof SettlementProviderCapabilityTransferCapability];
+
+
+export const SettlementProviderCapabilityTransferCapability = {
+  SUPPORTED: 'SUPPORTED',
+  MOCK_ONLY: 'MOCK_ONLY',
+  NOT_CONFIGURED: 'NOT_CONFIGURED',
+  BLOCKED_IN_DEVELOPMENT: 'BLOCKED_IN_DEVELOPMENT',
+} as const;
+
+export interface SettlementProviderCapability {
+  provider: SettlementProviderCapabilityProvider;
+  mode: SettlementProviderCapabilityMode;
+  credentialsConfigured: boolean;
+  transferCapability: SettlementProviderCapabilityTransferCapability;
+  bankSubaccountsSupported: boolean;
+  liveSettlementVerified: false;
+}
+
+export type CompanySettlementInputCurrency = typeof CompanySettlementInputCurrency[keyof typeof CompanySettlementInputCurrency];
+
+
+export const CompanySettlementInputCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export interface CompanySettlementInput {
+  /**
+     * @minLength 2
+     * @maxLength 160
+     */
+  businessName: string;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  businessRegistrationNumber?: string | null;
+  /** @maxLength 254 */
+  settlementContactEmail?: string;
+  /**
+     * @maxLength 30
+     * @nullable
+     */
+  settlementContactPhone?: string | null;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  bankName: string;
+  /**
+     * @minLength 2
+     * @maxLength 20
+     */
+  bankCode: string;
+  /**
+     * @minLength 2
+     * @maxLength 150
+     */
+  accountName: string;
+  /** @pattern ^[0-9]{10}$ */
+  accountNumber: string;
+  currency: CompanySettlementInputCurrency;
+}
+
+export type SchoolSettlementInputCurrency = typeof SchoolSettlementInputCurrency[keyof typeof SchoolSettlementInputCurrency];
+
+
+export const SchoolSettlementInputCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export interface SchoolSettlementInput {
+  /**
+     * @minLength 2
+     * @maxLength 160
+     */
+  businessName: string;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  businessRegistrationNumber?: string | null;
+  /** @maxLength 254 */
+  settlementContactEmail: string;
+  /**
+     * @maxLength 30
+     * @nullable
+     */
+  settlementContactPhone?: string | null;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  bankName: string;
+  /**
+     * @minLength 2
+     * @maxLength 20
+     */
+  bankCode: string;
+  /**
+     * @minLength 2
+     * @maxLength 150
+     */
+  accountName: string;
+  /** @pattern ^[0-9]{10}$ */
+  accountNumber: string;
+  currency: SchoolSettlementInputCurrency;
+}
+
+export type PaymentSettlementProfileScope = typeof PaymentSettlementProfileScope[keyof typeof PaymentSettlementProfileScope];
+
+
+export const PaymentSettlementProfileScope = {
+  YEMAIT_COMPANY: 'YEMAIT_COMPANY',
+} as const;
+
+export type PaymentSettlementProfileCurrency = typeof PaymentSettlementProfileCurrency[keyof typeof PaymentSettlementProfileCurrency];
+
+
+export const PaymentSettlementProfileCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type PaymentSettlementProfileStatus = typeof PaymentSettlementProfileStatus[keyof typeof PaymentSettlementProfileStatus];
+
+
+export const PaymentSettlementProfileStatus = {
+  NOT_CONFIGURED: 'NOT_CONFIGURED',
+  PENDING_VERIFICATION: 'PENDING_VERIFICATION',
+  VERIFIED: 'VERIFIED',
+  ACTION_REQUIRED: 'ACTION_REQUIRED',
+} as const;
+
+export type PaymentSettlementProfileProvider = typeof PaymentSettlementProfileProvider[keyof typeof PaymentSettlementProfileProvider];
+
+
+export const PaymentSettlementProfileProvider = {
+  FLUTTERWAVE: 'FLUTTERWAVE',
+} as const;
+
+export interface PaymentSettlementProfile {
+  scope: PaymentSettlementProfileScope;
+  businessName: string;
+  /** @nullable */
+  businessRegistrationNumber?: string | null;
+  /** @nullable */
+  settlementContactEmail?: string | null;
+  /** @nullable */
+  settlementContactPhone?: string | null;
+  /** @nullable */
+  bankName: string | null;
+  /** @nullable */
+  bankCode?: string | null;
+  /** @nullable */
+  accountName: string | null;
+  /**
+     * @nullable
+     * @pattern ^[0-9]{4}$
+     */
+  accountLast4: string | null;
+  currency: PaymentSettlementProfileCurrency;
+  status: PaymentSettlementProfileStatus;
+  provider: PaymentSettlementProfileProvider;
+  /** @nullable */
+  providerBusinessId?: string | null;
+  /** @nullable */
+  providerSubaccountId?: string | null;
+  capability: SettlementProviderCapability;
+  /** @nullable */
+  updatedAt: string | null;
+}
+
+export type SchoolSettlementSummaryCurrency = typeof SchoolSettlementSummaryCurrency[keyof typeof SchoolSettlementSummaryCurrency];
+
+
+export const SchoolSettlementSummaryCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type SchoolSettlementSummaryStatus = typeof SchoolSettlementSummaryStatus[keyof typeof SchoolSettlementSummaryStatus];
+
+
+export const SchoolSettlementSummaryStatus = {
+  NOT_CONFIGURED: 'NOT_CONFIGURED',
+  PENDING_VERIFICATION: 'PENDING_VERIFICATION',
+  VERIFIED: 'VERIFIED',
+  ACTION_REQUIRED: 'ACTION_REQUIRED',
+} as const;
+
+export type SchoolSettlementSummaryProvider = typeof SchoolSettlementSummaryProvider[keyof typeof SchoolSettlementSummaryProvider];
+
+
+export const SchoolSettlementSummaryProvider = {
+  FLUTTERWAVE: 'FLUTTERWAVE',
+} as const;
+
+export type SchoolSettlementSummaryLastSettlementStatus = typeof SchoolSettlementSummaryLastSettlementStatus[keyof typeof SchoolSettlementSummaryLastSettlementStatus];
+
+
+export const SchoolSettlementSummaryLastSettlementStatus = {
+  NOT_SETTLED: 'NOT_SETTLED',
+  PENDING: 'PENDING',
+  SUCCESS: 'SUCCESS',
+  FAILED: 'FAILED',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+} as const;
+
+export interface SchoolSettlementSummary {
+  /** @minimum 1 */
+  schoolId: number;
+  schoolName: string;
+  /** @nullable */
+  businessName?: string | null;
+  /** @nullable */
+  businessRegistrationNumber?: string | null;
+  /** @nullable */
+  settlementContactEmail?: string | null;
+  /** @nullable */
+  settlementContactPhone?: string | null;
+  /** @nullable */
+  bankName?: string | null;
+  /** @nullable */
+  bankCode?: string | null;
+  /** @nullable */
+  accountName?: string | null;
+  /**
+     * @nullable
+     * @pattern ^[0-9]{4}$
+     */
+  accountLast4?: string | null;
+  currency: SchoolSettlementSummaryCurrency;
+  status: SchoolSettlementSummaryStatus;
+  provider: SchoolSettlementSummaryProvider;
+  /** @nullable */
+  providerSubaccountId?: string | null;
+  capability: SettlementProviderCapability;
+  /** @nullable */
+  lastSettlementAt?: string | null;
+  lastSettlementStatus?: SchoolSettlementSummaryLastSettlementStatus;
+  /** @nullable */
+  updatedAt: string | null;
+}
+
+export type SettlementHistoryEntryScope = typeof SettlementHistoryEntryScope[keyof typeof SettlementHistoryEntryScope];
+
+
+export const SettlementHistoryEntryScope = {
+  SCHOOL: 'SCHOOL',
+  YEMAIT_COMPANY: 'YEMAIT_COMPANY',
+} as const;
+
+export type SettlementHistoryEntryCurrency = typeof SettlementHistoryEntryCurrency[keyof typeof SettlementHistoryEntryCurrency];
+
+
+export const SettlementHistoryEntryCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type SettlementHistoryEntryStatus = typeof SettlementHistoryEntryStatus[keyof typeof SettlementHistoryEntryStatus];
+
+
+export const SettlementHistoryEntryStatus = {
+  PENDING: 'PENDING',
+  SUCCESS: 'SUCCESS',
+  FAILED: 'FAILED',
+  MOCK_PENDING: 'MOCK_PENDING',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+  NOT_SETTLED: 'NOT_SETTLED',
+} as const;
+
+export type SettlementHistoryEntryReconciliationStatus = typeof SettlementHistoryEntryReconciliationStatus[keyof typeof SettlementHistoryEntryReconciliationStatus];
+
+
+export const SettlementHistoryEntryReconciliationStatus = {
+  PENDING: 'PENDING',
+  RECONCILED: 'RECONCILED',
+  UNRECONCILED: 'UNRECONCILED',
+  NOT_APPLICABLE: 'NOT_APPLICABLE',
+} as const;
+
+export interface SettlementHistoryEntry {
+  /** @minimum 1 */
+  id: number;
+  scope: SettlementHistoryEntryScope;
+  /** @nullable */
+  schoolId?: number | null;
+  /** @nullable */
+  schoolName?: string | null;
+  /** @nullable */
+  sourceTransactionReference?: string | null;
+  /** @nullable */
+  providerReference?: string | null;
+  /** @minimum 0 */
+  grossAmountMinor: number;
+  /** @minimum 0 */
+  providerFeeMinor?: number;
+  /** @minimum 0 */
+  amountSettledMinor: number;
+  currency: SettlementHistoryEntryCurrency;
+  status: SettlementHistoryEntryStatus;
+  reconciliationStatus: SettlementHistoryEntryReconciliationStatus;
+  externalSettlementVerified: boolean;
+  occurredAt: string;
+}
+
+export type PayrollEmployeeProfileEmployeeType = typeof PayrollEmployeeProfileEmployeeType[keyof typeof PayrollEmployeeProfileEmployeeType];
+
+
+export const PayrollEmployeeProfileEmployeeType = {
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+  COMPANY_EMPLOYEE: 'COMPANY_EMPLOYEE',
+} as const;
+
+export type PayrollEmployeeProfileStatus = typeof PayrollEmployeeProfileStatus[keyof typeof PayrollEmployeeProfileStatus];
+
+
+export const PayrollEmployeeProfileStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export type PayrollEmployeeProfileCurrency = typeof PayrollEmployeeProfileCurrency[keyof typeof PayrollEmployeeProfileCurrency];
+
+
+export const PayrollEmployeeProfileCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export interface PayrollEmployeeProfile {
+  /** @minimum 1 */
+  employeeId: number;
+  /** @nullable */
+  companyEmployeeId?: number | null;
+  employeeType: PayrollEmployeeProfileEmployeeType;
+  /** @nullable */
+  employeeNumber?: string | null;
+  fullName: string;
+  /** @nullable */
+  email: string | null;
+  /** @nullable */
+  jobTitle?: string | null;
+  status: PayrollEmployeeProfileStatus;
+  /** @minimum 0 */
+  monthlySalaryMinor: number;
+  /** @minimum 0 */
+  allowanceMinor: number;
+  /** @minimum 0 */
+  deductionMinor: number;
+  currency: PayrollEmployeeProfileCurrency;
+  bankConfigured: boolean;
+  /** @nullable */
+  bankName: string | null;
+  /** @nullable */
+  bankCode?: string | null;
+  /** @nullable */
+  accountName?: string | null;
+  /**
+     * @nullable
+     * @pattern ^(\*{4,8}[0-9]{4}|[0-9]{10})$
+     */
+  maskedAccountNumber: string | null;
+  /** @nullable */
+  encryptionKeyVersion?: string | null;
+  updatedAt: string;
+}
+
+export interface PayrollEmployeeProfileInput {
+  /** @minimum 1 */
+  employeeId: number;
+  /**
+     * @minimum 0
+     * @maximum 1000000000000
+     */
+  monthlySalaryMinor: number;
+  /**
+     * @minimum 0
+     * @maximum 1000000000000
+     */
+  allowanceMinor: number;
+  /**
+     * @minimum 0
+     * @maximum 1000000000000
+     */
+  deductionMinor: number;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  bankName: string;
+  /**
+     * @minLength 2
+     * @maxLength 20
+     */
+  bankCode: string;
+  /**
+     * @minLength 2
+     * @maxLength 150
+     */
+  accountName: string;
+  /** @pattern ^[0-9]{10}$ */
+  accountNumber: string;
+}
+
+export type CompanyPayrollEmployeeInput = PayrollEmployeeProfileInput;
+
+export interface PayrollPeriodInput {
+  /** @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$ */
+  periodMonth: string;
+  /**
+     * @minItems 1
+     * @maxItems 1000
+     * @items.minimum 1
+     */
+  employeeIds?: number[];
+}
+
+export interface PayrollItemAdjustment {
+  /** @minimum 1 */
+  employeeId: number;
+  /**
+     * @minimum 0
+     * @maximum 1000000000000
+     */
+  allowanceMinor: number;
+  /**
+     * @minimum 0
+     * @maximum 1000000000000
+     */
+  deductionMinor: number;
+  /**
+     * @minimum 0
+     * @maximum 1000000000000
+     */
+  bonusMinor: number;
+  /**
+     * @minimum -1000000000000
+     * @maximum 1000000000000
+     */
+  adjustmentMinor: number;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  adjustmentReason: string;
+}
+
+export interface PayrollItemsUpdate {
+  /**
+     * @minItems 1
+     * @maxItems 1000
+     */
+  items: PayrollItemAdjustment[];
+}
+
+export type PayrollPeriodSummaryScope = typeof PayrollPeriodSummaryScope[keyof typeof PayrollPeriodSummaryScope];
+
+
+export const PayrollPeriodSummaryScope = {
+  SCHOOL: 'SCHOOL',
+  YEMAIT_COMPANY: 'YEMAIT_COMPANY',
+} as const;
+
+export type PayrollPeriodSummaryStatus = typeof PayrollPeriodSummaryStatus[keyof typeof PayrollPeriodSummaryStatus];
+
+
+export const PayrollPeriodSummaryStatus = {
+  DRAFT: 'DRAFT',
+  PENDING_APPROVAL: 'PENDING_APPROVAL',
+  APPROVED: 'APPROVED',
+  PROCESSING: 'PROCESSING',
+  COMPLETED: 'COMPLETED',
+  PARTIALLY_COMPLETED: 'PARTIALLY_COMPLETED',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type PayrollPeriodSummaryCurrency = typeof PayrollPeriodSummaryCurrency[keyof typeof PayrollPeriodSummaryCurrency];
+
+
+export const PayrollPeriodSummaryCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export interface PayrollPeriodSummary {
+  /** @minimum 1 */
+  periodId: number;
+  scope: PayrollPeriodSummaryScope;
+  /** @nullable */
+  schoolId?: number | null;
+  /** @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$ */
+  periodMonth: string;
+  status: PayrollPeriodSummaryStatus;
+  /** @minimum 0 */
+  employeeCount: number;
+  /** @minimum 0 */
+  grossSalaryMinor: number;
+  /** @minimum 0 */
+  allowanceMinor: number;
+  /** @minimum 0 */
+  deductionMinor: number;
+  /** @minimum 0 */
+  netSalaryMinor: number;
+  /** @minimum 0 */
+  paidCount: number;
+  /** @minimum 0 */
+  pendingCount: number;
+  /** @minimum 0 */
+  failedCount: number;
+  currency: PayrollPeriodSummaryCurrency;
+  /** @minimum 1 */
+  createdBy?: number;
+  /** @nullable */
+  submittedBy?: number | null;
+  /** @nullable */
+  approvedBy?: number | null;
+  createdAt: string;
+  /** @nullable */
+  submittedAt?: string | null;
+  /** @nullable */
+  approvedAt?: string | null;
+}
+
+export type PayrollItemEmployeeType = typeof PayrollItemEmployeeType[keyof typeof PayrollItemEmployeeType];
+
+
+export const PayrollItemEmployeeType = {
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+  COMPANY_EMPLOYEE: 'COMPANY_EMPLOYEE',
+} as const;
+
+export type PayrollItemCurrency = typeof PayrollItemCurrency[keyof typeof PayrollItemCurrency];
+
+
+export const PayrollItemCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type PayrollItemPaymentStatus = typeof PayrollItemPaymentStatus[keyof typeof PayrollItemPaymentStatus];
+
+
+export const PayrollItemPaymentStatus = {
+  UNPAID: 'UNPAID',
+  PENDING: 'PENDING',
+  MOCK_PENDING: 'MOCK_PENDING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export interface PayrollItem {
+  /** @minimum 1 */
+  employeeId: number;
+  employeeType: PayrollItemEmployeeType;
+  /** @nullable */
+  employeeNumber: string | null;
+  fullName: string;
+  /** @nullable */
+  jobTitle: string | null;
+  /** @minimum 0 */
+  baseSalaryMinor: number;
+  /** @minimum 0 */
+  allowanceMinor: number;
+  /** @minimum 0 */
+  bonusMinor: number;
+  /** @minimum 0 */
+  deductionMinor: number;
+  adjustmentMinor: number;
+  /** @nullable */
+  adjustmentReason?: string | null;
+  /** @minimum 0 */
+  netSalaryMinor: number;
+  currency: PayrollItemCurrency;
+  paymentStatus: PayrollItemPaymentStatus;
+  /** @nullable */
+  transferReference?: string | null;
+  /** @nullable */
+  bankName?: string | null;
+  /** @nullable */
+  maskedAccountNumber: string | null;
+  /** @nullable */
+  payslipId?: number | null;
+}
+
+export type PayrollPeriodProviderMode = typeof PayrollPeriodProviderMode[keyof typeof PayrollPeriodProviderMode];
+
+
+export const PayrollPeriodProviderMode = {
+  TEST: 'TEST',
+  LIVE: 'LIVE',
+  MOCK: 'MOCK',
+  NOT_CONFIGURED: 'NOT_CONFIGURED',
+} as const;
+
+export type PayrollPeriod = PayrollPeriodSummary & {
+  items: PayrollItem[];
+  providerMode: PayrollPeriodProviderMode;
+};
+
+export interface PayrollTransfersInput {
+  /**
+     * @minItems 1
+     * @maxItems 100
+     * @items.minimum 1
+     */
+  employeeIds: number[];
+}
+
+export type PayrollTransferCurrency = typeof PayrollTransferCurrency[keyof typeof PayrollTransferCurrency];
+
+
+export const PayrollTransferCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type PayrollTransferProvider = typeof PayrollTransferProvider[keyof typeof PayrollTransferProvider];
+
+
+export const PayrollTransferProvider = {
+  FLUTTERWAVE: 'FLUTTERWAVE',
+  MOCK: 'MOCK',
+} as const;
+
+export type PayrollTransferProviderMode = typeof PayrollTransferProviderMode[keyof typeof PayrollTransferProviderMode];
+
+
+export const PayrollTransferProviderMode = {
+  TEST: 'TEST',
+  LIVE: 'LIVE',
+  MOCK: 'MOCK',
+} as const;
+
+export type PayrollTransferStatus = typeof PayrollTransferStatus[keyof typeof PayrollTransferStatus];
+
+
+export const PayrollTransferStatus = {
+  CLAIMED: 'CLAIMED',
+  PROCESSING: 'PROCESSING',
+  PENDING: 'PENDING',
+  MOCK_PENDING: 'MOCK_PENDING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  UNCERTAIN: 'UNCERTAIN',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+} as const;
+
+export interface PayrollTransfer {
+  /** @minimum 1 */
+  id: number;
+  /** @minimum 1 */
+  periodId: number;
+  /** @minimum 1 */
+  employeeId: number;
+  /** @minimum 0 */
+  amountMinor: number;
+  currency: PayrollTransferCurrency;
+  provider: PayrollTransferProvider;
+  providerMode: PayrollTransferProviderMode;
+  providerReference?: string;
+  /** @nullable */
+  providerTransactionId?: string | null;
+  /** @nullable */
+  providerStatus?: string | null;
+  status: PayrollTransferStatus;
+  requiresReconciliation: boolean;
+  externalTransferVerified: boolean;
+  /** @minimum 0 */
+  providerFeeMinor?: number;
+  /** @minimum 0 */
+  settlementAmountMinor?: number;
+  /** @nullable */
+  failureMessage?: string | null;
+  /** @minimum 1 */
+  attempt?: number;
+  createdAt: string;
+  /** @nullable */
+  verifiedAt?: string | null;
+}
+
+export type PayrollTransfersResponseProviderMode = typeof PayrollTransfersResponseProviderMode[keyof typeof PayrollTransfersResponseProviderMode];
+
+
+export const PayrollTransfersResponseProviderMode = {
+  TEST: 'TEST',
+  LIVE: 'LIVE',
+  MOCK: 'MOCK',
+} as const;
+
+export interface PayrollTransfersResponse {
+  /** @minimum 1 */
+  periodId: number;
+  providerMode: PayrollTransfersResponseProviderMode;
+  items: PayrollTransfer[];
+  /** @minimum 0 */
+  total: number;
+  /** @minimum 0 */
+  paidCount: number;
+  /** @minimum 0 */
+  pendingCount: number;
+  /** @minimum 0 */
+  failedCount: number;
+  /** @minimum 0 */
+  uncertainCount: number;
+}
+
+export type PayrollReportRowCurrency = typeof PayrollReportRowCurrency[keyof typeof PayrollReportRowCurrency];
+
+
+export const PayrollReportRowCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export interface PayrollReportRow {
+  /** @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$ */
+  periodMonth: string;
+  /** @minimum 0 */
+  employeeCount: number;
+  /** @minimum 0 */
+  grossSalaryMinor: number;
+  /** @minimum 0 */
+  allowanceMinor: number;
+  /** @minimum 0 */
+  bonusMinor: number;
+  /** @minimum 0 */
+  deductionMinor: number;
+  /** @minimum 0 */
+  netSalaryMinor: number;
+  /** @minimum 0 */
+  paidAmountMinor: number;
+  /** @minimum 0 */
+  pendingAmountMinor: number;
+  /** @minimum 0 */
+  failedCount: number;
+  currency: PayrollReportRowCurrency;
+}
+
+export type OwnPayrollPayslipEmployeeType = typeof OwnPayrollPayslipEmployeeType[keyof typeof OwnPayrollPayslipEmployeeType];
+
+
+export const OwnPayrollPayslipEmployeeType = {
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+  COMPANY_EMPLOYEE: 'COMPANY_EMPLOYEE',
+} as const;
+
+export type OwnPayrollPayslipCurrency = typeof OwnPayrollPayslipCurrency[keyof typeof OwnPayrollPayslipCurrency];
+
+
+export const OwnPayrollPayslipCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type OwnPayrollPayslipPaymentStatus = typeof OwnPayrollPayslipPaymentStatus[keyof typeof OwnPayrollPayslipPaymentStatus];
+
+
+export const OwnPayrollPayslipPaymentStatus = {
+  PAID: 'PAID',
+} as const;
+
+export interface OwnPayrollPayslip {
+  /** @minimum 1 */
+  id: number;
+  /** @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$ */
+  periodMonth: string;
+  employeeName: string;
+  employeeType: OwnPayrollPayslipEmployeeType;
+  /** @nullable */
+  schoolName?: string | null;
+  /** @minimum 0 */
+  baseSalaryMinor: number;
+  /** @minimum 0 */
+  allowanceMinor: number;
+  /** @minimum 0 */
+  bonusMinor: number;
+  /** @minimum 0 */
+  deductionMinor: number;
+  adjustmentMinor: number;
+  /** @nullable */
+  adjustmentReason?: string | null;
+  /** @minimum 0 */
+  netSalaryMinor: number;
+  currency: OwnPayrollPayslipCurrency;
+  paymentStatus: OwnPayrollPayslipPaymentStatus;
+  /** @nullable */
+  maskedAccountNumber: string | null;
+  /** @nullable */
+  transferReference?: string | null;
+  /** @nullable */
+  providerTransactionId?: string | null;
+  createdAt: string;
+}
+
+export interface ApiError0a0c478 {
+  error: string;
+  code: string;
+}
+
+export type SchoolCoreApiError = ApiError0a0c478;
+
+export interface SchoolBranding {
+  schoolId: number;
+  name: string;
+  /** @nullable */
+  registrationNumber?: string | null;
+  /** @nullable */
+  address?: string | null;
+  city: string;
+  state: string;
+  /** @nullable */
+  lga?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  schoolType?: string | null;
+  /**
+     * Same-school authenticated private endpoint; never a public or cross-tenant storage URL.
+     * @nullable
+     */
+  logoUrl: string | null;
+}
+
+export interface UpdateSchoolBrandingBody {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  name?: string;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  registrationNumber?: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  address?: string | null;
+  /** @maxLength 160 */
+  city?: string;
+  /** @maxLength 160 */
+  state?: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  lga?: string | null;
+  /**
+     * @maxLength 50
+     * @nullable
+     */
+  phone?: string | null;
+  /**
+     * @maxLength 254
+     * @nullable
+     */
+  email?: string | null;
+  /**
+     * @maxLength 255
+     * @nullable
+     */
+  website?: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  schoolType?: string | null;
+}
+
+export type SchoolLogoUploadRequestContentType = typeof SchoolLogoUploadRequestContentType[keyof typeof SchoolLogoUploadRequestContentType];
+
+
+export const SchoolLogoUploadRequestContentType = {
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+} as const;
+
+export interface SchoolLogoUploadRequest {
+  contentType: SchoolLogoUploadRequestContentType;
+  /**
+     * @minimum 1
+     * @maximum 3145728
+     */
+  size: number;
+}
+
+export interface SchoolLogoUploadResponse {
+  uploadURL: string;
+  /** @pattern ^/objects/school-logos/[1-9][0-9]*\/[0-9a-f-]{36}$ */
+  objectPath: string;
+  expiresInSeconds: number;
+}
+
+export interface ConfirmSchoolLogoUploadBody {
+  /** @pattern ^/objects/school-logos/[1-9][0-9]*\/[0-9a-f-]{36}$ */
+  objectPath: string;
+}
+
+export type SchoolCalendarEntryCategory = typeof SchoolCalendarEntryCategory[keyof typeof SchoolCalendarEntryCategory];
+
+
+export const SchoolCalendarEntryCategory = {
+  TERM_START: 'TERM_START',
+  TERM_END: 'TERM_END',
+  RESUMPTION: 'RESUMPTION',
+  MID_TERM_BREAK: 'MID_TERM_BREAK',
+  HOLIDAY: 'HOLIDAY',
+  EXAMINATION: 'EXAMINATION',
+  RESULT_PUBLICATION: 'RESULT_PUBLICATION',
+  SCHOOL_EVENT: 'SCHOOL_EVENT',
+  OTHER: 'OTHER',
+} as const;
+
+export type SchoolCalendarEntryAudienceItem = typeof SchoolCalendarEntryAudienceItem[keyof typeof SchoolCalendarEntryAudienceItem];
+
+
+export const SchoolCalendarEntryAudienceItem = {
+  TEACHER: 'TEACHER',
+  STUDENT: 'STUDENT',
+  PARENT: 'PARENT',
+  STAFF: 'STAFF',
+} as const;
+
+export type SchoolCalendarEntryStatus = typeof SchoolCalendarEntryStatus[keyof typeof SchoolCalendarEntryStatus];
+
+
+export const SchoolCalendarEntryStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export type SchoolCalendarEntrySource = typeof SchoolCalendarEntrySource[keyof typeof SchoolCalendarEntrySource];
+
+
+export const SchoolCalendarEntrySource = {
+  SESSION_TERM: 'SESSION_TERM',
+  SCHOOL_EVENT: 'SCHOOL_EVENT',
+} as const;
+
+export interface SchoolCalendarEntry {
+  /** Numeric ID for a stored configurable event; stable namespaced key for a projected academic session or term period. */
+  id: string;
+  schoolId: number;
+  /** @nullable */
+  sessionId?: number | null;
+  /** @nullable */
+  sessionName?: string | null;
+  /** @nullable */
+  termId?: number | null;
+  /** @nullable */
+  termName?: string | null;
+  title: string;
+  category: SchoolCalendarEntryCategory;
+  startDate: string;
+  /** @nullable */
+  endDate?: string | null;
+  academic: boolean;
+  audience: SchoolCalendarEntryAudienceItem[];
+  status: SchoolCalendarEntryStatus;
+  source: SchoolCalendarEntrySource;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export type CalendarDateItemAudienceItem = typeof CalendarDateItemAudienceItem[keyof typeof CalendarDateItemAudienceItem];
+
+
+export const CalendarDateItemAudienceItem = {
+  TEACHER: 'TEACHER',
+  STUDENT: 'STUDENT',
+  PARENT: 'PARENT',
+  STAFF: 'STAFF',
+} as const;
+
+export interface CalendarDateItem {
+  /**
+     * @minLength 1
+     * @maxLength 180
+     */
+  title: string;
+  startDate: string;
+  /** @nullable */
+  endDate?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  notes?: string | null;
+  /** @minItems 1 */
+  audience?: CalendarDateItemAudienceItem[];
+}
+
+export interface CalendarTermConfiguration {
+  /** @minimum 1 */
+  termId: number;
+  /** @nullable */
+  resumptionDate?: string | null;
+  midTermBreaks?: CalendarDateItem[];
+  holidays?: CalendarDateItem[];
+  examinations?: CalendarDateItem[];
+  resultPublicationDates?: CalendarDateItem[];
+}
+
+export interface GenerateSchoolCalendarBody {
+  /** @minimum 1 */
+  sessionId: number;
+  terms: CalendarTermConfiguration[];
+}
+
+export type CreateSchoolCalendarEventBodyCategory = typeof CreateSchoolCalendarEventBodyCategory[keyof typeof CreateSchoolCalendarEventBodyCategory];
+
+
+export const CreateSchoolCalendarEventBodyCategory = {
+  RESUMPTION: 'RESUMPTION',
+  MID_TERM_BREAK: 'MID_TERM_BREAK',
+  HOLIDAY: 'HOLIDAY',
+  EXAMINATION: 'EXAMINATION',
+  RESULT_PUBLICATION: 'RESULT_PUBLICATION',
+  SCHOOL_EVENT: 'SCHOOL_EVENT',
+  OTHER: 'OTHER',
+} as const;
+
+export type CreateSchoolCalendarEventBodyAudienceItem = typeof CreateSchoolCalendarEventBodyAudienceItem[keyof typeof CreateSchoolCalendarEventBodyAudienceItem];
+
+
+export const CreateSchoolCalendarEventBodyAudienceItem = {
+  TEACHER: 'TEACHER',
+  STUDENT: 'STUDENT',
+  PARENT: 'PARENT',
+  STAFF: 'STAFF',
+} as const;
+
+export interface CreateSchoolCalendarEventBody {
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  termId?: number | null;
+  /**
+     * @minLength 1
+     * @maxLength 180
+     */
+  title: string;
+  category: CreateSchoolCalendarEventBodyCategory;
+  startDate: string;
+  /** @nullable */
+  endDate?: string | null;
+  academic: boolean;
+  /** @minItems 1 */
+  audience: CreateSchoolCalendarEventBodyAudienceItem[];
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  notes?: string | null;
+}
+
+export type UpdateSchoolCalendarEventBodyCategory = typeof UpdateSchoolCalendarEventBodyCategory[keyof typeof UpdateSchoolCalendarEventBodyCategory];
+
+
+export const UpdateSchoolCalendarEventBodyCategory = {
+  RESUMPTION: 'RESUMPTION',
+  MID_TERM_BREAK: 'MID_TERM_BREAK',
+  HOLIDAY: 'HOLIDAY',
+  EXAMINATION: 'EXAMINATION',
+  RESULT_PUBLICATION: 'RESULT_PUBLICATION',
+  SCHOOL_EVENT: 'SCHOOL_EVENT',
+  OTHER: 'OTHER',
+} as const;
+
+export type UpdateSchoolCalendarEventBodyAudienceItem = typeof UpdateSchoolCalendarEventBodyAudienceItem[keyof typeof UpdateSchoolCalendarEventBodyAudienceItem];
+
+
+export const UpdateSchoolCalendarEventBodyAudienceItem = {
+  TEACHER: 'TEACHER',
+  STUDENT: 'STUDENT',
+  PARENT: 'PARENT',
+  STAFF: 'STAFF',
+} as const;
+
+export type UpdateSchoolCalendarEventBodyStatus = typeof UpdateSchoolCalendarEventBodyStatus[keyof typeof UpdateSchoolCalendarEventBodyStatus];
+
+
+export const UpdateSchoolCalendarEventBodyStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface UpdateSchoolCalendarEventBody {
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  termId?: number | null;
+  /**
+     * @minLength 1
+     * @maxLength 180
+     */
+  title?: string;
+  category?: UpdateSchoolCalendarEventBodyCategory;
+  startDate?: string;
+  /** @nullable */
+  endDate?: string | null;
+  academic?: boolean;
+  /** @minItems 1 */
+  audience?: UpdateSchoolCalendarEventBodyAudienceItem[];
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  notes?: string | null;
+  status?: UpdateSchoolCalendarEventBodyStatus;
+}
+
+export type SchoolTeacherAssignmentAssignmentKind = typeof SchoolTeacherAssignmentAssignmentKind[keyof typeof SchoolTeacherAssignmentAssignmentKind];
+
+
+export const SchoolTeacherAssignmentAssignmentKind = {
+  CLASS: 'CLASS',
+  SUBJECT: 'SUBJECT',
+} as const;
+
+export type SchoolTeacherAssignmentAssignmentType = typeof SchoolTeacherAssignmentAssignmentType[keyof typeof SchoolTeacherAssignmentAssignmentType];
+
+
+export const SchoolTeacherAssignmentAssignmentType = {
+  CLASS_TEACHER: 'CLASS_TEACHER',
+  SUBJECT_TEACHER: 'SUBJECT_TEACHER',
+} as const;
+
+export type SchoolTeacherAssignmentStatus = typeof SchoolTeacherAssignmentStatus[keyof typeof SchoolTeacherAssignmentStatus];
+
+
+export const SchoolTeacherAssignmentStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface SchoolTeacherAssignment {
+  id: number;
+  assignmentKind: SchoolTeacherAssignmentAssignmentKind;
+  schoolId: number;
+  employeeId: number;
+  employeeName: string;
+  employeeNo: string;
+  employeeType: string;
+  sessionId: number;
+  sessionName: string;
+  /** @nullable */
+  classId: number | null;
+  /** @nullable */
+  className: string | null;
+  /** @nullable */
+  subjectId?: number | null;
+  /** @nullable */
+  subjectName?: string | null;
+  /** @nullable */
+  section: string | null;
+  assignmentType: SchoolTeacherAssignmentAssignmentType;
+  /** @nullable */
+  startDate: string | null;
+  /** @nullable */
+  endDate: string | null;
+  status: SchoolTeacherAssignmentStatus;
+}
+
+export type CreateSchoolTeacherAssignmentBodyAssignmentType = typeof CreateSchoolTeacherAssignmentBodyAssignmentType[keyof typeof CreateSchoolTeacherAssignmentBodyAssignmentType];
+
+
+export const CreateSchoolTeacherAssignmentBodyAssignmentType = {
+  CLASS_TEACHER: 'CLASS_TEACHER',
+  SUBJECT_TEACHER: 'SUBJECT_TEACHER',
+} as const;
+
+/**
+ * CLASS_TEACHER requires a classId and no subjectId. SUBJECT_TEACHER requires a subjectId; classId is optional for school-wide subject assignment.
+ */
+export interface CreateSchoolTeacherAssignmentBody {
+  /** @minimum 1 */
+  employeeId: number;
+  /** @minimum 1 */
+  sessionId: number;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  classId?: number | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  subjectId?: number | null;
+  /** @maxLength 80 */
+  section?: string;
+  assignmentType: CreateSchoolTeacherAssignmentBodyAssignmentType;
+  startDate: string;
+}
+
+export type UpdateSchoolTeacherAssignmentBodyStatus = typeof UpdateSchoolTeacherAssignmentBodyStatus[keyof typeof UpdateSchoolTeacherAssignmentBodyStatus];
+
+
+export const UpdateSchoolTeacherAssignmentBodyStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface UpdateSchoolTeacherAssignmentBody {
+  status?: UpdateSchoolTeacherAssignmentBodyStatus;
+  endDate?: string;
+}
+
+export type TeacherDutyStatus = typeof TeacherDutyStatus[keyof typeof TeacherDutyStatus];
+
+
+export const TeacherDutyStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface TeacherDuty {
+  id: number;
+  schoolId: number;
+  employeeId: number;
+  employeeName: string;
+  employeeNo: string;
+  dutyRole: string;
+  startDate: string;
+  endDate: string;
+  status: TeacherDutyStatus;
+  /** @nullable */
+  notes: string | null;
+}
+
+export interface CreateTeacherDutyBody {
+  /** @minimum 1 */
+  employeeId: number;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  dutyRole: string;
+  startDate: string;
+  endDate: string;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  notes?: string | null;
+}
+
+export type UpdateTeacherDutyBodyStatus = typeof UpdateTeacherDutyBodyStatus[keyof typeof UpdateTeacherDutyBodyStatus];
+
+
+export const UpdateTeacherDutyBodyStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface UpdateTeacherDutyBody {
+  /** @minimum 1 */
+  employeeId?: number;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  dutyRole?: string;
+  startDate?: string;
+  endDate?: string;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  notes?: string | null;
+  status?: UpdateTeacherDutyBodyStatus;
+}
+
+export interface StaffNfcError {
+  /** @minLength 1 */
+  error: string;
+  /** @nullable */
+  code?: string | null;
+  /** @nullable */
+  retryable?: boolean | null;
+}
+
+export type StaffNfcBillingRuleProduct = typeof StaffNfcBillingRuleProduct[keyof typeof StaffNfcBillingRuleProduct];
+
+
+export const StaffNfcBillingRuleProduct = {
+  TEACHER_STAFF_NFC_EID: 'TEACHER_STAFF_NFC_EID',
+} as const;
+
+export type StaffNfcBillingRuleBillingFrequency = typeof StaffNfcBillingRuleBillingFrequency[keyof typeof StaffNfcBillingRuleBillingFrequency];
+
+
+export const StaffNfcBillingRuleBillingFrequency = {
+  ACADEMIC_TERM: 'ACADEMIC_TERM',
+} as const;
+
+export type StaffNfcBillingRuleCurrency = typeof StaffNfcBillingRuleCurrency[keyof typeof StaffNfcBillingRuleCurrency];
+
+
+export const StaffNfcBillingRuleCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type StaffNfcBillingRuleStatus = typeof StaffNfcBillingRuleStatus[keyof typeof StaffNfcBillingRuleStatus];
+
+
+export const StaffNfcBillingRuleStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface StaffNfcBillingRule {
+  id: number;
+  /** @minimum 1 */
+  version: number;
+  product: StaffNfcBillingRuleProduct;
+  billingFrequency: StaffNfcBillingRuleBillingFrequency;
+  /** @minimum 1 */
+  priceMinor: number;
+  /** @minimum 0 */
+  schoolShareMinor: number;
+  /** @minimum 0 */
+  platformShareMinor: number;
+  /** @minimum 0 */
+  partnerCommissionMinor: number;
+  /** @minimum 0 */
+  noPartnerPlatformShareMinor: number;
+  currency: StaffNfcBillingRuleCurrency;
+  effectiveAt: string;
+  status: StaffNfcBillingRuleStatus;
+  createdAt: string;
+}
+
+export type StaffNfcBillingRuleInputProduct = typeof StaffNfcBillingRuleInputProduct[keyof typeof StaffNfcBillingRuleInputProduct];
+
+
+export const StaffNfcBillingRuleInputProduct = {
+  TEACHER_STAFF_NFC_EID: 'TEACHER_STAFF_NFC_EID',
+} as const;
+
+export type StaffNfcBillingRuleInputBillingFrequency = typeof StaffNfcBillingRuleInputBillingFrequency[keyof typeof StaffNfcBillingRuleInputBillingFrequency];
+
+
+export const StaffNfcBillingRuleInputBillingFrequency = {
+  ACADEMIC_TERM: 'ACADEMIC_TERM',
+} as const;
+
+export type StaffNfcBillingRuleInputCurrency = typeof StaffNfcBillingRuleInputCurrency[keyof typeof StaffNfcBillingRuleInputCurrency];
+
+
+export const StaffNfcBillingRuleInputCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export interface StaffNfcBillingRuleInput {
+  product: StaffNfcBillingRuleInputProduct;
+  billingFrequency: StaffNfcBillingRuleInputBillingFrequency;
+  /**
+     * @minimum 1
+     * @maximum 1000000000
+     */
+  priceMinor: number;
+  /** @minimum 0 */
+  schoolShareMinor: number;
+  /** @minimum 0 */
+  platformShareMinor: number;
+  /** @minimum 0 */
+  partnerCommissionMinor: number;
+  /** @minimum 0 */
+  noPartnerPlatformShareMinor: number;
+  currency: StaffNfcBillingRuleInputCurrency;
+  effectiveAt: string;
+}
+
+export interface StaffNfcTermContext {
+  schoolId: number;
+  schoolName: string;
+  academicSessionId: number;
+  academicSessionName: string;
+  academicTermId: number;
+  academicTermName: string;
+  dueDate: string;
+}
+
+export type StaffNfcAllocationRecipientType = typeof StaffNfcAllocationRecipientType[keyof typeof StaffNfcAllocationRecipientType];
+
+
+export const StaffNfcAllocationRecipientType = {
+  SCHOOL: 'SCHOOL',
+  PLATFORM: 'PLATFORM',
+  PARTNER: 'PARTNER',
+  REVERSAL: 'REVERSAL',
+  PLATFORM_PROVIDER_FEE: 'PLATFORM_PROVIDER_FEE',
+} as const;
+
+export type StaffNfcAllocationCurrency = typeof StaffNfcAllocationCurrency[keyof typeof StaffNfcAllocationCurrency];
+
+
+export const StaffNfcAllocationCurrency = {
+  NGN: 'NGN',
+} as const;
+
+/**
+ * @nullable
+ */
+export type StaffNfcAllocationStatus = typeof StaffNfcAllocationStatus[keyof typeof StaffNfcAllocationStatus] | null;
+
+
+export const StaffNfcAllocationStatus = {
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  REVERSED: 'REVERSED',
+} as const;
+
+export interface StaffNfcAllocation {
+  recipientType: StaffNfcAllocationRecipientType;
+  /** @nullable */
+  recipientId: number | null;
+  /** @minimum 0 */
+  amountMinor: number;
+  currency: StaffNfcAllocationCurrency;
+  /** @nullable */
+  status?: StaffNfcAllocationStatus;
+}
+
+export type StaffNfcPaymentSummaryProvider = typeof StaffNfcPaymentSummaryProvider[keyof typeof StaffNfcPaymentSummaryProvider];
+
+
+export const StaffNfcPaymentSummaryProvider = {
+  FLUTTERWAVE: 'FLUTTERWAVE',
+  MOCK: 'MOCK',
+} as const;
+
+export type StaffNfcPaymentSummaryProviderMode = typeof StaffNfcPaymentSummaryProviderMode[keyof typeof StaffNfcPaymentSummaryProviderMode];
+
+
+export const StaffNfcPaymentSummaryProviderMode = {
+  SANDBOX: 'SANDBOX',
+  DEVELOPMENT_MOCK: 'DEVELOPMENT_MOCK',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type StaffNfcPaymentSummaryStatus = typeof StaffNfcPaymentSummaryStatus[keyof typeof StaffNfcPaymentSummaryStatus];
+
+
+export const StaffNfcPaymentSummaryStatus = {
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+  REFUNDED: 'REFUNDED',
+  PARTIALLY_REFUNDED: 'PARTIALLY_REFUNDED',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+} as const;
+
+export type StaffNfcPaymentSummaryCurrency = typeof StaffNfcPaymentSummaryCurrency[keyof typeof StaffNfcPaymentSummaryCurrency];
+
+
+export const StaffNfcPaymentSummaryCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type StaffNfcPaymentSummaryReconciliationStatus = typeof StaffNfcPaymentSummaryReconciliationStatus[keyof typeof StaffNfcPaymentSummaryReconciliationStatus];
+
+
+export const StaffNfcPaymentSummaryReconciliationStatus = {
+  PENDING: 'PENDING',
+  RECONCILED: 'RECONCILED',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+  NOT_APPLICABLE: 'NOT_APPLICABLE',
+} as const;
+
+export type StaffNfcPaymentSummaryRefundStatus = typeof StaffNfcPaymentSummaryRefundStatus[keyof typeof StaffNfcPaymentSummaryRefundStatus];
+
+
+export const StaffNfcPaymentSummaryRefundStatus = {
+  NONE: 'NONE',
+  PENDING: 'PENDING',
+  PARTIALLY_REFUNDED: 'PARTIALLY_REFUNDED',
+  REFUNDED: 'REFUNDED',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+} as const;
+
+export interface StaffNfcPaymentSummary {
+  id: number;
+  provider: StaffNfcPaymentSummaryProvider;
+  providerMode: StaffNfcPaymentSummaryProviderMode;
+  status: StaffNfcPaymentSummaryStatus;
+  /** @minimum 0 */
+  grossAmountMinor: number;
+  /** @minimum 0 */
+  providerFeeMinor: number;
+  /** @minimum 0 */
+  settlementAmountMinor: number;
+  currency: StaffNfcPaymentSummaryCurrency;
+  /** @nullable */
+  providerTransactionId?: string | null;
+  providerReference?: string;
+  /** @nullable */
+  paidAt?: string | null;
+  /** @nullable */
+  settledAt: string | null;
+  reconciliationStatus: StaffNfcPaymentSummaryReconciliationStatus;
+  refundStatus?: StaffNfcPaymentSummaryRefundStatus;
+  allocations?: StaffNfcAllocation[];
+}
+
+export type StaffNfcSubscriptionStatus = typeof StaffNfcSubscriptionStatus[keyof typeof StaffNfcSubscriptionStatus];
+
+
+export const StaffNfcSubscriptionStatus = {
+  UNPAID: 'UNPAID',
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+  REFUNDED: 'REFUNDED',
+  PARTIALLY_REFUNDED: 'PARTIALLY_REFUNDED',
+} as const;
+
+export type StaffNfcSubscriptionCurrency = typeof StaffNfcSubscriptionCurrency[keyof typeof StaffNfcSubscriptionCurrency];
+
+
+export const StaffNfcSubscriptionCurrency = {
+  NGN: 'NGN',
+} as const;
+
+/**
+ * @nullable
+ */
+export type StaffNfcSubscriptionNextTerm = {
+  sessionId?: number;
+  sessionName?: string;
+  termId?: number;
+  termName?: string;
+  priceMinor?: number;
+  dueDate?: string;
+} | null;
+
+export type StaffNfcSubscriptionCardStatus = typeof StaffNfcSubscriptionCardStatus[keyof typeof StaffNfcSubscriptionCardStatus];
+
+
+export const StaffNfcSubscriptionCardStatus = {
+  ACTIVE: 'ACTIVE',
+  LOCKED: 'LOCKED',
+  INACTIVE: 'INACTIVE',
+  NONE: 'NONE',
+} as const;
+
+export interface StaffNfcSubscription {
+  id: number;
+  employeeId: number;
+  employeeName: string;
+  employeeNumber: string;
+  schoolId: number;
+  schoolName?: string;
+  /** @nullable */
+  partnerId?: number | null;
+  /** @nullable */
+  partnerName?: string | null;
+  sessionId: number;
+  sessionName: string;
+  termId: number;
+  termName: string;
+  billingRuleId: number;
+  billingRuleVersion: number;
+  /** @minimum 0 */
+  priceMinor: number;
+  /** @minimum 0 */
+  schoolShareMinor: number;
+  /** @minimum 0 */
+  platformShareMinor: number;
+  /** @minimum 0 */
+  partnerShareMinor: number;
+  status: StaffNfcSubscriptionStatus;
+  currency: StaffNfcSubscriptionCurrency;
+  dueDate: string;
+  /** @nullable */
+  paidAt?: string | null;
+  /** @nullable */
+  nextTerm?: StaffNfcSubscriptionNextTerm;
+  cardStatus: StaffNfcSubscriptionCardStatus;
+  isEligibleForNfc: boolean;
+  latestPayment?: StaffNfcPaymentSummary | null;
+  createdAt: string;
+}
+
+export type StaffNfcMineResponseEmployee = {
+  id: number;
+  name: string;
+  employeeNumber: string;
+  schoolId?: number;
+  schoolName?: string;
+};
+
+export type StaffNfcMineResponseCardStatus = typeof StaffNfcMineResponseCardStatus[keyof typeof StaffNfcMineResponseCardStatus];
+
+
+export const StaffNfcMineResponseCardStatus = {
+  ACTIVE: 'ACTIVE',
+  LOCKED: 'LOCKED',
+  INACTIVE: 'INACTIVE',
+  NONE: 'NONE',
+} as const;
+
+export interface StaffNfcMineResponse {
+  employee: StaffNfcMineResponseEmployee;
+  currentSession: StaffNfcTermContext | null;
+  currentTerm: StaffNfcTermContext | null;
+  currentSubscription?: StaffNfcSubscription | null;
+  nextSubscription?: StaffNfcSubscription | null;
+  cardStatus?: StaffNfcMineResponseCardStatus;
+  subscriptions: StaffNfcSubscription[];
+}
+
+export interface StaffNfcGenerationResponse {
+  schoolId: number;
+  sessionId: number;
+  termId: number;
+  /** @minimum 0 */
+  generatedCount: number;
+  /** @minimum 0 */
+  unchangedCount: number;
+  subscriptions: StaffNfcSubscription[];
+}
+
+export type StaffNfcCheckoutResponseProvider = typeof StaffNfcCheckoutResponseProvider[keyof typeof StaffNfcCheckoutResponseProvider];
+
+
+export const StaffNfcCheckoutResponseProvider = {
+  FLUTTERWAVE: 'FLUTTERWAVE',
+  MOCK: 'MOCK',
+} as const;
+
+export type StaffNfcCheckoutResponseProviderMode = typeof StaffNfcCheckoutResponseProviderMode[keyof typeof StaffNfcCheckoutResponseProviderMode];
+
+
+export const StaffNfcCheckoutResponseProviderMode = {
+  SANDBOX: 'SANDBOX',
+  DEVELOPMENT_MOCK: 'DEVELOPMENT_MOCK',
+} as const;
+
+export type StaffNfcCheckoutResponseStatus = typeof StaffNfcCheckoutResponseStatus[keyof typeof StaffNfcCheckoutResponseStatus];
+
+
+export const StaffNfcCheckoutResponseStatus = {
+  PENDING: 'PENDING',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+} as const;
+
+export type StaffNfcCheckoutResponseCurrency = typeof StaffNfcCheckoutResponseCurrency[keyof typeof StaffNfcCheckoutResponseCurrency];
+
+
+export const StaffNfcCheckoutResponseCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export interface StaffNfcCheckoutResponse {
+  paymentId: number;
+  subscriptionId: number;
+  reference: string;
+  provider: StaffNfcCheckoutResponseProvider;
+  providerMode: StaffNfcCheckoutResponseProviderMode;
+  status: StaffNfcCheckoutResponseStatus;
+  /** @minimum 1 */
+  grossAmountMinor: number;
+  currency: StaffNfcCheckoutResponseCurrency;
+  /** @nullable */
+  checkoutUrl: string | null;
+}
+
+export interface StaffNfcVerificationInput {
+  /**
+     * @minLength 8
+     * @maxLength 100
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  reference: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  providerTransactionId: string;
+}
+
+export interface StaffNfcPaymentResponse {
+  payment: StaffNfcPaymentSummary;
+  subscription: StaffNfcSubscription;
+  allocations: StaffNfcAllocation[];
+  activated: boolean;
+}
+
+export interface StaffNfcReceipt {
+  receiptNumber: string;
+  issuedAt: string;
+  staffName: string;
+  employeeNumber: string;
+  schoolId: number;
+  schoolName: string;
+  sessionName: string;
+  termName: string;
+  payment: StaffNfcPaymentSummary;
+  allocations: StaffNfcAllocation[];
+}
+
+export type StaffNfcFinanceResponseRole = typeof StaffNfcFinanceResponseRole[keyof typeof StaffNfcFinanceResponseRole];
+
+
+export const StaffNfcFinanceResponseRole = {
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+  ACCOUNTANT: 'ACCOUNTANT',
+  PLATFORM_OWNER: 'PLATFORM_OWNER',
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+} as const;
+
+export type StaffNfcFinanceResponseTotals = {
+  grossAmountMinor: number;
+  schoolAllocationMinor: number;
+  platformRevenueMinor: number;
+  partnerCommissionMinor: number;
+  providerFeeExpenseMinor: number;
+  paidCount: number;
+  pendingCount: number;
+  failedCount: number;
+  refundedCount: number;
+};
+
+export interface StaffNfcFinanceResponse {
+  role: StaffNfcFinanceResponseRole;
+  totals: StaffNfcFinanceResponseTotals;
+  items: StaffNfcSubscription[];
+  /** @nullable */
+  nextCursor: number | null;
+}
+
+export interface StaffNfcRefundInput {
+  /**
+     * @minLength 5
+     * @maxLength 500
+     */
+  reason: string;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  amountMinor?: number | null;
+}
+
+export type StaffNfcRefundResponseRefundStatus = typeof StaffNfcRefundResponseRefundStatus[keyof typeof StaffNfcRefundResponseRefundStatus];
+
+
+export const StaffNfcRefundResponseRefundStatus = {
+  PENDING: 'PENDING',
+  PARTIALLY_REFUNDED: 'PARTIALLY_REFUNDED',
+  REFUNDED: 'REFUNDED',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+} as const;
+
+export type StaffNfcRefundResponseProviderMode = typeof StaffNfcRefundResponseProviderMode[keyof typeof StaffNfcRefundResponseProviderMode];
+
+
+export const StaffNfcRefundResponseProviderMode = {
+  SANDBOX: 'SANDBOX',
+  DEVELOPMENT_MOCK: 'DEVELOPMENT_MOCK',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export interface StaffNfcRefundResponse {
+  paymentId: number;
+  requestId: number;
+  refundStatus: StaffNfcRefundResponseRefundStatus;
+  requestedAmountMinor: number;
+  /** @minimum 0 */
+  refundedAmountMinor: number;
+  allocationsReversed: boolean;
+  providerMode: StaffNfcRefundResponseProviderMode;
+}
+
+export type StaffNfcPartnerResponseTotals = {
+  eligibleSubscriptionCount: number;
+  grossAmountMinor: number;
+  commissionAmountMinor: number;
+  pendingCommissionMinor: number;
+  paidCommissionMinor: number;
+};
+
+export type StaffNfcPartnerResponseItemsItemPaymentStatus = typeof StaffNfcPartnerResponseItemsItemPaymentStatus[keyof typeof StaffNfcPartnerResponseItemsItemPaymentStatus];
+
+
+export const StaffNfcPartnerResponseItemsItemPaymentStatus = {
+  PAID: 'PAID',
+  REFUNDED: 'REFUNDED',
+  PARTIALLY_REFUNDED: 'PARTIALLY_REFUNDED',
+} as const;
+
+export type StaffNfcPartnerResponseItemsItemCommissionStatus = typeof StaffNfcPartnerResponseItemsItemCommissionStatus[keyof typeof StaffNfcPartnerResponseItemsItemCommissionStatus];
+
+
+export const StaffNfcPartnerResponseItemsItemCommissionStatus = {
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  REVERSED: 'REVERSED',
+} as const;
+
+export type StaffNfcPartnerResponseItemsItem = {
+  subscriptionId: number;
+  schoolId: number;
+  schoolName: string;
+  sessionId: number;
+  sessionName: string;
+  termId: number;
+  termName: string;
+  priceMinor: number;
+  commissionMinor: number;
+  paymentStatus: StaffNfcPartnerResponseItemsItemPaymentStatus;
+  commissionStatus: StaffNfcPartnerResponseItemsItemCommissionStatus;
+};
+
+export interface StaffNfcPartnerResponse {
+  partnerId: number;
+  totals: StaffNfcPartnerResponseTotals;
+  items: StaffNfcPartnerResponseItemsItem[];
+  /** @nullable */
+  nextCursor: number | null;
+}
+
+export type StaffNfcWebhookAckOutcome = typeof StaffNfcWebhookAckOutcome[keyof typeof StaffNfcWebhookAckOutcome];
+
+
+export const StaffNfcWebhookAckOutcome = {
+  verified: 'verified',
+  pending: 'pending',
+  failed: 'failed',
+  duplicate: 'duplicate',
+  reconciliation_required: 'reconciliation_required',
+  refund_pending: 'refund_pending',
+  refunded: 'refunded',
+  partial_refund: 'partial_refund',
+} as const;
+
+export interface StaffNfcWebhookAck {
+  received: true;
+  outcome: StaffNfcWebhookAckOutcome;
+}
+
+export interface TransportError {
+  error: string;
+  code: string;
+}
+
+export type TransportStopInputStopType = typeof TransportStopInputStopType[keyof typeof TransportStopInputStopType];
+
+
+export const TransportStopInputStopType = {
+  PICKUP: 'PICKUP',
+  DROPOFF: 'DROPOFF',
+  BOTH: 'BOTH',
+} as const;
+
+export interface TransportStopInput {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name: string;
+  stopType: TransportStopInputStopType;
+  /** @minimum 1 */
+  sequence: number;
+  /** @maxLength 500 */
+  notes?: string;
+  isActive?: boolean;
+}
+
+export type TransportStop = TransportStopInput & {
+  id: number;
+  routeId: number;
+  schoolId: number;
+} & Required<Pick<TransportStopInput & {
+  id: number;
+  routeId: number;
+  schoolId: number;
+}, 'isActive'>>;
+
+export type TransportBusInputStatus = typeof TransportBusInputStatus[keyof typeof TransportBusInputStatus];
+
+
+export const TransportBusInputStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  MAINTENANCE: 'MAINTENANCE',
+} as const;
+
+export interface TransportBusInput {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  name: string;
+  /**
+     * @minLength 3
+     * @maxLength 30
+     */
+  registrationNumber: string;
+  /** @maxLength 100 */
+  make?: string;
+  /**
+     * @minimum 1
+     * @maximum 250
+     */
+  capacity: number;
+  status?: TransportBusInputStatus;
+  /** @maxLength 1000 */
+  notes?: string;
+}
+
+export type TransportBusUpdateStatus = typeof TransportBusUpdateStatus[keyof typeof TransportBusUpdateStatus];
+
+
+export const TransportBusUpdateStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  MAINTENANCE: 'MAINTENANCE',
+} as const;
+
+export interface TransportBusUpdate {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  name?: string;
+  /**
+     * @minLength 3
+     * @maxLength 30
+     */
+  registrationNumber?: string;
+  /** @maxLength 100 */
+  make?: string | null;
+  /**
+     * @minimum 1
+     * @maximum 250
+     */
+  capacity?: number;
+  status?: TransportBusUpdateStatus;
+  /** @maxLength 1000 */
+  notes?: string | null;
+}
+
+export type TransportBus = TransportBusInput & {
+  id: number;
+  schoolId: number;
+  /** @minimum 0 */
+  routeCount: number;
+  /** @minimum 0 */
+  passengerCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TransportDriverEmployeeType = typeof TransportDriverEmployeeType[keyof typeof TransportDriverEmployeeType];
+
+
+export const TransportDriverEmployeeType = {
+  DRIVER: 'DRIVER',
+} as const;
+
+export interface TransportDriver {
+  employeeId: number;
+  employeeNo: string;
+  name: string;
+  employeeType: TransportDriverEmployeeType;
+}
+
+export type TransportRouteInputWeekdaysItem = typeof TransportRouteInputWeekdaysItem[keyof typeof TransportRouteInputWeekdaysItem];
+
+
+export const TransportRouteInputWeekdaysItem = {
+  MONDAY: 'MONDAY',
+  TUESDAY: 'TUESDAY',
+  WEDNESDAY: 'WEDNESDAY',
+  THURSDAY: 'THURSDAY',
+  FRIDAY: 'FRIDAY',
+  SATURDAY: 'SATURDAY',
+  SUNDAY: 'SUNDAY',
+} as const;
+
+export type TransportRouteInputStatus = typeof TransportRouteInputStatus[keyof typeof TransportRouteInputStatus];
+
+
+export const TransportRouteInputStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface TransportRouteInput {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name: string;
+  /** @minimum 1 */
+  busId: number;
+  /** @minimum 1 */
+  driverEmployeeId: number;
+  /** @minItems 1 */
+  weekdays: TransportRouteInputWeekdaysItem[];
+  departureTime: string;
+  arrivalTime: string;
+  /**
+     * NGN subunit amount assessed once against each current-term invoice.
+     * @minimum 0
+     */
+  fareMinor?: number;
+  status?: TransportRouteInputStatus;
+}
+
+export type TransportRouteUpdateWeekdaysItem = typeof TransportRouteUpdateWeekdaysItem[keyof typeof TransportRouteUpdateWeekdaysItem];
+
+
+export const TransportRouteUpdateWeekdaysItem = {
+  MONDAY: 'MONDAY',
+  TUESDAY: 'TUESDAY',
+  WEDNESDAY: 'WEDNESDAY',
+  THURSDAY: 'THURSDAY',
+  FRIDAY: 'FRIDAY',
+  SATURDAY: 'SATURDAY',
+  SUNDAY: 'SUNDAY',
+} as const;
+
+export type TransportRouteUpdateStatus = typeof TransportRouteUpdateStatus[keyof typeof TransportRouteUpdateStatus];
+
+
+export const TransportRouteUpdateStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface TransportRouteUpdate {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name?: string;
+  /** @minimum 1 */
+  busId?: number;
+  /** @minimum 1 */
+  driverEmployeeId?: number;
+  /** @minItems 1 */
+  weekdays?: TransportRouteUpdateWeekdaysItem[];
+  departureTime?: string;
+  arrivalTime?: string;
+  /** @minimum 0 */
+  fareMinor?: number;
+  status?: TransportRouteUpdateStatus;
+}
+
+export type TransportRoute = TransportRouteInput & {
+  id: number;
+  schoolId: number;
+  busName: string;
+  registrationNumber: string;
+  busCapacity: number;
+  passengerCount: number;
+  driverName: string;
+  reservedPassengerCount: number;
+  isOverCapacity: boolean;
+  stops: TransportStop[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export interface TransportGuardian {
+  name: string;
+  phone: string;
+  relationshipType: string;
+  isPrimaryGuardian: boolean;
+}
+
+export type TransportSelfViewTransportStatus = typeof TransportSelfViewTransportStatus[keyof typeof TransportSelfViewTransportStatus];
+
+
+export const TransportSelfViewTransportStatus = {
+  ACTIVE: 'ACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  DEACTIVATED: 'DEACTIVATED',
+  NOT_ASSIGNED: 'NOT_ASSIGNED',
+} as const;
+
+export type TransportScheduleWeekdaysItem = typeof TransportScheduleWeekdaysItem[keyof typeof TransportScheduleWeekdaysItem];
+
+
+export const TransportScheduleWeekdaysItem = {
+  MONDAY: 'MONDAY',
+  TUESDAY: 'TUESDAY',
+  WEDNESDAY: 'WEDNESDAY',
+  THURSDAY: 'THURSDAY',
+  FRIDAY: 'FRIDAY',
+  SATURDAY: 'SATURDAY',
+  SUNDAY: 'SUNDAY',
+} as const;
+
+export interface TransportSchedule {
+  weekdays: TransportScheduleWeekdaysItem[];
+  departureTime: string;
+  arrivalTime: string;
+}
+
+export type TransportAssignmentStatus = typeof TransportAssignmentStatus[keyof typeof TransportAssignmentStatus];
+
+
+export const TransportAssignmentStatus = {
+  ACTIVE: 'ACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  DEACTIVATED: 'DEACTIVATED',
+} as const;
+
+export type TransportInvoiceStatusCurrency = typeof TransportInvoiceStatusCurrency[keyof typeof TransportInvoiceStatusCurrency];
+
+
+export const TransportInvoiceStatusCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type TransportInvoiceStatusStatus = typeof TransportInvoiceStatusStatus[keyof typeof TransportInvoiceStatusStatus];
+
+
+export const TransportInvoiceStatusStatus = {
+  PAID: 'PAID',
+  PENDING: 'PENDING',
+  OVERDUE: 'OVERDUE',
+  SUSPENDED: 'SUSPENDED',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface TransportInvoiceStatus {
+  invoiceId: number;
+  invoiceNumber: string;
+  academicSessionId: number;
+  academicTermId: number;
+  currency: TransportInvoiceStatusCurrency;
+  totalMinor: number;
+  paidMinor: number;
+  outstandingMinor: number;
+  status: TransportInvoiceStatusStatus;
+  dueDate: string;
+}
+
+export interface TransportAssignment {
+  id: number;
+  schoolId: number;
+  studentId: number;
+  studentName: string;
+  admissionNo: string;
+  className: string;
+  section: string;
+  busId: number;
+  busName: string;
+  registrationNumber: string;
+  routeId: number;
+  routeName: string;
+  driverName: string;
+  pickup: TransportStop;
+  dropoff: TransportStop;
+  schedule: TransportSchedule;
+  status: TransportAssignmentStatus;
+  effectiveDate: string;
+  reason: string;
+  /** @minimum 0 */
+  feeMinor?: number;
+  guardians: TransportGuardian[];
+  invoices: TransportInvoiceStatus[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TransportHistoryEntryBefore = { [key: string]: unknown } | null;
+
+export type TransportHistoryEntryAfter = { [key: string]: unknown } | null;
+
+export interface TransportHistoryEntry {
+  id: number;
+  schoolId: number;
+  assignmentId: number;
+  studentId: number;
+  actorUserId?: number | null;
+  actorName: string;
+  actorRole: string;
+  eventType: string;
+  effectiveDate: string;
+  reason: string;
+  before?: TransportHistoryEntryBefore;
+  after?: TransportHistoryEntryAfter;
+  createdAt: string;
+}
+
+export interface TransportSelfView {
+  schoolId: number;
+  studentId: number;
+  transportStatus: TransportSelfViewTransportStatus;
+  assignment?: TransportAssignment | null;
+  invoices: TransportInvoiceStatus[];
+  history: TransportHistoryEntry[];
+}
+
+export interface TransportStudentOption {
+  studentId: number;
+  schoolId: number;
+  studentName: string;
+  admissionNo: string;
+  className: string;
+  section: string;
+  guardians: TransportGuardian[];
+  activeAssignment?: TransportSelfView | null;
+}
+
+export interface TransportAssignmentInput {
+  /** @minimum 1 */
+  studentId: number;
+  /** @minimum 1 */
+  routeId: number;
+  /** @minimum 1 */
+  pickupStopId: number;
+  /** @minimum 1 */
+  dropoffStopId: number;
+  effectiveDate: string;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export type TransportAssignmentUpdateStatus = typeof TransportAssignmentUpdateStatus[keyof typeof TransportAssignmentUpdateStatus];
+
+
+export const TransportAssignmentUpdateStatus = {
+  ACTIVE: 'ACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  DEACTIVATED: 'DEACTIVATED',
+} as const;
+
+export type TransportAssignmentUpdateAction = typeof TransportAssignmentUpdateAction[keyof typeof TransportAssignmentUpdateAction];
+
+
+export const TransportAssignmentUpdateAction = {
+  ASSIGN_BUS: 'ASSIGN_BUS',
+  CHANGE_ROUTE: 'CHANGE_ROUTE',
+  CHANGE_STOPS: 'CHANGE_STOPS',
+  ACTIVATE: 'ACTIVATE',
+  SUSPEND: 'SUSPEND',
+  DEACTIVATE: 'DEACTIVATE',
+} as const;
+
+export interface TransportAssignmentUpdate {
+  /** @minimum 1 */
+  routeId?: number;
+  /** @minimum 1 */
+  pickupStopId?: number;
+  /** @minimum 1 */
+  dropoffStopId?: number;
+  status?: TransportAssignmentUpdateStatus;
+  action?: TransportAssignmentUpdateAction;
+  effectiveDate: string;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export type TransportRequestInputRequestType = typeof TransportRequestInputRequestType[keyof typeof TransportRequestInputRequestType];
+
+
+export const TransportRequestInputRequestType = {
+  ACTIVATE: 'ACTIVATE',
+  DEACTIVATE: 'DEACTIVATE',
+} as const;
+
+export interface TransportRequestInput {
+  requestType: TransportRequestInputRequestType;
+  effectiveDate: string;
+  /**
+     * @minLength 3
+     * @maxLength 1000
+     */
+  reason: string;
+}
+
+export type TransportRequestDecisionDecision = typeof TransportRequestDecisionDecision[keyof typeof TransportRequestDecisionDecision];
+
+
+export const TransportRequestDecisionDecision = {
+  APPROVE: 'APPROVE',
+  REJECT: 'REJECT',
+} as const;
+
+export type TransportRequestDecisionSchoolAction = typeof TransportRequestDecisionSchoolAction[keyof typeof TransportRequestDecisionSchoolAction];
+
+
+export const TransportRequestDecisionSchoolAction = {
+  ACTIVATE: 'ACTIVATE',
+  SUSPEND: 'SUSPEND',
+  DEACTIVATE: 'DEACTIVATE',
+  NO_CHANGE: 'NO_CHANGE',
+} as const;
+
+export interface TransportRequestDecision {
+  /** @minimum 1 */
+  requestId: number;
+  decision: TransportRequestDecisionDecision;
+  schoolAction: TransportRequestDecisionSchoolAction;
+  effectiveDate: string;
+  /**
+     * @minLength 3
+     * @maxLength 1000
+     */
+  schoolNote: string;
+}
+
+export type TransportRequestRequestType = typeof TransportRequestRequestType[keyof typeof TransportRequestRequestType];
+
+
+export const TransportRequestRequestType = {
+  ACTIVATE: 'ACTIVATE',
+  DEACTIVATE: 'DEACTIVATE',
+} as const;
+
+export type TransportRequestStatus = typeof TransportRequestStatus[keyof typeof TransportRequestStatus];
+
+
+export const TransportRequestStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  WITHDRAWN: 'WITHDRAWN',
+} as const;
+
+export type TransportRequestSchoolAction = typeof TransportRequestSchoolAction[keyof typeof TransportRequestSchoolAction] | null;
+
+
+export const TransportRequestSchoolAction = {
+  ACTIVATE: 'ACTIVATE',
+  SUSPEND: 'SUSPEND',
+  DEACTIVATE: 'DEACTIVATE',
+  NO_CHANGE: 'NO_CHANGE',
+} as const;
+
+export interface TransportRequest {
+  id: number;
+  schoolId: number;
+  studentId: number;
+  studentName: string;
+  requestType: TransportRequestRequestType;
+  requestDate: string;
+  effectiveDate: string;
+  reason: string;
+  status: TransportRequestStatus;
+  schoolAction?: TransportRequestSchoolAction;
+  schoolNote?: string | null;
+  reviewedBy?: number | null;
+  reviewedAt?: string | null;
+  createdAt: string;
+}
+
+export interface TransportOwnerSchoolSummary {
+  schoolId: number;
+  schoolName: string;
+  busCount: number;
+  routeCount: number;
+  busCapacity: number;
+  reservedPassengerCount: number;
+  activeStudents: number;
+  inactiveStudents: number;
+  activeStaff: number;
+  activeDrivers: number;
+  invoiceCount: number;
+  outstandingMinor: number;
+  transportRevenueMinor: number;
+}
+
 /**
  * Invalid request or rejected school/device/student relationship
  */
@@ -7293,5 +9930,762 @@ export type ListCommunicationPushDevicesParams = {
  * @minimum 1
  */
 schoolId?: number;
+};
+
+export type ListEmployeeNfcCardsParams = {
+/**
+ * Restrict results to teachers or other school staff; omit for both.
+ */
+personType?: ListEmployeeNfcCardsPersonType;
+status?: ListEmployeeNfcCardsStatus;
+/**
+ * @maxLength 100
+ */
+search?: string;
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+limit?: number;
+/**
+ * @minimum 0
+ * @maximum 1000000
+ */
+offset?: number;
+};
+
+export type ListEmployeeNfcCardsPersonType = typeof ListEmployeeNfcCardsPersonType[keyof typeof ListEmployeeNfcCardsPersonType];
+
+
+export const ListEmployeeNfcCardsPersonType = {
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+} as const;
+
+export type ListEmployeeNfcCardsStatus = typeof ListEmployeeNfcCardsStatus[keyof typeof ListEmployeeNfcCardsStatus];
+
+
+export const ListEmployeeNfcCardsStatus = {
+  UNASSIGNED: 'UNASSIGNED',
+  LOCKED: 'LOCKED',
+  ACTIVE: 'ACTIVE',
+  DEACTIVATED: 'DEACTIVATED',
+  REPLACED: 'REPLACED',
+} as const;
+
+export type AssignEmployeeNfcCardBodyPersonType = typeof AssignEmployeeNfcCardBodyPersonType[keyof typeof AssignEmployeeNfcCardBodyPersonType];
+
+
+export const AssignEmployeeNfcCardBodyPersonType = {
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+} as const;
+
+export type AssignEmployeeNfcCardBody = {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  uid: string;
+  /** @minimum 1 */
+  employeeId: number;
+  personType?: AssignEmployeeNfcCardBodyPersonType;
+  /** @maxLength 500 */
+  reason?: string;
+};
+
+export type ChangeEmployeeNfcCardStatusBodyAction = typeof ChangeEmployeeNfcCardStatusBodyAction[keyof typeof ChangeEmployeeNfcCardStatusBodyAction];
+
+
+export const ChangeEmployeeNfcCardStatusBodyAction = {
+  ACTIVATE: 'ACTIVATE',
+  LOCK: 'LOCK',
+  DEACTIVATE: 'DEACTIVATE',
+} as const;
+
+export type ChangeEmployeeNfcCardStatusBody = {
+  action: ChangeEmployeeNfcCardStatusBodyAction;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+};
+
+export type ReplaceEmployeeNfcCardBody = {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  uid: string;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+};
+
+export type ListMyEmployeeNfcAttendanceParams = {
+from?: string;
+to?: string;
+};
+
+export type ListSchoolEmployeeNfcAttendanceParams = {
+/**
+ * @minimum 1
+ */
+employeeId?: number;
+from?: string;
+to?: string;
+status?: ListSchoolEmployeeNfcAttendanceStatus;
+};
+
+export type ListSchoolEmployeeNfcAttendanceStatus = typeof ListSchoolEmployeeNfcAttendanceStatus[keyof typeof ListSchoolEmployeeNfcAttendanceStatus];
+
+
+export const ListSchoolEmployeeNfcAttendanceStatus = {
+  PRESENT: 'PRESENT',
+  LATE: 'LATE',
+  ABSENT: 'ABSENT',
+  LEFT_EARLY: 'LEFT_EARLY',
+  EXCUSED: 'EXCUSED',
+  UNKNOWN: 'UNKNOWN',
+  MISMATCH: 'MISMATCH',
+} as const;
+
+export type IngestEmployeeNfcAttendanceBodyPersonType = typeof IngestEmployeeNfcAttendanceBodyPersonType[keyof typeof IngestEmployeeNfcAttendanceBodyPersonType];
+
+
+export const IngestEmployeeNfcAttendanceBodyPersonType = {
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+} as const;
+
+export type IngestEmployeeNfcAttendanceBodyEventType = typeof IngestEmployeeNfcAttendanceBodyEventType[keyof typeof IngestEmployeeNfcAttendanceBodyEventType];
+
+
+export const IngestEmployeeNfcAttendanceBodyEventType = {
+  SCHOOL_ENTRY: 'SCHOOL_ENTRY',
+  SCHOOL_EXIT: 'SCHOOL_EXIT',
+} as const;
+
+export type IngestEmployeeNfcAttendanceBody = {
+  /** @minimum 1 */
+  employeeId: number;
+  personType: IngestEmployeeNfcAttendanceBodyPersonType;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  nfcUid: string;
+  eventType: IngestEmployeeNfcAttendanceBodyEventType;
+  occurredAt: string;
+};
+
+export type GetSchoolEmployeeNfcAttendanceDailyParams = {
+date?: string;
+};
+
+export type GetSchoolEmployeeNfcAttendanceMonthlyParams = {
+/**
+ * @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$
+ */
+month: string;
+/**
+ * @minimum 1
+ */
+employeeId?: number;
+};
+
+export type ListSchoolEmployeeNfcAttendanceDiscrepanciesParams = {
+status?: ListSchoolEmployeeNfcAttendanceDiscrepanciesStatus;
+};
+
+export type ListSchoolEmployeeNfcAttendanceDiscrepanciesStatus = typeof ListSchoolEmployeeNfcAttendanceDiscrepanciesStatus[keyof typeof ListSchoolEmployeeNfcAttendanceDiscrepanciesStatus];
+
+
+export const ListSchoolEmployeeNfcAttendanceDiscrepanciesStatus = {
+  OPEN: 'OPEN',
+  RESOLVED: 'RESOLVED',
+} as const;
+
+export type ResolveSchoolEmployeeNfcAttendanceDiscrepancyBodyResolution = typeof ResolveSchoolEmployeeNfcAttendanceDiscrepancyBodyResolution[keyof typeof ResolveSchoolEmployeeNfcAttendanceDiscrepancyBodyResolution];
+
+
+export const ResolveSchoolEmployeeNfcAttendanceDiscrepancyBodyResolution = {
+  ACCEPT: 'ACCEPT',
+  IGNORE: 'IGNORE',
+  FOLLOW_UP: 'FOLLOW_UP',
+} as const;
+
+export type ResolveSchoolEmployeeNfcAttendanceDiscrepancyBody = {
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+  resolution: ResolveSchoolEmployeeNfcAttendanceDiscrepancyBodyResolution;
+};
+
+export type ListPlatformSchoolSettlementsParams = {
+status?: ListPlatformSchoolSettlementsStatus;
+/**
+ * @maxLength 100
+ */
+search?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+cursor?: number;
+};
+
+export type ListPlatformSchoolSettlementsStatus = typeof ListPlatformSchoolSettlementsStatus[keyof typeof ListPlatformSchoolSettlementsStatus];
+
+
+export const ListPlatformSchoolSettlementsStatus = {
+  NOT_CONFIGURED: 'NOT_CONFIGURED',
+  PENDING_VERIFICATION: 'PENDING_VERIFICATION',
+  VERIFIED: 'VERIFIED',
+  ACTION_REQUIRED: 'ACTION_REQUIRED',
+  all: 'all',
+} as const;
+
+export type ListSchoolSettlementHistoryParams = {
+from?: string;
+to?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+cursor?: number;
+};
+
+export type ListPlatformSettlementHistoryParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+/**
+ * @maxLength 40
+ */
+status?: string;
+from?: string;
+to?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+cursor?: number;
+};
+
+export type ListSchoolPayrollEmployeesParams = {
+/**
+ * @maxLength 100
+ */
+search?: string;
+status?: ListSchoolPayrollEmployeesStatus;
+};
+
+export type ListSchoolPayrollEmployeesStatus = typeof ListSchoolPayrollEmployeesStatus[keyof typeof ListSchoolPayrollEmployeesStatus];
+
+
+export const ListSchoolPayrollEmployeesStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  all: 'all',
+} as const;
+
+export type ListSchoolPayrollPeriodsParams = {
+/**
+ * @maxLength 40
+ */
+status?: string;
+/**
+ * @minimum 2000
+ * @maximum 2200
+ */
+year?: number;
+};
+
+export type GetSchoolPayrollReportParams = {
+/**
+ * @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$
+ */
+fromMonth: string;
+/**
+ * @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$
+ */
+toMonth: string;
+};
+
+export type ListCompanyPayrollEmployeesParams = {
+/**
+ * @maxLength 100
+ */
+search?: string;
+status?: ListCompanyPayrollEmployeesStatus;
+};
+
+export type ListCompanyPayrollEmployeesStatus = typeof ListCompanyPayrollEmployeesStatus[keyof typeof ListCompanyPayrollEmployeesStatus];
+
+
+export const ListCompanyPayrollEmployeesStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  all: 'all',
+} as const;
+
+export type ListCompanyPayrollPeriodsParams = {
+/**
+ * @maxLength 40
+ */
+status?: string;
+/**
+ * @minimum 2000
+ * @maximum 2200
+ */
+year?: number;
+};
+
+export type GetCompanyPayrollReportParams = {
+/**
+ * @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$
+ */
+fromMonth: string;
+/**
+ * @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$
+ */
+toMonth: string;
+};
+
+export type ListMyPayrollPayslipsParams = {
+/**
+ * @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$
+ */
+fromMonth?: string;
+/**
+ * @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$
+ */
+toMonth?: string;
+};
+
+export type ListSchoolAcademicCalendarParams = {
+/**
+ * @minimum 1
+ */
+sessionId?: number;
+/**
+ * @minimum 1
+ */
+termId?: number;
+startsOnOrAfter?: string;
+endsOnOrBefore?: string;
+};
+
+export type ListSchoolTeacherAssignmentsParams = {
+/**
+ * @minimum 1
+ */
+employeeId?: number;
+/**
+ * @minimum 1
+ */
+sessionId?: number;
+status?: ListSchoolTeacherAssignmentsStatus;
+};
+
+export type ListSchoolTeacherAssignmentsStatus = typeof ListSchoolTeacherAssignmentsStatus[keyof typeof ListSchoolTeacherAssignmentsStatus];
+
+
+export const ListSchoolTeacherAssignmentsStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  all: 'all',
+} as const;
+
+export type ListSchoolTeacherDutyParams = {
+startsOnOrAfter?: string;
+endsOnOrBefore?: string;
+status?: ListSchoolTeacherDutyStatus;
+};
+
+export type ListSchoolTeacherDutyStatus = typeof ListSchoolTeacherDutyStatus[keyof typeof ListSchoolTeacherDutyStatus];
+
+
+export const ListSchoolTeacherDutyStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  all: 'all',
+} as const;
+
+export type GetMyStaffNfcSubscriptionsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type GenerateStaffNfcTermSubscriptionsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * @minimum 1
+ */
+academicSessionId: number;
+/**
+ * @minimum 1
+ */
+academicTermId: number;
+};
+
+export type CreateStaffNfcCheckoutParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type VerifyMyStaffNfcPaymentParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type GetStaffNfcReceiptParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type ListStaffNfcBillingRulesParams = {
+status?: ListStaffNfcBillingRulesStatus;
+};
+
+export type ListStaffNfcBillingRulesStatus = typeof ListStaffNfcBillingRulesStatus[keyof typeof ListStaffNfcBillingRulesStatus];
+
+
+export const ListStaffNfcBillingRulesStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  all: 'all',
+} as const;
+
+export type ListStaffNfcFinanceParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+/**
+ * @minimum 1
+ */
+academicSessionId?: number;
+/**
+ * @minimum 1
+ */
+academicTermId?: number;
+/**
+ * @minimum 1
+ */
+partnerId?: number;
+/**
+ * @minimum 1
+ */
+employeeId?: number;
+paymentStatus?: ListStaffNfcFinancePaymentStatus;
+from?: string;
+to?: string;
+/**
+ * @maxLength 100
+ */
+search?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+cursor?: number;
+};
+
+export type ListStaffNfcFinancePaymentStatus = typeof ListStaffNfcFinancePaymentStatus[keyof typeof ListStaffNfcFinancePaymentStatus];
+
+
+export const ListStaffNfcFinancePaymentStatus = {
+  UNPAID: 'UNPAID',
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+  REFUNDED: 'REFUNDED',
+  PARTIALLY_REFUNDED: 'PARTIALLY_REFUNDED',
+  all: 'all',
+} as const;
+
+export type RequestStaffNfcRefundParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type ReconcileStaffNfcPaymentParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type GetMyStaffNfcPartnerCommissionsParams = {
+/**
+ * @minimum 1
+ */
+academicSessionId?: number;
+/**
+ * @minimum 1
+ */
+academicTermId?: number;
+status?: GetMyStaffNfcPartnerCommissionsStatus;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+cursor?: number;
+};
+
+export type GetMyStaffNfcPartnerCommissionsStatus = typeof GetMyStaffNfcPartnerCommissionsStatus[keyof typeof GetMyStaffNfcPartnerCommissionsStatus];
+
+
+export const GetMyStaffNfcPartnerCommissionsStatus = {
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  REVERSED: 'REVERSED',
+  all: 'all',
+} as const;
+
+export type HandleStaffNfcFlutterwaveWebhookBody = { [key: string]: unknown };
+
+export type ListTransportBusesParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+status?: ListTransportBusesStatus;
+};
+
+export type ListTransportBusesStatus = typeof ListTransportBusesStatus[keyof typeof ListTransportBusesStatus];
+
+
+export const ListTransportBusesStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  MAINTENANCE: 'MAINTENANCE',
+} as const;
+
+export type CreateTransportBusParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type UpdateTransportBusParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type SearchTransportDriversParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * @minLength 1
+ * @maxLength 100
+ */
+search?: string;
+};
+
+export type ListTransportRoutesParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * @minimum 1
+ */
+busId?: number;
+status?: ListTransportRoutesStatus;
+};
+
+export type ListTransportRoutesStatus = typeof ListTransportRoutesStatus[keyof typeof ListTransportRoutesStatus];
+
+
+export const ListTransportRoutesStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export type CreateTransportRouteParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type UpdateTransportRouteParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type AddTransportStopParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type UpdateTransportStopParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type SearchTransportStudentsParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * @minLength 1
+ * @maxLength 100
+ */
+search?: string;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+};
+
+export type ListTransportAssignmentsParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+status?: ListTransportAssignmentsStatus;
+/**
+ * @minimum 1
+ */
+studentId?: number;
+};
+
+export type ListTransportAssignmentsStatus = typeof ListTransportAssignmentsStatus[keyof typeof ListTransportAssignmentsStatus];
+
+
+export const ListTransportAssignmentsStatus = {
+  ACTIVE: 'ACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  DEACTIVATED: 'DEACTIVATED',
+  all: 'all',
+} as const;
+
+export type CreateTransportAssignmentParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type UpdateTransportAssignmentParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type GetTransportAssignmentHistoryParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type ListTransportRequestsParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+status?: ListTransportRequestsStatus;
+};
+
+export type ListTransportRequestsStatus = typeof ListTransportRequestsStatus[keyof typeof ListTransportRequestsStatus];
+
+
+export const ListTransportRequestsStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  WITHDRAWN: 'WITHDRAWN',
+  all: 'all',
+} as const;
+
+export type ReviewTransportRequestParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type GetPlatformTransportOverviewParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+dateFrom?: string;
+dateTo?: string;
 };
 

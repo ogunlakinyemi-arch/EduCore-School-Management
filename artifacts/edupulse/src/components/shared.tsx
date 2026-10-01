@@ -36,7 +36,7 @@ export function IconLogo({ compact = false }: { compact?: boolean }) {
   );
 }
 
-type AppRole = 'PLATFORM_OWNER' | 'SCHOOL_ADMIN' | 'TEACHER' | 'ACCOUNTANT' | 'PARENT' | 'STUDENT' | 'STAFF' | 'DEVICE_ACTIVATION_OFFICER' | 'COMPANY_ACCOUNTANT';
+type AppRole = 'PLATFORM_OWNER' | 'SCHOOL_ADMIN' | 'TEACHER' | 'ACCOUNTANT' | 'PARENT' | 'STUDENT' | 'STAFF' | 'PARTNER' | 'DEVICE_ACTIVATION_OFFICER' | 'COMPANY_ACCOUNTANT';
 type NavItem = { href: string; label: string; icon: typeof Activity; roles?: AppRole[] };
 
 const nav: NavItem[] = [
@@ -47,6 +47,9 @@ const nav: NavItem[] = [
   { href: '/employees', label: 'Employees', icon: Briefcase, roles: ['SCHOOL_ADMIN'] },
   { href: '/company-employees', label: 'Company Employees', icon: Briefcase, roles: ['PLATFORM_OWNER'] },
   { href: '/academics', label: 'Academics', icon: Calendar, roles: ['SCHOOL_ADMIN'] },
+  { href: '/academic-calendar', label: 'Academic Calendar', icon: Calendar, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STAFF', 'PARENT', 'STUDENT'] },
+  { href: '/teacher-assignments', label: 'Teacher Assignments', icon: GraduationCap, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
+  { href: '/teacher-duty', label: 'Teacher Duty', icon: ClipboardCheck, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
   { href: '/subjects', label: 'Subjects', icon: BookOpen, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
   { href: '/classes', label: 'Classes', icon: Library, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
   { href: '/academic-work', label: 'Academic Work', icon: BookOpen, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
@@ -55,6 +58,10 @@ const nav: NavItem[] = [
   { href: '/my-academics', label: 'My Academics', icon: GraduationCap, roles: ['STUDENT'] },
   { href: '/my-fees', label: 'My Fees', icon: ReceiptText, roles: ['STUDENT'] },
   { href: '/finance', label: 'School Fees', icon: CircleDollarSign, roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
+  { href: '/finance-workspace', label: 'Finance Workflows', icon: CircleDollarSign, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
+  { href: '/my-payslips', label: 'My Payslips', icon: ReceiptText, roles: ['TEACHER', 'STAFF'] },
+  { href: '/transport', label: 'School Transport', icon: Smartphone, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
+  { href: '/my-transport', label: 'My Transport', icon: Smartphone, roles: ['PARENT', 'STUDENT'] },
   { href: '/reporting', label: 'Reporting', icon: FileSpreadsheet, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT'] },
   { href: '/communications', label: 'Communications', icon: Bell, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT'] },
   { href: '/inbox', label: 'Inbox', icon: Bell, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'STAFF', 'PARENT'] },
@@ -68,6 +75,11 @@ const nav: NavItem[] = [
   { href: '/devices', label: 'Devices', icon: Smartphone, roles: ['PLATFORM_OWNER'] },
   { href: '/subscriptions', label: 'Subscriptions', icon: WalletCards, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/cards', label: 'NFC Cards', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'STAFF'] },
+  { href: '/employee-nfc', label: 'Employee NFC', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
+  { href: '/my-employee-nfc', label: 'My Employee E-ID', icon: CreditCard, roles: ['TEACHER', 'STAFF'] },
+  { href: '/my-nfc-subscription', label: 'My NFC Subscription', icon: WalletCards, roles: ['TEACHER', 'STAFF'] },
+  { href: '/school-branding', label: 'School Branding', icon: Building2, roles: ['SCHOOL_ADMIN'] },
+  { href: '/partner/staff-nfc', label: 'Staff NFC Commissions', icon: Handshake, roles: ['PARTNER'] },
   { href: '/activation', label: 'Card Activation', icon: CreditCard, roles: ['PLATFORM_OWNER', 'DEVICE_ACTIVATION_OFFICER'] },
   { href: '/activation/history', label: 'Activation History', icon: FileClock, roles: ['PLATFORM_OWNER', 'DEVICE_ACTIVATION_OFFICER'] },
   { href: '/company-finance', label: 'Company Finance', icon: CircleDollarSign, roles: ['COMPANY_ACCOUNTANT'] },
@@ -76,6 +88,7 @@ const nav: NavItem[] = [
 const ownerNavPaths = new Set([
   '/', '/schools', '/students', '/company-employees', '/users', '/partners',
   '/devices', '/subscriptions', '/cards', '/audit', '/reporting', '/activation', '/activation/history',
+  '/finance-workspace', '/employee-nfc', '/transport',
 ]);
 
 export function Shell({ children }: { children: ReactNode }) {

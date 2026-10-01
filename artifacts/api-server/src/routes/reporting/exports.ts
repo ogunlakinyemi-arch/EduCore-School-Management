@@ -1,4 +1,5 @@
 import { deflateRawSync } from "node:zlib";
+import sharp from "sharp";
 import { AuthError } from "../../middlewares/auth";
 import type { ReportResult } from "./core";
 
@@ -166,8 +167,46 @@ function pdfEscape(value: string): string {
   return pdfText(value).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 }
 
-function pdf(result: ReportResult): Buffer {
-  const lines = [pdfText(result.title), result.columns.map((column) => column.label).join(" | "), ""];
+type ReportBranding = {
+  name: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  logoBytes?: Buffer;
+};
+
+type PreparedReportLogo = {
+  bytes: Buffer;
+  width: number;
+  height: number;
+};
+
+function pdf(
+  result: ReportResult,
+  branding?: ReportBranding,
+  logo?: PreparedReportLogo,
+): Buffer {
+  const schoolAddress = [
+    branding?.address,
+    branding?.city,
+    branding?.state,
+  ].filter((part): part is string => Boolean(part)).join(", ");
+  const schoolContact = [branding?.phone, branding?.email]
+    .filter((part): part is string => Boolean(part))
+    .join(" | ");
+  const lines = [
+    ...(branding ? [
+      pdfText(branding.name).slice(0, 100),
+      ...(schoolAddress ? [pdfText(schoolAddress).slice(0, 90)] : []),
+      ...(schoolContact ? [pdfText(schoolContact).slice(0, 90)] : []),
+      "",
+    ] : []),
+    pdfText(result.title),
+    result.columns.map((column) => column.label).join(" | "),
+    "",
+  ];
   for (const row of result.rows) {
     const values = result.columns.map((column) => {
       const value = cellValue(row[column.key]).replace(/\s+/g, " ").trim();
@@ -194,33 +233,62 @@ function pdf(result: ReportResult): Buffer {
   }
   if (page.length || pages.length === 0) pages.push(page);
 
-  const objects: string[] = [];
+  const objects: Array<string | Buffer> = [];
   const pageIds = pages.map((_, index) => 4 + index * 2);
+  const logoObjectId = 4 + pages.length * 2;
   objects.push("<< /Type /Catalog /Pages 2 0 R >>");
   objects.push(`<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pages.length} >>`);
   objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
   pages.forEach((pageLines, index) => {
     const pageId = pageIds[index]!;
     const contentId = pageId + 1;
-    const commands = ["BT", "/F1 9 Tf", "44 752 Td", "12 TL"];
+    const commands = [];
+    if (logo && index === 0) {
+      const logoScale = Math.min(104 / logo.width, 52 / logo.height);
+      const logoWidth = Math.max(1, logo.width * logoScale);
+      const logoHeight = Math.max(1, logo.height * logoScale);
+      commands.push(`q ${logoWidth.toFixed(2)} 0 0 ${logoHeight.toFixed(2)} 464 ${692 - logoHeight / 2} cm /SchoolLogo Do Q`);
+    }
+    commands.push("BT", "/F1 9 Tf", "44 752 Td", "12 TL");
     for (const line of pageLines) commands.push(`(${pdfEscape(line)}) Tj`, "T*");
     commands.push("ET");
     const stream = commands.join("\n");
-    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentId} 0 R >>`);
+    const logoResource = logo && index === 0
+      ? ` /XObject << /SchoolLogo ${logoObjectId} 0 R >>`
+      : "";
+    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >>${logoResource} >> /Contents ${contentId} 0 R >>`);
     objects.push(`<< /Length ${Buffer.byteLength(stream, "ascii")} >>\nstream\n${stream}\nendstream`);
   });
+  if (logo) {
+    const imageHeader = Buffer.from(
+      `<< /Type /XObject /Subtype /Image /Width ${logo.width} /Height ${logo.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.bytes.length} >>\nstream\n`,
+      "ascii",
+    );
+    objects.push(Buffer.concat([
+      imageHeader,
+      logo.bytes,
+      Buffer.from("\nendstream", "ascii"),
+    ]));
+  }
 
-  let document = "%PDF-1.4\n";
+  const document: Buffer[] = [Buffer.from("%PDF-1.4\n", "ascii")];
   const offsets = [0];
+  let byteLength = document[0]!.length;
   objects.forEach((object, index) => {
-    offsets.push(Buffer.byteLength(document, "ascii"));
-    document += `${index + 1} 0 obj\n${object}\nendobj\n`;
+    offsets.push(byteLength);
+    document.push(Buffer.from(`${index + 1} 0 obj\n`, "ascii"));
+    document.push(typeof object === "string" ? Buffer.from(object, "ascii") : object);
+    document.push(Buffer.from("\nendobj\n", "ascii"));
+    byteLength += document[document.length - 3]!.length +
+      document[document.length - 2]!.length +
+      document[document.length - 1]!.length;
   });
-  const xrefOffset = Buffer.byteLength(document, "ascii");
-  document += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-  for (const offset of offsets.slice(1)) document += `${String(offset).padStart(10, "0")} 00000 n \n`;
-  document += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-  return Buffer.from(document, "ascii");
+  const xrefOffset = byteLength;
+  let xref = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets.slice(1)) xref += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  xref += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  document.push(Buffer.from(xref, "ascii"));
+  return Buffer.concat(document);
 }
 
 function safeFilename(title: string, extension: string): string {
@@ -263,5 +331,41 @@ export function serializeReportExport(
     contentType,
     filename,
     contentDisposition: `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+  };
+}
+
+/**
+ * Add the authenticated school's existing, validated private logo and identity
+ * to a report PDF. Branding is embedded in the PDF; no storage URL is sent to a
+ * PDF reader or exposed in the exported document.
+ */
+export async function serializeSchoolBrandedPdfExport(
+  result: ReportResult,
+  branding: ReportBranding,
+): Promise<SerializedReportExport> {
+  if (branding.logoBytes && branding.logoBytes.length > 3 * 1024 * 1024) {
+    throw new AuthError(400, "School logo exceeds the PDF branding image limit");
+  }
+  let logo: PreparedReportLogo | undefined;
+  if (branding.logoBytes) {
+    const decoded = await sharp(branding.logoBytes, {
+      failOn: "warning",
+      limitInputPixels: 12_000_000,
+      sequentialRead: true,
+    })
+      .resize({ width: 420, height: 210, fit: "inside", withoutEnlargement: true })
+      .flatten({ background: "#ffffff" })
+      .jpeg({ quality: 84 })
+      .toBuffer({ resolveWithObject: true });
+    logo = {
+      bytes: decoded.data,
+      width: decoded.info.width,
+      height: decoded.info.height,
+    };
+  }
+  const file = serializeReportExport("pdf", result);
+  return {
+    ...file,
+    body: pdf(result, branding, logo),
   };
 }

@@ -26,6 +26,18 @@ export interface VerifiedPayment extends ExpectedPayment {
   status: FeePaymentStatus;
   providerTransactionId: string;
   paidAt?: string;
+  /** Optional, provider-reported merchant-side fee in currency minor units. */
+  providerFeeMinor?: number;
+  /** Optional, provider-reported settlement amount; it is not bank-settlement evidence. */
+  providerSettlementAmountMinor?: number;
+}
+
+export interface FlutterwaveRefundResult {
+  providerRefundId: string;
+  providerTransactionId: string;
+  amountMinor: number;
+  /** Only bank/MMO/processor completion states mean the refund finished. */
+  status: "pending" | "succeeded" | "failed" | "unknown";
 }
 
 export interface VerifyPaymentInput extends ExpectedPayment {
@@ -425,6 +437,10 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
       providerAmountMinor: majorToMinor(data.amount, input.currency),
       providerTransactionId: data.id,
       paidAt: data.created_at,
+      providerFeeMinor: flutterwaveFeeMinor(data, input.currency),
+      providerSettlementAmountMinor: data.amount_settled === undefined
+        ? undefined
+        : majorToMinorNonnegative(data.amount_settled, input.currency),
       successfulStatus: "successful",
       providerName: "Flutterwave",
     });
@@ -480,6 +496,50 @@ export class FlutterwaveTestAdapter extends HttpPaymentAdapter {
     }
   }
 
+  /**
+   * Refund submission is an irreversible provider POST. The adapter never
+   * retries it: a lost response is left for explicit refund-ID reconciliation.
+   */
+  async requestRefund(input: {
+    providerTransactionId: string;
+    amountMinor: number;
+    currency: string;
+    reason: string;
+  }): Promise<FlutterwaveRefundResult> {
+    if (!/^[0-9]+$/.test(input.providerTransactionId)
+        || !Number.isSafeInteger(input.amountMinor) || input.amountMinor <= 0
+        || normalizeCurrency(input.currency) !== "NGN"
+        || input.reason.trim().length < 5 || input.reason.trim().length > 500) {
+      throw new PaymentProviderError("Flutterwave refund details are invalid");
+    }
+    const transactionId = normalizeProviderTransactionId(input.providerTransactionId, "Flutterwave");
+    const result = await this.request(`transactions/${encodeURIComponent(transactionId)}/refund`, {
+      method: "POST",
+      headers: this.authHeaders(),
+      body: JSON.stringify({
+        amount: minorToMajor(input.amountMinor, input.currency),
+        comments: input.reason.trim(),
+      }),
+    });
+    if (result.status !== "success") throw new PaymentProviderError("Flutterwave did not confirm the refund request");
+    const data = asObject(result.data);
+    return parseFlutterwaveRefund(data);
+  }
+
+  /** Safe read for an existing refund ID; never reissues the original refund POST. */
+  async verifyRefund(providerRefundId: string): Promise<FlutterwaveRefundResult> {
+    const id = normalizeProviderTransactionId(providerRefundId, "Flutterwave refund");
+    const result = await this.request(`refunds/${encodeURIComponent(id)}`, {
+      method: "GET",
+      headers: this.authHeaders(),
+    }, true);
+    const data = asObject(result.data);
+    if (result.status !== "success" || !data) {
+      throw new PaymentProviderError("Flutterwave refund status could not be established");
+    }
+    return parseFlutterwaveRefund(data);
+  }
+
   private authHeaders(): Record<string, string> {
     return { Authorization: `Bearer ${this.secretKey}`, "Content-Type": "application/json" };
   }
@@ -528,6 +588,8 @@ function verifyFields(input: {
   paidAt: unknown;
   successfulStatus: string;
   providerName: string;
+  providerFeeMinor?: number;
+  providerSettlementAmountMinor?: number;
 }): VerifiedPayment {
   const { expected } = input;
   if (input.providerReference !== expected.reference) throw new PaymentProviderError(`${input.providerName} payment reference mismatch`);
@@ -551,7 +613,58 @@ function verifyFields(input: {
     currency: normalizeCurrency(expected.currency),
     status,
     providerTransactionId: transactionId,
+    ...(input.providerFeeMinor !== undefined && Number.isSafeInteger(input.providerFeeMinor) && input.providerFeeMinor >= 0
+      ? { providerFeeMinor: input.providerFeeMinor } : {}),
+    ...(input.providerSettlementAmountMinor !== undefined
+      && Number.isSafeInteger(input.providerSettlementAmountMinor) && input.providerSettlementAmountMinor >= 0
+      ? { providerSettlementAmountMinor: input.providerSettlementAmountMinor } : {}),
     ...(typeof input.paidAt === "string" ? { paidAt: input.paidAt } : {}),
+  };
+}
+
+function majorToMinorNonnegative(amount: unknown, currency: string): number {
+  if (amount === 0 || amount === "0" || amount === "0.00") return 0;
+  const result = majorToMinor(amount, currency);
+  return result >= 0 ? result : Number.NaN;
+}
+
+function flutterwaveFeeMinor(data: JsonObject, currency: string): number | undefined {
+  if (data.app_fee === undefined && data.merchant_fee === undefined) return undefined;
+  const appFee = data.app_fee === undefined ? 0 : majorToMinorNonnegative(data.app_fee, currency);
+  const merchantFee = data.merchant_fee === undefined ? 0 : majorToMinorNonnegative(data.merchant_fee, currency);
+  if (!Number.isSafeInteger(appFee) || !Number.isSafeInteger(merchantFee)) return undefined;
+  const total = appFee + merchantFee;
+  return Number.isSafeInteger(total) ? total : undefined;
+}
+
+function parseFlutterwaveRefund(data: JsonObject | null): FlutterwaveRefundResult {
+  if (!data) throw new PaymentProviderError("Flutterwave refund details are invalid");
+  const id = normalizeProviderTransactionId(data.id, "Flutterwave refund");
+  const transactionId = normalizeProviderTransactionId(data.transaction_id ?? data.tx_id, "Flutterwave");
+  const amount = majorToMinorNonnegative(data.amount_refunded ?? data.AmountRefunded, "NGN");
+  if (!Number.isSafeInteger(amount) || amount <= 0) {
+    throw new PaymentProviderError("Flutterwave refund amount is invalid");
+  }
+  const rawStatus = stringField(data.status)?.trim().toLowerCase();
+  const finalSuccess = new Set([
+    "completed-bank-transfer",
+    "completed-momo",
+    "completed-mpgs",
+    "completed-offline",
+    "completed-preauth",
+  ]);
+  const status: FlutterwaveRefundResult["status"] = rawStatus && finalSuccess.has(rawStatus)
+    ? "succeeded"
+    : rawStatus === "failed" || rawStatus === "rejected"
+      ? "failed"
+      : rawStatus === "completed" || rawStatus === "processing" || rawStatus === "pending-momo"
+        ? "pending"
+        : "unknown";
+  return {
+    providerRefundId: id,
+    providerTransactionId: transactionId,
+    amountMinor: amount,
+    status,
   };
 }
 

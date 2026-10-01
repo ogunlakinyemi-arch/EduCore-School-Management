@@ -84,6 +84,7 @@ function PortalHeader() {
               {isOwner && <Link href="/partner/staff" className={cx("hover:text-[hsl(var(--foreground))]", location.startsWith('/partner/staff') && "text-[hsl(var(--primary))]")}>Staff</Link>}
               {canViewFinance && <Link href="/partner/commissions" className={cx("hover:text-[hsl(var(--foreground))]", location.startsWith('/partner/commissions') && "text-[hsl(var(--primary))]")}>Commissions</Link>}
               {canViewFinance && <Link href="/partner/payouts" className={cx("hover:text-[hsl(var(--foreground))]", location.startsWith('/partner/payouts') && "text-[hsl(var(--primary))]")}>Payouts</Link>}
+              <Link href="/partner/staff-nfc" title="Staff NFC Commissions" className={cx("hover:text-[hsl(var(--foreground))]", location === '/partner/staff-nfc' && "text-[hsl(var(--primary))]")} data-testid="link-partner-staff-nfc">Staff NFC</Link>
               <Link href="/reporting" className={cx("hover:text-[hsl(var(--foreground))]", location === '/reporting' && "text-[hsl(var(--primary))]")} data-testid="link-partner-reporting">Reports</Link>
               {isOwner && <Link href="/partner/profile" className={cx("hover:text-[hsl(var(--foreground))]", location === '/partner/profile' && "text-[hsl(var(--primary))]")}>Settings</Link>}
             </nav>
@@ -94,6 +95,9 @@ function PortalHeader() {
           <UserButton />
         </div>
       </div>
+      {isSetup && <nav aria-label="Partner navigation" className="mx-auto flex max-w-6xl items-center gap-5 overflow-x-auto border-t border-[hsl(var(--border)/.6)] px-5 py-2 text-xs font-bold text-[hsl(var(--primary))] md:hidden">
+        <Link href="/partner/staff-nfc" data-testid="link-partner-staff-nfc-mobile" className="whitespace-nowrap hover:underline">Staff NFC Commissions</Link>
+      </nav>}
     </header>
   );
 }

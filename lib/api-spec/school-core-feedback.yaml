@@ -1,0 +1,924 @@
+paths:
+  /schools/{schoolId}/branding:
+    get:
+      operationId: getSchoolBranding
+      tags: [schools]
+      summary: Get school branding for an explicitly authorized school
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: School identity and authorized private logo URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchoolBranding"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: updateSchoolBranding
+      tags: [schools]
+      summary: Update existing school identity fields (School Admin only)
+      description: Platform Owner access, including mixed-role Owner access, is explicitly denied for ordinary school operational writes.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSchoolBrandingBody"
+      responses:
+        "200":
+          description: Persisted identity fields and private logo URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchoolBranding"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /schools/{schoolId}/branding/logo-upload-url:
+    post:
+      operationId: requestSchoolLogoUpload
+      tags: [schools]
+      summary: Request a short-lived private PNG, JPEG, or WebP school logo upload
+      description: Only same-school School Admins can request a school-scoped private object. SVG and other active or scriptable content is never accepted.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SchoolLogoUploadRequest"
+      responses:
+        "201":
+          description: Short-lived PUT URL and school-bound, server-generated private object path
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchoolLogoUploadResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /schools/{schoolId}/branding/logo:
+    put:
+      operationId: confirmSchoolLogoUpload
+      tags: [schools]
+      summary: Validate uploaded logo bytes and atomically set the official logo
+      description: Validates stored length, MIME, actual PNG/JPEG/WebP magic, complete image decoding and bounded dimensions before replacement.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmSchoolLogoUploadBody"
+      responses:
+        "200":
+          description: Verified persisted school branding and cookie-authenticated, non-cacheable logo URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchoolBranding"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    get:
+      operationId: getSchoolLogo
+      tags: [schools]
+      summary: Read private school logo bytes after same-school authorization
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Validated school image bytes; private no-store caching and nosniff
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /schools/{schoolId}/academic-calendar:
+    get:
+      operationId: listSchoolAcademicCalendar
+      tags: [academics]
+      summary: List term- and school-specific calendar entries visible to the authorized role
+      description: Term start and end dates are projected from existing academic sessions and terms. Other entries are filtered against each user's audience. Parents, students and teachers cannot see entries restricted to another audience.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - name: sessionId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: termId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: startsOnOrAfter
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: endsOnOrBefore
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Ordered, role-filtered event and existing-period projection
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SchoolCalendarEntry"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createSchoolCalendarEvent
+      tags: [academics]
+      summary: Create one same-school event (School Admin only)
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSchoolCalendarEventBody"
+      responses:
+        "201":
+          description: Persisted calendar event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchoolCalendarEntry"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /schools/{schoolId}/academic-calendar/generate:
+    post:
+      operationId: generateSchoolAcademicCalendar
+      tags: [academics]
+      summary: Idempotently generate term and configured academic calendar entries (School Admin only)
+      description: Replaces dates for the same deterministic session/term/type/sequence keys without creating duplicate entries; retains custom school events and session/term history.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateSchoolCalendarBody"
+      responses:
+        "200":
+          description: Updated, de-duplicated entries visible under this calendar
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SchoolCalendarEntry"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /schools/{schoolId}/academic-calendar/{eventId}:
+    patch:
+      operationId: updateSchoolCalendarEvent
+      tags: [academics]
+      summary: Update one authorized school event without changing deterministic generated period records
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSchoolCalendarEventBody"
+      responses:
+        "200":
+          description: Updated authorized same-school event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchoolCalendarEntry"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /schools/{schoolId}/teacher-assignments:
+    get:
+      operationId: listSchoolTeacherAssignments
+      tags: [employees, academics]
+      summary: List named, school-scoped class/subject teacher assignments or a teacher's own assignments
+      description: Teachers cannot query another employee's assignments. School Admins may search by teacher, class, subject, session or status. Returns named records and date/history fields, not only IDs.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - name: employeeId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: sessionId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: classId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: subjectId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ACTIVE, INACTIVE, all]
+            default: ACTIVE
+      responses:
+        "200":
+          description: Ordered named assignments from existing tenant-safe school records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SchoolTeacherAssignment"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createSchoolTeacherAssignment
+      tags: [employees, academics]
+      summary: Create or replace a same-school class, subject, or class-plus-subject teacher assignment
+      description: A replacement atomically marks prior active slot assignments inactive before creating the new dated record. Platform Owner is denied from ordinary school writes, even with another role attached.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSchoolTeacherAssignmentBody"
+      responses:
+        "201":
+          description: Persisted named and dated same-school teacher assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchoolTeacherAssignment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Another active assignment already occupies this teacher/class/subject slot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /schools/{schoolId}/teacher-assignments/{assignmentKind}/{assignmentId}:
+    patch:
+      operationId: updateSchoolTeacherAssignment
+      tags: [employees, academics]
+      summary: Replace the assigned teacher atomically, update dates, or deactivate an assignment
+      description: Supplying a different employeeId atomically deactivates the prior record and creates/returns the replacement record in one transaction; no client-side deactivate-then-create sequence is needed. startDate is optional for replacement and defaults to the prior start date when recorded.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - name: assignmentKind
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [CLASS, SUBJECT]
+        - name: assignmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSchoolTeacherAssignmentBody"
+      responses:
+        "200":
+          description: Persisted assignment state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchoolTeacherAssignment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Another active assignment already occupies this teacher/class/subject slot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /schools/{schoolId}/duty-roster:
+    get:
+      operationId: listSchoolTeacherDuty
+      tags: [employees]
+      summary: View a school duty roster or the authenticated teacher's own duties
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - name: startsOnOrAfter
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: endsOnOrBefore
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ACTIVE, INACTIVE, all]
+            default: ACTIVE
+      responses:
+        "200":
+          description: Ordered roster scoped to the school administrator or the signed-in teacher
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeacherDuty"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createSchoolTeacherDuty
+      tags: [employees]
+      summary: Create a dated weekly teacher on-duty assignment (School Admin only)
+      description: A school-wide advisory transaction lock and intersecting date-range check prevent a teacher receiving overlapping active duties.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTeacherDutyBody"
+      responses:
+        "201":
+          description: Persisted duty roster entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeacherDuty"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Existing active duty overlaps the requested teacher and date range
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /schools/{schoolId}/duty-roster/{dutyId}:
+    patch:
+      operationId: updateSchoolTeacherDuty
+      tags: [employees]
+      summary: Edit or deactivate one same-school teacher duty assignment
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - name: dutyId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTeacherDutyBody"
+      responses:
+        "200":
+          description: Persisted duty roster entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeacherDuty"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  parameters:
+    SchoolId:
+      name: schoolId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+  responses:
+    BadRequest:
+      description: Invalid request or rejected school-scoped input.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    NotFound:
+      description: Resource not found or outside the authorized school.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+  schemas:
+    ApiError:
+      type: object
+      required: [error, code]
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+    SchoolBranding:
+      type: object
+      required: [schoolId, name, city, state, logoUrl]
+      properties:
+        schoolId:
+          type: integer
+        name:
+          type: string
+        registrationNumber:
+          type: [string, "null"]
+        address:
+          type: [string, "null"]
+        city:
+          type: string
+        state:
+          type: string
+        lga:
+          type: [string, "null"]
+        phone:
+          type: [string, "null"]
+        email:
+          type: [string, "null"]
+        website:
+          type: [string, "null"]
+        schoolType:
+          type: [string, "null"]
+        logoUrl:
+          type: [string, "null"]
+          description: Same-school authenticated private endpoint; never a public or cross-tenant storage URL.
+    UpdateSchoolBrandingBody:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        registrationNumber:
+          type: [string, "null"]
+          maxLength: 100
+        address:
+          type: [string, "null"]
+          maxLength: 500
+        city:
+          type: string
+          maxLength: 160
+        state:
+          type: string
+          maxLength: 160
+        lga:
+          type: [string, "null"]
+          maxLength: 160
+        phone:
+          type: [string, "null"]
+          maxLength: 50
+        email:
+          type: [string, "null"]
+          maxLength: 254
+        website:
+          type: [string, "null"]
+          maxLength: 255
+        schoolType:
+          type: [string, "null"]
+          maxLength: 100
+      additionalProperties: false
+    SchoolLogoUploadRequest:
+      type: object
+      required: [contentType, size]
+      properties:
+        contentType:
+          type: string
+          enum: [image/jpeg, image/png, image/webp]
+        size:
+          type: integer
+          minimum: 1
+          maximum: 3145728
+      additionalProperties: false
+    SchoolLogoUploadResponse:
+      type: object
+      required: [uploadURL, objectPath, expiresInSeconds]
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+        objectPath:
+          type: string
+          pattern: "^/objects/school-logos/[1-9][0-9]*/[0-9a-f-]{36}$"
+        expiresInSeconds:
+          type: integer
+          example: 180
+    ConfirmSchoolLogoUploadBody:
+      type: object
+      required: [objectPath]
+      properties:
+        objectPath:
+          type: string
+          pattern: "^/objects/school-logos/[1-9][0-9]*/[0-9a-f-]{36}$"
+      additionalProperties: false
+    SchoolCalendarEntry:
+      type: object
+      required: [id, schoolId, title, category, startDate, academic, audience, status, source]
+      properties:
+        id:
+          type: string
+          description: Numeric ID for a stored configurable event; stable namespaced key for a projected academic session or term period.
+        schoolId:
+          type: integer
+        sessionId:
+          type: [integer, "null"]
+        sessionName:
+          type: [string, "null"]
+        termId:
+          type: [integer, "null"]
+        termName:
+          type: [string, "null"]
+        title:
+          type: string
+        category:
+          type: string
+          enum: [TERM_START, TERM_END, RESUMPTION, MID_TERM_BREAK, HOLIDAY, EXAMINATION, RESULT_PUBLICATION, SCHOOL_EVENT, OTHER]
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: [string, "null"]
+          format: date
+        academic:
+          type: boolean
+        audience:
+          type: array
+          items:
+            type: string
+            enum: [TEACHER, STUDENT, PARENT, STAFF]
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+        source:
+          type: string
+          enum: [SESSION_TERM, SCHOOL_EVENT]
+        notes:
+          type: [string, "null"]
+    CalendarDateItem:
+      type: object
+      required: [title, startDate]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 180
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: [string, "null"]
+          format: date
+        notes:
+          type: [string, "null"]
+          maxLength: 2000
+        audience:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            enum: [TEACHER, STUDENT, PARENT, STAFF]
+    CalendarTermConfiguration:
+      type: object
+      required: [termId]
+      properties:
+        termId:
+          type: integer
+          minimum: 1
+        resumptionDate:
+          type: [string, "null"]
+          format: date
+        midTermBreaks:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalendarDateItem"
+        holidays:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalendarDateItem"
+        examinations:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalendarDateItem"
+        resultPublicationDates:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalendarDateItem"
+      additionalProperties: false
+    GenerateSchoolCalendarBody:
+      type: object
+      required: [sessionId, terms]
+      properties:
+        sessionId:
+          type: integer
+          minimum: 1
+        terms:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalendarTermConfiguration"
+      additionalProperties: false
+    CreateSchoolCalendarEventBody:
+      type: object
+      required: [title, category, startDate, academic, audience]
+      properties:
+        termId:
+          type: [integer, "null"]
+          minimum: 1
+        title:
+          type: string
+          minLength: 1
+          maxLength: 180
+        category:
+          type: string
+          enum: [RESUMPTION, MID_TERM_BREAK, HOLIDAY, EXAMINATION, RESULT_PUBLICATION, SCHOOL_EVENT, OTHER]
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: [string, "null"]
+          format: date
+        academic:
+          type: boolean
+        audience:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            enum: [TEACHER, STUDENT, PARENT, STAFF]
+        notes:
+          type: [string, "null"]
+          maxLength: 2000
+      additionalProperties: false
+    UpdateSchoolCalendarEventBody:
+      type: object
+      minProperties: 1
+      properties:
+        termId:
+          type: [integer, "null"]
+          minimum: 1
+        title:
+          type: string
+          minLength: 1
+          maxLength: 180
+        category:
+          type: string
+          enum: [RESUMPTION, MID_TERM_BREAK, HOLIDAY, EXAMINATION, RESULT_PUBLICATION, SCHOOL_EVENT, OTHER]
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: [string, "null"]
+          format: date
+        academic:
+          type: boolean
+        audience:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            enum: [TEACHER, STUDENT, PARENT, STAFF]
+        notes:
+          type: [string, "null"]
+          maxLength: 2000
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+      additionalProperties: false
+    SchoolTeacherAssignment:
+      type: object
+      required: [id, assignmentKind, schoolId, employeeId, employeeName, employeeNo, employeeType, sessionId, sessionName, classId, className, section, assignmentType, startDate, endDate, status]
+      properties:
+        id:
+          type: integer
+        assignmentKind:
+          type: string
+          enum: [CLASS, SUBJECT]
+        schoolId:
+          type: integer
+        employeeId:
+          type: integer
+        employeeName:
+          type: string
+        employeeNo:
+          type: string
+        employeeType:
+          type: string
+        sessionId:
+          type: integer
+        sessionName:
+          type: string
+        classId:
+          type: [integer, "null"]
+        className:
+          type: [string, "null"]
+        subjectId:
+          type: [integer, "null"]
+        subjectName:
+          type: [string, "null"]
+        section:
+          type: [string, "null"]
+        assignmentType:
+          type: string
+          enum: [CLASS_TEACHER, SUBJECT_TEACHER]
+        startDate:
+          type: [string, "null"]
+          format: date
+        endDate:
+          type: [string, "null"]
+          format: date
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+    CreateSchoolTeacherAssignmentBody:
+      type: object
+      description: CLASS_TEACHER requires a classId and no subjectId. SUBJECT_TEACHER requires a subjectId; classId is optional for school-wide subject assignment.
+      required: [employeeId, sessionId, assignmentType, startDate]
+      properties:
+        employeeId:
+          type: integer
+          minimum: 1
+        sessionId:
+          type: integer
+          minimum: 1
+        classId:
+          type: [integer, "null"]
+          minimum: 1
+        subjectId:
+          type: [integer, "null"]
+          minimum: 1
+        section:
+          type: string
+          maxLength: 80
+        assignmentType:
+          type: string
+          enum: [CLASS_TEACHER, SUBJECT_TEACHER]
+        startDate:
+          type: string
+          format: date
+      additionalProperties: false
+    UpdateSchoolTeacherAssignmentBody:
+      type: object
+      minProperties: 1
+      description: employeeId replaces the teacher while preserving the previous inactive record; startDate is only accepted with employeeId.
+      properties:
+        employeeId:
+          type: integer
+          minimum: 1
+        startDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+        endDate:
+          type: string
+          format: date
+      additionalProperties: false
+    TeacherDuty:
+      type: object
+      required: [id, schoolId, employeeId, employeeName, employeeNo, dutyRole, startDate, endDate, status, notes]
+      properties:
+        id:
+          type: integer
+        schoolId:
+          type: integer
+        employeeId:
+          type: integer
+        employeeName:
+          type: string
+        employeeNo:
+          type: string
+        dutyRole:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+        notes:
+          type: [string, "null"]
+    CreateTeacherDutyBody:
+      type: object
+      required: [employeeId, dutyRole, startDate, endDate]
+      properties:
+        employeeId:
+          type: integer
+          minimum: 1
+        dutyRole:
+          type: string
+          minLength: 1
+          maxLength: 100
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        notes:
+          type: [string, "null"]
+          maxLength: 2000
+      additionalProperties: false
+    UpdateTeacherDutyBody:
+      type: object
+      minProperties: 1
+      properties:
+        employeeId:
+          type: integer
+          minimum: 1
+        dutyRole:
+          type: string
+          minLength: 1
+          maxLength: 100
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        notes:
+          type: [string, "null"]
+          maxLength: 2000
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+      additionalProperties: false

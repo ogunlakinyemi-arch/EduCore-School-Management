@@ -37,6 +37,10 @@ function PortalHeader() {
           <UserButton />
         </div>
       </div>
+      <nav aria-label="Family navigation" className="mx-auto flex max-w-6xl items-center gap-5 overflow-x-auto border-t border-[hsl(var(--border)/.6)] px-5 py-2 text-xs font-bold text-[hsl(var(--primary))]">
+        <Link href="/my-transport" data-testid="link-parent-transport" className="whitespace-nowrap hover:underline">My transport</Link>
+        <Link href="/academic-calendar" data-testid="link-parent-academic-calendar" className="whitespace-nowrap hover:underline">Academic calendar</Link>
+      </nav>
     </header>
   );
 }

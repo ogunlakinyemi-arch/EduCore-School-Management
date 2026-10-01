@@ -1,0 +1,957 @@
+paths:
+  /platform/finance/payment-settlement:
+    get:
+      operationId: getPlatformPaymentSettlement
+      tags: [finance]
+      summary: Read global company settlement configuration and provider capability without revealing bank numbers or credentials
+      responses:
+        "200":
+          description: Owner-only, masked and role-safe company settlement projection; never claims that settlement was performed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentSettlementProfile" }
+        "403": { description: Platform Owner role required }
+    put:
+      operationId: updatePlatformPaymentSettlement
+      tags: [finance]
+      summary: Configure the Yemait Technologies Limited Flutterwave settlement recipient (Platform Owner)
+      description: Stores encrypted bank-account fields server-side, returns masks only, and never implies that entering a bank account creates a Flutterwave subaccount or settles funds.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CompanySettlementInput" }
+      responses:
+        "200":
+          description: Persisted masked company settlement profile and provider capability
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentSettlementProfile" }
+        "400":
+          description: Invalid or incomplete settlement information
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollError" }
+        "403": { description: Platform Owner role required }
+        "503":
+          description: Encryption key, provider-mode configuration or settlement capability is unavailable; nothing is represented as verified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollError" }
+  /platform/finance/payment-settlement/schools:
+    get:
+      operationId: listPlatformSchoolSettlements
+      tags: [finance]
+      summary: Read Platform Owner school-settlement oversight across tenants, with bank details masked
+      parameters:
+        - { name: status, in: query, required: false, schema: { type: string, enum: [NOT_CONFIGURED, PENDING_VERIFICATION, VERIFIED, ACTION_REQUIRED, all], default: all } }
+        - { name: search, in: query, required: false, schema: { type: string, maxLength: 100 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+        - { name: cursor, in: query, required: false, schema: { type: integer, minimum: 0, default: 0 } }
+      responses:
+        "200":
+          description: Masked school recipient configuration; no ordinary school operations are mutated
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/SchoolSettlementSummary" } }
+        "403": { description: Platform Owner role required }
+  /platform/finance/payment-settlement/schools/{schoolId}:
+    get:
+      operationId: getPlatformSchoolSettlement
+      tags: [finance]
+      summary: Read a school's masked settlement recipient for platform-level financial oversight only
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Masked, tenant-scoped school settlement profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolSettlementSummary" }
+        "403": { description: Platform Owner role required }
+        "404": { description: School or profile not found }
+    post:
+      operationId: verifyPlatformSchoolSettlement
+      tags: [finance]
+      summary: Verify and onboard an expressly approved school bank beneficiary through the documented Flutterwave v3 API
+      description: Owner-only platform action. Requires explicit test-mode credentials in Development or explicitly configured live mode outside Development. Fails closed if mode/credentials/API response are ambiguous. A successful account-name resolution or subaccount creation is not proof of a fund transfer or settlement.
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 120, pattern: "^[A-Za-z0-9_-]+$" }
+      responses:
+        "200":
+          description: Server-verified account and persisted Flutterwave beneficiary/subaccount identifiers; transfer status remains independent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolSettlementSummary" }
+        "403": { description: Platform Owner role required }
+        "404": { description: School recipient information not found }
+        "409": { description: Bank beneficiary details changed or a prior onboarding call has an ambiguous provider outcome; reconciliation is required before retry }
+        "503":
+          description: Documented endpoint unsupported for the configured environment, sandbox not configured, or provider unavailable. No account is reported as verified.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollError" }
+  /schools/{schoolId}/finance/payment-settlement:
+    get:
+      operationId: getSchoolPaymentSettlement
+      tags: [finance]
+      summary: Read the authenticated School Admin's own masked settlement configuration and school settlement history
+      description: An Owner session, including a mixed-role Owner, cannot use school operational routes.
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: School-scoped masked settlement projection and settlement-history summary
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolSettlementSummary" }
+        "403": { description: Active same-school School Admin role required; Owner operational access is denied }
+        "404": { description: School or profile not found }
+    put:
+      operationId: updateSchoolPaymentSettlement
+      tags: [finance]
+      summary: Submit or update settlement details for the authenticated School Admin's own school
+      description: This is a tenant operational write and explicitly rejects PLATFORM_OWNER identities, including users who also have a school membership. Bank numbers are encrypted and only their last four digits are returned.
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SchoolSettlementInput" }
+      responses:
+        "200":
+          description: Persisted PENDING_VERIFICATION recipient profile with a masked account number. No settlement has occurred.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolSettlementSummary" }
+        "400":
+          description: Invalid bank/currency/contact data
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollError" }
+        "403": { description: Active same-school School Admin required; Owner school-write denial applies }
+        "404": { description: Same-school record not found }
+        "503":
+          description: Secure bank-information encryption is not configured
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollError" }
+  /schools/{schoolId}/finance/payment-settlement/history:
+    get:
+      operationId: listSchoolSettlementHistory
+      tags: [finance]
+      summary: List settlement and reconciliation records within the authorized school; excludes company and other-school funds
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: from, in: query, required: false, schema: { type: string, format: date } }
+        - { name: to, in: query, required: false, schema: { type: string, format: date } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+        - { name: cursor, in: query, required: false, schema: { type: integer, minimum: 0, default: 0 } }
+      responses:
+        "200":
+          description: Masked school-owned verified settlement and reconciliation events
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/SettlementHistoryEntry" } }
+        "403": { description: Active same-school finance access required; Owner school operational read is excluded }
+  /platform/finance/payment-settlement/history:
+    get:
+      operationId: listPlatformSettlementHistory
+      tags: [finance]
+      summary: Platform-wide masked collection, transfer, settlement and reconciliation history
+      parameters:
+        - { name: schoolId, in: query, required: false, schema: { type: integer, minimum: 1 } }
+        - { name: status, in: query, required: false, schema: { type: string, maxLength: 40 } }
+        - { name: from, in: query, required: false, schema: { type: string, format: date } }
+        - { name: to, in: query, required: false, schema: { type: string, format: date } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+        - { name: cursor, in: query, required: false, schema: { type: integer, minimum: 0, default: 0 } }
+      responses:
+        "200":
+          description: Platform-visible provider and internal allocation records with distinct pending/verified/paid amounts, not inferred settlements
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/SettlementHistoryEntry" } }
+        "403": { description: Platform Owner role required }
+  /schools/{schoolId}/finance/payroll/employees:
+    get:
+      operationId: listSchoolPayrollEmployees
+      tags: [finance]
+      summary: List only this school's current teacher/staff compensation and masked bank profiles
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: search, in: query, required: false, schema: { type: string, maxLength: 100 } }
+        - { name: status, in: query, required: false, schema: { type: string, enum: [ACTIVE, INACTIVE, all], default: ACTIVE } }
+      responses:
+        "200":
+          description: School-owned payroll employee projections; does not include platform-company staff or other-school records
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PayrollEmployeeProfile" } }
+        "403": { description: Same-school School Admin or Accountant role required; Owner operational access is denied }
+    put:
+      operationId: updateSchoolPayrollEmployee
+      tags: [finance]
+      summary: Securely configure salary and bank information for an employee of this school
+      description: Active same-school School Admin or Accountant only; PLATFORM_OWNER and mixed-role Owners are explicitly excluded. Bank values are AES-GCM encrypted using versioned server-only keys and never included in responses or ordinary audit/log fields.
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PayrollEmployeeProfileInput" }
+      responses:
+        "200":
+          description: Stored school-owned salary profile with a masked account number
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollEmployeeProfile" }
+        "400": { description: "Invalid amount, account, bank code, employee, or employee belongs to a different school" }
+        "403": { description: Same-school School Admin/Accountant operational role required; Owner school writes are denied }
+        "404": { description: Same-school employee not found }
+        "503": { description: Bank data encryption key is unavailable; no unencrypted fallback is permitted }
+  /schools/{schoolId}/finance/payroll/periods:
+    get:
+      operationId: listSchoolPayrollPeriods
+      tags: [finance]
+      summary: List salary periods for one authorized school only
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: status, in: query, required: false, schema: { type: string, maxLength: 40 } }
+        - { name: year, in: query, required: false, schema: { type: integer, minimum: 2000, maximum: 2200 } }
+      responses:
+        "200":
+          description: School-only period summaries with salary, allowance, deduction, net and provider settlement rollups
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PayrollPeriodSummary" } }
+        "403": { description: Same-school School Admin/Accountant role required; Owner operational access is denied }
+    post:
+      operationId: createSchoolPayrollPeriod
+      tags: [finance]
+      summary: Create a new monthly salary run with a frozen active school employee/salary snapshot
+      description: Server derives school, employee and actor IDs. Month is unique within the tenant. The run starts DRAFT and no money is transmitted.
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PayrollPeriodInput" }
+      responses:
+        "201":
+          description: Persisted monthly draft containing eligible employees with configured salary profiles; no transfers were initiated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollPeriod" }
+        "400": { description: Invalid period month or no eligible employee salary profiles are configured }
+        "403": { description: Same-school School Admin/Accountant only; PLATFORM_OWNER is excluded }
+        "409": { description: A run for this school and month already exists }
+  /schools/{schoolId}/finance/payroll/periods/{periodId}:
+    get:
+      operationId: getSchoolPayrollPeriod
+      tags: [finance]
+      summary: Read one same-school payroll period, employee item snapshots and masked transfer statuses
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: periodId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Scoped salary items and verified-only paid status; includes no decrypted bank numbers
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollPeriod" }
+        "403": { description: Same-school School Admin/Accountant only; Owner operational access is denied }
+        "404": { description: "School, period, or employee item not found" }
+    put:
+      operationId: updateSchoolPayrollPeriodItems
+      tags: [finance]
+      summary: Review/update adjustments and deductions in a draft school payroll only
+      description: Rejects every submitted employee unless that employee has a same-school item in this draft. Computes net in integer minor currency units and preserves auditable old values. Only DRAFT runs may be changed.
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: periodId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PayrollItemsUpdate" }
+      responses:
+        "200":
+          description: Updated same-school draft and recalculated income and net totals
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollPeriod" }
+        "400": { description: "Invalid adjustments, negative net or malformed reason" }
+        "403": { description: Same-school School Admin/Accountant operational role required; Owner school writes denied }
+        "404": { description: Draft or same-school employee not found }
+        "409": { description: "Period has been submitted, approved, or paid and is now locked" }
+  /schools/{schoolId}/finance/payroll/periods/{periodId}/submit:
+    post:
+      operationId: submitSchoolPayrollPeriod
+      tags: [finance]
+      summary: Submit a complete school payroll draft for independent approval
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: periodId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Period locked as PENDING_APPROVAL with immutable reviewer-visible employee amounts and submitter audit metadata
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollPeriod" }
+        "403": { description: Same-school finance role required; Owner school writes denied }
+        "404": { description: Same-school period not found }
+        "409": { description: Period is not a reviewable complete draft }
+  /schools/{schoolId}/finance/payroll/periods/{periodId}/approve:
+    post:
+      operationId: approveSchoolPayrollPeriod
+      tags: [finance]
+      summary: Authorize an independent same-school finance approver; cannot approve one's own payroll submission
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: periodId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Same-school payroll frozen as APPROVED; no transfer or paid status is implied
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollPeriod" }
+        "403": { description: Independent active same-school approver role required; Owner school write excluded }
+        "404": { description: Same-school period not found }
+        "409": { description: "Not submitted, already resolved, or approver is the submitter" }
+  /schools/{schoolId}/finance/payroll/periods/{periodId}/transfers:
+    post:
+      operationId: createSchoolPayrollTransfers
+      tags: [finance]
+      summary: Initiate selected approved school salary transfers in an audited idempotent bulk operation
+      description: Uses the documented Flutterwave v3 transfer API in the explicitly configured sandbox or live provider only. An amount is marked paid only after retrieving and validating the provider transfer response. Ambiguous sends are durably frozen in RECONCILIATION_REQUIRED and never automatically retried. Explicit development MOCK returns MOCK_PENDING and makes no assertion of payment.
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: periodId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 120, pattern: "^[A-Za-z0-9_-]+$" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PayrollTransfersInput" }
+      responses:
+        "202":
+          description: Persisted per-employee transfer attempts and current actual provider states; mock attempts are explicitly distinguished
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollTransfersResponse" }
+        "400": { description: "Invalid or duplicate employee identifiers, missing accounts or malformed idempotency key" }
+        "403": { description: Same-school approval/payment role required; PLATFORM_OWNER school payout is denied }
+        "404": { description: Same-school approved period or employee items not found }
+        "409": { description: "Period is unapproved, already processed, or contains a previous ambiguous attempt that needs reconciliation" }
+        "503": { description: "No explicitly configured safe development mock, Flutterwave test transfer or permitted live disbursement capability" }
+  /schools/{schoolId}/finance/payroll/transfers/{transferId}/reconcile:
+    post:
+      operationId: reconcileSchoolPayrollTransfer
+      tags: [finance]
+      summary: Reconcile one ambiguous salary transfer via its existing Flutterwave reference without submitting another payout
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: transferId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Persisted verified provider status or explicit unresolved reconciliation; retries never create another transfer
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollTransfer" }
+        "403": { description: Same-school finance authorization required }
+        "404": { description: Same-school transfer not found }
+        "503": { description: Provider status unavailable; prior status remains unchanged }
+  /schools/{schoolId}/finance/payroll/reports:
+    get:
+      operationId: getSchoolPayrollReport
+      tags: [finance]
+      summary: Aggregate school-only payroll expense, deduction and payment status by month
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: fromMonth, in: query, required: true, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
+        - { name: toMonth, in: query, required: true, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
+      responses:
+        "200":
+          description: Accurate scoped monthly payroll totals with amounts and verified provider settlement separated
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PayrollReportRow" } }
+        "403": { description: Same-school finance scope required; Owner school write/access boundaries are respected }
+  /platform/finance/company-payroll/employees:
+    get:
+      operationId: listCompanyPayrollEmployees
+      tags: [finance]
+      summary: List company-only payroll profiles with individually masked account numbers
+      parameters:
+        - { name: search, in: query, required: false, schema: { type: string, maxLength: 100 } }
+        - { name: status, in: query, required: false, schema: { type: string, enum: [ACTIVE, INACTIVE, all], default: ACTIVE } }
+      responses:
+        "200":
+          description: Employees from platform_company_employees exclusively; never includes or mutates school payroll
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PayrollEmployeeProfile" } }
+        "403": { description: Platform Owner role required }
+    put:
+      operationId: upsertCompanyPayrollEmployee
+      tags: [finance]
+      summary: Securely create/update a Yemait Technologies Limited company employee monthly salary and bank profile
+      description: Platform Owner only. Company payroll uses the existing platform_company_employees directory and a separate company tenancy from school employees.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CompanyPayrollEmployeeInput" }
+      responses:
+        "200":
+          description: Company-only employee and masked bank profile; no school payroll records returned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollEmployeeProfile" }
+        "403": { description: Platform Owner role required }
+        "404": { description: Active existing company employee not found }
+        "503": { description: Versioned server-side bank-data encryption key unavailable }
+  /platform/finance/company-payroll/periods:
+    get:
+      operationId: listCompanyPayrollPeriods
+      tags: [finance]
+      summary: List Yemait Technologies monthly payroll runs, with school payroll completely excluded
+      parameters:
+        - { name: status, in: query, required: false, schema: { type: string, maxLength: 40 } }
+        - { name: year, in: query, required: false, schema: { type: integer, minimum: 2000, maximum: 2200 } }
+      responses:
+        "200":
+          description: Platform company-only period ledger and payroll expense rollups
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PayrollPeriodSummary" } }
+        "403": { description: Platform Owner role required }
+    post:
+      operationId: createCompanyPayrollPeriod
+      tags: [finance]
+      summary: Create one draft monthly company-payroll snapshot
+      description: Uses only existing active platform_company_employees with company salary profiles. Does not read school employees.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PayrollPeriodInput" }
+      responses:
+        "201":
+          description: Company-owned draft period with frozen employee amounts; no payout initiated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollPeriod" }
+        "403": { description: Platform Owner role required }
+        "409": { description: Company payroll month already exists }
+  /platform/finance/company-payroll/periods/{periodId}:
+    get:
+      operationId: getCompanyPayrollPeriod
+      tags: [finance]
+      summary: Read company-only salary period and immutable employee salary snapshots
+      parameters:
+        - { name: periodId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Company-owned run only; transfer accounts are always masked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollPeriod" }
+        "403": { description: Platform Owner role required }
+        "404": { description: Company-only run not found }
+    put:
+      operationId: updateCompanyPayrollPeriodItems
+      tags: [finance]
+      summary: Update named allowances, deductions, bonuses and adjustments in a draft company run
+      parameters:
+        - { name: periodId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PayrollItemsUpdate" }
+      responses:
+        "200":
+          description: Updated and recalculated company-owned draft only
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollPeriod" }
+        "403": { description: Platform Owner role required }
+        "404": { description: Company period or employee not found }
+        "409": { description: Period has already been submitted or approved }
+  /platform/finance/company-payroll/periods/{periodId}/submit:
+    post:
+      operationId: submitCompanyPayrollPeriod
+      tags: [finance]
+      summary: Submit a complete draft Company Payroll run to a different Platform Owner for review
+      parameters:
+        - { name: periodId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Company-only period transitions to PENDING_APPROVAL with immutable actor and amount snapshots
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollPeriod" }
+        "403": { description: Platform Owner role required }
+        "409": { description: Incomplete or non-draft run }
+  /platform/finance/company-payroll/periods/{periodId}/approve:
+    post:
+      operationId: approveCompanyPayrollPeriod
+      tags: [finance]
+      summary: Require independent Platform Owner review; block approval by the payroll preparer
+      parameters:
+        - { name: periodId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Same-company run approved without implying that any money is transferred
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollPeriod" }
+        "403": { description: Platform Owner role required }
+        "409": { description: "Approver is submitter, run not awaiting review, or additional independent approver is required" }
+  /platform/finance/company-payroll/periods/{periodId}/transfers:
+    post:
+      operationId: createCompanyPayrollTransfers
+      tags: [finance]
+      summary: Initiate individually tracked idempotent, approved company salary transfers
+      description: Calls only the officially documented Flutterwave v3 transfer endpoint when mode and credentials explicitly permit it. Development mock mode cannot produce a PAID salary. Ambiguous provider outcomes are durably held until server-side provider verification; no repeated transfer is sent automatically.
+      parameters:
+        - { name: periodId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 120, pattern: "^[A-Za-z0-9_-]+$" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PayrollTransfersInput" }
+      responses:
+        "202":
+          description: Persisted provider-backed company payrun attempts and accurately stated statuses
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollTransfersResponse" }
+        "400": { description: "Invalid request, mismatched employee or active bank profile" }
+        "403": { description: Platform Owner approval/payment role required }
+        "404": { description: Approved company-only run or requested employees not found }
+        "409": { description: "Unapproved run, duplicate employee or ambiguous existing provider attempt" }
+        "503": { description: Explicitly enabled safe provider configuration required }
+  /platform/finance/company-payroll/transfers/{transferId}/reconcile:
+    post:
+      operationId: reconcileCompanyPayrollTransfer
+      tags: [finance]
+      summary: Reconcile an existing company transfer by querying the same verified Flutterwave v3 reference
+      parameters:
+        - { name: transferId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Persisted verified company-only transfer result; no duplicate transfer is initiated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PayrollTransfer" }
+        "403": { description: Platform Owner role required }
+        "404": { description: Company transfer not found }
+        "503": { description: Provider verification unavailable; pending/ambiguous attempt remains unreplayed }
+  /platform/finance/company-payroll/reports:
+    get:
+      operationId: getCompanyPayrollReport
+      tags: [finance]
+      summary: Show Platform Owner Yemait Technologies Limited monthly salary expense and transfer status independently from all school runs
+      parameters:
+        - { name: fromMonth, in: query, required: true, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
+        - { name: toMonth, in: query, required: true, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
+      responses:
+        "200":
+          description: Company-only expense and verified transfer totals by month
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/PayrollReportRow" } }
+        "403": { description: Platform Owner role required }
+  /me/payroll/payslips:
+    get:
+      operationId: listMyPayrollPayslips
+      tags: [finance]
+      summary: List only the authenticated staff member's own verified payslips and payment history, whether employed by a school or the company
+      parameters:
+        - { name: fromMonth, in: query, required: false, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
+        - { name: toMonth, in: query, required: false, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
+      responses:
+        "200":
+          description: Current-user employee binding only, with no ability to substitute another user or employee ID
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/OwnPayrollPayslip" } }
+        "403": { description: Authenticated employee has no active authorized payroll identity }
+  /me/payroll/payslips/{payslipId}:
+    get:
+      operationId: getMyPayrollPayslip
+      tags: [finance]
+      summary: Retrieve one generated payslip only when its active school or company employee is linked to the current user
+      parameters:
+        - { name: payslipId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Immutable salary snapshot and provider transfer confirmation, with own bank masked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OwnPayrollPayslip" }
+        "403": { description: Own employee-to-user binding required; other employee payslips are forbidden }
+        "404": { description: Payslip not found }
+components:
+  schemas:
+    PayrollError:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        code: { type: string }
+    SettlementProviderCapability:
+      type: object
+      required: [provider, mode, credentialsConfigured, transferCapability, bankSubaccountsSupported, liveSettlementVerified]
+      properties:
+        provider: { type: string, enum: [FLUTTERWAVE] }
+        mode: { type: string, enum: [TEST, LIVE, MOCK, NOT_CONFIGURED] }
+        credentialsConfigured: { type: boolean }
+        transferCapability: { type: string, enum: [SUPPORTED, MOCK_ONLY, NOT_CONFIGURED, BLOCKED_IN_DEVELOPMENT] }
+        bankSubaccountsSupported: { type: boolean }
+        liveSettlementVerified: { type: boolean, enum: [false] }
+    CompanySettlementInput:
+      type: object
+      additionalProperties: false
+      required: [businessName, bankName, bankCode, accountName, accountNumber, currency]
+      properties:
+        businessName: { type: string, minLength: 2, maxLength: 160 }
+        businessRegistrationNumber: { type: ["string", "null"], maxLength: 80 }
+        settlementContactEmail: { type: string, format: email, maxLength: 254 }
+        settlementContactPhone: { type: ["string", "null"], maxLength: 30 }
+        bankName: { type: string, minLength: 2, maxLength: 100 }
+        bankCode: { type: string, minLength: 2, maxLength: 20 }
+        accountName: { type: string, minLength: 2, maxLength: 150 }
+        accountNumber: { type: string, pattern: "^[0-9]{10}$" }
+        currency: { type: string, enum: [NGN] }
+    SchoolSettlementInput:
+      type: object
+      additionalProperties: false
+      required: [businessName, settlementContactEmail, bankName, bankCode, accountName, accountNumber, currency]
+      properties:
+        businessName: { type: string, minLength: 2, maxLength: 160 }
+        businessRegistrationNumber: { type: ["string", "null"], maxLength: 80 }
+        settlementContactEmail: { type: string, format: email, maxLength: 254 }
+        settlementContactPhone: { type: ["string", "null"], maxLength: 30 }
+        bankName: { type: string, minLength: 2, maxLength: 100 }
+        bankCode: { type: string, minLength: 2, maxLength: 20 }
+        accountName: { type: string, minLength: 2, maxLength: 150 }
+        accountNumber: { type: string, pattern: "^[0-9]{10}$" }
+        currency: { type: string, enum: [NGN] }
+    PaymentSettlementProfile:
+      type: object
+      required: [scope, businessName, bankName, accountName, accountLast4, currency, status, provider, capability, updatedAt]
+      properties:
+        scope: { type: string, enum: [YEMAIT_COMPANY] }
+        businessName: { type: string }
+        businessRegistrationNumber: { type: ["string", "null"] }
+        settlementContactEmail: { type: ["string", "null"] }
+        settlementContactPhone: { type: ["string", "null"] }
+        bankName: { type: ["string", "null"] }
+        bankCode: { type: ["string", "null"] }
+        accountName: { type: ["string", "null"] }
+        accountLast4: { type: ["string", "null"], pattern: "^[0-9]{4}$" }
+        currency: { type: string, enum: [NGN] }
+        status: { type: string, enum: [NOT_CONFIGURED, PENDING_VERIFICATION, VERIFIED, ACTION_REQUIRED] }
+        provider: { type: string, enum: [FLUTTERWAVE] }
+        providerBusinessId: { type: ["string", "null"] }
+        providerSubaccountId: { type: ["string", "null"] }
+        capability: { $ref: "#/components/schemas/SettlementProviderCapability" }
+        updatedAt: { type: ["string", "null"], format: date-time }
+    SchoolSettlementSummary:
+      type: object
+      required: [schoolId, schoolName, status, currency, provider, capability, updatedAt]
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        schoolName: { type: string }
+        businessName: { type: ["string", "null"] }
+        businessRegistrationNumber: { type: ["string", "null"] }
+        settlementContactEmail: { type: ["string", "null"] }
+        settlementContactPhone: { type: ["string", "null"] }
+        bankName: { type: ["string", "null"] }
+        bankCode: { type: ["string", "null"] }
+        accountName: { type: ["string", "null"] }
+        accountLast4: { type: ["string", "null"], pattern: "^[0-9]{4}$" }
+        currency: { type: string, enum: [NGN] }
+        status: { type: string, enum: [NOT_CONFIGURED, PENDING_VERIFICATION, VERIFIED, ACTION_REQUIRED] }
+        provider: { type: string, enum: [FLUTTERWAVE] }
+        providerSubaccountId: { type: ["string", "null"] }
+        capability: { $ref: "#/components/schemas/SettlementProviderCapability" }
+        lastSettlementAt: { type: ["string", "null"], format: date-time }
+        lastSettlementStatus: { type: string, enum: [NOT_SETTLED, PENDING, SUCCESS, FAILED, RECONCILIATION_REQUIRED] }
+        updatedAt: { type: ["string", "null"], format: date-time }
+    SettlementHistoryEntry:
+      type: object
+      required: [id, scope, status, currency, grossAmountMinor, amountSettledMinor, reconciliationStatus, occurredAt, externalSettlementVerified]
+      properties:
+        id: { type: integer, minimum: 1 }
+        scope: { type: string, enum: [SCHOOL, YEMAIT_COMPANY] }
+        schoolId: { type: ["integer", "null"] }
+        schoolName: { type: ["string", "null"] }
+        sourceTransactionReference: { type: ["string", "null"] }
+        providerReference: { type: ["string", "null"] }
+        grossAmountMinor: { type: integer, minimum: 0 }
+        providerFeeMinor: { type: integer, minimum: 0 }
+        amountSettledMinor: { type: integer, minimum: 0 }
+        currency: { type: string, enum: [NGN] }
+        status: { type: string, enum: [PENDING, SUCCESS, FAILED, MOCK_PENDING, RECONCILIATION_REQUIRED, NOT_SETTLED] }
+        reconciliationStatus: { type: string, enum: [PENDING, RECONCILED, UNRECONCILED, NOT_APPLICABLE] }
+        externalSettlementVerified: { type: boolean }
+        occurredAt: { type: string, format: date-time }
+    PayrollEmployeeProfile:
+      type: object
+      required: [employeeId, employeeType, fullName, email, status, monthlySalaryMinor, allowanceMinor, deductionMinor, currency, bankConfigured, maskedAccountNumber, bankName, updatedAt]
+      properties:
+        employeeId: { type: integer, minimum: 1 }
+        companyEmployeeId: { type: ["integer", "null"] }
+        employeeType: { type: string, enum: [TEACHER, STAFF, COMPANY_EMPLOYEE] }
+        employeeNumber: { type: ["string", "null"] }
+        fullName: { type: string }
+        email: { type: ["string", "null"] }
+        jobTitle: { type: ["string", "null"] }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        monthlySalaryMinor: { type: integer, minimum: 0 }
+        allowanceMinor: { type: integer, minimum: 0 }
+        deductionMinor: { type: integer, minimum: 0 }
+        currency: { type: string, enum: [NGN] }
+        bankConfigured: { type: boolean }
+        bankName: { type: ["string", "null"] }
+        bankCode: { type: ["string", "null"] }
+        accountName: { type: ["string", "null"] }
+        maskedAccountNumber: { type: ["string", "null"], pattern: "^(\\*{4,8}[0-9]{4}|[0-9]{10})$" }
+        encryptionKeyVersion: { type: ["string", "null"] }
+        updatedAt: { type: string, format: date-time }
+    PayrollEmployeeProfileInput:
+      type: object
+      additionalProperties: false
+      required: [employeeId, monthlySalaryMinor, allowanceMinor, deductionMinor, bankName, bankCode, accountName, accountNumber]
+      properties:
+        employeeId: { type: integer, minimum: 1 }
+        monthlySalaryMinor: { type: integer, minimum: 0, maximum: 1000000000000 }
+        allowanceMinor: { type: integer, minimum: 0, maximum: 1000000000000 }
+        deductionMinor: { type: integer, minimum: 0, maximum: 1000000000000 }
+        bankName: { type: string, minLength: 2, maxLength: 100 }
+        bankCode: { type: string, minLength: 2, maxLength: 20 }
+        accountName: { type: string, minLength: 2, maxLength: 150 }
+        accountNumber: { type: string, pattern: "^[0-9]{10}$" }
+    CompanyPayrollEmployeeInput:
+      allOf:
+        - $ref: "#/components/schemas/PayrollEmployeeProfileInput"
+    PayrollPeriodInput:
+      type: object
+      additionalProperties: false
+      required: [periodMonth]
+      properties:
+        periodMonth: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" }
+        employeeIds:
+          type: array
+          uniqueItems: true
+          minItems: 1
+          maxItems: 1000
+          items: { type: integer, minimum: 1 }
+    PayrollItemAdjustment:
+      type: object
+      additionalProperties: false
+      required: [employeeId, allowanceMinor, deductionMinor, bonusMinor, adjustmentMinor, adjustmentReason]
+      properties:
+        employeeId: { type: integer, minimum: 1 }
+        allowanceMinor: { type: integer, minimum: 0, maximum: 1000000000000 }
+        deductionMinor: { type: integer, minimum: 0, maximum: 1000000000000 }
+        bonusMinor: { type: integer, minimum: 0, maximum: 1000000000000 }
+        adjustmentMinor: { type: integer, minimum: -1000000000000, maximum: 1000000000000 }
+        adjustmentReason: { type: string, minLength: 3, maxLength: 500 }
+    PayrollItemsUpdate:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items: { $ref: "#/components/schemas/PayrollItemAdjustment" }
+    PayrollPeriodSummary:
+      type: object
+      required: [periodId, scope, periodMonth, status, employeeCount, grossSalaryMinor, allowanceMinor, deductionMinor, netSalaryMinor, paidCount, pendingCount, failedCount, currency, createdAt]
+      properties:
+        periodId: { type: integer, minimum: 1 }
+        scope: { type: string, enum: [SCHOOL, YEMAIT_COMPANY] }
+        schoolId: { type: ["integer", "null"] }
+        periodMonth: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" }
+        status: { type: string, enum: [DRAFT, PENDING_APPROVAL, APPROVED, PROCESSING, COMPLETED, PARTIALLY_COMPLETED, FAILED, CANCELLED] }
+        employeeCount: { type: integer, minimum: 0 }
+        grossSalaryMinor: { type: integer, minimum: 0 }
+        allowanceMinor: { type: integer, minimum: 0 }
+        deductionMinor: { type: integer, minimum: 0 }
+        netSalaryMinor: { type: integer, minimum: 0 }
+        paidCount: { type: integer, minimum: 0 }
+        pendingCount: { type: integer, minimum: 0 }
+        failedCount: { type: integer, minimum: 0 }
+        currency: { type: string, enum: [NGN] }
+        createdBy: { type: integer, minimum: 1 }
+        submittedBy: { type: ["integer", "null"] }
+        approvedBy: { type: ["integer", "null"] }
+        createdAt: { type: string, format: date-time }
+        submittedAt: { type: ["string", "null"], format: date-time }
+        approvedAt: { type: ["string", "null"], format: date-time }
+    PayrollItem:
+      type: object
+      required: [employeeId, employeeType, employeeNumber, fullName, jobTitle, baseSalaryMinor, allowanceMinor, bonusMinor, deductionMinor, adjustmentMinor, netSalaryMinor, currency, paymentStatus, maskedAccountNumber]
+      properties:
+        employeeId: { type: integer, minimum: 1 }
+        employeeType: { type: string, enum: [TEACHER, STAFF, COMPANY_EMPLOYEE] }
+        employeeNumber: { type: ["string", "null"] }
+        fullName: { type: string }
+        jobTitle: { type: ["string", "null"] }
+        baseSalaryMinor: { type: integer, minimum: 0 }
+        allowanceMinor: { type: integer, minimum: 0 }
+        bonusMinor: { type: integer, minimum: 0 }
+        deductionMinor: { type: integer, minimum: 0 }
+        adjustmentMinor: { type: integer }
+        adjustmentReason: { type: ["string", "null"] }
+        netSalaryMinor: { type: integer, minimum: 0 }
+        currency: { type: string, enum: [NGN] }
+        paymentStatus: { type: string, enum: [UNPAID, PENDING, MOCK_PENDING, PAID, FAILED, CANCELLED] }
+        transferReference: { type: ["string", "null"] }
+        transferAttempts:
+          type: array
+          description: Durable same-item history used to restore pending and ambiguous reconciliation state after reload. Contains sanitized provider evidence only; employee bank identifiers and raw provider payloads are never exposed.
+          items: { $ref: "#/components/schemas/PayrollTransferAttemptSummary" }
+        bankName: { type: ["string", "null"] }
+        maskedAccountNumber: { type: ["string", "null"] }
+        payslipId: { type: ["integer", "null"] }
+    PayrollTransferAttemptSummary:
+      type: object
+      required: [id, attempt, amountMinor, currency, provider, providerMode, providerReference, status, requiresReconciliation, externalTransferVerified, providerFeeMinor, settlementAmountMinor, createdAt]
+      properties:
+        id: { type: integer, minimum: 1 }
+        attempt: { type: integer, minimum: 1 }
+        amountMinor: { type: integer, minimum: 1 }
+        currency: { type: string, enum: [NGN] }
+        provider: { type: string, enum: [FLUTTERWAVE, MOCK] }
+        providerMode: { type: string, enum: [TEST, LIVE, MOCK] }
+        providerReference: { type: string, minLength: 1, maxLength: 120 }
+        providerTransactionId: { type: ["string", "null"], maxLength: 120 }
+        providerStatus: { type: ["string", "null"], maxLength: 40 }
+        status: { type: string, enum: [CLAIMED, PROCESSING, PENDING, MOCK_PENDING, PAID, FAILED, UNCERTAIN, RECONCILIATION_REQUIRED] }
+        requiresReconciliation: { type: boolean }
+        externalTransferVerified: { type: boolean }
+        providerFeeMinor: { type: integer, minimum: 0 }
+        settlementAmountMinor: { type: integer, minimum: 0 }
+        failureMessage: { type: ["string", "null"], maxLength: 500 }
+        createdAt: { type: string, format: date-time }
+        verifiedAt: { type: ["string", "null"], format: date-time }
+    PayrollPeriod:
+      allOf:
+        - $ref: "#/components/schemas/PayrollPeriodSummary"
+        - type: object
+          required: [items, providerMode]
+          properties:
+            items: { type: array, items: { $ref: "#/components/schemas/PayrollItem" } }
+            providerMode: { type: string, enum: [TEST, LIVE, MOCK, NOT_CONFIGURED] }
+    PayrollTransfersInput:
+      type: object
+      additionalProperties: false
+      required: [employeeIds]
+      properties:
+        employeeIds:
+          type: array
+          uniqueItems: true
+          minItems: 1
+          maxItems: 100
+          items: { type: integer, minimum: 1 }
+    PayrollTransfer:
+      type: object
+      required: [id, periodId, employeeId, amountMinor, currency, provider, providerMode, status, requiresReconciliation, externalTransferVerified, createdAt]
+      properties:
+        id: { type: integer, minimum: 1 }
+        periodId: { type: integer, minimum: 1 }
+        employeeId: { type: integer, minimum: 1 }
+        amountMinor: { type: integer, minimum: 0 }
+        currency: { type: string, enum: [NGN] }
+        provider: { type: string, enum: [FLUTTERWAVE, MOCK] }
+        providerMode: { type: string, enum: [TEST, LIVE, MOCK] }
+        providerReference: { type: string }
+        providerTransactionId: { type: ["string", "null"] }
+        providerStatus: { type: ["string", "null"] }
+        status: { type: string, enum: [CLAIMED, PROCESSING, PENDING, MOCK_PENDING, PAID, FAILED, UNCERTAIN, RECONCILIATION_REQUIRED] }
+        requiresReconciliation: { type: boolean }
+        externalTransferVerified: { type: boolean }
+        providerFeeMinor: { type: integer, minimum: 0 }
+        settlementAmountMinor: { type: integer, minimum: 0 }
+        failureMessage: { type: ["string", "null"] }
+        attempt: { type: integer, minimum: 1 }
+        createdAt: { type: string, format: date-time }
+        verifiedAt: { type: ["string", "null"], format: date-time }
+    PayrollTransfersResponse:
+      type: object
+      required: [periodId, providerMode, items, total, paidCount, pendingCount, failedCount, uncertainCount]
+      properties:
+        periodId: { type: integer, minimum: 1 }
+        providerMode: { type: string, enum: [TEST, LIVE, MOCK] }
+        items: { type: array, items: { $ref: "#/components/schemas/PayrollTransfer" } }
+        total: { type: integer, minimum: 0 }
+        paidCount: { type: integer, minimum: 0 }
+        pendingCount: { type: integer, minimum: 0 }
+        failedCount: { type: integer, minimum: 0 }
+        uncertainCount: { type: integer, minimum: 0 }
+    PayrollReportRow:
+      type: object
+      required: [periodMonth, employeeCount, grossSalaryMinor, allowanceMinor, bonusMinor, deductionMinor, netSalaryMinor, paidAmountMinor, pendingAmountMinor, failedCount, currency]
+      properties:
+        periodMonth: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" }
+        employeeCount: { type: integer, minimum: 0 }
+        grossSalaryMinor: { type: integer, minimum: 0 }
+        allowanceMinor: { type: integer, minimum: 0 }
+        bonusMinor: { type: integer, minimum: 0 }
+        deductionMinor: { type: integer, minimum: 0 }
+        netSalaryMinor: { type: integer, minimum: 0 }
+        paidAmountMinor: { type: integer, minimum: 0 }
+        pendingAmountMinor: { type: integer, minimum: 0 }
+        failedCount: { type: integer, minimum: 0 }
+        currency: { type: string, enum: [NGN] }
+    OwnPayrollPayslip:
+      type: object
+      required: [id, periodMonth, employeeName, employeeType, baseSalaryMinor, allowanceMinor, bonusMinor, deductionMinor, adjustmentMinor, netSalaryMinor, currency, paymentStatus, maskedAccountNumber, createdAt]
+      properties:
+        id: { type: integer, minimum: 1 }
+        periodMonth: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" }
+        employeeName: { type: string }
+        employeeType: { type: string, enum: [TEACHER, STAFF, COMPANY_EMPLOYEE] }
+        schoolName: { type: ["string", "null"] }
+        baseSalaryMinor: { type: integer, minimum: 0 }
+        allowanceMinor: { type: integer, minimum: 0 }
+        bonusMinor: { type: integer, minimum: 0 }
+        deductionMinor: { type: integer, minimum: 0 }
+        adjustmentMinor: { type: integer }
+        adjustmentReason: { type: ["string", "null"] }
+        netSalaryMinor: { type: integer, minimum: 0 }
+        currency: { type: string, enum: [NGN] }
+        paymentStatus: { type: string, enum: [PAID] }
+        maskedAccountNumber: { type: ["string", "null"] }
+        transferReference: { type: ["string", "null"] }
+        providerTransactionId: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+  parameters:
+    SchoolPayrollEmployeeId:
+      name: employeeId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }

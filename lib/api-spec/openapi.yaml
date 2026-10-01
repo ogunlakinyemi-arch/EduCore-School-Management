@@ -4732,6 +4732,160 @@ paths:
       responses:
         "204": { description: Device reference revoked }
         "404": { $ref: "#/components/responses/NotFound" }
+  /schools/{schoolId}/employee-nfc/cards:
+    $ref: "./employee-nfc-feedback.yaml#/paths/~1schools~1{schoolId}~1employee-nfc~1cards"
+  /schools/{schoolId}/employee-nfc/cards/assign:
+    $ref: "./employee-nfc-feedback.yaml#/paths/~1schools~1{schoolId}~1employee-nfc~1cards~1assign"
+  /schools/{schoolId}/employee-nfc/cards/{cardId}:
+    $ref: "./employee-nfc-feedback.yaml#/paths/~1schools~1{schoolId}~1employee-nfc~1cards~1{cardId}"
+  /schools/{schoolId}/employee-nfc/cards/{cardId}/replace:
+    $ref: "./employee-nfc-feedback.yaml#/paths/~1schools~1{schoolId}~1employee-nfc~1cards~1{cardId}~1replace"
+  /schools/{schoolId}/employee-nfc/cards/{cardId}/history:
+    $ref: "./employee-nfc-feedback.yaml#/paths/~1schools~1{schoolId}~1employee-nfc~1cards~1{cardId}~1history"
+  /schools/{schoolId}/employee-nfc/{employeeId}/e-id:
+    $ref: "./employee-nfc-feedback.yaml#/paths/~1schools~1{schoolId}~1employee-nfc~1{employeeId}~1e-id"
+  /me/employee-nfc:
+    $ref: "./employee-nfc-feedback.yaml#/paths/~1me~1employee-nfc"
+  /me/employee-nfc/attendance:
+    $ref: "./employee-nfc-feedback.yaml#/paths/~1me~1employee-nfc~1attendance"
+  /schools/{schoolId}/employee-nfc/attendance/events:
+    $ref: "./employee-nfc-feedback.yaml#/paths/~1schools~1{schoolId}~1employee-nfc~1attendance~1events"
+  /devices/employee-nfc/attendance/events:
+    $ref: "./employee-nfc-feedback.yaml#/paths/~1devices~1employee-nfc~1attendance~1events"
+  /schools/{schoolId}/employee-nfc/attendance/daily:
+    $ref: "./employee-nfc-feedback.yaml#/paths/~1schools~1{schoolId}~1employee-nfc~1attendance~1daily"
+  /schools/{schoolId}/employee-nfc/attendance/monthly:
+    $ref: "./employee-nfc-feedback.yaml#/paths/~1schools~1{schoolId}~1employee-nfc~1attendance~1monthly"
+  /schools/{schoolId}/employee-nfc/attendance/discrepancies:
+    $ref: "./employee-nfc-feedback.yaml#/paths/~1schools~1{schoolId}~1employee-nfc~1attendance~1discrepancies"
+  /schools/{schoolId}/employee-nfc/attendance/discrepancies/{discrepancyId}/resolve:
+    $ref: "./employee-nfc-feedback.yaml#/paths/~1schools~1{schoolId}~1employee-nfc~1attendance~1discrepancies~1{discrepancyId}~1resolve"
+  /platform/finance/payment-settlement:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1platform~1finance~1payment-settlement"
+  /platform/finance/payment-settlement/schools:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1platform~1finance~1payment-settlement~1schools"
+  /platform/finance/payment-settlement/schools/{schoolId}:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1platform~1finance~1payment-settlement~1schools~1{schoolId}"
+  /schools/{schoolId}/finance/payment-settlement:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1schools~1{schoolId}~1finance~1payment-settlement"
+  /schools/{schoolId}/finance/payment-settlement/history:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1schools~1{schoolId}~1finance~1payment-settlement~1history"
+  /platform/finance/payment-settlement/history:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1platform~1finance~1payment-settlement~1history"
+  /schools/{schoolId}/finance/payroll/employees:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1schools~1{schoolId}~1finance~1payroll~1employees"
+  /schools/{schoolId}/finance/payroll/periods:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1schools~1{schoolId}~1finance~1payroll~1periods"
+  /schools/{schoolId}/finance/payroll/periods/{periodId}:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1schools~1{schoolId}~1finance~1payroll~1periods~1{periodId}"
+  /schools/{schoolId}/finance/payroll/periods/{periodId}/submit:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1schools~1{schoolId}~1finance~1payroll~1periods~1{periodId}~1submit"
+  /schools/{schoolId}/finance/payroll/periods/{periodId}/approve:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1schools~1{schoolId}~1finance~1payroll~1periods~1{periodId}~1approve"
+  /schools/{schoolId}/finance/payroll/periods/{periodId}/transfers:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1schools~1{schoolId}~1finance~1payroll~1periods~1{periodId}~1transfers"
+  /schools/{schoolId}/finance/payroll/transfers/{transferId}/reconcile:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1schools~1{schoolId}~1finance~1payroll~1transfers~1{transferId}~1reconcile"
+  /schools/{schoolId}/finance/payroll/reports:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1schools~1{schoolId}~1finance~1payroll~1reports"
+  /platform/finance/company-payroll/employees:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1platform~1finance~1company-payroll~1employees"
+  /platform/finance/company-payroll/periods:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1platform~1finance~1company-payroll~1periods"
+  /platform/finance/company-payroll/periods/{periodId}:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1platform~1finance~1company-payroll~1periods~1{periodId}"
+  /platform/finance/company-payroll/periods/{periodId}/submit:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1platform~1finance~1company-payroll~1periods~1{periodId}~1submit"
+  /platform/finance/company-payroll/periods/{periodId}/approve:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1platform~1finance~1company-payroll~1periods~1{periodId}~1approve"
+  /platform/finance/company-payroll/periods/{periodId}/transfers:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1platform~1finance~1company-payroll~1periods~1{periodId}~1transfers"
+  /platform/finance/company-payroll/transfers/{transferId}/reconcile:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1platform~1finance~1company-payroll~1transfers~1{transferId}~1reconcile"
+  /platform/finance/company-payroll/reports:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1platform~1finance~1company-payroll~1reports"
+  /me/payroll/payslips:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1me~1payroll~1payslips"
+  /me/payroll/payslips/{payslipId}:
+    $ref: "./payroll-settlement-feedback.yaml#/paths/~1me~1payroll~1payslips~1{payslipId}"
+  /schools/{schoolId}/branding:
+    $ref: "./school-core-feedback.yaml#/paths/~1schools~1{schoolId}~1branding"
+  /schools/{schoolId}/branding/logo-upload-url:
+    $ref: "./school-core-feedback.yaml#/paths/~1schools~1{schoolId}~1branding~1logo-upload-url"
+  /schools/{schoolId}/branding/logo:
+    $ref: "./school-core-feedback.yaml#/paths/~1schools~1{schoolId}~1branding~1logo"
+  /schools/{schoolId}/academic-calendar:
+    $ref: "./school-core-feedback.yaml#/paths/~1schools~1{schoolId}~1academic-calendar"
+  /schools/{schoolId}/academic-calendar/generate:
+    $ref: "./school-core-feedback.yaml#/paths/~1schools~1{schoolId}~1academic-calendar~1generate"
+  /schools/{schoolId}/academic-calendar/{eventId}:
+    $ref: "./school-core-feedback.yaml#/paths/~1schools~1{schoolId}~1academic-calendar~1{eventId}"
+  /schools/{schoolId}/teacher-assignments:
+    $ref: "./school-core-feedback.yaml#/paths/~1schools~1{schoolId}~1teacher-assignments"
+  /schools/{schoolId}/teacher-assignments/{assignmentKind}/{assignmentId}:
+    $ref: "./school-core-feedback.yaml#/paths/~1schools~1{schoolId}~1teacher-assignments~1{assignmentKind}~1{assignmentId}"
+  /schools/{schoolId}/duty-roster:
+    $ref: "./school-core-feedback.yaml#/paths/~1schools~1{schoolId}~1duty-roster"
+  /schools/{schoolId}/duty-roster/{dutyId}:
+    $ref: "./school-core-feedback.yaml#/paths/~1schools~1{schoolId}~1duty-roster~1{dutyId}"
+  /staff-nfc/subscriptions/me:
+    $ref: "./staff-billing-feedback.yaml#/paths/~1staff-nfc~1subscriptions~1me"
+  /staff-nfc/subscriptions/generate:
+    $ref: "./staff-billing-feedback.yaml#/paths/~1staff-nfc~1subscriptions~1generate"
+  /staff-nfc/subscriptions/{subscriptionId}/checkout:
+    $ref: "./staff-billing-feedback.yaml#/paths/~1staff-nfc~1subscriptions~1{subscriptionId}~1checkout"
+  /staff-nfc/payments/verify:
+    $ref: "./staff-billing-feedback.yaml#/paths/~1staff-nfc~1payments~1verify"
+  /staff-nfc/payments/{paymentId}/receipt:
+    $ref: "./staff-billing-feedback.yaml#/paths/~1staff-nfc~1payments~1{paymentId}~1receipt"
+  /finance/staff-nfc/billing-rules:
+    $ref: "./staff-billing-feedback.yaml#/paths/~1finance~1staff-nfc~1billing-rules"
+  /finance/staff-nfc/subscriptions:
+    $ref: "./staff-billing-feedback.yaml#/paths/~1finance~1staff-nfc~1subscriptions"
+  /finance/staff-nfc/subscriptions/{subscriptionId}/refunds:
+    $ref: "./staff-billing-feedback.yaml#/paths/~1finance~1staff-nfc~1subscriptions~1{subscriptionId}~1refunds"
+  /finance/staff-nfc/payments/{paymentId}/reconcile:
+    $ref: "./staff-billing-feedback.yaml#/paths/~1finance~1staff-nfc~1payments~1{paymentId}~1reconcile"
+  /partner/staff-nfc/commissions:
+    $ref: "./staff-billing-feedback.yaml#/paths/~1partner~1staff-nfc~1commissions"
+  /webhooks/staff-nfc/flutterwave:
+    $ref: "./staff-billing-feedback.yaml#/paths/~1webhooks~1staff-nfc~1flutterwave"
+  /transport/buses:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1buses"
+  /transport/buses/{busId}:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1buses~1{busId}"
+  /transport/drivers:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1drivers"
+  /transport/routes:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1routes"
+  /transport/routes/{routeId}:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1routes~1{routeId}"
+  /transport/routes/{routeId}/stops:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1routes~1{routeId}~1stops"
+  /transport/routes/{routeId}/stops/{stopId}:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1routes~1{routeId}~1stops~1{stopId}"
+  /transport/students:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1students"
+  /transport/assignments:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1assignments"
+  /transport/assignments/{assignmentId}:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1assignments~1{assignmentId}"
+  /transport/assignments/{assignmentId}/history:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1assignments~1{assignmentId}~1history"
+  /transport/requests:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1requests"
+  /parent/children/{studentId}/transport:
+    $ref: "./transport-feedback.yaml#/paths/~1parent~1children~1{studentId}~1transport"
+  /parent/children/{studentId}/transport/requests:
+    $ref: "./transport-feedback.yaml#/paths/~1parent~1children~1{studentId}~1transport~1requests"
+  /parent/children/{studentId}/transport/history:
+    $ref: "./transport-feedback.yaml#/paths/~1parent~1children~1{studentId}~1transport~1history"
+  /student/transport:
+    $ref: "./transport-feedback.yaml#/paths/~1student~1transport"
+  /student/transport/history:
+    $ref: "./transport-feedback.yaml#/paths/~1student~1transport~1history"
+  /platform/transport-overview:
+    $ref: "./transport-feedback.yaml#/paths/~1platform~1transport-overview"
 components:
   securitySchemes:
     ClerkAuth:
@@ -6108,6 +6262,9 @@ components:
         uid: { type: string }
         studentId: { type: ["integer", "null"] }
         studentName: { type: ["string", "null"] }
+        employeeId: { type: ["integer", "null"] }
+        employeeName: { type: ["string", "null"] }
+        personType: { type: ["string", "null"], enum: [TEACHER, STAFF, null] }
         status:
           type: string
           enum: [active, inactive, locked, unassigned, lost, blocked, suspended, replaced, expired]
@@ -8262,3 +8419,91 @@ components:
         status: { type: string, enum: [ACTIVE, INACTIVE] }
         email: { type: string, format: email }
         fullName: { type: ["string", "null"] }
+    EmployeeNfcError: { $ref: "./employee-nfc-feedback.yaml#/components/schemas/EmployeeNfcError" }
+    EmployeeNfcCardView: { $ref: "./employee-nfc-feedback.yaml#/components/schemas/EmployeeNfcCardView" }
+    EmployeeNfcCardHistory: { $ref: "./employee-nfc-feedback.yaml#/components/schemas/EmployeeNfcCardHistory" }
+    EmployeeNfcProfile: { $ref: "./employee-nfc-feedback.yaml#/components/schemas/EmployeeNfcProfile" }
+    EmployeeNfcAttendanceEvent: { $ref: "./employee-nfc-feedback.yaml#/components/schemas/EmployeeNfcAttendanceEvent" }
+    EmployeeNfcAttendanceDaily: { $ref: "./employee-nfc-feedback.yaml#/components/schemas/EmployeeNfcAttendanceDaily" }
+    EmployeeNfcAttendanceMonthly: { $ref: "./employee-nfc-feedback.yaml#/components/schemas/EmployeeNfcAttendanceMonthly" }
+    EmployeeNfcDiscrepancy: { $ref: "./employee-nfc-feedback.yaml#/components/schemas/EmployeeNfcDiscrepancy" }
+    PayrollError: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollError" }
+    SettlementProviderCapability: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/SettlementProviderCapability" }
+    CompanySettlementInput: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/CompanySettlementInput" }
+    SchoolSettlementInput: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/SchoolSettlementInput" }
+    PaymentSettlementProfile: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PaymentSettlementProfile" }
+    SchoolSettlementSummary: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/SchoolSettlementSummary" }
+    SettlementHistoryEntry: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/SettlementHistoryEntry" }
+    PayrollEmployeeProfile: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollEmployeeProfile" }
+    PayrollEmployeeProfileInput: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollEmployeeProfileInput" }
+    CompanyPayrollEmployeeInput: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/CompanyPayrollEmployeeInput" }
+    PayrollPeriodInput: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollPeriodInput" }
+    PayrollItemAdjustment: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollItemAdjustment" }
+    PayrollItemsUpdate: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollItemsUpdate" }
+    PayrollPeriodSummary: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollPeriodSummary" }
+    PayrollItem: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollItem" }
+    PayrollPeriod: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollPeriod" }
+    PayrollTransfersInput: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollTransfersInput" }
+    PayrollTransfer: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollTransfer" }
+    PayrollTransfersResponse: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollTransfersResponse" }
+    PayrollReportRow: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollReportRow" }
+    OwnPayrollPayslip: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/OwnPayrollPayslip" }
+    SchoolCoreApiError: { $ref: "./school-core-feedback.yaml#/components/schemas/ApiError" }
+    SchoolBranding: { $ref: "./school-core-feedback.yaml#/components/schemas/SchoolBranding" }
+    UpdateSchoolBrandingBody: { $ref: "./school-core-feedback.yaml#/components/schemas/UpdateSchoolBrandingBody" }
+    SchoolLogoUploadRequest: { $ref: "./school-core-feedback.yaml#/components/schemas/SchoolLogoUploadRequest" }
+    SchoolLogoUploadResponse: { $ref: "./school-core-feedback.yaml#/components/schemas/SchoolLogoUploadResponse" }
+    ConfirmSchoolLogoUploadBody: { $ref: "./school-core-feedback.yaml#/components/schemas/ConfirmSchoolLogoUploadBody" }
+    SchoolCalendarEntry: { $ref: "./school-core-feedback.yaml#/components/schemas/SchoolCalendarEntry" }
+    CalendarDateItem: { $ref: "./school-core-feedback.yaml#/components/schemas/CalendarDateItem" }
+    CalendarTermConfiguration: { $ref: "./school-core-feedback.yaml#/components/schemas/CalendarTermConfiguration" }
+    GenerateSchoolCalendarBody: { $ref: "./school-core-feedback.yaml#/components/schemas/GenerateSchoolCalendarBody" }
+    CreateSchoolCalendarEventBody: { $ref: "./school-core-feedback.yaml#/components/schemas/CreateSchoolCalendarEventBody" }
+    UpdateSchoolCalendarEventBody: { $ref: "./school-core-feedback.yaml#/components/schemas/UpdateSchoolCalendarEventBody" }
+    SchoolTeacherAssignment: { $ref: "./school-core-feedback.yaml#/components/schemas/SchoolTeacherAssignment" }
+    CreateSchoolTeacherAssignmentBody: { $ref: "./school-core-feedback.yaml#/components/schemas/CreateSchoolTeacherAssignmentBody" }
+    UpdateSchoolTeacherAssignmentBody: { $ref: "./school-core-feedback.yaml#/components/schemas/UpdateSchoolTeacherAssignmentBody" }
+    TeacherDuty: { $ref: "./school-core-feedback.yaml#/components/schemas/TeacherDuty" }
+    CreateTeacherDutyBody: { $ref: "./school-core-feedback.yaml#/components/schemas/CreateTeacherDutyBody" }
+    UpdateTeacherDutyBody: { $ref: "./school-core-feedback.yaml#/components/schemas/UpdateTeacherDutyBody" }
+    StaffNfcError: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcError" }
+    StaffNfcBillingRule: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcBillingRule" }
+    StaffNfcBillingRuleInput: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcBillingRuleInput" }
+    StaffNfcTermContext: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcTermContext" }
+    StaffNfcAllocation: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcAllocation" }
+    StaffNfcPaymentSummary: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcPaymentSummary" }
+    StaffNfcSubscription: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcSubscription" }
+    StaffNfcMineResponse: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcMineResponse" }
+    StaffNfcGenerationResponse: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcGenerationResponse" }
+    StaffNfcCheckoutResponse: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcCheckoutResponse" }
+    StaffNfcVerificationInput: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcVerificationInput" }
+    StaffNfcPaymentResponse: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcPaymentResponse" }
+    StaffNfcReceipt: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcReceipt" }
+    StaffNfcFinanceResponse: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcFinanceResponse" }
+    StaffNfcRefundInput: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcRefundInput" }
+    StaffNfcRefundResponse: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcRefundResponse" }
+    StaffNfcPartnerResponse: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcPartnerResponse" }
+    StaffNfcWebhookAck: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcWebhookAck" }
+    TransportError: { $ref: "./transport-feedback.yaml#/components/schemas/TransportError" }
+    TransportStopInput: { $ref: "./transport-feedback.yaml#/components/schemas/TransportStopInput" }
+    TransportStop: { $ref: "./transport-feedback.yaml#/components/schemas/TransportStop" }
+    TransportBusInput: { $ref: "./transport-feedback.yaml#/components/schemas/TransportBusInput" }
+    TransportBusUpdate: { $ref: "./transport-feedback.yaml#/components/schemas/TransportBusUpdate" }
+    TransportBus: { $ref: "./transport-feedback.yaml#/components/schemas/TransportBus" }
+    TransportDriver: { $ref: "./transport-feedback.yaml#/components/schemas/TransportDriver" }
+    TransportRouteInput: { $ref: "./transport-feedback.yaml#/components/schemas/TransportRouteInput" }
+    TransportRouteUpdate: { $ref: "./transport-feedback.yaml#/components/schemas/TransportRouteUpdate" }
+    TransportRoute: { $ref: "./transport-feedback.yaml#/components/schemas/TransportRoute" }
+    TransportGuardian: { $ref: "./transport-feedback.yaml#/components/schemas/TransportGuardian" }
+    TransportStudentOption: { $ref: "./transport-feedback.yaml#/components/schemas/TransportStudentOption" }
+    TransportAssignmentInput: { $ref: "./transport-feedback.yaml#/components/schemas/TransportAssignmentInput" }
+    TransportAssignmentUpdate: { $ref: "./transport-feedback.yaml#/components/schemas/TransportAssignmentUpdate" }
+    TransportInvoiceStatus: { $ref: "./transport-feedback.yaml#/components/schemas/TransportInvoiceStatus" }
+    TransportAssignment: { $ref: "./transport-feedback.yaml#/components/schemas/TransportAssignment" }
+    TransportSchedule: { $ref: "./transport-feedback.yaml#/components/schemas/TransportSchedule" }
+    TransportSelfView: { $ref: "./transport-feedback.yaml#/components/schemas/TransportSelfView" }
+    TransportRequestInput: { $ref: "./transport-feedback.yaml#/components/schemas/TransportRequestInput" }
+    TransportRequestDecision: { $ref: "./transport-feedback.yaml#/components/schemas/TransportRequestDecision" }
+    TransportRequest: { $ref: "./transport-feedback.yaml#/components/schemas/TransportRequest" }
+    TransportHistoryEntry: { $ref: "./transport-feedback.yaml#/components/schemas/TransportHistoryEntry" }
+    TransportOwnerSchoolSummary: { $ref: "./transport-feedback.yaml#/components/schemas/TransportOwnerSchoolSummary" }

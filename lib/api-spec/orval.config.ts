@@ -17,6 +17,17 @@ export default defineConfig({
   "api-client-react": {
     input: {
       target: "./openapi.yaml",
+      parserOptions: {
+        externalRefs: {
+          allow: [
+            "./employee-nfc-feedback.yaml",
+            "./payroll-settlement-feedback.yaml",
+            "./school-core-feedback.yaml",
+            "./staff-billing-feedback.yaml",
+            "./transport-feedback.yaml",
+          ],
+        },
+      },
       override: {
         transformer: titleTransformer,
       },
@@ -43,6 +54,17 @@ export default defineConfig({
   zod: {
     input: {
       target: "./openapi.yaml",
+      parserOptions: {
+        externalRefs: {
+          allow: [
+            "./employee-nfc-feedback.yaml",
+            "./payroll-settlement-feedback.yaml",
+            "./school-core-feedback.yaml",
+            "./staff-billing-feedback.yaml",
+            "./transport-feedback.yaml",
+          ],
+        },
+      },
       override: {
         transformer: titleTransformer,
       },

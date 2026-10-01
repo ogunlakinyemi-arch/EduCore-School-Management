@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 const appSource = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
 const managementSource = readFileSync(new URL('./pages/partner/management.tsx', import.meta.url), 'utf8');
 const portalSource = readFileSync(new URL('./pages/partner/portal.tsx', import.meta.url), 'utf8');
+const parentPortalSource = readFileSync(new URL('./pages/parent-portal.tsx', import.meta.url), 'utf8');
 
 let parser: Parameters<typeof matchRoute>[0];
 function CaptureRouterParser() {
@@ -27,6 +28,20 @@ function resolvedOwnerPage(path: string) {
 describe('dashboard route compatibility', () => {
   it('redirects the legacy /dashboard path to the platform dashboard route', () => {
     expect(appSource).toContain('<Route path="/dashboard"><Redirect to="/" /></Route>');
+  });
+});
+
+describe('family and partner portal navigation', () => {
+  it('links parents to transport and the academic calendar', () => {
+    expect(parentPortalSource).toContain('<Link href="/my-transport" data-testid="link-parent-transport"');
+    expect(parentPortalSource).toContain('<Link href="/academic-calendar" data-testid="link-parent-academic-calendar"');
+  });
+
+  it('links partners to staff NFC commissions without replacing existing role-gated navigation', () => {
+    expect(portalSource).toContain('<Link href="/partner/staff-nfc"');
+    expect(portalSource).toContain('{isOwner && <Link href="/partner/staff"');
+    expect(portalSource).toContain('{canViewFinance && <Link href="/partner/commissions"');
+    expect(appSource).toContain('<Route path="/partner/staff-nfc">');
   });
 });
 

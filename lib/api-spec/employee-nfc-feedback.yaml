@@ -1,0 +1,852 @@
+paths:
+  /schools/{schoolId}/employee-nfc/cards:
+    get:
+      operationId: listEmployeeNfcCards
+      summary: List employees' NFC cards and term eligibility for a school
+      tags: [Employee NFC]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EmployeeNfcSchoolId"
+        - name: personType
+          in: query
+          description: Restrict results to teachers or other school staff; omit for both.
+          required: false
+          schema:
+            type: string
+            enum: [TEACHER, STAFF]
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [UNASSIGNED, LOCKED, ACTIVE, DEACTIVATED, REPLACED]
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [UNASSIGNED, LOCKED, ACTIVE, DEACTIVATED, REPLACED]
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 1000000
+      responses:
+        "200":
+          description: Authorized school employees and their current cards and term eligibility.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EmployeeNfcCardView"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /schools/{schoolId}/employee-nfc/cards/assign:
+    post:
+      operationId: assignEmployeeNfcCard
+      summary: Assign a provisioned card to a school employee without activating it
+      tags: [Employee NFC]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EmployeeNfcSchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [uid, employeeId]
+              properties:
+                uid:
+                  type: string
+                  minLength: 1
+                  maxLength: 160
+                employeeId:
+                  type: integer
+                  minimum: 1
+                personType:
+                  type: string
+                  enum: [TEACHER, STAFF]
+                reason:
+                  type: string
+                  maxLength: 500
+      responses:
+        "201":
+          description: The separately provisioned card is bound to the tenant's employee in the pending state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployeeNfcCardView"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /schools/{schoolId}/employee-nfc/cards/{cardId}:
+    patch:
+      operationId: changeEmployeeNfcCardStatus
+      summary: Activate, lock or deactivate an employee-bound NFC card without modifying student cards
+      tags: [Employee NFC]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EmployeeNfcSchoolId"
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [action, reason]
+              properties:
+                action:
+                  type: string
+                  enum: [ACTIVATE, LOCK, DEACTIVATE]
+                reason:
+                  type: string
+                  minLength: 3
+                  maxLength: 500
+      responses:
+        "200":
+          description: Employee card and appended, immutable card-history record.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployeeNfcCardView"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /schools/{schoolId}/employee-nfc/cards/{cardId}/replace:
+    post:
+      operationId: replaceEmployeeNfcCard
+      summary: Preserve employee history and replace one employee's card with an unused prepared UID
+      tags: [Employee NFC]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EmployeeNfcSchoolId"
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [uid, reason]
+              properties:
+                uid:
+                  type: string
+                  minLength: 1
+                  maxLength: 160
+                reason:
+                  type: string
+                  minLength: 3
+                  maxLength: 500
+      responses:
+        "201":
+          description: Replacement employee card. Neither the old card nor its records are deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployeeNfcCardView"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /schools/{schoolId}/employee-nfc/cards/{cardId}/history:
+    get:
+      operationId: listEmployeeNfcCardHistory
+      summary: Read the authorized employee card's append-only status and replacement history
+      tags: [Employee NFC]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EmployeeNfcSchoolId"
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: History belongs to the employee-bound card and its school only.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EmployeeNfcCardHistory"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /me/employee-nfc:
+    get:
+      operationId: getMyEmployeeNfcProfile
+      summary: Return only the authenticated employee's profile, logo, card status and current verified term entitlement
+      tags: [Employee NFC]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The one authorized employee's own current employee NFC E-ID.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployeeNfcProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /schools/{schoolId}/employee-nfc/{employeeId}/e-id:
+    get:
+      operationId: getSchoolEmployeeNfcId
+      summary: Return an authorized school's employee E-ID with verified school branding
+      description: A school employee may only retrieve their own E-ID, while an authorized School Admin or global Owner may read records within the allowed school scope.
+      tags: [Employee NFC]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EmployeeNfcSchoolId"
+        - name: employeeId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: The employee's tenant-bound E-ID and school branding.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployeeNfcProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /me/employee-nfc/attendance:
+    get:
+      operationId: listMyEmployeeNfcAttendance
+      summary: Return only attendance for the authenticated employee identity
+      tags: [Employee NFC]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: The authenticated staff member's check-ins and check-outs only.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EmployeeNfcAttendanceEvent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /schools/{schoolId}/employee-nfc/attendance/events:
+    get:
+      operationId: listSchoolEmployeeNfcAttendance
+      summary: List staff check-ins, check-outs and discrepancies within the authorized school
+      tags: [Employee NFC]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EmployeeNfcSchoolId"
+        - name: employeeId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PRESENT, LATE, ABSENT, LEFT_EARLY, EXCUSED, UNKNOWN, MISMATCH]
+      responses:
+        "200":
+          description: Bounded employee-only events filtered by school and request parameters.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EmployeeNfcAttendanceEvent"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /devices/employee-nfc/attendance/events:
+    post:
+      operationId: ingestEmployeeNfcAttendance
+      summary: Recognize and log a correctly typed, tenant-bound employee NFC card at an authorized device
+      description: Pending, failed or expired current-term staff subscriptions and mismatched person types are explicitly denied. NFC reads can never turn employee cards into student records.
+      tags: [Employee NFC]
+      parameters:
+        - name: X-Device-Credential
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [employeeId, personType, nfcUid, eventType, occurredAt]
+              properties:
+                employeeId:
+                  type: integer
+                  minimum: 1
+                personType:
+                  type: string
+                  enum: [TEACHER, STAFF]
+                nfcUid:
+                  type: string
+                  minLength: 1
+                  maxLength: 160
+                eventType:
+                  type: string
+                  enum: [SCHOOL_ENTRY, SCHOOL_EXIT]
+                occurredAt:
+                  type: string
+                  format: date-time
+      responses:
+        "200":
+          description: An exact device retry returns the previously recorded event without creating another attendance row.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployeeNfcAttendanceEvent"
+        "201":
+          description: An idempotent, school-bound teacher/staff check-in or check-out.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployeeNfcAttendanceEvent"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /schools/{schoolId}/employee-nfc/attendance/daily:
+    get:
+      operationId: getSchoolEmployeeNfcAttendanceDaily
+      summary: Summarize teacher/staff attendance for one school and local date
+      tags: [Employee NFC]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EmployeeNfcSchoolId"
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: School-bound employee-only daily check-in/out and late summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployeeNfcAttendanceDaily"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /schools/{schoolId}/employee-nfc/attendance/monthly:
+    get:
+      operationId: getSchoolEmployeeNfcAttendanceMonthly
+      summary: Summarize teacher/staff NFC attendance for one school and academic month
+      tags: [Employee NFC]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EmployeeNfcSchoolId"
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+        - name: employeeId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: School-bound employee attendance counts grouped by employee and event status.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EmployeeNfcAttendanceMonthly"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /schools/{schoolId}/employee-nfc/attendance/discrepancies:
+    get:
+      operationId: listSchoolEmployeeNfcAttendanceDiscrepancies
+      summary: List open or historical NFC discrepancies for that school's employees
+      tags: [Employee NFC]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EmployeeNfcSchoolId"
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [OPEN, RESOLVED]
+      responses:
+        "200":
+          description: Tenant-bounded employee-only NFC discrepancies and resolution history.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EmployeeNfcDiscrepancy"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /schools/{schoolId}/employee-nfc/attendance/discrepancies/{discrepancyId}/resolve:
+    post:
+      operationId: resolveSchoolEmployeeNfcAttendanceDiscrepancy
+      summary: Append a school-admin decision to an employee attendance discrepancy without changing the original event
+      tags: [Employee NFC]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/EmployeeNfcSchoolId"
+        - name: discrepancyId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason, resolution]
+              properties:
+                reason:
+                  type: string
+                  minLength: 3
+                  maxLength: 500
+                resolution:
+                  type: string
+                  enum: [ACCEPT, IGNORE, FOLLOW_UP]
+      responses:
+        "200":
+          description: Audited resolution retained beside the original employee event.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployeeNfcDiscrepancy"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Clerk session token
+  parameters:
+    EmployeeNfcSchoolId:
+      name: schoolId
+      in: path
+      required: true
+      description: A positive ID is additionally validated against the authenticated school membership.
+      schema:
+        type: integer
+        minimum: 1
+  schemas:
+    EmployeeNfcError:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        code: { type: string }
+    EmployeeNfcCardView:
+      type: object
+      additionalProperties: false
+      required: [cardId, schoolId, employeeId, personType, employeeName, employeeNo, uid, status, termEligibility, paymentRequired, nfcEligible, scans]
+      properties:
+        cardId:
+          type: [integer, "null"]
+          minimum: 1
+        schoolId:
+          type: integer
+          minimum: 1
+        employeeId:
+          type: integer
+          minimum: 1
+        personType:
+          type: string
+          enum: [TEACHER, STAFF]
+        employeeName:
+          type: string
+        employeeNo:
+          type: string
+        uid:
+          type: [string, "null"]
+        status:
+          type: string
+          enum: [UNASSIGNED, LOCKED, ACTIVE, DEACTIVATED, REPLACED]
+        termEligibility:
+          type: string
+          enum: [PAID, PENDING, UNPAID, FAILED, EXPIRED, NOT_CONFIGURED]
+        paymentRequired:
+          type: boolean
+        nfcEligible:
+          type: boolean
+        scans:
+          type: integer
+          minimum: 0
+        currentTerm:
+          type: [object, "null"]
+          additionalProperties: false
+          required: [termId, termName, academicYear]
+          properties:
+            termId:
+              type: integer
+            termName:
+              type: string
+            academicYear:
+              type: string
+        activatedAt:
+          type: [string, "null"]
+          format: date-time
+    EmployeeNfcCardHistory:
+      type: object
+      additionalProperties: false
+      required: [id, schoolId, cardId, employeeId, action, occurredAt]
+      properties:
+        id:
+          type: integer
+        schoolId:
+          type: integer
+        cardId:
+          type: integer
+        employeeId:
+          type: integer
+        action:
+          type: string
+        previousStatus:
+          type: [string, "null"]
+        newStatus:
+          type: [string, "null"]
+        replacedByCardId:
+          type: [integer, "null"]
+        reason:
+          type: [string, "null"]
+        actorId:
+          type: [integer, "null"]
+        occurredAt:
+          type: string
+          format: date-time
+    EmployeeNfcProfile:
+      allOf:
+        - $ref: "#/components/schemas/EmployeeNfcCardView"
+        - type: object
+          additionalProperties: true
+          properties:
+            roleTitle:
+              type: [string, "null"]
+            photo:
+              type: [string, "null"]
+            schoolName:
+              type: string
+            schoolLogo:
+              type: [string, "null"]
+            schoolAddress:
+              type: [string, "null"]
+            schoolPhone:
+              type: [string, "null"]
+            nextTerm:
+              type: [object, "null"]
+    EmployeeNfcAttendanceEvent:
+      type: object
+      additionalProperties: false
+      required: [id, schoolId, employeeId, personType, eventType, identificationMethod, status, occurredAt, discrepancy]
+      properties:
+        id:
+          type: integer
+        schoolId:
+          type: integer
+        employeeId:
+          type: integer
+        personType:
+          type: string
+          enum: [TEACHER, STAFF]
+        eventType:
+          type: string
+          enum: [SCHOOL_ENTRY, SCHOOL_EXIT]
+        identificationMethod:
+          type: string
+          enum: [NFC, MANUAL]
+        status:
+          type: string
+          enum: [PRESENT, LATE, LEFT_EARLY, EXCUSED, UNKNOWN, MISMATCH]
+        occurredAt:
+          type: string
+          format: date-time
+        discrepancy:
+          type: boolean
+        deviceId:
+          type: [integer, "null"]
+        result:
+          type: string
+    EmployeeNfcAttendanceDaily:
+      type: object
+      additionalProperties: false
+      required: [date, schoolId, employees, entries, exits, late, discrepancies]
+      properties:
+        date:
+          type: string
+          format: date
+        schoolId:
+          type: integer
+        employees:
+          type: integer
+        entries:
+          type: integer
+        exits:
+          type: integer
+        late:
+          type: integer
+        discrepancies:
+          type: integer
+    EmployeeNfcAttendanceMonthly:
+      type: object
+      additionalProperties: false
+      required: [schoolId, employeeId, employeeName, employeeNo, personType, attendanceDays, late, earlyDeparture, entries, exits]
+      properties:
+        schoolId:
+          type: integer
+        employeeId:
+          type: integer
+        employeeName:
+          type: string
+        employeeNo:
+          type: string
+        personType:
+          type: string
+          enum: [TEACHER, STAFF]
+        attendanceDays:
+          type: integer
+        late:
+          type: integer
+        earlyDeparture:
+          type: integer
+        entries:
+          type: integer
+        exits:
+          type: integer
+    EmployeeNfcDiscrepancy:
+      type: object
+      additionalProperties: false
+      required: [id, schoolId, employeeId, employeeName, attendanceEventId, eventType, status, detectedAt, resolutionHistory]
+      properties:
+        id:
+          type: integer
+        schoolId:
+          type: integer
+        employeeId:
+          type: integer
+        employeeName:
+          type: string
+        attendanceEventId:
+          type: integer
+        eventType:
+          type: string
+          enum: [SCHOOL_ENTRY, SCHOOL_EXIT]
+        status:
+          type: string
+          enum: [OPEN, RESOLVED]
+        detectedAt:
+          type: string
+          format: date-time
+        reason:
+          type: string
+        resolutionHistory:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [resolution, reason, actorId, occurredAt]
+            properties:
+              resolution:
+                type: string
+              reason:
+                type: string
+              actorId:
+                type: integer
+              occurredAt:
+                type: string
+                format: date-time
+  responses:
+    ApiBadRequest:
+      description: Invalid request or rejected school/device/student relationship.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/EmployeeNfcError"
+    Unauthenticated:
+      description: Authentication required.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/EmployeeNfcError"
+    Forbidden:
+      description: Authenticated but not authorized.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/EmployeeNfcError"
+    NotFound:
+      description: Resource not found or outside authorized visibility.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/EmployeeNfcError"
+    ValidationError:
+      $ref: "#/components/responses/ApiBadRequest"
+    Unauthorized:
+      $ref: "#/components/responses/Unauthenticated"
+    Conflict:
+      description: Employee, school, payment, card or term state conflicts with the requested operation.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/EmployeeNfcError"
+    ServiceUnavailable:
+      description: Current-term staff NFC payment eligibility could not be verified.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/EmployeeNfcError"

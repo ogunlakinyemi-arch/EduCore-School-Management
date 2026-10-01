@@ -218,6 +218,41 @@
       "when": 1790632173536,
       "tag": "0030_library_loan_copy_integrity",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1790856000000,
+      "tag": "0031_staff_nfc_billing",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790856001000,
+      "tag": "0032_employee_nfc",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790856002000,
+      "tag": "0033_school_workflows",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790856003000,
+      "tag": "0034_school_transport",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790856004000,
+      "tag": "0035_settlement_payroll",
+      "breakpoints": true
     }
   ]
 }

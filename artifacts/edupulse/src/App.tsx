@@ -38,6 +38,18 @@ import { UsersPage } from '@/pages/users';
 import { PeopleImportsPage } from '@/pages/people-imports';
 import { SubscriptionsPage } from '@/pages/subscriptions';
 import { CardsPage } from '@/pages/cards';
+import { SchoolBrandingPage } from '@/pages/school-branding';
+import { AcademicCalendarPage } from '@/pages/academic-calendar';
+import { TeacherAssignmentsPage } from '@/pages/teacher-assignments';
+import { TeacherDutyPage } from '@/pages/teacher-duty';
+import TransportPage from '@/pages/transport';
+import FamilyTransportPage from '@/pages/family-transport';
+import { EmployeeNfcPage, MyEmployeeNfcPage } from '@/pages/employee-nfc';
+import { MyStaffNfcSubscriptionPage, StaffNfcFinancePage, StaffNfcBillingRulesPage, PartnerStaffNfcCommissionsPage } from '@/pages/staff-nfc-billing';
+import { PaymentSettlementPage } from '@/pages/payment-settlement';
+import { PayrollPage } from '@/pages/payroll';
+import { MyPayslipsPage } from '@/pages/my-payslips';
+import { FinanceWorkspacePage } from '@/pages/finance-workspace';
 import { AuditPage } from '@/pages/audit';
 import { SettingsPage } from '@/pages/settings';
 import { DevicesPage } from '@/pages/devices';
@@ -194,11 +206,18 @@ function ProtectedRoutes() {
   }
 
   if (isOnlyParent) {
-    return <ParentPortal />;
+    return <TenantProvider><Switch>
+      <Route path="/my-transport"><Shell><FamilyTransportPage /></Shell></Route>
+      <Route path="/academic-calendar"><Shell><AcademicCalendarPage /></Shell></Route>
+      <Route><ParentPortal /></Route>
+    </Switch></TenantProvider>;
   }
 
   if (isOnlyPartner) {
-    return <PartnerPortal />;
+    return <TenantProvider><Switch>
+      <Route path="/partner/staff-nfc"><Shell><PartnerStaffNfcCommissionsPage /></Shell></Route>
+      <Route><PartnerPortal /></Route>
+    </Switch></TenantProvider>;
   }
 
   return (
@@ -207,6 +226,21 @@ function ProtectedRoutes() {
         <Switch>
           <Route path="/" component={Dashboard} />
           <Route path="/dashboard"><Redirect to="/" /></Route>
+          <Route path="/school-branding"><RoleGuard allowedRoles={['SCHOOL_ADMIN']}><SchoolBrandingPage /></RoleGuard></Route>
+          <Route path="/academic-calendar"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF', 'PARENT', 'STUDENT']} ownerCanView ownerReadOnly><AcademicCalendarPage /></RoleGuard></Route>
+          <Route path="/teacher-assignments"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']}><TeacherAssignmentsPage /></RoleGuard></Route>
+          <Route path="/teacher-duty"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']}><TeacherDutyPage /></RoleGuard></Route>
+          <Route path="/transport"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><TransportPage /></RoleGuard></Route>
+          <Route path="/my-transport"><RoleGuard allowedRoles={['PARENT', 'STUDENT']}><FamilyTransportPage /></RoleGuard></Route>
+          <Route path="/employee-nfc"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><EmployeeNfcPage /></RoleGuard></Route>
+          <Route path="/my-employee-nfc"><RoleGuard allowedRoles={['TEACHER', 'STAFF']}><MyEmployeeNfcPage /></RoleGuard></Route>
+          <Route path="/my-nfc-subscription"><RoleGuard allowedRoles={['TEACHER', 'STAFF']}><MyStaffNfcSubscriptionPage /></RoleGuard></Route>
+          <Route path="/staff-nfc-finance"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']} ownerCanView><StaffNfcFinancePage /></RoleGuard></Route>
+          <Route path="/billing-rules"><RoleGuard isPlatformOwnerOnly><StaffNfcBillingRulesPage /></RoleGuard></Route>
+          <Route path="/payment-settlement"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><PaymentSettlementPage /></RoleGuard></Route>
+          <Route path="/payroll"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><PayrollPage /></RoleGuard></Route>
+          <Route path="/my-payslips"><RoleGuard allowedRoles={['TEACHER', 'STAFF']}><MyPayslipsPage /></RoleGuard></Route>
+          <Route path="/finance-workspace"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']} ownerCanView><FinanceWorkspacePage /></RoleGuard></Route>
           <Route path="/partners">
             <RoleGuard isPlatformOwnerOnly><PartnerManagement /></RoleGuard>
           </Route>
@@ -391,6 +425,7 @@ export default function App() {
                 <AuthGuard>
                   <Switch>
                      <Route path="/parent*"><RoleGuard allowedRoles={['PARENT']}><ParentPortal /></RoleGuard></Route>
+                    <Route path="/partner/staff-nfc"><RoleGuard allowedRoles={['PARTNER']}><TenantProvider><Shell><PartnerStaffNfcCommissionsPage /></Shell></TenantProvider></RoleGuard></Route>
                     <Route path="/partner*"><PartnerPortal /></Route>
                     <Route><ProtectedRoutes /></Route>
                   </Switch>

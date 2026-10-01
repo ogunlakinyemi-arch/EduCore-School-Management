@@ -855,8 +855,23 @@ router.get("/cards", async (req, res) => {
     const result = await pool.query(`
       SELECT nc.id, nc.school_id AS "schoolId", nc.uid, nc.student_id AS "studentId",
         CASE WHEN st.id IS NULL THEN NULL ELSE st.first_name || ' ' || st.last_name END AS "studentName",
+        employee."employeeId", employee."employeeName", employee."personType",
         nc.status, nc.scans, nc.last_scan AS "lastScan"
-      FROM nfc_cards nc LEFT JOIN students st ON st.id = nc.student_id
+      FROM nfc_cards nc
+      LEFT JOIN students st ON st.id = nc.student_id
+      LEFT JOIN LATERAL (
+        SELECT e.id AS "employeeId",
+               trim(concat_ws(' ',e.first_name,e.middle_name,e.last_name)) AS "employeeName",
+               CASE WHEN UPPER(e.employee_type)='TEACHER' THEN 'TEACHER' ELSE 'STAFF' END AS "personType"
+          FROM employee_nfc_card_bindings b
+          JOIN employees e ON e.id=b.employee_id AND e.school_id=b.school_id
+         WHERE b.nfc_card_id=nc.id AND b.school_id=nc.school_id
+           AND nc.student_id IS NULL
+           AND UPPER(e.employee_type) IN ('TEACHER','STAFF')
+           AND b.status IN ('ASSIGNED','ACTIVE','LOCKED')
+         ORDER BY CASE WHEN b.status IN ('ASSIGNED','ACTIVE','LOCKED') THEN 0 ELSE 1 END,b.id DESC
+         LIMIT 1
+      ) employee ON TRUE
       WHERE nc.school_id = $1 ${condition} ORDER BY nc.id DESC
     `, values);
     res.json(result.rows.map((row) => ({ ...row, lastScan: dateString(row.lastScan) })));
@@ -869,7 +884,10 @@ router.post("/cards", async (req, res) => {
   const client = await pool.connect();
   try {
     const schoolId = tenantId(req, ["SCHOOL_ADMIN", "STAFF"]);
-    assertCardControlAccess(req, schoolId);
+    const context = assertCardControlAccess(req, schoolId);
+    if (!isPlatformOwner(context)) {
+      throw new AuthError(403, "Only the Platform Owner may provision physical NFC cards; school users can assign prepared cards");
+    }
     const body = RegisterCardBody.parse(req.body);
     RegisterCardQueryParams.parse(req.query);
     const studentId = body.studentId ?? null;
@@ -929,10 +947,17 @@ router.patch("/cards/:cardId/status", async (req, res) => {
     }
     await client.query("BEGIN");
     const card = await client.query(
-      `SELECT nc.school_id AS "schoolId"
+      `SELECT nc.school_id AS "schoolId",employee."bindingId" AS "employeeBindingId"
              , nc.status AS "status", nc.student_id AS "studentId"
        FROM nfc_cards nc
        LEFT JOIN students st ON st.id = nc.student_id
+        LEFT JOIN LATERAL (
+          SELECT b.id AS "bindingId"
+            FROM employee_nfc_card_bindings b
+           WHERE b.nfc_card_id=nc.id AND b.school_id=nc.school_id
+           ORDER BY CASE WHEN b.status IN ('ASSIGNED','ACTIVE','LOCKED') THEN 0 ELSE 1 END,b.id DESC
+           LIMIT 1
+        ) employee ON TRUE
        WHERE nc.id = $1
           AND (nc.student_id IS NULL OR st.school_id = nc.school_id)
        FOR UPDATE OF nc`,
@@ -944,6 +969,9 @@ router.patch("/cards/:cardId/status", async (req, res) => {
       return;
     }
     assertCardControlAccess(req, card.rows[0].schoolId);
+    if (card.rows[0].employeeBindingId != null) {
+      throw new AuthError(409, "Employee-bound cards must be managed through employee NFC controls");
+    }
     const previousStatus = String(card.rows[0].status).toLowerCase();
     if (terminalCardStatuses.has(previousStatus) && status !== previousStatus) {
       throw new AuthError(409, `A ${previousStatus} card cannot change status`);
@@ -1009,9 +1037,17 @@ router.patch("/cards/:cardId/reassign", async (req, res) => {
     await client.query("BEGIN");
     const card = await client.query(
       `SELECT nc.id, nc.school_id AS "schoolId", nc.uid, nc.student_id AS "studentId",
-              nc.status, nc.scans, nc.last_scan AS "lastScan"
+              nc.status, nc.scans, nc.last_scan AS "lastScan",
+              employee."bindingId" AS "employeeBindingId"
        FROM nfc_cards nc
        LEFT JOIN students st ON st.id = nc.student_id
+       LEFT JOIN LATERAL (
+         SELECT b.id AS "bindingId"
+           FROM employee_nfc_card_bindings b
+          WHERE b.nfc_card_id=nc.id AND b.school_id=nc.school_id
+          ORDER BY CASE WHEN b.status IN ('ASSIGNED','ACTIVE','LOCKED') THEN 0 ELSE 1 END,b.id DESC
+          LIMIT 1
+       ) employee ON TRUE
        WHERE nc.id = $1 AND (nc.student_id IS NULL OR st.school_id = nc.school_id)
        FOR UPDATE OF nc`,
       [cardId],
@@ -1021,6 +1057,9 @@ router.patch("/cards/:cardId/reassign", async (req, res) => {
       return res.status(404).json({ error: "Card not found" });
     }
     assertCardControlAccess(req, card.rows[0].schoolId);
+    if (card.rows[0].employeeBindingId != null) {
+      throw new AuthError(409, "Employee-bound cards cannot be reassigned to students");
+    }
 
     const currentStatus = String(card.rows[0].status).toLowerCase();
     if (!cardStatuses.has(currentStatus) || terminalCardStatuses.has(currentStatus)) {

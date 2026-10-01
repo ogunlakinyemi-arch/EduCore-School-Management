@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CreditCard, Plus, ShieldCheck } from 'lucide-react';
 import { 
-  useListCards, useListStudents, useRegisterCard, useUpdateCardStatus, getListCardsQueryKey
+  useGetAuthorizedContext, useListCards, useListStudents, useRegisterCard, useUpdateCardStatus, getListCardsQueryKey
 } from '@workspace/api-client-react';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Modal, Field, TenantPicker, useTenant, cx 
@@ -11,13 +11,20 @@ import {
 // Phase 3 NFC Cards Page
 export function CardsPage() {
   const { schoolId, setSchoolId } = useTenant();
+  const authorized = useGetAuthorizedContext();
+  const roles = authorized.data?.roles?.filter(role => role.status === 'ACTIVE') ?? [];
+  const isRestrictedEmployee = roles.some(role =>
+    role.role === 'DEVICE_ACTIVATION_OFFICER' || role.role === 'COMPANY_ACCOUNTANT');
+  const canProvision = authorized.data?.isPlatformOwner === true && !isRestrictedEmployee;
+  const canManageCards = canProvision || (!authorized.data?.isPlatformOwner &&
+    roles.some(role => role.role === 'SCHOOL_ADMIN' && role.schoolId === schoolId));
   const [modal, setModal] = useState<any>(null); 
   const qc = useQueryClient();
   
   const query = useListCards({ schoolId }, { query: { enabled: !!schoolId, queryKey: getListCardsQueryKey({ schoolId }) } }); 
   const cards: any[] = query.data ?? [];
   const studentsQuery = useListStudents({ schoolId, status: 'all' as any }, {
-    query: { enabled: !!schoolId, queryKey: ['cards-reassignment-students', schoolId] }
+    query: { enabled: !!schoolId && canManageCards, queryKey: ['cards-reassignment-students', schoolId] }
   });
   const students: any[] = studentsQuery.data ?? [];
   
@@ -39,14 +46,16 @@ export function CardsPage() {
     <div className="fade-up">
       <PageHeading 
         eyebrow="Security / NFC Cards" 
-        title="Access Control Fleet." 
-        description="Provision and manage student physical access cards." 
+        title="NFC Card Management"
+        description={canProvision
+          ? 'Prepare and manage school-bound physical NFC cards.'
+          : 'Manage prepared cards and their student assignments. Physical card provisioning is handled by the platform.'}
         action={
           <div className="flex items-center gap-3">
             <TenantPicker />
-            <Button onClick={() => setModal({ create: true })} disabled={!schoolId}>
+            {canProvision && <Button onClick={() => setModal({ create: true })} disabled={!schoolId}>
               <Plus size={16} />Provision Card
-            </Button>
+            </Button>}
           </div>
         } 
       />
@@ -71,23 +80,23 @@ export function CardsPage() {
                 <div>
                   <div className="font-mono text-sm font-bold text-[hsl(var(--primary))] dark:text-[hsl(var(--accent))]">{card.uid}</div>
                 </div>
-                <div className="text-sm font-medium">{card.studentName ?? (card.studentId ? `Student #${card.studentId}` : 'Unassigned')}</div>
+                 <div className="text-sm font-medium">{card.employeeName ?? card.studentName ?? (card.employeeId ? `Employee #${card.employeeId}` : card.studentId ? `Student #${card.studentId}` : 'Unassigned')}</div>
                 <div><StatusPill value={card.status} /></div>
-                <div className="flex justify-end gap-2">
+                 {canManageCards && !card.employeeId && <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setModal({ reassign: card })} disabled={studentsQuery.isLoading || !students.length}>
                     Reassign
                   </Button>
                   <Button variant="outline" onClick={() => handleToggle(card.id, card.status)} disabled={toggleStatus.isPending}>
                     {card.status === 'active' ? 'Lock Card' : 'Unlock Card'}
                   </Button>
-                </div>
+                 </div>}
               </div>
             )) : (
-              <EmptyState icon={ShieldCheck} title="No cards provisioned" description="Register hardware access cards to students." action={<Button onClick={() => setModal({ create: true })}><Plus size={15} />Provision Card</Button>} />
+              <EmptyState icon={ShieldCheck} title="No NFC cards" description={canProvision ? 'Prepare physical access cards for this school.' : 'Prepared NFC cards will appear here for assignment and management.'} action={canProvision ? <Button onClick={() => setModal({ create: true })}><Plus size={15} />Provision Card</Button> : undefined} />
             )}
           </div>
           
-          {modal && (
+           {modal && canManageCards && (!modal.create || canProvision) && (
             <Modal
               title={modal.create ? 'Provision NFC Card' : 'Reassign NFC Card'}
               eyebrow="Hardware Management"

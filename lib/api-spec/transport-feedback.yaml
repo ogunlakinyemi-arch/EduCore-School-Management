@@ -1,0 +1,2026 @@
+paths:
+  /transport/buses:
+    get:
+      operationId: listTransportBuses
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, INACTIVE, MAINTENANCE]
+      responses:
+        "200":
+          description: School-scoped buses, with route counts and current reserved passenger counts.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransportBus"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+    post:
+      operationId: createTransportBus
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransportBusInput"
+      responses:
+        "201":
+          description: School-owned bus.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportBus"
+        "400":
+          $ref: "#/components/responses/TransportBadRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+  /transport/buses/{busId}:
+    patch:
+      operationId: updateTransportBus
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - $ref: "#/components/parameters/TransportBusId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransportBusUpdate"
+      responses:
+        "200":
+          description: Updated school-owned bus.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportBus"
+        "400":
+          $ref: "#/components/responses/TransportBadRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+        "409":
+          $ref: "#/components/responses/TransportConflict"
+  /transport/drivers:
+    get:
+      operationId: searchTransportDrivers
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - $ref: "#/components/parameters/TransportSearchQuery"
+      responses:
+        "200":
+          description: Existing active employees designated as drivers, scoped to the authorized school.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransportDriver"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+  /transport/employees:
+    get:
+      operationId: searchTransportEmployees
+      tags: [Transport]
+      description: Search existing active employees in the authorized school for route or bus accompaniment; this endpoint never creates staff records.
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - $ref: "#/components/parameters/TransportSearchQuery"
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [TEACHER, STAFF, ACCOMPANIER]
+            default: ACCOMPANIER
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: Existing same-school employee options filtered by active employment status and requested accompaniment role.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransportEmployeeOption"
+        "400":
+          $ref: "#/components/responses/TransportBadRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+  /transport/routes:
+    get:
+      operationId: listTransportRoutes
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - name: busId
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, INACTIVE]
+      responses:
+        "200":
+          description: School-scoped routes, stops, scheduled weekdays, drivers and bus capacity counts.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransportRoute"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+    post:
+      operationId: createTransportRoute
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransportRouteInput"
+      responses:
+        "201":
+          description: Newly created school route with its validated ordered stops.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportRoute"
+        "400":
+          $ref: "#/components/responses/TransportBadRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+  /transport/routes/{routeId}:
+    patch:
+      operationId: updateTransportRoute
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - $ref: "#/components/parameters/TransportRouteId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransportRouteUpdate"
+      responses:
+        "200":
+          description: Updated school-owned route and its validated weekdays.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportRoute"
+        "400":
+          $ref: "#/components/responses/TransportBadRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+  /transport/routes/{routeId}/stops:
+    post:
+      operationId: addTransportStop
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - $ref: "#/components/parameters/TransportRouteId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransportStopInput"
+      responses:
+        "201":
+          description: New ordered pickup/drop-off stop.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportStop"
+        "400":
+          $ref: "#/components/responses/TransportBadRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+  /transport/routes/{routeId}/stops/{stopId}:
+    patch:
+      operationId: updateTransportStop
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - $ref: "#/components/parameters/TransportRouteId"
+        - $ref: "#/components/parameters/TransportStopId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransportStopInput"
+      responses:
+        "200":
+          description: Updated ordered stop; in-use stops cannot be made inactive.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportStop"
+        "400":
+          $ref: "#/components/responses/TransportBadRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+        "409":
+          $ref: "#/components/responses/TransportConflict"
+  /transport/routes/{routeId}/staff:
+    get:
+      operationId: listTransportRouteStaff
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - $ref: "#/components/parameters/TransportRouteId"
+      responses:
+        "200":
+          description: Existing same-school teacher/staff/companion employee assignments for this route.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransportRouteStaff"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+    post:
+      operationId: assignTransportRouteStaff
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - $ref: "#/components/parameters/TransportRouteId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransportRouteStaffInput"
+      responses:
+        "201":
+          description: Existing same-school employee assigned after active-employment and schedule-conflict validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportRouteStaff"
+        "400":
+          $ref: "#/components/responses/TransportBadRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "409":
+          $ref: "#/components/responses/TransportConflict"
+  /transport/routes/{routeId}/staff/{routeStaffId}:
+    patch:
+      operationId: updateTransportRouteStaff
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - $ref: "#/components/parameters/TransportRouteId"
+        - $ref: "#/components/parameters/TransportRouteStaffId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              anyOf:
+                - required: [isActive]
+                - required: [role]
+              properties:
+                isActive:
+                  type: boolean
+                role:
+                  type: string
+                  enum: [TEACHER, STAFF, ACCOMPANIER]
+                reason:
+                  type: string
+                  minLength: 3
+                  maxLength: 500
+      responses:
+        "200":
+          description: Soft-activated or deactivated companion assignment with immutable route history.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportRouteStaff"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+        "409":
+          $ref: "#/components/responses/TransportConflict"
+  /transport/routes/{routeId}/history:
+    get:
+      operationId: getTransportRouteHistory
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - $ref: "#/components/parameters/TransportRouteId"
+      responses:
+        "200":
+          description: Immutable route-update history, scoped to this school-owned route.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransportHistoryEntry"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+  /transport/students:
+    get:
+      operationId: searchTransportStudents
+      tags: [Transport]
+      description: >-
+        School-staff-only searchable view over existing same-school student and
+        active parent records. Does not create or modify student records.
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - $ref: "#/components/parameters/TransportSearchQuery"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: Authorized school's matching existing students and active guardians.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransportStudentOption"
+        "400":
+          $ref: "#/components/responses/TransportBadRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+  /transport/assignments:
+    get:
+      operationId: listTransportAssignments
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, SUSPENDED, DEACTIVATED, all]
+            default: all
+        - name: studentId
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: School-scoped transport assignment and invoice/payment-status records.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransportAssignment"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+    post:
+      operationId: createTransportAssignment
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransportAssignmentInput"
+      responses:
+        "201":
+          description: Assignment referencing an existing same-school student, route and active stops; any transport charge is an ordinary Finance invoice.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportAssignment"
+        "400":
+          $ref: "#/components/responses/TransportBadRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+        "409":
+          $ref: "#/components/responses/TransportConflict"
+  /transport/assignments/{assignmentId}:
+    get:
+      operationId: getTransportAssignment
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - $ref: "#/components/parameters/TransportAssignmentId"
+      responses:
+        "200":
+          description: Authorized school's assignment and existing Finance invoice details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportAssignment"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+    patch:
+      operationId: updateTransportAssignment
+      tags: [Transport]
+      description: >-
+        Changes school-controlled assignment status or bus, route, pickup and
+        drop-off; each successful change records a separate immutable history
+        event and effective date/reason.
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - $ref: "#/components/parameters/TransportAssignmentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransportAssignmentUpdate"
+      responses:
+        "200":
+          description: Updated assignment.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportAssignment"
+        "400":
+          $ref: "#/components/responses/TransportBadRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+        "409":
+          $ref: "#/components/responses/TransportConflict"
+  /transport/assignments/{assignmentId}/fee-plans/{academicTermId}:
+    put:
+      operationId: upsertTransportAssignmentFeePlan
+      tags: [Transport]
+      description: >-
+        Create or update the assignment's school-scoped plan for this term
+        before invoice generation. Once linked to Finance, plan amount, due
+        date, term, and fee category are immutable; financial corrections use
+        the existing Finance workflows.
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - $ref: "#/components/parameters/TransportAssignmentId"
+        - $ref: "#/components/parameters/TransportAcademicTermId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransportAssignmentFeePlanInput"
+      responses:
+        "200":
+          description: Updated assignment projection with its per-term fee plans and linked Finance invoices.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportAssignment"
+        "400":
+          $ref: "#/components/responses/TransportBadRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+        "409":
+          $ref: "#/components/responses/TransportConflict"
+    patch:
+      operationId: cancelTransportAssignmentFeePlan
+      tags: [Transport]
+      description: Soft-cancel an uninvoiced plan with a reason and immutable assignment history; billed invoices remain under Finance control.
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - $ref: "#/components/parameters/TransportAssignmentId"
+        - $ref: "#/components/parameters/TransportAcademicTermId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [status, reason]
+              properties:
+                status:
+                  type: string
+                  enum: [CANCELLED]
+                reason:
+                  type: string
+                  minLength: 3
+                  maxLength: 500
+      responses:
+        "200":
+          description: Assignment projection with the cancelled historical fee plan.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportAssignment"
+        "400":
+          $ref: "#/components/responses/TransportBadRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+        "409":
+          $ref: "#/components/responses/TransportConflict"
+  /transport/assignments/{assignmentId}/history:
+    get:
+      operationId: getTransportAssignmentHistory
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - $ref: "#/components/parameters/TransportAssignmentId"
+      responses:
+        "200":
+          description: Audit history of this school-owned assignment, its changes, parent requests and Finance payment states.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransportHistoryEntry"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+  /transport/requests:
+    get:
+      operationId: listTransportRequests
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, APPROVED, REJECTED, WITHDRAWN, all]
+            default: all
+      responses:
+        "200":
+          description: Authorized school's paginated-free bounded list of parent service requests.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransportRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+  /transport/requests/{requestId}/review:
+    post:
+      operationId: reviewTransportRequest
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - $ref: "#/components/parameters/TransportRequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransportRequestDecision"
+      responses:
+        "200":
+          description: Reviewed parent request. Approval applies activation/deactivation with an audited assignment change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportRequest"
+        "400":
+          $ref: "#/components/responses/TransportBadRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+        "409":
+          $ref: "#/components/responses/TransportConflict"
+  /transport/policy:
+    get:
+      operationId: getSchoolTransportPolicy
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+      responses:
+        "200":
+          description: School-owned invoice gating settings, defaulting to no required transport payment.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportSchoolPolicy"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+    patch:
+      operationId: updateSchoolTransportPolicy
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransportSchoolPolicyUpdate"
+      responses:
+        "200":
+          description: Audit-logged school policy update.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportSchoolPolicy"
+        "400":
+          $ref: "#/components/responses/TransportBadRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+  /transport/finance/terms/{termId}/generate:
+    post:
+      operationId: generateCurrentTermTransportInvoices
+      tags: [Transport]
+      description: School-admin, idempotent Finance integration hook for a current academic term. Academic rollover should invoke the same exported operation.
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdQuery"
+        - $ref: "#/components/parameters/TransportTermId"
+      responses:
+        "200":
+          description: Existing Finance invoices reused; outstanding transport fees are never duplicated for the same assignment and term.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportTermInvoiceGeneration"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+        "409":
+          $ref: "#/components/responses/TransportConflict"
+  /parent/children/{studentId}/transport/requests/{requestId}/withdraw:
+    post:
+      operationId: withdrawChildTransportRequest
+      tags: [Transport]
+      description: Withdraws this parent's own still-pending service request; never changes the student's assignment.
+      parameters:
+        - $ref: "#/components/parameters/TransportStudentId"
+        - $ref: "#/components/parameters/TransportRequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                  minLength: 3
+                  maxLength: 1000
+      responses:
+        "200":
+          description: Withdrawn pending request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+        "409":
+          $ref: "#/components/responses/TransportConflict"
+  /parent/children/{studentId}/transport:
+    get:
+      operationId: getChildTransport
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/TransportStudentId"
+      responses:
+        "200":
+          description: Current route, status and Finance invoice/payment summaries for an actively linked child.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportSelfView"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+  /parent/children/{studentId}/transport/requests:
+    get:
+      operationId: listChildTransportRequests
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/TransportStudentId"
+      responses:
+        "200":
+          description: This linked child's service-request history only.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransportRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+    post:
+      operationId: requestChildTransportChange
+      tags: [Transport]
+      description: >-
+        Submits a request only; it does not erase, activate, suspend, or
+        deactivate a student assignment. The school retains operational
+        control and explicitly approves or declines the request.
+      parameters:
+        - $ref: "#/components/parameters/TransportStudentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransportRequestInput"
+      responses:
+        "201":
+          description: Auditable request awaiting school action.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportRequest"
+        "400":
+          $ref: "#/components/responses/TransportBadRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+        "409":
+          $ref: "#/components/responses/TransportConflict"
+  /parent/children/{studentId}/transport/history:
+    get:
+      operationId: getChildTransportHistory
+      tags: [Transport]
+      parameters:
+        - $ref: "#/components/parameters/TransportStudentId"
+      responses:
+        "200":
+          description: This child's transport-assignment and parent-request history only.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransportHistoryEntry"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+  /student/transport:
+    get:
+      operationId: getOwnStudentTransport
+      tags: [Transport]
+      responses:
+        "200":
+          description: Current authenticated student's route, status and Finance invoice/payment summaries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportSelfView"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+  /student/transport/history:
+    get:
+      operationId: getOwnStudentTransportHistory
+      tags: [Transport]
+      responses:
+        "200":
+          description: Authenticated student's transport and related-parent-request history only.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransportHistoryEntry"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+        "404":
+          $ref: "#/components/responses/TransportNotFound"
+  /transport/platform-owner/overview:
+    get:
+      operationId: getPlatformTransportOverview
+      tags: [Transport]
+      description: >-
+        Explicit read-only global Platform Owner aggregate. Does not confer
+        school operating access or expose parent contact, salary or bank
+        details.
+      parameters:
+        - name: schoolId
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: academicSessionId
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: academicTermId
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [UNPAID, PARTIALLY_PAID, PAID, OVERDUE, WAIVED, CANCELLED, all]
+        - name: employeeId
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - $ref: "#/components/parameters/TransportSearchQuery"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: Global operational totals, Finance revenue and bounded tenant-filterable invoice history. This endpoint is read-only.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportPlatformOverview"
+        "400":
+          $ref: "#/components/responses/TransportBadRequest"
+        "403":
+          $ref: "#/components/responses/TransportForbidden"
+
+components:
+  parameters:
+    SchoolIdQuery:
+      name: schoolId
+      in: query
+      required: true
+      description: >-
+        The requested school must be authorized server-side. Owner visibility
+        never grants operational writes and mixed-role Owners cannot perform
+        school mutations.
+      schema:
+        type: integer
+        minimum: 1
+    TransportSearchQuery:
+      name: search
+      in: query
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 100
+    TransportBusId:
+      name: busId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    TransportRouteId:
+      name: routeId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    TransportRouteStaffId:
+      name: routeStaffId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    TransportStopId:
+      name: stopId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    TransportAssignmentId:
+      name: assignmentId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    TransportStudentId:
+      name: studentId
+      in: path
+      required: true
+      description: Authoritative student ID is additionally checked against the signed-in child's active parent relationship.
+      schema:
+        type: integer
+        minimum: 1
+    TransportRequestId:
+      name: requestId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    TransportTermId:
+      name: termId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    TransportAcademicTermId:
+      name: academicTermId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+  responses:
+    TransportBadRequest:
+      description: Input did not satisfy the documented date, amount, ID, stop, schedule or status constraints.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/TransportError"
+    TransportForbidden:
+      description: Authentication or role policy does not authorize this action.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/TransportError"
+    TransportNotFound:
+      description: School-scoped or own-child record not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/TransportError"
+    TransportConflict:
+      description: Duplicate active assignment, outstanding parent request, capacity exceeded or guarded Finance action conflict.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/TransportError"
+  schemas:
+    TransportError:
+      type: object
+      required: [error, code]
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+    TransportStopInput:
+      type: object
+      additionalProperties: false
+      required: [name, stopType, sequence]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        stopType:
+          type: string
+          enum: [PICKUP, DROPOFF, BOTH]
+        sequence:
+          type: integer
+          minimum: 1
+        notes:
+          type: string
+          maxLength: 500
+          nullable: true
+        isActive:
+          type: boolean
+          default: true
+    TransportStop:
+      allOf:
+        - $ref: "#/components/schemas/TransportStopInput"
+        - type: object
+          required: [id, routeId, schoolId, isActive]
+          properties:
+            id:
+              type: integer
+            routeId:
+              type: integer
+            schoolId:
+              type: integer
+    TransportBusInput:
+      type: object
+      additionalProperties: false
+      required: [name, registrationNumber, capacity]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        registrationNumber:
+          type: string
+          minLength: 3
+          maxLength: 30
+        make:
+          type: string
+          maxLength: 100
+        capacity:
+          type: integer
+          minimum: 1
+          maximum: 250
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, MAINTENANCE]
+          default: ACTIVE
+        notes:
+          type: string
+          maxLength: 1000
+    TransportBusUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        registrationNumber:
+          type: string
+          minLength: 3
+          maxLength: 30
+        make:
+          type: string
+          maxLength: 100
+          nullable: true
+        capacity:
+          type: integer
+          minimum: 1
+          maximum: 250
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, MAINTENANCE]
+        notes:
+          type: string
+          maxLength: 1000
+          nullable: true
+    TransportBus:
+      allOf:
+        - $ref: "#/components/schemas/TransportBusInput"
+        - type: object
+          required: [id, schoolId, routeCount, passengerCount, createdAt, updatedAt]
+          properties:
+            id:
+              type: integer
+            schoolId:
+              type: integer
+            routeCount:
+              type: integer
+              minimum: 0
+            passengerCount:
+              type: integer
+              minimum: 0
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+    TransportDriver:
+      type: object
+      required: [employeeId, employeeNo, name, employeeType]
+      properties:
+        employeeId:
+          type: integer
+        employeeNo:
+          type: string
+        name:
+          type: string
+        employeeType:
+          type: string
+          enum: [DRIVER]
+    TransportRouteInput:
+      type: object
+      additionalProperties: false
+      required: [name, busId, driverEmployeeId, weekdays, departureTime, arrivalTime, stops]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        busId:
+          type: integer
+          minimum: 1
+        driverEmployeeId:
+          type: integer
+          minimum: 1
+        weekdays:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            enum: [MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY]
+        departureTime:
+          type: string
+          format: time
+          example: "07:00:00"
+        arrivalTime:
+          type: string
+          format: time
+          example: "08:00:00"
+        fareMinor:
+          type: integer
+          minimum: 0
+          description: NGN subunit amount assessed once against each current-term invoice.
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+          default: ACTIVE
+        stops:
+          type: array
+          minItems: 2
+          items:
+            $ref: "#/components/schemas/TransportStopInput"
+    TransportRouteUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        busId:
+          type: integer
+          minimum: 1
+        driverEmployeeId:
+          type: integer
+          minimum: 1
+        weekdays:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            enum: [MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY]
+        departureTime:
+          type: string
+          format: time
+        arrivalTime:
+          type: string
+          format: time
+        fareMinor:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+    TransportRoute:
+      allOf:
+        - $ref: "#/components/schemas/TransportRouteInput"
+        - type: object
+          required: [id, schoolId, busName, registrationNumber, busCapacity, passengerCount, driverName, reservedPassengerCount, isOverCapacity, stops, createdAt, updatedAt]
+          properties:
+            id:
+              type: integer
+            schoolId:
+              type: integer
+            busName:
+              type: string
+            registrationNumber:
+              type: string
+            busCapacity:
+              type: integer
+            passengerCount:
+              type: integer
+            driverName:
+              type: string
+            reservedPassengerCount:
+              type: integer
+            isOverCapacity:
+              type: boolean
+            stops:
+              type: array
+              items:
+                $ref: "#/components/schemas/TransportStop"
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+    TransportGuardian:
+      type: object
+      required: [name, phone, relationshipType, isPrimaryGuardian]
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        relationshipType:
+          type: string
+        isPrimaryGuardian:
+          type: boolean
+    TransportStudentOption:
+      type: object
+      required: [studentId, schoolId, studentName, admissionNo, className, section, guardians]
+      properties:
+        studentId:
+          type: integer
+        schoolId:
+          type: integer
+        studentName:
+          type: string
+        admissionNo:
+          type: string
+        className:
+          type: string
+        section:
+          type: string
+        guardians:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransportGuardian"
+        activeAssignment:
+          allOf:
+            - $ref: "#/components/schemas/TransportStudentAssignmentBadge"
+          nullable: true
+    TransportAssignmentInput:
+      type: object
+      additionalProperties: false
+      required: [studentId, routeId, pickupStopId, dropoffStopId, effectiveDate, reason]
+      properties:
+        studentId:
+          type: integer
+          minimum: 1
+        routeId:
+          type: integer
+          minimum: 1
+        pickupStopId:
+          type: integer
+          minimum: 1
+        dropoffStopId:
+          type: integer
+          minimum: 1
+        effectiveDate:
+          type: string
+          format: date
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+        academicSessionId:
+          type: integer
+          minimum: 1
+          description: Must be provided with academicTermId; omitted together, the active school term is used when available.
+        academicTermId:
+          type: integer
+          minimum: 1
+        feePlanAmountMinor:
+          type: integer
+          minimum: 0
+          maximum: 1000000000
+          description: NGN subunits; defaults to the selected route's fareMinor.
+        dueDate:
+          type: string
+          format: date
+          description: Defaults to the selected academic term end date.
+        feeCategoryId:
+          type: integer
+          minimum: 1
+          description: Optional active same-school Finance category; omitted positive plans use the School Transport category.
+    TransportAssignmentFeePlanInput:
+      type: object
+      additionalProperties: false
+      required: [academicSessionId, feePlanAmountMinor, reason]
+      properties:
+        academicSessionId:
+          type: integer
+          minimum: 1
+        feePlanAmountMinor:
+          type: integer
+          minimum: 0
+          maximum: 1000000000
+        dueDate:
+          type: string
+          format: date
+          description: Defaults to the selected term's end date.
+        feeCategoryId:
+          type: integer
+          minimum: 1
+          description: Must reference an active Finance category in this school; defaults to School Transport for positive amounts.
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+    TransportAssignmentUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      required: [effectiveDate, reason]
+      properties:
+        routeId:
+          type: integer
+          minimum: 1
+        pickupStopId:
+          type: integer
+          minimum: 1
+        dropoffStopId:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED, DEACTIVATED]
+        action:
+          type: string
+          enum: [ASSIGN_BUS, CHANGE_ROUTE, CHANGE_STOPS, ACTIVATE, SUSPEND, DEACTIVATE]
+        effectiveDate:
+          type: string
+          format: date
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+    TransportInvoiceStatus:
+      type: object
+      required: [invoiceId, invoiceNumber, academicSessionId, academicTermId, currency, totalMinor, paidMinor, outstandingMinor, status, dueDate]
+      properties:
+        invoiceId:
+          type: integer
+        invoiceNumber:
+          type: string
+        academicSessionId:
+          type: integer
+        sessionName:
+          type: string
+        academicTermId:
+          type: integer
+        termName:
+          type: string
+        currency:
+          type: string
+          enum: [NGN]
+        totalMinor:
+          type: integer
+        paidMinor:
+          type: integer
+        outstandingMinor:
+          type: integer
+        status:
+          type: string
+          enum: [PAID, PENDING, OVERDUE, SUSPENDED, INACTIVE]
+        dueDate:
+          type: string
+          format: date
+        receipts:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransportReceipt"
+    TransportReceipt:
+      type: object
+      required: [id, receiptNumber]
+      properties:
+        id:
+          type: integer
+        receiptNumber:
+          type: string
+    TransportAssignment:
+      type: object
+      required: [id, schoolId, studentId, studentName, admissionNo, className, section, busId, busName, registrationNumber, busCapacity, routeId, routeName, driverEmployeeId, driverName, pickup, dropoff, schedule, status, effectiveDate, endDate, reason, feeMinor, feePlanAmountMinor, academicSessionId, academicTermId, dueDate, feeCategoryId, feePlans, invoices, guardians, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        schoolId:
+          type: integer
+        studentId:
+          type: integer
+        studentName:
+          type: string
+        admissionNo:
+          type: string
+        className:
+          type: string
+        section:
+          type: string
+        busId:
+          type: integer
+        busCapacity:
+          type: integer
+        busName:
+          type: string
+        registrationNumber:
+          type: string
+        routeId:
+          type: integer
+        routeName:
+          type: string
+        driverEmployeeId:
+          type: integer
+        driverName:
+          type: string
+        pickup:
+          $ref: "#/components/schemas/TransportStop"
+        dropoff:
+          $ref: "#/components/schemas/TransportStop"
+        schedule:
+          $ref: "#/components/schemas/TransportSchedule"
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED, DEACTIVATED]
+        effectiveDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        reason:
+          type: string
+        feeMinor:
+          type: integer
+          minimum: 0
+          description: Current route fare default; individual term plans may override it.
+        feePlanAmountMinor:
+          type: integer
+          minimum: 0
+        academicSessionId:
+          type: integer
+          nullable: true
+        academicTermId:
+          type: integer
+          nullable: true
+        dueDate:
+          type: string
+          format: date
+          nullable: true
+        feeCategoryId:
+          type: integer
+          nullable: true
+        currency:
+          type: string
+          enum: [NGN]
+        feePlans:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransportAssignmentFeePlan"
+        guardians:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransportGuardian"
+        invoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransportInvoiceStatus"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    TransportAssignmentFeePlan:
+      type: object
+      required: [feePlanId, academicSessionId, sessionName, academicTermId, termName, feePlanAmountMinor, currency, dueDate, status, feeCategoryId, feeCategoryName, invoiceId]
+      properties:
+        feePlanId:
+          type: integer
+        academicSessionId:
+          type: integer
+        sessionName:
+          type: string
+        academicTermId:
+          type: integer
+        termName:
+          type: string
+        feePlanAmountMinor:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          enum: [NGN]
+        dueDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [PLANNED, INVOICED, CANCELLED]
+        feeCategoryId:
+          type: integer
+          nullable: true
+        feeCategoryName:
+          type: string
+          nullable: true
+        invoiceId:
+          type: integer
+          nullable: true
+    TransportEmployeeOption:
+      type: object
+      required: [employeeId, schoolId, employeeNo, employeeName, employeeType]
+      properties:
+        employeeId:
+          type: integer
+        schoolId:
+          type: integer
+        employeeNo:
+          type: string
+        employeeName:
+          type: string
+        employeeType:
+          type: string
+    TransportSchedule:
+      type: object
+      required: [weekdays, departureTime, arrivalTime]
+      properties:
+        weekdays:
+          type: array
+          items:
+            type: string
+            enum: [MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY]
+        departureTime:
+          type: string
+        arrivalTime:
+          type: string
+    TransportSelfView:
+      type: object
+      required: [schoolId, studentId, transportStatus, invoices, history]
+      properties:
+        schoolId:
+          type: integer
+        studentId:
+          type: integer
+        transportStatus:
+          type: string
+          enum: [ACTIVE, SUSPENDED, DEACTIVATED, NOT_ASSIGNED]
+        assignment:
+          allOf:
+            - $ref: "#/components/schemas/TransportSelfAssignment"
+          nullable: true
+        invoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransportInvoiceStatus"
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransportHistoryEntry"
+    TransportRequestInput:
+      type: object
+      additionalProperties: false
+      required: [requestType, effectiveDate, reason]
+      properties:
+        requestType:
+          type: string
+          enum: [ACTIVATE, DEACTIVATE]
+        effectiveDate:
+          type: string
+          format: date
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 1000
+    TransportStudentAssignmentBadge:
+      type: object
+      required: [id, status, routeId, routeName, busId, busName, effectiveDate]
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED]
+        routeId:
+          type: integer
+        routeName:
+          type: string
+        busId:
+          type: integer
+        busName:
+          type: string
+        effectiveDate:
+          type: string
+          format: date
+    TransportSelfAssignment:
+      type: object
+      required: [id, studentId, schoolId, studentName, busName, registrationNumber, busCapacity, routeName, driverName, pickup, dropoff, schedule, status, effectiveDate, endDate, reason, feeMinor, currency, invoices]
+      properties:
+        id:
+          type: integer
+        studentId:
+          type: integer
+        schoolId:
+          type: integer
+        studentName:
+          type: string
+        busName:
+          type: string
+        registrationNumber:
+          type: string
+        busCapacity:
+          type: integer
+        routeName:
+          type: string
+        driverName:
+          type: string
+        pickup:
+          $ref: "#/components/schemas/TransportStop"
+        dropoff:
+          $ref: "#/components/schemas/TransportStop"
+        schedule:
+          $ref: "#/components/schemas/TransportSchedule"
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED, DEACTIVATED]
+        effectiveDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        reason:
+          type: string
+        feeMinor:
+          type: integer
+        currency:
+          type: string
+          enum: [NGN]
+        invoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransportInvoiceStatus"
+    TransportRouteStaffInput:
+      type: object
+      additionalProperties: false
+      required: [employeeId]
+      properties:
+        employeeId:
+          type: integer
+          minimum: 1
+        role:
+          type: string
+          enum: [TEACHER, STAFF, ACCOMPANIER]
+          default: ACCOMPANIER
+    TransportRouteStaff:
+      allOf:
+        - $ref: "#/components/schemas/TransportRouteStaffInput"
+        - type: object
+          required: [routeStaffId, schoolId, routeId, employeeNo, employeeName, employeeType, isActive, createdAt, updatedAt]
+          properties:
+            routeStaffId:
+              type: integer
+            schoolId:
+              type: integer
+            routeId:
+              type: integer
+            employeeNo:
+              type: string
+            employeeName:
+              type: string
+            employeeType:
+              type: string
+            isActive:
+              type: boolean
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+    TransportSchoolPolicy:
+      type: object
+      required: [schoolId, paymentRequired, suspendWhenOverdue]
+      properties:
+        schoolId:
+          type: integer
+        paymentRequired:
+          type: boolean
+        suspendWhenOverdue:
+          type: boolean
+    TransportSchoolPolicyUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        paymentRequired:
+          type: boolean
+        suspendWhenOverdue:
+          type: boolean
+    TransportTermInvoiceGeneration:
+      type: object
+      required: [schoolId, academicSessionId, academicTermId, generatedInvoiceIds, billableAssignmentCount]
+      properties:
+        schoolId:
+          type: integer
+        academicSessionId:
+          type: integer
+        academicTermId:
+          type: integer
+        generatedInvoiceIds:
+          type: array
+          items:
+            type: integer
+        billableAssignmentCount:
+          type: integer
+          minimum: 0
+    TransportPlatformOverview:
+      type: object
+      required: [readOnly, generatedAt, filters, operationalSummary, financeSummary, invoices, invoiceTotalCount]
+      properties:
+        readOnly:
+          type: boolean
+          const: true
+        generatedAt:
+          type: string
+          format: date-time
+        filters:
+          type: object
+          additionalProperties: true
+        operationalSummary:
+          type: object
+          additionalProperties: true
+        financeSummary:
+          type: object
+          additionalProperties: true
+        invoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransportOwnerInvoice"
+        invoiceTotalCount:
+          type: integer
+          minimum: 0
+    TransportOwnerInvoice:
+      type: object
+      required: [invoiceId, schoolId, schoolName, invoiceNumber, studentId, studentName, admissionNo, academicSessionId, sessionName, academicTermId, termName, currency, totalMinor, paidMinor, outstandingMinor, status, issueDate, dueDate, assignmentId, routeId, routeName, driverEmployeeId, driverName, generatedAt, receipts]
+      properties:
+        invoiceId:
+          type: integer
+        schoolId:
+          type: integer
+        schoolName:
+          type: string
+        invoiceNumber:
+          type: string
+        studentId:
+          type: integer
+        studentName:
+          type: string
+        admissionNo:
+          type: string
+        academicSessionId:
+          type: integer
+        sessionName:
+          type: string
+        academicTermId:
+          type: integer
+        termName:
+          type: string
+        currency:
+          type: string
+        totalMinor:
+          type: integer
+        paidMinor:
+          type: integer
+        outstandingMinor:
+          type: integer
+        status:
+          type: string
+          enum: [UNPAID, PARTIALLY_PAID, PAID, OVERDUE, WAIVED, CANCELLED]
+        issueDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        assignmentId:
+          type: integer
+        routeId:
+          type: integer
+        routeName:
+          type: string
+        driverEmployeeId:
+          type: integer
+        driverName:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        receipts:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransportReceipt"
+    TransportRequestDecision:
+      type: object
+      additionalProperties: false
+      required: [decision, action]
+      properties:
+        decision:
+          type: string
+          enum: [APPROVE, REJECT]
+        action:
+          type: string
+          enum: [ACTIVATE, SUSPEND, DEACTIVATE, NO_CHANGE]
+        effectiveDate:
+          type: string
+          format: date
+        schoolNote:
+          type: string
+          minLength: 3
+          maxLength: 1000
+        routeId:
+          type: integer
+          minimum: 1
+        pickupStopId:
+          type: integer
+          minimum: 1
+        dropoffStopId:
+          type: integer
+          minimum: 1
+    TransportRequest:
+      type: object
+      required: [id, schoolId, studentId, studentName, admissionNo, className, section, parentId, parentName, assignmentId, requestType, requestDate, effectiveDate, reason, status, schoolAction, schoolNote, reviewedBy, reviewedAt, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        schoolId:
+          type: integer
+        studentId:
+          type: integer
+        studentName:
+          type: string
+        admissionNo:
+          type: string
+        className:
+          type: string
+        section:
+          type: string
+        parentId:
+          type: integer
+        parentName:
+          type: string
+        assignmentId:
+          type: integer
+          nullable: true
+        requestType:
+          type: string
+          enum: [ACTIVATE, DEACTIVATE]
+        requestDate:
+          type: string
+          format: date-time
+        effectiveDate:
+          type: string
+          format: date
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED, WITHDRAWN]
+        schoolAction:
+          type: string
+          enum: [ACTIVATE, SUSPEND, DEACTIVATE, NO_CHANGE]
+          nullable: true
+        schoolNote:
+          type: string
+          nullable: true
+        reviewedBy:
+          type: integer
+          nullable: true
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        reviewerName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    TransportHistoryEntry:
+      type: object
+      required: [id, schoolId, assignmentId, studentId, eventType, effectiveDate, reason, actorName, actorRole, createdAt]
+      properties:
+        id:
+          type: integer
+        schoolId:
+          type: integer
+        assignmentId:
+          type: integer
+          nullable: true
+        routeStaffId:
+          type: integer
+          nullable: true
+        studentId:
+          type: integer
+          nullable: true
+        actorUserId:
+          type: integer
+          nullable: true
+        actorName:
+          type: string
+        actorRole:
+          type: string
+        eventType:
+          type: string
+        effectiveDate:
+          type: string
+          format: date
+        reason:
+          type: string
+        before:
+          type: object
+          additionalProperties: true
+          nullable: true
+        after:
+          type: object
+          additionalProperties: true
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    TransportOwnerSchoolSummary:
+      type: object
+      required: [schoolId, schoolName, busCount, routeCount, busCapacity, reservedPassengerCount, activeStudents, inactiveStudents, activeStaff, activeDrivers, invoiceCount, outstandingMinor, transportRevenueMinor]
+      properties:
+        schoolId:
+          type: integer
+        schoolName:
+          type: string
+        busCount:
+          type: integer
+        routeCount:
+          type: integer
+        busCapacity:
+          type: integer
+        reservedPassengerCount:
+          type: integer
+        activeStudents:
+          type: integer
+        inactiveStudents:
+          type: integer
+        activeStaff:
+          type: integer
+        activeDrivers:
+          type: integer
+        invoiceCount:
+          type: integer
+        outstandingMinor:
+          type: integer
+        transportRevenueMinor:
+          type: integer

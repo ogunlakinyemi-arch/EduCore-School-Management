@@ -1,0 +1,570 @@
+import { useEffect, useState, type FormEvent } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Bus, CircleDollarSign, GaugeCircle, History, Inbox, MapPinned, Pencil, Plus, Route as RouteIcon, ShieldAlert, UserRoundCog, UsersRound } from 'lucide-react';
+import {
+  useGetAuthorizedContext, useListTransportBuses, useCreateTransportBus, useUpdateTransportBus, useSearchTransportDrivers,
+  useListTransportRoutes, useCreateTransportRoute, useUpdateTransportRoute, useAddTransportStop, useUpdateTransportStop,
+  useSearchTransportStudents, useListTransportAssignments, useCreateTransportAssignment, useUpdateTransportAssignment,
+  useGetTransportAssignmentHistory, useListTransportRequests, useReviewTransportRequest, useGetPlatformTransportOverview,
+  type TransportBus, type TransportRoute, type TransportStop, type TransportAssignment, type TransportRequest,
+  type TransportAssignmentUpdate, type TransportRouteInput, type TransportStopInput,
+} from '@workspace/api-client-react';
+import { Button, EmptyState, ErrorState, Field, Metric, Modal, PageHeading, StatusPill, cx, date, useTenant } from '@/components/shared';
+import { HistoryList, InvoiceList, ListSkeleton, Notice, RequestRow, Tabs, AssignmentSummary, inputCls } from '@/components/transport-parts';
+import {
+  TRANSPORT_POLL_MS, TRANSPORT_STALE_MS, activeDrivers, assignmentTone, capacityState, errorMessage, formatNaira,
+  ownerTotals, selectableStudents, stopsFor, transportAudience, validateEffective,
+} from '@/components/transport-logic';
+
+const fresh = { staleTime: TRANSPORT_STALE_MS, refetchInterval: TRANSPORT_POLL_MS, refetchOnWindowFocus: true } as const;
+const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'] as const;
+const today = () => new Date().toISOString().slice(0, 10);
+
+function useInvalidateTransport() {
+  const qc = useQueryClient();
+  return () => qc.invalidateQueries({ predicate: q => typeof q.queryKey[0] === 'string' && (q.queryKey[0] as string).includes('transport') });
+}
+
+function useDebounced(value: string, ms = 300) {
+  const [v, setV] = useState(value);
+  useEffect(() => { const t = setTimeout(() => setV(value), ms); return () => clearTimeout(t); }, [value, ms]);
+  return v;
+}
+
+export default function TransportPage() {
+  const { schoolId } = useTenant();
+  const ctx = useGetAuthorizedContext();
+  if (ctx.isLoading) return <ListSkeleton rows={4} />;
+  if (ctx.isError) return <ErrorState retry={() => ctx.refetch()} message="We could not confirm your access to transport." />;
+  const audience = transportAudience(ctx.data, schoolId);
+  if (audience === 'owner') return <OwnerOverview />;
+  if (audience === 'admin') return <AdminTransport schoolId={schoolId} />;
+  return (
+    <div data-testid="transport-denied"><PageHeading eyebrow="Transport" title="Transport" />
+      <div className="panel"><EmptyState icon={ShieldAlert} title="School Admin access required" description="Transport is managed by the School Admin of the selected school. Parents and students can open My transport instead." /></div>
+    </div>
+  );
+}
+
+/* ------------------------------- Owner ------------------------------- */
+
+function OwnerOverview() {
+  const { schoolId } = useTenant();
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const params = { ...(schoolId ? { schoolId } : {}), ...(from ? { dateFrom: from } : {}), ...(to ? { dateTo: to } : {}) };
+  const q = useGetPlatformTransportOverview(params, { query: { ...fresh, queryKey: ['/api/platform/transport/overview', params] } });
+  const rows = q.data ?? [];
+  const t = ownerTotals(rows);
+  return (
+    <div data-testid="transport-owner-overview">
+      <PageHeading eyebrow="Platform overview" title="Transport" description="A read-only view across schools. Operational changes are made by each school's administrator." />
+      <div className="panel mb-6 flex flex-wrap items-end gap-4 p-4">
+        <Field label="From"><input type="date" className={inputCls} value={from} onChange={e => setFrom(e.target.value)} /></Field>
+        <Field label="To"><input type="date" className={inputCls} value={to} onChange={e => setTo(e.target.value)} /></Field>
+        <p className="pb-2 text-xs text-[hsl(var(--muted-foreground))]">{schoolId ? 'Filtered to the school chosen in the header.' : 'Showing every school. Use the header school picker to focus on one.'}</p>
+        {(from || to) && <Button variant="quiet" onClick={() => { setFrom(''); setTo(''); }}>Clear dates</Button>}
+      </div>
+      {q.isLoading ? <ListSkeleton rows={4} /> : q.isError ? <ErrorState retry={() => q.refetch()} message={errorMessage(q.error)} /> : !rows.length ? (
+        <div className="panel"><EmptyState icon={Bus} title="No transport data yet" description="No school in this filter has set up buses or routes." /></div>
+      ) : (
+        <>
+          <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Metric label="Transport revenue" value={formatNaira(t.revenue)} detail={`Outstanding ${formatNaira(t.outstanding)}`} icon={CircleDollarSign} accent />
+            <Metric label="Active riders" value={t.active} detail={`${t.inactive} inactive`} icon={UsersRound} />
+            <Metric label="Seats reserved" value={`${t.passengers} / ${t.capacity}`} detail={`${t.buses} buses, ${t.routes} routes`} icon={GaugeCircle} />
+            <Metric label="Drivers and staff" value={`${t.drivers} / ${t.staff}`} detail="Active drivers / active staff" icon={UserRoundCog} />
+          </div>
+          <div className="panel overflow-x-auto">
+            <table className="w-full min-w-[820px] text-left text-sm">
+              <thead><tr className="border-b border-[hsl(var(--border))] text-xs uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                {['School', 'Buses / routes', 'Capacity use', 'Active / inactive', 'Drivers / staff', 'Revenue', 'Outstanding'].map(h => <th key={h} className="p-4 font-bold">{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {rows.map(r => {
+                  const pct = r.busCapacity ? Math.min(100, Math.round((r.reservedPassengerCount / r.busCapacity) * 100)) : 0;
+                  return (
+                    <tr key={r.schoolId} className="border-b border-[hsl(var(--border)/.6)] last:border-0" data-testid={`owner-transport-row-${r.schoolId}`}>
+                      <td className="p-4 font-bold">{r.schoolName}</td>
+                      <td className="p-4">{r.busCount} / {r.routeCount}</td>
+                      <td className="p-4"><div className="h-2 w-32 overflow-hidden rounded-full bg-[hsl(var(--muted))]"><div className={cx('h-full rounded-full', pct >= 100 ? 'bg-[hsl(var(--destructive))]' : 'bg-[hsl(var(--primary))]')} style={{ width: `${pct}%` }} /></div><div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{r.reservedPassengerCount} of {r.busCapacity}</div></td>
+                      <td className="p-4">{r.activeStudents} / {r.inactiveStudents}</td>
+                      <td className="p-4">{r.activeDrivers} / {r.activeStaff}</td>
+                      <td className="p-4 font-bold">{formatNaira(r.transportRevenueMinor)}</td>
+                      <td className="p-4">{formatNaira(r.outstandingMinor)}<div className="text-xs text-[hsl(var(--muted-foreground))]">{r.invoiceCount} invoices</div></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* -------------------------------- Admin ------------------------------- */
+
+type Tab = 'assignments' | 'requests' | 'buses' | 'routes';
+
+function AdminTransport({ schoolId }: { schoolId: number }) {
+  const [tab, setTab] = useState<Tab>('assignments');
+  const buses = useListTransportBuses({ schoolId }, { query: { ...fresh, queryKey: ['/api/transport/buses', { schoolId }] } });
+  const routes = useListTransportRoutes({ schoolId }, { query: { ...fresh, queryKey: ['/api/transport/routes', { schoolId }] } });
+  const assignments = useListTransportAssignments({ schoolId, status: 'all' }, { query: { ...fresh, queryKey: ['/api/transport/assignments', { schoolId, status: 'all' }] } });
+  const requests = useListTransportRequests({ schoolId, status: 'all' }, { query: { ...fresh, queryKey: ['/api/transport/requests', { schoolId, status: 'all' }] } });
+  const pending = (requests.data ?? []).filter(r => r.status === 'PENDING').length;
+  return (
+    <div data-testid="transport-admin">
+      <PageHeading eyebrow="School operations" title="Transport" description="Buses, routes and who rides where. Fees stay in School Fees; nothing here creates a second billing system." />
+      <Tabs<Tab> value={tab} onChange={setTab} items={[
+        { id: 'assignments', label: 'Riders', count: assignments.data?.length }, { id: 'requests', label: 'Parent requests', count: pending },
+        { id: 'buses', label: 'Buses', count: buses.data?.length }, { id: 'routes', label: 'Routes', count: routes.data?.length },
+      ]} />
+      {tab === 'assignments' && <AssignmentsTab schoolId={schoolId} q={assignments} routes={routes.data ?? []} />}
+      {tab === 'requests' && <RequestsTab schoolId={schoolId} q={requests} />}
+      {tab === 'buses' && <BusesTab schoolId={schoolId} q={buses} />}
+      {tab === 'routes' && <RoutesTab schoolId={schoolId} q={routes} buses={buses.data ?? []} />}
+    </div>
+  );
+}
+
+type Q<T> = { data?: T; isLoading: boolean; isError: boolean; error: unknown; refetch: () => unknown };
+
+function Frame<T extends unknown[]>({ q, empty, children }: { q: Q<T>; empty: React.ReactNode; children: (items: T) => React.ReactNode }) {
+  if (q.isLoading) return <ListSkeleton />;
+  if (q.isError) return <ErrorState retry={() => q.refetch()} message={errorMessage(q.error)} />;
+  if (!q.data?.length) return <div className="panel">{empty}</div>;
+  return <>{children(q.data)}</>;
+}
+
+/* Buses */
+function BusesTab({ schoolId, q }: { schoolId: number; q: Q<TransportBus[]> }) {
+  const [editing, setEditing] = useState<TransportBus | 'new' | null>(null);
+  return (
+    <div>
+      <div className="mb-4 flex justify-end"><Button onClick={() => setEditing('new')} testId="button-add-bus"><Plus size={16} />Add bus</Button></div>
+      <Frame q={q} empty={<EmptyState icon={Bus} title="No buses yet" description="Add the first bus with its registration number and seat capacity." />}>
+        {buses => (
+          <div className="grid gap-4 md:grid-cols-2">
+            {buses.map(b => {
+              const c = capacityState(b);
+              return (
+                <div key={b.id} className="panel p-5" data-testid={`bus-card-${b.id}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div><div className="display-font text-lg font-bold">{b.name}</div><div className="text-xs text-[hsl(var(--muted-foreground))]">{b.registrationNumber}{b.make ? ` - ${b.make}` : ''}</div></div>
+                    <StatusPill value={b.status ?? 'ACTIVE'} />
+                  </div>
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-[hsl(var(--muted))]"><div className={cx('h-full rounded-full', c.full ? 'bg-[hsl(var(--destructive))]' : 'bg-[hsl(var(--primary))]')} style={{ width: `${c.pct}%` }} /></div>
+                  <div className="mt-2 flex justify-between text-xs font-medium text-[hsl(var(--muted-foreground))]"><span>{b.passengerCount} of {b.capacity} seats used</span><span>{c.full ? 'Full' : `${c.left} free`} - {b.routeCount} routes</span></div>
+                  {b.notes && <p className="mt-3 text-xs text-[hsl(var(--muted-foreground))]">{b.notes}</p>}
+                  <div className="mt-4"><Button variant="outline" onClick={() => setEditing(b)} testId={`button-edit-bus-${b.id}`}><Pencil size={14} />Edit</Button></div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Frame>
+      {editing && <BusForm schoolId={schoolId} bus={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />}
+    </div>
+  );
+}
+
+function BusForm({ schoolId, bus, onClose }: { schoolId: number; bus?: TransportBus; onClose: () => void }) {
+  const invalidate = useInvalidateTransport();
+  const create = useCreateTransportBus();
+  const update = useUpdateTransportBus();
+  const [f, setF] = useState({ name: bus?.name ?? '', registrationNumber: bus?.registrationNumber ?? '', make: bus?.make ?? '', capacity: String(bus?.capacity ?? ''), status: bus?.status ?? 'ACTIVE', notes: bus?.notes ?? '' });
+  const [err, setErr] = useState<string | null>(null);
+  const busy = create.isPending || update.isPending;
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const capacity = Number(f.capacity);
+    if (!f.name.trim() || !f.registrationNumber.trim()) return setErr('Name and registration number are required.');
+    if (!Number.isInteger(capacity) || capacity < 1) return setErr('Capacity must be a whole number of at least 1.');
+    if (bus && capacity < bus.passengerCount) return setErr(`${bus.passengerCount} seats are already reserved, so capacity cannot go below that.`);
+    setErr(null);
+    const done = { onSuccess: () => { invalidate(); onClose(); }, onError: (x: unknown) => setErr(errorMessage(x)) };
+    if (bus) update.mutate({ busId: bus.id, params: { schoolId }, data: { name: f.name.trim(), registrationNumber: f.registrationNumber.trim(), make: f.make.trim() || null, capacity, status: f.status as TransportBus['status'], notes: f.notes.trim() || null } }, done);
+    else create.mutate({ params: { schoolId }, data: { name: f.name.trim(), registrationNumber: f.registrationNumber.trim(), capacity, status: f.status as TransportBus['status'], ...(f.make.trim() ? { make: f.make.trim() } : {}), ...(f.notes.trim() ? { notes: f.notes.trim() } : {}) } }, done);
+  };
+  return (
+    <Modal title={bus ? 'Edit bus' : 'Add bus'} eyebrow="Fleet" onClose={onClose}>
+      <form onSubmit={submit} className="space-y-4">
+        <Field label="Bus name"><input className={inputCls} value={f.name} onChange={e => setF({ ...f, name: e.target.value })} data-testid="input-bus-name" /></Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Registration number"><input className={inputCls} value={f.registrationNumber} onChange={e => setF({ ...f, registrationNumber: e.target.value })} data-testid="input-bus-registration" /></Field>
+          <Field label="Make (optional)"><input className={inputCls} value={f.make} onChange={e => setF({ ...f, make: e.target.value })} /></Field>
+          <Field label="Seat capacity"><input type="number" min={1} className={inputCls} value={f.capacity} onChange={e => setF({ ...f, capacity: e.target.value })} data-testid="input-bus-capacity" /></Field>
+          <Field label="Status"><select className={inputCls} value={f.status} onChange={e => setF({ ...f, status: e.target.value as typeof f.status })}><option value="ACTIVE">Active</option><option value="MAINTENANCE">Maintenance</option><option value="INACTIVE">Inactive</option></select></Field>
+        </div>
+        <Field label="Notes (optional)"><textarea rows={2} className={inputCls} value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} /></Field>
+        {err && <Notice tone="error" testId="bus-form-error">{err}</Notice>}
+        <div className="flex justify-end gap-2"><Button variant="quiet" onClick={onClose}>Cancel</Button><Button type="submit" disabled={busy} testId="button-save-bus">{busy ? 'Saving...' : 'Save bus'}</Button></div>
+      </form>
+    </Modal>
+  );
+}
+
+/* Routes */
+function RoutesTab({ schoolId, q, buses }: { schoolId: number; q: Q<TransportRoute[]>; buses: TransportBus[] }) {
+  const [editing, setEditing] = useState<TransportRoute | 'new' | null>(null);
+  const [stopsFor_, setStopsFor] = useState<number | null>(null);
+  const live = (q.data ?? []).find(r => r.id === stopsFor_);
+  return (
+    <div>
+      <div className="mb-4 flex justify-end"><Button onClick={() => setEditing('new')} disabled={!buses.length} title={buses.length ? undefined : 'Add a bus first'} testId="button-add-route"><Plus size={16} />Add route</Button></div>
+      {!buses.length && <div className="mb-4"><Notice>Routes run on a bus. Add a bus before creating a route.</Notice></div>}
+      <Frame q={q} empty={<EmptyState icon={RouteIcon} title="No routes yet" description="Create a route with a driver, a schedule and its stops." />}>
+        {routes => (
+          <div className="space-y-4">
+            {routes.map(r => (
+              <div key={r.id} className="panel p-5" data-testid={`route-card-${r.id}`}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="display-font text-lg font-bold">{r.name}</div>
+                    <div className="text-xs text-[hsl(var(--muted-foreground))]">{r.busName} ({r.registrationNumber}) - Driver {r.driverName}</div>
+                    <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{r.departureTime} to {r.arrivalTime} - {r.weekdays.map(d => d.slice(0, 3)).join(', ')} - Fare {formatNaira(r.fareMinor)}</div>
+                  </div>
+                  <div className="flex items-center gap-2"><StatusPill value={r.status ?? 'ACTIVE'} />{r.isOverCapacity && <span className="rounded-full bg-[hsl(var(--destructive)/.12)] px-2.5 py-1 text-[11px] font-bold uppercase text-[hsl(var(--destructive))]">Over capacity</span>}</div>
+                </div>
+                <div className="mt-3 text-xs font-medium text-[hsl(var(--muted-foreground))]">{r.reservedPassengerCount} of {r.busCapacity} seats reserved - {r.stops.length} stops</div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={() => setEditing(r)} testId={`button-edit-route-${r.id}`}><Pencil size={14} />Edit route</Button>
+                  <Button variant="outline" onClick={() => setStopsFor(r.id)} testId={`button-stops-route-${r.id}`}><MapPinned size={14} />Manage stops</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Frame>
+      {editing && <RouteForm schoolId={schoolId} route={editing === 'new' ? undefined : editing} buses={buses} onClose={() => setEditing(null)} />}
+      {live && <StopsModal schoolId={schoolId} route={live} onClose={() => setStopsFor(null)} />}
+    </div>
+  );
+}
+
+function RouteForm({ schoolId, route, buses, onClose }: { schoolId: number; route?: TransportRoute; buses: TransportBus[]; onClose: () => void }) {
+  const invalidate = useInvalidateTransport();
+  const create = useCreateTransportRoute();
+  const update = useUpdateTransportRoute();
+  const [search, setSearch] = useState('');
+  const dq = useDebounced(search);
+  const drivers = useSearchTransportDrivers({ schoolId, ...(dq ? { search: dq } : {}) }, { query: { queryKey: ['/api/transport/drivers', { schoolId, search: dq }], staleTime: TRANSPORT_STALE_MS } });
+  const [f, setF] = useState({ name: route?.name ?? '', busId: String(route?.busId ?? buses[0]?.id ?? ''), driver: route ? String(route.driverEmployeeId) : '', weekdays: route?.weekdays ?? ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'], dep: route?.departureTime ?? '06:30', arr: route?.arrivalTime ?? '08:00', fare: route ? String((route.fareMinor ?? 0) / 100) : '', status: route?.status ?? 'ACTIVE' });
+  const [err, setErr] = useState<string | null>(null);
+  const list = activeDrivers(drivers.data);
+  const hasCurrent = route && list.some(d => d.employeeId === route.driverEmployeeId);
+  const busy = create.isPending || update.isPending;
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const fare = f.fare === '' ? 0 : Number(f.fare);
+    if (!f.name.trim()) return setErr('Route name is required.');
+    if (!f.busId) return setErr('Choose a bus.');
+    if (!f.driver) return setErr('Choose a driver from the school employees.');
+    if (!f.weekdays.length) return setErr('Choose at least one running day.');
+    if (!f.dep || !f.arr) return setErr('Set departure and arrival times.');
+    if (!(fare >= 0)) return setErr('Fare must be zero or more.');
+    setErr(null);
+    const data: TransportRouteInput = { name: f.name.trim(), busId: Number(f.busId), driverEmployeeId: Number(f.driver), weekdays: f.weekdays, departureTime: f.dep, arrivalTime: f.arr, fareMinor: Math.round(fare * 100), status: f.status };
+    const done = { onSuccess: () => { invalidate(); onClose(); }, onError: (x: unknown) => setErr(errorMessage(x)) };
+    if (route) update.mutate({ routeId: route.id, params: { schoolId }, data }, done); else create.mutate({ params: { schoolId }, data }, done);
+  };
+  return (
+    <Modal title={route ? 'Edit route' : 'Add route'} eyebrow="Routes" onClose={onClose}>
+      <form onSubmit={submit} className="space-y-4">
+        <Field label="Route name"><input className={inputCls} value={f.name} onChange={e => setF({ ...f, name: e.target.value })} data-testid="input-route-name" /></Field>
+        <Field label="Bus"><select className={inputCls} value={f.busId} onChange={e => setF({ ...f, busId: e.target.value })} data-testid="select-route-bus">{buses.map(b => <option key={b.id} value={b.id}>{b.name} ({b.registrationNumber}) - {b.capacity} seats</option>)}</select></Field>
+        <Field label="Find a driver"><input className={inputCls} placeholder="Search drivers by name or employee number" value={search} onChange={e => setSearch(e.target.value)} /></Field>
+        <Field label="Driver">
+          <select className={inputCls} value={f.driver} onChange={e => setF({ ...f, driver: e.target.value })} data-testid="select-route-driver">
+            <option value="">{drivers.isLoading ? 'Loading drivers...' : list.length ? 'Select a driver' : 'No drivers found'}</option>
+            {route && !hasCurrent && <option value={route.driverEmployeeId}>{route.driverName} (current)</option>}
+            {list.map(d => <option key={d.employeeId} value={d.employeeId}>{d.name} ({d.employeeNo})</option>)}
+          </select>
+        </Field>
+        {drivers.isError && <Notice tone="error">{errorMessage(drivers.error)}</Notice>}
+        <fieldset><legend className="mb-1.5 text-xs font-bold text-[hsl(var(--muted-foreground))]">Running days</legend>
+          <div className="flex flex-wrap gap-2">{DAYS.map(d => { const on = f.weekdays.includes(d); return <button type="button" key={d} aria-pressed={on} onClick={() => setF({ ...f, weekdays: on ? f.weekdays.filter(x => x !== d) : [...f.weekdays, d] })} className={cx('rounded-lg border px-3 py-1.5 text-xs font-bold', on ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary)/.1)] text-[hsl(var(--primary))]' : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]')}>{d.slice(0, 3)}</button>; })}</div>
+        </fieldset>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Departure"><input type="time" className={inputCls} value={f.dep} onChange={e => setF({ ...f, dep: e.target.value })} /></Field>
+          <Field label="Arrival"><input type="time" className={inputCls} value={f.arr} onChange={e => setF({ ...f, arr: e.target.value })} /></Field>
+          <Field label="Fare (NGN)"><input type="number" min={0} step="0.01" className={inputCls} value={f.fare} onChange={e => setF({ ...f, fare: e.target.value })} /></Field>
+        </div>
+        <Field label="Status"><select className={inputCls} value={f.status} onChange={e => setF({ ...f, status: e.target.value as typeof f.status })}><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select></Field>
+        {err && <Notice tone="error" testId="route-form-error">{err}</Notice>}
+        <div className="flex justify-end gap-2"><Button variant="quiet" onClick={onClose}>Cancel</Button><Button type="submit" disabled={busy} testId="button-save-route">{busy ? 'Saving...' : 'Save route'}</Button></div>
+      </form>
+    </Modal>
+  );
+}
+
+function StopsModal({ schoolId, route, onClose }: { schoolId: number; route: TransportRoute; onClose: () => void }) {
+  const invalidate = useInvalidateTransport();
+  const add = useAddTransportStop();
+  const upd = useUpdateTransportStop();
+  const [editing, setEditing] = useState<TransportStop | null>(null);
+  const nextSeq = Math.max(0, ...route.stops.map(s => s.sequence)) + 1;
+  const [f, setF] = useState<{ name: string; stopType: TransportStopInput['stopType']; sequence: string; notes: string }>({ name: '', stopType: 'BOTH', sequence: String(nextSeq), notes: '' });
+  const [err, setErr] = useState<string | null>(null);
+  const reset = () => { setEditing(null); setF({ name: '', stopType: 'BOTH', sequence: String(nextSeq + (editing ? 0 : 1)), notes: '' }); };
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const seq = Number(f.sequence);
+    if (!f.name.trim()) return setErr('Stop name is required.');
+    if (!Number.isInteger(seq) || seq < 1) return setErr('Order must be a whole number from 1.');
+    setErr(null);
+    const data: TransportStopInput = { name: f.name.trim(), stopType: f.stopType, sequence: seq, isActive: editing?.isActive ?? true, ...(f.notes.trim() ? { notes: f.notes.trim() } : {}) };
+    const done = { onSuccess: () => { invalidate(); reset(); }, onError: (x: unknown) => setErr(errorMessage(x)) };
+    if (editing) upd.mutate({ routeId: route.id, stopId: editing.id, params: { schoolId }, data }, done); else add.mutate({ routeId: route.id, params: { schoolId }, data }, done);
+  };
+  const toggle = (s: TransportStop) => upd.mutate({ routeId: route.id, stopId: s.id, params: { schoolId }, data: { name: s.name, stopType: s.stopType, sequence: s.sequence, notes: s.notes, isActive: !s.isActive } }, { onSuccess: () => invalidate(), onError: x => setErr(errorMessage(x)) });
+  const stops = [...route.stops].sort((a, b) => a.sequence - b.sequence);
+  return (
+    <Modal title={`Stops - ${route.name}`} eyebrow="Pickup and drop-off" onClose={onClose}>
+      <div className="mb-5 space-y-2" data-testid="stops-list">
+        {stops.length ? stops.map(s => (
+          <div key={s.id} className={cx('flex items-center gap-3 rounded-xl border border-[hsl(var(--border))] p-3', !s.isActive && 'opacity-60')}>
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-[hsl(var(--muted))] text-xs font-bold">{s.sequence}</span>
+            <div className="min-w-0 flex-1"><div className="truncate text-sm font-bold">{s.name}</div><div className="text-xs text-[hsl(var(--muted-foreground))]">{s.stopType === 'BOTH' ? 'Pickup and drop-off' : s.stopType === 'PICKUP' ? 'Pickup' : 'Drop-off'}{s.isActive ? '' : ' - inactive'}</div></div>
+            <Button variant="quiet" onClick={() => { setEditing(s); setF({ name: s.name, stopType: s.stopType, sequence: String(s.sequence), notes: s.notes ?? '' }); }}><Pencil size={14} /></Button>
+            <Button variant="quiet" onClick={() => toggle(s)} disabled={upd.isPending}>{s.isActive ? 'Deactivate' : 'Activate'}</Button>
+          </div>
+        )) : <p className="text-sm text-[hsl(var(--muted-foreground))]">No stops yet. Add at least one pickup and one drop-off before assigning students.</p>}
+      </div>
+      <form onSubmit={submit} className="space-y-3 border-t border-[hsl(var(--border))] pt-4">
+        <div className="eyebrow">{editing ? 'Edit stop' : 'Add stop'}</div>
+        <Field label="Stop name"><input className={inputCls} value={f.name} onChange={e => setF({ ...f, name: e.target.value })} data-testid="input-stop-name" /></Field>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Type"><select className={inputCls} value={f.stopType} onChange={e => setF({ ...f, stopType: e.target.value as typeof f.stopType })}><option value="BOTH">Pickup and drop-off</option><option value="PICKUP">Pickup only</option><option value="DROPOFF">Drop-off only</option></select></Field>
+          <Field label="Order on route"><input type="number" min={1} className={inputCls} value={f.sequence} onChange={e => setF({ ...f, sequence: e.target.value })} /></Field>
+        </div>
+        <Field label="Notes (optional)"><input className={inputCls} value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} /></Field>
+        {err && <Notice tone="error">{err}</Notice>}
+        <div className="flex justify-end gap-2">{editing && <Button variant="quiet" onClick={reset}>Cancel edit</Button>}<Button type="submit" disabled={add.isPending || upd.isPending} testId="button-save-stop">{editing ? 'Save stop' : 'Add stop'}</Button></div>
+      </form>
+    </Modal>
+  );
+}
+
+/* Assignments */
+function AssignmentsTab({ schoolId, q, routes }: { schoolId: number; q: Q<TransportAssignment[]>; routes: TransportRoute[] }) {
+  const [creating, setCreating] = useState(false);
+  const [acting, setActing] = useState<TransportAssignment | null>(null);
+  const [viewing, setViewing] = useState<TransportAssignment | null>(null);
+  const [filter, setFilter] = useState<'all' | 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED'>('all');
+  const rows = (q.data ?? []).filter(a => filter === 'all' || a.status === filter);
+  return (
+    <div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <select aria-label="Filter riders" className={cx(inputCls, '!w-auto')} value={filter} onChange={e => setFilter(e.target.value as typeof filter)}>
+          <option value="all">All riders</option><option value="ACTIVE">Active</option><option value="SUSPENDED">Suspended</option><option value="DEACTIVATED">Deactivated</option>
+        </select>
+        <Button onClick={() => setCreating(true)} disabled={!routes.length} title={routes.length ? undefined : 'Create a route first'} testId="button-assign-student"><Plus size={16} />Assign student</Button>
+      </div>
+      <Frame q={q} empty={<EmptyState icon={UsersRound} title="No riders assigned" description="Search existing students and assign them to a route with pickup and drop-off stops." />}>
+        {() => rows.length ? (
+          <div className="space-y-3">
+            {rows.map(a => (
+              <div key={a.id} className="panel p-5" data-testid={`assignment-${a.id}`}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div><div className="font-bold">{a.studentName}</div><div className="text-xs text-[hsl(var(--muted-foreground))]">{a.admissionNo} - {a.className} {a.section}</div></div>
+                  <StatusPill value={a.status} />
+                </div>
+                <div className="mt-3 text-sm">{a.busName} - {a.routeName}</div>
+                <div className="text-xs text-[hsl(var(--muted-foreground))]">Pickup {a.pickup.name} - Drop-off {a.dropoff.name} - since {date(a.effectiveDate)}</div>
+                {a.guardians.length > 0 && <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Guardians: {a.guardians.map(g => `${g.name} (${g.phone})`).join(', ')}</div>}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={() => setActing(a)} testId={`button-manage-assignment-${a.id}`}>Change status or route</Button>
+                  <Button variant="quiet" onClick={() => setViewing(a)} testId={`button-history-${a.id}`}><History size={14} />History and fees</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : <div className="panel"><EmptyState icon={UsersRound} title="No riders in this filter" description="Try another status." /></div>}
+      </Frame>
+      {creating && <AssignForm schoolId={schoolId} routes={routes} onClose={() => setCreating(false)} />}
+      {acting && <ManageAssignment schoolId={schoolId} a={acting} routes={routes} onClose={() => setActing(null)} />}
+      {viewing && <HistoryModal schoolId={schoolId} a={viewing} onClose={() => setViewing(null)} />}
+    </div>
+  );
+}
+
+function RoutePicker({ routes, routeId, setRouteId, pickup, setPickup, dropoff, setDropoff }: { routes: TransportRoute[]; routeId: string; setRouteId: (v: string) => void; pickup: string; setPickup: (v: string) => void; dropoff: string; setDropoff: (v: string) => void }) {
+  const route = routes.find(r => String(r.id) === routeId);
+  const full = route ? route.reservedPassengerCount >= route.busCapacity : false;
+  return (
+    <>
+      <Field label="Route and bus">
+        <select className={inputCls} value={routeId} onChange={e => { setRouteId(e.target.value); setPickup(''); setDropoff(''); }} data-testid="select-assign-route">
+          <option value="">Select a route</option>
+          {routes.filter(r => r.status !== 'INACTIVE').map(r => <option key={r.id} value={r.id}>{r.name} - {r.busName} ({r.reservedPassengerCount}/{r.busCapacity})</option>)}
+        </select>
+      </Field>
+      {full && <Notice tone="error" testId="route-full-warning">This bus is full. Assignments to it will be refused until a seat is freed or capacity is raised.</Notice>}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Pickup stop"><select className={inputCls} value={pickup} onChange={e => setPickup(e.target.value)} disabled={!route} data-testid="select-assign-pickup"><option value="">Select</option>{stopsFor(route, 'PICKUP').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
+        <Field label="Drop-off stop"><select className={inputCls} value={dropoff} onChange={e => setDropoff(e.target.value)} disabled={!route} data-testid="select-assign-dropoff"><option value="">Select</option>{stopsFor(route, 'DROPOFF').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
+      </div>
+      {route && (!stopsFor(route, 'PICKUP').length || !stopsFor(route, 'DROPOFF').length) && <Notice>This route needs active pickup and drop-off stops. Add them under Routes.</Notice>}
+    </>
+  );
+}
+
+function AssignForm({ schoolId, routes, onClose }: { schoolId: number; routes: TransportRoute[]; onClose: () => void }) {
+  const invalidate = useInvalidateTransport();
+  const create = useCreateTransportAssignment();
+  const [search, setSearch] = useState('');
+  const dq = useDebounced(search);
+  const students = useSearchTransportStudents({ schoolId, limit: 20, ...(dq ? { search: dq } : {}) }, { query: { queryKey: ['/api/transport/students', { schoolId, search: dq }], staleTime: TRANSPORT_STALE_MS } });
+  const options = selectableStudents(students.data);
+  const [studentId, setStudentId] = useState<number | null>(null);
+  const chosen = (students.data ?? []).find(s => s.studentId === studentId);
+  const [routeId, setRouteId] = useState(''); const [pickup, setPickup] = useState(''); const [dropoff, setDropoff] = useState('');
+  const [eff, setEff] = useState(today()); const [reason, setReason] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!studentId) return setErr('Select an existing student from the search results.');
+    if (!routeId || !pickup || !dropoff) return setErr('Choose a route, a pickup stop and a drop-off stop.');
+    const v = validateEffective(eff, reason); if (v) return setErr(v);
+    setErr(null);
+    create.mutate({ params: { schoolId }, data: { studentId, routeId: Number(routeId), pickupStopId: Number(pickup), dropoffStopId: Number(dropoff), effectiveDate: eff, reason: reason.trim() } }, { onSuccess: () => { invalidate(); onClose(); }, onError: x => setErr(errorMessage(x)) });
+  };
+  return (
+    <Modal title="Assign student to transport" eyebrow="Riders" onClose={onClose}>
+      <form onSubmit={submit} className="space-y-4">
+        <Field label="Search existing students"><input className={inputCls} placeholder="Name or admission number" value={search} onChange={e => setSearch(e.target.value)} data-testid="input-student-search" /></Field>
+        <div className="max-h-48 space-y-1.5 overflow-auto" data-testid="student-results">
+          {students.isLoading && <div className="skeleton h-12 rounded-xl" />}
+          {students.isError && <Notice tone="error">{errorMessage(students.error)}</Notice>}
+          {!students.isLoading && !students.isError && !options.length && <p className="py-3 text-center text-sm text-[hsl(var(--muted-foreground))]">No assignable students match. Students must already exist in the school records.</p>}
+          {options.map(s => (
+            <button type="button" key={s.studentId} onClick={() => setStudentId(s.studentId)} aria-pressed={studentId === s.studentId} data-testid={`student-option-${s.studentId}`}
+              className={cx('w-full rounded-xl border p-3 text-left text-sm', studentId === s.studentId ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary)/.08)]' : 'border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/.5)]')}>
+              <div className="font-bold">{s.studentName}</div>
+              <div className="text-xs text-[hsl(var(--muted-foreground))]">{s.admissionNo} - {s.className} {s.section}{s.guardians.length ? ` - ${s.guardians.map(g => g.name).join(', ')}` : ' - no guardian on record'}</div>
+            </button>
+          ))}
+        </div>
+        {chosen && <Notice>Selected: {chosen.studentName}. Class and guardians come from the student record.</Notice>}
+        <RoutePicker routes={routes} routeId={routeId} setRouteId={setRouteId} pickup={pickup} setPickup={setPickup} dropoff={dropoff} setDropoff={setDropoff} />
+        <Field label="Effective date"><input type="date" className={inputCls} value={eff} onChange={e => setEff(e.target.value)} /></Field>
+        <Field label="Reason"><textarea rows={2} className={inputCls} value={reason} onChange={e => setReason(e.target.value)} placeholder="For example: parent requested school bus from term start" data-testid="input-assign-reason" /></Field>
+        {err && <Notice tone="error" testId="assign-form-error">{err}</Notice>}
+        <div className="flex justify-end gap-2"><Button variant="quiet" onClick={onClose}>Cancel</Button><Button type="submit" disabled={create.isPending} testId="button-save-assignment">{create.isPending ? 'Assigning...' : 'Assign student'}</Button></div>
+      </form>
+    </Modal>
+  );
+}
+
+type ActionKey = 'CHANGE_ROUTE' | 'CHANGE_STOPS' | 'ACTIVATE' | 'SUSPEND' | 'DEACTIVATE';
+
+function ManageAssignment({ schoolId, a, routes, onClose }: { schoolId: number; a: TransportAssignment; routes: TransportRoute[]; onClose: () => void }) {
+  const invalidate = useInvalidateTransport();
+  const update = useUpdateTransportAssignment();
+  const options: Array<{ id: ActionKey; label: string }> = [
+    ...(a.status !== 'ACTIVE' ? [{ id: 'ACTIVATE' as const, label: 'Activate' }] : []),
+    ...(a.status === 'ACTIVE' ? [{ id: 'SUSPEND' as const, label: 'Suspend' }] : []),
+    ...(a.status !== 'DEACTIVATED' ? [{ id: 'DEACTIVATE' as const, label: 'Deactivate' }] : []),
+    { id: 'CHANGE_ROUTE', label: 'Change route or bus' }, { id: 'CHANGE_STOPS', label: 'Change stops' },
+  ];
+  const [action, setAction] = useState<ActionKey>(options[0].id);
+  const [routeId, setRouteId] = useState(action === 'CHANGE_STOPS' ? String(a.routeId) : '');
+  const [pickup, setPickup] = useState(''); const [dropoff, setDropoff] = useState('');
+  const [eff, setEff] = useState(today()); const [reason, setReason] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const pickAction = (k: ActionKey) => { setAction(k); setErr(null); setPickup(''); setDropoff(''); setRouteId(k === 'CHANGE_STOPS' ? String(a.routeId) : ''); };
+  const needsRoute = action === 'CHANGE_ROUTE' || action === 'CHANGE_STOPS';
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const v = validateEffective(eff, reason); if (v) return setErr(v);
+    const body: TransportAssignmentUpdate = { action, effectiveDate: eff, reason: reason.trim() };
+    if (needsRoute) {
+      if (!routeId || !pickup || !dropoff) return setErr('Choose the route and both stops.');
+      body.routeId = Number(routeId); body.pickupStopId = Number(pickup); body.dropoffStopId = Number(dropoff);
+    } else body.status = action === 'ACTIVATE' ? 'ACTIVE' : action === 'SUSPEND' ? 'SUSPENDED' : 'DEACTIVATED';
+    setErr(null);
+    update.mutate({ assignmentId: a.id, params: { schoolId }, data: body }, { onSuccess: () => { invalidate(); onClose(); }, onError: x => setErr(errorMessage(x)) });
+  };
+  return (
+    <Modal title={a.studentName} eyebrow="Change transport" onClose={onClose}>
+      <form onSubmit={submit} className="space-y-4">
+        <div className="text-xs text-[hsl(var(--muted-foreground))]">Now: {a.status.toLowerCase()} on {a.routeName} ({a.busName})</div>
+        <Field label="Action"><select className={inputCls} value={action} onChange={e => pickAction(e.target.value as ActionKey)} data-testid="select-assignment-action">{options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}</select></Field>
+        {needsRoute && <RoutePicker routes={routes} routeId={routeId} setRouteId={setRouteId} pickup={pickup} setPickup={setPickup} dropoff={dropoff} setDropoff={setDropoff} />}
+        <Field label="Effective date"><input type="date" className={inputCls} value={eff} onChange={e => setEff(e.target.value)} data-testid="input-action-date" /></Field>
+        <Field label="Reason"><textarea rows={2} className={inputCls} value={reason} onChange={e => setReason(e.target.value)} data-testid="input-action-reason" /></Field>
+        {err && <Notice tone="error" testId="manage-form-error">{err}</Notice>}
+        <div className="flex justify-end gap-2"><Button variant="quiet" onClick={onClose}>Cancel</Button><Button type="submit" variant={action === 'DEACTIVATE' || action === 'SUSPEND' ? 'danger' : 'primary'} disabled={update.isPending} testId="button-confirm-action">{update.isPending ? 'Saving...' : 'Confirm change'}</Button></div>
+      </form>
+    </Modal>
+  );
+}
+
+function HistoryModal({ schoolId, a, onClose }: { schoolId: number; a: TransportAssignment; onClose: () => void }) {
+  const q = useGetTransportAssignmentHistory(a.id, { schoolId }, { query: { ...fresh, queryKey: ['/api/transport/assignments', a.id, 'history', { schoolId }] } });
+  return (
+    <Modal title={a.studentName} eyebrow="Transport history" onClose={onClose}>
+      <AssignmentSummary a={a} />
+      <div className="mt-5"><div className="eyebrow mb-2">Transport invoices ({assignmentTone(a.status)})</div><InvoiceList invoices={a.invoices} financeHref="/finance" financeLabel="Open School Fees" /></div>
+      <div className="mt-6"><div className="eyebrow mb-3">Changes</div>
+        {q.isLoading ? <ListSkeleton rows={2} /> : q.isError ? <Notice tone="error">{errorMessage(q.error)} <button className="underline" onClick={() => q.refetch()}>Retry</button></Notice> : <HistoryList entries={q.data ?? []} />}
+      </div>
+    </Modal>
+  );
+}
+
+/* Requests */
+function RequestsTab({ schoolId, q }: { schoolId: number; q: Q<TransportRequest[]> }) {
+  const [reviewing, setReviewing] = useState<TransportRequest | null>(null);
+  return (
+    <div>
+      <Notice>Approving a request never changes a student's transport on its own. Choose the school action explicitly when you review.</Notice>
+      <div className="mt-4">
+        <Frame q={q} empty={<EmptyState icon={Inbox} title="No parent requests" description="Requests from parents to start or stop transport will arrive here." />}>
+          {items => (
+            <div className="space-y-3">
+              {[...items].sort((a, b) => (a.status === 'PENDING' ? -1 : 1) - (b.status === 'PENDING' ? -1 : 1) || b.createdAt.localeCompare(a.createdAt)).map(r => (
+                <RequestRow key={r.id} r={r}>{r.status === 'PENDING' && <div className="mt-3"><Button onClick={() => setReviewing(r)} testId={`button-review-${r.id}`}>Review request</Button></div>}</RequestRow>
+              ))}
+            </div>
+          )}
+        </Frame>
+      </div>
+      {reviewing && <ReviewForm schoolId={schoolId} r={reviewing} onClose={() => setReviewing(null)} />}
+    </div>
+  );
+}
+
+function ReviewForm({ schoolId, r, onClose }: { schoolId: number; r: TransportRequest; onClose: () => void }) {
+  const invalidate = useInvalidateTransport();
+  const review = useReviewTransportRequest();
+  const [decision, setDecision] = useState<'APPROVE' | 'REJECT'>('APPROVE');
+  const [act, setAct] = useState<'NO_CHANGE' | 'ACTIVATE' | 'SUSPEND' | 'DEACTIVATE'>('NO_CHANGE');
+  const [eff, setEff] = useState(r.effectiveDate.slice(0, 10)); const [note, setNote] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (note.trim().length < 3) return setErr('Add a note the parent will see.');
+    if (!eff) return setErr('Choose an effective date.');
+    setErr(null);
+    review.mutate({ params: { schoolId }, data: { requestId: r.id, decision, schoolAction: decision === 'REJECT' ? 'NO_CHANGE' : act, effectiveDate: eff, schoolNote: note.trim() } }, { onSuccess: () => { invalidate(); onClose(); }, onError: x => setErr(errorMessage(x)) });
+  };
+  return (
+    <Modal title={r.studentName} eyebrow="Review request" onClose={onClose}>
+      <RequestRow r={r} />
+      <form onSubmit={submit} className="mt-4 space-y-4">
+        <Field label="Decision"><select className={inputCls} value={decision} onChange={e => setDecision(e.target.value as typeof decision)} data-testid="select-review-decision"><option value="APPROVE">Approve</option><option value="REJECT">Reject</option></select></Field>
+        {decision === 'APPROVE' && <Field label="School action"><select className={inputCls} value={act} onChange={e => setAct(e.target.value as typeof act)} data-testid="select-review-action"><option value="NO_CHANGE">Record approval only (no transport change)</option><option value="ACTIVATE">Activate transport</option><option value="SUSPEND">Suspend transport</option><option value="DEACTIVATE">Deactivate transport</option></select></Field>}
+        <Field label="Effective date"><input type="date" className={inputCls} value={eff} onChange={e => setEff(e.target.value)} /></Field>
+        <Field label="Note to parent"><textarea rows={2} className={inputCls} value={note} onChange={e => setNote(e.target.value)} data-testid="input-review-note" /></Field>
+        {err && <Notice tone="error">{err}</Notice>}
+        <div className="flex justify-end gap-2"><Button variant="quiet" onClick={onClose}>Cancel</Button><Button type="submit" variant={decision === 'REJECT' ? 'danger' : 'primary'} disabled={review.isPending} testId="button-submit-review">{review.isPending ? 'Saving...' : decision === 'APPROVE' ? 'Approve request' : 'Reject request'}</Button></div>
+      </form>
+    </Modal>
+  );
+}
+

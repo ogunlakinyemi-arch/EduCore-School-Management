@@ -526,6 +526,79 @@ describe("fee payment provider adapters", () => {
     await expect(verify(expected, { currency: "USD" })).rejects.toThrow(/currency mismatch/);
   });
 
+  it("snapshots Flutterwave verification fees and settlement separately from gross allocations", async () => {
+    const adapter = new FlutterwaveTestAdapter({
+      secretKey: flutterwaveSecret, webhookSecret: flutterwaveWebhookSecret,
+    }, {
+      fetch: fetchMock(() => jsonResponse({ status: "success", data: {
+        id: 789, status: "successful", tx_ref: expected.reference, amount: 12.34, currency: "NGN",
+        app_fee: "0.30", merchant_fee: "0.20", amount_settled: "11.84",
+      } })),
+    });
+    await expect(adapter.verifyPayment({ ...expected, providerTransactionId: "789" }))
+      .resolves.toMatchObject({
+        status: "succeeded",
+        amountMinor: 1234,
+        providerFeeMinor: 50,
+        providerSettlementAmountMinor: 1184,
+      });
+  });
+
+  it("keeps a provider refund pending until Flutterwave reports the final disbursement state", async () => {
+    const adapter = new FlutterwaveTestAdapter({
+      secretKey: flutterwaveSecret, webhookSecret: flutterwaveWebhookSecret,
+    }, {
+      fetch: fetchMock((url) => {
+        expect(url.pathname).toBe("/v3/refunds/44");
+        return jsonResponse({ status: "success", data: {
+          id: 44, transaction_id: 789, amount_refunded: 2, status: "completed",
+        } });
+      }),
+    });
+    await expect(adapter.verifyRefund("44")).resolves.toEqual({
+      providerRefundId: "44",
+      providerTransactionId: "789",
+      amountMinor: 200,
+      status: "pending",
+    });
+  });
+
+  it("recognizes only verified final Flutterwave refund payout statuses", async () => {
+    const statuses = [
+      ["completed-bank-transfer", "succeeded"],
+      ["completed-momo", "succeeded"],
+      ["failed", "failed"],
+      ["pending-momo", "pending"],
+      ["provider-new-status", "unknown"],
+    ] as const;
+    for (const [providerStatus, expectedStatus] of statuses) {
+      const adapter = new FlutterwaveTestAdapter({
+        secretKey: flutterwaveSecret, webhookSecret: flutterwaveWebhookSecret,
+      }, {
+        fetch: fetchMock(() => jsonResponse({ status: "success", data: {
+          id: 44, transaction_id: 789, amount_refunded: 2, status: providerStatus,
+        } })),
+      });
+      await expect(adapter.verifyRefund("44")).resolves.toMatchObject({ status: expectedStatus });
+    }
+  });
+
+  it("does not retry ambiguous Flutterwave refund POST outcomes", async () => {
+    const fetch = vi.fn(async () => {
+      throw new Error("connection closed after provider request");
+    }) as unknown as typeof globalThis.fetch;
+    const adapter = new FlutterwaveTestAdapter({
+      secretKey: flutterwaveSecret, webhookSecret: flutterwaveWebhookSecret,
+    }, { fetch });
+    await expect(adapter.requestRefund({
+      providerTransactionId: "789",
+      amountMinor: 200,
+      currency: "NGN",
+      reason: "Verified fee adjustment",
+    })).rejects.toThrow(/request failed or timed out/);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("fails closed for Remita and validates only safe common amount primitives", async () => {
     const remita = new RemitaAdapter();
     expect(remita.validateAmount(1234, "NGN")).toBe(true);

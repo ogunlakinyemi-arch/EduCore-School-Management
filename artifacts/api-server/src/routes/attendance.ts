@@ -14,6 +14,7 @@ import {
   type CommunicationQueryClient,
 } from "../services/communication-service";
 import { logger } from "../lib/logger";
+import employeeNfcRouter from "./employee-nfc";
 
 const router = Router();
 const run = (handler: (req: Request, res: Response) => Promise<void>) =>
@@ -682,7 +683,7 @@ router.get("/cards/:cardId/history", requireAuthentication(), run(async (req,res
 }));
 
 router.post("/cards/:cardId/replace", requireAuthentication(), run(async (req,res) => {
-  const id=Number(req.params.cardId), uid=String(req.body?.uid??"").trim(), old=await pool.query(`SELECT * FROM nfc_cards WHERE id=$1`,[id]); if(!old.rows[0]) throw new AuthError(404,"Card not found"); const schoolId=old.rows[0].school_id; const c=assertCardAccess(req,schoolId); if(!uid) throw new AuthError(400,"uid is required");
+  const id=Number(req.params.cardId), uid=String(req.body?.uid??"").trim(), old=await pool.query(`SELECT * FROM nfc_cards WHERE id=$1`,[id]); if(!old.rows[0]) throw new AuthError(404,"Card not found"); const schoolId=old.rows[0].school_id; const c=assertCardAccess(req,schoolId); if(!uid) throw new AuthError(400,"uid is required"); if(old.rows[0].student_id==null) throw new AuthError(409,"Only a student-bound NFC card may be replaced through the student-card workflow");
   const client=await pool.connect(); try { await client.query("BEGIN"); const n=await client.query(`INSERT INTO nfc_cards(school_id,uid,student_id,status) VALUES($1,$2,$3,'locked') RETURNING id,school_id AS "schoolId",uid,student_id AS "studentId",status`,[schoolId,uid,old.rows[0].student_id]); await client.query(`UPDATE nfc_cards SET status='replaced' WHERE id=$1`,[id]); await client.query(`INSERT INTO nfc_card_history(school_id,nfc_card_id,student_id,action,previous_status,new_status,replaced_by_card_id,reason,actor_user_id) VALUES($1,$2,$3,'REPLACED',$4,'replaced',$5,$6,$7)`,[schoolId,id,old.rows[0].student_id,old.rows[0].status,n.rows[0].id,req.body.reason??null,c.user.id]); await client.query("COMMIT"); res.status(201).json(n.rows[0]); } catch(e){await client.query("ROLLBACK");throw e} finally{client.release()}
 }));
 
@@ -747,4 +748,5 @@ router.post("/school/attendance/:eventId/correct", requireAuthentication(), run(
   }
 }));
 
+router.use(employeeNfcRouter);
 export default router;

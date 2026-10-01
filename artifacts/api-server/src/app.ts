@@ -15,6 +15,7 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import feeProviderWebhookRouter from "./routes/fee-provider-webhooks";
+import { staffFlutterwaveWebhookRouter } from "./routes/staff-nfc-billing";
 import { logger } from "./lib/logger";
 import { AuthError } from "./middlewares/auth";
 
@@ -89,6 +90,11 @@ app.use(
   "/api/finance/provider-webhooks",
   express.raw({ type: "application/json", limit: "64kb" }),
   feeProviderWebhookRouter,
+);
+app.use(
+  "/api/webhooks/flutterwave/staff-nfc",
+  express.raw({ type: "application/json", limit: "64kb" }),
+  staffFlutterwaveWebhookRouter,
 );
 app.use(
   clerkMiddleware((req) => ({

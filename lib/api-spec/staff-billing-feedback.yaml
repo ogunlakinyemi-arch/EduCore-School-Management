@@ -1,0 +1,583 @@
+paths:
+  /staff-nfc/subscriptions/me:
+    get:
+      operationId: getMyStaffNfcSubscriptions
+      tags: [finance]
+      summary: List only the authenticated staff member's term subscriptions, cards, receipts and recent payments
+      parameters:
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Private employee projection for the verified same-school employee account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcMineResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "400":
+          description: Invalid query
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcError" }
+  /staff-nfc/subscriptions/generate:
+    post:
+      operationId: generateStaffNfcTermSubscriptions
+      tags: [finance]
+      summary: Idempotently generate term subscriptions for active school employees using effective billing rules
+      parameters:
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: academicSessionId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: academicTermId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Generated or already-existing term subscriptions; safe to retry
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcGenerationResponse" }
+        "400":
+          description: The term and session do not match, or no effective rule exists
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcError" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: The academic term is not eligible for subscription generation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcError" }
+  /staff-nfc/subscriptions/{subscriptionId}/checkout:
+    post:
+      operationId: createStaffNfcCheckout
+      tags: [finance]
+      summary: Idempotently initialize payment for the authenticated employee's unpaid term subscription
+      parameters:
+        - name: subscriptionId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 120, pattern: "^[A-Za-z0-9_-]+$" }
+      responses:
+        "201":
+          description: Persisted provider checkout; checkout state is never proof of successful payment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcCheckoutResponse" }
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcError" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Subscription already paid, checkout already reserved with another key, or a lost provider response needs explicit reconciliation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcError" }
+        "503":
+          description: No safe Flutterwave test credentials or explicitly enabled Development-only mock is configured
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcError" }
+  /staff-nfc/payments/verify:
+    post:
+      operationId: verifyMyStaffNfcPayment
+      tags: [finance]
+      summary: Server-side verify an already-reserved Flutterwave payment; never trust a browser success callback
+      parameters:
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StaffNfcVerificationInput" }
+      responses:
+        "200":
+          description: Authoritative persisted provider result; only verified full-price success activates service
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcPaymentResponse" }
+        "400":
+          description: Invalid verification input
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcError" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Provider response conflicts with immutable expected payment data or needs reconciliation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcError" }
+        "503":
+          description: Configured test/sandbox provider is unavailable or the payment outcome is ambiguous
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcError" }
+  /staff-nfc/payments/{paymentId}/receipt:
+    get:
+      operationId: getStaffNfcReceipt
+      tags: [finance]
+      summary: Return the immutable verified receipt within the employee, school or Owner Finance authorization scope
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Persistent receipt number and payment/allocation snapshot
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcReceipt" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /finance/staff-nfc/billing-rules:
+    get:
+      operationId: listStaffNfcBillingRules
+      tags: [finance]
+      summary: Owner-only version history of effective-dated immutable Teacher/Staff NFC per-term billing rules
+      parameters:
+        - { name: status, in: query, required: false, schema: { type: string, enum: [ACTIVE, INACTIVE, all], default: all } }
+      responses:
+        "200":
+          description: Read-only rule snapshots and effective dates
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/StaffNfcBillingRule" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: createStaffNfcBillingRule
+      tags: [finance]
+      summary: Owner-only create a new append-only effective-dated version; never rewrite historic subscriptions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StaffNfcBillingRuleInput" }
+      responses:
+        "201":
+          description: Persisted new future billing-rule version
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcBillingRule" }
+        "400":
+          description: Shares do not add exactly to gross or effective time is invalid
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcError" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: Effective rule overlaps or an equally timed version conflicts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcError" }
+  /finance/staff-nfc/subscriptions:
+    get:
+      operationId: listStaffNfcFinance
+      tags: [finance]
+      summary: Role-scoped Finance subscription and allocation ledger; School Admin sees only its school and school share
+      parameters:
+        - { name: schoolId, in: query, required: false, schema: { type: integer, minimum: 1 } }
+        - { name: academicSessionId, in: query, required: false, schema: { type: integer, minimum: 1 } }
+        - { name: academicTermId, in: query, required: false, schema: { type: integer, minimum: 1 } }
+        - { name: partnerId, in: query, required: false, schema: { type: integer, minimum: 1 } }
+        - { name: employeeId, in: query, required: false, schema: { type: integer, minimum: 1 } }
+        - { name: paymentStatus, in: query, required: false, schema: { type: string, enum: [UNPAID, PENDING, PAID, FAILED, CANCELLED, REFUNDED, PARTIALLY_REFUNDED, all], default: all } }
+        - { name: from, in: query, required: false, schema: { type: string, format: date } }
+        - { name: to, in: query, required: false, schema: { type: string, format: date } }
+        - { name: search, in: query, required: false, schema: { type: string, maxLength: 100 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+        - { name: cursor, in: query, required: false, schema: { type: integer, minimum: 0 } }
+      responses:
+        "200":
+          description: Server-derived role-specific, tenant-safe subscription and allocation totals/page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcFinanceResponse" }
+        "400":
+          description: Unsupported filter combination or invalid query
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /finance/staff-nfc/subscriptions/{subscriptionId}/refunds:
+    post:
+      operationId: requestStaffNfcRefund
+      tags: [finance]
+      summary: Owner/school-tenant-scoped request for an actual Flutterwave transaction refund; pending requests do not imply refund or reverse allocations
+      parameters:
+        - name: subscriptionId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 120, pattern: "^[A-Za-z0-9_-]+$" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StaffNfcRefundInput" }
+      responses:
+        "202":
+          description: Persisted refund attempt with actual provider state, or an explicit manual-reconciliation-required state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcRefundResponse" }
+        "400":
+          description: Invalid or zero amount or missing audit reason
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcError" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: No eligible refund balance remains or same key identifies different request details
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcError" }
+        "503":
+          description: Refund provider is unavailable; original transaction and immutable allocations are preserved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcError" }
+  /finance/staff-nfc/payments/{paymentId}/reconcile:
+    post:
+      operationId: reconcileStaffNfcPayment
+      tags: [finance]
+      summary: Safely recheck one ambiguous/pending persisted Flutterwave reference/transaction; cannot override status or allocate a client-supplied transaction
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 120, pattern: "^[A-Za-z0-9_-]+$" }
+      responses:
+        "200":
+          description: Same persisted provider transaction safely reconciled
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcPaymentResponse" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Transaction is not eligible or has a transaction/reference/idempotency conflict
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcError" }
+        "503":
+          description: Outcome remains uncertain; payment is retained for reconciliation without duplicate checkout or allocation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcError" }
+  /partner/staff-nfc/commissions:
+    get:
+      operationId: getMyStaffNfcPartnerCommissions
+      tags: [partner]
+      summary: Signed-in Partner's own valid-attribution staff NFC commission and term history only
+      parameters:
+        - { name: academicSessionId, in: query, required: false, schema: { type: integer, minimum: 1 } }
+        - { name: academicTermId, in: query, required: false, schema: { type: integer, minimum: 1 } }
+        - { name: status, in: query, required: false, schema: { type: string, enum: [PENDING, PAID, REVERSED, all], default: all } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+        - { name: cursor, in: query, required: false, schema: { type: integer, minimum: 0 } }
+      responses:
+        "200":
+          description: Attributed eligible school-level commission information only; no payroll/bank fields
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcPartnerResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /webhooks/staff-nfc/flutterwave:
+    post:
+      operationId: handleStaffNfcFlutterwaveWebhook
+      tags: [finance]
+      security: []
+      summary: Idempotently process only Flutterwave's signed event and independently verified matching persisted staff NFC transaction
+      parameters:
+        - name: flutterwave-signature
+          in: header
+          required: true
+          schema: { type: string, minLength: 16, maxLength: 1024 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        "200":
+          description: Signature, persisted reference and provider transaction verified and atomically settled
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcWebhookAck" }
+        "202":
+          description: Signed event kept for explicit reconciliation; no duplicate or speculative allocation applied
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffNfcWebhookAck" }
+        "400": { description: Invalid body }
+        "401": { description: Missing or invalid provider signature }
+        "503": { description: Flutterwave test credentials are not configured }
+components:
+  responses:
+    Unauthorized:
+      description: Authentication required.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/StaffNfcError" }
+    Forbidden:
+      description: Authenticated but not authorized.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/StaffNfcError" }
+    NotFound:
+      description: Resource not found or outside authorized visibility.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/StaffNfcError" }
+  schemas:
+    StaffNfcError:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string, minLength: 1 }
+        code: { type: ["string", "null"] }
+        retryable: { type: ["boolean", "null"] }
+    StaffNfcBillingRule:
+      type: object
+      required: [id, version, product, billingFrequency, priceMinor, schoolShareMinor, platformShareMinor, partnerCommissionMinor, noPartnerPlatformShareMinor, currency, effectiveAt, status, createdAt]
+      properties:
+        id: { type: integer }
+        version: { type: integer, minimum: 1 }
+        product: { type: string, enum: [TEACHER_STAFF_NFC_EID] }
+        billingFrequency: { type: string, enum: [ACADEMIC_TERM] }
+        priceMinor: { type: integer, minimum: 1 }
+        schoolShareMinor: { type: integer, minimum: 0 }
+        platformShareMinor: { type: integer, minimum: 0 }
+        partnerCommissionMinor: { type: integer, minimum: 0 }
+        noPartnerPlatformShareMinor: { type: integer, minimum: 0 }
+        currency: { type: string, enum: [NGN] }
+        effectiveAt: { type: string, format: date-time }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        createdAt: { type: string, format: date-time }
+    StaffNfcBillingRuleInput:
+      type: object
+      additionalProperties: false
+      required: [product, billingFrequency, priceMinor, schoolShareMinor, platformShareMinor, partnerCommissionMinor, noPartnerPlatformShareMinor, currency, effectiveAt]
+      properties:
+        product: { type: string, enum: [TEACHER_STAFF_NFC_EID] }
+        billingFrequency: { type: string, enum: [ACADEMIC_TERM] }
+        priceMinor: { type: integer, minimum: 1, maximum: 1000000000 }
+        schoolShareMinor: { type: integer, minimum: 0 }
+        platformShareMinor: { type: integer, minimum: 0 }
+        partnerCommissionMinor: { type: integer, minimum: 0 }
+        noPartnerPlatformShareMinor: { type: integer, minimum: 0 }
+        currency: { type: string, enum: [NGN] }
+        effectiveAt: { type: string, format: date-time }
+    StaffNfcTermContext:
+      type: object
+      required: [schoolId, schoolName, academicSessionId, academicSessionName, academicTermId, academicTermName, dueDate]
+      properties:
+        schoolId: { type: integer }
+        schoolName: { type: string }
+        academicSessionId: { type: integer }
+        academicSessionName: { type: string }
+        academicTermId: { type: integer }
+        academicTermName: { type: string }
+        dueDate: { type: string, format: date }
+    StaffNfcAllocation:
+      type: object
+      required: [recipientType, recipientId, amountMinor, currency]
+      properties:
+        recipientType: { type: string, enum: [SCHOOL, PLATFORM, PARTNER, PLATFORM_PROVIDER_FEE] }
+        entryType: { type: string, enum: [CREDIT, REVERSAL, EXPENSE] }
+        recipientId: { type: ["integer", "null"] }
+        amountMinor: { type: integer, minimum: 0 }
+        currency: { type: string, enum: [NGN] }
+        status: { type: ["string", "null"], enum: [PENDING, PAID, REVERSED, null] }
+    StaffNfcPaymentSummary:
+      type: object
+      required: [id, provider, providerMode, status, grossAmountMinor, providerFeeMinor, settlementAmountMinor, currency, settledAt, reconciliationStatus]
+      properties:
+        id: { type: integer }
+        provider: { type: string, enum: [FLUTTERWAVE, MOCK] }
+        providerMode: { type: string, enum: [SANDBOX, DEVELOPMENT_MOCK, UNKNOWN] }
+        status: { type: string, enum: [PENDING, PAID, FAILED, CANCELLED, REFUNDED, PARTIALLY_REFUNDED, RECONCILIATION_REQUIRED] }
+        grossAmountMinor: { type: integer, minimum: 0 }
+        providerFeeMinor: { type: ["integer", "null"], minimum: 0 }
+        settlementAmountMinor: { type: ["integer", "null"], minimum: 0 }
+        currency: { type: string, enum: [NGN] }
+        providerTransactionId: { type: ["string", "null"] }
+        providerReference: { type: string }
+        paidAt: { type: ["string", "null"], format: date-time }
+        settledAt: { type: ["string", "null"], format: date-time }
+        reconciliationStatus: { type: string, enum: [PENDING, RECONCILED, RECONCILIATION_REQUIRED, NOT_APPLICABLE] }
+        refundStatus: { type: string, enum: [NONE, PENDING, PARTIALLY_REFUNDED, REFUNDED, RECONCILIATION_REQUIRED] }
+        allocations: { type: array, items: { $ref: "#/components/schemas/StaffNfcAllocation" } }
+    StaffNfcSubscription:
+      type: object
+      required: [id, employeeId, employeeName, employeeNumber, schoolId, sessionId, sessionName, termId, termName, billingRuleId, billingRuleVersion, priceMinor, schoolShareMinor, platformShareMinor, partnerShareMinor, status, currency, dueDate, createdAt, cardStatus, isEligibleForNfc]
+      properties:
+        id: { type: integer }
+        employeeId: { type: integer }
+        employeeName: { type: string }
+        employeeNumber: { type: string }
+        schoolId: { type: integer }
+        schoolName: { type: string }
+        partnerId: { type: ["integer", "null"] }
+        partnerName: { type: ["string", "null"] }
+        sessionId: { type: integer }
+        sessionName: { type: string }
+        termId: { type: integer }
+        termName: { type: string }
+        billingRuleId: { type: integer }
+        billingRuleVersion: { type: integer }
+        priceMinor: { type: integer, minimum: 0 }
+        schoolShareMinor: { type: integer, minimum: 0 }
+        platformShareMinor: { type: integer, minimum: 0 }
+        partnerShareMinor: { type: integer, minimum: 0 }
+        status: { type: string, enum: [UNPAID, PENDING, PAID, FAILED, CANCELLED, REFUNDED, PARTIALLY_REFUNDED] }
+        currency: { type: string, enum: [NGN] }
+        dueDate: { type: string, format: date }
+        paidAt: { type: ["string", "null"], format: date-time }
+        nextTerm: { type: ["object", "null"], properties: { sessionId: { type: integer }, sessionName: { type: string }, termId: { type: integer }, termName: { type: string }, priceMinor: { type: integer }, dueDate: { type: string, format: date } } }
+        cardStatus: { type: string, enum: [ACTIVE, LOCKED, INACTIVE, NONE] }
+        isEligibleForNfc: { type: boolean }
+        latestPayment: { oneOf: [{ $ref: "#/components/schemas/StaffNfcPaymentSummary" }, { type: "null" }] }
+        createdAt: { type: string, format: date-time }
+    StaffNfcMineResponse:
+      type: object
+      required: [employee, currentSession, currentTerm, subscriptions]
+      properties:
+        employee: { type: object, required: [id, name, employeeNumber], properties: { id: { type: integer }, name: { type: string }, employeeNumber: { type: string }, schoolId: { type: integer }, schoolName: { type: string } } }
+        currentSession: { oneOf: [{ $ref: "#/components/schemas/StaffNfcTermContext" }, { type: "null" }] }
+        currentTerm: { oneOf: [{ $ref: "#/components/schemas/StaffNfcTermContext" }, { type: "null" }] }
+        currentSubscription: { oneOf: [{ $ref: "#/components/schemas/StaffNfcSubscription" }, { type: "null" }] }
+        nextSubscription: { oneOf: [{ $ref: "#/components/schemas/StaffNfcSubscription" }, { type: "null" }] }
+        cardStatus: { type: string, enum: [ACTIVE, LOCKED, INACTIVE, NONE] }
+        subscriptions: { type: array, items: { $ref: "#/components/schemas/StaffNfcSubscription" } }
+    StaffNfcGenerationResponse:
+      type: object
+      required: [schoolId, sessionId, termId, generatedCount, unchangedCount, subscriptions]
+      properties:
+        schoolId: { type: integer }
+        sessionId: { type: integer }
+        termId: { type: integer }
+        generatedCount: { type: integer, minimum: 0 }
+        unchangedCount: { type: integer, minimum: 0 }
+        subscriptions: { type: array, items: { $ref: "#/components/schemas/StaffNfcSubscription" } }
+    StaffNfcCheckoutResponse:
+      type: object
+      required: [paymentId, subscriptionId, reference, provider, providerMode, status, grossAmountMinor, currency, checkoutUrl]
+      properties:
+        paymentId: { type: integer }
+        subscriptionId: { type: integer }
+        reference: { type: string }
+        provider: { type: string, enum: [FLUTTERWAVE, MOCK] }
+        providerMode: { type: string, enum: [SANDBOX, DEVELOPMENT_MOCK] }
+        status: { type: string, enum: [PENDING, RECONCILIATION_REQUIRED] }
+        grossAmountMinor: { type: integer, minimum: 1 }
+        currency: { type: string, enum: [NGN] }
+        checkoutUrl: { type: ["string", "null"], format: uri }
+    StaffNfcVerificationInput:
+      type: object
+      additionalProperties: false
+      required: [reference, providerTransactionId]
+      properties:
+        reference: { type: string, minLength: 8, maxLength: 100, pattern: "^[A-Za-z0-9_-]+$" }
+        providerTransactionId: { type: string, minLength: 1, maxLength: 100, pattern: "^[A-Za-z0-9_-]+$" }
+    StaffNfcPaymentResponse:
+      type: object
+      required: [payment, subscription, allocations, activated]
+      properties:
+        payment: { $ref: "#/components/schemas/StaffNfcPaymentSummary" }
+        subscription: { $ref: "#/components/schemas/StaffNfcSubscription" }
+        allocations: { type: array, items: { $ref: "#/components/schemas/StaffNfcAllocation" } }
+        activated: { type: boolean }
+    StaffNfcReceipt:
+      type: object
+      required: [receiptNumber, issuedAt, staffName, employeeNumber, schoolId, schoolName, sessionName, termName, payment, allocations]
+      properties:
+        receiptNumber: { type: string }
+        issuedAt: { type: string, format: date-time }
+        staffName: { type: string }
+        employeeNumber: { type: string }
+        schoolId: { type: integer }
+        schoolName: { type: string }
+        sessionName: { type: string }
+        termName: { type: string }
+        payment: { $ref: "#/components/schemas/StaffNfcPaymentSummary" }
+        allocations: { type: array, items: { $ref: "#/components/schemas/StaffNfcAllocation" } }
+    StaffNfcFinanceResponse:
+      type: object
+      required: [role, totals, items, nextCursor]
+      properties:
+        role: { type: string, enum: [SCHOOL_ADMIN, ACCOUNTANT, PLATFORM_OWNER, TEACHER, STAFF] }
+        totals: { type: object, required: [grossAmountMinor, schoolAllocationMinor, platformRevenueMinor, partnerCommissionMinor, providerFeeExpenseMinor, paidCount, pendingCount, failedCount, refundedCount], properties: { grossAmountMinor: { type: integer }, schoolAllocationMinor: { type: integer }, platformRevenueMinor: { type: integer }, partnerCommissionMinor: { type: integer }, providerFeeExpenseMinor: { type: integer }, paidCount: { type: integer }, pendingCount: { type: integer }, failedCount: { type: integer }, refundedCount: { type: integer } } }
+        items: { type: array, items: { $ref: "#/components/schemas/StaffNfcSubscription" } }
+        nextCursor: { type: ["integer", "null"] }
+    StaffNfcRefundInput:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 5, maxLength: 500 }
+        amountMinor: { type: ["integer", "null"], minimum: 1 }
+    StaffNfcRefundResponse:
+      type: object
+      required: [paymentId, requestId, refundStatus, requestedAmountMinor, refundedAmountMinor, allocationsReversed, providerMode]
+      properties:
+        paymentId: { type: integer }
+        requestId: { type: integer }
+        refundStatus: { type: string, enum: [PENDING, PARTIALLY_REFUNDED, REFUNDED, RECONCILIATION_REQUIRED] }
+        requestedAmountMinor: { type: integer }
+        refundedAmountMinor: { type: integer, minimum: 0 }
+        allocationsReversed: { type: boolean }
+        providerMode: { type: string, enum: [SANDBOX, DEVELOPMENT_MOCK, UNKNOWN] }
+    StaffNfcPartnerResponse:
+      type: object
+      required: [partnerId, totals, items, nextCursor]
+      properties:
+        partnerId: { type: integer }
+        totals: { type: object, required: [eligibleSubscriptionCount, grossAmountMinor, commissionAmountMinor, pendingCommissionMinor, paidCommissionMinor], properties: { eligibleSubscriptionCount: { type: integer }, grossAmountMinor: { type: integer }, commissionAmountMinor: { type: integer }, pendingCommissionMinor: { type: integer }, paidCommissionMinor: { type: integer } } }
+        items:
+          type: array
+          items:
+            type: object
+            required: [subscriptionId, schoolId, schoolName, sessionId, sessionName, termId, termName, priceMinor, commissionMinor, paymentStatus, commissionStatus]
+            properties:
+              subscriptionId: { type: integer }
+              schoolId: { type: integer }
+              schoolName: { type: string }
+              sessionId: { type: integer }
+              sessionName: { type: string }
+              termId: { type: integer }
+              termName: { type: string }
+              priceMinor: { type: integer }
+              commissionMinor: { type: integer }
+              paymentStatus: { type: string, enum: [PAID, REFUNDED, PARTIALLY_REFUNDED] }
+              commissionStatus: { type: string, enum: [PENDING, PAID, REVERSED] }
+        nextCursor: { type: ["integer", "null"] }
+    StaffNfcWebhookAck:
+      type: object
+      required: [received, outcome]
+      properties:
+        received: { type: boolean, enum: [true] }
+        outcome: { type: string, enum: [verified, pending, failed, duplicate, reconciliation_required, refund_pending, refunded, partial_refund] }
