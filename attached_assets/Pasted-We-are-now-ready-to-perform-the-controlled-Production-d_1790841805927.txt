@@ -1,0 +1,291 @@
+We are now ready to perform the controlled Production database reconciliation for Yemait EduCore.
+
+IMPORTANT: This is a LIVE Production database operation. Do not improvise, redesign, or create a new migration strategy. Use only the already-verified 410-statement structural reconciliation and the already-prepared production SQL reconciliation package.
+
+VERIFIED PRECONDITIONS
+
+Production database identity has been manually verified:
+
+- Database target: Production Database
+- PostgreSQL database: "neondb"
+- PostgreSQL user: "neondb_owner"
+- Port: "5432"
+- Neon-managed through Replit
+- PITR: ON
+- PITR recovery window: 7 days
+- Scheduled backups: OFF
+- Storage: approximately 0% of 100 GB
+
+The following have already been completed and verified:
+
+- Development/Production reconciliation analysis
+- 410-statement structural migration preview
+- Disposable structural rehearsal of all 410 statements
+- 236 foreign-key dependency checks
+- "school_operation_categories(id, school_id, category_type)" prerequisite fixed
+- Device status constraint reconciliation fixed
+- NFC "(id, school_id)" uniqueness verified
+- Production data compatibility checks
+- Production SQL reconciliation package prepared
+- Static SQL/package validation completed
+- No Production SQL from the reconciliation package has yet been executed
+
+Relevant files:
+
+- "reports/development-production-preview-2026-10-01.json"
+- "reports/production-sql-reconciliation-package-2026-10-01.md"
+- "reports/production-sql-reconciliation-package-2026-10-01.sql"
+- "scripts/validate-production-sql-reconciliation-package.mjs"
+
+OBJECTIVE
+
+Bring Production into the verified Development schema/state required by the current Yemait EduCore application, while preserving all existing Production data.
+
+Do NOT rebuild the application.
+Do NOT reset Production.
+Do NOT drop tables.
+Do NOT truncate tables.
+Do NOT delete existing NFC cards or student data.
+Do NOT manually edit the migration ledger.
+Do NOT change Clerk configuration.
+Do NOT send real invitations during this operation.
+
+---
+
+PHASE 1 — FINAL PRE-FLIGHT
+
+Before changing Production, verify programmatically where supported:
+
+1. The active deployment is still:
+   "https://edu-pulse-school-management--ogunlakinyemi.replit.app"
+
+2. The database target is the verified Production database.
+
+3. Production is writable for the intended migration operation.
+
+4. The expected 410-statement reconciliation package/report still exists and has not changed unexpectedly.
+
+5. The production SQL reconciliation package still passes its existing static/offline validation.
+
+6. Confirm there are no unexpected uncommitted code/schema changes that would alter the planned migration.
+
+If any of these checks fail, STOP and report the exact blocker.
+
+Do not attempt a workaround.
+
+---
+
+PHASE 2 — STRUCTURAL PRODUCTION MIGRATION
+
+Use the normal Replit Publish/Production database synchronization mechanism for the already-reviewed 410-statement structural reconciliation.
+
+Do NOT manually reproduce the 410 statements in an ad-hoc SQL script.
+
+The expected reconciliation is:
+
+- 62 new tables
+- 11 added columns
+- 236 foreign keys
+- 2 additional constraints
+- 70 non-unique indexes
+- 28 unique indexes
+- removal/replacement of the obsolete device-status CHECK constraint
+- no table drops
+- no column drops
+- no truncation
+- no intentional data deletion
+
+Before executing, if Replit presents the Production migration preview, verify that it corresponds to the already-reviewed 410-statement reconciliation.
+
+If the preview has materially changed, STOP and report the difference.
+
+If it matches, execute the Production structural migration.
+
+If Publish fails:
+
+- STOP.
+- Do not retry blindly.
+- Do not edit the migration ledger.
+- Do not delete or reset Production tables.
+- Capture the exact PostgreSQL error and statement/context.
+- Report the failure.
+
+If Publish succeeds, continue.
+
+---
+
+PHASE 3 — STRUCTURAL POST-CHECK
+
+After Publish succeeds, verify:
+
+1. The expected application tables now exist.
+2. The required columns exist.
+3. The required unique constraints/indexes exist.
+4. The 236 foreign keys were created successfully.
+5. No unexpected tables or columns were dropped.
+6. Existing Production data remains present.
+7. Existing NFC cards remain present and unchanged.
+8. Existing schools/students/parents/employees remain present.
+9. The application database can connect successfully.
+
+Pay particular attention to:
+
+- "nfc_cards"
+- "nfc_card_history"
+- "platform_devices"
+- "school_operation_categories"
+- academic tables
+- finance tables
+- partner/commission tables
+- communication tables
+- audit tables
+
+If any expected structural component is missing, STOP before executing the reconciliation SQL package.
+
+---
+
+PHASE 4 — PRODUCTION SQL RECONCILIATION PACKAGE
+
+Only after the structural migration succeeds and the structural post-check passes, use:
+
+"reports/production-sql-reconciliation-package-2026-10-01.md"
+
+and
+
+"reports/production-sql-reconciliation-package-2026-10-01.sql"
+
+Follow the execution order documented in that package exactly.
+
+The package was prepared specifically for this Production reconciliation.
+
+It includes the previously identified:
+
+- required database functions
+- required triggers
+- historical guardian-link backfill
+- LEGACY academic-session backfill
+- required class-history backfill
+- commission-rule seed
+- device/history/finance metadata handling where applicable
+- postflight validation
+
+IMPORTANT:
+
+- Execute only the SQL already contained in the reviewed package.
+- Do not invent additional SQL.
+- Do not modify existing Production data outside the documented reconciliation.
+- Do not rerun a successful non-idempotent step unless the package explicitly permits it.
+- Respect all transaction boundaries documented in the package.
+
+If any package step fails:
+
+1. STOP.
+2. Do not continue to later steps.
+3. Do not invent a repair.
+4. Report the exact failed statement/section and PostgreSQL error.
+5. State whether the failed transaction rolled back successfully.
+6. State whether any earlier package sections committed successfully.
+
+---
+
+PHASE 5 — FULL POST-MIGRATION VALIDATION
+
+After successful completion, run the package's postflight checks.
+
+Also verify:
+
+NFC
+
+- Existing 3 Production NFC cards still exist.
+- No duplicate NFC UIDs.
+- No duplicate "(id, school_id)".
+- No orphaned NFC school/student references.
+- "nfc_card_history" exists and is usable.
+
+Academic
+
+- Existing schools/students/classes remain intact.
+- Required historical LEGACY records were created only for the previously identified matching records.
+- The previously identified unmatched student remains unchanged.
+
+Finance
+
+- Existing finance data remains intact.
+- Required commission rule seed exists.
+- No duplicate commission rules were created.
+
+Devices
+
+- Required device schema exists.
+- Device-school binding protections exist.
+- Existing Production device data, if any, remains intact.
+
+Database protections
+
+Verify the expected functions/triggers are present and enabled.
+
+Application
+
+Verify that the Production API starts successfully and database-backed health checks succeed.
+
+---
+
+PHASE 6 — APPLICATION SMOKE TEST
+
+After database reconciliation succeeds, perform a non-destructive smoke test of the Production application.
+
+Check at minimum:
+
+1. Login page loads.
+2. Owner authentication route loads.
+3. School dashboard route loads.
+4. Student/parent/teacher routes do not produce database errors.
+5. Attendance endpoints can read existing data.
+6. Academic/result endpoints can read existing data.
+7. Finance endpoints can read existing data.
+8. NFC/card endpoints can read existing card data.
+9. Audit logging works.
+10. No startup migration error appears.
+
+Do not create real invitations, real payments, or destructive test records.
+
+---
+
+PHASE 7 — FINAL REPORT
+
+When everything succeeds, provide a concise report containing:
+
+- Structural migration: SUCCESS/FAILED
+- Number of structural statements executed
+- Functions/triggers: SUCCESS/FAILED
+- Historical backfills: SUCCESS/FAILED
+- Commission seed: SUCCESS/FAILED
+- Postflight validation: SUCCESS/FAILED
+- Application smoke test: SUCCESS/FAILED
+- Production database status
+- Any warnings
+- Any remaining known limitations
+
+If anything fails, clearly identify the exact point of failure and STOP.
+
+CRITICAL SAFETY RULE
+
+Do not:
+
+- reset Production
+- restore a backup
+- create a new Production database
+- drop tables
+- truncate tables
+- delete existing data
+- manually modify migration ledgers
+- bypass foreign-key constraints
+- disable database protections
+- change Clerk authentication
+- change production credentials
+- invent replacement SQL
+- retry a failed migration blindly
+
+The goal is a controlled reconciliation of the existing Production database, not a rebuild.
+
+Proceed with Phase 1 now.
