@@ -14,3 +14,17 @@ mtime_ms = 1790805555496
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/9e90f507-3be2-4f4d-a0f3-7e34d195e180/9a5b2ff9-9ecb-4c74-af75-e963ac91be2e"
 storage_version_token = "1790809192058764"
 content_type = "text/html"
+
+[[outputs]]
+id = "d97gnBOB9N8CIRQOwswdN"
+uri = "file://reports/production-sql-reconciliation-package-2026-10-01.md"
+type = "text"
+title = "Production SQL reconciliation package"
+description = "Preparation-only report containing exact SQL, execution order, preflight/postflight checks, and explicit database identity and recovery blockers. Nothing was executed against either database."
+logical_id = "84938cf7-c37a-425f-94b6-c823f13f1ab6"
+content_hash = "sha256:fc7da71308ba3d00e5bc69f416fcb3dd6bda150e50574faf7aeb8f7344d5274d"
+size = 116089
+mtime_ms = 1790840311645
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/84938cf7-c37a-425f-94b6-c823f13f1ab6/63516711-2ef3-4a47-b0ca-5c84861917bc"
+storage_version_token = "1790840352007335"
+content_type = "text/markdown"

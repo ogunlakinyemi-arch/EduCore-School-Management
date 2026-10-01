@@ -1,0 +1,308 @@
+We have completed the Development-side reconciliation and the regenerated Replit Publish preview is now 410 statements.
+
+The 410 structural statements have been successfully rehearsed in Development in order. All 91 expected tables were created and all 236 new foreign keys passed. Do NOT repeat the previous 408/410 structural audit.
+
+Your task now is to prepare the exact Production SQL execution package for the remaining database work.
+
+IMPORTANT: PREPARATION ONLY.
+
+DO NOT:
+
+- publish the application;
+- execute the 410 Publish statements;
+- execute any SQL against Production;
+- modify Production;
+- modify the migration ledger;
+- modify the Drizzle migration journal;
+- create startup/build-hook migration logic;
+- copy Development data to Production;
+- send real invitations;
+- change Clerk production configuration.
+
+1. Functions and triggers
+
+Identify and prepare the exact SQL required for all three functions and six triggers currently present in Development but omitted from the 410 Publish preview.
+
+The package must include:
+
+Device-school binding protection
+
+- "prevent_device_school_binding_mutation"
+- "device_school_bindings_append_only"
+- "device_school_bindings_no_truncate"
+
+Finance payment verification protection
+
+- "protect_fee_payment_verification_metadata"
+- "fee_payments_verification_metadata_immutable"
+
+Operations history protection
+
+- "prevent_operations_history_mutation"
+- the three append-only triggers for:
+  - asset history
+  - maintenance-request status history
+  - operational-task status history
+
+For every function/trigger:
+
+- show the exact CREATE OR REPLACE FUNCTION / CREATE TRIGGER SQL;
+- identify its source migration/file;
+- explain which table/event it protects;
+- specify whether it must be created before or after the 410 structural changes;
+- include an idempotent form where safely possible;
+- do not invent behavior that is not present in the authoritative Development source.
+
+2. Historical backfills
+
+Prepare the exact SQL required for the applicable Production backfills identified during the audit.
+
+Guardian/student links
+
+Current Production preflight found:
+
+- 4 uniquely matched missing guardian links;
+- no multiple-candidate ambiguity for these four.
+
+Prepare SQL that creates only those relationships that satisfy the authoritative migration logic.
+
+Requirements:
+
+- do not create ambiguous relationships;
+- do not create duplicate links;
+- preserve existing valid links;
+- preserve school/tenant isolation;
+- make the operation safely repeatable;
+- include a preflight SELECT showing exactly which rows would be affected;
+- include a postflight query showing the resulting relationships.
+
+Do NOT execute it.
+
+LEGACY academic sessions
+
+Current Production preflight found:
+
+- 4 schools without the required LEGACY session.
+
+Prepare the exact SQL according to the authoritative migration/source logic.
+
+Include:
+
+- preflight query;
+- proposed rows;
+- date semantics used by the source migration;
+- duplicate protection;
+- postflight validation.
+
+Do not invent historical dates or academic data beyond what the source migration requires.
+
+Historical class assignments
+
+Current audit found:
+
+- 4 students with exact class-source matches requiring LEGACY history;
+- 1 student without a valid matching class source.
+
+Prepare SQL for only the four valid matches.
+
+The unmatched student MUST remain unchanged.
+
+Include:
+
+- preflight query;
+- exact source-to-target mapping;
+- duplicate protection;
+- postflight validation.
+
+Do not fabricate a class assignment.
+
+Commission seed
+
+Prepare the exact commission-rule seed required by the authoritative migration/source logic.
+
+Make it:
+
+- idempotent;
+- tenant-safe;
+- non-duplicating;
+- consistent with the current Development schema and application behavior.
+
+Include preflight and postflight queries.
+
+Device/history backfills
+
+The audit found these are currently no-ops because:
+
+- there are zero Production devices;
+- required historical source tables are absent.
+
+Do NOT fabricate rows.
+
+Prepare the SQL package logic so it safely detects the no-op condition and documents that no rows should currently be created.
+
+Also explain what future/historical source conditions would cause these backfills to become applicable.
+
+Finance receipt/payment metadata
+
+The audit found the relevant finance source tables are currently absent in inspected Production.
+
+Do not fabricate finance records.
+
+Prepare the backfill logic only if the required tables and source data exist after the 410 structural reconciliation.
+
+It must:
+
+- safely detect whether the source rows exist;
+- be repeatable;
+- preserve existing correct metadata;
+- avoid overwriting valid verified-payment evidence;
+- run before any NOT NULL or dependent constraint that requires the backfilled value.
+
+3. Execution dependency order
+
+Produce an exact execution order for the complete Production reconciliation:
+
+1. Production identity/recovery verification
+2. 410 structural Publish operation
+3. Required parent keys/constraints verification
+4. Historical backfills that must precede dependent constraints or protected writes
+5. Functions
+6. Triggers
+7. Remaining backfills
+8. Final schema/data validation
+9. Application resume
+
+If any function, trigger or backfill must occur at a different point, explain why.
+
+4. Production preflight package
+
+Prepare read-only SQL/checks for:
+
+- database name;
+- PostgreSQL version;
+- current schema/table counts;
+- expected 91 application tables;
+- required parent keys;
+- existing NFC "(id, school_id)" uniqueness;
+- device status constraint;
+- current row counts;
+- orphan counts;
+- duplicate counts;
+- guardian-link candidates;
+- LEGACY-session candidates;
+- class-assignment candidates;
+- commission-rule candidates;
+- device/history backfill applicability;
+- finance backfill applicability.
+
+These checks must NOT modify data.
+
+5. Backup/recovery verification
+
+Do not claim that backup/PITR is sufficient merely because it is displayed as enabled.
+
+Identify what can actually be verified through the available Replit tooling.
+
+Report:
+
+- whether a recovery point is available;
+- the visible recovery window;
+- whether a disposable restore/test can actually be performed;
+- whether restoration can be verified without affecting Production.
+
+If a true restore test cannot be performed through available tooling, state that clearly.
+
+Do not perform a Production restore.
+
+6. Live database identity
+
+Do not repeat the previous generic database audit.
+
+Determine whether the available Replit tooling can establish that:
+
+Published application:
+
+"https://edu-pulse-school-management--ogunlakinyemi.replit.app"
+
+actually uses the same Production database being inspected.
+
+If this cannot be proven from available tooling, state exactly what remains unverifiable and the safest supported way to establish it.
+
+Do not expose DATABASE_URL secrets or credentials.
+
+7. SQL safety requirements
+
+Every SQL operation intended for eventual Production execution must be:
+
+- idempotent where reasonably possible;
+- tenant-safe;
+- non-destructive;
+- explicit about prerequisites;
+- protected against duplicate insertion;
+- accompanied by a preflight query;
+- accompanied by a postflight validation query.
+
+Do not use:
+
+- DROP DATABASE;
+- DROP TABLE;
+- TRUNCATE;
+- DELETE without an explicitly justified and reviewed condition;
+- UPDATE that overwrites existing valid historical evidence;
+- migration-ledger manipulation.
+
+8. Final deliverable
+
+Create a single report:
+
+"reports/production-sql-reconciliation-package-2026-10-01.md"
+
+The report must contain:
+
+A. Production preflight checks
+B. Database identity verification result
+C. Backup/recovery verification result
+D. Exact function SQL
+E. Exact trigger SQL
+F. Exact guardian-link backfill SQL
+G. Exact LEGACY-session SQL
+H. Exact class-assignment backfill SQL
+I. Exact commission seed SQL
+J. Device/history backfill logic
+K. Finance backfill logic
+L. Exact execution order
+M. Postflight validation SQL
+N. Rollback/recovery considerations
+O. Remaining blockers or uncertainties
+P. Explicit statement confirming that NOTHING was executed against Production
+
+Also save the machine-readable SQL package separately, for example:
+
+"reports/production-sql-reconciliation-package-2026-10-01.sql"
+
+The SQL file must be clearly separated into:
+
+- PREFLIGHT — READ ONLY
+- STRUCTURAL — DO NOT EXECUTE HERE
+- FUNCTIONS
+- TRIGGERS
+- BACKFILLS
+- POSTFLIGHT — READ ONLY
+
+The structural section must reference the 410-statement Publish operation rather than duplicating or manually reconstructing the 410 statements.
+
+FINAL RULE:
+
+Prepare and verify the package only.
+
+DO NOT EXECUTE ANY OF IT.
+DO NOT PUBLISH.
+DO NOT MODIFY PRODUCTION.
+
+At the end, report:
+
+- files created;
+- tests/typechecks performed;
+- whether any Development data was changed;
+- whether any Production data was changed;
+- whether any real invitations were sent.
