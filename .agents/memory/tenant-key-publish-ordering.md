@@ -34,3 +34,9 @@ Non-destructive SQL is not sufficient evidence that all composite foreign-key pr
 **Why:** A disposable Publish validation rejected a new table's `(id, school_id)` foreign key even though Development had its valid supporting index. The planner omitted that FK-bound standalone index; the parent's single-column primary key and a different three-column UNIQUE constraint did not satisfy the requested composite reference.
 
 **How to apply:** Check exact referenced column sets for newly created parent tables. When a required standalone key is omitted, align both the ORM declaration and Development catalog as an explicit UNIQUE constraint by reusing the original index, then require a fresh Publish validation. Do not rebuild the index, add duplicate uniqueness, or infer migration safety solely from an absence of DROP operations.
+
+A valid standalone unique index can legitimately support a foreign key without a corresponding UNIQUE constraint. Its omission from Publish does not by itself establish an invalid Development schema.
+
+**Why:** Live Development foreign keys were validated and bound to valid, ready, immediate, non-partial unique indexes, while Production lacked those keys and a fresh Publish diff omitted their creation entirely. The observed defect was an incomplete generated plan, not missing Development integrity.
+
+**How to apply:** Compare both live catalogs with the complete ordered diff. Distinguish an omitted prerequisite from one emitted too late. Treat conversion to an explicit constraint as a proposed planner-compatibility workaround, not an inherently required integrity repair. Under read-only instructions, prepare a prerequisite-first plan for review without changing source, attaching indexes, or removing foreign keys.

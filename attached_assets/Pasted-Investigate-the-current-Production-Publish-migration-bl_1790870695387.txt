@@ -1,0 +1,58 @@
+Investigate the current Production Publish migration blocker again, but do not modify Production and do not bypass the normal Publish flow.
+
+Current confirmed state:
+
+- Development foreign keys must remain intact.
+- No Development schema changes were made during the previous investigation.
+- No Production changes or publication were initiated.
+- The generated Publish plan is currently blocked by missing subscription and partner-attribution uniqueness prerequisites.
+- Do NOT remove or disable the two Development foreign keys.
+- Do NOT add deployment-time DDL.
+- Do NOT manually modify Production.
+- Do NOT publish until the migration has passed validation.
+
+Tasks:
+
+1. Use the fresh Development → Production schema-diff capability if it is available.
+2. Inspect the current Development schema as the source of truth.
+3. Use read-only queries against the current Production database to verify the actual state of:
+   - subscription-related uniqueness constraints/indexes
+   - partner-attribution-related uniqueness constraints/indexes
+   - any foreign keys that depend on those keys
+4. Recompute the schema difference if necessary.
+5. Identify the exact reason the generated migration requires those uniqueness prerequisites.
+6. Determine whether the problem is:
+   - a missing Development schema constraint,
+   - a missing Production prerequisite,
+   - migration ordering,
+   - an incorrect generated diff,
+   - or another dependency issue.
+7. Do not guess or assume this is the same problem as the previous parent/student relationship issue.
+8. Do not remove, disable, or recreate any existing foreign keys.
+9. Do not make any Production schema or data changes.
+10. Do not add SQL that will run automatically during deployment.
+11. If a Development schema/source-of-truth correction is genuinely required, STOP before making it and show me:
+
+- the exact object involved,
+- the current Development definition,
+- the current Production definition,
+- the proposed change,
+- why it is required,
+- whether it is destructive,
+- and the expected effect on existing records.
+
+12. If no Development change is required, prepare the corrected prerequisite/order plan for review only.
+13. Verify that all existing Development records remain intact and that all relevant foreign-key relationships remain valid.
+14. Do not publish anything.
+
+Final response must clearly report:
+
+- exact root cause,
+- Development state,
+- Production state,
+- exact missing prerequisite(s),
+- whether a source-of-truth correction is required,
+- whether any changes were made,
+- and the precise next safe action.
+
+If the fresh schema-diff capability is unavailable, stop without making schema changes and report that limitation rather than working around it.

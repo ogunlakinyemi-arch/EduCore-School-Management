@@ -70,3 +70,17 @@ mtime_ms = 1790859331654
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/12a267e7-cbf0-4883-aa28-5413b757ffa8/4b8c76c1-e421-4f92-9bfc-a23b3ad07118"
 storage_version_token = "1790859385664113"
 content_type = "text/html"
+
+[[outputs]]
+id = "bBFEyr1DgC-bTYo6NLfNb"
+uri = "file://reports/publish-prerequisite-review.html"
+type = "html"
+title = "Publish migration prerequisite review"
+description = "Read-only findings, live catalog evidence, data-integrity checks, and the complete corrected order for review only. No migration or publication was executed."
+logical_id = "2d13e200-e703-4374-84ef-602f0894eb6d"
+content_hash = "sha256:72444ade9940e856aca9d20d69f501c5a2dff47fe1a9ec4d59c0744f878b9512"
+size = 209916
+mtime_ms = 1790871038659
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/2d13e200-e703-4374-84ef-602f0894eb6d/83fe3eef-1402-4020-b217-d29367dfad08"
+storage_version_token = "1790871039380639"
+content_type = "text/html"
