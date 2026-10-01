@@ -22,3 +22,9 @@ Inspect every SQL statement, not just the diff's structural-data-loss flag and t
 **Why:** The table-drop summary did not expose a planned removal of an existing parent/student pair's unique index, while a new transport foreign key still referenced that pair and no replacement uniqueness was present.
 
 **How to apply:** Enumerate all DROP operations, inspect existing supporting indexes/constraints, and check that each referenced key remains unique at the point its foreign key is created. Stop on a missing prerequisite; do not silently skip or reorder the publishing plan.
+
+A verified operator prerequisite that attaches a sole legacy unique index as the same-named UNIQUE constraint can align Production with Development without rebuilding the index or adding duplicate uniqueness.
+
+**Why:** Converting only Development exposed a replacement constraint but left Publish dropping the Production index before a dependent foreign key. After the operator attached the Production index, the fresh plan omitted both the drop and replacement, retaining the existing prerequisite.
+
+**How to apply:** Rehearse index attachment before foreign-key creation in disposable PostgreSQL. Require verified Production targeting and recovery protection for the operator step, then inspect a fresh Publish diff; do not assume that changing Development alone fixes ordering or ask the operator to repeat an already successful attachment.
