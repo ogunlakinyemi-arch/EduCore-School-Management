@@ -37,6 +37,8 @@ export const schoolOperationCategories = pgTable(
       "school_operation_categories_type_check",
       sql`${table.categoryType} IN ('ASSET', 'MAINTENANCE', 'TASK')`,
     ),
+    unique("school_operation_categories_id_school_type_key")
+      .on(table.id, table.schoolId, table.categoryType),
     uniqueIndex("school_operation_categories_school_type_name_unique")
       .on(table.schoolId, table.categoryType, sql`lower(${table.name})`),
     uniqueIndex("school_operation_categories_id_school_type_unique")

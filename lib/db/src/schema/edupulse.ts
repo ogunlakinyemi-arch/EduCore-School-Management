@@ -102,6 +102,12 @@ export const platformDevices = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    // A distinct name ensures Publish diffs the expanded expression; same-name
+    // check-expression changes can otherwise be omitted from its schema plan.
+    check(
+      "platform_devices_status_supported_check",
+      sql`${table.status} IN ('ACTIVE', 'INACTIVE', 'MAINTENANCE', 'SUSPENDED', 'UNASSIGNED')`,
+    ),
     uniqueIndex("platform_devices_serial_number_unique").on(table.serialNumber),
     uniqueIndex("platform_devices_id_school_unique").on(table.id, table.schoolId),
     index("platform_devices_school_idx").on(table.schoolId, table.status),

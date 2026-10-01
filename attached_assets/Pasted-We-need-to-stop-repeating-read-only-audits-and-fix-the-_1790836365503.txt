@@ -1,0 +1,200 @@
+We need to stop repeating read-only audits and fix the schema reconciliation problem efficiently.
+
+Use the completed Production Reconciliation Plan dated 30 September 2026 as the authoritative diagnostic baseline. Do NOT repeat the same broad audit and do NOT spend time re-discovering the 408 statements.
+
+OBJECTIVE:
+
+Make the Development schema and its supported migration/reconciliation mechanism internally complete so that Replit Publish can generate a valid Production reconciliation plan.
+
+IMPORTANT SAFETY RULES:
+
+- Development changes are allowed.
+- Production database MUST NOT be modified.
+- Do NOT publish.
+- Do NOT execute the current 408 statements.
+- Do NOT mark migrations as applied.
+- Do NOT modify either migration ledger.
+- Do NOT copy Development over Production.
+- Do NOT create startup/build-hook SQL that mutates Production.
+- Do NOT send real invitations.
+- Do NOT change Clerk production configuration.
+
+KNOWN PROBLEMS TO FIX:
+
+1. SCHOOL_OPERATION_CATEGORIES COMPOSITE KEY
+
+Development requires an eligible unique key for:
+
+(id, school_id, category_type)
+
+The current Publish preview references this key from three foreign keys but does not create it.
+
+Add the required composite uniqueness to the authoritative Development schema in the normal supported schema/migration structure.
+
+The resulting regenerated Publish preview must establish this parent key before these dependent foreign keys:
+
+- school_assets_category_school_fk
+- operational_tasks_category_school_fk
+- maintenance_requests_category_school_fk
+
+Do not simply create the key manually in Production.
+
+2. MISSING FUNCTIONS AND TRIGGERS
+
+Development currently contains:
+
+- prevent_device_school_binding_mutation
+- device_school_bindings_append_only
+- device_school_bindings_no_truncate
+- protect_fee_payment_verification_metadata
+- fee_payments_verification_metadata_immutable
+- prevent_operations_history_mutation
+- append-only operation-history triggers
+
+Determine the supported way these database protections are represented in this project's migration/reconciliation system.
+
+Do not silently omit them.
+
+If Replit's Publish schema synchronization cannot represent them, document that limitation and identify the correct supported migration mechanism rather than inventing a startup workaround.
+
+3. HISTORICAL BACKFILLS
+
+The following migration behaviors exist and are not represented in the current 408 preview:
+
+- guardian/student relationship backfill
+- LEGACY academic session creation
+- historical class assignment creation
+- commission-rule seed logic
+- historical device-school binding backfills
+- historical device reference backfills
+- finance receipt/payment metadata backfills
+
+Determine which of these must actually run against the current Production data and which are no-ops because their source tables are currently absent.
+
+Do not fabricate historical data.
+
+For ambiguous guardian matches, preserve them for review rather than automatically creating uncertain relationships.
+
+For the unmatched student's class history, do not invent an assignment.
+
+For device history, preserve historical school relationships rather than using a device's current school after reassignment.
+
+4. PLATFORM_DEVICE STATUS CONSTRAINT
+
+Production currently allows:
+
+- ACTIVE
+- INACTIVE
+- MAINTENANCE
+
+Development additionally expects:
+
+- SUSPENDED
+- UNASSIGNED
+
+Determine the intended authoritative Development rule from the current source and migration history.
+
+Make the desired schema explicit so the regenerated reconciliation plan does not silently leave this difference unresolved.
+
+Do not delete valid Production data.
+
+5. NOT VALID DEVELOPMENT CONSTRAINT
+
+Development currently has:
+
+platform_devices_class_school_fk
+
+with NOT VALID state.
+
+Determine whether this is intentional.
+
+If it is intended to become a validated invariant, identify the validation prerequisite and include it in the reconciliation plan.
+
+Do not blindly validate it if existing data could fail.
+
+6. EXISTING EQUIVALENT UNIQUE KEYS
+
+Do not unnecessarily recreate or rename existing equivalent Production keys.
+
+In particular, verify the existing equivalent uniqueness for:
+
+- nfc_cards(id, school_id)
+- academic_sessions(id, school_id)
+- academic_terms(id, school_id)
+- employees(id, school_id)
+- subjects(id, school_id)
+- attendance_events(id, school_id)
+- attendance_discrepancies(id, school_id)
+
+The goal is dependency correctness, not cosmetic constraint-name matching.
+
+7. NFC / ATTENDANCE
+
+Do not treat the old nfc_card_history parent-key concern as the current blocker.
+
+Production already has eligible uniqueness for:
+
+nfc_cards(id, school_id)
+
+Continue to preserve that key.
+
+Do not manually create nfc_card_history in Production.
+
+Ensure the regenerated reconciliation plan creates the required NFC/device tables and dependencies in valid order.
+
+8. MIGRATION PROVENANCE
+
+Do not rewrite, fabricate, delete, or mark migration ledger entries as applied.
+
+The current Development ledger and checked-in migration files have drift.
+
+Treat the current schema as authoritative for Development and create a clean, explicit reconciliation path from the current Development schema to Production.
+
+Do not assume that replaying migration 0005 onward is safe.
+
+9. REGENERATE THE PUBLISH PREVIEW
+
+After making the necessary Development-side corrections:
+
+- regenerate the actual Replit Development → Production schema preview;
+- obtain the NEW statement count;
+- produce a categorized breakdown;
+- identify all remaining dependency failures;
+- verify every FK has an eligible parent key;
+- verify required parent keys appear before dependent FKs;
+- verify required columns exist before constraints;
+- verify the device-status rule;
+- verify whether functions/triggers/backfills are represented or separately accounted for.
+
+Do not use the old 408 statement ordinals as the new order.
+
+10. DISPOSABLE TEST
+
+If a disposable database/test database is available through the supported Replit mechanism, test the regenerated reconciliation plan there.
+
+At minimum verify:
+
+- all tables create successfully;
+- all required parent keys exist before FKs;
+- all 236-type FK dependencies are satisfiable;
+- category triple-key dependency succeeds;
+- existing equivalent Production keys do not cause duplicate-key failures;
+- historical backfill logic is safe and repeatable;
+- trigger/function protections work;
+- device statuses behave as intended;
+- no destructive statements are introduced.
+
+If a disposable test cannot be performed through the available supported tooling, state that clearly rather than pretending it was tested.
+
+FINAL OUTPUT:
+
+Return only:
+
+A. Development changes made
+B. New Publish preview statement count
+C. Remaining blockers, if any
+D. Whether the regenerated plan is technically executable on a disposable database
+E. Exact next step required before Production
+
+Do NOT publish or modify Production.
+Do NOT repeat the previous 408-statement audit unless a specific new result requires it.

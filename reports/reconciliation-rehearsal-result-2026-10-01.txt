@@ -1,0 +1,6 @@
+{
+  "exitCode": 0,
+  "exitReason": null,
+  "output": "BEGIN\nDO\nROLLBACK\n",
+  "success": true
+}

@@ -1,0 +1,10 @@
+unique_guardian_links_missing,ambiguous_guardian_students,unmatched_guardian_students,unmatched_class_students,ambiguous_class_students,matched_students_missing_legacy_history,schools_without_legacy,active_null_term_commission_rules,unsupported_device_statuses,production_device_class_column_present
+4,0,1,1,0,4,4,0,0,0
+
+Normalized guardian cross-check:
+unique_missing_links,ambiguous_students,unmatched_students
+4,0,1
+
+Device/history source preflight:
+platform_device_count,current_device_school_pairs,orphan_current_school_pairs,existing_binding_table,existing_attendance_source,existing_credentials_source,existing_assignment_history_source,existing_biometric_source,existing_receipts_source,existing_payments_source,existing_card_last_device_column
+0,0,0,,,,,,,,0

@@ -1,0 +1,1143 @@
+{
+  "tables": [
+    {
+      "sql": "CREATE TABLE academic_sessions (id serial NOT NULL,school_id integer NOT NULL,name text NOT NULL,start_date date NOT NULL,end_date date NOT NULL,status text DEFAULT 'PLANNED'::text NOT NULL,is_current boolean DEFAULT false NOT NULL,created_at timestamp with time zone DEFAULT now() NOT NULL,updated_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "academic_sessions"
+    },
+    {
+      "sql": "CREATE TABLE academic_terms (id serial NOT NULL,school_id integer NOT NULL,academic_session_id integer NOT NULL,name text NOT NULL,start_date date NOT NULL,end_date date NOT NULL,status text DEFAULT 'PLANNED'::text NOT NULL,is_current boolean DEFAULT false NOT NULL,created_at timestamp with time zone DEFAULT now() NOT NULL,updated_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "academic_terms"
+    },
+    {
+      "sql": "CREATE TABLE app_users (id serial NOT NULL,clerk_user_id text NOT NULL,email text NOT NULL,first_name text,last_name text,phone text,status text DEFAULT 'ACTIVE'::text NOT NULL,created_at timestamp with time zone DEFAULT now() NOT NULL,updated_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "app_users"
+    },
+    {
+      "sql": "CREATE TABLE audit_logs (id serial NOT NULL,\"user\" text NOT NULL,role text NOT NULL,school_id integer,action text NOT NULL,module text NOT NULL,record_id integer,\"timestamp\" timestamp with time zone DEFAULT now() NOT NULL,severity text DEFAULT 'info'::text NOT NULL,actor_user_id integer,clerk_user_id text,event_type text DEFAULT 'APPLICATION_EVENT'::text NOT NULL,result text DEFAULT 'SUCCESS'::text NOT NULL,metadata jsonb);",
+      "name": "audit_logs"
+    },
+    {
+      "sql": "CREATE TABLE class_subjects (id serial NOT NULL,school_id integer NOT NULL,school_class_id integer NOT NULL,subject_id integer NOT NULL,academic_session_id integer NOT NULL,academic_term_id integer,employee_id integer,section text,status text DEFAULT 'ACTIVE'::text NOT NULL,created_at timestamp with time zone DEFAULT now() NOT NULL,updated_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "class_subjects"
+    },
+    {
+      "sql": "CREATE TABLE commission_ledger (id serial NOT NULL,partner_profile_id integer NOT NULL,school_id integer NOT NULL,student_id integer NOT NULL,subscription_id integer NOT NULL,commission_rule_id integer NOT NULL,academic_session_id integer,term text NOT NULL,rate numeric(12,4) NOT NULL,count integer DEFAULT 1 NOT NULL,amount numeric(12,2) NOT NULL,currency text DEFAULT 'NGN'::text NOT NULL,status text DEFAULT 'PENDING'::text NOT NULL,payout_id integer,approved_at timestamp with time zone,payable_at timestamp with time zone,paid_at timestamp with time zone,held_at timestamp with time zone,reversed_at timestamp with time zone,cancelled_at timestamp with time zone,payment_reference text,adjustment_reference text,reversal_reference text,created_by integer,created_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "commission_ledger"
+    },
+    {
+      "sql": "CREATE TABLE commission_rules (id serial NOT NULL,name text NOT NULL,status text DEFAULT 'ACTIVE'::text NOT NULL,term text,currency text DEFAULT 'NGN'::text NOT NULL,calculation_basis text DEFAULT 'FIXED'::text NOT NULL,effective_at timestamp with time zone DEFAULT now() NOT NULL,ends_at timestamp with time zone,partner_rate numeric(12,4) DEFAULT '100'::numeric NOT NULL,allocation_total numeric(12,2) DEFAULT '5000'::numeric NOT NULL,partner_amount numeric(12,2) DEFAULT '100'::numeric NOT NULL,school_amount numeric(12,2) DEFAULT '2000'::numeric NOT NULL,edupulse_amount numeric(12,2) DEFAULT '2900'::numeric NOT NULL,created_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "commission_rules"
+    },
+    {
+      "sql": "CREATE TABLE employees (id serial NOT NULL,school_id integer NOT NULL,user_id integer,employee_no text NOT NULL,first_name text NOT NULL,middle_name text,last_name text NOT NULL,phone text,email text,address text,photo text,gender text,employee_type text DEFAULT 'TEACHER'::text NOT NULL,employment_status text DEFAULT 'ACTIVE'::text NOT NULL,date_employed date,department text,qualification text,created_at timestamp with time zone DEFAULT now() NOT NULL,updated_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "employees"
+    },
+    {
+      "sql": "CREATE TABLE nfc_cards (id serial NOT NULL,school_id integer NOT NULL,uid text NOT NULL,student_id integer,status text DEFAULT 'unassigned'::text NOT NULL,scans integer DEFAULT 0 NOT NULL,last_scan timestamp with time zone);",
+      "name": "nfc_cards"
+    },
+    {
+      "sql": "CREATE TABLE parent_student_relationships (id serial NOT NULL,parent_id integer NOT NULL,student_id integer NOT NULL,relationship_type text DEFAULT 'Guardian'::text NOT NULL,is_primary_guardian boolean DEFAULT false NOT NULL,is_emergency_contact boolean DEFAULT false NOT NULL,contact_priority integer DEFAULT 1 NOT NULL,status text DEFAULT 'ACTIVE'::text NOT NULL,created_at timestamp with time zone DEFAULT now() NOT NULL,updated_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "parent_student_relationships"
+    },
+    {
+      "sql": "CREATE TABLE parents (id serial NOT NULL,school_id integer NOT NULL,name text NOT NULL,email text NOT NULL,phone text NOT NULL,user_id integer,address text,status text DEFAULT 'ACTIVE'::text NOT NULL,created_at timestamp with time zone DEFAULT now() NOT NULL,updated_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "parents"
+    },
+    {
+      "sql": "CREATE TABLE partner_attribution_conflicts (id serial NOT NULL,school_id integer NOT NULL,existing_partner_profile_id integer,attempted_partner_profile_id integer NOT NULL,referral_link_id integer,source text NOT NULL,status text DEFAULT 'OPEN'::text NOT NULL,metadata jsonb,evidence jsonb,resolved_by integer,decision text,resolved_at timestamp with time zone,created_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "partner_attribution_conflicts"
+    },
+    {
+      "sql": "CREATE TABLE partner_invitations (id serial NOT NULL,partner_profile_id integer NOT NULL,invited_email text NOT NULL,token_hash text NOT NULL,status text DEFAULT 'ACTIVE'::text NOT NULL,expires_at timestamp with time zone,redeemed_at timestamp with time zone,revoked_at timestamp with time zone,created_by integer NOT NULL,created_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "partner_invitations"
+    },
+    {
+      "sql": "CREATE TABLE partner_payout_information (id serial NOT NULL,partner_profile_id integer NOT NULL,method text NOT NULL,bank_name_encrypted text NOT NULL,account_name_encrypted text NOT NULL,account_number_encrypted text NOT NULL,bank_code_encrypted text,account_last4 text NOT NULL,encryption_key_version text NOT NULL,status text DEFAULT 'ACTIVE'::text NOT NULL,created_at timestamp with time zone DEFAULT now() NOT NULL,updated_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "partner_payout_information"
+    },
+    {
+      "sql": "CREATE TABLE partner_payouts (id serial NOT NULL,partner_profile_id integer NOT NULL,academic_session_id integer,term text,amount numeric(12,2) NOT NULL,currency text DEFAULT 'NGN'::text NOT NULL,status text DEFAULT 'PENDING'::text NOT NULL,payment_reference text,payment_date timestamp with time zone,method text,notes text,provider text,provider_reference text,period_start timestamp with time zone NOT NULL,period_end timestamp with time zone NOT NULL,paid_at timestamp with time zone,reversed_at timestamp with time zone,reversal_reference text,reversal_reason text,created_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "partner_payouts"
+    },
+    {
+      "sql": "CREATE TABLE partner_profile_users (id serial NOT NULL,partner_profile_id integer NOT NULL,user_id integer NOT NULL,role text DEFAULT 'PARTNER'::text NOT NULL,status text DEFAULT 'ACTIVE'::text NOT NULL,created_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "partner_profile_users"
+    },
+    {
+      "sql": "CREATE TABLE partner_profiles (id serial NOT NULL,user_id integer,partner_code text NOT NULL,type text DEFAULT 'RESELLER'::text NOT NULL,full_name text NOT NULL,business_name text,email text NOT NULL,phone text,address text,state text,lga text,registration_number text,status text DEFAULT 'PENDING'::text NOT NULL,invited_at timestamp with time zone,registered_at timestamp with time zone,activated_at timestamp with time zone,deactivated_at timestamp with time zone,created_by integer,created_at timestamp with time zone DEFAULT now() NOT NULL,updated_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "partner_profiles"
+    },
+    {
+      "sql": "CREATE TABLE partner_referral_links (id serial NOT NULL,partner_profile_id integer NOT NULL,token_hash text NOT NULL,status text DEFAULT 'ACTIVE'::text NOT NULL,created_by integer,created_at timestamp with time zone DEFAULT now() NOT NULL,revoked_at timestamp with time zone);",
+      "name": "partner_referral_links"
+    },
+    {
+      "sql": "CREATE TABLE platform_devices (id serial NOT NULL,serial_number text NOT NULL,name text NOT NULL,device_type text NOT NULL,school_id integer,status text DEFAULT 'ACTIVE'::text NOT NULL,last_seen_at timestamp with time zone,created_at timestamp with time zone DEFAULT now() NOT NULL,updated_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "platform_devices"
+    },
+    {
+      "sql": "CREATE TABLE platform_notifications (id serial NOT NULL,recipient_user_id integer,title text NOT NULL,message text NOT NULL,severity text DEFAULT 'info'::text NOT NULL,is_read boolean DEFAULT false NOT NULL,read_at timestamp with time zone,created_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "platform_notifications"
+    },
+    {
+      "sql": "CREATE TABLE school_classes (id serial NOT NULL,school_id integer NOT NULL,name text NOT NULL,section text NOT NULL,class_teacher text,capacity integer DEFAULT 30 NOT NULL);",
+      "name": "school_classes"
+    },
+    {
+      "sql": "CREATE TABLE school_memberships (id serial NOT NULL,user_id integer NOT NULL,school_id integer,role text NOT NULL,status text DEFAULT 'ACTIVE'::text NOT NULL,created_at timestamp with time zone DEFAULT now() NOT NULL,updated_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "school_memberships"
+    },
+    {
+      "sql": "CREATE TABLE school_partner_attributions (id serial NOT NULL,school_id integer NOT NULL,partner_profile_id integer NOT NULL,referral_link_id integer,source text DEFAULT 'REFERRAL_LINK'::text NOT NULL,status text DEFAULT 'ACTIVE'::text NOT NULL,is_current boolean DEFAULT true NOT NULL,starts_at timestamp with time zone DEFAULT now() NOT NULL,ends_at timestamp with time zone,created_by integer,created_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "school_partner_attributions"
+    },
+    {
+      "sql": "CREATE TABLE schools (id serial NOT NULL,code text NOT NULL,name text NOT NULL,city text NOT NULL,state text NOT NULL,status text DEFAULT 'active'::text NOT NULL,created_at timestamp with time zone DEFAULT now() NOT NULL,registration_number text,address text,lga text,phone text,email text,website text,logo text,school_type text,updated_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "schools"
+    },
+    {
+      "sql": "CREATE TABLE student_class_assignments (id serial NOT NULL,school_id integer NOT NULL,student_id integer NOT NULL,academic_session_id integer NOT NULL,academic_term_id integer,school_class_id integer NOT NULL,section text NOT NULL,status text DEFAULT 'ACTIVE'::text NOT NULL,is_current boolean DEFAULT false NOT NULL,start_date date,end_date date,created_at timestamp with time zone DEFAULT now() NOT NULL,updated_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "student_class_assignments"
+    },
+    {
+      "sql": "CREATE TABLE students (id serial NOT NULL,school_id integer NOT NULL,admission_no text NOT NULL,first_name text NOT NULL,last_name text NOT NULL,gender text NOT NULL,class_name text NOT NULL,section text NOT NULL,parent_name text,parent_phone text,status text DEFAULT 'active'::text NOT NULL,joined_at timestamp with time zone DEFAULT now() NOT NULL,user_id integer,middle_name text,date_of_birth date,photo text,admission_date date,admission_status text DEFAULT 'ADMITTED'::text NOT NULL,previous_school text,address text,medical_info text,emergency_contact_name text,emergency_contact_phone text,created_at timestamp with time zone DEFAULT now() NOT NULL,updated_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "students"
+    },
+    {
+      "sql": "CREATE TABLE subjects (id serial NOT NULL,school_id integer NOT NULL,name text NOT NULL,code text NOT NULL,description text,status text DEFAULT 'ACTIVE'::text NOT NULL,created_at timestamp with time zone DEFAULT now() NOT NULL,updated_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "subjects"
+    },
+    {
+      "sql": "CREATE TABLE subscriptions (id serial NOT NULL,school_id integer NOT NULL,student_id integer NOT NULL,term text NOT NULL,amount numeric(12,2) DEFAULT '5000'::numeric NOT NULL,school_share numeric(12,2) DEFAULT '2000'::numeric NOT NULL,edupulse_share numeric(12,2) DEFAULT '3000'::numeric NOT NULL,status text DEFAULT 'pending'::text NOT NULL,verification_status text DEFAULT 'pending'::text NOT NULL,provider text DEFAULT 'test'::text NOT NULL,provider_reference text,expires_at timestamp with time zone NOT NULL,created_at timestamp with time zone DEFAULT now() NOT NULL,partner_profile_id integer,partner_share numeric(12,2),allocation_snapshot jsonb);",
+      "name": "subscriptions"
+    },
+    {
+      "sql": "CREATE TABLE teacher_class_assignments (id serial NOT NULL,school_id integer NOT NULL,employee_id integer NOT NULL,academic_session_id integer NOT NULL,school_class_id integer NOT NULL,subject_id integer,section text NOT NULL,assignment_type text DEFAULT 'CLASS_TEACHER'::text NOT NULL,status text DEFAULT 'ACTIVE'::text NOT NULL,start_date date,end_date date,created_at timestamp with time zone DEFAULT now() NOT NULL,updated_at timestamp with time zone DEFAULT now() NOT NULL);",
+      "name": "teacher_class_assignments"
+    }
+  ],
+  "indexes": [
+    {
+      "sql": "CREATE UNIQUE INDEX academic_sessions_school_name_unique ON public.academic_sessions USING btree (school_id, name);",
+      "name": "academic_sessions_school_name_unique",
+      "table": "academic_sessions"
+    },
+    {
+      "sql": "CREATE INDEX academic_sessions_school_status_idx ON public.academic_sessions USING btree (school_id, status);",
+      "name": "academic_sessions_school_status_idx",
+      "table": "academic_sessions"
+    },
+    {
+      "sql": "CREATE INDEX academic_terms_school_status_idx ON public.academic_terms USING btree (school_id, status);",
+      "name": "academic_terms_school_status_idx",
+      "table": "academic_terms"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX academic_terms_session_name_unique ON public.academic_terms USING btree (academic_session_id, name);",
+      "name": "academic_terms_session_name_unique",
+      "table": "academic_terms"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX app_users_clerk_user_id_unique ON public.app_users USING btree (clerk_user_id);",
+      "name": "app_users_clerk_user_id_unique",
+      "table": "app_users"
+    },
+    {
+      "sql": "CREATE INDEX app_users_email_idx ON public.app_users USING btree (email);",
+      "name": "app_users_email_idx",
+      "table": "app_users"
+    },
+    {
+      "sql": "CREATE INDEX audit_logs_school_idx ON public.audit_logs USING btree (school_id, \"timestamp\");",
+      "name": "audit_logs_school_idx",
+      "table": "audit_logs"
+    },
+    {
+      "sql": "CREATE INDEX class_subjects_school_status_idx ON public.class_subjects USING btree (school_id, status);",
+      "name": "class_subjects_school_status_idx",
+      "table": "class_subjects"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX class_subjects_unique ON public.class_subjects USING btree (school_class_id, subject_id, academic_session_id, COALESCE(academic_term_id, 0), COALESCE(section, ''::text)) WHERE (status = 'ACTIVE'::text);",
+      "name": "class_subjects_unique",
+      "table": "class_subjects"
+    },
+    {
+      "sql": "CREATE INDEX commission_ledger_partner_status_idx ON public.commission_ledger USING btree (partner_profile_id, status);",
+      "name": "commission_ledger_partner_status_idx",
+      "table": "commission_ledger"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX commission_ledger_subscription_period_unique ON public.commission_ledger USING btree (subscription_id, term);",
+      "name": "commission_ledger_subscription_period_unique",
+      "table": "commission_ledger"
+    },
+    {
+      "sql": "CREATE INDEX commission_rules_status_term_idx ON public.commission_rules USING btree (status, term);",
+      "name": "commission_rules_status_term_idx",
+      "table": "commission_rules"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX employees_school_employee_no_unique ON public.employees USING btree (school_id, employee_no);",
+      "name": "employees_school_employee_no_unique",
+      "table": "employees"
+    },
+    {
+      "sql": "CREATE INDEX employees_school_type_status_idx ON public.employees USING btree (school_id, employee_type, employment_status);",
+      "name": "employees_school_type_status_idx",
+      "table": "employees"
+    },
+    {
+      "sql": "CREATE INDEX nfc_cards_school_idx ON public.nfc_cards USING btree (school_id);",
+      "name": "nfc_cards_school_idx",
+      "table": "nfc_cards"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX nfc_cards_uid_unique ON public.nfc_cards USING btree (uid);",
+      "name": "nfc_cards_uid_unique",
+      "table": "nfc_cards"
+    },
+    {
+      "sql": "CREATE INDEX parent_student_relationship_parent_idx ON public.parent_student_relationships USING btree (parent_id, status);",
+      "name": "parent_student_relationship_parent_idx",
+      "table": "parent_student_relationships"
+    },
+    {
+      "sql": "CREATE INDEX parent_student_relationship_student_idx ON public.parent_student_relationships USING btree (student_id, status);",
+      "name": "parent_student_relationship_student_idx",
+      "table": "parent_student_relationships"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX parent_student_relationship_unique ON public.parent_student_relationships USING btree (parent_id, student_id);",
+      "name": "parent_student_relationship_unique",
+      "table": "parent_student_relationships"
+    },
+    {
+      "sql": "CREATE INDEX parents_school_idx ON public.parents USING btree (school_id);",
+      "name": "parents_school_idx",
+      "table": "parents"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX parents_user_unique ON public.parents USING btree (user_id);",
+      "name": "parents_user_unique",
+      "table": "parents"
+    },
+    {
+      "sql": "CREATE INDEX partner_attribution_conflicts_attempted_idx ON public.partner_attribution_conflicts USING btree (attempted_partner_profile_id);",
+      "name": "partner_attribution_conflicts_attempted_idx",
+      "table": "partner_attribution_conflicts"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX partner_attribution_conflicts_open_unique ON public.partner_attribution_conflicts USING btree (school_id, attempted_partner_profile_id) WHERE (status = 'OPEN'::text);",
+      "name": "partner_attribution_conflicts_open_unique",
+      "table": "partner_attribution_conflicts"
+    },
+    {
+      "sql": "CREATE INDEX partner_attribution_conflicts_school_status_idx ON public.partner_attribution_conflicts USING btree (school_id, status);",
+      "name": "partner_attribution_conflicts_school_status_idx",
+      "table": "partner_attribution_conflicts"
+    },
+    {
+      "sql": "CREATE INDEX partner_invitations_partner_status_idx ON public.partner_invitations USING btree (partner_profile_id, status);",
+      "name": "partner_invitations_partner_status_idx",
+      "table": "partner_invitations"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX partner_invitations_token_hash_unique ON public.partner_invitations USING btree (token_hash);",
+      "name": "partner_invitations_token_hash_unique",
+      "table": "partner_invitations"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX partner_payout_information_partner_unique ON public.partner_payout_information USING btree (partner_profile_id);",
+      "name": "partner_payout_information_partner_unique",
+      "table": "partner_payout_information"
+    },
+    {
+      "sql": "CREATE INDEX partner_payout_information_status_idx ON public.partner_payout_information USING btree (status);",
+      "name": "partner_payout_information_status_idx",
+      "table": "partner_payout_information"
+    },
+    {
+      "sql": "CREATE INDEX partner_payouts_partner_status_idx ON public.partner_payouts USING btree (partner_profile_id, status);",
+      "name": "partner_payouts_partner_status_idx",
+      "table": "partner_payouts"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX partner_payouts_provider_reference_unique ON public.partner_payouts USING btree (provider_reference);",
+      "name": "partner_payouts_provider_reference_unique",
+      "table": "partner_payouts"
+    },
+    {
+      "sql": "CREATE INDEX partner_profile_users_partner_idx ON public.partner_profile_users USING btree (partner_profile_id, status);",
+      "name": "partner_profile_users_partner_idx",
+      "table": "partner_profile_users"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX partner_profile_users_unique ON public.partner_profile_users USING btree (partner_profile_id, user_id);",
+      "name": "partner_profile_users_unique",
+      "table": "partner_profile_users"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX partner_profile_users_user_role_unique ON public.partner_profile_users USING btree (user_id, role);",
+      "name": "partner_profile_users_user_role_unique",
+      "table": "partner_profile_users"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX partner_profiles_code_unique ON public.partner_profiles USING btree (partner_code);",
+      "name": "partner_profiles_code_unique",
+      "table": "partner_profiles"
+    },
+    {
+      "sql": "CREATE INDEX partner_profiles_email_idx ON public.partner_profiles USING btree (email);",
+      "name": "partner_profiles_email_idx",
+      "table": "partner_profiles"
+    },
+    {
+      "sql": "CREATE INDEX partner_profiles_status_idx ON public.partner_profiles USING btree (status);",
+      "name": "partner_profiles_status_idx",
+      "table": "partner_profiles"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX partner_profiles_user_unique ON public.partner_profiles USING btree (user_id);",
+      "name": "partner_profiles_user_unique",
+      "table": "partner_profiles"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX partner_referral_links_hash_unique ON public.partner_referral_links USING btree (token_hash);",
+      "name": "partner_referral_links_hash_unique",
+      "table": "partner_referral_links"
+    },
+    {
+      "sql": "CREATE INDEX partner_referral_links_partner_status_idx ON public.partner_referral_links USING btree (partner_profile_id, status);",
+      "name": "partner_referral_links_partner_status_idx",
+      "table": "partner_referral_links"
+    },
+    {
+      "sql": "CREATE INDEX platform_devices_school_idx ON public.platform_devices USING btree (school_id, status);",
+      "name": "platform_devices_school_idx",
+      "table": "platform_devices"
+    },
+    {
+      "sql": "CREATE INDEX platform_notifications_recipient_idx ON public.platform_notifications USING btree (recipient_user_id, is_read, created_at);",
+      "name": "platform_notifications_recipient_idx",
+      "table": "platform_notifications"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX school_classes_id_school_unique ON public.school_classes USING btree (id, school_id);",
+      "name": "school_classes_id_school_unique",
+      "table": "school_classes"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX school_classes_unique ON public.school_classes USING btree (school_id, name, section);",
+      "name": "school_classes_unique",
+      "table": "school_classes"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX school_memberships_platform_role_unique ON public.school_memberships USING btree (user_id, role) WHERE (school_id IS NULL);",
+      "name": "school_memberships_platform_role_unique",
+      "table": "school_memberships"
+    },
+    {
+      "sql": "CREATE INDEX school_memberships_school_idx ON public.school_memberships USING btree (school_id, status);",
+      "name": "school_memberships_school_idx",
+      "table": "school_memberships"
+    },
+    {
+      "sql": "CREATE INDEX school_memberships_user_idx ON public.school_memberships USING btree (user_id, status);",
+      "name": "school_memberships_user_idx",
+      "table": "school_memberships"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX school_memberships_user_school_role_unique ON public.school_memberships USING btree (user_id, school_id, role);",
+      "name": "school_memberships_user_school_role_unique",
+      "table": "school_memberships"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX school_partner_attributions_current_unique ON public.school_partner_attributions USING btree (school_id) WHERE (is_current = true);",
+      "name": "school_partner_attributions_current_unique",
+      "table": "school_partner_attributions"
+    },
+    {
+      "sql": "CREATE INDEX school_partner_attributions_partner_idx ON public.school_partner_attributions USING btree (partner_profile_id, status);",
+      "name": "school_partner_attributions_partner_idx",
+      "table": "school_partner_attributions"
+    },
+    {
+      "sql": "CREATE INDEX school_partner_attributions_school_history_idx ON public.school_partner_attributions USING btree (school_id, starts_at);",
+      "name": "school_partner_attributions_school_history_idx",
+      "table": "school_partner_attributions"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX schools_code_unique ON public.schools USING btree (code);",
+      "name": "schools_code_unique",
+      "table": "schools"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX student_class_assignments_active_unique ON public.student_class_assignments USING btree (student_id, academic_session_id, COALESCE(academic_term_id, 0), school_class_id, section) WHERE (status = 'ACTIVE'::text);",
+      "name": "student_class_assignments_active_unique",
+      "table": "student_class_assignments"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX student_class_assignments_current_unique ON public.student_class_assignments USING btree (student_id) WHERE (is_current = true);",
+      "name": "student_class_assignments_current_unique",
+      "table": "student_class_assignments"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX student_class_assignments_id_school_unique ON public.student_class_assignments USING btree (id, school_id);",
+      "name": "student_class_assignments_id_school_unique",
+      "table": "student_class_assignments"
+    },
+    {
+      "sql": "CREATE INDEX student_class_assignments_school_current_idx ON public.student_class_assignments USING btree (school_id, is_current);",
+      "name": "student_class_assignments_school_current_idx",
+      "table": "student_class_assignments"
+    },
+    {
+      "sql": "CREATE INDEX student_class_assignments_student_history_idx ON public.student_class_assignments USING btree (student_id, start_date);",
+      "name": "student_class_assignments_student_history_idx",
+      "table": "student_class_assignments"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX students_id_school_unique ON public.students USING btree (id, school_id);",
+      "name": "students_id_school_unique",
+      "table": "students"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX students_school_admission_unique ON public.students USING btree (school_id, admission_no);",
+      "name": "students_school_admission_unique",
+      "table": "students"
+    },
+    {
+      "sql": "CREATE INDEX students_school_idx ON public.students USING btree (school_id);",
+      "name": "students_school_idx",
+      "table": "students"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX students_user_unique ON public.students USING btree (user_id);",
+      "name": "students_user_unique",
+      "table": "students"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX subjects_school_code_unique ON public.subjects USING btree (school_id, code);",
+      "name": "subjects_school_code_unique",
+      "table": "subjects"
+    },
+    {
+      "sql": "CREATE INDEX subjects_school_status_idx ON public.subjects USING btree (school_id, status);",
+      "name": "subjects_school_status_idx",
+      "table": "subjects"
+    },
+    {
+      "sql": "CREATE INDEX subscriptions_partner_profile_idx ON public.subscriptions USING btree (partner_profile_id);",
+      "name": "subscriptions_partner_profile_idx",
+      "table": "subscriptions"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX subscriptions_provider_reference_unique ON public.subscriptions USING btree (provider_reference);",
+      "name": "subscriptions_provider_reference_unique",
+      "table": "subscriptions"
+    },
+    {
+      "sql": "CREATE INDEX subscriptions_school_idx ON public.subscriptions USING btree (school_id);",
+      "name": "subscriptions_school_idx",
+      "table": "subscriptions"
+    },
+    {
+      "sql": "CREATE INDEX teacher_class_assignments_school_status_idx ON public.teacher_class_assignments USING btree (school_id, status);",
+      "name": "teacher_class_assignments_school_status_idx",
+      "table": "teacher_class_assignments"
+    },
+    {
+      "sql": "CREATE UNIQUE INDEX teacher_class_assignments_unique ON public.teacher_class_assignments USING btree (employee_id, academic_session_id, school_class_id, section, assignment_type, COALESCE(subject_id, 0)) WHERE (status = 'ACTIVE'::text);",
+      "name": "teacher_class_assignments_unique",
+      "table": "teacher_class_assignments"
+    }
+  ],
+  "constraints": [
+    {
+      "sql": "ALTER TABLE academic_sessions ADD CONSTRAINT academic_sessions_id_school_tenant_key UNIQUE (id, school_id);",
+      "name": "academic_sessions_id_school_tenant_key",
+      "type": "u",
+      "table": "academic_sessions"
+    },
+    {
+      "sql": "ALTER TABLE academic_sessions ADD CONSTRAINT academic_sessions_pkey PRIMARY KEY (id);",
+      "name": "academic_sessions_pkey",
+      "type": "p",
+      "table": "academic_sessions"
+    },
+    {
+      "sql": "ALTER TABLE academic_sessions ADD CONSTRAINT academic_sessions_school_id_schools_id_fk FOREIGN KEY (school_id) REFERENCES schools(id);",
+      "name": "academic_sessions_school_id_schools_id_fk",
+      "type": "f",
+      "table": "academic_sessions"
+    },
+    {
+      "sql": "ALTER TABLE academic_terms ADD CONSTRAINT academic_terms_id_school_tenant_key UNIQUE (id, school_id);",
+      "name": "academic_terms_id_school_tenant_key",
+      "type": "u",
+      "table": "academic_terms"
+    },
+    {
+      "sql": "ALTER TABLE academic_terms ADD CONSTRAINT academic_terms_pkey PRIMARY KEY (id);",
+      "name": "academic_terms_pkey",
+      "type": "p",
+      "table": "academic_terms"
+    },
+    {
+      "sql": "ALTER TABLE academic_terms ADD CONSTRAINT academic_terms_school_id_schools_id_fk FOREIGN KEY (school_id) REFERENCES schools(id);",
+      "name": "academic_terms_school_id_schools_id_fk",
+      "type": "f",
+      "table": "academic_terms"
+    },
+    {
+      "sql": "ALTER TABLE academic_terms ADD CONSTRAINT academic_terms_session_school_fk FOREIGN KEY (academic_session_id, school_id) REFERENCES academic_sessions(id, school_id);",
+      "name": "academic_terms_session_school_fk",
+      "type": "f",
+      "table": "academic_terms"
+    },
+    {
+      "sql": "ALTER TABLE app_users ADD CONSTRAINT app_users_pkey PRIMARY KEY (id);",
+      "name": "app_users_pkey",
+      "type": "p",
+      "table": "app_users"
+    },
+    {
+      "sql": "ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_actor_user_id_app_users_id_fk FOREIGN KEY (actor_user_id) REFERENCES app_users(id);",
+      "name": "audit_logs_actor_user_id_app_users_id_fk",
+      "type": "f",
+      "table": "audit_logs"
+    },
+    {
+      "sql": "ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_pkey PRIMARY KEY (id);",
+      "name": "audit_logs_pkey",
+      "type": "p",
+      "table": "audit_logs"
+    },
+    {
+      "sql": "ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_school_id_schools_id_fk FOREIGN KEY (school_id) REFERENCES schools(id);",
+      "name": "audit_logs_school_id_schools_id_fk",
+      "type": "f",
+      "table": "audit_logs"
+    },
+    {
+      "sql": "ALTER TABLE class_subjects ADD CONSTRAINT class_subjects_class_school_fk FOREIGN KEY (school_class_id, school_id) REFERENCES school_classes(id, school_id);",
+      "name": "class_subjects_class_school_fk",
+      "type": "f",
+      "table": "class_subjects"
+    },
+    {
+      "sql": "ALTER TABLE class_subjects ADD CONSTRAINT class_subjects_employee_school_fk FOREIGN KEY (employee_id, school_id) REFERENCES employees(id, school_id);",
+      "name": "class_subjects_employee_school_fk",
+      "type": "f",
+      "table": "class_subjects"
+    },
+    {
+      "sql": "ALTER TABLE class_subjects ADD CONSTRAINT class_subjects_pkey PRIMARY KEY (id);",
+      "name": "class_subjects_pkey",
+      "type": "p",
+      "table": "class_subjects"
+    },
+    {
+      "sql": "ALTER TABLE class_subjects ADD CONSTRAINT class_subjects_school_id_schools_id_fk FOREIGN KEY (school_id) REFERENCES schools(id);",
+      "name": "class_subjects_school_id_schools_id_fk",
+      "type": "f",
+      "table": "class_subjects"
+    },
+    {
+      "sql": "ALTER TABLE class_subjects ADD CONSTRAINT class_subjects_session_school_fk FOREIGN KEY (academic_session_id, school_id) REFERENCES academic_sessions(id, school_id);",
+      "name": "class_subjects_session_school_fk",
+      "type": "f",
+      "table": "class_subjects"
+    },
+    {
+      "sql": "ALTER TABLE class_subjects ADD CONSTRAINT class_subjects_subject_school_fk FOREIGN KEY (subject_id, school_id) REFERENCES subjects(id, school_id);",
+      "name": "class_subjects_subject_school_fk",
+      "type": "f",
+      "table": "class_subjects"
+    },
+    {
+      "sql": "ALTER TABLE class_subjects ADD CONSTRAINT class_subjects_term_school_fk FOREIGN KEY (academic_term_id, school_id) REFERENCES academic_terms(id, school_id);",
+      "name": "class_subjects_term_school_fk",
+      "type": "f",
+      "table": "class_subjects"
+    },
+    {
+      "sql": "ALTER TABLE commission_ledger ADD CONSTRAINT commission_ledger_academic_session_id_academic_sessions_id_fk FOREIGN KEY (academic_session_id) REFERENCES academic_sessions(id);",
+      "name": "commission_ledger_academic_session_id_academic_sessions_id_fk",
+      "type": "f",
+      "table": "commission_ledger"
+    },
+    {
+      "sql": "ALTER TABLE commission_ledger ADD CONSTRAINT commission_ledger_amount_nonnegative CHECK (((amount >= (0)::numeric) AND (count > 0)));",
+      "name": "commission_ledger_amount_nonnegative",
+      "type": "c",
+      "table": "commission_ledger"
+    },
+    {
+      "sql": "ALTER TABLE commission_ledger ADD CONSTRAINT commission_ledger_commission_rule_id_commission_rules_id_fk FOREIGN KEY (commission_rule_id) REFERENCES commission_rules(id);",
+      "name": "commission_ledger_commission_rule_id_commission_rules_id_fk",
+      "type": "f",
+      "table": "commission_ledger"
+    },
+    {
+      "sql": "ALTER TABLE commission_ledger ADD CONSTRAINT commission_ledger_created_by_app_users_id_fk FOREIGN KEY (created_by) REFERENCES app_users(id);",
+      "name": "commission_ledger_created_by_app_users_id_fk",
+      "type": "f",
+      "table": "commission_ledger"
+    },
+    {
+      "sql": "ALTER TABLE commission_ledger ADD CONSTRAINT commission_ledger_partner_profile_id_partner_profiles_id_fk FOREIGN KEY (partner_profile_id) REFERENCES partner_profiles(id);",
+      "name": "commission_ledger_partner_profile_id_partner_profiles_id_fk",
+      "type": "f",
+      "table": "commission_ledger"
+    },
+    {
+      "sql": "ALTER TABLE commission_ledger ADD CONSTRAINT commission_ledger_payout_id_partner_payouts_id_fk FOREIGN KEY (payout_id) REFERENCES partner_payouts(id);",
+      "name": "commission_ledger_payout_id_partner_payouts_id_fk",
+      "type": "f",
+      "table": "commission_ledger"
+    },
+    {
+      "sql": "ALTER TABLE commission_ledger ADD CONSTRAINT commission_ledger_pkey PRIMARY KEY (id);",
+      "name": "commission_ledger_pkey",
+      "type": "p",
+      "table": "commission_ledger"
+    },
+    {
+      "sql": "ALTER TABLE commission_ledger ADD CONSTRAINT commission_ledger_school_id_schools_id_fk FOREIGN KEY (school_id) REFERENCES schools(id);",
+      "name": "commission_ledger_school_id_schools_id_fk",
+      "type": "f",
+      "table": "commission_ledger"
+    },
+    {
+      "sql": "ALTER TABLE commission_ledger ADD CONSTRAINT commission_ledger_status_check CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'PAYABLE'::text, 'PAID'::text, 'HELD'::text, 'REVERSED'::text, 'CANCELLED'::text])));",
+      "name": "commission_ledger_status_check",
+      "type": "c",
+      "table": "commission_ledger"
+    },
+    {
+      "sql": "ALTER TABLE commission_ledger ADD CONSTRAINT commission_ledger_student_id_students_id_fk FOREIGN KEY (student_id) REFERENCES students(id);",
+      "name": "commission_ledger_student_id_students_id_fk",
+      "type": "f",
+      "table": "commission_ledger"
+    },
+    {
+      "sql": "ALTER TABLE commission_ledger ADD CONSTRAINT commission_ledger_subscription_id_subscriptions_id_fk FOREIGN KEY (subscription_id) REFERENCES subscriptions(id);",
+      "name": "commission_ledger_subscription_id_subscriptions_id_fk",
+      "type": "f",
+      "table": "commission_ledger"
+    },
+    {
+      "sql": "ALTER TABLE commission_rules ADD CONSTRAINT commission_rules_allocation_integrity CHECK (((partner_amount >= (0)::numeric) AND (school_amount >= (0)::numeric) AND (edupulse_amount >= (0)::numeric) AND (((partner_amount + school_amount) + edupulse_amount) = allocation_total)));",
+      "name": "commission_rules_allocation_integrity",
+      "type": "c",
+      "table": "commission_rules"
+    },
+    {
+      "sql": "ALTER TABLE commission_rules ADD CONSTRAINT commission_rules_pkey PRIMARY KEY (id);",
+      "name": "commission_rules_pkey",
+      "type": "p",
+      "table": "commission_rules"
+    },
+    {
+      "sql": "ALTER TABLE employees ADD CONSTRAINT employees_id_school_tenant_key UNIQUE (id, school_id);",
+      "name": "employees_id_school_tenant_key",
+      "type": "u",
+      "table": "employees"
+    },
+    {
+      "sql": "ALTER TABLE employees ADD CONSTRAINT employees_pkey PRIMARY KEY (id);",
+      "name": "employees_pkey",
+      "type": "p",
+      "table": "employees"
+    },
+    {
+      "sql": "ALTER TABLE employees ADD CONSTRAINT employees_school_id_schools_id_fk FOREIGN KEY (school_id) REFERENCES schools(id);",
+      "name": "employees_school_id_schools_id_fk",
+      "type": "f",
+      "table": "employees"
+    },
+    {
+      "sql": "ALTER TABLE employees ADD CONSTRAINT employees_user_id_app_users_id_fk FOREIGN KEY (user_id) REFERENCES app_users(id);",
+      "name": "employees_user_id_app_users_id_fk",
+      "type": "f",
+      "table": "employees"
+    },
+    {
+      "sql": "ALTER TABLE nfc_cards ADD CONSTRAINT nfc_cards_id_school_tenant_key UNIQUE (id, school_id);",
+      "name": "nfc_cards_id_school_tenant_key",
+      "type": "u",
+      "table": "nfc_cards"
+    },
+    {
+      "sql": "ALTER TABLE nfc_cards ADD CONSTRAINT nfc_cards_pkey PRIMARY KEY (id);",
+      "name": "nfc_cards_pkey",
+      "type": "p",
+      "table": "nfc_cards"
+    },
+    {
+      "sql": "ALTER TABLE nfc_cards ADD CONSTRAINT nfc_cards_school_id_schools_id_fk FOREIGN KEY (school_id) REFERENCES schools(id);",
+      "name": "nfc_cards_school_id_schools_id_fk",
+      "type": "f",
+      "table": "nfc_cards"
+    },
+    {
+      "sql": "ALTER TABLE nfc_cards ADD CONSTRAINT nfc_cards_student_id_students_id_fk FOREIGN KEY (student_id) REFERENCES students(id);",
+      "name": "nfc_cards_student_id_students_id_fk",
+      "type": "f",
+      "table": "nfc_cards"
+    },
+    {
+      "sql": "ALTER TABLE parent_student_relationships ADD CONSTRAINT parent_student_relationships_parent_id_parents_id_fk FOREIGN KEY (parent_id) REFERENCES parents(id);",
+      "name": "parent_student_relationships_parent_id_parents_id_fk",
+      "type": "f",
+      "table": "parent_student_relationships"
+    },
+    {
+      "sql": "ALTER TABLE parent_student_relationships ADD CONSTRAINT parent_student_relationships_pkey PRIMARY KEY (id);",
+      "name": "parent_student_relationships_pkey",
+      "type": "p",
+      "table": "parent_student_relationships"
+    },
+    {
+      "sql": "ALTER TABLE parent_student_relationships ADD CONSTRAINT parent_student_relationships_student_id_students_id_fk FOREIGN KEY (student_id) REFERENCES students(id);",
+      "name": "parent_student_relationships_student_id_students_id_fk",
+      "type": "f",
+      "table": "parent_student_relationships"
+    },
+    {
+      "sql": "ALTER TABLE parents ADD CONSTRAINT parents_pkey PRIMARY KEY (id);",
+      "name": "parents_pkey",
+      "type": "p",
+      "table": "parents"
+    },
+    {
+      "sql": "ALTER TABLE parents ADD CONSTRAINT parents_school_id_schools_id_fk FOREIGN KEY (school_id) REFERENCES schools(id);",
+      "name": "parents_school_id_schools_id_fk",
+      "type": "f",
+      "table": "parents"
+    },
+    {
+      "sql": "ALTER TABLE parents ADD CONSTRAINT parents_user_id_app_users_id_fk FOREIGN KEY (user_id) REFERENCES app_users(id);",
+      "name": "parents_user_id_app_users_id_fk",
+      "type": "f",
+      "table": "parents"
+    },
+    {
+      "sql": "ALTER TABLE partner_attribution_conflicts ADD CONSTRAINT partner_attribution_conflicts_attempted_partner_profile_id_part FOREIGN KEY (attempted_partner_profile_id) REFERENCES partner_profiles(id);",
+      "name": "partner_attribution_conflicts_attempted_partner_profile_id_part",
+      "type": "f",
+      "table": "partner_attribution_conflicts"
+    },
+    {
+      "sql": "ALTER TABLE partner_attribution_conflicts ADD CONSTRAINT partner_attribution_conflicts_existing_partner_profile_id_partn FOREIGN KEY (existing_partner_profile_id) REFERENCES partner_profiles(id);",
+      "name": "partner_attribution_conflicts_existing_partner_profile_id_partn",
+      "type": "f",
+      "table": "partner_attribution_conflicts"
+    },
+    {
+      "sql": "ALTER TABLE partner_attribution_conflicts ADD CONSTRAINT partner_attribution_conflicts_pkey PRIMARY KEY (id);",
+      "name": "partner_attribution_conflicts_pkey",
+      "type": "p",
+      "table": "partner_attribution_conflicts"
+    },
+    {
+      "sql": "ALTER TABLE partner_attribution_conflicts ADD CONSTRAINT partner_attribution_conflicts_referral_link_id_partner_referral FOREIGN KEY (referral_link_id) REFERENCES partner_referral_links(id);",
+      "name": "partner_attribution_conflicts_referral_link_id_partner_referral",
+      "type": "f",
+      "table": "partner_attribution_conflicts"
+    },
+    {
+      "sql": "ALTER TABLE partner_attribution_conflicts ADD CONSTRAINT partner_attribution_conflicts_resolved_by_app_users_id_fk FOREIGN KEY (resolved_by) REFERENCES app_users(id);",
+      "name": "partner_attribution_conflicts_resolved_by_app_users_id_fk",
+      "type": "f",
+      "table": "partner_attribution_conflicts"
+    },
+    {
+      "sql": "ALTER TABLE partner_attribution_conflicts ADD CONSTRAINT partner_attribution_conflicts_school_id_schools_id_fk FOREIGN KEY (school_id) REFERENCES schools(id);",
+      "name": "partner_attribution_conflicts_school_id_schools_id_fk",
+      "type": "f",
+      "table": "partner_attribution_conflicts"
+    },
+    {
+      "sql": "ALTER TABLE partner_invitations ADD CONSTRAINT partner_invitations_created_by_app_users_id_fk FOREIGN KEY (created_by) REFERENCES app_users(id);",
+      "name": "partner_invitations_created_by_app_users_id_fk",
+      "type": "f",
+      "table": "partner_invitations"
+    },
+    {
+      "sql": "ALTER TABLE partner_invitations ADD CONSTRAINT partner_invitations_partner_profile_id_partner_profiles_id_fk FOREIGN KEY (partner_profile_id) REFERENCES partner_profiles(id);",
+      "name": "partner_invitations_partner_profile_id_partner_profiles_id_fk",
+      "type": "f",
+      "table": "partner_invitations"
+    },
+    {
+      "sql": "ALTER TABLE partner_invitations ADD CONSTRAINT partner_invitations_pkey PRIMARY KEY (id);",
+      "name": "partner_invitations_pkey",
+      "type": "p",
+      "table": "partner_invitations"
+    },
+    {
+      "sql": "ALTER TABLE partner_payout_information ADD CONSTRAINT partner_payout_information_partner_profile_id_partner_profiles_ FOREIGN KEY (partner_profile_id) REFERENCES partner_profiles(id);",
+      "name": "partner_payout_information_partner_profile_id_partner_profiles_",
+      "type": "f",
+      "table": "partner_payout_information"
+    },
+    {
+      "sql": "ALTER TABLE partner_payout_information ADD CONSTRAINT partner_payout_information_pkey PRIMARY KEY (id);",
+      "name": "partner_payout_information_pkey",
+      "type": "p",
+      "table": "partner_payout_information"
+    },
+    {
+      "sql": "ALTER TABLE partner_payouts ADD CONSTRAINT partner_payouts_academic_session_id_academic_sessions_id_fk FOREIGN KEY (academic_session_id) REFERENCES academic_sessions(id);",
+      "name": "partner_payouts_academic_session_id_academic_sessions_id_fk",
+      "type": "f",
+      "table": "partner_payouts"
+    },
+    {
+      "sql": "ALTER TABLE partner_payouts ADD CONSTRAINT partner_payouts_amount_nonnegative CHECK ((amount >= (0)::numeric));",
+      "name": "partner_payouts_amount_nonnegative",
+      "type": "c",
+      "table": "partner_payouts"
+    },
+    {
+      "sql": "ALTER TABLE partner_payouts ADD CONSTRAINT partner_payouts_partner_profile_id_partner_profiles_id_fk FOREIGN KEY (partner_profile_id) REFERENCES partner_profiles(id);",
+      "name": "partner_payouts_partner_profile_id_partner_profiles_id_fk",
+      "type": "f",
+      "table": "partner_payouts"
+    },
+    {
+      "sql": "ALTER TABLE partner_payouts ADD CONSTRAINT partner_payouts_pkey PRIMARY KEY (id);",
+      "name": "partner_payouts_pkey",
+      "type": "p",
+      "table": "partner_payouts"
+    },
+    {
+      "sql": "ALTER TABLE partner_payouts ADD CONSTRAINT partner_payouts_status_check CHECK ((status = ANY (ARRAY['PENDING'::text, 'PROCESSING'::text, 'PAID'::text, 'FAILED'::text, 'REVERSED'::text])));",
+      "name": "partner_payouts_status_check",
+      "type": "c",
+      "table": "partner_payouts"
+    },
+    {
+      "sql": "ALTER TABLE partner_profile_users ADD CONSTRAINT partner_profile_users_partner_profile_id_partner_profiles_id_fk FOREIGN KEY (partner_profile_id) REFERENCES partner_profiles(id);",
+      "name": "partner_profile_users_partner_profile_id_partner_profiles_id_fk",
+      "type": "f",
+      "table": "partner_profile_users"
+    },
+    {
+      "sql": "ALTER TABLE partner_profile_users ADD CONSTRAINT partner_profile_users_pkey PRIMARY KEY (id);",
+      "name": "partner_profile_users_pkey",
+      "type": "p",
+      "table": "partner_profile_users"
+    },
+    {
+      "sql": "ALTER TABLE partner_profile_users ADD CONSTRAINT partner_profile_users_user_id_app_users_id_fk FOREIGN KEY (user_id) REFERENCES app_users(id);",
+      "name": "partner_profile_users_user_id_app_users_id_fk",
+      "type": "f",
+      "table": "partner_profile_users"
+    },
+    {
+      "sql": "ALTER TABLE partner_profiles ADD CONSTRAINT partner_profiles_created_by_app_users_id_fk FOREIGN KEY (created_by) REFERENCES app_users(id);",
+      "name": "partner_profiles_created_by_app_users_id_fk",
+      "type": "f",
+      "table": "partner_profiles"
+    },
+    {
+      "sql": "ALTER TABLE partner_profiles ADD CONSTRAINT partner_profiles_pkey PRIMARY KEY (id);",
+      "name": "partner_profiles_pkey",
+      "type": "p",
+      "table": "partner_profiles"
+    },
+    {
+      "sql": "ALTER TABLE partner_profiles ADD CONSTRAINT partner_profiles_user_id_app_users_id_fk FOREIGN KEY (user_id) REFERENCES app_users(id);",
+      "name": "partner_profiles_user_id_app_users_id_fk",
+      "type": "f",
+      "table": "partner_profiles"
+    },
+    {
+      "sql": "ALTER TABLE partner_referral_links ADD CONSTRAINT partner_referral_links_created_by_app_users_id_fk FOREIGN KEY (created_by) REFERENCES app_users(id);",
+      "name": "partner_referral_links_created_by_app_users_id_fk",
+      "type": "f",
+      "table": "partner_referral_links"
+    },
+    {
+      "sql": "ALTER TABLE partner_referral_links ADD CONSTRAINT partner_referral_links_partner_profile_id_partner_profiles_id_f FOREIGN KEY (partner_profile_id) REFERENCES partner_profiles(id);",
+      "name": "partner_referral_links_partner_profile_id_partner_profiles_id_f",
+      "type": "f",
+      "table": "partner_referral_links"
+    },
+    {
+      "sql": "ALTER TABLE partner_referral_links ADD CONSTRAINT partner_referral_links_pkey PRIMARY KEY (id);",
+      "name": "partner_referral_links_pkey",
+      "type": "p",
+      "table": "partner_referral_links"
+    },
+    {
+      "sql": "ALTER TABLE platform_devices ADD CONSTRAINT platform_devices_pkey PRIMARY KEY (id);",
+      "name": "platform_devices_pkey",
+      "type": "p",
+      "table": "platform_devices"
+    },
+    {
+      "sql": "ALTER TABLE platform_devices ADD CONSTRAINT platform_devices_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);",
+      "name": "platform_devices_school_id_fkey",
+      "type": "f",
+      "table": "platform_devices"
+    },
+    {
+      "sql": "ALTER TABLE platform_devices ADD CONSTRAINT platform_devices_serial_number_key UNIQUE (serial_number);",
+      "name": "platform_devices_serial_number_key",
+      "type": "u",
+      "table": "platform_devices"
+    },
+    {
+      "sql": "ALTER TABLE platform_devices ADD CONSTRAINT platform_devices_status_check CHECK ((status = ANY (ARRAY['ACTIVE'::text, 'INACTIVE'::text, 'MAINTENANCE'::text])));",
+      "name": "platform_devices_status_check",
+      "type": "c",
+      "table": "platform_devices"
+    },
+    {
+      "sql": "ALTER TABLE platform_devices ADD CONSTRAINT platform_devices_type_check CHECK ((device_type = ANY (ARRAY['NFC'::text, 'BIOMETRIC'::text, 'HYBRID'::text])));",
+      "name": "platform_devices_type_check",
+      "type": "c",
+      "table": "platform_devices"
+    },
+    {
+      "sql": "ALTER TABLE platform_notifications ADD CONSTRAINT platform_notifications_pkey PRIMARY KEY (id);",
+      "name": "platform_notifications_pkey",
+      "type": "p",
+      "table": "platform_notifications"
+    },
+    {
+      "sql": "ALTER TABLE platform_notifications ADD CONSTRAINT platform_notifications_recipient_user_id_fkey FOREIGN KEY (recipient_user_id) REFERENCES app_users(id);",
+      "name": "platform_notifications_recipient_user_id_fkey",
+      "type": "f",
+      "table": "platform_notifications"
+    },
+    {
+      "sql": "ALTER TABLE platform_notifications ADD CONSTRAINT platform_notifications_severity_check CHECK ((severity = ANY (ARRAY['info'::text, 'warning'::text, 'critical'::text])));",
+      "name": "platform_notifications_severity_check",
+      "type": "c",
+      "table": "platform_notifications"
+    },
+    {
+      "sql": "ALTER TABLE school_classes ADD CONSTRAINT school_classes_id_school_tenant_key UNIQUE (id, school_id);",
+      "name": "school_classes_id_school_tenant_key",
+      "type": "u",
+      "table": "school_classes"
+    },
+    {
+      "sql": "ALTER TABLE school_classes ADD CONSTRAINT school_classes_pkey PRIMARY KEY (id);",
+      "name": "school_classes_pkey",
+      "type": "p",
+      "table": "school_classes"
+    },
+    {
+      "sql": "ALTER TABLE school_classes ADD CONSTRAINT school_classes_school_id_schools_id_fk FOREIGN KEY (school_id) REFERENCES schools(id);",
+      "name": "school_classes_school_id_schools_id_fk",
+      "type": "f",
+      "table": "school_classes"
+    },
+    {
+      "sql": "ALTER TABLE school_memberships ADD CONSTRAINT school_memberships_pkey PRIMARY KEY (id);",
+      "name": "school_memberships_pkey",
+      "type": "p",
+      "table": "school_memberships"
+    },
+    {
+      "sql": "ALTER TABLE school_memberships ADD CONSTRAINT school_memberships_school_id_schools_id_fk FOREIGN KEY (school_id) REFERENCES schools(id);",
+      "name": "school_memberships_school_id_schools_id_fk",
+      "type": "f",
+      "table": "school_memberships"
+    },
+    {
+      "sql": "ALTER TABLE school_memberships ADD CONSTRAINT school_memberships_user_id_app_users_id_fk FOREIGN KEY (user_id) REFERENCES app_users(id);",
+      "name": "school_memberships_user_id_app_users_id_fk",
+      "type": "f",
+      "table": "school_memberships"
+    },
+    {
+      "sql": "ALTER TABLE school_partner_attributions ADD CONSTRAINT school_partner_attributions_created_by_app_users_id_fk FOREIGN KEY (created_by) REFERENCES app_users(id);",
+      "name": "school_partner_attributions_created_by_app_users_id_fk",
+      "type": "f",
+      "table": "school_partner_attributions"
+    },
+    {
+      "sql": "ALTER TABLE school_partner_attributions ADD CONSTRAINT school_partner_attributions_partner_profile_id_partner_profiles FOREIGN KEY (partner_profile_id) REFERENCES partner_profiles(id);",
+      "name": "school_partner_attributions_partner_profile_id_partner_profiles",
+      "type": "f",
+      "table": "school_partner_attributions"
+    },
+    {
+      "sql": "ALTER TABLE school_partner_attributions ADD CONSTRAINT school_partner_attributions_pkey PRIMARY KEY (id);",
+      "name": "school_partner_attributions_pkey",
+      "type": "p",
+      "table": "school_partner_attributions"
+    },
+    {
+      "sql": "ALTER TABLE school_partner_attributions ADD CONSTRAINT school_partner_attributions_referral_link_id_partner_referral_l FOREIGN KEY (referral_link_id) REFERENCES partner_referral_links(id);",
+      "name": "school_partner_attributions_referral_link_id_partner_referral_l",
+      "type": "f",
+      "table": "school_partner_attributions"
+    },
+    {
+      "sql": "ALTER TABLE school_partner_attributions ADD CONSTRAINT school_partner_attributions_school_id_schools_id_fk FOREIGN KEY (school_id) REFERENCES schools(id);",
+      "name": "school_partner_attributions_school_id_schools_id_fk",
+      "type": "f",
+      "table": "school_partner_attributions"
+    },
+    {
+      "sql": "ALTER TABLE schools ADD CONSTRAINT schools_pkey PRIMARY KEY (id);",
+      "name": "schools_pkey",
+      "type": "p",
+      "table": "schools"
+    },
+    {
+      "sql": "ALTER TABLE student_class_assignments ADD CONSTRAINT student_class_assignments_class_school_fk FOREIGN KEY (school_class_id, school_id) REFERENCES school_classes(id, school_id);",
+      "name": "student_class_assignments_class_school_fk",
+      "type": "f",
+      "table": "student_class_assignments"
+    },
+    {
+      "sql": "ALTER TABLE student_class_assignments ADD CONSTRAINT student_class_assignments_pkey PRIMARY KEY (id);",
+      "name": "student_class_assignments_pkey",
+      "type": "p",
+      "table": "student_class_assignments"
+    },
+    {
+      "sql": "ALTER TABLE student_class_assignments ADD CONSTRAINT student_class_assignments_school_id_schools_id_fk FOREIGN KEY (school_id) REFERENCES schools(id);",
+      "name": "student_class_assignments_school_id_schools_id_fk",
+      "type": "f",
+      "table": "student_class_assignments"
+    },
+    {
+      "sql": "ALTER TABLE student_class_assignments ADD CONSTRAINT student_class_assignments_session_school_fk FOREIGN KEY (academic_session_id, school_id) REFERENCES academic_sessions(id, school_id);",
+      "name": "student_class_assignments_session_school_fk",
+      "type": "f",
+      "table": "student_class_assignments"
+    },
+    {
+      "sql": "ALTER TABLE student_class_assignments ADD CONSTRAINT student_class_assignments_student_school_fk FOREIGN KEY (student_id, school_id) REFERENCES students(id, school_id);",
+      "name": "student_class_assignments_student_school_fk",
+      "type": "f",
+      "table": "student_class_assignments"
+    },
+    {
+      "sql": "ALTER TABLE student_class_assignments ADD CONSTRAINT student_class_assignments_term_school_fk FOREIGN KEY (academic_term_id, school_id) REFERENCES academic_terms(id, school_id);",
+      "name": "student_class_assignments_term_school_fk",
+      "type": "f",
+      "table": "student_class_assignments"
+    },
+    {
+      "sql": "ALTER TABLE students ADD CONSTRAINT students_id_school_tenant_key UNIQUE (id, school_id);",
+      "name": "students_id_school_tenant_key",
+      "type": "u",
+      "table": "students"
+    },
+    {
+      "sql": "ALTER TABLE students ADD CONSTRAINT students_pkey PRIMARY KEY (id);",
+      "name": "students_pkey",
+      "type": "p",
+      "table": "students"
+    },
+    {
+      "sql": "ALTER TABLE students ADD CONSTRAINT students_school_id_schools_id_fk FOREIGN KEY (school_id) REFERENCES schools(id);",
+      "name": "students_school_id_schools_id_fk",
+      "type": "f",
+      "table": "students"
+    },
+    {
+      "sql": "ALTER TABLE students ADD CONSTRAINT students_user_id_app_users_id_fk FOREIGN KEY (user_id) REFERENCES app_users(id);",
+      "name": "students_user_id_app_users_id_fk",
+      "type": "f",
+      "table": "students"
+    },
+    {
+      "sql": "ALTER TABLE subjects ADD CONSTRAINT subjects_id_school_tenant_key UNIQUE (id, school_id);",
+      "name": "subjects_id_school_tenant_key",
+      "type": "u",
+      "table": "subjects"
+    },
+    {
+      "sql": "ALTER TABLE subjects ADD CONSTRAINT subjects_pkey PRIMARY KEY (id);",
+      "name": "subjects_pkey",
+      "type": "p",
+      "table": "subjects"
+    },
+    {
+      "sql": "ALTER TABLE subjects ADD CONSTRAINT subjects_school_id_schools_id_fk FOREIGN KEY (school_id) REFERENCES schools(id);",
+      "name": "subjects_school_id_schools_id_fk",
+      "type": "f",
+      "table": "subjects"
+    },
+    {
+      "sql": "ALTER TABLE subscriptions ADD CONSTRAINT subscriptions_partner_allocation_integrity CHECK (((partner_profile_id IS NULL) OR ((partner_share IS NOT NULL) AND (amount = ((school_share + edupulse_share) + partner_share)))));",
+      "name": "subscriptions_partner_allocation_integrity",
+      "type": "c",
+      "table": "subscriptions"
+    },
+    {
+      "sql": "ALTER TABLE subscriptions ADD CONSTRAINT subscriptions_partner_profile_id_partner_profiles_id_fk FOREIGN KEY (partner_profile_id) REFERENCES partner_profiles(id);",
+      "name": "subscriptions_partner_profile_id_partner_profiles_id_fk",
+      "type": "f",
+      "table": "subscriptions"
+    },
+    {
+      "sql": "ALTER TABLE subscriptions ADD CONSTRAINT subscriptions_pkey PRIMARY KEY (id);",
+      "name": "subscriptions_pkey",
+      "type": "p",
+      "table": "subscriptions"
+    },
+    {
+      "sql": "ALTER TABLE subscriptions ADD CONSTRAINT subscriptions_school_id_schools_id_fk FOREIGN KEY (school_id) REFERENCES schools(id);",
+      "name": "subscriptions_school_id_schools_id_fk",
+      "type": "f",
+      "table": "subscriptions"
+    },
+    {
+      "sql": "ALTER TABLE subscriptions ADD CONSTRAINT subscriptions_student_id_students_id_fk FOREIGN KEY (student_id) REFERENCES students(id);",
+      "name": "subscriptions_student_id_students_id_fk",
+      "type": "f",
+      "table": "subscriptions"
+    },
+    {
+      "sql": "ALTER TABLE teacher_class_assignments ADD CONSTRAINT teacher_class_assignments_class_school_fk FOREIGN KEY (school_class_id, school_id) REFERENCES school_classes(id, school_id);",
+      "name": "teacher_class_assignments_class_school_fk",
+      "type": "f",
+      "table": "teacher_class_assignments"
+    },
+    {
+      "sql": "ALTER TABLE teacher_class_assignments ADD CONSTRAINT teacher_class_assignments_employee_school_fk FOREIGN KEY (employee_id, school_id) REFERENCES employees(id, school_id);",
+      "name": "teacher_class_assignments_employee_school_fk",
+      "type": "f",
+      "table": "teacher_class_assignments"
+    },
+    {
+      "sql": "ALTER TABLE teacher_class_assignments ADD CONSTRAINT teacher_class_assignments_pkey PRIMARY KEY (id);",
+      "name": "teacher_class_assignments_pkey",
+      "type": "p",
+      "table": "teacher_class_assignments"
+    },
+    {
+      "sql": "ALTER TABLE teacher_class_assignments ADD CONSTRAINT teacher_class_assignments_school_id_schools_id_fk FOREIGN KEY (school_id) REFERENCES schools(id);",
+      "name": "teacher_class_assignments_school_id_schools_id_fk",
+      "type": "f",
+      "table": "teacher_class_assignments"
+    },
+    {
+      "sql": "ALTER TABLE teacher_class_assignments ADD CONSTRAINT teacher_class_assignments_session_school_fk FOREIGN KEY (academic_session_id, school_id) REFERENCES academic_sessions(id, school_id);",
+      "name": "teacher_class_assignments_session_school_fk",
+      "type": "f",
+      "table": "teacher_class_assignments"
+    },
+    {
+      "sql": "ALTER TABLE teacher_class_assignments ADD CONSTRAINT teacher_class_assignments_subject_school_fk FOREIGN KEY (subject_id, school_id) REFERENCES subjects(id, school_id);",
+      "name": "teacher_class_assignments_subject_school_fk",
+      "type": "f",
+      "table": "teacher_class_assignments"
+    }
+  ]
+}
