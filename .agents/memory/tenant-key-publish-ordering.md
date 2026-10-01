@@ -16,3 +16,9 @@ For newly introduced parent tables, a standalone unique index may be omitted fro
 The documented Database UI lets a human select Production, enable Edit, and use its SQL runner; this is distinct from Agent's read-only production database access and from the automatic Publish diff. Do not treat deploy-build database pushes or migration-ledger changes as a supported ordering workaround. A human-applied prerequisite still requires independently confirming the exact production target and a fresh read-only Publish diff before any later publishing.
 
 Publish's schema diff is not a replay of data migrations: database functions, triggers, and historical backfills defined only in checked-in SQL can be absent from the generated plan. **Why:** Table and foreign-key creation can appear structurally safe while required payment immutability or device-school history protections are not deployed. **How to apply:** Review the entire generated SQL against migration-only invariants before approving Publish; do not infer trigger or backfill coverage from passing checked-in migration replay.
+
+Inspect every SQL statement, not just the diff's structural-data-loss flag and table-removal lists. A plan flagged as non-destructive can still contain `DROP INDEX` that removes the sole uniqueness required by a later foreign key.
+
+**Why:** The table-drop summary did not expose a planned removal of an existing parent/student pair's unique index, while a new transport foreign key still referenced that pair and no replacement uniqueness was present.
+
+**How to apply:** Enumerate all DROP operations, inspect existing supporting indexes/constraints, and check that each referenced key remains unique at the point its foreign key is created. Stop on a missing prerequisite; do not silently skip or reorder the publishing plan.

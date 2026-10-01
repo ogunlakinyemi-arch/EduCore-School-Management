@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Yemait EduCore — Production schema preflight</title>
+<style>body{font:15px/1.6 system-ui,sans-serif;background:#f3f5f8;color:#172033;padding:28px}main{max-width:850px;margin:auto;background:white;padding:32px;border:1px solid #dce2eb;border-radius:10px}h1{font-size:26px}h2{font-size:19px;margin-top:28px}.blocked{padding:14px;background:#fff0e9;border-left:4px solid #bb532d}table{border-collapse:collapse;width:100%}td,th{padding:8px;border-bottom:1px solid #dde3ec;text-align:left}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;background:#f4f6fa;padding:14px}small{color:#596579}@media print{body{padding:0;background:white}main{border:0;padding:0}}</style></head><body><main>
+<small>1 October 2026 · Read-only Production schema inspection</small>
+<h1>Production schema reconciliation — stopped at safety gate</h1>
+<p class="blocked"><strong>No Production schema statements applied. No publication performed.</strong> The complete publishing plan removes an existing required unique index without supplying replacement uniqueness for a dependent foreign key.</p>
+<h2>Complete plan inventory</h2>
+<table><thead><tr><th>Category</th><th>Count</th></tr></thead><tbody>
+<tr><td>Total pending SQL statements</td><td>258</td></tr>
+<tr><td>New table statements</td><td>34</td></tr>
+<tr><td>Columns within those new tables</td><td>517</td></tr>
+<tr><td>New columns added to existing tables</td><td>0</td></tr>
+<tr><td>Explicit new index statements</td><td>89, including 37 unique indexes</td></tr>
+<tr><td>New unique constraints, embedded in table definitions</td><td>44</td></tr>
+<tr><td>New primary keys, embedded in table definitions</td><td>34</td></tr>
+<tr><td>New foreign-key ALTER statements</td><td>134</td></tr>
+<tr><td>New CHECK constraints, embedded in table definitions</td><td>133</td></tr>
+<tr><td>Other additive constraints / other ALTER statements</td><td>0 / 0</td></tr>
+<tr><td>DROP INDEX statements</td><td>1</td></tr>
+<tr><td>DROP TABLE / DROP COLUMN / TRUNCATE statements</td><td>0 / 0 / 0</td></tr>
+<tr><td>INSERT / UPDATE / DELETE / MERGE / explicit backfill statements</td><td>0</td></tr>
+</tbody></table>
+<p>The 258 statements comprise 34 CREATE TABLE statements, 134 foreign-key ALTER statements, 89 CREATE INDEX statements and one DROP INDEX statement. Embedded constraints are counted separately; their counts are not extra SQL statements.</p>
+<h2>Exact blocker</h2>
+<p><strong>Statement 35:</strong></p>
+<pre>DROP INDEX "parent_student_relationship_unique";</pre>
+<p>Its current Production definition is:</p>
+<pre>CREATE UNIQUE INDEX parent_student_relationship_unique
+ON public.parent_student_relationships USING btree (parent_id, student_id);</pre>
+<p>Catalog inspection found no other pair-unique index or constraint on this table. Its primary key on id does not establish uniqueness of the parent/student pair.</p>
+<p><strong>Statement 136</strong> subsequently depends on that pair:</p>
+<pre>ALTER TABLE "transport_parent_requests"
+ADD CONSTRAINT "transport_parent_requests_active_relationship_fk"
+FOREIGN KEY ("parent_id","student_id")
+REFERENCES "public"."parent_student_relationships"("parent_id","student_id")
+ON DELETE restrict ON UPDATE no action;</pre>
+<p>The complete generated plan contains no replacement uniqueness on that pair. The DROP would remove an existing uniqueness safeguard, and the later foreign key has no valid referenced unique key. No statements were executed to test or bypass this problem. No PostgreSQL execution error is claimed: this failure was identified by SQL and catalog inspection.</p>
+<p>The earlier metadata reported no structural data loss and no table/column removals. Those flags did not mean there were no DROP INDEX statements.</p>
+<h2>Production identification and protection status</h2>
+<ul><li>The platform Production read replica responded as database <strong>neondb</strong>, PostgreSQL <strong>16.15</strong>, read-only/in recovery.</li><li>Its public table count is <strong>91</strong>. Migration-ledger table discovery found <code>_system.replit_database_migrations_v1</code>.</li><li>This establishes the queried replica, not independently the published application's exact writable database resource.</li><li>Actual resource binding, observed PITR/recovery points, migration-ledger row baseline and complete record fingerprints remain unverified. Documented recovery support is not proof of a usable restore point for this resource.</li></ul>
+<h2>Operation status</h2>
+<ul><li>Production statements applied: <strong>0</strong>.</li><li>Application, deployment configuration, Development database and Production data were not changed by this operation.</li><li>No migration-ledger writes, data resets, replacements or seeding were performed.</li><li>Disposable SQL rehearsal, post-migration checks, fresh build/typecheck/tests and post-publish smoke tests were not run after the safety-gate failure.</li><li>No payment configuration or credentials were changed. No provider payment, refund, settlement or transfer calls were initiated. Sandbox runtime configuration was not reverified in this stopped attempt.</li></ul>
+<h2>Existing deployment</h2>
+<p><a href="https://edu-pulse-school-management--ogunlakinyemi.replit.app">https://edu-pulse-school-management--ogunlakinyemi.replit.app</a></p>
+<p>This remains the existing published application. It is not confirmed to contain the latest Development corrections. Publication must remain blocked until a fresh plan preserves required uniqueness and all other safety/rehearsal checks pass.</p>
+</main></body></html>

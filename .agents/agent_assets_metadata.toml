@@ -42,3 +42,17 @@ mtime_ms = 1790857235878
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/8313c1ce-1f3b-4ecb-8bb0-ca28ed382332/0d7cecd8-fc63-43d9-b227-0a8cc4f8c5ab"
 storage_version_token = "1790857403371342"
 content_type = "text/html"
+
+[[outputs]]
+id = "_oqBZwU6qJpjfZ9W7SsqZ"
+uri = "file://docs/production-schema-reconciliation-preflight.html"
+type = "html"
+title = "Production schema preflight — blocked"
+description = "Complete statement inventory, exact dropped-index and foreign-key conflict, target-verification limits, and confirmation that zero Production changes were applied."
+logical_id = "76348578-d222-4499-9f48-8f5a762eb1c3"
+content_hash = "sha256:a38153a2cc9f981f399a50e8eab38a1d62c2f76cec6c913e527db217fb967ca3"
+size = 5701
+mtime_ms = 1790858402975
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/76348578-d222-4499-9f48-8f5a762eb1c3/3706e27e-97c5-4dac-8446-71e64582ef45"
+storage_version_token = "1790858416964371"
+content_type = "text/html"

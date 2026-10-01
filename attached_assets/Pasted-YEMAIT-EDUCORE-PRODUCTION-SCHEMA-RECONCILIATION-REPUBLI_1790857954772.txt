@@ -1,0 +1,377 @@
+YEMAIT EDUCORE — PRODUCTION SCHEMA RECONCILIATION + REPUBLISH
+
+The previous publish attempt was intentionally stopped because the publish schema check detected:
+
+- 258 pending Production schema statements
+- 34 new tables required by the latest Development features
+- No reported DROP/TRUNCATE operations
+
+The latest Development correction set has already been implemented and verified.
+
+My objective now is to safely bring Production schema in line with the latest Development build and then publish the latest application so I can begin manual testing.
+
+1. IMPORTANT
+
+Do NOT rebuild the application.
+
+Do NOT redesign existing functionality.
+
+Do NOT undo migrations 0031–0036.
+
+Do NOT modify the historical migration ledger manually.
+
+Do NOT reset the Production database.
+
+Do NOT delete existing data.
+
+Do NOT truncate any table.
+
+Do NOT drop existing tables or columns unless a schema-diff verification proves that a destructive operation is absolutely required and I explicitly approve it first.
+
+The expected migration should be additive/compatibility-oriented.
+
+2. FIRST — INSPECT THE 258 PENDING STATEMENTS
+
+Before applying anything to Production, inspect the complete publish schema diff.
+
+Categorize all 258 statements into:
+
+1. New tables
+2. New columns
+3. New indexes
+4. New unique constraints
+5. New foreign keys
+6. New CHECK constraints
+7. Other additive constraints
+8. Any ALTER statements that modify existing structures
+9. Any DROP operations
+10. Any TRUNCATE operations
+11. Any data-changing/backfill statements
+
+Do not apply the migration yet.
+
+Produce a concise summary showing:
+
+- Number of new tables
+- Number of new columns
+- Number of indexes
+- Number of foreign keys
+- Number of constraints
+- Number of data-changing statements
+- Number of DROP statements
+- Number of TRUNCATE statements
+
+3. SAFETY GATE
+
+The migration may proceed automatically only if:
+
+- There are no DROP TABLE statements
+- There are no TRUNCATE statements
+- There are no destructive column removals
+- Existing Production records are preserved
+- Existing Production tables remain intact
+- Existing Production data is not overwritten
+- Existing authentication/configuration data is preserved
+- Existing NFC card records are preserved
+- Existing school/student/parent/staff records are preserved
+- Existing migration history is preserved
+
+If any destructive operation is detected, STOP and report the exact statement and affected object.
+
+Do not work around a destructive operation silently.
+
+4. PRODUCTION DATABASE PROTECTION
+
+The Production database is the existing Yemait EduCore Production database.
+
+Before applying the schema:
+
+- Confirm the target is actually the Production database.
+- Confirm database identity.
+- Confirm PostgreSQL version.
+- Confirm the current migration state.
+- Confirm existing table count.
+- Confirm existing data remains present.
+- Confirm PITR/recovery protection is available.
+
+Do not switch to another database.
+
+Do not create a replacement Production database.
+
+Do not reset the current database.
+
+5. PRE-MIGRATION DATA BASELINE
+
+Record a safe structural/data baseline before migration.
+
+At minimum verify and preserve:
+
+- Existing schools
+- Existing students
+- Existing parents
+- Existing teachers/staff
+- Existing NFC cards
+- Existing subscriptions
+- Existing finance records
+- Existing audit records
+- Existing platform-owner records
+- Existing migration ledger
+
+Do not delete or modify these records merely to satisfy the schema migration.
+
+6. REHEARSE THE SCHEMA MIGRATION FIRST
+
+If the available deployment tooling supports a disposable database/schema/fork rehearsal, execute the 258 statements there first.
+
+Verify:
+
+- Statements execute in order
+- Foreign keys resolve successfully
+- Unique constraints do not conflict with existing structures
+- Existing records remain valid
+- No destructive operation is hidden in generated SQL
+- The complete migration can be applied without manual intervention
+
+If the rehearsal fails:
+
+STOP.
+
+Report:
+
+- failing statement
+- database object
+- PostgreSQL error
+- likely cause
+- whether the issue is ordering, constraint compatibility, existing data, or another problem
+
+Do not modify Production to bypass the failure.
+
+7. SPECIAL ATTENTION TO FOREIGN KEYS
+
+Before applying Production changes, verify that referenced columns have the required PRIMARY KEY or UNIQUE constraint.
+
+Pay particular attention to composite relationships such as:
+
+- "(id, school_id)"
+- "(student_id, school_id)"
+- "(teacher_id, school_id)"
+- "(employee_id, school_id)"
+- other tenant-scoped foreign keys
+
+Do not create a foreign key before its referenced uniqueness constraint exists.
+
+Apply prerequisite unique constraints/indexes before dependent foreign keys.
+
+8. APPLY THE PRODUCTION SCHEMA
+
+If the safety checks and rehearsal pass, apply the required Production schema migration.
+
+The purpose is to add the database structures required by the latest Development application.
+
+Expected categories include the latest feature tables for:
+
+- School branding
+- Calendars
+- Teacher assignments
+- Teacher-on-duty
+- Transport
+- Employee NFC
+- Staff NFC billing
+- Student billing safeguards
+- Settlement
+- School payroll
+- Company payroll
+- Partner/commission functionality
+- Other latest Development correction-set functionality
+
+Do not assume the exact table names. Use the actual generated schema diff.
+
+9. DO NOT CHANGE PRODUCTION APPLICATION DATA UNNECESSARILY
+
+Schema reconciliation must not:
+
+- reset existing schools
+- recreate users
+- recreate students
+- recreate parents
+- recreate NFC cards
+- recreate subscriptions
+- delete finance records
+- delete audit logs
+- change ownership
+- alter school tenancy
+- change authentication accounts
+
+If a data backfill is genuinely required for a newly introduced NOT NULL field, inspect it first and ensure it is deterministic and non-destructive.
+
+Do not invent values.
+
+If a safe backfill cannot be established, stop and report it.
+
+10. PAYMENT SAFETY
+
+Do NOT enable LIVE payment credentials.
+
+Do NOT initiate:
+
+- real Flutterwave payments
+- real refunds
+- real transfers
+- real payroll payments
+- real settlements
+
+Keep payment integration in sandbox/test mode.
+
+Production schema migration must not trigger payment transactions.
+
+11. AFTER MIGRATION — VERIFY PRODUCTION
+
+After the schema migration completes, verify:
+
+Database
+
+- Migration completed successfully
+- No tables were deleted
+- Existing records remain
+- Existing migration ledger remains intact
+- Required new tables exist
+- Required new columns exist
+- Required indexes exist
+- Required unique constraints exist
+- Required foreign keys exist
+- No orphaned critical records were introduced
+
+API
+
+Verify:
+
+"/api/healthz"
+
+returns HTTP 200.
+
+Verify the platform-owner bootstrap/status endpoint responds correctly.
+
+Existing functionality
+
+Verify that the database still supports:
+
+- Authentication
+- Platform Owner
+- School Admin
+- Students
+- Parents
+- Teachers
+- Staff
+- Attendance
+- NFC
+- Academics
+- Results
+- Finance
+- Subscriptions
+- Partner functionality
+
+12. BUILD THE LATEST APPLICATION
+
+After the Production schema is successfully reconciled:
+
+- Build the current latest Development application.
+- Run the existing typecheck.
+- Run the relevant automated tests.
+- Confirm the frontend builds successfully.
+- Confirm the API starts successfully.
+- Do not modify application logic just to hide test failures.
+
+Report any genuine failure.
+
+13. PUBLISH
+
+Only after:
+
+1. Schema reconciliation succeeds
+2. Production data is confirmed preserved
+3. API health succeeds
+4. Build succeeds
+5. Typecheck succeeds
+6. Relevant tests succeed
+
+publish the latest Yemait EduCore build.
+
+Use the existing application/deployment.
+
+Do not create a separate unrelated deployment.
+
+14. POST-PUBLISH SMOKE TEST
+
+After publishing, verify:
+
+- Public application loads
+- Login page loads
+- Platform Owner route loads
+- School Admin route loads
+- Dashboard loads
+- Role-based navigation loads
+- API health returns HTTP 200
+- Existing Production data remains available
+- Latest Development features are present
+
+Do not perform destructive actions.
+
+Do not make real payments.
+
+Do not initiate real bank transfers.
+
+15. IMPORTANT — DO NOT CONTINUE FEATURE DEVELOPMENT
+
+Once publication succeeds, stop.
+
+I am going to begin a fresh manual testing cycle.
+
+I will report issues one by one.
+
+Do not automatically modify the application after each issue.
+
+Accumulate the testing feedback until I explicitly request a correction cycle.
+
+16. FINAL REPORT
+
+After the operation, report:
+
+Schema
+
+- Pending statements originally detected
+- Statements actually applied
+- New tables created
+- New columns
+- New indexes
+- New constraints
+- New foreign keys
+- Whether any destructive statements existed
+- Whether any data was changed
+
+Verification
+
+- Existing records preserved
+- Migration ledger preserved
+- API health
+- Typecheck
+- Tests
+- Frontend build
+
+Deployment
+
+- Published or not published
+- Published application URL
+- Latest build confirmed or not
+
+Payment safety
+
+- LIVE credentials enabled: NO
+- Real funds moved: NO
+- Real transfers initiated: NO
+- Sandbox/test mode retained: YES
+
+If anything fails, stop at that point and provide the exact blocker instead of bypassing it.
+
+FINAL OBJECTIVE
+
+Safely reconcile the required Production schema for the latest Yemait EduCore Development build, preserve all existing Production data and functionality, and then publish the latest build so that I can begin manual testing.
