@@ -3,8 +3,6 @@ import { Route, Switch, Link, useLocation } from 'wouter';
 import { 
   useGetPartnerDashboard,
   useGetPartnerProfile,
-  useGetPartnerReferralLink,
-  useListMyPartnerSchools,
   useGetMyPartnerCommissions,
   useGetMyPartnerPayouts,
   useGetPartnerPayoutInformation,
@@ -17,14 +15,11 @@ import {
   CreditCard, 
   HandCoins, 
   LayoutDashboard, 
-  Link as LinkIcon,
   Settings2,
   Zap,
   TrendingUp,
   Banknote,
   School as SchoolIcon,
-  Copy,
-  Check,
   FileSpreadsheet
 } from 'lucide-react';
 import { 
@@ -45,11 +40,11 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
 import { CommunicationInbox, CommunicationInboxBadge } from '@/pages/communication-inbox';
 import { NotificationSettings } from '@/pages/notification-settings';
 import { ReportingPage } from '@/pages/reporting';
 import PartnerStaff from '@/pages/partner/partner-staff';
+import { AddSchoolPage, AddSchoolButton, MySchoolsTable, canManagePartnerSchools } from '@/pages/partner/partner-schools';
 
 function Loading() {
   return (
@@ -106,10 +101,6 @@ function PortalHeader() {
 function Dashboard() {
   const profile = useGetPartnerProfile();
   const dashboard = useGetPartnerDashboard();
-  const link = useGetPartnerReferralLink();
-  const { toast } = useToast();
-  const [copied, setCopied] = useState(false);
-
   if (profile.isLoading || dashboard.isLoading) return <Loading />;
   if (profile.isError || !profile.data) return (
     <div className="mx-auto max-w-3xl p-8">
@@ -121,17 +112,9 @@ function Dashboard() {
   );
 
   const data = dashboard.data;
+  const canManageSchools = canManagePartnerSchools(profile.data);
   const canViewFinance = (profile.data as any)?.isOwner ||
     ['PARTNER_ADMIN', 'PARTNER_FINANCE'].includes((profile.data as any)?.partnerRole);
-
-  const handleCopyLink = () => {
-    if (link.data?.url) {
-      navigator.clipboard.writeText(link.data.url);
-      setCopied(true);
-      toast({ title: 'Link copied', description: 'Referral link copied to clipboard.' });
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
 
   return (
     <div className="mx-auto max-w-6xl p-5 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -140,17 +123,7 @@ function Dashboard() {
           <div className="eyebrow">Partner Portal</div>
           <h1 className="display-font mt-2 text-3xl font-bold md:text-4xl">Welcome, {profile.data.fullName}.</h1>
         </div>
-        {link.data?.url && (
-          <div className="shrink-0 flex items-center gap-2 bg-[hsl(var(--muted)/.4)] rounded-xl p-1.5 border border-[hsl(var(--border))]">
-            <span className="text-xs font-mono text-[hsl(var(--muted-foreground))] px-3 truncate max-w-[200px]">
-              {link.data.url}
-            </span>
-            <Button variant="outline" className="h-8 px-3" onClick={handleCopyLink}>
-              {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-              {copied ? 'Copied' : 'Copy'}
-            </Button>
-          </div>
-        )}
+        {canManageSchools && <AddSchoolButton />}
       </div>
 
       <div className={`grid gap-5 ${canViewFinance ? 'md:grid-cols-3' : 'md:grid-cols-1'} mb-8`}>
@@ -192,14 +165,14 @@ function Dashboard() {
             </div>
           </div>
           <div className="divide-y divide-[hsl(var(--border)/.6)]">
-            <Link href="/partner/invite-school" className="flex items-center justify-between p-5 hover:bg-[hsl(var(--muted)/.4)] transition-colors">
+            <Link href="/partner/schools/add" className="flex items-center justify-between p-5 hover:bg-[hsl(var(--muted)/.4)] transition-colors">
               <div className="flex items-center gap-4">
                 <div className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--primary)/.1)] text-[hsl(var(--primary))]">
-                  <LinkIcon size={18} />
+                  <SchoolIcon size={18} />
                 </div>
                 <div>
-                  <div className="font-bold">Invite a new school</div>
-                  <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">Use your referral link to onboard a school</div>
+                  <div className="font-bold">Add School</div>
+                  <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">Send a school administrator an invitation</div>
                 </div>
               </div>
               <ChevronRight size={16} className="text-[hsl(var(--muted-foreground))]" />
@@ -239,60 +212,18 @@ function Dashboard() {
 }
 
 function MySchools() {
-  const query = useListMyPartnerSchools();
-  
-  if (query.isLoading) return <SkeletonPage />;
-  if (query.isError) return <ErrorState retry={() => query.refetch()} />;
-
-  const schools = query.data ?? [];
-
+  const profile = useGetPartnerProfile();
+  const canManage = canManagePartnerSchools(profile.data);
   return (
     <div className="mx-auto max-w-6xl p-5 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="mb-7">
-        <div className="eyebrow">Network</div>
-        <h1 className="display-font mt-2 text-3xl font-bold">My Schools</h1>
+      <div className="mb-7 flex items-end justify-between gap-4">
+        <div>
+          <div className="eyebrow">Network</div>
+          <h1 className="display-font mt-2 text-3xl font-bold">My Schools</h1>
+        </div>
+        {canManage && <AddSchoolButton />}
       </div>
-
-      <div className="panel overflow-hidden">
-        {schools.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-[hsl(var(--muted)/.4)] font-bold text-[hsl(var(--muted-foreground))]">
-                <tr>
-                  <th className="p-4">School</th>
-                  <th className="p-4">Attribution</th>
-                  <th className="p-4">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[hsl(var(--border))]">
-                {schools.map(school => (
-                  <tr key={school.schoolId} className="transition-colors hover:bg-[hsl(var(--muted)/.2)]">
-                    <td className="p-4">
-                      <div className="font-bold text-[hsl(var(--foreground))]">{school.schoolName}</div>
-                      <div className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))] font-mono">{school.schoolCode}</div>
-                    </td>
-                    <td className="p-4 text-[hsl(var(--muted-foreground))]">
-                      Since {date(school.startDate)}
-                    </td>
-                    <td className="p-4"><StatusPill value={school.attributionStatus} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <EmptyState 
-            icon={Building2} 
-            title="No schools yet" 
-            description="You haven't referred any schools that completed onboarding yet." 
-            action={
-              <Link href="/partner/invite-school">
-                <Button>Get your referral link</Button>
-              </Link>
-            }
-          />
-        )}
-      </div>
+      <div className="panel overflow-hidden"><MySchoolsTable canManage={canManage} /></div>
     </div>
   );
 }
@@ -564,67 +495,6 @@ function PartnerSettings() {
   );
 }
 
-function InviteSchool() {
-  const link = useGetPartnerReferralLink();
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    if (link.data?.url) {
-      navigator.clipboard.writeText(link.data.url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  return (
-    <div className="mx-auto max-w-4xl p-5 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="mb-7">
-        <Link href="/partner" className="text-xs font-bold text-[hsl(var(--primary))] mb-4 inline-block">← Back to Dashboard</Link>
-        <div className="eyebrow">Growth</div>
-        <h1 className="display-font mt-2 text-3xl font-bold">Invite a School</h1>
-      </div>
-
-      <div className="panel p-6 md:p-10 text-center flex flex-col items-center">
-        <div className="h-16 w-16 bg-[hsl(var(--primary)/.1)] text-[hsl(var(--primary))] rounded-2xl flex items-center justify-center mb-6">
-          <LinkIcon size={32} />
-        </div>
-        
-        <h2 className="display-font text-2xl font-bold mb-3">Your Unique Referral Link</h2>
-        <p className="text-[hsl(var(--muted-foreground))] max-w-md mx-auto mb-8">
-          Share this link with school administrators. When they register their school on Yemait EduCore using this link, they will be permanently attributed to your partner account.
-        </p>
-
-        {link.isLoading ? (
-          <div className="skeleton h-14 w-full max-w-lg rounded-xl" />
-        ) : link.isError ? (
-          <ErrorState retry={() => link.refetch()} message="Could not load your referral link" />
-        ) : (
-          <div className="w-full max-w-lg flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 bg-[hsl(var(--muted)/.5)] border border-[hsl(var(--border))] rounded-xl px-4 py-3 text-sm font-mono text-left overflow-x-auto whitespace-nowrap">
-              {link.data?.url}
-            </div>
-            <Button className="shrink-0 h-12" onClick={handleCopy}>
-              {copied ? <Check size={18} /> : <Copy size={18} />}
-              {copied ? 'Copied' : 'Copy Link'}
-            </Button>
-          </div>
-        )}
-        
-        <div className="mt-10 bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))] rounded-2xl p-6 text-left w-full max-w-lg">
-          <div className="font-bold mb-2 flex items-center gap-2">
-            <Zap size={16} className="text-[hsl(var(--accent))]" /> Best Practices
-          </div>
-          <ul className="text-sm text-[hsl(var(--sidebar-foreground)/.7)] space-y-2 list-disc list-inside pl-4">
-            <li>Ensure the school uses this exact link for their initial registration.</li>
-            <li>Schools can also enter your Partner Code manually during sign up.</li>
-            <li>Attribution is locked upon successful registration.</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function PartnerPortal() {
   return (
     <div className="min-h-[100dvh] bg-[hsl(var(--background))]">
@@ -639,7 +509,8 @@ export default function PartnerPortal() {
         <Route path="/partner/commissions" component={MyCommissions} />
         <Route path="/partner/payouts" component={MyPayouts} />
         <Route path="/partner/profile" component={PartnerSettings} />
-        <Route path="/partner/invite-school" component={InviteSchool} />
+        <Route path="/partner/schools/add" component={AddSchoolPage} />
+        <Route path="/partner/invite-school" component={AddSchoolPage} />
         <Route component={NotFound} />
       </Switch>
     </div>

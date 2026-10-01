@@ -31,6 +31,37 @@ describe("Clerk invitation return URL", () => {
     expect(() => invitationRedirect("//attacker.test", "development", "sample.replit.dev")).toThrow();
   });
 
+  it.each([
+    "attacker.test",
+    "attacker.replit.dev.evil.test",
+    "replit.dev",
+    "replit.com",
+    "attacker.replit.com",
+    "attacker..replit.dev",
+    "-attacker.replit.dev",
+    "attacker-.replit.dev",
+    "attacker.replit.dev.",
+    "attacker.replit.dev:443",
+    "attacker@replit.dev",
+    "attacker.replit.dev/accept-invitation",
+    "127.0.0.1",
+    "localhost",
+    "[::1]",
+  ])("rejects an untrusted REPLIT_DEV_DOMAIN (%s)", (domain) => {
+    expect(() => invitationRedirect("/accept-invitation", "development", domain)).toThrow();
+  });
+
+  it("accepts an explicitly configured Replit development domain without changing Production isolation", () => {
+    const dev = invitationRedirect("/accept-invitation", "development", "trusted-workspace.replit.dev");
+    expect(dev).toBe("https://trusted-workspace.replit.dev/accept-invitation");
+    const production = invitationRedirect(
+      "/accept-invitation",
+      "production",
+      "trusted-workspace.replit.dev",
+    );
+    expect(production).toBe(`${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`);
+  });
+
   it("uses the verified public deployment for production invitations", () => {
     expect(invitationRedirect("/accept-invitation", "production", undefined))
       .toBe(`${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`);

@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   connect: vi.fn(),
   createInvitation: vi.fn(),
   revokeInvitation: vi.fn(),
+  getInvitationList: vi.fn(),
   getUser: vi.fn(),
   updateUserMetadata: vi.fn(),
 }));
@@ -25,6 +26,7 @@ vi.mock("@clerk/express", () => ({
     invitations: {
       createInvitation: mocks.createInvitation,
       revokeInvitation: mocks.revokeInvitation,
+      getInvitationList: mocks.getInvitationList,
     },
     users: {
       getUser: mocks.getUser,
@@ -64,6 +66,19 @@ const schoolAdmin = {
     status: "ACTIVE",
   },
   roles: [{ id: 2, role: "SCHOOL_ADMIN", schoolId: 3, status: "ACTIVE" }],
+} as UserContext;
+
+const partnerOwner = {
+  user: {
+    id: 31,
+    clerkUserId: "user_partner_owner",
+    email: "partner.owner@example.test",
+    firstName: "Partner",
+    lastName: "Owner",
+    phone: null,
+    status: "ACTIVE",
+  },
+  roles: [{ id: 3, role: "PARTNER", schoolId: null, status: "ACTIVE" }],
 } as UserContext;
 
 function proof(email: string) {
@@ -122,6 +137,7 @@ describe("school invitations", () => {
       createdAt: Date.now(),
       status: "pending",
     });
+    mocks.getInvitationList.mockResolvedValue({ data: [], totalCount: 0 });
     mocks.revokeInvitation.mockResolvedValue({});
     mocks.getUser.mockResolvedValue({
       id: "user_accepted",
@@ -681,5 +697,206 @@ describe("school invitations", () => {
     }, owner)).rejects.toMatchObject({ statusCode: 503 });
     expect(mocks.clientQuery).toHaveBeenCalledWith("ROLLBACK");
     expect(mocks.clientQuery).not.toHaveBeenCalledWith("COMMIT");
+  });
+
+  it("commits the pending school, permanent attribution, and exact dispatch claim before Clerk is notified", async () => {
+    const events: string[] = [];
+    mocks.clientQuery.mockImplementation(async (sql: string) => {
+      events.push(sql === "COMMIT" ? "COMMIT" : sql);
+      if (sql.includes("INSERT INTO schools")) return { rows: [{ id: 77 }] };
+      if (sql.includes("PARTNER_SCHOOL_REGISTRATION_ATTEMPT") && sql.includes("RETURNING id")) {
+        return { rows: [{ id: 901 }] };
+      }
+      return { rows: [] };
+    });
+    mocks.createInvitation.mockImplementation(async (options: any) => {
+      events.push("CLERK_CREATE_INVITATION");
+      return { id: inviteId, createdAt: Date.now(), status: "pending", publicMetadata: options.publicMetadata };
+    });
+
+    const result = await createSchoolWithAdministrator({
+      school: {
+        name: "Partner School",
+        city: "Lagos",
+        state: "Lagos",
+        email: "office@partner-school.test",
+      },
+      administrator: {
+        fullName: "First Admin",
+        email: "first.admin@partner-school.test",
+        phone: "+2348000000000",
+      },
+      partnerId: 55,
+    }, partnerOwner);
+
+    expect(result.schoolId).toBe(77);
+    expect(result.administratorInvitation.invitationId).toBe(inviteId);
+    expect(events.indexOf("COMMIT")).toBeGreaterThan(-1);
+    expect(events.indexOf("COMMIT")).toBeLessThan(events.indexOf("CLERK_CREATE_INVITATION"));
+    expect(mocks.clientQuery).toHaveBeenCalledWith(
+      expect.stringContaining("PARTNER_DIRECT"),
+      expect.arrayContaining([77, 55]),
+    );
+    const inviteAudit = mocks.clientQuery.mock.calls.find(([sql, values]) =>
+      sql.includes("INSERT INTO audit_logs") &&
+      JSON.stringify(values).includes("DISPATCHING")
+    );
+    expect(JSON.stringify(inviteAudit?.[1])).toContain("DISPATCHING");
+    const invitation = mocks.createInvitation.mock.calls[0][0];
+    expect(invitation.publicMetadata.edupulseSchoolInvitation).toMatchObject({
+      schoolId: 77,
+      role: "SCHOOL_ADMIN",
+      partnerRegistrationAttemptId: expect.any(String),
+    });
+    expect(JSON.stringify(invitation.publicMetadata)).not.toContain("+2348000000000");
+  });
+
+  it("persists a confirmed provider registered/pending rejection and blocks school recreation", async () => {
+    let schoolExists = false;
+    mocks.clientQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("SELECT id FROM schools") && sql.includes("lower(trim(name))")) {
+        return { rows: schoolExists ? [{ id: 77 }] : [] };
+      }
+      if (sql.includes("INSERT INTO schools")) {
+        schoolExists = true;
+        return { rows: [{ id: 77 }] };
+      }
+      if (sql.includes("PARTNER_SCHOOL_REGISTRATION_ATTEMPT") && sql.includes("RETURNING id")) {
+        return { rows: [{ id: 902 }] };
+      }
+      return { rows: [] };
+    });
+    mocks.createInvitation.mockRejectedValue({
+      status: 422,
+      errors: [{ code: "form_identifier_exists" }],
+    });
+    const input = {
+      school: { name: "Registered Partner School", city: "Lagos", state: "Lagos" },
+      administrator: {
+        fullName: "Registered Admin",
+        email: "registered.admin@partner-school.test",
+        phone: "+2348111111111",
+      },
+      partnerId: 55,
+    };
+
+    await expect(createSchoolWithAdministrator(input, partnerOwner))
+      .rejects.toMatchObject({ statusCode: 409, eventType: "INVITATION_ALREADY_EXISTS" });
+    await expect(createSchoolWithAdministrator(input, partnerOwner))
+      .rejects.toMatchObject({ statusCode: 409 });
+    expect(mocks.createInvitation).toHaveBeenCalledTimes(1);
+    expect(mocks.clientQuery.mock.calls.filter(([sql]) => sql.includes("INSERT INTO schools"))).toHaveLength(1);
+    expect(mocks.revokeInvitation).not.toHaveBeenCalled();
+  });
+
+  it("activates the committed claim after a lost provider response and finalization failure, then blocks retry", async () => {
+    let marker: any;
+    let attemptIsUnknown = false;
+    let schoolExists = false;
+    let failFinalization = true;
+    mocks.clientQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("SELECT id FROM audit_logs") && sql.includes("PARTNER_SCHOOL_REGISTRATION_ATTEMPT")) {
+        return { rows: attemptIsUnknown ? [{ id: 903 }] : [] };
+      }
+      if (sql.includes("INSERT INTO schools")) {
+        schoolExists = true;
+        return { rows: [{ id: 77 }] };
+      }
+      if (sql.includes("SELECT id FROM schools") && sql.includes("lower(trim(name))")) {
+        return { rows: schoolExists ? [{ id: 77 }] : [] };
+      }
+      if (sql.includes("PARTNER_SCHOOL_REGISTRATION_ATTEMPT") && sql.includes("RETURNING id")) {
+        return { rows: [{ id: 903 }] };
+      }
+      if (
+        failFinalization &&
+        sql.includes("UPDATE audit_logs") &&
+        sql.includes("WHERE school_id=$2") &&
+        sql.includes("SCHOOL_ADMIN_INVITED")
+      ) {
+        failFinalization = false;
+        throw new Error("simulated invitation audit finalization failure");
+      }
+      if (sql.includes("current_invite.id")) {
+        return { rows: [{ id: 504, invitedPhone: "+2348222222222" }] };
+      }
+      return sqlResult(sql);
+    });
+    mocks.poolQuery.mockImplementation(async (sql: string, values?: unknown[]) => {
+      if (sql.includes("UPDATE audit_logs") && JSON.stringify(values).includes("OUTCOME_UNKNOWN")) {
+        attemptIsUnknown = true;
+      }
+      if (sql.includes("FROM schools")) return { rows: [{ id: 77 }] };
+      return { rows: [] };
+    });
+    mocks.createInvitation.mockImplementation(async (options: any) => {
+      marker = options.publicMetadata.edupulseSchoolInvitation;
+      throw { status: 503 };
+    });
+    mocks.getInvitationList.mockImplementation(async (options: any) => ({
+      data: options.status === "pending" ? [{
+        id: inviteId,
+        emailAddress: "lost.admin@partner-school.test",
+        publicMetadata: { edupulseSchoolInvitation: marker },
+      }] : [],
+      totalCount: options.status === "pending" ? 1 : 0,
+    }));
+
+    const input = {
+      school: { name: "Lost Response School", city: "Lagos", state: "Lagos" },
+      administrator: {
+        fullName: "Lost Admin",
+        email: "lost.admin@partner-school.test",
+        phone: "+2348222222222",
+      },
+      partnerId: 55,
+    };
+    await expect(createSchoolWithAdministrator(input, partnerOwner))
+      .rejects.toMatchObject({ statusCode: 503, eventType: "INVITATION_RECOVERY_REQUIRED" });
+    expect(mocks.revokeInvitation).not.toHaveBeenCalled();
+    expect(mocks.clientQuery.mock.calls.filter(([sql]) => sql === "COMMIT")).toHaveLength(1);
+    expect(attemptIsUnknown).toBe(true);
+
+    mocks.getUser.mockResolvedValue({
+      id: "user_accepted",
+      primaryEmailAddress: {
+        emailAddress: input.administrator.email,
+        verification: { status: "verified" },
+      },
+      emailAddresses: [{ emailAddress: input.administrator.email }],
+      firstName: "Lost",
+      lastName: "Admin",
+      phoneNumbers: [],
+      publicMetadata: { edupulseSchoolInvitation: marker },
+    });
+    mocks.clientQuery.mockImplementation(async (sql: string, values?: unknown[]) => {
+      if (sql.includes("SELECT id,email,status FROM app_users")) {
+        return { rows: [{ id: 21, email: "lost.admin@partner-school.test", status: "ACTIVE" }] };
+      }
+      if (sql.includes("current_invite.id")) {
+        return { rows: [{ id: 504, invitedPhone: "+2348222222222" }] };
+      }
+      if (sql.includes("UPDATE app_users SET first_name")) {
+        expect(values?.[2]).toBe("+2348222222222");
+      }
+      return sqlResult(sql);
+    });
+    await expect(activateAcceptedSchoolInvitation(21, "user_accepted")).resolves.toBe(true);
+
+    mocks.clientQuery.mockImplementation(async (sql: string, values?: unknown[]) => {
+      if (sql.includes("SELECT id FROM audit_logs") && sql.includes("PARTNER_SCHOOL_REGISTRATION_ATTEMPT")) {
+        return { rows: attemptIsUnknown ? [{ id: 903 }] : [] };
+      }
+      if (sql.includes("SELECT id FROM schools") && sql.includes("lower(trim(name))")) {
+        return { rows: schoolExists ? [{ id: 77 }] : [] };
+      }
+      if (sql.includes("PARTNER_SCHOOL_REGISTRATION_ATTEMPT") && sql.includes("RETURNING id")) {
+        return { rows: [{ id: 904 }] };
+      }
+      return sqlResult(sql);
+    });
+    await expect(createSchoolWithAdministrator(input, partnerOwner))
+      .rejects.toMatchObject({ statusCode: 409, eventType: "INVITATION_RECOVERY_REQUIRED" });
+    expect(mocks.createInvitation).toHaveBeenCalledTimes(1);
   });
 });

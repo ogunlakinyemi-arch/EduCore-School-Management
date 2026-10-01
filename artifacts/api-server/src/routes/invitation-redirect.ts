@@ -47,11 +47,14 @@ export function invitationRedirect(
   }
 
   const domain = developmentDomain?.trim();
-  if (!domain || !/^[a-zA-Z0-9.-]+$/.test(domain)) {
+  if (
+    !domain ||
+    !/^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+replit\.dev$/i.test(domain)
+  ) {
     throw new Error("The development invitation host is not configured");
   }
   const origin = new URL(`https://${domain}`);
-  if (origin.hostname !== domain.toLowerCase()) {
+  if (origin.hostname !== domain.toLowerCase() || origin.port || origin.username || origin.password) {
     throw new Error("Invalid development invitation host");
   }
   return new URL(path, origin).toString();

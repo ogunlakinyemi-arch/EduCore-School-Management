@@ -1,0 +1,311 @@
+We need to change the Partner school-registration workflow in Yemait EduCore.
+
+IMPORTANT:
+
+- Do NOT modify the Production database directly.
+- Do NOT publish anything.
+- Do NOT run migrations yet.
+- Do NOT disturb existing Owner, School Admin, Teacher, Accountant, Parent, Student, Staff, Company Employee, Device Activation Officer, or Partner Staff workflows.
+- Do NOT remove existing school data.
+- First implement and test this in Development.
+- Reuse the existing invitation infrastructure, Clerk invitation mechanism, RBAC, audit logging, and school/partner relationships wherever possible.
+- Do not rebuild the application.
+
+BUSINESS WORKFLOW CHANGE
+
+The current Partner "generate referral link" workflow is not reliable because the referred school cannot properly open/click the referral link.
+
+Replace the partner referral-link workflow with a direct Add School workflow.
+
+Partners should NOT need to generate a referral link themselves.
+
+Instead, a Partner gets an Add School section/button in the Partner Dashboard.
+
+PARTNER FLOW
+
+Partner Dashboard:
+
+Add a prominent:
+
++ Add School
+
+When clicked, show a form:
+
+School Information
+
+- School Name
+- School Phone (optional if the existing school model permits it)
+- School Email (optional if appropriate)
+
+School Administrator Information
+
+- Admin Full Name
+- Admin Email
+- Admin Phone Number
+
+The partner then clicks:
+
+Send School Invitation
+
+After submission:
+
+1. Create the pending school-registration/invitation record.
+2. Associate the invitation with the authenticated Partner.
+3. Associate the pending school with that Partner.
+4. Send the School Admin invitation through the existing supported invitation/email mechanism.
+5. Do NOT allow the Partner to set the Admin password.
+6. The Admin must create their own password through the invitation.
+7. Show the school in the Partner Dashboard as:
+
+Pending
+
+until the invitation is successfully accepted and the School Admin account is activated.
+
+SCHOOL ADMIN INVITATION
+
+The invitation must contain a normal public production acceptance URL.
+
+Do NOT use:
+
+- "REPLIT_DEV_DOMAIN"
+- private ".replit.dev"
+- workspace URLs
+- "silent-auth" as the application's final destination
+- internal development URLs
+
+Use the existing corrected production invitation URL infrastructure already implemented in:
+
+"artifacts/api-server/src/routes/invitation-redirect.ts"
+
+The Admin should be able to:
+
+1. Open the invitation.
+2. Authenticate/accept the invitation.
+3. Create their own password if required by the current Clerk flow.
+4. Complete school-admin onboarding.
+5. Enter the Yemait EduCore School Admin Dashboard.
+
+The Partner must never see or receive the Admin password.
+
+SCHOOL STATUS
+
+Use a clear lifecycle:
+
+Pending
+
+Partner has submitted the school and the invitation has been sent, but the School Admin has not completed registration.
+
+Active / Registered
+
+The School Admin has successfully accepted the invitation and completed account creation/onboarding.
+
+If the existing application already has appropriate school status values, reuse them instead of creating duplicate status concepts.
+
+PARTNER DASHBOARD
+
+Add a My Schools section.
+
+Each school referred/registered by the Partner should appear automatically.
+
+Display at minimum:
+
+- School Name
+- Admin Name
+- Admin Email
+- Admin Phone
+- Registration Status
+- Invitation Status
+- Date Added
+- Date Invitation Sent
+- Date Accepted/Activated, when applicable
+- Number of Students, when available
+- Subscription status, when available
+
+Example:
+
+School| Admin| Status| Invitation
+Greenfield College| John Doe| Pending| Sent
+Hillcrest Academy| Jane Doe| Active| Accepted
+
+Do not expose sensitive school information beyond what the Partner is authorized to see.
+
+Partners should NOT have access to:
+
+- student personal records
+- parent records
+- teacher records
+- school finance records
+- attendance details
+- academic results
+- private school data
+
+unless an existing explicit Partner permission already authorizes that specific information.
+
+OWNER DASHBOARD
+
+The Platform Owner should automatically see the same school relationship.
+
+For every school added by a Partner, show:
+
+- School Name
+- Partner
+- School Admin
+- Registration status
+- Invitation status
+- Date added
+- Date accepted
+- Student count when available
+- Subscription status when available
+
+The Owner should be able to distinguish:
+
+Partner → Pending School
+
+from
+
+Partner → Active School
+
+The Owner retains full platform-level visibility according to existing Owner permissions.
+
+IMPORTANT RELATIONSHIP RULE
+
+The school must remain permanently associated with the Partner who originally registered/referred it.
+
+Create or reuse the existing Partner → School relationship.
+
+Do NOT create duplicate school records if the same school already exists.
+
+Before creating a new school, check for an appropriate existing school using the application's existing uniqueness/duplicate rules.
+
+If a likely duplicate is detected, show an appropriate message rather than silently creating another school.
+
+INVITATION MANAGEMENT
+
+The Partner should have row-level actions where appropriate:
+
+- Send Invitation
+- Resend Invitation
+- View Status
+
+Do NOT implement a "resend all" operation.
+
+Resending must apply only to the selected school's pending invitation.
+
+Protect against:
+
+- double-clicks
+- concurrent resend requests
+- stale invitation IDs
+- wrong recipient
+- accidentally resending another school's invitation
+
+Use the existing invitation-resend protections already implemented.
+
+When an invitation is accepted:
+
+- mark the invitation accepted
+- activate/complete the school registration lifecycle
+- associate the School Admin with the school
+- preserve the Partner → School relationship
+- update the Partner Dashboard automatically
+- update the Owner Dashboard automatically
+- record the appropriate audit event
+
+EXISTING REFERRAL LINKS
+
+The old Partner referral-link generation UI should no longer be the primary workflow.
+
+Remove or hide the "Generate Referral Link" action from the Partner Dashboard if it is no longer required.
+
+Do not delete historical referral/invitation records that already exist.
+
+Existing records must remain readable where required for audit/history.
+
+If the backend referral-link endpoints are still required for historical records, leave them intact but stop exposing them as the normal Partner workflow.
+
+SECURITY / AUTHORIZATION
+
+Partner school creation must only be possible for an authenticated Partner with the appropriate permission.
+
+A Partner must only be able to see and manage schools they are authorized to manage.
+
+A Partner must not be able to:
+
+- change another Partner's school relationship
+- assign a school to another Partner
+- access another school's private data
+- change the School Admin password
+- impersonate a School Admin
+
+Platform Owner retains full authorized visibility.
+
+AUDIT LOGGING
+
+Record audit events for:
+
+- Partner created/submitted school
+- invitation sent
+- invitation resent
+- invitation accepted
+- school registration completed
+- Partner → School relationship established
+
+Use the existing audit-log architecture.
+
+TESTING
+
+Add/modify tests for the complete workflow:
+
+1. Partner opens Add School.
+2. Partner submits valid school/admin information.
+3. Pending school is created.
+4. Partner → School relationship is created.
+5. Invitation is created/sent.
+6. Partner Dashboard shows Pending.
+7. Admin opens the public invitation.
+8. Admin creates/activates account.
+9. School becomes Active/Registered.
+10. Partner Dashboard updates automatically.
+11. Owner Dashboard shows the school and associated Partner.
+12. Partner cannot access private school data.
+13. Partner cannot modify another Partner's school.
+14. Duplicate school handling works.
+15. Resend is scoped to the selected school.
+16. Double-click/concurrent resend protection works.
+17. Stale invitation protection works.
+18. Audit events are generated correctly.
+19. Existing Owner → School Admin invitation workflow remains functional.
+20. Existing School Admin → Teacher/Accountant/Parent/Student/Staff invitations remain functional.
+21. Existing Partner → Partner Staff invitations remain functional.
+
+Run the relevant backend and frontend tests and typechecks.
+
+ACCEPTANCE CRITERIA
+
+The implementation is complete only when:
+
+- Partner Dashboard has Add School.
+- Partner can enter School Name + Admin Name + Admin Email + Admin Phone.
+- Partner can send the invitation.
+- School appears immediately as Pending.
+- Admin receives/opens the normal public invitation.
+- Admin creates their own password/account.
+- School changes to Active/Registered after successful onboarding.
+- The school automatically appears in the Partner's My Schools list.
+- The school automatically appears in the Platform Owner's school list with the Partner relationship.
+- No manual referral URL is required.
+- No private Replit development URL is exposed.
+- Existing invitation functionality remains intact.
+- Existing school data is preserved.
+- Tests and typechecks pass.
+
+At the end, provide:
+
+1. Files changed
+2. Database/schema changes required, if any
+3. Tests added/updated
+4. Test results
+5. Whether a Development migration is required
+6. Any Production migration that will eventually be required
+
+Do not publish or execute any Production migration.

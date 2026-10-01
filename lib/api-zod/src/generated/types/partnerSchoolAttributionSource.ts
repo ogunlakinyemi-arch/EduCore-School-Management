@@ -11,6 +11,8 @@ export type PartnerSchoolAttributionSource = typeof PartnerSchoolAttributionSour
 
 export const PartnerSchoolAttributionSource = {
   REFERRAL: 'REFERRAL',
+  REFERRAL_LINK: 'REFERRAL_LINK',
   PLATFORM_ASSIGNED: 'PLATFORM_ASSIGNED',
   DIRECT: 'DIRECT',
+  PARTNER_DIRECT: 'PARTNER_DIRECT',
 } as const;

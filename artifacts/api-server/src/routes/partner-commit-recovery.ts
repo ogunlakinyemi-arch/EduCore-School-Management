@@ -4,7 +4,7 @@ type InvitationCommitRecovery = {
   commit: () => Promise<unknown>;
   rollback: () => Promise<unknown>;
   isCommitted: () => Promise<boolean>;
-  revokeInvitation: () => Promise<unknown>;
+  revokeInvitation?: () => Promise<unknown>;
 };
 
 /**
@@ -37,11 +37,14 @@ export async function commitInvitationWithRecovery({
     if (committed) return "COMMITTED";
     if (!rollbackSucceeded) return "UNKNOWN";
 
-    try {
-      await revokeInvitation();
-      return "ABORTED";
-    } catch {
-      return "UNKNOWN";
+    if (revokeInvitation) {
+      try {
+        await revokeInvitation();
+        return "ABORTED";
+      } catch {
+        return "UNKNOWN";
+      }
     }
+    return "ABORTED";
   }
 }

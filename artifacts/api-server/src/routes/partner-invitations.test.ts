@@ -63,6 +63,7 @@ vi.mock("../middlewares/auth", async (importOriginal) => {
 });
 
 import partnersRouter, { publicPartnersRouter } from "./partners";
+import * as schoolInvitationService from "./school-invitations";
 
 const app = express();
 app.use(express.json());
@@ -2227,5 +2228,292 @@ describe("Partner invitation dispatch and activation", () => {
       if (priorClerkSecret === undefined) delete process.env.CLERK_SECRET_KEY;
       else process.env.CLERK_SECRET_KEY = priorClerkSecret;
     }
+  });
+
+  it("registers a directly attributed school through the partner owner route", async () => {
+    state.context = {
+      user: {
+        id: 8,
+        clerkUserId: "user_partner_owner",
+        email: "partner.owner@example.test",
+        firstName: "Partner",
+        lastName: "Owner",
+        status: "ACTIVE",
+      },
+      roles: [{ id: 2, role: "PARTNER", schoolId: null, status: "ACTIVE" }],
+    };
+    const response = await post("/partner/schools", {
+      school: { name: "Direct Partner School", city: "Lagos", state: "Lagos" },
+      administrator: {
+        fullName: "First Administrator",
+        email: "first.admin@direct-partner.test",
+        phone: "+2348000000000",
+      },
+    });
+    expect(response.status, await response.clone().text()).toBe(201);
+    const result = await response.json();
+    expect(result).toMatchObject({
+      schoolId: 9,
+      administratorInvitation: {
+        email: "first.admin@direct-partner.test",
+        role: "SCHOOL_ADMIN",
+        status: "DISPATCH_REQUESTED",
+        dispatchStatus: "REQUEST_ACCEPTED",
+      },
+    });
+    expect(state.queries.some(({ sql }) =>
+      sql.includes("INSERT INTO school_partner_attributions") && sql.includes("PARTNER_DIRECT")
+    )).toBe(true);
+    expect(state.queries.some(({ sql }) => sql.includes("INSERT INTO schools") && sql.includes("'pending'"))).toBe(true);
+    const clerkClaim = state.createInvitation.mock.calls[0][0].publicMetadata.edupulseSchoolInvitation;
+    expect(clerkClaim).toMatchObject({
+      role: "SCHOOL_ADMIN",
+      schoolId: 9,
+      partnerRegistrationAttemptId: expect.any(String),
+    });
+    expect(JSON.stringify(state.createInvitation.mock.calls[0][0].publicMetadata))
+      .not.toContain("+2348000000000");
+  });
+
+  it("rejects partner school ownership/password fields and uses scoped current-school registration summaries", async () => {
+    state.context = {
+      user: {
+        id: 8,
+        clerkUserId: "user_partner_owner",
+        email: "partner.owner@example.test",
+        firstName: "Partner",
+        lastName: "Owner",
+        status: "ACTIVE",
+      },
+      roles: [{ id: 2, role: "PARTNER", schoolId: null, status: "ACTIVE" }],
+    };
+    const forbidden = await post("/partner/schools", {
+      school: { name: "Bad School", city: "Lagos", state: "Lagos", ownerId: 8 },
+      administrator: {
+        fullName: "First Administrator",
+        email: "first.admin@direct-partner.test",
+        phone: "+2348000000000",
+        password: "not-allowed",
+      },
+    });
+    expect(forbidden.status).toBe(400);
+    expect(state.createInvitation).not.toHaveBeenCalled();
+    expect(db.connect).not.toHaveBeenCalled();
+
+    const listed = await fetch(`${baseUrl}/partner/schools`);
+    expect(listed.status).toBe(200);
+    const summaryQuery = state.queries.find(({ sql }) =>
+      sql.includes("FROM school_partner_attributions a JOIN schools s")
+    );
+    expect(summaryQuery?.sql).toContain("a.is_current=true");
+    expect(summaryQuery?.sql).toContain("ua.metadata->>'claimId'=school_invite.metadata->>'claimId'");
+    expect(summaryQuery?.sql).toContain("superseded.metadata->>'supersedesClaimId'");
+    expect(summaryQuery?.sql).toContain("school_invite.metadata->>'invitationId'");
+  });
+
+  it("resends only the selected current partner-school administrator invitation", async () => {
+    state.context = {
+      user: {
+        id: 8,
+        clerkUserId: "user_partner_owner",
+        email: "partner.owner@example.test",
+        firstName: "Partner",
+        lastName: "Owner",
+        status: "ACTIVE",
+      },
+      roles: [{ id: 2, role: "PARTNER", schoolId: null, status: "ACTIVE" }],
+    };
+    db.query.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      state.queries.push({ sql, values });
+      if (sql.includes("FROM partner_profiles p")) {
+        return { rows: [{
+          id: 4, status: "ACTIVE", isOwner: true, partnerRole: "PARTNER_OWNER",
+        }] };
+      }
+      if (sql.includes("SELECT i.metadata FROM audit_logs i")) {
+        return { rows: [{
+          metadata: {
+            invitationId: "selected_admin_invite",
+            claimId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            invitedEmail: "admin@partner-school.test",
+            role: "SCHOOL_ADMIN",
+            phone: "+2348000000000",
+          },
+        }] };
+      }
+      return { rows: [] };
+    });
+    const replace = vi.spyOn(schoolInvitationService, "replaceSchoolAdminInvitation")
+      .mockResolvedValue({
+        status: "PENDING",
+        invitationId: "replacement_admin_invite",
+        supersededInvitationId: "selected_admin_invite",
+        previousInviteRevoked: true,
+        email: "admin@partner-school.test",
+        schoolId: 77,
+        role: "SCHOOL_ADMIN",
+        dispatchStatus: "REQUEST_ACCEPTED",
+        deliveryStatus: "UNVERIFIED",
+        expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+        recoveryStatus: "COMPLETED",
+      });
+    try {
+      const response = await post(
+        "/partner/schools/77/invitations/selected_admin_invite/resend",
+        {},
+      );
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        invitationId: "replacement_admin_invite",
+        supersededInvitationId: "selected_admin_invite",
+        schoolId: 77,
+        role: "SCHOOL_ADMIN",
+      });
+      expect(replace).toHaveBeenCalledWith(
+        { schoolId: 77, invitationId: "selected_admin_invite" },
+        state.context,
+      );
+      expect(state.queries.some(({ sql, values }) =>
+        sql.includes("a.partner_profile_id=$3 AND a.is_current=true") &&
+        values[0] === 77 && values[1] === "selected_admin_invite"
+      )).toBe(true);
+    } finally {
+      replace.mockRestore();
+    }
+  });
+
+  it("preserves permanent direct attribution during conflict resolution while keeping REJECT available", async () => {
+    let currentSource: string | null = "PARTNER_DIRECT";
+    let conflictStatus = "OPEN";
+    const statements: Array<{ sql: string; values: unknown[] }> = [];
+    const clientQuery = vi.fn(async (sql: string, values: unknown[] = []) => {
+      statements.push({ sql, values });
+      if (sql.includes("SELECT * FROM partner_attribution_conflicts")) {
+        return conflictStatus === "OPEN"
+          ? { rows: [{
+            id: 5,
+            school_id: 99,
+            existing_partner_profile_id: 4,
+            attempted_partner_profile_id: 8,
+            referral_link_id: null,
+            status: "OPEN",
+          }] }
+          : { rows: [] };
+      }
+      if (sql.includes("FROM school_partner_attributions") && sql.includes("FOR UPDATE")) {
+        return {
+          rows: currentSource
+            ? [{ source: currentSource, partner_profile_id: 4, is_current: true }]
+            : [],
+        };
+      }
+      if (sql.includes("UPDATE school_partner_attributions")) {
+        currentSource = null;
+        return { rows: [] };
+      }
+      if (sql.includes("INSERT INTO school_partner_attributions")) {
+        currentSource = "PLATFORM_ASSIGNED";
+        return { rows: [] };
+      }
+      if (sql.includes("UPDATE partner_attribution_conflicts")) {
+        conflictStatus = String(values[0]);
+        return { rows: [] };
+      }
+      return { rows: [] };
+    });
+    db.connect.mockResolvedValue({ query: clientQuery, release: db.release } as any);
+    db.query.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      state.queries.push({ sql, values });
+      if (sql.includes("FROM partner_profiles p")) {
+        return { rows: [{
+          id: 4, status: "ACTIVE", isOwner: true, partnerRole: "PARTNER_OWNER",
+        }] };
+      }
+      if (sql.includes("FROM school_partner_attributions a JOIN schools s")) {
+        return { rows: currentSource === "PARTNER_DIRECT"
+          ? [{
+            schoolId: 99,
+            schoolName: "Permanent Direct School",
+            schoolCode: "P-DIRECT-99",
+            attributionStatus: "ACTIVE",
+            attributionSource: currentSource,
+          }]
+          : [] };
+      }
+      return { rows: [] };
+    });
+
+    const accept = await post("/platform/partner-attribution-conflicts/5/resolve", { decision: "ACCEPT" });
+    expect(accept.status).toBe(409);
+    expect(await accept.json()).toMatchObject({
+      error: expect.stringContaining("permanent partner attribution"),
+    });
+    expect(currentSource).toBe("PARTNER_DIRECT");
+    expect(conflictStatus).toBe("OPEN");
+    expect(statements.some(({ sql }) => sql.includes("UPDATE school_partner_attributions"))).toBe(false);
+    expect(statements.some(({ sql }) => sql.includes("INSERT INTO school_partner_attributions"))).toBe(false);
+
+    const reject = await post("/platform/partner-attribution-conflicts/5/resolve", { decision: "REJECT" });
+    expect(reject.status).toBe(200);
+    expect(await reject.json()).toMatchObject({ id: 5, status: "REJECTED" });
+    expect(currentSource).toBe("PARTNER_DIRECT");
+
+    const visibleSchools = await fetch(`${baseUrl}/partner/schools`);
+    expect(visibleSchools.status).toBe(200);
+    expect(await visibleSchools.json()).toMatchObject([
+      expect.objectContaining({
+        schoolId: 99,
+        attributionSource: "PARTNER_DIRECT",
+        attributionStatus: "ACTIVE",
+      }),
+    ]);
+  });
+
+  it("continues accepting attribution conflicts for historical non-direct sources", async () => {
+    let currentSource: string | null = "REFERRAL";
+    let conflictStatus = "OPEN";
+    const statements: Array<{ sql: string; values: unknown[] }> = [];
+    const clientQuery = vi.fn(async (sql: string, values: unknown[] = []) => {
+      statements.push({ sql, values });
+      if (sql.includes("SELECT * FROM partner_attribution_conflicts")) {
+        return conflictStatus === "OPEN"
+          ? { rows: [{
+            id: 6,
+            school_id: 100,
+            existing_partner_profile_id: 4,
+            attempted_partner_profile_id: 8,
+            referral_link_id: 12,
+            status: "OPEN",
+          }] }
+          : { rows: [] };
+      }
+      if (sql.includes("FROM school_partner_attributions") && sql.includes("FOR UPDATE")) {
+        return { rows: [{ source: currentSource, partner_profile_id: 4, is_current: true }] };
+      }
+      if (sql.includes("UPDATE school_partner_attributions")) {
+        currentSource = null;
+        return { rows: [] };
+      }
+      if (sql.includes("INSERT INTO school_partner_attributions")) {
+        currentSource = "PLATFORM_ASSIGNED";
+        return { rows: [] };
+      }
+      if (sql.includes("UPDATE partner_attribution_conflicts")) {
+        conflictStatus = String(values[0]);
+        return { rows: [] };
+      }
+      return { rows: [] };
+    });
+    db.connect.mockResolvedValue({ query: clientQuery, release: db.release } as any);
+
+    const accepted = await post("/platform/partner-attribution-conflicts/6/resolve", { decision: "ACCEPT" });
+    expect(accepted.status).toBe(200);
+    expect(await accepted.json()).toMatchObject({ id: 6, status: "ACCEPTED" });
+    expect(statements.some(({ sql, values }) =>
+      sql.includes("INSERT INTO school_partner_attributions") &&
+      sql.includes("'PLATFORM_ASSIGNED'") &&
+      values[1] === 8
+    )).toBe(true);
+    expect(currentSource).toBe("PLATFORM_ASSIGNED");
   });
 });

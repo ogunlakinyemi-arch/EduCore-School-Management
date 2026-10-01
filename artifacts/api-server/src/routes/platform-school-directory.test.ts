@@ -89,6 +89,9 @@ describe("owner school directory", () => {
     });
     expect(state.queries[0].sql).toContain("LEFT JOIN school_partner_attributions");
     expect(state.queries[0].sql).toContain("WHERE sm.school_id=s.id AND sm.role='SCHOOL_ADMIN'");
+    expect(state.queries[0].sql).toContain("ua.metadata->>'claimId'=school_invite.metadata->>'claimId'");
+    expect(state.queries[0].sql).toContain("superseded.metadata->>'supersedesClaimId'");
+    expect(state.queries[0].sql).toContain("school_invite.metadata->>'invitationId'");
   });
 
   it("parameterizes search and validates status filters", async () => {

@@ -101,11 +101,16 @@ async function auditInvitation(
   claimId?: string,
   fullName?: string,
   replacementAttemptId?: string,
+  phone?: string | null,
+  attemptId?: string,
+  dispatchStatus?: string,
 ) {
   const actorRole = actor.roles.find((item) =>
     item.schoolId === schoolId && item.role === "SCHOOL_ADMIN"
   )?.role ?? actor.roles.find((item) =>
     item.role === "PLATFORM_OWNER" && item.schoolId === null
+  )?.role ?? actor.roles.find((item) =>
+    ["PARTNER", "PARTNER_OWNER", "PARTNER_ADMIN"].includes(item.role)
   )?.role ?? "AUTHENTICATED";
   const actorName = [actor.user.firstName, actor.user.lastName]
     .filter(Boolean)
@@ -134,6 +139,9 @@ async function auditInvitation(
         invitationId: invitationId ?? null,
         claimId: claimId ?? null,
         ...(replacementAttemptId ? { replacementAttemptId } : {}),
+        ...(phone ? { phone } : {}),
+        ...(attemptId ? { attemptId } : {}),
+        ...(dispatchStatus ? { dispatchStatus } : {}),
         ...splitName(fullName ?? ""),
       }),
     ],
@@ -172,6 +180,36 @@ async function activatePendingSchool(
       JSON.stringify({ role, activationSource, claimId }),
     ],
   );
+  const partnerAttribution = await client.query(
+    `SELECT partner_profile_id AS "partnerId" FROM school_partner_attributions
+     WHERE school_id=$1 AND source='PARTNER_DIRECT'
+     ORDER BY starts_at LIMIT 1`,
+    [schoolId],
+  );
+  if (partnerAttribution.rows[0]) {
+    await client.query(
+      `INSERT INTO audit_logs
+        ("user",role,actor_user_id,clerk_user_id,school_id,action,module,record_id,
+         severity,event_type,result,metadata)
+       VALUES($1,$2,$3,$4,$5,'Completed partner school registration','Partners',$6,
+         'info','PARTNER_SCHOOL_REGISTRATION_COMPLETED','SUCCESS',$7::jsonb)`,
+      [
+        actor.name,
+        actor.role,
+        actor.userId,
+        actor.clerkUserId,
+        schoolId,
+        membershipId,
+        JSON.stringify({
+          partnerId: partnerAttribution.rows[0].partnerId,
+          schoolId,
+          registrationStatus: "ACTIVE",
+          claimId,
+          activationSource,
+        }),
+      ],
+    );
+  }
   return true;
 }
 
@@ -652,27 +690,55 @@ export async function createSchoolInvitation(input: InviteeInput, actor: UserCon
 
 export async function createSchoolWithAdministrator(input: {
   school: {
-    code: string;
+    code?: string;
     name: string;
     city: string;
     state: string;
     status?: string;
+    phone?: string;
+    email?: string;
   };
-  administrator: { fullName: string; email: string };
+  administrator: { fullName: string; email: string; phone?: string };
+  partnerId?: number;
 }, actor: UserContext) {
   const school = {
-    code: input.school.code.trim().toUpperCase(),
+    code: input.school.code?.trim().toUpperCase() ??
+      (input.partnerId ? `P${randomUUID().replaceAll("-", "").slice(0, 9).toUpperCase()}` : ""),
     name: input.school.name.trim(),
     city: input.school.city.trim(),
     state: input.school.state.trim(),
     requestedStatus: input.school.status?.trim() || "active",
+    phone: input.school.phone?.trim() || null,
+    email: input.school.email?.trim().toLowerCase() || null,
   };
   const email = normalizeEmail(input.administrator.email);
   const fullName = input.administrator.fullName.trim().replace(/\s+/g, " ");
+  const administratorPhone = input.administrator.phone?.trim() || null;
   if (!school.code || school.code.length > 10 || school.name.length < 2 ||
       !school.city || !school.state || fullName.length < 2 ||
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new AuthError(400, "A valid school and first administrator name and email are required");
+  }
+  if (input.partnerId !== undefined) {
+    if (!Number.isInteger(input.partnerId) || input.partnerId < 1 || !administratorPhone) {
+      throw new AuthError(400, "A valid partner, school, and administrator phone number are required");
+    }
+    if (school.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(school.email)) {
+      throw new AuthError(400, "A valid school email is required");
+    }
+    if (school.phone && school.phone.length > 40 || school.email && school.email.length > 254 ||
+        administratorPhone.length > 40 || school.name.length > 200 ||
+        school.city.length > 100 || school.state.length > 100 || fullName.length > 200) {
+      throw new AuthError(400, "School or administrator information exceeds the allowed length");
+    }
+    return createPartnerSchoolWithAdministrator({
+      school,
+      administrator: { fullName, email, phone: administratorPhone },
+      partnerId: input.partnerId,
+    }, actor);
+  }
+  if (!input.school.code || !input.school.code.trim()) {
+    throw new AuthError(400, "A school code is required");
   }
   if (!["active", "inactive", "suspended"].includes(school.requestedStatus)) {
     throw new AuthError(400, "Invalid school status");
@@ -777,6 +843,548 @@ export async function createSchoolWithAdministrator(input: {
   } finally {
     client.release();
   }
+}
+
+async function findSchoolInvitationForClaim(email: string, schoolId: number, claimId: string) {
+  const statuses: ClerkSchoolInvitationStatus[] = ["pending", "accepted", "revoked", "expired"];
+  const matches = new Map<string, any>();
+  for (const status of statuses) {
+    let offset = 0;
+    let totalCount: number | null = null;
+    while (totalCount === null || offset < totalCount) {
+      const response = await clerkClient.invitations.getInvitationList({
+        query: email,
+        status,
+        limit: 100,
+        offset,
+      });
+      if (!Array.isArray(response.data) || !Number.isInteger(response.totalCount) || response.totalCount < 0) {
+        throw new Error("Clerk returned incomplete invitation pagination data");
+      }
+      totalCount = response.totalCount;
+      for (const invitation of response.data as any[]) {
+        const marker = (invitation.publicMetadata as Record<string, any> | undefined)?.[METADATA_KEY];
+        if (
+          normalizeEmail(invitation.emailAddress) === email &&
+          marker?.claimId === claimId &&
+          Number(marker?.schoolId) === schoolId &&
+          marker?.role === "SCHOOL_ADMIN"
+        ) {
+          matches.set(invitation.id, invitation);
+        }
+      }
+      if (response.data.length === 0 && offset < totalCount) {
+        throw new Error("Clerk invitation pagination ended before all matches were read");
+      }
+      offset += response.data.length;
+    }
+  }
+  return [...matches.values()];
+}
+
+async function auditPartnerSchoolRegistration(
+  client: any,
+  actor: UserContext,
+  schoolId: number,
+  partnerId: number,
+  action: string,
+  eventType: string,
+  metadata: Record<string, unknown>,
+) {
+  const role = actor.roles.find((item) =>
+    ["PARTNER", "PARTNER_OWNER", "PARTNER_ADMIN"].includes(item.role)
+  )?.role ?? "AUTHENTICATED";
+  const name = [actor.user.firstName, actor.user.lastName].filter(Boolean).join(" ") || actor.user.email;
+  await client.query(
+    `INSERT INTO audit_logs
+      ("user",role,actor_user_id,clerk_user_id,school_id,action,module,record_id,
+       severity,event_type,result,metadata)
+     VALUES($1,$2,$3,$4,$5,$6,'Partners',$5,'info',$7,'SUCCESS',$8::jsonb)`,
+    [
+      name,
+      role,
+      actor.user.id,
+      actor.user.clerkUserId,
+      schoolId,
+      action,
+      eventType,
+      JSON.stringify({ partnerId, schoolId, ...metadata }),
+    ],
+  );
+}
+
+async function createPartnerSchoolWithAdministrator(input: {
+  school: {
+    code: string;
+    name: string;
+    city: string;
+    state: string;
+    phone: string | null;
+    email: string | null;
+  };
+  administrator: { fullName: string; email: string; phone: string };
+  partnerId: number;
+}, actor: UserContext) {
+  const { school, administrator, partnerId } = input;
+  const { firstName, lastName } = splitName(administrator.fullName);
+  const claimId = randomUUID();
+  const attemptId = randomUUID();
+  const client = await pool.connect();
+  let invitationId: string | null = null;
+  let schoolId: number | null = null;
+  let attemptAuditId: number | null = null;
+  let advisoryLocks: string[] = [];
+  let providerCallStarted = false;
+  let commitAttempted = false;
+  let phase1Committed = false;
+  let transactionStarted = false;
+  let discardClient = false;
+  let providerOutcomeUnknown = false;
+  try {
+    advisoryLocks = [
+      `first-school-admin:${administrator.email}`,
+      `partner-school-name:${school.name.toLowerCase()}`,
+      school.email ? `partner-school-email:${school.email}` : null,
+      school.phone ? `partner-school-phone:${school.phone.replace(/\D/g, "")}` : null,
+    ].filter((value): value is string => Boolean(value)).sort();
+    await client.query(
+      `SELECT pg_advisory_lock(hashtextextended(identity,0))
+       FROM unnest($1::text[]) AS identities(identity) ORDER BY identity`,
+      [advisoryLocks],
+    );
+    const openAttempt = await client.query(
+      `SELECT id FROM audit_logs
+       WHERE event_type='PARTNER_SCHOOL_REGISTRATION_ATTEMPT'
+         AND metadata->>'attemptStatus' IN (
+           'PREPARED','DISPATCHING','OUTCOME_UNKNOWN','UNKNOWN_PROVIDER_STATE','MULTIPLE_MATCHES'
+         )
+         AND (
+           lower(trim(metadata->>'administratorEmail'))=$1
+           OR lower(trim(metadata->>'schoolName'))=$2
+         )
+       ORDER BY timestamp DESC LIMIT 1`,
+      [administrator.email, school.name.toLowerCase()],
+    );
+    if (openAttempt.rows[0]) {
+      throw new AuthError(
+        409,
+        "A previous school registration or invitation attempt has an unresolved provider outcome; reconcile it before retrying",
+        "INVITATION_RECOVERY_REQUIRED",
+      );
+    }
+    const stagedAttempt = await client.query(
+      `INSERT INTO audit_logs
+        ("user",role,actor_user_id,clerk_user_id,action,module,event_type,result,metadata)
+       VALUES($1,$2,$3,$4,'Prepared partner school registration','Partners',
+         'PARTNER_SCHOOL_REGISTRATION_ATTEMPT','SUCCESS',$5::jsonb)
+       RETURNING id`,
+      [
+        [actor.user.firstName, actor.user.lastName].filter(Boolean).join(" ") || actor.user.email,
+        actor.roles.find((item) => ["PARTNER", "PARTNER_OWNER", "PARTNER_ADMIN"].includes(item.role))?.role ??
+          "AUTHENTICATED",
+        actor.user.id,
+        actor.user.clerkUserId,
+        JSON.stringify({
+          attemptId,
+          attemptStatus: "PREPARED",
+          partnerId,
+          administratorEmail: administrator.email,
+          administratorPhone: administrator.phone,
+          administratorName: administrator.fullName,
+          schoolName: school.name,
+          schoolCity: school.city,
+          schoolState: school.state,
+          schoolCode: school.code,
+          schoolEmail: school.email,
+          schoolPhone: school.phone,
+          claimId,
+          source: "PARTNER_DIRECT",
+        }),
+      ],
+    );
+    attemptAuditId = Number(stagedAttempt.rows[0]?.id);
+    if (!attemptAuditId) throw new AuthError(503, "School registration attempt could not be recorded");
+
+    await client.query("BEGIN");
+    transactionStarted = true;
+
+    const duplicateSchool = await client.query(
+      `SELECT id FROM schools
+       WHERE lower(trim(name))=lower(trim($1))
+          OR ($2::text IS NOT NULL AND email IS NOT NULL AND lower(trim(email))=lower(trim($2)))
+          OR ($3::text IS NOT NULL AND phone IS NOT NULL
+              AND regexp_replace(phone,'\\D','','g')=regexp_replace($3,'\\D','','g'))
+       ORDER BY id LIMIT 1 FOR UPDATE`,
+      [school.name, school.email, school.phone],
+    );
+    if (duplicateSchool.rows[0]) {
+      throw new AuthError(409, "A school with this name, email, or phone already exists");
+    }
+    const existingUser = await client.query(
+      `SELECT id FROM app_users WHERE lower(trim(email))=$1 ORDER BY id LIMIT 2 FOR UPDATE`,
+      [administrator.email],
+    );
+    if (existingUser.rows.length) {
+      throw new AuthError(409, "This administrator email already belongs to an EduCore account");
+    }
+    const existingInvitation = await client.query(
+      `SELECT id FROM audit_logs
+       WHERE event_type='SCHOOL_ADMIN_INVITED'
+         AND lower(trim(metadata->>'invitedEmail'))=$1
+         AND metadata->>'superseded' IS DISTINCT FROM 'true'
+         AND (
+           metadata->>'invitationId' IS NOT NULL
+           OR metadata->>'dispatchStatus' IN (
+             'DISPATCHING','UNKNOWN_PROVIDER_STATE','OUTCOME_UNKNOWN','REGISTERED_OR_PENDING'
+           )
+         )
+       ORDER BY timestamp DESC LIMIT 1 FOR UPDATE`,
+      [administrator.email],
+    );
+    if (existingInvitation.rows[0]) {
+      throw new AuthError(409, "This administrator email already has a school invitation; use the existing invitation workflow");
+    }
+
+    const created = await client.query(
+      `INSERT INTO schools(code,name,city,state,status,phone,email)
+       VALUES($1,$2,$3,$4,'pending',$5,$6) RETURNING id`,
+      [school.code, school.name, school.city, school.state, school.phone, school.email],
+    );
+    schoolId = Number(created.rows[0]?.id);
+    if (!schoolId) throw new AuthError(503, "School could not be created");
+    await client.query(
+      `UPDATE audit_logs SET school_id=$1,
+         metadata=COALESCE(metadata,'{}'::jsonb) || jsonb_build_object('schoolId',$1,'attemptStatus','DISPATCHING')
+       WHERE id=$2`,
+      [schoolId, attemptAuditId],
+    );
+
+    await client.query(
+      `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`,
+      [`school-attribution:${schoolId}`],
+    );
+    await client.query(
+      `INSERT INTO school_partner_attributions
+        (school_id,partner_profile_id,referral_link_id,source,status,is_current,created_by)
+       VALUES($1,$2,NULL,'PARTNER_DIRECT','ACTIVE',true,$3)`,
+      [schoolId, partnerId, actor.user.id],
+    );
+    await auditPartnerSchoolRegistration(
+      client, actor, schoolId, partnerId, "Partner registered pending school", "PARTNER_SCHOOL_REGISTERED",
+      { source: "PARTNER_DIRECT", schoolName: school.name, administratorEmail: administrator.email },
+    );
+    await auditPartnerSchoolRegistration(
+      client, actor, schoolId, partnerId, "Established permanent partner-school relationship",
+      "PARTNER_SCHOOL_ATTRIBUTION_ESTABLISHED", { source: "PARTNER_DIRECT" },
+    );
+
+    // Commit the school, immutable partner attribution, dispatch claim, and audit evidence
+    // before calling Clerk. A lost provider response can then never strand an invite whose
+    // school/claim disappeared in a rollback.
+    await auditInvitation(
+      client,
+      actor,
+      schoolId,
+      "SCHOOL_ADMIN",
+      administrator.email,
+      "SCHOOL_ADMIN_INVITED",
+      null,
+      undefined,
+      claimId,
+      administrator.fullName,
+      undefined,
+      administrator.phone,
+      attemptId,
+      "DISPATCHING",
+    );
+    await client.query(
+      `UPDATE audit_logs
+       SET metadata=COALESCE(metadata,'{}'::jsonb) ||
+         '{"attemptStatus":"DISPATCHING","dispatchStatus":"DISPATCHING"}'::jsonb
+       WHERE id=$1`,
+      [attemptAuditId],
+    );
+    commitAttempted = true;
+    const preparedResolution = await commitInvitationWithRecovery({
+      commit: () => client.query("COMMIT"),
+      rollback: () => client.query("ROLLBACK"),
+      isCommitted: async () => Boolean((await pool.query(
+        `SELECT 1 FROM schools s
+         JOIN school_partner_attributions a ON a.school_id=s.id
+           AND a.partner_profile_id=$2 AND a.source='PARTNER_DIRECT' AND a.is_current=true
+         WHERE s.id=$1 AND EXISTS (
+           SELECT 1 FROM audit_logs claim WHERE claim.school_id=s.id
+             AND claim.event_type='SCHOOL_ADMIN_INVITED'
+             AND claim.metadata->>'claimId'=$3
+             AND claim.metadata->>'role'='SCHOOL_ADMIN'
+             AND lower(claim.metadata->>'invitedEmail')=$4
+         )`,
+        [schoolId, partnerId, claimId, administrator.email],
+      )).rows[0]),
+    });
+    transactionStarted = false;
+    if (preparedResolution !== "COMMITTED") {
+      discardClient = preparedResolution === "UNKNOWN";
+      if (preparedResolution === "ABORTED") {
+        await pool.query(
+          `UPDATE audit_logs SET metadata=COALESCE(metadata,'{}'::jsonb) ||
+             '{"attemptStatus":"FAILED","dispatchStatus":"NOT_DISPATCHED"}'::jsonb WHERE id=$1`,
+          [attemptAuditId],
+        ).catch(() => undefined);
+      }
+      throw new AuthError(
+        503,
+        preparedResolution === "UNKNOWN"
+          ? "School registration preparation is uncertain; no invitation was sent. Reconcile before retrying."
+          : "School registration could not be prepared; no invitation was sent.",
+        "INVITATION_RECOVERY_REQUIRED",
+      );
+    }
+    phase1Committed = true;
+    commitAttempted = false;
+
+    let invitation: any;
+    providerCallStarted = true;
+    try {
+      invitation = await clerkClient.invitations.createInvitation({
+        emailAddress: administrator.email,
+        expiresInDays: INVITATION_DAYS,
+        ignoreExisting: false,
+        notify: true,
+        redirectUrl: invitationRedirect("/accept-invitation"),
+        publicMetadata: {
+          [METADATA_KEY]: {
+            version: 1,
+            claimId,
+            emailProof: emailProof(administrator.email),
+            schoolId,
+            role: "SCHOOL_ADMIN",
+            employeeNo: null,
+            firstName,
+            lastName,
+            partnerRegistrationAttemptId: attemptId,
+          },
+        },
+      });
+      invitationId = invitation.id;
+    } catch (error) {
+      if (clerkRejectionStatus(error)) throwClerkInvitationError(error);
+      try {
+        const matches = await findSchoolInvitationForClaim(administrator.email, schoolId, claimId);
+        if (matches.length === 1) {
+          invitation = matches[0];
+          invitationId = matches[0].id;
+        } else {
+          providerOutcomeUnknown = true;
+        }
+      } catch {
+        providerOutcomeUnknown = true;
+      }
+    }
+
+    await client.query("BEGIN");
+    transactionStarted = true;
+    await client.query(
+      `UPDATE audit_logs
+       SET metadata=COALESCE(metadata,'{}'::jsonb) || $1::jsonb
+       WHERE school_id=$2 AND event_type='SCHOOL_ADMIN_INVITED'
+         AND metadata->>'claimId'=$3 AND metadata->>'role'='SCHOOL_ADMIN'
+         AND lower(metadata->>'invitedEmail')=$4`,
+      [
+        JSON.stringify({
+          invitationId: invitationId ?? null,
+          dispatchStatus: providerOutcomeUnknown ? "UNKNOWN_PROVIDER_STATE" : "REQUEST_ACCEPTED",
+          attemptId,
+        }),
+        schoolId,
+        claimId,
+        administrator.email,
+      ],
+    );
+    await auditPartnerSchoolRegistration(
+      client,
+      actor,
+      schoolId,
+      partnerId,
+      providerOutcomeUnknown
+        ? "Partner school administrator invitation requires provider recovery"
+        : "Partner school administrator invitation sent",
+      providerOutcomeUnknown ? "PARTNER_SCHOOL_INVITATION_UNCERTAIN" : "PARTNER_SCHOOL_INVITATION_SENT",
+      {
+        source: "PARTNER_DIRECT",
+        invitedEmail: administrator.email,
+        invitationId: invitationId ?? null,
+        claimId,
+        attemptId,
+        dispatchStatus: providerOutcomeUnknown ? "UNKNOWN_PROVIDER_STATE" : "REQUEST_ACCEPTED",
+      },
+    );
+    await client.query(
+      `UPDATE audit_logs
+       SET metadata=COALESCE(metadata,'{}'::jsonb) || $1::jsonb
+       WHERE id=$2`,
+      [
+        JSON.stringify({
+          attemptStatus: providerOutcomeUnknown ? "OUTCOME_UNKNOWN" : "COMPLETED",
+          invitationId: invitationId ?? null,
+          dispatchStatus: providerOutcomeUnknown ? "UNKNOWN_PROVIDER_STATE" : "REQUEST_ACCEPTED",
+          schoolId,
+        }),
+        attemptAuditId,
+      ],
+    );
+
+    commitAttempted = true;
+    const resolution = await commitInvitationWithRecovery({
+      commit: () => client.query("COMMIT"),
+      rollback: () => client.query("ROLLBACK"),
+      isCommitted: async () => Boolean((await pool.query(
+        `SELECT 1 FROM audit_logs claim
+         WHERE claim.school_id=$1 AND claim.event_type='SCHOOL_ADMIN_INVITED'
+           AND claim.metadata->>'claimId'=$2
+           AND claim.metadata->>'invitationId'=$3`,
+        [schoolId, claimId, invitationId],
+      )).rows[0]),
+    });
+    transactionStarted = false;
+    if (resolution !== "COMMITTED") {
+      discardClient = resolution === "UNKNOWN";
+      await pool.query(
+        `UPDATE audit_logs SET metadata=COALESCE(metadata,'{}'::jsonb) || $1::jsonb WHERE id=$2`,
+        [
+          JSON.stringify({
+            attemptStatus: "OUTCOME_UNKNOWN",
+            dispatchStatus: "UNKNOWN_PROVIDER_STATE",
+            invitationId,
+          }),
+          attemptAuditId,
+        ],
+      ).catch(() => undefined);
+      await pool.query(
+        `UPDATE audit_logs
+         SET metadata=COALESCE(metadata,'{}'::jsonb) ||
+           '{"dispatchStatus":"UNKNOWN_PROVIDER_STATE"}'::jsonb
+         WHERE school_id=$1 AND event_type='SCHOOL_ADMIN_INVITED' AND metadata->>'claimId'=$2`,
+        [schoolId, claimId],
+      ).catch(() => undefined);
+      throw new AuthError(
+        503,
+        "The invitation may be active but finalization is unconfirmed; its durable school claim is retained. Reconcile before retrying.",
+        "INVITATION_RECOVERY_REQUIRED",
+      );
+    }
+  } catch (error) {
+    if (transactionStarted && !commitAttempted) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      transactionStarted = false;
+    }
+    if (!phase1Committed && attemptAuditId && !commitAttempted && !providerCallStarted) {
+      await pool.query(
+        `UPDATE audit_logs SET metadata=COALESCE(metadata,'{}'::jsonb) ||
+           '{"attemptStatus":"FAILED","dispatchStatus":"NOT_DISPATCHED"}'::jsonb
+         WHERE id=$1`,
+        [attemptAuditId],
+      ).catch(() => undefined);
+    }
+    if (phase1Committed && attemptAuditId && !commitAttempted) {
+      const rejection = !providerOutcomeUnknown && providerCallStarted && clerkRejectionStatus(error) !== null;
+      const registeredOrPending = (
+        (error as { code?: string; eventType?: string } | null)?.code ??
+        (error as { eventType?: string } | null)?.eventType
+      ) === "INVITATION_ALREADY_EXISTS";
+      const dispatchStatus = providerOutcomeUnknown
+        ? "UNKNOWN_PROVIDER_STATE"
+        : registeredOrPending ? "REGISTERED_OR_PENDING"
+        : rejection ? "PROVIDER_REJECTED" : "OUTCOME_UNKNOWN";
+      const attemptStatus = providerOutcomeUnknown || !rejection ? "OUTCOME_UNKNOWN" : "FAILED";
+      await pool.query(
+        `UPDATE audit_logs SET metadata=COALESCE(metadata,'{}'::jsonb) || $1::jsonb WHERE id=$2`,
+        [
+          JSON.stringify({ attemptStatus, dispatchStatus, invitationId }),
+          attemptAuditId,
+        ],
+      ).catch(() => undefined);
+      await pool.query(
+        `UPDATE audit_logs
+         SET metadata=COALESCE(metadata,'{}'::jsonb) || $1::jsonb
+         WHERE school_id=$2 AND event_type='SCHOOL_ADMIN_INVITED' AND metadata->>'claimId'=$3`,
+        [
+          JSON.stringify({
+            dispatchStatus,
+            invitationId,
+            attemptId,
+          }),
+          schoolId,
+          claimId,
+        ],
+      ).catch(() => undefined);
+      if (providerCallStarted) {
+        await pool.query(
+          `INSERT INTO audit_logs
+            ("user",role,actor_user_id,clerk_user_id,school_id,action,module,record_id,
+             severity,event_type,result,metadata)
+           VALUES($1,$2,$3,$4,$5,$6,'Partners',$5,'warning',$7,'SUCCESS',$8::jsonb)`,
+          [
+            [actor.user.firstName, actor.user.lastName].filter(Boolean).join(" ") || actor.user.email,
+            actor.roles.find((item) => ["PARTNER", "PARTNER_OWNER", "PARTNER_ADMIN"].includes(item.role))?.role ??
+              "AUTHENTICATED",
+            actor.user.id,
+            actor.user.clerkUserId,
+            schoolId,
+            providerOutcomeUnknown || !rejection ? "Partner school invitation requires recovery" :
+              "Partner school invitation provider rejected the request",
+            providerOutcomeUnknown || !rejection
+              ? "PARTNER_SCHOOL_INVITATION_UNCERTAIN"
+              : "PARTNER_SCHOOL_INVITATION_FAILED",
+            JSON.stringify({
+              partnerId,
+              schoolId,
+              claimId,
+              attemptId,
+              invitationId,
+              dispatchStatus,
+            }),
+          ],
+        ).catch(() => undefined);
+      }
+      if (!rejection) {
+        throw new AuthError(
+          503,
+          "The school invitation outcome or its finalization is uncertain; its durable school claim is retained. Reconcile before retrying.",
+          "INVITATION_RECOVERY_REQUIRED",
+        );
+      }
+    }
+    throw error;
+  } finally {
+    if (advisoryLocks.length) {
+      await client.query(
+        `SELECT pg_advisory_unlock(hashtextextended(identity,0))
+         FROM unnest($1::text[]) AS identities(identity) ORDER BY identity`,
+        [advisoryLocks],
+      ).catch(() => undefined);
+    }
+    client.release(discardClient ? new Error("Invitation recovery left the database session uncertain") : undefined);
+  }
+  if (providerOutcomeUnknown || !invitationId) {
+    throw new AuthError(
+      503,
+      "School registration is pending but Clerk did not confirm the invitation outcome; reconcile before retrying",
+      "INVITATION_RECOVERY_REQUIRED",
+    );
+  }
+  return {
+    schoolId,
+    administratorInvitation: {
+      invitationId,
+      email: administrator.email,
+      role: "SCHOOL_ADMIN",
+      status: "DISPATCH_REQUESTED" as const,
+      dispatchStatus: "REQUEST_ACCEPTED" as const,
+      deliveryStatus: "UNVERIFIED" as const,
+      deliveryNote: "Clerk accepted the invitation request; inbox delivery is not verified.",
+    },
+  };
 }
 
 export type ClerkSchoolInvitationStatus = "pending" | "accepted" | "revoked" | "expired";
@@ -905,6 +1513,7 @@ async function reserveReplacementAttempt(input: {
   oldEmail: string;
   email: string;
   fullName: string;
+  phone?: string | null;
   actor: UserContext;
   marker: Record<string, any>;
   attemptId: string;
@@ -1109,6 +1718,7 @@ async function reserveReplacementAttempt(input: {
       invitedEmail: input.email,
       firstName,
       lastName,
+      phone: input.phone ?? null,
       emailProof: replacementMarker.emailProof,
       studentId: replacementMarker.studentId,
       employeeNo: replacementMarker.employeeNo,
@@ -1123,7 +1733,11 @@ async function reserveReplacementAttempt(input: {
          'Security',NULL,'info','SCHOOL_INVITATION_REPLACEMENT_ATTEMPT','SUCCESS',$6)`,
       [
         [input.actor.user.firstName, input.actor.user.lastName].filter(Boolean).join(" ") || input.actor.user.email,
-        input.role === "SCHOOL_ADMIN" ? "PLATFORM_OWNER" : "SCHOOL_ADMIN",
+       input.role === "SCHOOL_ADMIN"
+         ? input.actor.roles.find((item) =>
+             ["PLATFORM_OWNER", "PARTNER_OWNER", "PARTNER_ADMIN"].includes(item.role)
+           )?.role ?? "PLATFORM_OWNER"
+         : "SCHOOL_ADMIN",
         input.actor.user.id,
         input.actor.user.clerkUserId,
         input.schoolId,
@@ -1203,6 +1817,7 @@ async function finalizeReplacementAttempt(input: {
         metadata.claimId,
         [metadata.firstName, metadata.lastName].filter(Boolean).join(" "),
         input.attemptId,
+        metadata.phone ?? null,
       );
     }
     await client.query(
@@ -1821,6 +2436,7 @@ async function replaceSchoolAdminInvitationUnderGuard(input: {
     oldEmail,
     email,
     fullName,
+    phone: typeof sourceMetadata.phone === "string" ? sourceMetadata.phone : null,
     actor,
     marker: clerkMarker,
     attemptId,
@@ -2199,7 +2815,9 @@ export async function activateAcceptedSchoolInvitation(userId: number, clerkUser
       throw new AuthError(403, "The invitation does not match an active account");
     }
     const liveClaim = await client.query(
-      `SELECT current_invite.id FROM audit_logs current_invite
+      `SELECT current_invite.id,
+              current_invite.metadata->>'phone' AS "invitedPhone"
+       FROM audit_logs current_invite
        WHERE current_invite.school_id=$1
          AND current_invite.metadata->>'claimId'=$2
          AND current_invite.metadata->>'role'=$4
@@ -2207,8 +2825,19 @@ export async function activateAcceptedSchoolInvitation(userId: number, clerkUser
          AND (
            (
              current_invite.event_type IN ('SCHOOL_ADMIN_INVITED','USER_INVITED')
-             AND current_invite.metadata->>'invitationId' IS NOT NULL
-             AND current_invite.metadata->>'superseded' IS DISTINCT FROM 'true'
+             AND (
+               (
+                 current_invite.metadata->>'invitationId' IS NOT NULL
+                 AND current_invite.metadata->>'superseded' IS DISTINCT FROM 'true'
+               )
+               OR (
+                 current_invite.event_type='SCHOOL_ADMIN_INVITED'
+                 AND current_invite.metadata->>'invitationId' IS NULL
+                 AND current_invite.metadata->>'dispatchStatus' IN (
+                   'DISPATCHING','UNKNOWN_PROVIDER_STATE','OUTCOME_UNKNOWN'
+                 )
+               )
+             )
            )
            OR (
              current_invite.event_type='SCHOOL_INVITATION_REPLACEMENT_ATTEMPT'
@@ -2247,7 +2876,11 @@ export async function activateAcceptedSchoolInvitation(userId: number, clerkUser
     if (!existing.rows[0]) {
       const firstName = clerkUser.firstName?.trim() || invite.firstName;
       const lastName = clerkUser.lastName?.trim() || invite.lastName;
-      const phone = clerkUser.phoneNumbers[0]?.phoneNumber ?? null;
+      const verifiedClerkPhone = clerkUser.phoneNumbers.find(
+        (item) => item.verification?.status === "verified",
+      )?.phoneNumber ?? null;
+      const phone = verifiedClerkPhone ??
+        (typeof liveClaim.rows[0].invitedPhone === "string" ? liveClaim.rows[0].invitedPhone : null);
       await client.query(
         `UPDATE app_users SET first_name=COALESCE($1,first_name),
            last_name=COALESCE($2,last_name),phone=COALESCE($3,phone),updated_at=NOW()

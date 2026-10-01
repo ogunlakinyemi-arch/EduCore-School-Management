@@ -37,4 +37,13 @@ describe("external invitation commit recovery", () => {
     expect(resolution).toBe("UNKNOWN");
     expect(revokeInvitation).not.toHaveBeenCalled();
   });
+
+  it("does not claim external compensation when a precommitted claim makes revocation unsafe", async () => {
+    const resolution = await commitInvitationWithRecovery({
+      commit: async () => { throw new Error("finalization response lost"); },
+      rollback: async () => undefined,
+      isCommitted: async () => false,
+    });
+    expect(resolution).toBe("ABORTED");
+  });
 });

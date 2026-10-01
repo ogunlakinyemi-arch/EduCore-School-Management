@@ -5,6 +5,21 @@ import { pool } from "@workspace/db";
 import { commitInvitationWithRecovery } from "./partner-commit-recovery";
 import { invitationRedirect } from "./invitation-redirect";
 import {
+  createSchoolWithAdministrator,
+  replaceSchoolAdminInvitation,
+} from "./school-invitations";
+import {
+  partnerSchoolRegistrationFields,
+  partnerSchoolRegistrationJoins,
+} from "./partner-school-summary";
+import {
+  CreateMyPartnerSchoolBody,
+  CreateMyPartnerSchoolResponse,
+  ResendMyPartnerSchoolInvitationBody,
+  ResendMyPartnerSchoolInvitationParams,
+  ResendMyPartnerSchoolInvitationResponse,
+} from "@workspace/api-zod";
+import {
   AuthError,
   assertRoles,
   getUserContext,
@@ -155,7 +170,8 @@ const partnerFields = `
 const schoolFields = `s.id AS "schoolId", s.name AS "schoolName", s.code AS "schoolCode",
  a.status AS "attributionStatus", a.source AS "attributionSource", a.referral_link_id AS "referralLinkId",
  a.starts_at AS "startDate", a.ends_at AS "endDate",
- (SELECT COUNT(*)::int FROM students st WHERE st.school_id=s.id AND upper(st.status)='ACTIVE') AS "eligibleStudentCount"`;
+ (SELECT COUNT(*)::int FROM students st WHERE st.school_id=s.id AND upper(st.status)='ACTIVE') AS "eligibleStudentCount",
+ ${partnerSchoolRegistrationFields()}`;
 const commissionFields = `l.id,l.partner_profile_id AS "partnerId",l.school_id AS "schoolId",
  l.student_id AS "studentId",l.subscription_id AS "subscriptionId",l.term,
  l.commission_rule_id AS "commissionRuleId",l.rate::float,1 AS "eligibleStudentCount",
@@ -729,6 +745,10 @@ publicPartnersRouter.post("/partner/onboarding", run(async (req, res) => {
           'claimId',$2,'invitedEmail',$3,'email',$3,'role','SCHOOL_ADMIN','schoolId',$1,
           'invitationId',$4,'emailProof',$5,'firstName',$6,'lastName',$7))`,
       [school.rows[0].id, claimId, administratorEmail, clerkInvitation.id, emailProof, firstName, lastName]);
+    await client.query(
+      `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`,
+      [`school-attribution:${school.rows[0].id}`],
+    );
     await client.query(`INSERT INTO school_partner_attributions(school_id,partner_profile_id,referral_link_id,source,status,is_current)
       VALUES($1,$2,$3,'REFERRAL','ACTIVE',true)`, [school.rows[0].id, link.rows[0].partner_profile_id, link.rows[0].id]);
     await client.query(`INSERT INTO audit_logs("user",role,school_id,action,module,record_id,event_type,metadata)
@@ -1811,14 +1831,80 @@ router.patch("/platform/partners/:partnerId/status", run(async(req,res)=>{
   }
   const out=await pool.query(`SELECT ${partnerFields} FROM partner_profiles p LEFT JOIN app_users u ON u.id=p.user_id WHERE p.id=$1`,[id]);res.json(out.rows[0]);
 }));
-router.get("/platform/partners/:partnerId/schools", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const r=await pool.query(`SELECT ${schoolFields} FROM school_partner_attributions a JOIN schools s ON s.id=a.school_id WHERE a.partner_profile_id=$1 ORDER BY a.starts_at DESC`,[idOf(req.params.partnerId,"Partner")]);res.json(r.rows)}));
+router.get("/platform/partners/:partnerId/schools", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const r=await pool.query(`SELECT ${schoolFields} FROM school_partner_attributions a JOIN schools s ON s.id=a.school_id ${partnerSchoolRegistrationJoins} WHERE a.partner_profile_id=$1 ORDER BY a.starts_at DESC`,[idOf(req.params.partnerId,"Partner")]);res.json(r.rows)}));
 router.get("/platform/partners/:partnerId/attribution-history", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const r=await pool.query(`SELECT a.id,a.partner_profile_id AS "partnerId",a.school_id AS "schoolId",a.status AS "attributionStatus",a.source AS "attributionSource",a.referral_link_id AS "referralLinkId",a.starts_at AS "startDate",a.ends_at AS "endDate",a.created_at AS "createdAt" FROM school_partner_attributions a WHERE a.partner_profile_id=$1 ORDER BY a.starts_at DESC`,[idOf(req.params.partnerId,"Partner")]);res.json(r.rows)}));
 router.get("/platform/partners/:partnerId/commissions", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const r=await pool.query(`SELECT ${commissionFields} FROM commission_ledger l WHERE l.partner_profile_id=$1 ORDER BY l.created_at DESC`,[idOf(req.params.partnerId,"Partner")]);res.json(r.rows)}));
 router.get("/platform/partners/:partnerId/payouts", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const r=await pool.query(`SELECT id,partner_profile_id AS "partnerId",amount::float,currency,status,payment_reference AS "paymentReference",period_start AS "periodStart",period_end AS "periodEnd",created_at AS "createdAt",paid_at AS "paidAt" FROM partner_payouts WHERE partner_profile_id=$1 ORDER BY created_at DESC`,[idOf(req.params.partnerId,"Partner")]);res.json(r.rows)}));
 router.get("/platform/partners/:partnerId/payout-information", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const partnerId=idOf(req.params.partnerId,"Partner"),client=await pool.connect();try{await client.query("BEGIN");const r=await client.query(`SELECT id,method,bank_name_encrypted,account_name_encrypted,account_number_encrypted,bank_code_encrypted,encryption_key_version,updated_at AS "updatedAt" FROM partner_payout_information WHERE partner_profile_id=$1 AND status='ACTIVE' FOR SHARE`,[partnerId]);if(!r.rows[0])throw new AuthError(404,"Payout information not found");const x=r.rows[0];await audit(req,"Viewed payout information","Partner Payout Information",x.id,{partnerId},client);await client.query("COMMIT");res.json({id:x.id,partnerId,payoutMethod:x.method,bankName:decrypt(x.bank_name_encrypted,x.encryption_key_version),accountName:decrypt(x.account_name_encrypted,x.encryption_key_version),accountNumber:decrypt(x.account_number_encrypted,x.encryption_key_version),bankCode:x.bank_code_encrypted?decrypt(x.bank_code_encrypted,x.encryption_key_version):null,updatedAt:x.updatedAt});}catch(e){await client.query("ROLLBACK");throw e}finally{client.release()}}));
 
 router.get("/platform/partner-attribution-conflicts", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const r=await pool.query(`SELECT c.id,c.school_id AS "schoolId",c.existing_partner_profile_id AS "existingPartnerId",c.attempted_partner_profile_id AS "attemptedPartnerId",c.source AS "attemptedAttributionSource",c.status,c.created_at AS "createdAt",c.resolved_at AS "resolvedAt",c.decision AS "resolutionNote" FROM partner_attribution_conflicts c WHERE ($1::text IS NULL OR c.status=$1) ORDER BY c.created_at DESC`,[typeof req.query.status==="string"?req.query.status:null]);res.json(r.rows)}));
-router.post("/platform/partner-attribution-conflicts/:conflictId/resolve", run(async(req,res)=>{const c=assertRoles(req,["PLATFORM_OWNER"]),cid=idOf(req.params.conflictId,"Conflict"), decision=String(req.body?.decision??"").toUpperCase();if(!["ACCEPT","REJECT"].includes(decision))throw new AuthError(400,"decision must be ACCEPT or REJECT");const client=await pool.connect();try{await client.query("BEGIN");const x=await client.query(`SELECT * FROM partner_attribution_conflicts WHERE id=$1 AND status='OPEN' FOR UPDATE`,[cid]);if(!x.rows[0])throw new AuthError(404,"Conflict not found");if(decision==="ACCEPT"){await client.query(`UPDATE school_partner_attributions SET is_current=false,status='ENDED',ends_at=NOW() WHERE school_id=$1 AND is_current=true`,[x.rows[0].school_id]);await client.query(`INSERT INTO school_partner_attributions(school_id,partner_profile_id,referral_link_id,source,status,is_current,created_by) VALUES($1,$2,$3,'PLATFORM_ASSIGNED','ACTIVE',true,$4)`,[x.rows[0].school_id,x.rows[0].attempted_partner_profile_id,x.rows[0].referral_link_id,c.user.id]);}await client.query(`UPDATE partner_attribution_conflicts SET status=$1,decision=$2,resolved_by=$3,resolved_at=NOW() WHERE id=$4`,[decision==="ACCEPT"?"ACCEPTED":"REJECTED",req.body?.note??decision,c.user.id,cid]);await audit(req,`Resolved attribution conflict: ${decision}`,"Partner Attribution",cid,null,client);await client.query("COMMIT");res.json({id:cid,status:decision==="ACCEPT"?"ACCEPTED":"REJECTED"});}catch(e){await client.query("ROLLBACK");throw e}finally{client.release()}}));
+router.post("/platform/partner-attribution-conflicts/:conflictId/resolve", run(async (req, res) => {
+  const context = assertRoles(req, ["PLATFORM_OWNER"]);
+  const conflictId = idOf(req.params.conflictId, "Conflict");
+  const decision = String(req.body?.decision ?? "").toUpperCase();
+  if (!["ACCEPT", "REJECT"].includes(decision)) {
+    throw new AuthError(400, "decision must be ACCEPT or REJECT");
+  }
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const conflict = await client.query(
+      `SELECT * FROM partner_attribution_conflicts
+       WHERE id=$1 AND status='OPEN' FOR UPDATE`,
+      [conflictId],
+    );
+    const row = conflict.rows[0];
+    if (!row) throw new AuthError(404, "Conflict not found");
+
+    if (decision === "ACCEPT") {
+      await client.query(
+        `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`,
+        [`school-attribution:${row.school_id}`],
+      );
+      const attributions = await client.query(
+        `SELECT source,partner_profile_id
+         FROM school_partner_attributions
+         WHERE school_id=$1 AND (is_current=true OR source='PARTNER_DIRECT')
+         FOR UPDATE`,
+        [row.school_id],
+      );
+      if (attributions.rows.some((attribution) =>
+        String(attribution.source).toUpperCase() === "PARTNER_DIRECT"
+      )) {
+        throw new AuthError(
+          409,
+          "A directly registered school has a permanent partner attribution and cannot be reassigned by conflict resolution",
+          "PARTNER_DIRECT_ATTRIBUTION_PERMANENT",
+        );
+      }
+      await client.query(
+        `UPDATE school_partner_attributions
+         SET is_current=false,status='ENDED',ends_at=NOW()
+         WHERE school_id=$1 AND is_current=true`,
+        [row.school_id],
+      );
+      await client.query(
+        `INSERT INTO school_partner_attributions
+         (school_id,partner_profile_id,referral_link_id,source,status,is_current,created_by)
+         VALUES($1,$2,$3,'PLATFORM_ASSIGNED','ACTIVE',true,$4)`,
+        [row.school_id, row.attempted_partner_profile_id, row.referral_link_id, context.user.id],
+      );
+    }
+    await client.query(
+      `UPDATE partner_attribution_conflicts
+       SET status=$1,decision=$2,resolved_by=$3,resolved_at=NOW() WHERE id=$4`,
+      [decision === "ACCEPT" ? "ACCEPTED" : "REJECTED", req.body?.note ?? decision, context.user.id, conflictId],
+    );
+    await audit(req, `Resolved attribution conflict: ${decision}`, "Partner Attribution", conflictId, null, client);
+    await client.query("COMMIT");
+    res.json({ id: conflictId, status: decision === "ACCEPT" ? "ACCEPTED" : "REJECTED" });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}));
 router.get("/platform/partner-commission-rules", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const r=await pool.query(`SELECT id,name,status,term,currency,calculation_basis AS "calculationBasis",effective_at AS "effectiveDate",ends_at AS "endDate",partner_rate::float AS rate,allocation_total::float AS "allocationTotal",partner_amount::float AS "partnerAmount",school_amount::float AS "schoolAmount",edupulse_amount::float AS "edupulseAmount",created_at AS "createdAt" FROM commission_rules ORDER BY effective_at DESC`);res.json(r.rows)}));
 router.post("/platform/partner-commission-rules", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const b=req.body??{},p=Number(b.rate??b.partnerAmount),school=Number(b.schoolAmount??2000),edu=Number(b.edupulseAmount??(Number(b.allocationTotal??5000)-p-school)),total=Number(b.allocationTotal??p+school+edu);if(!Number.isFinite(p)||p<0||!Number.isFinite(school)||school<0||!Number.isFinite(edu)||edu<0||Math.abs(p+school+edu-total)>0.001)throw new AuthError(400,"Commission allocation must balance");const r=await pool.query(`INSERT INTO commission_rules(name,term,currency,calculation_basis,effective_at,partner_rate,allocation_total,partner_amount,school_amount,edupulse_amount) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id,status,currency,calculation_basis AS "calculationBasis",effective_at AS "effectiveDate",ends_at AS "endDate",partner_rate::float AS rate,created_at AS "createdAt"`,[b.name??"Partner referral",b.term??null,b.currency??"NGN",b.calculationBasis??"PER_ELIGIBLE_STUDENT_PER_TERM",b.effectiveDate??new Date(),p,total,p,school,edu]);await audit(req,"Created commission rule","Commission Rules",r.rows[0].id);res.status(201).json(r.rows[0])}));
 router.patch("/platform/partner-commission-rules/:ruleId", run(async(req,res)=>{assertRoles(req,["PLATFORM_OWNER"]);const id=idOf(req.params.ruleId,"Rule"),b=req.body??{};const current=await pool.query(`SELECT partner_rate::float AS rate FROM commission_rules WHERE id=$1`,[id]);if(!current.rows[0])throw new AuthError(404,"Rule not found");if(b.rate!==undefined&&Number(b.rate)!==Number(current.rows[0].rate))throw new AuthError(409,"Financial rule amounts are immutable; create a new effective-dated rule");const r=await pool.query(`UPDATE commission_rules SET status=COALESCE($1,status),ends_at=COALESCE($2,ends_at) WHERE id=$3 RETURNING id,status,currency,calculation_basis AS "calculationBasis",effective_at AS "effectiveDate",ends_at AS "endDate",partner_rate::float AS rate,created_at AS "createdAt"`,[b.status,b.endDate,id]);await audit(req,"Updated commission rule","Commission Rules",id);res.json(r.rows[0])}));
@@ -2002,8 +2088,89 @@ router.get("/partner/profile", run(async(req,res)=>res.json(await self(req))));
 router.patch("/partner/profile", run(async(req,res)=>{const p=await self(req);requirePartnerOwner(req,p);const b=req.body??{};await pool.query(`UPDATE partner_profiles SET full_name=COALESCE($1,full_name),business_name=COALESCE($2,business_name),phone=COALESCE($3,phone),address=COALESCE($4,address),state=COALESCE($5,state),lga=COALESCE($6,lga),updated_at=NOW() WHERE id=$7`,[b.fullName,b.businessName,b.phone,b.address,b.state,b.lga,p.id]);res.json(await self(req))}));
 router.get("/partner/dashboard", run(async(req,res)=>{const p=await self(req),r=await pool.query(`SELECT (SELECT COUNT(DISTINCT school_id)::int FROM school_partner_attributions WHERE partner_profile_id=$1 AND is_current=true) AS schools,(SELECT COUNT(DISTINCT st.id)::int FROM students st JOIN school_partner_attributions a ON a.school_id=st.school_id WHERE a.partner_profile_id=$1 AND a.is_current=true AND upper(st.status)='ACTIVE') AS students,(SELECT COALESCE(SUM(amount),0)::float FROM commission_ledger WHERE partner_profile_id=$1 AND status NOT IN('REVERSED','CANCELLED')) AS lifetime,(SELECT COALESCE(SUM(amount),0)::float FROM commission_ledger WHERE partner_profile_id=$1 AND status='PAID') AS paid,(SELECT COALESCE(SUM(amount),0)::float FROM commission_ledger WHERE partner_profile_id=$1 AND term=(SELECT term FROM commission_ledger WHERE partner_profile_id=$1 ORDER BY created_at DESC LIMIT 1) AND status NOT IN('REVERSED','CANCELLED')) AS current`,[p.id]);const x=r.rows[0];const response:any={referredSchools:x.schools,eligibleStudents:x.students};if(p.isOwner||["PARTNER_ADMIN","PARTNER_FINANCE"].includes(p.partnerRole)){response.currentTermCommission=x.current;response.lifetimeCommission=x.lifetime;response.paidCommission=x.paid;response.outstandingCommission=x.lifetime-x.paid;}res.json(response)}));
 router.get("/partner/referral-link", run(async(req,res)=>{const p=await self(req);res.json(await partnerLink(req,p))}));
-router.get("/partner/schools", run(async(req,res)=>{const p=await self(req);const r=await pool.query(`SELECT ${schoolFields} FROM school_partner_attributions a JOIN schools s ON s.id=a.school_id WHERE a.partner_profile_id=$1 AND a.is_current=true ORDER BY a.starts_at DESC`,[p.id]);res.json(r.rows)}));
-router.get("/partner/schools/:schoolId", run(async(req,res)=>{const p=await self(req),r=await pool.query(`SELECT ${schoolFields} FROM school_partner_attributions a JOIN schools s ON s.id=a.school_id WHERE a.partner_profile_id=$1 AND a.school_id=$2`,[p.id,idOf(req.params.schoolId,"School")]);if(!r.rows[0])throw new AuthError(404,"School not found");res.json(r.rows[0])}));
+router.get("/partner/schools", run(async(req,res)=>{
+  const p=await self(req);
+  const r=await pool.query(`SELECT ${schoolFields}
+    FROM school_partner_attributions a JOIN schools s ON s.id=a.school_id
+    ${partnerSchoolRegistrationJoins}
+    WHERE a.partner_profile_id=$1 AND a.is_current=true ORDER BY a.starts_at DESC`,[p.id]);
+  res.json(r.rows);
+}));
+router.post("/partner/schools", run(async (req, res) => {
+  const partner = await self(req);
+  requirePartnerOwner(req, partner);
+  const body = req.body;
+  const allowed = (value: unknown, fields: string[]) =>
+    value !== null && typeof value === "object" && !Array.isArray(value) &&
+    Object.keys(value).every((field) => fields.includes(field));
+  if (
+    !allowed(body, ["school", "administrator"]) ||
+    !allowed(body?.school, ["name", "city", "state", "phone", "email"]) ||
+    !allowed(body?.administrator, ["fullName", "email", "phone"])
+  ) {
+    throw new AuthError(400, "Only school name/location/contact and administrator name/email/phone may be submitted");
+  }
+  const parsed = CreateMyPartnerSchoolBody.safeParse(body);
+  if (!parsed.success) throw new AuthError(400, parsed.error.message);
+  const result = await createSchoolWithAdministrator({
+    school: parsed.data.school,
+    administrator: parsed.data.administrator,
+    partnerId: partner.id,
+  }, getUserContext(req));
+  res.status(201).json(CreateMyPartnerSchoolResponse.parse(result));
+}));
+router.get("/partner/schools/:schoolId", run(async(req,res)=>{
+  const p=await self(req);
+  const r=await pool.query(`SELECT ${schoolFields}
+    FROM school_partner_attributions a JOIN schools s ON s.id=a.school_id
+    ${partnerSchoolRegistrationJoins}
+    WHERE a.partner_profile_id=$1 AND a.school_id=$2 AND a.is_current=true`,
+  [p.id,idOf(req.params.schoolId,"School")]);
+  if(!r.rows[0])throw new AuthError(404,"School not found");
+  res.json(r.rows[0]);
+}));
+router.post("/partner/schools/:schoolId/invitations/:invitationId/resend", run(async (req, res) => {
+  const partner = await self(req);
+  requirePartnerOwner(req, partner);
+  const params = ResendMyPartnerSchoolInvitationParams.safeParse(req.params);
+  if (!params.success) throw new AuthError(404, "School or invitation not found");
+  const body = ResendMyPartnerSchoolInvitationBody.safeParse(req.body);
+  if (!body.success || !req.body || typeof req.body !== "object" ||
+      Array.isArray(req.body) || Object.keys(req.body).length !== 0) {
+    throw new AuthError(400, "The resend request body must be an empty object");
+  }
+  const schoolId = params.data.schoolId;
+  const invitationId = params.data.invitationId;
+  const source = await pool.query(
+    `SELECT i.metadata FROM audit_logs i
+     JOIN schools s ON s.id=i.school_id
+     JOIN school_partner_attributions a ON a.school_id=s.id
+       AND a.partner_profile_id=$3 AND a.is_current=true
+     WHERE i.school_id=$1 AND i.event_type='SCHOOL_ADMIN_INVITED'
+       AND i.metadata->>'role'='SCHOOL_ADMIN'
+       AND i.metadata->>'invitationId'=$2
+       AND i.metadata->>'invitationId' IS NOT NULL
+       AND i.metadata->>'superseded' IS DISTINCT FROM 'true'
+     ORDER BY i.timestamp DESC,i.id DESC LIMIT 1`,
+    [schoolId, invitationId, partner.id],
+  );
+  if (!source.rows[0]) throw new AuthError(404, "Selected School Administrator invitation not found");
+  const sourceMetadata = typeof source.rows[0].metadata === "string"
+    ? JSON.parse(source.rows[0].metadata)
+    : source.rows[0].metadata;
+  const selectedEmail = normalizedEmail(String(sourceMetadata?.invitedEmail ?? ""));
+  if (!selectedEmail || sourceMetadata?.role !== "SCHOOL_ADMIN") {
+    throw new AuthError(409, "The selected invitation does not match this school's administrator");
+  }
+  if (sourceMetadata?.superseded === true) {
+    throw new AuthError(409, "The selected invitation has already been replaced");
+  }
+  const result = await replaceSchoolAdminInvitation(
+    { schoolId, invitationId },
+    getUserContext(req),
+  );
+  res.json(ResendMyPartnerSchoolInvitationResponse.parse(result));
+}));
 router.get("/partner/staff", run(async (req, res) => {
   const partner = await self(req);
   requirePartnerOwner(req, partner);

@@ -2,6 +2,10 @@ import { Router, type NextFunction, type Request } from "express";
 import { createHash, randomBytes } from "node:crypto";
 import { pool } from "@workspace/db";
 import { AuthError, assertRoles, getUserContext, requireAuthentication } from "../middlewares/auth";
+import {
+  partnerSchoolRegistrationFields,
+  partnerSchoolRegistrationJoins,
+} from "./partner-school-summary";
 
 const router = Router();
 const run = (handler: (req: Request, res: any) => Promise<void>) =>
@@ -38,7 +42,8 @@ const ownerSchoolFields = `s.id,s.code,s.name,s.city,s.state,s.status,s.created_
   CASE WHEN pp.id IS NULL THEN NULL ELSE json_build_object(
     'partnerId',pp.id,'partnerName',COALESCE(NULLIF(pp.business_name,''),pp.full_name),
     'source',spa.source,'status',spa.status,'referralLinkId',spa.referral_link_id,
-    'registrationDate',spa.starts_at) END AS "partnerReferral"`;
+     'registrationDate',spa.starts_at) END AS "partnerReferral",
+  ${partnerSchoolRegistrationFields("spa")}`;
 
 type DeviceInput = {
   serialNumber: string;
@@ -98,6 +103,7 @@ router.get("/platform/schools/directory", run(async (req, res) => {
        FROM schools s
        LEFT JOIN school_partner_attributions spa ON spa.school_id=s.id AND spa.is_current=true
        LEFT JOIN partner_profiles pp ON pp.id=spa.partner_profile_id
+        ${partnerSchoolRegistrationJoins}
        ${where}
       ORDER BY s.created_at DESC,s.id DESC`,
     values,
@@ -137,6 +143,7 @@ router.get("/platform/schools/:schoolId/overview", run(async (req, res) => {
      FROM schools s
      LEFT JOIN school_partner_attributions spa ON spa.school_id=s.id AND spa.is_current=true
      LEFT JOIN partner_profiles pp ON pp.id=spa.partner_profile_id
+      ${partnerSchoolRegistrationJoins}
      WHERE s.id=$1`,
     [schoolId],
   );

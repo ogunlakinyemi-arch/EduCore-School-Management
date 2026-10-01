@@ -6,7 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { OwnerSchoolAdministratorsItem } from './ownerSchoolAdministratorsItem';
+import type { OwnerSchoolInvitationStatus } from './ownerSchoolInvitationStatus';
 import type { OwnerSchoolPartnerReferral } from './ownerSchoolPartnerReferral';
+import type { OwnerSchoolRegistrationStatus } from './ownerSchoolRegistrationStatus';
 
 export interface OwnerSchool {
   id: number;
@@ -28,6 +30,24 @@ export interface OwnerSchool {
   classCount: number;
   administrators: OwnerSchoolAdministratorsItem[];
   subscriptionStatus: string;
+  /** @nullable */
+  adminName: string | null;
+  /** @nullable */
+  adminEmail: string | null;
+  /** @nullable */
+  adminPhone: string | null;
+  registrationStatus: OwnerSchoolRegistrationStatus;
+  /** @nullable */
+  invitationId: string | null;
+  /** @nullable */
+  invitationStatus: OwnerSchoolInvitationStatus;
+  /** @nullable */
+  invitationSentAt: Date | null;
+  /** @nullable */
+  acceptedAt: Date | null;
+  /** @nullable */
+  dateAdded: Date | null;
+  totalStudents: number;
   /** @nullable */
   partnerReferral?: OwnerSchoolPartnerReferral;
 }

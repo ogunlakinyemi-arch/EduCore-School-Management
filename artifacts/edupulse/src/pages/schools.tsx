@@ -8,51 +8,15 @@ import {
 } from 'lucide-react';
 import { 
   useGetSchool, useUpdateSchool, useGetSchoolDashboard,
-  useGetAuthorizedContext, getListSchoolsQueryKey
+  useGetAuthorizedContext, getListSchoolsQueryKey,
+  type OwnerSchoolDirectory
 } from '@workspace/api-client-react';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, 
   Modal, Field, Info, Metric, ActivityFeed, cx, date, time, useTenant
 } from '@/components/shared';
 
-type OwnerSchool = {
-  id: number;
-  code: string;
-  name: string;
-  city: string;
-  state: string;
-  status: string;
-  createdAt: string;
-  subscriptionStatus: string;
-  studentCount: number;
-  activeStudentCount: number;
-  teacherCount: number;
-  staffCount: number;
-  employeeCount: number;
-  accountantCount: number;
-  parentCount: number;
-  administrators: Array<{ id: number; name: string; email: string; status: string }>;
-  partnerReferral: null | {
-    partnerId: number;
-    partnerName: string;
-    source: string;
-    status: string;
-    referralLinkId: number | null;
-    registrationDate: string;
-  };
-};
-
-type OwnerDirectoryResponse = {
-  schools: OwnerSchool[];
-  totals: {
-    schoolCount: number;
-    studentCount: number;
-    activeStudentCount: number;
-    teacherCount: number;
-    staffCount: number;
-    parentCount: number;
-  };
-};
+type OwnerDirectoryResponse = OwnerSchoolDirectory;
 
 async function fetchOwnerDirectory(search: string, status: string): Promise<OwnerDirectoryResponse> {
   const params = new URLSearchParams({ search, status });
@@ -200,6 +164,7 @@ export function SchoolsPage() {
   const query = useQuery({
     queryKey: ['platform-school-directory', search, status],
     queryFn: () => fetchOwnerDirectory(search, status),
+    refetchInterval: 15000,
   });
   const schools = query.data?.schools ?? [];
   
@@ -300,6 +265,17 @@ export function SchoolsPage() {
                 ? <><div className="truncate font-bold">{school.partnerReferral.partnerName}</div><div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{school.partnerReferral.source.replaceAll('_', ' ')}</div></>
                 : <span className="text-[hsl(var(--muted-foreground))]">Direct / unassigned</span>}
               <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Joined {date(school.createdAt)}</div>
+              {school.partnerReferral && school.registrationStatus && (
+                <div className="mt-1 text-xs" data-testid={`text-partner-relation-${school.id}`}>
+                  {school.registrationStatus === 'PENDING' ? 'Pending school' : 'Active school'}
+                  {school.invitationStatus ? ` / invitation ${String(school.invitationStatus).toLowerCase()}` : ''}
+                  {school.acceptedAt ? ` / accepted ${date(school.acceptedAt)}` : ''}
+                  <div data-testid={`text-partner-admin-${school.id}`}>
+                    {[school.adminName, school.adminEmail, school.adminPhone].filter(Boolean).join(' / ')}
+                  </div>
+                  <div>Added {school.dateAdded ? date(school.dateAdded) : '-'} / sent {school.invitationSentAt ? date(school.invitationSentAt) : '-'}</div>
+                </div>
+              )}
             </div>
             <div className="space-y-1" aria-label="School and subscription status">
               <StatusPill value={operationalStatusLabel(school)} />

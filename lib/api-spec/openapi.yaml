@@ -3809,6 +3809,22 @@ paths:
       summary: List schools referred by the authenticated partner
       responses:
         "200": { description: Schools, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/PartnerSchool" } } } } }
+    post:
+      operationId: createMyPartnerSchool
+      tags: [partner]
+      summary: Register a school and invite its first administrator
+      description: Authenticated partner owner/admin only. Partner identity, ownership, school code, and password are server-controlled. Administrator password setup occurs through the invitation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartnerSchoolRegistrationInput" }
+      responses:
+        "201": { description: Pending school registration and requested administrator invitation, content: { application/json: { schema: { $ref: "#/components/schemas/SchoolWithAdministratorResult" } } } }
+        "400": { description: Invalid registration input or forbidden ownership/password fields }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { description: "Duplicate school or administrator identity, or unresolved invitation state" }
+        "503": { description: Invitation request or transaction finalization failed or is uncertain }
   /partner/schools/{schoolId}:
     get:
       operationId: getMyPartnerSchool
@@ -3817,6 +3833,29 @@ paths:
       parameters: [{ $ref: "#/components/parameters/SchoolIdPath" }]
       responses:
         "200": { description: School summary, content: { application/json: { schema: { $ref: "#/components/schemas/PartnerSchool" } } } }
+  /partner/schools/{schoolId}/invitations/{invitationId}/resend:
+    post:
+      operationId: resendMyPartnerSchoolInvitation
+      tags: [partner]
+      summary: Replace the selected pending School Administrator invitation
+      description: Partner owner/admin only. The exact invitation must belong to this currently attributed school and administrator recipient; resend-all is not supported.
+      parameters:
+        - { $ref: "#/components/parameters/SchoolIdPath" }
+        - name: invitationId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100, pattern: "^[A-Za-z0-9_-]+$" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmptyInput" }
+      responses:
+        "200": { description: Selected invitation replacement status, content: { application/json: { schema: { $ref: "#/components/schemas/SchoolInvitationReplacementResult" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: "Invitation is stale, accepted, belongs to another school/recipient, or is already being replaced" }
+        "503": { description: Provider or persistence outcome requires reconciliation }
   /partner/commissions:
     get:
       operationId: getMyPartnerCommissions
@@ -4987,7 +5026,7 @@ components:
               message: { type: string }
     OwnerSchool:
       type: object
-      required: [id, code, name, status, studentCount, activeStudentCount, teacherCount, staffCount, employeeCount, accountantCount, parentCount, classCount, administrators, subscriptionStatus]
+      required: [id, code, name, status, studentCount, activeStudentCount, teacherCount, staffCount, employeeCount, accountantCount, parentCount, classCount, administrators, subscriptionStatus, adminName, adminEmail, adminPhone, registrationStatus, invitationId, invitationStatus, invitationSentAt, acceptedAt, dateAdded, totalStudents]
       properties:
         id: { type: integer }
         code: { type: string }
@@ -5014,6 +5053,16 @@ components:
               email: { type: string }
               status: { type: string }
         subscriptionStatus: { type: string }
+        adminName: { type: ["string", "null"] }
+        adminEmail: { type: ["string", "null"], format: email }
+        adminPhone: { type: ["string", "null"] }
+        registrationStatus: { type: string, enum: [PENDING, ACTIVE] }
+        invitationId: { type: ["string", "null"] }
+        invitationStatus: { type: ["string", "null"], enum: [PENDING, ACCEPTED, UNKNOWN, FAILED, null] }
+        invitationSentAt: { type: ["string", "null"], format: date-time }
+        acceptedAt: { type: ["string", "null"], format: date-time }
+        dateAdded: { type: ["string", "null"], format: date-time }
+        totalStudents: { type: integer }
         partnerReferral:
           type: ["object", "null"]
           properties:
@@ -5153,6 +5202,46 @@ components:
           properties:
             fullName: { type: string, minLength: 2 }
             email: { type: string, format: email, maxLength: 254 }
+    PartnerSchoolRegistrationInput:
+      type: object
+      additionalProperties: false
+      required: [school, administrator]
+      properties:
+        school:
+          type: object
+          additionalProperties: false
+          required: [name, city, state]
+          properties:
+            name: { type: string, minLength: 2, maxLength: 200 }
+            city: { type: string, minLength: 1, maxLength: 100 }
+            state: { type: string, minLength: 1, maxLength: 100 }
+            phone: { type: string, maxLength: 40 }
+            email: { type: string, format: email, maxLength: 254 }
+        administrator:
+          type: object
+          additionalProperties: false
+          required: [fullName, email, phone]
+          properties:
+            fullName: { type: string, minLength: 2, maxLength: 200 }
+            email: { type: string, format: email, maxLength: 254 }
+            phone: { type: string, minLength: 1, maxLength: 40 }
+    EmptyInput:
+      type: object
+      additionalProperties: false
+    SchoolInvitationReplacementResult:
+      type: object
+      required: [status, invitationId, supersededInvitationId, previousInviteRevoked, email, schoolId, role, dispatchStatus, deliveryStatus, recoveryStatus]
+      properties:
+        status: { type: string, enum: [PENDING] }
+        invitationId: { type: string }
+        supersededInvitationId: { type: string }
+        previousInviteRevoked: { type: boolean }
+        email: { type: string, format: email }
+        schoolId: { type: integer }
+        role: { type: string, enum: [SCHOOL_ADMIN] }
+        dispatchStatus: { type: string, enum: [REQUEST_ACCEPTED] }
+        deliveryStatus: { type: string, enum: [UNVERIFIED] }
+        recoveryStatus: { type: string }
     SchoolWithAdministratorResult:
       type: object
       required: [schoolId, administratorInvitation]
@@ -6484,17 +6573,28 @@ components:
         status: { type: string, const: REVOKED }
     PartnerSchool:
       type: object
-      required: [schoolId, schoolName, attributionStatus, attributionSource, startDate]
+      required: [schoolId, schoolName, attributionStatus, attributionSource, startDate, adminName, adminEmail, adminPhone, registrationStatus, invitationId, invitationStatus, invitationSentAt, acceptedAt, dateAdded, totalStudents, subscriptionStatus]
       properties:
         schoolId: { type: integer }
         schoolName: { type: string }
         schoolCode: { type: ["string", "null"] }
         attributionStatus: { type: string, enum: [ACTIVE, ENDED, PENDING] }
-        attributionSource: { type: string, enum: [REFERRAL, PLATFORM_ASSIGNED, DIRECT] }
+        attributionSource: { type: string, enum: [REFERRAL, REFERRAL_LINK, PLATFORM_ASSIGNED, DIRECT, PARTNER_DIRECT] }
         referralLinkId: { type: ["integer", "null"] }
         startDate: { type: string, format: date-time }
         endDate: { type: ["string", "null"], format: date-time }
         eligibleStudentCount: { type: integer }
+        adminName: { type: ["string", "null"] }
+        adminEmail: { type: ["string", "null"], format: email }
+        adminPhone: { type: ["string", "null"] }
+        registrationStatus: { type: string, enum: [PENDING, ACTIVE] }
+        invitationId: { type: ["string", "null"] }
+        invitationStatus: { type: ["string", "null"], enum: [PENDING, ACCEPTED, UNKNOWN, FAILED, null] }
+        invitationSentAt: { type: ["string", "null"], format: date-time }
+        acceptedAt: { type: ["string", "null"], format: date-time }
+        dateAdded: { type: ["string", "null"], format: date-time }
+        totalStudents: { type: integer }
+        subscriptionStatus: { type: string }
     PartnerAttributionConflict:
       type: object
       required: [id, schoolId, attemptedPartnerId, status, createdAt]

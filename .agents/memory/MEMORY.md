@@ -26,3 +26,4 @@
 - [Mutation cleanup ownership](mutation-cleanup-ownership.md) — observer-level settlement callbacks can disappear after another mutation or reset; own keyed cleanup per execution.
 - [Provider contract mocks](provider-contract-mocks.md) — provider mocks must enforce duplicate-invitation rules and model acceptance followed by a lost response.
 - [Invitation activation evidence](invitation-activation-evidence.md) — recovered invitations need positive role evidence; missing staff evidence must never imply ownership.
+- [Direct Partner registration provenance](direct-partner-registration-provenance.md) — the original registering Partner stays associated permanently; retain legacy attribution-resolution behavior.

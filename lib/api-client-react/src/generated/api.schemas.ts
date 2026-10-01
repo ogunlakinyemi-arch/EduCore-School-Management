@@ -223,6 +223,27 @@ export type OwnerSchoolAdministratorsItem = {
   status?: string;
 };
 
+export type OwnerSchoolRegistrationStatus = typeof OwnerSchoolRegistrationStatus[keyof typeof OwnerSchoolRegistrationStatus];
+
+
+export const OwnerSchoolRegistrationStatus = {
+  PENDING: 'PENDING',
+  ACTIVE: 'ACTIVE',
+} as const;
+
+/**
+ * @nullable
+ */
+export type OwnerSchoolInvitationStatus = typeof OwnerSchoolInvitationStatus[keyof typeof OwnerSchoolInvitationStatus] | null;
+
+
+export const OwnerSchoolInvitationStatus = {
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  UNKNOWN: 'UNKNOWN',
+  FAILED: 'FAILED',
+} as const;
+
 /**
  * @nullable
  */
@@ -256,6 +277,24 @@ export interface OwnerSchool {
   classCount: number;
   administrators: OwnerSchoolAdministratorsItem[];
   subscriptionStatus: string;
+  /** @nullable */
+  adminName: string | null;
+  /** @nullable */
+  adminEmail: string | null;
+  /** @nullable */
+  adminPhone: string | null;
+  registrationStatus: OwnerSchoolRegistrationStatus;
+  /** @nullable */
+  invitationId: string | null;
+  /** @nullable */
+  invitationStatus: OwnerSchoolInvitationStatus;
+  /** @nullable */
+  invitationSentAt: string | null;
+  /** @nullable */
+  acceptedAt: string | null;
+  /** @nullable */
+  dateAdded: string | null;
+  totalStudents: number;
   /** @nullable */
   partnerReferral?: OwnerSchoolPartnerReferral;
 }
@@ -500,6 +539,91 @@ export type SchoolWithAdministratorInputAdministrator = {
 export interface SchoolWithAdministratorInput {
   school: SchoolWithAdministratorInputSchool;
   administrator: SchoolWithAdministratorInputAdministrator;
+}
+
+export type PartnerSchoolRegistrationInputSchool = {
+  /**
+     * @minLength 2
+     * @maxLength 200
+     */
+  name: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  city: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  state: string;
+  /** @maxLength 40 */
+  phone?: string;
+  /** @maxLength 254 */
+  email?: string;
+};
+
+export type PartnerSchoolRegistrationInputAdministrator = {
+  /**
+     * @minLength 2
+     * @maxLength 200
+     */
+  fullName: string;
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  phone: string;
+};
+
+export interface PartnerSchoolRegistrationInput {
+  school: PartnerSchoolRegistrationInputSchool;
+  administrator: PartnerSchoolRegistrationInputAdministrator;
+}
+
+export interface EmptyInput { [key: string]: unknown }
+
+export type SchoolInvitationReplacementResultStatus = typeof SchoolInvitationReplacementResultStatus[keyof typeof SchoolInvitationReplacementResultStatus];
+
+
+export const SchoolInvitationReplacementResultStatus = {
+  PENDING: 'PENDING',
+} as const;
+
+export type SchoolInvitationReplacementResultRole = typeof SchoolInvitationReplacementResultRole[keyof typeof SchoolInvitationReplacementResultRole];
+
+
+export const SchoolInvitationReplacementResultRole = {
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+} as const;
+
+export type SchoolInvitationReplacementResultDispatchStatus = typeof SchoolInvitationReplacementResultDispatchStatus[keyof typeof SchoolInvitationReplacementResultDispatchStatus];
+
+
+export const SchoolInvitationReplacementResultDispatchStatus = {
+  REQUEST_ACCEPTED: 'REQUEST_ACCEPTED',
+} as const;
+
+export type SchoolInvitationReplacementResultDeliveryStatus = typeof SchoolInvitationReplacementResultDeliveryStatus[keyof typeof SchoolInvitationReplacementResultDeliveryStatus];
+
+
+export const SchoolInvitationReplacementResultDeliveryStatus = {
+  UNVERIFIED: 'UNVERIFIED',
+} as const;
+
+export interface SchoolInvitationReplacementResult {
+  status: SchoolInvitationReplacementResultStatus;
+  invitationId: string;
+  supersededInvitationId: string;
+  previousInviteRevoked: boolean;
+  email: string;
+  schoolId: number;
+  role: SchoolInvitationReplacementResultRole;
+  dispatchStatus: SchoolInvitationReplacementResultDispatchStatus;
+  deliveryStatus: SchoolInvitationReplacementResultDeliveryStatus;
+  recoveryStatus: string;
 }
 
 export type SchoolWithAdministratorResultAdministratorInvitationRole = typeof SchoolWithAdministratorResultAdministratorInvitationRole[keyof typeof SchoolWithAdministratorResultAdministratorInvitationRole];
@@ -2834,8 +2958,31 @@ export type PartnerSchoolAttributionSource = typeof PartnerSchoolAttributionSour
 
 export const PartnerSchoolAttributionSource = {
   REFERRAL: 'REFERRAL',
+  REFERRAL_LINK: 'REFERRAL_LINK',
   PLATFORM_ASSIGNED: 'PLATFORM_ASSIGNED',
   DIRECT: 'DIRECT',
+  PARTNER_DIRECT: 'PARTNER_DIRECT',
+} as const;
+
+export type PartnerSchoolRegistrationStatus = typeof PartnerSchoolRegistrationStatus[keyof typeof PartnerSchoolRegistrationStatus];
+
+
+export const PartnerSchoolRegistrationStatus = {
+  PENDING: 'PENDING',
+  ACTIVE: 'ACTIVE',
+} as const;
+
+/**
+ * @nullable
+ */
+export type PartnerSchoolInvitationStatus = typeof PartnerSchoolInvitationStatus[keyof typeof PartnerSchoolInvitationStatus] | null;
+
+
+export const PartnerSchoolInvitationStatus = {
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  UNKNOWN: 'UNKNOWN',
+  FAILED: 'FAILED',
 } as const;
 
 export interface PartnerSchool {
@@ -2851,6 +2998,25 @@ export interface PartnerSchool {
   /** @nullable */
   endDate?: string | null;
   eligibleStudentCount?: number;
+  /** @nullable */
+  adminName: string | null;
+  /** @nullable */
+  adminEmail: string | null;
+  /** @nullable */
+  adminPhone: string | null;
+  registrationStatus: PartnerSchoolRegistrationStatus;
+  /** @nullable */
+  invitationId: string | null;
+  /** @nullable */
+  invitationStatus: PartnerSchoolInvitationStatus;
+  /** @nullable */
+  invitationSentAt: string | null;
+  /** @nullable */
+  acceptedAt: string | null;
+  /** @nullable */
+  dateAdded: string | null;
+  totalStudents: number;
+  subscriptionStatus: string;
 }
 
 export type PartnerAttributionConflictStatus = typeof PartnerAttributionConflictStatus[keyof typeof PartnerAttributionConflictStatus];

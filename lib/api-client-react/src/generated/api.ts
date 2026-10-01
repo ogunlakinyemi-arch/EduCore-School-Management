@@ -150,6 +150,7 @@ import type {
   EmployeeInput,
   EmployeeStatusUpdate,
   EmployeeUpdate,
+  EmptyInput,
   FamilyAttendanceEvent,
   FeeAdjustment,
   FeeAdjustmentInput,
@@ -300,6 +301,7 @@ import type {
   PartnerReferralLink,
   PartnerSchool,
   PartnerSchoolOnboardingInput,
+  PartnerSchoolRegistrationInput,
   PartnerSelfUpdate,
   PartnerStaffInvitation,
   PartnerStaffInvitationInput,
@@ -354,6 +356,7 @@ import type {
   SchoolInput,
   SchoolInvitationRecovery,
   SchoolInvitationRecoveryResult,
+  SchoolInvitationReplacementResult,
   SchoolMembershipInput,
   SchoolStatusUpdate,
   SchoolUpdate,
@@ -18541,6 +18544,95 @@ export function useListMyPartnerSchools<TData = Awaited<ReturnType<typeof listMy
 
 
 
+export const getCreateMyPartnerSchoolUrl = () => {
+
+
+
+
+  return `/api/partner/schools`
+}
+
+/**
+ * Authenticated partner owner/admin only. Partner identity, ownership, school code, and password are server-controlled. Administrator password setup occurs through the invitation.
+ * @summary Register a school and invite its first administrator
+ */
+export const createMyPartnerSchool = async (partnerSchoolRegistrationInput: PartnerSchoolRegistrationInput, options?: Parameters<typeof customFetch>[1]): Promise<SchoolWithAdministratorResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolWithAdministratorResult>(getCreateMyPartnerSchoolUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(partnerSchoolRegistrationInput)
+  }
+);}
+
+
+
+
+
+export const getCreateMyPartnerSchoolMutationKey = () => ['createMyPartnerSchool'] as const;
+
+export const getCreateMyPartnerSchoolMutationOptions = <TError = ErrorType<void | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMyPartnerSchool>>, TError,CreateMyPartnerSchoolMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMyPartnerSchool>>, TError,CreateMyPartnerSchoolMutationVariables, TContext> => {
+
+const mutationKey = getCreateMyPartnerSchoolMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMyPartnerSchool>>, CreateMyPartnerSchoolMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createMyPartnerSchool(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMyPartnerSchoolMutationResult = NonNullable<Awaited<ReturnType<typeof createMyPartnerSchool>>>
+    export type CreateMyPartnerSchoolMutationBody = BodyType<PartnerSchoolRegistrationInput>
+    export type CreateMyPartnerSchoolMutationError = ErrorType<void | ForbiddenResponse>
+    export type CreateMyPartnerSchoolMutationVariables = {data: BodyType<PartnerSchoolRegistrationInput>}
+
+    /**
+ * @summary Register a school and invite its first administrator
+ */
+export const useCreateMyPartnerSchool = <TError = ErrorType<void | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMyPartnerSchool>>, TError,CreateMyPartnerSchoolMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMyPartnerSchool>>,
+        TError,
+        CreateMyPartnerSchoolMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateMyPartnerSchoolMutationOptions(options));
+    }
+
 export const getGetMyPartnerSchoolUrl = (schoolId: number,) => {
 
 
@@ -18617,6 +18709,98 @@ export function useGetMyPartnerSchool<TData = Awaited<ReturnType<typeof getMyPar
 
 
 
+
+export const getResendMyPartnerSchoolInvitationUrl = (schoolId: number,
+    invitationId: string,) => {
+
+
+
+
+  return `/api/partner/schools/${schoolId}/invitations/${invitationId}/resend`
+}
+
+/**
+ * Partner owner/admin only. The exact invitation must belong to this currently attributed school and administrator recipient; resend-all is not supported.
+ * @summary Replace the selected pending School Administrator invitation
+ */
+export const resendMyPartnerSchoolInvitation = async (schoolId: number,
+    invitationId: string,
+    emptyInput: EmptyInput, options?: Parameters<typeof customFetch>[1]): Promise<SchoolInvitationReplacementResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolInvitationReplacementResult>(getResendMyPartnerSchoolInvitationUrl(schoolId,invitationId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(emptyInput)
+  }
+);}
+
+
+
+
+
+export const getResendMyPartnerSchoolInvitationMutationKey = () => ['resendMyPartnerSchoolInvitation'] as const;
+
+export const getResendMyPartnerSchoolInvitationMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendMyPartnerSchoolInvitation>>, TError,ResendMyPartnerSchoolInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resendMyPartnerSchoolInvitation>>, TError,ResendMyPartnerSchoolInvitationMutationVariables, TContext> => {
+
+const mutationKey = getResendMyPartnerSchoolInvitationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resendMyPartnerSchoolInvitation>>, ResendMyPartnerSchoolInvitationMutationVariables> = (props) => {
+          const {schoolId,invitationId,data} = props ?? {};
+
+          return  resendMyPartnerSchoolInvitation(schoolId,invitationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResendMyPartnerSchoolInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof resendMyPartnerSchoolInvitation>>>
+    export type ResendMyPartnerSchoolInvitationMutationBody = BodyType<EmptyInput>
+    export type ResendMyPartnerSchoolInvitationMutationError = ErrorType<ForbiddenResponse | NotFoundResponse | void>
+    export type ResendMyPartnerSchoolInvitationMutationVariables = {schoolId: number;invitationId: string;data: BodyType<EmptyInput>}
+
+    /**
+ * @summary Replace the selected pending School Administrator invitation
+ */
+export const useResendMyPartnerSchoolInvitation = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendMyPartnerSchoolInvitation>>, TError,ResendMyPartnerSchoolInvitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resendMyPartnerSchoolInvitation>>,
+        TError,
+        ResendMyPartnerSchoolInvitationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getResendMyPartnerSchoolInvitationMutationOptions(options));
+    }
 
 export const getGetMyPartnerCommissionsUrl = () => {
 

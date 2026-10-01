@@ -2841,6 +2841,16 @@ export const ListOwnerSchoolDirectoryResponse = zod.object({
   "status": zod.string().optional()
 })),
   "subscriptionStatus": zod.string(),
+  "adminName": zod.string().nullable(),
+  "adminEmail": zod.string().email().nullable(),
+  "adminPhone": zod.string().nullable(),
+  "registrationStatus": zod.enum(['PENDING', 'ACTIVE']),
+  "invitationId": zod.string().nullable(),
+  "invitationStatus": zod.union([zod.literal('PENDING'),zod.literal('ACCEPTED'),zod.literal('UNKNOWN'),zod.literal('FAILED'),zod.literal(null)]).nullable(),
+  "invitationSentAt": zod.coerce.date().nullable(),
+  "acceptedAt": zod.coerce.date().nullable(),
+  "dateAdded": zod.coerce.date().nullable(),
+  "totalStudents": zod.number().int(),
   "partnerReferral": zod.object({
   "partnerId": zod.number().int().optional(),
   "partnerName": zod.string().optional(),
@@ -2891,6 +2901,16 @@ export const GetOwnerSchoolOverviewResponse = zod.object({
   "status": zod.string().optional()
 })),
   "subscriptionStatus": zod.string(),
+  "adminName": zod.string().nullable(),
+  "adminEmail": zod.string().email().nullable(),
+  "adminPhone": zod.string().nullable(),
+  "registrationStatus": zod.enum(['PENDING', 'ACTIVE']),
+  "invitationId": zod.string().nullable(),
+  "invitationStatus": zod.union([zod.literal('PENDING'),zod.literal('ACCEPTED'),zod.literal('UNKNOWN'),zod.literal('FAILED'),zod.literal(null)]).nullable(),
+  "invitationSentAt": zod.coerce.date().nullable(),
+  "acceptedAt": zod.coerce.date().nullable(),
+  "dateAdded": zod.coerce.date().nullable(),
+  "totalStudents": zod.number().int(),
   "partnerReferral": zod.object({
   "partnerId": zod.number().int().optional(),
   "partnerName": zod.string().optional(),
@@ -6408,11 +6428,22 @@ export const ListPartnerSchoolsResponseItem = zod.object({
   "schoolName": zod.string(),
   "schoolCode": zod.string().nullish(),
   "attributionStatus": zod.enum(['ACTIVE', 'ENDED', 'PENDING']),
-  "attributionSource": zod.enum(['REFERRAL', 'PLATFORM_ASSIGNED', 'DIRECT']),
+  "attributionSource": zod.enum(['REFERRAL', 'REFERRAL_LINK', 'PLATFORM_ASSIGNED', 'DIRECT', 'PARTNER_DIRECT']),
   "referralLinkId": zod.number().int().nullish(),
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date().nullish(),
-  "eligibleStudentCount": zod.number().int().optional()
+  "eligibleStudentCount": zod.number().int().optional(),
+  "adminName": zod.string().nullable(),
+  "adminEmail": zod.string().email().nullable(),
+  "adminPhone": zod.string().nullable(),
+  "registrationStatus": zod.enum(['PENDING', 'ACTIVE']),
+  "invitationId": zod.string().nullable(),
+  "invitationStatus": zod.union([zod.literal('PENDING'),zod.literal('ACCEPTED'),zod.literal('UNKNOWN'),zod.literal('FAILED'),zod.literal(null)]).nullable(),
+  "invitationSentAt": zod.coerce.date().nullable(),
+  "acceptedAt": zod.coerce.date().nullable(),
+  "dateAdded": zod.coerce.date().nullable(),
+  "totalStudents": zod.number().int(),
+  "subscriptionStatus": zod.string()
 })
 export const ListPartnerSchoolsResponse = zod.array(ListPartnerSchoolsResponseItem)
 
@@ -7022,13 +7053,77 @@ export const ListMyPartnerSchoolsResponseItem = zod.object({
   "schoolName": zod.string(),
   "schoolCode": zod.string().nullish(),
   "attributionStatus": zod.enum(['ACTIVE', 'ENDED', 'PENDING']),
-  "attributionSource": zod.enum(['REFERRAL', 'PLATFORM_ASSIGNED', 'DIRECT']),
+  "attributionSource": zod.enum(['REFERRAL', 'REFERRAL_LINK', 'PLATFORM_ASSIGNED', 'DIRECT', 'PARTNER_DIRECT']),
   "referralLinkId": zod.number().int().nullish(),
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date().nullish(),
-  "eligibleStudentCount": zod.number().int().optional()
+  "eligibleStudentCount": zod.number().int().optional(),
+  "adminName": zod.string().nullable(),
+  "adminEmail": zod.string().email().nullable(),
+  "adminPhone": zod.string().nullable(),
+  "registrationStatus": zod.enum(['PENDING', 'ACTIVE']),
+  "invitationId": zod.string().nullable(),
+  "invitationStatus": zod.union([zod.literal('PENDING'),zod.literal('ACCEPTED'),zod.literal('UNKNOWN'),zod.literal('FAILED'),zod.literal(null)]).nullable(),
+  "invitationSentAt": zod.coerce.date().nullable(),
+  "acceptedAt": zod.coerce.date().nullable(),
+  "dateAdded": zod.coerce.date().nullable(),
+  "totalStudents": zod.number().int(),
+  "subscriptionStatus": zod.string()
 })
 export const ListMyPartnerSchoolsResponse = zod.array(ListMyPartnerSchoolsResponseItem)
+
+
+/**
+ * Authenticated partner owner/admin only. Partner identity, ownership, school code, and password are server-controlled. Administrator password setup occurs through the invitation.
+ * @summary Register a school and invite its first administrator
+ */
+export const createMyPartnerSchoolBodySchoolNameMin = 2;
+export const createMyPartnerSchoolBodySchoolNameMax = 200;
+
+export const createMyPartnerSchoolBodySchoolCityMax = 100;
+
+export const createMyPartnerSchoolBodySchoolStateMax = 100;
+
+export const createMyPartnerSchoolBodySchoolPhoneMax = 40;
+
+export const createMyPartnerSchoolBodySchoolEmailMax = 254;
+
+export const createMyPartnerSchoolBodyAdministratorFullNameMin = 2;
+export const createMyPartnerSchoolBodyAdministratorFullNameMax = 200;
+
+export const createMyPartnerSchoolBodyAdministratorEmailMax = 254;
+
+export const createMyPartnerSchoolBodyAdministratorPhoneMax = 40;
+
+
+
+export const CreateMyPartnerSchoolBody = zod.object({
+  "school": zod.object({
+  "name": zod.string().min(createMyPartnerSchoolBodySchoolNameMin).max(createMyPartnerSchoolBodySchoolNameMax),
+  "city": zod.string().min(1).max(createMyPartnerSchoolBodySchoolCityMax),
+  "state": zod.string().min(1).max(createMyPartnerSchoolBodySchoolStateMax),
+  "phone": zod.string().max(createMyPartnerSchoolBodySchoolPhoneMax).optional(),
+  "email": zod.string().email().max(createMyPartnerSchoolBodySchoolEmailMax).optional()
+}),
+  "administrator": zod.object({
+  "fullName": zod.string().min(createMyPartnerSchoolBodyAdministratorFullNameMin).max(createMyPartnerSchoolBodyAdministratorFullNameMax),
+  "email": zod.string().email().max(createMyPartnerSchoolBodyAdministratorEmailMax),
+  "phone": zod.string().min(1).max(createMyPartnerSchoolBodyAdministratorPhoneMax)
+})
+})
+
+export const CreateMyPartnerSchoolResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "administratorInvitation": zod.object({
+  "invitationId": zod.string(),
+  "email": zod.string().email(),
+  "role": zod.enum(['SCHOOL_ADMIN']),
+  "status": zod.enum(['DISPATCH_REQUESTED']),
+  "dispatchStatus": zod.enum(['REQUEST_ACCEPTED']),
+  "deliveryStatus": zod.enum(['UNVERIFIED']),
+  "deliveryNote": zod.string()
+})
+})
 
 
 /**
@@ -7046,11 +7141,56 @@ export const GetMyPartnerSchoolResponse = zod.object({
   "schoolName": zod.string(),
   "schoolCode": zod.string().nullish(),
   "attributionStatus": zod.enum(['ACTIVE', 'ENDED', 'PENDING']),
-  "attributionSource": zod.enum(['REFERRAL', 'PLATFORM_ASSIGNED', 'DIRECT']),
+  "attributionSource": zod.enum(['REFERRAL', 'REFERRAL_LINK', 'PLATFORM_ASSIGNED', 'DIRECT', 'PARTNER_DIRECT']),
   "referralLinkId": zod.number().int().nullish(),
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date().nullish(),
-  "eligibleStudentCount": zod.number().int().optional()
+  "eligibleStudentCount": zod.number().int().optional(),
+  "adminName": zod.string().nullable(),
+  "adminEmail": zod.string().email().nullable(),
+  "adminPhone": zod.string().nullable(),
+  "registrationStatus": zod.enum(['PENDING', 'ACTIVE']),
+  "invitationId": zod.string().nullable(),
+  "invitationStatus": zod.union([zod.literal('PENDING'),zod.literal('ACCEPTED'),zod.literal('UNKNOWN'),zod.literal('FAILED'),zod.literal(null)]).nullable(),
+  "invitationSentAt": zod.coerce.date().nullable(),
+  "acceptedAt": zod.coerce.date().nullable(),
+  "dateAdded": zod.coerce.date().nullable(),
+  "totalStudents": zod.number().int(),
+  "subscriptionStatus": zod.string()
+})
+
+
+/**
+ * Partner owner/admin only. The exact invitation must belong to this currently attributed school and administrator recipient; resend-all is not supported.
+ * @summary Replace the selected pending School Administrator invitation
+ */
+
+export const resendMyPartnerSchoolInvitationPathInvitationIdMax = 100;
+
+
+export const resendMyPartnerSchoolInvitationPathInvitationIdRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+
+
+export const ResendMyPartnerSchoolInvitationParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "invitationId": zod.coerce.string().min(1).max(resendMyPartnerSchoolInvitationPathInvitationIdMax).regex(resendMyPartnerSchoolInvitationPathInvitationIdRegExp)
+})
+
+export const ResendMyPartnerSchoolInvitationBody = zod.object({
+
+})
+
+export const ResendMyPartnerSchoolInvitationResponse = zod.object({
+  "status": zod.enum(['PENDING']),
+  "invitationId": zod.string(),
+  "supersededInvitationId": zod.string(),
+  "previousInviteRevoked": zod.boolean(),
+  "email": zod.string().email(),
+  "schoolId": zod.number().int(),
+  "role": zod.enum(['SCHOOL_ADMIN']),
+  "dispatchStatus": zod.enum(['REQUEST_ACCEPTED']),
+  "deliveryStatus": zod.enum(['UNVERIFIED']),
+  "recoveryStatus": zod.string()
 })
 
 

@@ -7,6 +7,8 @@
  */
 import type { PartnerSchoolAttributionSource } from './partnerSchoolAttributionSource';
 import type { PartnerSchoolAttributionStatus } from './partnerSchoolAttributionStatus';
+import type { PartnerSchoolInvitationStatus } from './partnerSchoolInvitationStatus';
+import type { PartnerSchoolRegistrationStatus } from './partnerSchoolRegistrationStatus';
 
 export interface PartnerSchool {
   schoolId: number;
@@ -21,4 +23,23 @@ export interface PartnerSchool {
   /** @nullable */
   endDate?: Date | null;
   eligibleStudentCount?: number;
+  /** @nullable */
+  adminName: string | null;
+  /** @nullable */
+  adminEmail: string | null;
+  /** @nullable */
+  adminPhone: string | null;
+  registrationStatus: PartnerSchoolRegistrationStatus;
+  /** @nullable */
+  invitationId: string | null;
+  /** @nullable */
+  invitationStatus: PartnerSchoolInvitationStatus;
+  /** @nullable */
+  invitationSentAt: Date | null;
+  /** @nullable */
+  acceptedAt: Date | null;
+  /** @nullable */
+  dateAdded: Date | null;
+  totalStudents: number;
+  subscriptionStatus: string;
 }

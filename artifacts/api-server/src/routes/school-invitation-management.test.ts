@@ -32,6 +32,8 @@ const state = vi.hoisted(() => ({
   createInvitation: vi.fn(),
   revokeInvitation: vi.fn(),
   getInvitationList: vi.fn(),
+  getUser: vi.fn(),
+  updateUserMetadata: vi.fn(),
 }));
 
 vi.mock("@workspace/db", () => ({
@@ -44,7 +46,10 @@ vi.mock("@clerk/express", () => ({
       revokeInvitation: state.revokeInvitation,
       getInvitationList: state.getInvitationList,
     },
-    users: { getUser: vi.fn() },
+    users: {
+      getUser: state.getUser,
+      updateUserMetadata: state.updateUserMetadata,
+    },
   },
 }));
 vi.mock("../middlewares/auth", async (importOriginal) => {
@@ -57,6 +62,7 @@ vi.mock("../middlewares/auth", async (importOriginal) => {
 });
 
 import schoolInvitationManagementRouter from "./school-invitation-management";
+import { activateAcceptedSchoolInvitation } from "./school-invitations";
 
 const ownerInvitationRows = [
   {
@@ -787,6 +793,46 @@ describe("Platform Owner school invitation management", () => {
     }));
     expect(state.revokeInvitation).toHaveBeenCalledTimes(1);
     expect(state.revokeInvitation).toHaveBeenCalledWith("partner_onboarded_admin");
+  });
+
+  it("preserves the private administrator phone through selected resend and accepted activation", async () => {
+    const phone = "+2348035550199";
+    const source = state.ownerRecords.find((item) => item.metadata.invitationId === "inv_pending");
+    source.metadata.phone = phone;
+
+    const response = await request("/schools/3/invitations/inv_pending/resend", "POST", {});
+    expect(response.status).toBe(201);
+    const replacementRecord = state.ownerRecords[0];
+    expect(replacementRecord.metadata).toMatchObject({
+      invitationId: "inv_replacement",
+      phone,
+    });
+    expect(state.createdOptions.publicMetadata.edupulseSchoolInvitation).not.toHaveProperty("phone");
+
+    state.getUser.mockResolvedValue({
+      primaryEmailAddress: {
+        emailAddress: "pending@example.test",
+        verification: { status: "verified" },
+      },
+      publicMetadata: state.createdOptions.publicMetadata,
+      firstName: "Pending",
+      lastName: "Admin",
+      phoneNumbers: [],
+    });
+    state.clientQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      if (sql.includes("SELECT id,email,status FROM app_users")) {
+        return { rows: [{ id: 21, email: "pending@example.test", status: "ACTIVE" }] };
+      }
+      if (sql.includes("current_invite.id")) return { rows: [{ id: 10, invitedPhone: phone }] };
+      if (sql.includes("INSERT INTO school_memberships")) return { rows: [{ id: 72 }] };
+      return { rows: [] };
+    });
+
+    await expect(activateAcceptedSchoolInvitation(21, "user_pending_admin")).resolves.toBe(true);
+    const appUserPhoneUpdate = state.clientQuery.mock.calls.find(([sql]) =>
+      sql.includes("UPDATE app_users SET first_name")
+    );
+    expect(appUserPhoneUpdate?.[1][2]).toBe(phone);
   });
 
   it.each([
