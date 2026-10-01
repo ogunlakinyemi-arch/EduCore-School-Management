@@ -1,0 +1,374 @@
+YEMAIT EDUCORE — SAFE MIGRATION CORRECTION FOR TRANSPORT FOREIGN KEY
+
+The latest Production publish preflight found a schema-generation defect.
+
+The generated 258-statement Production migration must NOT be applied as-is.
+
+CONFIRMED PROBLEM
+
+Statement 35 currently contains:
+
+DROP INDEX "parent_student_relationship_unique";
+
+This is Production's existing unique index for:
+
+parent_student_relationships(parent_id, student_id)
+
+Statement 136 subsequently creates a Transport-related foreign key referencing:
+
+parent_student_relationships(parent_id, student_id)
+
+PostgreSQL requires the referenced columns to have an appropriate PRIMARY KEY or UNIQUE constraint.
+
+The generated migration therefore cannot safely remove the existing uniqueness without replacing it before the foreign key is created.
+
+OBJECTIVE
+
+Correct the migration/schema definition so that:
+
+1. Existing Production uniqueness is preserved.
+2. The Transport foreign key can be created successfully.
+3. No existing Production data is deleted or changed unnecessarily.
+4. No DROP TABLE occurs.
+5. No DROP COLUMN occurs.
+6. No TRUNCATE occurs.
+7. No destructive migration is introduced.
+8. The final migration can be safely rehearsed before Production application.
+9. The latest Development application can then be published.
+
+Do NOT simply bypass the migration check.
+
+Do NOT manually modify the Production migration ledger.
+
+Do NOT delete the existing index just to make the migration proceed.
+
+---
+
+1. INSPECT THE EXISTING SCHEMA
+
+First inspect the actual schema definitions for:
+
+parent_student_relationships
+
+and the Transport-related table/foreign key that references:
+
+(parent_id, student_id)
+
+Confirm:
+
+- existing primary key
+- existing unique constraints
+- existing unique indexes
+- column types
+- foreign keys
+- indexes
+- whether the referenced pair is actually intended to be unique
+
+Do not assume the generated migration is correct.
+
+---
+
+2. PRESERVE THE EXISTING UNIQUENESS
+
+The existing Production uniqueness:
+
+parent_student_relationship_unique
+
+must remain logically enforced.
+
+Do NOT leave Production without a uniqueness guarantee on:
+
+(parent_id, student_id)
+
+If the application's intended schema uses a named UNIQUE constraint rather than a standalone unique index, convert it safely only if necessary.
+
+The final schema must continue enforcing uniqueness for:
+
+(parent_id, student_id)
+
+---
+
+3. DETERMINE WHY THE MIGRATION WANTS TO DROP THE INDEX
+
+Find the exact Development schema definition that caused:
+
+DROP INDEX "parent_student_relationship_unique";
+
+Determine whether this is caused by:
+
+- Drizzle schema definition mismatch
+- duplicate uniqueness declaration
+- index vs constraint representation
+- renamed constraint
+- generated migration ordering
+- Transport schema definition
+- another relationship-model change
+
+Fix the underlying schema/migration definition rather than manually hiding the generated statement.
+
+---
+
+4. TRANSPORT FOREIGN KEY
+
+Inspect the new Transport foreign key that references:
+
+parent_student_relationships(parent_id, student_id)
+
+Ensure that the referenced pair is backed by an appropriate PostgreSQL:
+
+- PRIMARY KEY, or
+- UNIQUE constraint
+
+before the foreign key is created.
+
+Correct ordering should conceptually be:
+
+1. Preserve/create uniqueness on "(parent_id, student_id)"
+2. Create Transport tables
+3. Create the Transport foreign key referencing the unique pair
+
+Do not create the foreign key first.
+
+---
+
+5. IMPORTANT — DO NOT CREATE DUPLICATE UNIQUENESS
+
+Do not blindly create both:
+
+parent_student_relationship_unique
+
+and another identical unique index/constraint.
+
+First determine what already exists in the Development and Production schemas.
+
+Avoid unnecessary duplicate indexes.
+
+The final schema should have one clear authoritative uniqueness mechanism for:
+
+parent_student_relationships(parent_id, student_id)
+
+unless PostgreSQL/schema requirements demonstrate that another structure is genuinely necessary.
+
+---
+
+6. REGENERATE THE MIGRATION
+
+After correcting the underlying Development schema/migration definition:
+
+Regenerate the pending Production schema diff.
+
+Do NOT manually edit the migration ledger.
+
+Do NOT mark the migration as already applied.
+
+Do NOT pretend the migration has succeeded.
+
+The new diff must be inspected again.
+
+---
+
+7. NEW SAFETY GATE
+
+Before applying anything to Production, inspect the regenerated SQL.
+
+Specifically verify that it does NOT contain:
+
+DROP INDEX "parent_student_relationship_unique";
+
+unless it is immediately and safely replaced by an equivalent uniqueness constraint/index before the Transport foreign key depends on it.
+
+Also verify:
+
+- no DROP TABLE
+- no DROP COLUMN
+- no TRUNCATE
+- no destructive data changes
+- no unnecessary replacement of existing Production structures
+
+If any destructive operation remains, STOP.
+
+---
+
+8. REHEARSE THE ENTIRE MIGRATION
+
+Use a disposable schema/database/fork if available.
+
+Run the complete regenerated migration from the beginning.
+
+Verify:
+
+Tables
+
+The expected new tables are created successfully.
+
+Constraints
+
+All required unique constraints are created successfully.
+
+Foreign keys
+
+All foreign keys are created successfully.
+
+Pay special attention to:
+
+parent_student_relationships(parent_id, student_id)
+
+and the Transport foreign key.
+
+Existing data
+
+Use representative existing records to confirm that the new constraints do not invalidate legitimate existing data.
+
+Repeatability
+
+Confirm that the migration does not produce an unexpected second migration when the same schema is inspected again.
+
+---
+
+9. PRODUCTION SAFETY CHECK
+
+Before applying to Production, confirm:
+
+- Production database identity
+- PostgreSQL version
+- Existing table count
+- Existing parent/student relationship count
+- Existing uniqueness on "(parent_id, student_id)"
+- Existing migration ledger
+- Recovery/PITR availability
+
+Do not change Production if the target database identity cannot be confirmed.
+
+---
+
+10. APPLY ONLY AFTER SUCCESSFUL REHEARSAL
+
+If and only if the regenerated migration:
+
+- passes the disposable rehearsal
+- preserves existing uniqueness
+- creates the Transport foreign key successfully
+- contains no destructive operations
+- preserves existing data
+
+then apply the corrected schema migration to Production.
+
+The migration should remain additive.
+
+Do not reset the database.
+
+Do not recreate existing records.
+
+Do not modify the historical migration ledger manually.
+
+---
+
+11. POST-MIGRATION VERIFICATION
+
+After applying the corrected schema, verify:
+
+Existing data
+
+- Schools preserved
+- Students preserved
+- Parents preserved
+- Parent/student relationships preserved
+- Teachers/staff preserved
+- NFC cards preserved
+- Subscriptions preserved
+- Finance records preserved
+- Audit records preserved
+
+Parent/student relationship integrity
+
+Confirm:
+
+(parent_id, student_id)
+
+remains unique.
+
+Transport
+
+Confirm:
+
+- Transport tables exist
+- Transport foreign key exists
+- Foreign key is validated
+- No orphaned relationship references exist
+
+General schema
+
+Confirm all expected latest Development tables and constraints exist.
+
+---
+
+12. BUILD AND TEST
+
+Only after schema reconciliation succeeds:
+
+Run:
+
+- Typecheck
+- Existing backend tests
+- Existing frontend tests
+- API health check
+- Frontend build
+
+Do not rewrite application logic to conceal failures.
+
+---
+
+13. PUBLISH
+
+After all checks pass, publish the latest Yemait EduCore build.
+
+The purpose of this operation is to make the latest already-developed Development corrections available for my manual testing.
+
+Do not introduce new features during this operation.
+
+---
+
+14. PAYMENT SAFETY
+
+Keep all payment integrations in sandbox/test mode.
+
+Do NOT:
+
+- enable Flutterwave LIVE
+- initiate real payments
+- initiate real refunds
+- initiate real transfers
+- initiate real payroll payments
+- move real funds
+
+Schema migration and publication must not trigger payment activity.
+
+---
+
+15. AFTER SUCCESSFUL PUBLICATION
+
+Stop development changes.
+
+I will begin a fresh manual testing cycle.
+
+I will report all issues I find.
+
+Do not automatically create correction prompts or modify the application after individual test findings unless I explicitly request the correction phase.
+
+---
+
+FINAL REQUIREMENT
+
+Do not apply the original 258-statement migration.
+
+Correct the underlying schema/migration defect causing:
+
+DROP INDEX "parent_student_relationship_unique";
+
+while the Transport foreign key depends on:
+
+(parent_id, student_id)
+
+Preserve the existing uniqueness, regenerate the schema diff, rehearse the complete migration, verify it is non-destructive, then apply it safely and publish the latest Yemait EduCore build.
+
+If the corrected migration still contains a destructive or ambiguous operation, STOP and report it instead of bypassing the safety gate.

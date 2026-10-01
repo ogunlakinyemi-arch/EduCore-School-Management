@@ -56,3 +56,17 @@ mtime_ms = 1790858402975
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/76348578-d222-4499-9f48-8f5a762eb1c3/3706e27e-97c5-4dac-8446-71e64582ef45"
 storage_version_token = "1790858416964371"
 content_type = "text/html"
+
+[[outputs]]
+id = "mgovYiETOPC_cQHKFUML3"
+uri = "file://docs/parent-transport-uniqueness-correction-report.html"
+type = "html"
+title = "Parent–Transport uniqueness correction report"
+description = "Development correction and preservation evidence, focused disposable rehearsal, and the exact remaining publishing-order blocker."
+logical_id = "12a267e7-cbf0-4883-aa28-5413b757ffa8"
+content_hash = "sha256:0be2b9d9ddfeb4feb86510aac404433442242eb0865b68efe8f34693a9fb0160"
+size = 6955
+mtime_ms = 1790859331654
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/12a267e7-cbf0-4883-aa28-5413b757ffa8/4b8c76c1-e421-4f92-9bfc-a23b3ad07118"
+storage_version_token = "1790859385664113"
+content_type = "text/html"

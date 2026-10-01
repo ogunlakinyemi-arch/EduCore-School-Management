@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Yemait EduCore — Parent/Transport uniqueness correction</title>
+<style>body{font:15px/1.6 system-ui,sans-serif;background:#f3f5f8;color:#172033;padding:28px}main{max-width:850px;margin:auto;background:white;padding:32px;border:1px solid #dce2eb;border-radius:10px}h1{font-size:26px}h2{font-size:19px;margin-top:28px}.blocked{padding:14px;background:#fff0e9;border-left:4px solid #bb532d}.passed{padding:14px;background:#eaf7ef;border-left:4px solid #278353}table{border-collapse:collapse;width:100%}td,th{padding:8px;border-bottom:1px solid #dde3ec;text-align:left}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;background:#f4f6fa;padding:14px}code{font-size:12px;overflow-wrap:anywhere}small{color:#596579}@media print{body{padding:0;background:white}main{border:0;padding:0}}</style></head><body><main>
+<small>1 October 2026 · Development correction only</small>
+<h1>Parent–student uniqueness correction</h1>
+<p class="passed"><strong>The Development index representation was corrected without dropping, rebuilding or duplicating the existing index.</strong> Existing records and historical migration-ledger rows were preserved.</p>
+<p class="blocked"><strong>Production publication is still blocked.</strong> The regenerated publishing plan continues to drop the existing unique index and creates its replacement constraint after the dependent Transport foreign key.</p>
+<h2>Schema findings and source correction</h2>
+<ul><li>Both inspected databases originally had the same sole standalone unique btree index, <code>parent_student_relationship_unique</code>, on <code>(parent_id, student_id)</code>.</li><li>The relationship table has its primary key on <code>id</code>; parent/student identifiers are non-null integers with simple foreign keys. There was no pair UNIQUE constraint or second pair-unique index.</li><li>Development's <code>transport_parent_requests_active_relationship_fk</code> was already bound to that existing index.</li><li>The pair declaration in <code>lib/db/src/schema/edupulse.ts</code> was changed from <code>uniqueIndex(...)</code> to <code>unique(...)</code>, retaining the exact same name and column order.</li><li>A guarded, repeatable correction is recorded in <code>lib/db/drizzle/0037_parent_relationship_unique_constraint.sql</code>. It attaches the existing index with <code>UNIQUE USING INDEX</code>; it does not rewrite historical migrations, create a second pair key, change application behavior or perform data backfills.</li></ul>
+<p>The observed defect is an index-versus-constraint/dependency representation and ordering problem in the publishing plan. Declaring the key explicitly exposes the replacement constraint, but does not make the current generated ordering safe.</p>
+<h2>Focused disposable rehearsal</h2>
+<p>A separate local PostgreSQL instance—not Development or Production—verified:</p>
+<ul><li>The constraint reuses the original index object.</li><li>The already-bound Transport foreign key retains its dependency.</li><li>Representative many-to-many relationship rows remain unchanged.</li><li>A duplicate parent/student pair is rejected with SQLSTATE <code>23505</code>.</li><li>A Transport request without a matching parent/student pair is rejected with SQLSTATE <code>23503</code>.</li><li>Repeating the guarded correction is a no-op, with one authoritative pair-unique index.</li></ul>
+<p>This is a focused correction rehearsal, <strong>not a successful rehearsal of the complete publishing plan</strong>. The disposable server was stopped afterward.</p>
+<h2>Development application evidence</h2>
+<table><tbody><tr><th>Target</th><td>Verified writable Development database <code>heliumdb</code>, PostgreSQL 16.10; 125 public tables.</td></tr><tr><th>Data preservation</th><td>All 126 table data fingerprints matched before and after the correction, including the migration-history table.</td></tr><tr><th>Parent/student relationships</th><td>All 7 existing rows preserved.</td></tr><tr><th>Uniqueness</th><td>One pair-unique index, now owned by the named UNIQUE constraint; original index object preserved.</td></tr><tr><th>Transport dependency</th><td>Still bound to the original index object.</td></tr><tr><th>Historical ledger</th><td>All 11 existing entries unchanged. No manual ledger write or mark-applied operation was performed.</td></tr></tbody></table>
+<p>An initial Development transaction rolled back because its final verification summary used the Production ledger table name. The ledger was then independently discovered as <code>drizzle.__drizzle_migrations</code>; the corrected transaction fingerprinted it and committed successfully. No partial correction survived the failed transaction.</p>
+<h2>Regenerated plan — exact remaining blocker</h2>
+<p>The plan changed from <strong>258 to 259 statements</strong>:</p>
+<pre>35: DROP INDEX "parent_student_relationship_unique";
+
+132: ALTER TABLE "transport_parent_requests"
+ADD CONSTRAINT "transport_parent_requests_active_relationship_fk"
+FOREIGN KEY ("parent_id","student_id")
+REFERENCES "public"."parent_student_relationships"("parent_id","student_id")
+ON DELETE restrict ON UPDATE no action;
+
+259: ALTER TABLE "parent_student_relationships"
+ADD CONSTRAINT "parent_student_relationship_unique"
+UNIQUE("parent_id","student_id");</pre>
+<p>The prerequisite does not exist when statement 132 is reached after statement 35. The plan also rebuilds rather than attaches the original index. No statements were manually omitted or reordered, and the original 258-statement plan was not applied.</p>
+<h2>Stopped operation status</h2>
+<ul><li>Production statements applied: <strong>0</strong>.</li><li>Production data, existing uniqueness and historical migration history were not modified.</li><li>The inspected Production read replica reported PostgreSQL 16.15, 91 public tables, zero parent/student relationships and no duplicate pairs.</li><li>The deployed application's exact writable database-resource binding and usable recovery/PITR points remain unverified.</li><li>The complete regenerated migration was not rehearsed or applied because it failed the SQL safety gate.</li><li>Full application builds, typechecks, regression suites and publishing were not run after that failure.</li><li>No payment credentials/configuration changed; no payment, refund, settlement, payroll or bank-transfer calls were initiated.</li></ul>
+<h2>Existing published application</h2>
+<p><a href="https://edu-pulse-school-management--ogunlakinyemi.replit.app">https://edu-pulse-school-management--ogunlakinyemi.replit.app</a></p>
+<p>The latest Development build has not been published. A fresh, validated publishing plan must preserve referenced uniqueness before dependent foreign keys, followed by the complete rehearsal and remaining Production safety checks.</p>
+</main></body></html>

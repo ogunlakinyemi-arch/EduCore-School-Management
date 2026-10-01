@@ -220,7 +220,7 @@ export const parentStudentRelationships = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("parent_student_relationship_unique").on(table.parentId, table.studentId),
+    unique("parent_student_relationship_unique").on(table.parentId, table.studentId),
     index("parent_student_relationship_parent_idx").on(table.parentId, table.status),
     index("parent_student_relationship_student_idx").on(table.studentId, table.status),
   ],
