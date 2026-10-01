@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { TransportGuardian } from './transportGuardian';
-import type { TransportSelfView } from './transportSelfView';
+import type { TransportStudentAssignmentBadge } from './transportStudentAssignmentBadge';
 
 export interface TransportStudentOption {
   studentId: number;
@@ -16,5 +16,5 @@ export interface TransportStudentOption {
   className: string;
   section: string;
   guardians: TransportGuardian[];
-  activeAssignment?: TransportSelfView | null;
+  activeAssignment?: TransportStudentAssignmentBadge | null;
 }

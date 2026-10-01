@@ -626,6 +626,7 @@ async function validateBusRouteStaff(
   routeId: number,
   employeeId: number,
   role: "TEACHER" | "STAFF" | "ACCOMPANIER",
+  ignoreRouteStaffId?: number,
 ) {
   const routeResult = await client.query(
     `SELECT id,school_id AS "schoolId",driver_employee_id AS "driverEmployeeId",
@@ -663,8 +664,9 @@ async function validateBusRouteStaff(
   const alreadyAssigned = await client.query(
     `SELECT 1 FROM transport_route_staff
       WHERE school_id=$1 AND route_id=$2 AND employee_id=$3 AND is_active
+        AND ($4::int IS NULL OR id<>$4)
       LIMIT 1`,
-    [schoolId, routeId, employeeId],
+    [schoolId, routeId, employeeId, ignoreRouteStaffId ?? null],
   );
   if (alreadyAssigned.rows[0]) {
     throw new AuthError(409, "This employee already accompanies the selected route");
@@ -864,6 +866,7 @@ router.patch("/transport/routes/:routeId/staff/:routeStaffId", run(async (req, r
         routeId,
         Number(current.employeeId),
         nextRole as "TEACHER" | "STAFF" | "ACCOMPANIER",
+        routeStaffId,
       );
     }
     const updatedResult = await client.query(
@@ -891,9 +894,9 @@ router.patch("/transport/routes/:routeId/staff/:routeStaffId", run(async (req, r
         : nextIsActive ? "TRANSPORT_BUS_EMPLOYEE_ACTIVATED" : "TRANSPORT_BUS_EMPLOYEE_REMOVED",
       effectiveDate: new Date().toISOString().slice(0, 10),
       reason: body.reason === undefined
-        ? nextIsActive
-        ? "School-admin restored same-school bus employee assignment"
-        : "School-admin deactivated same-school bus employee assignment",
+        ? (nextIsActive
+          ? "School-admin restored same-school bus employee assignment"
+          : "School-admin deactivated same-school bus employee assignment")
         : requireReason(body.reason),
       before: current,
       after,
@@ -952,13 +955,20 @@ type ActiveTransportTerm = {
   academicSessionId: number;
   sessionName: string;
   termName: string;
+  startDate: string;
   endDate: string;
 };
+
+function transportTermId(term: ActiveTransportTerm | JsonRecord): number {
+  const explicitAcademicTermId = (term as JsonRecord).academicTermId;
+  return Number(explicitAcademicTermId ?? (term as ActiveTransportTerm).id);
+}
 
 async function currentTransportTerm(client: DbClient, schoolId: number): Promise<ActiveTransportTerm | null> {
   const result = await client.query(
     `SELECT t.id,t.school_id AS "schoolId",t.academic_session_id AS "academicSessionId",
-            ac.name AS "sessionName",t.name AS "termName",t.end_date::text AS "endDate"
+            ac.name AS "sessionName",t.name AS "termName",
+            t.start_date::text AS "startDate",t.end_date::text AS "endDate"
        FROM academic_terms t
        JOIN academic_sessions ac ON ac.id=t.academic_session_id AND ac.school_id=t.school_id
        WHERE t.school_id=$1 AND t.is_current AND ac.is_current
@@ -973,6 +983,7 @@ async function currentTransportTerm(client: DbClient, schoolId: number): Promise
     academicSessionId: Number(term.academicSessionId),
     sessionName: String(term.sessionName),
     termName: String(term.termName),
+    startDate: String(term.startDate),
     endDate: String(term.endDate),
   } : null;
 }
@@ -1009,7 +1020,7 @@ async function resolveTransportFeeCategory(
   feeCategoryId: number | undefined,
   amountMinor: number,
 ) {
-  if (amountMinor === 0) return null;
+  if (amountMinor === 0 && feeCategoryId === undefined) return null;
   if (feeCategoryId === undefined) {
     return ensureTransportFinanceCategory(client, schoolId, actorUserId);
   }
@@ -1359,7 +1370,8 @@ export async function generateTransportInvoicesForAcademicTerm(
   authorizeSchoolWrite(req, schoolId);
   return inTransaction(async (client) => {
     const termResult = await client.query(
-      `SELECT t.id,t.school_id AS "schoolId",t.name,t.end_date::text AS "endDate",
+      `SELECT t.id,t.school_id AS "schoolId",t.name,
+              t.start_date::text AS "startDate",t.end_date::text AS "endDate",
               t.is_current AS "isCurrent",
               ac.id AS "academicSessionId",ac.name AS "sessionName",
               ac.is_current AS "sessionIsCurrent"
@@ -1376,8 +1388,11 @@ export async function generateTransportInvoicesForAcademicTerm(
       throw new AuthError(409, "Transport term billing may only be generated for the current school session and term");
     }
     const role = actorRole(req, schoolId);
+    const paymentPolicy = await getSchoolTransportPaymentPolicy(client, schoolId);
     const activeAssignments = await client.query(
-      `SELECT id FROM transport_student_assignments
+      `SELECT id,student_id AS "studentId",status,
+              effective_date::text AS "effectiveDate"
+         FROM transport_student_assignments
         WHERE school_id=$1 AND status IN ('ACTIVE','SUSPENDED')
         ORDER BY id
         FOR UPDATE`,
@@ -1395,6 +1410,47 @@ export async function generateTransportInvoicesForAcademicTerm(
         effectiveReason: `Idempotent Finance transport assessment for ${term.sessionName} ${term.name}`,
       });
       if (invoiceId !== null) invoiceIds.push(invoiceId);
+      if (paymentPolicy.paymentRequired && assignment.status === "ACTIVE") {
+        const plan = await client.query(
+          `SELECT plan.id,plan.amount_minor AS "amountMinor",plan.status AS "planStatus",
+                  invoice.outstanding_minor AS "outstandingMinor"
+             FROM transport_fee_invoices plan
+             LEFT JOIN fee_invoices invoice
+               ON invoice.id=plan.fee_invoice_id AND invoice.school_id=plan.school_id
+            WHERE plan.school_id=$1 AND plan.assignment_id=$2 AND plan.academic_term_id=$3`,
+          [schoolId, Number(assignment.id), termId],
+        );
+        const currentPlan = plan.rows[0];
+        if (
+          currentPlan &&
+          Number(currentPlan.amountMinor) > 0 &&
+          (currentPlan.planStatus !== "INVOICED" || Number(currentPlan.outstandingMinor ?? 0) > 0)
+        ) {
+          await client.query(
+            `UPDATE transport_student_assignments
+                SET status='SUSPENDED',updated_at=NOW()
+              WHERE id=$1 AND school_id=$2 AND status='ACTIVE'`,
+            [Number(assignment.id), schoolId],
+          );
+          await appendHistory(client, req, {
+            schoolId,
+            entity: "assignment",
+            entityId: Number(assignment.id),
+            studentId: Number(assignment.studentId),
+            eventType: "STUDENT_TRANSPORT_ASSIGNMENT_PAYMENT_GATED",
+            effectiveDate: String(assignment.effectiveDate),
+            reason: `Payment is required for transport in ${term.sessionName} ${term.name}`,
+            before: { status: "ACTIVE" },
+            after: {
+              status: "SUSPENDED",
+              feePlanId: Number(currentPlan.id),
+              feePlanAmountMinor: Number(currentPlan.amountMinor),
+              academicSessionId: Number(term.academicSessionId),
+              academicTermId: termId,
+            },
+          });
+        }
+      }
     }
     return {
       schoolId,
@@ -1867,12 +1923,24 @@ router.post("/transport/assignments", run(async (req, res) => {
         true,
       )
       : term;
-    const feePlanAmountMinor = requestedFeePlan.feePlanAmountMinor ?? Number(route.fareMinor);
-    const feePlanDueDate = requestedFeePlan.dueDate ?? (feePlanTerm ? String(feePlanTerm.endDate).slice(0, 10) : undefined);
     const hasRequestedFeePlan = Object.keys(requestedFeePlan).length > 0;
+    if (hasRequestedFeePlan && !feePlanTerm) {
+      throw new AuthError(409, "A school academic term is required to save an explicit transport fee plan");
+    }
+    const feePlanAmountMinor = resolveTransportFeePlanAmount(
+      requestedFeePlan.feePlanAmountMinor,
+      Number(route.fareMinor),
+    );
+    const feePlanDueDate = feePlanTerm
+      ? resolveTransportFeePlanDueDate(
+        requestedFeePlan.dueDate,
+        feePlanTerm.startDate,
+        feePlanTerm.endDate,
+      )
+      : undefined;
     const feePlanMatchesCurrentTerm = Boolean(
       feePlanTerm && term &&
-      Number(feePlanTerm.academicTermId ?? feePlanTerm.id) === term.id &&
+      transportTermId(feePlanTerm) === term.id &&
       Number(feePlanTerm.academicSessionId) === term.academicSessionId,
     );
     if (
@@ -1899,7 +1967,7 @@ router.post("/transport/assignments", run(async (req, res) => {
         schoolId,
         assignmentId,
         academicSessionId: Number(feePlanTerm.academicSessionId),
-        academicTermId: Number(feePlanTerm.academicTermId ?? feePlanTerm.id),
+        academicTermId: transportTermId(feePlanTerm),
         amountMinor: feePlanAmountMinor,
         ...(feePlanDueDate ? { dueDate: feePlanDueDate } : {}),
         ...(requestedFeePlan.feeCategoryId === undefined ? {} : { feeCategoryId: requestedFeePlan.feeCategoryId }),
@@ -1991,13 +2059,6 @@ router.put("/transport/assignments/:assignmentId/fee-plans/:academicTermId", run
     const before = await assignmentShape(client, schoolId, assignmentId);
     const term = await transportTermPlanContext(client, schoolId, academicSessionId, academicTermId, true);
     const policy = await getSchoolTransportPaymentPolicy(client, schoolId, true);
-    if (
-      policy.paymentRequired &&
-      amountMinor > 0 &&
-      (!term.termIsCurrent || !term.sessionIsCurrent)
-    ) {
-      throw new AuthError(409, "Payment-gated transport fee plans must use the current school academic session and term");
-    }
     await upsertTransportFeePlan(client, {
       schoolId,
       assignmentId,
@@ -2093,14 +2154,12 @@ router.patch("/transport/assignments/:assignmentId/fee-plans/:academicTermId", r
       throw new AuthError(409, "This transport fee plan is already cancelled");
     }
     const policy = await getSchoolTransportPaymentPolicy(client, schoolId, true);
-    const currentTerm = await currentTransportTerm(client, schoolId);
     if (
       policy.paymentRequired &&
       Number(plan.rows[0].amountMinor) > 0 &&
-      assignment.rows[0].status !== "DEACTIVATED" &&
-      currentTerm?.id === academicTermId
+      assignment.rows[0].status !== "DEACTIVATED"
     ) {
-      throw new AuthError(409, "A current payment-gated fee plan cannot be cancelled while its assignment is active or suspended");
+      throw new AuthError(409, "A positive fee plan cannot be cancelled while payment-gated transport is configured for an active or suspended assignment");
     }
     await client.query(
       `UPDATE transport_fee_invoices
@@ -2144,6 +2203,21 @@ function mapAssignmentRow(
 }
 
 function mapRawAssignmentToApiShape(row: JsonRecord) {
+  const feePlans = jsonArray(row.feePlans).map((plan) => ({
+    feePlanId: Number(plan.feePlanId),
+    academicSessionId: Number(plan.academicSessionId),
+    sessionName: String(plan.sessionName),
+    academicTermId: Number(plan.academicTermId),
+    termName: String(plan.termName),
+    feePlanAmountMinor: Number(plan.feePlanAmountMinor),
+    currency: String(plan.currency),
+    dueDate: String(plan.dueDate).slice(0, 10),
+    status: String(plan.status),
+    feeCategoryId: plan.feeCategoryId === null ? null : Number(plan.feeCategoryId),
+    feeCategoryName: plan.feeCategoryName === null ? null : String(plan.feeCategoryName),
+    invoiceId: plan.invoiceId === null ? null : Number(plan.invoiceId),
+  }));
+  const currentFeePlan = feePlans[feePlans.length - 1] ?? null;
   return {
     id: Number(row.id),
     schoolId: Number(row.schoolId),
@@ -2185,6 +2259,11 @@ function mapRawAssignmentToApiShape(row: JsonRecord) {
     endDate: row.endDate === null ? null : String(row.endDate).slice(0, 10),
     reason: String(row.reason),
     feeMinor: Number(row.fareMinor),
+    feePlanAmountMinor: currentFeePlan?.feePlanAmountMinor ?? Number(row.fareMinor),
+    academicSessionId: currentFeePlan?.academicSessionId ?? null,
+    academicTermId: currentFeePlan?.academicTermId ?? null,
+    dueDate: currentFeePlan?.dueDate ?? null,
+    feeCategoryId: currentFeePlan?.feeCategoryId ?? null,
     currency: String(row.currency),
     guardians: jsonArray(row.guardians).map((guardian) => ({
       name: String(guardian.name),
@@ -2192,6 +2271,7 @@ function mapRawAssignmentToApiShape(row: JsonRecord) {
       relationshipType: String(guardian.relationshipType),
       isPrimaryGuardian: Boolean(guardian.isPrimaryGuardian),
     })),
+    feePlans,
     invoices: [] as JsonRecord[],
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -2211,9 +2291,12 @@ async function checkTransportActivationPaymentGate(
     `SELECT fare_minor AS "fareMinor" FROM transport_routes WHERE id=$1 AND school_id=$2`,
     [routeId, schoolId],
   );
-  if (!route.rows[0] || Number(route.rows[0].fareMinor) === 0) return;
+  if (!route.rows[0]) throw new AuthError(404, "Transport route not found");
   const term = await currentTransportTerm(client, schoolId);
-  if (!term) throw new AuthError(409, "No active school term exists; fee-gated transport cannot be activated");
+  if (!term) {
+    if (Number(route.rows[0].fareMinor) === 0) return;
+    throw new AuthError(409, "No active school term exists; fee-gated transport cannot be activated");
+  }
   const context = getUserContext(req);
   await ensureTransportInvoiceForTerm(client, {
     req,
@@ -2225,13 +2308,24 @@ async function checkTransportActivationPaymentGate(
     effectiveReason: `Idempotent Finance transport assessment for ${term.sessionName} ${term.termName}`,
   });
   const fee = await client.query(
-    `SELECT i.outstanding_minor AS "outstandingMinor",i.total_minor AS "totalMinor"
-       FROM transport_fee_invoices link
-       JOIN fee_invoices i ON i.id=link.fee_invoice_id AND i.school_id=link.school_id
-      WHERE link.assignment_id=$1 AND link.school_id=$2 AND link.academic_term_id=$3`,
+    `SELECT plan.amount_minor AS "amountMinor",plan.status AS "planStatus",
+            invoice.outstanding_minor AS "outstandingMinor",
+            invoice.total_minor AS "totalMinor"
+       FROM transport_fee_invoices plan
+       LEFT JOIN fee_invoices invoice
+         ON invoice.id=plan.fee_invoice_id AND invoice.school_id=plan.school_id
+      WHERE plan.assignment_id=$1 AND plan.school_id=$2 AND plan.academic_term_id=$3`,
     [assignmentId, schoolId, term.id],
   );
-  if (!fee.rows[0] || Number(fee.rows[0].outstandingMinor) > 0) {
+  if (!fee.rows[0] || fee.rows[0].planStatus === "CANCELLED") {
+    throw new AuthError(409, "An active transport fee plan is required before payment-gated activation");
+  }
+  if (Number(fee.rows[0].amountMinor) === 0) return;
+  if (
+    fee.rows[0].planStatus !== "INVOICED" ||
+    fee.rows[0].outstandingMinor === null ||
+    Number(fee.rows[0].outstandingMinor) > 0
+  ) {
     throw new AuthError(409, "The current transport Finance invoice must be fully paid before activation");
   }
 }
@@ -2575,6 +2669,11 @@ async function studentTransportView(schoolId: number, studentId: number) {
       endDate: assignment.endDate,
       reason: assignment.reason,
       feeMinor: assignment.feeMinor,
+      feePlanAmountMinor: assignment.feePlanAmountMinor,
+      academicSessionId: assignment.academicSessionId,
+      academicTermId: assignment.academicTermId,
+      dueDate: assignment.dueDate,
+      feePlans: assignment.feePlans,
       currency: assignment.currency,
       invoices: assignment.invoices,
     } : null,
@@ -3438,6 +3537,26 @@ router.patch("/transport/routes/:routeId", run(async (req, res) => {
         schoolId,
       ],
     );
+    if (status === "ACTIVE") {
+      const companions = await client.query(
+        `SELECT id,employee_id AS "employeeId",role
+           FROM transport_route_staff
+          WHERE school_id=$1 AND route_id=$2 AND is_active
+          ORDER BY id
+          FOR UPDATE`,
+        [schoolId, routeId],
+      );
+      for (const companion of companions.rows) {
+        await validateBusRouteStaff(
+          client,
+          schoolId,
+          routeId,
+          Number(companion.employeeId),
+          String(companion.role) as "TEACHER" | "STAFF" | "ACCOMPANIER",
+          Number(companion.id),
+        );
+      }
+    }
     const updated = await client.query(
       `${routeRowSql} WHERE r.id=$1 AND r.school_id=$2`,
       [routeId, schoolId],

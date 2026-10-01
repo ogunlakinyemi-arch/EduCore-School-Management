@@ -189,6 +189,8 @@ function EventRows({ rows, names }: { rows: Array<{ id: number; employeeId: numb
 /* ------------------------------ Admin / Owner page ------------------------------ */
 
 type AdminTab = 'cards' | 'attendance' | 'summary' | 'discrepancies';
+const AdminTabs = Tabs<AdminTab>;
+const DiscrepancyTabs = Tabs<'OPEN' | 'RESOLVED'>;
 
 export function EmployeeNfcPage() {
   const { schoolId } = useTenant();
@@ -210,7 +212,7 @@ export function EmployeeNfcPage() {
       {head}
       <div className="mb-5 flex flex-wrap items-center gap-3"><IdentityBadge />{access.readOnlyAttendance && <span className="text-xs font-semibold text-[hsl(var(--muted-foreground))]" data-testid="owner-readonly-note">Owner view: attendance and discrepancies are read-only. Card lifecycle controls remain available.</span>}</div>
       <div className="panel overflow-hidden">
-        <div className="border-b border-[hsl(var(--border))] p-4"><Tabs<AdminTab> items={['cards', 'attendance', 'summary', 'discrepancies']} value={tab} onChange={setTab} /></div>
+        <div className="border-b border-[hsl(var(--border))] p-4"><AdminTabs items={['cards', 'attendance', 'summary', 'discrepancies']} value={tab} onChange={setTab} /></div>
         {tab === 'cards' && <CardsTab key={schoolId} schoolId={schoolId} canManage={access.canManageCards} />}
         {tab === 'attendance' && <AttendanceTab key={schoolId} schoolId={schoolId} />}
         {tab === 'summary' && <SummaryTab key={schoolId} schoolId={schoolId} />}
@@ -443,7 +445,7 @@ function DiscrepancyTab({ schoolId, canResolve }: { schoolId: number; canResolve
   const sel = rows.find(r => r.id === target);
   return (
     <div>
-      <div className="border-b border-[hsl(var(--border))] p-4"><Tabs<'OPEN' | 'RESOLVED'> items={['OPEN', 'RESOLVED']} value={status} onChange={setStatus} /></div>
+      <div className="border-b border-[hsl(var(--border))] p-4"><DiscrepancyTabs items={['OPEN', 'RESOLVED']} value={status} onChange={setStatus} /></div>
       {q.isLoading ? <div className="p-6"><SkeletonPage /></div> : q.isError ? <ErrorState retry={() => q.refetch()} /> : !rows.length ? <EmptyState icon={BadgeCheck} title="No discrepancies" description={`No ${status.toLowerCase()} employee attendance discrepancies.`} /> : (
         <div className="divide-y divide-[hsl(var(--border)/.6)]">
           {rows.map(r => (

@@ -11,6 +11,7 @@ import {
 } from '@workspace/api-client-react';
 import { Button, EmptyState, ErrorState, Field, Metric, Modal, PageHeading, StatusPill, cx, date, useTenant } from '@/components/shared';
 import { HistoryList, InvoiceList, ListSkeleton, Notice, RequestRow, Tabs, AssignmentSummary, inputCls } from '@/components/transport-parts';
+import { FeePlanModal, PolicyPanel, RouteStaffModal } from '@/components/transport-extras';
 import {
   TRANSPORT_POLL_MS, TRANSPORT_STALE_MS, activeDrivers, assignmentTone, capacityState, errorMessage, formatNaira,
   ownerTotals, selectableStudents, stopsFor, transportAudience, validateEffective,
@@ -52,52 +53,52 @@ function OwnerOverview() {
   const { schoolId } = useTenant();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const params = { ...(schoolId ? { schoolId } : {}), ...(from ? { dateFrom: from } : {}), ...(to ? { dateTo: to } : {}) };
-  const q = useGetPlatformTransportOverview(params, { query: { ...fresh, queryKey: ['/api/platform/transport/overview', params] } });
-  const rows = q.data ?? [];
-  const t = ownerTotals(rows);
+  const [status, setStatus] = useState<'all' | 'UNPAID' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE'>('all');
+  const params = { ...(schoolId ? { schoolId } : {}), ...(from ? { fromDate: from } : {}), ...(to ? { toDate: to } : {}), ...(status !== 'all' ? { status } : {}), limit: 100 };
+  const q = useGetPlatformTransportOverview(params, { query: { ...fresh, queryKey: ['/api/transport/platform-owner/overview', params] } });
+  const num = (o: Record<string, unknown> | undefined, k: string) => Number(o?.[k] ?? 0);
+  const ops = q.data?.operationalSummary as Record<string, unknown> | undefined;
+  const fin = q.data?.financeSummary as Record<string, unknown> | undefined;
+  const invoices = q.data?.invoices ?? [];
+  const empty = q.data && !num(ops, 'busCount') && !num(fin, 'invoiceCount');
   return (
     <div data-testid="transport-owner-overview">
       <PageHeading eyebrow="Platform overview" title="Transport" description="A read-only view across schools. Operational changes are made by each school's administrator." />
       <div className="panel mb-6 flex flex-wrap items-end gap-4 p-4">
         <Field label="From"><input type="date" className={inputCls} value={from} onChange={e => setFrom(e.target.value)} /></Field>
         <Field label="To"><input type="date" className={inputCls} value={to} onChange={e => setTo(e.target.value)} /></Field>
+        <Field label="Invoice status"><select className={inputCls} value={status} onChange={e => setStatus(e.target.value as typeof status)} data-testid="select-owner-status"><option value="all">All</option><option value="UNPAID">Unpaid</option><option value="PARTIALLY_PAID">Partly paid</option><option value="PAID">Paid</option><option value="OVERDUE">Overdue</option></select></Field>
         <p className="pb-2 text-xs text-[hsl(var(--muted-foreground))]">{schoolId ? 'Filtered to the school chosen in the header.' : 'Showing every school. Use the header school picker to focus on one.'}</p>
         {(from || to) && <Button variant="quiet" onClick={() => { setFrom(''); setTo(''); }}>Clear dates</Button>}
       </div>
-      {q.isLoading ? <ListSkeleton rows={4} /> : q.isError ? <ErrorState retry={() => q.refetch()} message={errorMessage(q.error)} /> : !rows.length ? (
+      {q.isLoading ? <ListSkeleton rows={4} /> : q.isError ? <ErrorState retry={() => q.refetch()} message={errorMessage(q.error)} /> : empty ? (
         <div className="panel"><EmptyState icon={Bus} title="No transport data yet" description="No school in this filter has set up buses or routes." /></div>
       ) : (
         <>
           <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Metric label="Transport revenue" value={formatNaira(t.revenue)} detail={`Outstanding ${formatNaira(t.outstanding)}`} icon={CircleDollarSign} accent />
-            <Metric label="Active riders" value={t.active} detail={`${t.inactive} inactive`} icon={UsersRound} />
-            <Metric label="Seats reserved" value={`${t.passengers} / ${t.capacity}`} detail={`${t.buses} buses, ${t.routes} routes`} icon={GaugeCircle} />
-            <Metric label="Drivers and staff" value={`${t.drivers} / ${t.staff}`} detail="Active drivers / active staff" icon={UserRoundCog} />
+            <Metric label="Invoiced" value={formatNaira(num(fin, 'invoicedMinor'))} detail={`Paid ${formatNaira(num(fin, 'paidMinor'))}`} icon={CircleDollarSign} accent />
+            <Metric label="Outstanding" value={formatNaira(num(fin, 'outstandingMinor'))} detail={`${num(fin, 'overdueInvoiceCount')} overdue of ${num(fin, 'invoiceCount')} invoices`} icon={ShieldAlert} />
+            <Metric label="Riders" value={num(ops, 'activeAssignmentCount')} detail={`${num(ops, 'suspendedAssignmentCount')} suspended, ${num(ops, 'deactivatedAssignmentCount')} deactivated`} icon={UsersRound} />
+            <Metric label="Buses and seats" value={`${num(ops, 'activeBusCount')} / ${num(ops, 'activeSeatCapacity')}`} detail={`${num(ops, 'activeRouteCount')} routes, ${num(ops, 'assignedDriverCount')} drivers, ${num(ops, 'activeCompanionCount')} companions`} icon={GaugeCircle} />
           </div>
           <div className="panel overflow-x-auto">
             <table className="w-full min-w-[820px] text-left text-sm">
               <thead><tr className="border-b border-[hsl(var(--border))] text-xs uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-                {['School', 'Buses / routes', 'Capacity use', 'Active / inactive', 'Drivers / staff', 'Revenue', 'Outstanding'].map(h => <th key={h} className="p-4 font-bold">{h}</th>)}
+                {['School', 'Student', 'Route', 'Term', 'Total', 'Outstanding', 'Invoice status', 'Due'].map(h => <th key={h} className="p-4 font-bold">{h}</th>)}
               </tr></thead>
               <tbody>
-                {rows.map(r => {
-                  const pct = r.busCapacity ? Math.min(100, Math.round((r.reservedPassengerCount / r.busCapacity) * 100)) : 0;
-                  return (
-                    <tr key={r.schoolId} className="border-b border-[hsl(var(--border)/.6)] last:border-0" data-testid={`owner-transport-row-${r.schoolId}`}>
-                      <td className="p-4 font-bold">{r.schoolName}</td>
-                      <td className="p-4">{r.busCount} / {r.routeCount}</td>
-                      <td className="p-4"><div className="h-2 w-32 overflow-hidden rounded-full bg-[hsl(var(--muted))]"><div className={cx('h-full rounded-full', pct >= 100 ? 'bg-[hsl(var(--destructive))]' : 'bg-[hsl(var(--primary))]')} style={{ width: `${pct}%` }} /></div><div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{r.reservedPassengerCount} of {r.busCapacity}</div></td>
-                      <td className="p-4">{r.activeStudents} / {r.inactiveStudents}</td>
-                      <td className="p-4">{r.activeDrivers} / {r.activeStaff}</td>
-                      <td className="p-4 font-bold">{formatNaira(r.transportRevenueMinor)}</td>
-                      <td className="p-4">{formatNaira(r.outstandingMinor)}<div className="text-xs text-[hsl(var(--muted-foreground))]">{r.invoiceCount} invoices</div></td>
-                    </tr>
-                  );
-                })}
+                {invoices.map(i => (
+                  <tr key={i.invoiceId} className="border-b border-[hsl(var(--border)/.6)] last:border-0" data-testid={`owner-transport-invoice-${i.invoiceId}`}>
+                    <td className="p-4 font-bold">{i.schoolName}</td><td className="p-4">{i.studentName}</td><td className="p-4">{i.routeName}</td>
+                    <td className="p-4">{i.sessionName} - {i.termName}</td><td className="p-4">{formatNaira(i.totalMinor)}</td><td className="p-4">{formatNaira(i.outstandingMinor)}</td>
+                    <td className="p-4"><StatusPill value={i.status} /></td><td className="p-4">{date(i.dueDate)}</td>
+                  </tr>
+                ))}
+                {!invoices.length && <tr><td colSpan={8} className="p-6 text-center text-sm text-[hsl(var(--muted-foreground))]">No transport invoices match this filter.</td></tr>}
               </tbody>
             </table>
           </div>
+          {(q.data?.invoiceTotalCount ?? 0) > invoices.length && <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">Showing {invoices.length} of {q.data?.invoiceTotalCount}. Narrow the filters to see others.</p>}
         </>
       )}
     </div>
@@ -106,7 +107,8 @@ function OwnerOverview() {
 
 /* -------------------------------- Admin ------------------------------- */
 
-type Tab = 'assignments' | 'requests' | 'buses' | 'routes';
+type Tab = 'assignments' | 'requests' | 'buses' | 'routes' | 'policy';
+const TransportTabs = Tabs<Tab>;
 
 function AdminTransport({ schoolId }: { schoolId: number }) {
   const [tab, setTab] = useState<Tab>('assignments');
@@ -118,13 +120,15 @@ function AdminTransport({ schoolId }: { schoolId: number }) {
   return (
     <div data-testid="transport-admin">
       <PageHeading eyebrow="School operations" title="Transport" description="Buses, routes and who rides where. Fees stay in School Fees; nothing here creates a second billing system." />
-      <Tabs<Tab> value={tab} onChange={setTab} items={[
+      <TransportTabs value={tab} onChange={setTab} items={[
         { id: 'assignments', label: 'Riders', count: assignments.data?.length }, { id: 'requests', label: 'Parent requests', count: pending },
         { id: 'buses', label: 'Buses', count: buses.data?.length }, { id: 'routes', label: 'Routes', count: routes.data?.length },
+        { id: 'policy', label: 'Payment policy' },
       ]} />
       {tab === 'assignments' && <AssignmentsTab schoolId={schoolId} q={assignments} routes={routes.data ?? []} />}
       {tab === 'requests' && <RequestsTab schoolId={schoolId} q={requests} />}
       {tab === 'buses' && <BusesTab schoolId={schoolId} q={buses} />}
+      {tab === 'policy' && <PolicyPanel schoolId={schoolId} />}
       {tab === 'routes' && <RoutesTab schoolId={schoolId} q={routes} buses={buses.data ?? []} />}
     </div>
   );
@@ -211,7 +215,9 @@ function BusForm({ schoolId, bus, onClose }: { schoolId: number; bus?: Transport
 function RoutesTab({ schoolId, q, buses }: { schoolId: number; q: Q<TransportRoute[]>; buses: TransportBus[] }) {
   const [editing, setEditing] = useState<TransportRoute | 'new' | null>(null);
   const [stopsFor_, setStopsFor] = useState<number | null>(null);
+  const [staffFor, setStaffFor] = useState<number | null>(null);
   const live = (q.data ?? []).find(r => r.id === stopsFor_);
+  const staffRoute = (q.data ?? []).find(r => r.id === staffFor);
   return (
     <div>
       <div className="mb-4 flex justify-end"><Button onClick={() => setEditing('new')} disabled={!buses.length} title={buses.length ? undefined : 'Add a bus first'} testId="button-add-route"><Plus size={16} />Add route</Button></div>
@@ -233,6 +239,7 @@ function RoutesTab({ schoolId, q, buses }: { schoolId: number; q: Q<TransportRou
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button variant="outline" onClick={() => setEditing(r)} testId={`button-edit-route-${r.id}`}><Pencil size={14} />Edit route</Button>
                   <Button variant="outline" onClick={() => setStopsFor(r.id)} testId={`button-stops-route-${r.id}`}><MapPinned size={14} />Manage stops</Button>
+                  <Button variant="outline" onClick={() => setStaffFor(r.id)} testId={`button-staff-route-${r.id}`}><UserRoundCog size={14} />Companions</Button>
                 </div>
               </div>
             ))}
@@ -240,6 +247,7 @@ function RoutesTab({ schoolId, q, buses }: { schoolId: number; q: Q<TransportRou
         )}
       </Frame>
       {editing && <RouteForm schoolId={schoolId} route={editing === 'new' ? undefined : editing} buses={buses} onClose={() => setEditing(null)} />}
+      {staffRoute && <RouteStaffModal schoolId={schoolId} route={staffRoute} onClose={() => setStaffFor(null)} />}
       {live && <StopsModal schoolId={schoolId} route={live} onClose={() => setStopsFor(null)} />}
     </div>
   );
@@ -253,6 +261,8 @@ function RouteForm({ schoolId, route, buses, onClose }: { schoolId: number; rout
   const dq = useDebounced(search);
   const drivers = useSearchTransportDrivers({ schoolId, ...(dq ? { search: dq } : {}) }, { query: { queryKey: ['/api/transport/drivers', { schoolId, search: dq }], staleTime: TRANSPORT_STALE_MS } });
   const [f, setF] = useState({ name: route?.name ?? '', busId: String(route?.busId ?? buses[0]?.id ?? ''), driver: route ? String(route.driverEmployeeId) : '', weekdays: route?.weekdays ?? ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'], dep: route?.departureTime ?? '06:30', arr: route?.arrivalTime ?? '08:00', fare: route ? String((route.fareMinor ?? 0) / 100) : '', status: route?.status ?? 'ACTIVE' });
+  const [pickupName, setPickupName] = useState('');
+  const [dropName, setDropName] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const list = activeDrivers(drivers.data);
   const hasCurrent = route && list.some(d => d.employeeId === route.driverEmployeeId);
@@ -266,10 +276,11 @@ function RouteForm({ schoolId, route, buses, onClose }: { schoolId: number; rout
     if (!f.weekdays.length) return setErr('Choose at least one running day.');
     if (!f.dep || !f.arr) return setErr('Set departure and arrival times.');
     if (!(fare >= 0)) return setErr('Fare must be zero or more.');
+    if (!route && (pickupName.trim().length < 2 || dropName.trim().length < 2)) return setErr('Name the first pickup stop and the final drop-off stop. You can add more stops afterwards.');
     setErr(null);
-    const data: TransportRouteInput = { name: f.name.trim(), busId: Number(f.busId), driverEmployeeId: Number(f.driver), weekdays: f.weekdays, departureTime: f.dep, arrivalTime: f.arr, fareMinor: Math.round(fare * 100), status: f.status };
+    const data = { name: f.name.trim(), busId: Number(f.busId), driverEmployeeId: Number(f.driver), weekdays: f.weekdays, departureTime: f.dep, arrivalTime: f.arr, fareMinor: Math.round(fare * 100), status: f.status };
     const done = { onSuccess: () => { invalidate(); onClose(); }, onError: (x: unknown) => setErr(errorMessage(x)) };
-    if (route) update.mutate({ routeId: route.id, params: { schoolId }, data }, done); else create.mutate({ params: { schoolId }, data }, done);
+    if (route) update.mutate({ routeId: route.id, params: { schoolId }, data }, done); else create.mutate({ params: { schoolId }, data: { ...data, stops: [{ name: pickupName.trim(), stopType: 'PICKUP', sequence: 1 }, { name: dropName.trim(), stopType: 'DROPOFF', sequence: 2 }] } }, done);
   };
   return (
     <Modal title={route ? 'Edit route' : 'Add route'} eyebrow="Routes" onClose={onClose}>
@@ -291,6 +302,7 @@ function RouteForm({ schoolId, route, buses, onClose }: { schoolId: number; rout
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Departure"><input type="time" className={inputCls} value={f.dep} onChange={e => setF({ ...f, dep: e.target.value })} /></Field>
           <Field label="Arrival"><input type="time" className={inputCls} value={f.arr} onChange={e => setF({ ...f, arr: e.target.value })} /></Field>
+          {!route && <><Field label="First pickup stop"><input className={inputCls} value={pickupName} onChange={e => setPickupName(e.target.value)} data-testid="input-first-pickup" /></Field><Field label="Final drop-off stop"><input className={inputCls} value={dropName} onChange={e => setDropName(e.target.value)} data-testid="input-final-dropoff" /></Field></>}
           <Field label="Fare (NGN)"><input type="number" min={0} step="0.01" className={inputCls} value={f.fare} onChange={e => setF({ ...f, fare: e.target.value })} /></Field>
         </div>
         <Field label="Status"><select className={inputCls} value={f.status} onChange={e => setF({ ...f, status: e.target.value as typeof f.status })}><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select></Field>
@@ -354,6 +366,7 @@ function AssignmentsTab({ schoolId, q, routes }: { schoolId: number; q: Q<Transp
   const [creating, setCreating] = useState(false);
   const [acting, setActing] = useState<TransportAssignment | null>(null);
   const [viewing, setViewing] = useState<TransportAssignment | null>(null);
+  const [planning, setPlanning] = useState<TransportAssignment | null>(null);
   const [filter, setFilter] = useState<'all' | 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED'>('all');
   const rows = (q.data ?? []).filter(a => filter === 'all' || a.status === filter);
   return (
@@ -379,6 +392,7 @@ function AssignmentsTab({ schoolId, q, routes }: { schoolId: number; q: Q<Transp
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button variant="outline" onClick={() => setActing(a)} testId={`button-manage-assignment-${a.id}`}>Change status or route</Button>
                   <Button variant="quiet" onClick={() => setViewing(a)} testId={`button-history-${a.id}`}><History size={14} />History and fees</Button>
+                  <Button variant="quiet" onClick={() => setPlanning(a)} testId={`button-fee-plan-${a.id}`}><CircleDollarSign size={14} />Fee plan</Button>
                 </div>
               </div>
             ))}
@@ -388,6 +402,7 @@ function AssignmentsTab({ schoolId, q, routes }: { schoolId: number; q: Q<Transp
       {creating && <AssignForm schoolId={schoolId} routes={routes} onClose={() => setCreating(false)} />}
       {acting && <ManageAssignment schoolId={schoolId} a={acting} routes={routes} onClose={() => setActing(null)} />}
       {viewing && <HistoryModal schoolId={schoolId} a={viewing} onClose={() => setViewing(null)} />}
+      {planning && <FeePlanModal schoolId={schoolId} a={planning} onClose={() => setPlanning(null)} />}
     </div>
   );
 }
@@ -551,7 +566,7 @@ function ReviewForm({ schoolId, r, onClose }: { schoolId: number; r: TransportRe
     if (note.trim().length < 3) return setErr('Add a note the parent will see.');
     if (!eff) return setErr('Choose an effective date.');
     setErr(null);
-    review.mutate({ params: { schoolId }, data: { requestId: r.id, decision, schoolAction: decision === 'REJECT' ? 'NO_CHANGE' : act, effectiveDate: eff, schoolNote: note.trim() } }, { onSuccess: () => { invalidate(); onClose(); }, onError: x => setErr(errorMessage(x)) });
+    review.mutate({ requestId: r.id, params: { schoolId }, data: { decision, action: decision === 'REJECT' ? 'NO_CHANGE' : act, effectiveDate: eff, schoolNote: note.trim() } }, { onSuccess: () => { invalidate(); onClose(); }, onError: x => setErr(errorMessage(x)) });
   };
   return (
     <Modal title={r.studentName} eyebrow="Review request" onClose={onClose}>

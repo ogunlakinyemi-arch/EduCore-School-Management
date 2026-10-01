@@ -15,4 +15,5 @@ export const TransportInvoiceStatusStatus = {
   OVERDUE: 'OVERDUE',
   SUSPENDED: 'SUSPENDED',
   INACTIVE: 'INACTIVE',
+  CANCELLED: 'CANCELLED',
 } as const;

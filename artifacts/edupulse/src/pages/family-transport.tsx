@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Bus, Clock, ShieldAlert, UsersRound } from 'lucide-react';
 import {
-  useGetAuthorizedContext, useGetParentChildren, useGetChildTransport, useListChildTransportRequests, useRequestChildTransportChange,
+  useGetAuthorizedContext, useGetParentChildren, useGetChildTransport, useListChildTransportRequests, useRequestChildTransportChange, useWithdrawChildTransportRequest,
   useGetChildTransportHistory, useGetOwnStudentTransport, useGetOwnStudentTransportHistory,
   getGetChildTransportQueryKey, getGetChildTransportHistoryQueryKey, getListChildTransportRequestsQueryKey,
   type TransportSelfView, type TransportHistoryEntry, type TransportRequest,
@@ -121,7 +121,7 @@ function RequestForm({ studentId, status, requests }: { studentId: number; statu
   const [type, setType] = useState<'ACTIVATE' | 'DEACTIVATE'>(canStart ? 'ACTIVATE' : 'DEACTIVATE');
   const [eff, setEff] = useState(today()); const [reason, setReason] = useState('');
   const [err, setErr] = useState<string | null>(null); const [ok, setOk] = useState(false);
-  if (pending) return <Notice testId="request-pending">A request to {pending.requestType === 'ACTIVATE' ? 'start' : 'stop'} transport from {date(pending.effectiveDate)} is waiting for the school. You can send another once it is reviewed.</Notice>;
+  if (pending) return <PendingRequest studentId={studentId} pending={pending} />;
   const submit = (e: FormEvent) => {
     e.preventDefault(); setOk(false);
     const v = validateEffective(eff, reason); if (v) return setErr(v);
@@ -142,5 +142,30 @@ function RequestForm({ studentId, status, requests }: { studentId: number; statu
       {ok && <Notice tone="success" testId="request-sent">Request sent. The school will review it and respond here.</Notice>}
       <Button type="submit" disabled={send.isPending || (!canStart && !canStop)} testId="button-send-request">{send.isPending ? 'Sending...' : 'Send request'}</Button>
     </form>
+  );
+}
+
+function PendingRequest({ studentId, pending }: { studentId: number; pending: TransportRequest }) {
+  const qc = useQueryClient();
+  const withdraw = useWithdrawChildTransportRequest();
+  const [open, setOpen] = useState(false); const [reason, setReason] = useState(''); const [err, setErr] = useState<string | null>(null);
+  const go = () => {
+    if (reason.trim().length < 3) return setErr('Tell the school why in at least 3 characters.');
+    withdraw.mutate({ studentId, requestId: pending.id, data: { reason: reason.trim() } }, {
+      onSuccess: () => { setOpen(false); qc.invalidateQueries({ predicate: q => typeof q.queryKey[0] === 'string' && (q.queryKey[0] as string).includes('transport') }); },
+      onError: x => setErr(errorMessage(x)),
+    });
+  };
+  return (
+    <div className="space-y-3">
+      <Notice testId="request-pending">A request to {pending.requestType === 'ACTIVATE' ? 'start' : 'stop'} transport from {date(pending.effectiveDate)} is waiting for the school. You can send another once it is reviewed or withdrawn.</Notice>
+      {open ? (
+        <div className="space-y-3" data-testid="withdraw-form">
+          <Field label="Reason for withdrawing"><textarea rows={2} className={inputCls} value={reason} onChange={e => setReason(e.target.value)} data-testid="input-withdraw-reason" /></Field>
+          {err && <Notice tone="error" testId="withdraw-error">{err}</Notice>}
+          <div className="flex gap-2"><Button onClick={go} disabled={withdraw.isPending} testId="button-confirm-withdraw">{withdraw.isPending ? 'Withdrawing...' : 'Withdraw request'}</Button><Button variant="outline" onClick={() => setOpen(false)}>Keep request</Button></div>
+        </div>
+      ) : <Button variant="outline" onClick={() => setOpen(true)} testId="button-withdraw-request">Withdraw request</Button>}
+    </div>
   );
 }

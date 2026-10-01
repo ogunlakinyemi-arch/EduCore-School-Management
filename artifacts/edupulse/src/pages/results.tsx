@@ -9,6 +9,7 @@ import {
   useListAcademicSessions, useListAcademicTerms, useListClasses, useListSubjects, useListStudents, useGetAuthorizedContext
 } from '@workspace/api-client-react';
 import { Plus, BarChart3, Save, CheckCircle2, Search, Pencil } from 'lucide-react';
+import { SchoolDocumentHeader, SchoolDocumentPrintButton, useSchoolDocumentBranding } from '@/components/school-document';
 
 function useAcademicContext(schoolId: number) {
   const sessions = useListAcademicSessions({ schoolId }, { query: { enabled: !!schoolId, queryKey: ['sessions', schoolId] } });
@@ -343,6 +344,7 @@ function ReportCardsView({ schoolId }: { schoolId: number }) {
                             {card.teacherRemark && <p>Teacher: {card.teacherRemark}</p>}
                             {card.schoolRemark && <p>School: {card.schoolRemark}</p>}
                           </div>
+                          {card.status === 'PUBLISHED' && <ReportCardPrintDocument schoolId={schoolId} card={card} student={student} />}
                         </details>
                       )}
                    </div>
@@ -358,6 +360,47 @@ function ReportCardsView({ schoolId }: { schoolId: number }) {
       )}
     </div>
   );
+}
+
+function ReportCardPrintDocument({ schoolId, card, student }: { schoolId: number; card: any; student: any }) {
+  const branding = useSchoolDocumentBranding(schoolId);
+  const school = branding.data;
+  return <div className="mt-3">
+    <SchoolDocumentPrintButton
+      label="Print published report card"
+      testId={`button-print-report-card-${card.id}`}
+      disabled={!school || branding.isLoading || branding.isError}
+      unavailableMessage={branding.isError ? 'School branding could not be loaded. Retry before printing this report card.' : 'Loading the selected school identity.'}
+    >
+      <article className="school-document-page">
+        <SchoolDocumentHeader branding={school ?? {}} />
+        <h2 className="school-document-title">Academic report card</h2>
+        <dl className="school-document-grid">
+          <div className="school-document-field"><dt>Student</dt><dd>{student.firstName} {student.lastName}</dd></div>
+          <div className="school-document-field"><dt>Admission number</dt><dd>{student.admissionNo}</dd></div>
+          <div className="school-document-field"><dt>Class</dt><dd>{card.className}{card.section ? ` · ${card.section}` : ''}</dd></div>
+          <div className="school-document-field"><dt>Academic session</dt><dd>{card.sessionName ?? `Session #${card.sessionId}`}</dd></div>
+          <div className="school-document-field"><dt>Academic term</dt><dd>{card.termName ?? `Term #${card.termId}`}</dd></div>
+          <div className="school-document-field"><dt>Publication status</dt><dd>{card.status}{card.publishedAt ? ` · ${new Date(card.publishedAt).toLocaleDateString('en-NG')}` : ''}</dd></div>
+          <div className="school-document-field"><dt>Result completeness</dt><dd>{String(card.resultState).replaceAll('_', ' ')}</dd></div>
+        </dl>
+        <h3 className="school-document-title">Published assessment results</h3>
+        {card.lines.length ? <table className="school-document-table">
+          <thead><tr><th>Subject</th><th>Assessment</th><th>Score</th><th>Grade</th><th>Grade points</th><th>Remark</th></tr></thead>
+          <tbody>{card.lines.map((line: any) => <tr key={line.id}>
+            <td>{line.subjectName}</td>
+            <td>{line.assessmentName}</td>
+            <td>{line.score}/{line.maxScore}</td>
+            <td>{line.grade ?? ''}</td>
+            <td>{line.gradePoint ?? ''}</td>
+            <td>{line.remark ?? ''}</td>
+          </tr>)}</tbody>
+        </table> : <p>No graded results were included at publication.</p>}
+        {card.teacherRemark && <p className="mt-4"><strong>Teacher remark:</strong> {card.teacherRemark}</p>}
+        {card.schoolRemark && <p className="mt-2"><strong>School remark:</strong> {card.schoolRemark}</p>}
+      </article>
+    </SchoolDocumentPrintButton>
+  </div>;
 }
 
 function GradingRulesView({ schoolId }: { schoolId: number }) {

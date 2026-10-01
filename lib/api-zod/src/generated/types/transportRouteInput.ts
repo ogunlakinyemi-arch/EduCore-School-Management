@@ -7,6 +7,7 @@
  */
 import type { TransportRouteInputStatus } from './transportRouteInputStatus';
 import type { TransportRouteInputWeekdaysItem } from './transportRouteInputWeekdaysItem';
+import type { TransportStopInput } from './transportStopInput';
 
 export interface TransportRouteInput {
   /**
@@ -28,4 +29,6 @@ export interface TransportRouteInput {
      */
   fareMinor?: number;
   status?: TransportRouteInputStatus;
+  /** @minItems 2 */
+  stops: TransportStopInput[];
 }

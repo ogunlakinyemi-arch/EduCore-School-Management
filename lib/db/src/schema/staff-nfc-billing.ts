@@ -195,9 +195,12 @@ export const staffNfcPayments = pgTable(
   },
   (table) => [
     uniqueIndex("staff_nfc_payments_reference_uq").on(table.reference),
-    uniqueIndex("staff_nfc_payments_provider_transaction_uq").on(table.provider, table.providerTransactionId),
+    uniqueIndex("staff_nfc_payments_provider_transaction_uq")
+      .on(table.provider, table.providerTransactionId)
+      .where(sql`${table.providerTransactionId} IS NOT NULL`),
     uniqueIndex("staff_nfc_payments_employee_idempotency_uq").on(table.employeeId, table.idempotencyKey),
     uniqueIndex("staff_nfc_payments_id_subscription_school_uq").on(table.id, table.subscriptionId, table.schoolId),
+    uniqueIndex("staff_nfc_payments_id_school_uq").on(table.id, table.schoolId),
     uniqueIndex("staff_nfc_payments_one_pending_attempt_per_subscription_uq")
       .on(table.subscriptionId)
       .where(sql`${table.status} IN ('PENDING','RECONCILIATION_REQUIRED')`),
@@ -352,6 +355,12 @@ export const staffNfcAllocations = pgTable(
         AND ((${table.entryType} = 'CREDIT' AND ${table.refundId} IS NULL AND ${table.recipientType} IN ('SCHOOL','PLATFORM','PARTNER'))
           OR (${table.entryType} = 'REVERSAL' AND ${table.refundId} IS NOT NULL)
           OR (${table.entryType} = 'EXPENSE' AND ${table.recipientType} = 'PLATFORM_PROVIDER_FEE' AND ${table.refundId} IS NULL))`,
+    ),
+    check(
+      "staff_nfc_allocations_provider_fee_expense_ck",
+      sql`(${table.recipientType} = 'PLATFORM_PROVIDER_FEE'
+          AND ${table.entryType} = 'EXPENSE' AND ${table.refundId} IS NULL)
+        OR (${table.recipientType} <> 'PLATFORM_PROVIDER_FEE' AND ${table.entryType} IN ('CREDIT','REVERSAL'))`,
     ),
     index("staff_nfc_allocations_school_term_idx").on(
       table.schoolId,

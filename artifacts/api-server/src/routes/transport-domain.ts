@@ -11,7 +11,7 @@ export const TRANSPORT_WEEKDAYS = [
 ] as const;
 
 export type TransportWeekday = (typeof TRANSPORT_WEEKDAYS)[number];
-export type TransportInvoiceStatus = "PAID" | "PENDING" | "OVERDUE" | "SUSPENDED" | "INACTIVE";
+export type TransportInvoiceStatus = "PAID" | "PENDING" | "OVERDUE" | "SUSPENDED" | "INACTIVE" | "CANCELLED";
 
 const weekdaySet = new Set<string>(TRANSPORT_WEEKDAYS);
 
@@ -151,6 +151,7 @@ export function projectTransportInvoiceStatus(input: {
   currentDate?: string;
   suspendWhenOverdue?: boolean;
 }): TransportInvoiceStatus {
+  if (input.feeStatus === "CANCELLED") return "CANCELLED";
   if (input.assignmentStatus === "DEACTIVATED") return "INACTIVE";
   if (input.assignmentStatus === "SUSPENDED") return "SUSPENDED";
   if (input.outstandingMinor <= 0 || input.feeStatus === "PAID") return "PAID";

@@ -7,16 +7,20 @@
  */
 import type { TransportInvoiceStatusCurrency } from './transportInvoiceStatusCurrency';
 import type { TransportInvoiceStatusStatus } from './transportInvoiceStatusStatus';
+import type { TransportReceipt } from './transportReceipt';
 
 export interface TransportInvoiceStatus {
   invoiceId: number;
   invoiceNumber: string;
   academicSessionId: number;
+  sessionName?: string;
   academicTermId: number;
+  termName?: string;
   currency: TransportInvoiceStatusCurrency;
   totalMinor: number;
   paidMinor: number;
   outstandingMinor: number;
   status: TransportInvoiceStatusStatus;
   dueDate: Date;
+  receipts?: TransportReceipt[];
 }

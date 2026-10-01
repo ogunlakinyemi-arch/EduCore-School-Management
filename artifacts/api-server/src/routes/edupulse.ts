@@ -26,10 +26,22 @@ import {
   UpdateStudentStatusBody,
   UpdateStudentStatusParams,
   UpdateStudentStatusQueryParams,
-  VerifySubscriptionBody,
-  VerifySubscriptionParams,
 } from "@workspace/api-zod";
 import { pool } from "@workspace/db";
+import { PaymentProviderError } from "../lib/fee-providers";
+import { configuredTestAdapter } from "../lib/fee-providers/factory";
+import {
+  finalizeVerifiedStudentSubscriptionPayment,
+  findStudentSubscriptionTermPaymentConflict,
+  normalizeStudentSubscriptionTerm,
+  studentSubscriptionAmountToMinor,
+} from "../lib/student-subscription-billing";
+import { canonicalSchoolLogoVersionUrl } from "../lib/schoolLogoStorage";
+import {
+  configuredStudentSubscriptionCheckoutBaseUrl,
+  studentSubscriptionCheckoutReturnUrl,
+} from "../lib/student-subscription-return-url";
+import { z } from "zod/v4";
 import {
   AuthError,
   assertRoles,
@@ -631,6 +643,142 @@ router.post("/classes", async (req, res) => {
   }
 });
 
+const studentSubscriptionVerificationInput = z.object({
+  paymentReference: z.string().min(8).max(100).regex(/^[A-Za-z0-9_-]+$/),
+  providerTransactionId: z.string().min(1).max(16).regex(/^[0-9]+$/),
+}).strict();
+
+function subscriptionPaymentId(raw: string | undefined, name: string): number {
+  const id = Number(raw);
+  if (!Number.isSafeInteger(id) || id < 1) throw new AuthError(400, `A valid ${name} is required`);
+  return id;
+}
+
+function subscriptionPaymentDto(row: any) {
+  return {
+    paymentId: Number(row.paymentId),
+    subscriptionId: Number(row.subscriptionId),
+    schoolId: Number(row.schoolId),
+    studentId: Number(row.studentId),
+    sessionId: Number(row.sessionId),
+    termId: Number(row.termId),
+    payerUserId: Number(row.payerUserId),
+    provider: row.provider,
+    providerMode: row.providerMode,
+    reference: row.reference,
+    status: row.status,
+    grossAmountMinor: Number(row.grossAmountMinor),
+    providerFeeMinor: row.providerFeeMinor == null ? null : Number(row.providerFeeMinor),
+    settlementAmountMinor: row.settlementAmountMinor == null ? null : Number(row.settlementAmountMinor),
+    currency: row.currency,
+    settlementStatus: row.settlementStatus,
+    reconciliationStatus: row.reconciliationStatus,
+    checkoutUrl: row.checkoutUrl ?? null,
+    failureCode: row.failureCode ?? null,
+    createdAt: dateString(row.createdAt),
+    paidAt: dateString(row.paidAt),
+  };
+}
+
+function cloneImmutableReceipt(value: any): any {
+  if (Array.isArray(value)) return value.map(cloneImmutableReceipt);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, child]) => [key, cloneImmutableReceipt(child)]),
+    );
+  }
+  return value;
+}
+
+function schoolVisibleFinancialSnapshot(value: any): any {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item) => !item || typeof item !== "object"
+        || !("recipientType" in item) || item.recipientType === "SCHOOL")
+      .map(schoolVisibleFinancialSnapshot);
+  }
+  if (!value || typeof value !== "object") return value;
+
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value)) {
+    if (/(platform|edupulse|partner|commission|attribution)/i.test(key)) continue;
+    sanitized[key] = schoolVisibleFinancialSnapshot(child);
+  }
+  return sanitized;
+}
+
+async function readStudentSubscriptionPaymentResponse(
+  subscriptionId: number,
+  paymentId: number,
+  schoolId: number,
+  isPlatformOwner: boolean,
+) {
+  const paymentResult = await pool.query(
+    `SELECT p.id AS "paymentId",p.subscription_id AS "subscriptionId",
+            p.school_id AS "schoolId",p.student_id AS "studentId",
+            p.academic_session_id AS "sessionId",p.academic_term_id AS "termId",
+            p.payer_user_id AS "payerUserId",p.provider,p.provider_mode AS "providerMode",
+            p.reference,p.status,p.gross_amount_minor AS "grossAmountMinor",
+            p.provider_fee_minor AS "providerFeeMinor",
+            p.settlement_amount_minor AS "settlementAmountMinor",p.currency,
+            p.settlement_status AS "settlementStatus",
+            p.reconciliation_status AS "reconciliationStatus",p.checkout_url AS "checkoutUrl",
+            p.failure_code AS "failureCode",p.receipt_snapshot AS "receiptSnapshot",
+            p.created_at AS "createdAt",p.paid_at AS "paidAt"
+       FROM student_subscription_payments p
+      WHERE p.id=$1 AND p.subscription_id=$2 AND p.school_id=$3`,
+    [paymentId, subscriptionId, schoolId],
+  );
+  const payment = paymentResult.rows[0];
+  if (!payment) throw new AuthError(404, "Student subscription payment not found");
+  const [subscriptionResult, allocationsResult] = await Promise.all([
+    pool.query(
+      `SELECT s.id,s.school_id AS "schoolId",s.student_id AS "studentId",s.amount::float,
+              s.school_share::float AS "schoolShare",s.edupulse_share::float AS "edupulseShare",
+              s.partner_share::float AS "partnerShare",s.status,
+              s.verification_status AS "verificationStatus",s.provider,s.provider_reference AS "providerReference",
+              s.term,s.expires_at AS "expiresAt",s.allocation_snapshot AS "allocationSnapshot"
+         FROM subscriptions s
+        WHERE s.id=$1 AND s.school_id=$2`,
+      [subscriptionId, schoolId],
+    ),
+    pool.query(
+      `SELECT recipient_type AS "recipientType",recipient_id AS "recipientId",
+              entry_type AS "entryType",amount_minor AS "amountMinor",currency
+         FROM student_subscription_allocations
+        WHERE payment_id=$1
+         ${isPlatformOwner ? "" : "AND recipient_type='SCHOOL'"}
+        ORDER BY id`,
+      [paymentId],
+    ),
+  ]);
+  const responseSubscription = subscriptionResult.rows[0] ?? null;
+  const receiptSnapshot = cloneImmutableReceipt(payment.receiptSnapshot ?? null);
+  const responseAllocations = allocationsResult.rows
+    .filter((allocation: any) => isPlatformOwner || allocation.recipientType === "SCHOOL")
+    .map((allocation: any) => ({
+      recipientType: allocation.recipientType,
+      recipientId: allocation.recipientId == null ? null : Number(allocation.recipientId),
+      entryType: allocation.entryType,
+      amountMinor: Number(allocation.amountMinor),
+      currency: allocation.currency,
+    }));
+  const responsePayment = subscriptionPaymentDto(payment);
+  if (!isPlatformOwner) {
+    responsePayment.providerFeeMinor = null;
+    responsePayment.settlementAmountMinor = null;
+  }
+  return {
+    payment: responsePayment,
+    receipt: isPlatformOwner ? receiptSnapshot : schoolVisibleFinancialSnapshot(receiptSnapshot),
+    subscription: isPlatformOwner || responseSubscription === null
+      ? responseSubscription
+      : schoolVisibleFinancialSnapshot(responseSubscription),
+    allocations: responseAllocations,
+    activated: payment.status === "PAID",
+  };
+}
+
 router.get("/subscriptions", async (req, res) => {
   try {
     const query = ListSubscriptionsQueryParams.parse(req.query);
@@ -643,8 +791,16 @@ router.get("/subscriptions", async (req, res) => {
         st.first_name || ' ' || st.last_name AS "studentName",
         sub.amount::float, sub.school_share::float AS "schoolShare", sub.edupulse_share::float AS "edupulseShare",
         sub.status, sub.verification_status AS "verificationStatus", sub.provider, sub.term,
-        sub.expires_at AS "expiresAt"
+        sub.expires_at AS "expiresAt",latest.id AS "lastPaymentId",
+        latest.status AS "lastPaymentStatus",latest.reference AS "lastPaymentReference"
       FROM subscriptions sub JOIN students st ON st.id = sub.student_id AND st.school_id = sub.school_id
+      LEFT JOIN LATERAL (
+        SELECT p.id,p.status,p.reference
+          FROM student_subscription_payments p
+         WHERE p.subscription_id=sub.id AND p.school_id=sub.school_id
+         ORDER BY p.created_at DESC,p.id DESC
+         LIMIT 1
+      ) latest ON TRUE
       WHERE sub.school_id = $1 ${condition} ORDER BY sub.created_at DESC
     `, values);
     res.json(result.rows.map((row) => ({ ...row, expiresAt: dateString(row.expiresAt) })));
@@ -658,17 +814,39 @@ router.post("/subscriptions", async (req, res) => {
     const schoolId = tenantId(req, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
     assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
     const body = CreateSubscriptionBody.parse(req.body);
-    const student = await pool.query(`SELECT id, first_name || ' ' || last_name AS name FROM students WHERE id = $1 AND school_id = $2`, [body.studentId, schoolId]);
+    const termName = normalizeStudentSubscriptionTerm(body.term);
+    const student = await pool.query(
+      `SELECT id, status, first_name || ' ' || last_name AS name
+         FROM students WHERE id = $1 AND school_id = $2`,
+      [body.studentId, schoolId],
+    );
     if (!student.rows[0]) return res.status(404).json({ error: "Student not found in school" });
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 90);
+    if (String(student.rows[0].status).toUpperCase() !== "ACTIVE") {
+      throw new AuthError(409, "Only active students can receive a current-term subscription");
+    }
+    const currentTerm = await pool.query(
+      `SELECT t.end_date AS "endDate"
+         FROM academic_terms t
+         JOIN academic_sessions ses ON ses.id=t.academic_session_id AND ses.school_id=t.school_id
+        WHERE t.school_id=$1 AND t.name=$2
+          AND t.is_current=true AND UPPER(t.status)='ACTIVE'
+          AND ses.is_current=true AND UPPER(ses.status)='ACTIVE'
+          AND t.start_date<=CURRENT_DATE AND t.end_date>=CURRENT_DATE
+        LIMIT 1`,
+      [schoolId, termName],
+    );
+    if (!currentTerm.rows[0]) {
+      throw new AuthError(409, "Student subscriptions can only be created for the active current academic term");
+    }
+    const expiresAt = new Date(`${String(currentTerm.rows[0].endDate).slice(0, 10)}T00:00:00.000Z`);
+    expiresAt.setUTCDate(expiresAt.getUTCDate() + 1);
     const result = await pool.query(`
       INSERT INTO subscriptions (school_id, student_id, term, provider, expires_at)
-      VALUES ($1, $2, $3, $4, $5)
+      VALUES ($1, $2, $3, 'FLUTTERWAVE', $4)
       RETURNING id, school_id AS "schoolId", student_id AS "studentId", amount::float,
         school_share::float AS "schoolShare", edupulse_share::float AS "edupulseShare",
         status, verification_status AS "verificationStatus", provider, term, expires_at AS "expiresAt"
-    `, [schoolId, body.studentId, body.term, body.provider ?? "test", expiresAt]);
+    `, [schoolId, body.studentId, termName, expiresAt]);
     const row = result.rows[0];
     await audit(req, schoolId, "Created subscription", "Subscriptions", row.id, "info", "SUBSCRIPTION_CREATED");
     res.status(201).json({ ...row, studentName: student.rows[0].name, expiresAt: dateString(row.expiresAt) });
@@ -677,171 +855,322 @@ router.post("/subscriptions", async (req, res) => {
   }
 });
 
-router.post("/subscriptions/:subscriptionId/verify", async (req, res) => {
-  const client = await pool.connect();
+router.post("/subscriptions/:subscriptionId/checkout", async (req, res) => {
   try {
-    const params = VerifySubscriptionParams.parse(req.params);
-    const body = VerifySubscriptionBody.parse(req.body);
-    await client.query("BEGIN");
-    const existing = await client.query(
-      `SELECT sub.*, st.status AS student_status
-       FROM subscriptions sub
-       JOIN students st ON st.id = sub.student_id AND st.school_id = sub.school_id
-       WHERE sub.id = $1
-       FOR UPDATE OF sub, st`,
-      [params.subscriptionId],
-    );
-    if (!existing.rows[0]) throw new AuthError(404, "Subscription not found");
-    assertSchoolOperationalAccess(req, existing.rows[0].school_id, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
-    if (String(existing.rows[0].student_status).toUpperCase() !== "ACTIVE") {
-      throw new AuthError(409, "Only active students are eligible for partner commission");
+    const subscriptionId = subscriptionPaymentId(req.params.subscriptionId, "subscriptionId");
+    const idempotencyKey = req.get("Idempotency-Key") ?? "";
+    if (!/^[A-Za-z0-9._:-]{8,120}$/.test(idempotencyKey)) {
+      throw new AuthError(400, "A valid Idempotency-Key header is required");
     }
-    if (existing.rows[0].verification_status === "verified") {
-      throw new AuthError(409, "Subscription is already verified");
-    }
-    const attributed = await client.query(`
-      SELECT a.partner_profile_id AS "partnerProfileId"
-      FROM school_partner_attributions a JOIN partner_profiles p ON p.id=a.partner_profile_id
-      WHERE a.school_id=$1 AND a.is_current=true AND a.status='ACTIVE' AND p.status='ACTIVE'
-      LIMIT 1`, [existing.rows[0].school_id]);
-    let allocation: {
-      partnerProfileId: number | null;
-      partnerAmount: string | null;
-      schoolAmount: string;
-      edupulseAmount: string;
-      ruleId: number | null;
-      currency: string | null;
-      rate: string | null;
-    } = {
-      partnerProfileId: null,
-      partnerAmount: null,
-      schoolAmount: existing.rows[0].school_share,
-      edupulseAmount: existing.rows[0].edupulse_share,
-      ruleId: null,
-      currency: null,
-      rate: null,
-    };
-    if (attributed.rows[0]) {
-      const rule = await client.query(`
-        SELECT id, currency, partner_rate, partner_amount, school_amount, edupulse_amount
-        FROM commission_rules
-        WHERE status='ACTIVE'
-          AND (term=$1 OR term IS NULL)
-          AND effective_at <= NOW()
-          AND (ends_at IS NULL OR ends_at > NOW())
-          AND allocation_total = $2::numeric
-        ORDER BY (term=$1) DESC, effective_at DESC, id DESC
-        LIMIT 1
-        FOR UPDATE`,
-        [existing.rows[0].term, existing.rows[0].amount],
-      );
-      const activeRule = rule.rows[0];
-      if (!activeRule) {
-        throw new AuthError(
-          409,
-          "No active commission rule matches this subscription amount and term",
-          "COMMISSION_RULE_REQUIRED",
-        );
+    let adapter: ReturnType<typeof configuredTestAdapter> | null;
+    try {
+      adapter = configuredTestAdapter("FLUTTERWAVE");
+    } catch (error) {
+      if (error instanceof PaymentProviderError) {
+        throw new AuthError(503, "Flutterwave test checkout is unavailable", "PROVIDER_UNAVAILABLE");
       }
-      allocation = {
-        partnerProfileId: attributed.rows[0].partnerProfileId,
-        partnerAmount: activeRule.partner_amount,
-        schoolAmount: activeRule.school_amount,
-        edupulseAmount: activeRule.edupulse_amount,
-        ruleId: activeRule.id,
-        currency: activeRule.currency,
-        rate: activeRule.partner_rate,
-      };
+      throw error;
     }
-    const result = await client.query(`
-      UPDATE subscriptions SET
-        status = 'active',
-        verification_status = 'verified',
-        provider_reference = $1,
-        partner_profile_id = $2,
-        partner_share = $3,
-        school_share = $4,
-        edupulse_share = $5,
-        allocation_snapshot = CASE WHEN $2::int IS NULL THEN NULL ELSE
-          jsonb_build_object(
-            'subscriptionAmount', amount::numeric,
-            'schoolAmount', $4::numeric,
-            'partnerAmount', $3::numeric,
-            'edupulseAmount', $5::numeric,
-            'commissionRuleId', $6::int,
-            'currency', $7::text,
-            'term', term
-          ) END
-      WHERE id = $8
-      RETURNING id, school_id AS "schoolId", student_id AS "studentId", amount::float,
-        school_share::float AS "schoolShare", edupulse_share::float AS "edupulseShare",
-        partner_share::float AS "partnerShare", status,
-        verification_status AS "verificationStatus", provider, term, expires_at AS "expiresAt"
-    `, [
-      body.providerReference,
-      allocation.partnerProfileId,
-      allocation.partnerAmount,
-      allocation.schoolAmount,
-      allocation.edupulseAmount,
-      allocation.ruleId,
-      allocation.currency,
-      params.subscriptionId,
-    ]);
-    if (allocation.partnerProfileId && allocation.ruleId && allocation.partnerAmount && allocation.rate) {
-      await client.query(`
-        INSERT INTO commission_ledger (
-          partner_profile_id, school_id, student_id, subscription_id,
-          commission_rule_id, academic_session_id, term, rate, count, amount,
-          currency, status, created_by
-        )
-        VALUES (
-          $1,$2,$3,$4,$5,
-          (SELECT id FROM academic_sessions
-           WHERE school_id=$2 AND (is_current OR status='ACTIVE')
-           ORDER BY is_current DESC, id DESC LIMIT 1),
-          $6,$7,1,$8,$9,'PENDING',$10
-        )
-        ON CONFLICT (subscription_id,term) DO NOTHING`,
-        [
-          allocation.partnerProfileId,
-          existing.rows[0].school_id,
-          existing.rows[0].student_id,
-          params.subscriptionId,
-          allocation.ruleId,
-          existing.rows[0].term,
-          allocation.rate,
-          allocation.partnerAmount,
-          allocation.currency,
-          getUserContext(req).user.id,
-        ],
+    if (!adapter || !configuredStudentSubscriptionCheckoutBaseUrl() || adapter.provider !== "flutterwave") {
+      throw new AuthError(503, "Flutterwave test checkout is unavailable", "PROVIDER_UNAVAILABLE");
+    }
+    const context = getUserContext(req);
+    if (!context.user.email) throw new AuthError(409, "The authenticated payer must have a verified email address");
+
+    const client = await pool.connect();
+    let payment: any;
+    let reused = false;
+    try {
+      await client.query("BEGIN");
+      const subscriptionResult = await client.query(
+        `SELECT sub.id,sub.school_id AS "schoolId",sub.student_id AS "studentId",
+                sub.amount,sub.status,sub.verification_status AS "verificationStatus",
+                sub.provider_reference AS "providerReference",sub.term,st.status AS "studentStatus"
+           FROM subscriptions sub
+           JOIN students st ON st.id=sub.student_id AND st.school_id=sub.school_id
+          WHERE sub.id=$1
+          FOR UPDATE OF sub,st`,
+        [subscriptionId],
       );
+      const subscription = subscriptionResult.rows[0];
+      if (!subscription) throw new AuthError(404, "Student subscription not found");
+      assertSchoolOperationalAccess(req, subscription.schoolId, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
+
+      const previous = await client.query(
+        `SELECT id AS "paymentId",subscription_id AS "subscriptionId",school_id AS "schoolId",
+                student_id AS "studentId",academic_session_id AS "sessionId",
+                academic_term_id AS "termId",payer_user_id AS "payerUserId",
+                provider,provider_mode AS "providerMode",reference,status,
+                gross_amount_minor AS "grossAmountMinor",provider_fee_minor AS "providerFeeMinor",
+                settlement_amount_minor AS "settlementAmountMinor",currency,
+                settlement_status AS "settlementStatus",reconciliation_status AS "reconciliationStatus",
+                checkout_url AS "checkoutUrl",failure_code AS "failureCode",
+                created_at AS "createdAt",paid_at AS "paidAt"
+           FROM student_subscription_payments
+          WHERE subscription_id=$1 AND idempotency_key=$2
+          FOR UPDATE`,
+        [subscriptionId, idempotencyKey],
+      );
+      if (previous.rows[0]) {
+        payment = previous.rows[0];
+        reused = true;
+        await client.query("COMMIT");
+      } else {
+        if (String(subscription.studentStatus).toUpperCase() !== "ACTIVE") {
+          throw new AuthError(409, "Only active students can receive a current-term subscription");
+        }
+        if (String(subscription.verificationStatus).toLowerCase() === "verified"
+            || String(subscription.status).toLowerCase() === "active"
+            || subscription.providerReference) {
+          throw new AuthError(409, "A verified or legacy student subscription cannot be charged again");
+        }
+        if (studentSubscriptionAmountToMinor(subscription.amount) !== 500_000) {
+          throw new AuthError(409, "Student subscriptions must use the fixed NGN 5,000 amount");
+        }
+        const termResult = await client.query(
+          `SELECT t.id AS "termId",t.academic_session_id AS "sessionId",t.end_date AS "endDate"
+             FROM academic_terms t
+             JOIN academic_sessions ses ON ses.id=t.academic_session_id AND ses.school_id=t.school_id
+            WHERE t.school_id=$1 AND t.name=$2
+              AND t.is_current=true AND UPPER(t.status)='ACTIVE'
+              AND ses.is_current=true AND UPPER(ses.status)='ACTIVE'
+              AND t.start_date<=CURRENT_DATE AND t.end_date>=CURRENT_DATE
+            LIMIT 1
+            FOR SHARE OF t,ses`,
+          [subscription.schoolId, normalizeStudentSubscriptionTerm(subscription.term)],
+        );
+        const currentTerm = termResult.rows[0];
+        if (!currentTerm) {
+          throw new AuthError(409, "Student subscriptions can only be charged in the active current academic term");
+        }
+        const existingTermPayment = await findStudentSubscriptionTermPaymentConflict(client, {
+          schoolId: Number(subscription.schoolId),
+          studentId: Number(subscription.studentId),
+          sessionId: Number(currentTerm.sessionId),
+          termId: Number(currentTerm.termId),
+        });
+        if (existingTermPayment) {
+          throw new AuthError(
+            409,
+            "An existing payment for this student and current academic term must be completed or reconciled before checkout",
+            "STUDENT_TERM_PAYMENT_ALREADY_EXISTS",
+          );
+        }
+        const reference = adapter.generateReference();
+        const inserted = await client.query(
+          `INSERT INTO student_subscription_payments (
+             subscription_id,school_id,student_id,academic_session_id,academic_term_id,
+             payer_user_id,provider,provider_mode,reference,idempotency_key,gross_amount_minor,currency
+           ) VALUES ($1,$2,$3,$4,$5,$6,'FLUTTERWAVE','SANDBOX',$7,$8,500000,'NGN')
+           RETURNING id AS "paymentId",subscription_id AS "subscriptionId",school_id AS "schoolId",
+             student_id AS "studentId",academic_session_id AS "sessionId",academic_term_id AS "termId",
+             payer_user_id AS "payerUserId",provider,provider_mode AS "providerMode",reference,status,
+             gross_amount_minor AS "grossAmountMinor",provider_fee_minor AS "providerFeeMinor",
+             settlement_amount_minor AS "settlementAmountMinor",currency,
+             settlement_status AS "settlementStatus",reconciliation_status AS "reconciliationStatus",
+             checkout_url AS "checkoutUrl",failure_code AS "failureCode",
+             created_at AS "createdAt",paid_at AS "paidAt"`,
+          [
+            subscriptionId,
+            subscription.schoolId,
+            subscription.studentId,
+            currentTerm.sessionId,
+            currentTerm.termId,
+            context.user.id,
+            reference,
+            idempotencyKey,
+          ],
+        );
+        payment = inserted.rows[0];
+        await client.query("COMMIT");
+      }
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
     }
-    await client.query(
-      `UPDATE nfc_cards SET status = 'active'
-       WHERE student_id = $1 AND status IN ('locked', 'unassigned')`,
-      [existing.rows[0].student_id],
+
+    if (reused) {
+      const status = payment.status === "RECONCILIATION_REQUIRED" || !payment.checkoutUrl ? 202 : 200;
+      return res.status(status).json({ payment: subscriptionPaymentDto(payment), reused: true });
+    }
+    let checkout: { reference: string; checkoutUrl: string };
+    try {
+      const returnUrl = studentSubscriptionCheckoutReturnUrl(
+        Number(payment.subscriptionId),
+        Number(payment.paymentId),
+        String(payment.reference),
+      );
+      if (!returnUrl) throw new PaymentProviderError("Student subscription return URL is not configured");
+      checkout = await adapter.initializePayment({
+        reference: payment.reference,
+        amountMinor: Number(payment.grossAmountMinor),
+        currency: String(payment.currency),
+        email: context.user.email,
+        returnUrl,
+      });
+      if (checkout.reference !== payment.reference) {
+        throw new PaymentProviderError("Flutterwave checkout returned a mismatched payment reference");
+      }
+    } catch {
+      const failed = await pool.query(
+        `UPDATE student_subscription_payments
+            SET status='RECONCILIATION_REQUIRED',reconciliation_status='RECONCILIATION_REQUIRED',
+                failure_code='CHECKOUT_INITIALIZATION_OUTCOME_UNKNOWN',updated_at=NOW()
+          WHERE id=$1
+          RETURNING id AS "paymentId",subscription_id AS "subscriptionId",school_id AS "schoolId",
+            student_id AS "studentId",academic_session_id AS "sessionId",academic_term_id AS "termId",
+            payer_user_id AS "payerUserId",provider,provider_mode AS "providerMode",reference,status,
+            gross_amount_minor AS "grossAmountMinor",provider_fee_minor AS "providerFeeMinor",
+            settlement_amount_minor AS "settlementAmountMinor",currency,
+            settlement_status AS "settlementStatus",reconciliation_status AS "reconciliationStatus",
+            checkout_url AS "checkoutUrl",failure_code AS "failureCode",
+            created_at AS "createdAt",paid_at AS "paidAt"`,
+        [payment.paymentId],
+      );
+      return res.status(202).json({ payment: subscriptionPaymentDto(failed.rows[0] ?? payment), reused: false });
+    }
+    const persisted = await pool.query(
+      `UPDATE student_subscription_payments
+          SET checkout_url=$1,updated_at=NOW()
+        WHERE id=$2 AND status='PENDING'
+        RETURNING id AS "paymentId",subscription_id AS "subscriptionId",school_id AS "schoolId",
+          student_id AS "studentId",academic_session_id AS "sessionId",academic_term_id AS "termId",
+          payer_user_id AS "payerUserId",provider,provider_mode AS "providerMode",reference,status,
+          gross_amount_minor AS "grossAmountMinor",provider_fee_minor AS "providerFeeMinor",
+          settlement_amount_minor AS "settlementAmountMinor",currency,
+          settlement_status AS "settlementStatus",reconciliation_status AS "reconciliationStatus",
+          checkout_url AS "checkoutUrl",failure_code AS "failureCode",
+          created_at AS "createdAt",paid_at AS "paidAt"`,
+      [checkout.checkoutUrl, payment.paymentId],
     );
-    await audit(req, existing.rows[0].school_id, "Verified subscription payment", "Subscriptions", params.subscriptionId, "info", "SUBSCRIPTION_VERIFIED", "SUCCESS", {
-      partnerProfileId: allocation.partnerProfileId,
-      commissionRuleId: allocation.ruleId,
-      commissionGenerated: Boolean(allocation.partnerProfileId && allocation.ruleId),
-    }, client);
-    if (allocation.partnerProfileId && allocation.ruleId) {
-      await audit(req, existing.rows[0].school_id, "Generated partner commission", "Commissions", params.subscriptionId, "info", "PARTNER_COMMISSION_GENERATED", "SUCCESS", {
-        partnerProfileId: allocation.partnerProfileId,
-        commissionRuleId: allocation.ruleId,
-        amount: allocation.partnerAmount,
-        currency: allocation.currency,
-      }, client);
+    if (!persisted.rows[0]) {
+      throw new AuthError(409, "Student checkout changed state while Flutterwave was initializing");
     }
-    await client.query("COMMIT");
-    const student = await pool.query(`SELECT first_name || ' ' || last_name AS name FROM students WHERE id = $1`, [existing.rows[0].student_id]);
-    res.json({ ...result.rows[0], studentName: student.rows[0]?.name ?? "Student", expiresAt: dateString(result.rows[0].expiresAt) });
+    res.status(201).json({ payment: subscriptionPaymentDto(persisted.rows[0]), reused: false });
   } catch (error) {
-    await client.query("ROLLBACK");
     fail(req, res, error);
-  } finally {
-    client.release();
+  }
+});
+
+router.post("/subscriptions/:subscriptionId/verify", async (req, res) => {
+  try {
+    const subscriptionId = subscriptionPaymentId(req.params.subscriptionId, "subscriptionId");
+    const input = studentSubscriptionVerificationInput.parse(req.body);
+    const paymentResult = await pool.query(
+      `SELECT p.id AS "paymentId",p.school_id AS "schoolId",p.reference,p.status,
+              p.gross_amount_minor AS "grossAmountMinor",p.currency,p.provider,p.provider_mode AS "providerMode"
+         FROM student_subscription_payments p
+         JOIN subscriptions s ON s.id=p.subscription_id AND s.school_id=p.school_id
+        WHERE p.subscription_id=$1 AND p.reference=$2`,
+      [subscriptionId, input.paymentReference],
+    );
+    const payment = paymentResult.rows[0];
+    if (!payment) throw new AuthError(404, "Persisted student subscription checkout not found");
+    assertSchoolOperationalAccess(req, payment.schoolId, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
+    const viewAllAllocations = isPlatformOwner(getUserContext(req));
+    if (payment.status === "PAID") {
+      const result = await readStudentSubscriptionPaymentResponse(
+        subscriptionId,
+        payment.paymentId,
+        payment.schoolId,
+        viewAllAllocations,
+      );
+      return res.json(result);
+    }
+    if (payment.provider !== "FLUTTERWAVE" || payment.providerMode !== "SANDBOX") {
+      throw new AuthError(409, "Student payment was not initialized using the Flutterwave sandbox adapter");
+    }
+    let adapter: ReturnType<typeof configuredTestAdapter> | null;
+    try {
+      adapter = configuredTestAdapter("FLUTTERWAVE");
+    } catch (error) {
+      if (error instanceof PaymentProviderError) {
+        throw new AuthError(503, "Flutterwave payment verification is unavailable", "PROVIDER_UNAVAILABLE");
+      }
+      throw error;
+    }
+    if (!adapter || adapter.provider !== "flutterwave") {
+      throw new AuthError(503, "Flutterwave payment verification is unavailable", "PROVIDER_UNAVAILABLE");
+    }
+    let verified;
+    try {
+      verified = await adapter.verifyPayment({
+        reference: input.paymentReference,
+        providerTransactionId: input.providerTransactionId,
+        amountMinor: Number(payment.grossAmountMinor),
+        currency: String(payment.currency),
+      });
+    } catch {
+      await pool.query(
+        `UPDATE student_subscription_payments AS p
+            SET status=CASE WHEN p.status='FAILED' AND EXISTS (
+                  SELECT 1 FROM student_subscription_payments other
+                   WHERE other.school_id=p.school_id AND other.student_id=p.student_id
+                     AND other.academic_session_id=p.academic_session_id
+                     AND other.academic_term_id=p.academic_term_id AND other.id<>p.id
+                     AND (other.status IN ('PENDING','RECONCILIATION_REQUIRED','PAID')
+                       OR other.reconciliation_status='RECONCILIATION_REQUIRED')
+                ) THEN p.status ELSE 'RECONCILIATION_REQUIRED' END,
+                reconciliation_status=CASE WHEN p.status='FAILED' AND EXISTS (
+                  SELECT 1 FROM student_subscription_payments other
+                   WHERE other.school_id=p.school_id AND other.student_id=p.student_id
+                     AND other.academic_session_id=p.academic_session_id
+                     AND other.academic_term_id=p.academic_term_id AND other.id<>p.id
+                     AND (other.status IN ('PENDING','RECONCILIATION_REQUIRED','PAID')
+                       OR other.reconciliation_status='RECONCILIATION_REQUIRED')
+                ) THEN p.reconciliation_status ELSE 'RECONCILIATION_REQUIRED' END,
+                failure_code='PROVIDER_VERIFICATION_UNCERTAIN',updated_at=NOW()
+          WHERE p.id=$1 AND p.status<>'PAID'`,
+        [payment.paymentId],
+      );
+      const result = await readStudentSubscriptionPaymentResponse(
+        subscriptionId,
+        payment.paymentId,
+        payment.schoolId,
+        viewAllAllocations,
+      );
+      return res.status(202).json(result);
+    }
+    const finalized = await finalizeVerifiedStudentSubscriptionPayment(
+      pool,
+      Number(payment.paymentId),
+      verified,
+      canonicalSchoolLogoVersionUrl,
+    );
+    const result = await readStudentSubscriptionPaymentResponse(
+      subscriptionId,
+      payment.paymentId,
+      payment.schoolId,
+      viewAllAllocations,
+    );
+    res.status(
+      finalized.reconciliationRequired || finalized.status === "PENDING" ? 202 : 200,
+    ).json(result);
+  } catch (error) {
+    fail(req, res, error);
+  }
+});
+
+router.get("/subscriptions/:subscriptionId/payments/:paymentId", async (req, res) => {
+  try {
+    const subscriptionId = subscriptionPaymentId(req.params.subscriptionId, "subscriptionId");
+    const paymentId = subscriptionPaymentId(req.params.paymentId, "paymentId");
+    const subscription = await pool.query(
+      `SELECT school_id AS "schoolId" FROM subscriptions WHERE id=$1`,
+      [subscriptionId],
+    );
+    if (!subscription.rows[0]) throw new AuthError(404, "Student subscription not found");
+    const context = assertSchoolAccess(req, subscription.rows[0].schoolId, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
+    res.json(await readStudentSubscriptionPaymentResponse(
+      subscriptionId,
+      paymentId,
+      Number(subscription.rows[0].schoolId),
+      isPlatformOwner(context),
+    ));
+  } catch (error) {
+    fail(req, res, error);
   }
 });
 

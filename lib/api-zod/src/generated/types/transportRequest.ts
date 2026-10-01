@@ -14,14 +14,22 @@ export interface TransportRequest {
   schoolId: number;
   studentId: number;
   studentName: string;
+  admissionNo: string;
+  className: string;
+  section: string;
+  parentId: number;
+  parentName: string;
+  assignmentId: number | null;
   requestType: TransportRequestRequestType;
   requestDate: Date;
   effectiveDate: Date;
   reason: string;
   status: TransportRequestStatus;
-  schoolAction?: TransportRequestSchoolAction;
-  schoolNote?: string | null;
-  reviewedBy?: number | null;
-  reviewedAt?: Date | null;
+  schoolAction: TransportRequestSchoolAction;
+  schoolNote: string | null;
+  reviewedBy: number | null;
+  reviewedAt: Date | null;
+  reviewerName?: string | null;
   createdAt: Date;
+  updatedAt: Date;
 }

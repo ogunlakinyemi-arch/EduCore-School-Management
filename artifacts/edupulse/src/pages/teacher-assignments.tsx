@@ -83,9 +83,13 @@ export function TeacherAssignmentsPage() {
 }
 
 type UpdateBody = Parameters<ReturnType<typeof useUpdateSchoolTeacherAssignment>['mutateAsync']>[0]['data'];
-/** Single adapter for the atomic-replacement contract. Adjust field names here once codegen lands. */
+/**
+ * Atomic replacement: employeeId + startDate on the update body. endDate is intentionally omitted
+ * (it would expire the new teacher the same day). Orval types dates as Date, but the wire format
+ * must remain YYYY-MM-DD, so only the date field is narrowly cast.
+ */
 export function buildReplaceBody(replacementEmployeeId: number, effectiveDate: string): UpdateBody {
-  return { replacementEmployeeId, replacementStartDate: effectiveDate, endDate: effectiveDate } as unknown as UpdateBody;
+  return { employeeId: replacementEmployeeId, startDate: effectiveDate as unknown as UpdateBody['startDate'] };
 }
 
 function AssignForm({ schoolId, replace, sessions, onDone, onCancel }: {

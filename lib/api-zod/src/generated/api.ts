@@ -3694,6 +3694,9 @@ export const ReplaceCardResponse = zod.object({
   "uid": zod.string(),
   "studentId": zod.number().int().nullable(),
   "studentName": zod.string().nullable(),
+  "employeeId": zod.number().int().nullish(),
+  "employeeName": zod.string().nullish(),
+  "personType": zod.union([zod.literal('TEACHER'),zod.literal('STAFF'),zod.literal(null)]).nullish(),
   "status": zod.enum(['active', 'inactive', 'locked', 'unassigned', 'lost', 'blocked', 'suspended', 'replaced', 'expired']),
   "scans": zod.number().int(),
   "lastScan": zod.string().nullable()
@@ -3723,6 +3726,9 @@ export const ReassignCardResponse = zod.object({
   "uid": zod.string(),
   "studentId": zod.number().int().nullable(),
   "studentName": zod.string().nullable(),
+  "employeeId": zod.number().int().nullish(),
+  "employeeName": zod.string().nullish(),
+  "personType": zod.union([zod.literal('TEACHER'),zod.literal('STAFF'),zod.literal(null)]).nullish(),
   "status": zod.enum(['active', 'inactive', 'locked', 'unassigned', 'lost', 'blocked', 'suspended', 'replaced', 'expired']),
   "scans": zod.number().int(),
   "lastScan": zod.string().nullable()
@@ -5968,7 +5974,10 @@ export const ListSubscriptionsResponseItem = zod.object({
   "verificationStatus": zod.enum(['verified', 'pending', 'unverified']),
   "provider": zod.string(),
   "term": zod.string(),
-  "expiresAt": zod.string()
+  "expiresAt": zod.string(),
+  "lastPaymentId": zod.number().int().nullish(),
+  "lastPaymentStatus": zod.union([zod.literal('PENDING'),zod.literal('PAID'),zod.literal('FAILED'),zod.literal('RECONCILIATION_REQUIRED'),zod.literal(null)]).nullish(),
+  "lastPaymentReference": zod.string().nullish()
 })
 export const ListSubscriptionsResponse = zod.array(ListSubscriptionsResponseItem)
 
@@ -6005,41 +6014,98 @@ export const CreateSubscriptionResponse = zod.object({
   "verificationStatus": zod.enum(['verified', 'pending', 'unverified']),
   "provider": zod.string(),
   "term": zod.string(),
-  "expiresAt": zod.string()
+  "expiresAt": zod.string(),
+  "lastPaymentId": zod.number().int().nullish(),
+  "lastPaymentStatus": zod.union([zod.literal('PENDING'),zod.literal('PAID'),zod.literal('FAILED'),zod.literal('RECONCILIATION_REQUIRED'),zod.literal(null)]).nullish(),
+  "lastPaymentReference": zod.string().nullish()
 })
 
 
 /**
- * @summary Verify a provider payment and activate entitlement
+ * @summary Independently verify the persisted checkout with the server-configured Flutterwave test adapter
  */
 
 
 
-export const VerifySubscriptionParams = zod.object({
+export const VerifyStudentSubscriptionPaymentParams = zod.object({
   "subscriptionId": zod.coerce.number().int().min(1)
 })
 
-export const verifySubscriptionBodyProviderReferenceMin = 3;
+export const verifyStudentSubscriptionPaymentBodyPaymentReferenceMin = 8;
+export const verifyStudentSubscriptionPaymentBodyPaymentReferenceMax = 100;
 
 
+export const verifyStudentSubscriptionPaymentBodyPaymentReferenceRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+export const verifyStudentSubscriptionPaymentBodyProviderTransactionIdMax = 16;
 
-export const VerifySubscriptionBody = zod.object({
-  "providerReference": zod.string().min(verifySubscriptionBodyProviderReferenceMin)
+
+export const verifyStudentSubscriptionPaymentBodyProviderTransactionIdRegExp = new RegExp('^[0-9]+$');
+
+
+export const VerifyStudentSubscriptionPaymentBody = zod.object({
+  "paymentReference": zod.string().min(verifyStudentSubscriptionPaymentBodyPaymentReferenceMin).max(verifyStudentSubscriptionPaymentBodyPaymentReferenceMax).regex(verifyStudentSubscriptionPaymentBodyPaymentReferenceRegExp),
+  "providerTransactionId": zod.string().min(1).max(verifyStudentSubscriptionPaymentBodyProviderTransactionIdMax).regex(verifyStudentSubscriptionPaymentBodyProviderTransactionIdRegExp)
 })
 
-export const VerifySubscriptionResponse = zod.object({
-  "id": zod.number().int(),
+export const verifyStudentSubscriptionPaymentResponsePaymentProviderFeeMinorMin = 0;
+
+export const verifyStudentSubscriptionPaymentResponsePaymentSettlementAmountMinorMin = 0;
+
+
+
+
+
+export const VerifyStudentSubscriptionPaymentResponse = zod.object({
+  "payment": zod.object({
+  "paymentId": zod.number().int(),
+  "subscriptionId": zod.number().int(),
   "schoolId": zod.number().int(),
   "studentId": zod.number().int(),
-  "studentName": zod.string(),
-  "amount": zod.number(),
-  "schoolShare": zod.number(),
-  "edupulseShare": zod.number(),
-  "status": zod.enum(['active', 'pending', 'expired', 'failed']),
-  "verificationStatus": zod.enum(['verified', 'pending', 'unverified']),
-  "provider": zod.string(),
-  "term": zod.string(),
-  "expiresAt": zod.string()
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "payerUserId": zod.number().int(),
+  "provider": zod.enum(['FLUTTERWAVE']),
+  "providerMode": zod.enum(['SANDBOX']),
+  "reference": zod.string(),
+  "status": zod.enum(['PENDING', 'PAID', 'FAILED', 'RECONCILIATION_REQUIRED']),
+  "grossAmountMinor": zod.literal(500000),
+  "providerFeeMinor": zod.number().int().min(verifyStudentSubscriptionPaymentResponsePaymentProviderFeeMinorMin).nullish(),
+  "settlementAmountMinor": zod.number().int().min(verifyStudentSubscriptionPaymentResponsePaymentSettlementAmountMinorMin).nullish(),
+  "currency": zod.enum(['NGN']),
+  "settlementStatus": zod.enum(['PENDING', 'RECONCILED', 'RECONCILIATION_REQUIRED', 'NOT_APPLICABLE']),
+  "reconciliationStatus": zod.enum(['PENDING', 'RECONCILED', 'RECONCILIATION_REQUIRED', 'NOT_APPLICABLE']),
+  "checkoutUrl": zod.string().url().nullish(),
+  "failureCode": zod.string().nullish(),
+  "createdAt": zod.coerce.date().optional(),
+  "paidAt": zod.coerce.date().nullish()
+}),
+  "subscription": zod.record(zod.string(), zod.unknown()),
+  "allocations": zod.array(zod.object({
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'PLATFORM_PROVIDER_FEE']),
+  "recipientId": zod.number().int().nullable(),
+  "entryType": zod.enum(['CREDIT', 'EXPENSE']),
+  "amountMinor": zod.number().int().min(1),
+  "currency": zod.enum(['NGN'])
+})),
+  "activated": zod.boolean(),
+  "receipt": zod.union([zod.object({
+  "receiptNumber": zod.string(),
+  "paidAt": zod.coerce.date().nullable(),
+  "grossAmountMinor": zod.literal(500000),
+  "currency": zod.enum(['NGN']),
+  "schoolName": zod.string().nullable(),
+  "studentName": zod.string().nullable(),
+  "sessionName": zod.string().nullable(),
+  "termName": zod.string().nullable(),
+  "schoolLogoVersionUrl": zod.string().nullable(),
+  "allocations": zod.array(zod.object({
+  "entryType": zod.enum(['CREDIT', 'EXPENSE']),
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'PLATFORM_PROVIDER_FEE']),
+  "recipientId": zod.number().int().nullable(),
+  "amountMinor": zod.number().int().min(1),
+  "currency": zod.enum(['NGN'])
+}))
+}),zod.null()])
 })
 
 
@@ -6060,6 +6126,9 @@ export const ListCardsResponseItem = zod.object({
   "uid": zod.string(),
   "studentId": zod.number().int().nullable(),
   "studentName": zod.string().nullable(),
+  "employeeId": zod.number().int().nullish(),
+  "employeeName": zod.string().nullish(),
+  "personType": zod.union([zod.literal('TEACHER'),zod.literal('STAFF'),zod.literal(null)]).nullish(),
   "status": zod.enum(['active', 'inactive', 'locked', 'unassigned', 'lost', 'blocked', 'suspended', 'replaced', 'expired']),
   "scans": zod.number().int(),
   "lastScan": zod.string().nullable()
@@ -6093,6 +6162,9 @@ export const RegisterCardResponse = zod.object({
   "uid": zod.string(),
   "studentId": zod.number().int().nullable(),
   "studentName": zod.string().nullable(),
+  "employeeId": zod.number().int().nullish(),
+  "employeeName": zod.string().nullish(),
+  "personType": zod.union([zod.literal('TEACHER'),zod.literal('STAFF'),zod.literal(null)]).nullish(),
   "status": zod.enum(['active', 'inactive', 'locked', 'unassigned', 'lost', 'blocked', 'suspended', 'replaced', 'expired']),
   "scans": zod.number().int(),
   "lastScan": zod.string().nullable()
@@ -6119,6 +6191,9 @@ export const UpdateCardStatusResponse = zod.object({
   "uid": zod.string(),
   "studentId": zod.number().int().nullable(),
   "studentName": zod.string().nullable(),
+  "employeeId": zod.number().int().nullish(),
+  "employeeName": zod.string().nullish(),
+  "personType": zod.union([zod.literal('TEACHER'),zod.literal('STAFF'),zod.literal(null)]).nullish(),
   "status": zod.enum(['active', 'inactive', 'locked', 'unassigned', 'lost', 'blocked', 'suspended', 'replaced', 'expired']),
   "scans": zod.number().int(),
   "lastScan": zod.string().nullable()
@@ -10692,6 +10767,21 @@ export const createSchoolPayrollPeriodResponseTwoItemsItemNetSalaryMinorMin = 0;
 
 
 
+
+export const createSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax = 120;
+
+export const createSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax = 120;
+
+export const createSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderStatusMax = 40;
+
+export const createSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin = 0;
+
+export const createSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin = 0;
+
+export const createSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemFailureMessageMax = 500;
+
+
+
 export const CreateSchoolPayrollPeriodResponse = zod.object({
   "periodId": zod.number().int().min(1),
   "scope": zod.enum(['SCHOOL', 'YEMAIT_COMPANY']),
@@ -10730,6 +10820,25 @@ export const CreateSchoolPayrollPeriodResponse = zod.object({
   "currency": zod.enum(['NGN']),
   "paymentStatus": zod.enum(['UNPAID', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'CANCELLED']),
   "transferReference": zod.string().nullish(),
+  "transferAttempts": zod.array(zod.object({
+  "id": zod.number().int().min(1),
+  "attempt": zod.number().int().min(1),
+  "amountMinor": zod.number().int().min(1),
+  "currency": zod.enum(['NGN']),
+  "provider": zod.enum(['FLUTTERWAVE', 'MOCK']),
+  "providerMode": zod.enum(['TEST', 'LIVE', 'MOCK']),
+  "providerReference": zod.string().min(1).max(createSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax),
+  "providerTransactionId": zod.string().max(createSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax).nullish(),
+  "providerStatus": zod.string().max(createSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderStatusMax).nullish(),
+  "status": zod.enum(['CLAIMED', 'PROCESSING', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'UNCERTAIN', 'RECONCILIATION_REQUIRED']),
+  "requiresReconciliation": zod.boolean(),
+  "externalTransferVerified": zod.boolean(),
+  "providerFeeMinor": zod.number().int().min(createSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin),
+  "settlementAmountMinor": zod.number().int().min(createSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin),
+  "failureMessage": zod.string().max(createSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemFailureMessageMax).nullish(),
+  "createdAt": zod.coerce.date(),
+  "verifiedAt": zod.coerce.date().nullish()
+})).optional().describe('Durable same-item history used to restore pending and ambiguous reconciliation state after reload. Contains sanitized provider evidence only; employee bank identifiers and raw provider payloads are never exposed.'),
   "bankName": zod.string().nullish(),
   "maskedAccountNumber": zod.string().nullable(),
   "payslipId": zod.number().int().nullish()
@@ -10782,6 +10891,21 @@ export const getSchoolPayrollPeriodResponseTwoItemsItemNetSalaryMinorMin = 0;
 
 
 
+
+export const getSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax = 120;
+
+export const getSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax = 120;
+
+export const getSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderStatusMax = 40;
+
+export const getSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin = 0;
+
+export const getSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin = 0;
+
+export const getSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemFailureMessageMax = 500;
+
+
+
 export const GetSchoolPayrollPeriodResponse = zod.object({
   "periodId": zod.number().int().min(1),
   "scope": zod.enum(['SCHOOL', 'YEMAIT_COMPANY']),
@@ -10820,6 +10944,25 @@ export const GetSchoolPayrollPeriodResponse = zod.object({
   "currency": zod.enum(['NGN']),
   "paymentStatus": zod.enum(['UNPAID', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'CANCELLED']),
   "transferReference": zod.string().nullish(),
+  "transferAttempts": zod.array(zod.object({
+  "id": zod.number().int().min(1),
+  "attempt": zod.number().int().min(1),
+  "amountMinor": zod.number().int().min(1),
+  "currency": zod.enum(['NGN']),
+  "provider": zod.enum(['FLUTTERWAVE', 'MOCK']),
+  "providerMode": zod.enum(['TEST', 'LIVE', 'MOCK']),
+  "providerReference": zod.string().min(1).max(getSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax),
+  "providerTransactionId": zod.string().max(getSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax).nullish(),
+  "providerStatus": zod.string().max(getSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderStatusMax).nullish(),
+  "status": zod.enum(['CLAIMED', 'PROCESSING', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'UNCERTAIN', 'RECONCILIATION_REQUIRED']),
+  "requiresReconciliation": zod.boolean(),
+  "externalTransferVerified": zod.boolean(),
+  "providerFeeMinor": zod.number().int().min(getSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin),
+  "settlementAmountMinor": zod.number().int().min(getSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin),
+  "failureMessage": zod.string().max(getSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemFailureMessageMax).nullish(),
+  "createdAt": zod.coerce.date(),
+  "verifiedAt": zod.coerce.date().nullish()
+})).optional().describe('Durable same-item history used to restore pending and ambiguous reconciliation state after reload. Contains sanitized provider evidence only; employee bank identifiers and raw provider payloads are never exposed.'),
   "bankName": zod.string().nullish(),
   "maskedAccountNumber": zod.string().nullable(),
   "payslipId": zod.number().int().nullish()
@@ -10904,6 +11047,21 @@ export const updateSchoolPayrollPeriodItemsResponseTwoItemsItemNetSalaryMinorMin
 
 
 
+
+export const updateSchoolPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax = 120;
+
+export const updateSchoolPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax = 120;
+
+export const updateSchoolPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemProviderStatusMax = 40;
+
+export const updateSchoolPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin = 0;
+
+export const updateSchoolPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin = 0;
+
+export const updateSchoolPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemFailureMessageMax = 500;
+
+
+
 export const UpdateSchoolPayrollPeriodItemsResponse = zod.object({
   "periodId": zod.number().int().min(1),
   "scope": zod.enum(['SCHOOL', 'YEMAIT_COMPANY']),
@@ -10942,6 +11100,25 @@ export const UpdateSchoolPayrollPeriodItemsResponse = zod.object({
   "currency": zod.enum(['NGN']),
   "paymentStatus": zod.enum(['UNPAID', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'CANCELLED']),
   "transferReference": zod.string().nullish(),
+  "transferAttempts": zod.array(zod.object({
+  "id": zod.number().int().min(1),
+  "attempt": zod.number().int().min(1),
+  "amountMinor": zod.number().int().min(1),
+  "currency": zod.enum(['NGN']),
+  "provider": zod.enum(['FLUTTERWAVE', 'MOCK']),
+  "providerMode": zod.enum(['TEST', 'LIVE', 'MOCK']),
+  "providerReference": zod.string().min(1).max(updateSchoolPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax),
+  "providerTransactionId": zod.string().max(updateSchoolPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax).nullish(),
+  "providerStatus": zod.string().max(updateSchoolPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemProviderStatusMax).nullish(),
+  "status": zod.enum(['CLAIMED', 'PROCESSING', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'UNCERTAIN', 'RECONCILIATION_REQUIRED']),
+  "requiresReconciliation": zod.boolean(),
+  "externalTransferVerified": zod.boolean(),
+  "providerFeeMinor": zod.number().int().min(updateSchoolPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin),
+  "settlementAmountMinor": zod.number().int().min(updateSchoolPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin),
+  "failureMessage": zod.string().max(updateSchoolPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemFailureMessageMax).nullish(),
+  "createdAt": zod.coerce.date(),
+  "verifiedAt": zod.coerce.date().nullish()
+})).optional().describe('Durable same-item history used to restore pending and ambiguous reconciliation state after reload. Contains sanitized provider evidence only; employee bank identifiers and raw provider payloads are never exposed.'),
   "bankName": zod.string().nullish(),
   "maskedAccountNumber": zod.string().nullable(),
   "payslipId": zod.number().int().nullish()
@@ -10994,6 +11171,21 @@ export const submitSchoolPayrollPeriodResponseTwoItemsItemNetSalaryMinorMin = 0;
 
 
 
+
+export const submitSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax = 120;
+
+export const submitSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax = 120;
+
+export const submitSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderStatusMax = 40;
+
+export const submitSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin = 0;
+
+export const submitSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin = 0;
+
+export const submitSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemFailureMessageMax = 500;
+
+
+
 export const SubmitSchoolPayrollPeriodResponse = zod.object({
   "periodId": zod.number().int().min(1),
   "scope": zod.enum(['SCHOOL', 'YEMAIT_COMPANY']),
@@ -11032,6 +11224,25 @@ export const SubmitSchoolPayrollPeriodResponse = zod.object({
   "currency": zod.enum(['NGN']),
   "paymentStatus": zod.enum(['UNPAID', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'CANCELLED']),
   "transferReference": zod.string().nullish(),
+  "transferAttempts": zod.array(zod.object({
+  "id": zod.number().int().min(1),
+  "attempt": zod.number().int().min(1),
+  "amountMinor": zod.number().int().min(1),
+  "currency": zod.enum(['NGN']),
+  "provider": zod.enum(['FLUTTERWAVE', 'MOCK']),
+  "providerMode": zod.enum(['TEST', 'LIVE', 'MOCK']),
+  "providerReference": zod.string().min(1).max(submitSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax),
+  "providerTransactionId": zod.string().max(submitSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax).nullish(),
+  "providerStatus": zod.string().max(submitSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderStatusMax).nullish(),
+  "status": zod.enum(['CLAIMED', 'PROCESSING', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'UNCERTAIN', 'RECONCILIATION_REQUIRED']),
+  "requiresReconciliation": zod.boolean(),
+  "externalTransferVerified": zod.boolean(),
+  "providerFeeMinor": zod.number().int().min(submitSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin),
+  "settlementAmountMinor": zod.number().int().min(submitSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin),
+  "failureMessage": zod.string().max(submitSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemFailureMessageMax).nullish(),
+  "createdAt": zod.coerce.date(),
+  "verifiedAt": zod.coerce.date().nullish()
+})).optional().describe('Durable same-item history used to restore pending and ambiguous reconciliation state after reload. Contains sanitized provider evidence only; employee bank identifiers and raw provider payloads are never exposed.'),
   "bankName": zod.string().nullish(),
   "maskedAccountNumber": zod.string().nullable(),
   "payslipId": zod.number().int().nullish()
@@ -11084,6 +11295,21 @@ export const approveSchoolPayrollPeriodResponseTwoItemsItemNetSalaryMinorMin = 0
 
 
 
+
+export const approveSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax = 120;
+
+export const approveSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax = 120;
+
+export const approveSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderStatusMax = 40;
+
+export const approveSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin = 0;
+
+export const approveSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin = 0;
+
+export const approveSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemFailureMessageMax = 500;
+
+
+
 export const ApproveSchoolPayrollPeriodResponse = zod.object({
   "periodId": zod.number().int().min(1),
   "scope": zod.enum(['SCHOOL', 'YEMAIT_COMPANY']),
@@ -11122,6 +11348,25 @@ export const ApproveSchoolPayrollPeriodResponse = zod.object({
   "currency": zod.enum(['NGN']),
   "paymentStatus": zod.enum(['UNPAID', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'CANCELLED']),
   "transferReference": zod.string().nullish(),
+  "transferAttempts": zod.array(zod.object({
+  "id": zod.number().int().min(1),
+  "attempt": zod.number().int().min(1),
+  "amountMinor": zod.number().int().min(1),
+  "currency": zod.enum(['NGN']),
+  "provider": zod.enum(['FLUTTERWAVE', 'MOCK']),
+  "providerMode": zod.enum(['TEST', 'LIVE', 'MOCK']),
+  "providerReference": zod.string().min(1).max(approveSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax),
+  "providerTransactionId": zod.string().max(approveSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax).nullish(),
+  "providerStatus": zod.string().max(approveSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderStatusMax).nullish(),
+  "status": zod.enum(['CLAIMED', 'PROCESSING', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'UNCERTAIN', 'RECONCILIATION_REQUIRED']),
+  "requiresReconciliation": zod.boolean(),
+  "externalTransferVerified": zod.boolean(),
+  "providerFeeMinor": zod.number().int().min(approveSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin),
+  "settlementAmountMinor": zod.number().int().min(approveSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin),
+  "failureMessage": zod.string().max(approveSchoolPayrollPeriodResponseTwoItemsItemTransferAttemptsItemFailureMessageMax).nullish(),
+  "createdAt": zod.coerce.date(),
+  "verifiedAt": zod.coerce.date().nullish()
+})).optional().describe('Durable same-item history used to restore pending and ambiguous reconciliation state after reload. Contains sanitized provider evidence only; employee bank identifiers and raw provider payloads are never exposed.'),
   "bankName": zod.string().nullish(),
   "maskedAccountNumber": zod.string().nullable(),
   "payslipId": zod.number().int().nullish()
@@ -11545,6 +11790,21 @@ export const createCompanyPayrollPeriodResponseTwoItemsItemNetSalaryMinorMin = 0
 
 
 
+
+export const createCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax = 120;
+
+export const createCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax = 120;
+
+export const createCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderStatusMax = 40;
+
+export const createCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin = 0;
+
+export const createCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin = 0;
+
+export const createCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemFailureMessageMax = 500;
+
+
+
 export const CreateCompanyPayrollPeriodResponse = zod.object({
   "periodId": zod.number().int().min(1),
   "scope": zod.enum(['SCHOOL', 'YEMAIT_COMPANY']),
@@ -11583,6 +11843,25 @@ export const CreateCompanyPayrollPeriodResponse = zod.object({
   "currency": zod.enum(['NGN']),
   "paymentStatus": zod.enum(['UNPAID', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'CANCELLED']),
   "transferReference": zod.string().nullish(),
+  "transferAttempts": zod.array(zod.object({
+  "id": zod.number().int().min(1),
+  "attempt": zod.number().int().min(1),
+  "amountMinor": zod.number().int().min(1),
+  "currency": zod.enum(['NGN']),
+  "provider": zod.enum(['FLUTTERWAVE', 'MOCK']),
+  "providerMode": zod.enum(['TEST', 'LIVE', 'MOCK']),
+  "providerReference": zod.string().min(1).max(createCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax),
+  "providerTransactionId": zod.string().max(createCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax).nullish(),
+  "providerStatus": zod.string().max(createCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderStatusMax).nullish(),
+  "status": zod.enum(['CLAIMED', 'PROCESSING', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'UNCERTAIN', 'RECONCILIATION_REQUIRED']),
+  "requiresReconciliation": zod.boolean(),
+  "externalTransferVerified": zod.boolean(),
+  "providerFeeMinor": zod.number().int().min(createCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin),
+  "settlementAmountMinor": zod.number().int().min(createCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin),
+  "failureMessage": zod.string().max(createCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemFailureMessageMax).nullish(),
+  "createdAt": zod.coerce.date(),
+  "verifiedAt": zod.coerce.date().nullish()
+})).optional().describe('Durable same-item history used to restore pending and ambiguous reconciliation state after reload. Contains sanitized provider evidence only; employee bank identifiers and raw provider payloads are never exposed.'),
   "bankName": zod.string().nullish(),
   "maskedAccountNumber": zod.string().nullable(),
   "payslipId": zod.number().int().nullish()
@@ -11633,6 +11912,21 @@ export const getCompanyPayrollPeriodResponseTwoItemsItemNetSalaryMinorMin = 0;
 
 
 
+
+export const getCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax = 120;
+
+export const getCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax = 120;
+
+export const getCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderStatusMax = 40;
+
+export const getCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin = 0;
+
+export const getCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin = 0;
+
+export const getCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemFailureMessageMax = 500;
+
+
+
 export const GetCompanyPayrollPeriodResponse = zod.object({
   "periodId": zod.number().int().min(1),
   "scope": zod.enum(['SCHOOL', 'YEMAIT_COMPANY']),
@@ -11671,6 +11965,25 @@ export const GetCompanyPayrollPeriodResponse = zod.object({
   "currency": zod.enum(['NGN']),
   "paymentStatus": zod.enum(['UNPAID', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'CANCELLED']),
   "transferReference": zod.string().nullish(),
+  "transferAttempts": zod.array(zod.object({
+  "id": zod.number().int().min(1),
+  "attempt": zod.number().int().min(1),
+  "amountMinor": zod.number().int().min(1),
+  "currency": zod.enum(['NGN']),
+  "provider": zod.enum(['FLUTTERWAVE', 'MOCK']),
+  "providerMode": zod.enum(['TEST', 'LIVE', 'MOCK']),
+  "providerReference": zod.string().min(1).max(getCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax),
+  "providerTransactionId": zod.string().max(getCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax).nullish(),
+  "providerStatus": zod.string().max(getCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderStatusMax).nullish(),
+  "status": zod.enum(['CLAIMED', 'PROCESSING', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'UNCERTAIN', 'RECONCILIATION_REQUIRED']),
+  "requiresReconciliation": zod.boolean(),
+  "externalTransferVerified": zod.boolean(),
+  "providerFeeMinor": zod.number().int().min(getCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin),
+  "settlementAmountMinor": zod.number().int().min(getCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin),
+  "failureMessage": zod.string().max(getCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemFailureMessageMax).nullish(),
+  "createdAt": zod.coerce.date(),
+  "verifiedAt": zod.coerce.date().nullish()
+})).optional().describe('Durable same-item history used to restore pending and ambiguous reconciliation state after reload. Contains sanitized provider evidence only; employee bank identifiers and raw provider payloads are never exposed.'),
   "bankName": zod.string().nullish(),
   "maskedAccountNumber": zod.string().nullable(),
   "payslipId": zod.number().int().nullish()
@@ -11752,6 +12065,21 @@ export const updateCompanyPayrollPeriodItemsResponseTwoItemsItemNetSalaryMinorMi
 
 
 
+
+export const updateCompanyPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax = 120;
+
+export const updateCompanyPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax = 120;
+
+export const updateCompanyPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemProviderStatusMax = 40;
+
+export const updateCompanyPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin = 0;
+
+export const updateCompanyPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin = 0;
+
+export const updateCompanyPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemFailureMessageMax = 500;
+
+
+
 export const UpdateCompanyPayrollPeriodItemsResponse = zod.object({
   "periodId": zod.number().int().min(1),
   "scope": zod.enum(['SCHOOL', 'YEMAIT_COMPANY']),
@@ -11790,6 +12118,25 @@ export const UpdateCompanyPayrollPeriodItemsResponse = zod.object({
   "currency": zod.enum(['NGN']),
   "paymentStatus": zod.enum(['UNPAID', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'CANCELLED']),
   "transferReference": zod.string().nullish(),
+  "transferAttempts": zod.array(zod.object({
+  "id": zod.number().int().min(1),
+  "attempt": zod.number().int().min(1),
+  "amountMinor": zod.number().int().min(1),
+  "currency": zod.enum(['NGN']),
+  "provider": zod.enum(['FLUTTERWAVE', 'MOCK']),
+  "providerMode": zod.enum(['TEST', 'LIVE', 'MOCK']),
+  "providerReference": zod.string().min(1).max(updateCompanyPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax),
+  "providerTransactionId": zod.string().max(updateCompanyPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax).nullish(),
+  "providerStatus": zod.string().max(updateCompanyPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemProviderStatusMax).nullish(),
+  "status": zod.enum(['CLAIMED', 'PROCESSING', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'UNCERTAIN', 'RECONCILIATION_REQUIRED']),
+  "requiresReconciliation": zod.boolean(),
+  "externalTransferVerified": zod.boolean(),
+  "providerFeeMinor": zod.number().int().min(updateCompanyPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin),
+  "settlementAmountMinor": zod.number().int().min(updateCompanyPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin),
+  "failureMessage": zod.string().max(updateCompanyPayrollPeriodItemsResponseTwoItemsItemTransferAttemptsItemFailureMessageMax).nullish(),
+  "createdAt": zod.coerce.date(),
+  "verifiedAt": zod.coerce.date().nullish()
+})).optional().describe('Durable same-item history used to restore pending and ambiguous reconciliation state after reload. Contains sanitized provider evidence only; employee bank identifiers and raw provider payloads are never exposed.'),
   "bankName": zod.string().nullish(),
   "maskedAccountNumber": zod.string().nullable(),
   "payslipId": zod.number().int().nullish()
@@ -11840,6 +12187,21 @@ export const submitCompanyPayrollPeriodResponseTwoItemsItemNetSalaryMinorMin = 0
 
 
 
+
+export const submitCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax = 120;
+
+export const submitCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax = 120;
+
+export const submitCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderStatusMax = 40;
+
+export const submitCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin = 0;
+
+export const submitCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin = 0;
+
+export const submitCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemFailureMessageMax = 500;
+
+
+
 export const SubmitCompanyPayrollPeriodResponse = zod.object({
   "periodId": zod.number().int().min(1),
   "scope": zod.enum(['SCHOOL', 'YEMAIT_COMPANY']),
@@ -11878,6 +12240,25 @@ export const SubmitCompanyPayrollPeriodResponse = zod.object({
   "currency": zod.enum(['NGN']),
   "paymentStatus": zod.enum(['UNPAID', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'CANCELLED']),
   "transferReference": zod.string().nullish(),
+  "transferAttempts": zod.array(zod.object({
+  "id": zod.number().int().min(1),
+  "attempt": zod.number().int().min(1),
+  "amountMinor": zod.number().int().min(1),
+  "currency": zod.enum(['NGN']),
+  "provider": zod.enum(['FLUTTERWAVE', 'MOCK']),
+  "providerMode": zod.enum(['TEST', 'LIVE', 'MOCK']),
+  "providerReference": zod.string().min(1).max(submitCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax),
+  "providerTransactionId": zod.string().max(submitCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax).nullish(),
+  "providerStatus": zod.string().max(submitCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderStatusMax).nullish(),
+  "status": zod.enum(['CLAIMED', 'PROCESSING', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'UNCERTAIN', 'RECONCILIATION_REQUIRED']),
+  "requiresReconciliation": zod.boolean(),
+  "externalTransferVerified": zod.boolean(),
+  "providerFeeMinor": zod.number().int().min(submitCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin),
+  "settlementAmountMinor": zod.number().int().min(submitCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin),
+  "failureMessage": zod.string().max(submitCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemFailureMessageMax).nullish(),
+  "createdAt": zod.coerce.date(),
+  "verifiedAt": zod.coerce.date().nullish()
+})).optional().describe('Durable same-item history used to restore pending and ambiguous reconciliation state after reload. Contains sanitized provider evidence only; employee bank identifiers and raw provider payloads are never exposed.'),
   "bankName": zod.string().nullish(),
   "maskedAccountNumber": zod.string().nullable(),
   "payslipId": zod.number().int().nullish()
@@ -11928,6 +12309,21 @@ export const approveCompanyPayrollPeriodResponseTwoItemsItemNetSalaryMinorMin = 
 
 
 
+
+export const approveCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax = 120;
+
+export const approveCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax = 120;
+
+export const approveCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderStatusMax = 40;
+
+export const approveCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin = 0;
+
+export const approveCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin = 0;
+
+export const approveCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemFailureMessageMax = 500;
+
+
+
 export const ApproveCompanyPayrollPeriodResponse = zod.object({
   "periodId": zod.number().int().min(1),
   "scope": zod.enum(['SCHOOL', 'YEMAIT_COMPANY']),
@@ -11966,6 +12362,25 @@ export const ApproveCompanyPayrollPeriodResponse = zod.object({
   "currency": zod.enum(['NGN']),
   "paymentStatus": zod.enum(['UNPAID', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'CANCELLED']),
   "transferReference": zod.string().nullish(),
+  "transferAttempts": zod.array(zod.object({
+  "id": zod.number().int().min(1),
+  "attempt": zod.number().int().min(1),
+  "amountMinor": zod.number().int().min(1),
+  "currency": zod.enum(['NGN']),
+  "provider": zod.enum(['FLUTTERWAVE', 'MOCK']),
+  "providerMode": zod.enum(['TEST', 'LIVE', 'MOCK']),
+  "providerReference": zod.string().min(1).max(approveCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderReferenceMax),
+  "providerTransactionId": zod.string().max(approveCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderTransactionIdMax).nullish(),
+  "providerStatus": zod.string().max(approveCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderStatusMax).nullish(),
+  "status": zod.enum(['CLAIMED', 'PROCESSING', 'PENDING', 'MOCK_PENDING', 'PAID', 'FAILED', 'UNCERTAIN', 'RECONCILIATION_REQUIRED']),
+  "requiresReconciliation": zod.boolean(),
+  "externalTransferVerified": zod.boolean(),
+  "providerFeeMinor": zod.number().int().min(approveCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemProviderFeeMinorMin),
+  "settlementAmountMinor": zod.number().int().min(approveCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemSettlementAmountMinorMin),
+  "failureMessage": zod.string().max(approveCompanyPayrollPeriodResponseTwoItemsItemTransferAttemptsItemFailureMessageMax).nullish(),
+  "createdAt": zod.coerce.date(),
+  "verifiedAt": zod.coerce.date().nullish()
+})).optional().describe('Durable same-item history used to restore pending and ambiguous reconciliation state after reload. Contains sanitized provider evidence only; employee bank identifiers and raw provider payloads are never exposed.'),
   "bankName": zod.string().nullish(),
   "maskedAccountNumber": zod.string().nullable(),
   "payslipId": zod.number().int().nullish()
@@ -12659,11 +13074,15 @@ export const ListSchoolTeacherAssignmentsParams = zod.object({
 
 
 
+
+
 export const listSchoolTeacherAssignmentsQueryStatusDefault = `ACTIVE`;
 
 export const ListSchoolTeacherAssignmentsQueryParams = zod.object({
   "employeeId": zod.coerce.number().int().min(1).optional(),
   "sessionId": zod.coerce.number().int().min(1).optional(),
+  "classId": zod.coerce.number().int().min(1).optional(),
+  "subjectId": zod.coerce.number().int().min(1).optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'all']).default(listSchoolTeacherAssignmentsQueryStatusDefault)
 })
 
@@ -12742,7 +13161,8 @@ export const CreateSchoolTeacherAssignmentResponse = zod.object({
 
 
 /**
- * @summary Change the teacher of, or deactivate, one same-school active assignment
+ * Supplying a different employeeId atomically deactivates the prior record and creates/returns the replacement record in one transaction; no client-side deactivate-then-create sequence is needed. startDate is optional for replacement and defaults to the prior start date when recorded.
+ * @summary Replace the assigned teacher atomically, update dates, or deactivate an assignment
  */
 
 
@@ -12754,10 +13174,15 @@ export const UpdateSchoolTeacherAssignmentParams = zod.object({
   "assignmentId": zod.coerce.number().int().min(1)
 })
 
+
+
+
 export const UpdateSchoolTeacherAssignmentBody = zod.object({
+  "employeeId": zod.number().int().min(1).optional(),
+  "startDate": zod.coerce.date().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']).optional(),
   "endDate": zod.coerce.date().optional()
-})
+}).describe('employeeId replaces the teacher while preserving the previous inactive record; startDate is only accepted with employeeId.')
 
 export const UpdateSchoolTeacherAssignmentResponse = zod.object({
   "id": zod.number().int(),
@@ -12897,6 +13322,151 @@ export const UpdateSchoolTeacherDutyResponse = zod.object({
 
 
 /**
+ * @summary Create or return the server-persisted Flutterwave sandbox checkout for a current student subscription
+ */
+
+
+
+export const CreateStudentSubscriptionCheckoutParams = zod.object({
+  "subscriptionId": zod.coerce.number().int().min(1)
+})
+
+export const createStudentSubscriptionCheckoutHeaderIdempotencyKeyMin = 8;
+export const createStudentSubscriptionCheckoutHeaderIdempotencyKeyMax = 120;
+
+
+export const createStudentSubscriptionCheckoutHeaderIdempotencyKeyRegExp = new RegExp('^[A-Za-z0-9._:-]+$');
+
+
+export const CreateStudentSubscriptionCheckoutHeader = zod.object({
+  "Idempotency-Key": zod.string().min(createStudentSubscriptionCheckoutHeaderIdempotencyKeyMin).max(createStudentSubscriptionCheckoutHeaderIdempotencyKeyMax).regex(createStudentSubscriptionCheckoutHeaderIdempotencyKeyRegExp)
+})
+
+export const createStudentSubscriptionCheckoutResponsePaymentProviderFeeMinorMin = 0;
+
+export const createStudentSubscriptionCheckoutResponsePaymentSettlementAmountMinorMin = 0;
+
+
+
+export const CreateStudentSubscriptionCheckoutResponse = zod.object({
+  "payment": zod.object({
+  "paymentId": zod.number().int(),
+  "subscriptionId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "payerUserId": zod.number().int(),
+  "provider": zod.enum(['FLUTTERWAVE']),
+  "providerMode": zod.enum(['SANDBOX']),
+  "reference": zod.string(),
+  "status": zod.enum(['PENDING', 'PAID', 'FAILED', 'RECONCILIATION_REQUIRED']),
+  "grossAmountMinor": zod.literal(500000),
+  "providerFeeMinor": zod.number().int().min(createStudentSubscriptionCheckoutResponsePaymentProviderFeeMinorMin).nullish(),
+  "settlementAmountMinor": zod.number().int().min(createStudentSubscriptionCheckoutResponsePaymentSettlementAmountMinorMin).nullish(),
+  "currency": zod.enum(['NGN']),
+  "settlementStatus": zod.enum(['PENDING', 'RECONCILED', 'RECONCILIATION_REQUIRED', 'NOT_APPLICABLE']),
+  "reconciliationStatus": zod.enum(['PENDING', 'RECONCILED', 'RECONCILIATION_REQUIRED', 'NOT_APPLICABLE']),
+  "checkoutUrl": zod.string().url().nullish(),
+  "failureCode": zod.string().nullish(),
+  "createdAt": zod.coerce.date().optional(),
+  "paidAt": zod.coerce.date().nullish()
+}),
+  "reused": zod.boolean()
+})
+
+
+/**
+ * @summary Verify a signed Flutterwave event against a persisted student payment and finalize it without a browser callback
+ */
+export const receiveStudentSubscriptionFlutterwaveWebhookHeaderVerifHashMin = 16;
+
+
+
+export const ReceiveStudentSubscriptionFlutterwaveWebhookHeader = zod.object({
+  "verif-hash": zod.string().min(receiveStudentSubscriptionFlutterwaveWebhookHeaderVerifHashMin).describe('Flutterwave webhook verification hash; checked against the server-configured secret.')
+})
+
+export const ReceiveStudentSubscriptionFlutterwaveWebhookBody = zod.record(zod.string(), zod.unknown())
+
+export const ReceiveStudentSubscriptionFlutterwaveWebhookResponse = zod.unknown()
+
+
+/**
+ * @summary Read the payer school-scoped status of one persisted student subscription payment
+ */
+
+
+
+
+export const GetStudentSubscriptionPaymentParams = zod.object({
+  "subscriptionId": zod.coerce.number().int().min(1),
+  "paymentId": zod.coerce.number().int().min(1)
+})
+
+export const getStudentSubscriptionPaymentResponsePaymentProviderFeeMinorMin = 0;
+
+export const getStudentSubscriptionPaymentResponsePaymentSettlementAmountMinorMin = 0;
+
+
+
+
+
+export const GetStudentSubscriptionPaymentResponse = zod.object({
+  "payment": zod.object({
+  "paymentId": zod.number().int(),
+  "subscriptionId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "payerUserId": zod.number().int(),
+  "provider": zod.enum(['FLUTTERWAVE']),
+  "providerMode": zod.enum(['SANDBOX']),
+  "reference": zod.string(),
+  "status": zod.enum(['PENDING', 'PAID', 'FAILED', 'RECONCILIATION_REQUIRED']),
+  "grossAmountMinor": zod.literal(500000),
+  "providerFeeMinor": zod.number().int().min(getStudentSubscriptionPaymentResponsePaymentProviderFeeMinorMin).nullish(),
+  "settlementAmountMinor": zod.number().int().min(getStudentSubscriptionPaymentResponsePaymentSettlementAmountMinorMin).nullish(),
+  "currency": zod.enum(['NGN']),
+  "settlementStatus": zod.enum(['PENDING', 'RECONCILED', 'RECONCILIATION_REQUIRED', 'NOT_APPLICABLE']),
+  "reconciliationStatus": zod.enum(['PENDING', 'RECONCILED', 'RECONCILIATION_REQUIRED', 'NOT_APPLICABLE']),
+  "checkoutUrl": zod.string().url().nullish(),
+  "failureCode": zod.string().nullish(),
+  "createdAt": zod.coerce.date().optional(),
+  "paidAt": zod.coerce.date().nullish()
+}),
+  "subscription": zod.record(zod.string(), zod.unknown()),
+  "allocations": zod.array(zod.object({
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'PLATFORM_PROVIDER_FEE']),
+  "recipientId": zod.number().int().nullable(),
+  "entryType": zod.enum(['CREDIT', 'EXPENSE']),
+  "amountMinor": zod.number().int().min(1),
+  "currency": zod.enum(['NGN'])
+})),
+  "activated": zod.boolean(),
+  "receipt": zod.union([zod.object({
+  "receiptNumber": zod.string(),
+  "paidAt": zod.coerce.date().nullable(),
+  "grossAmountMinor": zod.literal(500000),
+  "currency": zod.enum(['NGN']),
+  "schoolName": zod.string().nullable(),
+  "studentName": zod.string().nullable(),
+  "sessionName": zod.string().nullable(),
+  "termName": zod.string().nullable(),
+  "schoolLogoVersionUrl": zod.string().nullable(),
+  "allocations": zod.array(zod.object({
+  "entryType": zod.enum(['CREDIT', 'EXPENSE']),
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'PLATFORM_PROVIDER_FEE']),
+  "recipientId": zod.number().int().nullable(),
+  "amountMinor": zod.number().int().min(1),
+  "currency": zod.enum(['NGN'])
+}))
+}),zod.null()])
+})
+
+
+/**
  * @summary List only the authenticated staff member's term subscriptions, cards, receipts and recent payments
  */
 
@@ -13021,8 +13591,8 @@ export const GetMyStaffNfcSubscriptionsResponse = zod.object({
   "providerMode": zod.enum(['SANDBOX', 'DEVELOPMENT_MOCK', 'UNKNOWN']),
   "status": zod.enum(['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'RECONCILIATION_REQUIRED']),
   "grossAmountMinor": zod.number().int().min(getMyStaffNfcSubscriptionsResponseCurrentSubscriptionOneLatestPaymentOneGrossAmountMinorMin),
-  "providerFeeMinor": zod.number().int().min(getMyStaffNfcSubscriptionsResponseCurrentSubscriptionOneLatestPaymentOneProviderFeeMinorMin),
-  "settlementAmountMinor": zod.number().int().min(getMyStaffNfcSubscriptionsResponseCurrentSubscriptionOneLatestPaymentOneSettlementAmountMinorMin),
+  "providerFeeMinor": zod.number().int().min(getMyStaffNfcSubscriptionsResponseCurrentSubscriptionOneLatestPaymentOneProviderFeeMinorMin).nullable(),
+  "settlementAmountMinor": zod.number().int().min(getMyStaffNfcSubscriptionsResponseCurrentSubscriptionOneLatestPaymentOneSettlementAmountMinorMin).nullable(),
   "currency": zod.enum(['NGN']),
   "providerTransactionId": zod.string().nullish(),
   "providerReference": zod.string().optional(),
@@ -13031,7 +13601,8 @@ export const GetMyStaffNfcSubscriptionsResponse = zod.object({
   "reconciliationStatus": zod.enum(['PENDING', 'RECONCILED', 'RECONCILIATION_REQUIRED', 'NOT_APPLICABLE']),
   "refundStatus": zod.enum(['NONE', 'PENDING', 'PARTIALLY_REFUNDED', 'REFUNDED', 'RECONCILIATION_REQUIRED']).optional(),
   "allocations": zod.array(zod.object({
-  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'REVERSAL', 'PLATFORM_PROVIDER_FEE']),
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'PLATFORM_PROVIDER_FEE']),
+  "entryType": zod.enum(['CREDIT', 'REVERSAL', 'EXPENSE']).optional(),
   "recipientId": zod.number().int().nullable(),
   "amountMinor": zod.number().int().min(getMyStaffNfcSubscriptionsResponseCurrentSubscriptionOneLatestPaymentOneAllocationsItemAmountMinorMin),
   "currency": zod.enum(['NGN']),
@@ -13079,8 +13650,8 @@ export const GetMyStaffNfcSubscriptionsResponse = zod.object({
   "providerMode": zod.enum(['SANDBOX', 'DEVELOPMENT_MOCK', 'UNKNOWN']),
   "status": zod.enum(['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'RECONCILIATION_REQUIRED']),
   "grossAmountMinor": zod.number().int().min(getMyStaffNfcSubscriptionsResponseNextSubscriptionOneLatestPaymentOneGrossAmountMinorMin),
-  "providerFeeMinor": zod.number().int().min(getMyStaffNfcSubscriptionsResponseNextSubscriptionOneLatestPaymentOneProviderFeeMinorMin),
-  "settlementAmountMinor": zod.number().int().min(getMyStaffNfcSubscriptionsResponseNextSubscriptionOneLatestPaymentOneSettlementAmountMinorMin),
+  "providerFeeMinor": zod.number().int().min(getMyStaffNfcSubscriptionsResponseNextSubscriptionOneLatestPaymentOneProviderFeeMinorMin).nullable(),
+  "settlementAmountMinor": zod.number().int().min(getMyStaffNfcSubscriptionsResponseNextSubscriptionOneLatestPaymentOneSettlementAmountMinorMin).nullable(),
   "currency": zod.enum(['NGN']),
   "providerTransactionId": zod.string().nullish(),
   "providerReference": zod.string().optional(),
@@ -13089,7 +13660,8 @@ export const GetMyStaffNfcSubscriptionsResponse = zod.object({
   "reconciliationStatus": zod.enum(['PENDING', 'RECONCILED', 'RECONCILIATION_REQUIRED', 'NOT_APPLICABLE']),
   "refundStatus": zod.enum(['NONE', 'PENDING', 'PARTIALLY_REFUNDED', 'REFUNDED', 'RECONCILIATION_REQUIRED']).optional(),
   "allocations": zod.array(zod.object({
-  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'REVERSAL', 'PLATFORM_PROVIDER_FEE']),
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'PLATFORM_PROVIDER_FEE']),
+  "entryType": zod.enum(['CREDIT', 'REVERSAL', 'EXPENSE']).optional(),
   "recipientId": zod.number().int().nullable(),
   "amountMinor": zod.number().int().min(getMyStaffNfcSubscriptionsResponseNextSubscriptionOneLatestPaymentOneAllocationsItemAmountMinorMin),
   "currency": zod.enum(['NGN']),
@@ -13138,8 +13710,8 @@ export const GetMyStaffNfcSubscriptionsResponse = zod.object({
   "providerMode": zod.enum(['SANDBOX', 'DEVELOPMENT_MOCK', 'UNKNOWN']),
   "status": zod.enum(['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'RECONCILIATION_REQUIRED']),
   "grossAmountMinor": zod.number().int().min(getMyStaffNfcSubscriptionsResponseSubscriptionsItemLatestPaymentOneGrossAmountMinorMin),
-  "providerFeeMinor": zod.number().int().min(getMyStaffNfcSubscriptionsResponseSubscriptionsItemLatestPaymentOneProviderFeeMinorMin),
-  "settlementAmountMinor": zod.number().int().min(getMyStaffNfcSubscriptionsResponseSubscriptionsItemLatestPaymentOneSettlementAmountMinorMin),
+  "providerFeeMinor": zod.number().int().min(getMyStaffNfcSubscriptionsResponseSubscriptionsItemLatestPaymentOneProviderFeeMinorMin).nullable(),
+  "settlementAmountMinor": zod.number().int().min(getMyStaffNfcSubscriptionsResponseSubscriptionsItemLatestPaymentOneSettlementAmountMinorMin).nullable(),
   "currency": zod.enum(['NGN']),
   "providerTransactionId": zod.string().nullish(),
   "providerReference": zod.string().optional(),
@@ -13148,7 +13720,8 @@ export const GetMyStaffNfcSubscriptionsResponse = zod.object({
   "reconciliationStatus": zod.enum(['PENDING', 'RECONCILED', 'RECONCILIATION_REQUIRED', 'NOT_APPLICABLE']),
   "refundStatus": zod.enum(['NONE', 'PENDING', 'PARTIALLY_REFUNDED', 'REFUNDED', 'RECONCILIATION_REQUIRED']).optional(),
   "allocations": zod.array(zod.object({
-  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'REVERSAL', 'PLATFORM_PROVIDER_FEE']),
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'PLATFORM_PROVIDER_FEE']),
+  "entryType": zod.enum(['CREDIT', 'REVERSAL', 'EXPENSE']).optional(),
   "recipientId": zod.number().int().nullable(),
   "amountMinor": zod.number().int().min(getMyStaffNfcSubscriptionsResponseSubscriptionsItemLatestPaymentOneAllocationsItemAmountMinorMin),
   "currency": zod.enum(['NGN']),
@@ -13241,8 +13814,8 @@ export const GenerateStaffNfcTermSubscriptionsResponse = zod.object({
   "providerMode": zod.enum(['SANDBOX', 'DEVELOPMENT_MOCK', 'UNKNOWN']),
   "status": zod.enum(['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'RECONCILIATION_REQUIRED']),
   "grossAmountMinor": zod.number().int().min(generateStaffNfcTermSubscriptionsResponseSubscriptionsItemLatestPaymentOneGrossAmountMinorMin),
-  "providerFeeMinor": zod.number().int().min(generateStaffNfcTermSubscriptionsResponseSubscriptionsItemLatestPaymentOneProviderFeeMinorMin),
-  "settlementAmountMinor": zod.number().int().min(generateStaffNfcTermSubscriptionsResponseSubscriptionsItemLatestPaymentOneSettlementAmountMinorMin),
+  "providerFeeMinor": zod.number().int().min(generateStaffNfcTermSubscriptionsResponseSubscriptionsItemLatestPaymentOneProviderFeeMinorMin).nullable(),
+  "settlementAmountMinor": zod.number().int().min(generateStaffNfcTermSubscriptionsResponseSubscriptionsItemLatestPaymentOneSettlementAmountMinorMin).nullable(),
   "currency": zod.enum(['NGN']),
   "providerTransactionId": zod.string().nullish(),
   "providerReference": zod.string().optional(),
@@ -13251,7 +13824,8 @@ export const GenerateStaffNfcTermSubscriptionsResponse = zod.object({
   "reconciliationStatus": zod.enum(['PENDING', 'RECONCILED', 'RECONCILIATION_REQUIRED', 'NOT_APPLICABLE']),
   "refundStatus": zod.enum(['NONE', 'PENDING', 'PARTIALLY_REFUNDED', 'REFUNDED', 'RECONCILIATION_REQUIRED']).optional(),
   "allocations": zod.array(zod.object({
-  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'REVERSAL', 'PLATFORM_PROVIDER_FEE']),
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'PLATFORM_PROVIDER_FEE']),
+  "entryType": zod.enum(['CREDIT', 'REVERSAL', 'EXPENSE']).optional(),
   "recipientId": zod.number().int().nullable(),
   "amountMinor": zod.number().int().min(generateStaffNfcTermSubscriptionsResponseSubscriptionsItemLatestPaymentOneAllocationsItemAmountMinorMin),
   "currency": zod.enum(['NGN']),
@@ -13368,8 +13942,8 @@ export const VerifyMyStaffNfcPaymentResponse = zod.object({
   "providerMode": zod.enum(['SANDBOX', 'DEVELOPMENT_MOCK', 'UNKNOWN']),
   "status": zod.enum(['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'RECONCILIATION_REQUIRED']),
   "grossAmountMinor": zod.number().int().min(verifyMyStaffNfcPaymentResponsePaymentGrossAmountMinorMin),
-  "providerFeeMinor": zod.number().int().min(verifyMyStaffNfcPaymentResponsePaymentProviderFeeMinorMin),
-  "settlementAmountMinor": zod.number().int().min(verifyMyStaffNfcPaymentResponsePaymentSettlementAmountMinorMin),
+  "providerFeeMinor": zod.number().int().min(verifyMyStaffNfcPaymentResponsePaymentProviderFeeMinorMin).nullable(),
+  "settlementAmountMinor": zod.number().int().min(verifyMyStaffNfcPaymentResponsePaymentSettlementAmountMinorMin).nullable(),
   "currency": zod.enum(['NGN']),
   "providerTransactionId": zod.string().nullish(),
   "providerReference": zod.string().optional(),
@@ -13378,7 +13952,8 @@ export const VerifyMyStaffNfcPaymentResponse = zod.object({
   "reconciliationStatus": zod.enum(['PENDING', 'RECONCILED', 'RECONCILIATION_REQUIRED', 'NOT_APPLICABLE']),
   "refundStatus": zod.enum(['NONE', 'PENDING', 'PARTIALLY_REFUNDED', 'REFUNDED', 'RECONCILIATION_REQUIRED']).optional(),
   "allocations": zod.array(zod.object({
-  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'REVERSAL', 'PLATFORM_PROVIDER_FEE']),
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'PLATFORM_PROVIDER_FEE']),
+  "entryType": zod.enum(['CREDIT', 'REVERSAL', 'EXPENSE']).optional(),
   "recipientId": zod.number().int().nullable(),
   "amountMinor": zod.number().int().min(verifyMyStaffNfcPaymentResponsePaymentAllocationsItemAmountMinorMin),
   "currency": zod.enum(['NGN']),
@@ -13424,8 +13999,8 @@ export const VerifyMyStaffNfcPaymentResponse = zod.object({
   "providerMode": zod.enum(['SANDBOX', 'DEVELOPMENT_MOCK', 'UNKNOWN']),
   "status": zod.enum(['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'RECONCILIATION_REQUIRED']),
   "grossAmountMinor": zod.number().int().min(verifyMyStaffNfcPaymentResponseSubscriptionLatestPaymentOneGrossAmountMinorMin),
-  "providerFeeMinor": zod.number().int().min(verifyMyStaffNfcPaymentResponseSubscriptionLatestPaymentOneProviderFeeMinorMin),
-  "settlementAmountMinor": zod.number().int().min(verifyMyStaffNfcPaymentResponseSubscriptionLatestPaymentOneSettlementAmountMinorMin),
+  "providerFeeMinor": zod.number().int().min(verifyMyStaffNfcPaymentResponseSubscriptionLatestPaymentOneProviderFeeMinorMin).nullable(),
+  "settlementAmountMinor": zod.number().int().min(verifyMyStaffNfcPaymentResponseSubscriptionLatestPaymentOneSettlementAmountMinorMin).nullable(),
   "currency": zod.enum(['NGN']),
   "providerTransactionId": zod.string().nullish(),
   "providerReference": zod.string().optional(),
@@ -13434,7 +14009,8 @@ export const VerifyMyStaffNfcPaymentResponse = zod.object({
   "reconciliationStatus": zod.enum(['PENDING', 'RECONCILED', 'RECONCILIATION_REQUIRED', 'NOT_APPLICABLE']),
   "refundStatus": zod.enum(['NONE', 'PENDING', 'PARTIALLY_REFUNDED', 'REFUNDED', 'RECONCILIATION_REQUIRED']).optional(),
   "allocations": zod.array(zod.object({
-  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'REVERSAL', 'PLATFORM_PROVIDER_FEE']),
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'PLATFORM_PROVIDER_FEE']),
+  "entryType": zod.enum(['CREDIT', 'REVERSAL', 'EXPENSE']).optional(),
   "recipientId": zod.number().int().nullable(),
   "amountMinor": zod.number().int().min(verifyMyStaffNfcPaymentResponseSubscriptionLatestPaymentOneAllocationsItemAmountMinorMin),
   "currency": zod.enum(['NGN']),
@@ -13444,7 +14020,8 @@ export const VerifyMyStaffNfcPaymentResponse = zod.object({
   "createdAt": zod.coerce.date()
 }),
   "allocations": zod.array(zod.object({
-  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'REVERSAL', 'PLATFORM_PROVIDER_FEE']),
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'PLATFORM_PROVIDER_FEE']),
+  "entryType": zod.enum(['CREDIT', 'REVERSAL', 'EXPENSE']).optional(),
   "recipientId": zod.number().int().nullable(),
   "amountMinor": zod.number().int().min(verifyMyStaffNfcPaymentResponseAllocationsItemAmountMinorMin),
   "currency": zod.enum(['NGN']),
@@ -13490,6 +14067,7 @@ export const GetStaffNfcReceiptResponse = zod.object({
   "employeeNumber": zod.string(),
   "schoolId": zod.number().int(),
   "schoolName": zod.string(),
+  "schoolLogoVersionUrl": zod.string().nullable(),
   "sessionName": zod.string(),
   "termName": zod.string(),
   "payment": zod.object({
@@ -13498,8 +14076,8 @@ export const GetStaffNfcReceiptResponse = zod.object({
   "providerMode": zod.enum(['SANDBOX', 'DEVELOPMENT_MOCK', 'UNKNOWN']),
   "status": zod.enum(['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'RECONCILIATION_REQUIRED']),
   "grossAmountMinor": zod.number().int().min(getStaffNfcReceiptResponsePaymentGrossAmountMinorMin),
-  "providerFeeMinor": zod.number().int().min(getStaffNfcReceiptResponsePaymentProviderFeeMinorMin),
-  "settlementAmountMinor": zod.number().int().min(getStaffNfcReceiptResponsePaymentSettlementAmountMinorMin),
+  "providerFeeMinor": zod.number().int().min(getStaffNfcReceiptResponsePaymentProviderFeeMinorMin).nullable(),
+  "settlementAmountMinor": zod.number().int().min(getStaffNfcReceiptResponsePaymentSettlementAmountMinorMin).nullable(),
   "currency": zod.enum(['NGN']),
   "providerTransactionId": zod.string().nullish(),
   "providerReference": zod.string().optional(),
@@ -13508,7 +14086,8 @@ export const GetStaffNfcReceiptResponse = zod.object({
   "reconciliationStatus": zod.enum(['PENDING', 'RECONCILED', 'RECONCILIATION_REQUIRED', 'NOT_APPLICABLE']),
   "refundStatus": zod.enum(['NONE', 'PENDING', 'PARTIALLY_REFUNDED', 'REFUNDED', 'RECONCILIATION_REQUIRED']).optional(),
   "allocations": zod.array(zod.object({
-  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'REVERSAL', 'PLATFORM_PROVIDER_FEE']),
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'PLATFORM_PROVIDER_FEE']),
+  "entryType": zod.enum(['CREDIT', 'REVERSAL', 'EXPENSE']).optional(),
   "recipientId": zod.number().int().nullable(),
   "amountMinor": zod.number().int().min(getStaffNfcReceiptResponsePaymentAllocationsItemAmountMinorMin),
   "currency": zod.enum(['NGN']),
@@ -13516,7 +14095,8 @@ export const GetStaffNfcReceiptResponse = zod.object({
 })).optional()
 }),
   "allocations": zod.array(zod.object({
-  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'REVERSAL', 'PLATFORM_PROVIDER_FEE']),
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'PLATFORM_PROVIDER_FEE']),
+  "entryType": zod.enum(['CREDIT', 'REVERSAL', 'EXPENSE']).optional(),
   "recipientId": zod.number().int().nullable(),
   "amountMinor": zod.number().int().min(getStaffNfcReceiptResponseAllocationsItemAmountMinorMin),
   "currency": zod.enum(['NGN']),
@@ -13722,8 +14302,8 @@ export const ListStaffNfcFinanceResponse = zod.object({
   "providerMode": zod.enum(['SANDBOX', 'DEVELOPMENT_MOCK', 'UNKNOWN']),
   "status": zod.enum(['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'RECONCILIATION_REQUIRED']),
   "grossAmountMinor": zod.number().int().min(listStaffNfcFinanceResponseItemsItemLatestPaymentOneGrossAmountMinorMin),
-  "providerFeeMinor": zod.number().int().min(listStaffNfcFinanceResponseItemsItemLatestPaymentOneProviderFeeMinorMin),
-  "settlementAmountMinor": zod.number().int().min(listStaffNfcFinanceResponseItemsItemLatestPaymentOneSettlementAmountMinorMin),
+  "providerFeeMinor": zod.number().int().min(listStaffNfcFinanceResponseItemsItemLatestPaymentOneProviderFeeMinorMin).nullable(),
+  "settlementAmountMinor": zod.number().int().min(listStaffNfcFinanceResponseItemsItemLatestPaymentOneSettlementAmountMinorMin).nullable(),
   "currency": zod.enum(['NGN']),
   "providerTransactionId": zod.string().nullish(),
   "providerReference": zod.string().optional(),
@@ -13732,7 +14312,8 @@ export const ListStaffNfcFinanceResponse = zod.object({
   "reconciliationStatus": zod.enum(['PENDING', 'RECONCILED', 'RECONCILIATION_REQUIRED', 'NOT_APPLICABLE']),
   "refundStatus": zod.enum(['NONE', 'PENDING', 'PARTIALLY_REFUNDED', 'REFUNDED', 'RECONCILIATION_REQUIRED']).optional(),
   "allocations": zod.array(zod.object({
-  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'REVERSAL', 'PLATFORM_PROVIDER_FEE']),
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'PLATFORM_PROVIDER_FEE']),
+  "entryType": zod.enum(['CREDIT', 'REVERSAL', 'EXPENSE']).optional(),
   "recipientId": zod.number().int().nullable(),
   "amountMinor": zod.number().int().min(listStaffNfcFinanceResponseItemsItemLatestPaymentOneAllocationsItemAmountMinorMin),
   "currency": zod.enum(['NGN']),
@@ -13862,8 +14443,8 @@ export const ReconcileStaffNfcPaymentResponse = zod.object({
   "providerMode": zod.enum(['SANDBOX', 'DEVELOPMENT_MOCK', 'UNKNOWN']),
   "status": zod.enum(['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'RECONCILIATION_REQUIRED']),
   "grossAmountMinor": zod.number().int().min(reconcileStaffNfcPaymentResponsePaymentGrossAmountMinorMin),
-  "providerFeeMinor": zod.number().int().min(reconcileStaffNfcPaymentResponsePaymentProviderFeeMinorMin),
-  "settlementAmountMinor": zod.number().int().min(reconcileStaffNfcPaymentResponsePaymentSettlementAmountMinorMin),
+  "providerFeeMinor": zod.number().int().min(reconcileStaffNfcPaymentResponsePaymentProviderFeeMinorMin).nullable(),
+  "settlementAmountMinor": zod.number().int().min(reconcileStaffNfcPaymentResponsePaymentSettlementAmountMinorMin).nullable(),
   "currency": zod.enum(['NGN']),
   "providerTransactionId": zod.string().nullish(),
   "providerReference": zod.string().optional(),
@@ -13872,7 +14453,8 @@ export const ReconcileStaffNfcPaymentResponse = zod.object({
   "reconciliationStatus": zod.enum(['PENDING', 'RECONCILED', 'RECONCILIATION_REQUIRED', 'NOT_APPLICABLE']),
   "refundStatus": zod.enum(['NONE', 'PENDING', 'PARTIALLY_REFUNDED', 'REFUNDED', 'RECONCILIATION_REQUIRED']).optional(),
   "allocations": zod.array(zod.object({
-  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'REVERSAL', 'PLATFORM_PROVIDER_FEE']),
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'PLATFORM_PROVIDER_FEE']),
+  "entryType": zod.enum(['CREDIT', 'REVERSAL', 'EXPENSE']).optional(),
   "recipientId": zod.number().int().nullable(),
   "amountMinor": zod.number().int().min(reconcileStaffNfcPaymentResponsePaymentAllocationsItemAmountMinorMin),
   "currency": zod.enum(['NGN']),
@@ -13918,8 +14500,8 @@ export const ReconcileStaffNfcPaymentResponse = zod.object({
   "providerMode": zod.enum(['SANDBOX', 'DEVELOPMENT_MOCK', 'UNKNOWN']),
   "status": zod.enum(['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'RECONCILIATION_REQUIRED']),
   "grossAmountMinor": zod.number().int().min(reconcileStaffNfcPaymentResponseSubscriptionLatestPaymentOneGrossAmountMinorMin),
-  "providerFeeMinor": zod.number().int().min(reconcileStaffNfcPaymentResponseSubscriptionLatestPaymentOneProviderFeeMinorMin),
-  "settlementAmountMinor": zod.number().int().min(reconcileStaffNfcPaymentResponseSubscriptionLatestPaymentOneSettlementAmountMinorMin),
+  "providerFeeMinor": zod.number().int().min(reconcileStaffNfcPaymentResponseSubscriptionLatestPaymentOneProviderFeeMinorMin).nullable(),
+  "settlementAmountMinor": zod.number().int().min(reconcileStaffNfcPaymentResponseSubscriptionLatestPaymentOneSettlementAmountMinorMin).nullable(),
   "currency": zod.enum(['NGN']),
   "providerTransactionId": zod.string().nullish(),
   "providerReference": zod.string().optional(),
@@ -13928,7 +14510,8 @@ export const ReconcileStaffNfcPaymentResponse = zod.object({
   "reconciliationStatus": zod.enum(['PENDING', 'RECONCILED', 'RECONCILIATION_REQUIRED', 'NOT_APPLICABLE']),
   "refundStatus": zod.enum(['NONE', 'PENDING', 'PARTIALLY_REFUNDED', 'REFUNDED', 'RECONCILIATION_REQUIRED']).optional(),
   "allocations": zod.array(zod.object({
-  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'REVERSAL', 'PLATFORM_PROVIDER_FEE']),
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'PLATFORM_PROVIDER_FEE']),
+  "entryType": zod.enum(['CREDIT', 'REVERSAL', 'EXPENSE']).optional(),
   "recipientId": zod.number().int().nullable(),
   "amountMinor": zod.number().int().min(reconcileStaffNfcPaymentResponseSubscriptionLatestPaymentOneAllocationsItemAmountMinorMin),
   "currency": zod.enum(['NGN']),
@@ -13938,7 +14521,8 @@ export const ReconcileStaffNfcPaymentResponse = zod.object({
   "createdAt": zod.coerce.date()
 }),
   "allocations": zod.array(zod.object({
-  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'REVERSAL', 'PLATFORM_PROVIDER_FEE']),
+  "recipientType": zod.enum(['SCHOOL', 'PLATFORM', 'PARTNER', 'PLATFORM_PROVIDER_FEE']),
+  "entryType": zod.enum(['CREDIT', 'REVERSAL', 'EXPENSE']).optional(),
   "recipientId": zod.number().int().nullable(),
   "amountMinor": zod.number().int().min(reconcileStaffNfcPaymentResponseAllocationsItemAmountMinorMin),
   "currency": zod.enum(['NGN']),
@@ -14219,6 +14803,35 @@ export const SearchTransportDriversResponseItem = zod.object({
 export const SearchTransportDriversResponse = zod.array(SearchTransportDriversResponseItem)
 
 
+/**
+ * Search existing active employees in the authorized school for route or bus accompaniment; this endpoint never creates staff records.
+ */
+
+export const searchTransportEmployeesQuerySearchMax = 100;
+
+export const searchTransportEmployeesQueryRoleDefault = `ACCOMPANIER`;
+export const searchTransportEmployeesQueryLimitDefault = 20;
+export const searchTransportEmployeesQueryLimitMax = 50;
+
+
+
+export const SearchTransportEmployeesQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).describe('The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.'),
+  "search": zod.coerce.string().min(1).max(searchTransportEmployeesQuerySearchMax).optional(),
+  "role": zod.enum(['TEACHER', 'STAFF', 'ACCOMPANIER']).default(searchTransportEmployeesQueryRoleDefault),
+  "limit": zod.coerce.number().int().min(1).max(searchTransportEmployeesQueryLimitMax).default(searchTransportEmployeesQueryLimitDefault)
+})
+
+export const SearchTransportEmployeesResponseItem = zod.object({
+  "employeeId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "employeeNo": zod.string(),
+  "employeeName": zod.string(),
+  "employeeType": zod.string()
+})
+export const SearchTransportEmployeesResponse = zod.array(SearchTransportEmployeesResponseItem)
+
+
 
 
 
@@ -14238,6 +14851,15 @@ export const listTransportRoutesResponseOneNameMax = 120;
 export const listTransportRoutesResponseOneFareMinorMin = 0;
 
 export const listTransportRoutesResponseOneStatusDefault = `ACTIVE`;
+export const listTransportRoutesResponseOneStopsItemNameMin = 2;
+export const listTransportRoutesResponseOneStopsItemNameMax = 120;
+
+
+export const listTransportRoutesResponseOneStopsItemNotesMax = 500;
+
+export const listTransportRoutesResponseOneStopsItemIsActiveDefault = true;
+export const listTransportRoutesResponseOneStopsMin = 2;
+
 export const listTransportRoutesResponseTwoStopsItemOneNameMin = 2;
 export const listTransportRoutesResponseTwoStopsItemOneNameMax = 120;
 
@@ -14254,7 +14876,14 @@ export const ListTransportRoutesResponseItem = zod.object({
   "departureTime": zod.string().time({}),
   "arrivalTime": zod.string().time({}),
   "fareMinor": zod.number().int().min(listTransportRoutesResponseOneFareMinorMin).optional().describe('NGN subunit amount assessed once against each current-term invoice.'),
-  "status": zod.enum(['ACTIVE', 'INACTIVE']).default(listTransportRoutesResponseOneStatusDefault)
+  "status": zod.enum(['ACTIVE', 'INACTIVE']).default(listTransportRoutesResponseOneStatusDefault),
+  "stops": zod.array(zod.object({
+  "name": zod.string().min(listTransportRoutesResponseOneStopsItemNameMin).max(listTransportRoutesResponseOneStopsItemNameMax),
+  "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
+  "sequence": zod.number().int().min(1),
+  "notes": zod.string().max(listTransportRoutesResponseOneStopsItemNotesMax).nullish(),
+  "isActive": zod.boolean().default(listTransportRoutesResponseOneStopsItemIsActiveDefault)
+})).min(listTransportRoutesResponseOneStopsMin)
 }).and(zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
@@ -14269,7 +14898,7 @@ export const ListTransportRoutesResponseItem = zod.object({
   "name": zod.string().min(listTransportRoutesResponseTwoStopsItemOneNameMin).max(listTransportRoutesResponseTwoStopsItemOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
   "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(listTransportRoutesResponseTwoStopsItemOneNotesMax).optional(),
+  "notes": zod.string().max(listTransportRoutesResponseTwoStopsItemOneNotesMax).nullish(),
   "isActive": zod.boolean().default(listTransportRoutesResponseTwoStopsItemOneIsActiveDefault)
 }).and(zod.object({
   "id": zod.number().int(),
@@ -14298,6 +14927,16 @@ export const createTransportRouteBodyNameMax = 120;
 export const createTransportRouteBodyFareMinorMin = 0;
 
 export const createTransportRouteBodyStatusDefault = `ACTIVE`;
+export const createTransportRouteBodyStopsItemNameMin = 2;
+export const createTransportRouteBodyStopsItemNameMax = 120;
+
+
+export const createTransportRouteBodyStopsItemNotesMax = 500;
+
+export const createTransportRouteBodyStopsItemIsActiveDefault = true;
+export const createTransportRouteBodyStopsMin = 2;
+
+
 
 export const CreateTransportRouteBody = zod.object({
   "name": zod.string().min(createTransportRouteBodyNameMin).max(createTransportRouteBodyNameMax),
@@ -14307,7 +14946,14 @@ export const CreateTransportRouteBody = zod.object({
   "departureTime": zod.string().time({}),
   "arrivalTime": zod.string().time({}),
   "fareMinor": zod.number().int().min(createTransportRouteBodyFareMinorMin).optional().describe('NGN subunit amount assessed once against each current-term invoice.'),
-  "status": zod.enum(['ACTIVE', 'INACTIVE']).default(createTransportRouteBodyStatusDefault)
+  "status": zod.enum(['ACTIVE', 'INACTIVE']).default(createTransportRouteBodyStatusDefault),
+  "stops": zod.array(zod.object({
+  "name": zod.string().min(createTransportRouteBodyStopsItemNameMin).max(createTransportRouteBodyStopsItemNameMax),
+  "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
+  "sequence": zod.number().int().min(1),
+  "notes": zod.string().max(createTransportRouteBodyStopsItemNotesMax).nullish(),
+  "isActive": zod.boolean().default(createTransportRouteBodyStopsItemIsActiveDefault)
+})).min(createTransportRouteBodyStopsMin)
 })
 
 export const createTransportRouteResponseOneNameMin = 2;
@@ -14319,6 +14965,15 @@ export const createTransportRouteResponseOneNameMax = 120;
 export const createTransportRouteResponseOneFareMinorMin = 0;
 
 export const createTransportRouteResponseOneStatusDefault = `ACTIVE`;
+export const createTransportRouteResponseOneStopsItemNameMin = 2;
+export const createTransportRouteResponseOneStopsItemNameMax = 120;
+
+
+export const createTransportRouteResponseOneStopsItemNotesMax = 500;
+
+export const createTransportRouteResponseOneStopsItemIsActiveDefault = true;
+export const createTransportRouteResponseOneStopsMin = 2;
+
 export const createTransportRouteResponseTwoStopsItemOneNameMin = 2;
 export const createTransportRouteResponseTwoStopsItemOneNameMax = 120;
 
@@ -14335,7 +14990,14 @@ export const CreateTransportRouteResponse = zod.object({
   "departureTime": zod.string().time({}),
   "arrivalTime": zod.string().time({}),
   "fareMinor": zod.number().int().min(createTransportRouteResponseOneFareMinorMin).optional().describe('NGN subunit amount assessed once against each current-term invoice.'),
-  "status": zod.enum(['ACTIVE', 'INACTIVE']).default(createTransportRouteResponseOneStatusDefault)
+  "status": zod.enum(['ACTIVE', 'INACTIVE']).default(createTransportRouteResponseOneStatusDefault),
+  "stops": zod.array(zod.object({
+  "name": zod.string().min(createTransportRouteResponseOneStopsItemNameMin).max(createTransportRouteResponseOneStopsItemNameMax),
+  "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
+  "sequence": zod.number().int().min(1),
+  "notes": zod.string().max(createTransportRouteResponseOneStopsItemNotesMax).nullish(),
+  "isActive": zod.boolean().default(createTransportRouteResponseOneStopsItemIsActiveDefault)
+})).min(createTransportRouteResponseOneStopsMin)
 }).and(zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
@@ -14350,7 +15012,7 @@ export const CreateTransportRouteResponse = zod.object({
   "name": zod.string().min(createTransportRouteResponseTwoStopsItemOneNameMin).max(createTransportRouteResponseTwoStopsItemOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
   "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(createTransportRouteResponseTwoStopsItemOneNotesMax).optional(),
+  "notes": zod.string().max(createTransportRouteResponseTwoStopsItemOneNotesMax).nullish(),
   "isActive": zod.boolean().default(createTransportRouteResponseTwoStopsItemOneIsActiveDefault)
 }).and(zod.object({
   "id": zod.number().int(),
@@ -14406,6 +15068,15 @@ export const updateTransportRouteResponseOneNameMax = 120;
 export const updateTransportRouteResponseOneFareMinorMin = 0;
 
 export const updateTransportRouteResponseOneStatusDefault = `ACTIVE`;
+export const updateTransportRouteResponseOneStopsItemNameMin = 2;
+export const updateTransportRouteResponseOneStopsItemNameMax = 120;
+
+
+export const updateTransportRouteResponseOneStopsItemNotesMax = 500;
+
+export const updateTransportRouteResponseOneStopsItemIsActiveDefault = true;
+export const updateTransportRouteResponseOneStopsMin = 2;
+
 export const updateTransportRouteResponseTwoStopsItemOneNameMin = 2;
 export const updateTransportRouteResponseTwoStopsItemOneNameMax = 120;
 
@@ -14422,7 +15093,14 @@ export const UpdateTransportRouteResponse = zod.object({
   "departureTime": zod.string().time({}),
   "arrivalTime": zod.string().time({}),
   "fareMinor": zod.number().int().min(updateTransportRouteResponseOneFareMinorMin).optional().describe('NGN subunit amount assessed once against each current-term invoice.'),
-  "status": zod.enum(['ACTIVE', 'INACTIVE']).default(updateTransportRouteResponseOneStatusDefault)
+  "status": zod.enum(['ACTIVE', 'INACTIVE']).default(updateTransportRouteResponseOneStatusDefault),
+  "stops": zod.array(zod.object({
+  "name": zod.string().min(updateTransportRouteResponseOneStopsItemNameMin).max(updateTransportRouteResponseOneStopsItemNameMax),
+  "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
+  "sequence": zod.number().int().min(1),
+  "notes": zod.string().max(updateTransportRouteResponseOneStopsItemNotesMax).nullish(),
+  "isActive": zod.boolean().default(updateTransportRouteResponseOneStopsItemIsActiveDefault)
+})).min(updateTransportRouteResponseOneStopsMin)
 }).and(zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
@@ -14437,7 +15115,7 @@ export const UpdateTransportRouteResponse = zod.object({
   "name": zod.string().min(updateTransportRouteResponseTwoStopsItemOneNameMin).max(updateTransportRouteResponseTwoStopsItemOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
   "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(updateTransportRouteResponseTwoStopsItemOneNotesMax).optional(),
+  "notes": zod.string().max(updateTransportRouteResponseTwoStopsItemOneNotesMax).nullish(),
   "isActive": zod.boolean().default(updateTransportRouteResponseTwoStopsItemOneIsActiveDefault)
 }).and(zod.object({
   "id": zod.number().int(),
@@ -14475,7 +15153,7 @@ export const AddTransportStopBody = zod.object({
   "name": zod.string().min(addTransportStopBodyNameMin).max(addTransportStopBodyNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
   "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(addTransportStopBodyNotesMax).optional(),
+  "notes": zod.string().max(addTransportStopBodyNotesMax).nullish(),
   "isActive": zod.boolean().default(addTransportStopBodyIsActiveDefault)
 })
 
@@ -14491,7 +15169,7 @@ export const AddTransportStopResponse = zod.object({
   "name": zod.string().min(addTransportStopResponseOneNameMin).max(addTransportStopResponseOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
   "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(addTransportStopResponseOneNotesMax).optional(),
+  "notes": zod.string().max(addTransportStopResponseOneNotesMax).nullish(),
   "isActive": zod.boolean().default(addTransportStopResponseOneIsActiveDefault)
 }).and(zod.object({
   "id": zod.number().int(),
@@ -14528,7 +15206,7 @@ export const UpdateTransportStopBody = zod.object({
   "name": zod.string().min(updateTransportStopBodyNameMin).max(updateTransportStopBodyNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
   "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(updateTransportStopBodyNotesMax).optional(),
+  "notes": zod.string().max(updateTransportStopBodyNotesMax).nullish(),
   "isActive": zod.boolean().default(updateTransportStopBodyIsActiveDefault)
 })
 
@@ -14544,13 +15222,181 @@ export const UpdateTransportStopResponse = zod.object({
   "name": zod.string().min(updateTransportStopResponseOneNameMin).max(updateTransportStopResponseOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
   "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(updateTransportStopResponseOneNotesMax).optional(),
+  "notes": zod.string().max(updateTransportStopResponseOneNotesMax).nullish(),
   "isActive": zod.boolean().default(updateTransportStopResponseOneIsActiveDefault)
 }).and(zod.object({
   "id": zod.number().int(),
   "routeId": zod.number().int(),
   "schoolId": zod.number().int()
 }))
+
+
+
+
+
+export const ListTransportRouteStaffParams = zod.object({
+  "routeId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ListTransportRouteStaffQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).describe('The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.')
+})
+
+
+export const listTransportRouteStaffResponseOneRoleDefault = `ACCOMPANIER`;
+
+export const ListTransportRouteStaffResponseItem = zod.object({
+  "employeeId": zod.number().int().min(1),
+  "role": zod.enum(['TEACHER', 'STAFF', 'ACCOMPANIER']).default(listTransportRouteStaffResponseOneRoleDefault)
+}).and(zod.object({
+  "routeStaffId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "routeId": zod.number().int(),
+  "employeeNo": zod.string(),
+  "employeeName": zod.string(),
+  "employeeType": zod.string(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+export const ListTransportRouteStaffResponse = zod.array(ListTransportRouteStaffResponseItem)
+
+
+
+
+
+export const AssignTransportRouteStaffParams = zod.object({
+  "routeId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const AssignTransportRouteStaffQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).describe('The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.')
+})
+
+
+export const assignTransportRouteStaffBodyRoleDefault = `ACCOMPANIER`;
+
+export const AssignTransportRouteStaffBody = zod.object({
+  "employeeId": zod.number().int().min(1),
+  "role": zod.enum(['TEACHER', 'STAFF', 'ACCOMPANIER']).default(assignTransportRouteStaffBodyRoleDefault)
+})
+
+
+export const assignTransportRouteStaffResponseOneRoleDefault = `ACCOMPANIER`;
+
+export const AssignTransportRouteStaffResponse = zod.object({
+  "employeeId": zod.number().int().min(1),
+  "role": zod.enum(['TEACHER', 'STAFF', 'ACCOMPANIER']).default(assignTransportRouteStaffResponseOneRoleDefault)
+}).and(zod.object({
+  "routeStaffId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "routeId": zod.number().int(),
+  "employeeNo": zod.string(),
+  "employeeName": zod.string(),
+  "employeeType": zod.string(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+
+
+
+
+
+
+export const UpdateTransportRouteStaffParams = zod.object({
+  "routeId": zod.coerce.number().int().min(1),
+  "routeStaffId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const UpdateTransportRouteStaffQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).describe('The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.')
+})
+
+export const updateTransportRouteStaffBodyOneReasonMin = 3;
+export const updateTransportRouteStaffBodyOneReasonMax = 500;
+
+export const updateTransportRouteStaffBodyTwoReasonMin = 3;
+export const updateTransportRouteStaffBodyTwoReasonMax = 500;
+
+export const updateTransportRouteStaffBodyThreeReasonMin = 3;
+export const updateTransportRouteStaffBodyThreeReasonMax = 500;
+
+
+
+export const UpdateTransportRouteStaffBody = zod.union([zod.object({
+  "isActive": zod.boolean(),
+  "role": zod.enum(['TEACHER', 'STAFF', 'ACCOMPANIER']).optional(),
+  "reason": zod.string().min(updateTransportRouteStaffBodyOneReasonMin).max(updateTransportRouteStaffBodyOneReasonMax).optional()
+}),zod.object({
+  "isActive": zod.boolean().optional(),
+  "role": zod.enum(['TEACHER', 'STAFF', 'ACCOMPANIER']),
+  "reason": zod.string().min(updateTransportRouteStaffBodyTwoReasonMin).max(updateTransportRouteStaffBodyTwoReasonMax).optional()
+})]).and(zod.object({
+  "isActive": zod.boolean().optional(),
+  "role": zod.enum(['TEACHER', 'STAFF', 'ACCOMPANIER']).optional(),
+  "reason": zod.string().min(updateTransportRouteStaffBodyThreeReasonMin).max(updateTransportRouteStaffBodyThreeReasonMax).optional()
+}))
+
+
+export const updateTransportRouteStaffResponseOneRoleDefault = `ACCOMPANIER`;
+
+export const UpdateTransportRouteStaffResponse = zod.object({
+  "employeeId": zod.number().int().min(1),
+  "role": zod.enum(['TEACHER', 'STAFF', 'ACCOMPANIER']).default(updateTransportRouteStaffResponseOneRoleDefault)
+}).and(zod.object({
+  "routeStaffId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "routeId": zod.number().int(),
+  "employeeNo": zod.string(),
+  "employeeName": zod.string(),
+  "employeeType": zod.string(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+
+
+
+
+
+export const GetTransportRouteHistoryParams = zod.object({
+  "routeId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GetTransportRouteHistoryQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).describe('The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.')
+})
+
+export const GetTransportRouteHistoryResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "assignmentId": zod.number().int().nullable(),
+  "routeStaffId": zod.number().int().nullish(),
+  "studentId": zod.number().int().nullable(),
+  "actorUserId": zod.number().int().nullish(),
+  "actorName": zod.string(),
+  "actorRole": zod.string(),
+  "eventType": zod.string(),
+  "effectiveDate": zod.coerce.date(),
+  "reason": zod.string(),
+  "before": zod.record(zod.string(), zod.unknown()).nullish(),
+  "after": zod.record(zod.string(), zod.unknown()).nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const GetTransportRouteHistoryResponse = zod.array(GetTransportRouteHistoryResponseItem)
 
 
 /**
@@ -14570,24 +15416,6 @@ export const SearchTransportStudentsQueryParams = zod.object({
   "limit": zod.coerce.number().int().min(1).max(searchTransportStudentsQueryLimitMax).default(searchTransportStudentsQueryLimitDefault)
 })
 
-export const searchTransportStudentsResponseActiveAssignmentOneAssignmentOnePickupOneNameMin = 2;
-export const searchTransportStudentsResponseActiveAssignmentOneAssignmentOnePickupOneNameMax = 120;
-
-
-export const searchTransportStudentsResponseActiveAssignmentOneAssignmentOnePickupOneNotesMax = 500;
-
-export const searchTransportStudentsResponseActiveAssignmentOneAssignmentOnePickupOneIsActiveDefault = true;
-export const searchTransportStudentsResponseActiveAssignmentOneAssignmentOneDropoffOneNameMin = 2;
-export const searchTransportStudentsResponseActiveAssignmentOneAssignmentOneDropoffOneNameMax = 120;
-
-
-export const searchTransportStudentsResponseActiveAssignmentOneAssignmentOneDropoffOneNotesMax = 500;
-
-export const searchTransportStudentsResponseActiveAssignmentOneAssignmentOneDropoffOneIsActiveDefault = true;
-export const searchTransportStudentsResponseActiveAssignmentOneAssignmentOneFeeMinorMin = 0;
-
-
-
 export const SearchTransportStudentsResponseItem = zod.object({
   "studentId": zod.number().int(),
   "schoolId": zod.number().int(),
@@ -14602,102 +15430,13 @@ export const SearchTransportStudentsResponseItem = zod.object({
   "isPrimaryGuardian": zod.boolean()
 })),
   "activeAssignment": zod.object({
-  "schoolId": zod.number().int(),
-  "studentId": zod.number().int(),
-  "transportStatus": zod.enum(['ACTIVE', 'SUSPENDED', 'DEACTIVATED', 'NOT_ASSIGNED']),
-  "assignment": zod.object({
   "id": zod.number().int(),
-  "schoolId": zod.number().int(),
-  "studentId": zod.number().int(),
-  "studentName": zod.string(),
-  "admissionNo": zod.string(),
-  "className": zod.string(),
-  "section": zod.string(),
-  "busId": zod.number().int(),
-  "busName": zod.string(),
-  "registrationNumber": zod.string(),
+  "status": zod.enum(['ACTIVE', 'SUSPENDED']),
   "routeId": zod.number().int(),
   "routeName": zod.string(),
-  "driverName": zod.string(),
-  "pickup": zod.object({
-  "name": zod.string().min(searchTransportStudentsResponseActiveAssignmentOneAssignmentOnePickupOneNameMin).max(searchTransportStudentsResponseActiveAssignmentOneAssignmentOnePickupOneNameMax),
-  "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
-  "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(searchTransportStudentsResponseActiveAssignmentOneAssignmentOnePickupOneNotesMax).optional(),
-  "isActive": zod.boolean().default(searchTransportStudentsResponseActiveAssignmentOneAssignmentOnePickupOneIsActiveDefault)
-}).and(zod.object({
-  "id": zod.number().int(),
-  "routeId": zod.number().int(),
-  "schoolId": zod.number().int()
-})),
-  "dropoff": zod.object({
-  "name": zod.string().min(searchTransportStudentsResponseActiveAssignmentOneAssignmentOneDropoffOneNameMin).max(searchTransportStudentsResponseActiveAssignmentOneAssignmentOneDropoffOneNameMax),
-  "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
-  "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(searchTransportStudentsResponseActiveAssignmentOneAssignmentOneDropoffOneNotesMax).optional(),
-  "isActive": zod.boolean().default(searchTransportStudentsResponseActiveAssignmentOneAssignmentOneDropoffOneIsActiveDefault)
-}).and(zod.object({
-  "id": zod.number().int(),
-  "routeId": zod.number().int(),
-  "schoolId": zod.number().int()
-})),
-  "schedule": zod.object({
-  "weekdays": zod.array(zod.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'])),
-  "departureTime": zod.string(),
-  "arrivalTime": zod.string()
-}),
-  "status": zod.enum(['ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
-  "effectiveDate": zod.coerce.date(),
-  "reason": zod.string(),
-  "feeMinor": zod.number().int().min(searchTransportStudentsResponseActiveAssignmentOneAssignmentOneFeeMinorMin).optional(),
-  "guardians": zod.array(zod.object({
-  "name": zod.string(),
-  "phone": zod.string(),
-  "relationshipType": zod.string(),
-  "isPrimaryGuardian": zod.boolean()
-})),
-  "invoices": zod.array(zod.object({
-  "invoiceId": zod.number().int(),
-  "invoiceNumber": zod.string(),
-  "academicSessionId": zod.number().int(),
-  "academicTermId": zod.number().int(),
-  "currency": zod.enum(['NGN']),
-  "totalMinor": zod.number().int(),
-  "paidMinor": zod.number().int(),
-  "outstandingMinor": zod.number().int(),
-  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE']),
-  "dueDate": zod.coerce.date()
-})),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
-}).nullish(),
-  "invoices": zod.array(zod.object({
-  "invoiceId": zod.number().int(),
-  "invoiceNumber": zod.string(),
-  "academicSessionId": zod.number().int(),
-  "academicTermId": zod.number().int(),
-  "currency": zod.enum(['NGN']),
-  "totalMinor": zod.number().int(),
-  "paidMinor": zod.number().int(),
-  "outstandingMinor": zod.number().int(),
-  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE']),
-  "dueDate": zod.coerce.date()
-})),
-  "history": zod.array(zod.object({
-  "id": zod.number().int(),
-  "schoolId": zod.number().int(),
-  "assignmentId": zod.number().int(),
-  "studentId": zod.number().int(),
-  "actorUserId": zod.number().int().nullish(),
-  "actorName": zod.string(),
-  "actorRole": zod.string(),
-  "eventType": zod.string(),
-  "effectiveDate": zod.coerce.date(),
-  "reason": zod.string(),
-  "before": zod.record(zod.string(), zod.unknown()).nullish(),
-  "after": zod.record(zod.string(), zod.unknown()).nullish(),
-  "createdAt": zod.coerce.date()
-}))
+  "busId": zod.number().int(),
+  "busName": zod.string(),
+  "effectiveDate": zod.coerce.date()
 }).nullish()
 })
 export const SearchTransportStudentsResponse = zod.array(SearchTransportStudentsResponseItem)
@@ -14729,6 +15468,10 @@ export const listTransportAssignmentsResponseDropoffOneNotesMax = 500;
 export const listTransportAssignmentsResponseDropoffOneIsActiveDefault = true;
 export const listTransportAssignmentsResponseFeeMinorMin = 0;
 
+export const listTransportAssignmentsResponseFeePlanAmountMinorMin = 0;
+
+export const listTransportAssignmentsResponseFeePlansItemFeePlanAmountMinorMin = 0;
+
 
 
 export const ListTransportAssignmentsResponseItem = zod.object({
@@ -14740,16 +15483,18 @@ export const ListTransportAssignmentsResponseItem = zod.object({
   "className": zod.string(),
   "section": zod.string(),
   "busId": zod.number().int(),
+  "busCapacity": zod.number().int(),
   "busName": zod.string(),
   "registrationNumber": zod.string(),
   "routeId": zod.number().int(),
   "routeName": zod.string(),
+  "driverEmployeeId": zod.number().int(),
   "driverName": zod.string(),
   "pickup": zod.object({
   "name": zod.string().min(listTransportAssignmentsResponsePickupOneNameMin).max(listTransportAssignmentsResponsePickupOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
   "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(listTransportAssignmentsResponsePickupOneNotesMax).optional(),
+  "notes": zod.string().max(listTransportAssignmentsResponsePickupOneNotesMax).nullish(),
   "isActive": zod.boolean().default(listTransportAssignmentsResponsePickupOneIsActiveDefault)
 }).and(zod.object({
   "id": zod.number().int(),
@@ -14760,7 +15505,7 @@ export const ListTransportAssignmentsResponseItem = zod.object({
   "name": zod.string().min(listTransportAssignmentsResponseDropoffOneNameMin).max(listTransportAssignmentsResponseDropoffOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
   "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(listTransportAssignmentsResponseDropoffOneNotesMax).optional(),
+  "notes": zod.string().max(listTransportAssignmentsResponseDropoffOneNotesMax).nullish(),
   "isActive": zod.boolean().default(listTransportAssignmentsResponseDropoffOneIsActiveDefault)
 }).and(zod.object({
   "id": zod.number().int(),
@@ -14774,8 +15519,29 @@ export const ListTransportAssignmentsResponseItem = zod.object({
 }),
   "status": zod.enum(['ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
   "effectiveDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullable(),
   "reason": zod.string(),
-  "feeMinor": zod.number().int().min(listTransportAssignmentsResponseFeeMinorMin).optional(),
+  "feeMinor": zod.number().int().min(listTransportAssignmentsResponseFeeMinorMin).describe('Current route fare default; individual term plans may override it.'),
+  "feePlanAmountMinor": zod.number().int().min(listTransportAssignmentsResponseFeePlanAmountMinorMin),
+  "academicSessionId": zod.number().int().nullable(),
+  "academicTermId": zod.number().int().nullable(),
+  "dueDate": zod.coerce.date().nullable(),
+  "feeCategoryId": zod.number().int().nullable(),
+  "currency": zod.enum(['NGN']).optional(),
+  "feePlans": zod.array(zod.object({
+  "feePlanId": zod.number().int(),
+  "academicSessionId": zod.number().int(),
+  "sessionName": zod.string(),
+  "academicTermId": zod.number().int(),
+  "termName": zod.string(),
+  "feePlanAmountMinor": zod.number().int().min(listTransportAssignmentsResponseFeePlansItemFeePlanAmountMinorMin),
+  "currency": zod.enum(['NGN']),
+  "dueDate": zod.coerce.date(),
+  "status": zod.enum(['PLANNED', 'INVOICED', 'CANCELLED']),
+  "feeCategoryId": zod.number().int().nullable(),
+  "feeCategoryName": zod.string().nullable(),
+  "invoiceId": zod.number().int().nullable()
+})),
   "guardians": zod.array(zod.object({
   "name": zod.string(),
   "phone": zod.string(),
@@ -14786,13 +15552,19 @@ export const ListTransportAssignmentsResponseItem = zod.object({
   "invoiceId": zod.number().int(),
   "invoiceNumber": zod.string(),
   "academicSessionId": zod.number().int(),
+  "sessionName": zod.string().optional(),
   "academicTermId": zod.number().int(),
+  "termName": zod.string().optional(),
   "currency": zod.enum(['NGN']),
   "totalMinor": zod.number().int(),
   "paidMinor": zod.number().int(),
   "outstandingMinor": zod.number().int(),
-  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE']),
-  "dueDate": zod.coerce.date()
+  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE', 'CANCELLED']),
+  "dueDate": zod.coerce.date(),
+  "receipts": zod.array(zod.object({
+  "id": zod.number().int(),
+  "receiptNumber": zod.string()
+})).optional()
 })),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -14816,13 +15588,24 @@ export const createTransportAssignmentBodyReasonMax = 500;
 
 
 
+export const createTransportAssignmentBodyFeePlanAmountMinorMin = 0;
+export const createTransportAssignmentBodyFeePlanAmountMinorMax = 1000000000;
+
+
+
+
 export const CreateTransportAssignmentBody = zod.object({
   "studentId": zod.number().int().min(1),
   "routeId": zod.number().int().min(1),
   "pickupStopId": zod.number().int().min(1),
   "dropoffStopId": zod.number().int().min(1),
   "effectiveDate": zod.coerce.date(),
-  "reason": zod.string().min(createTransportAssignmentBodyReasonMin).max(createTransportAssignmentBodyReasonMax)
+  "reason": zod.string().min(createTransportAssignmentBodyReasonMin).max(createTransportAssignmentBodyReasonMax),
+  "academicSessionId": zod.number().int().min(1).optional().describe('Must be provided with academicTermId; omitted together, the active school term is used when available.'),
+  "academicTermId": zod.number().int().min(1).optional(),
+  "feePlanAmountMinor": zod.number().int().min(createTransportAssignmentBodyFeePlanAmountMinorMin).max(createTransportAssignmentBodyFeePlanAmountMinorMax).optional().describe('NGN subunits; defaults to the selected route\'s fareMinor.'),
+  "dueDate": zod.coerce.date().optional().describe('Defaults to the selected academic term end date.'),
+  "feeCategoryId": zod.number().int().min(1).optional().describe('Optional active same-school Finance category; omitted positive plans use the School Transport category.')
 })
 
 export const createTransportAssignmentResponsePickupOneNameMin = 2;
@@ -14841,6 +15624,10 @@ export const createTransportAssignmentResponseDropoffOneNotesMax = 500;
 export const createTransportAssignmentResponseDropoffOneIsActiveDefault = true;
 export const createTransportAssignmentResponseFeeMinorMin = 0;
 
+export const createTransportAssignmentResponseFeePlanAmountMinorMin = 0;
+
+export const createTransportAssignmentResponseFeePlansItemFeePlanAmountMinorMin = 0;
+
 
 
 export const CreateTransportAssignmentResponse = zod.object({
@@ -14852,16 +15639,18 @@ export const CreateTransportAssignmentResponse = zod.object({
   "className": zod.string(),
   "section": zod.string(),
   "busId": zod.number().int(),
+  "busCapacity": zod.number().int(),
   "busName": zod.string(),
   "registrationNumber": zod.string(),
   "routeId": zod.number().int(),
   "routeName": zod.string(),
+  "driverEmployeeId": zod.number().int(),
   "driverName": zod.string(),
   "pickup": zod.object({
   "name": zod.string().min(createTransportAssignmentResponsePickupOneNameMin).max(createTransportAssignmentResponsePickupOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
   "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(createTransportAssignmentResponsePickupOneNotesMax).optional(),
+  "notes": zod.string().max(createTransportAssignmentResponsePickupOneNotesMax).nullish(),
   "isActive": zod.boolean().default(createTransportAssignmentResponsePickupOneIsActiveDefault)
 }).and(zod.object({
   "id": zod.number().int(),
@@ -14872,7 +15661,7 @@ export const CreateTransportAssignmentResponse = zod.object({
   "name": zod.string().min(createTransportAssignmentResponseDropoffOneNameMin).max(createTransportAssignmentResponseDropoffOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
   "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(createTransportAssignmentResponseDropoffOneNotesMax).optional(),
+  "notes": zod.string().max(createTransportAssignmentResponseDropoffOneNotesMax).nullish(),
   "isActive": zod.boolean().default(createTransportAssignmentResponseDropoffOneIsActiveDefault)
 }).and(zod.object({
   "id": zod.number().int(),
@@ -14886,8 +15675,29 @@ export const CreateTransportAssignmentResponse = zod.object({
 }),
   "status": zod.enum(['ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
   "effectiveDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullable(),
   "reason": zod.string(),
-  "feeMinor": zod.number().int().min(createTransportAssignmentResponseFeeMinorMin).optional(),
+  "feeMinor": zod.number().int().min(createTransportAssignmentResponseFeeMinorMin).describe('Current route fare default; individual term plans may override it.'),
+  "feePlanAmountMinor": zod.number().int().min(createTransportAssignmentResponseFeePlanAmountMinorMin),
+  "academicSessionId": zod.number().int().nullable(),
+  "academicTermId": zod.number().int().nullable(),
+  "dueDate": zod.coerce.date().nullable(),
+  "feeCategoryId": zod.number().int().nullable(),
+  "currency": zod.enum(['NGN']).optional(),
+  "feePlans": zod.array(zod.object({
+  "feePlanId": zod.number().int(),
+  "academicSessionId": zod.number().int(),
+  "sessionName": zod.string(),
+  "academicTermId": zod.number().int(),
+  "termName": zod.string(),
+  "feePlanAmountMinor": zod.number().int().min(createTransportAssignmentResponseFeePlansItemFeePlanAmountMinorMin),
+  "currency": zod.enum(['NGN']),
+  "dueDate": zod.coerce.date(),
+  "status": zod.enum(['PLANNED', 'INVOICED', 'CANCELLED']),
+  "feeCategoryId": zod.number().int().nullable(),
+  "feeCategoryName": zod.string().nullable(),
+  "invoiceId": zod.number().int().nullable()
+})),
   "guardians": zod.array(zod.object({
   "name": zod.string(),
   "phone": zod.string(),
@@ -14898,13 +15708,152 @@ export const CreateTransportAssignmentResponse = zod.object({
   "invoiceId": zod.number().int(),
   "invoiceNumber": zod.string(),
   "academicSessionId": zod.number().int(),
+  "sessionName": zod.string().optional(),
   "academicTermId": zod.number().int(),
+  "termName": zod.string().optional(),
   "currency": zod.enum(['NGN']),
   "totalMinor": zod.number().int(),
   "paidMinor": zod.number().int(),
   "outstandingMinor": zod.number().int(),
-  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE']),
-  "dueDate": zod.coerce.date()
+  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE', 'CANCELLED']),
+  "dueDate": zod.coerce.date(),
+  "receipts": zod.array(zod.object({
+  "id": zod.number().int(),
+  "receiptNumber": zod.string()
+})).optional()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+
+
+
+export const GetTransportAssignmentParams = zod.object({
+  "assignmentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GetTransportAssignmentQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).describe('The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.')
+})
+
+export const getTransportAssignmentResponsePickupOneNameMin = 2;
+export const getTransportAssignmentResponsePickupOneNameMax = 120;
+
+
+export const getTransportAssignmentResponsePickupOneNotesMax = 500;
+
+export const getTransportAssignmentResponsePickupOneIsActiveDefault = true;
+export const getTransportAssignmentResponseDropoffOneNameMin = 2;
+export const getTransportAssignmentResponseDropoffOneNameMax = 120;
+
+
+export const getTransportAssignmentResponseDropoffOneNotesMax = 500;
+
+export const getTransportAssignmentResponseDropoffOneIsActiveDefault = true;
+export const getTransportAssignmentResponseFeeMinorMin = 0;
+
+export const getTransportAssignmentResponseFeePlanAmountMinorMin = 0;
+
+export const getTransportAssignmentResponseFeePlansItemFeePlanAmountMinorMin = 0;
+
+
+
+export const GetTransportAssignmentResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "busId": zod.number().int(),
+  "busCapacity": zod.number().int(),
+  "busName": zod.string(),
+  "registrationNumber": zod.string(),
+  "routeId": zod.number().int(),
+  "routeName": zod.string(),
+  "driverEmployeeId": zod.number().int(),
+  "driverName": zod.string(),
+  "pickup": zod.object({
+  "name": zod.string().min(getTransportAssignmentResponsePickupOneNameMin).max(getTransportAssignmentResponsePickupOneNameMax),
+  "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
+  "sequence": zod.number().int().min(1),
+  "notes": zod.string().max(getTransportAssignmentResponsePickupOneNotesMax).nullish(),
+  "isActive": zod.boolean().default(getTransportAssignmentResponsePickupOneIsActiveDefault)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "routeId": zod.number().int(),
+  "schoolId": zod.number().int()
+})),
+  "dropoff": zod.object({
+  "name": zod.string().min(getTransportAssignmentResponseDropoffOneNameMin).max(getTransportAssignmentResponseDropoffOneNameMax),
+  "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
+  "sequence": zod.number().int().min(1),
+  "notes": zod.string().max(getTransportAssignmentResponseDropoffOneNotesMax).nullish(),
+  "isActive": zod.boolean().default(getTransportAssignmentResponseDropoffOneIsActiveDefault)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "routeId": zod.number().int(),
+  "schoolId": zod.number().int()
+})),
+  "schedule": zod.object({
+  "weekdays": zod.array(zod.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'])),
+  "departureTime": zod.string(),
+  "arrivalTime": zod.string()
+}),
+  "status": zod.enum(['ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
+  "effectiveDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullable(),
+  "reason": zod.string(),
+  "feeMinor": zod.number().int().min(getTransportAssignmentResponseFeeMinorMin).describe('Current route fare default; individual term plans may override it.'),
+  "feePlanAmountMinor": zod.number().int().min(getTransportAssignmentResponseFeePlanAmountMinorMin),
+  "academicSessionId": zod.number().int().nullable(),
+  "academicTermId": zod.number().int().nullable(),
+  "dueDate": zod.coerce.date().nullable(),
+  "feeCategoryId": zod.number().int().nullable(),
+  "currency": zod.enum(['NGN']).optional(),
+  "feePlans": zod.array(zod.object({
+  "feePlanId": zod.number().int(),
+  "academicSessionId": zod.number().int(),
+  "sessionName": zod.string(),
+  "academicTermId": zod.number().int(),
+  "termName": zod.string(),
+  "feePlanAmountMinor": zod.number().int().min(getTransportAssignmentResponseFeePlansItemFeePlanAmountMinorMin),
+  "currency": zod.enum(['NGN']),
+  "dueDate": zod.coerce.date(),
+  "status": zod.enum(['PLANNED', 'INVOICED', 'CANCELLED']),
+  "feeCategoryId": zod.number().int().nullable(),
+  "feeCategoryName": zod.string().nullable(),
+  "invoiceId": zod.number().int().nullable()
+})),
+  "guardians": zod.array(zod.object({
+  "name": zod.string(),
+  "phone": zod.string(),
+  "relationshipType": zod.string(),
+  "isPrimaryGuardian": zod.boolean()
+})),
+  "invoices": zod.array(zod.object({
+  "invoiceId": zod.number().int(),
+  "invoiceNumber": zod.string(),
+  "academicSessionId": zod.number().int(),
+  "sessionName": zod.string().optional(),
+  "academicTermId": zod.number().int(),
+  "termName": zod.string().optional(),
+  "currency": zod.enum(['NGN']),
+  "totalMinor": zod.number().int(),
+  "paidMinor": zod.number().int(),
+  "outstandingMinor": zod.number().int(),
+  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE', 'CANCELLED']),
+  "dueDate": zod.coerce.date(),
+  "receipts": zod.array(zod.object({
+  "id": zod.number().int(),
+  "receiptNumber": zod.string()
+})).optional()
 })),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -14962,6 +15911,10 @@ export const updateTransportAssignmentResponseDropoffOneNotesMax = 500;
 export const updateTransportAssignmentResponseDropoffOneIsActiveDefault = true;
 export const updateTransportAssignmentResponseFeeMinorMin = 0;
 
+export const updateTransportAssignmentResponseFeePlanAmountMinorMin = 0;
+
+export const updateTransportAssignmentResponseFeePlansItemFeePlanAmountMinorMin = 0;
+
 
 
 export const UpdateTransportAssignmentResponse = zod.object({
@@ -14973,16 +15926,18 @@ export const UpdateTransportAssignmentResponse = zod.object({
   "className": zod.string(),
   "section": zod.string(),
   "busId": zod.number().int(),
+  "busCapacity": zod.number().int(),
   "busName": zod.string(),
   "registrationNumber": zod.string(),
   "routeId": zod.number().int(),
   "routeName": zod.string(),
+  "driverEmployeeId": zod.number().int(),
   "driverName": zod.string(),
   "pickup": zod.object({
   "name": zod.string().min(updateTransportAssignmentResponsePickupOneNameMin).max(updateTransportAssignmentResponsePickupOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
   "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(updateTransportAssignmentResponsePickupOneNotesMax).optional(),
+  "notes": zod.string().max(updateTransportAssignmentResponsePickupOneNotesMax).nullish(),
   "isActive": zod.boolean().default(updateTransportAssignmentResponsePickupOneIsActiveDefault)
 }).and(zod.object({
   "id": zod.number().int(),
@@ -14993,7 +15948,7 @@ export const UpdateTransportAssignmentResponse = zod.object({
   "name": zod.string().min(updateTransportAssignmentResponseDropoffOneNameMin).max(updateTransportAssignmentResponseDropoffOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
   "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(updateTransportAssignmentResponseDropoffOneNotesMax).optional(),
+  "notes": zod.string().max(updateTransportAssignmentResponseDropoffOneNotesMax).nullish(),
   "isActive": zod.boolean().default(updateTransportAssignmentResponseDropoffOneIsActiveDefault)
 }).and(zod.object({
   "id": zod.number().int(),
@@ -15007,8 +15962,29 @@ export const UpdateTransportAssignmentResponse = zod.object({
 }),
   "status": zod.enum(['ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
   "effectiveDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullable(),
   "reason": zod.string(),
-  "feeMinor": zod.number().int().min(updateTransportAssignmentResponseFeeMinorMin).optional(),
+  "feeMinor": zod.number().int().min(updateTransportAssignmentResponseFeeMinorMin).describe('Current route fare default; individual term plans may override it.'),
+  "feePlanAmountMinor": zod.number().int().min(updateTransportAssignmentResponseFeePlanAmountMinorMin),
+  "academicSessionId": zod.number().int().nullable(),
+  "academicTermId": zod.number().int().nullable(),
+  "dueDate": zod.coerce.date().nullable(),
+  "feeCategoryId": zod.number().int().nullable(),
+  "currency": zod.enum(['NGN']).optional(),
+  "feePlans": zod.array(zod.object({
+  "feePlanId": zod.number().int(),
+  "academicSessionId": zod.number().int(),
+  "sessionName": zod.string(),
+  "academicTermId": zod.number().int(),
+  "termName": zod.string(),
+  "feePlanAmountMinor": zod.number().int().min(updateTransportAssignmentResponseFeePlansItemFeePlanAmountMinorMin),
+  "currency": zod.enum(['NGN']),
+  "dueDate": zod.coerce.date(),
+  "status": zod.enum(['PLANNED', 'INVOICED', 'CANCELLED']),
+  "feeCategoryId": zod.number().int().nullable(),
+  "feeCategoryName": zod.string().nullable(),
+  "invoiceId": zod.number().int().nullable()
+})),
   "guardians": zod.array(zod.object({
   "name": zod.string(),
   "phone": zod.string(),
@@ -15019,13 +15995,323 @@ export const UpdateTransportAssignmentResponse = zod.object({
   "invoiceId": zod.number().int(),
   "invoiceNumber": zod.string(),
   "academicSessionId": zod.number().int(),
+  "sessionName": zod.string().optional(),
   "academicTermId": zod.number().int(),
+  "termName": zod.string().optional(),
   "currency": zod.enum(['NGN']),
   "totalMinor": zod.number().int(),
   "paidMinor": zod.number().int(),
   "outstandingMinor": zod.number().int(),
-  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE']),
-  "dueDate": zod.coerce.date()
+  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE', 'CANCELLED']),
+  "dueDate": zod.coerce.date(),
+  "receipts": zod.array(zod.object({
+  "id": zod.number().int(),
+  "receiptNumber": zod.string()
+})).optional()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Create or update the assignment's school-scoped plan for this term before invoice generation. Once linked to Finance, plan amount, due date, term, and fee category are immutable; financial corrections use the existing Finance workflows.
+ */
+
+
+
+
+export const UpsertTransportAssignmentFeePlanParams = zod.object({
+  "assignmentId": zod.coerce.number().int().min(1),
+  "academicTermId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const UpsertTransportAssignmentFeePlanQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).describe('The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.')
+})
+
+
+export const upsertTransportAssignmentFeePlanBodyFeePlanAmountMinorMin = 0;
+export const upsertTransportAssignmentFeePlanBodyFeePlanAmountMinorMax = 1000000000;
+
+
+export const upsertTransportAssignmentFeePlanBodyReasonMin = 3;
+export const upsertTransportAssignmentFeePlanBodyReasonMax = 500;
+
+
+
+export const UpsertTransportAssignmentFeePlanBody = zod.object({
+  "academicSessionId": zod.number().int().min(1),
+  "feePlanAmountMinor": zod.number().int().min(upsertTransportAssignmentFeePlanBodyFeePlanAmountMinorMin).max(upsertTransportAssignmentFeePlanBodyFeePlanAmountMinorMax),
+  "dueDate": zod.coerce.date().optional().describe('Defaults to the selected term\'s end date.'),
+  "feeCategoryId": zod.number().int().min(1).optional().describe('Must reference an active Finance category in this school; defaults to School Transport for positive amounts.'),
+  "reason": zod.string().min(upsertTransportAssignmentFeePlanBodyReasonMin).max(upsertTransportAssignmentFeePlanBodyReasonMax)
+})
+
+export const upsertTransportAssignmentFeePlanResponsePickupOneNameMin = 2;
+export const upsertTransportAssignmentFeePlanResponsePickupOneNameMax = 120;
+
+
+export const upsertTransportAssignmentFeePlanResponsePickupOneNotesMax = 500;
+
+export const upsertTransportAssignmentFeePlanResponsePickupOneIsActiveDefault = true;
+export const upsertTransportAssignmentFeePlanResponseDropoffOneNameMin = 2;
+export const upsertTransportAssignmentFeePlanResponseDropoffOneNameMax = 120;
+
+
+export const upsertTransportAssignmentFeePlanResponseDropoffOneNotesMax = 500;
+
+export const upsertTransportAssignmentFeePlanResponseDropoffOneIsActiveDefault = true;
+export const upsertTransportAssignmentFeePlanResponseFeeMinorMin = 0;
+
+export const upsertTransportAssignmentFeePlanResponseFeePlanAmountMinorMin = 0;
+
+export const upsertTransportAssignmentFeePlanResponseFeePlansItemFeePlanAmountMinorMin = 0;
+
+
+
+export const UpsertTransportAssignmentFeePlanResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "busId": zod.number().int(),
+  "busCapacity": zod.number().int(),
+  "busName": zod.string(),
+  "registrationNumber": zod.string(),
+  "routeId": zod.number().int(),
+  "routeName": zod.string(),
+  "driverEmployeeId": zod.number().int(),
+  "driverName": zod.string(),
+  "pickup": zod.object({
+  "name": zod.string().min(upsertTransportAssignmentFeePlanResponsePickupOneNameMin).max(upsertTransportAssignmentFeePlanResponsePickupOneNameMax),
+  "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
+  "sequence": zod.number().int().min(1),
+  "notes": zod.string().max(upsertTransportAssignmentFeePlanResponsePickupOneNotesMax).nullish(),
+  "isActive": zod.boolean().default(upsertTransportAssignmentFeePlanResponsePickupOneIsActiveDefault)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "routeId": zod.number().int(),
+  "schoolId": zod.number().int()
+})),
+  "dropoff": zod.object({
+  "name": zod.string().min(upsertTransportAssignmentFeePlanResponseDropoffOneNameMin).max(upsertTransportAssignmentFeePlanResponseDropoffOneNameMax),
+  "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
+  "sequence": zod.number().int().min(1),
+  "notes": zod.string().max(upsertTransportAssignmentFeePlanResponseDropoffOneNotesMax).nullish(),
+  "isActive": zod.boolean().default(upsertTransportAssignmentFeePlanResponseDropoffOneIsActiveDefault)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "routeId": zod.number().int(),
+  "schoolId": zod.number().int()
+})),
+  "schedule": zod.object({
+  "weekdays": zod.array(zod.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'])),
+  "departureTime": zod.string(),
+  "arrivalTime": zod.string()
+}),
+  "status": zod.enum(['ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
+  "effectiveDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullable(),
+  "reason": zod.string(),
+  "feeMinor": zod.number().int().min(upsertTransportAssignmentFeePlanResponseFeeMinorMin).describe('Current route fare default; individual term plans may override it.'),
+  "feePlanAmountMinor": zod.number().int().min(upsertTransportAssignmentFeePlanResponseFeePlanAmountMinorMin),
+  "academicSessionId": zod.number().int().nullable(),
+  "academicTermId": zod.number().int().nullable(),
+  "dueDate": zod.coerce.date().nullable(),
+  "feeCategoryId": zod.number().int().nullable(),
+  "currency": zod.enum(['NGN']).optional(),
+  "feePlans": zod.array(zod.object({
+  "feePlanId": zod.number().int(),
+  "academicSessionId": zod.number().int(),
+  "sessionName": zod.string(),
+  "academicTermId": zod.number().int(),
+  "termName": zod.string(),
+  "feePlanAmountMinor": zod.number().int().min(upsertTransportAssignmentFeePlanResponseFeePlansItemFeePlanAmountMinorMin),
+  "currency": zod.enum(['NGN']),
+  "dueDate": zod.coerce.date(),
+  "status": zod.enum(['PLANNED', 'INVOICED', 'CANCELLED']),
+  "feeCategoryId": zod.number().int().nullable(),
+  "feeCategoryName": zod.string().nullable(),
+  "invoiceId": zod.number().int().nullable()
+})),
+  "guardians": zod.array(zod.object({
+  "name": zod.string(),
+  "phone": zod.string(),
+  "relationshipType": zod.string(),
+  "isPrimaryGuardian": zod.boolean()
+})),
+  "invoices": zod.array(zod.object({
+  "invoiceId": zod.number().int(),
+  "invoiceNumber": zod.string(),
+  "academicSessionId": zod.number().int(),
+  "sessionName": zod.string().optional(),
+  "academicTermId": zod.number().int(),
+  "termName": zod.string().optional(),
+  "currency": zod.enum(['NGN']),
+  "totalMinor": zod.number().int(),
+  "paidMinor": zod.number().int(),
+  "outstandingMinor": zod.number().int(),
+  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE', 'CANCELLED']),
+  "dueDate": zod.coerce.date(),
+  "receipts": zod.array(zod.object({
+  "id": zod.number().int(),
+  "receiptNumber": zod.string()
+})).optional()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Soft-cancel an uninvoiced plan with a reason and immutable assignment history; billed invoices remain under Finance control.
+ */
+
+
+
+
+export const CancelTransportAssignmentFeePlanParams = zod.object({
+  "assignmentId": zod.coerce.number().int().min(1),
+  "academicTermId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const CancelTransportAssignmentFeePlanQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).describe('The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.')
+})
+
+export const cancelTransportAssignmentFeePlanBodyReasonMin = 3;
+export const cancelTransportAssignmentFeePlanBodyReasonMax = 500;
+
+
+
+export const CancelTransportAssignmentFeePlanBody = zod.object({
+  "status": zod.enum(['CANCELLED']),
+  "reason": zod.string().min(cancelTransportAssignmentFeePlanBodyReasonMin).max(cancelTransportAssignmentFeePlanBodyReasonMax)
+})
+
+export const cancelTransportAssignmentFeePlanResponsePickupOneNameMin = 2;
+export const cancelTransportAssignmentFeePlanResponsePickupOneNameMax = 120;
+
+
+export const cancelTransportAssignmentFeePlanResponsePickupOneNotesMax = 500;
+
+export const cancelTransportAssignmentFeePlanResponsePickupOneIsActiveDefault = true;
+export const cancelTransportAssignmentFeePlanResponseDropoffOneNameMin = 2;
+export const cancelTransportAssignmentFeePlanResponseDropoffOneNameMax = 120;
+
+
+export const cancelTransportAssignmentFeePlanResponseDropoffOneNotesMax = 500;
+
+export const cancelTransportAssignmentFeePlanResponseDropoffOneIsActiveDefault = true;
+export const cancelTransportAssignmentFeePlanResponseFeeMinorMin = 0;
+
+export const cancelTransportAssignmentFeePlanResponseFeePlanAmountMinorMin = 0;
+
+export const cancelTransportAssignmentFeePlanResponseFeePlansItemFeePlanAmountMinorMin = 0;
+
+
+
+export const CancelTransportAssignmentFeePlanResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "busId": zod.number().int(),
+  "busCapacity": zod.number().int(),
+  "busName": zod.string(),
+  "registrationNumber": zod.string(),
+  "routeId": zod.number().int(),
+  "routeName": zod.string(),
+  "driverEmployeeId": zod.number().int(),
+  "driverName": zod.string(),
+  "pickup": zod.object({
+  "name": zod.string().min(cancelTransportAssignmentFeePlanResponsePickupOneNameMin).max(cancelTransportAssignmentFeePlanResponsePickupOneNameMax),
+  "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
+  "sequence": zod.number().int().min(1),
+  "notes": zod.string().max(cancelTransportAssignmentFeePlanResponsePickupOneNotesMax).nullish(),
+  "isActive": zod.boolean().default(cancelTransportAssignmentFeePlanResponsePickupOneIsActiveDefault)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "routeId": zod.number().int(),
+  "schoolId": zod.number().int()
+})),
+  "dropoff": zod.object({
+  "name": zod.string().min(cancelTransportAssignmentFeePlanResponseDropoffOneNameMin).max(cancelTransportAssignmentFeePlanResponseDropoffOneNameMax),
+  "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
+  "sequence": zod.number().int().min(1),
+  "notes": zod.string().max(cancelTransportAssignmentFeePlanResponseDropoffOneNotesMax).nullish(),
+  "isActive": zod.boolean().default(cancelTransportAssignmentFeePlanResponseDropoffOneIsActiveDefault)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "routeId": zod.number().int(),
+  "schoolId": zod.number().int()
+})),
+  "schedule": zod.object({
+  "weekdays": zod.array(zod.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'])),
+  "departureTime": zod.string(),
+  "arrivalTime": zod.string()
+}),
+  "status": zod.enum(['ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
+  "effectiveDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullable(),
+  "reason": zod.string(),
+  "feeMinor": zod.number().int().min(cancelTransportAssignmentFeePlanResponseFeeMinorMin).describe('Current route fare default; individual term plans may override it.'),
+  "feePlanAmountMinor": zod.number().int().min(cancelTransportAssignmentFeePlanResponseFeePlanAmountMinorMin),
+  "academicSessionId": zod.number().int().nullable(),
+  "academicTermId": zod.number().int().nullable(),
+  "dueDate": zod.coerce.date().nullable(),
+  "feeCategoryId": zod.number().int().nullable(),
+  "currency": zod.enum(['NGN']).optional(),
+  "feePlans": zod.array(zod.object({
+  "feePlanId": zod.number().int(),
+  "academicSessionId": zod.number().int(),
+  "sessionName": zod.string(),
+  "academicTermId": zod.number().int(),
+  "termName": zod.string(),
+  "feePlanAmountMinor": zod.number().int().min(cancelTransportAssignmentFeePlanResponseFeePlansItemFeePlanAmountMinorMin),
+  "currency": zod.enum(['NGN']),
+  "dueDate": zod.coerce.date(),
+  "status": zod.enum(['PLANNED', 'INVOICED', 'CANCELLED']),
+  "feeCategoryId": zod.number().int().nullable(),
+  "feeCategoryName": zod.string().nullable(),
+  "invoiceId": zod.number().int().nullable()
+})),
+  "guardians": zod.array(zod.object({
+  "name": zod.string(),
+  "phone": zod.string(),
+  "relationshipType": zod.string(),
+  "isPrimaryGuardian": zod.boolean()
+})),
+  "invoices": zod.array(zod.object({
+  "invoiceId": zod.number().int(),
+  "invoiceNumber": zod.string(),
+  "academicSessionId": zod.number().int(),
+  "sessionName": zod.string().optional(),
+  "academicTermId": zod.number().int(),
+  "termName": zod.string().optional(),
+  "currency": zod.enum(['NGN']),
+  "totalMinor": zod.number().int(),
+  "paidMinor": zod.number().int(),
+  "outstandingMinor": zod.number().int(),
+  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE', 'CANCELLED']),
+  "dueDate": zod.coerce.date(),
+  "receipts": zod.array(zod.object({
+  "id": zod.number().int(),
+  "receiptNumber": zod.string()
+})).optional()
 })),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -15049,8 +16335,9 @@ export const GetTransportAssignmentHistoryQueryParams = zod.object({
 export const GetTransportAssignmentHistoryResponseItem = zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
-  "assignmentId": zod.number().int(),
-  "studentId": zod.number().int(),
+  "assignmentId": zod.number().int().nullable(),
+  "routeStaffId": zod.number().int().nullish(),
+  "studentId": zod.number().int().nullable(),
   "actorUserId": zod.number().int().nullish(),
   "actorName": zod.string(),
   "actorRole": zod.string(),
@@ -15077,19 +16364,34 @@ export const ListTransportRequestsResponseItem = zod.object({
   "schoolId": zod.number().int(),
   "studentId": zod.number().int(),
   "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "parentId": zod.number().int(),
+  "parentName": zod.string(),
+  "assignmentId": zod.number().int().nullable(),
   "requestType": zod.enum(['ACTIVATE', 'DEACTIVATE']),
   "requestDate": zod.coerce.date(),
   "effectiveDate": zod.coerce.date(),
   "reason": zod.string(),
   "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWN']),
-  "schoolAction": zod.enum(['ACTIVATE', 'SUSPEND', 'DEACTIVATE', 'NO_CHANGE']).nullish(),
-  "schoolNote": zod.string().nullish(),
-  "reviewedBy": zod.number().int().nullish(),
-  "reviewedAt": zod.coerce.date().nullish(),
-  "createdAt": zod.coerce.date()
+  "schoolAction": zod.enum(['ACTIVATE', 'SUSPEND', 'DEACTIVATE', 'NO_CHANGE']).nullable(),
+  "schoolNote": zod.string().nullable(),
+  "reviewedBy": zod.number().int().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "reviewerName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
 })
 export const ListTransportRequestsResponse = zod.array(ListTransportRequestsResponseItem)
 
+
+
+
+
+export const ReviewTransportRequestParams = zod.object({
+  "requestId": zod.coerce.number().int().min(1)
+})
 
 
 
@@ -15098,18 +16400,22 @@ export const ReviewTransportRequestQueryParams = zod.object({
   "schoolId": zod.coerce.number().int().min(1).describe('The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.')
 })
 
-
 export const reviewTransportRequestBodySchoolNoteMin = 3;
 export const reviewTransportRequestBodySchoolNoteMax = 1000;
 
 
 
+
+
+
 export const ReviewTransportRequestBody = zod.object({
-  "requestId": zod.number().int().min(1),
   "decision": zod.enum(['APPROVE', 'REJECT']),
-  "schoolAction": zod.enum(['ACTIVATE', 'SUSPEND', 'DEACTIVATE', 'NO_CHANGE']),
-  "effectiveDate": zod.coerce.date(),
-  "schoolNote": zod.string().min(reviewTransportRequestBodySchoolNoteMin).max(reviewTransportRequestBodySchoolNoteMax)
+  "action": zod.enum(['ACTIVATE', 'SUSPEND', 'DEACTIVATE', 'NO_CHANGE']),
+  "effectiveDate": zod.coerce.date().optional(),
+  "schoolNote": zod.string().min(reviewTransportRequestBodySchoolNoteMin).max(reviewTransportRequestBodySchoolNoteMax).optional(),
+  "routeId": zod.number().int().min(1).optional(),
+  "pickupStopId": zod.number().int().min(1).optional(),
+  "dropoffStopId": zod.number().int().min(1).optional()
 })
 
 export const ReviewTransportRequestResponse = zod.object({
@@ -15117,16 +16423,87 @@ export const ReviewTransportRequestResponse = zod.object({
   "schoolId": zod.number().int(),
   "studentId": zod.number().int(),
   "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "parentId": zod.number().int(),
+  "parentName": zod.string(),
+  "assignmentId": zod.number().int().nullable(),
   "requestType": zod.enum(['ACTIVATE', 'DEACTIVATE']),
   "requestDate": zod.coerce.date(),
   "effectiveDate": zod.coerce.date(),
   "reason": zod.string(),
   "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWN']),
-  "schoolAction": zod.enum(['ACTIVATE', 'SUSPEND', 'DEACTIVATE', 'NO_CHANGE']).nullish(),
-  "schoolNote": zod.string().nullish(),
-  "reviewedBy": zod.number().int().nullish(),
-  "reviewedAt": zod.coerce.date().nullish(),
-  "createdAt": zod.coerce.date()
+  "schoolAction": zod.enum(['ACTIVATE', 'SUSPEND', 'DEACTIVATE', 'NO_CHANGE']).nullable(),
+  "schoolNote": zod.string().nullable(),
+  "reviewedBy": zod.number().int().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "reviewerName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+
+
+
+export const GetSchoolTransportPolicyQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).describe('The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.')
+})
+
+export const GetSchoolTransportPolicyResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "paymentRequired": zod.boolean(),
+  "suspendWhenOverdue": zod.boolean()
+})
+
+
+
+
+
+export const UpdateSchoolTransportPolicyQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).describe('The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.')
+})
+
+export const UpdateSchoolTransportPolicyBody = zod.object({
+  "paymentRequired": zod.boolean().optional(),
+  "suspendWhenOverdue": zod.boolean().optional()
+})
+
+export const UpdateSchoolTransportPolicyResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "paymentRequired": zod.boolean(),
+  "suspendWhenOverdue": zod.boolean()
+})
+
+
+/**
+ * School-admin, idempotent Finance integration hook for a current academic term. Academic rollover should invoke the same exported operation.
+ */
+
+
+
+export const GenerateCurrentTermTransportInvoicesParams = zod.object({
+  "termId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GenerateCurrentTermTransportInvoicesQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).describe('The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.')
+})
+
+export const generateCurrentTermTransportInvoicesResponseBillableAssignmentCountMin = 0;
+
+
+
+export const GenerateCurrentTermTransportInvoicesResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "academicSessionId": zod.number().int(),
+  "academicTermId": zod.number().int(),
+  "generatedInvoiceIds": zod.array(zod.number().int()),
+  "billableAssignmentCount": zod.number().int().min(generateCurrentTermTransportInvoicesResponseBillableAssignmentCountMin)
 })
 
 
@@ -15151,7 +16528,9 @@ export const getChildTransportResponseAssignmentOneDropoffOneNameMax = 120;
 export const getChildTransportResponseAssignmentOneDropoffOneNotesMax = 500;
 
 export const getChildTransportResponseAssignmentOneDropoffOneIsActiveDefault = true;
-export const getChildTransportResponseAssignmentOneFeeMinorMin = 0;
+export const getChildTransportResponseAssignmentOneFeePlanAmountMinorMin = 0;
+
+export const getChildTransportResponseAssignmentOneFeePlansItemFeePlanAmountMinorMin = 0;
 
 
 
@@ -15161,23 +16540,19 @@ export const GetChildTransportResponse = zod.object({
   "transportStatus": zod.enum(['ACTIVE', 'SUSPENDED', 'DEACTIVATED', 'NOT_ASSIGNED']),
   "assignment": zod.object({
   "id": zod.number().int(),
-  "schoolId": zod.number().int(),
   "studentId": zod.number().int(),
+  "schoolId": zod.number().int(),
   "studentName": zod.string(),
-  "admissionNo": zod.string(),
-  "className": zod.string(),
-  "section": zod.string(),
-  "busId": zod.number().int(),
   "busName": zod.string(),
   "registrationNumber": zod.string(),
-  "routeId": zod.number().int(),
+  "busCapacity": zod.number().int(),
   "routeName": zod.string(),
   "driverName": zod.string(),
   "pickup": zod.object({
   "name": zod.string().min(getChildTransportResponseAssignmentOnePickupOneNameMin).max(getChildTransportResponseAssignmentOnePickupOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
   "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(getChildTransportResponseAssignmentOnePickupOneNotesMax).optional(),
+  "notes": zod.string().max(getChildTransportResponseAssignmentOnePickupOneNotesMax).nullish(),
   "isActive": zod.boolean().default(getChildTransportResponseAssignmentOnePickupOneIsActiveDefault)
 }).and(zod.object({
   "id": zod.number().int(),
@@ -15188,7 +16563,7 @@ export const GetChildTransportResponse = zod.object({
   "name": zod.string().min(getChildTransportResponseAssignmentOneDropoffOneNameMin).max(getChildTransportResponseAssignmentOneDropoffOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
   "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(getChildTransportResponseAssignmentOneDropoffOneNotesMax).optional(),
+  "notes": zod.string().max(getChildTransportResponseAssignmentOneDropoffOneNotesMax).nullish(),
   "isActive": zod.boolean().default(getChildTransportResponseAssignmentOneDropoffOneIsActiveDefault)
 }).and(zod.object({
   "id": zod.number().int(),
@@ -15202,46 +16577,71 @@ export const GetChildTransportResponse = zod.object({
 }),
   "status": zod.enum(['ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
   "effectiveDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullable(),
   "reason": zod.string(),
-  "feeMinor": zod.number().int().min(getChildTransportResponseAssignmentOneFeeMinorMin).optional(),
-  "guardians": zod.array(zod.object({
-  "name": zod.string(),
-  "phone": zod.string(),
-  "relationshipType": zod.string(),
-  "isPrimaryGuardian": zod.boolean()
+  "feeMinor": zod.number().int(),
+  "feePlanAmountMinor": zod.number().int().min(getChildTransportResponseAssignmentOneFeePlanAmountMinorMin),
+  "academicSessionId": zod.number().int().nullable(),
+  "academicTermId": zod.number().int().nullable(),
+  "dueDate": zod.coerce.date().nullable(),
+  "feePlans": zod.array(zod.object({
+  "feePlanId": zod.number().int(),
+  "academicSessionId": zod.number().int(),
+  "sessionName": zod.string(),
+  "academicTermId": zod.number().int(),
+  "termName": zod.string(),
+  "feePlanAmountMinor": zod.number().int().min(getChildTransportResponseAssignmentOneFeePlansItemFeePlanAmountMinorMin),
+  "currency": zod.enum(['NGN']),
+  "dueDate": zod.coerce.date(),
+  "status": zod.enum(['PLANNED', 'INVOICED', 'CANCELLED']),
+  "feeCategoryId": zod.number().int().nullable(),
+  "feeCategoryName": zod.string().nullable(),
+  "invoiceId": zod.number().int().nullable()
 })),
+  "currency": zod.enum(['NGN']),
   "invoices": zod.array(zod.object({
   "invoiceId": zod.number().int(),
   "invoiceNumber": zod.string(),
   "academicSessionId": zod.number().int(),
+  "sessionName": zod.string().optional(),
   "academicTermId": zod.number().int(),
+  "termName": zod.string().optional(),
   "currency": zod.enum(['NGN']),
   "totalMinor": zod.number().int(),
   "paidMinor": zod.number().int(),
   "outstandingMinor": zod.number().int(),
-  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE']),
-  "dueDate": zod.coerce.date()
-})),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE', 'CANCELLED']),
+  "dueDate": zod.coerce.date(),
+  "receipts": zod.array(zod.object({
+  "id": zod.number().int(),
+  "receiptNumber": zod.string()
+})).optional()
+}))
 }).nullish(),
   "invoices": zod.array(zod.object({
   "invoiceId": zod.number().int(),
   "invoiceNumber": zod.string(),
   "academicSessionId": zod.number().int(),
+  "sessionName": zod.string().optional(),
   "academicTermId": zod.number().int(),
+  "termName": zod.string().optional(),
   "currency": zod.enum(['NGN']),
   "totalMinor": zod.number().int(),
   "paidMinor": zod.number().int(),
   "outstandingMinor": zod.number().int(),
-  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE']),
-  "dueDate": zod.coerce.date()
+  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE', 'CANCELLED']),
+  "dueDate": zod.coerce.date(),
+  "receipts": zod.array(zod.object({
+  "id": zod.number().int(),
+  "receiptNumber": zod.string()
+})).optional()
 })),
   "history": zod.array(zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
-  "assignmentId": zod.number().int(),
-  "studentId": zod.number().int(),
+  "assignmentId": zod.number().int().nullable(),
+  "routeStaffId": zod.number().int().nullish(),
+  "studentId": zod.number().int().nullable(),
   "actorUserId": zod.number().int().nullish(),
   "actorName": zod.string(),
   "actorRole": zod.string(),
@@ -15267,16 +16667,24 @@ export const ListChildTransportRequestsResponseItem = zod.object({
   "schoolId": zod.number().int(),
   "studentId": zod.number().int(),
   "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "parentId": zod.number().int(),
+  "parentName": zod.string(),
+  "assignmentId": zod.number().int().nullable(),
   "requestType": zod.enum(['ACTIVATE', 'DEACTIVATE']),
   "requestDate": zod.coerce.date(),
   "effectiveDate": zod.coerce.date(),
   "reason": zod.string(),
   "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWN']),
-  "schoolAction": zod.enum(['ACTIVATE', 'SUSPEND', 'DEACTIVATE', 'NO_CHANGE']).nullish(),
-  "schoolNote": zod.string().nullish(),
-  "reviewedBy": zod.number().int().nullish(),
-  "reviewedAt": zod.coerce.date().nullish(),
-  "createdAt": zod.coerce.date()
+  "schoolAction": zod.enum(['ACTIVATE', 'SUSPEND', 'DEACTIVATE', 'NO_CHANGE']).nullable(),
+  "schoolNote": zod.string().nullable(),
+  "reviewedBy": zod.number().int().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "reviewerName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
 })
 export const ListChildTransportRequestsResponse = zod.array(ListChildTransportRequestsResponseItem)
 
@@ -15307,16 +16715,71 @@ export const RequestChildTransportChangeResponse = zod.object({
   "schoolId": zod.number().int(),
   "studentId": zod.number().int(),
   "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "parentId": zod.number().int(),
+  "parentName": zod.string(),
+  "assignmentId": zod.number().int().nullable(),
   "requestType": zod.enum(['ACTIVATE', 'DEACTIVATE']),
   "requestDate": zod.coerce.date(),
   "effectiveDate": zod.coerce.date(),
   "reason": zod.string(),
   "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWN']),
-  "schoolAction": zod.enum(['ACTIVATE', 'SUSPEND', 'DEACTIVATE', 'NO_CHANGE']).nullish(),
-  "schoolNote": zod.string().nullish(),
-  "reviewedBy": zod.number().int().nullish(),
-  "reviewedAt": zod.coerce.date().nullish(),
-  "createdAt": zod.coerce.date()
+  "schoolAction": zod.enum(['ACTIVATE', 'SUSPEND', 'DEACTIVATE', 'NO_CHANGE']).nullable(),
+  "schoolNote": zod.string().nullable(),
+  "reviewedBy": zod.number().int().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "reviewerName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Withdraws this parent's own still-pending service request; never changes the student's assignment.
+ */
+
+
+
+
+export const WithdrawChildTransportRequestParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1).describe('Authoritative student ID is additionally checked against the signed-in child\'s active parent relationship.'),
+  "requestId": zod.coerce.number().int().min(1)
+})
+
+export const withdrawChildTransportRequestBodyReasonMin = 3;
+export const withdrawChildTransportRequestBodyReasonMax = 1000;
+
+
+
+export const WithdrawChildTransportRequestBody = zod.object({
+  "reason": zod.string().min(withdrawChildTransportRequestBodyReasonMin).max(withdrawChildTransportRequestBodyReasonMax)
+})
+
+export const WithdrawChildTransportRequestResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "parentId": zod.number().int(),
+  "parentName": zod.string(),
+  "assignmentId": zod.number().int().nullable(),
+  "requestType": zod.enum(['ACTIVATE', 'DEACTIVATE']),
+  "requestDate": zod.coerce.date(),
+  "effectiveDate": zod.coerce.date(),
+  "reason": zod.string(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWN']),
+  "schoolAction": zod.enum(['ACTIVATE', 'SUSPEND', 'DEACTIVATE', 'NO_CHANGE']).nullable(),
+  "schoolNote": zod.string().nullable(),
+  "reviewedBy": zod.number().int().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "reviewerName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
 })
 
 
@@ -15330,8 +16793,9 @@ export const GetChildTransportHistoryParams = zod.object({
 export const GetChildTransportHistoryResponseItem = zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
-  "assignmentId": zod.number().int(),
-  "studentId": zod.number().int(),
+  "assignmentId": zod.number().int().nullable(),
+  "routeStaffId": zod.number().int().nullish(),
+  "studentId": zod.number().int().nullable(),
   "actorUserId": zod.number().int().nullish(),
   "actorName": zod.string(),
   "actorRole": zod.string(),
@@ -15359,7 +16823,9 @@ export const getOwnStudentTransportResponseAssignmentOneDropoffOneNameMax = 120;
 export const getOwnStudentTransportResponseAssignmentOneDropoffOneNotesMax = 500;
 
 export const getOwnStudentTransportResponseAssignmentOneDropoffOneIsActiveDefault = true;
-export const getOwnStudentTransportResponseAssignmentOneFeeMinorMin = 0;
+export const getOwnStudentTransportResponseAssignmentOneFeePlanAmountMinorMin = 0;
+
+export const getOwnStudentTransportResponseAssignmentOneFeePlansItemFeePlanAmountMinorMin = 0;
 
 
 
@@ -15369,23 +16835,19 @@ export const GetOwnStudentTransportResponse = zod.object({
   "transportStatus": zod.enum(['ACTIVE', 'SUSPENDED', 'DEACTIVATED', 'NOT_ASSIGNED']),
   "assignment": zod.object({
   "id": zod.number().int(),
-  "schoolId": zod.number().int(),
   "studentId": zod.number().int(),
+  "schoolId": zod.number().int(),
   "studentName": zod.string(),
-  "admissionNo": zod.string(),
-  "className": zod.string(),
-  "section": zod.string(),
-  "busId": zod.number().int(),
   "busName": zod.string(),
   "registrationNumber": zod.string(),
-  "routeId": zod.number().int(),
+  "busCapacity": zod.number().int(),
   "routeName": zod.string(),
   "driverName": zod.string(),
   "pickup": zod.object({
   "name": zod.string().min(getOwnStudentTransportResponseAssignmentOnePickupOneNameMin).max(getOwnStudentTransportResponseAssignmentOnePickupOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
   "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(getOwnStudentTransportResponseAssignmentOnePickupOneNotesMax).optional(),
+  "notes": zod.string().max(getOwnStudentTransportResponseAssignmentOnePickupOneNotesMax).nullish(),
   "isActive": zod.boolean().default(getOwnStudentTransportResponseAssignmentOnePickupOneIsActiveDefault)
 }).and(zod.object({
   "id": zod.number().int(),
@@ -15396,7 +16858,7 @@ export const GetOwnStudentTransportResponse = zod.object({
   "name": zod.string().min(getOwnStudentTransportResponseAssignmentOneDropoffOneNameMin).max(getOwnStudentTransportResponseAssignmentOneDropoffOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
   "sequence": zod.number().int().min(1),
-  "notes": zod.string().max(getOwnStudentTransportResponseAssignmentOneDropoffOneNotesMax).optional(),
+  "notes": zod.string().max(getOwnStudentTransportResponseAssignmentOneDropoffOneNotesMax).nullish(),
   "isActive": zod.boolean().default(getOwnStudentTransportResponseAssignmentOneDropoffOneIsActiveDefault)
 }).and(zod.object({
   "id": zod.number().int(),
@@ -15410,46 +16872,71 @@ export const GetOwnStudentTransportResponse = zod.object({
 }),
   "status": zod.enum(['ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
   "effectiveDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullable(),
   "reason": zod.string(),
-  "feeMinor": zod.number().int().min(getOwnStudentTransportResponseAssignmentOneFeeMinorMin).optional(),
-  "guardians": zod.array(zod.object({
-  "name": zod.string(),
-  "phone": zod.string(),
-  "relationshipType": zod.string(),
-  "isPrimaryGuardian": zod.boolean()
+  "feeMinor": zod.number().int(),
+  "feePlanAmountMinor": zod.number().int().min(getOwnStudentTransportResponseAssignmentOneFeePlanAmountMinorMin),
+  "academicSessionId": zod.number().int().nullable(),
+  "academicTermId": zod.number().int().nullable(),
+  "dueDate": zod.coerce.date().nullable(),
+  "feePlans": zod.array(zod.object({
+  "feePlanId": zod.number().int(),
+  "academicSessionId": zod.number().int(),
+  "sessionName": zod.string(),
+  "academicTermId": zod.number().int(),
+  "termName": zod.string(),
+  "feePlanAmountMinor": zod.number().int().min(getOwnStudentTransportResponseAssignmentOneFeePlansItemFeePlanAmountMinorMin),
+  "currency": zod.enum(['NGN']),
+  "dueDate": zod.coerce.date(),
+  "status": zod.enum(['PLANNED', 'INVOICED', 'CANCELLED']),
+  "feeCategoryId": zod.number().int().nullable(),
+  "feeCategoryName": zod.string().nullable(),
+  "invoiceId": zod.number().int().nullable()
 })),
+  "currency": zod.enum(['NGN']),
   "invoices": zod.array(zod.object({
   "invoiceId": zod.number().int(),
   "invoiceNumber": zod.string(),
   "academicSessionId": zod.number().int(),
+  "sessionName": zod.string().optional(),
   "academicTermId": zod.number().int(),
+  "termName": zod.string().optional(),
   "currency": zod.enum(['NGN']),
   "totalMinor": zod.number().int(),
   "paidMinor": zod.number().int(),
   "outstandingMinor": zod.number().int(),
-  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE']),
-  "dueDate": zod.coerce.date()
-})),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE', 'CANCELLED']),
+  "dueDate": zod.coerce.date(),
+  "receipts": zod.array(zod.object({
+  "id": zod.number().int(),
+  "receiptNumber": zod.string()
+})).optional()
+}))
 }).nullish(),
   "invoices": zod.array(zod.object({
   "invoiceId": zod.number().int(),
   "invoiceNumber": zod.string(),
   "academicSessionId": zod.number().int(),
+  "sessionName": zod.string().optional(),
   "academicTermId": zod.number().int(),
+  "termName": zod.string().optional(),
   "currency": zod.enum(['NGN']),
   "totalMinor": zod.number().int(),
   "paidMinor": zod.number().int(),
   "outstandingMinor": zod.number().int(),
-  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE']),
-  "dueDate": zod.coerce.date()
+  "status": zod.enum(['PAID', 'PENDING', 'OVERDUE', 'SUSPENDED', 'INACTIVE', 'CANCELLED']),
+  "dueDate": zod.coerce.date(),
+  "receipts": zod.array(zod.object({
+  "id": zod.number().int(),
+  "receiptNumber": zod.string()
+})).optional()
 })),
   "history": zod.array(zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
-  "assignmentId": zod.number().int(),
-  "studentId": zod.number().int(),
+  "assignmentId": zod.number().int().nullable(),
+  "routeStaffId": zod.number().int().nullish(),
+  "studentId": zod.number().int().nullable(),
   "actorUserId": zod.number().int().nullish(),
   "actorName": zod.string(),
   "actorRole": zod.string(),
@@ -15466,8 +16953,9 @@ export const GetOwnStudentTransportResponse = zod.object({
 export const GetOwnStudentTransportHistoryResponseItem = zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
-  "assignmentId": zod.number().int(),
-  "studentId": zod.number().int(),
+  "assignmentId": zod.number().int().nullable(),
+  "routeStaffId": zod.number().int().nullish(),
+  "studentId": zod.number().int().nullable(),
   "actorUserId": zod.number().int().nullish(),
   "actorName": zod.string(),
   "actorRole": zod.string(),
@@ -15487,27 +16975,67 @@ export const GetOwnStudentTransportHistoryResponse = zod.array(GetOwnStudentTran
 
 
 
+
+export const getPlatformTransportOverviewQuerySearchMax = 100;
+
+export const getPlatformTransportOverviewQueryLimitDefault = 50;
+export const getPlatformTransportOverviewQueryLimitMax = 100;
+
+
+
 export const GetPlatformTransportOverviewQueryParams = zod.object({
   "schoolId": zod.coerce.number().int().min(1).optional(),
-  "dateFrom": zod.date().optional(),
-  "dateTo": zod.date().optional()
+  "academicSessionId": zod.coerce.number().int().min(1).optional(),
+  "academicTermId": zod.coerce.number().int().min(1).optional(),
+  "fromDate": zod.date().optional(),
+  "toDate": zod.date().optional(),
+  "status": zod.enum(['UNPAID', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'WAIVED', 'CANCELLED', 'all']).optional(),
+  "employeeId": zod.coerce.number().int().min(1).optional(),
+  "search": zod.coerce.string().min(1).max(getPlatformTransportOverviewQuerySearchMax).optional(),
+  "limit": zod.coerce.number().int().min(1).max(getPlatformTransportOverviewQueryLimitMax).default(getPlatformTransportOverviewQueryLimitDefault)
 })
 
-export const GetPlatformTransportOverviewResponseItem = zod.object({
+export const getPlatformTransportOverviewResponseInvoiceTotalCountMin = 0;
+
+
+
+export const GetPlatformTransportOverviewResponse = zod.object({
+  "readOnly": zod.literal(true),
+  "generatedAt": zod.coerce.date(),
+  "filters": zod.record(zod.string(), zod.unknown()),
+  "operationalSummary": zod.record(zod.string(), zod.unknown()),
+  "financeSummary": zod.record(zod.string(), zod.unknown()),
+  "invoices": zod.array(zod.object({
+  "invoiceId": zod.number().int(),
   "schoolId": zod.number().int(),
   "schoolName": zod.string(),
-  "busCount": zod.number().int(),
-  "routeCount": zod.number().int(),
-  "busCapacity": zod.number().int(),
-  "reservedPassengerCount": zod.number().int(),
-  "activeStudents": zod.number().int(),
-  "inactiveStudents": zod.number().int(),
-  "activeStaff": zod.number().int(),
-  "activeDrivers": zod.number().int(),
-  "invoiceCount": zod.number().int(),
+  "invoiceNumber": zod.string(),
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "academicSessionId": zod.number().int(),
+  "sessionName": zod.string(),
+  "academicTermId": zod.number().int(),
+  "termName": zod.string(),
+  "currency": zod.string(),
+  "totalMinor": zod.number().int(),
+  "paidMinor": zod.number().int(),
   "outstandingMinor": zod.number().int(),
-  "transportRevenueMinor": zod.number().int()
+  "status": zod.enum(['UNPAID', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'WAIVED', 'CANCELLED']),
+  "issueDate": zod.coerce.date(),
+  "dueDate": zod.coerce.date(),
+  "assignmentId": zod.number().int(),
+  "routeId": zod.number().int(),
+  "routeName": zod.string(),
+  "driverEmployeeId": zod.number().int(),
+  "driverName": zod.string(),
+  "generatedAt": zod.coerce.date(),
+  "receipts": zod.array(zod.object({
+  "id": zod.number().int(),
+  "receiptNumber": zod.string()
+}))
+})),
+  "invoiceTotalCount": zod.number().int().min(getPlatformTransportOverviewResponseInvoiceTotalCountMin)
 })
-export const GetPlatformTransportOverviewResponse = zod.array(GetPlatformTransportOverviewResponseItem)
 
 

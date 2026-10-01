@@ -6,11 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { StaffNfcAllocationCurrency } from './staffNfcAllocationCurrency';
+import type { StaffNfcAllocationEntryType } from './staffNfcAllocationEntryType';
 import type { StaffNfcAllocationRecipientType } from './staffNfcAllocationRecipientType';
 import type { StaffNfcAllocationStatus } from './staffNfcAllocationStatus';
 
 export interface StaffNfcAllocation {
   recipientType: StaffNfcAllocationRecipientType;
+  entryType?: StaffNfcAllocationEntryType;
   /** @nullable */
   recipientId: number | null;
   /** @minimum 0 */

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Yemait EduCore — Development correction report</title>
+<style>
+body{font:15px/1.6 system-ui,sans-serif;color:#172033;background:#f3f5f8;margin:0;padding:32px}main{max-width:940px;margin:auto;background:#fff;padding:42px;border:1px solid #dce2eb;border-radius:12px}h1{font-size:30px;line-height:1.2;margin:8px 0 16px}h2{font-size:20px;margin:30px 0 12px}h3{font-size:16px;margin:20px 0 8px}.label{font-weight:700;color:#315888;font-size:12px;letter-spacing:.08em;text-transform:uppercase}.note{background:#fff6df;border-left:4px solid #bd891f;padding:12px 16px}.success{background:#eaf7ef;border-left:4px solid #278353;padding:12px 16px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;border-bottom:1px solid #dde3ec;padding:10px 8px;vertical-align:top}th{background:#f2f5f9}code{font-size:12px;overflow-wrap:anywhere}.muted{color:#596579}li{margin:5px 0}@media(max-width:600px){body{padding:12px}main{padding:22px}table{font-size:12px}th,td{padding:7px 5px}}@media print{body{background:white;padding:0}main{border:0;padding:0}h2,h3{break-after:avoid}tr{break-inside:avoid}}
+</style>
+</head>
+<body><main>
+<div class="label">Yemait EduCore · Development only · 1 October 2026</div>
+<h1>Consolidated correction and billing report</h1>
+<p class="success"><strong>Development implementation and incremental migrations completed.</strong> Production was not migrated or published. No payment, refund or salary transfer was initiated against an external provider during this work.</p>
+<h2>Implemented and corrected</h2>
+<ul>
+<li>School profile/branding controls, retained school-logo versions, and branded documents: student E-ID, results/report cards, attendance, invoices, fee receipts, statements and staff/student NFC receipts.</li>
+<li>Owner-only physical card provisioning; school-side employee card binding, status management, attendance, summaries and discrepancy actions.</li>
+<li>Academic calendar generation/editing and term integration; teacher assignment, atomic replacement, deactivation, own-assignment visibility and current/upcoming/historical duties.</li>
+<li>School transport buses, routes, stops, drivers/accompanying teachers, assignments, capacity checks, existing-Finance term fee plans, policy/history, parent requests and withdrawals.</li>
+<li>School/company settlement and payroll profiles, approval-controlled payroll, server-stored transfer attempts, safe reconciliation/resend guards, own salary history and immutable payslips.</li>
+<li>Staff term-based NFC subscriptions, versioned Owner billing rules, verified-only activation, immutable financial/receipt snapshots, provider-fee expenses, Partner attribution, and replay-safe partial refund reversals.</li>
+<li>Student NFC trusted checkout/verification, immutable allocation/receipt snapshots, persisted payment history, and signed webhook completion independent of browser return.</li>
+<li>Student/term payment uniqueness across different subscription records, including uncertain FAILED attempts still requiring reconciliation.</li>
+<li>School financial responses and receipt copies expose SCHOOL-only allocations; Owner access is derived from trusted authorization, not request flags. Owner remains read-only for ordinary school operations.</li>
+<li>Role-filtered navigation and new page integration; Vite development-transform failures corrected using typed component aliases rather than generic JSX tags.</li>
+</ul>
+<h2>Billing policy preserved</h2>
+<table><thead><tr><th>Product</th><th>Gross</th><th>School</th><th>Platform with Partner</th><th>Eligible Partner</th><th>Platform without Partner</th></tr></thead>
+<tbody><tr><td>Teacher/Staff NFC</td><td>₦2,000</td><td>₦800</td><td>₦1,100</td><td>₦100</td><td>₦1,200</td></tr><tr><td>Student NFC</td><td>₦5,000</td><td>₦2,000</td><td>₦2,900</td><td>₦100</td><td>₦3,000</td></tr></tbody></table>
+<p>Provider processing fees are platform expenses, not reductions to the promised School or Partner credit. Unknown provider outcomes/fees are not guessed. Collection verification, entitlement activation, internal allocations, bank settlement and salary transfer confirmation remain distinct states.</p>
+<h2>Verification results</h2>
+<table><thead><tr><th>Check</th><th>Result and boundary</th></tr></thead><tbody>
+<tr><td>Backend regressions</td><td>91 files / 1,047 tests passed. Targeted checks after the final receipt projection change also passed.</td></tr>
+<tr><td>Frontend regressions</td><td>36 files / 212 tests passed across the full run and corrected-file reruns. Subsequent affected staff-receipt, employee-NFC and transport checks: 35 tests passed.</td></tr>
+<tr><td>Database rehearsal</td><td>128 checks passed, zero failed, on clean/incremental disposable schema clones; forced atomic rollback passed.</td></tr>
+<tr><td>Types and contract</td><td>Workspace TypeScript checks passed; API specification generation and shared-library builds passed. Final frontend typecheck passed after code generation and typed-alias fixes.</td></tr>
+<tr><td>Security</td><td>Targeted financial review findings corrected and covered by routed/mocked regressions: Partner branches, provider fees, refund replay, bank authorization, callback/webhook races, duplicate term charges and School/Owner response privacy. This was not a separate full-project security scan.</td></tr>
+<tr><td>Running Development</td><td>API health: HTTP 200. Unsigned student webhook and unauthenticated payment lookup: HTTP 401. A claimed successful callback renders the sign-in gate, not a paid/activated entitlement. The corrected Vite modules return HTTP 200.</td></tr>
+</tbody></table>
+<h2>Development database apply</h2>
+<p>Only the following six current, hash-matched migrations were applied in one transaction. Historical migration SQL was not replayed.</p>
+<table><thead><tr><th>Migration</th><th>Inventory</th></tr></thead><tbody>
+<tr><td><code>0031_staff_nfc_billing.sql</code></td><td>Billing rules, subscriptions, payments, allocations, commissions, receipts, refunds, provider events and financial snapshot protection.</td></tr>
+<tr><td><code>0032_employee_nfc.sql</code></td><td>Employee card binding/history and attendance discrepancy workflow.</td></tr>
+<tr><td><code>0033_school_workflows.sql</code></td><td>Calendar, retained logo versions, teacher assignments and duty roster. Logo versioning is folded into this migration; no separate destructive index replacement.</td></tr>
+<tr><td><code>0034_school_transport.sql</code></td><td>Transport fleet/routes/stops, assignments, staff, parent requests, Finance integration, policy and history.</td></tr>
+<tr><td><code>0035_settlement_payroll.sql</code></td><td>Settlement/payroll profiles, payroll periods/items, transfer attempts, payslips and append-only audit protection.</td></tr>
+<tr><td><code>0036_student_subscription_allocations.sql</code></td><td>Student provider payments, immutable receipts/allocations and cross-subscription business-term uniqueness.</td></tr>
+</tbody></table>
+<ul><li>All original <strong>91 tables / 396 records</strong> retained matching original-column data fingerprints at commit.</li><li>All pre-existing columns and constraints retained their definitions.</li><li>The five historical migration-ledger rows remained unchanged; six actual migration entries were appended.</li><li>Result: <strong>125 public tables; 9 schools, 13 students, 5 employees, 6 cards</strong>. No live test fixtures were added.</li><li>No DROP, TRUNCATE or DELETE statement was used in the selected migrations or Development apply.</li></ul>
+<p class="muted">The preflight catalog had one more index and constraint than an older count-only report. The old report lacked object names; attribution could not be established. No attempt was made to remove or reverse that unrelated difference.</p>
+<h2>Not yet verified</h2>
+<div class="note"><ul>
+<li>Authenticated end-to-end Owner, School Admin, Teacher/Staff, Partner and family browser journeys. The testing browser has no shared owner Clerk session or supplied login credentials.</li>
+<li>Actual Flutterwave sandbox collections, signed provider delivery, refunds, recipient/subaccount provisioning, school bank settlements and salary transfers. Provider transaction tests used mocks, not bank evidence.</li>
+<li>Actual storage-backed logo upload/replacement and a real browser/printer receipt export under an authenticated school account.</li>
+<li>Actual invitation/reminder email or SMS delivery and physical NFC-reader attendance.</li>
+<li>Production schema application and release readiness. Production database records, migration ledger and published app were not changed.</li>
+</ul></div>
+<h2>Migration-required status</h2>
+<p><strong>Development:</strong> no remaining migration for this correction set. <strong>Production:</strong> the new schema still requires a separately authorized, reviewed application. Do not replay the historical structural package or assume a schema push will preserve the required triggers and immutable snapshots.</p>
+<p class="muted">Detailed SQL evidence: <code>docs/feedback-migration-validation.md</code>. Billing policy: <code>docs/staff-nfc-billing-policy.md</code>. The Development apply is explicitly guarded and is not an application startup hook.</p>
+</main></body></html>

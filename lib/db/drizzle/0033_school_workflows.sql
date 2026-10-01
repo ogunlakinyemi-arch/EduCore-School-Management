@@ -73,6 +73,7 @@ CREATE TABLE "school_branding_logos" (
   "object_path" text NOT NULL,
   "content_type" text NOT NULL,
   "byte_size" integer NOT NULL,
+  "is_current" boolean NOT NULL DEFAULT true,
   "updated_by_user_id" integer NOT NULL,
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
   CONSTRAINT "school_branding_logos_content_type_check"
@@ -91,11 +92,15 @@ ALTER TABLE "school_branding_logos"
   FOREIGN KEY ("updated_by_user_id") REFERENCES "public"."app_users"("id")
   ON DELETE RESTRICT ON UPDATE NO ACTION;
 --> statement-breakpoint
-CREATE UNIQUE INDEX "school_branding_logos_school_unique"
-  ON "school_branding_logos" USING btree ("school_id");
+CREATE UNIQUE INDEX "school_branding_logos_school_current_unique"
+  ON "school_branding_logos" USING btree ("school_id")
+  WHERE "is_current" = true;
 --> statement-breakpoint
 CREATE UNIQUE INDEX "school_branding_logos_object_path_unique"
   ON "school_branding_logos" USING btree ("object_path");
+--> statement-breakpoint
+CREATE INDEX "school_branding_logos_school_versions_idx"
+  ON "school_branding_logos" USING btree ("school_id", "id");
 --> statement-breakpoint
 CREATE INDEX "school_branding_logos_updated_by_idx"
   ON "school_branding_logos" USING btree ("updated_by_user_id", "updated_at");

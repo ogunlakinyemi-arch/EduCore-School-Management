@@ -117,6 +117,7 @@ import {
   requireAuthentication,
 } from "../middlewares/auth";
 import { invoiceStatus, payableAmount } from "./finance-money";
+import { canonicalSchoolLogoVersionUrl } from "../lib/schoolLogoStorage";
 import { enqueueFinancePaymentNotificationsSafely } from "./finance-notifications-service";
 import { enqueueFinanceInvoiceCommunicationsSafely } from "./finance-communication-service";
 import { enqueueInvoiceGeneratedNotificationsSafely } from "./invoice-notifications-service";
@@ -1180,7 +1181,12 @@ router.post("/school/finance/payments/:paymentId/verify", async (req, res): Prom
       [nextPaid, nextOutstanding, invoiceStatus(nextPaid, invoice.rows[0].total_minor), invoice.rows[0].id, schoolId],
     );
     const receiptNumber = `RCP-${schoolId}-${paymentId.toString().padStart(8, "0")}`;
-    const schoolInfo = await client.query(`SELECT name,logo FROM schools WHERE id=$1`, [schoolId]);
+    const schoolInfo = await client.query(
+      `SELECT s.name,s.logo,l.id AS logo_version_id FROM schools s
+        LEFT JOIN school_branding_logos l ON l.school_id=s.id AND l.is_current=true
+       WHERE s.id=$1`,
+      [schoolId],
+    );
     const payer = payment.rows[0].parent_id
       ? await client.query(`SELECT name FROM parents WHERE id=$1 AND school_id=$2`, [payment.rows[0].parent_id, schoolId])
       : { rows: [] };
@@ -1188,7 +1194,10 @@ router.post("/school/finance/payments/:paymentId/verify", async (req, res): Prom
       invoiceId: invoice.rows[0].id,
       schoolId,
       schoolName: schoolInfo.rows[0]?.name ?? null,
-      schoolLogo: schoolInfo.rows[0]?.logo ?? null,
+      schoolLogo: schoolInfo.rows[0]?.logo_version_id
+        ? canonicalSchoolLogoVersionUrl(schoolId, Number(schoolInfo.rows[0].logo_version_id))
+        : schoolInfo.rows[0]?.logo ?? null,
+      schoolLogoVersionId: schoolInfo.rows[0]?.logo_version_id ?? null,
       invoiceNumber: invoice.rows[0].invoice_number, studentName: invoice.rows[0].student_name_snapshot,
       admissionNo: invoice.rows[0].admission_no_snapshot, className: invoice.rows[0].class_name_snapshot,
       sessionId: invoice.rows[0].academic_session_id, termId: invoice.rows[0].academic_term_id,

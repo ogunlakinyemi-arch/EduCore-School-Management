@@ -13,6 +13,5 @@ export const StaffNfcAllocationRecipientType = {
   SCHOOL: 'SCHOOL',
   PLATFORM: 'PLATFORM',
   PARTNER: 'PARTNER',
-  REVERSAL: 'REVERSAL',
   PLATFORM_PROVIDER_FEE: 'PLATFORM_PROVIDER_FEE',
 } as const;

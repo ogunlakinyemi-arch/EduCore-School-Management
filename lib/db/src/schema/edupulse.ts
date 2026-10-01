@@ -267,6 +267,7 @@ export const subscriptions = pgTable(
     index("subscriptions_school_idx").on(table.schoolId),
     uniqueIndex("subscriptions_provider_reference_unique").on(table.providerReference),
     index("subscriptions_partner_profile_idx").on(table.partnerProfileId),
+    uniqueIndex("subscriptions_id_school_student_uq").on(table.id, table.schoolId, table.studentId),
     check(
       "subscriptions_partner_allocation_integrity",
       sql`${table.partnerProfileId} IS NULL OR (${table.partnerShare} IS NOT NULL AND ${table.amount} = ${table.schoolShare} + ${table.edupulseShare} + ${table.partnerShare})`,
@@ -376,6 +377,7 @@ export const schoolPartnerAttributions = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    uniqueIndex("school_partner_attributions_id_partner_uq").on(table.id, table.partnerProfileId),
     uniqueIndex("school_partner_attributions_current_unique")
       .on(table.schoolId)
       .where(sql`${table.isCurrent} = true`),

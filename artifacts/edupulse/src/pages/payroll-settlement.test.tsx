@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
+import { canSend, currentAttempt, isUnknownBlocked } from './payroll';
 import { describe, expect, it } from 'vitest';
 import { IdentityBoundary, OutcomeBadge, ProviderBanner, SettlementHistoryTable, netOf, toMinor, transferOutcome } from './payroll-common';
 
@@ -31,5 +32,18 @@ describe('payroll and settlement safety', () => {
     expect(toMinor('-20', true)).toBe(-2000);
     expect(Number.isNaN(toMinor('abc'))).toBe(true);
     expect(netOf(500000, 20000, 10000, 5000, -1000)).toBe(524000);
+  });
+  it('after reload a server-pending attempt stays reconcilable and cannot be resent', () => {
+    const item = { employeeId: 7, paymentStatus: 'FAILED', transferAttempts: [{ id: 91, attempt: 1, status: 'FAILED', requiresReconciliation: false }, { id: 92, attempt: 2, status: 'PENDING', requiresReconciliation: false, providerReference: 'ref-92' }] };
+    const cur = currentAttempt(item);
+    expect(cur?.id).toBe(92);
+    expect(transferOutcome(cur!.status).label).not.toContain('provider verified');
+    expect(canSend(item, {})).toBe(false);
+  });
+  it('never resends after a lost response until the server shows a new attempt', () => {
+    const item = { employeeId: 3, paymentStatus: 'UNPAID', transferAttempts: [] as never[] };
+    expect(canSend(item, { 3: 0 })).toBe(false);
+    expect(isUnknownBlocked(item, { 3: 0 })).toBe(true);
+    expect(isUnknownBlocked({ ...item, transferAttempts: [{}] }, { 3: 0 })).toBe(false);
   });
 });

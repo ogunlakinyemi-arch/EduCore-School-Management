@@ -1,6 +1,7 @@
 import { useGetPlatformDashboard, useGetSchoolDashboard, useGetAuthorizedContext, useGetStudentSelfProfile, useGetOwnAttendance } from '@workspace/api-client-react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'wouter';
+import { TeacherAssignedWork, isOwnTeacherView } from '@/components/teacher-assigned-work';
 import { Building2, GraduationCap, CircleDollarSign, Smartphone, ArrowUpRight, LogIn, LogOut, Calendar, Clock, UsersRound, Briefcase, CreditCard, FileClock, ReceiptText } from 'lucide-react';
 import { PageHeading, Metric, useTenant, SkeletonPage, ErrorState, ActivityFeed, money, Button, StatusPill } from '@/components/shared';
 
@@ -26,7 +27,8 @@ export function Dashboard() {
   if (isPlatformOwner) {
     return <PlatformDashboard selectedSchoolId={schoolId} />;
   } else if (schoolId && schoolId !== 0) {
-    return <SchoolDashboard schoolId={schoolId} canOpenFinance={canOpenSchoolFinance} />;
+    const ownTeacherView = isOwnTeacherView(contextQuery.data, schoolId);
+    return <SchoolDashboard schoolId={schoolId} canOpenFinance={canOpenSchoolFinance} showTeacherWork={ownTeacherView} />;
   } else {
     return <ErrorState retry={() => {}} message="No dashboard access available for your role." />;
   }
@@ -333,7 +335,7 @@ function PlatformSchoolDashboard({ school, onReturn }: { school: PlatformSchoolS
   );
 }
 
-function SchoolDashboard({ schoolId, canOpenFinance }: { schoolId: number; canOpenFinance: boolean }) {
+function SchoolDashboard({ schoolId, canOpenFinance, showTeacherWork = false }: { schoolId: number; canOpenFinance: boolean; showTeacherWork?: boolean }) {
   const query = useGetSchoolDashboard({ schoolId });
   const data: any = query.data;
   
@@ -368,6 +370,8 @@ function SchoolDashboard({ schoolId, canOpenFinance }: { schoolId: number; canOp
         <Metric label="Active cards" value={data?.activeCards ?? 0} detail={`${data?.lockedCards ?? 0} locked`} icon={Smartphone} />
       </div>
       
+      {showTeacherWork && <TeacherAssignedWork schoolId={schoolId} />}
+
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_1fr]">
         <div className="panel p-6 md:p-8">
           <div className="eyebrow mb-2">Institutional snapshot</div>

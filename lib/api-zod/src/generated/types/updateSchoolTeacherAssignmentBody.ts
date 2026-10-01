@@ -7,7 +7,13 @@
  */
 import type { UpdateSchoolTeacherAssignmentBodyStatus } from './updateSchoolTeacherAssignmentBodyStatus';
 
+/**
+ * employeeId replaces the teacher while preserving the previous inactive record; startDate is only accepted with employeeId.
+ */
 export interface UpdateSchoolTeacherAssignmentBody {
+  /** @minimum 1 */
+  employeeId?: number;
+  startDate?: Date;
   status?: UpdateSchoolTeacherAssignmentBodyStatus;
   endDate?: Date;
 }

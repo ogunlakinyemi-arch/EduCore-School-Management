@@ -122,6 +122,7 @@ export const schoolBrandingLogos = pgTable(
     updatedByUserId: integer("updated_by_user_id")
       .notNull()
       .references(() => appUsers.id, { onDelete: "restrict" }),
+    isCurrent: boolean("is_current").notNull().default(true),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -133,8 +134,11 @@ export const schoolBrandingLogos = pgTable(
       "school_branding_logos_byte_size_check",
       sql`${table.byteSize} BETWEEN 1 AND 3145728`,
     ),
-    uniqueIndex("school_branding_logos_school_unique").on(table.schoolId),
+    uniqueIndex("school_branding_logos_school_current_unique")
+      .on(table.schoolId)
+      .where(sql`${table.isCurrent}`),
     uniqueIndex("school_branding_logos_object_path_unique").on(table.objectPath),
+    index("school_branding_logos_school_versions_idx").on(table.schoolId, table.id),
     index("school_branding_logos_updated_by_idx").on(table.updatedByUserId, table.updatedAt),
   ],
 );

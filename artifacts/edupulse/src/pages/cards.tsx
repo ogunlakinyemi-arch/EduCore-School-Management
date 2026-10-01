@@ -14,7 +14,7 @@ export function CardsPage() {
   const authorized = useGetAuthorizedContext();
   const roles = authorized.data?.roles?.filter(role => role.status === 'ACTIVE') ?? [];
   const isRestrictedEmployee = roles.some(role =>
-    role.role === 'DEVICE_ACTIVATION_OFFICER' || role.role === 'COMPANY_ACCOUNTANT');
+    ['DEVICE_ACTIVATION_OFFICER', 'COMPANY_ACCOUNTANT'].includes(String(role.role)));
   const canProvision = authorized.data?.isPlatformOwner === true && !isRestrictedEmployee;
   const canManageCards = canProvision || (!authorized.data?.isPlatformOwner &&
     roles.some(role => role.role === 'SCHOOL_ADMIN' && role.schoolId === schoolId));

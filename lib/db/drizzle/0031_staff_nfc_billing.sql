@@ -104,6 +104,38 @@ CREATE INDEX staff_nfc_subscriptions_partner_term_idx
   ON staff_nfc_subscriptions (partner_profile_id, academic_session_id, academic_term_id)
   WHERE partner_profile_id IS NOT NULL;
 
+CREATE FUNCTION protect_staff_nfc_subscription_snapshot() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '55000',
+      MESSAGE = 'Staff NFC subscription financial and ownership snapshots are immutable';
+  END IF;
+
+  IF ROW(
+       NEW.id,NEW.employee_id,NEW.school_id,NEW.academic_session_id,NEW.academic_term_id,
+       NEW.product,NEW.billing_rule_id,NEW.billing_rule_version,NEW.price_minor,
+       NEW.school_share_minor,NEW.platform_share_minor,NEW.partner_share_minor,
+       NEW.partner_profile_id,NEW.attribution_id,NEW.currency,NEW.due_date,
+       NEW.created_by,NEW.created_at
+     ) IS DISTINCT FROM ROW(
+       OLD.id,OLD.employee_id,OLD.school_id,OLD.academic_session_id,OLD.academic_term_id,
+       OLD.product,OLD.billing_rule_id,OLD.billing_rule_version,OLD.price_minor,
+       OLD.school_share_minor,OLD.platform_share_minor,OLD.partner_share_minor,
+       OLD.partner_profile_id,OLD.attribution_id,OLD.currency,OLD.due_date,
+       OLD.created_by,OLD.created_at
+     ) THEN
+    RAISE EXCEPTION 'Staff NFC subscription financial and ownership snapshots are immutable';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER staff_nfc_subscriptions_snapshot_immutable
+  BEFORE UPDATE OR DELETE ON staff_nfc_subscriptions
+  FOR EACH ROW EXECUTE FUNCTION protect_staff_nfc_subscription_snapshot();
+
 CREATE TABLE staff_nfc_payments (
   id serial PRIMARY KEY,
   subscription_id integer NOT NULL,
@@ -166,6 +198,8 @@ CREATE INDEX staff_nfc_payments_school_status_idx
   ON staff_nfc_payments (school_id, status, created_at DESC);
 CREATE INDEX staff_nfc_payments_term_idx
   ON staff_nfc_payments (school_id, academic_session_id, academic_term_id);
+CREATE UNIQUE INDEX staff_nfc_payments_id_school_uq
+  ON staff_nfc_payments (id, school_id);
 
 CREATE TABLE staff_nfc_refunds (
   id serial PRIMARY KEY,
@@ -232,15 +266,21 @@ CREATE TABLE staff_nfc_allocations (
   CONSTRAINT staff_nfc_allocations_rule_product_fk
     FOREIGN KEY (allocation_rule_id, product)
     REFERENCES staff_nfc_billing_rules(id, product) ON DELETE RESTRICT,
-  CONSTRAINT staff_nfc_allocations_type_ck CHECK (recipient_type IN ('SCHOOL','PLATFORM','PARTNER')),
+  CONSTRAINT staff_nfc_allocations_type_ck
+    CHECK (recipient_type IN ('SCHOOL','PLATFORM','PARTNER','PLATFORM_PROVIDER_FEE')),
   CONSTRAINT staff_nfc_allocations_product_ck CHECK (product = 'TEACHER_STAFF_NFC_EID'),
-  CONSTRAINT staff_nfc_allocations_entry_ck CHECK (entry_type IN ('CREDIT','REVERSAL')),
+  CONSTRAINT staff_nfc_allocations_entry_ck CHECK (entry_type IN ('CREDIT','REVERSAL','EXPENSE')),
   CONSTRAINT staff_nfc_allocations_currency_ck CHECK (currency = 'NGN'),
   CONSTRAINT staff_nfc_allocations_refund_entry_ck
     CHECK ((entry_type = 'CREDIT' AND recipient_type IN ('SCHOOL','PLATFORM','PARTNER') AND refund_id IS NULL)
       OR (entry_type = 'REVERSAL' AND recipient_type IN ('SCHOOL','PLATFORM','PARTNER') AND refund_id IS NOT NULL)
       OR (entry_type = 'EXPENSE' AND recipient_type = 'PLATFORM_PROVIDER_FEE' AND refund_id IS NULL))
 );
+ALTER TABLE staff_nfc_allocations
+  ADD CONSTRAINT staff_nfc_allocations_provider_fee_expense_ck CHECK (
+    (recipient_type = 'PLATFORM_PROVIDER_FEE' AND entry_type = 'EXPENSE' AND refund_id IS NULL)
+    OR (recipient_type <> 'PLATFORM_PROVIDER_FEE' AND entry_type IN ('CREDIT','REVERSAL'))
+  );
 CREATE UNIQUE INDEX staff_nfc_allocations_credit_payment_type_uq
   ON staff_nfc_allocations (payment_id, recipient_type)
   WHERE entry_type = 'CREDIT';

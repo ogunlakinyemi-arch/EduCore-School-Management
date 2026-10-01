@@ -11,8 +11,9 @@ import type { TransportHistoryEntryBefore } from './transportHistoryEntryBefore'
 export interface TransportHistoryEntry {
   id: number;
   schoolId: number;
-  assignmentId: number;
-  studentId: number;
+  assignmentId: number | null;
+  routeStaffId?: number | null;
+  studentId: number | null;
   actorUserId?: number | null;
   actorName: string;
   actorRole: string;

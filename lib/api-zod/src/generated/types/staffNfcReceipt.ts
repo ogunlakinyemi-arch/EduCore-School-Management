@@ -15,6 +15,8 @@ export interface StaffNfcReceipt {
   employeeNumber: string;
   schoolId: number;
   schoolName: string;
+  /** @nullable */
+  schoolLogoVersionUrl: string | null;
   sessionName: string;
   termName: string;
   payment: StaffNfcPaymentSummary;

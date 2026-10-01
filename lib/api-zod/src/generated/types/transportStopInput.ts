@@ -17,6 +17,6 @@ export interface TransportStopInput {
   /** @minimum 1 */
   sequence: number;
   /** @maxLength 500 */
-  notes?: string;
+  notes?: string | null;
   isActive?: boolean;
 }

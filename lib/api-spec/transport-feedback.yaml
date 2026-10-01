@@ -1425,7 +1425,7 @@ components:
           type: integer
         status:
           type: string
-          enum: [PAID, PENDING, OVERDUE, SUSPENDED, INACTIVE]
+          enum: [PAID, PENDING, OVERDUE, SUSPENDED, INACTIVE, CANCELLED]
         dueDate:
           type: string
           format: date
@@ -1656,7 +1656,7 @@ components:
           format: date
     TransportSelfAssignment:
       type: object
-      required: [id, studentId, schoolId, studentName, busName, registrationNumber, busCapacity, routeName, driverName, pickup, dropoff, schedule, status, effectiveDate, endDate, reason, feeMinor, currency, invoices]
+      required: [id, studentId, schoolId, studentName, busName, registrationNumber, busCapacity, routeName, driverName, pickup, dropoff, schedule, status, effectiveDate, endDate, reason, feeMinor, feePlanAmountMinor, academicSessionId, academicTermId, dueDate, feePlans, currency, invoices]
       properties:
         id:
           type: integer
@@ -1696,6 +1696,23 @@ components:
           type: string
         feeMinor:
           type: integer
+        feePlanAmountMinor:
+          type: integer
+          minimum: 0
+        academicSessionId:
+          type: integer
+          nullable: true
+        academicTermId:
+          type: integer
+          nullable: true
+        dueDate:
+          type: string
+          format: date
+          nullable: true
+        feePlans:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransportAssignmentFeePlan"
         currency:
           type: string
           enum: [NGN]

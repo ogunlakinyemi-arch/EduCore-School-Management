@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { CircleDollarSign, CreditCard, Download, Printer, ReceiptText, RefreshCw, ShieldCheck, Handshake, Layers3 } from 'lucide-react';
+import { CircleDollarSign, CreditCard, Download, ReceiptText, RefreshCw, ShieldCheck, Handshake, Layers3 } from 'lucide-react';
 import {
   useGetAuthorizedContext, useGetMyEmployeeNfcProfile, getGetMyEmployeeNfcProfileQueryKey,
   useGetMyStaffNfcSubscriptions, getGetMyStaffNfcSubscriptionsQueryKey,
@@ -16,6 +16,7 @@ import type {
   GetMyStaffNfcPartnerCommissionsParams,
 } from '@workspace/api-client-react';
 import { Button, EmptyState, ErrorState, Field, Info, Modal, PageHeading, SkeletonPage, TenantPicker, cx, date, useTenant } from '@/components/shared';
+import { SchoolDocumentHeader, SchoolDocumentPrintButton } from '@/components/school-document';
 
 /* ---------- pure helpers (exported for tests) ---------- */
 export const nairaMinor = (minor: number | null | undefined) => {
@@ -132,16 +133,45 @@ function ReceiptModal({ paymentId, schoolId, showAll, onClose }: { paymentId: nu
     const url = URL.createObjectURL(new Blob([receiptHtml(r, showAll)], { type: 'text/html' }));
     const a = document.createElement('a'); a.href = url; a.download = `${r.receiptNumber}.html`; a.click(); URL.revokeObjectURL(url);
   };
-  const print = () => {
-    if (!r) return;
-    const w = window.open('', '_blank', 'noopener,width=640,height=800'); if (!w) return;
-    w.document.write(receiptHtml(r, showAll)); w.document.close(); w.print();
-  };
+  const receiptAllocations = (r?.allocations ?? []).filter(a => showAll || a.recipientType === 'SCHOOL');
   return <Modal title="Receipt" eyebrow="Server-issued, verified payment" onClose={onClose}>
     {q.isLoading ? <div className="h-40 animate-pulse rounded-xl bg-[hsl(var(--muted))]" /> : q.isError || !r ? <ErrorState retry={() => q.refetch()} message={errMsg(q.error) || 'Receipt unavailable.'} /> : <div className="space-y-4" data-testid="receipt-view">
       <div className="grid grid-cols-2 gap-3"><Info label="Receipt no." value={<span className="font-mono">{r.receiptNumber}</span>} /><Info label="Issued" value={date(r.issuedAt)} /><Info label="Staff" value={`${r.staffName} · ${r.employeeNumber}`} /><Info label="School" value={r.schoolName} /><Info label="Term" value={`${r.sessionName} · ${r.termName}`} /><Info label="Amount" value={nairaMinor(r.payment.grossAmountMinor)} /></div>
       <AllocationBreakdown allocations={r.allocations} showAll={showAll} />
-      <div className="flex gap-2"><Button variant="outline" onClick={print} testId="button-print-receipt"><Printer size={15} />Print</Button><Button variant="outline" onClick={download} testId="button-download-receipt"><Download size={15} />Download</Button></div>
+      <div className="flex flex-wrap gap-2">
+        <SchoolDocumentPrintButton label="Print receipt" testId="button-print-receipt">
+          <article className="school-document-page">
+            <SchoolDocumentHeader branding={{
+              name: r.schoolName,
+              logoUrl: r.schoolLogoVersionUrl ?? undefined,
+            }} />
+            <h2 className="school-document-title">Staff NFC E-ID payment receipt</h2>
+            <dl className="school-document-grid">
+              <div className="school-document-field"><dt>Receipt number</dt><dd>{r.receiptNumber}</dd></div>
+              <div className="school-document-field"><dt>Issued</dt><dd>{date(r.issuedAt)}</dd></div>
+              <div className="school-document-field"><dt>Staff member</dt><dd>{r.staffName}</dd></div>
+              <div className="school-document-field"><dt>Employee number</dt><dd>{r.employeeNumber}</dd></div>
+              <div className="school-document-field"><dt>School</dt><dd>{r.schoolName}</dd></div>
+              <div className="school-document-field"><dt>Session / term</dt><dd>{r.sessionName} / {r.termName}</dd></div>
+              <div className="school-document-field"><dt>Payment status</dt><dd>{r.payment.status}</dd></div>
+              <div className="school-document-field"><dt>Provider</dt><dd>{r.payment.provider}</dd></div>
+              <div className="school-document-field"><dt>Payment reference</dt><dd>{r.payment.providerReference ?? '—'}</dd></div>
+              <div className="school-document-field"><dt>Paid at</dt><dd>{r.payment.paidAt ? date(r.payment.paidAt) : '—'}</dd></div>
+              <div className="school-document-field"><dt>Gross amount</dt><dd>{nairaMinor(r.payment.grossAmountMinor)} {r.payment.currency}</dd></div>
+              {r.payment.providerFeeMinor != null && <div className="school-document-field"><dt>Provider fee</dt><dd>{nairaMinor(r.payment.providerFeeMinor)} {r.payment.currency}</dd></div>}
+              {r.payment.settlementAmountMinor != null && <div className="school-document-field"><dt>Settlement amount</dt><dd>{nairaMinor(r.payment.settlementAmountMinor)} {r.payment.currency}</dd></div>}
+            </dl>
+            {receiptAllocations.length > 0 && <table className="school-document-table">
+              <thead><tr><th>Allocation</th><th>Amount</th></tr></thead>
+              <tbody>{receiptAllocations.map((allocation, index) => <tr key={`${allocation.recipientType}-${index}`}>
+                <td>{allocationLabel[allocation.recipientType] ?? allocation.recipientType}</td>
+                <td>{nairaMinor(allocation.amountMinor)} {allocation.currency}</td>
+              </tr>)}</tbody>
+            </table>}
+          </article>
+        </SchoolDocumentPrintButton>
+        <Button variant="outline" onClick={download} testId="button-download-receipt"><Download size={15} />Download</Button>
+      </div>
     </div>}
   </Modal>;
 }

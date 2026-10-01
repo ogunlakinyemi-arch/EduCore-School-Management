@@ -513,7 +513,7 @@ components:
         activated: { type: boolean }
     StaffNfcReceipt:
       type: object
-      required: [receiptNumber, issuedAt, staffName, employeeNumber, schoolId, schoolName, sessionName, termName, payment, allocations]
+      required: [receiptNumber, issuedAt, staffName, employeeNumber, schoolId, schoolName, schoolLogoVersionUrl, sessionName, termName, payment, allocations]
       properties:
         receiptNumber: { type: string }
         issuedAt: { type: string, format: date-time }
@@ -521,6 +521,7 @@ components:
         employeeNumber: { type: string }
         schoolId: { type: integer }
         schoolName: { type: string }
+        schoolLogoVersionUrl: { type: ["string", "null"] }
         sessionName: { type: string }
         termName: { type: string }
         payment: { $ref: "#/components/schemas/StaffNfcPaymentSummary" }

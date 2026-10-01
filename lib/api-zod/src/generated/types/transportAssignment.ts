@@ -5,6 +5,8 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { TransportAssignmentCurrency } from './transportAssignmentCurrency';
+import type { TransportAssignmentFeePlan } from './transportAssignmentFeePlan';
 import type { TransportAssignmentStatus } from './transportAssignmentStatus';
 import type { TransportGuardian } from './transportGuardian';
 import type { TransportInvoiceStatus } from './transportInvoiceStatus';
@@ -20,19 +22,33 @@ export interface TransportAssignment {
   className: string;
   section: string;
   busId: number;
+  busCapacity: number;
   busName: string;
   registrationNumber: string;
   routeId: number;
   routeName: string;
+  driverEmployeeId: number;
   driverName: string;
   pickup: TransportStop;
   dropoff: TransportStop;
   schedule: TransportSchedule;
   status: TransportAssignmentStatus;
   effectiveDate: Date;
+  endDate: Date | null;
   reason: string;
+  /**
+     * Current route fare default; individual term plans may override it.
+     * @minimum 0
+     */
+  feeMinor: number;
   /** @minimum 0 */
-  feeMinor?: number;
+  feePlanAmountMinor: number;
+  academicSessionId: number | null;
+  academicTermId: number | null;
+  dueDate: Date | null;
+  feeCategoryId: number | null;
+  currency?: TransportAssignmentCurrency;
+  feePlans: TransportAssignmentFeePlan[];
   guardians: TransportGuardian[];
   invoices: TransportInvoiceStatus[];
   createdAt: Date;

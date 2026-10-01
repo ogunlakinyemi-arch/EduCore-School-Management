@@ -8,6 +8,7 @@
 import type { PayrollItemCurrency } from './payrollItemCurrency';
 import type { PayrollItemEmployeeType } from './payrollItemEmployeeType';
 import type { PayrollItemPaymentStatus } from './payrollItemPaymentStatus';
+import type { PayrollTransferAttemptSummary } from './payrollTransferAttemptSummary';
 
 export interface PayrollItem {
   /** @minimum 1 */
@@ -35,6 +36,8 @@ export interface PayrollItem {
   paymentStatus: PayrollItemPaymentStatus;
   /** @nullable */
   transferReference?: string | null;
+  /** Durable same-item history used to restore pending and ambiguous reconciliation state after reload. Contains sanitized provider evidence only; employee bank identifiers and raw provider payloads are never exposed. */
+  transferAttempts?: PayrollTransferAttemptSummary[];
   /** @nullable */
   bankName?: string | null;
   /** @nullable */

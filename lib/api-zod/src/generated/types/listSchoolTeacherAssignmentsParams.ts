@@ -16,5 +16,13 @@ employeeId?: number;
  * @minimum 1
  */
 sessionId?: number;
+/**
+ * @minimum 1
+ */
+classId?: number;
+/**
+ * @minimum 1
+ */
+subjectId?: number;
 status?: ListSchoolTeacherAssignmentsStatus;
 };

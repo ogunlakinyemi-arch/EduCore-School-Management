@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
   duplicateTransfer: false,
   duplicateEvidence: false,
   bankSettings: null as null | Record<string, any>,
+  schoolBranding: null as null | { schoolId: number; name: string; logo: string | null; logoVersionId: number; isCurrent: boolean },
   calls: [] as Array<{ sql: string; values: any[] }>,
   role: "SCHOOL_ADMIN",
   schoolId: 1,
@@ -230,7 +231,16 @@ const poolMock = vi.hoisted(() => {
         };
         return result([{ ...state.bankSettings }]);
       }
-      if (sql.includes("SELECT name,logo FROM schools")) return result([{ name: "Test School", logo: null }]);
+      if (sql.includes("FROM schools s") && sql.includes("LEFT JOIN school_branding_logos l")) {
+        if (!sql.includes("ON l.school_id=s.id AND l.is_current=true")) {
+          throw new Error("Finance receipt logo lookup must join only the current logo for the same school");
+        }
+        const boundSchoolId = Number(values[0]);
+        const branding = state.schoolBranding;
+        return result(branding !== null && branding.schoolId === boundSchoolId && branding.isCurrent
+          ? [{ name: branding.name, logo: branding.logo, logo_version_id: branding.logoVersionId }]
+          : []);
+      }
       if (sql.includes("SELECT name FROM parents")) return result([{ name: "Test Parent" }]);
       if (sql.includes("INSERT INTO audit_logs")) {
         state.audit.push(values);
@@ -372,6 +382,13 @@ beforeEach(() => {
     accountName: "Test School",
     accountNumber: "1234567890",
   };
+  state.schoolBranding = {
+    schoolId: 1,
+    name: "Test School",
+    logo: "/api/schools/1/branding/logo",
+    logoVersionId: 57,
+    isCurrent: true,
+  };
   state.calls.length = 0;
   state.audit.length = 0;
   state.role = "SCHOOL_ADMIN";
@@ -396,6 +413,15 @@ async function verify(body: unknown = verificationBody, headers: Record<string, 
     headers: { "content-type": "application/json", ...headers },
     body: JSON.stringify(body),
   });
+}
+
+function expectReceiptLogoBoundToSchool(schoolId: number) {
+  const lookup = state.calls.find(({ sql }) =>
+    sql.includes("FROM schools s") && sql.includes("LEFT JOIN school_branding_logos l"));
+  expect(lookup).toBeDefined();
+  expect(lookup?.values).toEqual([schoolId]);
+  expect(lookup?.sql).toContain("ON l.school_id=s.id AND l.is_current=true");
+  expect(lookup?.sql).toContain("WHERE s.id=$1");
 }
 
 const transferBody = {
@@ -438,8 +464,14 @@ describe("manual bank-transfer review integration", () => {
     expect(state.invoice).toMatchObject({ paid_minor: 30000, outstanding_minor: 20000, status: "PARTIALLY_PAID" });
     expect(state.receipt).toMatchObject({
       payment_id: 71, invoice_id: 41, school_id: 1, receipt_number: body.receiptNumber,
-      snapshot: { invoiceId: 41, schoolId: 1 },
+      snapshot: {
+        invoiceId: 41,
+        schoolId: 1,
+        schoolLogo: "/api/schools/1/branding/logo-versions/57",
+        schoolLogoVersionId: 57,
+      },
     });
+    expectReceiptLogoBoundToSchool(1);
     const notificationIndex = state.calls.findIndex(({ sql }) => sql.includes("INSERT INTO fee_payment_notifications"));
     const receiptCheckIndex = state.calls.findIndex(({ sql }) => sql.includes("SELECT receipt_number,payment_id,invoice_id,school_id"));
     const commitIndex = state.calls.findIndex(({ sql }) => sql === "COMMIT");

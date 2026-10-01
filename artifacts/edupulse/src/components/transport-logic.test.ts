@@ -36,10 +36,10 @@ describe('drivers, stops and students', () => {
   it('hides students who already ride actively', () => {
     const list = [
       { studentId: 1 },
-      { studentId: 2, activeAssignment: { transportStatus: 'ACTIVE', assignment: { id: 1 } } },
-      { studentId: 3, activeAssignment: { transportStatus: 'DEACTIVATED', assignment: { id: 2 } } },
+      { studentId: 2, activeAssignment: { status: 'ACTIVE', id: 1 } },
+      { studentId: 3, activeAssignment: { status: 'SUSPENDED', id: 2 } },
     ] as never;
-    expect(selectableStudents(list).map(s => s.studentId)).toEqual([1, 3]);
+    expect(selectableStudents(list).map(s => s.studentId)).toEqual([1]);
   });
 });
 

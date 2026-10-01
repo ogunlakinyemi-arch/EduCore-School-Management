@@ -120,7 +120,7 @@ router.get("/reports/:reportId/export", asyncRoute(async (req, res) => {
       `SELECT s.name,s.address,s.city,s.state,s.phone,s.email,
               l.object_path AS "logoObjectPath"
          FROM schools s
-         LEFT JOIN school_branding_logos l ON l.school_id=s.id
+          LEFT JOIN school_branding_logos l ON l.school_id=s.id AND l.is_current=true
         WHERE s.id=$1`,
       [context.schoolId],
     );

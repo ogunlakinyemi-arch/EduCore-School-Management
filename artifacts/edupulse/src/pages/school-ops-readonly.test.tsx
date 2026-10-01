@@ -11,7 +11,7 @@ vi.mock('@workspace/api-client-react', () => {
   const m = () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false, isError: false, reset: vi.fn() });
   return {
     useGetAuthorizedContext: () => ({ data: state.context, isLoading: false, isError: false }),
-    useListSchoolTeacherDuty: q('duty', [{ id: 3, employeeId: 1, employeeName: 'Ada Obi', employeeNo: 'T-1', dutyRole: 'Gate', startDate: '2025-09-08', endDate: '2025-09-12', status: 'ACTIVE', notes: null }]),
+    useListSchoolTeacherDuty: q('duty', [{ id: 3, employeeId: 1, employeeName: 'Ada Obi', employeeNo: 'T-1', dutyRole: 'Gate', startDate: '2000-01-01', endDate: '2999-12-31', status: 'ACTIVE', notes: null }]),
     getListSchoolTeacherDutyQueryKey: () => ['d'], useCreateSchoolTeacherDuty: m, useUpdateSchoolTeacherDuty: m,
     useListEmployees: q('employees', []),
     useListSchoolAcademicCalendar: q('calendar', [{ id: 'x1', schoolId: 5, sessionId: 2, sessionName: '2025/2026', title: 'Resumption', category: 'RESUMPTION', startDate: '2025-09-08', academic: true, audience: ['PARENT'], status: 'ACTIVE', source: 'SESSION_TERM' }]),

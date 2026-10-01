@@ -206,7 +206,7 @@ beforeEach(() => {
         }
         if (sql.includes("SELECT p.*,i.total_minor")) {
           return String(values[0]) === fake.payment.reference && String(values[1]) === fake.payment.provider
-            ? { rows: [{ ...fake.payment, ...fake.invoice, ...fake.session, school_name: "School", school_logo: null, payer_name: "Parent" }] }
+            ? { rows: [{ ...fake.payment, ...fake.invoice, ...fake.session, school_name: "School", school_logo: null, school_logo_version_id: null, payer_name: "Parent" }] }
             : { rows: [] };
         }
         if (sql.includes("SELECT id FROM fee_payments") && sql.includes("provider_transaction_id=$2")) {

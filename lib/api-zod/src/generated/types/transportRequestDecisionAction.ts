@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type TransportRequestDecisionSchoolAction = typeof TransportRequestDecisionSchoolAction[keyof typeof TransportRequestDecisionSchoolAction];
+export type TransportRequestDecisionAction = typeof TransportRequestDecisionAction[keyof typeof TransportRequestDecisionAction];
 
 
-export const TransportRequestDecisionSchoolAction = {
+export const TransportRequestDecisionAction = {
   ACTIVATE: 'ACTIVATE',
   SUSPEND: 'SUSPEND',
   DEACTIVATE: 'DEACTIVATE',

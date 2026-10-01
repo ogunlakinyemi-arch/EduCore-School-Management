@@ -253,6 +253,13 @@
       "when": 1790856004000,
       "tag": "0035_settlement_payroll",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790856005000,
+      "tag": "0036_student_subscription_allocations",
+      "breakpoints": true
     }
   ]
 }

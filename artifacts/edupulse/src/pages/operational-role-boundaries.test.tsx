@@ -57,6 +57,8 @@ vi.mock('@workspace/api-client-react', () => {
     useCorrectAttendance: mutation,
     useResolveAttendanceDiscrepancy: mutation,
     useGetClassAttendance: () => query([]),
+    useGetSchoolBranding: () => query({ schoolId: 12, name: 'Test school', logoUrl: null }),
+    getGetSchoolBrandingQueryKey: queryKey,
     getGetClassAttendanceQueryKey: queryKey,
     getGetSchoolAttendanceTodayQueryKey: queryKey,
     getListSchoolAttendanceEventsQueryKey: queryKey,

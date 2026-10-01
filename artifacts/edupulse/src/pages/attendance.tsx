@@ -13,6 +13,7 @@ import {
   Button, EmptyState, ErrorState, Field, Metric, Modal, PageHeading, SkeletonPage,
   StatusPill, TenantPicker, useTenant, cx, time,
 } from '@/components/shared';
+import { SchoolDocumentHeader, SchoolDocumentPrintButton, useSchoolDocumentBranding } from '@/components/school-document';
 
 type Tab = 'events' | 'history' | 'reports' | 'discrepancies';
 
@@ -87,6 +88,15 @@ export function AttendancePage() {
                 {tab !== 'discrepancies' && <select value={method} onChange={e => setMethod(e.target.value)} aria-label="Identification method"><option value="">All methods</option><option value="NFC">NFC</option><option value="FINGERPRINT">Fingerprint</option><option value="MANUAL">Manual</option></select>}
                 {tab !== 'discrepancies' && <select value={subject} onChange={e => setSubject(e.target.value as typeof subject)} aria-label="Attendance subject"><option value="all">Students and staff</option><option value="student">Students</option><option value="employee">Staff</option></select>}
                 {tab !== 'discrepancies' && <input type="text" placeholder="Section (e.g. A)" className="max-w-[120px] rounded-md border border-[hsl(var(--border))] bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-[hsl(var(--muted-foreground))] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))]" value={section} onChange={e => setSection(e.target.value)} aria-label="Section filter" />}
+                {tab !== 'discrepancies' && <AttendancePrintDocument
+                  schoolId={schoolId}
+                  rows={rows}
+                  fromDate={tab === 'events' ? date : fromDate}
+                  toDate={tab === 'events' ? date : toDate}
+                  filters={{ eventType, status, method, subject, section }}
+                  disabled={events.isLoading || events.isError || rows.length === 0}
+                  unavailableMessage={events.isError ? 'Filtered attendance could not be loaded. Retry before printing.' : events.isLoading ? 'Loading filtered attendance records.' : 'There are no recorded events in this filter.'}
+                />}
               </div>
             </div>
             <AttendanceTable rows={rows} discrepancy={tab === 'discrepancies'} canCorrect={canCorrect} loading={events.isLoading || discrepancies.isLoading} onCorrect={row => setModal({ correction: row })} onResolve={row => setModal({ discrepancy: row })} />
@@ -116,8 +126,62 @@ function TeacherClassAttendance({ schoolId }: { schoolId: number }) {
     </div>
     {!validClassId ? <EmptyState icon={ClipboardCheck} title="Choose an assigned class" description="Enter an assigned class ID to view its attendance for the selected day." /> :
       report.isError ? <div role="alert" className="panel p-5">This class is unavailable or you are not assigned to it.</div> :
-      <AttendanceTable rows={(report.data as any[]) ?? []} discrepancy={false} canCorrect={false} loading={report.isLoading} onCorrect={() => {}} onResolve={() => {}} />}
+      <div className="space-y-4">
+        {!!report.data?.length && <AttendancePrintDocument schoolId={schoolId} rows={report.data as any[]} fromDate={date} toDate={date} filters={{ classId: selectedClassId }} disabled={report.isLoading || report.isError} unavailableMessage={report.isError ? 'Class attendance could not be loaded.' : 'Loading assigned class attendance.'} />}
+        <AttendanceTable rows={(report.data as any[]) ?? []} discrepancy={false} canCorrect={false} loading={report.isLoading} onCorrect={() => {}} onResolve={() => {}} />
+      </div>}
   </div>;
+}
+
+function AttendancePrintDocument({
+  schoolId,
+  rows,
+  fromDate,
+  toDate,
+  filters,
+  disabled,
+  unavailableMessage,
+}: {
+  schoolId: number;
+  rows: any[];
+  fromDate: string;
+  toDate: string;
+  filters: Record<string, string | number>;
+  disabled: boolean;
+  unavailableMessage: string;
+}) {
+  const branding = useSchoolDocumentBranding(schoolId);
+  const school = branding.data;
+  const activeFilters = Object.entries(filters)
+    .filter(([, value]) => value !== '' && value !== 'all')
+    .map(([key, value]) => `${key}: ${value}`);
+  return <SchoolDocumentPrintButton
+    label="Print filtered report"
+    testId={`button-print-attendance-${schoolId}`}
+    disabled={disabled || !school || branding.isLoading || branding.isError}
+    unavailableMessage={branding.isError ? 'School branding could not be loaded for this attendance report.' : unavailableMessage}
+  >
+    <article className="school-document-page">
+      <SchoolDocumentHeader branding={school ?? {}} />
+      <h2 className="school-document-title">Attendance report</h2>
+      <dl className="school-document-grid">
+        <div className="school-document-field"><dt>Period</dt><dd>{fromDate}{toDate !== fromDate ? ` – ${toDate}` : ''}</dd></div>
+        <div className="school-document-field"><dt>Matching recorded rows</dt><dd>{rows.length}</dd></div>
+        {activeFilters.map(filter => <div className="school-document-field" key={filter}><dt>Applied filter</dt><dd>{filter}</dd></div>)}
+      </dl>
+      <table className="school-document-table">
+        <thead><tr><th>Student / staff</th><th>Event time</th><th>Event</th><th>Status</th><th>Identification method</th><th>Section</th></tr></thead>
+        <tbody>{rows.map((row, index) => <tr key={row.id ?? index}>
+          <td>{row.studentId != null ? `${row.studentName || `Student #${row.studentId}`}` : row.employeeId != null ? `${row.employeeName || `Staff #${row.employeeId}`}` : 'Attendance record'}</td>
+          <td>{row.occurredAt ? new Date(row.occurredAt).toLocaleString('en-NG') : ''}</td>
+          <td>{row.eventType ?? row.kind ?? ''}</td>
+          <td>{row.status ?? ''}</td>
+          <td>{row.identificationMethod ?? ''}</td>
+          <td>{row.section ?? ''}</td>
+        </tr>)}</tbody>
+      </table>
+    </article>
+  </SchoolDocumentPrintButton>;
 }
 
 function AttendanceTable({ rows, discrepancy, canCorrect, loading, onCorrect, onResolve }: { rows: any[]; discrepancy: boolean; canCorrect: boolean; loading: boolean; onCorrect: (row: any) => void; onResolve: (row: any) => void }) {

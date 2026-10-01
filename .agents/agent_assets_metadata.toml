@@ -28,3 +28,17 @@ mtime_ms = 1790840311645
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/84938cf7-c37a-425f-94b6-c823f13f1ab6/63516711-2ef3-4a47-b0ca-5c84861917bc"
 storage_version_token = "1790840352007335"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "4Dlw9lUKGLQBAJp-WYkz0"
+uri = "file://docs/feedback-completion-report.html"
+type = "html"
+title = "Development correction and verification report"
+description = "Implemented scope, billing allocations, migration inventory, preservation evidence, test results and remaining verification boundaries."
+logical_id = "8313c1ce-1f3b-4ecb-8bb0-ca28ed382332"
+content_hash = "sha256:4dd2fa62f75f502fa0e9d1b306e4977eccf3ed757a0016d3db7b410a03ae349f"
+size = 9434
+mtime_ms = 1790857235878
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/8313c1ce-1f3b-4ecb-8bb0-ca28ed382332/0d7cecd8-fc63-43d9-b227-0a8cc4f8c5ab"
+storage_version_token = "1790857403371342"
+content_type = "text/html"

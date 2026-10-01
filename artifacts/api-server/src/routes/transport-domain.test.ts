@@ -20,6 +20,8 @@ import {
   requireRecordId,
   requireTransportAmountMinor,
   requireTransportDate,
+  resolveTransportFeePlanAmount,
+  resolveTransportFeePlanDueDate,
 } from "./transport-domain";
 
 function expectInputError(action: () => unknown) {
@@ -56,6 +58,20 @@ describe("transport identifiers and input normalization", () => {
     expect(requireTransportDate("2027-12-31", "date")).toBe("2027-12-31");
     expectInputError(() => requireTransportDate("2027-02-29", "date"));
     expectInputError(() => requireTransportDate("12/31/2027", "date"));
+  });
+
+  it("defaults assignment fee plans to the route fare and accepts an explicit NGN subunit override", () => {
+    expect(resolveTransportFeePlanAmount(undefined, 125_000)).toBe(125_000);
+    expect(resolveTransportFeePlanAmount(80_000, 125_000)).toBe(80_000);
+    expect(resolveTransportFeePlanAmount(0, 125_000)).toBe(0);
+    expectInputError(() => resolveTransportFeePlanAmount(-1, 125_000));
+  });
+
+  it("defaults fee-plan due dates to term end and validates explicit dates against the term", () => {
+    expect(resolveTransportFeePlanDueDate(undefined, "2027-01-01", "2027-03-31")).toBe("2027-03-31");
+    expect(resolveTransportFeePlanDueDate("2027-04-15", "2027-01-01", "2027-03-31")).toBe("2027-04-15");
+    expectInputError(() => resolveTransportFeePlanDueDate("2026-12-31", "2027-01-01", "2027-03-31"));
+    expectInputError(() => resolveTransportFeePlanDueDate("2027-02-30", "2027-01-01", "2027-03-31"));
   });
 
   it("requires explicit human-readable audit reasons and permitted fields", () => {
@@ -101,6 +117,13 @@ describe("Finance invoice status projection", () => {
   });
 
   it("prioritizes deactivation, outstanding balance, due date and configured overdue policy", () => {
+    expect(projectTransportInvoiceStatus({
+      outstandingMinor: 100,
+      feeStatus: "CANCELLED",
+      dueDate: "2027-07-01",
+      assignmentStatus: "ACTIVE",
+      currentDate: "2027-06-01",
+    })).toBe("CANCELLED");
     expect(projectTransportInvoiceStatus({
       outstandingMinor: 100,
       feeStatus: "UNPAID",

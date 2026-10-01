@@ -20,10 +20,16 @@ export interface StaffNfcPaymentSummary {
   status: StaffNfcPaymentSummaryStatus;
   /** @minimum 0 */
   grossAmountMinor: number;
-  /** @minimum 0 */
-  providerFeeMinor: number;
-  /** @minimum 0 */
-  settlementAmountMinor: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  providerFeeMinor: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  settlementAmountMinor: number | null;
   currency: StaffNfcPaymentSummaryCurrency;
   /** @nullable */
   providerTransactionId?: string | null;

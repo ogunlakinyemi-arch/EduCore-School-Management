@@ -5,12 +5,36 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { GetPlatformTransportOverviewStatus } from './getPlatformTransportOverviewStatus';
 
 export type GetPlatformTransportOverviewParams = {
 /**
  * @minimum 1
  */
 schoolId?: number;
-dateFrom?: Date;
-dateTo?: Date;
+/**
+ * @minimum 1
+ */
+academicSessionId?: number;
+/**
+ * @minimum 1
+ */
+academicTermId?: number;
+fromDate?: Date;
+toDate?: Date;
+status?: GetPlatformTransportOverviewStatus;
+/**
+ * @minimum 1
+ */
+employeeId?: number;
+/**
+ * @minLength 1
+ * @maxLength 100
+ */
+search?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
 };

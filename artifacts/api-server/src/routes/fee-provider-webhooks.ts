@@ -8,6 +8,7 @@ import {
 } from "../lib/fee-providers";
 import { configuredTestAdapter, type ConfigurableFeeProvider } from "../lib/fee-providers/factory";
 import { invoiceStatus } from "./finance-money";
+import { canonicalSchoolLogoVersionUrl } from "../lib/schoolLogoStorage";
 import {
   enqueueFinancePaymentNotificationsSafely,
   FinanceNotificationSettlementSafetyError,
@@ -127,11 +128,13 @@ export async function settleVerifiedPayment(
           i.invoice_number,i.student_name_snapshot,i.admission_no_snapshot,i.class_name_snapshot,
           i.academic_session_id,i.academic_term_id,i.student_id AS invoice_student_id,
            cs.provider AS session_provider,cs.reference AS session_reference,cs.state AS session_state,
-          s.name AS school_name,s.logo AS school_logo,pa.name AS payer_name
+           s.name AS school_name,s.logo AS school_logo,l.id AS school_logo_version_id,
+           pa.name AS payer_name
        FROM fee_payments p
        JOIN fee_provider_checkout_sessions cs ON cs.payment_id=p.id AND cs.school_id=p.school_id
        JOIN fee_invoices i ON i.id=p.invoice_id AND i.school_id=p.school_id
        JOIN schools s ON s.id=p.school_id
+        LEFT JOIN school_branding_logos l ON l.school_id=s.id AND l.is_current=true
        LEFT JOIN parents pa ON pa.id=p.parent_id AND pa.school_id=p.school_id
        WHERE p.reference=$1 AND p.provider=$2
         FOR UPDATE OF p,i,cs`,
@@ -271,7 +274,10 @@ export async function settleVerifiedPayment(
       schoolId: payment.school_id,
       studentId: payment.student_id,
       schoolName: payment.school_name,
-      schoolLogo: payment.school_logo,
+      schoolLogo: payment.school_logo_version_id
+        ? canonicalSchoolLogoVersionUrl(Number(payment.school_id), Number(payment.school_logo_version_id))
+        : payment.school_logo,
+      schoolLogoVersionId: payment.school_logo_version_id ?? null,
       invoiceNumber: payment.invoice_number,
       studentName: payment.student_name_snapshot,
       admissionNo: payment.admission_no_snapshot,

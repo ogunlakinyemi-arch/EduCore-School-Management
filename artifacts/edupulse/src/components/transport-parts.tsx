@@ -66,7 +66,7 @@ export function InvoiceList({ invoices, financeHref, financeLabel = 'Open in Fin
   );
 }
 
-export function AssignmentSummary({ a }: { a: TransportAssignment }) {
+export function AssignmentSummary({ a }: { a: Pick<TransportAssignment, 'busName' | 'registrationNumber' | 'routeName' | 'driverName' | 'pickup' | 'dropoff' | 'schedule' | 'feeMinor' | 'status'> }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2" data-testid="transport-assignment-summary">
       <div className="rounded-2xl bg-[hsl(var(--secondary))] p-4">

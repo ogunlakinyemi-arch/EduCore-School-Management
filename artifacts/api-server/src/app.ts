@@ -16,6 +16,7 @@ import {
 import router from "./routes";
 import feeProviderWebhookRouter from "./routes/fee-provider-webhooks";
 import { staffFlutterwaveWebhookRouter } from "./routes/staff-nfc-billing";
+import { studentSubscriptionFlutterwaveWebhookRouter } from "./routes/student-subscription-webhooks";
 import { logger } from "./lib/logger";
 import { AuthError } from "./middlewares/auth";
 
@@ -95,6 +96,11 @@ app.use(
   "/api/webhooks/flutterwave/staff-nfc",
   express.raw({ type: "application/json", limit: "64kb" }),
   staffFlutterwaveWebhookRouter,
+);
+app.use(
+  "/api/webhooks/flutterwave/student-subscription",
+  express.raw({ type: "application/json", limit: "64kb" }),
+  studentSubscriptionFlutterwaveWebhookRouter,
 );
 app.use(
   clerkMiddleware((req) => ({

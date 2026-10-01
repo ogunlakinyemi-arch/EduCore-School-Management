@@ -3228,25 +3228,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Subscription"
   /subscriptions/{subscriptionId}/verify:
-    post:
-      operationId: verifySubscription
-      tags: [subscriptions]
-      summary: Verify a provider payment and activate entitlement
-      parameters:
-        - $ref: "#/components/parameters/SubscriptionIdPath"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PaymentVerificationInput"
-      responses:
-        "200":
-          description: Verified subscription
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Subscription"
+    $ref: "./student-subscription-billing-feedback.yaml#/paths/~1subscriptions~1{subscriptionId}~1verify"
   /cards:
     get:
       operationId: listCards
@@ -4828,6 +4810,12 @@ paths:
     $ref: "./school-core-feedback.yaml#/paths/~1schools~1{schoolId}~1duty-roster"
   /schools/{schoolId}/duty-roster/{dutyId}:
     $ref: "./school-core-feedback.yaml#/paths/~1schools~1{schoolId}~1duty-roster~1{dutyId}"
+  /subscriptions/{subscriptionId}/checkout:
+    $ref: "./student-subscription-billing-feedback.yaml#/paths/~1subscriptions~1{subscriptionId}~1checkout"
+  /webhooks/flutterwave/student-subscription:
+    $ref: "./student-subscription-billing-feedback.yaml#/paths/~1webhooks~1flutterwave~1student-subscription"
+  /subscriptions/{subscriptionId}/payments/{paymentId}:
+    $ref: "./student-subscription-billing-feedback.yaml#/paths/~1subscriptions~1{subscriptionId}~1payments~1{paymentId}"
   /staff-nfc/subscriptions/me:
     $ref: "./staff-billing-feedback.yaml#/paths/~1staff-nfc~1subscriptions~1me"
   /staff-nfc/subscriptions/generate:
@@ -4848,7 +4836,7 @@ paths:
     $ref: "./staff-billing-feedback.yaml#/paths/~1finance~1staff-nfc~1payments~1{paymentId}~1reconcile"
   /partner/staff-nfc/commissions:
     $ref: "./staff-billing-feedback.yaml#/paths/~1partner~1staff-nfc~1commissions"
-  /webhooks/staff-nfc/flutterwave:
+  /webhooks/flutterwave/staff-nfc:
     $ref: "./staff-billing-feedback.yaml#/paths/~1webhooks~1staff-nfc~1flutterwave"
   /transport/buses:
     $ref: "./transport-feedback.yaml#/paths/~1transport~1buses"
@@ -4856,6 +4844,8 @@ paths:
     $ref: "./transport-feedback.yaml#/paths/~1transport~1buses~1{busId}"
   /transport/drivers:
     $ref: "./transport-feedback.yaml#/paths/~1transport~1drivers"
+  /transport/employees:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1employees"
   /transport/routes:
     $ref: "./transport-feedback.yaml#/paths/~1transport~1routes"
   /transport/routes/{routeId}:
@@ -4864,28 +4854,44 @@ paths:
     $ref: "./transport-feedback.yaml#/paths/~1transport~1routes~1{routeId}~1stops"
   /transport/routes/{routeId}/stops/{stopId}:
     $ref: "./transport-feedback.yaml#/paths/~1transport~1routes~1{routeId}~1stops~1{stopId}"
+  /transport/routes/{routeId}/staff:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1routes~1{routeId}~1staff"
+  /transport/routes/{routeId}/staff/{routeStaffId}:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1routes~1{routeId}~1staff~1{routeStaffId}"
+  /transport/routes/{routeId}/history:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1routes~1{routeId}~1history"
   /transport/students:
     $ref: "./transport-feedback.yaml#/paths/~1transport~1students"
   /transport/assignments:
     $ref: "./transport-feedback.yaml#/paths/~1transport~1assignments"
   /transport/assignments/{assignmentId}:
     $ref: "./transport-feedback.yaml#/paths/~1transport~1assignments~1{assignmentId}"
+  /transport/assignments/{assignmentId}/fee-plans/{academicTermId}:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1assignments~1{assignmentId}~1fee-plans~1{academicTermId}"
   /transport/assignments/{assignmentId}/history:
     $ref: "./transport-feedback.yaml#/paths/~1transport~1assignments~1{assignmentId}~1history"
   /transport/requests:
     $ref: "./transport-feedback.yaml#/paths/~1transport~1requests"
+  /transport/requests/{requestId}/review:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1requests~1{requestId}~1review"
+  /transport/policy:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1policy"
+  /transport/finance/terms/{termId}/generate:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1finance~1terms~1{termId}~1generate"
   /parent/children/{studentId}/transport:
     $ref: "./transport-feedback.yaml#/paths/~1parent~1children~1{studentId}~1transport"
   /parent/children/{studentId}/transport/requests:
     $ref: "./transport-feedback.yaml#/paths/~1parent~1children~1{studentId}~1transport~1requests"
+  /parent/children/{studentId}/transport/requests/{requestId}/withdraw:
+    $ref: "./transport-feedback.yaml#/paths/~1parent~1children~1{studentId}~1transport~1requests~1{requestId}~1withdraw"
   /parent/children/{studentId}/transport/history:
     $ref: "./transport-feedback.yaml#/paths/~1parent~1children~1{studentId}~1transport~1history"
   /student/transport:
     $ref: "./transport-feedback.yaml#/paths/~1student~1transport"
   /student/transport/history:
     $ref: "./transport-feedback.yaml#/paths/~1student~1transport~1history"
-  /platform/transport-overview:
-    $ref: "./transport-feedback.yaml#/paths/~1platform~1transport-overview"
+  /transport/platform-owner/overview:
+    $ref: "./transport-feedback.yaml#/paths/~1transport~1platform-owner~1overview"
 components:
   securitySchemes:
     ClerkAuth:
@@ -6239,6 +6245,11 @@ components:
         provider: { type: string }
         term: { type: string }
         expiresAt: { type: string }
+        lastPaymentId: { type: ["integer", "null"] }
+        lastPaymentStatus:
+          type: ["string", "null"]
+          enum: [PENDING, PAID, FAILED, RECONCILIATION_REQUIRED, null]
+        lastPaymentReference: { type: ["string", "null"] }
     SubscriptionInput:
       type: object
       required: [studentId, term]
@@ -8442,6 +8453,7 @@ components:
     PayrollItemsUpdate: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollItemsUpdate" }
     PayrollPeriodSummary: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollPeriodSummary" }
     PayrollItem: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollItem" }
+    PayrollTransferAttemptSummary: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollTransferAttemptSummary" }
     PayrollPeriod: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollPeriod" }
     PayrollTransfersInput: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollTransfersInput" }
     PayrollTransfer: { $ref: "./payroll-settlement-feedback.yaml#/components/schemas/PayrollTransfer" }
@@ -8484,6 +8496,11 @@ components:
     StaffNfcRefundResponse: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcRefundResponse" }
     StaffNfcPartnerResponse: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcPartnerResponse" }
     StaffNfcWebhookAck: { $ref: "./staff-billing-feedback.yaml#/components/schemas/StaffNfcWebhookAck" }
+    StudentSubscriptionPayment: { $ref: "./student-subscription-billing-feedback.yaml#/components/schemas/StudentSubscriptionPayment" }
+    StudentSubscriptionCheckoutResponse: { $ref: "./student-subscription-billing-feedback.yaml#/components/schemas/StudentSubscriptionCheckoutResponse" }
+    StudentSubscriptionVerificationInput: { $ref: "./student-subscription-billing-feedback.yaml#/components/schemas/StudentSubscriptionVerificationInput" }
+    StudentSubscriptionPaymentResponse: { $ref: "./student-subscription-billing-feedback.yaml#/components/schemas/StudentSubscriptionPaymentResponse" }
+    StudentSubscriptionReceipt: { $ref: "./student-subscription-billing-feedback.yaml#/components/schemas/StudentSubscriptionReceipt" }
     TransportError: { $ref: "./transport-feedback.yaml#/components/schemas/TransportError" }
     TransportStopInput: { $ref: "./transport-feedback.yaml#/components/schemas/TransportStopInput" }
     TransportStop: { $ref: "./transport-feedback.yaml#/components/schemas/TransportStop" }
@@ -8497,11 +8514,24 @@ components:
     TransportGuardian: { $ref: "./transport-feedback.yaml#/components/schemas/TransportGuardian" }
     TransportStudentOption: { $ref: "./transport-feedback.yaml#/components/schemas/TransportStudentOption" }
     TransportAssignmentInput: { $ref: "./transport-feedback.yaml#/components/schemas/TransportAssignmentInput" }
+    TransportAssignmentFeePlanInput: { $ref: "./transport-feedback.yaml#/components/schemas/TransportAssignmentFeePlanInput" }
     TransportAssignmentUpdate: { $ref: "./transport-feedback.yaml#/components/schemas/TransportAssignmentUpdate" }
     TransportInvoiceStatus: { $ref: "./transport-feedback.yaml#/components/schemas/TransportInvoiceStatus" }
+    TransportReceipt: { $ref: "./transport-feedback.yaml#/components/schemas/TransportReceipt" }
     TransportAssignment: { $ref: "./transport-feedback.yaml#/components/schemas/TransportAssignment" }
+    TransportAssignmentFeePlan: { $ref: "./transport-feedback.yaml#/components/schemas/TransportAssignmentFeePlan" }
+    TransportEmployeeOption: { $ref: "./transport-feedback.yaml#/components/schemas/TransportEmployeeOption" }
     TransportSchedule: { $ref: "./transport-feedback.yaml#/components/schemas/TransportSchedule" }
     TransportSelfView: { $ref: "./transport-feedback.yaml#/components/schemas/TransportSelfView" }
+    TransportStudentAssignmentBadge: { $ref: "./transport-feedback.yaml#/components/schemas/TransportStudentAssignmentBadge" }
+    TransportSelfAssignment: { $ref: "./transport-feedback.yaml#/components/schemas/TransportSelfAssignment" }
+    TransportRouteStaffInput: { $ref: "./transport-feedback.yaml#/components/schemas/TransportRouteStaffInput" }
+    TransportRouteStaff: { $ref: "./transport-feedback.yaml#/components/schemas/TransportRouteStaff" }
+    TransportSchoolPolicy: { $ref: "./transport-feedback.yaml#/components/schemas/TransportSchoolPolicy" }
+    TransportSchoolPolicyUpdate: { $ref: "./transport-feedback.yaml#/components/schemas/TransportSchoolPolicyUpdate" }
+    TransportTermInvoiceGeneration: { $ref: "./transport-feedback.yaml#/components/schemas/TransportTermInvoiceGeneration" }
+    TransportPlatformOverview: { $ref: "./transport-feedback.yaml#/components/schemas/TransportPlatformOverview" }
+    TransportOwnerInvoice: { $ref: "./transport-feedback.yaml#/components/schemas/TransportOwnerInvoice" }
     TransportRequestInput: { $ref: "./transport-feedback.yaml#/components/schemas/TransportRequestInput" }
     TransportRequestDecision: { $ref: "./transport-feedback.yaml#/components/schemas/TransportRequestDecision" }
     TransportRequest: { $ref: "./transport-feedback.yaml#/components/schemas/TransportRequest" }

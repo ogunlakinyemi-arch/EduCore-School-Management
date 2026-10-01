@@ -5,6 +5,7 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { SubscriptionLastPaymentStatus } from './subscriptionLastPaymentStatus';
 import type { SubscriptionStatus } from './subscriptionStatus';
 import type { SubscriptionVerificationStatus } from './subscriptionVerificationStatus';
 
@@ -21,4 +22,10 @@ export interface Subscription {
   provider: string;
   term: string;
   expiresAt: string;
+  /** @nullable */
+  lastPaymentId?: number | null;
+  /** @nullable */
+  lastPaymentStatus?: SubscriptionLastPaymentStatus;
+  /** @nullable */
+  lastPaymentReference?: string | null;
 }

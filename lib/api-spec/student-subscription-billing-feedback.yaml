@@ -1,0 +1,208 @@
+paths:
+  /webhooks/flutterwave/student-subscription:
+    post:
+      operationId: receiveStudentSubscriptionFlutterwaveWebhook
+      tags: [subscriptions]
+      summary: Verify a signed Flutterwave event against a persisted student payment and finalize it without a browser callback
+      security: []
+      parameters:
+        - name: verif-hash
+          in: header
+          required: true
+          description: Flutterwave webhook verification hash; checked against the server-configured secret.
+          schema: { type: string, minLength: 16 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Signed event was independently verified and settled, or was already settled
+        "202":
+          description: Provider verification is pending or requires reconciliation; never start another charge automatically
+        "400":
+          description: Raw webhook body is missing or invalid
+        "401":
+          description: Webhook signature is invalid
+        "503":
+          description: Flutterwave sandbox verification is unavailable
+  /subscriptions/{subscriptionId}/checkout:
+    post:
+      operationId: createStudentSubscriptionCheckout
+      tags: [subscriptions]
+      summary: Create or return the server-persisted Flutterwave sandbox checkout for a current student subscription
+      parameters:
+        - name: subscriptionId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 120, pattern: "^[A-Za-z0-9._:-]+$" }
+      responses:
+        "201":
+          description: Persisted checkout session initialized using the trusted Flutterwave test adapter
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentSubscriptionCheckoutResponse" }
+        "200":
+          description: Existing idempotent checkout result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentSubscriptionCheckoutResponse" }
+        "202":
+          description: Provider checkout initialization has an unknown outcome; do not resend automatically
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentSubscriptionCheckoutResponse" }
+        "409":
+          description: Subscription is not in the current payable term or has a pending/legacy settlement
+  /subscriptions/{subscriptionId}/verify:
+    post:
+      operationId: verifyStudentSubscriptionPayment
+      tags: [subscriptions]
+      summary: Independently verify the persisted checkout with the server-configured Flutterwave test adapter
+      parameters:
+        - name: subscriptionId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentSubscriptionVerificationInput" }
+      responses:
+        "200":
+          description: Verified successful or terminally failed provider result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentSubscriptionPaymentResponse" }
+        "202":
+          description: Provider still reports pending or verification requires reconciliation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentSubscriptionPaymentResponse" }
+        "409":
+          description: Provider result did not match the persisted reference, amount, currency or transaction
+  /subscriptions/{subscriptionId}/payments/{paymentId}:
+    get:
+      operationId: getStudentSubscriptionPayment
+      tags: [subscriptions]
+      summary: Read the payer school-scoped status of one persisted student subscription payment
+      parameters:
+        - name: subscriptionId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: paymentId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Scoped student subscription payment status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentSubscriptionPaymentResponse" }
+        "404":
+          description: Payment does not belong to this subscription or school
+
+components:
+  schemas:
+    StudentSubscriptionPayment:
+      type: object
+      required: [paymentId, subscriptionId, schoolId, studentId, sessionId, termId, payerUserId, provider, providerMode, reference, status, grossAmountMinor, currency, settlementStatus, reconciliationStatus]
+      properties:
+        paymentId: { type: integer }
+        subscriptionId: { type: integer }
+        schoolId: { type: integer }
+        studentId: { type: integer }
+        sessionId: { type: integer }
+        termId: { type: integer }
+        payerUserId: { type: integer }
+        provider: { type: string, enum: [FLUTTERWAVE] }
+        providerMode: { type: string, enum: [SANDBOX] }
+        reference: { type: string }
+        status: { type: string, enum: [PENDING, PAID, FAILED, RECONCILIATION_REQUIRED] }
+        grossAmountMinor: { type: integer, enum: [500000] }
+        providerFeeMinor: { type: ["integer", "null"], minimum: 0 }
+        settlementAmountMinor: { type: ["integer", "null"], minimum: 0 }
+        currency: { type: string, enum: [NGN] }
+        settlementStatus: { type: string, enum: [PENDING, RECONCILED, RECONCILIATION_REQUIRED, NOT_APPLICABLE] }
+        reconciliationStatus: { type: string, enum: [PENDING, RECONCILED, RECONCILIATION_REQUIRED, NOT_APPLICABLE] }
+        checkoutUrl: { type: ["string", "null"], format: uri }
+        failureCode: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        paidAt: { type: ["string", "null"], format: date-time }
+    StudentSubscriptionCheckoutResponse:
+      type: object
+      required: [payment, reused]
+      properties:
+        payment: { $ref: "#/components/schemas/StudentSubscriptionPayment" }
+        reused: { type: boolean }
+    StudentSubscriptionVerificationInput:
+      type: object
+      additionalProperties: false
+      required: [paymentReference, providerTransactionId]
+      properties:
+        paymentReference:
+          type: string
+          minLength: 8
+          maxLength: 100
+          pattern: "^[A-Za-z0-9_-]+$"
+        providerTransactionId:
+          type: string
+          minLength: 1
+          maxLength: 16
+          pattern: "^[0-9]+$"
+    StudentSubscriptionPaymentResponse:
+      type: object
+      required: [payment, subscription, allocations, activated, receipt]
+      properties:
+        payment: { $ref: "#/components/schemas/StudentSubscriptionPayment" }
+        subscription: { type: object, additionalProperties: true }
+        allocations:
+          type: array
+          items:
+            type: object
+            required: [recipientType, recipientId, entryType, amountMinor, currency]
+            properties:
+              recipientType: { type: string, enum: [SCHOOL, PLATFORM, PARTNER, PLATFORM_PROVIDER_FEE] }
+              recipientId: { type: ["integer", "null"] }
+              entryType: { type: string, enum: [CREDIT, EXPENSE] }
+              amountMinor: { type: integer, minimum: 1 }
+              currency: { type: string, enum: [NGN] }
+        activated: { type: boolean }
+        receipt:
+          oneOf:
+            - { $ref: "#/components/schemas/StudentSubscriptionReceipt" }
+            - { type: "null" }
+    StudentSubscriptionReceipt:
+      type: object
+      required: [receiptNumber, paidAt, grossAmountMinor, currency, schoolName, studentName, sessionName, termName, allocations, schoolLogoVersionUrl]
+      properties:
+        receiptNumber: { type: string }
+        paidAt: { type: ["string", "null"], format: date-time }
+        grossAmountMinor: { type: integer, enum: [500000] }
+        currency: { type: string, enum: [NGN] }
+        schoolName: { type: ["string", "null"] }
+        studentName: { type: ["string", "null"] }
+        sessionName: { type: ["string", "null"] }
+        termName: { type: ["string", "null"] }
+        schoolLogoVersionUrl: { type: ["string", "null"] }
+        allocations:
+          type: array
+          items:
+            type: object
+            required: [entryType, recipientType, recipientId, amountMinor, currency]
+            properties:
+              entryType: { type: string, enum: [CREDIT, EXPENSE] }
+              recipientType: { type: string, enum: [SCHOOL, PLATFORM, PARTNER, PLATFORM_PROVIDER_FEE] }
+              recipientId: { type: ["integer", "null"] }
+              amountMinor: { type: integer, minimum: 1 }
+              currency: { type: string, enum: [NGN] }

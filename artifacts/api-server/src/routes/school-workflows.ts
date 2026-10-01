@@ -14,7 +14,6 @@ import {
   newSchoolLogoObjectPath,
   readValidatedSchoolLogo,
   SCHOOL_LOGO_UPLOAD_URL_TTL_SECONDS,
-  schoolLogoFile,
   signedSchoolLogoUploadUrl,
 } from "../lib/schoolLogoStorage";
 
@@ -272,7 +271,7 @@ function serializeBranding(schoolId: number, row: Record<string, unknown>) {
 async function getBranding(schoolId: number) {
   return pool.query(
     `SELECT ${SCHOOL_NAME_SELECT} FROM schools s
-      LEFT JOIN school_branding_logos l ON l.school_id=s.id
+      LEFT JOIN school_branding_logos l ON l.school_id=s.id AND l.is_current=true
      WHERE s.id=$1`,
     [schoolId],
   );
@@ -462,21 +461,41 @@ router.put("/schools/:schoolId/branding/logo", run(async (req, res) => {
     );
     assertSchoolExists(locked.rows[0]);
     const existing = await client.query(
-      `SELECT object_path AS "objectPath"
-         FROM school_branding_logos WHERE school_id=$1 FOR UPDATE`,
+      `SELECT id, object_path AS "objectPath"
+         FROM school_branding_logos
+        WHERE school_id=$1 AND is_current=true FOR UPDATE`,
       [schoolId],
     );
-    previous = existing.rows[0]?.objectPath ?? null;
-    await client.query(
-      `INSERT INTO school_branding_logos
-        (school_id,object_path,content_type,byte_size,updated_by_user_id)
-       VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (school_id) DO UPDATE
-         SET object_path=EXCLUDED.object_path,content_type=EXCLUDED.content_type,
-             byte_size=EXCLUDED.byte_size,updated_by_user_id=EXCLUDED.updated_by_user_id,
-             updated_at=NOW()`,
-      [schoolId, objectPath, validated.contentType, validated.bytes.length, context.user.id],
-    );
+    const currentVersion = existing.rows[0];
+    previous = currentVersion?.objectPath ?? null;
+    if (previous !== objectPath) {
+      await client.query(
+        `UPDATE school_branding_logos SET is_current=false
+          WHERE school_id=$1 AND is_current=true`,
+        [schoolId],
+      );
+      const confirmedVersion = await client.query(
+        `SELECT id FROM school_branding_logos
+          WHERE school_id=$1 AND object_path=$2 FOR UPDATE`,
+        [schoolId, objectPath],
+      );
+      if (confirmedVersion.rows[0]) {
+        // A previously confirmed version can be restored without changing its
+        // immutable ID, validated metadata, or stored bytes.
+        await client.query(
+          `UPDATE school_branding_logos SET is_current=true
+            WHERE school_id=$1 AND id=$2`,
+          [schoolId, confirmedVersion.rows[0].id],
+        );
+      } else {
+        await client.query(
+          `INSERT INTO school_branding_logos
+            (school_id,object_path,content_type,byte_size,updated_by_user_id,is_current)
+           VALUES ($1,$2,$3,$4,$5,true)`,
+          [schoolId, objectPath, validated.contentType, validated.bytes.length, context.user.id],
+        );
+      }
+    }
     // Existing school/profile/E-ID/receipt/document consumers get the same
     // secure, authenticated logo URL without any consumer receiving a bucket
     // path or signed GCS download URL.
@@ -488,7 +507,7 @@ router.put("/schools/:schoolId/branding/logo", run(async (req, res) => {
     await audit(req, schoolId, "Uploaded official school logo", schoolId, {
       contentType: validated.contentType,
       byteSize: validated.bytes.length,
-      replacedLogo: typeof previous === "string",
+      replacedLogo: typeof previous === "string" && previous !== objectPath,
     }, client);
     await client.query("COMMIT");
   } catch (error) {
@@ -496,14 +515,6 @@ router.put("/schools/:schoolId/branding/logo", run(async (req, res) => {
     throw error;
   } finally {
     client.release();
-  }
-  if (typeof previous === "string" && previous !== objectPath &&
-    isManagedSchoolLogoObjectPath(schoolId, previous)) {
-    try {
-      await schoolLogoFile(previous).delete({ ignoreNotFound: true });
-    } catch (error) {
-      if (req.log) req.log.warn({ err: error, schoolId }, "Could not remove the replaced private school logo object");
-    }
   }
   const reread = await getBranding(schoolId);
   assertSchoolExists(reread.rows[0]);
@@ -517,7 +528,7 @@ router.get("/schools/:schoolId/branding/logo", run(async (req, res) => {
   const result = await pool.query(
     `SELECT l.object_path AS "objectPath"
        FROM schools s
-       LEFT JOIN school_branding_logos l ON l.school_id=s.id
+       LEFT JOIN school_branding_logos l ON l.school_id=s.id AND l.is_current=true
       WHERE s.id=$1`,
     [schoolId],
   );
@@ -537,6 +548,41 @@ router.get("/schools/:schoolId/branding/logo", run(async (req, res) => {
     if (error instanceof TypeError ||
       (error instanceof Error && error.message.startsWith("Private school logo "))) {
       throw new AuthError(400, "Managed school logo is corrupt or unsupported");
+    }
+    throw error;
+  }
+  res.setHeader("Content-Type", validated.contentType);
+  res.setHeader("Content-Length", String(validated.bytes.length));
+  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.status(200).send(validated.bytes);
+}));
+
+router.get("/schools/:schoolId/branding/logo-versions/:logoId", run(async (req, res) => {
+  const schoolId = positiveId(req.params.schoolId, "schoolId");
+  const logoId = positiveId(req.params.logoId, "logoId");
+  assertSchoolReader(req, schoolId, SCHOOL_BRANDING_READERS);
+  const result = await pool.query(
+    `SELECT object_path AS "objectPath"
+       FROM school_branding_logos
+      WHERE school_id=$1 AND id=$2`,
+    [schoolId, logoId],
+  );
+  const objectPath = result.rows[0]?.objectPath;
+  if (!isManagedSchoolLogoObjectPath(schoolId, objectPath)) {
+    throw new AuthError(404, "Confirmed school logo version not found");
+  }
+  let validated: Awaited<ReturnType<typeof readValidatedSchoolLogo>>;
+  try {
+    validated = await readValidatedSchoolLogo(schoolId, objectPath);
+  } catch (error) {
+    if ((error as { code?: number })?.code === 404 ||
+      (error instanceof Error && error.message === "Private school logo object not found")) {
+      throw new AuthError(404, "Confirmed school logo version not found");
+    }
+    if (error instanceof TypeError ||
+      (error instanceof Error && error.message.startsWith("Private school logo "))) {
+      throw new AuthError(400, "Confirmed school logo version is corrupt or unsupported");
     }
     throw error;
   }

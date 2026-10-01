@@ -5,16 +5,16 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
-import type { TransportAssignment } from './transportAssignment';
 import type { TransportHistoryEntry } from './transportHistoryEntry';
 import type { TransportInvoiceStatus } from './transportInvoiceStatus';
+import type { TransportSelfAssignment } from './transportSelfAssignment';
 import type { TransportSelfViewTransportStatus } from './transportSelfViewTransportStatus';
 
 export interface TransportSelfView {
   schoolId: number;
   studentId: number;
   transportStatus: TransportSelfViewTransportStatus;
-  assignment?: TransportAssignment | null;
+  assignment?: TransportSelfAssignment | null;
   invoices: TransportInvoiceStatus[];
   history: TransportHistoryEntry[];
 }

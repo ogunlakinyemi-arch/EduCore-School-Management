@@ -20,6 +20,7 @@ import {
   requireAuthentication,
 } from "../middlewares/auth";
 import { ensureCurrentStaffNfcTermSubscriptions } from "./staff-nfc-billing-service";
+import { refreshConfiguredTermCalendarEvents } from "../lib/academicCalendarProjection";
 
 const router: IRouter = Router();
 router.use(requireAuthentication());
@@ -103,6 +104,12 @@ router.post("/academic-sessions/:sessionId/terms", wrap(async (req,res) => {
     if (isCurrent) await client.query(`UPDATE academic_terms SET is_current=false, updated_at=NOW() WHERE school_id=$1 AND academic_session_id=$2 AND is_current=true`,[q.schoolId,p.sessionId]);
     r=await client.query(`INSERT INTO academic_terms (school_id,academic_session_id,name,start_date,end_date,status,is_current) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING ${termSelect}`,[q.schoolId,p.sessionId,b.name,b.startDate,b.endDate,b.status??"ACTIVE",isCurrent]);
     await ensureCurrentStaffNfcTermSubscriptions(client, q.schoolId, getUserContext(req).user.id);
+    await refreshConfiguredTermCalendarEvents(client, {
+      schoolId: q.schoolId,
+      sessionId: Number(r.rows[0].sessionId),
+      termId: Number(r.rows[0].id),
+      actorUserId: getUserContext(req).user.id,
+    });
     await client.query("COMMIT");
   } catch(error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
   await audit(req,q.schoolId,"Created academic term",r.rows[0].id); res.status(201).json(r.rows[0]);
@@ -118,6 +125,12 @@ router.patch("/academic-terms/:termId", wrap(async(req,res)=>{
     if(isCurrent) await client.query(`UPDATE academic_terms SET is_current=false,updated_at=NOW() WHERE school_id=$1 AND academic_session_id=$2 AND id<>$3 AND is_current=true`,[q.schoolId,target.rows[0].academic_session_id,p.termId]);
     r=await client.query(`UPDATE academic_terms SET name=COALESCE($1,name),start_date=COALESCE($2,start_date),end_date=COALESCE($3,end_date),status=COALESCE($4,status),is_current=CASE WHEN $5 THEN $6 ELSE is_current END,updated_at=NOW() WHERE id=$7 AND school_id=$8 RETURNING ${termSelect}`,[b.name??null,b.startDate??null,b.endDate??null,b.status??null,wantsCurrent,isCurrent,p.termId,q.schoolId]);
     await ensureCurrentStaffNfcTermSubscriptions(client, q.schoolId, getUserContext(req).user.id);
+    await refreshConfiguredTermCalendarEvents(client, {
+      schoolId: q.schoolId,
+      sessionId: Number(r.rows[0].sessionId),
+      termId: Number(r.rows[0].id),
+      actorUserId: getUserContext(req).user.id,
+    });
     await client.query("COMMIT");
   } catch(error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
   if(!r.rows[0])throw new AuthError(404,"Academic term not found");await audit(req,q.schoolId,"Updated academic term",p.termId);res.json(r.rows[0]);

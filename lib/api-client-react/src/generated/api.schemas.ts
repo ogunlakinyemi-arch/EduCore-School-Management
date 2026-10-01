@@ -2188,6 +2188,19 @@ export const SubscriptionVerificationStatus = {
   unverified: 'unverified',
 } as const;
 
+/**
+ * @nullable
+ */
+export type SubscriptionLastPaymentStatus = typeof SubscriptionLastPaymentStatus[keyof typeof SubscriptionLastPaymentStatus] | null;
+
+
+export const SubscriptionLastPaymentStatus = {
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+} as const;
+
 export interface Subscription {
   id: number;
   schoolId: number;
@@ -2201,6 +2214,12 @@ export interface Subscription {
   provider: string;
   term: string;
   expiresAt: string;
+  /** @nullable */
+  lastPaymentId?: number | null;
+  /** @nullable */
+  lastPaymentStatus?: SubscriptionLastPaymentStatus;
+  /** @nullable */
+  lastPaymentReference?: string | null;
 }
 
 export type SubscriptionInputProvider = typeof SubscriptionInputProvider[keyof typeof SubscriptionInputProvider];
@@ -2226,6 +2245,17 @@ export interface PaymentVerificationInput {
   providerReference: string;
 }
 
+/**
+ * @nullable
+ */
+export type NfcCardPersonType = typeof NfcCardPersonType[keyof typeof NfcCardPersonType] | null;
+
+
+export const NfcCardPersonType = {
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+} as const;
+
 export type NfcCardStatus = typeof NfcCardStatus[keyof typeof NfcCardStatus];
 
 
@@ -2249,6 +2279,12 @@ export interface NfcCard {
   studentId: number | null;
   /** @nullable */
   studentName: string | null;
+  /** @nullable */
+  employeeId?: number | null;
+  /** @nullable */
+  employeeName?: string | null;
+  /** @nullable */
+  personType?: NfcCardPersonType;
   status: NfcCardStatus;
   scans: number;
   /** @nullable */
@@ -6791,6 +6827,86 @@ export const PayrollItemPaymentStatus = {
   CANCELLED: 'CANCELLED',
 } as const;
 
+export type PayrollTransferAttemptSummaryCurrency = typeof PayrollTransferAttemptSummaryCurrency[keyof typeof PayrollTransferAttemptSummaryCurrency];
+
+
+export const PayrollTransferAttemptSummaryCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type PayrollTransferAttemptSummaryProvider = typeof PayrollTransferAttemptSummaryProvider[keyof typeof PayrollTransferAttemptSummaryProvider];
+
+
+export const PayrollTransferAttemptSummaryProvider = {
+  FLUTTERWAVE: 'FLUTTERWAVE',
+  MOCK: 'MOCK',
+} as const;
+
+export type PayrollTransferAttemptSummaryProviderMode = typeof PayrollTransferAttemptSummaryProviderMode[keyof typeof PayrollTransferAttemptSummaryProviderMode];
+
+
+export const PayrollTransferAttemptSummaryProviderMode = {
+  TEST: 'TEST',
+  LIVE: 'LIVE',
+  MOCK: 'MOCK',
+} as const;
+
+export type PayrollTransferAttemptSummaryStatus = typeof PayrollTransferAttemptSummaryStatus[keyof typeof PayrollTransferAttemptSummaryStatus];
+
+
+export const PayrollTransferAttemptSummaryStatus = {
+  CLAIMED: 'CLAIMED',
+  PROCESSING: 'PROCESSING',
+  PENDING: 'PENDING',
+  MOCK_PENDING: 'MOCK_PENDING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  UNCERTAIN: 'UNCERTAIN',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+} as const;
+
+export interface PayrollTransferAttemptSummary {
+  /** @minimum 1 */
+  id: number;
+  /** @minimum 1 */
+  attempt: number;
+  /** @minimum 1 */
+  amountMinor: number;
+  currency: PayrollTransferAttemptSummaryCurrency;
+  provider: PayrollTransferAttemptSummaryProvider;
+  providerMode: PayrollTransferAttemptSummaryProviderMode;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  providerReference: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  providerTransactionId?: string | null;
+  /**
+     * @maxLength 40
+     * @nullable
+     */
+  providerStatus?: string | null;
+  status: PayrollTransferAttemptSummaryStatus;
+  requiresReconciliation: boolean;
+  externalTransferVerified: boolean;
+  /** @minimum 0 */
+  providerFeeMinor: number;
+  /** @minimum 0 */
+  settlementAmountMinor: number;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  failureMessage?: string | null;
+  createdAt: string;
+  /** @nullable */
+  verifiedAt?: string | null;
+}
+
 export interface PayrollItem {
   /** @minimum 1 */
   employeeId: number;
@@ -6817,6 +6933,8 @@ export interface PayrollItem {
   paymentStatus: PayrollItemPaymentStatus;
   /** @nullable */
   transferReference?: string | null;
+  /** Durable same-item history used to restore pending and ambiguous reconciliation state after reload. Contains sanitized provider evidence only; employee bank identifiers and raw provider payloads are never exposed. */
+  transferAttempts?: PayrollTransferAttemptSummary[];
   /** @nullable */
   bankName?: string | null;
   /** @nullable */
@@ -7451,7 +7569,13 @@ export const UpdateSchoolTeacherAssignmentBodyStatus = {
   INACTIVE: 'INACTIVE',
 } as const;
 
+/**
+ * employeeId replaces the teacher while preserving the previous inactive record; startDate is only accepted with employeeId.
+ */
 export interface UpdateSchoolTeacherAssignmentBody {
+  /** @minimum 1 */
+  employeeId?: number;
+  startDate?: string;
   status?: UpdateSchoolTeacherAssignmentBodyStatus;
   endDate?: string;
 }
@@ -7639,8 +7763,16 @@ export const StaffNfcAllocationRecipientType = {
   SCHOOL: 'SCHOOL',
   PLATFORM: 'PLATFORM',
   PARTNER: 'PARTNER',
-  REVERSAL: 'REVERSAL',
   PLATFORM_PROVIDER_FEE: 'PLATFORM_PROVIDER_FEE',
+} as const;
+
+export type StaffNfcAllocationEntryType = typeof StaffNfcAllocationEntryType[keyof typeof StaffNfcAllocationEntryType];
+
+
+export const StaffNfcAllocationEntryType = {
+  CREDIT: 'CREDIT',
+  REVERSAL: 'REVERSAL',
+  EXPENSE: 'EXPENSE',
 } as const;
 
 export type StaffNfcAllocationCurrency = typeof StaffNfcAllocationCurrency[keyof typeof StaffNfcAllocationCurrency];
@@ -7664,6 +7796,7 @@ export const StaffNfcAllocationStatus = {
 
 export interface StaffNfcAllocation {
   recipientType: StaffNfcAllocationRecipientType;
+  entryType?: StaffNfcAllocationEntryType;
   /** @nullable */
   recipientId: number | null;
   /** @minimum 0 */
@@ -7738,10 +7871,16 @@ export interface StaffNfcPaymentSummary {
   status: StaffNfcPaymentSummaryStatus;
   /** @minimum 0 */
   grossAmountMinor: number;
-  /** @minimum 0 */
-  providerFeeMinor: number;
-  /** @minimum 0 */
-  settlementAmountMinor: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  providerFeeMinor: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  settlementAmountMinor: number | null;
   currency: StaffNfcPaymentSummaryCurrency;
   /** @nullable */
   providerTransactionId?: string | null;
@@ -7948,6 +8087,8 @@ export interface StaffNfcReceipt {
   employeeNumber: string;
   schoolId: number;
   schoolName: string;
+  /** @nullable */
+  schoolLogoVersionUrl: string | null;
   sessionName: string;
   termName: string;
   payment: StaffNfcPaymentSummary;
@@ -8095,6 +8236,232 @@ export interface StaffNfcWebhookAck {
   outcome: StaffNfcWebhookAckOutcome;
 }
 
+export type StudentSubscriptionPaymentProvider = typeof StudentSubscriptionPaymentProvider[keyof typeof StudentSubscriptionPaymentProvider];
+
+
+export const StudentSubscriptionPaymentProvider = {
+  FLUTTERWAVE: 'FLUTTERWAVE',
+} as const;
+
+export type StudentSubscriptionPaymentProviderMode = typeof StudentSubscriptionPaymentProviderMode[keyof typeof StudentSubscriptionPaymentProviderMode];
+
+
+export const StudentSubscriptionPaymentProviderMode = {
+  SANDBOX: 'SANDBOX',
+} as const;
+
+export type StudentSubscriptionPaymentStatus = typeof StudentSubscriptionPaymentStatus[keyof typeof StudentSubscriptionPaymentStatus];
+
+
+export const StudentSubscriptionPaymentStatus = {
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+} as const;
+
+export type StudentSubscriptionPaymentGrossAmountMinor = typeof StudentSubscriptionPaymentGrossAmountMinor[keyof typeof StudentSubscriptionPaymentGrossAmountMinor];
+
+
+export const StudentSubscriptionPaymentGrossAmountMinor = {
+  NUMBER_500000: 500000,
+} as const;
+
+export type StudentSubscriptionPaymentCurrency = typeof StudentSubscriptionPaymentCurrency[keyof typeof StudentSubscriptionPaymentCurrency];
+
+
+export const StudentSubscriptionPaymentCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type StudentSubscriptionPaymentSettlementStatus = typeof StudentSubscriptionPaymentSettlementStatus[keyof typeof StudentSubscriptionPaymentSettlementStatus];
+
+
+export const StudentSubscriptionPaymentSettlementStatus = {
+  PENDING: 'PENDING',
+  RECONCILED: 'RECONCILED',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+  NOT_APPLICABLE: 'NOT_APPLICABLE',
+} as const;
+
+export type StudentSubscriptionPaymentReconciliationStatus = typeof StudentSubscriptionPaymentReconciliationStatus[keyof typeof StudentSubscriptionPaymentReconciliationStatus];
+
+
+export const StudentSubscriptionPaymentReconciliationStatus = {
+  PENDING: 'PENDING',
+  RECONCILED: 'RECONCILED',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+  NOT_APPLICABLE: 'NOT_APPLICABLE',
+} as const;
+
+export interface StudentSubscriptionPayment {
+  paymentId: number;
+  subscriptionId: number;
+  schoolId: number;
+  studentId: number;
+  sessionId: number;
+  termId: number;
+  payerUserId: number;
+  provider: StudentSubscriptionPaymentProvider;
+  providerMode: StudentSubscriptionPaymentProviderMode;
+  reference: string;
+  status: StudentSubscriptionPaymentStatus;
+  grossAmountMinor: StudentSubscriptionPaymentGrossAmountMinor;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  providerFeeMinor?: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  settlementAmountMinor?: number | null;
+  currency: StudentSubscriptionPaymentCurrency;
+  settlementStatus: StudentSubscriptionPaymentSettlementStatus;
+  reconciliationStatus: StudentSubscriptionPaymentReconciliationStatus;
+  /** @nullable */
+  checkoutUrl?: string | null;
+  /** @nullable */
+  failureCode?: string | null;
+  createdAt?: string;
+  /** @nullable */
+  paidAt?: string | null;
+}
+
+export interface StudentSubscriptionCheckoutResponse {
+  payment: StudentSubscriptionPayment;
+  reused: boolean;
+}
+
+export interface StudentSubscriptionVerificationInput {
+  /**
+     * @minLength 8
+     * @maxLength 100
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  paymentReference: string;
+  /**
+     * @minLength 1
+     * @maxLength 16
+     * @pattern ^[0-9]+$
+     */
+  providerTransactionId: string;
+}
+
+export type StudentSubscriptionPaymentResponseSubscription = { [key: string]: unknown };
+
+export type StudentSubscriptionPaymentResponseAllocationsItemRecipientType = typeof StudentSubscriptionPaymentResponseAllocationsItemRecipientType[keyof typeof StudentSubscriptionPaymentResponseAllocationsItemRecipientType];
+
+
+export const StudentSubscriptionPaymentResponseAllocationsItemRecipientType = {
+  SCHOOL: 'SCHOOL',
+  PLATFORM: 'PLATFORM',
+  PARTNER: 'PARTNER',
+  PLATFORM_PROVIDER_FEE: 'PLATFORM_PROVIDER_FEE',
+} as const;
+
+export type StudentSubscriptionPaymentResponseAllocationsItemEntryType = typeof StudentSubscriptionPaymentResponseAllocationsItemEntryType[keyof typeof StudentSubscriptionPaymentResponseAllocationsItemEntryType];
+
+
+export const StudentSubscriptionPaymentResponseAllocationsItemEntryType = {
+  CREDIT: 'CREDIT',
+  EXPENSE: 'EXPENSE',
+} as const;
+
+export type StudentSubscriptionPaymentResponseAllocationsItemCurrency = typeof StudentSubscriptionPaymentResponseAllocationsItemCurrency[keyof typeof StudentSubscriptionPaymentResponseAllocationsItemCurrency];
+
+
+export const StudentSubscriptionPaymentResponseAllocationsItemCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type StudentSubscriptionPaymentResponseAllocationsItem = {
+  recipientType: StudentSubscriptionPaymentResponseAllocationsItemRecipientType;
+  /** @nullable */
+  recipientId: number | null;
+  entryType: StudentSubscriptionPaymentResponseAllocationsItemEntryType;
+  /** @minimum 1 */
+  amountMinor: number;
+  currency: StudentSubscriptionPaymentResponseAllocationsItemCurrency;
+};
+
+export type StudentSubscriptionReceiptGrossAmountMinor = typeof StudentSubscriptionReceiptGrossAmountMinor[keyof typeof StudentSubscriptionReceiptGrossAmountMinor];
+
+
+export const StudentSubscriptionReceiptGrossAmountMinor = {
+  NUMBER_500000: 500000,
+} as const;
+
+export type StudentSubscriptionReceiptCurrency = typeof StudentSubscriptionReceiptCurrency[keyof typeof StudentSubscriptionReceiptCurrency];
+
+
+export const StudentSubscriptionReceiptCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type StudentSubscriptionReceiptAllocationsItemEntryType = typeof StudentSubscriptionReceiptAllocationsItemEntryType[keyof typeof StudentSubscriptionReceiptAllocationsItemEntryType];
+
+
+export const StudentSubscriptionReceiptAllocationsItemEntryType = {
+  CREDIT: 'CREDIT',
+  EXPENSE: 'EXPENSE',
+} as const;
+
+export type StudentSubscriptionReceiptAllocationsItemRecipientType = typeof StudentSubscriptionReceiptAllocationsItemRecipientType[keyof typeof StudentSubscriptionReceiptAllocationsItemRecipientType];
+
+
+export const StudentSubscriptionReceiptAllocationsItemRecipientType = {
+  SCHOOL: 'SCHOOL',
+  PLATFORM: 'PLATFORM',
+  PARTNER: 'PARTNER',
+  PLATFORM_PROVIDER_FEE: 'PLATFORM_PROVIDER_FEE',
+} as const;
+
+export type StudentSubscriptionReceiptAllocationsItemCurrency = typeof StudentSubscriptionReceiptAllocationsItemCurrency[keyof typeof StudentSubscriptionReceiptAllocationsItemCurrency];
+
+
+export const StudentSubscriptionReceiptAllocationsItemCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type StudentSubscriptionReceiptAllocationsItem = {
+  entryType: StudentSubscriptionReceiptAllocationsItemEntryType;
+  recipientType: StudentSubscriptionReceiptAllocationsItemRecipientType;
+  /** @nullable */
+  recipientId: number | null;
+  /** @minimum 1 */
+  amountMinor: number;
+  currency: StudentSubscriptionReceiptAllocationsItemCurrency;
+};
+
+export interface StudentSubscriptionReceipt {
+  receiptNumber: string;
+  /** @nullable */
+  paidAt: string | null;
+  grossAmountMinor: StudentSubscriptionReceiptGrossAmountMinor;
+  currency: StudentSubscriptionReceiptCurrency;
+  /** @nullable */
+  schoolName: string | null;
+  /** @nullable */
+  studentName: string | null;
+  /** @nullable */
+  sessionName: string | null;
+  /** @nullable */
+  termName: string | null;
+  /** @nullable */
+  schoolLogoVersionUrl: string | null;
+  allocations: StudentSubscriptionReceiptAllocationsItem[];
+}
+
+export interface StudentSubscriptionPaymentResponse {
+  payment: StudentSubscriptionPayment;
+  subscription: StudentSubscriptionPaymentResponseSubscription;
+  allocations: StudentSubscriptionPaymentResponseAllocationsItem[];
+  activated: boolean;
+  receipt: StudentSubscriptionReceipt | null;
+}
+
 export interface TransportError {
   error: string;
   code: string;
@@ -8119,7 +8486,7 @@ export interface TransportStopInput {
   /** @minimum 1 */
   sequence: number;
   /** @maxLength 500 */
-  notes?: string;
+  notes?: string | null;
   isActive?: boolean;
 }
 
@@ -8263,6 +8630,8 @@ export interface TransportRouteInput {
      */
   fareMinor?: number;
   status?: TransportRouteInputStatus;
+  /** @minItems 2 */
+  stops: TransportStopInput[];
 }
 
 export type TransportRouteUpdateWeekdaysItem = typeof TransportRouteUpdateWeekdaysItem[keyof typeof TransportRouteUpdateWeekdaysItem];
@@ -8327,130 +8696,22 @@ export interface TransportGuardian {
   isPrimaryGuardian: boolean;
 }
 
-export type TransportSelfViewTransportStatus = typeof TransportSelfViewTransportStatus[keyof typeof TransportSelfViewTransportStatus];
+export type TransportStudentAssignmentBadgeStatus = typeof TransportStudentAssignmentBadgeStatus[keyof typeof TransportStudentAssignmentBadgeStatus];
 
 
-export const TransportSelfViewTransportStatus = {
+export const TransportStudentAssignmentBadgeStatus = {
   ACTIVE: 'ACTIVE',
   SUSPENDED: 'SUSPENDED',
-  DEACTIVATED: 'DEACTIVATED',
-  NOT_ASSIGNED: 'NOT_ASSIGNED',
 } as const;
 
-export type TransportScheduleWeekdaysItem = typeof TransportScheduleWeekdaysItem[keyof typeof TransportScheduleWeekdaysItem];
-
-
-export const TransportScheduleWeekdaysItem = {
-  MONDAY: 'MONDAY',
-  TUESDAY: 'TUESDAY',
-  WEDNESDAY: 'WEDNESDAY',
-  THURSDAY: 'THURSDAY',
-  FRIDAY: 'FRIDAY',
-  SATURDAY: 'SATURDAY',
-  SUNDAY: 'SUNDAY',
-} as const;
-
-export interface TransportSchedule {
-  weekdays: TransportScheduleWeekdaysItem[];
-  departureTime: string;
-  arrivalTime: string;
-}
-
-export type TransportAssignmentStatus = typeof TransportAssignmentStatus[keyof typeof TransportAssignmentStatus];
-
-
-export const TransportAssignmentStatus = {
-  ACTIVE: 'ACTIVE',
-  SUSPENDED: 'SUSPENDED',
-  DEACTIVATED: 'DEACTIVATED',
-} as const;
-
-export type TransportInvoiceStatusCurrency = typeof TransportInvoiceStatusCurrency[keyof typeof TransportInvoiceStatusCurrency];
-
-
-export const TransportInvoiceStatusCurrency = {
-  NGN: 'NGN',
-} as const;
-
-export type TransportInvoiceStatusStatus = typeof TransportInvoiceStatusStatus[keyof typeof TransportInvoiceStatusStatus];
-
-
-export const TransportInvoiceStatusStatus = {
-  PAID: 'PAID',
-  PENDING: 'PENDING',
-  OVERDUE: 'OVERDUE',
-  SUSPENDED: 'SUSPENDED',
-  INACTIVE: 'INACTIVE',
-} as const;
-
-export interface TransportInvoiceStatus {
-  invoiceId: number;
-  invoiceNumber: string;
-  academicSessionId: number;
-  academicTermId: number;
-  currency: TransportInvoiceStatusCurrency;
-  totalMinor: number;
-  paidMinor: number;
-  outstandingMinor: number;
-  status: TransportInvoiceStatusStatus;
-  dueDate: string;
-}
-
-export interface TransportAssignment {
+export interface TransportStudentAssignmentBadge {
   id: number;
-  schoolId: number;
-  studentId: number;
-  studentName: string;
-  admissionNo: string;
-  className: string;
-  section: string;
-  busId: number;
-  busName: string;
-  registrationNumber: string;
+  status: TransportStudentAssignmentBadgeStatus;
   routeId: number;
   routeName: string;
-  driverName: string;
-  pickup: TransportStop;
-  dropoff: TransportStop;
-  schedule: TransportSchedule;
-  status: TransportAssignmentStatus;
+  busId: number;
+  busName: string;
   effectiveDate: string;
-  reason: string;
-  /** @minimum 0 */
-  feeMinor?: number;
-  guardians: TransportGuardian[];
-  invoices: TransportInvoiceStatus[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export type TransportHistoryEntryBefore = { [key: string]: unknown } | null;
-
-export type TransportHistoryEntryAfter = { [key: string]: unknown } | null;
-
-export interface TransportHistoryEntry {
-  id: number;
-  schoolId: number;
-  assignmentId: number;
-  studentId: number;
-  actorUserId?: number | null;
-  actorName: string;
-  actorRole: string;
-  eventType: string;
-  effectiveDate: string;
-  reason: string;
-  before?: TransportHistoryEntryBefore;
-  after?: TransportHistoryEntryAfter;
-  createdAt: string;
-}
-
-export interface TransportSelfView {
-  schoolId: number;
-  studentId: number;
-  transportStatus: TransportSelfViewTransportStatus;
-  assignment?: TransportAssignment | null;
-  invoices: TransportInvoiceStatus[];
-  history: TransportHistoryEntry[];
 }
 
 export interface TransportStudentOption {
@@ -8461,7 +8722,7 @@ export interface TransportStudentOption {
   className: string;
   section: string;
   guardians: TransportGuardian[];
-  activeAssignment?: TransportSelfView | null;
+  activeAssignment?: TransportStudentAssignmentBadge | null;
 }
 
 export interface TransportAssignmentInput {
@@ -8474,6 +8735,48 @@ export interface TransportAssignmentInput {
   /** @minimum 1 */
   dropoffStopId: number;
   effectiveDate: string;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+  /**
+     * Must be provided with academicTermId; omitted together, the active school term is used when available.
+     * @minimum 1
+     */
+  academicSessionId?: number;
+  /** @minimum 1 */
+  academicTermId?: number;
+  /**
+     * NGN subunits; defaults to the selected route's fareMinor.
+     * @minimum 0
+     * @maximum 1000000000
+     */
+  feePlanAmountMinor?: number;
+  /** Defaults to the selected academic term end date. */
+  dueDate?: string;
+  /**
+     * Optional active same-school Finance category; omitted positive plans use the School Transport category.
+     * @minimum 1
+     */
+  feeCategoryId?: number;
+}
+
+export interface TransportAssignmentFeePlanInput {
+  /** @minimum 1 */
+  academicSessionId: number;
+  /**
+     * @minimum 0
+     * @maximum 1000000000
+     */
+  feePlanAmountMinor: number;
+  /** Defaults to the selected term's end date. */
+  dueDate?: string;
+  /**
+     * Must reference an active Finance category in this school; defaults to School Transport for positive amounts.
+     * @minimum 1
+     */
+  feeCategoryId?: number;
   /**
      * @minLength 3
      * @maxLength 500
@@ -8519,6 +8822,351 @@ export interface TransportAssignmentUpdate {
   reason: string;
 }
 
+export type TransportInvoiceStatusCurrency = typeof TransportInvoiceStatusCurrency[keyof typeof TransportInvoiceStatusCurrency];
+
+
+export const TransportInvoiceStatusCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type TransportInvoiceStatusStatus = typeof TransportInvoiceStatusStatus[keyof typeof TransportInvoiceStatusStatus];
+
+
+export const TransportInvoiceStatusStatus = {
+  PAID: 'PAID',
+  PENDING: 'PENDING',
+  OVERDUE: 'OVERDUE',
+  SUSPENDED: 'SUSPENDED',
+  INACTIVE: 'INACTIVE',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export interface TransportReceipt {
+  id: number;
+  receiptNumber: string;
+}
+
+export interface TransportInvoiceStatus {
+  invoiceId: number;
+  invoiceNumber: string;
+  academicSessionId: number;
+  sessionName?: string;
+  academicTermId: number;
+  termName?: string;
+  currency: TransportInvoiceStatusCurrency;
+  totalMinor: number;
+  paidMinor: number;
+  outstandingMinor: number;
+  status: TransportInvoiceStatusStatus;
+  dueDate: string;
+  receipts?: TransportReceipt[];
+}
+
+export type TransportAssignmentStatus = typeof TransportAssignmentStatus[keyof typeof TransportAssignmentStatus];
+
+
+export const TransportAssignmentStatus = {
+  ACTIVE: 'ACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  DEACTIVATED: 'DEACTIVATED',
+} as const;
+
+export type TransportAssignmentCurrency = typeof TransportAssignmentCurrency[keyof typeof TransportAssignmentCurrency];
+
+
+export const TransportAssignmentCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type TransportScheduleWeekdaysItem = typeof TransportScheduleWeekdaysItem[keyof typeof TransportScheduleWeekdaysItem];
+
+
+export const TransportScheduleWeekdaysItem = {
+  MONDAY: 'MONDAY',
+  TUESDAY: 'TUESDAY',
+  WEDNESDAY: 'WEDNESDAY',
+  THURSDAY: 'THURSDAY',
+  FRIDAY: 'FRIDAY',
+  SATURDAY: 'SATURDAY',
+  SUNDAY: 'SUNDAY',
+} as const;
+
+export interface TransportSchedule {
+  weekdays: TransportScheduleWeekdaysItem[];
+  departureTime: string;
+  arrivalTime: string;
+}
+
+export type TransportAssignmentFeePlanCurrency = typeof TransportAssignmentFeePlanCurrency[keyof typeof TransportAssignmentFeePlanCurrency];
+
+
+export const TransportAssignmentFeePlanCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export type TransportAssignmentFeePlanStatus = typeof TransportAssignmentFeePlanStatus[keyof typeof TransportAssignmentFeePlanStatus];
+
+
+export const TransportAssignmentFeePlanStatus = {
+  PLANNED: 'PLANNED',
+  INVOICED: 'INVOICED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export interface TransportAssignmentFeePlan {
+  feePlanId: number;
+  academicSessionId: number;
+  sessionName: string;
+  academicTermId: number;
+  termName: string;
+  /** @minimum 0 */
+  feePlanAmountMinor: number;
+  currency: TransportAssignmentFeePlanCurrency;
+  dueDate: string;
+  status: TransportAssignmentFeePlanStatus;
+  feeCategoryId: number | null;
+  feeCategoryName: string | null;
+  invoiceId: number | null;
+}
+
+export interface TransportAssignment {
+  id: number;
+  schoolId: number;
+  studentId: number;
+  studentName: string;
+  admissionNo: string;
+  className: string;
+  section: string;
+  busId: number;
+  busCapacity: number;
+  busName: string;
+  registrationNumber: string;
+  routeId: number;
+  routeName: string;
+  driverEmployeeId: number;
+  driverName: string;
+  pickup: TransportStop;
+  dropoff: TransportStop;
+  schedule: TransportSchedule;
+  status: TransportAssignmentStatus;
+  effectiveDate: string;
+  endDate: string | null;
+  reason: string;
+  /**
+     * Current route fare default; individual term plans may override it.
+     * @minimum 0
+     */
+  feeMinor: number;
+  /** @minimum 0 */
+  feePlanAmountMinor: number;
+  academicSessionId: number | null;
+  academicTermId: number | null;
+  dueDate: string | null;
+  feeCategoryId: number | null;
+  currency?: TransportAssignmentCurrency;
+  feePlans: TransportAssignmentFeePlan[];
+  guardians: TransportGuardian[];
+  invoices: TransportInvoiceStatus[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TransportEmployeeOption {
+  employeeId: number;
+  schoolId: number;
+  employeeNo: string;
+  employeeName: string;
+  employeeType: string;
+}
+
+export type TransportSelfViewTransportStatus = typeof TransportSelfViewTransportStatus[keyof typeof TransportSelfViewTransportStatus];
+
+
+export const TransportSelfViewTransportStatus = {
+  ACTIVE: 'ACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  DEACTIVATED: 'DEACTIVATED',
+  NOT_ASSIGNED: 'NOT_ASSIGNED',
+} as const;
+
+export type TransportSelfAssignmentStatus = typeof TransportSelfAssignmentStatus[keyof typeof TransportSelfAssignmentStatus];
+
+
+export const TransportSelfAssignmentStatus = {
+  ACTIVE: 'ACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  DEACTIVATED: 'DEACTIVATED',
+} as const;
+
+export type TransportSelfAssignmentCurrency = typeof TransportSelfAssignmentCurrency[keyof typeof TransportSelfAssignmentCurrency];
+
+
+export const TransportSelfAssignmentCurrency = {
+  NGN: 'NGN',
+} as const;
+
+export interface TransportSelfAssignment {
+  id: number;
+  studentId: number;
+  schoolId: number;
+  studentName: string;
+  busName: string;
+  registrationNumber: string;
+  busCapacity: number;
+  routeName: string;
+  driverName: string;
+  pickup: TransportStop;
+  dropoff: TransportStop;
+  schedule: TransportSchedule;
+  status: TransportSelfAssignmentStatus;
+  effectiveDate: string;
+  endDate: string | null;
+  reason: string;
+  feeMinor: number;
+  /** @minimum 0 */
+  feePlanAmountMinor: number;
+  academicSessionId: number | null;
+  academicTermId: number | null;
+  dueDate: string | null;
+  feePlans: TransportAssignmentFeePlan[];
+  currency: TransportSelfAssignmentCurrency;
+  invoices: TransportInvoiceStatus[];
+}
+
+export type TransportHistoryEntryBefore = { [key: string]: unknown } | null;
+
+export type TransportHistoryEntryAfter = { [key: string]: unknown } | null;
+
+export interface TransportHistoryEntry {
+  id: number;
+  schoolId: number;
+  assignmentId: number | null;
+  routeStaffId?: number | null;
+  studentId: number | null;
+  actorUserId?: number | null;
+  actorName: string;
+  actorRole: string;
+  eventType: string;
+  effectiveDate: string;
+  reason: string;
+  before?: TransportHistoryEntryBefore;
+  after?: TransportHistoryEntryAfter;
+  createdAt: string;
+}
+
+export interface TransportSelfView {
+  schoolId: number;
+  studentId: number;
+  transportStatus: TransportSelfViewTransportStatus;
+  assignment?: TransportSelfAssignment | null;
+  invoices: TransportInvoiceStatus[];
+  history: TransportHistoryEntry[];
+}
+
+export type TransportRouteStaffInputRole = typeof TransportRouteStaffInputRole[keyof typeof TransportRouteStaffInputRole];
+
+
+export const TransportRouteStaffInputRole = {
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+  ACCOMPANIER: 'ACCOMPANIER',
+} as const;
+
+export interface TransportRouteStaffInput {
+  /** @minimum 1 */
+  employeeId: number;
+  role?: TransportRouteStaffInputRole;
+}
+
+export type TransportRouteStaff = TransportRouteStaffInput & {
+  routeStaffId: number;
+  schoolId: number;
+  routeId: number;
+  employeeNo: string;
+  employeeName: string;
+  employeeType: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export interface TransportSchoolPolicy {
+  schoolId: number;
+  paymentRequired: boolean;
+  suspendWhenOverdue: boolean;
+}
+
+export interface TransportSchoolPolicyUpdate {
+  paymentRequired?: boolean;
+  suspendWhenOverdue?: boolean;
+}
+
+export interface TransportTermInvoiceGeneration {
+  schoolId: number;
+  academicSessionId: number;
+  academicTermId: number;
+  generatedInvoiceIds: number[];
+  /** @minimum 0 */
+  billableAssignmentCount: number;
+}
+
+export type TransportPlatformOverviewFilters = { [key: string]: unknown };
+
+export type TransportPlatformOverviewOperationalSummary = { [key: string]: unknown };
+
+export type TransportPlatformOverviewFinanceSummary = { [key: string]: unknown };
+
+export type TransportOwnerInvoiceStatus = typeof TransportOwnerInvoiceStatus[keyof typeof TransportOwnerInvoiceStatus];
+
+
+export const TransportOwnerInvoiceStatus = {
+  UNPAID: 'UNPAID',
+  PARTIALLY_PAID: 'PARTIALLY_PAID',
+  PAID: 'PAID',
+  OVERDUE: 'OVERDUE',
+  WAIVED: 'WAIVED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export interface TransportOwnerInvoice {
+  invoiceId: number;
+  schoolId: number;
+  schoolName: string;
+  invoiceNumber: string;
+  studentId: number;
+  studentName: string;
+  admissionNo: string;
+  academicSessionId: number;
+  sessionName: string;
+  academicTermId: number;
+  termName: string;
+  currency: string;
+  totalMinor: number;
+  paidMinor: number;
+  outstandingMinor: number;
+  status: TransportOwnerInvoiceStatus;
+  issueDate: string;
+  dueDate: string;
+  assignmentId: number;
+  routeId: number;
+  routeName: string;
+  driverEmployeeId: number;
+  driverName: string;
+  generatedAt: string;
+  receipts: TransportReceipt[];
+}
+
+export interface TransportPlatformOverview {
+  readOnly: true;
+  generatedAt: string;
+  filters: TransportPlatformOverviewFilters;
+  operationalSummary: TransportPlatformOverviewOperationalSummary;
+  financeSummary: TransportPlatformOverviewFinanceSummary;
+  invoices: TransportOwnerInvoice[];
+  /** @minimum 0 */
+  invoiceTotalCount: number;
+}
+
 export type TransportRequestInputRequestType = typeof TransportRequestInputRequestType[keyof typeof TransportRequestInputRequestType];
 
 
@@ -8545,10 +9193,10 @@ export const TransportRequestDecisionDecision = {
   REJECT: 'REJECT',
 } as const;
 
-export type TransportRequestDecisionSchoolAction = typeof TransportRequestDecisionSchoolAction[keyof typeof TransportRequestDecisionSchoolAction];
+export type TransportRequestDecisionAction = typeof TransportRequestDecisionAction[keyof typeof TransportRequestDecisionAction];
 
 
-export const TransportRequestDecisionSchoolAction = {
+export const TransportRequestDecisionAction = {
   ACTIVATE: 'ACTIVATE',
   SUSPEND: 'SUSPEND',
   DEACTIVATE: 'DEACTIVATE',
@@ -8556,16 +9204,20 @@ export const TransportRequestDecisionSchoolAction = {
 } as const;
 
 export interface TransportRequestDecision {
-  /** @minimum 1 */
-  requestId: number;
   decision: TransportRequestDecisionDecision;
-  schoolAction: TransportRequestDecisionSchoolAction;
-  effectiveDate: string;
+  action: TransportRequestDecisionAction;
+  effectiveDate?: string;
   /**
      * @minLength 3
      * @maxLength 1000
      */
-  schoolNote: string;
+  schoolNote?: string;
+  /** @minimum 1 */
+  routeId?: number;
+  /** @minimum 1 */
+  pickupStopId?: number;
+  /** @minimum 1 */
+  dropoffStopId?: number;
 }
 
 export type TransportRequestRequestType = typeof TransportRequestRequestType[keyof typeof TransportRequestRequestType];
@@ -8601,16 +9253,24 @@ export interface TransportRequest {
   schoolId: number;
   studentId: number;
   studentName: string;
+  admissionNo: string;
+  className: string;
+  section: string;
+  parentId: number;
+  parentName: string;
+  assignmentId: number | null;
   requestType: TransportRequestRequestType;
   requestDate: string;
   effectiveDate: string;
   reason: string;
   status: TransportRequestStatus;
-  schoolAction?: TransportRequestSchoolAction;
-  schoolNote?: string | null;
-  reviewedBy?: number | null;
-  reviewedAt?: string | null;
+  schoolAction: TransportRequestSchoolAction;
+  schoolNote: string | null;
+  reviewedBy: number | null;
+  reviewedAt: string | null;
+  reviewerName?: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface TransportOwnerSchoolSummary {
@@ -10304,6 +10964,14 @@ employeeId?: number;
  * @minimum 1
  */
 sessionId?: number;
+/**
+ * @minimum 1
+ */
+classId?: number;
+/**
+ * @minimum 1
+ */
+subjectId?: number;
 status?: ListSchoolTeacherAssignmentsStatus;
 };
 
@@ -10330,6 +10998,8 @@ export const ListSchoolTeacherDutyStatus = {
   INACTIVE: 'INACTIVE',
   all: 'all',
 } as const;
+
+export type ReceiveStudentSubscriptionFlutterwaveWebhookBody = { [key: string]: unknown };
 
 export type GetMyStaffNfcSubscriptionsParams = {
 /**
@@ -10534,6 +11204,34 @@ schoolId: number;
 search?: string;
 };
 
+export type SearchTransportEmployeesParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * @minLength 1
+ * @maxLength 100
+ */
+search?: string;
+role?: SearchTransportEmployeesRole;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+};
+
+export type SearchTransportEmployeesRole = typeof SearchTransportEmployeesRole[keyof typeof SearchTransportEmployeesRole];
+
+
+export const SearchTransportEmployeesRole = {
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+  ACCOMPANIER: 'ACCOMPANIER',
+} as const;
+
 export type ListTransportRoutesParams = {
 /**
  * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
@@ -10580,6 +11278,57 @@ schoolId: number;
 };
 
 export type UpdateTransportStopParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type ListTransportRouteStaffParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type AssignTransportRouteStaffParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type UpdateTransportRouteStaffParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type UpdateTransportRouteStaffBodyRole = typeof UpdateTransportRouteStaffBodyRole[keyof typeof UpdateTransportRouteStaffBodyRole];
+
+
+export const UpdateTransportRouteStaffBodyRole = {
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+  ACCOMPANIER: 'ACCOMPANIER',
+} as const;
+
+export type UpdateTransportRouteStaffBody = (unknown & {
+  isActive?: boolean;
+  role?: UpdateTransportRouteStaffBodyRole;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason?: string;
+});
+
+export type GetTransportRouteHistoryParams = {
 /**
  * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
  * @minimum 1
@@ -10636,12 +11385,52 @@ export type CreateTransportAssignmentParams = {
 schoolId: number;
 };
 
+export type GetTransportAssignmentParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
 export type UpdateTransportAssignmentParams = {
 /**
  * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
  * @minimum 1
  */
 schoolId: number;
+};
+
+export type UpsertTransportAssignmentFeePlanParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type CancelTransportAssignmentFeePlanParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type CancelTransportAssignmentFeePlanBodyStatus = typeof CancelTransportAssignmentFeePlanBodyStatus[keyof typeof CancelTransportAssignmentFeePlanBodyStatus];
+
+
+export const CancelTransportAssignmentFeePlanBodyStatus = {
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type CancelTransportAssignmentFeePlanBody = {
+  status: CancelTransportAssignmentFeePlanBodyStatus;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
 };
 
 export type GetTransportAssignmentHistoryParams = {
@@ -10680,12 +11469,80 @@ export type ReviewTransportRequestParams = {
 schoolId: number;
 };
 
+export type GetSchoolTransportPolicyParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type UpdateSchoolTransportPolicyParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type GenerateCurrentTermTransportInvoicesParams = {
+/**
+ * The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type WithdrawChildTransportRequestBody = {
+  /**
+     * @minLength 3
+     * @maxLength 1000
+     */
+  reason: string;
+};
+
 export type GetPlatformTransportOverviewParams = {
 /**
  * @minimum 1
  */
 schoolId?: number;
-dateFrom?: string;
-dateTo?: string;
+/**
+ * @minimum 1
+ */
+academicSessionId?: number;
+/**
+ * @minimum 1
+ */
+academicTermId?: number;
+fromDate?: string;
+toDate?: string;
+status?: GetPlatformTransportOverviewStatus;
+/**
+ * @minimum 1
+ */
+employeeId?: number;
+/**
+ * @minLength 1
+ * @maxLength 100
+ */
+search?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
 };
+
+export type GetPlatformTransportOverviewStatus = typeof GetPlatformTransportOverviewStatus[keyof typeof GetPlatformTransportOverviewStatus];
+
+
+export const GetPlatformTransportOverviewStatus = {
+  UNPAID: 'UNPAID',
+  PARTIALLY_PAID: 'PARTIALLY_PAID',
+  PAID: 'PAID',
+  OVERDUE: 'OVERDUE',
+  WAIVED: 'WAIVED',
+  CANCELLED: 'CANCELLED',
+  all: 'all',
+} as const;
 

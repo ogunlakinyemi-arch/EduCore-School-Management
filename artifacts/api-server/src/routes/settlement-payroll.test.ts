@@ -164,6 +164,32 @@ describe("settlement and payroll router access boundaries", () => {
     expect(db.queries[0].sql).not.toContain("FROM employees e");
   });
 
+  it.each(["SCHOOL_ADMIN", "TEACHER", "PARENT", "PARTNER"])(
+    "blocks %s from reading the company settlement profile before querying bank data",
+    async (role) => {
+      const denied = await request(
+        "/platform/finance/payment-settlement",
+        { "x-test-role": role },
+      );
+      expect(denied.status).toBe(403);
+      expect(db.queries).toHaveLength(0);
+    },
+  );
+
+  it("allows an active Platform Owner to read the company settlement profile", async () => {
+    const allowed = await request(
+      "/platform/finance/payment-settlement",
+      { "x-test-role": "SCHOOL_ADMIN", "x-test-owner": "true" },
+    );
+    expect(allowed.status).toBe(200);
+    expect(await allowed.json()).toMatchObject({
+      scope: "YEMAIT_COMPANY",
+      status: "NOT_CONFIGURED",
+    });
+    expect(db.queries).toHaveLength(1);
+    expect(db.queries[0].sql).toContain("scope='YEMAIT_COMPANY'");
+  });
+
   it("uses exact school_id scoping and validates a payroll period before database writes", async () => {
     const list = await request(
       "/schools/7/finance/payroll/employees?status=all",
@@ -225,6 +251,7 @@ function transferAttempt(overrides: Record<string, unknown> = {}) {
     provider_reference: "YMTPAY-existing-reference",
     provider_transaction_id: null,
     amount_minor: 6500000,
+    currency: "NGN",
     provider_fee_minor: 0,
     settlement_amount_minor: 0,
     status: "RECONCILIATION_REQUIRED",
@@ -324,7 +351,7 @@ describe("payroll transfer reload and retry continuity", () => {
       "/schools/7/finance/payroll/periods/30",
       { "x-test-role": "ACCOUNTANT" },
     );
-    expect(response.status).toBe(200);
+    expect(response.status, await response.clone().text()).toBe(200);
     const result = await response.json() as any;
     expect(result.items[0]).toMatchObject({
       employeeId: 21,

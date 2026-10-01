@@ -11,8 +11,9 @@ import {
   getGetFeePaymentReceiptQueryKey,
   getListMyFeePaymentNotificationsQueryKey,
 } from '@workspace/api-client-react';
-import type { FeeAdjustment, FeePaymentHistory } from '@workspace/api-client-react';
+import type { FeeAdjustment, FeeInvoice, FeePaymentHistory } from '@workspace/api-client-react';
 import { Button, EmptyState, ErrorState, Modal, SkeletonPage, StatusPill } from '@/components/shared';
+import { SchoolDocumentHeader, SchoolDocumentPrintButton, useSchoolDocumentBranding } from '@/components/school-document';
 
 const amount = (minor: number) => {
   const cents = BigInt(minor);
@@ -113,6 +114,71 @@ function hasOriginalReceipt(payment: FeePaymentHistory): boolean {
   return !!payment.receiptNumber && ['VERIFIED', 'REFUNDED', 'REVERSED'].includes(payment.status);
 }
 
+function StudentStatementPrintDocument({
+  schoolId,
+  studentId,
+  invoices,
+  payments,
+}: {
+  schoolId: number;
+  studentId: number;
+  invoices: FeeInvoice[];
+  payments: FeePaymentHistory[];
+}) {
+  const branding = useSchoolDocumentBranding(schoolId);
+  const school = branding.data;
+  const studentName = invoices[0]?.studentName ?? payments[0]?.studentName;
+  return <SchoolDocumentPrintButton
+    label="Print statement"
+    testId={`button-print-student-statement-${schoolId}-${studentId}`}
+    disabled={!school || branding.isLoading || branding.isError}
+    unavailableMessage={branding.isError ? 'School branding could not be loaded. Retry before printing this statement.' : 'Loading the selected school identity.'}
+  >
+    <article className="school-document-page">
+      <SchoolDocumentHeader branding={school ?? {}} />
+      <h2 className="school-document-title">Student fee statement</h2>
+      <dl className="school-document-grid">
+        <div className="school-document-field"><dt>Student</dt><dd>{studentName ?? `Student #${studentId}`}</dd></div>
+        <div className="school-document-field"><dt>Student ID</dt><dd>{studentId}</dd></div>
+        <div className="school-document-field"><dt>Invoices in this statement</dt><dd>{invoices.length}</dd></div>
+        <div className="school-document-field"><dt>Payment records</dt><dd>{payments.length}</dd></div>
+        <div className="school-document-field"><dt>Fee total</dt><dd>{amount(invoices.reduce((sum, invoice) => sum + invoice.totalMinor, 0))}</dd></div>
+        <div className="school-document-field"><dt>Verified paid balance</dt><dd>{amount(invoices.reduce((sum, invoice) => sum + invoice.paidMinor, 0))}</dd></div>
+        <div className="school-document-field"><dt>Outstanding balance</dt><dd>{amount(invoices.reduce((sum, invoice) => sum + invoice.outstandingMinor, 0))}</dd></div>
+      </dl>
+      {!!invoices.length && <>
+        <h3 className="school-document-title">Issued invoices</h3>
+        <table className="school-document-table">
+          <thead><tr><th>Invoice</th><th>Session / term</th><th>Status</th><th>Billed</th><th>Verified paid</th><th>Outstanding</th></tr></thead>
+          <tbody>{invoices.map(invoice => <tr key={invoice.id}>
+            <td>{invoice.invoiceNumber}</td>
+            <td>{invoice.sessionId} / {invoice.termId}</td>
+            <td>{invoice.status}</td>
+            <td>{amount(invoice.totalMinor)}</td>
+            <td>{amount(invoice.paidMinor)}</td>
+            <td>{amount(invoice.outstandingMinor)}</td>
+          </tr>)}</tbody>
+        </table>
+      </>}
+      {!!payments.length && <>
+        <h3 className="school-document-title">Payment activity</h3>
+        <table className="school-document-table">
+          <thead><tr><th>Invoice</th><th>Recorded</th><th>Method</th><th>Reference</th><th>Status</th><th>Amount</th></tr></thead>
+          <tbody>{payments.map(payment => <tr key={payment.id}>
+            <td>{payment.invoiceNumber}</td>
+            <td>{new Date(payment.createdAt).toLocaleDateString('en-NG')}</td>
+            <td>{payment.method.replaceAll('_', ' ')}</td>
+            <td>{payment.transferReference || payment.reference}</td>
+            <td>{payment.status}</td>
+            <td>{amount(payment.amountMinor)}</td>
+          </tr>)}</tbody>
+        </table>
+        <p className="mt-3 text-xs">Pending and rejected submissions are shown as activity; they are not counted as verified paid.</p>
+      </>}
+    </article>
+  </SchoolDocumentPrintButton>;
+}
+
 function VerifiedReceipt({ payment, onClose }: { payment: FeePaymentHistory; onClose: () => void }) {
   const canOpenReceipt = hasOriginalReceipt(payment);
   const query = useGetFeePaymentReceipt(payment.id, undefined, { query: { enabled: canOpenReceipt, queryKey: getGetFeePaymentReceiptQueryKey(payment.id) } });
@@ -120,14 +186,101 @@ function VerifiedReceipt({ payment, onClose }: { payment: FeePaymentHistory; onC
     && Number(query.data.snapshot?.invoiceId) === payment.invoiceId
     && Number(query.data.snapshot?.schoolId) === payment.schoolId
     && query.data.schoolId === payment.schoolId;
-  return <Modal title="Original payment receipt" eyebrow={payment.invoiceNumber} onClose={onClose}>{query.isLoading ? <div className="skeleton h-32 rounded-xl" /> : query.isError ? <ErrorState retry={() => query.refetch()} message="The original receipt could not be retrieved right now." /> : query.data && !matchesPayment ? <div role="alert" className="rounded-xl bg-[hsl(var(--destructive)/.08)] p-4 text-sm text-[hsl(var(--destructive))]">The receipt does not match this invoice and school. Contact the finance office.</div> : query.data && canOpenReceipt ? <div><div className="rounded-xl bg-[hsl(var(--secondary))] p-5"><div className="eyebrow">Original receipt · retained after payment changes</div><div className="mt-2 break-all font-mono text-xl font-bold" data-testid="text-verified-receipt-number">{query.data.receiptNumber}</div><div className="mt-3 text-sm">{payment.studentName} · {amount(payment.amountMinor)}</div><div className={`mt-1 ${muted}`}>Payment status now: {payment.status} · Verified {payment.verifiedAt ? new Date(payment.verifiedAt).toLocaleDateString('en-NG') : 'by the school'}</div>{['REFUNDED', 'REVERSED'].includes(payment.status) && <p className="mt-3 text-xs font-semibold">This status reflects an internal ledger record, not confirmation that a provider-issued payout occurred.</p>}</div><Button variant="outline" className="mt-5" onClick={() => window.print()}>Print receipt</Button></div> : <p className={muted}>No original receipt is available for this payment.</p>}</Modal>;
+  const branding = useSchoolDocumentBranding(payment.schoolId);
+  const snapshot = query.data?.snapshot;
+  const hasSnapshotLogo = !!snapshot && Object.prototype.hasOwnProperty.call(snapshot, 'schoolLogo');
+  const snapshotLogo = snapshot?.schoolLogo;
+  const documentBranding = {
+    ...(branding.data ?? {}),
+    schoolId: payment.schoolId,
+    name: typeof snapshot?.schoolName === 'string' ? snapshot.schoolName : branding.data?.name,
+    logoUrl: hasSnapshotLogo
+      ? typeof snapshotLogo === 'string' ? snapshotLogo : null
+      : branding.data?.logoUrl,
+  };
+  const snapshotValue = (key: string) => {
+    const value = snapshot?.[key];
+    return typeof value === 'string' || typeof value === 'number' ? value : null;
+  };
+  const snapshotAmount = (key: string) => {
+    const value = Number(snapshot?.[key]);
+    return Number.isSafeInteger(value) && value >= 0 ? amount(value) : null;
+  };
+  return <Modal title="Original payment receipt" eyebrow={payment.invoiceNumber} onClose={onClose}>
+    {query.isLoading ? <div className="skeleton h-32 rounded-xl" />
+      : query.isError ? <ErrorState retry={() => query.refetch()} message="The original receipt could not be retrieved right now." />
+        : query.data && !matchesPayment ? <div role="alert" className="rounded-xl bg-[hsl(var(--destructive)/.08)] p-4 text-sm text-[hsl(var(--destructive))]">The receipt does not match this invoice and school. Contact the finance office.</div>
+          : query.data && canOpenReceipt ? <div>
+            <div className="rounded-xl bg-[hsl(var(--secondary))] p-5">
+              <div className="eyebrow">Original receipt · retained after payment changes</div>
+              <div className="mt-2 break-all font-mono text-xl font-bold" data-testid="text-verified-receipt-number">{query.data.receiptNumber}</div>
+              <div className="mt-3 text-sm">{payment.studentName} · {amount(payment.amountMinor)}</div>
+              <div className={`mt-1 ${muted}`}>Payment status now: {payment.status} · Verified {payment.verifiedAt ? new Date(payment.verifiedAt).toLocaleDateString('en-NG') : 'by the school'}</div>
+              {['REFUNDED', 'REVERSED'].includes(payment.status) && <p className="mt-3 text-xs font-semibold">This status reflects an internal ledger record, not confirmation that a provider-issued payout occurred.</p>}
+            </div>
+            <SchoolDocumentPrintButton
+              label="Print receipt"
+              testId={`button-print-receipt-${payment.id}`}
+              className="mt-5"
+              disabled={!branding.data || branding.isLoading || branding.isError || !documentBranding.name}
+              unavailableMessage={branding.isError ? 'Official school details could not be loaded for this original receipt.' : 'School details are unavailable until the branding record loads.'}
+            >
+              <article className="school-document-page">
+                <SchoolDocumentHeader branding={documentBranding} />
+                <h2 className="school-document-title">Fee payment receipt</h2>
+                <dl className="school-document-grid">
+                  <div className="school-document-field"><dt>Receipt number</dt><dd>{query.data.receiptNumber}</dd></div>
+                  <div className="school-document-field"><dt>Invoice number</dt><dd>{snapshotValue('invoiceNumber') ?? payment.invoiceNumber}</dd></div>
+                  <div className="school-document-field"><dt>Student</dt><dd>{snapshotValue('studentName') ?? payment.studentName}</dd></div>
+                  {snapshotValue('admissionNo') !== null && <div className="school-document-field"><dt>Admission number</dt><dd>{snapshotValue('admissionNo')}</dd></div>}
+                  {snapshotValue('className') !== null && <div className="school-document-field"><dt>Class</dt><dd>{snapshotValue('className')}</dd></div>}
+                  <div className="school-document-field"><dt>Session / term</dt><dd>{snapshotValue('sessionId') ?? '—'} / {snapshotValue('termId') ?? '—'}</dd></div>
+                  {snapshotValue('payerName') !== null && <div className="school-document-field"><dt>Payer</dt><dd>{snapshotValue('payerName')}</dd></div>}
+                  <div className="school-document-field"><dt>Payment reference</dt><dd>{snapshotValue('paymentReference') ?? payment.reference}</dd></div>
+                  <div className="school-document-field"><dt>Payment method</dt><dd>{snapshotValue('method') ?? payment.method}</dd></div>
+                  <div className="school-document-field"><dt>Receipt status</dt><dd>{snapshotValue('status') ?? 'VERIFIED'}</dd></div>
+                  <div className="school-document-field"><dt>Amount received</dt><dd>{snapshotAmount('amountMinor') ?? amount(payment.amountMinor)}</dd></div>
+                  {snapshotAmount('previousBalanceMinor') !== null && <div className="school-document-field"><dt>Balance before payment</dt><dd>{snapshotAmount('previousBalanceMinor')}</dd></div>}
+                  {snapshotAmount('remainingBalanceMinor') !== null && <div className="school-document-field"><dt>Remaining balance</dt><dd>{snapshotAmount('remainingBalanceMinor')}</dd></div>}
+                </dl>
+                {['REFUNDED', 'REVERSED'].includes(payment.status) && <p className="school-document-error">Current payment status: {payment.status}. This is an internal ledger status, not confirmation of a provider payout.</p>}
+              </article>
+            </SchoolDocumentPrintButton>
+          </div>
+          : <p className={muted}>No original receipt is available for this payment.</p>}
+  </Modal>;
 }
 
-export function FamilyPaymentHistory({ audience, studentId }: { audience: 'parent' | 'student'; studentId?: number }) {
+export function FamilyPaymentHistory({ audience, studentId, invoices = [] }: { audience: 'parent' | 'student'; studentId?: number; invoices?: FeeInvoice[] }) {
   const parent = useListParentFeePayments({ query: { enabled: audience === 'parent', queryKey: getListParentFeePaymentsQueryKey(), refetchInterval: 30000 } });
   const student = useListStudentFeePayments({ query: { enabled: audience === 'student', queryKey: getListStudentFeePaymentsQueryKey(), refetchInterval: 30000 } });
   const query = audience === 'parent' ? parent : student;
   const [receipt, setReceipt] = useState<FeePaymentHistory | null>(null);
   const payments = (query.data ?? []).filter(payment => studentId === undefined || payment.studentId === studentId);
-   return <section className="panel mt-5 overflow-hidden" data-testid="section-payment-history"><div className="border-b border-[hsl(var(--border))] p-5 md:p-6"><div className="eyebrow">Payment trail</div><h2 className="display-font mt-1 text-xl font-bold">Transfer history</h2><p className={`mt-1 ${muted}`}>Pending submissions are not included in verified paid balances. Refund/reversal statuses are internal ledger classifications, not provider payout confirmation.</p></div>{query.isLoading ? <div className="space-y-2 p-5"><div className="skeleton h-16 rounded-xl" /><div className="skeleton h-16 rounded-xl" /></div> : query.isError ? <div className="p-5"><ErrorState retry={() => query.refetch()} /></div> : !payments.length ? <EmptyState icon={Clock3} title="No payment submissions" description="Submitted transfers and their review status will appear here after they are recorded." /> : <div className="divide-y divide-[hsl(var(--border))]">{payments.map(payment => <div key={payment.id} className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:px-6" data-testid={`row-payment-history-${payment.id}`}><div className="min-w-0 flex-1"><div className="text-sm font-bold">{payment.invoiceNumber} · {payment.studentName}</div><div className={`mt-1 break-all ${muted}`}>{payment.transferBank || payment.method.replaceAll('_', ' ')} · {payment.transferReference || payment.reference} · {new Date(payment.createdAt).toLocaleDateString('en-NG')}</div>{payment.status === 'REJECTED' && payment.rejectionReason && <div className="mt-2 text-xs text-[hsl(var(--destructive))]">Rejected: {payment.rejectionReason}</div>}{payment.status === 'PENDING' && <div className={`mt-2 ${muted}`}>Awaiting school verification. Not paid.</div>}{['REFUNDED', 'REVERSED'].includes(payment.status) && <div className={`mt-2 ${muted}`}>{payment.status === 'REFUNDED' ? 'Internal refund record' : 'Internal reversal record'}; provider payout is not confirmed here. Original payment receipt remains available below.</div>}</div><div className="flex flex-wrap items-center gap-3"><strong className="text-sm tabular-nums">{amount(payment.amountMinor)}</strong><StatusPill value={payment.status} />{hasOriginalReceipt(payment) && <Button variant="outline" onClick={() => setReceipt(payment)} testId={`button-open-receipt-${payment.id}`}><ReceiptText size={14} />Original receipt</Button>}</div></div>)}</div>}{receipt && <VerifiedReceipt payment={receipt} onClose={() => setReceipt(null)} />}</section>;
+  const statementInvoices = invoices.filter(invoice => studentId === undefined || invoice.studentId === studentId);
+  const statementSchoolIds = [...new Set([
+    ...statementInvoices.map(invoice => invoice.schoolId),
+    ...payments.map(payment => payment.schoolId),
+  ])];
+  return <section className="panel mt-5 overflow-hidden" data-testid="section-payment-history">
+    <div className="border-b border-[hsl(var(--border))] p-5 md:p-6">
+      <div className="eyebrow">Payment trail</div>
+      <h2 className="display-font mt-1 text-xl font-bold">Transfer history</h2>
+      <p className={`mt-1 ${muted}`}>Pending submissions are not included in verified paid balances. Refund/reversal statuses are internal ledger classifications, not provider payout confirmation.</p>
+    </div>
+    {query.isLoading ? <div className="space-y-2 p-5"><div className="skeleton h-16 rounded-xl" /><div className="skeleton h-16 rounded-xl" /></div>
+      : query.isError ? <div className="p-5"><ErrorState retry={() => query.refetch()} /></div>
+        : !payments.length ? <EmptyState icon={Clock3} title="No payment submissions" description="Submitted transfers and their review status will appear here after they are recorded." />
+          : <div className="divide-y divide-[hsl(var(--border))]">{payments.map(payment => <div key={payment.id} className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:px-6" data-testid={`row-payment-history-${payment.id}`}><div className="min-w-0 flex-1"><div className="text-sm font-bold">{payment.invoiceNumber} · {payment.studentName}</div><div className={`mt-1 break-all ${muted}`}>{payment.transferBank || payment.method.replaceAll('_', ' ')} · {payment.transferReference || payment.reference} · {new Date(payment.createdAt).toLocaleDateString('en-NG')}</div>{payment.status === 'REJECTED' && payment.rejectionReason && <div className="mt-2 text-xs text-[hsl(var(--destructive))]">Rejected: {payment.rejectionReason}</div>}{payment.status === 'PENDING' && <div className={`mt-2 ${muted}`}>Awaiting school verification. Not paid.</div>}{['REFUNDED', 'REVERSED'].includes(payment.status) && <div className={`mt-2 ${muted}`}>{payment.status === 'REFUNDED' ? 'Internal refund record' : 'Internal reversal record'}; provider payout is not confirmed here. Original payment receipt remains available below.</div>}</div><div className="flex flex-wrap items-center gap-3"><strong className="text-sm tabular-nums">{amount(payment.amountMinor)}</strong><StatusPill value={payment.status} />{hasOriginalReceipt(payment) && <Button variant="outline" onClick={() => setReceipt(payment)} testId={`button-open-receipt-${payment.id}`}><ReceiptText size={14} />Original receipt</Button>}</div></div>)}</div>}
+    {!query.isLoading && !query.isError && statementSchoolIds.map(schoolId => {
+      const schoolInvoices = statementInvoices.filter(invoice => invoice.schoolId === schoolId);
+      const schoolPayments = payments.filter(payment => payment.schoolId === schoolId);
+      const statementStudentId = studentId ?? schoolInvoices[0]?.studentId ?? schoolPayments[0]?.studentId;
+      if (statementStudentId === undefined) return null;
+      return <div key={schoolId} className="border-t border-[hsl(var(--border))] p-5">
+        <StudentStatementPrintDocument schoolId={schoolId} studentId={statementStudentId} invoices={schoolInvoices} payments={schoolPayments} />
+      </div>;
+    })}
+    {receipt && <VerifiedReceipt payment={receipt} onClose={() => setReceipt(null)} />}
+  </section>;
 }

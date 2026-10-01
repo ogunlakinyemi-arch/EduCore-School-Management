@@ -5,18 +5,22 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { TransportRequestDecisionAction } from './transportRequestDecisionAction';
 import type { TransportRequestDecisionDecision } from './transportRequestDecisionDecision';
-import type { TransportRequestDecisionSchoolAction } from './transportRequestDecisionSchoolAction';
 
 export interface TransportRequestDecision {
-  /** @minimum 1 */
-  requestId: number;
   decision: TransportRequestDecisionDecision;
-  schoolAction: TransportRequestDecisionSchoolAction;
-  effectiveDate: Date;
+  action: TransportRequestDecisionAction;
+  effectiveDate?: Date;
   /**
      * @minLength 3
      * @maxLength 1000
      */
-  schoolNote: string;
+  schoolNote?: string;
+  /** @minimum 1 */
+  routeId?: number;
+  /** @minimum 1 */
+  pickupStopId?: number;
+  /** @minimum 1 */
+  dropoffStopId?: number;
 }

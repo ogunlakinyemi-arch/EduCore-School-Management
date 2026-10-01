@@ -5,6 +5,7 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { NfcCardPersonType } from './nfcCardPersonType';
 import type { NfcCardStatus } from './nfcCardStatus';
 
 export interface NfcCard {
@@ -15,6 +16,12 @@ export interface NfcCard {
   studentId: number | null;
   /** @nullable */
   studentName: string | null;
+  /** @nullable */
+  employeeId?: number | null;
+  /** @nullable */
+  employeeName?: string | null;
+  /** @nullable */
+  personType?: NfcCardPersonType;
   status: NfcCardStatus;
   scans: number;
   /** @nullable */

@@ -41,6 +41,14 @@ export function newSchoolLogoObjectPath(schoolId: number): string {
   return `/objects/school-logos/${schoolId}/${randomUUID()}`;
 }
 
+export function canonicalSchoolLogoVersionUrl(schoolId: number, logoId: number): string {
+  if (!Number.isSafeInteger(schoolId) || schoolId < 1 ||
+    !Number.isSafeInteger(logoId) || logoId < 1) {
+    throw new TypeError("Positive integer school and confirmed logo IDs are required");
+  }
+  return `/api/schools/${schoolId}/branding/logo-versions/${logoId}`;
+}
+
 export function isManagedSchoolLogoObjectPath(schoolId: number, value: unknown): value is string {
   if (!Number.isSafeInteger(schoolId) || schoolId < 1 || typeof value !== "string") return false;
   return new RegExp(

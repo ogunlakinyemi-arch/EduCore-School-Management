@@ -77,3 +77,13 @@ describe('TeacherAssignmentsPage', () => {
     expect(html).toContain('button-deactivate-1');
   });
 });
+
+import { buildReplaceBody } from './teacher-assignments';
+describe('atomic replacement payload', () => {
+  it('sends exactly employeeId and a YYYY-MM-DD startDate, no endDate', () => {
+    const body = buildReplaceBody(42, '2025-10-01');
+    expect(body).toEqual({ employeeId: 42, startDate: '2025-10-01' });
+    expect(Object.keys(body)).not.toContain('endDate');
+    expect(typeof body.startDate).toBe('string');
+  });
+});

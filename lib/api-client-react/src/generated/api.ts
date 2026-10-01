@@ -68,6 +68,7 @@ import type {
   AssignFeeStructureParams,
   AssignStudentClassParams,
   AssignTeacherClassParams,
+  AssignTransportRouteStaffParams,
   AttendanceCorrectionInput,
   AttendanceDiscrepancy,
   AttendanceEvent,
@@ -81,6 +82,8 @@ import type {
   BiometricEnrollmentInput,
   BiometricProviderEventInput,
   BulkAssignFeeStructureParams,
+  CancelTransportAssignmentFeePlanBody,
+  CancelTransportAssignmentFeePlanParams,
   CardHistoryEntry,
   CardInput,
   CardReassignmentInput,
@@ -206,6 +209,7 @@ import type {
   FinanceSettingsUpdate,
   FinanceSummary,
   ForbiddenResponse,
+  GenerateCurrentTermTransportInvoicesParams,
   GenerateSchoolCalendarBody,
   GenerateStaffNfcTermSubscriptionsParams,
   GetChildAcademicTimetableParams,
@@ -232,6 +236,7 @@ import type {
   GetSchoolFinanceReportParams,
   GetSchoolFinanceSummaryParams,
   GetSchoolPayrollReportParams,
+  GetSchoolTransportPolicyParams,
   GetStaffNfcReceiptParams,
   GetStudentAttendanceParams,
   GetStudentOwnAttendanceByIdParams,
@@ -239,6 +244,8 @@ import type {
   GetStudentPhotoParams,
   GetSubjectParams,
   GetTransportAssignmentHistoryParams,
+  GetTransportAssignmentParams,
+  GetTransportRouteHistoryParams,
   HandleStaffNfcFlutterwaveWebhookBody,
   HealthStatus,
   IngestEmployeeNfcAttendanceBody,
@@ -314,6 +321,7 @@ import type {
   ListTransportAssignmentsParams,
   ListTransportBusesParams,
   ListTransportRequestsParams,
+  ListTransportRouteStaffParams,
   ListTransportRoutesParams,
   ManualAttendanceInput,
   NfcCard,
@@ -372,7 +380,6 @@ import type {
   PartnerUpdate,
   PaymentRejectionInput,
   PaymentSettlementProfile,
-  PaymentVerificationInput,
   PayrollEmployeeProfile,
   PayrollEmployeeProfileInput,
   PayrollError,
@@ -404,6 +411,7 @@ import type {
   PreviewPeopleImportParams,
   PublishFeeStructureParams,
   ReceiveFeeProviderWebhookBody,
+  ReceiveStudentSubscriptionFlutterwaveWebhookBody,
   ReconcileFeeProviderCheckoutParams,
   ReconcileStaffNfcPaymentParams,
   ReferralValidation,
@@ -449,6 +457,7 @@ import type {
   SchoolWithAdministratorResult,
   SearchActivationStudentsParams,
   SearchTransportDriversParams,
+  SearchTransportEmployeesParams,
   SearchTransportStudentsParams,
   SettlementHistoryEntry,
   StaffNfcBillingRule,
@@ -476,6 +485,9 @@ import type {
   StudentPhotoUploadIntent,
   StudentPhotoUploadTarget,
   StudentStatusUpdate,
+  StudentSubscriptionCheckoutResponse,
+  StudentSubscriptionPaymentResponse,
+  StudentSubscriptionVerificationInput,
   StudentUpdate,
   Subject,
   SubjectInput,
@@ -486,25 +498,32 @@ import type {
   TeacherClassAssignmentInput,
   TeacherDuty,
   TransportAssignment,
+  TransportAssignmentFeePlanInput,
   TransportAssignmentInput,
   TransportAssignmentUpdate,
   TransportBus,
   TransportBusInput,
   TransportBusUpdate,
   TransportDriver,
+  TransportEmployeeOption,
   TransportError,
   TransportHistoryEntry,
-  TransportOwnerSchoolSummary,
+  TransportPlatformOverview,
   TransportRequest,
   TransportRequestDecision,
   TransportRequestInput,
   TransportRoute,
   TransportRouteInput,
+  TransportRouteStaff,
+  TransportRouteStaffInput,
   TransportRouteUpdate,
+  TransportSchoolPolicy,
+  TransportSchoolPolicyUpdate,
   TransportSelfView,
   TransportStop,
   TransportStopInput,
   TransportStudentOption,
+  TransportTermInvoiceGeneration,
   UnauthenticatedResponse,
   UpdateAcademicAssessmentParams,
   UpdateAcademicAssignmentParams,
@@ -519,6 +538,7 @@ import type {
   UpdateSchoolBrandingBody,
   UpdateSchoolCalendarEventBody,
   UpdateSchoolTeacherAssignmentBody,
+  UpdateSchoolTransportPolicyParams,
   UpdateStudentIdentificationMethodsParams,
   UpdateStudentParams,
   UpdateStudentStatusParams,
@@ -527,9 +547,13 @@ import type {
   UpdateTransportAssignmentParams,
   UpdateTransportBusParams,
   UpdateTransportRouteParams,
+  UpdateTransportRouteStaffBody,
+  UpdateTransportRouteStaffParams,
   UpdateTransportStopParams,
+  UpsertTransportAssignmentFeePlanParams,
   VerifyManualBankTransferParams,
-  VerifyMyStaffNfcPaymentParams
+  VerifyMyStaffNfcPaymentParams,
+  WithdrawChildTransportRequestBody
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -15518,7 +15542,7 @@ export const useCreateSubscription = <TError = ErrorType<unknown>,
       return useMutation(getCreateSubscriptionMutationOptions(options));
     }
 
-export const getVerifySubscriptionUrl = (subscriptionId: number,) => {
+export const getVerifyStudentSubscriptionPaymentUrl = (subscriptionId: number,) => {
 
 
 
@@ -15527,10 +15551,10 @@ export const getVerifySubscriptionUrl = (subscriptionId: number,) => {
 }
 
 /**
- * @summary Verify a provider payment and activate entitlement
+ * @summary Independently verify the persisted checkout with the server-configured Flutterwave test adapter
  */
-export const verifySubscription = async (subscriptionId: number,
-    paymentVerificationInput: PaymentVerificationInput, options?: Parameters<typeof customFetch>[1]): Promise<Subscription> => {
+export const verifyStudentSubscriptionPayment = async (subscriptionId: number,
+    studentSubscriptionVerificationInput: StudentSubscriptionVerificationInput, options?: Parameters<typeof customFetch>[1]): Promise<StudentSubscriptionPaymentResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -15546,12 +15570,12 @@ export const verifySubscription = async (subscriptionId: number,
     }
     return headers;
   };
-return customFetch<Subscription>(getVerifySubscriptionUrl(subscriptionId),
+return customFetch<StudentSubscriptionPaymentResponse>(getVerifyStudentSubscriptionPaymentUrl(subscriptionId),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(paymentVerificationInput)
+    body: JSON.stringify(studentSubscriptionVerificationInput)
   }
 );}
 
@@ -15559,13 +15583,13 @@ return customFetch<Subscription>(getVerifySubscriptionUrl(subscriptionId),
 
 
 
-export const getVerifySubscriptionMutationKey = () => ['verifySubscription'] as const;
+export const getVerifyStudentSubscriptionPaymentMutationKey = () => ['verifyStudentSubscriptionPayment'] as const;
 
-export const getVerifySubscriptionMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifySubscription>>, TError,VerifySubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof verifySubscription>>, TError,VerifySubscriptionMutationVariables, TContext> => {
+export const getVerifyStudentSubscriptionPaymentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyStudentSubscriptionPayment>>, TError,VerifyStudentSubscriptionPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyStudentSubscriptionPayment>>, TError,VerifyStudentSubscriptionPaymentMutationVariables, TContext> => {
 
-const mutationKey = getVerifySubscriptionMutationKey();
+const mutationKey = getVerifyStudentSubscriptionPaymentMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -15575,10 +15599,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifySubscription>>, VerifySubscriptionMutationVariables> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyStudentSubscriptionPayment>>, VerifyStudentSubscriptionPaymentMutationVariables> = (props) => {
           const {subscriptionId,data} = props ?? {};
 
-          return  verifySubscription(subscriptionId,data,requestOptions)
+          return  verifyStudentSubscriptionPayment(subscriptionId,data,requestOptions)
         }
 
 
@@ -15588,23 +15612,23 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type VerifySubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof verifySubscription>>>
-    export type VerifySubscriptionMutationBody = BodyType<PaymentVerificationInput>
-    export type VerifySubscriptionMutationError = ErrorType<unknown>
-    export type VerifySubscriptionMutationVariables = {subscriptionId: number;data: BodyType<PaymentVerificationInput>}
+    export type VerifyStudentSubscriptionPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof verifyStudentSubscriptionPayment>>>
+    export type VerifyStudentSubscriptionPaymentMutationBody = BodyType<StudentSubscriptionVerificationInput>
+    export type VerifyStudentSubscriptionPaymentMutationError = ErrorType<void>
+    export type VerifyStudentSubscriptionPaymentMutationVariables = {subscriptionId: number;data: BodyType<StudentSubscriptionVerificationInput>}
 
     /**
- * @summary Verify a provider payment and activate entitlement
+ * @summary Independently verify the persisted checkout with the server-configured Flutterwave test adapter
  */
-export const useVerifySubscription = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifySubscription>>, TError,VerifySubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useVerifyStudentSubscriptionPayment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyStudentSubscriptionPayment>>, TError,VerifyStudentSubscriptionPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof verifySubscription>>,
+        Awaited<ReturnType<typeof verifyStudentSubscriptionPayment>>,
         TError,
-        VerifySubscriptionMutationVariables,
+        VerifyStudentSubscriptionPaymentMutationVariables,
         TContext
       > => {
-      return useMutation(getVerifySubscriptionMutationOptions(options));
+      return useMutation(getVerifyStudentSubscriptionPaymentMutationOptions(options));
     }
 
 export const getListCardsUrl = (params: ListCardsParams,) => {
@@ -28469,7 +28493,8 @@ export const getUpdateSchoolTeacherAssignmentUrl = (schoolId: number,
 }
 
 /**
- * @summary Change the teacher of, or deactivate, one same-school active assignment
+ * Supplying a different employeeId atomically deactivates the prior record and creates/returns the replacement record in one transaction; no client-side deactivate-then-create sequence is needed. startDate is optional for replacement and defaults to the prior start date when recorded.
+ * @summary Replace the assigned teacher atomically, update dates, or deactivate an assignment
  */
 export const updateSchoolTeacherAssignment = async (schoolId: number,
     assignmentKind: 'CLASS' | 'SUBJECT',
@@ -28538,7 +28563,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateSchoolTeacherAssignmentMutationVariables = {schoolId: number;assignmentKind: 'CLASS' | 'SUBJECT';assignmentId: number;data: BodyType<UpdateSchoolTeacherAssignmentBody>}
 
     /**
- * @summary Change the teacher of, or deactivate, one same-school active assignment
+ * @summary Replace the assigned teacher atomically, update dates, or deactivate an assignment
  */
 export const useUpdateSchoolTeacherAssignment = <TError = ErrorType<ApiError0a0c478>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolTeacherAssignment>>, TError,UpdateSchoolTeacherAssignmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -28820,6 +28845,250 @@ export const useUpdateSchoolTeacherDuty = <TError = ErrorType<ApiError0a0c478>,
       > => {
       return useMutation(getUpdateSchoolTeacherDutyMutationOptions(options));
     }
+
+export const getCreateStudentSubscriptionCheckoutUrl = (subscriptionId: number,) => {
+
+
+
+
+  return `/api/subscriptions/${subscriptionId}/checkout`
+}
+
+/**
+ * @summary Create or return the server-persisted Flutterwave sandbox checkout for a current student subscription
+ */
+export const createStudentSubscriptionCheckout = async (subscriptionId: number, options?: Parameters<typeof customFetch>[1]): Promise<StudentSubscriptionCheckoutResponse> => {
+
+  return customFetch<StudentSubscriptionCheckoutResponse>(getCreateStudentSubscriptionCheckoutUrl(subscriptionId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCreateStudentSubscriptionCheckoutMutationKey = () => ['createStudentSubscriptionCheckout'] as const;
+
+export const getCreateStudentSubscriptionCheckoutMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStudentSubscriptionCheckout>>, TError,CreateStudentSubscriptionCheckoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createStudentSubscriptionCheckout>>, TError,CreateStudentSubscriptionCheckoutMutationVariables, TContext> => {
+
+const mutationKey = getCreateStudentSubscriptionCheckoutMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createStudentSubscriptionCheckout>>, CreateStudentSubscriptionCheckoutMutationVariables> = (props) => {
+          const {subscriptionId} = props ?? {};
+
+          return  createStudentSubscriptionCheckout(subscriptionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateStudentSubscriptionCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof createStudentSubscriptionCheckout>>>
+
+    export type CreateStudentSubscriptionCheckoutMutationError = ErrorType<void>
+    export type CreateStudentSubscriptionCheckoutMutationVariables = {subscriptionId: number}
+
+    /**
+ * @summary Create or return the server-persisted Flutterwave sandbox checkout for a current student subscription
+ */
+export const useCreateStudentSubscriptionCheckout = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStudentSubscriptionCheckout>>, TError,CreateStudentSubscriptionCheckoutMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createStudentSubscriptionCheckout>>,
+        TError,
+        CreateStudentSubscriptionCheckoutMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateStudentSubscriptionCheckoutMutationOptions(options));
+    }
+
+export const getReceiveStudentSubscriptionFlutterwaveWebhookUrl = () => {
+
+
+
+
+  return `/api/webhooks/flutterwave/student-subscription`
+}
+
+/**
+ * @summary Verify a signed Flutterwave event against a persisted student payment and finalize it without a browser callback
+ */
+export const receiveStudentSubscriptionFlutterwaveWebhook = async (receiveStudentSubscriptionFlutterwaveWebhookBody: ReceiveStudentSubscriptionFlutterwaveWebhookBody, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getReceiveStudentSubscriptionFlutterwaveWebhookUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(receiveStudentSubscriptionFlutterwaveWebhookBody)
+  }
+);}
+
+
+
+
+
+export const getReceiveStudentSubscriptionFlutterwaveWebhookMutationKey = () => ['receiveStudentSubscriptionFlutterwaveWebhook'] as const;
+
+export const getReceiveStudentSubscriptionFlutterwaveWebhookMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveStudentSubscriptionFlutterwaveWebhook>>, TError,ReceiveStudentSubscriptionFlutterwaveWebhookMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiveStudentSubscriptionFlutterwaveWebhook>>, TError,ReceiveStudentSubscriptionFlutterwaveWebhookMutationVariables, TContext> => {
+
+const mutationKey = getReceiveStudentSubscriptionFlutterwaveWebhookMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiveStudentSubscriptionFlutterwaveWebhook>>, ReceiveStudentSubscriptionFlutterwaveWebhookMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  receiveStudentSubscriptionFlutterwaveWebhook(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReceiveStudentSubscriptionFlutterwaveWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof receiveStudentSubscriptionFlutterwaveWebhook>>>
+    export type ReceiveStudentSubscriptionFlutterwaveWebhookMutationBody = BodyType<ReceiveStudentSubscriptionFlutterwaveWebhookBody>
+    export type ReceiveStudentSubscriptionFlutterwaveWebhookMutationError = ErrorType<void>
+    export type ReceiveStudentSubscriptionFlutterwaveWebhookMutationVariables = {data: BodyType<ReceiveStudentSubscriptionFlutterwaveWebhookBody>}
+
+    /**
+ * @summary Verify a signed Flutterwave event against a persisted student payment and finalize it without a browser callback
+ */
+export const useReceiveStudentSubscriptionFlutterwaveWebhook = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveStudentSubscriptionFlutterwaveWebhook>>, TError,ReceiveStudentSubscriptionFlutterwaveWebhookMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof receiveStudentSubscriptionFlutterwaveWebhook>>,
+        TError,
+        ReceiveStudentSubscriptionFlutterwaveWebhookMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReceiveStudentSubscriptionFlutterwaveWebhookMutationOptions(options));
+    }
+
+export const getGetStudentSubscriptionPaymentUrl = (subscriptionId: number,
+    paymentId: number,) => {
+
+
+
+
+  return `/api/subscriptions/${subscriptionId}/payments/${paymentId}`
+}
+
+/**
+ * @summary Read the payer school-scoped status of one persisted student subscription payment
+ */
+export const getStudentSubscriptionPayment = async (subscriptionId: number,
+    paymentId: number, options?: Parameters<typeof customFetch>[1]): Promise<StudentSubscriptionPaymentResponse> => {
+
+  return customFetch<StudentSubscriptionPaymentResponse>(getGetStudentSubscriptionPaymentUrl(subscriptionId,paymentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStudentSubscriptionPaymentQueryKey = (subscriptionId: number,
+    paymentId: number,) => {
+    return [
+    `/api/subscriptions/${subscriptionId}/payments/${paymentId}`
+    ] as const;
+    }
+
+
+export const getGetStudentSubscriptionPaymentQueryOptions = <TData = Awaited<ReturnType<typeof getStudentSubscriptionPayment>>, TError = ErrorType<void>>(subscriptionId: number,
+    paymentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStudentSubscriptionPayment>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStudentSubscriptionPaymentQueryKey(subscriptionId,paymentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStudentSubscriptionPayment>>> = ({ signal }) => getStudentSubscriptionPayment(subscriptionId,paymentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: subscriptionId !== null && subscriptionId !== undefined && paymentId !== null && paymentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStudentSubscriptionPayment>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStudentSubscriptionPaymentQueryResult = NonNullable<Awaited<ReturnType<typeof getStudentSubscriptionPayment>>>
+export type GetStudentSubscriptionPaymentQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read the payer school-scoped status of one persisted student subscription payment
+ */
+
+export function useGetStudentSubscriptionPayment<TData = Awaited<ReturnType<typeof getStudentSubscriptionPayment>>, TError = ErrorType<void>>(
+ subscriptionId: number,
+    paymentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStudentSubscriptionPayment>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStudentSubscriptionPaymentQueryOptions(subscriptionId,paymentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetMyStaffNfcSubscriptionsUrl = (params: GetMyStaffNfcSubscriptionsParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -29780,7 +30049,7 @@ export const getHandleStaffNfcFlutterwaveWebhookUrl = () => {
 
 
 
-  return `/api/webhooks/staff-nfc/flutterwave`
+  return `/api/webhooks/flutterwave/staff-nfc`
 }
 
 /**
@@ -30189,6 +30458,87 @@ export function useSearchTransportDrivers<TData = Awaited<ReturnType<typeof sear
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getSearchTransportDriversQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSearchTransportEmployeesUrl = (params: SearchTransportEmployeesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/employees?${stringifiedParams}` : `/api/transport/employees`
+}
+
+/**
+ * Search existing active employees in the authorized school for route or bus accompaniment; this endpoint never creates staff records.
+ */
+export const searchTransportEmployees = async (params: SearchTransportEmployeesParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportEmployeeOption[]> => {
+
+  return customFetch<TransportEmployeeOption[]>(getSearchTransportEmployeesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSearchTransportEmployeesQueryKey = (params?: SearchTransportEmployeesParams,) => {
+    return [
+    `/api/transport/employees`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSearchTransportEmployeesQueryOptions = <TData = Awaited<ReturnType<typeof searchTransportEmployees>>, TError = ErrorType<TransportError>>(params: SearchTransportEmployeesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchTransportEmployees>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchTransportEmployeesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchTransportEmployees>>> = ({ signal }) => searchTransportEmployees(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchTransportEmployees>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type SearchTransportEmployeesQueryResult = NonNullable<Awaited<ReturnType<typeof searchTransportEmployees>>>
+export type SearchTransportEmployeesQueryError = ErrorType<TransportError>
+
+
+
+export function useSearchTransportEmployees<TData = Awaited<ReturnType<typeof searchTransportEmployees>>, TError = ErrorType<TransportError>>(
+ params: SearchTransportEmployeesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchTransportEmployees>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getSearchTransportEmployeesQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -30647,6 +30997,358 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getUpdateTransportStopMutationOptions(options));
     }
 
+export const getListTransportRouteStaffUrl = (routeId: number,
+    params: ListTransportRouteStaffParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/routes/${routeId}/staff?${stringifiedParams}` : `/api/transport/routes/${routeId}/staff`
+}
+
+export const listTransportRouteStaff = async (routeId: number,
+    params: ListTransportRouteStaffParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportRouteStaff[]> => {
+
+  return customFetch<TransportRouteStaff[]>(getListTransportRouteStaffUrl(routeId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTransportRouteStaffQueryKey = (routeId: number,
+    params?: ListTransportRouteStaffParams,) => {
+    return [
+    `/api/transport/routes/${routeId}/staff`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListTransportRouteStaffQueryOptions = <TData = Awaited<ReturnType<typeof listTransportRouteStaff>>, TError = ErrorType<TransportError>>(routeId: number,
+    params: ListTransportRouteStaffParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransportRouteStaff>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTransportRouteStaffQueryKey(routeId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTransportRouteStaff>>> = ({ signal }) => listTransportRouteStaff(routeId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: routeId !== null && routeId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTransportRouteStaff>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTransportRouteStaffQueryResult = NonNullable<Awaited<ReturnType<typeof listTransportRouteStaff>>>
+export type ListTransportRouteStaffQueryError = ErrorType<TransportError>
+
+
+
+export function useListTransportRouteStaff<TData = Awaited<ReturnType<typeof listTransportRouteStaff>>, TError = ErrorType<TransportError>>(
+ routeId: number,
+    params: ListTransportRouteStaffParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransportRouteStaff>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTransportRouteStaffQueryOptions(routeId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAssignTransportRouteStaffUrl = (routeId: number,
+    params: AssignTransportRouteStaffParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/routes/${routeId}/staff?${stringifiedParams}` : `/api/transport/routes/${routeId}/staff`
+}
+
+export const assignTransportRouteStaff = async (routeId: number,
+    transportRouteStaffInput: TransportRouteStaffInput,
+    params: AssignTransportRouteStaffParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportRouteStaff> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TransportRouteStaff>(getAssignTransportRouteStaffUrl(routeId,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(transportRouteStaffInput)
+  }
+);}
+
+
+
+
+
+export const getAssignTransportRouteStaffMutationKey = () => ['assignTransportRouteStaff'] as const;
+
+export const getAssignTransportRouteStaffMutationOptions = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignTransportRouteStaff>>, TError,AssignTransportRouteStaffMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assignTransportRouteStaff>>, TError,AssignTransportRouteStaffMutationVariables, TContext> => {
+
+const mutationKey = getAssignTransportRouteStaffMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assignTransportRouteStaff>>, AssignTransportRouteStaffMutationVariables> = (props) => {
+          const {routeId,data,params} = props ?? {};
+
+          return  assignTransportRouteStaff(routeId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssignTransportRouteStaffMutationResult = NonNullable<Awaited<ReturnType<typeof assignTransportRouteStaff>>>
+    export type AssignTransportRouteStaffMutationBody = BodyType<TransportRouteStaffInput>
+    export type AssignTransportRouteStaffMutationError = ErrorType<TransportError>
+    export type AssignTransportRouteStaffMutationVariables = {routeId: number;data: BodyType<TransportRouteStaffInput>;params: AssignTransportRouteStaffParams}
+
+    export const useAssignTransportRouteStaff = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignTransportRouteStaff>>, TError,AssignTransportRouteStaffMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assignTransportRouteStaff>>,
+        TError,
+        AssignTransportRouteStaffMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAssignTransportRouteStaffMutationOptions(options));
+    }
+
+export const getUpdateTransportRouteStaffUrl = (routeId: number,
+    routeStaffId: number,
+    params: UpdateTransportRouteStaffParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/routes/${routeId}/staff/${routeStaffId}?${stringifiedParams}` : `/api/transport/routes/${routeId}/staff/${routeStaffId}`
+}
+
+export const updateTransportRouteStaff = async (routeId: number,
+    routeStaffId: number,
+    updateTransportRouteStaffBody: UpdateTransportRouteStaffBody,
+    params: UpdateTransportRouteStaffParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportRouteStaff> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TransportRouteStaff>(getUpdateTransportRouteStaffUrl(routeId,routeStaffId,params),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateTransportRouteStaffBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateTransportRouteStaffMutationKey = () => ['updateTransportRouteStaff'] as const;
+
+export const getUpdateTransportRouteStaffMutationOptions = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTransportRouteStaff>>, TError,UpdateTransportRouteStaffMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateTransportRouteStaff>>, TError,UpdateTransportRouteStaffMutationVariables, TContext> => {
+
+const mutationKey = getUpdateTransportRouteStaffMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateTransportRouteStaff>>, UpdateTransportRouteStaffMutationVariables> = (props) => {
+          const {routeId,routeStaffId,data,params} = props ?? {};
+
+          return  updateTransportRouteStaff(routeId,routeStaffId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateTransportRouteStaffMutationResult = NonNullable<Awaited<ReturnType<typeof updateTransportRouteStaff>>>
+    export type UpdateTransportRouteStaffMutationBody = BodyType<UpdateTransportRouteStaffBody>
+    export type UpdateTransportRouteStaffMutationError = ErrorType<TransportError>
+    export type UpdateTransportRouteStaffMutationVariables = {routeId: number;routeStaffId: number;data: BodyType<UpdateTransportRouteStaffBody>;params: UpdateTransportRouteStaffParams}
+
+    export const useUpdateTransportRouteStaff = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTransportRouteStaff>>, TError,UpdateTransportRouteStaffMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateTransportRouteStaff>>,
+        TError,
+        UpdateTransportRouteStaffMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateTransportRouteStaffMutationOptions(options));
+    }
+
+export const getGetTransportRouteHistoryUrl = (routeId: number,
+    params: GetTransportRouteHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/routes/${routeId}/history?${stringifiedParams}` : `/api/transport/routes/${routeId}/history`
+}
+
+export const getTransportRouteHistory = async (routeId: number,
+    params: GetTransportRouteHistoryParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportHistoryEntry[]> => {
+
+  return customFetch<TransportHistoryEntry[]>(getGetTransportRouteHistoryUrl(routeId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTransportRouteHistoryQueryKey = (routeId: number,
+    params?: GetTransportRouteHistoryParams,) => {
+    return [
+    `/api/transport/routes/${routeId}/history`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetTransportRouteHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getTransportRouteHistory>>, TError = ErrorType<TransportError>>(routeId: number,
+    params: GetTransportRouteHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTransportRouteHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTransportRouteHistoryQueryKey(routeId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTransportRouteHistory>>> = ({ signal }) => getTransportRouteHistory(routeId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: routeId !== null && routeId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTransportRouteHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTransportRouteHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getTransportRouteHistory>>>
+export type GetTransportRouteHistoryQueryError = ErrorType<TransportError>
+
+
+
+export function useGetTransportRouteHistory<TData = Awaited<ReturnType<typeof getTransportRouteHistory>>, TError = ErrorType<TransportError>>(
+ routeId: number,
+    params: GetTransportRouteHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTransportRouteHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTransportRouteHistoryQueryOptions(routeId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getSearchTransportStudentsUrl = (params: SearchTransportStudentsParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -30896,6 +31598,89 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCreateTransportAssignmentMutationOptions(options));
     }
 
+export const getGetTransportAssignmentUrl = (assignmentId: number,
+    params: GetTransportAssignmentParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/assignments/${assignmentId}?${stringifiedParams}` : `/api/transport/assignments/${assignmentId}`
+}
+
+export const getTransportAssignment = async (assignmentId: number,
+    params: GetTransportAssignmentParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportAssignment> => {
+
+  return customFetch<TransportAssignment>(getGetTransportAssignmentUrl(assignmentId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTransportAssignmentQueryKey = (assignmentId: number,
+    params?: GetTransportAssignmentParams,) => {
+    return [
+    `/api/transport/assignments/${assignmentId}`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetTransportAssignmentQueryOptions = <TData = Awaited<ReturnType<typeof getTransportAssignment>>, TError = ErrorType<TransportError>>(assignmentId: number,
+    params: GetTransportAssignmentParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTransportAssignment>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTransportAssignmentQueryKey(assignmentId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTransportAssignment>>> = ({ signal }) => getTransportAssignment(assignmentId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: assignmentId !== null && assignmentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTransportAssignment>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTransportAssignmentQueryResult = NonNullable<Awaited<ReturnType<typeof getTransportAssignment>>>
+export type GetTransportAssignmentQueryError = ErrorType<TransportError>
+
+
+
+export function useGetTransportAssignment<TData = Awaited<ReturnType<typeof getTransportAssignment>>, TError = ErrorType<TransportError>>(
+ assignmentId: number,
+    params: GetTransportAssignmentParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTransportAssignment>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTransportAssignmentQueryOptions(assignmentId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getUpdateTransportAssignmentUrl = (assignmentId: number,
     params: UpdateTransportAssignmentParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -30989,6 +31774,200 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getUpdateTransportAssignmentMutationOptions(options));
+    }
+
+export const getUpsertTransportAssignmentFeePlanUrl = (assignmentId: number,
+    academicTermId: number,
+    params: UpsertTransportAssignmentFeePlanParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/assignments/${assignmentId}/fee-plans/${academicTermId}?${stringifiedParams}` : `/api/transport/assignments/${assignmentId}/fee-plans/${academicTermId}`
+}
+
+/**
+ * Create or update the assignment's school-scoped plan for this term before invoice generation. Once linked to Finance, plan amount, due date, term, and fee category are immutable; financial corrections use the existing Finance workflows.
+ */
+export const upsertTransportAssignmentFeePlan = async (assignmentId: number,
+    academicTermId: number,
+    transportAssignmentFeePlanInput: TransportAssignmentFeePlanInput,
+    params: UpsertTransportAssignmentFeePlanParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportAssignment> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TransportAssignment>(getUpsertTransportAssignmentFeePlanUrl(assignmentId,academicTermId,params),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(transportAssignmentFeePlanInput)
+  }
+);}
+
+
+
+
+
+export const getUpsertTransportAssignmentFeePlanMutationKey = () => ['upsertTransportAssignmentFeePlan'] as const;
+
+export const getUpsertTransportAssignmentFeePlanMutationOptions = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertTransportAssignmentFeePlan>>, TError,UpsertTransportAssignmentFeePlanMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof upsertTransportAssignmentFeePlan>>, TError,UpsertTransportAssignmentFeePlanMutationVariables, TContext> => {
+
+const mutationKey = getUpsertTransportAssignmentFeePlanMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upsertTransportAssignmentFeePlan>>, UpsertTransportAssignmentFeePlanMutationVariables> = (props) => {
+          const {assignmentId,academicTermId,data,params} = props ?? {};
+
+          return  upsertTransportAssignmentFeePlan(assignmentId,academicTermId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpsertTransportAssignmentFeePlanMutationResult = NonNullable<Awaited<ReturnType<typeof upsertTransportAssignmentFeePlan>>>
+    export type UpsertTransportAssignmentFeePlanMutationBody = BodyType<TransportAssignmentFeePlanInput>
+    export type UpsertTransportAssignmentFeePlanMutationError = ErrorType<TransportError>
+    export type UpsertTransportAssignmentFeePlanMutationVariables = {assignmentId: number;academicTermId: number;data: BodyType<TransportAssignmentFeePlanInput>;params: UpsertTransportAssignmentFeePlanParams}
+
+    export const useUpsertTransportAssignmentFeePlan = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertTransportAssignmentFeePlan>>, TError,UpsertTransportAssignmentFeePlanMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof upsertTransportAssignmentFeePlan>>,
+        TError,
+        UpsertTransportAssignmentFeePlanMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpsertTransportAssignmentFeePlanMutationOptions(options));
+    }
+
+export const getCancelTransportAssignmentFeePlanUrl = (assignmentId: number,
+    academicTermId: number,
+    params: CancelTransportAssignmentFeePlanParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/assignments/${assignmentId}/fee-plans/${academicTermId}?${stringifiedParams}` : `/api/transport/assignments/${assignmentId}/fee-plans/${academicTermId}`
+}
+
+/**
+ * Soft-cancel an uninvoiced plan with a reason and immutable assignment history; billed invoices remain under Finance control.
+ */
+export const cancelTransportAssignmentFeePlan = async (assignmentId: number,
+    academicTermId: number,
+    cancelTransportAssignmentFeePlanBody: CancelTransportAssignmentFeePlanBody,
+    params: CancelTransportAssignmentFeePlanParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportAssignment> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TransportAssignment>(getCancelTransportAssignmentFeePlanUrl(assignmentId,academicTermId,params),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(cancelTransportAssignmentFeePlanBody)
+  }
+);}
+
+
+
+
+
+export const getCancelTransportAssignmentFeePlanMutationKey = () => ['cancelTransportAssignmentFeePlan'] as const;
+
+export const getCancelTransportAssignmentFeePlanMutationOptions = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelTransportAssignmentFeePlan>>, TError,CancelTransportAssignmentFeePlanMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelTransportAssignmentFeePlan>>, TError,CancelTransportAssignmentFeePlanMutationVariables, TContext> => {
+
+const mutationKey = getCancelTransportAssignmentFeePlanMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelTransportAssignmentFeePlan>>, CancelTransportAssignmentFeePlanMutationVariables> = (props) => {
+          const {assignmentId,academicTermId,data,params} = props ?? {};
+
+          return  cancelTransportAssignmentFeePlan(assignmentId,academicTermId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelTransportAssignmentFeePlanMutationResult = NonNullable<Awaited<ReturnType<typeof cancelTransportAssignmentFeePlan>>>
+    export type CancelTransportAssignmentFeePlanMutationBody = BodyType<CancelTransportAssignmentFeePlanBody>
+    export type CancelTransportAssignmentFeePlanMutationError = ErrorType<TransportError>
+    export type CancelTransportAssignmentFeePlanMutationVariables = {assignmentId: number;academicTermId: number;data: BodyType<CancelTransportAssignmentFeePlanBody>;params: CancelTransportAssignmentFeePlanParams}
+
+    export const useCancelTransportAssignmentFeePlan = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelTransportAssignmentFeePlan>>, TError,CancelTransportAssignmentFeePlanMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelTransportAssignmentFeePlan>>,
+        TError,
+        CancelTransportAssignmentFeePlanMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCancelTransportAssignmentFeePlanMutationOptions(options));
     }
 
 export const getGetTransportAssignmentHistoryUrl = (assignmentId: number,
@@ -31152,7 +32131,8 @@ export function useListTransportRequests<TData = Awaited<ReturnType<typeof listT
 
 
 
-export const getReviewTransportRequestUrl = (params: ReviewTransportRequestParams,) => {
+export const getReviewTransportRequestUrl = (requestId: number,
+    params: ReviewTransportRequestParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -31164,10 +32144,11 @@ export const getReviewTransportRequestUrl = (params: ReviewTransportRequestParam
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/transport/requests?${stringifiedParams}` : `/api/transport/requests`
+  return stringifiedParams.length > 0 ? `/api/transport/requests/${requestId}/review?${stringifiedParams}` : `/api/transport/requests/${requestId}/review`
 }
 
-export const reviewTransportRequest = async (transportRequestDecision: TransportRequestDecision,
+export const reviewTransportRequest = async (requestId: number,
+    transportRequestDecision: TransportRequestDecision,
     params: ReviewTransportRequestParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportRequest> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
@@ -31184,10 +32165,10 @@ export const reviewTransportRequest = async (transportRequestDecision: Transport
     }
     return headers;
   };
-return customFetch<TransportRequest>(getReviewTransportRequestUrl(params),
+return customFetch<TransportRequest>(getReviewTransportRequestUrl(requestId,params),
   {
     ...options,
-    method: 'PATCH',
+    method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
     body: JSON.stringify(transportRequestDecision)
   }
@@ -31214,9 +32195,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewTransportRequest>>, ReviewTransportRequestMutationVariables> = (props) => {
-          const {data,params} = props ?? {};
+          const {requestId,data,params} = props ?? {};
 
-          return  reviewTransportRequest(data,params,requestOptions)
+          return  reviewTransportRequest(requestId,data,params,requestOptions)
         }
 
 
@@ -31229,7 +32210,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ReviewTransportRequestMutationResult = NonNullable<Awaited<ReturnType<typeof reviewTransportRequest>>>
     export type ReviewTransportRequestMutationBody = BodyType<TransportRequestDecision>
     export type ReviewTransportRequestMutationError = ErrorType<TransportError>
-    export type ReviewTransportRequestMutationVariables = {data: BodyType<TransportRequestDecision>;params: ReviewTransportRequestParams}
+    export type ReviewTransportRequestMutationVariables = {requestId: number;data: BodyType<TransportRequestDecision>;params: ReviewTransportRequestParams}
 
     export const useReviewTransportRequest = <TError = ErrorType<TransportError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewTransportRequest>>, TError,ReviewTransportRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -31240,6 +32221,254 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getReviewTransportRequestMutationOptions(options));
+    }
+
+export const getGetSchoolTransportPolicyUrl = (params: GetSchoolTransportPolicyParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/policy?${stringifiedParams}` : `/api/transport/policy`
+}
+
+export const getSchoolTransportPolicy = async (params: GetSchoolTransportPolicyParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportSchoolPolicy> => {
+
+  return customFetch<TransportSchoolPolicy>(getGetSchoolTransportPolicyUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolTransportPolicyQueryKey = (params?: GetSchoolTransportPolicyParams,) => {
+    return [
+    `/api/transport/policy`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSchoolTransportPolicyQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolTransportPolicy>>, TError = ErrorType<TransportError>>(params: GetSchoolTransportPolicyParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolTransportPolicy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolTransportPolicyQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolTransportPolicy>>> = ({ signal }) => getSchoolTransportPolicy(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolTransportPolicy>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchoolTransportPolicyQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolTransportPolicy>>>
+export type GetSchoolTransportPolicyQueryError = ErrorType<TransportError>
+
+
+
+export function useGetSchoolTransportPolicy<TData = Awaited<ReturnType<typeof getSchoolTransportPolicy>>, TError = ErrorType<TransportError>>(
+ params: GetSchoolTransportPolicyParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchoolTransportPolicy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchoolTransportPolicyQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateSchoolTransportPolicyUrl = (params: UpdateSchoolTransportPolicyParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/policy?${stringifiedParams}` : `/api/transport/policy`
+}
+
+export const updateSchoolTransportPolicy = async (transportSchoolPolicyUpdate: TransportSchoolPolicyUpdate,
+    params: UpdateSchoolTransportPolicyParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportSchoolPolicy> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TransportSchoolPolicy>(getUpdateSchoolTransportPolicyUrl(params),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(transportSchoolPolicyUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateSchoolTransportPolicyMutationKey = () => ['updateSchoolTransportPolicy'] as const;
+
+export const getUpdateSchoolTransportPolicyMutationOptions = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolTransportPolicy>>, TError,UpdateSchoolTransportPolicyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSchoolTransportPolicy>>, TError,UpdateSchoolTransportPolicyMutationVariables, TContext> => {
+
+const mutationKey = getUpdateSchoolTransportPolicyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSchoolTransportPolicy>>, UpdateSchoolTransportPolicyMutationVariables> = (props) => {
+          const {data,params} = props ?? {};
+
+          return  updateSchoolTransportPolicy(data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSchoolTransportPolicyMutationResult = NonNullable<Awaited<ReturnType<typeof updateSchoolTransportPolicy>>>
+    export type UpdateSchoolTransportPolicyMutationBody = BodyType<TransportSchoolPolicyUpdate>
+    export type UpdateSchoolTransportPolicyMutationError = ErrorType<TransportError>
+    export type UpdateSchoolTransportPolicyMutationVariables = {data: BodyType<TransportSchoolPolicyUpdate>;params: UpdateSchoolTransportPolicyParams}
+
+    export const useUpdateSchoolTransportPolicy = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolTransportPolicy>>, TError,UpdateSchoolTransportPolicyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSchoolTransportPolicy>>,
+        TError,
+        UpdateSchoolTransportPolicyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateSchoolTransportPolicyMutationOptions(options));
+    }
+
+export const getGenerateCurrentTermTransportInvoicesUrl = (termId: number,
+    params: GenerateCurrentTermTransportInvoicesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transport/finance/terms/${termId}/generate?${stringifiedParams}` : `/api/transport/finance/terms/${termId}/generate`
+}
+
+/**
+ * School-admin, idempotent Finance integration hook for a current academic term. Academic rollover should invoke the same exported operation.
+ */
+export const generateCurrentTermTransportInvoices = async (termId: number,
+    params: GenerateCurrentTermTransportInvoicesParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportTermInvoiceGeneration> => {
+
+  return customFetch<TransportTermInvoiceGeneration>(getGenerateCurrentTermTransportInvoicesUrl(termId,params),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getGenerateCurrentTermTransportInvoicesMutationKey = () => ['generateCurrentTermTransportInvoices'] as const;
+
+export const getGenerateCurrentTermTransportInvoicesMutationOptions = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateCurrentTermTransportInvoices>>, TError,GenerateCurrentTermTransportInvoicesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateCurrentTermTransportInvoices>>, TError,GenerateCurrentTermTransportInvoicesMutationVariables, TContext> => {
+
+const mutationKey = getGenerateCurrentTermTransportInvoicesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateCurrentTermTransportInvoices>>, GenerateCurrentTermTransportInvoicesMutationVariables> = (props) => {
+          const {termId,params} = props ?? {};
+
+          return  generateCurrentTermTransportInvoices(termId,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateCurrentTermTransportInvoicesMutationResult = NonNullable<Awaited<ReturnType<typeof generateCurrentTermTransportInvoices>>>
+
+    export type GenerateCurrentTermTransportInvoicesMutationError = ErrorType<TransportError>
+    export type GenerateCurrentTermTransportInvoicesMutationVariables = {termId: number;params: GenerateCurrentTermTransportInvoicesParams}
+
+    export const useGenerateCurrentTermTransportInvoices = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateCurrentTermTransportInvoices>>, TError,GenerateCurrentTermTransportInvoicesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateCurrentTermTransportInvoices>>,
+        TError,
+        GenerateCurrentTermTransportInvoicesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGenerateCurrentTermTransportInvoicesMutationOptions(options));
     }
 
 export const getGetChildTransportUrl = (studentId: number,) => {
@@ -31470,6 +32699,94 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getRequestChildTransportChangeMutationOptions(options));
     }
 
+export const getWithdrawChildTransportRequestUrl = (studentId: number,
+    requestId: number,) => {
+
+
+
+
+  return `/api/parent/children/${studentId}/transport/requests/${requestId}/withdraw`
+}
+
+/**
+ * Withdraws this parent's own still-pending service request; never changes the student's assignment.
+ */
+export const withdrawChildTransportRequest = async (studentId: number,
+    requestId: number,
+    withdrawChildTransportRequestBody: WithdrawChildTransportRequestBody, options?: Parameters<typeof customFetch>[1]): Promise<TransportRequest> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TransportRequest>(getWithdrawChildTransportRequestUrl(studentId,requestId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(withdrawChildTransportRequestBody)
+  }
+);}
+
+
+
+
+
+export const getWithdrawChildTransportRequestMutationKey = () => ['withdrawChildTransportRequest'] as const;
+
+export const getWithdrawChildTransportRequestMutationOptions = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof withdrawChildTransportRequest>>, TError,WithdrawChildTransportRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof withdrawChildTransportRequest>>, TError,WithdrawChildTransportRequestMutationVariables, TContext> => {
+
+const mutationKey = getWithdrawChildTransportRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof withdrawChildTransportRequest>>, WithdrawChildTransportRequestMutationVariables> = (props) => {
+          const {studentId,requestId,data} = props ?? {};
+
+          return  withdrawChildTransportRequest(studentId,requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type WithdrawChildTransportRequestMutationResult = NonNullable<Awaited<ReturnType<typeof withdrawChildTransportRequest>>>
+    export type WithdrawChildTransportRequestMutationBody = BodyType<WithdrawChildTransportRequestBody>
+    export type WithdrawChildTransportRequestMutationError = ErrorType<TransportError>
+    export type WithdrawChildTransportRequestMutationVariables = {studentId: number;requestId: number;data: BodyType<WithdrawChildTransportRequestBody>}
+
+    export const useWithdrawChildTransportRequest = <TError = ErrorType<TransportError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof withdrawChildTransportRequest>>, TError,WithdrawChildTransportRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof withdrawChildTransportRequest>>,
+        TError,
+        WithdrawChildTransportRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getWithdrawChildTransportRequestMutationOptions(options));
+    }
+
 export const getGetChildTransportHistoryUrl = (studentId: number,) => {
 
 
@@ -31695,15 +33012,15 @@ export const getGetPlatformTransportOverviewUrl = (params?: GetPlatformTransport
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/platform/transport-overview?${stringifiedParams}` : `/api/platform/transport-overview`
+  return stringifiedParams.length > 0 ? `/api/transport/platform-owner/overview?${stringifiedParams}` : `/api/transport/platform-owner/overview`
 }
 
 /**
  * Explicit read-only global Platform Owner aggregate. Does not confer school operating access or expose parent contact, salary or bank details.
  */
-export const getPlatformTransportOverview = async (params?: GetPlatformTransportOverviewParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportOwnerSchoolSummary[]> => {
+export const getPlatformTransportOverview = async (params?: GetPlatformTransportOverviewParams, options?: Parameters<typeof customFetch>[1]): Promise<TransportPlatformOverview> => {
 
-  return customFetch<TransportOwnerSchoolSummary[]>(getGetPlatformTransportOverviewUrl(params),
+  return customFetch<TransportPlatformOverview>(getGetPlatformTransportOverviewUrl(params),
   {
     ...options,
     method: 'GET'
@@ -31718,7 +33035,7 @@ export const getPlatformTransportOverview = async (params?: GetPlatformTransport
 
 export const getGetPlatformTransportOverviewQueryKey = (params?: GetPlatformTransportOverviewParams,) => {
     return [
-    `/api/platform/transport-overview`, ...(params ? [params] : [])
+    `/api/transport/platform-owner/overview`, ...(params ? [params] : [])
     ] as const;
     }
 

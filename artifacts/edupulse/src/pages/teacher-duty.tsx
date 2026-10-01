@@ -6,20 +6,46 @@ import {
   useListEmployees, type TeacherDuty,
 } from '@workspace/api-client-react';
 import { PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Modal, Field, TenantPicker } from '@/components/shared';
-import { FRESH, Notice, SearchSelect, errMsg, fmtDay, isValidRange, rangesOverlap, useSchoolRole } from '@/components/school-ops-kit';
+import { FRESH, Notice, SearchSelect, errMsg, fmtDay, isValidRange, rangesOverlap, todayIso, useSchoolRole } from '@/components/school-ops-kit';
 
 type Filter = 'ACTIVE' | 'INACTIVE' | 'all';
+export type DutyView = 'current' | 'upcoming' | 'history' | 'all';
+type DutyLike = { startDate: string; endDate: string; status: string };
+
+export function addDays(iso: string, n: number) {
+  const d = new Date(`${iso}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10);
+}
+/** Exact classification: history = ended before today OR inactive. */
+export function classifyDuty(d: DutyLike, today: string): Exclude<DutyView, 'all'> {
+  if (d.status !== 'ACTIVE' || d.endDate.slice(0, 10) < today) return 'history';
+  if (d.startDate.slice(0, 10) > today) return 'upcoming';
+  return 'current';
+}
+/** API param sets per view. History needs two queries so inactive rows with later end dates are not lost. */
+export function dutyViewParams(view: DutyView, today: string, filter: Filter = 'ACTIVE') {
+  if (view === 'current') return [{ status: 'ACTIVE' as Filter }];
+  if (view === 'upcoming') return [{ status: 'ACTIVE' as Filter, startsOnOrAfter: addDays(today, 1) }];
+  if (view === 'history') return [{ status: 'all' as Filter, endsOnOrBefore: addDays(today, -1) }, { status: 'INACTIVE' as Filter }];
+  return [{ status: filter }];
+}
 
 export function TeacherDutyPage() {
   const role = useSchoolRole();
   const { schoolId, canManage, canRead } = role;
   const qc = useQueryClient();
   const [status, setStatus] = useState<Filter>('ACTIVE');
+  const [view, setView] = useState<DutyView>(canManage ? 'all' : 'current');
+  const today = todayIso();
   const [modal, setModal] = useState<null | { duty?: TeacherDuty }>(null);
   const [done, setDone] = useState('');
-  const params = { status };
-  const q = useListSchoolTeacherDuty(schoolId, params, { query: { enabled: canRead, queryKey: getListSchoolTeacherDutyQueryKey(schoolId, params), ...FRESH } });
-  const rows = [...(q.data ?? [])].sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const [p1, p2] = dutyViewParams(view, today, status);
+  const q1 = useListSchoolTeacherDuty(schoolId, p1, { query: { enabled: canRead, queryKey: getListSchoolTeacherDutyQueryKey(schoolId, p1), ...FRESH } });
+  const q2 = useListSchoolTeacherDuty(schoolId, p2 ?? p1, { query: { enabled: canRead && !!p2, queryKey: getListSchoolTeacherDutyQueryKey(schoolId, p2 ?? p1), ...FRESH } });
+  const q = { isLoading: q1.isLoading || (!!p2 && q2.isLoading), isError: q1.isError || (!!p2 && q2.isError), error: q1.error ?? q2.error, refetch: () => { q1.refetch(); if (p2) q2.refetch(); } };
+  const merged = new Map<number, TeacherDuty>();
+  [...(q1.data ?? []), ...(p2 ? q2.data ?? [] : [])].forEach(d => merged.set(d.id, d));
+  const all = [...merged.values()];
+  const rows = all.filter(d => view === 'all' || classifyDuty(d, today) === view).sort((a, b) => a.startDate.localeCompare(b.startDate));
   const update = useUpdateSchoolTeacherDuty();
   const refresh = () => qc.invalidateQueries({ queryKey: getListSchoolTeacherDutyQueryKey(schoolId) });
   const toggle = (d: TeacherDuty) => {
@@ -38,10 +64,13 @@ export function TeacherDutyPage() {
         <EmptyState icon={ClipboardList} title="Select a school" description="Pick a school you are authorised for to see its duty roster." />
       ) : (
         <>
-          <div className="mb-5 flex gap-2">
-            {(['ACTIVE', 'INACTIVE', 'all'] as Filter[]).map(s => (
-              <button key={s} onClick={() => setStatus(s)} aria-pressed={status === s}
-                className={`rounded-xl px-4 py-2 text-xs font-bold capitalize ${status === s ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'bg-[hsl(var(--secondary))]'}`}>{s.toLowerCase()}</button>
+          <div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="Duty view">
+            {(['current', 'upcoming', 'history', 'all'] as DutyView[]).map(v => (
+              <button key={v} onClick={() => setView(v)} aria-pressed={view === v} data-testid={`tab-duty-${v}`}
+                className={`rounded-xl px-4 py-2 text-xs font-bold capitalize ${view === v ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'bg-[hsl(var(--secondary))]'}`}>{v}</button>
+            ))}
+            {view === 'all' && (['ACTIVE', 'INACTIVE', 'all'] as Filter[]).map(s2 => (
+              <button key={s2} onClick={() => setStatus(s2)} aria-pressed={status === s2} className={`ml-2 rounded-xl px-3 py-2 text-xs font-bold capitalize ${status === s2 ? 'underline' : 'opacity-70'}`}>{s2.toLowerCase()}</button>
             ))}
           </div>
           {q.isLoading ? <SkeletonPage /> : q.isError ? <ErrorState retry={() => q.refetch()} message={errMsg(q.error, 'The roster could not be loaded.')} /> : (
@@ -66,7 +95,7 @@ export function TeacherDutyPage() {
       )}
       {canManage && modal && (
         <Modal title={modal.duty ? 'Edit duty' : 'Add duty'} eyebrow="Roster" onClose={() => setModal(null)}>
-          <DutyForm schoolId={schoolId} initial={modal.duty} existing={q.data ?? []} onCancel={() => setModal(null)} onDone={m => { setModal(null); setDone(m); refresh(); }} />
+          <DutyForm schoolId={schoolId} initial={modal.duty} existing={all} onCancel={() => setModal(null)} onDone={m => { setModal(null); setDone(m); refresh(); }} />
         </Modal>
       )}
     </div>

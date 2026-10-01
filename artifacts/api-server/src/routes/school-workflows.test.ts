@@ -6,6 +6,14 @@ const state = vi.hoisted(() => ({
   transactionQueries: [] as Array<{ sql: string; values: unknown[] }>,
   roleHeader: "SCHOOL_ADMIN",
   brandingLogo: "/objects/school-logos/1/11111111-1111-4111-8111-111111111111",
+  logoVersions: [] as Array<{
+    id: number;
+    schoolId: number;
+    objectPath: string;
+    isCurrent: boolean;
+  }>,
+  nextLogoId: 1,
+  validatedLogoPaths: [] as string[],
   legacyLogo: "https://old-school.example/logo.png",
   calendarRows: [] as Array<Record<string, unknown>>,
   eventRows: [] as Array<Record<string, unknown>>,
@@ -23,6 +31,45 @@ const state = vi.hoisted(() => ({
 const dbMock = vi.hoisted(() => {
   const transactionQuery = vi.fn(async (sql: string, values: unknown[] = []) => {
     state.transactionQueries.push({ sql, values });
+    if (sql.includes("SELECT id, logo FROM schools")) {
+      return { rows: [{ id: 1, logo: null }] };
+    }
+    if (sql.includes("FROM school_branding_logos") && sql.includes("is_current=true FOR UPDATE")) {
+      return {
+        rows: state.logoVersions
+          .filter((logo) => logo.schoolId === Number(values[0]) && logo.isCurrent)
+          .map((logo) => ({ id: logo.id, objectPath: logo.objectPath })),
+      };
+    }
+    if (sql.includes("UPDATE school_branding_logos SET is_current=false")) {
+      for (const logo of state.logoVersions) {
+        if (logo.schoolId === Number(values[0])) logo.isCurrent = false;
+      }
+      return { rows: [] };
+    }
+    if (sql.includes("SELECT id FROM school_branding_logos") &&
+      sql.includes("object_path=$2")) {
+      const existing = state.logoVersions.find((logo) =>
+        logo.schoolId === Number(values[0]) && logo.objectPath === values[1],
+      );
+      return { rows: existing ? [{ id: existing.id }] : [] };
+    }
+    if (sql.includes("UPDATE school_branding_logos SET is_current=true")) {
+      const restored = state.logoVersions.find((logo) =>
+        logo.schoolId === Number(values[0]) && logo.id === Number(values[1]),
+      );
+      if (restored) restored.isCurrent = true;
+      return { rows: [] };
+    }
+    if (sql.includes("INSERT INTO school_branding_logos")) {
+      state.logoVersions.push({
+        id: state.nextLogoId++,
+        schoolId: Number(values[0]),
+        objectPath: String(values[1]),
+        isCurrent: true,
+      });
+      return { rows: [] };
+    }
     if (sql.includes("FROM teacher_subject_assignments") && sql.includes("FOR UPDATE")) {
       return { rows: state.priorAssignments };
     }
@@ -89,6 +136,13 @@ const dbMock = vi.hoisted(() => {
       };
     }
     if (sql.includes("SELECT id FROM schools")) return { rows: [{ id: 1 }] };
+    if (sql.includes("FROM school_branding_logos") &&
+      sql.includes("WHERE school_id=$1 AND id=$2")) {
+      const logo = state.logoVersions.find((item) =>
+        item.schoolId === Number(values[0]) && item.id === Number(values[1]),
+      );
+      return { rows: logo ? [{ objectPath: logo.objectPath }] : [] };
+    }
     if (sql.includes("WITH calendar AS")) return { rows: state.calendarRows };
     if (sql.includes("FROM school_calendar_events ce")) {
       return { rows: state.eventRows.length ? state.eventRows : [{
@@ -122,6 +176,20 @@ const dbMock = vi.hoisted(() => {
 });
 
 vi.mock("@workspace/db", () => ({ pool: dbMock }));
+
+vi.mock("../lib/schoolLogoStorage", () => ({
+  isManagedSchoolLogoObjectPath: (schoolId: number, value: unknown) =>
+    typeof value === "string" &&
+    new RegExp(`^/objects/school-logos/${schoolId}/[0-9a-f-]{36}$`, "i").test(value),
+  newSchoolLogoObjectPath: () =>
+    "/objects/school-logos/1/11111111-1111-4111-8111-111111111111",
+  readValidatedSchoolLogo: vi.fn(async (_schoolId: number, objectPath: string) => {
+    state.validatedLogoPaths.push(objectPath);
+    return { bytes: Buffer.from("validated-logo-bytes"), contentType: "image/png" as const };
+  }),
+  SCHOOL_LOGO_UPLOAD_URL_TTL_SECONDS: 180,
+  signedSchoolLogoUploadUrl: vi.fn(async () => "https://upload.example.test/signed"),
+}));
 
 vi.mock("../middlewares/auth", () => {
   class AuthError extends Error {
@@ -207,6 +275,9 @@ beforeEach(() => {
   state.transactionQueries = [];
   state.roleHeader = "SCHOOL_ADMIN";
   state.brandingLogo = "/objects/school-logos/1/11111111-1111-4111-8111-111111111111";
+  state.logoVersions = [];
+  state.nextLogoId = 1;
+  state.validatedLogoPaths = [];
   state.legacyLogo = "https://old-school.example/logo.png";
   state.calendarRows = [];
   state.eventRows = [];
@@ -479,5 +550,43 @@ describe("school workflow APIs", () => {
     });
     expect(response.status).toBe(400);
     expect(state.transactionQueries.some(({ sql }) => sql.includes("school_branding_logos"))).toBe(false);
+  });
+
+  it("keeps confirmed logo versions and serves the exact archived version only to its school", async () => {
+    const firstPath = "/objects/school-logos/1/11111111-1111-4111-8111-111111111111";
+    const secondPath = "/objects/school-logos/1/22222222-2222-4222-8222-222222222222";
+    const firstConfirmation = await request("/schools/1/branding/logo", {
+      method: "PUT",
+      body: JSON.stringify({ objectPath: firstPath }),
+    });
+    expect(firstConfirmation.status).toBe(200);
+    const firstVersion = state.logoVersions.find((logo) => logo.objectPath === firstPath)!;
+    expect(firstVersion).toMatchObject({ id: 1, schoolId: 1, isCurrent: true });
+
+    const secondConfirmation = await request("/schools/1/branding/logo", {
+      method: "PUT",
+      body: JSON.stringify({ objectPath: secondPath }),
+    });
+    expect(secondConfirmation.status).toBe(200);
+    expect(state.logoVersions).toEqual([
+      { id: 1, schoolId: 1, objectPath: firstPath, isCurrent: false },
+      { id: 2, schoolId: 1, objectPath: secondPath, isCurrent: true },
+    ]);
+
+    const archivedVersion = await request(`/schools/1/branding/logo-versions/${firstVersion.id}`);
+    expect(archivedVersion.status).toBe(200);
+    expect(archivedVersion.headers.get("cache-control")).toBe("private, no-store");
+    expect(archivedVersion.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(await archivedVersion.text()).toBe("validated-logo-bytes");
+    expect(state.validatedLogoPaths.at(-1)).toBe(firstPath);
+
+    const crossSchoolRead = await request(`/schools/2/branding/logo-versions/${firstVersion.id}`, {
+      headers: { "x-test-role": "TEACHER" },
+    });
+    expect(crossSchoolRead.status).toBe(404);
+    const unknownVersion = await request("/schools/1/branding/logo-versions/999");
+    expect(unknownVersion.status).toBe(404);
+    expect(state.validatedLogoPaths).toEqual([firstPath, secondPath, firstPath]);
+    expect(state.transactionQueries.some(({ sql }) => sql.includes("DELETE"))).toBe(false);
   });
 });

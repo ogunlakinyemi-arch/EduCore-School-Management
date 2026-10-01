@@ -21,4 +21,24 @@ export interface TransportAssignmentInput {
      * @maxLength 500
      */
   reason: string;
+  /**
+     * Must be provided with academicTermId; omitted together, the active school term is used when available.
+     * @minimum 1
+     */
+  academicSessionId?: number;
+  /** @minimum 1 */
+  academicTermId?: number;
+  /**
+     * NGN subunits; defaults to the selected route's fareMinor.
+     * @minimum 0
+     * @maximum 1000000000
+     */
+  feePlanAmountMinor?: number;
+  /** Defaults to the selected academic term end date. */
+  dueDate?: Date;
+  /**
+     * Optional active same-school Finance category; omitted positive plans use the School Transport category.
+     * @minimum 1
+     */
+  feeCategoryId?: number;
 }

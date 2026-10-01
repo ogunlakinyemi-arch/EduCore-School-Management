@@ -113,6 +113,38 @@ paths:
                 format: binary
         "404":
           $ref: "#/components/responses/NotFound"
+  /schools/{schoolId}/branding/logo-versions/{logoId}:
+    get:
+      operationId: getConfirmedSchoolLogoVersion
+      tags: [schools]
+      summary: Read immutable bytes for one confirmed school logo version
+      description: Archived versions remain readable for existing receipt snapshots; only confirmed rows belonging to the authorized school can be served.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - name: logoId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Validated confirmed school image bytes; private no-store caching and nosniff
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
   /schools/{schoolId}/academic-calendar:
     get:
       operationId: listSchoolAcademicCalendar

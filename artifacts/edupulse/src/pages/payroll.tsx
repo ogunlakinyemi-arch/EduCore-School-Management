@@ -18,10 +18,18 @@ type Scope = 'COMPANY' | 'SCHOOL';
 const OPEN_FOR_TRANSFER = ['APPROVED', 'PROCESSING', 'PARTIALLY_COMPLETED'];
 const NEEDS_RECONCILE = ['PENDING', 'MOCK_PENDING', 'PROCESSING', 'CLAIMED', 'UNCERTAIN', 'RECONCILIATION_REQUIRED'];
 
-/** Transfer references survive reload (no bank data stored) so a lost response is reconciled, never re-sent. */
-const storeKey = (scope: Scope, schoolId: number, periodId: number) => `payroll-transfers:${scope}:${schoolId}:${periodId}`;
-type Local = { transfers: Record<number, PayrollTransfer>; unknown: number[] };
-const loadLocal = (k: string): Local => { try { return JSON.parse(sessionStorage.getItem(k) ?? '') as Local; } catch { return { transfers: {}, unknown: [] }; } };
+/** Current transfer attempt comes from the server (period detail), so it survives reload and covers other actors. */
+export type CurrentAttempt = { id: number; status: string; requiresReconciliation: boolean; externalTransferVerified?: boolean; providerReference?: string | null; failureMessage?: string | null };
+export const currentAttempt = (i: { transferAttempts?: Array<CurrentAttempt & { attempt: number }> | null }): CurrentAttempt | undefined =>
+  (i.transferAttempts ?? []).reduce<(CurrentAttempt & { attempt: number }) | undefined>((m, x) => !m || x.attempt > m.attempt ? x : m, undefined);
+/** In-memory only: reconcile overrides and employees whose create request lost its response (value = attempt count seen at failure). */
+type Local = { transfers: Record<number, CurrentAttempt & { employeeId?: number }>; unknown: Record<number, number> };
+export const isUnknownBlocked = (i: { employeeId: number; transferAttempts?: unknown[] | null }, unknown: Record<number, number>) =>
+  i.employeeId in unknown && (i.transferAttempts?.length ?? 0) <= unknown[i.employeeId];
+export const canSend = (i: { employeeId: number; paymentStatus: string; transferAttempts?: Array<CurrentAttempt & { attempt: number }> | null }, unknown: Record<number, number>, override?: CurrentAttempt) => {
+  const t = override ?? currentAttempt(i);
+  return ['UNPAID', 'FAILED'].includes(i.paymentStatus) && !isUnknownBlocked(i, unknown) && !(t && (NEEDS_RECONCILE.includes(t.status) || t.requiresReconciliation));
+};
 
 function useApi(scope: Scope, schoolId: number, periodId: number | null, report: { fromMonth: string; toMonth: string } | null) {
   const S = scope === 'SCHOOL' && !!schoolId; const C = scope === 'COMPANY';
@@ -87,9 +95,7 @@ type Row = { allowance: string; bonus: string; deduction: string; adjustment: st
 
 function PeriodWorkspace({ scope, schoolId, periodId, api, onBack, setMsg, setFail, refresh }: { scope: Scope; schoolId: number; periodId: number; api: ReturnType<typeof useApi>; onBack: () => void; setMsg: (s: string) => void; setFail: (s: string) => void; refresh: () => void }) {
   const period = api.detail.data;
-  const key = storeKey(scope, schoolId, periodId);
-  const [local, setLocal] = useState<Local>(() => loadLocal(key));
-  const persist = (n: Local) => { setLocal(n); sessionStorage.setItem(key, JSON.stringify(n)); };
+  const [local, persist] = useState<Local>({ transfers: {}, unknown: {} });
   const [rows, setRows] = useState<Record<number, Row>>({});
   const initFor = useRef<string>('');
   const [sel, setSel] = useState<number[]>([]);
@@ -121,17 +127,18 @@ function PeriodWorkspace({ scope, schoolId, periodId, api, onBack, setMsg, setFa
     if (!window.confirm(`Send ${ids.length} transfer${ids.length > 1 ? 's' : ''} to the provider? ${scope === 'COMPANY' ? 'Funds come from the company account.' : 'Funds come from this school account.'} Paid status appears only after the provider verifies it.${failedRetry.length ? ' Some were previously verified as failed.' : ''}`)) return;
     try {
       const res = await api.pay(periodId, ids);
-      const next = { transfers: { ...local.transfers }, unknown: local.unknown.filter(u => !ids.includes(u)) };
+      const next: Local = { transfers: { ...local.transfers }, unknown: { ...local.unknown } };
+      ids.forEach(id => { delete next.unknown[id]; });
       res.items.forEach(t => { next.transfers[t.employeeId] = t; });
       persist(next); setFail(''); setSel([]);
       setMsg(`Provider response: ${res.paidCount} verified paid, ${res.pendingCount} pending, ${res.failedCount} failed, ${res.uncertainCount} need reconciliation.`); refresh();
     } catch (e) {
-      persist({ ...local, unknown: Array.from(new Set([...local.unknown, ...ids])) });
+      persist({ ...local, unknown: { ...local.unknown, ...Object.fromEntries(ids.map(id => [id, period.items.find(i => i.employeeId === id)?.transferAttempts?.length ?? 0])) } });
       setFail(`${errMsg(e)} The outcome is unknown. Do not resend; refresh and check status.`); refresh();
     }
   };
-  const reconcile = (t: PayrollTransfer) => run(async () => { const r = await api.reconcile(t.id); persist({ ...local, transfers: { ...local.transfers, [t.employeeId]: r } }); }, 'Reconciled against the provider for the existing reference. No new transfer was created.');
-  const sendable = (i: PayrollItem) => canTransfer && !local.unknown.includes(i.employeeId) && !local.transfers[i.employeeId]?.requiresReconciliation && ['UNPAID', 'FAILED'].includes(i.paymentStatus);
+  const reconcile = (t: CurrentAttempt, employeeId: number) => run(async () => { const r = await api.reconcile(t.id); persist({ ...local, transfers: { ...local.transfers, [employeeId]: r } }); }, 'Reconciled against the provider for the existing reference. No new transfer was created.');
+  const sendable = (i: PayrollItem) => canTransfer && canSend(i, local.unknown, local.transfers[i.employeeId]);
   const bulkIds = sel.filter(id => { const i = period.items.find(x => x.employeeId === id); return i && sendable(i); });
   return <div className="print-area">
     <PrintStyles />
@@ -149,7 +156,7 @@ function PeriodWorkspace({ scope, schoolId, periodId, api, onBack, setMsg, setFa
     <div className="panel overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm">
       <thead className="eyebrow"><tr>{canTransfer && <th className="no-print p-3" />}<th className="p-3">Employee</th><th className="p-3 text-right">Base</th><th className="p-3">Allowance</th><th className="p-3">Bonus</th><th className="p-3">Deduction</th><th className="p-3">Adjustment</th><th className="p-3 text-right">Net</th><th className="p-3">Outcome</th><th className="no-print p-3" /></tr></thead>
       <tbody className="divide-y divide-[hsl(var(--border))]">{period.items.map(i => {
-        const r = rows[i.employeeId]; const c = calc(i); const t = local.transfers[i.employeeId]; const unknown = local.unknown.includes(i.employeeId);
+        const r = rows[i.employeeId]; const c = calc(i); const t = local.transfers[i.employeeId] ?? currentAttempt(i); const unknown = isUnknownBlocked(i, local.unknown);
         const cell = (k: keyof Row) => draft && r ? <input aria-label={`${k} for ${i.fullName}`} className={`${entry} w-28 px-2 py-1.5`} inputMode="decimal" value={r[k]} onChange={e => setRows(s => ({ ...s, [i.employeeId]: { ...s[i.employeeId], [k]: e.target.value } }))} /> : null;
         return <tr key={i.employeeId} data-testid={`row-payroll-${i.employeeId}`}>
           {canTransfer && <td className="no-print p-3"><input type="checkbox" disabled={!sendable(i)} checked={sel.includes(i.employeeId)} onChange={e => setSel(s => e.target.checked ? [...s, i.employeeId] : s.filter(x => x !== i.employeeId))} aria-label={`Select ${i.fullName}`} /></td>}
@@ -161,8 +168,8 @@ function PeriodWorkspace({ scope, schoolId, periodId, api, onBack, setMsg, setFa
           <td className="p-3">{unknown ? <span className="text-xs font-bold text-[hsl(var(--destructive))]">Request outcome unknown - do not resend</span> : <OutcomeBadge status={t?.status ?? i.paymentStatus} verified={t?.externalTransferVerified} />}{t?.failureMessage && <div className={note}>{t.failureMessage}</div>}{(t?.providerReference ?? i.transferReference) && <div className="font-mono text-[10px]">{t?.providerReference ?? i.transferReference}</div>}</td>
           <td className="no-print p-3"><div className="flex gap-1">
             {sendable(i) && <Button variant="outline" disabled={api.busy} onClick={() => send([i.employeeId])} testId={`button-transfer-${i.employeeId}`}>Send</Button>}
-            {t && (NEEDS_RECONCILE.includes(t.status) || t.requiresReconciliation) && <Button variant="outline" disabled={api.busy} onClick={() => reconcile(t)} testId={`button-reconcile-${i.employeeId}`}>Reconcile</Button>}
-            {unknown && !t && <span className={note}>No local reference. Refresh to see server status.</span>}
+            {t && (NEEDS_RECONCILE.includes(t.status) || t.requiresReconciliation) && <Button variant="outline" disabled={api.busy} onClick={() => reconcile(t, i.employeeId)} testId={`button-reconcile-${i.employeeId}`}>Reconcile</Button>}
+            {unknown && !t && <span className={note}>Awaiting server record. Refresh; never resend.</span>}
           </div></td></tr>; })}</tbody></table></div>
     {draft && !allOk && <p className="mt-3 text-sm text-[hsl(var(--destructive))]" role="alert">Fix invalid amounts, negative net pay, or add a reason for each non-zero adjustment before saving.</p>}
   </div>;

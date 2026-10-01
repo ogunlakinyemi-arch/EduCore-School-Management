@@ -565,7 +565,8 @@ function parsePayrollMonthRange(fromMonth: unknown, toMonth: unknown) {
 // returns a transfer recipient ID, or asserts actual monetary settlement.
 // ---------------------------------------------------------------------------
 
-router.get("/platform/finance/payment-settlement", run(async (_req, res) => {
+router.get("/platform/finance/payment-settlement", run(async (req, res) => {
+  requirePlatformOwner(req);
   const response = poolRows(await pool.query(
     `SELECT * FROM settlement_payroll_profiles WHERE scope='YEMAIT_COMPANY'`,
   ))[0];

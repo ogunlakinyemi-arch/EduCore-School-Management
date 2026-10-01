@@ -11,6 +11,7 @@ import {
   configuredCheckoutReturnUrl,
   configuredTestAdapter,
 } from "../lib/fee-providers/factory";
+import { canonicalSchoolLogoVersionUrl } from "../lib/schoolLogoStorage";
 import {
   AuthError,
   assertRoles,
@@ -267,7 +268,7 @@ export async function listStaffNfcSubscriptionsForEmployee(
             latest.gross_amount_minor AS "grossAmountMinor",
             latest.provider_fee_minor AS "providerFeeMinor",
             latest.settlement_amount_minor AS "settlementAmountMinor",
-            latest.currency AS "paymentCurrency", latest.provider_reference AS "providerReference",
+            latest.currency AS "paymentCurrency", latest.reference AS "providerReference",
             latest.provider_transaction_id AS "providerTransactionId",
             latest.paid_at AS "paymentPaidAt", latest.settlement_status AS "settlementStatus",
             latest.reconciliation_status AS "reconciliationStatus", latest.refund_status AS "refundStatus",
@@ -605,12 +606,13 @@ function transactionToPaymentSummary(row: any, allocations: any[]) {
   };
 }
 
-async function completeVerifiedPayment(
+export async function completeVerifiedPayment(
   paymentId: number,
   verified: VerifiedPayment,
   req: Request | null,
+  database: typeof pool = pool,
 ) {
-  const client = await pool.connect();
+  const client = await database.connect();
   let settledSubscriptionId = 0;
   let activated = false;
   try {
@@ -625,12 +627,15 @@ async function completeVerifiedPayment(
               s.price_minor AS "priceMinor",s.school_share_minor AS "schoolShareMinor",
               s.platform_share_minor AS "platformShareMinor",s.partner_share_minor AS "partnerShareMinor",
               s.partner_profile_id AS "partnerProfileId",s.attribution_id AS "attributionId",
-              s.currency,s.status AS "subscriptionStatus",
-              CASE WHEN s.partner_profile_id IS NULL THEN r.no_partner_platform_share_minor
-                   ELSE r.platform_share_minor END AS "settlementPlatformShareMinor"
+              r.price_minor AS "rulePriceMinor",r.school_share_minor AS "ruleSchoolShareMinor",
+              r.platform_share_minor AS "rulePlatformShareMinor",
+              r.partner_commission_minor AS "rulePartnerCommissionMinor",
+              r.no_partner_platform_share_minor AS "ruleNoPartnerPlatformShareMinor",
+              s.currency,s.status AS "subscriptionStatus"
          FROM staff_nfc_payments p
          JOIN staff_nfc_subscriptions s ON s.id=p.subscription_id AND s.school_id=p.school_id
-         JOIN staff_nfc_billing_rules r ON r.id=s.billing_rule_id
+          JOIN staff_nfc_billing_rules r
+            ON r.id=s.billing_rule_id AND r.version=s.billing_rule_version
         WHERE p.id=$1
         FOR UPDATE OF p,s`,
       [paymentId],
@@ -713,16 +718,26 @@ async function completeVerifiedPayment(
           WHERE id=$1 AND status<>'REFUNDED'`,
         [settledSubscriptionId, result.providerPaidAt],
       );
+      const frozenRule = {
+        priceMinor: Number(payment.rulePriceMinor),
+        schoolShareMinor: Number(payment.ruleSchoolShareMinor),
+        platformShareMinor: Number(payment.rulePlatformShareMinor),
+        partnerCommissionMinor: Number(payment.rulePartnerCommissionMinor),
+        noPartnerPlatformShareMinor: Number(payment.ruleNoPartnerPlatformShareMinor),
+      };
+      const subscriptionPartnerId = payment.partnerProfileId == null ? null : Number(payment.partnerProfileId);
+      const snapshotsMatchRule = Number(payment.priceMinor) === frozenRule.priceMinor
+        && Number(payment.schoolShareMinor) === frozenRule.schoolShareMinor
+        && Number(payment.partnerShareMinor) === (subscriptionPartnerId === null ? 0 : frozenRule.partnerCommissionMinor)
+        && Number(payment.platformShareMinor) === (
+          subscriptionPartnerId === null ? frozenRule.noPartnerPlatformShareMinor : frozenRule.platformShareMinor
+        );
+      if (!snapshotsMatchRule) {
+        throw new StaffNfcDomainError(409, "Frozen staff subscription allocation does not match its billing-rule snapshot");
+      }
       const financialAllocations = calculateStaffNfcAllocations(
-        {
-          priceMinor: Number(payment.priceMinor),
-          schoolShareMinor: Number(payment.schoolShareMinor),
-          platformShareMinor: Number(payment.platformShareMinor),
-          partnerCommissionMinor: Number(payment.partnerShareMinor),
-          noPartnerPlatformShareMinor:
-            Number(payment.schoolShareMinor) + Number(payment.settlementPlatformShareMinor),
-        },
-        payment.partnerProfileId == null ? null : Number(payment.partnerProfileId),
+        frozenRule,
+        subscriptionPartnerId,
       );
       const insertedAllocations: Array<{ recipientType: string; recipientId: number | null; amountMinor: number; id: number }> = [];
       for (const allocation of financialAllocations) {
@@ -831,6 +846,12 @@ async function completeVerifiedPayment(
           WHERE payment_id=$1 ORDER BY id`,
         [paymentId],
       );
+      const logoVersion = await client.query<{ id: number }>(
+        `SELECT id FROM school_branding_logos
+          WHERE school_id=$1 AND is_current=true
+          ORDER BY id DESC LIMIT 1`,
+        [payment.schoolId],
+      );
       const receiptNumber = `SNFC-${payment.reference}`;
       const snapshot = {
         ...receiptSnapshot,
@@ -843,6 +864,9 @@ async function completeVerifiedPayment(
           amountMinor: Number(allocation.amountMinor),
           currency: allocation.currency,
         })),
+        schoolLogoVersionUrl: logoVersion.rows[0]
+          ? canonicalSchoolLogoVersionUrl(Number(payment.schoolId), Number(logoVersion.rows[0].id))
+          : null,
       };
       await client.query(
         `INSERT INTO staff_nfc_receipts (payment_id,subscription_id,school_id,receipt_number,snapshot)
@@ -1290,12 +1314,13 @@ async function refundProjection(refundId: number) {
   };
 }
 
-async function finalizeVerifiedRefund(
+export async function finalizeVerifiedRefund(
   refundId: number,
   verified: FlutterwaveRefundResult,
   req: Request | null,
+  database: typeof pool = pool,
 ): Promise<"pending" | "failed" | "reconciliation_required" | "refunded" | "partial_refund" | "duplicate"> {
-  const client = await pool.connect();
+  const client = await database.connect();
   try {
     await client.query("BEGIN");
     const found = await client.query<any>(
@@ -1318,7 +1343,7 @@ async function finalizeVerifiedRefund(
     );
     const refund = found.rows[0];
     if (!refund) throw new StaffNfcDomainError(404, "Staff NFC refund not found");
-    if (refund.status === "SUCCEEDED") {
+    if (refund.refundStatus === "SUCCEEDED") {
       await client.query("COMMIT");
       return "duplicate";
     }
@@ -1683,6 +1708,9 @@ router.get("/staff-nfc/payments/:paymentId/receipt", wrap(async (req, res) => {
     employeeNumber: snapshot.employeeNo,
     schoolId: Number(snapshot.schoolId),
     schoolName: snapshot.schoolName,
+    schoolLogoVersionUrl: typeof snapshot.schoolLogoVersionUrl === "string"
+      ? snapshot.schoolLogoVersionUrl
+      : null,
     sessionName: snapshot.sessionName,
     termName: snapshot.termName,
     payment: {
