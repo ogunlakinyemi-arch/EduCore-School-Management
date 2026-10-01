@@ -1,0 +1,125 @@
+We now have the completed Production SQL reconciliation package:
+
+- "reports/production-sql-reconciliation-package-2026-10-01.md"
+- "reports/production-sql-reconciliation-package-2026-10-01.sql"
+- "scripts/validate-production-sql-reconciliation-package.mjs"
+
+The 410-statement structural plan has already been successfully rehearsed in Development.
+
+DO NOT repeat the schema audit.
+DO NOT regenerate the 410-statement preview.
+DO NOT modify the SQL package.
+DO NOT execute any SQL against Production.
+DO NOT publish.
+DO NOT modify migration ledgers.
+DO NOT modify the Drizzle journal.
+DO NOT send invitations.
+
+We now need ONLY the final Production database identity and recovery verification.
+
+1. Published application database binding
+
+Published application:
+
+https://edu-pulse-school-management--ogunlakinyemi.replit.app
+
+Determine, using only safe supported Replit tooling, whether the currently published application runtime is connected to the same Production database that was inspected during the reconciliation.
+
+Use credential-free/resource metadata where available.
+
+Do NOT print:
+
+- DATABASE_URL;
+- passwords;
+- connection strings;
+- secrets;
+- tokens.
+
+It is sufficient to report safe identifiers such as:
+
+- database name;
+- provider/resource identifier if exposed;
+- environment binding;
+- deployment/build binding;
+- database resource ID;
+- any other non-secret identity marker.
+
+Compare the published runtime target against the inspected Production target.
+
+Return exactly one of:
+
+A. VERIFIED MATCH
+B. VERIFIED MISMATCH
+C. STILL UNVERIFIABLE
+
+If C, explain exactly what Replit does and does not expose and the supported method available to establish the binding.
+
+Do NOT attempt to modify the application merely to expose the database URL.
+
+2. Recovery/PITR verification
+
+Determine the actual Production recovery configuration using supported read-only tooling.
+
+Report:
+
+- whether PITR is enabled;
+- visible recovery window;
+- latest available recovery point, if exposed;
+- whether scheduled backups are enabled;
+- whether on-demand backup/snapshot is available;
+- whether a restore can be created as an isolated disposable copy.
+
+Do NOT create a restore unless it is explicitly isolated from Production and guaranteed not to modify Production.
+
+Do NOT restore over Production.
+
+3. Isolated restore capability
+
+Determine whether Replit/Neon provides a supported way to create a disposable restore or branch from the current Production state.
+
+If available, report:
+
+- source;
+- target;
+- whether it is writable;
+- whether it is isolated;
+- whether it can be deleted afterward;
+- whether it contains the current Production schema/data.
+
+Do NOT actually create the restore unless the operation is clearly isolated and read-only with respect to Production.
+
+If no such operation is available, state that clearly.
+
+4. Final readiness assessment
+
+Based ONLY on this targeted check, report:
+
+DATABASE IDENTITY
+
+- Published runtime target:
+- Inspected Production target:
+- Match status: VERIFIED MATCH / VERIFIED MISMATCH / STILL UNVERIFIABLE
+
+RECOVERY
+
+- PITR:
+- Recovery window:
+- Backup availability:
+- Isolated restore capability:
+
+EXECUTION READINESS
+
+Choose exactly one:
+
+A. READY FOR FINAL HUMAN APPROVAL
+B. BLOCKED — DATABASE IDENTITY
+C. BLOCKED — RECOVERY
+D. BLOCKED — BOTH
+
+Do not make the Production changes.
+
+Do not execute the prepared SQL.
+
+Do not publish.
+
+This is the final diagnostic step before human review and authorization of the Production reconciliation.
