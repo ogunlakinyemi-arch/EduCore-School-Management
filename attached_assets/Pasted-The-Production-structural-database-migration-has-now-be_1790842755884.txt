@@ -1,0 +1,97 @@
+The Production structural database migration has now been successfully published.
+
+Perform Phase 3 — read-only post-migration verification only.
+
+IMPORTANT:
+
+- Do NOT modify Production.
+- Do NOT run the production reconciliation SQL package yet.
+- Do NOT run INSERT, UPDATE, DELETE, TRUNCATE, DROP, ALTER, CREATE, or any other mutating SQL.
+- Do NOT modify the migration ledger.
+- Do NOT publish another migration.
+- Do NOT attempt repairs or workarounds.
+
+Verify the Production database after the successful structural migration.
+
+Check the following:
+
+1. Confirm the newly required application tables exist, especially:
+   
+   - "nfc_card_history"
+   - "student_identification_policies"
+   - "biometric_enrollments"
+   - finance tables including "fee_invoice_lines" and "fee_adjustments"
+   - device-school binding tables
+   - library tables
+   - operations/maintenance tables
+   - all other tables represented by the approved structural migration.
+
+2. Confirm the required new columns exist on existing tables, especially:
+   
+   - "nfc_cards"
+   - "platform_devices"
+
+3. Confirm the required constraints/indexes exist:
+   
+   - "nfc_cards(id, school_id)" uniqueness
+   - "platform_devices(id, school_id)" uniqueness
+   - "student_class_assignments(id, school_id)" uniqueness
+   - "school_operation_categories(id, school_id, category_type)" uniqueness
+   - required foreign keys
+   - five supported platform-device statuses:
+     ACTIVE
+     INACTIVE
+     MAINTENANCE
+     SUSPENDED
+     UNASSIGNED
+
+4. Verify the important NFC foreign keys now exist:
+   
+   - "nfc_cards_last_device_school_fk"
+   - "nfc_cards_replaced_by_id_fk"
+   - "nfc_cards_replaced_by_school_fk"
+   - "nfc_cards_student_school_fk"
+
+5. Verify the important platform-device foreign key:
+   
+   - "platform_devices_class_school_fk"
+
+6. Verify existing Production data was preserved:
+   
+   - schools
+   - students
+   - parents
+   - employees
+   - existing NFC cards
+   - existing academic data
+   - existing finance data, if present.
+
+7. Specifically verify the existing 3 Production NFC cards still exist and report:
+   
+   - total count
+   - duplicate UID count
+   - duplicate "(id, school_id)" count
+   - orphaned school references
+   - orphaned student references.
+
+8. Check whether "nfc_card_history" is structurally usable, including its foreign keys and indexes.
+
+9. Verify that no unexpected table or column removal occurred.
+
+10. Confirm that the Production application can connect to the database and that basic read-only health checks succeed.
+
+Do NOT execute any of the functions, triggers, or historical backfills yet.
+
+Return a concise report with:
+
+- PASS/FAIL for each check
+- any missing table/column/constraint
+- NFC card counts and integrity results
+- any unexpected difference
+- whether Production is ready for Phase 4
+
+If every check passes, explicitly state:
+
+"PHASE 3 PASSED — READY FOR PHASE 4."
+
+If anything fails, STOP and report it without making changes.
