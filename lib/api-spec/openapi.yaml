@@ -4892,6 +4892,62 @@ paths:
     $ref: "./transport-feedback.yaml#/paths/~1student~1transport~1history"
   /transport/platform-owner/overview:
     $ref: "./transport-feedback.yaml#/paths/~1transport~1platform-owner~1overview"
+  /school-users/activation-candidates:
+    $ref: "./existing-activation-review.yaml#/paths/~1school-users~1activation-candidates"
+  /students/{studentId}/contact:
+    $ref: "./existing-activation-review.yaml#/paths/~1students~1{studentId}~1contact"
+  /parents/{parentId}/children:
+    $ref: "./existing-activation-review.yaml#/paths/~1parents~1{parentId}~1children"
+  /academic/results/review:
+    $ref: "./existing-activation-review.yaml#/paths/~1academic~1results~1review"
+  /academic/results/{resultId}/submit:
+    $ref: "./existing-activation-review.yaml#/paths/~1academic~1results~1{resultId}~1submit"
+  /academic/results/{resultId}/review:
+    $ref: "./existing-activation-review.yaml#/paths/~1academic~1results~1{resultId}~1review"
+  /curriculum/versions:
+    $ref: "./curriculum-learning.yaml#/paths/~1curriculum~1versions"
+  /curriculum/versions/{versionId}:
+    $ref: "./curriculum-learning.yaml#/paths/~1curriculum~1versions~1{versionId}"
+  /curriculum/versions/{versionId}/topics:
+    $ref: "./curriculum-learning.yaml#/paths/~1curriculum~1versions~1{versionId}~1topics"
+  /curriculum/versions/{versionId}/topics/{topicId}:
+    $ref: "./curriculum-learning.yaml#/paths/~1curriculum~1versions~1{versionId}~1topics~1{topicId}"
+  /curriculum/versions/{versionId}/publish:
+    $ref: "./curriculum-learning.yaml#/paths/~1curriculum~1versions~1{versionId}~1publish"
+  /curriculum/versions/{versionId}/archive:
+    $ref: "./curriculum-learning.yaml#/paths/~1curriculum~1versions~1{versionId}~1archive"
+  /curriculum/versions/{versionId}/clone:
+    $ref: "./curriculum-learning.yaml#/paths/~1curriculum~1versions~1{versionId}~1clone"
+  /curriculum/imports/preview:
+    $ref: "./curriculum-learning.yaml#/paths/~1curriculum~1imports~1preview"
+  /curriculum/imports/{importId}/confirm:
+    $ref: "./curriculum-learning.yaml#/paths/~1curriculum~1imports~1{importId}~1confirm"
+  /curriculum/imports/{importId}/download:
+    $ref: "./curriculum-learning.yaml#/paths/~1curriculum~1imports~1{importId}~1download"
+  /schools/{schoolId}/curriculum:
+    $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1curriculum"
+  /schools/{schoolId}/curriculum/catalog:
+    $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1curriculum~1catalog"
+  /schools/{schoolId}/curriculum/teaching-context:
+    $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1curriculum~1teaching-context"
+  /schools/{schoolId}/curriculum/{mappingId}/topics:
+    $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1curriculum~1{mappingId}~1topics"
+  /schools/{schoolId}/curriculum/{mappingId}/progress:
+    $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1curriculum~1{mappingId}~1progress"
+  /schools/{schoolId}/lesson-notes:
+    $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1lesson-notes"
+  /schools/{schoolId}/lesson-notes/{noteId}:
+    $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1lesson-notes~1{noteId}"
+  /schools/{schoolId}/lesson-notes/{noteId}/submit:
+    $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1lesson-notes~1{noteId}~1submit"
+  /schools/{schoolId}/lesson-notes/{noteId}/review:
+    $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1lesson-notes~1{noteId}~1review"
+  /schools/{schoolId}/lesson-notes/{noteId}/archive:
+    $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1lesson-notes~1{noteId}~1archive"
+  /schools/{schoolId}/lesson-notes/monitoring:
+    $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1lesson-notes~1monitoring"
+  /schools/{schoolId}/lesson-notes/reminders:
+    $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1lesson-notes~1reminders"
 components:
   securitySchemes:
     ClerkAuth:
@@ -5043,6 +5099,35 @@ components:
       required: true
       schema: { type: integer, minimum: 1 }
   schemas:
+    ExistingActivationCandidate: { $ref: "./existing-activation-review.yaml#/components/schemas/ExistingActivationCandidate" }
+    ParentChildLink: { $ref: "./existing-activation-review.yaml#/components/schemas/ParentChildLink" }
+    ParentChildrenLinkRequest: { $ref: "./existing-activation-review.yaml#/components/schemas/ParentChildrenLinkRequest" }
+    AcademicResultSchoolRequest: { $ref: "./existing-activation-review.yaml#/components/schemas/AcademicResultSchoolRequest" }
+    AcademicResultReviewRequest: { $ref: "./existing-activation-review.yaml#/components/schemas/AcademicResultReviewRequest" }
+    AcademicResultReviewItem: { $ref: "./existing-activation-review.yaml#/components/schemas/AcademicResultReviewItem" }
+    CurriculumVersionInput: { $ref: "./curriculum-learning.yaml#/components/schemas/CurriculumVersionInput" }
+    CurriculumVersion: { $ref: "./curriculum-learning.yaml#/components/schemas/CurriculumVersion" }
+    CurriculumVersionDetail: { $ref: "./curriculum-learning.yaml#/components/schemas/CurriculumVersionDetail" }
+    CurriculumTopicInput: { $ref: "./curriculum-learning.yaml#/components/schemas/CurriculumTopicInput" }
+    CurriculumTopic: { $ref: "./curriculum-learning.yaml#/components/schemas/CurriculumTopic" }
+    CurriculumImportPreviewInput: { $ref: "./curriculum-learning.yaml#/components/schemas/CurriculumImportPreviewInput" }
+    CurriculumImportPreview: { $ref: "./curriculum-learning.yaml#/components/schemas/CurriculumImportPreview" }
+    CurriculumImportConfirmInput: { $ref: "./curriculum-learning.yaml#/components/schemas/CurriculumImportConfirmInput" }
+    SchoolCurriculumMappingInput: { $ref: "./curriculum-learning.yaml#/components/schemas/SchoolCurriculumMappingInput" }
+    SchoolCurriculumMapping: { $ref: "./curriculum-learning.yaml#/components/schemas/SchoolCurriculumMapping" }
+    SchoolCurriculumTopicInput: { $ref: "./curriculum-learning.yaml#/components/schemas/SchoolCurriculumTopicInput" }
+    CurriculumProgressInput: { $ref: "./curriculum-learning.yaml#/components/schemas/CurriculumProgressInput" }
+    CurriculumProgress: { $ref: "./curriculum-learning.yaml#/components/schemas/CurriculumProgress" }
+    LessonNoteInput: { $ref: "./curriculum-learning.yaml#/components/schemas/LessonNoteInput" }
+    LessonNoteUpdate: { $ref: "./curriculum-learning.yaml#/components/schemas/LessonNoteUpdate" }
+    LessonNoteTransitionInput: { $ref: "./curriculum-learning.yaml#/components/schemas/LessonNoteTransitionInput" }
+    LessonNote: { $ref: "./curriculum-learning.yaml#/components/schemas/LessonNote" }
+    LessonNoteDetail: { $ref: "./curriculum-learning.yaml#/components/schemas/LessonNoteDetail" }
+    LessonNoteReviewInput: { $ref: "./curriculum-learning.yaml#/components/schemas/LessonNoteReviewInput" }
+    LessonNoteReview: { $ref: "./curriculum-learning.yaml#/components/schemas/LessonNoteReview" }
+    LessonNoteMonitoringRow: { $ref: "./curriculum-learning.yaml#/components/schemas/LessonNoteMonitoringRow" }
+    LessonNoteReminderInput: { $ref: "./curriculum-learning.yaml#/components/schemas/LessonNoteReminderInput" }
+    LessonNoteReminderResult: { $ref: "./curriculum-learning.yaml#/components/schemas/LessonNoteReminderResult" }
     PlatformOwnerBootstrapStatus:
       type: object
       required: [available, configured]
@@ -5467,6 +5552,8 @@ components:
         id: { type: integer }
         schoolId: { type: integer }
         admissionNo: { type: string }
+        email: { type: ["string", "null"], format: email }
+        accountStatus: { type: ["string", "null"], description: Linked login account state, not admission status }
         firstName: { type: string }
         lastName: { type: string }
         middleName: { type: ["string", "null"] }
@@ -5503,9 +5590,10 @@ components:
         joinedAt: { type: string }
     StudentInput:
       type: object
-      required: [admissionNo, firstName, lastName, gender, className, section]
+      required: [firstName, lastName, gender, className, section]
       properties:
-        admissionNo: { type: string, minLength: 1 }
+        admissionNo: { type: ["string", "null"], description: Optional; generated by the server when omitted or blank }
+        email: { type: ["string", "null"], format: email }
         firstName: { type: string, minLength: 2 }
         lastName: { type: string, minLength: 2 }
         middleName: { type: string }
@@ -5613,7 +5701,7 @@ components:
         phone: { type: string, minLength: 8, maxLength: 25 }
     SchoolUserInvitationInput:
       type: object
-      required: [schoolId, fullName, email, role]
+      required: [schoolId, role, personId]
       allOf:
         - oneOf:
             - type: object
@@ -5627,6 +5715,7 @@ components:
               not:
                 required: [studentId]
       properties:
+        personId: { type: integer, minimum: 1, description: Existing same-school profile; identity is resolved by the server }
         schoolId: { type: integer, minimum: 1 }
         fullName: { type: string, minLength: 2, maxLength: 120 }
         email: { type: string, format: email, maxLength: 254 }
@@ -5994,6 +6083,7 @@ components:
       type: object
       required: [id, schoolId, employeeId, firstName, lastName, type, status]
       properties:
+        accountStatus: { type: ["string", "null"], description: Linked login account state, not employment status }
         id: { type: integer }
         schoolId: { type: integer }
         employeeId: { type: string }

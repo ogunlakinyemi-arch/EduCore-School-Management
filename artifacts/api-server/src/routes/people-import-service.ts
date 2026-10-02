@@ -350,7 +350,7 @@ export type ImportExisting = {
 };
 
 const requiredByKind: Record<ImportKind, string[]> = {
-  students: ["admissionNo", "firstName", "lastName", "gender", "className"],
+  students: ["firstName", "lastName", "gender", "className"],
   parents: ["name", "email", "phone"],
   teachers: ["employeeId", "firstName", "lastName"],
   staff: ["employeeId", "firstName", "lastName"],
@@ -469,7 +469,8 @@ export function prepareImportRows(input: {
         fail("status", "Unsupported student status");
       }
       Object.assign(prepared, {
-        admissionNo,
+        admissionNo: admissionNo || null,
+        admissionNoSource: admissionNo ? "PRESERVED" : "GENERATED",
         firstName: cell(values, "firstName"),
         middleName: cell(values, "middleName") || null,
         lastName: cell(values, "lastName"),

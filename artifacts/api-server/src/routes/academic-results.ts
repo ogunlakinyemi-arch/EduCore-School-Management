@@ -20,6 +20,7 @@ const run = (handler: (req: Request, res: Response) => Promise<void>) =>
     handler(req, res).catch(next);
 
 const allSchoolRoles = ["SCHOOL_ADMIN", "PLATFORM_OWNER", "TEACHER"] as const;
+const resultReadRoles = [...allSchoolRoles, "STUDENT", "PARENT"] as const;
 const managerRoles = ["SCHOOL_ADMIN"] as const;
 const studentParentRoles = ["STUDENT", "PARENT"] as const;
 type Role = "PLATFORM_OWNER" | "SCHOOL_ADMIN" | "TEACHER" | "STUDENT" | "PARENT";
@@ -77,6 +78,28 @@ function auditSql(actor: ReturnType<typeof getUserContext>, schoolId: number, ac
 async function audit(req: Request, schoolId: number, action: string, recordId: number, client: any = pool) {
   const query = auditSql(getUserContext(req), schoolId, action, recordId);
   await client.query(query.sql, query.values);
+}
+async function auditResultReview(
+  req: Request,
+  schoolId: number,
+  action: string,
+  recordId: number,
+  decision: string,
+  comment: string | null,
+  client: any,
+) {
+  const context = getUserContext(req);
+  const role = context.roles.find((assignment) => assignment.schoolId === schoolId)?.role ?? "SCHOOL_ADMIN";
+  await client.query(
+    `INSERT INTO audit_logs
+      ("user",role,actor_user_id,clerk_user_id,school_id,action,module,record_id,severity,event_type,result,metadata)
+     VALUES($1,$2,$3,$4,$5,$6,'Academics',$7,'info','ACADEMIC_RESULT_REVIEWED','SUCCESS',$8::jsonb)`,
+    [
+      [context.user.firstName, context.user.lastName].filter(Boolean).join(" ") || context.user.email,
+      role, context.user.id, context.user.clerkUserId, schoolId, action, recordId,
+      JSON.stringify({ decision, comment }),
+    ],
+  );
 }
 async function notifyStudentAcademicRecord(
   client: CommunicationQueryClient,
@@ -285,15 +308,31 @@ router.patch("/academic/grading-rules/:ruleId", run(async (req, res) => {
 }));
 
 router.get("/academic/results", run(async (req, res) => {
-  const schoolId = authorizeSchool(req, req.query.schoolId, allSchoolRoles);
-  const studentId = req.query.studentId == null ? null : id(req.query.studentId, "studentId");
+  const schoolId = authorizeSchool(req, req.query.schoolId, resultReadRoles);
+  let studentId = req.query.studentId == null ? null : id(req.query.studentId, "studentId");
   const assessmentId = req.query.assessmentId == null ? null : id(req.query.assessmentId, "assessmentId");
+  const familyOnly = hasRole(req, studentParentRoles, schoolId) &&
+    !hasRole(req, ["SCHOOL_ADMIN", "PLATFORM_OWNER", "TEACHER"], schoolId);
+  if (familyOnly) {
+    if (studentId === null) throw new AuthError(400, "Select one of your authorized student profiles");
+    const self = await resolveSelfStudent(req, schoolId);
+    if (self < 0) await ensureChild(req, schoolId, studentId);
+    else if (self !== studentId) throw new AuthError(404, "Student record not found");
+  }
+  const teacherOnly = hasRole(req, ["TEACHER"], schoolId) && !hasRole(req, managerRoles, schoolId);
+  const select = teacherOnly
+    ? `${resultSelect},r.review_status AS "reviewStatus",r.review_comment AS "reviewComment",r.reviewed_at AS "reviewedAt"`
+    : resultSelect;
   const result = await pool.query(
-    `SELECT ${resultSelect} FROM academic_results r
+    `SELECT ${select} FROM academic_results r
       WHERE r.school_id=$1 AND ($2::int IS NULL OR r.student_id=$2)
         AND ($3::int IS NULL OR r.assessment_id=$3)
+        AND (NOT $6::boolean OR r.status='PUBLISHED')
+        AND (NOT $4::boolean OR r.teacher_employee_id IN (
+          SELECT e.id FROM employees e WHERE e.school_id=$1 AND e.user_id=$5
+        ))
       ORDER BY r.academic_session_id DESC,r.academic_term_id DESC,r.id`,
-    [schoolId, studentId, assessmentId],
+    [schoolId, studentId, assessmentId, teacherOnly, getUserContext(req).user.id, familyOnly],
   );
   res.json(result.rows);
 }));
@@ -405,6 +444,9 @@ router.patch("/academic/results/:resultId", run(async (req, res) => {
     if (!current) throw new AuthError(404, "Result not found");
     const admin = hasRole(req, managerRoles, schoolId);
     if (current.status === "PUBLISHED" && !admin) throw new AuthError(403, "Only a School Admin or Platform Owner may correct a published result");
+    if (!admin && !["DRAFT"].includes(current.status)) {
+      throw new AuthError(409, "Submitted results cannot be edited until the School Admin returns them for correction");
+    }
     if (!admin) {
       requireRole(req, ["TEACHER"]);
       const ownership = await client.query(`SELECT id FROM employees WHERE id=$1 AND school_id=$2 AND user_id=$3`, [current.teacher_employee_id, schoolId, actor.user.id]);
@@ -441,7 +483,11 @@ router.patch("/academic/results/:resultId", run(async (req, res) => {
     }
     updated = await client.query(
       `UPDATE academic_results SET score=$1,remark=$2,grade=$3,grade_point=$4,
-          status=CASE WHEN status='PUBLISHED' THEN status ELSE 'DRAFT' END,updated_at=NOW()
+          status=CASE WHEN status='PUBLISHED' THEN status ELSE 'DRAFT' END,
+          review_status=CASE WHEN status='PUBLISHED' OR review_status='RETURNED' THEN review_status ELSE 'NOT_REVIEWED' END,
+          review_comment=CASE WHEN status='PUBLISHED' OR review_status='RETURNED' THEN review_comment ELSE NULL END,
+          reviewed_by=CASE WHEN status='PUBLISHED' OR review_status='RETURNED' THEN reviewed_by ELSE NULL END,
+          reviewed_at=CASE WHEN status='PUBLISHED' OR review_status='RETURNED' THEN reviewed_at ELSE NULL END,updated_at=NOW()
         WHERE id=$5 AND school_id=$6 RETURNING ${resultReturning}`,
       [score,remark ?? grade.remark,grade.grade,grade.gradePoint,resultId,schoolId],
     );
@@ -453,6 +499,108 @@ router.patch("/academic/results/:resultId", run(async (req, res) => {
   } finally { client.release(); }
   res.json(updated!.rows[0]);
 }));
+
+router.post("/academic/results/:resultId/submit", run(async (req, res) => {
+  const body = bodyObject(req.body);
+  const schoolId = authorizeSchool(req, body.schoolId, ["SCHOOL_ADMIN", "TEACHER"]);
+  assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN", "TEACHER"] as any);
+  const resultId = id(req.params.resultId, "resultId");
+  const actor = getUserContext(req);
+  const client = await pool.connect();
+  let submitted;
+  try {
+    await client.query("BEGIN");
+    const existing = await client.query(
+      `SELECT id,teacher_employee_id,status FROM academic_results WHERE id=$1 AND school_id=$2 FOR UPDATE`,
+      [resultId, schoolId],
+    );
+    const current = existing.rows[0];
+    if (!current) throw new AuthError(404, "Result not found");
+    if (!hasRole(req, managerRoles, schoolId)) {
+      requireRole(req, ["TEACHER"]);
+      const ownership = await client.query(
+        `SELECT id FROM employees WHERE id=$1 AND school_id=$2 AND user_id=$3`,
+        [current.teacher_employee_id, schoolId, actor.user.id],
+      );
+      if (!ownership.rows[0]) throw new AuthError(403, "Teachers may submit only their own assigned results");
+    }
+    if (current.status !== "DRAFT") throw new AuthError(409, "Only draft or returned results can be submitted for review");
+    submitted = await client.query(
+      `UPDATE academic_results SET status='SUBMITTED',review_status='NOT_REVIEWED',updated_at=NOW()
+        WHERE id=$1 AND school_id=$2 RETURNING ${resultReturning}`,
+      [resultId, schoolId],
+    );
+    await audit(req, schoolId, "Submitted academic result for review", resultId, client);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally { client.release(); }
+  res.json({ ...submitted!.rows[0], reviewStatus: "NOT_REVIEWED", reviewComment: null });
+}));
+
+router.get("/academic/results/review", run(async (req, res) => {
+  const schoolId = authorizeSchool(req, req.query.schoolId, managerRoles);
+  const assessmentId = req.query.assessmentId == null ? null : id(req.query.assessmentId, "assessmentId");
+  const result = await pool.query(
+    `SELECT ${resultSelect},r.review_status AS "reviewStatus",r.review_comment AS "reviewComment",
+             r.reviewed_by AS "reviewedBy",r.reviewed_at AS "reviewedAt",
+             concat_ws(' ',st.first_name,st.middle_name,st.last_name) AS "studentName",
+             st.admission_no AS "admissionNo"
+       FROM academic_results r
+        LEFT JOIN students st ON st.id=r.student_id AND st.school_id=r.school_id
+      WHERE r.school_id=$1 AND ($2::int IS NULL OR r.assessment_id=$2)
+      ORDER BY CASE WHEN r.status='SUBMITTED' THEN 0 ELSE 1 END,r.id`,
+    [schoolId, assessmentId],
+  );
+  res.json(result.rows);
+}));
+
+router.post("/academic/results/:resultId/review", run(async (req, res) => {
+  const body = bodyObject(req.body);
+  const schoolId = authorizeSchool(req, body.schoolId, managerRoles);
+  assertSchoolOperationalAccess(req, schoolId, managerRoles as any);
+  const resultId = id(req.params.resultId, "resultId");
+  const decision = requiredString(body.decision, "decision", 20).toUpperCase();
+  if (!["APPROVE", "RETURN"].includes(decision)) throw new AuthError(400, "Decision must be APPROVE or RETURN");
+  const comment = body.comment == null ? null : requiredString(body.comment, "comment", 2000);
+  if (decision === "RETURN" && !comment) throw new AuthError(400, "A review comment is required when returning a result");
+  const actor = getUserContext(req);
+  const client = await pool.connect();
+  let reviewed;
+  try {
+    await client.query("BEGIN");
+    const current = await client.query(
+      `SELECT id,status FROM academic_results WHERE id=$1 AND school_id=$2 FOR UPDATE`,
+      [resultId, schoolId],
+    );
+    if (!current.rows[0]) throw new AuthError(404, "Result not found");
+    if (current.rows[0].status !== "SUBMITTED") throw new AuthError(409, "Only submitted results can be reviewed");
+    reviewed = await client.query(
+      `UPDATE academic_results
+          SET status=CASE WHEN $1='RETURN' THEN 'DRAFT' ELSE 'SUBMITTED' END,
+              review_status=CASE WHEN $1='RETURN' THEN 'RETURNED' ELSE 'APPROVED' END,
+              review_comment=$2,reviewed_by=$3,reviewed_at=NOW(),updated_at=NOW()
+        WHERE id=$4 AND school_id=$5 RETURNING ${resultReturning}`,
+      [decision, comment, actor.user.id, resultId, schoolId],
+    );
+    await auditResultReview(
+      req,
+      schoolId,
+      decision === "RETURN" ? "Returned academic result for correction" : "Approved academic result",
+      resultId,
+      decision,
+      comment,
+      client,
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally { client.release(); }
+  res.json({ ...reviewed!.rows[0], reviewStatus: decision === "RETURN" ? "RETURNED" : "APPROVED", reviewComment: comment });
+}));
+
 router.post("/academic/assessments/:assessmentId/publish-results", run(async (req, res) => {
   const body = bodyObject(req.body);
   const schoolId = authorizeSchool(req, body.schoolId, managerRoles);
@@ -467,7 +615,7 @@ router.post("/academic/assessments/:assessmentId/publish-results", run(async (re
     if (!assessment.rows[0]) throw new AuthError(404, "Assessment not found");
     result = await client.query(
       `UPDATE academic_results SET status='PUBLISHED',published_by=$1,published_at=NOW(),updated_at=NOW()
-        WHERE assessment_id=$2 AND school_id=$3 AND status IN ('DRAFT','SUBMITTED')
+        WHERE assessment_id=$2 AND school_id=$3 AND status='SUBMITTED' AND review_status='APPROVED'
         RETURNING ${resultReturning}`,
       [context.user.id, assessmentId, schoolId],
     );

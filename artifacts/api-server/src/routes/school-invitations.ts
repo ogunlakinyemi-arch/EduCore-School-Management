@@ -27,6 +27,7 @@ type InviteeInput = {
   fullName: string;
   phone: string | null;
   role: InvitationRole;
+  personId?: number | null;
   studentId?: number | null;
 };
 
@@ -248,11 +249,20 @@ async function ensureInviteProfile(client: any, input: InviteeInput, employeeNo:
   const { firstName, lastName } = splitName(input.fullName);
   if (input.role === "PARENT") {
     if (!input.phone) throw new AuthError(400, "A phone number is required for parent invitations");
-    const parent = await client.query(
-      `SELECT id,user_id AS "userId" FROM parents
-       WHERE school_id=$1 AND lower(email)=lower($2) ORDER BY id FOR UPDATE`,
-      [input.schoolId, input.email],
-    );
+    const parent = input.personId
+      ? await client.query(
+        `SELECT id,user_id AS "userId" FROM parents
+         WHERE school_id=$1 AND id=$2 AND lower(email)=lower($3) FOR UPDATE`,
+        [input.schoolId, input.personId, input.email],
+      )
+      : await client.query(
+        `SELECT id,user_id AS "userId" FROM parents
+         WHERE school_id=$1 AND lower(email)=lower($2) ORDER BY id FOR UPDATE`,
+        [input.schoolId, input.email],
+      );
+    if (input.personId && !parent.rows[0]) {
+      throw new AuthError(409, "The selected parent profile changed before the invitation was saved");
+    }
     if (parent.rows.length > 1) {
       throw new AuthError(409, "Multiple parent records use this email; resolve the duplicate before inviting");
     }
@@ -270,24 +280,41 @@ async function ensureInviteProfile(client: any, input: InviteeInput, employeeNo:
 
   if (input.role === "STUDENT") {
     if (!input.studentId) throw new AuthError(400, "A student profile is required for student invitations");
-    const student = await client.query(
-      `SELECT id,user_id AS "userId" FROM students
-       WHERE id=$1 AND school_id=$2 FOR UPDATE`,
-      [input.studentId, input.schoolId],
-    );
+    const student = input.personId
+      ? await client.query(
+        `SELECT id,user_id AS "userId" FROM students
+         WHERE id=$1 AND school_id=$2 AND lower(email)=lower($3) FOR UPDATE`,
+        [input.studentId, input.schoolId, input.email],
+      )
+      : await client.query(
+        `SELECT id,user_id AS "userId" FROM students
+         WHERE id=$1 AND school_id=$2 FOR UPDATE`,
+        [input.studentId, input.schoolId],
+      );
     if (!student.rows[0]) throw new AuthError(404, "Student profile not found in this school");
     if (student.rows[0].userId) throw new AuthError(409, "This student profile is already linked to an account");
   }
 
-  if (input.role === "TEACHER" || input.role === "STAFF") {
-    const employee = await client.query(
-      `SELECT id,user_id AS "userId",employee_type AS "type",
-              employment_status AS status,employee_no AS "employeeNo"
-       FROM employees
-       WHERE school_id=$1 AND lower(email)=lower($2)
-       ORDER BY id FOR UPDATE`,
-      [input.schoolId, input.email],
-    );
+  if (input.role === "TEACHER" || input.role === "ACCOUNTANT" || input.role === "STAFF") {
+    const employee = input.personId
+      ? await client.query(
+        `SELECT id,user_id AS "userId",employee_type AS "type",
+                employment_status AS status,employee_no AS "employeeNo"
+         FROM employees
+         WHERE school_id=$1 AND id=$2 AND lower(email)=lower($3) AND employee_type=$4 FOR UPDATE`,
+        [input.schoolId, input.personId, input.email, input.role],
+      )
+      : await client.query(
+        `SELECT id,user_id AS "userId",employee_type AS "type",
+                employment_status AS status,employee_no AS "employeeNo"
+         FROM employees
+         WHERE school_id=$1 AND lower(email)=lower($2)
+         ORDER BY id FOR UPDATE`,
+        [input.schoolId, input.email],
+      );
+    if (input.personId && !employee.rows[0]) {
+      throw new AuthError(409, "The selected employee profile changed before the invitation was saved");
+    }
     if (employee.rows.length > 1) {
       throw new AuthError(409, "Multiple employee records use this email; resolve the duplicate before inviting");
     }
@@ -397,7 +424,7 @@ async function ensureActivatedProfile(
     }
   }
 
-  if (input.role === "TEACHER" || input.role === "STAFF") {
+  if (input.role === "TEACHER" || input.role === "ACCOUNTANT" || input.role === "STAFF") {
     const employee = await client.query(
       `SELECT id,user_id AS "userId",employee_type AS "type",employment_status AS status,employee_no AS "employeeNo"
        FROM employees
@@ -536,7 +563,80 @@ async function provisionExistingAccount(
   }
 }
 
+async function resolveExistingInvitee(input: InviteeInput): Promise<InviteeInput> {
+  if (!Number.isSafeInteger(input.personId) || Number(input.personId) < 1) {
+    throw new AuthError(400, "Select an existing school profile before activation");
+  }
+  let result;
+  if (input.role === "PARENT") {
+    result = await pool.query(
+      `SELECT id AS "personId",name AS "fullName",email,phone,status,user_id AS "userId"
+         FROM parents WHERE id=$1 AND school_id=$2`,
+      [input.personId, input.schoolId],
+    );
+  } else if (input.role === "STUDENT") {
+    result = await pool.query(
+      `SELECT id AS "personId",concat_ws(' ',first_name,middle_name,last_name) AS "fullName",
+              email,NULL::text AS phone,status,user_id AS "userId"
+         FROM students WHERE id=$1 AND school_id=$2`,
+      [input.personId, input.schoolId],
+    );
+  } else {
+    result = await pool.query(
+      `SELECT id AS "personId",concat_ws(' ',first_name,middle_name,last_name) AS "fullName",
+              email,phone,employment_status AS status,user_id AS "userId",employee_type AS "type"
+         FROM employees WHERE id=$1 AND school_id=$2 AND employee_type=$3`,
+      [input.personId, input.schoolId, input.role],
+    );
+  }
+  const profile = result.rows[0];
+  if (!profile) throw new AuthError(404, "Selected school profile not found");
+  if (input.role !== "STUDENT" && input.role !== "PARENT" && profile.type !== input.role) {
+    throw new AuthError(409, "Selected employee profile does not match the requested role");
+  }
+  if (profile.userId) throw new AuthError(409, "This school profile is already linked to an account");
+  const status = String(profile.status ?? "").toUpperCase();
+  if (!["ACTIVE", "PENDING"].includes(status)) {
+    throw new AuthError(409, "Selected school profile is inactive and cannot be activated");
+  }
+  const email = typeof profile.email === "string" ? profile.email.trim() : "";
+  const fullName = typeof profile.fullName === "string" ? profile.fullName.trim().replace(/\s+/g, " ") : "";
+  const phone = typeof profile.phone === "string" && profile.phone.trim() ? profile.phone.trim() : null;
+  if (!email) throw new AuthError(409, "The selected school profile has no email. Correct its profile before activation.");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new AuthError(409, "The selected school profile has an invalid email. Correct its profile before activation.");
+  }
+  if (fullName.length < 2) throw new AuthError(409, "The selected school profile has no valid name. Correct its profile before activation.");
+  if (input.role === "PARENT" && !phone) {
+    throw new AuthError(409, "The selected parent profile has no phone number. Correct its profile before activation.");
+  }
+  if (phone && !/^\+?[0-9][0-9\s()-]{7,24}$/.test(phone)) {
+    throw new AuthError(409, "The selected school profile has an invalid phone. Correct its profile before activation.");
+  }
+  return {
+    ...input,
+    email,
+    fullName,
+    phone,
+    studentId: input.role === "STUDENT" ? Number(profile.personId) : null,
+  };
+}
+
 export async function createSchoolInvitation(input: InviteeInput, actor: UserContext) {
+  input = input.personId == null ? input : await resolveExistingInvitee(input);
+  if (input.personId != null) {
+    const activationOfficer = await pool.query(
+      `SELECT 1 FROM app_users au
+       JOIN school_memberships sm ON sm.user_id = au.id
+       WHERE lower(au.email) = lower($1)
+         AND sm.role = 'DEVICE_ACTIVATION_OFFICER' AND sm.status = 'ACTIVE'
+       LIMIT 1`,
+      [input.email],
+    );
+    if (activationOfficer.rows[0]) {
+      throw new AuthError(403, "A Device Activation Officer cannot be invited to an ordinary school role");
+    }
+  }
   const email = normalizeEmail(input.email);
   const fullName = input.fullName.trim().replace(/\s+/g, " ");
   const phone = input.phone?.trim() || null;
@@ -599,7 +699,7 @@ export async function createSchoolInvitation(input: InviteeInput, actor: UserCon
       role: input.role,
       ...splitName(fullName),
       studentId: input.role === "STUDENT" ? input.studentId : null,
-      employeeNo: input.role === "TEACHER" || input.role === "STAFF" ? employeeNo : null,
+      employeeNo: input.role === "TEACHER" || input.role === "ACCOUNTANT" || input.role === "STAFF" ? employeeNo : null,
     },
   };
 
@@ -1666,7 +1766,7 @@ async function reserveReplacementAttempt(input: {
       }
     }
 
-    if (input.role === "TEACHER" || input.role === "STAFF") {
+    if (input.role === "TEACHER" || input.role === "ACCOUNTANT" || input.role === "STAFF") {
       const employee = await client.query(
         `SELECT id,user_id AS "userId",employee_type AS type FROM employees
          WHERE school_id=$1 AND lower(email)=lower($2) ORDER BY id FOR UPDATE`,
@@ -1699,7 +1799,7 @@ async function reserveReplacementAttempt(input: {
       firstName,
       lastName,
       studentId: input.role === "STUDENT" ? input.marker.studentId : null,
-      employeeNo: input.role === "TEACHER" || input.role === "STAFF" ? input.marker.employeeNo : null,
+      employeeNo: input.role === "TEACHER" || input.role === "ACCOUNTANT" || input.role === "STAFF" ? input.marker.employeeNo : null,
       replacementAttemptId: input.attemptId,
     };
     const attemptMetadata = {
@@ -2076,7 +2176,7 @@ async function markReplacementAttemptDispatching(
         await client.query(`UPDATE parents SET email=$1 WHERE id=$2`, [metadata.invitedEmail, parent.rows[0].id]);
       }
     }
-    if (metadata.role === "TEACHER" || metadata.role === "STAFF") {
+    if (metadata.role === "TEACHER" || metadata.role === "ACCOUNTANT" || metadata.role === "STAFF") {
       const employee = await client.query(
         `SELECT id,user_id AS "userId",employee_type AS type FROM employees
          WHERE school_id=$1 AND lower(email)=lower($2) ORDER BY id FOR UPDATE`,
@@ -2711,7 +2811,12 @@ async function replaceSchoolUserInvitationUnderGuard(input: {
     .filter((name: unknown): name is string => typeof name === "string" && name.trim().length > 0)
     .join(" ") || oldEmail;
   const studentId = role === "STUDENT" ? marker.studentId : null;
-  const employeeNo = role === "TEACHER" || role === "STAFF" ? marker.employeeNo : null;
+  const employeeNo =
+    (role === "TEACHER" || role === "ACCOUNTANT" || role === "STAFF") &&
+    typeof marker.employeeNo === "string" &&
+    /^INV-[A-F0-9]{16}$/.test(marker.employeeNo)
+      ? marker.employeeNo
+      : null;
   if (
     (role === "STUDENT" && (!Number.isInteger(studentId) || Number(studentId) < 1)) ||
     ((role === "TEACHER" || role === "STAFF") &&

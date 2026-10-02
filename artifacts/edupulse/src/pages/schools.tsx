@@ -733,6 +733,7 @@ export function SchoolOverview() {
           
           <div className="grid gap-4 sm:grid-cols-2">
             <Info label="School code" value={<span className="font-mono">{school?.code}</span>} />
+            <Info label="Registration number" value={<span className="font-mono">{school?.registrationNumber ?? 'Not recorded (legacy school)'}</span>} />
             <Info label="Operational status" value={<span data-testid="operational-school-status"><StatusPill value={isPlatformOwner ? operationalStatusLabel(school) : school?.status} /></span>} />
             <Info label="Subscription health" value={<StatusPill value={school?.subscriptionStatus} />} />
             <Info label={isPlatformOwner ? "Active staff" : "Staff on record"} value={isPlatformOwner ? data?.staffCount ?? 0 : school?.staffCount ?? 0} />

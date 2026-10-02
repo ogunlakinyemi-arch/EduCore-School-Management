@@ -1,5 +1,5 @@
 import { useState, FormEvent, useEffect, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Modal, Field, TenantPicker, useTenant, cx, date } from '@/components/shared';
 import { 
   useListAcademicAssessments, getListAcademicAssessmentsQueryKey,
@@ -10,6 +10,21 @@ import {
 } from '@workspace/api-client-react';
 import { Plus, BarChart3, Save, CheckCircle2, Search, Pencil } from 'lucide-react';
 import { SchoolDocumentHeader, SchoolDocumentPrintButton, useSchoolDocumentBranding } from '@/components/school-document';
+
+type AcademicResultReviewItem = {
+  id: number;
+  schoolId?: number;
+  assessmentId?: number;
+  studentId: number;
+  studentName?: string | null;
+  admissionNo?: string | null;
+  score: number | string;
+  maxScore: number | string;
+  grade?: string | null;
+  status: 'DRAFT' | 'SUBMITTED' | 'PUBLISHED' | 'ARCHIVED';
+  reviewStatus: 'NOT_REVIEWED' | 'APPROVED' | 'RETURNED';
+  reviewComment?: string | null;
+};
 
 function useAcademicContext(schoolId: number) {
   const sessions = useListAcademicSessions({ schoolId }, { query: { enabled: !!schoolId, queryKey: ['sessions', schoolId] } });
@@ -78,6 +93,17 @@ function ResultEntryView({ schoolId, canManage, isPlatformOwner }: { schoolId: n
   
   const studentsQuery = useListStudents({ schoolId, classId }, { query: { enabled: !!(schoolId && classId), queryKey: ['students', schoolId, classId] } });
   const resultsQuery = useListAcademicResults({ schoolId, assessmentId: assessmentId as number }, { query: { enabled: !!(schoolId && assessmentId), queryKey: getListAcademicResultsQueryKey({ schoolId, assessmentId: assessmentId as number }) } });
+  const reviewQuery = useQuery({
+    queryKey: ['academic-result-review', schoolId, assessmentId],
+    enabled: canManage && !!schoolId && !!assessmentId,
+    queryFn: async () => {
+      const params = new URLSearchParams({ schoolId: String(schoolId), assessmentId: String(assessmentId) });
+      const response = await fetch(`/api/academic/results/review?${params}`, { credentials: 'include' });
+      const result = await response.json().catch(() => []);
+      if (!response.ok) throw new Error(result?.error || `Could not load result review queue (${response.status})`);
+      return result;
+    },
+  });
 
   const qc = useQueryClient();
   const publish = usePublishAcademicAssessmentResults();
@@ -87,6 +113,8 @@ function ResultEntryView({ schoolId, canManage, isPlatformOwner }: { schoolId: n
   const assessments = assessmentsQuery.data ?? [];
   const students = studentsQuery.data ?? [];
   const results = resultsQuery.data ?? [];
+  const reviewResults: AcademicResultReviewItem[] = (reviewQuery.data ?? []) as AcademicResultReviewItem[];
+  const approvedCount = reviewResults.filter(result => result.status === 'SUBMITTED' && result.reviewStatus === 'APPROVED').length;
 
   const handlePublish = () => {
     if (!assessmentId) return;
@@ -119,14 +147,23 @@ function ResultEntryView({ schoolId, canManage, isPlatformOwner }: { schoolId: n
                 <span className="text-[hsl(var(--muted-foreground))]">Status:</span> <StatusPill value={selectedAssessment.status} />
              </div>
               {canManage && selectedAssessment.status !== 'PUBLISHED' && (
-                <Button onClick={handlePublish} disabled={publish.isPending}><CheckCircle2 size={16}/> Publish Results</Button>
+                <Button onClick={handlePublish} disabled={publish.isPending || approvedCount === 0}><CheckCircle2 size={16}/> Publish Approved ({approvedCount})</Button>
              )}
           </div>
         )}
+        {publish.isError && <p role="alert" className="basis-full text-sm text-[hsl(var(--destructive))]">
+          Could not publish approved results: {(publish.error as Error).message}
+        </p>}
       </div>
 
       {assessmentId && selectedAssessment ? (
         <div className="panel overflow-hidden">
+          {studentsQuery.isError && <p role="alert" className="p-4 text-sm text-[hsl(var(--destructive))]">
+            Could not load students for this assessment: {(studentsQuery.error as Error).message}
+          </p>}
+          {resultsQuery.isError && <p role="alert" className="p-4 text-sm text-[hsl(var(--destructive))]">
+            Could not load existing academic results: {(resultsQuery.error as Error).message}
+          </p>}
           <div className="bg-[hsl(var(--muted)/.3)] p-5 border-b border-[hsl(var(--border))]">
              <h3 className="font-bold">{selectedAssessment.title} Results</h3>
              <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">Class: {classes.find((c: any) => c.id === classId)?.name} • Max Score: {maxScore}</p>
@@ -148,6 +185,7 @@ function ResultEntryView({ schoolId, canManage, isPlatformOwner }: { schoolId: n
                     sessionId={activeSession?.id}
                     termId={activeTerm?.id}
                     disabled={selectedAssessment.status === 'PUBLISHED' || (isPlatformOwner && !canManage)}
+                    canManage={canManage}
                   />
                 );
               })}
@@ -155,15 +193,42 @@ function ResultEntryView({ schoolId, canManage, isPlatformOwner }: { schoolId: n
           ) : (
              <EmptyState icon={BarChart3} title="No students found" description="There are no students assigned to this class." />
           )}
+          {canManage && <div className="border-t border-[hsl(var(--border))]">
+            <div className="p-5 bg-[hsl(var(--muted)/.2)]">
+              <h4 className="font-bold">School Admin review</h4>
+              <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Only approved submitted results can be published. Returned comments stay in the private review workflow.</p>
+            </div>
+            {reviewQuery.isLoading ? <p role="status" className="p-5 text-sm">Loading results for review…</p> : reviewQuery.isError ? (
+              <p role="alert" className="p-5 text-sm text-[hsl(var(--destructive))]">Review queue unavailable: {(reviewQuery.error as Error).message}</p>
+            ) : reviewResults.filter(result => result.status === 'SUBMITTED').length ? (
+              <div className="divide-y divide-[hsl(var(--border)/.6)]">
+                {reviewResults.filter(result => result.status === 'SUBMITTED').map(result => (
+                  <AdminResultReviewRow
+                    key={result.id}
+                    result={result}
+                    schoolId={schoolId}
+                    disabled={selectedAssessment.status === 'PUBLISHED'}
+                    onReviewed={() => {
+                      qc.invalidateQueries({ queryKey: ['academic-result-review', schoolId, assessmentId] });
+                      qc.invalidateQueries({ queryKey: getListAcademicResultsQueryKey({ schoolId, assessmentId: assessmentId as number }) });
+                    }}
+                  />
+                ))}
+              </div>
+            ) : <p className="p-5 text-sm text-[hsl(var(--muted-foreground))]">No submitted results are waiting for review.</p>}
+          </div>}
         </div>
       ) : (
         <EmptyState icon={Search} title="No assessment selected" description="Choose an assessment above to enter marks." />
       )}
+      {assessmentsQuery.isError && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">
+        Could not load assessments: {(assessmentsQuery.error as Error).message}
+      </p>}
     </div>
   );
 }
 
-function ResultRow({ student, existing, assessmentId, maxScore, schoolId, sessionId, termId, disabled }: any) {
+export function ResultRow({ student, existing, assessmentId, maxScore, schoolId, sessionId, termId, disabled, canManage }: any) {
   const create = useCreateAcademicResult();
   const update = useUpdateAcademicResult();
   const qc = useQueryClient();
@@ -171,19 +236,24 @@ function ResultRow({ student, existing, assessmentId, maxScore, schoolId, sessio
   const [score, setScore] = useState<string>(existing?.score?.toString() || '');
   const [remarks, setRemarks] = useState<string>(existing?.remark || '');
   const [isDirty, setIsDirty] = useState(false);
+  const [submitPending, setSubmitPending] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
     if (existing) {
       setScore(existing.score?.toString() || '');
       setRemarks(existing.remark || '');
       setIsDirty(false);
+      setSaveError('');
     }
   }, [existing]);
 
   const handleSave = () => {
+    setSaveError('');
     const numericScore = parseFloat(score);
     if (isNaN(numericScore) || numericScore < 0 || numericScore > maxScore) {
-       alert(`Score must be a number between 0 and ${maxScore}`);
+       setSaveError(`Score must be a number between 0 and ${maxScore}`);
        return;
     }
 
@@ -200,7 +270,31 @@ function ResultRow({ student, existing, assessmentId, maxScore, schoolId, sessio
     }
   };
 
+  const handleSubmitForReview = async () => {
+    if (!existing || existing.status !== 'DRAFT' || canManage || disabled) return;
+    setSubmitError('');
+    setSubmitPending(true);
+    try {
+      const response = await fetch(`/api/academic/results/${existing.id}/submit`, {
+        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schoolId }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result?.error || `Could not submit result (${response.status})`);
+      qc.invalidateQueries({ queryKey: getListAcademicResultsQueryKey({ schoolId, assessmentId }) });
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Could not submit result for review');
+    } finally {
+      setSubmitPending(false);
+    }
+  };
+
   const pending = create.isPending || update.isPending;
+  const canEdit = !disabled && (
+    !existing ||
+    existing.status === 'DRAFT' ||
+    (canManage && existing.status === 'PUBLISHED')
+  );
 
   return (
     <div className="flex items-center gap-4 p-4 hover:bg-[hsl(var(--muted)/.2)]">
@@ -217,7 +311,7 @@ function ResultRow({ student, existing, assessmentId, maxScore, schoolId, sessio
           value={score} 
           onChange={e => { setScore(e.target.value); setIsDirty(true); }}
           placeholder="Score"
-          disabled={disabled || pending}
+          disabled={!canEdit || pending}
           className="w-full h-9 rounded-md border border-[hsl(var(--border))] px-3 text-sm"
         />
       </div>
@@ -227,21 +321,93 @@ function ResultRow({ student, existing, assessmentId, maxScore, schoolId, sessio
           value={remarks} 
           onChange={e => { setRemarks(e.target.value); setIsDirty(true); }}
           placeholder="Remarks (optional)"
-          disabled={disabled || pending}
+          disabled={!canEdit || pending}
           className="w-full h-9 rounded-md border border-[hsl(var(--border))] px-3 text-sm"
         />
       </div>
-      <div className="w-24 flex justify-end">
+      <div className="flex items-center justify-end gap-2">
         {isDirty ? (
-          <Button variant="outline" onClick={handleSave} disabled={pending || disabled} className="h-9 px-3 py-0">
+          <Button variant="outline" onClick={handleSave} disabled={pending || !canEdit} className="h-9 px-3 py-0">
             {pending ? '...' : 'Save'}
           </Button>
         ) : existing ? (
-          <span className="text-[10px] font-bold text-[hsl(157_37%_43%)] bg-[hsl(157_37%_43%/.15)] px-2 py-1 rounded">SAVED</span>
+          <>
+            <span role="status" className="text-[10px] font-bold text-[hsl(157_37%_43%)] bg-[hsl(157_37%_43%/.15)] px-2 py-1 rounded">{existing.status}</span>
+            {!canManage && existing.status === 'DRAFT' && !disabled && !isDirty && (
+              <Button variant="outline" onClick={handleSubmitForReview} disabled={submitPending} className="h-9 px-3 py-0">
+                {submitPending ? 'Submitting…' : 'Submit for review'}
+              </Button>
+            )}
+          </>
         ) : null}
       </div>
+      {existing?.reviewStatus === 'RETURNED' && existing.reviewComment && (
+        <p role="status" className="basis-full text-xs text-[hsl(var(--destructive))]">Admin feedback: {existing.reviewComment}</p>
+      )}
+      {submitError && <p role="alert" className="basis-full text-xs text-[hsl(var(--destructive))]">{submitError}</p>}
+      {saveError && <p role="alert" className="basis-full text-xs text-[hsl(var(--destructive))]">{saveError}</p>}
+      {(create.isError || update.isError) && <p role="alert" className="basis-full text-xs text-[hsl(var(--destructive))]">
+        Could not save result: {((create.error || update.error) as Error)?.message || 'Unknown error'}
+      </p>}
     </div>
   );
+}
+
+export function AdminResultReviewRow({ result, schoolId, disabled, onReviewed }: {
+  result: AcademicResultReviewItem;
+  schoolId: number;
+  disabled: boolean;
+  onReviewed: () => void;
+}) {
+  const [comment, setComment] = useState('');
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState('');
+  const review = async (decision: 'APPROVE' | 'RETURN') => {
+    setError('');
+    if (decision === 'RETURN' && !comment.trim()) {
+      setError('Add a comment explaining the correction required.');
+      return;
+    }
+    setPending(true);
+    try {
+      const response = await fetch(`/api/academic/results/${result.id}/review`, {
+        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schoolId, decision, comment: comment.trim() || null }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.error || `Could not review result (${response.status})`);
+      setComment('');
+      onReviewed();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Could not review result');
+    } finally {
+      setPending(false);
+    }
+  };
+  return <div className="flex flex-wrap items-center gap-3 p-4">
+    <div className="min-w-48 flex-1">
+      <div className="font-semibold text-sm">{result.studentName || `Student #${result.studentId}`} · {result.score}/{result.maxScore}</div>
+      <div className="text-xs text-[hsl(var(--muted-foreground))]">
+        {result.admissionNo ? `${result.admissionNo} · ` : ''}Grade {result.grade ?? '—'} · {result.reviewStatus || 'NOT_REVIEWED'}
+      </div>
+      {result.reviewComment && <p className="mt-1 text-xs">Previous review: {result.reviewComment}</p>}
+    </div>
+    {result.reviewStatus !== 'APPROVED' && <input
+      className="min-w-52 flex-1"
+      value={comment}
+      onChange={event => setComment(event.target.value)}
+        placeholder="Review comment (required to return)"
+      aria-label={`Review comment for result ${result.id}`}
+      disabled={pending || disabled}
+    />}
+    {result.reviewStatus === 'APPROVED' ? <StatusPill value="APPROVED" /> : (
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={() => review('RETURN')} disabled={pending || disabled} aria-label={`Return result ${result.id}`}>{pending ? 'Saving…' : 'Return'}</Button>
+        <Button onClick={() => review('APPROVE')} disabled={pending || disabled} aria-label={`Approve result ${result.id}`}>{pending ? 'Saving…' : 'Approve'}</Button>
+      </div>
+    )}
+    {error && <p role="alert" className="basis-full text-xs text-[hsl(var(--destructive))]">{error}</p>}
+  </div>;
 }
 
 function ReportCardsView({ schoolId }: { schoolId: number }) {

@@ -207,6 +207,104 @@ describe("school invitations", () => {
     );
   });
 
+  it("uses the selected same-school profile email and identity instead of client-supplied values", async () => {
+    mocks.poolQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("FROM schools")) return { rows: [{ id: 3 }] };
+      if (sql.includes("FROM parents") && sql.includes("name AS \"fullName\"")) {
+        return { rows: [{
+          personId: 71, fullName: "Grace Okafor", email: "grace@school.example",
+          phone: "+15551234567", status: "PENDING", userId: null,
+        }] };
+      }
+      if (sql.includes("FROM app_users")) return { rows: [] };
+      return { rows: [] };
+    });
+    mocks.clientQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("FROM parents") && sql.includes("id=$2") && sql.includes("lower(email)=lower($3)")) {
+        return { rows: [{ id: 71, userId: null }] };
+      }
+      return sqlResult(sql);
+    });
+
+    const result = await createSchoolInvitation({
+      schoolId: 3,
+      personId: 71,
+      email: "attacker@example.test",
+      fullName: "Impersonated Person",
+      phone: "+19999999999",
+      role: "PARENT",
+    }, schoolAdmin);
+
+    expect(result.email).toBe("grace@school.example");
+    expect(mocks.createInvitation).toHaveBeenCalledWith(expect.objectContaining({
+      emailAddress: "grace@school.example",
+      publicMetadata: expect.objectContaining({
+        edupulseSchoolInvitation: expect.objectContaining({
+          firstName: "Grace",
+          lastName: "Okafor",
+          emailProof: proof("grace@school.example"),
+        }),
+      }),
+    }));
+  });
+
+  it("rejects a selected profile outside the requested school before contacting Clerk", async () => {
+    mocks.poolQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("FROM schools")) return { rows: [{ id: 3 }] };
+      if (sql.includes("FROM parents") && sql.includes("name AS \"fullName\"")) return { rows: [] };
+      if (sql.includes("FROM app_users")) return { rows: [] };
+      return { rows: [] };
+    });
+    await expect(createSchoolInvitation({
+      schoolId: 3,
+      personId: 72,
+      email: "grace@school.example",
+      fullName: "Grace Okafor",
+      phone: "+15551234567",
+      role: "PARENT",
+    }, schoolAdmin)).rejects.toThrow("Selected school profile not found");
+    expect(mocks.createInvitation).not.toHaveBeenCalled();
+  });
+
+  it("reuses an accountant profile by selected ID and enforces its stored employee role", async () => {
+    mocks.poolQuery.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      if (sql.includes("FROM schools")) return { rows: [{ id: 3 }] };
+      if (sql.includes("FROM employees") && sql.includes("employee_type=$3")) {
+        return { rows: [{
+          personId: 73, fullName: "Samir Khan", email: "samir@school.example",
+          phone: null, status: "ACTIVE", userId: null, type: "ACCOUNTANT",
+        }] };
+      }
+      if (sql.includes("FROM app_users")) return { rows: [] };
+      return { rows: [] };
+    });
+    mocks.clientQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("FROM employees") && sql.includes("id=$2") && sql.includes("employee_type=$4")) {
+        return { rows: [{ id: 73, userId: null, type: "ACCOUNTANT", status: "ACTIVE", employeeNo: "AC-73" }] };
+      }
+      return sqlResult(sql);
+    });
+
+    await createSchoolInvitation({
+      schoolId: 3,
+      personId: 73,
+      email: "spoof@example.test",
+      fullName: "Different Person",
+      phone: null,
+      role: "ACCOUNTANT",
+    }, schoolAdmin);
+
+    expect(mocks.createInvitation).toHaveBeenCalledWith(expect.objectContaining({
+      emailAddress: "samir@school.example",
+      publicMetadata: expect.objectContaining({
+        edupulseSchoolInvitation: expect.objectContaining({
+          role: "ACCOUNTANT",
+          employeeNo: expect.stringMatching(/^INV-[A-F0-9]{16}$/),
+        }),
+      }),
+    }));
+  });
+
   it.each([
     { role: "SCHOOL_ADMIN" as const, actor: owner, email: "new-admin@example.test" },
     { role: "TEACHER" as const, actor: schoolAdmin, email: "teacher@example.test" },
@@ -301,6 +399,19 @@ describe("school invitations", () => {
       mocks.clientQuery.mockImplementation(async (sql: string) => {
         if (sql.includes("FROM parents") && sql.includes("school_id=$1")) {
           return { rows: [{ id: 76, userId: null }] };
+        }
+        return sqlResult(sql);
+      });
+    } else if (role === "ACCOUNTANT") {
+      mocks.clientQuery.mockImplementation(async (sql: string) => {
+        if (sql.includes("FROM employees") && sql.includes("FOR UPDATE")) {
+          return { rows: [{
+            id: 91,
+            userId: null,
+            type: "ACCOUNTANT",
+            status: "ACTIVE",
+            employeeNo: "ACC-91",
+          }] };
         }
         return sqlResult(sql);
       });

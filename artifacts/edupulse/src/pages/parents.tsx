@@ -2,7 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { UsersRound, Plus, Search, Pencil, ArrowRight } from 'lucide-react';
 import { 
-  useListParents, useCreateParent, useUpdateParent, getListParentsQueryKey 
+  useListParents, useCreateParent, useUpdateParent, getListParentsQueryKey,
+  useListStudents, getListStudentsQueryKey,
 } from '@workspace/api-client-react';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, 
@@ -92,9 +93,14 @@ export function ParentsPage() {
                     <span className="text-xs text-[hsl(var(--muted-foreground))]">enrolled</span>
                   </div>
                 </div>
-                {canManageSchool && <Button variant="quiet" onClick={() => setModal(parent)} testId={`button-edit-parent-${parent.id}`}>
-                  <Pencil size={15} />Edit
-                </Button>}
+                {canManageSchool && <div className="flex gap-2">
+                  <Button variant="quiet" onClick={() => setModal({ linkChildren: true, parent })} testId={`button-link-parent-children-${parent.id}`}>
+                    <ArrowRight size={15} />Link children
+                  </Button>
+                  <Button variant="quiet" onClick={() => setModal(parent)} testId={`button-edit-parent-${parent.id}`}>
+                    <Pencil size={15} />Edit
+                  </Button>
+                </div>}
               </div>
             )) : (
               <EmptyState 
@@ -107,14 +113,90 @@ export function ParentsPage() {
           </div>
           
           {canManageSchool && modal && (
-            <Modal title={modal.create ? 'Register parent' : 'Edit parent profile'} eyebrow="Community Records" onClose={() => setModal(null)}>
-              <ParentForm schoolId={schoolId} initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />
+            <Modal title={modal.linkChildren ? `Link children to ${modal.parent.name}` : modal.create ? 'Register parent' : 'Edit parent profile'} eyebrow="Community Records" onClose={() => setModal(null)}>
+              {modal.linkChildren
+                ? <ParentChildrenForm schoolId={schoolId} parent={modal.parent} onDone={done} onCancel={() => setModal(null)} />
+                : <ParentForm schoolId={schoolId} initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />}
             </Modal>
           )}
         </>
       )}
     </div>
   );
+}
+
+function ParentChildrenForm({ schoolId, parent, onDone, onCancel }: {
+  schoolId: number;
+  parent: any;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const studentsQuery = useListStudents(
+    { schoolId, status: 'ACTIVE' },
+    { query: { enabled: !!schoolId, queryKey: getListStudentsQueryKey({ schoolId, status: 'ACTIVE' }) } },
+  );
+  const [selected, setSelected] = useState<number[]>([]);
+  const [relationshipType, setRelationshipType] = useState('Guardian');
+  const [error, setError] = useState('');
+  const [pending, setPending] = useState(false);
+
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
+    setError('');
+    setPending(true);
+    try {
+      const response = await fetch(`/api/parents/${parent.id}/children?schoolId=${schoolId}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentIds: selected, relationshipType }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || `Could not link children (${response.status})`);
+      onDone();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not link children');
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return <form onSubmit={save} className="space-y-4">
+    <p className="text-sm text-[hsl(var(--muted-foreground))]">
+      Link existing students to this parent profile. This does not create another account or send an invitation.
+    </p>
+    <Field label="Relationship">
+      <select value={relationshipType} onChange={event => setRelationshipType(event.target.value)}>
+        <option>Guardian</option><option>Mother</option><option>Father</option><option>Grandparent</option><option>Other</option>
+      </select>
+    </Field>
+    {studentsQuery.isLoading ? <p role="status">Loading school students…</p> : studentsQuery.isError ? (
+      <p className="text-sm text-[hsl(var(--destructive))]">Could not load this school&apos;s students.</p>
+    ) : (
+      <div className="max-h-64 overflow-auto rounded-xl border border-[hsl(var(--border))] p-3 space-y-2">
+        {(studentsQuery.data ?? []).map((student: any) => (
+          <label key={student.id} className="flex items-center gap-3 text-sm">
+            <input
+              type="checkbox"
+              checked={selected.includes(student.id)}
+              onChange={event => setSelected(current => event.target.checked
+                ? [...current, student.id]
+                : current.filter(id => id !== student.id))}
+            />
+            {student.firstName} {student.lastName} · {student.admissionNo} · {student.className}
+          </label>
+        ))}
+        {!(studentsQuery.data ?? []).length && <p className="text-sm text-[hsl(var(--muted-foreground))]">No active students found.</p>}
+      </div>
+    )}
+    {error && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{error}</p>}
+    <div className="flex justify-end gap-3 pt-4 border-t border-[hsl(var(--border))]">
+      <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+      <Button type="submit" disabled={pending || studentsQuery.isLoading || !selected.length}>
+        {pending ? 'Linking…' : 'Link selected students'}
+      </Button>
+    </div>
+  </form>;
 }
 
 function ParentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number; initial?: any; onDone: () => void; onCancel: () => void }) {

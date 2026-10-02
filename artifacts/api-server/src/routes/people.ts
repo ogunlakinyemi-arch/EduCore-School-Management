@@ -49,7 +49,9 @@ const employeeSelect = `
   e.first_name AS "firstName", e.middle_name AS "middleName", e.last_name AS "lastName",
   e.employee_type AS "type", e.phone, e.email, e.address, e.photo AS "photoUrl",
   e.gender, e.employment_status AS "status", e.date_employed AS "dateEmployed",
-  e.department, e.qualification, e.user_id AS "userId"`;
+  e.department, e.qualification, e.user_id AS "userId",
+  (SELECT CASE WHEN au.clerk_user_id IS NULL THEN 'PENDING' ELSE au.status END
+     FROM app_users au WHERE au.id=e.user_id) AS "accountStatus"`;
 const employeeReturning = `
   id, school_id AS "schoolId", employee_no AS "employeeId",
   first_name AS "firstName", middle_name AS "middleName", last_name AS "lastName",

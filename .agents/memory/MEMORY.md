@@ -16,7 +16,7 @@
 - [Vite cartographer JSX generics](vite-cartographer-jsx-generics.md) — development metadata injection can break generic JSX elements even when typecheck and production build pass.
 - [Same-day class history](same-day-class-history.md) — attendance reports must not attribute an earlier event to a class a student joined later that day.
 - [Disposable PostgreSQL process lifetime](disposable-postgres-lifetime.md) — one-off shell launches can die after the call; use a tracked background task for migration tests.
-- [Schema dump restrict tokens](pg-dump-restrict-tokens.md) — normalize generated pg_dump restrict delimiters before deciding a schema changed.
+- [Schema dump controls](pg-dump-restrict-tokens.md) — normalize restrict delimiters for comparisons; persistent-client replays also leave the search path empty.
 - [Webhook-independent test checkout](webhook-independent-test-checkout.md) — TEST checkout can use independent backend verification while missing webhook authentication fails closed.
 - [Owner membership history](owner-membership-history.md) — preserve an earlier Owner's membership as inactive history when reconciling a verified replacement identity.
 - [Authorization cache lifecycle](authorization-cache-lifecycle.md) — do not reset an active parent auth query when a child mounts; isolate cached authorization by signed-in identity.
@@ -30,3 +30,4 @@
 - [Financial verification depth](financial-verification-depth.md) — real DDL and routed settlement/refund replay checks are required; passing arithmetic tests are insufficient.
 - [Codegen check ordering](codegen-check-ordering.md) — finish API generation and shared-library builds before typechecking consuming apps; transient missing exports can be a race.
 - [EduCore extension requirements](educore-extension-requirements.md) — preserve existing-user activation; keep curriculum provenance, historical versions, and lesson-note progress distinct.
+- [Executable SQL evidence](executable-sql-evidence.md) — query mocks cannot prove matching or authorization-expression semantics; exercise fragile comparisons in PostgreSQL.

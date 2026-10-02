@@ -8,13 +8,20 @@ const state = vi.hoisted(() => ({
   potentialDuplicate: false,
   failAdmissionNo: "",
   parentStudentExists: false,
+  generatedAdmissions: [] as string[],
 }));
 
 const clientMock = vi.hoisted(() => ({
   query: vi.fn(async (sql: string, values: unknown[] = []) => {
     state.clientCalls.push({ sql, values });
+    if (sql.includes("COALESCE(MAX((substring(admission_no FROM $2))::bigint)")) {
+      const sequence = Math.max(0, ...state.generatedAdmissions
+        .map(value => Number(value.match(/^ADM-1-(\d+)$/)?.[1] ?? 0)));
+      return { rows: [{ sequence }] };
+    }
     if (sql.includes("INSERT INTO students")) {
       if (values[1] === state.failAdmissionNo) throw new Error("synthetic row insert failure");
+      state.generatedAdmissions.push(String(values[1]));
       return { rows: [{ id: 901 }] };
     }
     if (sql.includes("INSERT INTO parents")) return { rows: [{ id: 902 }] };
@@ -118,6 +125,7 @@ beforeEach(() => {
   state.potentialDuplicate = false;
   state.failAdmissionNo = "";
   state.parentStudentExists = false;
+  state.generatedAdmissions = [];
   poolMock.query.mockClear();
   clientMock.query.mockClear();
   clientMock.release.mockClear();
@@ -233,6 +241,7 @@ describe("school-admin people import routes", () => {
     expect(state.clientCalls[0].sql).toBe("BEGIN");
     expect(state.clientCalls.some(({ sql }) => sql.includes("SAVEPOINT import_row_0"))).toBe(true);
     expect(state.clientCalls.some(({ sql }) => sql.includes("INSERT INTO students"))).toBe(true);
+    expect(state.clientCalls.find(({ sql }) => sql.includes("INSERT INTO students"))?.values[1]).toBe("A-100");
     const audit = state.clientCalls.find(({ sql }) => sql.includes("INSERT INTO audit_logs"));
     expect(audit).toBeDefined();
     expect(audit?.values[4]).toContain("1 imported, 0 skipped, 0 failed");
@@ -250,6 +259,29 @@ describe("school-admin people import routes", () => {
       body: JSON.stringify({ previewId: preview.previewId, selectedRows: [0] }),
     });
     expect(reused.status).toBe(404);
+  });
+
+  it("previews generated-versus-preserved admission numbers and generates missing numbers in the import transaction", async () => {
+    const form = studentUpload({
+      firstName: "First Name",
+      lastName: "Last Name",
+      gender: "Gender",
+      className: "Class",
+      section: "Section",
+    });
+    form.set("file", new Blob([
+      "Admission No,First Name,Last Name,Gender,Class,Section\r\n,Ada,Okafor,female,Primary 5,Emerald\r\n",
+    ], { type: "text/csv" }), "students.csv");
+    const previewResponse = await call("/people/imports/preview?schoolId=1", { method: "POST", body: form });
+    const preview = await previewResponse.json() as any;
+    expect(preview.rows[0].values).toMatchObject({ admissionNo: null, admissionNoSource: "GENERATED" });
+    const confirmation = await call("/people/imports/confirm?schoolId=1", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ previewId: preview.previewId, selectedRows: [0] }),
+    });
+    expect(confirmation.status).toBe(200);
+    expect(state.clientCalls.find(({ sql }) => sql.includes("INSERT INTO students"))?.values[1]).toBe("ADM-1-000001");
   });
 
   it("persists the student status that was reviewed instead of activating every imported student", async () => {

@@ -7,6 +7,9 @@ const state = vi.hoisted(() => ({
   auditCount: 0,
   resultExists: false,
   published: false,
+  resultStatus: "DRAFT",
+  reviewStatus: "NOT_REVIEWED",
+  parentChildAuthorized: true,
   reportCard: {
     id: 80, schoolId: 1, studentId: 13, sessionId: 3, termId: 4,
     studentClassAssignmentId: 12, classId: 5, className: "JSS2", section: "Blue",
@@ -34,6 +37,18 @@ const poolMock = vi.hoisted(() => {
     }
     if (sql.includes("FROM employees e")) return result([{ id: 8 }]);
     if (sql.includes("FROM employees WHERE")) return result([{ id: 8 }]);
+    if (sql.includes("FROM parents WHERE user_id=$1 AND school_id=$2")) return result([{ id: 5 }]);
+    if (sql.includes("FROM students WHERE user_id=$1 AND school_id=$2")) return result([{ id: 13 }]);
+    if (sql.includes("FROM parents p JOIN parent_student_relationships")) {
+      return result(state.parentChildAuthorized ? [{ id: 1 }] : []);
+    }
+    if (sql.includes("count(*)::int AS count FROM academic_results")) return result([{ count: 0 }]);
+    if (sql.includes("FROM academic_results r")) {
+      return result([{ id: 55, schoolId: 1, studentId: 13, status: "PUBLISHED" }]);
+    }
+    if (sql.includes("FROM academic_results WHERE id=$1 AND school_id=$2 FOR UPDATE")) {
+      return result([{ id: 55, teacher_employee_id: 8, status: state.resultStatus, review_status: state.reviewStatus }]);
+    }
     if (sql.includes("FROM academic_results WHERE school_id=$1 AND assessment_id=$2")) {
       return result(state.resultExists ? [{ id: 55 }] : []);
     }
@@ -54,9 +69,24 @@ const poolMock = vi.hoisted(() => {
       state.reportCard = { ...state.reportCard, status: "PUBLISHED", publishedBy: 10, publishedAt: "2025-02-03T09:00:00.000Z" };
       return result([{ ...state.reportCard }]);
     }
+    if (sql.includes("UPDATE academic_results SET status='SUBMITTED'")) {
+      state.resultStatus = "SUBMITTED";
+      state.reviewStatus = "NOT_REVIEWED";
+      return result([{ id: 55, schoolId: 1, status: "SUBMITTED" }]);
+    }
+    if (sql.includes("UPDATE academic_results") && sql.includes("review_status=CASE")) {
+      const decision = String(values[0]);
+      state.resultStatus = decision === "RETURN" ? "DRAFT" : "SUBMITTED";
+      state.reviewStatus = decision === "RETURN" ? "RETURNED" : "APPROVED";
+      return result([{ id: 55, schoolId: 1, status: state.resultStatus }]);
+    }
     if (sql.includes("UPDATE academic_results SET status='PUBLISHED'")) {
-      state.published = true;
-      return result([{ id: 55, schoolId: 1, assessmentId: 21, studentId: 13, status: "PUBLISHED" }]);
+      if (state.resultStatus === "SUBMITTED" && state.reviewStatus === "APPROVED" && sql.includes("review_status='APPROVED'")) {
+        state.published = true;
+        state.resultStatus = "PUBLISHED";
+        return result([{ id: 55, schoolId: 1, assessmentId: 21, studentId: 13, status: "PUBLISHED" }]);
+      }
+      return result([]);
     }
     if (sql.includes("INSERT INTO audit_logs")) {
       state.auditCount += 1;
@@ -70,7 +100,6 @@ const poolMock = vi.hoisted(() => {
     }
     if (sql.includes("INSERT INTO academic_report_card_lines")) return result();
     if (sql.includes("FROM academic_report_card_lines")) return result([{ ...state.snapshotLine }]);
-    if (sql.includes("count(*)::int AS count FROM academic_results")) return result([{ count: 0 }]);
     throw new Error(`Unhandled test SQL: ${sql}`);
   };
   const client = {
@@ -130,6 +159,9 @@ beforeEach(() => {
   state.auditCount = 0;
   state.resultExists = false;
   state.published = false;
+  state.resultStatus = "DRAFT";
+  state.reviewStatus = "NOT_REVIEWED";
+  state.parentChildAuthorized = true;
   state.reportCard = {
     id: 80, schoolId: 1, studentId: 13, sessionId: 3, termId: 4,
     studentClassAssignmentId: 12, classId: 5, className: "JSS2", section: "Blue",
@@ -178,6 +210,40 @@ describe("academic result and report-card operations", () => {
     expect(state.queries).toHaveLength(0);
   });
 
+  it("limits family result-list reads to their own linked children and published rows", async () => {
+    const response = await fetch(`${baseUrl}/academic/results?schoolId=1&studentId=13`, {
+      headers: { "x-test-role": "PARENT", "x-test-school": "1" },
+    });
+    expect(response.status).toBe(200);
+    expect(state.queries.find(({ sql }) => sql.includes("FROM academic_results r") && sql.includes("SELECT r.id"))?.sql)
+      .toContain("r.status='PUBLISHED'");
+
+    state.queries = [];
+    state.parentChildAuthorized = false;
+    const forbidden = await fetch(`${baseUrl}/academic/results?schoolId=1&studentId=14`, {
+      headers: { "x-test-role": "PARENT", "x-test-school": "1" },
+    });
+    expect(forbidden.status).toBe(404);
+    expect(state.queries.some(({ sql }) => sql.includes("FROM academic_results r"))).toBe(false);
+  });
+
+  it("exposes student identity to School Admin review only and scopes the join to the school", async () => {
+    const queue = await fetch(`${baseUrl}/academic/results/review?schoolId=1&assessmentId=21`, {
+      headers: { "x-test-role": "SCHOOL_ADMIN", "x-test-school": "1" },
+    });
+    expect(queue.status).toBe(200);
+    const reviewQuery = state.queries.find(({ sql }) => sql.includes("r.review_status AS \"reviewStatus\""));
+    expect(reviewQuery?.sql).toContain("LEFT JOIN students st ON st.id=r.student_id AND st.school_id=r.school_id");
+    expect(reviewQuery?.sql).toContain("st.admission_no AS \"admissionNo\"");
+
+    state.queries = [];
+    const teacherQueue = await fetch(`${baseUrl}/academic/results/review?schoolId=1&assessmentId=21`, {
+      headers: { "x-test-role": "TEACHER", "x-test-school": "1" },
+    });
+    expect(teacherQueue.status).toBe(403);
+    expect(state.queries).toHaveLength(0);
+  });
+
   it("denies platform-owner result entry and grading-rule writes before database access", async () => {
     const result = await post("/academic/results", {
       schoolId: 1, assessmentId: 21, studentId: 13, score: 18,
@@ -195,12 +261,53 @@ describe("academic result and report-card operations", () => {
   });
 
   it("publishes results atomically and writes an audit record", async () => {
+    state.resultStatus = "SUBMITTED";
+    state.reviewStatus = "APPROVED";
     const response = await post("/academic/assessments/21/publish-results", { schoolId: 1 });
     expect(response.status).toBe(200);
     expect(state.published).toBe(true);
     expect(state.transactions).toEqual(["BEGIN", "COMMIT"]);
     expect(state.auditCount).toBe(1);
     expect((await response.json() as { publishedCount: number }).publishedCount).toBe(1);
+    expect(state.queries.find(({ sql }) => sql.includes("UPDATE academic_results SET status='PUBLISHED'"))?.sql)
+      .toContain("review_status='APPROVED'");
+  });
+
+  it("requires teacher submission and School Admin approval before a result is publishable", async () => {
+    const earlyPublish = await post("/academic/assessments/21/publish-results", { schoolId: 1 });
+    expect(earlyPublish.status).toBe(200);
+    expect((await earlyPublish.json() as { publishedCount: number }).publishedCount).toBe(0);
+    expect(state.published).toBe(false);
+
+    const submitted = await post("/academic/results/55/submit", { schoolId: 1 }, "TEACHER");
+    expect(submitted.status).toBe(200);
+    expect(state.resultStatus).toBe("SUBMITTED");
+
+    const approved = await post("/academic/results/55/review", {
+      schoolId: 1, decision: "APPROVE", comment: "Verified against the mark sheet",
+    });
+    expect(approved.status).toBe(200);
+    expect(state.reviewStatus).toBe("APPROVED");
+
+    const published = await post("/academic/assessments/21/publish-results", { schoolId: 1 });
+    expect(published.status).toBe(200);
+    expect(state.published).toBe(true);
+    expect(state.transactions).toContain("COMMIT");
+  });
+
+  it("requires admin comments when returning submitted work and records the returned state", async () => {
+    state.resultStatus = "SUBMITTED";
+    const missingComment = await post("/academic/results/55/review", { schoolId: 1, decision: "RETURN" });
+    expect(missingComment.status).toBe(400);
+    expect(state.resultStatus).toBe("SUBMITTED");
+
+    const response = await post("/academic/results/55/review", {
+      schoolId: 1, decision: "RETURN", comment: "Please verify the total.",
+    });
+    expect(response.status).toBe(200);
+    expect(state.resultStatus).toBe("DRAFT");
+    expect(state.reviewStatus).toBe("RETURNED");
+    expect((await response.json() as { reviewComment: string }).reviewComment).toBe("Please verify the total.");
   });
 
   it("builds report-card lines only from published results and snapshots context", async () => {

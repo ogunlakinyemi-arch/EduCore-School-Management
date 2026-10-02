@@ -18,6 +18,7 @@ import {
   type PreparedImportRow,
   type SchoolClass,
 } from "./people-import-service";
+import { generateAdmissionNumber } from "./admission-number";
 
 const router: IRouter = Router();
 router.use(requireAuthentication());
@@ -336,6 +337,13 @@ async function lockParentIdentifiers(
 async function saveRow(client: ImportDatabaseClient, preview: PendingPreview, row: PreparedImportRow): Promise<number> {
   const value = row.values;
   if (preview.kind === "students") {
+    const admissionNo = value.admissionNo
+      ? String(value.admissionNo)
+      : await generateAdmissionNumber(
+          client,
+          preview.schoolId,
+          preview.rows.map((candidate) => String(candidate.values.admissionNo ?? "")).filter(Boolean),
+        );
     const student = await client.query(
       `INSERT INTO students
         (school_id, admission_no, first_name, middle_name, last_name, date_of_birth, admission_date,
@@ -343,7 +351,7 @@ async function saveRow(client: ImportDatabaseClient, preview: PendingPreview, ro
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'ADMITTED')
        RETURNING id`,
       [
-        preview.schoolId, value.admissionNo, value.firstName, value.middleName, value.lastName,
+        preview.schoolId, admissionNo, value.firstName, value.middleName, value.lastName,
         value.dateOfBirth, value.admissionDate, value.gender, value.className, value.section,
         value.parentName, value.parentPhone, value.address, value.status,
       ],
@@ -477,6 +485,9 @@ router.post("/people/imports/confirm", asyncRoute(async (req, res) => {
   try {
     client = await acquireClient();
     await client.query("BEGIN");
+    if (pending.kind === "students") {
+      await client.query(`SELECT id FROM schools WHERE id=$1 FOR UPDATE`, [schoolId]);
+    }
     for (const row of pending.rows) {
       if (!unique.has(row.index)) {
         if (row.status === "INVALID") {

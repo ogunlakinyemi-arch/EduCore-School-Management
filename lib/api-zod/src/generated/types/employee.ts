@@ -10,6 +10,11 @@ import type { EmployeeStatus } from './employeeStatus';
 import type { EmployeeType } from './employeeType';
 
 export interface Employee {
+  /**
+     * Linked login account state
+     * @nullable
+     */
+  accountStatus?: string | null;
   id: number;
   schoolId: number;
   employeeId: string;

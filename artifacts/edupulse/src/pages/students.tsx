@@ -299,9 +299,12 @@ function StudentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number
   const create = useCreateStudent(); 
   const update = useUpdateStudent(); 
   const queryClient = useQueryClient();
+  const [contactPending, setContactPending] = useState(false);
+  const [contactError, setContactError] = useState('');
   
   const [form, setForm] = useState({ 
     admissionNo: initial?.admissionNo ?? '', 
+    email: initial?.email ?? '',
     firstName: initial?.firstName ?? '', 
     lastName: initial?.lastName ?? '', 
     gender: initial?.gender ?? 'female', 
@@ -312,24 +315,47 @@ function StudentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number
     status: initial?.status ?? 'ACTIVE' 
   });
   
-  const save = (e: FormEvent) => { 
+  const save = async (e: FormEvent) => {
     e.preventDefault(); 
     if (initial) {
-      update.mutate({ studentId: initial.id, params: { schoolId }, data: { firstName: form.firstName, lastName: form.lastName, className: form.className, section: form.section, status: form.status as any } }, { onSuccess: onDone }); 
+      setContactError('');
+      setContactPending(true);
+      try {
+        const response = await fetch(`/api/students/${initial.id}/contact?schoolId=${schoolId}`, {
+          method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: form.email.trim() || null }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result?.error || `Could not update student email (${response.status})`);
+        update.mutate({ studentId: initial.id, params: { schoolId }, data: { firstName: form.firstName, lastName: form.lastName, className: form.className, section: form.section, status: form.status as any } }, { onSuccess: onDone });
+      } catch (error) {
+        setContactError(error instanceof Error ? error.message : 'Could not update student email');
+      } finally {
+        setContactPending(false);
+      }
     } else {
-      create.mutate({ params: { schoolId }, data: form as any }, { onSuccess: onDone }); 
+      create.mutate({ params: { schoolId }, data: {
+        ...form,
+        admissionNo: form.admissionNo.trim() || undefined,
+        email: form.email.trim() || null,
+      } as any }, { onSuccess: onDone });
     }
   };
   
-  const pending = create.isPending || update.isPending;
+  const pending = create.isPending || update.isPending || contactPending;
 
   return (
     <form onSubmit={save} className="space-y-5">
       {!initial && (
         <Field label="Admission Number">
-          <input required minLength={2} value={form.admissionNo} onChange={e => setForm({ ...form, admissionNo: e.target.value })} placeholder="e.g. ADM/2024/001" className="font-mono" />
+          <input minLength={2} value={form.admissionNo} onChange={e => setForm({ ...form, admissionNo: e.target.value })} placeholder="Leave blank to generate automatically" className="font-mono" />
+          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">School admission numbers are generated automatically unless you provide an existing number.</p>
         </Field>
       )}
+      <Field label="Student Email (optional, for portal activation)">
+        <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="student@example.edu" />
+        <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Activation uses the email saved on this student profile; it cannot be re-entered in the invitation form.</p>
+      </Field>
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="First Name">
           <input required minLength={2} value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })} placeholder="First name" />
@@ -391,6 +417,7 @@ function StudentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number
         </Field>
       )}
 
+      {contactError && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{contactError}</p>}
       <div className="flex justify-end gap-3 pt-5 border-t border-[hsl(var(--border))]">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="submit" disabled={pending}>{pending ? 'Saving…' : initial ? 'Save changes' : 'Admit student'}</Button>

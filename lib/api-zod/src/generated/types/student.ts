@@ -15,6 +15,13 @@ export interface Student {
   id: number;
   schoolId: number;
   admissionNo: string;
+  /** @nullable */
+  email?: string | null;
+  /**
+     * Linked login account state
+     * @nullable
+     */
+  accountStatus?: string | null;
   firstName: string;
   lastName: string;
   /** @nullable */

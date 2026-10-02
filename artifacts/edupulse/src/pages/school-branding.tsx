@@ -144,7 +144,7 @@ export function SchoolBrandingPage() {
             <div className="eyebrow">Official details</div>
             <Field label="School name"><input required maxLength={200} value={form.name} onChange={e => set('name', e.target.value)} /></Field>
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Registration number"><input maxLength={100} value={form.registrationNumber} onChange={e => set('registrationNumber', e.target.value)} className="font-mono" /></Field>
+              <Field label="Registration number (permanent)"><input readOnly value={form.registrationNumber || 'Not recorded for this legacy school'} className="font-mono" /></Field>
               <Field label="School type"><input maxLength={100} value={form.schoolType} onChange={e => set('schoolType', e.target.value)} placeholder="e.g. Primary and Secondary" /></Field>
             </div>
             <Field label="Address"><input maxLength={500} value={form.address} onChange={e => set('address', e.target.value)} /></Field>

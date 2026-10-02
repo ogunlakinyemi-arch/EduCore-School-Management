@@ -14,15 +14,20 @@ export type SchoolUserInvitationInput = ({
 } | {
   role?: 'TEACHER' | 'ACCOUNTANT' | 'STAFF' | 'PARENT';
 }) & {
+  /**
+     * Existing same-school profile; identity is resolved by the server
+     * @minimum 1
+     */
+  personId: number;
   /** @minimum 1 */
   schoolId: number;
   /**
      * @minLength 2
      * @maxLength 120
      */
-  fullName: string;
+  fullName?: string;
   /** @maxLength 254 */
-  email: string;
+  email?: string;
   /**
      * @minLength 8
      * @maxLength 25

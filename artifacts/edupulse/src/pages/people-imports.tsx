@@ -40,7 +40,7 @@ type ImportResult = {
 
 const fields: Record<ImportKind, Array<{ key: string; label: string; required?: boolean; aliases: string[] }>> = {
   students: [
-    { key: "admissionNo", label: "Admission number", required: true, aliases: ["admissionno", "admissionnumber", "admissionid", "studentid"] },
+    { key: "admissionNo", label: "Admission number (optional; generated when blank)", aliases: ["admissionno", "admissionnumber", "admissionid", "studentid"] },
     { key: "firstName", label: "First name", required: true, aliases: ["firstname", "givenname"] },
     { key: "middleName", label: "Middle name", aliases: ["middlename", "othernames"] },
     { key: "lastName", label: "Last name", required: true, aliases: ["lastname", "surname", "familyname"] },

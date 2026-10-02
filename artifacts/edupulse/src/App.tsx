@@ -30,6 +30,9 @@ import { CompanyAccountantPage } from '@/pages/company-accountant';
 import { AcademicsPage } from '@/pages/academics';
 import { SubjectsPage } from '@/pages/subjects';
 import { AcademicWorkPage } from '@/pages/academic-work';
+import { CurriculumManagementPage } from '@/pages/curriculum-management';
+import { SchoolCurriculumPage } from '@/pages/school-curriculum';
+import { LessonNotesPage } from '@/pages/lesson-notes';
 import { ResultsPage } from '@/pages/results';
 import { TimetablePage } from '@/pages/timetable';
 import { MyAcademicsPage } from '@/pages/my-academics';
@@ -230,6 +233,9 @@ function ProtectedRoutes() {
           <Route path="/academic-calendar"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF', 'PARENT', 'STUDENT']} ownerCanView ownerReadOnly><AcademicCalendarPage /></RoleGuard></Route>
           <Route path="/teacher-assignments"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']}><TeacherAssignmentsPage /></RoleGuard></Route>
           <Route path="/teacher-duty"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']}><TeacherDutyPage /></RoleGuard></Route>
+          <Route path="/curriculum-management"><RoleGuard isPlatformOwnerOnly><CurriculumManagementPage /></RoleGuard></Route>
+          <Route path="/curriculum"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']}><SchoolCurriculumPage /></RoleGuard></Route>
+          <Route path="/lesson-notes"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']}><LessonNotesPage /></RoleGuard></Route>
           <Route path="/transport"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><TransportPage /></RoleGuard></Route>
           <Route path="/my-transport"><RoleGuard allowedRoles={['PARENT', 'STUDENT']}><FamilyTransportPage /></RoleGuard></Route>
           <Route path="/employee-nfc"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><EmployeeNfcPage /></RoleGuard></Route>

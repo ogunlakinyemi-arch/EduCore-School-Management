@@ -28,6 +28,17 @@ export function TeacherAssignedWork({ schoolId }: { schoolId: number }) {
               <div className="flex flex-wrap gap-2">{subjects.length ? subjects.map(s => <Link key={s} href="/subjects" className="rounded-xl bg-[hsl(var(--secondary))] px-3 py-1.5 text-sm font-bold">{s}</Link>) : <span className="text-sm text-[hsl(var(--muted-foreground))]">None</span>}</div></div>
           </div>
         )}
+      <nav aria-label="My academic responsibilities" className="mt-6 flex flex-wrap gap-3 border-t border-[hsl(var(--border))] pt-4">
+        {[
+          ['/curriculum', 'My Curriculum'],
+          ['/lesson-notes', 'My Lesson Notes'],
+          ['/results', 'My Results'],
+          ['/students', 'Assigned students'],
+          ['/timetable', 'My Timetable'],
+          ['/teacher-duty', 'My Duty Roster'],
+          ['/academic-work', 'Academic responsibilities'],
+        ].map(([href, title]) => <Link key={href} href={href} className="rounded-xl bg-[hsl(var(--secondary))] px-3 py-2 text-sm font-bold hover:underline">{title}</Link>)}
+      </nav>
     </section>
   );
 }

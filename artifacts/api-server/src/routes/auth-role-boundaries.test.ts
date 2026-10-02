@@ -222,7 +222,7 @@ describe("school role and parent relationship authorization", () => {
 
   it("denies Owner ordinary school-role invitation, grant, reactivation, and role changes", async () => {
     expect((await call("/school-users/invitations", "POST", {
-      schoolId: 1, email: "teacher@example.test", fullName: "School Teacher", role: "TEACHER",
+      schoolId: 1, email: "teacher@example.test", fullName: "School Teacher", role: "TEACHER", personId: 12,
     })).status).toBe(404);
     expect((await call("/school-users", "POST", { schoolId: 1, userId: 70, role: "TEACHER" })).status).toBe(404);
     expect((await call("/school-users/70/status", "PATCH", { schoolId: 1, status: "ACTIVE" })).status).toBe(404);
@@ -235,9 +235,13 @@ describe("school role and parent relationship authorization", () => {
   it("allows School Admin scoped invitations and membership grants", async () => {
     expect((await call("/school-users/invitations", "POST", {
       schoolId: 1, email: "teacher@example.test", fullName: "School Teacher", role: "TEACHER",
+    }, "SCHOOL_ADMIN")).status).toBe(400);
+    expect(state.createSchoolInvitation).not.toHaveBeenCalled();
+    expect((await call("/school-users/invitations", "POST", {
+      schoolId: 1, role: "TEACHER", personId: 12,
     }, "SCHOOL_ADMIN")).status).toBe(202);
     expect(state.createSchoolInvitation).toHaveBeenCalledWith(
-      expect.objectContaining({ schoolId: 1, role: "TEACHER" }),
+      expect.objectContaining({ schoolId: 1, role: "TEACHER", personId: 12 }),
       expect.anything(),
     );
     expect((await call("/school-users", "POST", { schoolId: 1, userId: 71, role: "TEACHER" }, "SCHOOL_ADMIN")).status).toBe(201);
@@ -249,19 +253,20 @@ describe("school role and parent relationship authorization", () => {
 
   it("allows only a School Admin to invite an existing Student profile", async () => {
     expect((await call("/school-users/invitations", "POST", {
-      schoolId: 1, email: "student@example.test", fullName: "Student One", role: "STUDENT", studentId: 11,
+      schoolId: 1, email: "student@example.test", fullName: "Student One", role: "STUDENT", personId: 11, studentId: 11,
     }, "SCHOOL_ADMIN")).status).toBe(202);
     expect(state.createSchoolInvitation).toHaveBeenCalledWith(
       expect.objectContaining({
         schoolId: 1,
         email: "student@example.test",
         role: "STUDENT",
+        personId: 11,
         studentId: 11,
       }),
       expect.anything(),
     );
     expect((await call("/school-users/invitations", "POST", {
-      schoolId: 1, email: "student@example.test", fullName: "Student One", role: "STUDENT", studentId: 11,
+      schoolId: 1, email: "student@example.test", fullName: "Student One", role: "STUDENT", personId: 11, studentId: 11,
     })).status).toBe(404);
   });
 

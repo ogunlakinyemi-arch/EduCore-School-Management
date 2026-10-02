@@ -29,3 +29,4 @@ export * from "./school-workflows";
 export * from "./transport";
 export * from "./settlement-payroll";
 export * from "./student-subscription-billing";
+export * from "./curriculum-learning";

@@ -1,0 +1,822 @@
+openapi: 3.1.0
+info:
+  title: Curriculum and Weekly Lesson Notes API Contract Fragment
+  version: 1.0.0
+servers:
+  - url: /api
+tags:
+  - name: Curriculum Library
+  - name: Lesson Notes
+paths:
+  /curriculum/versions:
+    get:
+      operationId: listCurriculumVersions
+      tags: [Curriculum Library]
+      parameters:
+        - $ref: "#/components/parameters/status"
+      responses:
+        "200":
+          description: Curriculum versions available to an authorized owner.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CurriculumVersion" }
+    post:
+      operationId: createCurriculumVersion
+      tags: [Curriculum Library]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CurriculumVersionInput" }
+      responses:
+        "201":
+          description: Draft version created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CurriculumVersion" }
+  /curriculum/versions/{versionId}:
+    get:
+      operationId: getCurriculumVersion
+      tags: [Curriculum Library]
+      parameters:
+        - $ref: "#/components/parameters/versionId"
+      responses:
+        "200":
+          description: Curriculum version with topics and source metadata.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CurriculumVersionDetail" }
+        "404": { description: Version not found }
+    patch:
+      operationId: updateCurriculumVersion
+      tags: [Curriculum Library]
+      parameters:
+        - $ref: "#/components/parameters/versionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CurriculumVersionInput" }
+      responses:
+        "200":
+          description: Updated draft version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CurriculumVersion" }
+        "409": { description: Published or archived versions are immutable }
+  /curriculum/versions/{versionId}/topics:
+    post:
+      operationId: addCurriculumTopic
+      tags: [Curriculum Library]
+      parameters:
+        - $ref: "#/components/parameters/versionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CurriculumTopicInput" }
+      responses:
+        "201":
+          description: Topic added to a draft version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CurriculumTopic" }
+  /curriculum/versions/{versionId}/topics/{topicId}:
+    patch:
+      operationId: updateCurriculumTopic
+      tags: [Curriculum Library]
+      parameters:
+        - $ref: "#/components/parameters/versionId"
+        - name: topicId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CurriculumTopicInput" }
+      responses:
+        "200":
+          description: Corrected extracted topic on a draft version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CurriculumTopic" }
+  /curriculum/versions/{versionId}/publish:
+    post:
+      operationId: publishCurriculumVersion
+      tags: [Curriculum Library]
+      parameters:
+        - $ref: "#/components/parameters/versionId"
+      responses:
+        "200":
+          description: Published version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CurriculumVersion" }
+  /curriculum/versions/{versionId}/archive:
+    post:
+      operationId: archiveCurriculumVersion
+      tags: [Curriculum Library]
+      parameters:
+        - $ref: "#/components/parameters/versionId"
+      responses:
+        "200":
+          description: Archived version; historical references remain valid.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CurriculumVersion" }
+  /curriculum/versions/{versionId}/clone:
+    post:
+      operationId: cloneCurriculumVersion
+      tags: [Curriculum Library]
+      parameters:
+        - $ref: "#/components/parameters/versionId"
+      responses:
+        "201":
+          description: New editable draft cloned from the version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CurriculumVersionDetail" }
+  /curriculum/imports/preview:
+    post:
+      operationId: previewCurriculumImport
+      tags: [Curriculum Library]
+      description: Authenticated Platform Owner only. Bounded multipart document upload is saved in private App Storage; readable PDF extraction is reviewed, never fabricated.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "200":
+          description: Extracted rows and detected column mapping for human review.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CurriculumImportPreview" }
+  /curriculum/imports/{importId}/confirm:
+    post:
+      operationId: confirmCurriculumImport
+      tags: [Curriculum Library]
+      parameters:
+        - name: importId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CurriculumImportConfirmInput" }
+      responses:
+        "201":
+          description: Draft curriculum version created from confirmed extraction.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CurriculumVersionDetail" }
+  /curriculum/imports/{importId}/download:
+    get:
+      operationId: downloadCurriculumSourceDocument
+      tags: [Curriculum Library]
+      parameters:
+        - name: importId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Authenticated owner download of the private source document.
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+  /schools/{schoolId}/curriculum:
+    get:
+      operationId: listSchoolCurriculumMappings
+      tags: [Curriculum Library]
+      parameters:
+        - $ref: "#/components/parameters/schoolId"
+        - { name: classId, in: query, schema: { type: integer } }
+        - { name: subjectId, in: query, schema: { type: integer } }
+        - { name: sessionId, in: query, schema: { type: integer } }
+        - { name: termId, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: School Admin mappings; teachers receive only their authorized class/subject mappings.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SchoolCurriculumMapping" }
+    post:
+      operationId: assignSchoolCurriculum
+      tags: [Curriculum Library]
+      parameters:
+        - $ref: "#/components/parameters/schoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SchoolCurriculumMappingInput" }
+      responses:
+        "201":
+          description: School-specific version mapping confirmed by a School Admin.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolCurriculumMapping" }
+  /schools/{schoolId}/curriculum/teaching-context:
+    get:
+      operationId: listTeacherCurriculumTeachingContext
+      tags: [Curriculum Library]
+      description: Returns class/subject pairs authorized by the signed-in teacher's active employee and exact active class, subject, section, session, and term assignments. Parents, students, School Admin-only users, and Platform Owners cannot use this endpoint.
+      parameters:
+        - $ref: "#/components/parameters/schoolId"
+        - name: sessionId
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: termId
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Exact authorized teaching contexts for the current teacher.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CurriculumTeachingContext" }
+  /schools/{schoolId}/curriculum/catalog:
+    get:
+      operationId: listSchoolCurriculumCatalog
+      tags: [Curriculum Library]
+      parameters:
+        - $ref: "#/components/parameters/schoolId"
+        - { name: classId, in: query, schema: { type: integer } }
+        - { name: subjectId, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Published global curriculum versions applicable to the School Admin's class/subject filters.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CurriculumVersion" }
+  /schools/{schoolId}/curriculum/{mappingId}/topics:
+    get:
+      operationId: listSchoolCurriculumTopics
+      tags: [Curriculum Library]
+      parameters:
+        - $ref: "#/components/parameters/schoolId"
+        - name: mappingId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Applicable official topics, separately labeled school-specific additions, and explicit progress.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolCurriculumTopicsResponse" }
+    post:
+      operationId: addSchoolCurriculumTopic
+      tags: [Curriculum Library]
+      parameters:
+        - $ref: "#/components/parameters/schoolId"
+        - name: mappingId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SchoolCurriculumTopicInput" }
+      responses:
+        "201":
+          description: Clearly labeled school-specific curriculum addition.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CurriculumTopic" }
+  /schools/{schoolId}/curriculum/{mappingId}/progress:
+    post:
+      operationId: recordCurriculumProgress
+      tags: [Curriculum Library]
+      parameters:
+        - $ref: "#/components/parameters/schoolId"
+        - name: mappingId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CurriculumProgressInput" }
+      responses:
+        "201":
+          description: Explicit teaching progress action; note creation never changes progress.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CurriculumProgress" }
+  /schools/{schoolId}/lesson-notes:
+    get:
+      operationId: listLessonNotes
+      tags: [Lesson Notes]
+      parameters:
+        - $ref: "#/components/parameters/schoolId"
+        - { name: sessionId, in: query, schema: { type: integer } }
+        - { name: termId, in: query, schema: { type: integer } }
+        - { name: week, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: teacherId, in: query, schema: { type: integer } }
+        - { name: classId, in: query, schema: { type: integer } }
+        - { name: subjectId, in: query, schema: { type: integer } }
+        - { name: status, in: query, schema: { type: string, enum: [DRAFT, SUBMITTED, RETURNED, RESUBMITTED, APPROVED, ARCHIVED] } }
+      responses:
+        "200":
+          description: Private teacher/admin lesson-note workflow rows; parent/student roles are denied.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LessonNote" }
+    post:
+      operationId: createLessonNote
+      tags: [Lesson Notes]
+      parameters:
+        - $ref: "#/components/parameters/schoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LessonNoteInput" }
+      responses:
+        "201":
+          description: Teacher-owned draft, pinned to its curriculum version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LessonNote" }
+  /schools/{schoolId}/lesson-notes/{noteId}:
+    get:
+      operationId: getLessonNote
+      tags: [Lesson Notes]
+      parameters:
+        - $ref: "#/components/parameters/schoolId"
+        - $ref: "#/components/parameters/noteId"
+      responses:
+        "200":
+          description: Note and authorized review history.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LessonNoteDetail" }
+    patch:
+      operationId: updateLessonNote
+      tags: [Lesson Notes]
+      parameters:
+        - $ref: "#/components/parameters/schoolId"
+        - $ref: "#/components/parameters/noteId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LessonNoteUpdate" }
+      responses:
+        "200":
+          description: Updated teacher-owned draft or returned note.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LessonNote" }
+  /schools/{schoolId}/lesson-notes/{noteId}/submit:
+    post:
+      operationId: submitLessonNote
+      tags: [Lesson Notes]
+      parameters:
+        - $ref: "#/components/parameters/schoolId"
+        - $ref: "#/components/parameters/noteId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LessonNoteTransitionInput" }
+      responses:
+        "200":
+          description: Submitted or resubmitted valid note.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LessonNote" }
+  /schools/{schoolId}/lesson-notes/{noteId}/review:
+    post:
+      operationId: reviewLessonNote
+      tags: [Lesson Notes]
+      parameters:
+        - $ref: "#/components/parameters/schoolId"
+        - $ref: "#/components/parameters/noteId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LessonNoteReviewInput" }
+      responses:
+        "200":
+          description: Admin approval or return; a return requires a comment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LessonNoteDetail" }
+  /schools/{schoolId}/lesson-notes/{noteId}/archive:
+    post:
+      operationId: archiveLessonNote
+      tags: [Lesson Notes]
+      parameters:
+        - $ref: "#/components/parameters/schoolId"
+        - $ref: "#/components/parameters/noteId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LessonNoteTransitionInput" }
+      responses:
+        "200":
+          description: Approved note archived without altering its content or history.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LessonNote" }
+  /schools/{schoolId}/lesson-notes/monitoring:
+    get:
+      operationId: getLessonNoteMonitoring
+      tags: [Lesson Notes]
+      parameters:
+        - $ref: "#/components/parameters/schoolId"
+        - { name: sessionId, in: query, required: true, schema: { type: integer } }
+        - { name: termId, in: query, required: true, schema: { type: integer } }
+        - { name: week, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: teacherId, in: query, schema: { type: integer } }
+        - { name: classId, in: query, schema: { type: integer } }
+        - { name: subjectId, in: query, schema: { type: integer } }
+        - { name: status, in: query, schema: { type: string, enum: [DRAFT, SUBMITTED, RETURNED, RESUBMITTED, APPROVED, ARCHIVED, MISSING] } }
+      responses:
+        "200":
+          description: Expected assignment-by-week rows, including MISSING submissions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LessonNoteMonitoringRow" }
+  /schools/{schoolId}/lesson-notes/reminders:
+    post:
+      operationId: sendWeeklyLessonNoteReminders
+      tags: [Lesson Notes]
+      parameters:
+        - $ref: "#/components/parameters/schoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LessonNoteReminderInput" }
+      responses:
+        "200":
+          description: Idempotently queues reminders for expected assignments without an approved weekly note.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LessonNoteReminderResult" }
+components:
+  parameters:
+    schoolId:
+      name: schoolId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    versionId:
+      name: versionId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    noteId:
+      name: noteId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    status:
+      name: status
+      in: query
+      schema: { type: string, enum: [DRAFT, PUBLISHED, ARCHIVED] }
+  schemas:
+    CurriculumVersionInput:
+      type: object
+      required: [title, educationLevel, sourceKind, sourceOrganization, sourceReference]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 250 }
+        educationLevel: { type: string, enum: [PRIMARY, JSS, SSS, OTHER] }
+        classLevels: { type: array, items: { type: string }, description: Class-level applicability, e.g. Primary 1 or JSS2 }
+        subjectCodes: { type: array, items: { type: string }, description: Configurable subject code/name applicability }
+        sourceKind: { type: string, enum: [OFFICIAL, SCHOOL_SPECIFIC, EDUCORE_SEQUENCE, AI_ASSISTANCE] }
+        sourceOrganization: { type: string, minLength: 1, maxLength: 250 }
+        sourceReference: { type: string, minLength: 1, maxLength: 2000 }
+        sourceVersion: { type: ["string", "null"], maxLength: 150 }
+        effectiveDate: { type: ["string", "null"], format: date }
+        verifiedDate: { type: ["string", "null"], format: date }
+        description: { type: ["string", "null"], maxLength: 10000 }
+        derivedFromVersionId: { type: ["integer", "null"], minimum: 1 }
+    CurriculumVersion:
+      type: object
+      required: [id, title, educationLevel, sourceKind, sourceOrganization, sourceReference, status, classLevels, subjectCodes, createdAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        educationLevel: { type: string }
+        classLevels: { type: array, items: { type: string } }
+        subjectCodes: { type: array, items: { type: string } }
+        sourceKind: { type: string }
+        sourceOrganization: { type: string }
+        sourceReference: { type: string }
+        sourceVersion: { type: ["string", "null"] }
+        effectiveDate: { type: ["string", "null"], format: date }
+        verifiedDate: { type: ["string", "null"], format: date }
+        description: { type: ["string", "null"] }
+        status: { type: string, enum: [DRAFT, PUBLISHED, ARCHIVED] }
+        derivedFromVersionId: { type: ["integer", "null"] }
+        sourceDocumentPath: { type: ["string", "null"], description: Private object path, never public URL }
+        sourceImportId: { type: ["integer", "null"], description: Source document import reference }
+        createdAt: { type: string, format: date-time }
+        publishedAt: { type: ["string", "null"], format: date-time }
+        archivedAt: { type: ["string", "null"], format: date-time }
+    CurriculumVersionDetail:
+      allOf:
+        - $ref: "#/components/schemas/CurriculumVersion"
+        - type: object
+          properties:
+            topics:
+              type: array
+              items: { $ref: "#/components/schemas/CurriculumTopic" }
+    CurriculumTopicInput:
+      type: object
+      required: [classLevel, subjectCode, title]
+      properties:
+        classLevel: { type: string, minLength: 1, maxLength: 100 }
+        subjectCode: { type: string, minLength: 1, maxLength: 100 }
+        parentTopicId: { type: ["integer", "null"], minimum: 1 }
+        title: { type: string, minLength: 1, maxLength: 250 }
+        learningObjectives: { type: array, items: { type: string } }
+        learningOutcomes: { type: array, items: { type: string } }
+        suggestedResources: { type: array, items: { type: string } }
+        sequenceOrder: { type: integer, minimum: 0 }
+    CurriculumTopic:
+      type: object
+      required: [id, classLevel, subjectCode, title, sourceKind]
+      properties:
+        id: { type: integer }
+        classLevel: { type: string }
+        subjectCode: { type: string }
+        parentTopicId: { type: ["integer", "null"] }
+        title: { type: string }
+        learningObjectives: { type: array, items: { type: string } }
+        learningOutcomes: { type: array, items: { type: string } }
+        suggestedResources: { type: array, items: { type: string } }
+        sequenceOrder: { type: integer }
+        sourceKind: { type: string, enum: [OFFICIAL, SCHOOL_SPECIFIC, EDUCORE_SEQUENCE, AI_ASSISTANCE] }
+        progressStatus: { type: string, enum: [PLANNED, IN_PROGRESS, COMPLETED, DEFERRED] }
+        completedDate: { type: ["string", "null"], format: date }
+        progressComment: { type: ["string", "null"] }
+    CurriculumImportPreviewInput:
+      type: object
+      required: [filename, contentType, objectPath]
+      properties:
+        filename: { type: string, maxLength: 180 }
+        contentType: { type: string }
+        objectPath: { type: string, pattern: "^/objects/" }
+    CurriculumImportPreview:
+      type: object
+      required: [importId, detectedType, headers, rows, mapping, warnings]
+      properties:
+        importId: { type: integer }
+        detectedType: { type: string, enum: [csv, xlsx, pdf] }
+        headers: { type: array, items: { type: string } }
+        rows: { type: array, items: { type: object, additionalProperties: { type: string } } }
+        mapping: { type: object, additionalProperties: { type: string } }
+        warnings: { type: array, items: { type: string } }
+    CurriculumImportConfirmInput:
+      type: object
+      required: [version, mapping, reviewerConfirmed]
+      properties:
+        version: { $ref: "#/components/schemas/CurriculumVersionInput" }
+        mapping: { type: object, additionalProperties: { type: string } }
+        reviewerConfirmed: { type: boolean, const: true }
+        correctedRows:
+          type: array
+          minItems: 1
+          maxItems: 5000
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              classLevel: { type: string, maxLength: 2000 }
+              subjectCode: { type: string, maxLength: 2000 }
+              title: { type: string, maxLength: 2000 }
+              learningObjectives: { type: string, maxLength: 2000 }
+              learningOutcomes: { type: string, maxLength: 2000 }
+              suggestedResources: { type: string, maxLength: 2000 }
+    CurriculumTeachingContext:
+      type: object
+      required: [classId, className, section, subjectId, subjectName, subjectCode, sessionId, termId]
+      properties:
+        classId: { type: integer }
+        className: { type: string }
+        section: { type: ["string", "null"] }
+        subjectId: { type: integer }
+        subjectName: { type: string }
+        subjectCode: { type: string }
+        sessionId: { type: integer }
+        termId: { type: integer }
+    SchoolCurriculumMappingInput:
+      type: object
+      required: [versionId, classId, subjectId, sessionId, termId]
+      properties:
+        versionId: { type: integer, minimum: 1 }
+        classId: { type: integer, minimum: 1 }
+        subjectId: { type: integer, minimum: 1 }
+        sessionId: { type: integer, minimum: 1 }
+        termId: { type: integer, minimum: 1 }
+    SchoolCurriculumMapping:
+      type: object
+      required: [id, schoolId, versionId, classId, subjectId, sessionId, termId, status, confirmedAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        versionId: { type: integer }
+        classId: { type: integer }
+        subjectId: { type: integer }
+        sessionId: { type: integer }
+        termId: { type: integer }
+        status: { type: string, enum: [ACTIVE, ARCHIVED] }
+        confirmedAt: { type: string, format: date-time }
+        curriculumVersion: { $ref: "#/components/schemas/CurriculumVersion" }
+    SchoolCurriculumTopicsResponse:
+      type: object
+      required: [topics, progress, curriculumVersion]
+      properties:
+        topics:
+          type: array
+          items: { $ref: "#/components/schemas/CurriculumTopic" }
+        progress:
+          type: array
+          items: { $ref: "#/components/schemas/CurriculumProgress" }
+        curriculumVersion:
+          $ref: "#/components/schemas/CurriculumVersion"
+    SchoolCurriculumTopicInput:
+      type: object
+      required: [classLevel, subjectId, title]
+      properties:
+        classLevel: { type: string }
+        subjectId: { type: integer }
+        title: { type: string, minLength: 1, maxLength: 250 }
+        parentTopicId: { type: ["integer", "null"] }
+        learningObjectives: { type: array, items: { type: string } }
+        learningOutcomes: { type: array, items: { type: string } }
+        suggestedResources: { type: array, items: { type: string } }
+    CurriculumProgressInput:
+      type: object
+      required: [topicId, progressStatus]
+      properties:
+        topicId: { type: integer, minimum: 1 }
+        progressStatus: { type: string, enum: [PLANNED, IN_PROGRESS, COMPLETED, DEFERRED] }
+        completedDate: { type: ["string", "null"], format: date }
+        comment: { type: ["string", "null"], maxLength: 2000 }
+    CurriculumProgress:
+      type: object
+      required: [id, schoolId, mappingId, topicId, progressStatus, updatedAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        mappingId: { type: integer }
+        topicId: { type: integer }
+        progressStatus: { type: string }
+        completedDate: { type: ["string", "null"], format: date }
+        comment: { type: ["string", "null"] }
+        updatedAt: { type: string, format: date-time }
+    LessonNoteInput:
+      type: object
+      required: [sessionId, termId, classId, subjectId, week, date]
+      properties:
+        sessionId: { type: integer, minimum: 1 }
+        termId: { type: integer, minimum: 1 }
+        classId: { type: integer, minimum: 1 }
+        subjectId: { type: integer, minimum: 1 }
+        section: { type: ["string", "null"], maxLength: 100 }
+        week: { type: integer, minimum: 1, maximum: 60 }
+        date: { type: string, format: date }
+        curriculumMappingId: { type: ["integer", "null"], minimum: 1 }
+        curriculumVersionId: { type: ["integer", "null"], minimum: 1 }
+        topicId: { type: ["integer", "null"], minimum: 1 }
+        subTopicId: { type: ["integer", "null"], minimum: 1 }
+        content:
+          type: object
+          additionalProperties: true
+          description: Structured optional fields include objectives, previousKnowledge, materials, introduction, lessonDevelopment, teacherActivities, studentActivities, lessonContent, examples, classActivities, assessment, assignment, conclusion, references.
+        expectedRevision: { type: integer, minimum: 0 }
+    LessonNoteUpdate:
+      type: object
+      required: [expectedRevision]
+      properties:
+        sessionId: { type: integer, minimum: 1 }
+        termId: { type: integer, minimum: 1 }
+        classId: { type: integer, minimum: 1 }
+        subjectId: { type: integer, minimum: 1 }
+        section: { type: ["string", "null"], maxLength: 100 }
+        week: { type: integer, minimum: 1, maximum: 60 }
+        date: { type: string, format: date }
+        curriculumMappingId: { type: ["integer", "null"], minimum: 1 }
+        curriculumVersionId: { type: ["integer", "null"], minimum: 1 }
+        topicId: { type: ["integer", "null"], minimum: 1 }
+        subTopicId: { type: ["integer", "null"], minimum: 1 }
+        content: { type: object, additionalProperties: true }
+        expectedRevision: { type: integer, minimum: 0 }
+    LessonNote:
+      type: object
+      required: [id, schoolId, sessionId, termId, classId, subjectId, teacherId, week, date, status, revision, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        sessionId: { type: integer }
+        termId: { type: integer }
+        classId: { type: integer }
+        subjectId: { type: integer }
+        teacherId: { type: integer }
+        section: { type: ["string", "null"] }
+        week: { type: integer }
+        date: { type: string, format: date }
+        curriculumMappingId: { type: ["integer", "null"] }
+        curriculumVersionId: { type: ["integer", "null"] }
+        curriculumVersion:
+          anyOf:
+            - $ref: "#/components/schemas/CurriculumVersion"
+            - type: "null"
+        topicId: { type: ["integer", "null"] }
+        subTopicId: { type: ["integer", "null"] }
+        content: { type: object, additionalProperties: true }
+        status: { type: string, enum: [DRAFT, SUBMITTED, RETURNED, RESUBMITTED, APPROVED, ARCHIVED] }
+        revision: { type: integer }
+        latestReviewComment: { type: ["string", "null"] }
+        submittedAt: { type: ["string", "null"], format: date-time }
+        approvedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    LessonNoteDetail:
+      allOf:
+        - $ref: "#/components/schemas/LessonNote"
+        - type: object
+          properties:
+            reviews:
+              type: array
+              items: { $ref: "#/components/schemas/LessonNoteReview" }
+    LessonNoteReviewInput:
+      type: object
+      required: [decision, expectedRevision]
+      properties:
+        decision: { type: string, enum: [APPROVE, RETURN] }
+        comment: { type: ["string", "null"], maxLength: 5000 }
+        expectedRevision: { type: integer, minimum: 0 }
+    LessonNoteTransitionInput:
+      type: object
+      required: [expectedRevision]
+      properties:
+        expectedRevision: { type: integer, minimum: 0 }
+    LessonNoteReview:
+      type: object
+      required: [id, noteId, decision, reviewerUserId, createdAt]
+      properties:
+        id: { type: integer }
+        noteId: { type: integer }
+        decision: { type: string, enum: [RETURN, APPROVE] }
+        comment: { type: ["string", "null"] }
+        reviewerUserId: { type: integer }
+        createdAt: { type: string, format: date-time }
+    LessonNoteMonitoringRow:
+      type: object
+      required: [teacherId, classId, subjectId, sessionId, termId, week, status]
+      properties:
+        teacherId: { type: integer }
+        teacherName: { type: string }
+        classId: { type: integer }
+        subjectId: { type: integer }
+        sessionId: { type: integer }
+        termId: { type: integer }
+        week: { type: integer }
+        noteId: { type: ["integer", "null"] }
+        status: { type: string, enum: [DRAFT, SUBMITTED, RETURNED, RESUBMITTED, APPROVED, ARCHIVED, MISSING] }
+    LessonNoteReminderInput:
+      type: object
+      required: [sessionId, termId, week]
+      properties:
+        sessionId: { type: integer, minimum: 1 }
+        termId: { type: integer, minimum: 1 }
+        week: { type: integer, minimum: 1, maximum: 60 }
+    LessonNoteReminderResult:
+      type: object
+      required: [queuedCount]
+      properties:
+        queuedCount: { type: integer, minimum: 0 }

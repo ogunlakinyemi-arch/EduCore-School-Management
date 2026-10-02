@@ -173,9 +173,24 @@ describe("people import parsers and row validation", () => {
     expect(result[0].values.className).toBe("Primary 1");
     expect(result[0].values.section).toBe("Blue");
     expect(result[1].status).toBe("INVALID");
-    expect(result[1].errors.map((error) => error.field)).toContain("admissionNo");
     expect(result[1].errors.map((error) => error.field)).toContain("gender");
     expect(result[1].errors.map((error) => error.field)).toContain("className");
+  });
+
+  it("marks a missing admission number for generation and preserves a supplied valid number", () => {
+    const result = prepareImportRows({
+      kind: "students",
+      rows: [
+        { sourceRow: 2, values: { admissionNo: "", firstName: "Ada", lastName: "Okafor", gender: "female", className: "P1" } },
+        { sourceRow: 3, values: { admissionNo: "OLD-007", firstName: "Tolu", lastName: "Ayo", gender: "male", className: "P1" } },
+      ],
+      classMapping: { P1: 10 },
+      classes: [{ id: 10, name: "Primary 1", section: "Blue" }],
+      existing: { students: [], parents: [], employees: [], studentAdmissions: [] },
+    });
+    expect(result.map(row => row.status)).toEqual(["READY", "READY"]);
+    expect(result[0].values).toMatchObject({ admissionNo: null, admissionNoSource: "GENERATED" });
+    expect(result[1].values).toMatchObject({ admissionNo: "OLD-007", admissionNoSource: "PRESERVED" });
   });
 
   it("marks existing identifiers as skip-only duplicates and name/date matches as explicit-review duplicates", () => {

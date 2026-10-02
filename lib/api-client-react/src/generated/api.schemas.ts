@@ -5,6 +5,668 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+export interface ExistingActivationCandidate {
+  personId: number;
+  personType: string;
+  fullName: string;
+  email?: string | null;
+  profileEmail?: string | null;
+  accountEmail?: string | null;
+  phone?: string | null;
+  profileStatus: string | null;
+  accountStatus?: string | null;
+  accountId?: number | null;
+  linkedUserId?: number | null;
+  admissionNo?: string | null;
+  employeeNo?: string | null;
+}
+
+export interface ParentChildLink {
+  id: number;
+  schoolId: number;
+  admissionNo: string;
+  firstName: string;
+  lastName: string;
+  className?: string | null;
+  section?: string | null;
+  studentStatus?: string;
+  relationshipType: string;
+  relationshipStatus: string;
+}
+
+export type ParentChildrenLinkRequestRelationshipType = typeof ParentChildrenLinkRequestRelationshipType[keyof typeof ParentChildrenLinkRequestRelationshipType];
+
+
+export const ParentChildrenLinkRequestRelationshipType = {
+  Father: 'Father',
+  Mother: 'Mother',
+  Guardian: 'Guardian',
+  Grandparent: 'Grandparent',
+  Other: 'Other',
+} as const;
+
+export interface ParentChildrenLinkRequest {
+  /**
+     * @minItems 1
+     * @maxItems 100
+     * @items.minimum 1
+     */
+  studentIds: number[];
+  relationshipType?: ParentChildrenLinkRequestRelationshipType;
+}
+
+export interface AcademicResultSchoolRequest {
+  /** @minimum 1 */
+  schoolId: number;
+}
+
+export type AcademicResultReviewRequestDecision = typeof AcademicResultReviewRequestDecision[keyof typeof AcademicResultReviewRequestDecision];
+
+
+export const AcademicResultReviewRequestDecision = {
+  APPROVE: 'APPROVE',
+  RETURN: 'RETURN',
+} as const;
+
+export type AcademicResultReviewRequest = AcademicResultSchoolRequest & ({
+  decision: AcademicResultReviewRequestDecision;
+  /** @maxLength 2000 */
+  comment?: string | null;
+});
+
+export type AcademicResultReviewItemStatus = typeof AcademicResultReviewItemStatus[keyof typeof AcademicResultReviewItemStatus];
+
+
+export const AcademicResultReviewItemStatus = {
+  DRAFT: 'DRAFT',
+  SUBMITTED: 'SUBMITTED',
+  PUBLISHED: 'PUBLISHED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type AcademicResultReviewItemReviewStatus = typeof AcademicResultReviewItemReviewStatus[keyof typeof AcademicResultReviewItemReviewStatus];
+
+
+export const AcademicResultReviewItemReviewStatus = {
+  NOT_REVIEWED: 'NOT_REVIEWED',
+  APPROVED: 'APPROVED',
+  RETURNED: 'RETURNED',
+} as const;
+
+export interface AcademicResultReviewItem {
+  id: number;
+  schoolId: number;
+  assessmentId?: number;
+  studentId?: number;
+  score?: number;
+  maxScore?: number;
+  status: AcademicResultReviewItemStatus;
+  reviewStatus: AcademicResultReviewItemReviewStatus;
+  reviewComment?: string | null;
+  reviewedBy?: number | null;
+  reviewedAt?: string | null;
+  studentName?: string | null;
+  admissionNo?: string | null;
+}
+
+export type CurriculumVersionInputEducationLevel = typeof CurriculumVersionInputEducationLevel[keyof typeof CurriculumVersionInputEducationLevel];
+
+
+export const CurriculumVersionInputEducationLevel = {
+  PRIMARY: 'PRIMARY',
+  JSS: 'JSS',
+  SSS: 'SSS',
+  OTHER: 'OTHER',
+} as const;
+
+export type CurriculumVersionInputSourceKind = typeof CurriculumVersionInputSourceKind[keyof typeof CurriculumVersionInputSourceKind];
+
+
+export const CurriculumVersionInputSourceKind = {
+  OFFICIAL: 'OFFICIAL',
+  SCHOOL_SPECIFIC: 'SCHOOL_SPECIFIC',
+  EDUCORE_SEQUENCE: 'EDUCORE_SEQUENCE',
+  AI_ASSISTANCE: 'AI_ASSISTANCE',
+} as const;
+
+export interface CurriculumVersionInput {
+  /**
+     * @minLength 1
+     * @maxLength 250
+     */
+  title: string;
+  educationLevel: CurriculumVersionInputEducationLevel;
+  /** Class-level applicability */
+  classLevels?: string[];
+  /** Configurable subject code/name applicability */
+  subjectCodes?: string[];
+  sourceKind: CurriculumVersionInputSourceKind;
+  /**
+     * @minLength 1
+     * @maxLength 250
+     */
+  sourceOrganization: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  sourceReference: string;
+  /**
+     * @maxLength 150
+     * @nullable
+     */
+  sourceVersion?: string | null;
+  /** @nullable */
+  effectiveDate?: string | null;
+  /** @nullable */
+  verifiedDate?: string | null;
+  /**
+     * @maxLength 10000
+     * @nullable
+     */
+  description?: string | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  derivedFromVersionId?: number | null;
+}
+
+export type CurriculumVersionStatus = typeof CurriculumVersionStatus[keyof typeof CurriculumVersionStatus];
+
+
+export const CurriculumVersionStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export interface CurriculumVersion {
+  id: number;
+  title: string;
+  educationLevel: string;
+  classLevels: string[];
+  subjectCodes: string[];
+  sourceKind: string;
+  sourceOrganization: string;
+  sourceReference: string;
+  /** @nullable */
+  sourceVersion?: string | null;
+  /** @nullable */
+  effectiveDate?: string | null;
+  /** @nullable */
+  verifiedDate?: string | null;
+  /** @nullable */
+  description?: string | null;
+  status: CurriculumVersionStatus;
+  /** @nullable */
+  derivedFromVersionId?: number | null;
+  /**
+     * Private object path
+     * @nullable
+     */
+  sourceDocumentPath?: string | null;
+  /**
+     * Source document import reference
+     * @nullable
+     */
+  sourceImportId?: number | null;
+  createdAt: string;
+  /** @nullable */
+  publishedAt?: string | null;
+  /** @nullable */
+  archivedAt?: string | null;
+}
+
+export type CurriculumTopicSourceKind = typeof CurriculumTopicSourceKind[keyof typeof CurriculumTopicSourceKind];
+
+
+export const CurriculumTopicSourceKind = {
+  OFFICIAL: 'OFFICIAL',
+  SCHOOL_SPECIFIC: 'SCHOOL_SPECIFIC',
+  EDUCORE_SEQUENCE: 'EDUCORE_SEQUENCE',
+  AI_ASSISTANCE: 'AI_ASSISTANCE',
+} as const;
+
+export type CurriculumTopicProgressStatus = typeof CurriculumTopicProgressStatus[keyof typeof CurriculumTopicProgressStatus];
+
+
+export const CurriculumTopicProgressStatus = {
+  PLANNED: 'PLANNED',
+  IN_PROGRESS: 'IN_PROGRESS',
+  COMPLETED: 'COMPLETED',
+  DEFERRED: 'DEFERRED',
+} as const;
+
+export interface CurriculumTopic {
+  id: number;
+  classLevel: string;
+  subjectCode: string;
+  /** @nullable */
+  parentTopicId?: number | null;
+  title: string;
+  learningObjectives?: string[];
+  learningOutcomes?: string[];
+  suggestedResources?: string[];
+  sequenceOrder?: number;
+  sourceKind: CurriculumTopicSourceKind;
+  progressStatus?: CurriculumTopicProgressStatus;
+  /** @nullable */
+  completedDate?: string | null;
+  /** @nullable */
+  progressComment?: string | null;
+}
+
+export type CurriculumVersionDetail = CurriculumVersion & {
+  topics?: CurriculumTopic[];
+};
+
+export interface CurriculumTopicInput {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  classLevel: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  subjectCode: string;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  parentTopicId?: number | null;
+  /**
+     * @minLength 1
+     * @maxLength 250
+     */
+  title: string;
+  learningObjectives?: string[];
+  learningOutcomes?: string[];
+  suggestedResources?: string[];
+  /** @minimum 0 */
+  sequenceOrder?: number;
+}
+
+export interface CurriculumImportPreviewInput {
+  /** @maxLength 180 */
+  filename: string;
+  contentType: string;
+  /** @pattern ^/objects/ */
+  objectPath: string;
+}
+
+export type CurriculumImportPreviewDetectedType = typeof CurriculumImportPreviewDetectedType[keyof typeof CurriculumImportPreviewDetectedType];
+
+
+export const CurriculumImportPreviewDetectedType = {
+  csv: 'csv',
+  xlsx: 'xlsx',
+  pdf: 'pdf',
+} as const;
+
+export type CurriculumImportPreviewRowsItem = {[key: string]: string};
+
+export type CurriculumImportPreviewMapping = {[key: string]: string};
+
+export interface CurriculumImportPreview {
+  importId: number;
+  detectedType: CurriculumImportPreviewDetectedType;
+  headers: string[];
+  rows: CurriculumImportPreviewRowsItem[];
+  mapping: CurriculumImportPreviewMapping;
+  warnings: string[];
+}
+
+export type CurriculumImportConfirmInputMapping = {[key: string]: string};
+
+export type CurriculumImportConfirmInputCorrectedRowsItem = {
+  /** @maxLength 2000 */
+  classLevel?: string;
+  /** @maxLength 2000 */
+  subjectCode?: string;
+  /** @maxLength 2000 */
+  title?: string;
+  /** @maxLength 2000 */
+  learningObjectives?: string;
+  /** @maxLength 2000 */
+  learningOutcomes?: string;
+  /** @maxLength 2000 */
+  suggestedResources?: string;
+};
+
+export interface CurriculumImportConfirmInput {
+  version: CurriculumVersionInput;
+  mapping: CurriculumImportConfirmInputMapping;
+  reviewerConfirmed: true;
+  /**
+     * @minItems 1
+     * @maxItems 5000
+     */
+  correctedRows?: CurriculumImportConfirmInputCorrectedRowsItem[];
+}
+
+export interface SchoolCurriculumMappingInput {
+  /** @minimum 1 */
+  versionId: number;
+  /** @minimum 1 */
+  classId: number;
+  /** @minimum 1 */
+  subjectId: number;
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  termId: number;
+}
+
+export type SchoolCurriculumMappingStatus = typeof SchoolCurriculumMappingStatus[keyof typeof SchoolCurriculumMappingStatus];
+
+
+export const SchoolCurriculumMappingStatus = {
+  ACTIVE: 'ACTIVE',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export interface SchoolCurriculumMapping {
+  id: number;
+  schoolId: number;
+  versionId: number;
+  classId: number;
+  subjectId: number;
+  sessionId: number;
+  termId: number;
+  status: SchoolCurriculumMappingStatus;
+  confirmedAt: string;
+  curriculumVersion?: CurriculumVersion;
+}
+
+export interface SchoolCurriculumTopicInput {
+  classLevel: string;
+  subjectId: number;
+  /**
+     * @minLength 1
+     * @maxLength 250
+     */
+  title: string;
+  /** @nullable */
+  parentTopicId?: number | null;
+  learningObjectives?: string[];
+  learningOutcomes?: string[];
+  suggestedResources?: string[];
+}
+
+export type CurriculumProgressInputProgressStatus = typeof CurriculumProgressInputProgressStatus[keyof typeof CurriculumProgressInputProgressStatus];
+
+
+export const CurriculumProgressInputProgressStatus = {
+  PLANNED: 'PLANNED',
+  IN_PROGRESS: 'IN_PROGRESS',
+  COMPLETED: 'COMPLETED',
+  DEFERRED: 'DEFERRED',
+} as const;
+
+export interface CurriculumProgressInput {
+  /** @minimum 1 */
+  topicId: number;
+  progressStatus: CurriculumProgressInputProgressStatus;
+  /** @nullable */
+  completedDate?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  comment?: string | null;
+}
+
+export interface CurriculumProgress {
+  id: number;
+  schoolId: number;
+  mappingId: number;
+  topicId: number;
+  progressStatus: string;
+  /** @nullable */
+  completedDate?: string | null;
+  /** @nullable */
+  comment?: string | null;
+  updatedAt: string;
+}
+
+/**
+ * Structured optional fields include objectives, previousKnowledge, materials, introduction, lessonDevelopment, teacherActivities, studentActivities, lessonContent, examples, classActivities, assessment, assignment, conclusion, references.
+ */
+export type LessonNoteInputContent = { [key: string]: unknown };
+
+export interface LessonNoteInput {
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  termId: number;
+  /** @minimum 1 */
+  classId: number;
+  /** @minimum 1 */
+  subjectId: number;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  section?: string | null;
+  /**
+     * @minimum 1
+     * @maximum 60
+     */
+  week: number;
+  date: string;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  curriculumMappingId?: number | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  curriculumVersionId?: number | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  topicId?: number | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  subTopicId?: number | null;
+  /** Structured optional fields include objectives, previousKnowledge, materials, introduction, lessonDevelopment, teacherActivities, studentActivities, lessonContent, examples, classActivities, assessment, assignment, conclusion, references. */
+  content?: LessonNoteInputContent;
+  /** @minimum 0 */
+  expectedRevision?: number;
+}
+
+export type LessonNoteUpdateContent = { [key: string]: unknown };
+
+export interface LessonNoteUpdate {
+  /** @minimum 1 */
+  sessionId?: number;
+  /** @minimum 1 */
+  termId?: number;
+  /** @minimum 1 */
+  classId?: number;
+  /** @minimum 1 */
+  subjectId?: number;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  section?: string | null;
+  /**
+     * @minimum 1
+     * @maximum 60
+     */
+  week?: number;
+  date?: string;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  curriculumMappingId?: number | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  curriculumVersionId?: number | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  topicId?: number | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  subTopicId?: number | null;
+  content?: LessonNoteUpdateContent;
+  /** @minimum 0 */
+  expectedRevision: number;
+}
+
+export interface LessonNoteTransitionInput {
+  /** @minimum 0 */
+  expectedRevision: number;
+}
+
+export type LessonNoteContent = { [key: string]: unknown };
+
+export type LessonNoteStatus = typeof LessonNoteStatus[keyof typeof LessonNoteStatus];
+
+
+export const LessonNoteStatus = {
+  DRAFT: 'DRAFT',
+  SUBMITTED: 'SUBMITTED',
+  RETURNED: 'RETURNED',
+  RESUBMITTED: 'RESUBMITTED',
+  APPROVED: 'APPROVED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export interface LessonNote {
+  id: number;
+  schoolId: number;
+  sessionId: number;
+  termId: number;
+  classId: number;
+  subjectId: number;
+  teacherId: number;
+  /** @nullable */
+  section?: string | null;
+  week: number;
+  date: string;
+  /** @nullable */
+  curriculumMappingId?: number | null;
+  /** @nullable */
+  curriculumVersionId?: number | null;
+  curriculumVersion?: CurriculumVersion | null;
+  /** @nullable */
+  topicId?: number | null;
+  /** @nullable */
+  subTopicId?: number | null;
+  content?: LessonNoteContent;
+  status: LessonNoteStatus;
+  revision: number;
+  /** @nullable */
+  latestReviewComment?: string | null;
+  /** @nullable */
+  submittedAt?: string | null;
+  /** @nullable */
+  approvedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type LessonNoteReviewDecision = typeof LessonNoteReviewDecision[keyof typeof LessonNoteReviewDecision];
+
+
+export const LessonNoteReviewDecision = {
+  RETURN: 'RETURN',
+  APPROVE: 'APPROVE',
+} as const;
+
+export interface LessonNoteReview {
+  id: number;
+  noteId: number;
+  decision: LessonNoteReviewDecision;
+  /** @nullable */
+  comment?: string | null;
+  reviewerUserId: number;
+  createdAt: string;
+}
+
+export type LessonNoteDetail = LessonNote & {
+  reviews?: LessonNoteReview[];
+};
+
+export type LessonNoteReviewInputDecision = typeof LessonNoteReviewInputDecision[keyof typeof LessonNoteReviewInputDecision];
+
+
+export const LessonNoteReviewInputDecision = {
+  APPROVE: 'APPROVE',
+  RETURN: 'RETURN',
+} as const;
+
+export interface LessonNoteReviewInput {
+  decision: LessonNoteReviewInputDecision;
+  /**
+     * @maxLength 5000
+     * @nullable
+     */
+  comment?: string | null;
+  /** @minimum 0 */
+  expectedRevision: number;
+}
+
+export type LessonNoteMonitoringRowStatus = typeof LessonNoteMonitoringRowStatus[keyof typeof LessonNoteMonitoringRowStatus];
+
+
+export const LessonNoteMonitoringRowStatus = {
+  DRAFT: 'DRAFT',
+  SUBMITTED: 'SUBMITTED',
+  RETURNED: 'RETURNED',
+  RESUBMITTED: 'RESUBMITTED',
+  APPROVED: 'APPROVED',
+  ARCHIVED: 'ARCHIVED',
+  MISSING: 'MISSING',
+} as const;
+
+export interface LessonNoteMonitoringRow {
+  teacherId: number;
+  teacherName?: string;
+  classId: number;
+  subjectId: number;
+  sessionId: number;
+  termId: number;
+  week: number;
+  /** @nullable */
+  noteId?: number | null;
+  status: LessonNoteMonitoringRowStatus;
+}
+
+export interface LessonNoteReminderInput {
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  termId: number;
+  /**
+     * @minimum 1
+     * @maximum 60
+     */
+  week: number;
+}
+
+export interface LessonNoteReminderResult {
+  /** @minimum 0 */
+  queuedCount: number;
+}
+
 export interface PlatformOwnerBootstrapStatus {
   available: boolean;
   configured: boolean;
@@ -796,6 +1458,13 @@ export interface Student {
   id: number;
   schoolId: number;
   admissionNo: string;
+  /** @nullable */
+  email?: string | null;
+  /**
+     * Linked login account state
+     * @nullable
+     */
+  accountStatus?: string | null;
   firstName: string;
   lastName: string;
   /** @nullable */
@@ -860,8 +1529,13 @@ export const StudentInputGender = {
 } as const;
 
 export interface StudentInput {
-  /** @minLength 1 */
-  admissionNo: string;
+  /**
+     * Optional; generated by the server when omitted or blank
+     * @nullable
+     */
+  admissionNo?: string | null;
+  /** @nullable */
+  email?: string | null;
   /** @minLength 2 */
   firstName: string;
   /** @minLength 2 */
@@ -1082,15 +1756,20 @@ export type SchoolUserInvitationInput = ({
 } | {
   role?: 'TEACHER' | 'ACCOUNTANT' | 'STAFF' | 'PARENT';
 }) & {
+  /**
+     * Existing same-school profile; identity is resolved by the server
+     * @minimum 1
+     */
+  personId: number;
   /** @minimum 1 */
   schoolId: number;
   /**
      * @minLength 2
      * @maxLength 120
      */
-  fullName: string;
+  fullName?: string;
   /** @maxLength 254 */
-  email: string;
+  email?: string;
   /**
      * @minLength 8
      * @maxLength 25
@@ -1815,6 +2494,11 @@ export const EmployeeGender = {
 } as const;
 
 export interface Employee {
+  /**
+     * Linked login account state
+     * @nullable
+     */
+  accountStatus?: string | null;
   id: number;
   schoolId: number;
   employeeId: string;
@@ -9289,6 +9973,73 @@ export interface TransportOwnerSchoolSummary {
   transportRevenueMinor: number;
 }
 
+export type ExistingProfileInvitationRequestRole = typeof ExistingProfileInvitationRequestRole[keyof typeof ExistingProfileInvitationRequestRole];
+
+
+export const ExistingProfileInvitationRequestRole = {
+  TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  STAFF: 'STAFF',
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+} as const;
+
+export interface ExistingProfileInvitationRequest {
+  /** @minimum 1 */
+  schoolId: number;
+  /** Optional client display value; the selected profile name is authoritative. */
+  fullName?: string;
+  /** Optional client display value; the selected profile email is authoritative. */
+  email?: string;
+  /** Optional client display value; the selected profile phone is authoritative. */
+  phone?: string | null;
+  role: ExistingProfileInvitationRequestRole;
+  /** @minimum 1 */
+  personId: number;
+  /** @minimum 1 */
+  studentId?: number | null;
+}
+
+export type CreateStudentProfileRequestGender = typeof CreateStudentProfileRequestGender[keyof typeof CreateStudentProfileRequestGender];
+
+
+export const CreateStudentProfileRequestGender = {
+  male: 'male',
+  female: 'female',
+  other: 'other',
+} as const;
+
+export interface CreateStudentProfileRequest {
+  /** Optional. Blank or omitted values are generated within the school's transaction. */
+  admissionNo?: string | null;
+  email?: string | null;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  dateOfBirth?: string;
+  gender: CreateStudentProfileRequestGender;
+  className: string;
+  section: string;
+}
+
+export interface CurriculumTeachingContext {
+  classId: number;
+  className: string;
+  /** @nullable */
+  section: string | null;
+  subjectId: number;
+  subjectName: string;
+  subjectCode: string;
+  sessionId: number;
+  termId: number;
+}
+
+export interface SchoolCurriculumTopicsResponse {
+  topics: CurriculumTopic[];
+  progress: CurriculumProgress[];
+  curriculumVersion: CurriculumVersion;
+}
+
 /**
  * Invalid request or rejected school/device/student relationship
  */
@@ -11544,5 +12295,153 @@ export const GetPlatformTransportOverviewStatus = {
   WAIVED: 'WAIVED',
   CANCELLED: 'CANCELLED',
   all: 'all',
+} as const;
+
+export type ListExistingActivationCandidatesParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+role: ListExistingActivationCandidatesRole;
+search?: string;
+};
+
+export type ListExistingActivationCandidatesRole = typeof ListExistingActivationCandidatesRole[keyof typeof ListExistingActivationCandidatesRole];
+
+
+export const ListExistingActivationCandidatesRole = {
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+  TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  STAFF: 'STAFF',
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+} as const;
+
+export type UpdateStudentActivationContactParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type UpdateStudentActivationContactBody = {
+  email: string | null;
+};
+
+export type ListParentChildLinksParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type LinkExistingParentChildrenParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type ListAcademicResultReviewsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * @minimum 1
+ */
+assessmentId?: number;
+};
+
+export type ListCurriculumVersionsParams = {
+status?: ListCurriculumVersionsStatus;
+};
+
+export type ListCurriculumVersionsStatus = typeof ListCurriculumVersionsStatus[keyof typeof ListCurriculumVersionsStatus];
+
+
+export const ListCurriculumVersionsStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type PreviewCurriculumImportBody = {
+  file: Blob | File;
+};
+
+export type ListSchoolCurriculumMappingsParams = {
+classId?: number;
+subjectId?: number;
+sessionId?: number;
+termId?: number;
+};
+
+export type ListSchoolCurriculumCatalogParams = {
+classId?: number;
+subjectId?: number;
+};
+
+export type ListTeacherCurriculumTeachingContextParams = {
+/**
+ * @minimum 1
+ */
+sessionId: number;
+/**
+ * @minimum 1
+ */
+termId: number;
+};
+
+export type ListLessonNotesParams = {
+sessionId?: number;
+termId?: number;
+/**
+ * @minimum 1
+ */
+week?: number;
+teacherId?: number;
+classId?: number;
+subjectId?: number;
+status?: ListLessonNotesStatus;
+};
+
+export type ListLessonNotesStatus = typeof ListLessonNotesStatus[keyof typeof ListLessonNotesStatus];
+
+
+export const ListLessonNotesStatus = {
+  DRAFT: 'DRAFT',
+  SUBMITTED: 'SUBMITTED',
+  RETURNED: 'RETURNED',
+  RESUBMITTED: 'RESUBMITTED',
+  APPROVED: 'APPROVED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type GetLessonNoteMonitoringParams = {
+sessionId: number;
+termId: number;
+/**
+ * @minimum 1
+ */
+week: number;
+teacherId?: number;
+classId?: number;
+subjectId?: number;
+status?: GetLessonNoteMonitoringStatus;
+};
+
+export type GetLessonNoteMonitoringStatus = typeof GetLessonNoteMonitoringStatus[keyof typeof GetLessonNoteMonitoringStatus];
+
+
+export const GetLessonNoteMonitoringStatus = {
+  DRAFT: 'DRAFT',
+  SUBMITTED: 'SUBMITTED',
+  RETURNED: 'RETURNED',
+  RESUBMITTED: 'RESUBMITTED',
+  APPROVED: 'APPROVED',
+  ARCHIVED: 'ARCHIVED',
+  MISSING: 'MISSING',
 } as const;
 

@@ -4,6 +4,9 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 const state = vi.hoisted(() => ({
   role: "PLATFORM_OWNER",
   queries: [] as Array<{ sql: string; values: unknown[] }>,
+  parentStatus: "PENDING",
+  linkedParentUserId: null as number | null,
+  availableChildIds: [11] as number[],
 }));
 
 const poolMock = vi.hoisted(() => ({
@@ -14,6 +17,26 @@ const poolMock = vi.hoisted(() => ({
   connect: vi.fn(async () => ({
     query: vi.fn(async (sql: string, values: unknown[] = []) => {
       state.queries.push({ sql, values });
+      if (sql.includes("SELECT p.id,p.user_id,p.status AS \"parentStatus\"")) return {
+        rows: [{
+          id: 44,
+          user_id: state.linkedParentUserId,
+          parentStatus: state.parentStatus,
+          accountStatus: state.linkedParentUserId ? "ACTIVE" : null,
+        }],
+      };
+      if (sql.includes("SELECT id FROM students WHERE school_id=$1 AND id=ANY($2::int[])")) {
+        const requested = Array.isArray(values[1]) ? values[1] as number[] : [];
+        return { rows: requested.filter(id => state.availableChildIds.includes(id)).map(id => ({ id })) };
+      }
+      if (sql.includes("COALESCE(MAX((substring(admission_no")) return { rows: [{ sequence: 0 }] };
+      if (sql.includes("INSERT INTO students (school_id, admission_no, email")) return {
+        rows: [{
+          id: 45, schoolId: values[0], admissionNo: values[1], email: values[2],
+          firstName: values[3], lastName: values[4], gender: values[15],
+          className: values[16], section: values[17], status: "ACTIVE",
+        }],
+      };
       if (sql.includes("SELECT id FROM students")) return { rows: [{ id: 11 }] };
       if (sql.includes("SELECT id FROM nfc_cards")) return { rows: [] };
       if (sql.includes("SELECT nc.school_id AS")) return {
@@ -98,6 +121,9 @@ afterAll(async () => new Promise<void>((resolve, reject) =>
 beforeEach(() => {
   state.role = "PLATFORM_OWNER";
   state.queries.length = 0;
+  state.parentStatus = "PENDING";
+  state.linkedParentUserId = null;
+  state.availableChildIds = [11];
   poolMock.query.mockClear();
   poolMock.connect.mockClear();
 });
@@ -119,6 +145,24 @@ describe("Platform Owner school-operation boundaries", () => {
   it("accepts the Student Directory's uppercase default status and rejects lowercase active", async () => {
     expect((await call("/students?schoolId=1&status=ACTIVE")).status).toBe(200);
     expect((await call("/students?schoolId=1&status=active")).status).toBe(400);
+  });
+
+  it("generates optional admission numbers within school scope and persists the student email", async () => {
+    state.role = "SCHOOL_ADMIN";
+    const response = await call("/students?schoolId=1", "POST", {
+      firstName: "Amina",
+      lastName: "Bello",
+      email: "amina@example.test",
+      gender: "female",
+      className: "Primary 1",
+      section: "A",
+    });
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body).toMatchObject({ admissionNo: "ADM-1-000001", email: "amina@example.test" });
+    const insert = state.queries.find(({ sql }) => sql.includes("INSERT INTO students (school_id, admission_no, email"));
+    expect(insert?.values.slice(0, 3)).toEqual([1, "ADM-1-000001", "amina@example.test"]);
+    expect(state.queries.some(({ sql }) => sql === "COMMIT")).toBe(true);
   });
 
   it("preserves the explicit Platform Owner NFC assignment exception with tenant-bound writes", async () => {
@@ -155,5 +199,31 @@ describe("Platform Owner school-operation boundaries", () => {
     });
     expect(response.status).toBe(404);
     expect(state.queries.some(({ sql }) => sql.includes("INSERT INTO parents"))).toBe(false);
+  });
+});
+
+describe("existing pending-parent child links", () => {
+  it("allows a School Admin to attach only active same-school students to an unlinked pending parent profile", async () => {
+    state.role = "SCHOOL_ADMIN";
+    const response = await call(
+      "/parents/44/children?schoolId=1",
+      "POST",
+      { studentIds: [11], relationshipType: "Guardian" },
+    );
+    expect(response.status).toBe(200);
+    expect(state.queries.some(({ sql }) =>
+      sql.includes("INSERT INTO parent_student_relationships(parent_id,student_id,relationship_type,status)"))).toBe(true);
+    expect(state.queries.some(({ sql }) => sql === "COMMIT")).toBe(true);
+    expect(state.queries.find(({ sql }) => sql.includes("id=ANY($2::int[])"))?.sql).toContain("upper(status)='ACTIVE'");
+
+    state.queries.length = 0;
+    const unavailable = await call(
+      "/parents/44/children?schoolId=1",
+      "POST",
+      { studentIds: [12], relationshipType: "Guardian" },
+    );
+    expect(unavailable.status).toBe(404);
+    expect(state.queries.some(({ sql }) => sql.includes("INSERT INTO parent_student_relationships"))).toBe(false);
+    expect(state.queries).toContainEqual({ sql: "ROLLBACK", values: [] });
   });
 });

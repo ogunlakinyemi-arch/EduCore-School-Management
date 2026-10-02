@@ -4,6 +4,7 @@ import { CreditCard, Plus, ShieldCheck } from 'lucide-react';
 import { 
   useGetAuthorizedContext, useListCards, useListStudents, useRegisterCard, useUpdateCardStatus, getListCardsQueryKey
 } from '@workspace/api-client-react';
+import { OwnerCardLink } from '@/components/owner-card-link';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Modal, Field, TenantPicker, useTenant, cx 
 } from '@/components/shared';
@@ -60,6 +61,7 @@ export function CardsPage() {
         } 
       />
       
+      {canProvision && <OwnerCardLink />}
       {!schoolId ? (
         <EmptyState icon={CreditCard} title="Select a school context" description="You must select a school to manage its hardware fleet." />
       ) : query.isLoading ? (

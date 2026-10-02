@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { registrationNumberChanged } from "../services/school-registration-number";
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { pool } from "@workspace/db";
 import {
@@ -368,11 +369,15 @@ router.put("/schools/:schoolId/branding", run(async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    const locks = await client.query(`SELECT id FROM schools WHERE id=$1 FOR UPDATE`, [schoolId]);
+    const locks = await client.query(`SELECT id,registration_number FROM schools WHERE id=$1 FOR UPDATE`, [schoolId]);
     assertSchoolExists(locks.rows[0]);
+    const requestedNumber = fields.find(([field]) => field === "registrationNumber");
+    if (requestedNumber && registrationNumberChanged(requestedNumber[1], locks.rows[0].registration_number)) {
+      throw new AuthError(409, "A school's registration number is permanent and cannot be changed");
+    }
     const parameters: unknown[] = [];
     const assignments = fields.map(([field, value]) => {
-      parameters.push(value);
+      parameters.push(field === "registrationNumber" ? locks.rows[0].registration_number : value);
       return `${brandingUpdateFields[field]}=$${parameters.length}`;
     });
     parameters.push(schoolId);

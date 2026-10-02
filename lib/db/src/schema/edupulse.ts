@@ -57,7 +57,10 @@ export const schools = pgTable(
     schoolType: text("school_type"),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [uniqueIndex("schools_code_unique").on(table.code)],
+  (table) => [
+    uniqueIndex("schools_code_unique").on(table.code),
+    uniqueIndex("schools_registration_number_unique").on(table.registrationNumber),
+  ],
 );
 
 export const schoolMemberships = pgTable(
@@ -154,6 +157,7 @@ export const students = pgTable(
     schoolId: integer("school_id").notNull().references(() => schools.id),
     userId: integer("user_id").references(() => appUsers.id),
     admissionNo: text("admission_no").notNull(),
+    email: text("email"),
     firstName: text("first_name").notNull(),
     lastName: text("last_name").notNull(),
     gender: text("gender").notNull(),

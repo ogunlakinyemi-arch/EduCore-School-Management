@@ -22,6 +22,7 @@ vi.mock('react', async importOriginal => {
 });
 
 vi.mock('@tanstack/react-query', () => ({
+  useQuery: () => ({ data: [], isLoading: false, isError: false }),
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));
 
@@ -77,6 +78,8 @@ vi.mock('@workspace/api-client-react', () => {
       studentId: 21,
       score: 68,
       remark: 'Needs practice',
+      status: 'DRAFT',
+      reviewStatus: 'NOT_REVIEWED',
     }]),
     useCreateAcademicResult: mutation,
     useUpdateAcademicResult: mutation,
@@ -217,7 +220,7 @@ describe('mixed-role Platform Owner school-operation pages', () => {
 
     expect(html).toContain('Report Cards');
     expect(html).toContain('Grading Rules');
-    expect(html).toContain('Publish Results');
+    expect(html).toContain('Publish Approved (0)');
     expect(html).toMatch(/placeholder="Score"(?![^>]*disabled)/);
   });
 

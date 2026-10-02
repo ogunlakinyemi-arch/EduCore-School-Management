@@ -53,6 +53,9 @@ const nav: NavItem[] = [
   { href: '/subjects', label: 'Subjects', icon: BookOpen, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
   { href: '/classes', label: 'Classes', icon: Library, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
   { href: '/academic-work', label: 'Academic Work', icon: BookOpen, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
+  { href: '/curriculum-management', label: 'Curriculum Management', icon: BookOpen, roles: ['PLATFORM_OWNER'] },
+  { href: '/curriculum', label: 'School Syllabus / Curriculum', icon: BookOpen, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
+  { href: '/lesson-notes', label: 'Lesson Notes', icon: ClipboardList, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
   { href: '/results', label: 'Results', icon: BarChart3, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
   { href: '/timetable', label: 'Timetable', icon: Calendar, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STUDENT'] },
   { href: '/my-academics', label: 'My Academics', icon: GraduationCap, roles: ['STUDENT'] },
@@ -89,6 +92,7 @@ const ownerNavPaths = new Set([
   '/', '/schools', '/students', '/company-employees', '/users', '/partners',
   '/devices', '/subscriptions', '/cards', '/audit', '/reporting', '/activation', '/activation/history',
   '/finance-workspace', '/employee-nfc', '/transport',
+  '/curriculum-management',
 ]);
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -147,11 +151,12 @@ export function Shell({ children }: { children: ReactNode }) {
         <nav className="space-y-1 overflow-y-auto scrollbar-thin">
           {visibleNav.map(item => {
             const Icon = item.icon; 
+            const itemLabel = item.href === '/curriculum' && roles.includes('TEACHER') && !roles.includes('SCHOOL_ADMIN') ? 'My Curriculum' : item.label;
             const active = item.href === '/' ? location === '/' : item.href === '/activation' ? location === '/activation' : location.startsWith(item.href);
             return (
               <Link key={item.href} href={item.href} onClick={() => setOpen(false)} className={cx('group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[hsl(var(--sidebar-foreground)/.7)] hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-foreground))]', active && 'bg-[hsl(var(--sidebar-primary))] font-bold text-[hsl(var(--sidebar-primary-foreground))] hover:bg-[hsl(var(--sidebar-primary))]')} data-testid={`link-nav-${item.label.toLowerCase().replaceAll(' ', '-')}`}>
                 <Icon size={18} strokeWidth={active ? 2.4 : 1.8} />
-                <span>{item.label}</span>
+                <span>{itemLabel}</span>
                 {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-current" />}
               </Link>
             );

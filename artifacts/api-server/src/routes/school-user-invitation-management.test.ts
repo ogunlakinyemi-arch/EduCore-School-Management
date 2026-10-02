@@ -387,11 +387,14 @@ beforeEach(() => {
     }
     if (sql.includes("SELECT id,user_id AS") && sql.includes("FROM employees")) {
       const matched = [...state.records.values()].find((item) => item.metadata.invitedEmail === values[1]);
+      const role = matched?.metadata.role ?? state.activationMarker?.role;
       return { rows: [{
         id: 91,
         userId: null,
-        type: matched?.metadata.role ?? state.activationMarker?.role,
-        status: "PENDING",
+        type: role,
+        // Legacy Accountant invitations have no employeeNo claim; model their
+        // already-existing employee profile as active and bind it by stored role.
+        status: role === "ACCOUNTANT" ? "ACTIVE" : "PENDING",
         employeeNo: state.activationMarker?.employeeNo,
       }] };
     }

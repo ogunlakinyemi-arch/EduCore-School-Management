@@ -677,7 +677,8 @@ router.post(
     const fullName = String(req.body?.fullName ?? "").trim().replace(/\s+/g, " ");
     const phone = String(req.body?.phone ?? "").trim();
     const role = parseRole(req.body?.role);
-    const studentId = req.body?.studentId === undefined ? null : Number(req.body.studentId);
+    const personId = req.body?.personId === undefined ? NaN : Number(req.body.personId);
+    const suppliedStudentId = req.body?.studentId === undefined ? null : Number(req.body.studentId);
     if (Object.hasOwn(req.body ?? {}, "password") || Object.hasOwn(req.body ?? {}, "confirmPassword")) {
       throw new AuthError(400, "Passwords are created by the invitee and must not be submitted by an administrator");
     }
@@ -688,33 +689,19 @@ router.post(
     if (!(INVITABLE_SCHOOL_ROLES as readonly string[]).includes(role) || role === "SCHOOL_ADMIN") {
       throw new AuthError(403, "This role cannot be assigned through a school invitation");
     }
-    if (role === "STUDENT" &&
-        (studentId === null || !Number.isInteger(studentId) || studentId < 1)) {
-      throw new AuthError(400, "Select the existing student profile to invite");
+    if (!Number.isSafeInteger(personId) || personId < 1) {
+      throw new AuthError(400, "Select the existing school profile to invite");
     }
-    if (role !== "STUDENT" && studentId !== null) {
+    if (role === "STUDENT" && suppliedStudentId !== null && suppliedStudentId !== personId) {
+      throw new AuthError(400, "Student profile ID must match the selected school profile");
+    }
+    if (role !== "STUDENT" && suppliedStudentId !== null) {
       throw new AuthError(400, "A student profile may only be supplied for a Student invitation");
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || fullName.length < 2) {
-      throw new AuthError(400, "A valid full name and email are required");
-    }
-    if (phone && !/^\+?[0-9][0-9\s()-]{7,24}$/.test(phone)) {
-      throw new AuthError(400, "A valid phone is required");
-    }
-    const activationOfficer = await pool.query(
-      `SELECT 1 FROM app_users au
-       JOIN school_memberships sm ON sm.user_id = au.id
-       WHERE lower(au.email) = lower($1)
-         AND sm.role = 'DEVICE_ACTIVATION_OFFICER' AND sm.status = 'ACTIVE'
-       LIMIT 1`,
-      [email],
-    );
-    if (activationOfficer.rows[0]) {
-      throw new AuthError(403, "A Device Activation Officer cannot be invited to an ordinary school role");
     }
     const created = await createSchoolInvitation(
       { schoolId, fullName, email, phone: phone || null, role: role as
-        "TEACHER" | "ACCOUNTANT" | "STAFF" | "PARENT" | "STUDENT", studentId },
+        "TEACHER" | "ACCOUNTANT" | "STAFF" | "PARENT" | "STUDENT",
+        personId, studentId: role === "STUDENT" ? personId : null },
       getUserContext(req),
     );
     res.status(created.status === "DISPATCH_REQUESTED" ? 202 : 201).json(created);
