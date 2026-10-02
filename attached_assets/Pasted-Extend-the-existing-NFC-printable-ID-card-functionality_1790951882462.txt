@@ -1,0 +1,233 @@
+Extend the existing NFC printable ID-card functionality to cover both Teachers and Students.
+
+Development only. DO NOT Publish. DO NOT modify Production.
+
+1. Teacher NFC ID Card — Front
+
+When an NFC card is assigned to a Teacher, the Platform Owner must be able to generate and download a print-ready front design containing:
+
+- Yemait EduCore logo/branding.
+- School logo where available.
+- School name.
+- Teacher photograph where available.
+- Teacher full name.
+- Staff/Employee ID.
+- Role: Teacher.
+- School registration number where appropriate.
+- Card reference/identifier where appropriate.
+- Optional secure QR verification code using the existing secure identification mechanism.
+
+Do not print confidential information, authentication credentials, API keys, private tokens, or other security-sensitive information.
+
+Avoid printing information that can quickly become outdated, such as current class assignments or subject assignments, unless specifically required by the existing ID-card design.
+
+2. Student NFC ID Card — Permanent Identification
+
+When an NFC card is assigned to a Student, the Platform Owner must be able to generate and download a print-ready front design.
+
+The physical student card is intended to remain valid throughout the student's time in the school.
+
+The front should contain:
+
+- Yemait EduCore logo/branding.
+- School logo where available.
+- School name.
+- Student photograph where available.
+- Student full name.
+- Permanent student admission/registration number.
+- School registration number where appropriate.
+- NFC card reference/identifier where appropriate.
+- Optional secure QR verification code using the existing secure identification mechanism.
+
+IMPORTANT — DO NOT PRINT DYNAMIC STUDENT INFORMATION
+
+Do NOT print any of the following on the physical Student NFC card:
+
+- Class.
+- Section.
+- Academic session.
+- Term.
+- Current academic year.
+- Any other information that changes as the student progresses.
+
+The same physical NFC card must continue to work when the student moves through different classes, sections, terms, and academic sessions.
+
+For example:
+
+JSS1 A → JSS2 B → JSS3 A → SS1 → SS2 → SS3
+
+The student should continue using the same physical NFC card.
+
+3. Dynamic Student Information
+
+Current student information must remain dynamic in the Yemait EduCore backend.
+
+When the student taps the NFC card on an authorized NFC device, the system should resolve:
+
+NFC Card UID → Student → Current School Record
+
+The backend/device response can then show the student's current:
+
+- Full name.
+- Class.
+- Section.
+- Academic session.
+- Term.
+- Attendance status.
+- Other information permitted by the existing NFC workflow.
+
+Therefore, if the student changes class or section, the physical card does not need to be reprinted.
+
+Do not require a new physical NFC card merely because the student's class, section, term, or academic session changes.
+
+4. Standard Back Design — All NFC ID Cards
+
+Create a standardized back design for both Teacher and Student cards.
+
+Include:
+
+PROPERTY OF YEMAIT TECHNOLOGIES LIMITED
+
+Yemait EduCore NFC Identification Card
+
+«This card remains the property of Yemait Technologies Limited and is issued for authorized identification and access purposes.
+
+If found, please return this card to the issuing school or the appropriate authority.»
+
+Also include:
+
+- Yemait Technologies Limited branding.
+- Yemait EduCore name/logo.
+- School contact/return information where available.
+- Please do not tamper with or damage the NFC card.
+- Optional secure QR code for card-return/verification information if supported.
+- Appropriate copyright/company notice.
+
+Do not print confidential information, authentication credentials, API keys, private tokens, or other security-sensitive information.
+
+5. Card Layout
+
+Use the same physical card specification for Teacher and Student cards:
+
+- Standard CR80 card.
+- 85.60 × 53.98 mm.
+- Landscape orientation.
+- Front + back.
+- Print-safe margins.
+- High-resolution output.
+- Suitable for printing directly onto a white PVC NFC card.
+
+The system should generate a complete front and back print layout, not merely a screenshot of the portal.
+
+6. Download
+
+After assigning an NFC card, the Platform Owner should have:
+
+Download Printable ID Card
+
+Preferred formats:
+
+- PDF — primary printing format.
+- High-resolution PNG — optional alternative.
+
+Where possible, provide the front and back together in the PDF so the printing company can use the file directly.
+
+7. Reprint
+
+The Platform Owner must be able to regenerate/download the same card later without creating another NFC assignment.
+
+Downloading or reprinting must never create a duplicate:
+
+- Person.
+- Student.
+- Teacher.
+- NFC card.
+- NFC assignment.
+
+8. NFC Identity
+
+Maintain the existing relationship:
+
+Physical NFC Card → NFC UID → Person → School
+
+Printing the card must not create a new NFC identity.
+
+Use the existing NFC UID/card assignment already stored in the system.
+
+The physical card remains associated with the person until the existing NFC lifecycle allows it to be revoked, replaced, or reassigned.
+
+9. Dynamic NFC Tap Behaviour
+
+When an authorized NFC device reads the card:
+
+1. Read the existing NFC UID.
+2. Resolve the assigned person.
+3. Resolve the person's current school record.
+4. Display the person's current information.
+5. For students, dynamically show the student's current class/section and academic information.
+6. Do not depend on printed class, section, or academic-session information to identify the student.
+
+The NFC card itself is the persistent identity; academic information remains dynamic in the backend.
+
+10. Security and Tenant Isolation
+
+Only authorized Owner/company users with the existing NFC/card-management permission can generate or download these printable cards.
+
+Maintain all existing RBAC and school/tenant isolation.
+
+A user must never be able to generate or download another school's card without authorization.
+
+11. Development Testing
+
+Test both card types.
+
+Teacher
+
+- Assign existing NFC card.
+- Generate front/back card.
+- Download PDF.
+- Verify teacher information.
+- Verify school branding.
+- Verify standardized back.
+- Re-download/reprint without creating another assignment.
+
+Student
+
+- Assign existing NFC card.
+- Generate front/back card.
+- Download PDF.
+- Verify student information.
+- Verify permanent admission/registration number.
+- Confirm Class is NOT printed.
+- Confirm Section is NOT printed.
+- Confirm Academic session is NOT printed.
+- Verify school branding.
+- Verify standardized back.
+- Re-download/reprint without creating another assignment.
+
+Dynamic NFC verification
+
+Test a student whose current record is:
+
+JSS1 → Section A
+
+Tap the NFC card and verify the backend/device resolves the correct current information.
+
+Then change the student's class/section in Development and tap the same physical NFC identity again.
+
+Confirm the backend now displays the student's new current class/section without changing or reprinting the physical card.
+
+Also verify:
+
+- Missing photograph does not prevent generation.
+- Missing school logo uses standard fallback branding.
+- Revoked/reassigned cards reflect the correct current status.
+- Cross-school card data cannot be exposed.
+- Relevant automated tests pass.
+- Full project typecheck passes.
+
+If PDF generation requires a new Development dependency or migration, handle it safely in Development only.
+
+Do not replace the existing NFC assignment system.
+
+DO NOT Publish. DO NOT modify Production.

@@ -1,0 +1,86 @@
+Work in Replit Development only.
+
+DO NOT Publish. DO NOT modify Production.
+
+There is an existing bug in the Platform Owner → School Finance → School Oversight workflow.
+
+Reported problem
+
+When the Platform Owner opens:
+
+Owner Dashboard → School Finance → School Oversight
+
+the page displays:
+
+"Could not load this view"
+
+Objective
+
+Diagnose and fix the actual cause of the error while preserving the existing Yemait EduCore architecture and all existing finance functionality.
+
+Required investigation
+
+1. Reproduce the error in Development.
+2. Inspect the browser console for the exact error.
+3. Inspect the Network/API request made when School Oversight loads.
+4. Identify the exact failing endpoint, database query, validation error, permission check, or frontend data-handling problem.
+5. Inspect the corresponding backend route/service/schema.
+6. Check whether the problem is caused by:
+   - incorrect API endpoint;
+   - incorrect request parameters;
+   - Owner RBAC/permission check;
+   - school/tenant filtering;
+   - missing finance records;
+   - incorrect Drizzle/PostgreSQL query;
+   - response schema mismatch;
+   - frontend rendering/data transformation;
+   - recently added migration/schema changes;
+   - empty-state handling;
+   - another concrete Development error.
+
+Important
+
+Do not hide the error by simply replacing the message with an empty state.
+
+Do not remove authentication or authorization checks.
+
+Do not weaken school/tenant isolation.
+
+Do not create duplicate finance workflows.
+
+Do not remove existing finance functionality.
+
+If the issue is caused by an incorrect query or API implementation, correct the underlying implementation.
+
+If a database migration is genuinely required, create an additive Development migration and validate it safely. Do not make direct Production database changes.
+
+Verification
+
+After fixing the issue:
+
+- Reopen Owner → School Finance → School Oversight.
+- Confirm the view loads successfully.
+- Confirm the correct school finance information is displayed.
+- Test with a school that has finance records.
+- Test with a school that has no finance records and confirm a proper empty state is shown.
+- Confirm another school's finance data cannot be exposed through the Owner oversight API.
+- Confirm Owner authorization remains enforced.
+- Run the relevant finance/API/frontend tests.
+- Run the full project typecheck.
+- Add or update regression tests for the specific failure.
+
+Final report
+
+Report:
+
+1. Exact root cause.
+2. Files/components/routes changed.
+3. Whether a Development migration was required.
+4. Tests added or updated.
+5. Tests passed.
+6. Typecheck result.
+7. Browser verification result.
+8. Security/tenant-isolation verification.
+9. Any remaining unverified items.
+
+DO NOT Publish. DO NOT modify Production.

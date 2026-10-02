@@ -82,7 +82,9 @@ function SchoolDetail({ s, onClose }: { s: SchoolSettlementSummary; onClose: () 
   const d = q.data ?? s;
   return <Modal title={s.schoolName} eyebrow="School settlement (read only)" onClose={onClose}>
     {q.isError && <Notice kind="error">Latest detail could not load; showing list data.</Notice>}
-    <ProfileView p={d} /><div className="mt-4"><ProviderBanner capability={d.capability} /></div>
+    {d.status === 'NOT_CONFIGURED'
+      ? <EmptyState icon={Landmark} title="School account not configured" description="This school has not configured its settlement recipient. Bank account details are not available yet." />
+      : <ProfileView p={d} />}<div className="mt-4"><ProviderBanner capability={d.capability} /></div>
     <p className={note}>Last settlement: {d.lastSettlementAt ? `${date(d.lastSettlementAt)} (${d.lastSettlementStatus ?? 'unknown'})` : 'none recorded'}. Owner access is oversight only; school bank details cannot be edited here.</p>
   </Modal>;
 }

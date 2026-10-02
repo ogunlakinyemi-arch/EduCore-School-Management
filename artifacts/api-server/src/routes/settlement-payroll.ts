@@ -666,7 +666,7 @@ router.put("/platform/finance/payment-settlement", run(async (req, res) => {
 
 async function schoolSettlementProjection(schoolId: number) {
   const result = await pool.query(
-    `SELECT s.id AS school_id,s.name AS school_name,p.*
+    `SELECT s.id AS oversight_school_id,s.name AS school_name,p.*
      FROM schools s
      LEFT JOIN settlement_payroll_profiles p
        ON p.school_id=s.id AND p.scope='SCHOOL'
@@ -691,7 +691,9 @@ router.get("/platform/finance/payment-settlement/schools", run(async (req, res) 
   const cursor = query.cursor;
   const search = query.search ? `%${query.search.replace(/[%_]/g, "\\$&")}%` : null;
   const result = await pool.query(
-    `SELECT s.id AS school_id,s.name AS school_name,p.*
+    // p.* contains a nullable school_id. Never let it overwrite the school
+    // directory's identity when the LEFT JOIN has no configured profile.
+    `SELECT s.id AS oversight_school_id,s.name AS school_name,p.*
      FROM schools s
      LEFT JOIN settlement_payroll_profiles p
        ON p.school_id=s.id AND p.scope='SCHOOL'
@@ -702,7 +704,7 @@ router.get("/platform/finance/payment-settlement/schools", run(async (req, res) 
     [status, search, cursor, limit],
   );
   const records = poolRows(result).map((row) => {
-    const projection = settlementProfileProjection(row.id ? row : undefined, "SCHOOL", row.school_id as number) as AnyRow;
+    const projection = settlementProfileProjection(row.id ? row : undefined, "SCHOOL", row.oversight_school_id as number) as AnyRow;
     return { schoolName: row.school_name, ...projection };
   });
   return respond(res, PayrollContract.ListPlatformSchoolSettlementsResponse, records);

@@ -35,7 +35,7 @@ vi.mock("../middlewares/auth", async (importOriginal) => {
           id: 2,
           role: "PLATFORM_OWNER" as any,
           schoolId: null as any,
-          status: "ACTIVE" as const,
+           status: (req.header("x-test-owner-status") ?? "ACTIVE") as "ACTIVE",
         });
       }
       (req as any).edupulseUser = {
@@ -188,6 +188,102 @@ describe("settlement and payroll router access boundaries", () => {
     });
     expect(db.queries).toHaveLength(1);
     expect(db.queries[0].sql).toContain("scope='YEMAIT_COMPANY'");
+  });
+
+  it("preserves directory IDs when school LEFT JOINs have no settlement profile", async () => {
+    db.query.mockImplementation(async (sql: string, values: unknown[]) => {
+      db.queries.push({ sql, values });
+      return { rows: [
+        { oversight_school_id: 7, school_name: "School Seven", school_id: null, id: null },
+        { oversight_school_id: 8, school_name: "School Eight", school_id: null, id: null },
+      ] };
+    });
+    const response = await request("/platform/finance/payment-settlement/schools?status=all&limit=100", { "x-test-owner": "true" });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject([
+      { schoolId: 7, schoolName: "School Seven", status: "NOT_CONFIGURED", bankName: null, accountLast4: null },
+      { schoolId: 8, schoolName: "School Eight", status: "NOT_CONFIGURED", bankName: null, accountLast4: null },
+    ]);
+    expect(db.queries[0].sql).toContain("s.id AS oversight_school_id");
+    expect(db.queries[0].sql).toContain("p.school_id=s.id AND p.scope='SCHOOL'");
+    expect(db.queries[0].values).toEqual([null, null, 0, 100]);
+  });
+
+  it("keeps configured school recipients masked and bound to their own encryption scope", async () => {
+    const profile = (id: number) => {
+      const encrypted = (field: string, value: string) => encryptPayrollBankValue(value, `settlement:school:${id}:${field}`);
+      const bank = encrypted("bankName", `Bank ${id}`);
+      return {
+        id: id + 100, oversight_school_id: id, school_id: id, school_name: `School ${id}`,
+        business_name: `School ${id}`, bank_name_encrypted: bank.ciphertext,
+        bank_code_encrypted: encrypted("bankCode", "001").ciphertext,
+        account_name_encrypted: encrypted("accountName", `Recipient ${id}`).ciphertext,
+        account_number_encrypted: encrypted("accountNumber", "1234567890").ciphertext,
+        account_last4: "7890", encryption_key_version: bank.keyVersion,
+        verification_status: "PENDING_VERIFICATION", last_settlement_status: "NOT_SETTLED",
+        updated_at: new Date("2026-10-01T00:00:00Z"),
+      };
+    };
+    const rows = [profile(7), profile(8)];
+    db.query.mockImplementation(async (sql: string, values: unknown[]) => {
+      db.queries.push({ sql, values });
+      return { rows: sql.includes("WHERE s.id=$1") ? rows.filter(r => r.school_id === values[0]) : rows };
+    });
+    const list = await request("/platform/finance/payment-settlement/schools", { "x-test-owner": "true" });
+    expect(list.status).toBe(200);
+    expect(await list.json()).toMatchObject([
+      { schoolId: 7, bankName: "Bank 7", accountName: "Recipient 7", accountLast4: "7890" },
+      { schoolId: 8, bankName: "Bank 8", accountName: "Recipient 8", accountLast4: "7890" },
+    ]);
+    const detail = await request("/platform/finance/payment-settlement/schools/7", { "x-test-owner": "true" });
+    expect(detail.status).toBe(200);
+    const text = await detail.text();
+    expect(JSON.parse(text)).toMatchObject({ schoolId: 7, bankName: "Bank 7" });
+    expect(text).not.toContain("Recipient 8");
+    expect(text).not.toContain("1234567890");
+    expect(text).not.toContain("encrypted");
+    expect(db.queries.at(-1)?.values).toEqual([7]);
+    // Even an incorrectly supplied row must not decrypt another tenant's
+    // bank details using this school's authenticated-data scope.
+    db.query.mockResolvedValueOnce({ rows: [rows[1]] });
+    const wrongScope = await request("/platform/finance/payment-settlement/schools/7", { "x-test-owner": "true" });
+    expect(wrongScope.status).toBe(500);
+    expect(await wrongScope.text()).not.toContain("Recipient 8");
+  });
+
+  it("returns real empty results and unconfigured detail without disguising query failures", async () => {
+    const headers = { "x-test-owner": "true" };
+    const empty = await request("/platform/finance/payment-settlement/schools?status=VERIFIED&search=missing&cursor=8&limit=10", headers);
+    expect(empty.status).toBe(200);
+    expect(await empty.json()).toEqual([]);
+    expect(db.queries[0].values).toEqual(["VERIFIED", "%missing%", 8, 10]);
+    db.query.mockResolvedValueOnce({ rows: [{ oversight_school_id: 7, school_name: "School Seven", school_id: null, id: null }] });
+    const detail = await request("/platform/finance/payment-settlement/schools/7", headers);
+    expect(detail.status).toBe(200);
+    expect(await detail.json()).toMatchObject({ schoolId: 7, status: "NOT_CONFIGURED" });
+    db.query.mockRejectedValueOnce(new Error("Database failure"));
+    const broken = await request("/platform/finance/payment-settlement/schools", headers);
+    expect(broken.status).toBe(500);
+  });
+
+  it.each(["SCHOOL_ADMIN", "ACCOUNTANT", "TEACHER", "PARENT", "STUDENT", "PARTNER"])(
+    "denies %s access to both Owner oversight endpoints before reading finance data",
+    async (role) => {
+      for (const path of ["/platform/finance/payment-settlement/schools", "/platform/finance/payment-settlement/schools/8"]) {
+        const response = await request(path, { "x-test-role": role });
+        expect(response.status).toBe(403);
+      }
+      expect(db.queries).toHaveLength(0);
+    },
+  );
+
+  it("denies an inactive Owner and does not turn an unknown school into another school's profile", async () => {
+    const denied = await request("/platform/finance/payment-settlement/schools", { "x-test-owner": "true", "x-test-owner-status": "INACTIVE" });
+    expect(denied.status).toBe(403);
+    expect(db.queries).toHaveLength(0);
+    const missing = await request("/platform/finance/payment-settlement/schools/9999", { "x-test-owner": "true" });
+    expect(missing.status).toBe(404);
+    expect(db.queries[0].values).toEqual([9999]);
   });
 
   it("uses exact school_id scoping and validates a payroll period before database writes", async () => {
