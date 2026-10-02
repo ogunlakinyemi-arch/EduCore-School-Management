@@ -194,7 +194,7 @@ export const pickupRequestOutputSchema = z.object({
   decidedAt: databaseTimestamp.nullable(),
   completedAt: databaseTimestamp.nullable(),
   completionPickupPersonId: positiveId.nullable(),
-  recordedSecurityEventId: positiveId.nullable(),
+  recordedSecurityEventId: z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER).nullable(),
   version: positiveId,
   createdAt: databaseTimestamp,
   updatedAt: databaseTimestamp,

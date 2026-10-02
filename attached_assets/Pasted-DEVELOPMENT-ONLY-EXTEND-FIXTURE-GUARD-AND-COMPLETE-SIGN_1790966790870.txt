@@ -1,0 +1,608 @@
+DEVELOPMENT ONLY — EXTEND FIXTURE GUARD AND COMPLETE SIGNED-IN VERIFICATION
+
+Continue from the completed School Security & Parent Communication implementation.
+
+IMPORTANT
+
+Work ONLY in Replit Development.
+
+DO NOT Publish.
+
+DO NOT modify Production.
+
+Do not bypass, disable, weaken, remove, or circumvent any security/immutability protection.
+
+The previous verification stopped because the fixture cleanup guard correctly rejected the new immutable security-history triggers.
+
+The goal now is to make the fixture/test cleanup framework correctly understand the new security-history tables and triggers, then complete the signed-in browser verification.
+
+---
+
+1. INSPECT THE EXISTING FIXTURE GUARD
+
+First inspect:
+
+- Fixture creation utilities
+- Fixture cleanup utilities
+- Database reset/cleanup helpers
+- Immutable security-history trigger definitions
+- New migrations 0045–0047
+- New security-history tables
+- Existing test fixtures
+- Existing trigger-protection logic
+
+Determine exactly why cleanup rejects the new immutable security-history triggers.
+
+Do not simply disable the guard.
+
+---
+
+2. SAFELY EXTEND FIXTURE SUPPORT
+
+Update the fixture framework so it can safely create and clean up temporary Development test data involving the new security-history structures.
+
+Requirements:
+
+- Preserve immutable history semantics.
+- Never delete historical records through normal application APIs.
+- Never disable the production/security trigger.
+- Never disable immutability globally.
+- Never bypass authorization.
+- Never use unsafe database resets merely to make tests pass.
+
+If the fixture framework requires a dedicated Development-only cleanup mechanism, implement the narrowest safe mechanism possible.
+
+Clearly distinguish:
+
+Production/application behavior
+
+from
+
+Development test-fixture cleanup behavior.
+
+The immutable-history protection must remain active during normal application operation.
+
+---
+
+3. ADD REGRESSION TESTS FOR THE FIXTURE GUARD
+
+Test that:
+
+1. Normal application code cannot mutate immutable security history.
+2. Unauthorized cleanup cannot delete immutable history.
+3. Authorized Development fixture cleanup can remove only its own temporary fixture data through the approved mechanism.
+4. Existing historical records are preserved.
+5. Cleanup cannot affect another school's records.
+6. Cleanup cannot affect baseline business data.
+7. The guard still rejects unsafe cleanup attempts.
+
+Do not weaken existing tests.
+
+---
+
+4. VERIFY DATA PRESERVATION AGAIN
+
+After the fixture-guard correction:
+
+Compare Development baseline against the current Development database.
+
+Verify:
+
+- Original tables preserved
+- Original columns preserved
+- Existing schools preserved
+- Existing students preserved
+- Existing parents preserved
+- Existing teachers preserved
+- Existing NFC cards preserved
+- Existing NFC assignments preserved
+- Existing attendance preserved
+- Existing academic records preserved
+- Existing finance records preserved
+- Existing admissions preserved
+- Existing medical/welfare records preserved
+- Existing audit records preserved
+
+Do not reset the Development database.
+
+Report exact results.
+
+---
+
+5. RUN AUTOMATED TESTS
+
+Run the complete relevant test suites.
+
+At minimum:
+
+- Backend tests
+- Security tests
+- Parent communication tests
+- NFC tests
+- Attendance regression tests
+- Fixture guard tests
+- PostgreSQL integration tests
+- Frontend tests
+- API contract tests
+- Typechecks
+
+Do not invent test counts.
+
+Report the exact totals.
+
+---
+
+6. COMPLETE SIGNED-IN SCHOOL ADMIN VERIFICATION
+
+Use the existing Development test account/fixture mechanism.
+
+Do NOT create unnecessary duplicate users.
+
+Sign in as an authorized School Admin and verify:
+
+School Security
+
+- Security dashboard loads.
+- Campus presence loads.
+- Entry/exit history loads.
+- NFC/security events display correctly.
+- Reader/device page loads.
+- Visitor page loads.
+- Pickup requests load.
+- Security incidents load.
+- Security settings load.
+- Delegated security permissions work.
+
+Security filtering
+
+Verify:
+
+- Search
+- Date filtering
+- Status filtering
+- Student filtering
+- Event filtering
+- Reader/location filtering
+
+Verify pagination where implemented.
+
+---
+
+7. COMPLETE SIGNED-IN PARENT VERIFICATION
+
+Sign in as a Parent.
+
+Verify:
+
+Communication Centre
+
+- Parent dashboard loads.
+- Child selector works.
+- Multiple children are isolated correctly.
+- Inbox loads.
+- Unread/read state works.
+- Archive works.
+- Restore works.
+- Notification preferences load and save.
+- School messages display.
+- Parent replies work where authorized.
+- Communication history loads.
+
+Child Security
+
+Verify parent can see only their own child's permitted security information.
+
+Test:
+
+- Entry event
+- Exit event
+- Campus status
+- Pickup request
+- Pickup status
+- Security notification
+
+Verify another parent's child cannot be accessed by changing IDs, URLs, query parameters, or API requests.
+
+---
+
+8. VERIFY SCHOOL ADMIN → PARENT COMMUNICATION
+
+As School Admin:
+
+Send a Development test message to a controlled test parent.
+
+Verify:
+
+- Correct recipient
+- Correct child targeting
+- Correct school
+- Message appears in Parent inbox
+- Audit record created
+- No unrelated parent receives it
+
+Test individual and permitted group targeting where implemented.
+
+---
+
+9. VERIFY TEACHER → PARENT
+
+Sign in as Teacher.
+
+Verify Teacher can communicate only with parents/students allowed by the existing authorization rules.
+
+Verify Teacher cannot:
+
+- View unrelated parents
+- Message unrelated students
+- Access another school
+- Send restricted emergency broadcasts
+- Access private security incidents
+
+---
+
+10. VERIFY EMERGENCY COMMUNICATION
+
+As authorized School Admin:
+
+Create a controlled Development emergency broadcast.
+
+Verify:
+
+- Confirmation step works.
+- Target audience is correct.
+- Message is clearly marked as emergency.
+- Audit record is created.
+- Delivery state is truthful.
+- No external provider is falsely reported as delivered.
+
+Do not send any real-world SMS/email/push.
+
+Use Development/test delivery only.
+
+---
+
+11. VERIFY NFC → SECURITY → PARENT FLOW
+
+Use the existing Development NFC simulation/test mechanism.
+
+Test:
+
+NFC Card
+   ↓
+Security Event
+   ↓
+Student Identity
+   ↓
+School
+   ↓
+Campus Presence
+   ↓
+Parent Notification
+
+Verify:
+
+- Valid card resolves correctly.
+- Correct school is resolved.
+- Security event is created.
+- Campus status changes appropriately.
+- Correct parent is identified.
+- Parent notification is created.
+- Duplicate taps do not create uncontrolled duplicate notifications.
+- Revoked card is rejected.
+- Wrong-school card is rejected.
+- Historical NFC data remains intact.
+
+Do not claim physical NFC hardware was tested.
+
+---
+
+12. VERIFY PICKUP FLOW
+
+Test:
+
+Parent
+ ↓
+Pickup Request
+ ↓
+School Admin Review
+ ↓
+Approval
+ ↓
+Security Release
+ ↓
+Parent Confirmation
+
+Verify:
+
+- Parent can create an allowed request.
+- School Admin can review it.
+- Approval/rejection works.
+- Security event is recorded.
+- Parent receives the appropriate in-app notification.
+- Unauthorized users cannot approve/release students.
+
+---
+
+13. VERIFY VISITOR FLOW
+
+Test:
+
+Visitor Registration
+ ↓
+Check-in
+ ↓
+Campus Presence
+ ↓
+Check-out
+ ↓
+History
+
+Verify:
+
+- Visitor belongs to correct school.
+- Entry is recorded.
+- Exit is recorded.
+- Current visitor list is correct.
+- Historical record remains available.
+- Cross-school access is blocked.
+
+---
+
+14. VERIFY MOBILE
+
+Perform signed-in browser verification at approximately:
+
+- 402px mobile width
+- One additional mobile/tablet width if available
+- Desktop width
+
+Check:
+
+- School Security dashboard
+- Security event list
+- Parent Communication Centre
+- Parent child selector
+- Parent notifications
+- Pickup request
+- School Admin messaging
+
+Look specifically for:
+
+- Horizontal overflow
+- Buttons outside viewport
+- Unusable tables
+- Hidden actions
+- Broken dialogs
+- Text clipping
+- Navigation problems
+- Touch-target problems
+
+Fix genuine Development UI problems discovered during this verification.
+
+---
+
+15. PWA VERIFICATION
+
+Verify what can actually be verified in Development:
+
+- Manifest loads
+- Correct application name
+- Icons load
+- Standalone configuration exists
+- Service worker loads if implemented
+- Offline fallback loads
+- No sensitive information is exposed in offline cache
+- Authentication remains secure
+
+If physical device installation cannot be verified, report:
+
+Not yet physically verified.
+
+Do not claim installation success without testing it.
+
+---
+
+16. ATTACHMENT VERIFICATION
+
+Where the implemented communication/security features support attachments:
+
+Test:
+
+- Authorized upload
+- Authorized download
+- Correct school scope
+- Correct parent scope
+- Unauthorized download blocked
+- Invalid attachment rejected
+- Missing attachment handled safely
+
+If physical file transfer cannot be tested in the available environment, report it as unverified.
+
+---
+
+17. PROVIDER VERIFICATION
+
+Do NOT use real production credentials.
+
+Verify provider abstraction behavior with Development/test adapters where available.
+
+Test:
+
+- SMS provider configured
+- SMS provider unavailable
+- Email provider unavailable
+- Push unavailable
+- Provider failure
+- Retry behavior
+- Idempotency
+- Delivery status
+
+Never report:
+
+Delivered
+
+unless the provider actually confirms delivery.
+
+---
+
+18. SECURITY TESTING
+
+Perform targeted authorization tests for:
+
+Parent
+
+Attempt access to:
+
+- Another parent's child
+- Another school's student
+- Another school's security event
+- Another parent's communication
+- Another school's pickup request
+
+Expected:
+
+Denied.
+
+Teacher
+
+Attempt unauthorized parent/student/security access.
+
+Expected:
+
+Denied.
+
+School Admin
+
+Attempt another school's records.
+
+Expected:
+
+Denied.
+
+Partner
+
+Verify private school security and parent communication remain inaccessible unless explicitly authorized.
+
+Owner
+
+Verify Owner's existing read-only restrictions remain intact where specified.
+
+---
+
+19. NO PRODUCTION
+
+Absolutely do not:
+
+- Click Publish
+- Run Production migrations
+- Modify Production schema
+- Modify Production data
+- Bypass Replit migration generation
+- Drop constraints
+- Remove foreign keys
+- Disable security triggers
+- Reset Production
+
+The existing Replit Publish-generator issue remains separate and must remain untouched.
+
+---
+
+20. FINAL REPORT
+
+At completion provide:
+
+FIXTURE GUARD
+
+Explain:
+
+- Root cause
+- Exact safe correction
+- How immutability remains protected
+
+IMPLEMENTED
+
+List Development changes.
+
+AUTOMATED TESTS
+
+Report exact:
+
+- Backend tests
+- Frontend tests
+- Integration tests
+- Fixture tests
+- Contract tests
+- Database checks
+- Typechecks
+
+SIGNED-IN VERIFICATION
+
+School Admin
+
+List what passed.
+
+Parent
+
+List what passed.
+
+Teacher
+
+List what passed.
+
+NFC Security Flow
+
+List what passed.
+
+Pickup
+
+List what passed.
+
+Visitor Management
+
+List what passed.
+
+Parent Communication
+
+List what passed.
+
+MOBILE
+
+Report tested widths and results.
+
+PWA
+
+Report what was actually verified.
+
+ATTACHMENTS
+
+Report what was actually verified.
+
+PROVIDERS
+
+Report test/simulation status.
+
+NOT YET VERIFIED
+
+Clearly list anything still requiring:
+
+- Physical NFC hardware
+- Physical reader/device
+- Real phone push notification
+- Real SMS provider
+- Real email provider
+- Physical PWA installation
+- Production deployment
+
+DATA PRESERVATION
+
+Report exact baseline comparison results.
+
+PRODUCTION
+
+State explicitly:
+
+Nothing was published.
+
+No Production database/schema/data was modified.
+
+The Replit Publish-generator issue remains untouched and continues to be handled separately through Replit Support.

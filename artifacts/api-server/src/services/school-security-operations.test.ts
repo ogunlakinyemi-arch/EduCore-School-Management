@@ -5,12 +5,19 @@ import {
   incidentOutputSchema,
   incidentPatchSchema,
   pickupCompletionInputSchema,
+  pickupRequestOutputSchema,
   pickupDecisionInputSchema,
   pickupPersonInputSchema,
   visitorPatchSchema,
 } from "./school-security-operations";
 
 describe("school security operation contracts", () => {
+  it("normalizes PostgreSQL bigint EXIT identifiers without accepting unsafe integers", () => {
+    const field = pickupRequestOutputSchema.shape.recordedSecurityEventId;
+    expect(field.parse("88")).toBe(88);
+    expect(field.parse(null)).toBeNull();
+    expect(field.safeParse("9007199254740993").success).toBe(false);
+  });
   it("requires a bounded validity interval for pickup nominations", () => {
     const valid = pickupPersonInputSchema.safeParse({
       fullName: "Auntie A",

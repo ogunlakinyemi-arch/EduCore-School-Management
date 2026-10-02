@@ -98,3 +98,17 @@ mtime_ms = 1790871732019
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/7d342fae-4a96-4249-8f14-3cb4eee558dd/a9eeb386-2230-4fe5-8790-b00982d9dc6f"
 storage_version_token = "1790871733219284"
 content_type = "text/html"
+
+[[outputs]]
+id = "P5wUCBpR1LJyvUSoEeWCq"
+uri = "file://reports/educore-development-verification.html"
+type = "html"
+title = "EduCore Development verification report"
+description = "Exact test totals, signed-in outcomes, immutable fixture retirement, final preservation proofs and remaining verification limits."
+logical_id = "aceb9821-edd5-4086-9909-3014d32f24bb"
+content_hash = "sha256:e1a4a852a14023066b388d2f40cc2efbc255fbaf26bc1d744bbdeb2a5394402f"
+size = 18195
+mtime_ms = 1790975599914
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/aceb9821-edd5-4086-9909-3014d32f24bb/b84fab7e-6275-41f0-9c44-754960a068b3"
+storage_version_token = "1790975601286222"
+content_type = "text/html"

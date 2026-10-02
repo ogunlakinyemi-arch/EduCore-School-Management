@@ -25,7 +25,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="bootstrap-status" style="max-width:480px;margin:25vh auto;padding:24px;font-family:system-ui">Connecting to Yemait EduCore…</div></div>
+    <script>
+      // Public fallback only: no user information is embedded or cached.
+      if (!navigator.onLine) {
+        document.getElementById('bootstrap-status').innerHTML =
+          '<h1>EduCore isn’t available offline</h1><p>Reconnect and try again. School records and account information are not stored for offline use.</p><button onclick="location.reload()">Try again</button>';
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -2,13 +2,15 @@
 /**
  * One-shot, Development-only live browser fixtures for EduCore expansion.
  * This script is deliberately separate from application startup and schema
- * migration code. It supports only plan, provision, and owned-fixture cleanup.
+ * migration code. It supports plan, provision, read-only verify, and owned-fixture cleanup.
  */
 import { createHash, randomBytes } from "node:crypto";
 import { readFile, writeFile, rename } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { captureOriginalRows, verifyOriginalRows, preservationDigest,
+  validateRetentionGuards, retireFixture } from "./fixture-retention-guard";
 
 const ROOT = process.cwd();
 const require = createRequire(path.join(ROOT, "lib/db/package.json"));
@@ -103,14 +105,15 @@ async function migrationFileEvidence() {
   return files;
 }
 
-async function readIdentity(client) {
+async function readIdentity(client, excludedSchoolId = 0) {
   const result = await client.query(`
     SELECT current_database() AS db,
       pg_postmaster_start_time()::text AS started,
       md5(string_agg(id::text, ',' ORDER BY id)) AS school_ids_hash,
       count(*)::int AS schools
     FROM public.schools
-  `);
+    WHERE id<>$1
+  `, [excludedSchoolId]);
   return result.rows[0];
 }
 
@@ -142,13 +145,14 @@ async function assertOriginalFingerprints(client, baseline) {
   if (mismatches) fail(`Original Development table fingerprints changed (${mismatches}); stopped safely.`);
 }
 
-async function assertMigrationEvidence(client, evidence, migrationFiles) {
-  const initial = await readIdentity(client);
+async function assertMigrationEvidence(client, evidence, migrationFiles, fixture = null) {
+  const initial = await readIdentity(client, fixture?.ids.schoolId ?? 0);
   if (!identityMatches(initial, evidence.baseline.identity) ||
       !identityMatches(initial, evidence.proof.identity)) {
     fail("Native Development database identity differs from the captured baseline/proof.");
   }
-  await assertOriginalFingerprints(client, evidence.baseline);
+  if (fixture) await verifyOriginalRows(client, fixture.preservationSnapshot);
+  else await assertOriginalFingerprints(client, evidence.baseline);
 
   const firstLedger = (await client.query(`
     SELECT count(*)::int AS row_count,
@@ -190,7 +194,8 @@ async function assertMigrationEvidence(client, evidence, migrationFiles) {
     SELECT count(*)::int AS portals,
       count(*) FILTER (WHERE is_open)::int AS open
     FROM public.admission_portal_settings
-  `)).rows[0];
+    WHERE school_id<>$1
+  `, [fixture?.ids.schoolId ?? 0])).rows[0];
   if (Number(portalState.portals) !== evidence.proof.portals.portals ||
       Number(portalState.open) !== evidence.proof.portals.open) {
     fail("Original Development portal state differs from the migration proof.");
@@ -292,29 +297,20 @@ async function cleanupPlan(client) {
   }
   const retentionTriggers = (await client.query(`
     SELECT c.relname AS table_name, tr.tgname AS trigger_name,
-      tr.tgenabled AS enabled, pg_get_triggerdef(tr.oid, true) AS definition
+      tr.tgenabled AS enabled, pg_get_triggerdef(tr.oid, true) AS definition,
+      tr.tgtype AS trigger_type, tr.tgnargs AS argument_count,
+      p.proname AS function_name, pn.nspname AS function_schema,
+      p.prosrc AS function_source, p.prosecdef AS security_definer
       FROM pg_trigger tr
       JOIN pg_class c ON c.oid=tr.tgrelid
       JOIN pg_namespace n ON n.oid=c.relnamespace
+      JOIN pg_proc p ON p.oid=tr.tgfoid
+      JOIN pg_namespace pn ON pn.oid=p.pronamespace
      WHERE n.nspname='public' AND NOT tr.tgisinternal
        AND c.relname = ANY($1::text[])
      ORDER BY c.relname, tr.tgname
   `, [RETENTION_TABLES])).rows;
-  for (const trigger of retentionTriggers) {
-    if (trigger.table_name !== "promotion_history" ||
-        trigger.trigger_name !== "promotion_history_immutable" ||
-        trigger.enabled !== "O" ||
-        !/BEFORE DELETE OR UPDATE ON promotion_history/i.test(trigger.definition) ||
-        !/prevent_promotion_history_mutation/i.test(trigger.definition)) {
-      fail("An unrecognized or altered retention trigger is present; cleanup was not planned.");
-    }
-  }
-  if (!retentionTriggers.some((trigger) =>
-    trigger.table_name === "promotion_history" &&
-    trigger.trigger_name === "promotion_history_immutable" &&
-    trigger.enabled === "O")) {
-    fail("Expected the enabled promotion-history immutability guard before provisioning.");
-  }
+  validateRetentionGuards(retentionTriggers);
   const requiredRetentionTables = await client.query(
     `SELECT count(*)::int AS count
        FROM unnest($1::text[]) AS expected(name)
@@ -330,12 +326,7 @@ async function cleanupPlan(client) {
     unscopedOwnedChildOrder: unscopedOrder,
     foreignKeyPlan: scoped.fks.map((fk) => `${fk.child}->${fk.parent}`).sort(),
     retentionTables: RETENTION_TABLES,
-    temporaryTriggerChanges: retentionTriggers.map((trigger) => ({
-      table: trigger.table_name,
-      trigger: trigger.trigger_name,
-      originalEnabledState: trigger.enabled,
-      definition: trigger.definition,
-    })),
+    temporaryTriggerChanges: [],
   };
   return {
     ...scoped,
@@ -570,12 +561,46 @@ async function createSchoolRows(client, manifest) {
     INSERT INTO public.students
       (school_id,admission_no,first_name,last_name,gender,class_name,section,
        parent_name,parent_phone,status,admission_status,address)
-    VALUES ($1,$2,'Expansion','Student Two','Male','Class A','A',
+    VALUES ($1,$2,'Expansion','Student Two','Male','Class B','B',
        'Expansion Parent Two','+15550123457','active','ADMITTED','EDUCORE TEST')
     RETURNING id
   `, [schoolId, `${manifest.label}-STUDENT-2`])).rows[0];
   manifest.ids.student1Id = Number(student1.id);
   manifest.ids.student2Id = Number(student2.id);
+  const student3 = (await client.query(`
+    INSERT INTO public.students(school_id,admission_no,first_name,last_name,gender,
+      class_name,section,parent_name,parent_phone,status,admission_status,address)
+    VALUES($1,$2,'Expansion','Student Three','Female','Class A','A',
+      'Expansion Parent One','+15550123456','active','ADMITTED','EDUCORE TEST') RETURNING id
+  `, [schoolId, `${manifest.label}-STUDENT-3`])).rows[0];
+  manifest.ids.student3Id = Number(student3.id);
+  manifest.nfcSimulation = {
+    credentialIdentifier: `${manifest.label}-GATE`,
+    secret: randomBytes(32).toString("hex"),
+    uid: `04${randomBytes(6).toString("hex").toUpperCase()}`,
+    revokedUid: `04${randomBytes(6).toString("hex").toUpperCase()}`,
+  };
+  const device = (await client.query(`INSERT INTO public.platform_devices
+    (serial_number,name,device_type,school_id,status,configuration_status,location)
+    VALUES($1,'Expansion controlled NFC gate','NFC',$2,'ACTIVE','CONFIGURED','Test gate') RETURNING id`,
+  [`${manifest.label}-GATE`, schoolId])).rows[0];
+  manifest.ids.deviceId = Number(device.id);
+  await client.query(`INSERT INTO public.device_school_bindings(device_id,school_id) VALUES($1,$2)`,
+    [device.id, schoolId]);
+  await client.query(`INSERT INTO public.device_credentials
+    (school_id,device_id,credential_identifier,secret_hash,status)
+    VALUES($1,$2,$3,$4,'ACTIVE')`,
+  [schoolId, device.id, manifest.nfcSimulation.credentialIdentifier, hash(manifest.nfcSimulation.secret)]);
+  const card = (await client.query(`INSERT INTO public.nfc_cards(school_id,uid,student_id,status,issued_at)
+    VALUES($1,$2,$3,'active',now()) RETURNING id`,
+  [schoolId, manifest.nfcSimulation.uid, manifest.ids.student1Id])).rows[0];
+  manifest.ids.nfcCardId = Number(card.id);
+  await client.query(`INSERT INTO public.nfc_cards(school_id,uid,student_id,status,issued_at)
+    VALUES($1,$2,$3,'lost',now())`, [schoolId, manifest.nfcSimulation.revokedUid, manifest.ids.student1Id]);
+  await client.query(`INSERT INTO public.parent_student_relationships
+    (parent_id,student_id,relationship_type,is_primary_guardian,status)
+    VALUES($1,$2,'Guardian',true,'ACTIVE')`,
+  [manifest.ids.parent1Id, manifest.ids.student3Id]);
 
   const link1 = (await client.query(`
     INSERT INTO public.parent_student_relationships
@@ -590,7 +615,7 @@ async function createSchoolRows(client, manifest) {
   manifest.ids.parent1StudentLinkId = Number(link1.id);
   manifest.ids.parent2StudentLinkId = Number(link2.id);
 
-  for (const studentId of [manifest.ids.student1Id, manifest.ids.student2Id]) {
+  for (const studentId of [manifest.ids.student1Id, manifest.ids.student2Id, manifest.ids.student3Id]) {
     await client.query(`
       INSERT INTO public.student_class_assignments
         (school_id,student_id,academic_session_id,academic_term_id,school_class_id,
@@ -598,7 +623,8 @@ async function createSchoolRows(client, manifest) {
       VALUES ($1,$2,$3,$4,$5,$6,'ACTIVE',true,'2026-01-01')
     `, [
       schoolId, studentId, manifest.ids.sourceSessionId, manifest.ids.sourceTermId,
-      manifest.ids.classAId, "A",
+      studentId === manifest.ids.student2Id ? manifest.ids.classBId : manifest.ids.classAId,
+      studentId === manifest.ids.student2Id ? "B" : "A",
     ]);
   }
 
@@ -717,6 +743,12 @@ async function provision(evidence, migrationFiles, plan) {
     await client.query("SELECT pg_advisory_xact_lock(hashtext('educore:expansion-browser-fixtures'))");
     await assertMigrationEvidence(client, evidence, migrationFiles);
     await verifyNoExistingIdentity(client, manifest);
+    const preservedTables = (await client.query(`SELECT c.relname AS name
+      FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+      WHERE n.nspname='public' AND c.relkind IN ('r','p') ORDER BY c.relname`))
+      .rows.map(row => row.name);
+    manifest.preservationSnapshot = await captureOriginalRows(client, preservedTables);
+    manifest.preservationDigest = preservationDigest(manifest.preservationSnapshot);
     const livePlan = await cleanupPlan(client);
     if (livePlan.digest !== manifest.cleanupPlanDigest) {
       fail("Cleanup plan changed after preflight; no browser-fixture rows were committed.");
@@ -736,13 +768,14 @@ async function provision(evidence, migrationFiles, plan) {
       classes: 2,
       sourceAndTargetSessions: 2,
       terms: 2,
-      students: 2,
+      students: 3,
       parents: 2,
       teacherAssignments: 1,
       partnerProfiles: 1,
       admissionPortalOpen: true,
       emailOrSmsInvitationsSent: 0,
-      paymentsOrDevicesCreated: 0,
+      paymentsCreated: 0,
+      simulationDevicesCreated: 1,
     }));
   } catch (error) {
     if (transaction) await client.query("ROLLBACK").catch(() => undefined);
@@ -887,7 +920,8 @@ async function cleanupOwnedFixture(evidence, migrationFiles, plan) {
   assertDevelopmentShell();
   const manifest = JSON.parse(await readFile(MANIFEST_PATH, "utf8"));
   if (manifest.state !== "READY_FOR_LIVE_DEVELOPMENT_BROWSER" &&
-      manifest.state !== "DATABASE_CLEANED_CLERK_PENDING") {
+      manifest.state !== "DATABASE_CLEANED_CLERK_PENDING" &&
+      manifest.state !== "DATABASE_RETIRED_CLERK_PENDING") {
     fail("Fixture manifest is not in a cleanable state; no identities were deleted.");
   }
   if (manifest.baselineSha256 !== evidence.baselineHash ||
@@ -901,7 +935,12 @@ async function cleanupOwnedFixture(evidence, migrationFiles, plan) {
         !identity.clerkUserId || !identity.appUserId || typeof identity.email !== "string")) {
     fail("Exact ownership IDs are incomplete; cleanup refused.");
   }
-  if (manifest.state !== "DATABASE_CLEANED_CLERK_PENDING") {
+  if (!manifest.preservationSnapshot ||
+      preservationDigest(manifest.preservationSnapshot) !== manifest.preservationDigest) {
+    fail("Original-row preservation evidence is missing or altered; cleanup refused.");
+  }
+  if (manifest.state !== "DATABASE_CLEANED_CLERK_PENDING" &&
+      manifest.state !== "DATABASE_RETIRED_CLERK_PENDING") {
     const client = new Client({ connectionString: process.env.DATABASE_URL });
     let transaction = false;
     try {
@@ -917,11 +956,29 @@ async function cleanupOwnedFixture(evidence, migrationFiles, plan) {
         fail("Native Development server/database identity changed; cleanup refused.");
       }
       await assertOwnedSchool(client, manifest, evidence.baseline);
+      await assertMigrationEvidence(client, evidence, migrationFiles, manifest);
       const currentPlan = await cleanupPlan(client);
       if (currentPlan.digest !== manifest.cleanupPlanDigest) {
         fail("Live cleanup guard plan changed; cleanup refused.");
       }
 
+    await verifyOriginalRows(client, manifest.preservationSnapshot);
+    const retainedHistory: Record<string, number> = {};
+    for (const table of RETENTION_TABLES) {
+      retainedHistory[table] = Number((await client.query(
+        `SELECT count(*)::int AS count FROM public.${quoteIdentifier(table)} WHERE school_id=$1`,
+        [manifest.ids.schoolId],
+      )).rows[0].count);
+    }
+    const retire = Object.values(retainedHistory).some(count => Number(count) > 0);
+    manifest.cleanupMode = retire ? "HISTORY_PRESERVING_RETIREMENT" : "EMPTY_HISTORY_PHYSICAL_CLEANUP";
+    manifest.retainedHistory = retainedHistory;
+    if (retire) {
+      await retireFixture(client, manifest.ids.schoolId, manifest.label, manifest.fixtureIdentities);
+      const stillProtected = await cleanupPlan(client);
+      if (stillProtected.digest !== currentPlan.digest) fail("History protection changed during retirement.");
+      manifest.preservationResult = await verifyOriginalRows(client, manifest.preservationSnapshot);
+    } else {
     await client.query(`
       LOCK TABLE public.student_care_record_history,
         public.promotion_history, public.audit_logs
@@ -932,21 +989,11 @@ async function cleanupOwnedFixture(evidence, migrationFiles, plan) {
       entry.trigger_name === "promotion_history_immutable",
     );
     if (trigger?.enabled !== "O") fail("Promotion history guard state changed; cleanup refused.");
-    await client.query(`
-      ALTER TABLE public.promotion_history
-      DISABLE TRIGGER promotion_history_immutable
-    `);
     await cleanupUnscopedOwnedChildren(client, manifest);
     for (const table of currentPlan.order) {
       await client.query(`DELETE FROM public.${quoteIdentifier(table)} WHERE school_id=$1`, [
         manifest.ids.schoolId,
       ]);
-      if (table === "promotion_history") {
-        await client.query(`
-          ALTER TABLE public.promotion_history
-          ENABLE TRIGGER promotion_history_immutable
-        `);
-      }
     }
     const stillScoped = [];
     for (const table of currentPlan.names) {
@@ -998,9 +1045,11 @@ async function cleanupOwnedFixture(evidence, migrationFiles, plan) {
     if (!identityMatches(after, evidence.baseline.identity)) {
       fail("Original Development school count/hash did not return to baseline.");
     }
+    manifest.preservationResult = await verifyOriginalRows(client, manifest.preservationSnapshot);
+    }
       await client.query("COMMIT");
       transaction = false;
-      manifest.state = "DATABASE_CLEANED_CLERK_PENDING";
+      manifest.state = retire ? "DATABASE_RETIRED_CLERK_PENDING" : "DATABASE_CLEANED_CLERK_PENDING";
       manifest.databaseCleanedAt = new Date().toISOString();
       await atomicWriteManifest(manifest);
     } catch {
@@ -1014,12 +1063,14 @@ async function cleanupOwnedFixture(evidence, migrationFiles, plan) {
     try {
       await client.connect();
       await client.query("BEGIN READ ONLY");
-      await assertMigrationEvidence(client, evidence, migrationFiles);
+      await verifyOriginalRows(client, manifest.preservationSnapshot);
+      await assertOwnedSchoolOrAbsent(client, manifest, evidence.baseline);
       const school = await client.query(
         "SELECT count(*)::int AS count FROM public.schools WHERE id=$1",
         [manifest.ids.schoolId],
       );
-      if (Number(school.rows[0].count) !== 0) {
+      if (manifest.cleanupMode !== "HISTORY_PRESERVING_RETIREMENT" &&
+          Number(school.rows[0].count) !== 0) {
         fail("Database cleanup is incomplete; no Clerk identities were removed.");
       }
       await client.query("ROLLBACK");
@@ -1035,7 +1086,12 @@ async function cleanupOwnedFixture(evidence, migrationFiles, plan) {
   for (const identity of manifest.fixtureIdentities) {
     if (identity.clerkDeleted === true) continue;
     try {
-      await clerkClient.users.getUser(identity.clerkUserId);
+      const external = await clerkClient.users.getUser(identity.clerkUserId);
+      if (external.privateMetadata?.edupulseFixture !== manifest.label ||
+          !external.emailAddresses?.some(entry =>
+            entry.emailAddress.toLowerCase() === identity.email.toLowerCase())) {
+        fail("Provider identity ownership differs from the exact fixture; removal refused.");
+      }
     } catch (error) {
       if (error?.status === 404 || error?.statusCode === 404) {
         identity.clerkDeleted = true;
@@ -1052,26 +1108,45 @@ async function cleanupOwnedFixture(evidence, migrationFiles, plan) {
       fail("Clerk cleanup is incomplete; retry the exact cleanup command.");
     }
   }
-  manifest.state = "CLEANED";
+  manifest.state = manifest.cleanupMode === "HISTORY_PRESERVING_RETIREMENT" ? "RETIRED" : "CLEANED";
   manifest.cleanedAt = new Date().toISOString();
   await atomicWriteManifest(manifest);
   console.log(JSON.stringify({
     status: manifest.state,
     manifestPath: MANIFEST_PATH,
     deletedOwnedClerkUsers: manifest.fixtureIdentities.length,
-    deletedOwnedSchool: 1,
-    originalSchoolCountAndHashRestored: true,
-    originalTableFingerprintsRestored: true,
-    retentionGuardsRestored: true,
+    deletedOwnedSchool: manifest.state === "CLEANED" ? 1 : 0,
+    retiredOwnedSchool: manifest.state === "RETIRED" ? 1 : 0,
+    originalDataPreserved: manifest.preservationResult,
+    retainedImmutableHistory: manifest.retainedHistory,
+    retentionGuardsAlwaysEnabled: true,
   }));
+}
+
+async function assertOwnedSchoolOrAbsent(client, manifest, baseline) {
+  if (manifest.cleanupMode === "HISTORY_PRESERVING_RETIREMENT") {
+    await assertOwnedSchool(client, manifest, baseline);
+    const school = (await client.query(
+      "SELECT status FROM public.schools WHERE id=$1", [manifest.ids.schoolId],
+    )).rows[0];
+    const activeUsers = (await client.query(
+      "SELECT count(*)::int AS count FROM public.app_users WHERE id=ANY($1::int[]) AND upper(status)<>'INACTIVE'",
+      [manifest.fixtureIdentities.map(i => i.appUserId)],
+    )).rows[0];
+    if (school?.status !== "INACTIVE" || Number(activeUsers.count) !== 0) {
+      fail("Retired fixture remains active; identity cleanup refused.");
+    }
+  } else if (!identityMatches(await readIdentity(client), baseline.identity)) {
+    fail("Physical cleanup did not restore original school identity.");
+  }
 }
 
 async function main() {
   const mode = process.argv[2];
-  if (!["plan", "provision", "cleanup"].includes(mode)) {
-    fail("Choose exactly one mode: plan, provision, or cleanup.");
+  if (!["plan", "provision", "cleanup", "verify"].includes(mode)) {
+    fail("Choose exactly one mode: plan, provision, cleanup, or verify.");
   }
-  if (mode !== "plan") requireConfirm(mode);
+  if (mode !== "plan" && mode !== "verify") requireConfirm(mode);
   assertDevelopmentShell();
   const evidence = await readEvidence();
   const migrationFiles = await migrationFileEvidence();
@@ -1080,6 +1155,21 @@ async function main() {
     await client.connect();
     await client.query("BEGIN READ ONLY");
     const identity = await readIdentity(client);
+    if (mode === "verify") {
+      const manifest = JSON.parse(await readFile(MANIFEST_PATH, "utf8"));
+      if (preservationDigest(manifest.preservationSnapshot) !== manifest.preservationDigest) {
+        fail("Original-row preservation evidence was altered.");
+      }
+      await assertMigrationEvidence(client, evidence, migrationFiles, manifest);
+      console.log(JSON.stringify({
+        status: "READ_ONLY_PRESERVATION_VERIFIED",
+        ...await verifyOriginalRows(client, manifest.preservationSnapshot),
+        baselineTables: Object.keys(evidence.baseline.records).length,
+        triggerChanges: 0,
+      }));
+      await client.query("ROLLBACK");
+      return;
+    }
     if (mode === "cleanup") {
       // Cleanup reads the current fixture school plus all other existing schools.
       if (identity.db !== evidence.baseline.identity.db ||
@@ -1102,7 +1192,7 @@ async function main() {
         migrationNamesVerified: EXPECTED_MIGRATIONS.length,
         schoolScopedTablesInCleanupPlan: plan.names.length,
         retentionTablesLockedExclusively: RETENTION_TABLES.length,
-        retentionTriggersTemporarilyChanged: plan.retentionTriggers.length,
+        retentionTriggersTemporarilyChanged: 0,
         manifestPath: MANIFEST_PATH,
         recordsCreated: 0,
       }));

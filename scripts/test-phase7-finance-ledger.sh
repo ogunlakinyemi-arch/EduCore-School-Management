@@ -2,6 +2,18 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+MODE="${1:---finance}"
+case "$MODE" in
+  --finance)
+    TEST_CONFIG="vitest.finance-integration.config.ts"
+    TEST_FILE="src/routes/finance-postgres.integration.test.ts"
+    ;;
+  --nfc-current-record)
+    TEST_CONFIG="vitest.config.ts"
+    TEST_FILE="src/routes/attendance-nfc-current-record.integration.test.ts"
+    ;;
+  *) echo "Use --finance or --nfc-current-record" >&2; exit 1 ;;
+esac
 MIGRATIONS_DIR="$ROOT_DIR/lib/db/drizzle"
 for command_name in initdb pg_ctl psql; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
@@ -462,10 +474,9 @@ SQL
 
 SOCKET_URL="${SOCKET_DIR//\//%2F}"
 DATABASE_URL="postgresql://${LOCAL_DB_USER}@/postgres?host=${SOCKET_URL}&port=${PORT}"
-echo "Running focused Finance HTTP integration test on the disposable Unix-socket database"
+echo "Running focused $MODE integration test on the disposable Unix-socket database"
 env -i PATH="$PATH" HOME="${HOME:-/tmp}" LANG=C NODE_ENV=test DATABASE_URL="$DATABASE_URL" \
   pnpm --filter @workspace/api-server exec vitest run \
-    --config vitest.finance-integration.config.ts \
-    src/routes/finance-postgres.integration.test.ts
+    --config "$TEST_CONFIG" "$TEST_FILE"
 
-echo "PASS: SQL and Finance HTTP integration assertions completed on disposable PostgreSQL."
+echo "PASS: SQL and $MODE integration assertions completed on disposable PostgreSQL."

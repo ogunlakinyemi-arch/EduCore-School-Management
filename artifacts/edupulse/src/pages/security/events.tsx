@@ -3,20 +3,23 @@ import { useListSchoolSecurityEvents, getListSchoolSecurityEventsQueryKey } from
 import type { ListSchoolSecurityEventsEventType, ListSchoolSecurityEventsResult } from '@workspace/api-client-react';
 import { EmptyState, StatusPill } from '@/components/shared';
 import { DoorOpen } from 'lucide-react';
-import { dayRange, fmtDateTime } from './security-contract';
-import { inputClass, Pager, QueryBoundary } from './ui';
+import { dayRange, validDayRange, fmtDateTime } from './security-contract';
+import { inputClass, Notice, Pager, QueryBoundary } from './ui';
 
 export function Events({ schoolId }: { schoolId: number }) {
   const [from, setFrom] = useState(''); const [to, setTo] = useState('');
   const [type, setType] = useState<'' | ListSchoolSecurityEventsEventType>(''); const [result, setResult] = useState<'' | ListSchoolSecurityEventsResult>('');
   const [search, setSearch] = useState(''); const [cursors, setCursors] = useState<number[]>([]);
   const page = cursors.length;
+  const [editingDate, setEditingDate] = useState(false);
+  const validDates = validDayRange(from, to);
   const params = { limit: 20, ...dayRange(from, to), ...(type ? { eventType: type } : {}), ...(result ? { result } : {}), ...(page ? { beforeId: cursors[page - 1] } : {}) };
-  const q = useListSchoolSecurityEvents(schoolId, params, { query: { enabled: !!schoolId, queryKey: getListSchoolSecurityEventsQueryKey(schoolId, params), staleTime: 15000 } });
+  const q = useListSchoolSecurityEvents(schoolId, params, { query: { enabled: !!schoolId && validDates && !editingDate, queryKey: getListSchoolSecurityEventsQueryKey(schoolId, params), staleTime: 15000 } });
   const rows = useMemo(() => { const s = search.trim().toLowerCase(); return (q.data?.items ?? []).filter(e => !s || [e.personName, e.locationName, e.readerName, e.reasonCode, e.className].some(v => v?.toLowerCase().includes(s))); }, [q.data, search]);
   const reset = () => setCursors([]);
   return <div className="space-y-4">
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+    {!validDates && <Notice tone="error">Choose valid dates with From no later than To. No unfiltered request has been sent.</Notice>}
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" onFocusCapture={e => { if ((e.target as HTMLInputElement).type === 'date') setEditingDate(true); }} onBlurCapture={() => setEditingDate(false)}>
       <label className="text-xs font-bold">From<input type="date" className={inputClass} value={from} onChange={e => { setFrom(e.target.value); reset(); }} data-testid="input-events-from" /></label>
       <label className="text-xs font-bold">To<input type="date" className={inputClass} value={to} onChange={e => { setTo(e.target.value); reset(); }} /></label>
       <label className="text-xs font-bold">Direction<select className={inputClass} value={type} onChange={e => { setType(e.target.value as '' | ListSchoolSecurityEventsEventType); reset(); }}><option value="">All</option><option value="ENTRY">Entry</option><option value="EXIT">Exit</option></select></label>

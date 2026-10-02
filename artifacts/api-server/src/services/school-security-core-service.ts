@@ -902,6 +902,17 @@ export async function listCampusPresence(
   }));
 }
 
+export const securityDashboardActivitySql = `SELECT
+  COUNT(*) FILTER(WHERE e.identity_result='REJECTED')::int AS "rejectedAttempts",
+  COUNT(*) FILTER(WHERE e.identity_result='CONFIRMED' AND e.event_type='ENTRY')::int AS "acceptedEntryEvents",
+  COUNT(*) FILTER(WHERE e.identity_result='CONFIRMED' AND e.event_type='EXIT')::int AS "acceptedExitEvents",
+  COUNT(*) FILTER(WHERE e.reason_code IN ('LOST_CARD','REVOKED_CARD'))::int AS "revokedCardAttempts",
+  COUNT(*) FILTER(WHERE e.identity_result='CONFIRMED' AND e.event_type='ENTRY' AND a.attendance_status='LATE')::int AS "lateArrivals",
+  COUNT(*) FILTER(WHERE e.identity_result='CONFIRMED' AND e.event_type='EXIT' AND a.attendance_status='LEFT_EARLY')::int AS "earlyDepartures"
+  FROM security_events e
+  LEFT JOIN attendance_events a ON a.id=e.attendance_event_id AND a.school_id=e.school_id
+  WHERE e.school_id=$1 AND e.occurred_at >= $2 AND e.occurred_at <= $3`;
+
 export async function getSecurityDashboard(schoolId: number, from: string, to: string) {
   const counts = await pool.query(
     `SELECT
@@ -913,15 +924,7 @@ export async function getSecurityDashboard(schoolId: number, from: string, to: s
     [schoolId],
   );
   const activity = await pool.query(
-    `SELECT COUNT(*) FILTER(WHERE identity_result='REJECTED')::int AS "rejectedAttempts",
-            COUNT(*) FILTER(WHERE identity_result='CONFIRMED' AND event_type='ENTRY')::int AS "acceptedEntryEvents",
-            COUNT(*) FILTER(WHERE identity_result='CONFIRMED' AND event_type='EXIT')::int AS "acceptedExitEvents",
-            COUNT(*) FILTER(WHERE reason_code IN ('LOST_CARD','REVOKED_CARD'))::int AS "revokedCardAttempts",
-            COUNT(*) FILTER(WHERE identity_result='CONFIRMED' AND event_type='ENTRY' AND attendance_status='LATE')::int AS "lateArrivals",
-            COUNT(*) FILTER(WHERE identity_result='CONFIRMED' AND event_type='EXIT' AND attendance_status='LEFT_EARLY')::int AS "earlyDepartures"
-       FROM security_events e
-       LEFT JOIN attendance_events a ON a.id=e.attendance_event_id AND a.school_id=e.school_id
-      WHERE e.school_id=$1 AND e.occurred_at >= $2 AND e.occurred_at <= $3`,
+    securityDashboardActivitySql,
     [schoolId, from, to],
   );
   const currentDate = new Date();

@@ -27,9 +27,17 @@ export function safeMessage(error: unknown, fallback = 'Something went wrong. Tr
 
 export function dayRange(from: string, to: string): { from?: string; to?: string } {
   const out: { from?: string; to?: string } = {};
+  if (!validDayRange(from, to)) return out;
   if (from) out.from = new Date(`${from}T00:00:00`).toISOString();
   if (to) out.to = new Date(`${to}T23:59:59.999`).toISOString();
   return out;
+}
+
+export function validDayRange(from: string, to: string): boolean {
+  const valid = (value: string) => value === '' || (typeof value === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(new Date(`${value}T00:00:00`).getTime()) &&
+    new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value);
+  return valid(from) && valid(to) && (!from || !to || from <= to);
 }
 
 export function presenceUncertain(d: Pick<SecurityDashboard, 'presenceRequiresReview'>): boolean { return d.presenceRequiresReview > 0; }
@@ -87,7 +95,7 @@ export function liveAccess(a: Pick<SecurityAccessDto, 'actorRole' | 'canView' | 
   };
 }
 
-/** Pick EXIT events for one student from a page of events (server cannot filter by student). */
+/** Defense-in-depth filtering for the already student-scoped EXIT query. */
 export function exitEventsForStudent<E extends { eventType: string; identityResult: string; studentId: number | null }>(events: readonly E[], studentId: number): E[] {
   return events.filter(e => e.studentId === studentId && e.eventType === 'EXIT' && e.identityResult === 'CONFIRMED');
 }

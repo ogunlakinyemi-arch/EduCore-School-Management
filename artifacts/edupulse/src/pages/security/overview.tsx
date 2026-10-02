@@ -5,16 +5,19 @@ import { useGetSchoolSecurityDashboard, getGetSchoolSecurityDashboardQueryKey, u
 import type { PresenceReviewInputState } from '@workspace/api-client-react';
 import { Button, EmptyState, Info, StatusPill } from '@/components/shared';
 import { ShieldCheck } from 'lucide-react';
-import { dayRange, fmtDateTime, presenceUncertain, safeMessage } from './security-contract';
+import { dayRange, validDayRange, fmtDateTime, presenceUncertain, safeMessage } from './security-contract';
 import { inputClass, Notice, QueryBoundary, Pager } from './ui';
 
 export function Overview({ schoolId, canMutate }: { schoolId: number; canMutate: boolean }) {
   const [from, setFrom] = useState(''); const [to, setTo] = useState('');
+  const [editingDate, setEditingDate] = useState(false);
   const params = dayRange(from, to);
-  const q = useGetSchoolSecurityDashboard(schoolId, params, { query: { enabled: !!schoolId, queryKey: getGetSchoolSecurityDashboardQueryKey(schoolId, params), staleTime: 15000 } });
+  const validDates = validDayRange(from, to);
+  const q = useGetSchoolSecurityDashboard(schoolId, params, { query: { enabled: !!schoolId && validDates && !editingDate, queryKey: getGetSchoolSecurityDashboardQueryKey(schoolId, params), staleTime: 15000 } });
   const d = q.data;
   return <div className="space-y-6">
-    <div className="grid gap-3 sm:grid-cols-2 md:max-w-md"><label className="text-xs font-bold">From<input type="date" className={inputClass} value={from} onChange={e => setFrom(e.target.value)} data-testid="input-overview-from" /></label><label className="text-xs font-bold">To<input type="date" className={inputClass} value={to} onChange={e => setTo(e.target.value)} data-testid="input-overview-to" /></label></div>
+    {!validDates && <Notice tone="error">Choose valid dates with From no later than To.</Notice>}
+    <div className="grid gap-3 sm:grid-cols-2 md:max-w-md" onFocusCapture={e => { if ((e.target as HTMLInputElement).type === 'date') setEditingDate(true); }} onBlurCapture={() => setEditingDate(false)}><label className="text-xs font-bold">From<input type="date" className={inputClass} value={from} onChange={e => setFrom(e.target.value)} data-testid="input-overview-from" /></label><label className="text-xs font-bold">To<input type="date" className={inputClass} value={to} onChange={e => setTo(e.target.value)} data-testid="input-overview-to" /></label></div>
     <QueryBoundary query={q}>{d && <>
       {presenceUncertain(d) && <Notice>{d.presenceRequiresReview} people have uncertain campus presence. Counts below may be off until reviewed.</Notice>}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

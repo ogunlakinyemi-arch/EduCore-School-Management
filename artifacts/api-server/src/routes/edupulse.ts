@@ -439,7 +439,7 @@ router.get("/students", async (req, res) => {
     }
     if (query.search) {
       values.push(`%${query.search}%`);
-      conditions.push(`(st.first_name ILIKE $${values.length} OR st.last_name ILIKE $${values.length} OR st.admission_no ILIKE $${values.length})`);
+      conditions.push(`(st.first_name ILIKE $${values.length} OR st.last_name ILIKE $${values.length} OR st.admission_no ILIKE $${values.length} OR concat_ws(' ',st.first_name,NULLIF(BTRIM(st.middle_name),''),st.last_name) ILIKE $${values.length})`);
     }
     if (query.classId) {
       // classId is a database class record; filtering by name keeps tenant scope explicit.

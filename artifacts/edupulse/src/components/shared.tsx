@@ -72,7 +72,7 @@ const nav: NavItem[] = [
   { href: '/transport', label: 'School Transport', icon: Smartphone, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
   { href: '/my-transport', label: 'My Transport', icon: Smartphone, roles: ['PARENT', 'STUDENT'] },
   { href: '/reporting', label: 'Reporting', icon: FileSpreadsheet, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT'] },
-  { href: '/security', label: 'School Security', icon: ShieldCheck, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'STAFF'] },
+  { href: '/security', label: 'School Security', icon: ShieldCheck, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'STAFF', 'TEACHER'] },
   { href: '/parent/communication', label: 'Communication Centre', icon: Bell, roles: ['PARENT'] },
   { href: '/communications', label: 'Communications', icon: Bell, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT'] },
   { href: '/inbox', label: 'Inbox', icon: Bell, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'STAFF', 'PARENT'] },
@@ -183,18 +183,18 @@ export function Shell({ children }: { children: ReactNode }) {
       {open && <button className="fixed inset-0 z-30 bg-[hsl(var(--foreground)/.4)] backdrop-blur-sm md:hidden" onClick={() => setOpen(false)} aria-label="Close menu" data-testid="button-dismiss-menu" />}
       <div className="md:pl-[260px] flex flex-col min-h-[100dvh]">
         <header className="sticky top-0 z-20 flex min-h-[76px] shrink-0 flex-col justify-center gap-2 border-b border-[hsl(var(--border)/.8)] bg-[hsl(var(--background)/.95)] px-5 py-3 backdrop-blur-xl sm:h-[76px] sm:flex-row sm:items-center sm:justify-between sm:py-0 md:px-8">
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 flex-1 items-center gap-4">
             <button className="rounded-lg p-2 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] md:hidden" onClick={() => setOpen(true)} aria-label="Open navigation" data-testid="button-open-navigation"><Menu size={22} /></button>
-            <div>
-              <div className="eyebrow flex items-center gap-1.5">
-                Yemait EduCore <ChevronDown size={12} className="opacity-50" /> {schoolName}
+            <div className="min-w-0">
+              <div className="eyebrow flex min-w-0 items-center gap-1.5">
+                <span className="truncate">Yemait EduCore · {schoolName}</span><ChevronDown size={12} className="shrink-0 opacity-50" />
               </div>
-              <div className="mt-0.5 text-sm font-bold text-[hsl(var(--foreground))] capitalize">
+              <div className="mt-0.5 truncate text-sm font-bold text-[hsl(var(--foreground))] capitalize">
                 {location === '/' ? `Welcome back, ${name.split(' ')[0]}` : nav.find(item => item.href !== '/' && location.startsWith(item.href))?.label || 'Overview'}
               </div>
             </div>
           </div>
-          <div className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 shrink-0 items-center gap-3">
             {isPlatformOwner && (
               <div className="min-w-0 flex-1 sm:flex-none">
                 <TenantPicker />
@@ -210,11 +210,11 @@ export function Shell({ children }: { children: ReactNode }) {
               </Link>
             ) : !isActivationOfficer && studentRole && (location.startsWith('/my-fees') || location.startsWith('/my-academics')) ? <FeePaymentNotifications audience="student" /> : !isActivationOfficer && financeRole ? <FeePaymentNotifications key={`school-${schoolId}`} audience="school" schoolId={schoolId} /> : !isActivationOfficer && studentRole ? <FeePaymentNotifications audience="student" /> : null}
             <div className="hidden h-8 w-px bg-[hsl(var(--border))] sm:block" />
-            <div className="hidden text-right sm:block">
+            <div className="hidden text-right lg:block">
               <div className="text-xs font-bold">{name}</div>
               <div className="text-[10px] capitalize text-[hsl(var(--muted-foreground))]">{roleDisplay}</div>
             </div>
-            <div className="hidden h-10 w-10 place-items-center rounded-full bg-[hsl(var(--primary))] text-xs font-bold text-[hsl(var(--primary-foreground))] sm:grid shadow-sm" data-testid="avatar-user">{initials}</div>
+            <div className="hidden h-10 w-10 place-items-center rounded-full bg-[hsl(var(--primary))] text-xs font-bold text-[hsl(var(--primary-foreground))] lg:grid shadow-sm" data-testid="avatar-user">{initials}</div>
             <UserButton />
           </div>
         </header>

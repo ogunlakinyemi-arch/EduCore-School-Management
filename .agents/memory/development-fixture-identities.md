@@ -3,6 +3,12 @@ name: Development fixture identities
 description: Provider normalization and evidence rules for temporary signed-in QA accounts
 ---
 
+Retire Development fixtures that have immutable operational history rather than deleting that history or temporarily disabling its protections. Retain the necessary reference records and revoke device credentials as well as user access.
+
+**Why:** The user explicitly requires security and promotion history to remain immutable during fixture cleanup. Removing identity-provider accounts alone does not stop independently authenticated NFC devices.
+
+**How to apply:** Cleanup must distinguish mutable derived state from history; preserve original-row multisets while allowing legitimate appended QA/audit records.
+
 Use an IANA-reserved conventional email domain for Clerk Development fixtures and compare returned addresses case-insensitively. Record an accepted provider identity before performing further response validation.
 
 **Why:** Clerk rejected `.invalid` email addresses and canonicalized a mixed-case address. A post-create validation failure left an accepted identity untracked until reconciliation by its exact synthetic address and ownership metadata.

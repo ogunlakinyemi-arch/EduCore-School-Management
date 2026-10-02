@@ -359,12 +359,12 @@ function targetCte(input: TargetInput): { sql: string; values: unknown[] } {
     sql: `
       WITH candidates AS (${candidates}),
       recipients AS (
-        SELECT DISTINCT ON (candidate."userId")
+        SELECT DISTINCT ON (candidate."userId",candidate."subjectStudentId",candidate."subjectClassId")
           candidate."userId", candidate.role, candidate."studentName", candidate."parentName", candidate."className"
           ,candidate."subjectStudentId",candidate."subjectClassId"
         FROM candidates candidate
         WHERE candidate."userId" IS NOT NULL
-        ORDER BY candidate."userId",
+        ORDER BY candidate."userId",candidate."subjectStudentId",candidate."subjectClassId",
           CASE candidate.role WHEN 'SCHOOL_ADMIN' THEN 1 WHEN 'TEACHER' THEN 2
             WHEN 'STAFF' THEN 3 WHEN 'ACCOUNTANT' THEN 4 WHEN 'PARENT' THEN 5 ELSE 6 END
       )
@@ -606,8 +606,9 @@ router.post("/communication/announcements/preview", asyncRoute(async (req, res) 
     }
     const count = await pool.query(
       `SELECT COUNT(*)::int AS count
-       FROM app_users u
-       WHERE u.id=ANY($1::int[]) AND NULLIF(BTRIM(u.${field}), '') IS NOT NULL`,
+       FROM unnest($1::int[]) target(user_id)
+       JOIN app_users u ON u.id=target.user_id
+       WHERE NULLIF(BTRIM(u.${field}), '') IS NOT NULL`,
       [recipients.map(recipient => recipient.userId)],
     );
     result.push({ channel, eligibleRecipientCount: Number(count.rows[0]?.count ?? 0) });
@@ -776,7 +777,7 @@ router.post("/communication/announcements", asyncRoute(async (req, res) => {
           recipientUserId: item.recipient.userId,
           schoolId: body.schoolId,
           category: body.category as CommunicationCategory,
-          eventKey: `COMMUNICATION_CAMPAIGN:${campaign.id}:${item.recipient.userId}`,
+          eventKey: `COMMUNICATION_CAMPAIGN:${campaign.id}:${item.recipient.userId}:STUDENT:${item.recipient.subjectStudentId ?? 'NONE'}:CLASS:${item.recipient.subjectClassId ?? 'NONE'}`,
           subject: item.subject,
           body: item.body,
           link: null,
@@ -789,7 +790,7 @@ router.post("/communication/announcements", asyncRoute(async (req, res) => {
           `INSERT INTO communication_campaign_recipients
              (campaign_id,school_id,recipient_user_id,notification_id,status)
            VALUES($1,$2,$3,$4,
-             CASE WHEN $4 IS NOT NULL AND EXISTS(
+             CASE WHEN $4::integer IS NOT NULL AND EXISTS(
                SELECT 1 FROM communication_deliveries d WHERE d.notification_id=$4
              ) THEN 'QUEUED' ELSE 'SKIPPED' END)
            ON CONFLICT (campaign_id,recipient_user_id) DO NOTHING`,
@@ -849,7 +850,7 @@ router.get("/communication/announcements", asyncRoute(async (req, res) => {
     `SELECT c.id,c.school_id AS "schoolId",c.created_by_user_id AS "createdByUserId",
        c.template_id AS "templateId",c.title,c.subject,c.body,c.category,c.target_type AS "targetType",
        c.target_criteria AS "targetCriteria",c.channels,${campaignDerivedStatus} AS status,
-       COUNT(DISTINCT cr.recipient_user_id)::int AS "recipientCount",
+       c.recipient_count AS "recipientCount",
         c.is_emergency AS "isEmergency",
         CASE WHEN c.expires_at IS NULL THEN NULL
           ELSE to_char(c.expires_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS "expiresAt",
@@ -858,7 +859,9 @@ router.get("/communication/announcements", asyncRoute(async (req, res) => {
      LEFT JOIN communication_campaign_recipients cr
        ON cr.campaign_id=c.id AND cr.school_id=c.school_id
      LEFT JOIN communication_notifications n
-       ON n.id=cr.notification_id AND n.school_id=cr.school_id
+       ON (n.id=cr.notification_id OR n.event_key LIKE
+          ('COMMUNICATION_CAMPAIGN:'||cr.campaign_id||':'||cr.recipient_user_id||':STUDENT:%'))
+         AND n.school_id=cr.school_id
          AND n.recipient_user_id=cr.recipient_user_id
      LEFT JOIN communication_deliveries d ON d.notification_id=n.id
      WHERE ${filters.join(" AND ")}
@@ -889,7 +892,7 @@ router.get("/communication/announcements/:campaignId", asyncRoute(async (req, re
     `SELECT c.id,c.school_id AS "schoolId",c.created_by_user_id AS "createdByUserId",
        c.template_id AS "templateId",c.title,c.subject,c.body,c.category,c.target_type AS "targetType",
        c.target_criteria AS "targetCriteria",c.channels,${campaignDerivedStatus} AS status,
-       COUNT(DISTINCT cr.recipient_user_id)::int AS "recipientCount",
+       c.recipient_count AS "recipientCount",
         c.is_emergency AS "isEmergency",
         CASE WHEN c.expires_at IS NULL THEN NULL
           ELSE to_char(c.expires_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS "expiresAt",
@@ -898,7 +901,9 @@ router.get("/communication/announcements/:campaignId", asyncRoute(async (req, re
      LEFT JOIN communication_campaign_recipients cr
        ON cr.campaign_id=c.id AND cr.school_id=c.school_id
      LEFT JOIN communication_notifications n
-       ON n.id=cr.notification_id AND n.school_id=cr.school_id
+       ON (n.id=cr.notification_id OR n.event_key LIKE
+          ('COMMUNICATION_CAMPAIGN:'||cr.campaign_id||':'||cr.recipient_user_id||':STUDENT:%'))
+         AND n.school_id=cr.school_id
          AND n.recipient_user_id=cr.recipient_user_id
      LEFT JOIN communication_deliveries d ON d.notification_id=n.id
      WHERE c.id=$1
@@ -932,12 +937,14 @@ router.get("/communication/announcements/:campaignId", asyncRoute(async (req, re
          'deliveredAt',d.delivered_at,'failedAt',d.failed_at,'errorCode',d.error_code,
          'lastError',d.last_error,'attempts',d.attempts,'nextAttemptAt',d.next_attempt_at,
          'lastAttemptAt',d.last_attempt_at,
-         'simulated',d.error_code='SIMULATED',
+          'simulated',COALESCE(d.error_code='SIMULATED',false),
          'label',CASE WHEN d.error_code='SIMULATED'
            THEN 'Development simulation — no message was sent.' ELSE NULL END
        ) ORDER BY d.id) FILTER (WHERE d.id IS NOT NULL),'[]'::json) AS deliveries
      FROM communication_campaign_recipients cr
-     LEFT JOIN communication_notifications n ON n.id=cr.notification_id
+      LEFT JOIN communication_notifications n ON
+        (n.id=cr.notification_id OR n.event_key LIKE
+          ('COMMUNICATION_CAMPAIGN:'||cr.campaign_id||':'||cr.recipient_user_id||':STUDENT:%'))
        AND n.school_id=cr.school_id AND n.recipient_user_id=cr.recipient_user_id
      LEFT JOIN communication_deliveries d ON d.notification_id=n.id
      WHERE cr.campaign_id=$1 AND cr.school_id=$2

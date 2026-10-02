@@ -36,7 +36,9 @@ function ActionModal({ schoolId, studentId, action, onClose }: { schoolId: numbe
     {kind === 'complete' ? <Field label="Confirmed EXIT event (this student, pickup window)">{evQ.isLoading ? <p className="text-xs">Loading exit events...</p> : evQ.isError ? <Notice tone="error">Exit events could not be loaded. Try again.</Notice> : exits.length ? <select className={inputClass} value={eventId} onChange={e => setEventId(e.target.value)} data-testid="select-exit-event"><option value="">Select the recorded exit</option>{exits.map(e => <option key={e.id} value={e.id}>{fmtDateTime(e.occurredAt)} - {e.readerName ?? e.locationName ?? 'reader'}</option>)}</select> : <Notice>No confirmed exit has been recorded for this student in the pickup window. Completion stays disabled until the student taps out.</Notice>}</Field> : <Field label={kind === 'refuse' ? 'Reason (optional)' : 'Reason'}><textarea className={`${inputClass} min-h-20`} value={reason} onChange={e => setReason(e.target.value)} data-testid="input-pickup-reason" /></Field>}
     {kind === 'complete' && <p className="text-xs">Find the EXIT event in Entry/Exit Events. The server verifies it is confirmed, is an exit, and falls inside the window.</p>}
     {msg && <Notice tone="error">{msg}</Notice>}
-    <Button type="submit" disabled={decide.isPending || refuse.isPending || complete.isPending} testId="button-confirm-pickup-action">Confirm</Button></form></Modal>;
+    <Button type="submit" disabled={decide.isPending || refuse.isPending || complete.isPending ||
+      (kind === 'complete' && (!check?.ok || evQ.isLoading || evQ.isError ||
+        !exits.some(event => event.id === Number(eventId))))} testId="button-confirm-pickup-action">Confirm</Button></form></Modal>;
 }
 
 export function Pickup({ schoolId, canMutate }: { schoolId: number; canMutate: boolean }) {

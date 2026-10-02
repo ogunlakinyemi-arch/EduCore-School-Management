@@ -1075,7 +1075,7 @@ export function createSchoolSecurityOperationsRouter() {
   router.get("/schools/:schoolId/security/incidents/:incidentId/attachments", asyncRoute(async (req, res) => {
     const schoolId = positiveId(req.params.schoolId, "School");
     const incidentId = positiveId(req.params.incidentId, "Incident");
-    await assertOperationsPermission(req, schoolId, "INCIDENT_MANAGE");
+    const context = await assertOperationsPermission(req, schoolId, "INCIDENT_MANAGE");
     const incident = await pool.query(
       `SELECT 1 FROM school_security_incidents WHERE id=$1 AND school_id=$2 LIMIT 1`,
       [incidentId, schoolId],
@@ -1083,9 +1083,10 @@ export function createSchoolSecurityOperationsRouter() {
     if (!incident.rows[0]) throw new AuthError(404, "Security incident not found");
     const attachments = await pool.query(
       `SELECT ${incidentAttachmentSelect} FROM school_security_incident_attachments
-        WHERE incident_id=$1 AND school_id=$2 AND status='CONFIRMED'
+        WHERE incident_id=$1 AND school_id=$2
+          AND (status='CONFIRMED' OR (status='PENDING_UPLOAD' AND uploaded_by_user_id=$3))
         ORDER BY created_at ASC,id ASC`,
-      [incidentId, schoolId],
+      [incidentId, schoolId, context.user.id],
     );
     res.json(attachments.rows.map((row) => incidentAttachmentSchema.parse(row)));
   }));

@@ -235,7 +235,7 @@ function ProtectedRoutes() {
         <Switch>
           <Route path="/" component={Dashboard} />
           <Route path="/dashboard"><Redirect to="/" /></Route>
-          <Route path="/security"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'STAFF']} ownerCanView ownerReadOnly><SchoolSecurityPage /></RoleGuard></Route>
+          <Route path="/security"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'STAFF', 'TEACHER']} ownerCanView ownerReadOnly><SchoolSecurityPage /></RoleGuard></Route>
           <Route path="/admissions"><RoleGuard allowedRoles={['SCHOOL_ADMIN']}><AdmissionsPage /></RoleGuard></Route>
           <Route path="/student-care"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']}><StudentCarePage /></RoleGuard></Route>
           <Route path="/behaviour"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']}><BehaviourPage /></RoleGuard></Route>
