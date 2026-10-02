@@ -5,6 +5,7 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { CommunicationPushDeviceInputSubscription } from './communicationPushDeviceInputSubscription';
 
 export interface CommunicationPushDeviceInput {
   /**
@@ -17,4 +18,5 @@ export interface CommunicationPushDeviceInput {
      * @maxLength 256
      */
   opaqueDeviceReference: string;
+  subscription?: CommunicationPushDeviceInputSubscription;
 }

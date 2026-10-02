@@ -4,6 +4,9 @@ import {
   type ProviderFailureCategory,
   type ProviderSendResult,
 } from "./communication-providers";
+import { dispatchPushDevices } from "./web-push-dispatch";
+import { WebPushProvider } from "./web-push-provider";
+import { duplicateCampaignDelivery } from "./communication-external-identity";
 
 export type CommunicationCategory =
   | "ATTENDANCE"
@@ -42,6 +45,7 @@ export interface QueueCommunicationNotificationInput {
   body: string;
   link: string | null;
   channels: CommunicationDeliveryChannel[];
+  useSchoolDefaults?: boolean;
 }
 
 export interface DomainParentEventInput {
@@ -58,7 +62,7 @@ export interface DomainParentEventInput {
   /** GENERIC discards subject/body details that must remain private to school staff. */
   privacy?: "PARENT_SAFE" | "GENERIC";
   link?: string | null;
-  channels?: Array<Extract<CommunicationDeliveryChannel, "IN_APP" | "SMS" | "EMAIL">>;
+  channels?: CommunicationDeliveryChannel[];
 }
 
 /**
@@ -82,10 +86,10 @@ export async function emitDomainParentEvent(
     || !input.body.trim() || input.body.length > 10_000) {
     throw new TypeError("Parent event subject/body are invalid.");
   }
-  const channels: Array<Extract<CommunicationDeliveryChannel, "IN_APP" | "SMS" | "EMAIL">> =
+  const channels: CommunicationDeliveryChannel[] =
     [...new Set(input.channels ?? ["IN_APP" as const])];
-  if (channels.length === 0 || channels.some(channel => !["IN_APP", "SMS", "EMAIL"].includes(channel))) {
-    throw new TypeError("Parent event channels must be IN_APP, SMS or EMAIL.");
+  if (channels.length === 0 || channels.some(channel => !["IN_APP", "SMS", "EMAIL", "PUSH"].includes(channel))) {
+    throw new TypeError("Parent event channels must be IN_APP, SMS, EMAIL or PUSH.");
   }
 
   const parents = await client.query<{
@@ -402,7 +406,13 @@ export async function queueCommunicationNotification(
   }
   if (notificationId === undefined) return null;
 
-  const requestedChannels = [...new Set(input.channels)];
+  let requestedChannels = [...new Set(input.channels)];
+  if (input.schoolId !== null && input.useSchoolDefaults !== false) {
+    const settings = await client.query<{ defaults: Record<string, CommunicationDeliveryChannel[]> }>(
+      `SELECT communication_defaults AS defaults FROM schools WHERE id=$1`, [input.schoolId]);
+    const configured = settings.rows[0]?.defaults?.[input.category] ?? [];
+    requestedChannels = [...new Set([...requestedChannels, ...configured.filter(channel => channels.has(channel))])];
+  }
   if (requestedChannels.length === 0) return Number(notificationId);
 
   let enabledChannels = requestedChannels;
@@ -559,6 +569,7 @@ export interface DispatchCommunicationOptions {
   allowConfiguredProviders?: boolean;
   now?: () => Date;
   maxAttempts?: number;
+  pushSessionActive?: (id: string) => Promise<boolean | null>;
 }
 
 export interface DispatchCommunicationResult {
@@ -572,13 +583,13 @@ export interface DispatchCommunicationResult {
 
 interface ClaimedDelivery {
   id: number | string;
-  channel: "SMS" | "EMAIL";
+  channel: "SMS" | "EMAIL" | "PUSH";
   attempts: number;
 }
 
 interface DispatchRecord {
   id: number | string;
-  channel: "SMS" | "EMAIL";
+  channel: "SMS" | "EMAIL" | "PUSH";
   notificationId: number | string;
   recipientUserId: number | string;
   schoolId: number | string | null;
@@ -629,7 +640,7 @@ async function claimCommunicationDeliveries(
            last_error = 'Worker stopped while provider acceptance was unknown; manual reconciliation is required.',
            failed_at = $1,
            updated_at = $1
-       WHERE channel IN ('SMS','EMAIL')
+       WHERE channel IN ('SMS','EMAIL','PUSH')
          AND status = 'PROCESSING'
           AND COALESCE(last_attempt_at, updated_at, created_at) < $1::timestamptz - INTERVAL '15 minutes'`,
       [normalizedDate(now)],
@@ -638,7 +649,7 @@ async function claimCommunicationDeliveries(
       `WITH due AS (
          SELECT id
          FROM communication_deliveries
-         WHERE channel IN ('SMS','EMAIL')
+         WHERE channel IN ('SMS','EMAIL','PUSH')
            AND attempts < $2
            AND next_attempt_at <= $3
             AND status IN ('QUEUED','FAILED')
@@ -853,10 +864,11 @@ async function persistProviderOutcome(
     `UPDATE communication_deliveries
      SET status = $2,
          provider_message_id = $3,
-         provider_acknowledged_at = CASE WHEN $4 THEN $5 ELSE NULL END,
-         sent_at = CASE WHEN $6 OR $7 THEN $5 ELSE NULL END,
-         delivered_at = CASE WHEN $7 THEN $5 ELSE NULL END,
-         failed_at = CASE WHEN $8 THEN $5 ELSE NULL END,
+         provider_name = $13,
+         provider_acknowledged_at = CASE WHEN $4 THEN $5::timestamptz ELSE NULL END,
+         sent_at = CASE WHEN $6 OR $7 THEN $5::timestamptz ELSE NULL END,
+         delivered_at = CASE WHEN $7 THEN $5::timestamptz ELSE NULL END,
+         failed_at = CASE WHEN $8 THEN $5::timestamptz ELSE NULL END,
          error_code = $9,
          last_error = $10,
          attempts = CASE WHEN $11::integer IS NULL THEN attempts ELSE $11 END,
@@ -872,10 +884,11 @@ async function persistProviderOutcome(
       accepted,
       delivered,
       !accepted && !delivered && !simulated && !willRetry,
-      simulated ? "SIMULATED" : ambiguous ? "PROVIDER_OUTCOME_UNKNOWN" : category ?? "UNKNOWN",
+      simulated ? "SIMULATED" : (accepted || delivered) ? null : ambiguous ? "PROVIDER_OUTCOME_UNKNOWN" : category ?? "UNKNOWN",
       lastError,
       attempts,
       normalizedDate(nextAttemptAt),
+      result.provider,
     ],
   );
 }
@@ -901,6 +914,9 @@ export async function dispatchCommunicationDeliveries(
   const providers = options.providers ?? createCommunicationProviders(
     options.allowConfiguredProviders === true ? process.env : {},
   );
+  const pushProvider = providers.push ?? (options.allowConfiguredProviders ? new WebPushProvider({
+    publicKey: process.env.VAPID_PUBLIC_KEY ?? "", privateKey: process.env.VAPID_PRIVATE_KEY ?? "", subject: process.env.VAPID_SUBJECT ?? "",
+  }) : undefined);
   const now = options.now ?? (() => new Date());
   const claimed = await claimCommunicationDeliveries(pool, batchLimit, maxAttempts, now());
   const summary: DispatchCommunicationResult = {
@@ -927,9 +943,10 @@ export async function dispatchCommunicationDeliveries(
       summary.skipped += 1;
       continue;
     }
+    if (await duplicateCampaignDelivery(pool, record)) { summary.skipped += 1; continue; }
 
     const target = delivery.channel === "SMS" ? record.phone : record.email;
-    if (!target?.trim()) {
+    if (delivery.channel !== "PUSH" && !target?.trim()) {
       await pool.query(
         `UPDATE communication_deliveries
          SET status = 'FAILED',
@@ -947,14 +964,16 @@ export async function dispatchCommunicationDeliveries(
 
     let outcome: ProviderOutcome;
     try {
-      const providerResult = delivery.channel === "SMS"
+      const providerResult = delivery.channel === "PUSH"
+        ? await dispatchPushDevices(pool, record, pushProvider, options.pushSessionActive)
+        : delivery.channel === "SMS"
         ? await providers.sms.send({
-          to: target,
+          to: target!,
           body: record.body,
           idempotencyKey: `communication-${record.notificationId}-sms`,
         })
         : await providers.email.send({
-          to: target,
+          to: target!,
           subject: record.subject ?? record.category,
           body: record.body,
           idempotencyKey: `communication-${record.notificationId}-email`,

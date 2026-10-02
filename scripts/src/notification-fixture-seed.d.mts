@@ -1,0 +1,1 @@
+export function createSchoolRows(client: unknown, manifest: unknown, persistManifest?: boolean): Promise<void>;

@@ -302,6 +302,13 @@
       "when": 1790959805000,
       "tag": "0047_parent_communication_extensions",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1790977200000,
+      "tag": "0048_communication_external_channels",
+      "breakpoints": true
     }
   ]
 }

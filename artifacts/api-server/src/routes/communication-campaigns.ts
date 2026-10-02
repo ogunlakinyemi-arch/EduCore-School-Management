@@ -782,6 +782,7 @@ router.post("/communication/announcements", asyncRoute(async (req, res) => {
           body: item.body,
           link: null,
           channels: body.channels,
+          useSchoolDefaults: false,
           subjectStudentId: item.recipient.subjectStudentId,
           subjectClassId: item.recipient.subjectClassId,
         };

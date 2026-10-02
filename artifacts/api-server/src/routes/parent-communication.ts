@@ -424,12 +424,15 @@ router.get("/communication/channels", asyncRoute(async (_req, res) => {
   const env = process.env;
   const smsConfigured = env.COMMUNICATION_SMS_PROVIDER?.trim().toLowerCase() === "termii"
     && Boolean(env.TERMII_API_KEY?.trim() && env.TERMII_SENDER_ID?.trim());
-  const emailConfigured = env.COMMUNICATION_EMAIL_PROVIDER?.trim().toLowerCase() === "http"
-    && Boolean(env.COMMUNICATION_EMAIL_API_KEY?.trim() && env.COMMUNICATION_EMAIL_ENDPOINT?.trim());
+  const emailConfigured = (env.COMMUNICATION_EMAIL_PROVIDER?.trim().toLowerCase() === "http"
+    && Boolean(env.COMMUNICATION_EMAIL_API_KEY?.trim() && env.COMMUNICATION_EMAIL_ENDPOINT?.trim())) ||
+    (env.COMMUNICATION_EMAIL_PROVIDER?.trim().toLowerCase() === "resend" && Boolean(env.RESEND_API_KEY && env.EMAIL_FROM));
+  const pushConfigured = Boolean(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT);
   res.json(communicationChannelAvailabilityResponseSchema.parse({
     channels: [
       { channel: "IN_APP", available: true, status: "AVAILABLE", detail: "In-app notifications are stored in the authenticated inbox." },
-      { channel: "PUSH", available: false, status: "UNAVAILABLE", detail: "A real Web Push delivery adapter is not configured; device registration is not delivery." },
+      { channel: "PUSH", available: pushConfigured, status: pushConfigured ? "AVAILABLE" : "CONFIGURATION_REQUIRED",
+        detail: pushConfigured ? "Web Push is configured; permission and an active device subscription are still required." : "VAPID settings are missing; no push can be sent." },
       { channel: "SMS", available: smsConfigured, status: smsConfigured ? "AVAILABLE" : "CONFIGURATION_REQUIRED",
         detail: smsConfigured ? "Termii credentials and sender ID are configured; provider acceptance is not delivery." : "SMS provider not configured." },
       { channel: "EMAIL", available: emailConfigured, status: emailConfigured ? "AVAILABLE" : "CONFIGURATION_REQUIRED",

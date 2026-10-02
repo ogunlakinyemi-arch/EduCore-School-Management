@@ -55,6 +55,7 @@ export const schools = pgTable(
     website: text("website"),
     logo: text("logo"),
     schoolType: text("school_type"),
+    communicationDefaults: jsonb("communication_defaults").notNull().default({}),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

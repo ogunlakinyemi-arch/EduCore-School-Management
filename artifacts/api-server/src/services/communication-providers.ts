@@ -1,6 +1,6 @@
 import { logger } from "../lib/logger";
 
-export type CommunicationChannel = "sms" | "email";
+export type CommunicationChannel = "sms" | "email" | "push";
 export type ProviderDeliveryStatus = "SIMULATED" | "ACCEPTED" | "DELIVERED" | "FAILED";
 export type ProviderFailureCategory =
   | "CONFIGURATION"
@@ -62,6 +62,18 @@ export interface EmailProvider {
 export interface CommunicationProviderAdapters {
   sms: SmsProvider;
   email: EmailProvider;
+  push?: PushProvider;
+}
+
+export interface WebPushSubscription {
+  endpoint: string;
+  expirationTime?: number | null;
+  keys: { p256dh: string; auth: string };
+}
+export interface PushProvider {
+  readonly provider: string;
+  readonly channel: "push";
+  send(message: { subscription: WebPushSubscription; idempotencyKey: string }): Promise<ProviderSendResult>;
 }
 
 export interface CommunicationProviderLogEvent {
@@ -97,13 +109,17 @@ const NIGERIAN_MOBILE_NUMBER = /^(?:70|80|81|90|91)\d{8}$/;
 const NIGERIAN_LOCAL_MOBILE = new RegExp(`^0${NIGERIAN_MOBILE_PREFIX}\\d{8}$`);
 const NIGERIAN_INTERNATIONAL_MOBILE = new RegExp(`^234${NIGERIAN_MOBILE_PREFIX}\\d{8}$`);
 
-function normalizeTermiiRecipient(value: string): string | null {
+export function normalizeTermiiRecipient(value: string): string | null {
   if (typeof value !== "string" || value.trim().length === 0) return null;
   const trimmed = value.trim();
   if (!/^[+()\d\s-]+$/.test(trimmed)) return null;
   const compact = trimmed.replace(/[\s()-]/g, "");
 
   if (/^(?:\+234|00234)0/.test(compact)) return null;
+  if (/^(?:\+234|00234)/.test(compact)) {
+    const national = compact.replace(/^(?:\+234|00234)/, "");
+    return NIGERIAN_MOBILE_NUMBER.test(national) ? `+234${national}` : null;
+  }
   if (/^\+[1-9]\d{7,14}$/.test(compact)) return compact;
   if (/^00[1-9]\d{7,14}$/.test(compact)) return `+${compact.slice(2)}`;
   if (NIGERIAN_LOCAL_MOBILE.test(compact)) {
@@ -302,6 +318,7 @@ export class TermiiSmsProvider implements SmsProvider {
         signal: timeout.signal,
       });
       if (!response.ok) {
+        if (response.status >= 500) return failedResult(this.provider, this.channel, "UNKNOWN", false, this.onFailure);
         return responseFailure(this.provider, this.channel, response.status, this.onFailure);
       }
 
@@ -309,7 +326,7 @@ export class TermiiSmsProvider implements SmsProvider {
       try {
         payload = await response.json();
       } catch {
-        return failedResult(this.provider, this.channel, "PROVIDER_REJECTED", true, this.onFailure);
+        return failedResult(this.provider, this.channel, "UNKNOWN", false, this.onFailure);
       }
       if (!isSuccessfulTermiiResponse(payload)) {
         return failedResult(this.provider, this.channel, "PROVIDER_REJECTED", true, this.onFailure);
@@ -461,6 +478,10 @@ export function createEmailProvider(
   if (selected === "development" || selected === "dev" || selected === "test") {
     return new DevelopmentCommunicationProvider("email");
   }
+  if (selected === "resend") {
+    if (!env.RESEND_API_KEY || !env.EMAIL_FROM) throw new CommunicationProviderConfigurationError("email", selected);
+    return new ResendEmailProvider({ apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM }, options);
+  }
   if (selected !== "http") {
     throw new CommunicationProviderConfigurationError("email", selected);
   }
@@ -473,13 +494,64 @@ export function createEmailProvider(
   );
 }
 
+/** Transactional Resend adapter. Acceptance is not a delivery receipt. */
+export class ResendEmailProvider implements EmailProvider {
+  readonly provider = "resend";
+  readonly channel = "email" as const;
+  constructor(private readonly config: { apiKey: string; from: string }, private readonly options: CommunicationProviderOptions = {}) {
+    if (!config.apiKey.trim() || !validEmail(config.from.replace(/^.*<([^>]+)>$/, "$1"))) {
+      throw new CommunicationProviderConfigurationError("email", "resend");
+    }
+  }
+  async send(message: EmailMessage): Promise<ProviderSendResult> {
+    if (!validEmail(message.to) || !message.subject.trim() || !message.body.trim()) {
+      return failedResult(this.provider, this.channel, "INVALID_REQUEST", false, this.options.onFailure);
+    }
+    const timeout = createTimeoutSignal(this.options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+    try {
+      const response = await (this.options.fetch ?? globalThis.fetch)("https://api.resend.com/emails", {
+        method: "POST", redirect: "error", signal: timeout.signal,
+        headers: { authorization: `Bearer ${this.config.apiKey}`, "content-type": "application/json",
+          ...(message.idempotencyKey ? { "Idempotency-Key": message.idempotencyKey } : {}) },
+        body: JSON.stringify({ from: this.config.from, to: [message.to], subject: message.subject,
+          text: message.body, ...(message.html ? { html: message.html } : {}) }),
+      });
+      if (!response.ok) return responseFailure(this.provider, this.channel, response.status, this.options.onFailure);
+      return acceptedResult(this.provider, this.channel, readProviderMessageId(await response.json()));
+    } catch (error) {
+      return transportFailure(this.provider, this.channel, error, this.options.onFailure);
+    } finally { timeout.clear(); }
+  }
+}
+
+export function validEmail(value: string): boolean {
+  return typeof value === "string" && value.length <= 254 &&
+    /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(value) && !/[\r\n]/.test(value);
+}
+
 /** Resolve only explicitly configured adapters; defaults are safe no-network simulations. */
 export function createCommunicationProviders(
   env: NodeJS.ProcessEnv = process.env,
   options: CommunicationProviderOptions = {},
 ): CommunicationProviderAdapters {
+  const unavailable = <C extends "sms" | "email">(channel: C) => ({
+    provider: channel === "sms" ? configuredProviderName(env.COMMUNICATION_SMS_PROVIDER) : configuredProviderName(env.COMMUNICATION_EMAIL_PROVIDER),
+    channel,
+    async send(_message: C extends "sms" ? SmsMessage : EmailMessage): Promise<ProviderSendResult> {
+      return { provider: this.provider, channel, status: "FAILED", accepted: false, delivered: false,
+        failure: { category: "CONFIGURATION", retryable: false } };
+    },
+  });
+  let sms: SmsProvider; let email: EmailProvider;
+  try { sms = createSmsProvider(env, options); } catch (error) {
+    if (!(error instanceof CommunicationProviderConfigurationError)) throw error;
+    sms = unavailable("sms");
+  }
+  try { email = createEmailProvider(env, options); } catch (error) {
+    if (!(error instanceof CommunicationProviderConfigurationError)) throw error;
+    email = unavailable("email");
+  }
   return {
-    sms: createSmsProvider(env, options),
-    email: createEmailProvider(env, options),
+    sms, email,
   };
 }

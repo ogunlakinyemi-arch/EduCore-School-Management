@@ -1,0 +1,812 @@
+YEMAIT EDUCORE — EMAIL + PUSH + SMS NOTIFICATION INTEGRATION
+
+1. DEVELOPMENT-ONLY REQUIREMENT
+
+Work ONLY in the Replit Development environment.
+
+DO NOT click, execute, or initiate Publish.
+
+Do not modify Production database, Production schema, Production data, Production secrets, or deployment configuration.
+
+The existing Replit Publish/schema-diff generator issue is being handled separately through Replit Support. Do not attempt to fix, bypass, or work around it.
+
+Do not delete, reset, or replace existing notification functionality.
+
+---
+
+2. OBJECTIVE
+
+Connect the existing Yemait EduCore notification and Parent Communication Centre to three external delivery channels:
+
+1. Email
+2. Web Push / PWA Push Notifications
+3. SMS
+
+The existing notification workflows must remain intact.
+
+Do NOT create a second notification system.
+
+Extend the existing notification engine so that one application event can optionally produce:
+
+EduCore Event
+      ↓
+Existing Notification Engine
+      ↓
+Channel Selection
+ ┌────┼────┐
+ ↓    ↓    ↓
+Push SMS Email
+
+The existing in-app notification/inbox functionality must continue working exactly as it does now.
+
+---
+
+3. PROVIDER ARCHITECTURE
+
+Implement provider adapters/interfaces rather than hard-coding providers throughout the application.
+
+Use interfaces similar to:
+
+EmailProvider
+SmsProvider
+PushProvider
+
+The application should depend on these interfaces, not directly on a specific vendor.
+
+Recommended initial providers:
+
+Email
+
+Use Resend as the initial email adapter.
+
+SMS
+
+Use Termii as the initial SMS adapter.
+
+Push
+
+Use standard Web Push / VAPID for the PWA rather than requiring a separate push vendor.
+
+Keep the architecture replaceable so another provider can be added later without changing the notification workflows.
+
+Do not claim that external providers are live or configured unless actual credentials are available.
+
+---
+
+4. ENVIRONMENT VARIABLES / SECRETS
+
+Never hard-code credentials.
+
+Use Replit Secrets/environment variables.
+
+Expected Development secrets:
+
+RESEND_API_KEY=
+EMAIL_FROM=
+TERMII_API_KEY=
+TERMII_SENDER_ID=
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=
+
+Do not print secret values in logs, API responses, tests, screenshots, or reports.
+
+If credentials are missing:
+
+- Do not invent them.
+- Do not ask the user to paste secret keys into source code.
+- Implement and test the provider adapters using safe mocks/test adapters.
+- Clearly report which provider credentials remain unconfigured.
+
+For email, "EMAIL_FROM" should eventually use a verified Yemait Technologies domain address.
+
+---
+
+5. EXISTING NOTIFICATION SYSTEM — PRESERVE IT
+
+Before making changes:
+
+1. Inspect the existing notification architecture.
+2. Identify the existing notification tables/models.
+3. Identify notification creation services.
+4. Identify Parent Communication Centre workflows.
+5. Identify existing school/admin/teacher/parent/student notification triggers.
+6. Identify existing notification preferences.
+7. Identify existing audit/delivery records.
+8. Identify existing event handlers.
+9. Identify existing PWA/service-worker implementation.
+10. Identify any existing SMS/email abstractions.
+
+Do not duplicate any existing service.
+
+If an equivalent service already exists, extend it rather than creating another one.
+
+---
+
+6. NOTIFICATION MODEL
+
+Preserve the existing notification/event model.
+
+Add channel support only where necessary.
+
+A notification should conceptually support:
+
+notification
+├── in_app
+├── push
+├── sms
+└── email
+
+Do not automatically send every notification through every channel.
+
+The existing notification type and user preferences must determine which channels are appropriate.
+
+---
+
+7. USER NOTIFICATION PREFERENCES
+
+Preserve the existing Parent Communication Centre preferences.
+
+Where necessary, extend them to support:
+
+push enabled
+sms enabled
+email enabled
+
+Allow notification categories to remain independently configurable.
+
+Example:
+
+Security alerts
+Academic alerts
+Finance alerts
+Admissions
+Medical/Welfare
+Behaviour
+School announcements
+Emergency notifications
+
+Do not allow a user preference to suppress a mandatory emergency/security message where the existing business rules designate it as mandatory.
+
+Respect:
+
+- tenant/school boundaries
+- user role
+- child relationship
+- notification category
+- user preferences
+- emergency rules
+
+---
+
+8. EMAIL IMPLEMENTATION
+
+Create or extend an EmailProvider adapter using Resend.
+
+Requirements:
+
+- Send transactional email only.
+- Use verified sender/domain configuration.
+- Support HTML and plain-text fallback where practical.
+- Do not expose API keys.
+- Return structured success/failure results.
+- Record delivery attempt status.
+- Do not crash the main notification workflow merely because an email provider is unavailable.
+- Preserve the in-app notification even if email delivery fails.
+
+Suggested result structure:
+
+success
+provider
+messageId
+errorCode
+errorMessage
+
+Never store sensitive provider credentials in the database.
+
+---
+
+9. SMS IMPLEMENTATION
+
+Create or extend an SmsProvider adapter using Termii.
+
+Requirements:
+
+- Nigerian phone-number handling.
+- Normalize phone numbers consistently.
+- Validate recipient phone numbers before sending.
+- Respect notification preferences.
+- Support emergency/security SMS where business rules require it.
+- Record delivery attempt status.
+- Use idempotency protection.
+- Do not send duplicate SMS because of repeated event processing.
+- Do not expose API credentials.
+- Preserve the in-app notification when SMS fails.
+
+Do not send real SMS during automated tests unless an explicit safe test adapter is being used.
+
+---
+
+10. WEB PUSH / PWA IMPLEMENTATION
+
+Use Web Push with VAPID.
+
+Inspect the existing PWA/service-worker implementation before changing anything.
+
+Implement:
+
+Browser
+   ↓
+Notification permission
+   ↓
+Push subscription
+   ↓
+EduCore backend
+   ↓
+User/device subscription
+
+Store push subscriptions securely and associate them with the authenticated user/device.
+
+Support:
+
+- Multiple devices per user.
+- Multiple parent devices.
+- Subscription replacement.
+- Subscription expiration.
+- Invalid subscription cleanup.
+- Logout/session considerations.
+- Revoked/expired subscriptions.
+- Tenant isolation.
+
+Do not store authentication passwords in local storage.
+
+Do not cache sensitive notification data unnecessarily.
+
+---
+
+11. PUSH PAYLOAD SECURITY
+
+Do not place unnecessary sensitive information directly into push payloads.
+
+For sensitive events, prefer a minimal notification such as:
+
+Your child's attendance has been updated.
+Open Yemait EduCore for details.
+
+rather than exposing confidential information on a locked phone screen.
+
+Security-sensitive information should require opening the authenticated application where appropriate.
+
+---
+
+12. EVENT-DRIVEN NOTIFICATION FLOW
+
+Use the existing notification events.
+
+Examples:
+
+Student arrival
+
+NFC/Attendance/Security Event
+        ↓
+Existing EduCore event
+        ↓
+Notification Engine
+        ↓
+Parent notification
+        ↓
+In-app + Push/SMS/Email according to rules
+
+Result published
+
+Result Published
+        ↓
+Notification Engine
+        ↓
+Parent
+        ↓
+Push + Email where enabled
+
+Fee invoice
+
+Invoice Created
+        ↓
+Notification Engine
+        ↓
+Parent
+        ↓
+Push + Email/SMS according to settings
+
+Emergency
+
+Emergency Broadcast
+        ↓
+Notification Engine
+        ↓
+Mandatory channels
+        ↓
+Push + SMS + Email where configured
+
+Do not create duplicate versions of these workflows.
+
+---
+
+13. IDEMPOTENCY / DUPLICATE PROTECTION
+
+This is mandatory.
+
+A single event must not accidentally send:
+
+- two SMS messages
+- two emails
+- two push notifications
+
+because of retries, page reloads, queue retries, webhook retries, or repeated event processing.
+
+Use an idempotency key based on the existing event/notification identity and channel.
+
+Conceptually:
+
+event_id + recipient_id + channel
+
+must not result in duplicate delivery attempts for the same notification unless an explicit retry policy allows it.
+
+---
+
+14. FAILURE HANDLING
+
+External delivery failure must not break the core EduCore workflow.
+
+Example:
+
+Student arrives
+      ↓
+Security event saved successfully
+      ↓
+Parent notification created
+      ↓
+Push attempt fails
+      ↓
+Notification remains in EduCore
+      ↓
+Failure recorded
+
+Do not roll back the underlying school event merely because SMS/email/push delivery failed.
+
+Support safe retry where appropriate.
+
+---
+
+15. DELIVERY STATUS
+
+Extend the existing communication/delivery history where appropriate.
+
+Support statuses such as:
+
+queued
+sending
+sent
+delivered
+failed
+retrying
+expired
+
+Only use "delivered" when the provider actually supplies a reliable delivery confirmation.
+
+Do not label an API acceptance response as confirmed delivery.
+
+---
+
+16. PROVIDER WEBHOOKS
+
+If the selected providers support delivery-status webhooks:
+
+- Create provider-specific webhook adapters.
+- Validate webhook authenticity/signatures where supported.
+- Make webhook processing idempotent.
+- Do not trust arbitrary webhook payloads.
+- Do not allow one school's delivery event to affect another school's records.
+- Do not expose provider secrets.
+
+Do not claim delivery confirmation if the provider does not provide it.
+
+---
+
+17. PARENT COMMUNICATION CENTRE
+
+Integrate with the existing Parent Communication Centre.
+
+Do not replace its current interface.
+
+Where appropriate, allow parents to see:
+
+Notification
+Channel
+Status
+Date/time
+
+Example:
+
+School announcement
+In-app     ✓
+Push       ✓
+SMS        —
+Email      ✓
+
+Preserve existing inbox, archive/restore, filtering, child selection and preferences.
+
+---
+
+18. SCHOOL ADMIN CONTROLS
+
+Preserve existing School Admin communication controls.
+
+If the current system supports communication categories, retain them.
+
+Allow authorized School Admin users to configure:
+
+- available notification channels
+- school communication preferences
+- announcement delivery
+- emergency communication
+- category defaults
+
+Do not allow School Admin to access another school's configuration.
+
+---
+
+19. OWNER CONTROLS
+
+Preserve existing Platform Owner permissions.
+
+Owner-level reporting may show aggregate communication statistics where already supported.
+
+Do not expose individual school/private communication content unnecessarily.
+
+Maintain Owner read-only restrictions where currently applicable.
+
+---
+
+20. TENANT ISOLATION
+
+This is mandatory.
+
+Verify:
+
+School A notification
+≠
+School B notification
+
+A Parent must only receive notifications relating to their authorized children.
+
+A Teacher must only receive notifications permitted by their school role and assignments.
+
+A School Admin must only access their school's communication records.
+
+A Partner must not gain access to private parent communications merely because the Partner registered the school.
+
+---
+
+21. PHONE NUMBER AND EMAIL VALIDATION
+
+Implement safe normalization.
+
+Phone numbers should support Nigerian formats such as:
+
+080xxxxxxxx
+070xxxxxxxx
+090xxxxxxxx
++234xxxxxxxxxx
+
+Normalize internally to a consistent format.
+
+Email addresses should be validated before sending.
+
+Do not expose whether another person's account exists merely because an email or phone number was entered.
+
+---
+
+22. TEST PROVIDERS
+
+Create development-only mock providers:
+
+MockEmailProvider
+MockSmsProvider
+MockPushProvider
+
+They should:
+
+- record delivery attempts
+- simulate success
+- simulate failure
+- simulate retry
+- expose test delivery IDs
+- never contact real external providers
+
+Use these for automated tests.
+
+---
+
+23. TESTING REQUIREMENTS
+
+Add regression tests for:
+
+Email
+
+- successful email
+- missing credentials
+- provider failure
+- invalid email
+- duplicate prevention
+- tenant isolation
+
+SMS
+
+- successful SMS through mock provider
+- invalid phone number
+- provider failure
+- duplicate prevention
+- Nigerian number normalization
+- tenant isolation
+
+Push
+
+- valid subscription
+- expired subscription
+- multiple devices
+- invalid subscription cleanup
+- permission handling
+- duplicate prevention
+- tenant isolation
+
+Notification preferences
+
+Test:
+
+- push enabled
+- push disabled
+- SMS enabled
+- SMS disabled
+- email enabled
+- email disabled
+- emergency override where required
+
+Event workflows
+
+Test:
+
+- NFC/security event → parent notification
+- attendance event → parent notification
+- result publication → parent notification
+- fee invoice → parent notification
+- admission update → parent notification
+- behaviour/welfare event → parent notification
+- emergency broadcast → parent notification
+
+---
+
+24. BROWSER VERIFICATION
+
+In Development, verify signed-in journeys for:
+
+Parent
+
+- Notification Centre
+- Inbox
+- Preferences
+- Child selection
+- Security notification
+- Academic notification
+- Finance notification
+
+School Admin
+
+- Communication Centre
+- Announcement
+- Parent message
+- Emergency broadcast
+- Delivery history
+
+Teacher
+
+- Authorized parent communication
+- Delegation rules
+- Notification permissions
+
+Student
+
+- Appropriate student notifications only
+
+Verify mobile layouts at:
+
+402px
+768px
+1365px
+
+Do not introduce horizontal overflow.
+
+---
+
+25. PWA VERIFICATION
+
+Verify the existing PWA implementation remains intact.
+
+Check:
+
+- manifest
+- service worker
+- installability configuration
+- icons
+- standalone mode
+- notification permission flow
+- push subscription registration
+- logout/session behaviour
+- sensitive-data caching
+
+If physical installation cannot be tested in the Development environment, report it as:
+
+Not Yet Verified
+
+Do not claim successful installation without actually testing it.
+
+---
+
+26. REAL PROVIDER CREDENTIALS
+
+If the user later supplies/configures provider credentials through Replit Secrets:
+
+Do NOT display them.
+
+Verify only through safe test calls.
+
+For example:
+
+RESEND_API_KEY → configured
+TERMII_API_KEY → configured
+VAPID keys → configured
+
+Do not print secret values.
+
+If credentials are absent, continue using mocks and clearly report:
+
+Real provider delivery: Not Yet Verified
+
+---
+
+27. NO REAL MONEY / NO UNAUTHORIZED MESSAGES
+
+Automated tests must never:
+
+- charge money
+- send real SMS
+- send unintended mass emails
+- send real emergency broadcasts
+- contact real parents
+
+Use mocks/test adapters unless explicitly performing a controlled provider test.
+
+---
+
+28. DATABASE SAFETY
+
+If database changes are required:
+
+1. Inspect existing Development schema first.
+2. Create additive Development migrations only.
+3. Preserve existing records.
+4. Preserve existing foreign keys.
+5. Preserve tenant isolation.
+6. Test migration replay.
+7. Test rollback/recovery strategy where appropriate.
+8. Do not modify Production.
+9. Do not attempt to solve the existing Replit Publish-generator defect.
+
+---
+
+29. DO NOT CREATE DUPLICATE SYSTEMS
+
+Do not create:
+
+- a second notification centre
+- a second parent messaging system
+- a second SMS service
+- a second email service
+- a second push service
+- duplicate preference tables
+- duplicate delivery-history tables
+
+Extend the existing architecture.
+
+---
+
+30. FINAL VERIFICATION REPORT
+
+When finished, provide a concise report containing:
+
+Implemented
+
+- Email adapter
+- SMS adapter
+- Push/Web Push adapter
+- Provider abstraction
+- Delivery tracking
+- Idempotency
+- Preference integration
+- PWA integration
+- Webhooks if implemented
+
+Verified in Development
+
+Give exact numbers for:
+
+- Backend tests
+- Frontend tests
+- PostgreSQL tests
+- Provider adapter tests
+- Notification tests
+- Typecheck
+- Browser verification
+
+Not Yet Verified
+
+Clearly list:
+
+- Real Resend delivery
+- Real Termii delivery
+- Physical push notification
+- Physical PWA installation
+- Any missing credentials
+- Any provider webhook verification
+- Any other remaining limitation
+
+Production
+
+Explicitly confirm:
+
+Nothing was Published.
+
+No Production database/schema/data was modified.
+
+The existing Replit Publish-generator issue remains untouched and continues to be handled separately through Replit Support.
+
+---
+
+FINAL PRINCIPLE
+
+Yemait EduCore already has an existing notification and Parent Communication Centre.
+
+Do NOT rebuild it.
+
+Add reliable external delivery channels around the existing system:
+
+                YEMAIT EDUCORE
+                      │
+             Existing Event System
+                      │
+             Existing Notification
+                      │
+             Existing Parent Centre
+                      │
+        ┌─────────────┼─────────────┐
+        ↓             ↓             ↓
+      PUSH           SMS           EMAIL
+        │             │             │
+      PWA           Termii         Resend
+
+The underlying EduCore event must remain the source of truth.
+
+External providers are delivery channels only.
+
+Maintain:
+
+- security
+- tenant isolation
+- RBAC
+- audit logging
+- notification preferences
+- idempotency
+- delivery status
+- failure handling
+- data preservation
+
+Development only. Do not Publish. Do not modify Production.

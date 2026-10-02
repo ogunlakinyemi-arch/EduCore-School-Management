@@ -467,7 +467,7 @@ function userByRole(manifest, role) {
   return found;
 }
 
-async function createSchoolRows(client, manifest) {
+export async function createSchoolRows(client, manifest, persistManifest = true) {
   const school = (await client.query(`
     INSERT INTO public.schools
       (code,name,city,state,status,email,address,school_type)
@@ -707,7 +707,7 @@ async function createSchoolRows(client, manifest) {
   if (Number(ownerMemberships.rows[0].count) !== 0) {
     fail("A school fixture account unexpectedly has a Platform Owner role.");
   }
-  await atomicWriteManifest(manifest);
+  if (persistManifest) await atomicWriteManifest(manifest);
 }
 
 async function provision(evidence, migrationFiles, plan) {
@@ -1205,7 +1205,8 @@ async function main() {
   }
 }
 
-main().catch((error) => {
+if (process.argv[1] && path.basename(process.argv[1]).startsWith("educore-expansion-browser-fixtures.")
+    && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) main().catch((error) => {
   const message = error instanceof Error ? error.message : "Fixture command failed safely.";
   console.error(message.replaceAll(process.env.DATABASE_URL ?? "\u0000", "[REDACTED]"));
   process.exitCode = 1;

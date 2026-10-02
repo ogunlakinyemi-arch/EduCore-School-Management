@@ -14514,6 +14514,55 @@ export const RetryCommunicationDeliveryResponse = zod.object({
 })
 
 
+
+
+
+export const GetSchoolCommunicationDefaultsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const getSchoolCommunicationDefaultsResponseDefaultsMaxOne = 4;
+
+
+
+export const GetSchoolCommunicationDefaultsResponse = zod.object({
+  "defaults": zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL'])).max(getSchoolCommunicationDefaultsResponseDefaultsMaxOne)),
+  "canWrite": zod.boolean()
+})
+
+
+
+
+
+export const UpdateSchoolCommunicationDefaultsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const updateSchoolCommunicationDefaultsBodyMaxOne = 4;
+
+
+
+export const UpdateSchoolCommunicationDefaultsBody = zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL'])).max(updateSchoolCommunicationDefaultsBodyMaxOne))
+
+export const updateSchoolCommunicationDefaultsResponseDefaultsMaxOne = 4;
+
+
+
+export const UpdateSchoolCommunicationDefaultsResponse = zod.object({
+  "defaults": zod.record(zod.string(), zod.array(zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL'])).max(updateSchoolCommunicationDefaultsResponseDefaultsMaxOne)),
+  "canWrite": zod.boolean()
+})
+
+
+export const GetCommunicationPushConfigurationResponse = zod.object({
+  "configured": zod.boolean(),
+  "publicKey": zod.string().nullable()
+})
+
+
+export const RevokeCommunicationPushSessionResponse = zod.void()
+
+
 /**
  * @summary List the authenticated user's registered push-device references
  */
@@ -14543,11 +14592,21 @@ export const ListCommunicationPushDevicesResponse = zod.array(ListCommunicationP
 
 export const registerCommunicationPushDeviceBodyOpaqueDeviceReferenceMax = 256;
 
+export const registerCommunicationPushDeviceBodySubscriptionEndpointMax = 2048;
+
 
 
 export const RegisterCommunicationPushDeviceBody = zod.object({
   "schoolId": zod.number().int().min(1).nullish(),
-  "opaqueDeviceReference": zod.string().min(1).max(registerCommunicationPushDeviceBodyOpaqueDeviceReferenceMax)
+  "opaqueDeviceReference": zod.string().min(1).max(registerCommunicationPushDeviceBodyOpaqueDeviceReferenceMax),
+  "subscription": zod.object({
+  "endpoint": zod.string().url().max(registerCommunicationPushDeviceBodySubscriptionEndpointMax),
+  "expirationTime": zod.number().nullish(),
+  "keys": zod.object({
+  "p256dh": zod.string(),
+  "auth": zod.string()
+})
+}).optional()
 })
 
 export const RegisterCommunicationPushDeviceResponse = zod.object({

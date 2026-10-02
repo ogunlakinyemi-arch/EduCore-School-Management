@@ -34,3 +34,4 @@
 - [Permanent NFC print policy](nfc-permanent-print-policy.md) — student cards omit changing academic data; printing never creates, activates, or unlocks an NFC assignment.
 - [Campus security principles](educore-campus-security-principles.md) — extend permanent NFC identity and existing communications; distinguish access decisions, pickup authorization and physical hardware.
 - [Development fixture identities](development-fixture-identities.md) — normalize provider identifiers, reconcile untracked accepted identities, and retain legitimate appended QA audit evidence.
+- [Notification verification safety](notification-verification-safety.md) — credentials do not authorize live sends; Development fixtures and mocks cannot establish physical delivery.

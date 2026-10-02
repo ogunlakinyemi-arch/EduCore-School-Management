@@ -1,9 +1,28 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { pool } from "@workspace/db";
+import { getAuth } from "@clerk/express";
+import { pushSubscriptionSchema } from "../services/web-push-provider";
+import { createHash } from "node:crypto";
 import { AuthError, getUserContext, requireAuthentication } from "../middlewares/auth";
 
 const router: IRouter = Router();
 router.use(requireAuthentication());
+router.get("/communication/push-configuration", (_req, res) => {
+  const configured = Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_SUBJECT);
+  res.setHeader("Cache-Control", "no-store");
+  // The application-server PUBLIC key is intentionally supplied to PushManager.
+  res.json({ configured, publicKey: configured ? process.env.VAPID_PUBLIC_KEY : null });
+});
+router.post("/communication/push-devices/revoke-session", async (req, res) => {
+  try {
+    const user = getUserContext(req).user;
+    const session = getAuth(req).sessionId;
+    if (!session) throw new AuthError(401, "An active session is required");
+    await pool.query(`UPDATE communication_push_devices SET status='REVOKED',revoked_at=NOW()
+      WHERE user_id=$1 AND session_id=$2 AND status='ACTIVE'`, [user.id, session]);
+    res.status(204).end();
+  } catch (error) { fail(res, error, "Could not revoke push session"); }
+});
 
 const categories = new Set([
   "ATTENDANCE", "ACADEMIC", "ASSIGNMENT", "FINANCE", "PAYMENT", "ANNOUNCEMENT",
@@ -679,10 +698,17 @@ router.post("/communication/push-devices", async (req, res): Promise<void> => {
   try {
     const context = getUserContext(req);
     const body = req.body ?? {};
-    assertBodyKeys(body, ["schoolId", "opaqueDeviceReference"]);
+    assertBodyKeys(body, ["schoolId", "opaqueDeviceReference", "subscription"]);
     const schoolId = parseBodySchoolId(body.schoolId, true);
     await assertSchoolEntitlement(context, schoolId, client);
-    const reference = body.opaqueDeviceReference;
+    const suppliedReference = body.opaqueDeviceReference;
+    const parsed = body.subscription === undefined ? null : pushSubscriptionSchema.safeParse(body.subscription);
+    if (parsed && !parsed.success) throw new AuthError(400, "Invalid push subscription");
+    const subscription = parsed?.success ? parsed.data : null;
+    const reference = subscription ? createHash("sha256").update(subscription.endpoint).digest("hex") : suppliedReference;
+    if (subscription?.expirationTime && subscription.expirationTime <= Date.now()) throw new AuthError(400, "Subscription is expired");
+    const sessionId = subscription ? getAuth(req).sessionId : null;
+    if (subscription && !sessionId) throw new AuthError(401, "An active session is required");
     if (
       typeof reference !== "string"
       || reference.length < 1
@@ -692,6 +718,12 @@ router.post("/communication/push-devices", async (req, res): Promise<void> => {
       throw new AuthError(400, "opaqueDeviceReference is invalid");
     }
     await client.query("BEGIN");
+    if (subscription) {
+      await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`push-endpoint:${reference}`]);
+      // Account switching replaces ownership; retain the old school's device history.
+      await client.query(`UPDATE communication_push_devices SET status='REVOKED',revoked_at=NOW()
+        WHERE opaque_device_reference=$1 AND user_id<>$2 AND status='ACTIVE'`, [reference,context.user.id]);
+    }
     await client.query(
       "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
       [`${context.user.id}:${schoolId ?? "global"}`],
@@ -709,13 +741,14 @@ router.post("/communication/push-devices", async (req, res): Promise<void> => {
     );
     if (existing.rows[0]) {
       const refreshed = await client.query(
-        `UPDATE communication_push_devices SET last_used_at=NOW()
+        `UPDATE communication_push_devices SET last_used_at=NOW(),
+           subscription=COALESCE($3::jsonb,subscription),session_id=COALESCE($4,session_id)
          WHERE id=$1 AND user_id=$2 AND status='ACTIVE'
          RETURNING id,school_id AS "schoolId",provider,status,
            to_char(created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
            to_char(last_used_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "lastUsedAt",
            NULL::text AS "revokedAt"`,
-        [existing.rows[0].id, context.user.id],
+        [existing.rows[0].id, context.user.id, subscription ? JSON.stringify(subscription) : null, sessionId],
       );
       await client.query("COMMIT");
       res.status(200).json(publicDevice(refreshed.rows[0]));
@@ -754,15 +787,16 @@ router.post("/communication/push-devices", async (req, res): Promise<void> => {
     const deviceValue = schoolId === null ? "$2" : "$3";
     const result = await client.query(
       `INSERT INTO communication_push_devices
-         (user_id,school_id,provider,opaque_device_reference,status,last_used_at)
-       VALUES ($1,${schoolValue},'WEB_PUSH',${deviceValue},'ACTIVE',NOW())
+         (user_id,school_id,provider,opaque_device_reference,status,last_used_at,subscription,session_id)
+       VALUES ($1,${schoolValue},'WEB_PUSH',${deviceValue},'ACTIVE',NOW(),$${values.length + 1}::jsonb,$${values.length + 2})
        ON CONFLICT ${conflict}
-       DO UPDATE SET last_used_at=NOW()
+       DO UPDATE SET last_used_at=NOW(),subscription=COALESCE(EXCLUDED.subscription,communication_push_devices.subscription),
+         session_id=COALESCE(EXCLUDED.session_id,communication_push_devices.session_id)
        RETURNING id,school_id AS "schoolId",provider,status,
          to_char(created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
          to_char(last_used_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "lastUsedAt",
          NULL::text AS "revokedAt"`,
-      values,
+      [...values, subscription ? JSON.stringify(subscription) : null, sessionId],
     );
     const device = result.rows[0];
     await auditAction(

@@ -15,6 +15,7 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import feeProviderWebhookRouter from "./routes/fee-provider-webhooks";
+import communicationReceiptRouter from "./routes/communication-receipts";
 import { staffFlutterwaveWebhookRouter } from "./routes/staff-nfc-billing";
 import { studentSubscriptionFlutterwaveWebhookRouter } from "./routes/student-subscription-webhooks";
 import { logger } from "./lib/logger";
@@ -85,6 +86,7 @@ app.use(
 );
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use(cors({ credentials: true, origin: corsOrigin }));
+app.use("/api/communication/provider-receipts", express.raw({ type: "application/json", limit: "64kb" }), communicationReceiptRouter);
 // Provider callbacks are public and require the untouched raw bytes for
 // signature verification. This mount deliberately precedes Clerk and JSON parsing.
 app.use(

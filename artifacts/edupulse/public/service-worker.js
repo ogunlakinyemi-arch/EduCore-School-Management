@@ -163,3 +163,21 @@ self.addEventListener('fetch', (event) => {
     return cacheCheckedAsset(request, cache, basePath);
   })());
 });
+
+// Do not persist payloads or accept payload-supplied navigation URLs.
+self.addEventListener('push', (event) => {
+  event.waitUntil(self.registration.showNotification('Yemait EduCore', {
+    body: 'You have a new notification. Open EduCore for details.',
+    icon: scopedUrl('icons/educore-192.png'),
+    tag: 'educore-notification',
+  }));
+});
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL('inbox', self.registration.scope).href;
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async clients => {
+    const existing = clients.find(client => client.url.startsWith(self.registration.scope));
+    if (existing) { await existing.navigate(target); return existing.focus(); }
+    return self.clients.openWindow(target);
+  }));
+});

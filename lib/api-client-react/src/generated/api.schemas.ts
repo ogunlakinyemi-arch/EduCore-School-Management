@@ -6684,6 +6684,19 @@ export interface CommunicationPushDevice {
   revokedAt: string | null;
 }
 
+export type CommunicationPushDeviceInputSubscriptionKeys = {
+  p256dh: string;
+  auth: string;
+};
+
+export type CommunicationPushDeviceInputSubscription = {
+  /** @maxLength 2048 */
+  endpoint: string;
+  /** @nullable */
+  expirationTime?: number | null;
+  keys: CommunicationPushDeviceInputSubscriptionKeys;
+};
+
 export interface CommunicationPushDeviceInput {
   /**
      * @minimum 1
@@ -6695,6 +6708,24 @@ export interface CommunicationPushDeviceInput {
      * @maxLength 256
      */
   opaqueDeviceReference: string;
+  subscription?: CommunicationPushDeviceInputSubscription;
+}
+
+export type SchoolCommunicationDefaultsItem = typeof SchoolCommunicationDefaultsItem[keyof typeof SchoolCommunicationDefaultsItem];
+
+
+export const SchoolCommunicationDefaultsItem = {
+  IN_APP: 'IN_APP',
+  PUSH: 'PUSH',
+  SMS: 'SMS',
+  EMAIL: 'EMAIL',
+} as const;
+
+export interface SchoolCommunicationDefaults {[key: string]: SchoolCommunicationDefaultsItem[]}
+
+export interface SchoolCommunicationDefaultsResponse {
+  defaults: SchoolCommunicationDefaults;
+  canWrite: boolean;
 }
 
 export interface ActivationSchool {
@@ -18474,6 +18505,19 @@ export interface CommunicationPushDevice4b96100 {
   revokedAt: string | null;
 }
 
+export type CommunicationPushDeviceInput4b96100SubscriptionKeys = {
+  p256dh: string;
+  auth: string;
+};
+
+export type CommunicationPushDeviceInput4b96100Subscription = {
+  /** @maxLength 2048 */
+  endpoint: string;
+  /** @nullable */
+  expirationTime?: number | null;
+  keys: CommunicationPushDeviceInput4b96100SubscriptionKeys;
+};
+
 export interface CommunicationPushDeviceInput4b96100 {
   /**
      * @minimum 1
@@ -18485,6 +18529,24 @@ export interface CommunicationPushDeviceInput4b96100 {
      * @maxLength 256
      */
   opaqueDeviceReference: string;
+  subscription?: CommunicationPushDeviceInput4b96100Subscription;
+}
+
+export type SchoolCommunicationDefaults4b96100Item = typeof SchoolCommunicationDefaults4b96100Item[keyof typeof SchoolCommunicationDefaults4b96100Item];
+
+
+export const SchoolCommunicationDefaults4b96100Item = {
+  IN_APP: 'IN_APP',
+  PUSH: 'PUSH',
+  SMS: 'SMS',
+  EMAIL: 'EMAIL',
+} as const;
+
+export interface SchoolCommunicationDefaults4b96100 {[key: string]: SchoolCommunicationDefaults4b96100Item[]}
+
+export interface SchoolCommunicationDefaultsResponse4b96100 {
+  defaults: SchoolCommunicationDefaults4b96100;
+  canWrite: boolean;
 }
 
 export interface ActivationSchool4b96100 {
@@ -20767,6 +20829,12 @@ limit?: number;
  * @minimum 1
  */
 beforeId?: number;
+};
+
+export type GetCommunicationPushConfiguration200 = {
+  configured: boolean;
+  /** @nullable */
+  publicKey: string | null;
 };
 
 export type ListCommunicationPushDevicesParams = {

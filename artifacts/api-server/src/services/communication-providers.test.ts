@@ -171,7 +171,7 @@ describe("communication provider adapters", () => {
 
   it.each([
     [408, "TIMEOUT", true],
-    [500, "PROVIDER_REJECTED", true],
+    [500, "UNKNOWN", false],
     [422, "INVALID_REQUEST", false],
   ] as const)("classifies Termii HTTP %s safely without response-body leakage", async (status, category, retryable) => {
     const events: unknown[] = [];

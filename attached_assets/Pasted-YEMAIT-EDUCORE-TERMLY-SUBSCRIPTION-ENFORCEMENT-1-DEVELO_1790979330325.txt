@@ -1,0 +1,1074 @@
+YEMAIT EDUCORE — TERMLY SUBSCRIPTION ENFORCEMENT
+
+1. DEVELOPMENT-ONLY
+
+Work ONLY in the Replit Development environment.
+
+DO NOT Publish.
+
+Do not modify Production database, Production schema, Production data, Production secrets, or deployment settings.
+
+Do not attempt to fix or bypass the existing Replit Publish/schema-diff generator issue.
+
+Preserve all existing functionality, data, permissions, workflows, NFC architecture, automated academic calendars, finance system, Parent Communication Centre, attendance, academics and lesson-note workflows.
+
+---
+
+2. OBJECTIVE
+
+Implement a centralized Termly Subscription Enforcement System using the existing:
+
+- School subscription system
+- Subscription ledger
+- Automated academic calendars
+- Academic sessions
+- Terms
+- NFC student/teacher cards
+- NFC devices/readers
+- Attendance
+- Teacher lesson notes
+- Parent Communication Centre
+- Student portal
+- Teacher portal
+- Parent portal
+- School Finance
+- Platform Owner dashboard
+
+The system must automatically enforce termly subscription status.
+
+The existing subscription amount and business rules remain unchanged.
+
+Do not create a second subscription system.
+
+---
+
+3. EXISTING BUSINESS RULE
+
+Yemait EduCore operates on a termly student subscription.
+
+Use the existing subscription configuration already implemented in EduCore.
+
+Do not hard-code a different subscription price.
+
+The existing subscription/payment records remain the source of truth.
+
+---
+
+4. TERM START AND ONE-WEEK GRACE PERIOD
+
+Use the existing automated academic calendar.
+
+For every school:
+
+Academic Session
+      ↓
+Term
+      ↓
+Term Start Date
+      ↓
+First 7 Days = Grace Period
+      ↓
+Subscription Enforcement Date
+      ↓
+Automatic Lock if Required
+
+The system must NOT use a manually entered global date.
+
+Use each school's existing academic calendar and term dates.
+
+The first week of a new term is a grace period.
+
+After the first week has ended, the system must automatically evaluate the school's subscription status.
+
+Do not lock a school merely because a new term has started.
+
+---
+
+5. SUBSCRIPTION STATUS
+
+Use the existing subscription/payment records.
+
+At minimum, determine whether the required termly subscription is:
+
+PAID
+PENDING
+UNPAID
+OVERDUE
+PARTIALLY_PAID
+WAIVED
+
+Respect any legitimate existing payment verification workflow.
+
+Do not treat a payment as paid merely because a parent initiated checkout.
+
+Payment must satisfy the existing verified-payment rules.
+
+---
+
+6. SCHOOL SUBSCRIPTION ENFORCEMENT STATE
+
+Create or extend the existing subscription state so that the system can determine:
+
+Subscription Active
+Subscription In Grace Period
+Subscription Due
+Subscription Enforcement Required
+Subscription Locked
+Subscription Restored
+
+Do not duplicate existing subscription tables if an appropriate structure already exists.
+
+Use an additive Development migration only if required.
+
+---
+
+7. AUTOMATIC ENFORCEMENT
+
+Create a centralized subscription enforcement service.
+
+Conceptually:
+
+Term Calendar
+      ↓
+Current Term
+      ↓
+Has first 7 days elapsed?
+      ↓
+YES
+      ↓
+Check subscription
+      ↓
+Paid?
+ ┌────┴────┐
+YES       NO
+ ↓         ↓
+ACTIVE    LOCK
+
+The enforcement logic must be safe to run repeatedly.
+
+It must be idempotent.
+
+Running the enforcement process multiple times must not create duplicate locks, duplicate notifications or duplicate audit records.
+
+---
+
+8. AUTOMATIC CARD LOCK
+
+When the subscription enforcement date has passed and the required subscription remains unpaid:
+
+Automatically place all relevant student and teacher NFC cards belonging to the affected school into a subscription-restricted/locked state.
+
+Do NOT:
+
+- delete the card
+- delete the person
+- delete attendance history
+- delete student records
+- delete teacher records
+- delete card history
+- permanently revoke the card
+- destroy NFC UID associations
+
+The lock must be reversible.
+
+Conceptually:
+
+Active Card
+     ↓
+Subscription Enforcement
+     ↓
+Subscription Unpaid
+     ↓
+Subscription-Locked
+
+When the subscription becomes valid:
+
+Subscription Paid
+     ↓
+Verification
+     ↓
+Subscription-Locked Card
+     ↓
+Automatically Restored
+
+---
+
+9. DISTINGUISH SUBSCRIPTION LOCK FROM CARD REVOCATION
+
+This is critical.
+
+An NFC card can already have legitimate states such as:
+
+- Active
+- Lost
+- Revoked
+- Reassigned
+- Expired
+- Replacement
+- Subscription Locked
+
+Do not overwrite permanent card status.
+
+A subscription lock should be an independent restriction.
+
+For example:
+
+Card Status: ACTIVE
+Subscription Restriction: LOCKED
+
+rather than changing the permanent card status to "REVOKED".
+
+If the card was already revoked for another legitimate reason, paying the subscription must NOT automatically reactivate that card.
+
+Only remove the subscription restriction.
+
+---
+
+10. NFC DEVICE LOCK
+
+Apply the same subscription enforcement concept to devices/readers attached to the affected school.
+
+Do not physically destroy or delete the device registration.
+
+Use a reversible state such as:
+
+Device operational state:
+SUBSCRIPTION_LOCKED
+
+The reader/device should reject authorization events from the affected school while subscription enforcement is active.
+
+Preserve:
+
+- device record
+- device ID
+- school association
+- configuration
+- audit history
+- NFC card associations
+- historical events
+
+When subscription is restored, remove only the subscription restriction.
+
+---
+
+11. NFC TAP BEHAVIOUR
+
+When a subscription-locked card is tapped:
+
+The system must NOT process the tap as a normal authorized attendance/security event.
+
+Return a clear result such as:
+
+SUBSCRIPTION_REQUIRED
+
+The device/application should show an appropriate message such as:
+
+School subscription is required. Please contact the school administrator.
+
+Do not expose confidential financial information to students.
+
+Log the blocked attempt safely.
+
+Do not create a normal attendance record for a blocked subscription event.
+
+---
+
+12. TEACHER ACCESS RESTRICTIONS
+
+When a school's subscription is locked:
+
+Teachers belonging to that school must be restricted from subscription-dependent functionality.
+
+At minimum:
+
+Block
+
+- Marking attendance
+- Using NFC attendance
+- Writing/submitting lesson notes
+- Accessing relevant subscription-protected school information
+- Other school operational functions designated as subscription-dependent
+
+Allow
+
+The teacher should still be able to:
+
+- Sign in
+- See a clear subscription restriction message
+- See basic account information
+- See the reason for the restriction
+- See the school/contact information necessary to resolve it
+
+Do not unnecessarily destroy or hide historical records.
+
+---
+
+13. TEACHER LESSON NOTE LOCK
+
+A subscription-locked school must prevent teachers from creating or submitting new lesson notes.
+
+If a teacher attempts to access:
+
+Teacher → My Curriculum → Lesson Notes
+
+show a clear message:
+
+School subscription is required to continue using this feature. Please contact your School Administrator.
+
+Existing historical lesson notes must remain preserved.
+
+Do not delete previously submitted or approved lesson notes.
+
+---
+
+14. STUDENT RESTRICTIONS
+
+For students in a subscription-locked school:
+
+Block subscription-dependent functions including:
+
+- NFC attendance
+- Attendance marking
+- Access to subscription-protected relevant school information
+- Other protected student functions already governed by the subscription rules
+
+Preserve historical:
+
+- Results
+- Attendance
+- Assignments
+- Academic records
+- Student identity
+- NFC history
+
+Do not delete student data.
+
+Show a clear subscription-required message.
+
+---
+
+15. PARENT RESTRICTIONS
+
+For parents whose children belong to a subscription-locked school:
+
+Block subscription-dependent functions including:
+
+- Child attendance
+- Relevant child school information
+- Subscription-protected academic information
+- Sending messages to the school
+- Sending messages to teachers
+- Subscription-dependent Parent Communication Centre functions
+
+The parent should still be able to:
+
+- Sign in
+- See that access is restricted because the school's subscription is unpaid
+- See basic account information
+- See payment/subscription instructions where appropriate
+
+Do not delete:
+
+- Parent account
+- Parent-child relationship
+- Previous messages
+- Notification history
+- Previous attendance
+- Previous results
+- Financial records
+
+---
+
+16. PARENT NOTIFICATIONS
+
+When subscription enforcement begins, notify affected parents according to the existing notification system.
+
+Use the existing:
+
+- In-app notification
+- Push
+- SMS
+- Email
+
+architecture.
+
+Do NOT create another notification engine.
+
+Example:
+
+Yemait EduCore: Your child's school subscription for the new term has not been completed. Some EduCore services are currently restricted. Please contact the school for subscription/payment information.
+
+Do not expose unnecessary financial information.
+
+---
+
+17. TEACHER NOTIFICATION
+
+Notify affected teachers through the existing notification system.
+
+Example:
+
+Yemait EduCore: Your school's termly subscription is currently inactive. Some EduCore teaching and attendance functions have been restricted. Please contact your School Administrator.
+
+---
+
+18. STUDENT MESSAGE
+
+For students, use a simple non-sensitive message:
+
+School subscription is required to access this feature. Please contact your school administrator.
+
+---
+
+19. SCHOOL ADMIN
+
+School Admin should have a clear subscription status section.
+
+Display:
+
+Current Term
+Term Start
+Grace Period Ends
+Subscription Status
+Amount Due
+Amount Paid
+Outstanding Amount
+Enforcement Date
+Cards Locked
+Devices Locked
+Students Affected
+Teachers Affected
+Parents Affected
+
+Use the existing Finance/Subscription information.
+
+Do not expose information the School Admin is not authorized to see.
+
+---
+
+20. AUTOMATIC RESTORATION AFTER PAYMENT
+
+This is mandatory.
+
+When the required termly subscription becomes verified as paid:
+
+Verified Payment
+      ↓
+Subscription Active
+      ↓
+Remove Subscription Restriction
+      ↓
+Restore Cards
+      ↓
+Restore Devices
+      ↓
+Restore Teacher Functions
+      ↓
+Restore Student Functions
+      ↓
+Restore Parent Functions
+
+Restoration must NOT reactivate:
+
+- previously revoked NFC cards
+- previously lost cards
+- previously disabled users
+- accounts disabled for other reasons
+
+Only remove the subscription restriction.
+
+---
+
+21. PAYMENT VERIFICATION
+
+Use the existing payment/subscription verification system.
+
+Support existing payment methods already implemented by EduCore.
+
+Do not assume payment is complete merely because:
+
+- checkout started
+- transfer instruction was created
+- invoice was generated
+- parent clicked Pay
+
+Only verified payment should restore access.
+
+---
+
+22. PLATFORM OWNER — SCHOOL SUBSCRIPTION CONTROL
+
+Add/extend a Platform Owner section for subscription enforcement.
+
+The Owner should be able to view schools and their current term subscription status.
+
+Provide filters such as:
+
+All Schools
+Paid
+Unpaid
+Overdue
+In Grace Period
+Locked
+Partially Paid
+
+---
+
+23. PLATFORM OWNER — SELECT SCHOOLS
+
+The Platform Owner must be able to select one or multiple schools.
+
+Example:
+
+☐ Greenfield College
+☐ Hillcrest Academy
+☐ Example School
+☐ Example College
+
+Provide a clear action:
+
+LOCK CARDS & DEVICES
+
+Before execution, display a confirmation dialog:
+
+You are about to lock all eligible NFC cards and devices attached to the selected schools because their termly subscription is unpaid. This action is reversible after verified subscription payment. Continue?
+
+Require explicit confirmation.
+
+---
+
+24. OWNER LOCK ACTION
+
+When the Owner confirms:
+
+For every selected school:
+
+1. Confirm school exists.
+2. Confirm Owner has permission.
+3. Determine current term.
+4. Check subscription status.
+5. Lock eligible NFC cards.
+6. Apply subscription restriction to eligible devices.
+7. Preserve all historical records.
+8. Record audit event.
+9. Generate affected-count summary.
+
+Example result:
+
+3 schools processed
+
+Greenfield College
+Students/cards locked: 245
+Teacher cards locked: 18
+Devices locked: 6
+
+Hillcrest Academy
+Students/cards locked: 312
+Teacher cards locked: 21
+Devices locked: 8
+
+Example College
+Students/cards locked: 180
+Teacher cards locked: 14
+Devices locked: 4
+
+Do not lock a school accidentally because of a UI selection error.
+
+---
+
+25. OWNER MANUAL LOCK VS AUTOMATIC LOCK
+
+Clearly distinguish:
+
+Automatic subscription enforcement
+
+Triggered by:
+
+Term calendar + grace period + unpaid subscription
+
+Owner manual enforcement
+
+Triggered by:
+
+Platform Owner explicitly selects school(s)
+
+Both must use the same underlying subscription restriction mechanism.
+
+Do not create separate incompatible lock systems.
+
+---
+
+26. OWNER UNLOCK / RESTORE
+
+Do not provide an unrestricted manual "unlock everything" button that bypasses subscription verification unless an existing authorized administrative override policy explicitly exists.
+
+Prefer:
+
+Verified Payment
+      ↓
+Automatic Restoration
+
+If an administrative override is already part of the platform's business rules, preserve it with:
+
+- explicit permission
+- reason
+- audit log
+- expiry where appropriate
+
+Do not invent an unlimited bypass.
+
+---
+
+27. AUDIT LOGGING
+
+Every subscription lock/unlock action must be auditable.
+
+Record:
+
+timestamp
+actor
+actor role
+school
+term
+reason
+action
+affected cards
+affected devices
+affected users
+subscription state
+source
+
+Sources should distinguish:
+
+AUTOMATIC_TERM_ENFORCEMENT
+OWNER_MANUAL_LOCK
+SUBSCRIPTION_PAYMENT_RESTORATION
+ADMINISTRATIVE_OVERRIDE
+
+Do not log secrets.
+
+---
+
+28. SECURITY
+
+Enforce subscription restrictions at the backend/API authorization layer, not merely by hiding frontend buttons.
+
+A user must not bypass the restriction by manually calling an API endpoint.
+
+Test:
+
+- frontend access
+- direct API access
+- NFC event endpoint
+- attendance endpoint
+- lesson-note endpoint
+- parent communication endpoint
+- student endpoints
+- device authorization endpoint
+
+---
+
+29. TENANT ISOLATION
+
+This is mandatory.
+
+A subscription lock for:
+
+School A
+
+must never affect:
+
+School B
+
+Test cross-school access attempts.
+
+A Parent must only be restricted according to the subscription status of the school associated with the relevant child.
+
+If a parent has children in multiple schools, handle each school's subscription state independently.
+
+Example:
+
+Parent
+ ├── Child A → School A → Paid → Active
+ └── Child B → School B → Unpaid → Restricted
+
+Do NOT lock the parent's entire account simply because one school is unpaid.
+
+---
+
+30. MULTIPLE-SCHOOL PARENT CASE
+
+This is especially important.
+
+A parent can have children attending different schools.
+
+Therefore subscription restrictions must be scoped to:
+
+School + Student
+
+rather than blindly locking the entire parent account.
+
+The parent should still access the active child's permitted information.
+
+The unpaid school's child remains restricted.
+
+---
+
+31. TERM TRANSITION
+
+When a new term starts:
+
+Do not immediately lock anyone.
+
+Use:
+
+Term Start
+    ↓
+7-day grace period
+    ↓
+Subscription evaluation
+    ↓
+Lock unpaid schools
+
+At the next term, the system must evaluate the new term's subscription independently.
+
+Do not carry a previous term's payment incorrectly into the new term unless the existing subscription business rules explicitly define it as valid.
+
+---
+
+32. AUTOMATED JOB / SCHEDULER
+
+Implement a safe recurring enforcement mechanism using the existing application infrastructure.
+
+It must:
+
+- evaluate active schools
+- identify current term
+- determine grace-period status
+- check verified subscription
+- lock unpaid schools after grace period
+- restore paid schools
+- avoid duplicate processing
+- write audit records
+- handle failures safely
+
+If the existing project already has a scheduler/job system, extend it.
+
+Do not create a second scheduler unnecessarily.
+
+---
+
+33. FAILURE SAFETY
+
+If the enforcement job encounters an unexpected database/provider error:
+
+Do not randomly lock schools.
+
+Prefer:
+
+Unable to verify subscription
+        ↓
+Do not change access
+        ↓
+Log error
+        ↓
+Retry safely
+
+Subscription enforcement must fail closed only where the subscription state is reliably known to be unpaid.
+
+An infrastructure failure must not automatically be interpreted as non-payment.
+
+---
+
+34. DASHBOARD INDICATORS
+
+Add appropriate subscription status indicators to:
+
+Platform Owner
+
+Paid
+Grace Period
+Unpaid
+Locked
+
+School Admin
+
+Show current school's subscription status.
+
+Teacher
+
+Show a clear subscription-required banner when restricted.
+
+Parent
+
+Show a clear school/subscription restriction message.
+
+Student
+
+Show a clear subscription restriction message.
+
+Do not make the UI confusing or appear as though the user's account itself has been deleted.
+
+---
+
+35. NO DATA DELETION
+
+Subscription enforcement must NEVER delete:
+
+- students
+- parents
+- teachers
+- staff
+- NFC cards
+- NFC history
+- devices
+- attendance
+- results
+- lesson notes
+- messages
+- invoices
+- payment history
+- audit logs
+- school records
+
+Locking is an access restriction, not data destruction.
+
+---
+
+36. TESTING
+
+Create comprehensive Development tests.
+
+Subscription tests
+
+- term starts
+- grace period active
+- grace period expires
+- paid subscription
+- unpaid subscription
+- partially paid subscription
+- verified payment
+- restoration after payment
+- repeated enforcement
+- repeated restoration
+
+Card tests
+
+- active card
+- subscription-locked card
+- revoked card
+- lost card
+- reassigned card
+- subscription restoration
+- card history preservation
+
+Device tests
+
+- active device
+- subscription-locked device
+- restoration
+- school isolation
+
+Teacher tests
+
+- attendance blocked
+- lesson notes blocked
+- protected information blocked
+- historical records preserved
+
+Student tests
+
+- attendance blocked
+- protected information blocked
+- historical records preserved
+
+Parent tests
+
+- attendance blocked
+- relevant information blocked
+- messaging blocked
+- notifications restricted according to rules
+- multiple children across different schools
+
+Owner tests
+
+- select one school
+- select multiple schools
+- manual lock
+- audit logging
+- permission enforcement
+- cross-school isolation
+
+Security tests
+
+Attempt direct API access while subscription is locked.
+
+The backend must reject unauthorized subscription-dependent actions.
+
+---
+
+37. BROWSER VERIFICATION
+
+In Development, verify:
+
+Platform Owner
+
+- subscription overview
+- unpaid-school filter
+- school selection
+- lock confirmation
+- lock result
+- audit record
+
+School Admin
+
+- subscription status
+- grace-period status
+- locked state
+
+Teacher
+
+- restricted attendance
+- restricted lesson notes
+- clear subscription message
+
+Parent
+
+- restricted child information
+- restricted messaging
+- correct active/restricted child behaviour
+
+Student
+
+- restricted attendance
+- subscription message
+
+Test responsive layouts at:
+
+402px
+768px
+1365px
+
+---
+
+38. PRESERVE EXISTING AUTOMATED CALENDAR
+
+Do NOT replace the existing automated academic calendar.
+
+The calendar is the source for:
+
+- academic session
+- term
+- term start
+- term end
+- grace-period calculation
+
+If the existing calendar already automatically creates the next term, connect subscription enforcement to that existing calendar.
+
+Do not create another manual term-date system.
+
+---
+
+39. EXISTING BUSINESS MODEL
+
+Do not change:
+
+- subscription amount
+- school share
+- EduCore share
+- partner commission
+- termly billing structure
+- existing subscription/payment workflow
+
+This task is enforcement only.
+
+---
+
+40. FINAL REPORT
+
+When complete, provide:
+
+Implemented
+
+- automatic term detection
+- 7-day grace period
+- automatic subscription enforcement
+- NFC card subscription lock
+- NFC device subscription lock
+- Teacher restrictions
+- Student restrictions
+- Parent restrictions
+- automatic restoration
+- Owner school selection
+- Owner bulk lock action
+- audit logging
+- backend authorization
+- multiple-school parent handling
+
+Verification
+
+Report exact:
+
+- backend tests
+- frontend tests
+- PostgreSQL tests
+- migration checks
+- typecheck
+- browser tests
+- security tests
+
+Not Yet Verified
+
+Clearly list anything requiring:
+
+- real payment provider
+- physical NFC device
+- Production deployment
+- real school testing
+
+Production
+
+Explicitly state:
+
+Nothing was Published.
+
+No Production database/schema/data was modified.
+
+The Replit Publish-generator issue remains untouched and continues to be handled separately through Replit Support.
+
+---
+
+FINAL PRINCIPLE
+
+Subscription enforcement must be:
+
+Automatic + Term-based + Reversible + Auditable + Tenant-safe.
+
+The central flow is:
+
+AUTOMATED SCHOOL CALENDAR
+          ↓
+NEW TERM STARTS
+          ↓
+7-DAY GRACE PERIOD
+          ↓
+CHECK VERIFIED SUBSCRIPTION
+          ↓
+ ┌────────┴────────┐
+ PAID             UNPAID
+  ↓                 ↓
+ACTIVE        SUBSCRIPTION LOCK
+                    ↓
+       ┌────────────┼────────────┐
+       ↓            ↓            ↓
+     CARDS       DEVICES      USER ACCESS
+       ↓            ↓            ↓
+    LOCKED        LOCKED      RESTRICTED
+                    ↓
+             VERIFIED PAYMENT
+                    ↓
+              AUTO RESTORE
+
+The subscription lock is a reversible access restriction, not a permanent NFC revocation or data deletion.
+
+Development only. Do not Publish. Do not modify Production.

@@ -488,7 +488,7 @@ describe("communication inbox recipient, tenant, and push privacy", () => {
     expect(JSON.stringify(body)).not.toContain("private-device-reference");
     expect(JSON.stringify(body)).not.toContain("opaqueDeviceReference");
     const insert = state.calls.find(({ sql }) => sql.includes("INSERT INTO communication_push_devices"))!;
-    expect(insert.values).toEqual([73, 4, "private-device-reference"]);
+    expect(insert.values).toEqual([73, 4, "private-device-reference", null, null]);
   });
 
   it("returns 429 when the active-device cap or persisted one-minute registration rate is exceeded", async () => {

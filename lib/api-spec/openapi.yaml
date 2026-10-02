@@ -4889,6 +4889,53 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/CommunicationDelivery" }
         "404": { $ref: "#/components/responses/NotFound" }
+  /communication/schools/{schoolId}/defaults:
+    parameters:
+      - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    get:
+      operationId: getSchoolCommunicationDefaults
+      tags: [Communication]
+      responses:
+        "200":
+          description: School category channel defaults
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolCommunicationDefaultsResponse" }
+    put:
+      operationId: updateSchoolCommunicationDefaults
+      tags: [Communication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SchoolCommunicationDefaults" }
+      responses:
+        "200":
+          description: Updated category defaults
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolCommunicationDefaultsResponse" }
+  /communication/push-configuration:
+    get:
+      operationId: getCommunicationPushConfiguration
+      tags: [Communication]
+      responses:
+        "200":
+          description: Public application-server key only, never a VAPID private key
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [configured, publicKey]
+                properties:
+                  configured: { type: boolean }
+                  publicKey: { type: ["string", "null"] }
+  /communication/push-devices/revoke-session:
+    post:
+      operationId: revokeCommunicationPushSession
+      tags: [Communication]
+      responses:
+        "204": { description: Current authenticated session devices revoked }
   /communication/push-devices:
     get:
       operationId: listCommunicationPushDevices
@@ -8652,6 +8699,32 @@ components:
       properties:
         schoolId: { type: ["integer", "null"], minimum: 1 }
         opaqueDeviceReference: { type: string, minLength: 1, maxLength: 256 }
+        subscription:
+          type: object
+          additionalProperties: false
+          required: [endpoint, keys]
+          properties:
+            endpoint: { type: string, format: uri, maxLength: 2048 }
+            expirationTime: { type: ["number", "null"] }
+            keys:
+              type: object
+              additionalProperties: false
+              required: [p256dh, auth]
+              properties:
+                p256dh: { type: string }
+                auth: { type: string }
+    SchoolCommunicationDefaults:
+      type: object
+      additionalProperties:
+        type: array
+        maxItems: 4
+        items: { type: string, enum: [IN_APP, PUSH, SMS, EMAIL] }
+    SchoolCommunicationDefaultsResponse:
+      type: object
+      required: [defaults, canWrite]
+      properties:
+        defaults: { $ref: "#/components/schemas/SchoolCommunicationDefaults" }
+        canWrite: { type: boolean }
     ActivationSchool:
       type: object
       required: [id, name, code, city, state, logo]
