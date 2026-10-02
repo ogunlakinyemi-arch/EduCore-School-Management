@@ -29,3 +29,4 @@
 - [Direct Partner registration provenance](direct-partner-registration-provenance.md) — the original registering Partner stays associated permanently; retain legacy attribution-resolution behavior.
 - [Financial verification depth](financial-verification-depth.md) — real DDL and routed settlement/refund replay checks are required; passing arithmetic tests are insufficient.
 - [Codegen check ordering](codegen-check-ordering.md) — finish API generation and shared-library builds before typechecking consuming apps; transient missing exports can be a race.
+- [EduCore extension requirements](educore-extension-requirements.md) — preserve existing-user activation; keep curriculum provenance, historical versions, and lesson-note progress distinct.
