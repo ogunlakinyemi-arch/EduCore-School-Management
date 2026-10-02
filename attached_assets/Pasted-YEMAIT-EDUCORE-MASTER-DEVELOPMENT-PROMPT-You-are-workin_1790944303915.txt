@@ -1,0 +1,1142 @@
+YEMAIT EDUCORE — MASTER DEVELOPMENT PROMPT
+
+You are working on Yemait EduCore, a multi-school SaaS school-management platform owned by Yemait Technologies Limited.
+
+The existing application is already substantially developed. Do not rebuild, replace, simplify, or remove existing functionality. Extend the existing architecture safely.
+
+1. CORE RULE — PRESERVE THE EXISTING SYSTEM
+
+Before making changes:
+
+1. Inspect the existing codebase, database schema, migrations, routes, components, authentication, RBAC, and existing workflows.
+2. Preserve all existing working functionality.
+3. Preserve all existing user roles and permissions.
+4. Preserve existing Clerk authentication and invitation workflows.
+5. Preserve school/tenant isolation.
+6. Preserve existing NFC/device architecture.
+7. Preserve existing academic, attendance, finance, communication, library, operations, reporting, transport, payroll, subscription, partner, and notification modules.
+8. Do not create duplicate systems where an existing module already performs the required function.
+9. Reuse existing tables, APIs, components, services, and authorization logic wherever appropriate.
+10. Do not perform destructive database changes.
+11. Do not reset or replace the existing database.
+12. Do not change Production.
+13. Development changes and migrations must be safe, reversible, and fully tested.
+14. Do not create unnecessary migrations if the existing schema already supports the required feature.
+
+---
+
+2. EXISTING ROLES MUST REMAIN
+
+Keep the existing role structure and permissions.
+
+The system must continue supporting the existing roles, including:
+
+- Platform Owner
+- School Admin
+- Teacher
+- Accountant
+- Parent
+- Student
+- Partner
+- School Staff
+- Device Activation Officer
+- Company Accountant
+- Partner Staff / Partner Finance/Admin users
+
+Do not redesign the role system.
+
+Do not remove or rename existing roles.
+
+Do not weaken existing permissions.
+
+All authorization must continue to be enforced server-side.
+
+---
+
+3. SCHOOL REGISTRATION
+
+Keep the existing School Registration workflow.
+
+When the Platform Owner creates a school:
+
+- Platform Owner enters the required school information.
+- Platform Owner must NOT manually enter the School Registration Number.
+- The system automatically generates a unique School Registration Number.
+- It must be unique across the platform.
+- It must remain permanently associated with that school.
+- Existing schools must not receive new registration numbers.
+
+Preserve the existing Owner → School Admin relationship.
+
+---
+
+4. SCHOOL ADMIN USER/PERMISSION ROLE WORKFLOW
+
+IMPORTANT: DO NOT REDESIGN THE EXISTING SCHOOL ADMIN USER/PERMISSION ROLE SECTION.
+
+The existing School Admin User/Permission Role section must remain intact.
+
+The new activation workflow must work on top of the existing users.
+
+When a School Admin wants to send an activation link:
+
+DO NOT make the Admin enter the person's information again.
+
+Instead:
+
+1. Admin selects the user role.
+2. System displays existing users belonging to that school and role.
+3. Admin selects the existing user from the list/dropdown.
+4. System retrieves the existing user's:
+   - Name
+   - Email
+   - User/account ID
+   - Existing role
+   - Existing account status
+5. Admin clicks Send Activation Link.
+6. The system sends the activation/invitation link to the existing email.
+7. No duplicate user is created.
+8. No duplicate student, parent, teacher, or staff record is created.
+9. No unnecessary information re-entry is required.
+
+Supported activation selections must include the existing supported roles such as:
+
+- Student
+- Parent
+- Teacher
+- Staff
+- Other existing supported school roles
+
+Keep the existing invitation architecture and Clerk authentication.
+
+---
+
+5. ACCOUNT ACTIVATION
+
+The existing secure invitation workflow must remain.
+
+The School Admin does not create the user's password.
+
+The invited user receives an activation/invitation link.
+
+The user:
+
+1. Opens the link.
+2. Completes the required activation process.
+3. Creates their own password through the existing authentication flow.
+4. Signs in.
+5. Is automatically associated with the correct school and role.
+
+Do not expose passwords to School Admin users.
+
+Do not store plaintext passwords.
+
+Keep existing invitation security, expiration, resend, and audit behavior.
+
+---
+
+6. STUDENT REGISTRATION
+
+Keep the existing student registration workflow.
+
+Student registration must not require entering parent information as part of the student creation form.
+
+School Admin enters the student's required information, including:
+
+- Student name
+- Date of birth where required
+- Gender where required
+- Student email where applicable
+- Class
+- Academic information
+- Other existing required fields
+
+The system automatically generates the student's admission number unless an existing import/preservation workflow explicitly provides one.
+
+After creating the student:
+
+- Student remains an existing school user/person record.
+- Admin can later select that student from the activation-user list.
+- Admin sends the activation link without re-entering student details.
+
+---
+
+7. PARENT REGISTRATION AND CHILD LINKING
+
+Preserve the existing Parent/User/Permission Role architecture.
+
+Parents must be managed as independent user/person records.
+
+When activating a parent:
+
+1. Admin selects Parent.
+2. Admin selects an existing parent from the school.
+3. System displays existing students in that school.
+4. Admin can select one or multiple students.
+5. The selected students are linked to the parent.
+6. Admin sends the activation link.
+7. Parent creates their own password.
+8. Parent signs in.
+9. Parent automatically sees their linked children.
+
+Existing Parent
+
+If a parent already has an active account:
+
+- Do not create another parent account.
+- Do not create another login.
+- Do not send another activation link simply because another child is added.
+- Add the new child to the parent's existing authorized child relationships.
+
+Pending Parent
+
+If the parent exists but has not completed activation:
+
+- Admin can resend the activation link.
+- Do not create a duplicate parent account.
+
+Parent Security
+
+Parent access must always be server-side authorized.
+
+A parent may only access:
+
+- Their own profile
+- Their linked children
+- Authorized information belonging to those children
+
+A parent must never be able to manipulate an ID or URL to access another school's student or another parent's child.
+
+---
+
+8. TEACHER ACTIVATION AND ASSIGNMENTS
+
+Preserve the existing Teacher role and permissions.
+
+Teachers are selected from existing teacher records when activation links are sent.
+
+Admin must not re-enter teacher information just to send an activation link.
+
+The Teacher Dashboard must automatically reflect existing School Admin assignments.
+
+Teacher should see:
+
+- Assigned classes
+- Assigned subjects
+- Assigned students where applicable
+- Teacher timetable where already supported
+- Duty roster
+- Assigned academic responsibilities
+- Curriculum relevant to their assignments
+- Lesson Notes
+- Results/assessments
+
+Teacher access must be restricted to authorized school/class/subject assignments.
+
+---
+
+9. TEACHER RESULTS WORKFLOW
+
+Preserve the existing academic/results system.
+
+Teachers can enter or upload results for students/classes/subjects they are authorized to teach.
+
+Result workflow:
+
+Draft → Submit for Review → School Admin Review → Approve/Return → Publish
+
+School Admin can:
+
+- Review results
+- Approve results
+- Return results for correction
+- Add review comments
+- Publish approved results
+
+Students and parents must only see published results.
+
+Server-side authorization is mandatory.
+
+---
+
+10. SCHOOL STAFF ACTIVATION
+
+Use the same existing-user activation principle.
+
+Admin selects:
+
+Staff → Existing Staff User → Send Activation Link
+
+Do not require Admin to re-enter the staff member's information.
+
+Preserve existing staff roles, departments, employee IDs, permissions, attendance, NFC, payroll, and other functionality.
+
+---
+
+11. NFC CARD AND DEVICE ACTIVATION
+
+Preserve the existing NFC architecture.
+
+Platform Owner should be able to:
+
+1. Select School.
+2. Select person type:
+   - Student
+   - Teacher
+   - Staff
+3. Select existing person.
+4. Enter/scan card number.
+5. Link the card.
+
+Show relevant existing information such as:
+
+Student
+
+- Name
+- Admission Number
+- Class
+- Account Status
+- NFC Status
+- Current Card
+
+Teacher
+
+- Name
+- Employee ID
+- Department/Subject
+- Account Status
+- NFC Status
+- Current Card
+
+Staff
+
+- Name
+- Employee ID
+- Department/Role
+- Account Status
+- NFC Status
+- Current Card
+
+Continue validating:
+
+- Card uniqueness
+- School/device ownership
+- Active assignment
+- Duplicate assignment
+- Device binding
+- Card history
+- Audit history
+
+Do not remove existing NFC functionality.
+
+---
+
+12. STUDENT EXCEL/PDF IMPORT
+
+Preserve and extend the existing import functionality.
+
+Schools must be able to import existing student records from:
+
+- XLSX
+- XLS where supported
+- Readable/text PDF
+- Existing supported text-based formats
+
+Import workflow:
+
+1. Upload file.
+2. Detect columns.
+3. Allow column mapping.
+4. Preview records.
+5. Validate records.
+6. Detect duplicates.
+7. Generate admission numbers where required.
+8. Allow preservation of existing admission numbers where supplied and valid.
+9. Import students.
+10. Allow activation links to be sent later from the existing-user activation section.
+
+Do not create duplicate users.
+
+---
+
+13. SCHOOL BUS / TRANSPORT
+
+Preserve the existing School Bus/Transport Management module.
+
+Parent Dashboard:
+
+Select Child → School Bus / Transport
+
+The parent must see only the selected child's authorized transport information.
+
+Information may include:
+
+- Assigned bus
+- Vehicle
+- Route
+- Pickup location
+- Drop-off location
+- Driver
+- Driver contact where authorized
+- Attendant
+- Schedule
+- Transport status
+
+If multiple children use different buses, the parent must be able to select the child and see the correct assignment.
+
+Do not expose another child's transport information.
+
+Transport changes made by the School Admin must automatically reflect in the appropriate parent/child view.
+
+Do not create a second transport system.
+
+---
+
+14. NEW MODULE — SCHOOL SYLLABUS / CURRICULUM
+
+Add a new academic module:
+
+Academics → School Syllabus / Curriculum
+
+The purpose is to give schools and teachers access to the appropriate curriculum without requiring the School Admin to manually type the entire syllabus.
+
+IMPORTANT
+
+The School Admin should NOT manually enter the national syllabus.
+
+Do not create a giant hard-coded syllabus directly inside each school.
+
+Instead, create a centralized, versioned:
+
+Yemait EduCore Curriculum Library
+
+The Curriculum Library should support authoritative curriculum sources, especially official Nigerian curriculum materials from organizations such as NERDC.
+
+The system must distinguish between:
+
+- Official curriculum content
+- School-specific additions
+- EduCore teaching sequence/suggestions
+- AI-generated teaching assistance
+
+Never present AI-generated material as an official government curriculum.
+
+---
+
+15. CURRICULUM LIBRARY STRUCTURE
+
+Create or extend the curriculum architecture to support:
+
+- Education level
+- Class
+- Subject
+- Academic session
+- Term
+- Curriculum version
+- Curriculum title
+- Topic
+- Sub-topic
+- Learning objectives
+- Learning outcomes
+- Suggested resources
+- Curriculum source
+- Source organization
+- Effective date
+- Last verified date
+- Status
+- Version history
+
+Support levels such as:
+
+- Primary
+- JSS
+- SSS
+
+And classes such as:
+
+- Primary 1–6
+- JSS1–3
+- SSS1–3
+
+Do not assume every subject applies to every class.
+
+Subject/class mappings must be configurable.
+
+---
+
+16. OFFICIAL CURRICULUM SOURCE
+
+Where the curriculum is based on Nigerian national curriculum materials, the system should identify the official source.
+
+Use the NERDC curriculum materials as the authoritative reference where applicable.
+
+The system should store source information such as:
+
+- Source Organization
+- Curriculum Name
+- Curriculum Version
+- Publication/Effective Date
+- Last Verified
+- Source Reference
+
+Do not claim that EduCore owns or authored the government curriculum.
+
+Do not fabricate missing curriculum content.
+
+If an official curriculum cannot be automatically retrieved or synchronized reliably, the Platform Owner must be able to:
+
+- Upload the official curriculum document.
+- Import curriculum content.
+- Map subjects/classes.
+- Review extracted curriculum.
+- Correct extraction errors.
+- Create a version.
+- Publish the version.
+- Archive an old version.
+
+---
+
+17. PLATFORM OWNER CURRICULUM MANAGEMENT
+
+Add:
+
+Platform Owner → Curriculum Management
+
+Capabilities:
+
+- Create curriculum version
+- Upload official curriculum
+- Import curriculum
+- Review extracted content
+- Map education levels
+- Map classes
+- Map subjects
+- Edit extraction errors
+- Add topics/subtopics where supported by the source
+- Set effective date
+- Set source organization
+- Set verification date
+- Publish curriculum version
+- Archive previous version
+
+Never delete historical curriculum versions if they are already associated with historical school records.
+
+Use versioning.
+
+---
+
+18. SCHOOL ADMIN SCHOOL SYLLABUS VIEW
+
+Add:
+
+School Admin → Academics → School Syllabus / Curriculum
+
+School Admin should be able to:
+
+- View the applicable curriculum.
+- Filter by class.
+- Filter by subject.
+- Filter by academic session.
+- Filter by term.
+- View curriculum version.
+- See official source.
+- See last verified date.
+- View topics and subtopics.
+- Monitor curriculum coverage.
+
+The School Admin should not have to manually type the national syllabus.
+
+If the school has a school-specific curriculum addition, clearly label it as:
+
+School-Specific Curriculum
+
+Do not mix it silently with official national curriculum content.
+
+---
+
+19. CURRICULUM ACTIVATION FOR A SCHOOL
+
+After classes and subjects have been configured:
+
+School Admin should select the applicable curriculum version where necessary.
+
+The system should automatically suggest appropriate curriculum mappings based on:
+
+- Education level
+- Class
+- Subject
+- Academic session
+
+Admin should be able to confirm the applicable curriculum.
+
+Once selected, the relevant curriculum becomes available to authorized teachers.
+
+---
+
+20. TEACHER CURRICULUM VIEW
+
+Teacher Dashboard should include:
+
+- My Teaching Assignments
+- My Curriculum
+- My Lesson Notes
+- My Results
+
+Teacher should only see curriculum relevant to:
+
+- Their assigned school
+- Their assigned class
+- Their assigned subject
+
+For example:
+
+A Mathematics teacher assigned to JSS2 should see the applicable JSS2 Mathematics curriculum.
+
+Do not expose unrelated classes or subjects unnecessarily.
+
+---
+
+21. CURRICULUM TOPICS AND TEACHING PROGRESS
+
+Teacher should be able to select a curriculum topic when preparing a lesson note.
+
+A lesson note can be associated with:
+
+- Curriculum version
+- Class
+- Subject
+- Topic
+- Sub-topic
+- Week
+- Term
+
+Important:
+
+Creating a lesson note must not automatically mark a curriculum topic as completed.
+
+Only an appropriate approved/teaching-progress action should update curriculum progress.
+
+---
+
+22. NEW MODULE — TEACHER LESSON NOTES
+
+Add:
+
+Teacher Dashboard → Lesson Notes
+
+Teachers must be able to write lesson notes directly inside the portal.
+
+The teacher should also be able to select a curriculum topic/subtopic and use the curriculum as a reference while preparing the lesson note.
+
+The lesson-note system must support weekly lesson-note submission.
+
+---
+
+23. LESSON NOTE FORMAT
+
+Create a structured lesson-note form containing appropriate fields such as:
+
+- Academic Session
+- Term
+- Week
+- Date
+- Class
+- Subject
+- Teacher
+- Topic
+- Sub-topic
+- Curriculum Topic
+- Learning Objectives
+- Previous Knowledge
+- Instructional Materials
+- Introduction
+- Lesson Development
+- Teacher Activities
+- Student Activities
+- Lesson Content
+- Examples
+- Class Activities
+- Assessment/Evaluation
+- Assignment
+- Conclusion
+- References
+
+Do not force every field to be mandatory if the existing school configuration or lesson-note policy allows optional fields.
+
+The form must be easy to use on desktop and mobile.
+
+---
+
+24. WEEKLY LESSON NOTE WORKFLOW
+
+Lesson notes must support:
+
+Draft → Submitted for Review → Returned for Correction → Resubmitted → Approved → Archived
+
+Teacher workflow:
+
+1. Teacher selects class.
+2. Teacher selects subject.
+3. Teacher selects week/term.
+4. Teacher selects curriculum topic/subtopic where applicable.
+5. Teacher writes the lesson note.
+6. Teacher saves Draft.
+7. Teacher submits to School Admin.
+8. School Admin receives the lesson note for review.
+
+Teacher must be able to edit Draft lesson notes.
+
+Once submitted, editing should follow the existing review rules.
+
+If returned:
+
+- Teacher sees Admin comments.
+- Teacher corrects the lesson note.
+- Teacher resubmits it.
+
+---
+
+25. SCHOOL ADMIN LESSON NOTE REVIEW
+
+Add:
+
+School Admin → Academics → Lesson Notes → Pending Review
+
+Admin should be able to see:
+
+- Teacher
+- Class
+- Subject
+- Week
+- Term
+- Topic
+- Submission date
+- Status
+
+Admin can:
+
+Approve
+
+Marks the lesson note as:
+
+Approved
+
+Return
+
+Marks the lesson note as:
+
+Returned for Correction
+
+Admin must be able to enter a review comment when returning it.
+
+Teacher sees the comment and can correct/resubmit.
+
+---
+
+26. WEEKLY LESSON NOTE MONITORING
+
+School Admin should have a monitoring view showing:
+
+- Teachers expected to submit
+- Teachers who submitted
+- Teachers who have not submitted
+- Draft
+- Submitted
+- Returned
+- Approved
+- Missing weekly lesson notes
+
+Allow filtering by:
+
+- Academic session
+- Term
+- Week
+- Teacher
+- Class
+- Subject
+- Status
+
+Use the existing notification/reminder architecture for weekly reminders where already supported.
+
+Do not create a separate notification system.
+
+---
+
+27. OPTIONAL AI LESSON NOTE ASSISTANCE
+
+If the existing AI infrastructure supports it, add an optional:
+
+Generate Lesson Note Draft
+
+workflow.
+
+Teacher selects:
+
+- Class
+- Subject
+- Curriculum
+- Topic
+- Sub-topic
+- Week
+
+System generates a lesson-note draft based on the selected curriculum context.
+
+IMPORTANT:
+
+Every AI-generated lesson note must clearly state:
+
+AI-generated draft — Teacher review required.
+
+AI-generated content must never be represented as:
+
+- Official NERDC curriculum
+- Government-approved lesson note
+- Official school policy
+
+Teacher remains responsible for reviewing and submitting the final lesson note.
+
+Teachers must also be able to write lesson notes completely manually without using AI.
+
+---
+
+28. CURRICULUM VERSIONING
+
+Curriculum must be versioned.
+
+Example structure:
+
+- Curriculum Version
+- Effective Date
+- Source
+- Status:
+  - Draft
+  - Published
+  - Archived
+
+When a new official curriculum becomes applicable:
+
+- Preserve the previous curriculum.
+- Create a new version.
+- Map it to the appropriate academic cycle.
+- Do not overwrite historical lesson notes.
+- Historical lesson notes must retain the curriculum version used at the time.
+
+---
+
+29. PARENT AND STUDENT ACCESS
+
+Parents and students should not see:
+
+- Teacher lesson-note drafts
+- Internal review comments
+- Admin review discussions
+- Private teacher notes
+
+If a future approved school feature requires exposing lesson resources, it must use a separate authorized view.
+
+For now, lesson notes are primarily:
+
+Teacher → School Admin review workflow.
+
+---
+
+30. SECURITY
+
+All new curriculum and lesson-note APIs must enforce:
+
+- Authentication
+- School/tenant isolation
+- Role-based authorization
+- Teacher assignment authorization
+- Admin school authorization
+- Parent/student restrictions
+- Server-side ownership validation
+
+Do not rely only on frontend filtering.
+
+A teacher must not be able to access another teacher's lesson note by changing an ID.
+
+A teacher must not access another school's curriculum through an ID manipulation.
+
+A School Admin must only manage curriculum/lesson notes for their own school unless they have an existing Platform Owner-level permission.
+
+---
+
+31. DATABASE REQUIREMENTS
+
+Before creating migrations:
+
+1. Inspect the existing schema.
+2. Determine whether existing academic tables can support curriculum and lesson notes.
+3. Reuse existing entities where appropriate.
+4. Avoid duplicate student/class/subject/teacher tables.
+5. Add only genuinely required tables/columns/indexes.
+6. Preserve existing foreign-key relationships.
+7. Preserve tenant isolation.
+8. Ensure composite relationships have the required unique indexes/constraints before adding dependent foreign keys.
+9. Test migration replay from the beginning.
+10. Do not modify Production.
+
+Potential new entities may include, only if required:
+
+- curriculum_versions
+- curriculum_subjects
+- curriculum_topics
+- curriculum_subtopics
+- school_curriculum_assignments
+- lesson_notes
+- lesson_note_reviews
+
+Do not blindly create these tables if equivalent existing tables already exist.
+
+---
+
+32. AUDIT LOGGING
+
+Use the existing audit system.
+
+Important curriculum events should be auditable, including:
+
+- Curriculum uploaded
+- Curriculum imported
+- Curriculum version created
+- Curriculum published
+- Curriculum archived
+- School curriculum assigned
+- Lesson note created
+- Lesson note submitted
+- Lesson note returned
+- Lesson note approved
+- Lesson note resubmitted
+
+Do not create a separate audit system.
+
+---
+
+33. TESTING REQUIREMENTS
+
+Add automated tests for:
+
+Curriculum
+
+- Curriculum version creation
+- Curriculum import
+- Curriculum publication
+- Curriculum archival
+- Class/subject mapping
+- School curriculum assignment
+- Version preservation
+- Tenant isolation
+- Authorization
+
+Lesson Notes
+
+- Teacher creates lesson note
+- Teacher saves draft
+- Teacher submits lesson note
+- Admin receives pending review
+- Admin approves
+- Admin returns
+- Teacher receives return comment
+- Teacher resubmits
+- Historical lesson notes remain unchanged
+- Weekly status tracking
+- Teacher assignment security
+
+AI
+
+If AI lesson-note generation is implemented:
+
+- AI draft generation
+- Correct curriculum context
+- Draft labeling
+- Teacher review requirement
+- No false official-curriculum claim
+- Authorization
+- Failure handling
+
+Existing Features
+
+Run the full existing test suite.
+
+Do not reduce existing test coverage.
+
+Do not modify tests simply to make failures disappear.
+
+---
+
+34. UI REQUIREMENTS
+
+Use the existing Yemait EduCore design system.
+
+Do not introduce an unrelated design system.
+
+School Admin navigation should include the new:
+
+Academics → School Syllabus / Curriculum
+
+and:
+
+Academics → Lesson Notes
+
+Teacher navigation should include:
+
+My Curriculum
+
+Lesson Notes
+
+Keep the existing responsive design.
+
+The system must work properly on:
+
+- Desktop
+- Tablet
+- Mobile
+
+---
+
+35. NO DUPLICATE WORKFLOWS
+
+Do not create separate registration systems for:
+
+- Students
+- Parents
+- Teachers
+- Staff
+
+Use the existing School Admin User/Permission Role architecture.
+
+Do not create a separate transport system.
+
+Do not create a separate notification system.
+
+Do not create a separate authentication system.
+
+Do not create a second academic/results system.
+
+Do not create a second NFC system.
+
+Do not create duplicate people records.
+
+---
+
+36. DEVELOPMENT/PUBLISH SAFETY
+
+This is critical.
+
+Do not:
+
+- Change Production database directly.
+- Manually bypass Replit's migration generator.
+- Delete Production tables.
+- Reset Production.
+- Drop existing constraints to force migration success.
+- Disable security checks.
+- Remove existing foreign keys simply to make Publish succeed.
+- Invent missing curriculum content to make a test pass.
+
+Before any database migration:
+
+1. Inspect Development schema.
+2. Inspect migration ordering.
+3. Validate required unique indexes/constraints.
+4. Test migration replay.
+5. Run relevant automated tests.
+6. Run typecheck.
+7. Verify no existing records are lost.
+8. Report the exact migration plan before attempting any Production action.
+
+If Replit's Publish/schema-diff generator produces an incorrect migration, stop and report the generator problem rather than manually damaging or bypassing the database.
+
+---
+
+37. FINAL VERIFICATION
+
+After implementation, provide a concise report containing:
+
+Existing System
+
+- Existing functionality preserved
+- Existing roles preserved
+- Existing permissions preserved
+- Existing invitation workflow preserved
+- Existing NFC preserved
+- Existing academics preserved
+- Existing finance preserved
+- Existing transport preserved
+
+New Curriculum
+
+- Curriculum Library
+- Curriculum versions
+- School Syllabus view
+- Teacher curriculum view
+- Official source tracking
+- Platform Owner curriculum management
+
+New Lesson Notes
+
+- Lesson-note form
+- Weekly submission
+- Admin review
+- Return/correction
+- Approval
+- Monitoring
+- Notifications/reminders where supported
+
+Security
+
+- Tenant isolation
+- Server-side authorization
+- Teacher assignment protection
+- Parent-child protection
+
+Testing
+
+Report:
+
+- Backend tests
+- Frontend tests
+- Database checks
+- Typecheck
+- Migration replay
+- API health
+- Browser verification where available
+
+Clearly distinguish:
+
+Verified
+
+from:
+
+Not yet verified
+
+Do not claim real-world integrations or physical hardware have been tested unless they actually have been tested.
+
+---
+
+38. IMPLEMENTATION PRINCIPLE
+
+Build this as an extension of the existing Yemait EduCore system.
+
+The priority is:
+
+Preserve → Inspect → Extend → Test → Verify
+
+Do not rebuild the application.
+
+Do not remove completed features.
+
+Do not redesign existing roles.
+
+Do not redesign the existing School Admin invitation workflow.
+
+Add the new:
+
+School Syllabus / Curriculum Library
+
+and:
+
+Teacher Weekly Lesson Notes + School Admin Review
+
+as properly integrated modules within the existing Yemait EduCore architecture.
