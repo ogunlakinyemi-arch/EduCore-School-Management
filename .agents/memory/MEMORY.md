@@ -31,3 +31,4 @@
 - [Codegen check ordering](codegen-check-ordering.md) — finish API generation and shared-library builds before typechecking consuming apps; transient missing exports can be a race.
 - [EduCore extension requirements](educore-extension-requirements.md) — preserve existing-user activation; keep curriculum provenance, historical versions, and lesson-note progress distinct.
 - [Executable SQL evidence](executable-sql-evidence.md) — query mocks cannot prove matching or authorization-expression semantics; exercise fragile comparisons in PostgreSQL.
+- [Permanent NFC print policy](nfc-permanent-print-policy.md) — student cards omit changing academic data; printing never creates, activates, or unlocks an NFC assignment.

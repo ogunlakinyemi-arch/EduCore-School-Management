@@ -6,6 +6,7 @@ import {
   useRegisterCard, useAssignEmployeeNfcCard, getListCardsQueryKey,
 } from '@workspace/api-client-react';
 import { Button, Field, Info, StatusPill } from '@/components/shared';
+import { PrintableNfcCardDownload } from '@/components/printable-nfc-card-download';
 import {
   buildLinkRequest, scopedCardsParams, validSchoolId, employeeMatchesType, findCurrentCard, linkErrorMessage, personDetails, personName, accountStatus,
   type LinkPersonType, type Person,
@@ -20,8 +21,9 @@ export function OwnerCardLink({ onDone }: { onDone?: () => void }) {
   const [uid, setUid] = useState('');
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
+  const [printedAssignment, setPrintedAssignment] = useState<{ cardId: number; status: string } | null>(null);
 
-  const resetPerson = () => { setPersonId(0); setUid(''); setMsg(''); setErr(''); };
+  const resetPerson = () => { setPersonId(0); setUid(''); setMsg(''); setErr(''); setPrintedAssignment(null); };
   const changeSchool = (id: number) => { setSchoolId(validSchoolId(id)); setSearch(''); resetPerson(); };
   const changeType = (t: LinkPersonType) => { setType(t); setSearch(''); resetPerson(); };
 
@@ -44,9 +46,18 @@ export function OwnerCardLink({ onDone }: { onDone?: () => void }) {
   const pending = reg.isPending || assign.isPending;
   const req = person ? buildLinkRequest(type, schoolId, person.id, uid) : null;
 
-  const done = () => {
+  const done = (response?: any) => {
     setMsg(`Card ${req?.data.uid} linked to ${person ? personName(person) : 'person'}.`);
     setUid('');
+    const returnedCardId = req?.kind === 'student' ? response?.id : response?.cardId;
+    if (type === 'STUDENT' || type === 'TEACHER') {
+      if (Number.isInteger(returnedCardId) && returnedCardId > 0) {
+        setPrintedAssignment({ cardId: returnedCardId, status: String(response?.status ?? 'LOCKED') });
+      } else {
+        setPrintedAssignment(null);
+        setErr('The card was linked, but the server did not return its card reference for printing. Refresh the card list to reprint it.');
+      }
+    }
     qc.invalidateQueries({ queryKey: getListCardsQueryKey() });
     qc.invalidateQueries({ queryKey: ['owner-link-emp-cards'] });
     onDone?.();
@@ -81,7 +92,7 @@ export function OwnerCardLink({ onDone }: { onDone?: () => void }) {
       {schoolId > 0 && (active.isError
         ? <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{linkErrorMessage(active.error)} <button type="button" className="underline" onClick={() => active.refetch()}>Retry</button></p>
         : <Field label="3. Existing person">
-            <select value={personId} onChange={e => { setPersonId(Number(e.target.value)); setMsg(''); setErr(''); }} data-testid="select-link-person">
+            <select value={personId} onChange={e => { setPersonId(Number(e.target.value)); setMsg(''); setErr(''); setPrintedAssignment(null); }} data-testid="select-link-person">
               <option value={0}>{active.isLoading ? 'Loading…' : people.length ? 'Select a person' : 'No matching people'}</option>
               {people.map(p => <option key={p.id} value={p.id}>{personName(p)} · {personDetails(p, type).identifier}</option>)}
             </select>
@@ -106,6 +117,17 @@ export function OwnerCardLink({ onDone }: { onDone?: () => void }) {
       )}
       {msg && <p role="status" className="text-sm font-semibold text-emerald-600" data-testid="link-success">{msg}</p>}
       {err && <p role="alert" className="text-sm font-semibold text-[hsl(var(--destructive))]" data-testid="link-error">{err}</p>}
+      {printedAssignment && (type === 'STUDENT' || type === 'TEACHER') && (
+        <div className="space-y-1" data-testid="assigned-card-print">
+          <PrintableNfcCardDownload
+            cardId={printedAssignment.cardId}
+            schoolId={schoolId}
+            ownerAuthorized
+            cardType={type}
+            cardStatus={printedAssignment.status}
+          />
+        </div>
+      )}
       <div className="flex justify-end"><Button type="submit" disabled={!req || pending} testId="button-link-card">{pending ? 'Linking…' : 'Link card'}</Button></div>
     </form>
   );

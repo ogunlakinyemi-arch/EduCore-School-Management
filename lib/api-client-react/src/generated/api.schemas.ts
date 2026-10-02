@@ -4277,6 +4277,21 @@ export interface AttendanceEvent {
   createdAt: string;
 }
 
+/**
+ * Authorized device receipt with current student information; persisted event history remains unchanged.
+ */
+export type DeviceAttendanceReceipt = AttendanceEvent & ({
+  studentName: string;
+  /** @nullable */
+  className: string | null;
+  /** @nullable */
+  section: string | null;
+  /** @nullable */
+  academicSession: string | null;
+  /** @nullable */
+  term: string | null;
+});
+
 export interface AttendanceToday {
   date: string;
   /** @minimum 0 */
@@ -4440,11 +4455,17 @@ export const DeviceAttendanceEventInputMatchResult = {
   NO_MATCH: 'NO_MATCH',
 } as const;
 
+/**
+ * NFC resolves the current student from the UID in the authenticated device's school. Fingerprint events require studentId and matched provider evidence.
+ */
 export interface DeviceAttendanceEventInput {
   eventType: AttendanceEventType;
   identificationMethod: DeviceAttendanceEventInputIdentificationMethod;
   occurredAt: string;
-  /** @minimum 1 */
+  /**
+     * Required for FINGERPRINT; optional for NFC, but when supplied must match the current UID assignment.
+     * @minimum 1
+     */
   studentId?: number;
   /**
      * @minLength 4
@@ -10074,6 +10095,14 @@ export const StatusFilterParameter = {
 } as const;
 
 export type SearchParameter = string;
+
+export type DownloadPrintableNfcCardParams = {
+/**
+ * @minimum 1
+ * @maximum 2147483647
+ */
+schoolId: number;
+};
 
 export type SearchActivationStudentsParams = {
 /**

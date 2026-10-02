@@ -42,6 +42,37 @@ function attendanceInstant(value: unknown) {
   return date;
 }
 
+export const currentNfcStudentRecordQuery = `
+  SELECT st.id AS "studentId",
+         trim(concat_ws(' ',st.first_name,st.middle_name,st.last_name)) AS "studentName",
+         current_assignment."className",current_assignment.section,
+         current_assignment."academicSession",current_assignment.term
+    FROM students st
+    LEFT JOIN LATERAL (
+      SELECT cl.name AS "className",a.section,ses.name AS "academicSession",
+             current_term.name AS term
+        FROM student_class_assignments a
+        JOIN school_classes cl
+          ON cl.id=a.school_class_id AND cl.school_id=a.school_id
+        JOIN academic_sessions ses
+          ON ses.id=a.academic_session_id AND ses.school_id=a.school_id
+         AND ses.status='ACTIVE' AND ses.is_current=true
+        LEFT JOIN LATERAL (
+          SELECT t.name
+            FROM academic_terms t
+           WHERE t.school_id=a.school_id
+             AND t.academic_session_id=a.academic_session_id
+             AND t.status='ACTIVE' AND t.is_current=true
+           ORDER BY t.start_date DESC,t.id DESC
+           LIMIT 1
+        ) current_term ON TRUE
+       WHERE a.school_id=st.school_id AND a.student_id=st.id
+         AND a.status='ACTIVE' AND a.is_current=true
+       ORDER BY a.created_at DESC,a.id DESC
+       LIMIT 1
+    ) current_assignment ON TRUE
+   WHERE st.id=$2 AND st.school_id=$1 AND UPPER(st.status)='ACTIVE'`;
+
 async function deviceAuth(req: Request) {
   const { identifier, secret } = bearer(req);
   const result = await pool.query(
@@ -311,30 +342,43 @@ function hasSchoolWideAttendanceRead(context: ReturnType<typeof getUserContext>,
 const processDeviceAttendance = run(async (req, res) => {
   const device = await deviceAuth(req);
   const body = req.body ?? {};
-  const studentId = Number(body.studentId);
   const eventType = String(body.eventType ?? "").toUpperCase();
   const method = String(body.identificationMethod ?? "NFC").toUpperCase();
-  if (!Number.isInteger(studentId) || studentId < 1 ||
+  const suppliedStudentId = body.studentId == null ? null : Number(body.studentId);
+  if ((body.studentId != null &&
+       (!Number.isSafeInteger(suppliedStudentId) || Number(suppliedStudentId) < 1)) ||
+      (method === "FINGERPRINT" && suppliedStudentId == null) ||
       !["SCHOOL_ENTRY", "SCHOOL_EXIT", "CLASSROOM_ENTRY"].includes(eventType) ||
        !["NFC", "FINGERPRINT"].includes(method)) {
-    throw new AuthError(400, "studentId, eventType, and identificationMethod are required");
+    throw new AuthError(400, "A valid studentId (required for fingerprint), eventType, and identificationMethod are required");
   }
+  let studentId = suppliedStudentId;
+  let cardId: number | null = null;
+  if (method === "NFC") {
+    const uid = String(body.nfcUid ?? "").trim();
+    const card = await pool.query(
+      `SELECT id,student_id AS "studentId" FROM nfc_cards
+        WHERE uid=$1 AND school_id=$2 AND student_id IS NOT NULL
+          AND UPPER(status)='ACTIVE'`,
+      [uid, device.schoolId],
+    );
+    if (!card.rows[0]) throw new AuthError(403, "NFC card is invalid for this student or school");
+    const resolvedStudentId = Number(card.rows[0].studentId);
+    if (!Number.isSafeInteger(resolvedStudentId) || resolvedStudentId < 1) {
+      throw new AuthError(403, "NFC card is invalid for this student or school");
+    }
+    if (suppliedStudentId != null && suppliedStudentId !== resolvedStudentId) {
+      throw new AuthError(403, "NFC card is invalid for this student or school");
+    }
+    studentId = resolvedStudentId;
+    cardId = Number(card.rows[0].id);
+  }
+  if (studentId == null) throw new AuthError(400, "studentId is required");
   const student = await pool.query(
     `SELECT id FROM students WHERE id=$1 AND school_id=$2 AND UPPER(status)='ACTIVE'`, [studentId, device.schoolId],
   );
   if (!student.rows[0]) throw new AuthError(404, "Student not found");
   await enforcePolicy(device.schoolId, studentId, method);
-  let cardId: number | null = null;
-  if (method === "NFC") {
-    const uid = String(body.nfcUid ?? "").trim();
-    const card = await pool.query(
-      `SELECT id FROM nfc_cards WHERE uid=$1 AND school_id=$2 AND student_id=$3
-         AND UPPER(status)='ACTIVE'`,
-      [uid, device.schoolId, studentId],
-    );
-    if (!card.rows[0]) throw new AuthError(403, "NFC card is invalid for this student or school");
-    cardId = card.rows[0].id;
-  }
   if (!body.occurredAt) throw new AuthError(400, "occurredAt is required");
   if (method === "FINGERPRINT") {
     const provider = String(body.provider ?? "").trim();
@@ -373,6 +417,7 @@ const processDeviceAttendance = run(async (req, res) => {
   const dedupeKey = randomUUID();
   const client = await pool.connect();
   let result: { rows: any[] };
+  let currentStudent: { rows: any[] };
   try {
    await client.query("BEGIN");
    // Serialize ingestion with assignment/rotation so a credential cannot be
@@ -420,6 +465,11 @@ const processDeviceAttendance = run(async (req, res) => {
        occurredAt.toISOString().slice(0, 10), occurredAt.toISOString(), dedupeKey],
    );
    if (!result.rows[0]) { await client.query("ROLLBACK"); res.status(409).json({ error: "Duplicate event" }); return; }
+    currentStudent = await client.query(
+      currentNfcStudentRecordQuery,
+      [device.schoolId, studentId],
+    );
+    if (!currentStudent.rows[0]) throw new AuthError(404, "Student not found for this NFC device");
    await reconcileAttendance(client, result.rows[0]);
     await reconcileMissingClass(device.schoolId, occurredAt.toISOString().slice(0, 10), client);
     await queueAttendanceCommunicationBestEffort(
@@ -435,7 +485,7 @@ const processDeviceAttendance = run(async (req, res) => {
    await client.query("COMMIT");
   } catch (error) { await client.query("ROLLBACK"); throw error; }
   finally { client.release(); }
-   res.status(201).json(result.rows[0]);
+    res.status(201).json({ ...result.rows[0], ...currentStudent.rows[0] });
 });
 router.post("/device/attendance/events", processDeviceAttendance);
 router.post("/biometric/events", (req, res, next) => {

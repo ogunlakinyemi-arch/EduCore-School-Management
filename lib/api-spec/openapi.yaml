@@ -33,6 +33,43 @@ tags:
   - name: finance
   - name: communication
 paths:
+  /cards/{cardId}/printable:
+    get:
+      operationId: downloadPrintableNfcCard
+      tags: [cards]
+      summary: Download the existing assigned Teacher or Student NFC card as a front-and-back CR80 PDF
+      description: >
+        Read-only download for the existing active Platform Owner card-management permission.
+        Requires the card's school to match schoolId and an eligible current assignment.
+        Teachers may print after assignment, before the separate NFC activation step.
+        Printing never creates or changes a person, card, UID or assignment. Student cards
+        contain permanent identification only, not class, section, session or term.
+      parameters:
+        - in: path
+          name: cardId
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 2147483647 }
+        - in: query
+          name: schoolId
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 2147483647 }
+      responses:
+        "200":
+          description: Two print-ready CR80 landscape pages, front followed by back
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+            Cache-Control:
+              schema: { type: string }
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        "400": { description: Invalid card or school identifier }
+        "401": { description: Authentication required }
+        "403": { description: Existing Platform Owner card-management permission required }
+        "404": { description: Card not found in the requested school }
+        "409": { description: "Card has no eligible current assignment or is locked, lost or revoked" }
+        "422": { description: Current person type is not supported or permanent identification is missing }
   /activation/schools:
     get:
       operationId: listActivationSchools
@@ -2036,7 +2073,7 @@ paths:
           description: Attendance event accepted
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/AttendanceEvent" }
+              schema: { $ref: "#/components/schemas/DeviceAttendanceReceipt" }
         "400": { $ref: "#/components/responses/ApiBadRequest" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "409": { description: Duplicate or rejected event, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
@@ -7120,6 +7157,18 @@ components:
         sessionId: { type: ["integer", "null"] }
         termId: { type: ["integer", "null"] }
         createdAt: { type: string, format: date-time }
+    DeviceAttendanceReceipt:
+      description: Authorized device receipt with current student information; persisted event history remains unchanged.
+      allOf:
+        - $ref: "#/components/schemas/AttendanceEvent"
+        - type: object
+          required: [studentName, className, section, academicSession, term]
+          properties:
+            studentName: { type: string }
+            className: { type: ["string", "null"] }
+            section: { type: ["string", "null"] }
+            academicSession: { type: ["string", "null"] }
+            term: { type: ["string", "null"] }
     AttendanceToday:
       type: object
       required: [date, entries, exits, present, absent, late, discrepancies]
@@ -7196,12 +7245,16 @@ components:
         note: { type: string, maxLength: 1000 }
     DeviceAttendanceEventInput:
       type: object
+      description: NFC resolves the current student from the UID in the authenticated device's school. Fingerprint events require studentId and matched provider evidence.
       required: [eventType, identificationMethod, occurredAt]
       properties:
         eventType: { $ref: "#/components/schemas/AttendanceEventType" }
         identificationMethod: { type: string, enum: [NFC, FINGERPRINT] }
         occurredAt: { type: string, format: date-time }
-        studentId: { type: integer, minimum: 1 }
+        studentId:
+          type: integer
+          minimum: 1
+          description: Required for FINGERPRINT; optional for NFC, but when supplied must match the current UID assignment.
         nfcUid: { type: string, minLength: 4, maxLength: 128, writeOnly: true }
         providerReference: { type: string, maxLength: 256 }
         provider: { type: string, maxLength: 120 }

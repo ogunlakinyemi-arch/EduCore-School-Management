@@ -9,6 +9,29 @@ import * as zod from 'zod';
 
 
 /**
+ * Read-only download for the existing active Platform Owner card-management permission. Requires the card's school to match schoolId and an eligible current assignment. Teachers may print after assignment, before the separate NFC activation step. Printing never creates or changes a person, card, UID or assignment. Student cards contain permanent identification only, not class, section, session or term.
+ * @summary Download the existing assigned Teacher or Student NFC card as a front-and-back CR80 PDF
+ */
+export const downloadPrintableNfcCardPathCardIdMax = 2147483647;
+
+
+
+export const DownloadPrintableNfcCardParams = zod.object({
+  "cardId": zod.coerce.number().int().min(1).max(downloadPrintableNfcCardPathCardIdMax)
+})
+
+export const downloadPrintableNfcCardQuerySchoolIdMax = 2147483647;
+
+
+
+export const DownloadPrintableNfcCardQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).max(downloadPrintableNfcCardQuerySchoolIdMax)
+})
+
+export const DownloadPrintableNfcCardResponse = zod.unknown()
+
+
+/**
  * @summary List schools available to the authenticated Platform Owner or Device Activation Officer
  */
 export const ListActivationSchoolsResponseItem = zod.object({
@@ -3464,14 +3487,14 @@ export const IngestDeviceAttendanceEventBody = zod.object({
   "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
   "identificationMethod": zod.enum(['NFC', 'FINGERPRINT']),
   "occurredAt": zod.coerce.date(),
-  "studentId": zod.number().int().min(1).optional(),
+  "studentId": zod.number().int().min(1).optional().describe('Required for FINGERPRINT; optional for NFC, but when supplied must match the current UID assignment.'),
   "nfcUid": zod.string().min(ingestDeviceAttendanceEventBodyNfcUidMin).max(ingestDeviceAttendanceEventBodyNfcUidMax).optional(),
   "providerReference": zod.string().max(ingestDeviceAttendanceEventBodyProviderReferenceMax).optional(),
   "provider": zod.string().max(ingestDeviceAttendanceEventBodyProviderMax).optional(),
   "matchResult": zod.enum(['MATCH', 'NO_MATCH']).optional(),
   "confidence": zod.number().min(ingestDeviceAttendanceEventBodyConfidenceMin).max(ingestDeviceAttendanceEventBodyConfidenceMax).optional(),
   "idempotencyKey": zod.string().min(ingestDeviceAttendanceEventBodyIdempotencyKeyMin).max(ingestDeviceAttendanceEventBodyIdempotencyKeyMax).optional()
-})
+}).describe('NFC resolves the current student from the UID in the authenticated device\'s school. Fingerprint events require studentId and matched provider evidence.')
 
 export const IngestDeviceAttendanceEventResponse = zod.object({
   "id": zod.number().int(),
@@ -3480,7 +3503,7 @@ export const IngestDeviceAttendanceEventResponse = zod.object({
   "employeeId": zod.number().int().nullish(),
   "deviceId": zod.number().int().nullable(),
   "classId": zod.number().int().nullish(),
-  "section": zod.string().nullish(),
+  "section": zod.string().nullable(),
   "eventType": zod.enum(['SCHOOL_ENTRY', 'SCHOOL_EXIT', 'CLASSROOM_ENTRY', 'CLASSROOM_EXIT']),
   "identificationMethod": zod.enum(['NFC', 'FINGERPRINT', 'MANUAL', 'DEVICE_API', 'OTHER_SUPPORTED_METHOD']),
   "occurredAt": zod.coerce.date(),
@@ -3490,7 +3513,13 @@ export const IngestDeviceAttendanceEventResponse = zod.object({
   "sessionId": zod.number().int().nullish(),
   "termId": zod.number().int().nullish(),
   "createdAt": zod.coerce.date()
-})
+}).and(zod.object({
+  "studentName": zod.string(),
+  "className": zod.string().nullable(),
+  "section": zod.string().nullable(),
+  "academicSession": zod.string().nullable(),
+  "term": zod.string().nullable()
+})).describe('Authorized device receipt with current student information; persisted event history remains unchanged.')
 
 
 /**

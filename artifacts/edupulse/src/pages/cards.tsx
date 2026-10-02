@@ -2,9 +2,10 @@ import { useState, type FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CreditCard, Plus, ShieldCheck } from 'lucide-react';
 import { 
-  useGetAuthorizedContext, useListCards, useListStudents, useRegisterCard, useUpdateCardStatus, getListCardsQueryKey
+  useGetAuthorizedContext, useListCards, useListStudents, useListEmployeeNfcCards, useRegisterCard, useUpdateCardStatus, getListCardsQueryKey
 } from '@workspace/api-client-react';
 import { OwnerCardLink } from '@/components/owner-card-link';
+import { PrintableNfcCardDownload } from '@/components/printable-nfc-card-download';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Modal, Field, TenantPicker, useTenant, cx 
 } from '@/components/shared';
@@ -24,6 +25,10 @@ export function CardsPage() {
   
   const query = useListCards({ schoolId }, { query: { enabled: !!schoolId, queryKey: getListCardsQueryKey({ schoolId }) } }); 
   const cards: any[] = query.data ?? [];
+  const employeeCardsQuery = useListEmployeeNfcCards(schoolId, { limit: 200 }, {
+    query: { enabled: !!schoolId && canProvision, queryKey: ['cards-owner-employee-status', schoolId] }
+  });
+  const employeeCards: any[] = employeeCardsQuery.data ?? [];
   const studentsQuery = useListStudents({ schoolId, status: 'all' as any }, {
     query: { enabled: !!schoolId && canManageCards, queryKey: ['cards-reassignment-students', schoolId] }
   });
@@ -77,14 +82,35 @@ export function CardsPage() {
               <span>Status</span>
               <span />
             </div>
-            {cards.length ? cards.map((card: any) => (
+            {cards.length ? cards.map((card: any) => {
+              const employeeCard = employeeCards.find((current: any) => current.cardId === card.id);
+              return (
               <div key={card.uid} className="grid gap-3 border-b border-[hsl(var(--border)/.6)] px-5 py-5 transition-colors hover:bg-[hsl(var(--muted)/.2)] last:border-0 md:grid-cols-[1fr_1.5fr_1fr_auto] md:items-center md:gap-4 md:px-6">
                 <div>
                   <div className="font-mono text-sm font-bold text-[hsl(var(--primary))] dark:text-[hsl(var(--accent))]">{card.uid}</div>
                 </div>
                  <div className="text-sm font-medium">{card.employeeName ?? card.studentName ?? (card.employeeId ? `Employee #${card.employeeId}` : card.studentId ? `Student #${card.studentId}` : 'Unassigned')}</div>
                 <div><StatusPill value={card.status} /></div>
-                 {canManageCards && !card.employeeId && <div className="flex justify-end gap-2">
+                  <div className="flex flex-wrap justify-end gap-2">
+                  {canProvision && card.studentId != null && !card.employeeId && (
+                    <PrintableNfcCardDownload
+                      cardId={card.id}
+                      schoolId={schoolId}
+                      ownerAuthorized={canProvision}
+                      cardType="STUDENT"
+                      cardStatus={card.status}
+                    />
+                  )}
+                  {canProvision && employeeCard?.personType === 'TEACHER' && (
+                    <PrintableNfcCardDownload
+                      cardId={card.id}
+                      schoolId={schoolId}
+                      ownerAuthorized={canProvision}
+                      cardType="TEACHER"
+                      cardStatus={employeeCard.status}
+                    />
+                  )}
+                  {canManageCards && !card.employeeId && <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setModal({ reassign: card })} disabled={studentsQuery.isLoading || !students.length}>
                     Reassign
                   </Button>
@@ -92,8 +118,9 @@ export function CardsPage() {
                     {card.status === 'active' ? 'Lock Card' : 'Unlock Card'}
                   </Button>
                  </div>}
+                  </div>
               </div>
-            )) : (
+            );}) : (
               <EmptyState icon={ShieldCheck} title="No NFC cards" description={canProvision ? 'Prepare physical access cards for this school.' : 'Prepared NFC cards will appear here for assignment and management.'} action={canProvision ? <Button onClick={() => setModal({ create: true })}><Plus size={15} />Provision Card</Button> : undefined} />
             )}
           </div>

@@ -16,6 +16,7 @@ import {
   Button, EmptyState, ErrorState, Field, Info, Metric, Modal, PageHeading, SkeletonPage, StatusPill,
   TenantPicker, cx, date, time, useTenant,
 } from '@/components/shared';
+import { PrintableNfcCardDownload } from '@/components/printable-nfc-card-download';
 
 const FRESH = { staleTime: 15_000, refetchOnMount: 'always' as const, refetchOnWindowFocus: true };
 
@@ -213,7 +214,7 @@ export function EmployeeNfcPage() {
       <div className="mb-5 flex flex-wrap items-center gap-3"><IdentityBadge />{access.readOnlyAttendance && <span className="text-xs font-semibold text-[hsl(var(--muted-foreground))]" data-testid="owner-readonly-note">Owner view: attendance and discrepancies are read-only. Card lifecycle controls remain available.</span>}</div>
       <div className="panel overflow-hidden">
         <div className="border-b border-[hsl(var(--border))] p-4"><AdminTabs items={['cards', 'attendance', 'summary', 'discrepancies']} value={tab} onChange={setTab} /></div>
-        {tab === 'cards' && <CardsTab key={schoolId} schoolId={schoolId} canManage={access.canManageCards} />}
+        {tab === 'cards' && <CardsTab key={schoolId} schoolId={schoolId} canManage={access.canManageCards} isOwner={access.isOwner} />}
         {tab === 'attendance' && <AttendanceTab key={schoolId} schoolId={schoolId} />}
         {tab === 'summary' && <SummaryTab key={schoolId} schoolId={schoolId} />}
         {tab === 'discrepancies' && <DiscrepancyTab key={schoolId} schoolId={schoolId} canResolve={access.canResolve} />}
@@ -224,17 +225,30 @@ export function EmployeeNfcPage() {
 
 type Dialog = { kind: 'assign'; card: EmployeeNfcCardView } | { kind: 'status'; card: EmployeeNfcCardView; action: 'ACTIVATE' | 'LOCK' | 'DEACTIVATE' } | { kind: 'replace'; card: EmployeeNfcCardView } | { kind: 'history'; card: EmployeeNfcCardView } | { kind: 'id'; card: EmployeeNfcCardView } | null;
 
-function CardsTab({ schoolId, canManage }: { schoolId: number; canManage: boolean }) {
+function CardsTab({ schoolId, canManage, isOwner }: { schoolId: number; canManage: boolean; isOwner: boolean }) {
   const [search, setSearch] = useState('');
   const [personType, setPersonType] = useState('');
   const [status, setStatus] = useState('');
   const [dialog, setDialog] = useState<Dialog>(null);
+  const [justAssigned, setJustAssigned] = useState<EmployeeNfcCardView | null>(null);
   const params = { search: search || undefined, personType: (personType || undefined) as 'TEACHER' | 'STAFF' | undefined, status: (status || undefined) as 'ACTIVE' | undefined, limit: 100 };
   const list = useListEmployeeNfcCards(schoolId, params, { query: { ...FRESH, enabled: !!schoolId } as never });
   const cards = list.data ?? [];
 
   return (
     <div>
+      {isOwner && justAssigned?.personType === 'TEACHER' && justAssigned.cardId != null && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/.2)] px-5 py-3" role="status" data-testid="employee-card-assigned-print">
+          <span className="text-sm">Teacher card assigned. Download its printable front and back now or reprint it later while the teacher card is assigned or active.</span>
+          <PrintableNfcCardDownload
+            cardId={justAssigned.cardId}
+            schoolId={schoolId}
+            ownerAuthorized={isOwner}
+            cardType="TEACHER"
+            cardStatus={justAssigned.status}
+          />
+        </div>
+      )}
       <div className="flex flex-wrap gap-2 border-b border-[hsl(var(--border))] p-4">
         <input type="search" placeholder="Search name or employee no." value={search} onChange={e => setSearch(e.target.value)} aria-label="Search employees" className="min-w-[200px] flex-1" />
         <select value={personType} onChange={e => setPersonType(e.target.value)} aria-label="Employee role"><option value="">Teachers and staff</option><option value="TEACHER">Teachers</option><option value="STAFF">Staff</option></select>
@@ -258,6 +272,15 @@ function CardsTab({ schoolId, canManage }: { schoolId: number; canManage: boolea
                 <div className="flex flex-wrap justify-end gap-2">
                   <Button variant="quiet" onClick={() => setDialog({ kind: 'id', card: c })}>E-ID</Button>
                   {c.cardId != null && <Button variant="quiet" onClick={() => setDialog({ kind: 'history', card: c })}><History size={14} />History</Button>}
+                  {isOwner && c.personType === 'TEACHER' && c.cardId != null && ['ASSIGNED', 'ACTIVE', 'LOCKED'].includes(c.status) && (
+                    <PrintableNfcCardDownload
+                      cardId={c.cardId}
+                      schoolId={schoolId}
+                      ownerAuthorized={isOwner}
+                      cardType="TEACHER"
+                      cardStatus={c.status}
+                    />
+                  )}
                   {canManage && c.status === 'UNASSIGNED' && <Button onClick={() => setDialog({ kind: 'assign', card: c })}>Assign card</Button>}
                   {canManage && c.cardId != null && c.status === 'LOCKED' && <Button disabled={!!blocked} title={blocked ?? undefined} onClick={() => setDialog({ kind: 'status', card: c, action: 'ACTIVATE' })} testId={`button-activate-${c.employeeId}`}>Activate</Button>}
                   {canManage && c.cardId != null && c.status === 'ACTIVE' && <Button variant="outline" onClick={() => setDialog({ kind: 'status', card: c, action: 'LOCK' })}>Lock</Button>}
@@ -270,7 +293,7 @@ function CardsTab({ schoolId, canManage }: { schoolId: number; canManage: boolea
           })}
         </div>
       )}
-      {dialog?.kind === 'assign' && <Modal title="Assign employee card" eyebrow={dialog.card.employeeName} onClose={() => setDialog(null)}><AssignForm schoolId={schoolId} card={dialog.card} onDone={() => setDialog(null)} /></Modal>}
+      {dialog?.kind === 'assign' && <Modal title="Assign employee card" eyebrow={dialog.card.employeeName} onClose={() => setDialog(null)}><AssignForm schoolId={schoolId} card={dialog.card} onDone={(assigned) => { if (assigned) setJustAssigned(assigned); setDialog(null); }} /></Modal>}
       {dialog?.kind === 'status' && <Modal title={`${dialog.action.charAt(0)}${dialog.action.slice(1).toLowerCase()} card`} eyebrow={dialog.card.employeeName} onClose={() => setDialog(null)}><StatusForm schoolId={schoolId} card={dialog.card} action={dialog.action} onDone={() => setDialog(null)} /></Modal>}
       {dialog?.kind === 'replace' && <Modal title="Replace card" eyebrow={dialog.card.employeeName} onClose={() => setDialog(null)}><ReplaceForm schoolId={schoolId} card={dialog.card} onDone={() => setDialog(null)} /></Modal>}
       {dialog?.kind === 'history' && dialog.card.cardId != null && <Modal title="Card history" eyebrow={dialog.card.employeeName} onClose={() => setDialog(null)}><HistoryList schoolId={schoolId} cardId={dialog.card.cardId} /></Modal>}
@@ -291,14 +314,14 @@ function FormFooter({ pending, error, label, onCancel }: { pending: boolean; err
   );
 }
 
-function AssignForm({ schoolId, card, onDone }: { schoolId: number; card: EmployeeNfcCardView; onDone: () => void }) {
+function AssignForm({ schoolId, card, onDone }: { schoolId: number; card: EmployeeNfcCardView; onDone: (assigned?: EmployeeNfcCardView) => void }) {
   const m = useAssignEmployeeNfcCard();
   const refresh = useRefreshNfc();
   const [uid, setUid] = useState('');
   const [reason, setReason] = useState('');
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    m.mutate({ schoolId, data: { uid: uid.trim(), employeeId: card.employeeId, personType: card.personType, reason: reason.trim() || undefined } }, { onSuccess: () => { void refresh(); onDone(); } });
+    m.mutate({ schoolId, data: { uid: uid.trim(), employeeId: card.employeeId, personType: card.personType, reason: reason.trim() || undefined } }, { onSuccess: (assigned) => { void refresh(); onDone(assigned); } });
   };
   return (
     <form onSubmit={submit} className="space-y-4">

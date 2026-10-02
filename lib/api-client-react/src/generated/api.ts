@@ -173,9 +173,11 @@ import type {
   DeviceActivationOfficerGrantListItem,
   DeviceAssignmentInput,
   DeviceAttendanceEventInput,
+  DeviceAttendanceReceipt,
   DeviceCredentialRotation,
   DeviceSuspensionInput,
   DiscrepancyResolutionInput,
+  DownloadPrintableNfcCardParams,
   Employee,
   EmployeeInput,
   EmployeeNfcAttendanceDaily,
@@ -624,6 +626,96 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getDownloadPrintableNfcCardUrl = (cardId: number,
+    params: DownloadPrintableNfcCardParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/cards/${cardId}/printable?${stringifiedParams}` : `/api/cards/${cardId}/printable`
+}
+
+/**
+ * Read-only download for the existing active Platform Owner card-management permission. Requires the card's school to match schoolId and an eligible current assignment. Teachers may print after assignment, before the separate NFC activation step. Printing never creates or changes a person, card, UID or assignment. Student cards contain permanent identification only, not class, section, session or term.
+ * @summary Download the existing assigned Teacher or Student NFC card as a front-and-back CR80 PDF
+ */
+export const downloadPrintableNfcCard = async (cardId: number,
+    params: DownloadPrintableNfcCardParams, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getDownloadPrintableNfcCardUrl(cardId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDownloadPrintableNfcCardQueryKey = (cardId: number,
+    params?: DownloadPrintableNfcCardParams,) => {
+    return [
+    `/api/cards/${cardId}/printable`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getDownloadPrintableNfcCardQueryOptions = <TData = Awaited<ReturnType<typeof downloadPrintableNfcCard>>, TError = ErrorType<void>>(cardId: number,
+    params: DownloadPrintableNfcCardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadPrintableNfcCard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDownloadPrintableNfcCardQueryKey(cardId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof downloadPrintableNfcCard>>> = ({ signal }) => downloadPrintableNfcCard(cardId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: cardId !== null && cardId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof downloadPrintableNfcCard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type DownloadPrintableNfcCardQueryResult = NonNullable<Awaited<ReturnType<typeof downloadPrintableNfcCard>>>
+export type DownloadPrintableNfcCardQueryError = ErrorType<void>
+
+
+/**
+ * @summary Download the existing assigned Teacher or Student NFC card as a front-and-back CR80 PDF
+ */
+
+export function useDownloadPrintableNfcCard<TData = Awaited<ReturnType<typeof downloadPrintableNfcCard>>, TError = ErrorType<void>>(
+ cardId: number,
+    params: DownloadPrintableNfcCardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadPrintableNfcCard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getDownloadPrintableNfcCardQueryOptions(cardId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListActivationSchoolsUrl = () => {
 
@@ -9512,7 +9604,7 @@ export const getIngestDeviceAttendanceEventUrl = () => {
  * Device identity and school binding are derived from the credential, never trusted from the request body. Raw biometric data and credential hashes are not accepted or returned.
  * @summary Ingest an NFC or provider-resolved biometric attendance event
  */
-export const ingestDeviceAttendanceEvent = async (deviceAttendanceEventInput: DeviceAttendanceEventInput, options?: Parameters<typeof customFetch>[1]): Promise<AttendanceEvent> => {
+export const ingestDeviceAttendanceEvent = async (deviceAttendanceEventInput: DeviceAttendanceEventInput, options?: Parameters<typeof customFetch>[1]): Promise<DeviceAttendanceReceipt> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -9528,7 +9620,7 @@ export const ingestDeviceAttendanceEvent = async (deviceAttendanceEventInput: De
     }
     return headers;
   };
-return customFetch<AttendanceEvent>(getIngestDeviceAttendanceEventUrl(),
+return customFetch<DeviceAttendanceReceipt>(getIngestDeviceAttendanceEventUrl(),
   {
     ...options,
     method: 'POST',

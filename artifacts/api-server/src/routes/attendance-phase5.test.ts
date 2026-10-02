@@ -12,6 +12,7 @@ type AttendanceEvent = {
   occurredAt: string;
   identificationMethod?: string;
   schoolClassId?: number | null;
+  cardId?: number | null;
 };
 
 const state = vi.hoisted(() => ({
@@ -27,12 +28,22 @@ const state = vi.hoisted(() => ({
     configured: true,
   },
   student: { id: 501, schoolId: 10, status: "ACTIVE" },
-  cards: [{ id: 700, uid: "CARD-A", schoolId: 10, studentId: 501, status: "ACTIVE" }],
+  cards: [{ id: 700, uid: "CARD-A", schoolId: 10, studentId: 501, status: "ACTIVE" }] as Array<{
+    id: number; uid: string; schoolId: number; studentId: number | null; status: string;
+  }>,
   policy: "NFC_ONLY",
   biometricEnrollments: [] as Array<Record<string, unknown>>,
   duplicateSeconds: 60,
   studentClassId: 200,
   deviceClassId: 200,
+  currentStudent: {
+    studentId: 501,
+    studentName: "Tomi Adeyemi",
+    className: "JSS1",
+    section: "A",
+    academicSession: "2025/2026",
+    term: "First Term",
+  } as Record<string, unknown>,
   notifications: [] as Array<Record<string, unknown>>,
   discrepancies: [] as Array<Record<string, unknown>>,
 }));
@@ -66,8 +77,8 @@ const poolMock = vi.hoisted(() => {
     if (text.includes("FROM nfc_cards")) {
       const card = state.cards.find((candidate) =>
         candidate.uid === String(values[0]) && candidate.schoolId === Number(values[1]) &&
-        candidate.studentId === Number(values[2]) && candidate.status === "ACTIVE");
-      return result(card ? [{ id: card.id }] : []);
+        candidate.studentId != null && candidate.status === "ACTIVE");
+      return result(card ? [{ id: card.id, studentId: card.studentId }] : []);
     }
     if (text.includes("FROM biometric_enrollments")) {
       const enrollment = state.biometricEnrollments.find((candidate) =>
@@ -97,6 +108,12 @@ const poolMock = vi.hoisted(() => {
         return result(credential.status === "ACTIVE" && credential.deviceStatus === "ACTIVE" &&
           credential.configured && Number(values[0]) === credential.deviceId &&
           Number(values[1]) === credential.schoolId && Number(values[2]) === 1 ? [{ "?column?": 1 }] : []);
+      }
+      if (text.includes("FROM students st") && text.includes("student_class_assignments")) {
+        return result(state.student.status === "ACTIVE" &&
+          state.student.id === Number(values[1]) && state.student.schoolId === Number(values[0])
+          ? [{ ...state.currentStudent }]
+          : []);
       }
       if (text.includes("SELECT EXISTS(") && text.includes("attendance_events")) {
         const [, studentId, occurredAt] = values;
@@ -135,7 +152,7 @@ const poolMock = vi.hoisted(() => {
         ).map((event) => ({ id: event.id })));
       }
       if (text.includes("INSERT INTO attendance_events")) {
-        const [schoolId, studentId, deviceId, _cardId, classId, method, eventType, _date, occurredAt] = values;
+        const [schoolId, studentId, deviceId, cardId, classId, method, eventType, _date, occurredAt] = values;
         const event: AttendanceEvent = {
           id: state.nextEventId++,
           schoolId: Number(schoolId),
@@ -145,6 +162,7 @@ const poolMock = vi.hoisted(() => {
           occurredAt: String(occurredAt),
           identificationMethod: String(method),
           schoolClassId: classId == null ? null : Number(classId),
+          cardId: cardId == null ? null : Number(cardId),
         };
         state.events.push(event);
         return result([{
@@ -224,6 +242,14 @@ beforeEach(() => {
   state.duplicateSeconds = 60;
   state.studentClassId = 200;
   state.deviceClassId = 200;
+  state.currentStudent = {
+    studentId: 501,
+    studentName: "Tomi Adeyemi",
+    className: "JSS1",
+    section: "A",
+    academicSession: "2025/2026",
+    term: "First Term",
+  };
   state.notifications.length = 0;
   state.discrepancies.length = 0;
 });
@@ -270,6 +296,37 @@ describe("Phase 5 device attendance behavior", () => {
     expect((await request(event({ nfcUid: "UNKNOWN-UID" }))).status).toBe(403);
   });
 
+  it("derives the student from an active same-school NFC UID when studentId is omitted", async () => {
+    const response = await request(event({ studentId: undefined }));
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({
+      studentId: 501,
+      studentName: "Tomi Adeyemi",
+      className: "JSS1",
+      section: "A",
+      status: "PRESENT",
+    });
+    expect(state.events[0]?.cardId).toBe(700);
+  });
+
+  it("rejects a supplied studentId that does not match the UID's student without recording attendance", async () => {
+    const response = await request(event({ studentId: 502 }));
+
+    expect(response.status).toBe(403);
+    expect(state.events).toHaveLength(0);
+    expect(state.notifications).toHaveLength(0);
+  });
+
+  it("does not resolve unbound employee or unassigned cards as students", async () => {
+    state.cards[0].studentId = null;
+
+    const response = await request(event({ studentId: undefined }));
+
+    expect(response.status).toBe(403);
+    expect(state.events).toHaveLength(0);
+  });
+
   it("rejects an NFC card from another school without mutating attendance history", async () => {
     state.cards[0].schoolId = 11;
 
@@ -305,6 +362,50 @@ describe("Phase 5 device attendance behavior", () => {
     expect(state.events).toHaveLength(0);
   });
 
+  it("resolves the same active NFC card to the student's current record after a same-day class transfer", async () => {
+    const firstTime = new Date(Date.now() - 30_000);
+    const firstResponse = await request(event({ occurredAt: firstTime.toISOString() }));
+    expect(firstResponse.status).toBe(201);
+    expect(await firstResponse.json()).toMatchObject({
+      studentId: 501,
+      studentName: "Tomi Adeyemi",
+      className: "JSS1",
+      section: "A",
+      academicSession: "2025/2026",
+      term: "First Term",
+      status: "PRESENT",
+    });
+    const originalEvent = { ...state.events[0] };
+    expect(originalEvent.cardId).toBe(700);
+
+    state.currentStudent = {
+      studentId: 501,
+      studentName: "Tomi Adeyemi",
+      className: "JSS2",
+      section: "B",
+      academicSession: "2025/2026",
+      term: "First Term",
+    };
+    const secondResponse = await request(event({
+      studentId: undefined,
+      occurredAt: new Date(firstTime.getTime() + 61_000).toISOString(),
+    }));
+
+    expect(secondResponse.status).toBe(201);
+    expect(await secondResponse.json()).toMatchObject({
+      studentId: 501,
+      studentName: "Tomi Adeyemi",
+      className: "JSS2",
+      section: "B",
+      academicSession: "2025/2026",
+      term: "First Term",
+      status: "PRESENT",
+    });
+    expect(state.events).toHaveLength(2);
+    expect(state.events.map((storedEvent) => storedEvent.cardId)).toEqual([700, 700]);
+    expect(state.events[0]).toEqual(originalEvent);
+  });
+
   it("accepts an entry, suppresses a rolling-window duplicate, then accepts after the window", async () => {
     const firstTime = new Date(Date.now() - 30_000);
     expect((await request(event({ occurredAt: firstTime.toISOString() }))).status).toBe(201);
@@ -323,6 +424,20 @@ describe("Phase 5 device attendance behavior", () => {
       nfcUid: undefined,
     }));
     expect(response.status).toBe(403);
+    expect(state.events).toHaveLength(0);
+  });
+
+  it("still requires studentId for fingerprint attendance", async () => {
+    const response = await request(event({
+      studentId: undefined,
+      identificationMethod: "FINGERPRINT",
+      matchResult: "MATCH",
+      provider: "device-vendor",
+      providerReference: "enrollment-501",
+      nfcUid: undefined,
+    }));
+
+    expect(response.status).toBe(400);
     expect(state.events).toHaveLength(0);
   });
 

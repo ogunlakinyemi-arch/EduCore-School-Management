@@ -9,11 +9,17 @@ import type { AttendanceEventType } from './attendanceEventType';
 import type { DeviceAttendanceEventInputIdentificationMethod } from './deviceAttendanceEventInputIdentificationMethod';
 import type { DeviceAttendanceEventInputMatchResult } from './deviceAttendanceEventInputMatchResult';
 
+/**
+ * NFC resolves the current student from the UID in the authenticated device's school. Fingerprint events require studentId and matched provider evidence.
+ */
 export interface DeviceAttendanceEventInput {
   eventType: AttendanceEventType;
   identificationMethod: DeviceAttendanceEventInputIdentificationMethod;
   occurredAt: Date;
-  /** @minimum 1 */
+  /**
+     * Required for FINGERPRINT; optional for NFC, but when supplied must match the current UID assignment.
+     * @minimum 1
+     */
   studentId?: number;
   /**
      * @minLength 4

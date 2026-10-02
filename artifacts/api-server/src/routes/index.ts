@@ -31,6 +31,7 @@ import internalEmployeeInvitationsRouter from "./internal-employee-invitations";
 import schoolInvitationManagementRouter from "./school-invitation-management";
 import companyAccountantRouter from "./company-accountant";
 import employeeNfcRouter from "./employee-nfc";
+import nfcPrintableRouter from "./nfc-printable";
 import { staffNfcBillingRouter } from "./staff-nfc-billing";
 import schoolWorkflowsRouter from "./school-workflows";
 import transportRouter from "./transport";
@@ -48,6 +49,7 @@ router.use(publicPartnersRouter);
 // attendance handler applies requireAuthentication() explicitly.
 router.use(attendanceRouter);
 router.use(employeeNfcRouter);
+router.use(nfcPrintableRouter);
 router.use(authRouter);
 router.use(peopleRouter);
 router.use(academicRouter);
