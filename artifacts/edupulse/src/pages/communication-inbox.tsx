@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { Bell, CheckCheck, MailOpen, ArrowRight, RefreshCw } from 'lucide-react';
-import { useListCommunicationNotifications, useMarkCommunicationNotificationRead, useMarkAllCommunicationNotificationsRead, getListCommunicationNotificationsQueryKey } from '@workspace/api-client-react';
+import { useListCommunicationNotifications, useMarkCommunicationNotificationRead, useMarkAllCommunicationNotificationsRead, useArchiveCommunicationNotification, useUnarchiveCommunicationNotification, getListCommunicationNotificationsQueryKey } from '@workspace/api-client-react';
 import type { CommunicationNotification } from '@workspace/api-client-react';
 import { PageHeading, Button, EmptyState, ErrorState, SkeletonPage, date, time, cx } from '@/components/shared';
-import { inboxItems, visibleCommunicationNotifications } from './communication-contract';
+import { inboxItems, visibleCommunicationNotifications, inboxArchiveView, canArchiveNotification } from './communication-contract';
 
 // Only system-generated finance/payment notices live in the separate finance bell.
 const safeLink = (link: string | null) => link && link.startsWith('/') && !link.startsWith('//') && !link.includes('\\') ? link : null;
@@ -15,14 +15,34 @@ export function CommunicationInbox({ standalone = false }: { standalone?: boolea
   const [beforeId, setBeforeId] = useState<number | undefined>();
   const [older, setOlder] = useState<CommunicationNotification[]>([]);
   const [error, setError] = useState('');
-  const params = { limit: 30, ...(beforeId ? { beforeId } : {}) };
+  const [showArchived, setShowArchived] = useState(false);
+  const params = { limit: 30, includeArchived: showArchived, ...(beforeId ? { beforeId } : {}) };
   const query = useListCommunicationNotifications(params, { query: { queryKey: getListCommunicationNotificationsQueryKey(params), refetchInterval: 30000 } });
   const mark = useMarkCommunicationNotificationRead();
   const markAll = useMarkAllCommunicationNotificationsRead();
+  const archive = useArchiveCommunicationNotification();
+  const restore = useUnarchiveCommunicationNotification();
   const current = visibleCommunicationNotifications(inboxItems(query.data));
-  const items = [...older, ...current].filter((item, index, array) => array.findIndex(other => other.id === item.id) === index);
+  const items = inboxArchiveView([...older, ...current].filter((item, index, array) =>
+    array.findIndex(other => other.id === item.id) === index), showArchived);
   const unread = items.filter(item => !item.isRead).length;
   const refresh = async () => { setBeforeId(undefined); setOlder([]); await qc.invalidateQueries({ queryKey: getListCommunicationNotificationsQueryKey() }); };
+  const changeView = (archived: boolean) => {
+    setBeforeId(undefined);
+    setOlder([]);
+    setError('');
+    setShowArchived(archived);
+  };
+  const onArchive = async (id: number, archived: boolean) => {
+    try {
+      await (archived ? archive : restore).mutateAsync({ notificationId: id });
+      setOlder(prev => prev.filter(item => item.id !== id));
+      setError('');
+      await qc.invalidateQueries({ queryKey: getListCommunicationNotificationsQueryKey() });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not update this message archive status.');
+    }
+  };
   const onRead = async (id: number) => {
     try {
       await mark.mutateAsync({ notificationId: id });
@@ -53,17 +73,29 @@ export function CommunicationInbox({ standalone = false }: { standalone?: boolea
     <PageHeading eyebrow="Your messages / Communication" title="Inbox." description="School messages and account updates in one place. Fee and payment alerts remain in your finance notifications." action={<div className="flex flex-wrap gap-2"><Link href="/parent/communication" className="inline-flex items-center rounded-xl border border-[hsl(var(--border))] px-4 py-2.5 text-sm font-bold" data-testid="link-communication-centre">Communication centre</Link><Link href="/notification-settings" className="inline-flex items-center rounded-xl border border-[hsl(var(--border))] px-4 py-2.5 text-sm font-bold" data-testid="link-notification-settings">Preferences</Link><Button variant="outline" onClick={() => void refresh()}><RefreshCw size={15} /> Refresh</Button></div>} />
     <div className="panel overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[hsl(var(--border))] p-5">
-        <div><div className="eyebrow">Message centre</div><h2 className="display-font mt-1 text-xl font-bold" data-testid="text-unread-messages">{unread} unread {unread === 1 ? 'message' : 'messages'}</h2></div>
-        <div className="flex flex-wrap items-center gap-2">{unread > 0 && <Button variant="quiet" disabled={mark.isPending || markAll.isPending} onClick={() => void onAll()}><CheckCheck size={16} /> Mark visible messages read</Button>}<Button variant="quiet" disabled={mark.isPending || markAll.isPending} onClick={() => void onAllAcrossFeeds()}>Mark all across feeds</Button></div>
+        <div><div className="eyebrow">Message centre</div><h2 className="display-font mt-1 text-xl font-bold" data-testid="text-unread-messages">{showArchived ? 'Archived messages' : `${unread} unread ${unread === 1 ? 'message' : 'messages'}`}</h2></div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="quiet" aria-pressed={!showArchived} onClick={() => changeView(false)} data-testid="button-inbox-active">Inbox</Button>
+          <Button variant="quiet" aria-pressed={showArchived} onClick={() => changeView(true)} data-testid="button-inbox-archived">Archived</Button>
+          {!showArchived && unread > 0 && <Button variant="quiet" disabled={mark.isPending || markAll.isPending} onClick={() => void onAll()}><CheckCheck size={16} /> Mark visible messages read</Button>}
+          {!showArchived && <Button variant="quiet" disabled={mark.isPending || markAll.isPending} onClick={() => void onAllAcrossFeeds()}>Mark all across feeds</Button>}
+        </div>
       </div>
       {error && <p className="p-4 text-sm text-[hsl(var(--destructive))]" role="alert">{error}</p>}
-      {query.isLoading ? <SkeletonPage /> : query.isError ? <ErrorState retry={() => void query.refetch()} /> : !items.length ? <EmptyState icon={MailOpen} title="A quiet inbox" description="When your school sends an announcement or an account update, you’ll find it here." /> :
+      {query.isLoading ? <SkeletonPage /> : query.isError ? <ErrorState retry={() => void query.refetch()} /> : !items.length ? <EmptyState icon={MailOpen} title={showArchived ? 'No archived messages' : 'A quiet inbox'} description={showArchived ? 'Archived messages can be restored here. Required account and security notices cannot be archived.' : 'When your school sends an announcement or an account update, you’ll find it here.'} /> :
         <div className="divide-y divide-[hsl(var(--border)/.7)]">{items.map(item => <article key={item.id} className={cx('flex gap-4 p-5 md:p-6', !item.isRead && 'bg-[hsl(var(--secondary)/.4)]')} data-testid={`row-message-${item.id}`}>
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[hsl(var(--primary)/.1)] text-[hsl(var(--primary))]"><Bell size={18} /></div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2"><span className="eyebrow">{item.category.replaceAll('_', ' ')}</span>{!item.isRead && <span className="h-2 w-2 rounded-full bg-[hsl(var(--primary))]" aria-label="Unread" />}</div>
             <h3 className="mt-1 font-bold">{item.subject || 'School update'}</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-[hsl(var(--muted-foreground))]">{item.body}</p>
             <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-[hsl(var(--muted-foreground))]"><span>{date(item.createdAt)} at {time(item.createdAt)}</span>{safeLink(item.link) && <Link href={safeLink(item.link)!} className="inline-flex items-center gap-1 font-bold text-[hsl(var(--primary))]" data-testid={`link-message-${item.id}`}>Open related page <ArrowRight size={13} /></Link>}{!item.isRead && <button type="button" onClick={() => void onRead(item.id)} disabled={mark.isPending} className="font-bold text-[hsl(var(--primary))] disabled:opacity-50" data-testid={`button-read-message-${item.id}`}>Mark read</button>}</div>
+            {(showArchived || canArchiveNotification(item.category)) &&
+              <button type="button" onClick={() => void onArchive(item.id, !showArchived)}
+                disabled={archive.isPending || restore.isPending}
+                className="mt-3 text-xs font-bold text-[hsl(var(--primary))] disabled:opacity-50"
+                data-testid={`button-${showArchived ? 'restore' : 'archive'}-message-${item.id}`}>
+                {showArchived ? 'Restore to inbox' : 'Archive'}
+              </button>}
           </div>
         </article>)}</div>}
       {query.data?.hasMore && <div className="border-t border-[hsl(var(--border))] p-4 text-center"><Button variant="outline" disabled={query.isFetching} onClick={() => { setOlder(prev => [...prev, ...(query.data?.items ?? [])]); setBeforeId(query.data?.nextBeforeId ?? undefined); }}>Load older messages</Button></div>}

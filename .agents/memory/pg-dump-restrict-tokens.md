@@ -14,3 +14,9 @@ A schema-only dump also deliberately clears the session's search path. If it is 
 **Why:** The dump can load successfully while the next migration fails with “no schema has been selected to create in”; the client's session settings survive the dump replay.
 
 **How to apply:** Keep the dump's safety settings during replay, then explicitly set the application schema for the subsequent migration phase on that same connection.
+
+Schema-only replay can bind a foreign key to a different qualifying unique index than the original database when equivalent indexes and uniqueness constraints coexist.
+
+**Why:** A disposable clone passed the functional database checks but failed an exact referenced-index-name assertion; the same read-only assertion passed against the unchanged Development database. Restore ordering differed, not the original schema.
+
+**How to apply:** Distinguish clone metadata differences from application regressions. Compare actual referenced columns and uniqueness, investigate restore ordering, and verify metadata-only expectations read-only against the independently identified original target. Never alter the original database merely to make a clone assertion pass.

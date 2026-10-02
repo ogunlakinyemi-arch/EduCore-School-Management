@@ -127,7 +127,7 @@ function fail(res: Response, error: unknown, fallback: string) {
  * parent/student relationship, or an active partner attribution. Global Owner
  * access is deliberately handled before this expression and never widens it.
  */
-function activeSchoolEntitlementSql(userExpression: string, schoolExpression: string) {
+export function activeSchoolEntitlementSql(userExpression: string, schoolExpression: string) {
   return `(
     EXISTS (
       SELECT 1 FROM school_memberships m
@@ -825,19 +825,19 @@ router.delete("/communication/push-devices/:deviceId", async (req, res): Promise
     const values: unknown[] = [deviceId, context.user.id];
     if (schoolId !== null) {
       values.push(schoolId);
-      schoolFilter = "school_id=$3";
+      schoolFilter = "d.school_id=$3";
     } else if (isPlatformOwner(context)) {
-      schoolFilter = "school_id IS NULL";
+      schoolFilter = "d.school_id IS NULL";
     } else {
-      schoolFilter = `(school_id IS NULL OR (school_id IS NOT NULL
-        AND ${activeSchoolEntitlementSql("$2", "school_id")}))`;
+      schoolFilter = `(d.school_id IS NULL OR (d.school_id IS NOT NULL
+        AND ${activeSchoolEntitlementSql("$2", "d.school_id")}))`;
     }
     await client.query("BEGIN");
     const result = await client.query(
-      `UPDATE communication_push_devices
+      `UPDATE communication_push_devices d
        SET status='REVOKED',revoked_at=NOW()
-       WHERE id=$1 AND user_id=$2 AND status='ACTIVE' AND ${schoolFilter}
-       RETURNING id,school_id AS "schoolId"`,
+       WHERE d.id=$1 AND d.user_id=$2 AND d.status='ACTIVE' AND ${schoolFilter}
+       RETURNING d.id,d.school_id AS "schoolId"`,
       values,
     );
     if (!result.rows[0]) throw new AuthError(404, "Push device not found");

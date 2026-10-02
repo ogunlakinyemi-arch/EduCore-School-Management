@@ -30,3 +30,11 @@ export function visibleCommunicationNotifications<T extends CommunicationNotific
 // Keep the generated response contracts explicit: inbox is paginated; push devices are a bare list.
 export function inboxItems(response: CommunicationNotificationInbox | undefined) { return response?.items ?? []; }
 export function pushDevices(response: CommunicationPushDevice[] | undefined) { return response ?? []; }
+
+export function inboxArchiveView<T extends { isArchived: boolean }>(items: T[], archived: boolean): T[] {
+  return items.filter(item => item.isArchived === archived);
+}
+
+export function canArchiveNotification(category: string): boolean {
+  return !['ACCOUNT', 'SECURITY'].includes(category);
+}

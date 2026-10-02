@@ -1,0 +1,498 @@
+YEMAIT EDUCORE — DEVELOPMENT SIGN-IN BLOCKER AND NOTIFICATION VERIFICATION
+
+1. DEVELOPMENT ONLY
+
+Work ONLY in the Replit Development environment.
+
+DO NOT Publish.
+
+Do not modify Production database, schema, data, secrets, deployment settings, or authentication configuration used by Production.
+
+Do not attempt to bypass or fix the existing Replit Publish-generator issue.
+
+---
+
+2. OBJECTIVE
+
+Investigate and fix the Development authentication/session-retention problem that prevented the signed-in browser verification of the recently implemented:
+
+- Resend email adapter
+- Termii SMS adapter
+- Web Push adapter
+- Notification engine
+- Parent Communication Centre
+- Notification preferences
+- Provider delivery tracking
+- PWA notification functionality
+
+The previous verification reported:
+
+Signed-in browser checklist:
+0 passed
+1 failed
+16 not tested
+
+The reported blocker was:
+
+- Development session retention failure
+- Authorization response: HTTP 401
+
+Fix the underlying Development authentication/session issue rather than weakening authorization.
+
+---
+
+3. FIRST — REPRODUCE THE PROBLEM
+
+Before changing code:
+
+1. Start the Development application.
+2. Open the sign-in page.
+3. Sign in using the existing Development test account.
+4. Confirm whether authentication succeeds.
+5. Navigate to the protected page.
+6. Inspect browser Network requests.
+7. Inspect browser console.
+8. Identify the exact request returning 401.
+9. Determine whether the failure occurs:
+   - during Clerk authentication
+   - session creation
+   - session cookie handling
+   - token forwarding
+   - API authentication middleware
+   - frontend API client
+   - proxy/development environment
+   - role/permission validation
+   - session expiry
+   - cross-origin configuration
+   - route authorization
+10. Identify the root cause before applying a fix.
+
+Do not assume the cause.
+
+---
+
+4. PRESERVE AUTHENTICATION SECURITY
+
+Do NOT:
+
+- disable authentication
+- bypass Clerk
+- make protected endpoints public
+- remove RBAC
+- accept unsigned tokens
+- trust client-provided roles
+- disable tenant isolation
+- hard-code a development user into protected routes
+- weaken authorization checks
+- store passwords/tokens insecurely
+- add permanent authentication bypasses
+
+The Development fix must preserve the same security model expected in Production.
+
+---
+
+5. CHECK SESSION RETENTION
+
+Investigate:
+
+- Clerk session creation
+- Clerk session cookies
+- session persistence
+- frontend auth state
+- API request authentication headers
+- token refresh
+- session expiration
+- browser cookie configuration
+- SameSite/Secure settings appropriate to Development
+- API/frontend origin configuration
+- development proxy configuration
+- React Query/API client authentication
+- server-side Clerk middleware
+- protected route middleware
+
+Determine why the browser becomes unauthorized after sign-in.
+
+---
+
+6. CHECK THE 401 REQUEST
+
+Identify the exact failing endpoint.
+
+Record:
+
+HTTP method
+Endpoint
+Status
+Request authentication mechanism
+Expected role
+Actual authentication state
+Server-side rejection reason
+
+Do not log sensitive tokens.
+
+Example:
+
+GET /api/notifications
+401
+Authenticated session expected
+Session not recognized by API
+
+The final report should contain the endpoint and root cause without exposing credentials.
+
+---
+
+7. CHECK CLERK INTEGRATION
+
+Inspect the existing Clerk implementation.
+
+Verify that:
+
+- sign-in completes successfully
+- the browser receives the expected session
+- the frontend recognizes the signed-in user
+- authenticated API requests contain the required authentication context
+- server middleware recognizes the same session
+- session refresh works
+- logout still works
+- role claims remain intact
+- existing Owner/Admin/Teacher/Parent/Student/Partner permissions remain intact
+
+Do not replace Clerk with another authentication system.
+
+---
+
+8. CHECK API CLIENT
+
+Inspect the existing frontend API/request layer.
+
+Determine whether authenticated requests are correctly sending the expected authentication context.
+
+Do not duplicate authentication mechanisms unnecessarily.
+
+If the application already has a shared authenticated API client, extend/fix it rather than adding authentication separately to each notification page.
+
+---
+
+9. CHECK DEVELOPMENT ENVIRONMENT CONFIGURATION
+
+Inspect Development configuration for:
+
+- Clerk publishable key
+- Clerk secret configuration
+- API server configuration
+- frontend API base URL
+- Development origin
+- callback URLs
+- allowed origins
+- cookie configuration
+- proxy configuration
+- environment variable loading
+
+Do not print secret values.
+
+Report only whether required configuration is:
+
+configured
+missing
+invalid
+
+---
+
+10. TEST WITH EXISTING ROLES
+
+After fixing the underlying issue, verify Development sign-in with existing safe test accounts for:
+
+Platform Owner
+
+Verify:
+
+- sign in
+- Owner dashboard
+- notification/communication access according to permissions
+
+School Admin
+
+Verify:
+
+- sign in
+- School dashboard
+- Parent Communication Centre
+- notification settings
+
+Teacher
+
+Verify:
+
+- sign in
+- teacher dashboard
+- authorized parent communication
+- notification access
+
+Parent
+
+Verify:
+
+- sign in
+- Parent Communication Centre
+- child selection
+- notifications
+- preferences
+- messaging permissions
+
+Student
+
+Verify:
+
+- sign in
+- student dashboard
+- appropriate notifications
+
+Partner
+
+Verify:
+
+- sign in
+- Partner dashboard
+- no unauthorized access to private school/parent communications
+
+Do not create unnecessary duplicate accounts.
+
+---
+
+11. COMPLETE THE NOTIFICATION BROWSER CHECKLIST
+
+Once authentication works, resume the previously blocked browser verification.
+
+Test:
+
+Parent
+
+- notification centre
+- inbox
+- unread/read state
+- archive/restore
+- child selection
+- notification preferences
+- security notification
+- academic notification
+- finance notification
+- school announcement
+- parent messaging
+
+School Admin
+
+- notification centre
+- school communication
+- parent messaging
+- emergency broadcast interface
+- channel configuration
+- delivery history
+
+Teacher
+
+- authorized parent messaging
+- delegation/revocation
+- notification access
+
+---
+
+12. PROVIDER INTEGRATION VERIFICATION
+
+Continue using mock/no-network providers unless real provider credentials have been safely configured.
+
+Verify:
+
+Email
+
+- event creates email delivery attempt
+- mock provider accepts it
+- delivery status is recorded
+- failure is recorded correctly
+- retry works
+- duplicate delivery is prevented
+
+SMS
+
+- event creates SMS delivery attempt
+- mock provider accepts it
+- Nigerian phone normalization works
+- failure/retry works
+- duplicate delivery is prevented
+
+Push
+
+- test subscription is registered
+- notification is generated
+- mock push provider receives it
+- revoked subscription is handled
+- expired subscription is cleaned up
+- duplicate push is prevented
+
+---
+
+13. DO NOT CLAIM REAL DELIVERY
+
+Unless actual provider credentials are configured and a controlled test is performed, continue reporting:
+
+Real Resend delivery: Not Yet Verified
+Real Termii delivery: Not Yet Verified
+Physical push delivery: Not Yet Verified
+Physical PWA installation: Not Yet Verified
+
+Do not send real messages during automated testing.
+
+---
+
+14. RESPONSIVE BROWSER TESTING
+
+After authentication is fixed, complete protected notification screens at:
+
+402px
+768px
+1365px
+
+Verify:
+
+- no horizontal overflow
+- notification lists
+- inbox
+- compose/reply
+- child selector
+- filters
+- preferences
+- delivery status
+- emergency communication UI
+
+Record any remaining UI limitations rather than hiding them.
+
+---
+
+15. SECURITY REGRESSION TESTS
+
+Confirm the authentication fix does NOT weaken:
+
+- RBAC
+- tenant isolation
+- Parent → child access restrictions
+- Teacher delegation
+- Owner permissions
+- Partner restrictions
+- private incident access
+- notification privacy
+- protected API routes
+
+Test direct API access without authentication.
+
+Expected:
+
+401 Unauthorized
+
+Test authenticated but unauthorized roles.
+
+Expected:
+
+403 Forbidden
+
+where that is the existing API contract.
+
+---
+
+16. DATA PRESERVATION
+
+Before and after the fix, verify that existing Development records remain intact.
+
+Preserve:
+
+- notification records
+- communication records
+- delivery records
+- user accounts
+- parent-child relationships
+- school records
+- security history
+- NFC records
+- audit logs
+- provider configuration records
+
+Do not delete historical notification records to solve the authentication issue.
+
+---
+
+17. EXISTING TEST SUITE
+
+Run:
+
+- full backend tests
+- frontend tests
+- PostgreSQL tests
+- provider tests
+- notification tests
+- authentication tests
+- authorization tests
+- tenant-isolation tests
+- typechecks
+
+Report exact numbers.
+
+Do not claim success if any previously passing security tests regress.
+
+---
+
+18. FINAL REPORT
+
+Provide:
+
+Root Cause
+
+Explain exactly why the Development browser session was lost or rejected with HTTP 401.
+
+Fix
+
+List the files/components changed and explain the correction briefly.
+
+Verification
+
+Report exact:
+
+- backend tests
+- frontend tests
+- PostgreSQL tests
+- authentication tests
+- authorization tests
+- notification tests
+- provider tests
+- typechecks
+- signed-in browser checks
+
+Remaining Unverified
+
+Clearly list:
+
+- real Resend delivery
+- real Termii delivery
+- physical push notification
+- PWA installation
+- any missing provider credentials
+- anything else genuinely unverified
+
+Production
+
+Explicitly confirm:
+
+Nothing was Published.
+
+No Production database/schema/data was modified.
+
+The Replit Publish-generator issue remains untouched and continues to be handled separately through Replit Support.
+
+---
+
+FINAL RULE
+
+Fix the actual Development authentication/session problem.
+
+Do not bypass authentication merely to make the browser checklist pass.
+
+Once the session issue is fixed, use the legitimate signed-in accounts to complete the notification and Parent Communication Centre verification.
+
+Development only. Do not Publish.

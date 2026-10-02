@@ -7,6 +7,7 @@ import {
   invitationReturnUrl,
   readInvitationContext,
 } from '@/pages/invitations/acceptance-context';
+import { shouldEndPreviousSignInSession } from '@/lib/sign-in-session-policy';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -20,17 +21,22 @@ function SignInSessionGate({
   const { isLoaded, isSignedIn } = useAuth();
   const { signOut } = useClerk();
   const [, setLocation] = useLocation();
+  const signedInOnEntry = useRef<boolean | null>(null);
   const signOutStarted = useRef(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn || !invitationRedirectUrl) return;
-    setLocation(invitationRedirectUrl, { replace: true });
-  }, [isLoaded, isSignedIn, invitationRedirectUrl, setLocation]);
-
-  useEffect(() => {
-    if (invitationRedirectUrl) return;
-    if (!isLoaded || !isSignedIn || signOutStarted.current || signOutError) return;
+    if (!isLoaded) return;
+    // Capture the entry state once. A successful sign-in updates isSignedIn
+    // while this page is still mounted; that new session must never be ended
+    // by the account-switch behavior intended for an earlier session.
+    if (signedInOnEntry.current === null) signedInOnEntry.current = Boolean(isSignedIn);
+    if (!isSignedIn) return;
+    if (!shouldEndPreviousSignInSession(signedInOnEntry.current, Boolean(invitationRedirectUrl))) {
+      setLocation(invitationRedirectUrl ?? `${base}/`, { replace: true });
+      return;
+    }
+    if (signOutStarted.current || signOutError) return;
 
     signOutStarted.current = true;
     const signInUrl = `${window.location.origin}${base}/sign-in`;
@@ -43,7 +49,7 @@ function SignInSessionGate({
         signOutStarted.current = false;
         setSignOutError('We could not end the previous session. Please try again.');
       });
-  }, [isLoaded, isSignedIn, signOut, signOutError, invitationRedirectUrl]);
+  }, [isLoaded, isSignedIn, signOut, signOutError, invitationRedirectUrl, setLocation]);
 
   if (signOutError) {
     return (

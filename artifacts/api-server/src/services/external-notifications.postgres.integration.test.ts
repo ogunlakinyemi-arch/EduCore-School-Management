@@ -9,6 +9,7 @@ import { readFile } from "node:fs/promises";
 import express from "express";
 import { createHmac } from "node:crypto";
 import receiptRouter from "../routes/communication-receipts";
+import { activeSchoolEntitlementSql } from "../routes/communication-inbox";
 
 const suite=process.env.RUN_NOTIFICATION_POSTGRES_TESTS==="1" ? describe : describe.skip;
 suite("notification integration against disposable PostgreSQL",()=>{
@@ -48,6 +49,20 @@ suite("notification integration against disposable PostgreSQL",()=>{
     await pool.query("UPDATE schools SET communication_defaults='{}' WHERE id=$1",[m.ids.schoolId]);
   });
   afterAll(async()=>{await pool.end();});
+  it("revokes through the correlated school policy without ambiguous columns or cross-school access",async()=>{
+    const owner=user("parent2");
+    const ownSchool=Number((await pool.query("SELECT school_id FROM parents WHERE user_id=$1 AND status='ACTIVE' LIMIT 1",[owner])).rows[0].school_id);
+    const otherSchool=Number((await pool.query("INSERT INTO schools(code,name,state,city) VALUES($1,'Native unrelated school','Lagos','Lagos') RETURNING id",[`native-revoke-${m.nonce}`])).rows[0].id);
+    const inserted=await pool.query(`INSERT INTO communication_push_devices(user_id,school_id,opaque_device_reference)
+      VALUES($1,$2,'native-revoke-own'),($1,$3,'native-revoke-denied') RETURNING id,school_id`,[owner,ownSchool,otherSchool]);
+    const revoke=async(id:number)=>pool.query(`UPDATE communication_push_devices d SET status='REVOKED',revoked_at=NOW()
+      WHERE d.id=$1 AND d.user_id=$2 AND d.status='ACTIVE' AND (d.school_id IS NULL OR
+        (d.school_id IS NOT NULL AND ${activeSchoolEntitlementSql("$2","d.school_id")}))
+      RETURNING d.id`,[id,owner]);
+    expect((await revoke(Number(inserted.rows.find(r=>Number(r.school_id)===otherSchool)!.id))).rowCount).toBe(0);
+    expect((await revoke(Number(inserted.rows.find(r=>Number(r.school_id)===ownSchool)!.id))).rowCount).toBe(1);
+    expect((await revoke(Number(inserted.rows.find(r=>Number(r.school_id)===ownSchool)!.id))).rowCount).toBe(0);
+  });
   it("one event queues once and fanout sends once per device/channel",async()=>{
     await device();await device();const p=providers();
     await queueCommunicationNotification(pool,input());await queueCommunicationNotification(pool,input());

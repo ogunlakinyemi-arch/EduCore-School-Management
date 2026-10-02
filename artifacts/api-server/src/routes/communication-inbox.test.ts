@@ -550,4 +550,15 @@ describe("communication inbox recipient, tenant, and push privacy", () => {
     expect(update.sql).toContain("user_id=$2");
     expect(update.sql).toContain("status='ACTIVE'");
   });
+
+  it("qualifies the outer school when revoking without an explicit school filter", async () => {
+    const response = await fetch(`${baseUrl}/communication/push-devices/11`, { method: "DELETE" });
+    expect(response.status).toBe(204);
+    const update = state.calls.find(({ sql }) => sql.includes("UPDATE communication_push_devices"))!;
+    expect(update.values).toEqual([11, 73]);
+    expect(update.sql).toContain("UPDATE communication_push_devices d");
+    expect(update.sql).toContain("pa.school_id=d.school_id");
+    expect(update.sql).toContain("st.school_id=d.school_id");
+    expect(update.sql).toContain("d.user_id=$2");
+  });
 });
