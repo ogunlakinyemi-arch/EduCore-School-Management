@@ -1,4 +1,5 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
+import { z } from "zod";
 import { pool } from "@workspace/db";
 import {
   CreateCommunicationAnnouncementBody,
@@ -38,6 +39,21 @@ import {
 const router = Router();
 router.use(requireAuthentication());
 
+export type CommunicationCampaignSecurityAccess = (
+  req: Request,
+  schoolId: number,
+  permission: "COMMUNICATION_SEND" | "EMERGENCY_BROADCAST",
+  options?: { ownerReadOnly?: boolean },
+) => Promise<unknown>;
+
+let securityPermissionCheck: CommunicationCampaignSecurityAccess | undefined;
+
+/** Register the shared core security permission helper before mounting this router. */
+export function createCommunicationCampaignsRouter(requireSecurityAccess: CommunicationCampaignSecurityAccess) {
+  securityPermissionCheck = requireSecurityAccess;
+  return router;
+}
+
 const asyncRoute =
   (handler: (req: Request, res: Response) => Promise<void>) =>
   (req: Request, res: Response, next: NextFunction) =>
@@ -61,6 +77,55 @@ const categories = [
   "ANNOUNCEMENT", "ACCOUNT", "SYSTEM", "SUBSCRIPTION", "PARTNER", "SECURITY",
 ] as const;
 const channels = ["IN_APP", "SMS", "EMAIL"] as const;
+const extendedCreateAnnouncementBody = CreateCommunicationAnnouncementBody.extend({
+  expiresAt: z.string().datetime().nullable().optional(),
+  isEmergency: z.boolean().optional().default(false),
+  emergencyConfirmation: z.string().optional(),
+  confirmedRecipientCount: z.number().int().nonnegative().optional(),
+}).superRefine((body, context) => {
+  if (body.isEmergency) {
+    if (body.category !== "SECURITY") {
+      context.addIssue({ code: "custom", message: "Emergency broadcasts must use the SECURITY category" });
+    }
+    if (body.emergencyConfirmation !== "I CONFIRM EMERGENCY BROADCAST") {
+      context.addIssue({ code: "custom", message: "Explicit emergency broadcast confirmation is required" });
+    }
+    if (!body.channels.includes("IN_APP")) {
+      context.addIssue({ code: "custom", message: "Emergency broadcasts must include the in-app channel" });
+    }
+    if (body.confirmedRecipientCount === undefined) {
+      context.addIssue({ code: "custom", message: "confirmedRecipientCount is required for emergency broadcasts" });
+    }
+  } else {
+    if (body.category === "SECURITY") {
+      context.addIssue({ code: "custom", message: "SECURITY campaigns must be marked as emergency broadcasts" });
+    }
+    if (body.emergencyConfirmation !== undefined || body.confirmedRecipientCount !== undefined) {
+      context.addIssue({ code: "custom", message: "Emergency confirmation fields are not valid for an ordinary announcement" });
+    }
+  }
+});
+const extendedPreviewAnnouncementBody = PreviewCommunicationAnnouncementBody.extend({
+  category: z.enum([
+    "ATTENDANCE", "ACADEMIC", "ASSIGNMENT", "FINANCE", "PAYMENT", "ANNOUNCEMENT",
+    "ACCOUNT", "SYSTEM", "SUBSCRIPTION", "PARTNER", "SECURITY",
+  ]).optional(),
+  isEmergency: z.boolean().optional().default(false),
+}).superRefine((body, context) => {
+  if (body.isEmergency && body.category !== "SECURITY") {
+    context.addIssue({ code: "custom", message: "Emergency broadcast preview must use the SECURITY category" });
+  }
+  if (!body.isEmergency && body.category === "SECURITY") {
+    context.addIssue({ code: "custom", message: "SECURITY preview requires emergency broadcast authorization" });
+  }
+  if (body.isEmergency && !body.channels.includes("IN_APP")) {
+    context.addIssue({ code: "custom", message: "Emergency broadcasts must include the in-app channel" });
+  }
+});
+const extendedAnnouncementResponseSchema = CreateCommunicationAnnouncementResponse.extend({
+  isEmergency: z.boolean().default(false),
+  expiresAt: z.coerce.date().nullable().default(null),
+});
 const recipientLimit = 1000;
 const retryLimit = 5;
 const campaignRateLimit = 10;
@@ -158,12 +223,25 @@ function validateCriteria(targetType: TargetType, raw: Record<string, unknown>):
   return criteria;
 }
 
-function authorizeTarget(req: Request, input: TargetInput, category?: CommunicationCategory) {
+function authorizeTarget(
+  req: Request,
+  input: TargetInput,
+  category?: CommunicationCategory,
+  isEmergency = false,
+) {
   requireSchoolRole(req, input.schoolId, ["SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT"]);
   const roles = activeRoles(req, input.schoolId);
   const isAdmin = roles.has("SCHOOL_ADMIN");
   const isTeacher = roles.has("TEACHER");
   const isAccountant = roles.has("ACCOUNTANT");
+
+  if (isEmergency) {
+    if (!isAdmin || category !== "SECURITY") {
+      throw new AuthError(403, "Only a School Admin may send an emergency broadcast");
+    }
+    requireSchoolRole(req, input.schoolId, ["SCHOOL_ADMIN"]);
+    return;
+  }
 
   if (isAdmin) {
     if (category !== undefined && category !== "ANNOUNCEMENT") {
@@ -302,8 +380,13 @@ function targetCte(input: TargetInput): { sql: string; values: unknown[] } {
   };
 }
 
-async function resolveRecipients(req: Request, input: TargetInput, category?: CommunicationCategory): Promise<Recipient[]> {
-  authorizeTarget(req, input, category);
+async function resolveRecipients(
+  req: Request,
+  input: TargetInput,
+  category?: CommunicationCategory,
+  isEmergency = false,
+): Promise<Recipient[]> {
+  authorizeTarget(req, input, category, isEmergency);
   const context = getUserContext(req);
   const criteria = validateCriteria(input.targetType, input.targetCriteria);
   const validatedInput = { ...input, targetCriteria: criteria };
@@ -498,14 +581,22 @@ router.patch("/communication/templates/:templateId", asyncRoute(async (req, res)
 }));
 
 router.post("/communication/announcements/preview", asyncRoute(async (req, res) => {
-  const body = parse(PreviewCommunicationAnnouncementBody.strict(), req.body);
+  const body = parse(extendedPreviewAnnouncementBody, req.body);
+  const isEmergency = body.isEmergency === true;
   const targetType = body.targetType as TargetType;
   const input = {
     schoolId: body.schoolId,
     targetType,
     targetCriteria: validateCriteria(targetType, body.targetCriteria as Record<string, unknown>),
   };
-  const recipients = await resolveRecipients(req, input);
+  authorizeTarget(req, input, body.category as CommunicationCategory | undefined, isEmergency);
+  if (isEmergency) {
+    if (!securityPermissionCheck) {
+      throw new AuthError(503, "School emergency permission service is unavailable");
+    }
+    await securityPermissionCheck(req, body.schoolId, "EMERGENCY_BROADCAST", { ownerReadOnly: false });
+  }
+  const recipients = await resolveRecipients(req, input, body.category as CommunicationCategory | undefined, isEmergency);
   const result: Array<{ channel: Channel; eligibleRecipientCount: number }> = [];
   for (const channel of body.channels) {
     const field = channel === "SMS" ? "phone" : channel === "EMAIL" ? "email" : null;
@@ -527,13 +618,28 @@ router.post("/communication/announcements/preview", asyncRoute(async (req, res) 
 }));
 
 router.post("/communication/announcements", asyncRoute(async (req, res) => {
-  const body = parse(CreateCommunicationAnnouncementBody.strict(), req.body);
+  const body = parse(extendedCreateAnnouncementBody, req.body);
+  const isEmergency = body.isEmergency === true;
+  if (body.expiresAt && new Date(body.expiresAt).getTime() <= Date.now()) {
+    throw new AuthError(400, "expiresAt must be a future timestamp");
+  }
   const targetType = body.targetType as TargetType;
   const targetCriteria = validateCriteria(targetType, body.targetCriteria as Record<string, unknown>);
   const recipientInput = { schoolId: body.schoolId, targetType, targetCriteria };
-  authorizeTarget(req, recipientInput, body.category as CommunicationCategory);
-  const recipients = await resolveRecipients(req, recipientInput, body.category as CommunicationCategory);
+  authorizeTarget(req, recipientInput, body.category as CommunicationCategory, isEmergency);
+  if (isEmergency) {
+    if (!securityPermissionCheck) {
+      throw new AuthError(503, "School emergency permission service is unavailable");
+    }
+    await securityPermissionCheck(req, body.schoolId, "EMERGENCY_BROADCAST", { ownerReadOnly: false });
+  }
+  const recipients = await resolveRecipients(
+    req, recipientInput, body.category as CommunicationCategory, isEmergency,
+  );
   if (!recipients.length) throw new AuthError(400, "No eligible recipients were found for this target");
+  if (isEmergency && body.confirmedRecipientCount !== recipients.length) {
+    throw new AuthError(409, "Emergency recipient count changed; review the audience and confirm again");
+  }
 
   const template = body.templateId == null ? null : (await pool.query(
     `SELECT id,school_id AS "schoolId",category,channel,subject,body,allowed_variables AS "allowedVariables",
@@ -555,10 +661,14 @@ router.post("/communication/announcements", asyncRoute(async (req, res) => {
   if (!school.rows[0]) throw new AuthError(404, "School not found");
   const schoolName = String(school.rows[0].name);
   const isFinanceMessage = body.category === "FINANCE";
-  const manualMessageLabel = isFinanceMessage
+  const manualMessageLabel = isEmergency
+    ? `EMERGENCY BROADCAST — ${schoolName}. Sent by an authorized School Admin.`
+    : isFinanceMessage
     ? `School finance announcement — not a payment confirmation. Manually authored by ${schoolName}.`
     : `Manually authored school message from ${schoolName}.`;
-  const subjectLabel = isFinanceMessage
+  const subjectLabel = isEmergency
+    ? `[EMERGENCY BROADCAST from ${schoolName}]`
+    : isFinanceMessage
     ? `[School finance announcement — not a payment confirmation from ${schoolName}]`
     : `[Manually authored school message from ${schoolName}]`;
   const source = template
@@ -602,16 +712,17 @@ router.post("/communication/announcements", asyncRoute(async (req, res) => {
     const inserted = await client.query(
       `INSERT INTO communication_campaigns
         (school_id,created_by_user_id,template_id,idempotency_key,title,subject,body,category,
-         target_type,target_criteria,channels,status,recipient_count)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,'QUEUED',$12)
+         target_type,target_criteria,channels,status,recipient_count,is_emergency,expires_at)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,'QUEUED',$12,$13,$14)
        ON CONFLICT (school_id,idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING
        RETURNING id,school_id AS "schoolId",created_by_user_id AS "createdByUserId",
          template_id AS "templateId",title,subject,body,category,target_type AS "targetType",
          target_criteria AS "targetCriteria",channels,status,recipient_count AS "recipientCount",
-         created_at AS "createdAt",sent_at AS "sentAt"`,
+          is_emergency AS "isEmergency",expires_at AS "expiresAt",
+          created_at AS "createdAt",sent_at AS "sentAt"`,
        [body.schoolId, getUserContext(req).user.id, body.templateId ?? null, body.idempotencyKey,
          body.title, campaignSubject, campaignBody, body.category, targetType,
-        JSON.stringify(targetCriteria), body.channels, recipients.length],
+         JSON.stringify(targetCriteria), body.channels, recipients.length, isEmergency, body.expiresAt ?? null],
     );
     campaign = inserted.rows[0];
     if (!campaign) {
@@ -622,7 +733,8 @@ router.post("/communication/announcements", asyncRoute(async (req, res) => {
         `SELECT id,school_id AS "schoolId",created_by_user_id AS "createdByUserId",
            template_id AS "templateId",title,subject,body,category,target_type AS "targetType",
            target_criteria AS "targetCriteria",channels,status,recipient_count AS "recipientCount",
-           created_at AS "createdAt",sent_at AS "sentAt"
+            is_emergency AS "isEmergency",expires_at AS "expiresAt",
+            created_at AS "createdAt",sent_at AS "sentAt"
          FROM communication_campaigns
          WHERE school_id=$1 AND idempotency_key=$2
          FOR UPDATE`,
@@ -640,6 +752,9 @@ router.post("/communication/announcements", asyncRoute(async (req, res) => {
         || campaign.targetType !== targetType
         || stableJson(campaign.targetCriteria) !== stableJson(targetCriteria)
         || stableJson(campaign.channels) !== stableJson(body.channels)
+          || Boolean(campaign.isEmergency) !== isEmergency
+          || (campaign.expiresAt == null ? null : new Date(campaign.expiresAt).toISOString())
+            !== (body.expiresAt == null ? null : new Date(body.expiresAt).toISOString())
         || Number(campaign.templateId ?? 0) !== Number(body.templateId ?? 0)) {
         throw new AuthError(409, "The idempotency key is already in use by a different campaign");
       }
@@ -681,10 +796,12 @@ router.post("/communication/announcements", asyncRoute(async (req, res) => {
           [campaign.id, body.schoolId, item.recipient.userId, notificationId],
         );
       }
-      await writeAudit(client, req, body.schoolId, "Created school communication campaign",
-        "COMMUNICATION_ANNOUNCEMENT_CREATED", Number(campaign.id), {
+      await writeAudit(client, req, body.schoolId,
+        isEmergency ? "Created school emergency communication broadcast" : "Created school communication campaign",
+        isEmergency ? "EMERGENCY_BROADCAST_CREATED" : "COMMUNICATION_ANNOUNCEMENT_CREATED", Number(campaign.id), {
           recipientCount: recipients.length, targetType, category: body.category,
-          channels: body.channels,
+          channels: body.channels, isEmergency, expiresAt: body.expiresAt ?? null,
+          ...(isEmergency ? { confirmedRecipientCount: body.confirmedRecipientCount } : {}),
         });
     }
     await client.query("COMMIT");
@@ -702,7 +819,7 @@ router.post("/communication/announcements", asyncRoute(async (req, res) => {
         "Communication campaign delivery dispatch failed",
       ));
   }
-  res.status(wasCreated ? 201 : 200).json(CreateCommunicationAnnouncementResponse.parse(campaign));
+  res.status(wasCreated ? 201 : 200).json(extendedAnnouncementResponseSchema.parse(campaign));
 }));
 
 function historyAccess(req: Request, schoolId: number) {
@@ -733,6 +850,9 @@ router.get("/communication/announcements", asyncRoute(async (req, res) => {
        c.template_id AS "templateId",c.title,c.subject,c.body,c.category,c.target_type AS "targetType",
        c.target_criteria AS "targetCriteria",c.channels,${campaignDerivedStatus} AS status,
        COUNT(DISTINCT cr.recipient_user_id)::int AS "recipientCount",
+        c.is_emergency AS "isEmergency",
+        CASE WHEN c.expires_at IS NULL THEN NULL
+          ELSE to_char(c.expires_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS "expiresAt",
        c.created_at AS "createdAt",c.sent_at AS "sentAt"
      FROM communication_campaigns c
      LEFT JOIN communication_campaign_recipients cr
@@ -748,11 +868,19 @@ router.get("/communication/announcements", asyncRoute(async (req, res) => {
   );
   const rows = result.rows.slice(0, query.limit);
   const hasMore = result.rows.length > query.limit;
-  res.json(ListCommunicationAnnouncementsResponse.parse({
+  const parsed = ListCommunicationAnnouncementsResponse.parse({
     items: rows,
     hasMore,
     nextBeforeId: hasMore ? Number(rows[rows.length - 1]?.id) : null,
-  }));
+  });
+  res.json({
+    ...parsed,
+    items: parsed.items.map((item, index) => ({
+      ...item,
+      isEmergency: Boolean(rows[index]?.isEmergency),
+      expiresAt: rows[index]?.expiresAt ?? null,
+    })),
+  });
 }));
 
 router.get("/communication/announcements/:campaignId", asyncRoute(async (req, res) => {
@@ -762,6 +890,9 @@ router.get("/communication/announcements/:campaignId", asyncRoute(async (req, re
        c.template_id AS "templateId",c.title,c.subject,c.body,c.category,c.target_type AS "targetType",
        c.target_criteria AS "targetCriteria",c.channels,${campaignDerivedStatus} AS status,
        COUNT(DISTINCT cr.recipient_user_id)::int AS "recipientCount",
+        c.is_emergency AS "isEmergency",
+        CASE WHEN c.expires_at IS NULL THEN NULL
+          ELSE to_char(c.expires_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS "expiresAt",
        c.created_at AS "createdAt",c.sent_at AS "sentAt"
      FROM communication_campaigns c
      LEFT JOIN communication_campaign_recipients cr
@@ -817,6 +948,8 @@ router.get("/communication/announcements/:campaignId", asyncRoute(async (req, re
   const parsed = GetCommunicationAnnouncementResponse.parse({ ...campaign, recipients: recipients.rows });
   res.json({
     ...parsed,
+    isEmergency: Boolean(campaign.isEmergency),
+    expiresAt: campaign.expiresAt ?? null,
     recipients: parsed.recipients.map(recipient => ({
       ...recipient,
       deliveries: recipient.deliveries.map(delivery => {

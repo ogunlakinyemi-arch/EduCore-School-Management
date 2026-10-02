@@ -1,0 +1,635 @@
+openapi: 3.1.0
+info:
+  title: School Security Core API
+  version: 1.0.0
+  description: >
+    School-scoped campus identity and presence records built on existing NFC cards,
+    authenticated school-bound devices, staff term entitlement and attendance events.
+    Security events do not claim to operate physical gates or locks. Platform Owner
+    access is read-only oversight; delegated staff permissions are explicit and revocable.
+paths:
+  /schools/{schoolId}/security/dashboard:
+    get:
+      operationId: getSchoolSecurityDashboard
+      tags: [school-security]
+      summary: Read aggregate security and current campus presence counts
+      description: todayVisitorCheckIns is calculated for the current UTC calendar day; event activity uses the supplied range.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+      responses:
+        "200":
+          description: Aggregate current campus, visitor, incident, and pickup counts with activity for the requested range
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecurityDashboard" }
+        "404": { description: School security is not available to this user }
+  /schools/{schoolId}/security/events:
+    get:
+      operationId: listSchoolSecurityEvents
+      tags: [school-security]
+      summary: List a school’s immutable NFC security identity events
+      description: Global event queries require SECURITY_READ. PICKUP_APPROVE may use only a confirmed EXIT query scoped to one student in the requested school.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/BeforeId"
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+        - in: query
+          name: eventType
+          schema: { type: string, enum: [ENTRY, EXIT] }
+        - in: query
+          name: result
+          schema: { type: string, enum: [CONFIRMED, REJECTED] }
+        - in: query
+          name: studentId
+          description: Optional school-scoped student filter. PICKUP_APPROVE access requires studentId with eventType EXIT and result CONFIRMED.
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Cursor-paginated security events; event times preserve device timestamps
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecurityEventPage" }
+        "404": { description: School security not found }
+  /schools/{schoolId}/security/access:
+    get:
+      operationId: getSchoolSecurityAccess
+      tags: [school-security]
+      summary: Return the current actor’s live effective security permissions
+      description: School Admins receive all permissions, Platform Owners receive read-only oversight, and staff receive only explicit current school grants.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Effective permissions for UI tab/action gating; unavailable actors receive an empty permission set rather than a forced authorization error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecurityAccess" }
+        "404": { description: School or active user not found }
+  /schools/{schoolId}/security/presence:
+    get:
+      operationId: listSchoolCampusPresence
+      tags: [school-security]
+      summary: List current student and staff campus presence
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/BeforeId"
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+      responses:
+        "200":
+          description: Ambiguous or out-of-order sequences remain marked for review
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CampusPresencePage" }
+        "404": { description: School security not found }
+  /schools/{schoolId}/security/presence/{presenceId}/review:
+    post:
+      operationId: resolveSchoolCampusPresenceReview
+      tags: [school-security]
+      summary: Resolve an ambiguous presence sequence with an explicit audited state
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/PresenceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PresenceReviewInput" }
+      responses:
+        "200": { description: Review decision recorded }
+        "404": { description: Review record not found }
+  /schools/{schoolId}/security/locations:
+    get:
+      operationId: listSchoolSecurityLocations
+      tags: [school-security]
+      summary: List campus security locations
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Locations belonging to the requested school
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SecurityLocation" }
+    post:
+      operationId: createSchoolSecurityLocation
+      tags: [school-security]
+      summary: Create a security location
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SecurityLocationInput" }
+      responses:
+        "201":
+          description: Created school-scoped location
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecurityLocation" }
+        "404": { description: Security management permission required }
+  /schools/{schoolId}/security/locations/{locationId}/status:
+    patch:
+      operationId: setSchoolSecurityLocationStatus
+      tags: [school-security]
+      summary: Activate or deactivate a security location
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/LocationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StatusInput" }
+      responses:
+        "200": { description: Updated location }
+        "404": { description: Location not found in this school }
+  /schools/{schoolId}/security/readers:
+    get:
+      operationId: listSchoolSecurityReaders
+      tags: [school-security]
+      summary: List configured readers and their existing device bindings
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Reader/device/location records scoped to the school
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SecurityReader" }
+    post:
+      operationId: configureSchoolSecurityReader
+      tags: [school-security]
+      summary: Bind an already-configured school device to a location and entry/exit permissions
+      description: This does not provision device credentials or provide lock or gate control.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SecurityReaderInput" }
+      responses:
+        "201":
+          description: Reader configuration saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecurityReader" }
+        "404": { description: Active configured device or location not found in this school }
+  /schools/{schoolId}/security/eligible-devices:
+    get:
+      operationId: listEligibleSchoolSecurityDevices
+      tags: [school-security]
+      summary: List active, configured, credentialed devices currently bound to this school
+      description: School-scoped safe-read endpoint; never exposes device credentials or uses a platform-wide device listing.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Devices eligible for security-reader binding in the requested school
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/EligibleSecurityDevice" }
+        "404": { description: School security not found }
+  /schools/{schoolId}/security/readers/{readerId}/status:
+    patch:
+      operationId: setSchoolSecurityReaderStatus
+      tags: [school-security]
+      summary: Activate or deactivate a configured reader
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/ReaderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StatusInput" }
+      responses:
+        "200": { description: Updated reader }
+        "404": { description: Reader not found in this school }
+  /schools/{schoolId}/security/settings:
+    get:
+      operationId: getSchoolSecuritySettings
+      tags: [school-security]
+      summary: Read security and parent arrival/departure notification settings
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: School security settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecuritySettings" }
+    put:
+      operationId: updateSchoolSecuritySettings
+      tags: [school-security]
+      summary: Update security event recording and parent in-app notification settings
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SecuritySettingsInput" }
+      responses:
+        "200": { description: Settings updated }
+        "404": { description: Security management permission required }
+  /schools/{schoolId}/security/grants:
+    get:
+      operationId: listSchoolSecurityStaffGrants
+      tags: [school-security]
+      summary: List explicit delegated school-security staff grants
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Active and historical grants for this school
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SecurityStaffGrant" }
+        "404": { description: Security management permission required }
+    post:
+      operationId: grantSchoolSecurityStaff
+      tags: [school-security]
+      summary: Grant an active school staff member explicit security permissions
+      description: Only an active School Admin may create or revoke staff grants.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SecurityGrantInput" }
+      responses:
+        "201":
+          description: Grant created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecurityStaffGrant" }
+        "404": { description: Active school staff member not found }
+        "409": { description: Active grant already exists }
+  /schools/{schoolId}/security/grants/{grantId}/revoke:
+    post:
+      operationId: revokeSchoolSecurityStaffGrant
+      tags: [school-security]
+      summary: Revoke an active delegated security grant
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/GrantId"
+      responses:
+        "200": { description: Grant revoked }
+        "404": { description: Active grant not found }
+  /schools/{schoolId}/security/cards/{cardId}/lost:
+    post:
+      operationId: markSchoolNfcCardLost
+      tags: [school-security]
+      summary: Mark an existing student or staff NFC card lost without replacing its identity
+      description: >
+        Preserves card and person history and appends the existing NFC card-history record.
+        Replacement remains in the pre-existing student or staff NFC lifecycle.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/CardId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LostCardInput" }
+      responses:
+        "200": { description: Card marked lost }
+        "404": { description: Card not found in this school }
+        "409": { description: Unassigned card cannot be marked lost by this workflow }
+  /parent/children/{studentId}/security:
+    get:
+      operationId: getParentChildSecuritySummary
+      tags: [school-security]
+      summary: Read an authenticated parent’s own child NFC and campus-presence summary
+      description: Uses the live parent-child relation and returns no card UID or unrelated student data.
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Child-only current presence, redacted NFC status, and recent confirmed security events
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ParentChildSecuritySummary" }
+        "404": { description: Active parent-child relation not found }
+components:
+  parameters:
+    SchoolId:
+      name: schoolId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    PresenceId:
+      name: presenceId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    LocationId:
+      name: locationId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    ReaderId:
+      name: readerId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    GrantId:
+      name: grantId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    CardId:
+      name: cardId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+    BeforeId:
+      name: beforeId
+      in: query
+      schema: { type: integer, minimum: 1 }
+    From:
+      name: from
+      in: query
+      schema: { type: string, format: date-time }
+    To:
+      name: to
+      in: query
+      schema: { type: string, format: date-time }
+  schemas:
+    SecurityAccess:
+      type: object
+      additionalProperties: false
+      required: [schoolId, actorRole, canView, readOnly, permissions, grantedPermissions]
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        actorRole:
+          oneOf:
+            - type: string
+              enum: [PLATFORM_OWNER, SCHOOL_ADMIN, STAFF]
+            - type: "null"
+        canView: { type: boolean }
+        readOnly: { type: boolean }
+        permissions:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum: [SECURITY_READ, SECURITY_MANAGE, VISITOR_MANAGE, PICKUP_APPROVE, INCIDENT_MANAGE, EMERGENCY_BROADCAST, COMMUNICATION_SEND, MANAGE_READERS, MANAGE_CARDS, REVIEW_PRESENCE]
+        grantedPermissions:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum: [READ, MANAGE_READERS, MANAGE_CARDS, REVIEW_PRESENCE, SECURITY_READ, SECURITY_MANAGE, VISITOR_MANAGE, PICKUP_APPROVE, INCIDENT_MANAGE, EMERGENCY_BROADCAST, COMMUNICATION_SEND]
+    SecurityDashboard:
+      type: object
+      additionalProperties: false
+      required: [schoolId, range, studentsOnCampus, staffOnCampus, offCampusPeople, presenceRequiresReview, acceptedEntryEvents, acceptedExitEvents, visitorsCurrentlyOnCampus, todayVisitorCheckIns, openIncidents, pendingPickupRequests, lateArrivals, earlyDepartures, rejectedAttempts, revokedCardAttempts, visitorCountsAvailable, physicalAccessControl]
+      properties:
+        schoolId: { type: integer }
+        range:
+          type: object
+          required: [from, to]
+          properties:
+            from: { type: string, format: date-time }
+            to: { type: string, format: date-time }
+        studentsOnCampus: { type: integer, minimum: 0 }
+        staffOnCampus: { type: integer, minimum: 0 }
+        offCampusPeople: { type: integer, minimum: 0 }
+        presenceRequiresReview: { type: integer, minimum: 0 }
+        acceptedEntryEvents: { type: integer, minimum: 0 }
+        acceptedExitEvents: { type: integer, minimum: 0 }
+        visitorsCurrentlyOnCampus: { type: integer, minimum: 0 }
+        todayVisitorCheckIns: { type: integer, minimum: 0 }
+        openIncidents: { type: integer, minimum: 0 }
+        pendingPickupRequests: { type: integer, minimum: 0 }
+        lateArrivals: { type: integer, minimum: 0 }
+        earlyDepartures: { type: integer, minimum: 0 }
+        rejectedAttempts: { type: integer, minimum: 0 }
+        revokedCardAttempts: { type: integer, minimum: 0 }
+        visitorCountsAvailable: { type: boolean, const: true }
+        physicalAccessControl: { type: string, const: NOT_CONNECTED }
+    SecurityEvent:
+      type: object
+      additionalProperties: false
+      required: [id, schoolId, readerId, locationId, deviceId, personType, personName, studentId, employeeId, eventType, identityResult, reasonCode, locationName, readerName, className, section, occurredAt, receivedAt, syncStatus, physicalControlStatus]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        readerId: { type: [integer, "null"] }
+        locationId: { type: [integer, "null"] }
+        deviceId: { type: integer }
+        personType: { type: string, enum: [STUDENT, STAFF, UNKNOWN] }
+        personName: { type: [string, "null"] }
+        studentId: { type: [integer, "null"] }
+        employeeId: { type: [integer, "null"] }
+        eventType: { type: string, enum: [ENTRY, EXIT] }
+        identityResult: { type: string, enum: [CONFIRMED, REJECTED] }
+        reasonCode: { type: [string, "null"] }
+        locationName: { type: [string, "null"] }
+        readerName: { type: [string, "null"] }
+        className: { type: [string, "null"] }
+        section: { type: [string, "null"] }
+        occurredAt: { type: string, format: date-time }
+        receivedAt: { type: string, format: date-time }
+        syncStatus: { type: string, const: SYNCED }
+        physicalControlStatus: { type: string, const: NOT_CONNECTED }
+    SecurityEventPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/SecurityEvent" } }
+        nextCursor: { type: [integer, "null"] }
+    CampusPresencePage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, schoolId, personType, studentId, employeeId, personName, admissionNumber, employeeNumber, className, section, state, lastOccurredAt, reviewReason]
+            properties:
+              id: { type: integer }
+              schoolId: { type: integer }
+              personType: { type: string, enum: [STUDENT, STAFF] }
+              studentId: { type: [integer, "null"] }
+              employeeId: { type: [integer, "null"] }
+              personName: { type: string }
+              admissionNumber: { type: [string, "null"] }
+              employeeNumber: { type: [string, "null"] }
+              className: { type: [string, "null"] }
+              section: { type: [string, "null"] }
+              state: { type: string, enum: [ON_CAMPUS, OFF_CAMPUS, REQUIRES_REVIEW] }
+              lastOccurredAt: { type: string, format: date-time }
+              reviewReason: { type: [string, "null"] }
+        nextCursor: { type: [integer, "null"] }
+    PresenceReviewInput:
+      type: object
+      additionalProperties: false
+      required: [state, reason]
+      properties:
+        state: { type: string, enum: [ON_CAMPUS, OFF_CAMPUS] }
+        reason: { type: string, minLength: 3, maxLength: 500 }
+    SecurityLocationInput:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        description: { type: [string, "null"], maxLength: 500 }
+        zoneType: { type: string, enum: [GATE, CAMPUS, BUILDING, OTHER], default: OTHER }
+    SecurityLocation:
+      allOf:
+        - $ref: "#/components/schemas/SecurityLocationInput"
+        - type: object
+          required: [id, schoolId, status, createdAt, updatedAt]
+          properties:
+            id: { type: integer }
+            schoolId: { type: integer }
+            status: { type: string, enum: [ACTIVE, INACTIVE] }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+    SecurityReaderInput:
+      type: object
+      additionalProperties: false
+      required: [locationId, deviceId, name, permissions]
+      properties:
+        locationId: { type: integer, minimum: 1 }
+        deviceId: { type: integer, minimum: 1 }
+        name: { type: string, minLength: 2, maxLength: 120 }
+        permissions:
+          type: array
+          minItems: 1
+          maxItems: 2
+          uniqueItems: true
+          items: { type: string, enum: [ENTRY, EXIT] }
+    SecurityReader:
+      allOf:
+        - $ref: "#/components/schemas/SecurityReaderInput"
+        - type: object
+          required: [id, schoolId, deviceName, deviceSerial, status, locationName]
+          properties:
+            id: { type: integer }
+            schoolId: { type: integer }
+            deviceName: { type: string }
+            deviceSerial: { type: string }
+            status: { type: string, enum: [ACTIVE, INACTIVE] }
+            locationName: { type: string }
+    EligibleSecurityDevice:
+      type: object
+      additionalProperties: false
+      required: [id, name, serialNumber, deviceType, readerId, readerName, locationId]
+      properties:
+        id: { type: integer, minimum: 1 }
+        name: { type: string }
+        serialNumber: { type: string }
+        deviceType: { type: string, enum: [NFC, BIOMETRIC, HYBRID] }
+        readerId: { type: [integer, "null"] }
+        readerName: { type: [string, "null"] }
+        locationId: { type: [integer, "null"] }
+    ParentChildSecuritySummary:
+      type: object
+      additionalProperties: false
+      required: [studentId, schoolId, nfcStatus, currentPresence, recentEvents]
+      properties:
+        studentId: { type: integer, minimum: 1 }
+        schoolId: { type: integer, minimum: 1 }
+        nfcStatus: { type: string, enum: [ACTIVE, LOST, INACTIVE, NO_CARD] }
+        currentPresence:
+          oneOf:
+            - type: "null"
+            - type: object
+              additionalProperties: false
+              required: [state, lastOccurredAt]
+              properties:
+                state: { type: string, enum: [ON_CAMPUS, OFF_CAMPUS, REQUIRES_REVIEW] }
+                lastOccurredAt: { type: string, format: date-time }
+        recentEvents:
+          type: array
+          maxItems: 10
+          items:
+            type: object
+            additionalProperties: false
+            required: [eventType, occurredAt]
+            properties:
+              eventType: { type: string, enum: [ENTRY, EXIT] }
+              occurredAt: { type: string, format: date-time }
+    SecuritySettings:
+      type: object
+      required: [schoolId, securityEnabled, parentEntryAlerts, parentExitAlerts, updatedAt]
+      properties:
+        schoolId: { type: integer }
+        securityEnabled: { type: boolean }
+        parentEntryAlerts: { type: boolean }
+        parentExitAlerts: { type: boolean }
+        updatedAt: { type: [string, "null"], format: date-time }
+    SecuritySettingsInput:
+      type: object
+      additionalProperties: false
+      required: [securityEnabled, parentEntryAlerts, parentExitAlerts]
+      properties:
+        securityEnabled: { type: boolean }
+        parentEntryAlerts: { type: boolean }
+        parentExitAlerts: { type: boolean }
+    SecurityGrantInput:
+      type: object
+      additionalProperties: false
+      required: [userId, permissions]
+      properties:
+        userId: { type: integer, minimum: 1 }
+        permissions:
+          type: array
+          minItems: 1
+          maxItems: 11
+          uniqueItems: true
+          items:
+            type: string
+            enum: [READ, MANAGE_READERS, MANAGE_CARDS, REVIEW_PRESENCE, SECURITY_READ, SECURITY_MANAGE, VISITOR_MANAGE, PICKUP_APPROVE, INCIDENT_MANAGE, EMERGENCY_BROADCAST, COMMUNICATION_SEND]
+        expiresAt: { type: [string, "null"], format: date-time }
+    SecurityStaffGrant:
+      type: object
+      required: [id, userId, schoolId, permissions, expiresAt, status]
+      properties:
+        id: { type: integer }
+        userId: { type: integer }
+        schoolId: { type: integer }
+        permissions: { type: array, items: { type: string } }
+        expiresAt: { type: [string, "null"], format: date-time }
+        status: { type: string, enum: [ACTIVE, REVOKED, EXPIRED] }
+    StatusInput:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+    LostCardInput:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 3, maxLength: 500 }

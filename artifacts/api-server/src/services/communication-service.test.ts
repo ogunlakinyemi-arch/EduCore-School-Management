@@ -5,9 +5,11 @@ import type {
 } from "./communication-providers";
 import {
   dispatchCommunicationDeliveries,
+  emitDomainParentEvent,
   queueCommunicationNotification,
   renderCommunicationTemplate,
   type CommunicationDispatchPool,
+  type DomainParentEventInput,
   type CommunicationQueryClient,
   type QueueCommunicationNotificationInput,
 } from "./communication-service";
@@ -37,11 +39,15 @@ function queueClient(options: {
   preferences?: Array<{ channel: string; enabled: boolean }>;
   subjectAuthorized?: boolean;
   classAuthorized?: boolean;
+  parents?: Array<{ parentUserId: number; studentName: string; subjectClassId: number | null }>;
 } = {}) {
   const calls: Array<{ sql: string; values?: unknown[] }> = [];
   const client = {
     query: vi.fn(async <Row,>(sql: string, values?: unknown[]) => {
       calls.push({ sql, values });
+      if (sql.includes("SELECT DISTINCT ON (p.user_id)")) {
+        return { rows: (options.parents ?? []) as Row[] };
+      }
       if (sql.includes("SELECT u.id") && sql.includes("FROM app_users u")) {
         return { rows: (options.recipient === false ? [] : [{ id: 17 }]) as Row[] };
       }
@@ -282,6 +288,95 @@ describe("communication queue", () => {
       client,
       notificationInput({ channels: ["SMS", "WHATSAPP"] as QueueCommunicationNotificationInput["channels"] }),
     )).rejects.toThrow("unsupported communication channel");
+  });
+});
+
+describe("domain parent event bridge", () => {
+  it("emits one linked-parent notification through the caller transaction and suppresses private details", async () => {
+    const { client, calls } = queueClient({
+      parents: [{ parentUserId: 17, studentName: "Ayo Example", subjectClassId: null }],
+    });
+    const result = await emitDomainParentEvent(client, {
+      schoolId: 9,
+      studentId: 321,
+      eventType: "PICKUP_REQUEST",
+      eventId: "pickup-84",
+      category: "SECURITY",
+      subject: "Pickup status",
+      body: "Internal approval notes and staff-only details.",
+      privacy: "GENERIC",
+      channels: ["IN_APP"],
+    });
+
+    expect(result).toEqual([{ parentUserId: 17, notificationId: 51 }]);
+    const relationQuery = calls.find(call => call.sql.includes("SELECT DISTINCT ON (p.user_id)"));
+    expect(relationQuery?.sql).toContain("parent_student_relationships");
+    expect(relationQuery?.sql).toContain("rel.status='ACTIVE'");
+    expect(relationQuery?.sql).toContain("st.school_id=$2");
+    expect(relationQuery?.sql).toContain("p.status='ACTIVE'");
+    expect(relationQuery?.sql).toContain("p.user_id IS NOT NULL");
+    expect(relationQuery?.sql).toContain("u.status='ACTIVE'");
+    const notification = calls.find(call => call.sql.includes("INSERT INTO communication_notifications"));
+    expect(notification?.values).toContain("PARENT_EVENT:PICKUP_REQUEST:pickup-84:321:17");
+    expect(notification?.values).toContain("Ayo Example — Your child's school has an important update");
+    expect(notification?.values).toContain(
+      "Ayo Example — Please contact the school through the Communication Centre for more information.",
+    );
+    expect(notification?.values).not.toContain("Internal approval notes and staff-only details.");
+  });
+
+  it("reuses a stable school, student, and linked-parent idempotency key for admission conversion", async () => {
+    const { client, calls } = queueClient({
+      parents: [{ parentUserId: 17, studentName: "Ayo Example", subjectClassId: null }],
+      insertedId: null,
+      duplicateId: 88,
+      duplicateSubjectStudentId: 321,
+    });
+    const event: DomainParentEventInput = {
+      schoolId: 9,
+      studentId: 321,
+      eventType: "ADMISSION_CONVERTED",
+      eventId: 7,
+      category: "SYSTEM",
+      subject: "Admission completed",
+      body: "Your child has been enrolled. Sign in to view their school information.",
+      privacy: "PARENT_SAFE",
+      link: "/parent/dashboard",
+      channels: ["IN_APP"],
+    };
+
+    const first = await emitDomainParentEvent(client, event);
+    const retry = await emitDomainParentEvent(client, event);
+
+    expect(first).toEqual([{ parentUserId: 17, notificationId: 88 }]);
+    expect(retry).toEqual(first);
+    const inserts = calls.filter(call => call.sql.includes("INSERT INTO communication_notifications"));
+    expect(inserts).toHaveLength(2);
+    expect(inserts[0].sql).toContain("ON CONFLICT (school_id, event_key, recipient_user_id)");
+    expect(inserts.map(call => call.values?.[5])).toEqual([
+      "PARENT_EVENT:ADMISSION_CONVERTED:7:321:17",
+      "PARENT_EVENT:ADMISSION_CONVERTED:7:321:17",
+    ]);
+  });
+
+  it("does not resolve or notify an unlinked guardian from admission contact details", async () => {
+    const { client, calls } = queueClient({ parents: [] });
+    const result = await emitDomainParentEvent(client, {
+      schoolId: 9,
+      studentId: 321,
+      eventType: "ADMISSION_CONVERTED",
+      eventId: 7,
+      category: "SYSTEM",
+      subject: "Admission completed",
+      body: "Your child has been enrolled.",
+      privacy: "PARENT_SAFE",
+    });
+
+    expect(result).toEqual([]);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].sql).toContain("parent_student_relationships");
+    expect(calls[0].sql).toContain("u.status='ACTIVE'");
+    expect(calls.some(call => call.sql.includes("INSERT INTO communication_notifications"))).toBe(false);
   });
 });
 

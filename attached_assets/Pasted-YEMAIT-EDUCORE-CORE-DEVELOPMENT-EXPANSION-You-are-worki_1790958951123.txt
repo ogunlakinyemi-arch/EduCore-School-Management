@@ -1,0 +1,1176 @@
+YEMAIT EDUCORE — CORE DEVELOPMENT EXPANSION
+
+You are working on the existing Yemait EduCore multi-school SaaS school-management platform owned by Yemait Technologies Limited.
+
+The existing application is already substantially developed and tested.
+
+CRITICAL RULES
+
+DO NOT rebuild, replace, simplify, remove, or duplicate existing functionality.
+
+Extend the existing architecture safely.
+
+For this task, work ONLY in the Replit Development environment.
+
+DO NOT PUBLISH
+
+- Do not click Publish.
+- Do not initiate deployment.
+- Do not modify Production.
+- Do not modify the Production database.
+- Do not attempt to fix the existing Replit Publish/schema-diff generator issue.
+- Development database migrations are allowed when required.
+- Development testing and browser verification are required.
+
+The existing Replit Publish/schema-diff issue is being handled separately through Replit Support.
+
+---
+
+DEVELOPMENT SCOPE
+
+Develop these capabilities now:
+
+1. Admissions & Enrolment
+2. Public School Admission Portal
+3. Student Medical & Welfare
+4. Behaviour & Discipline
+5. Automated Student Promotion
+6. Yemait EduCore Progressive Web App (PWA)
+
+Do NOT begin unrelated future modules such as CBT, Inventory, Asset Management, Campus Security, Hostel, LMS, or Alumni in this task.
+
+---
+
+1. ADMISSIONS & ENROLMENT
+
+Create a complete admission workflow that connects naturally to the existing student-management system.
+
+Admission lifecycle
+
+Support:
+
+Applicant → Application → Review → Assessment/Interview → Admission Decision → Accepted → Student
+
+An accepted applicant must be convertible into an existing EduCore Student record without creating duplicate people.
+
+Applicant profile
+
+Capture appropriate information such as:
+
+- Application number
+- Applicant full name
+- Date of birth
+- Gender
+- Photograph
+- Previous school
+- Previous class/grade
+- Intended admission class
+- Academic session
+- Admission term
+- Parent/guardian information
+- Contact information
+- Address
+- Emergency contact
+- Relevant documents
+- Application status
+
+Reuse existing School, Student, Parent, Academic Session, Term, Class, Section and User structures wherever possible.
+
+Do not create duplicate identity systems.
+
+Application statuses
+
+Support:
+
+- Draft
+- Submitted
+- Under Review
+- Shortlisted
+- Interview Scheduled
+- Assessment Pending
+- Assessment Completed
+- Accepted
+- Waitlisted
+- Rejected
+- Withdrawn
+- Enrolled
+
+Admission number
+
+Generate a unique application number automatically.
+
+Do not allow duplicate application numbers within a school.
+
+The school registration number remains separate from the application number.
+
+---
+
+2. PUBLIC SCHOOL ADMISSION PORTAL
+
+This is an important part of the admission system.
+
+A school must NOT need to own or operate a website in order to receive online applications through EduCore.
+
+Every school registered in EduCore should automatically receive its own public admission portal.
+
+Public portal concept
+
+The architecture should support:
+
+Yemait Technologies
+→ Yemait EduCore
+→ School
+→ Public Admission Portal
+
+Each school gets a unique public admission URL based on its existing school identity/registration number or another safe unique identifier.
+
+Example concept:
+
+"EduCore Public Portal → Greenfield College → Apply for Admission"
+
+Do not hard-code a specific production domain if the final domain has not yet been configured.
+
+Use the existing application routing architecture so the final domain can be configured later.
+
+---
+
+SCHOOL WITHOUT A WEBSITE
+
+If a school has no website:
+
+The school can simply share its EduCore admission portal link through:
+
+- SMS
+- WhatsApp
+- Facebook
+- Instagram
+- Google Business Profile
+- Flyers
+- Posters
+- Email
+- Other channels
+
+The parent opens the link and applies directly.
+
+The school does not need technical knowledge.
+
+---
+
+SCHOOL WITH AN EXISTING WEBSITE
+
+If the school already has a website:
+
+Do NOT require the school to replace it.
+
+The school should simply add:
+
+APPLY FOR ADMISSION
+
+or equivalent button/link to its existing website.
+
+That link opens the school's EduCore public admission portal.
+
+The existing school website and EduCore remain separate systems.
+
+Do not attempt to rebuild the school's existing website.
+
+---
+
+PUBLIC ADMISSION PAGE
+
+The public school admission portal should display only information that the school has marked as public.
+
+At minimum support:
+
+- School logo
+- School name
+- School description
+- School address
+- Contact information
+- Admission session
+- Admission term
+- Admission status
+- Available admission classes
+- Admission requirements
+- Application deadline
+- Application fee information where configured
+- Required documents
+- Admission instructions
+- Entrance examination information
+- Interview information
+- Apply button
+
+Use the school's existing branding information where available.
+
+Do not expose:
+
+- Student data
+- Parent data
+- Staff data
+- Finance records
+- Internal notes
+- Confidential admission information
+- Other schools' information
+
+---
+
+SCHOOL ADMIN — ADMISSION PORTAL SETTINGS
+
+Create an admission portal settings area for School Admin.
+
+Allow authorized School Admin users to configure:
+
+- Admission open/closed
+- Academic session
+- Admission term
+- Available classes
+- Application deadline
+- Application fee
+- Admission requirements
+- Required documents
+- Admission instructions
+- Entrance examination information
+- Interview information
+- Public school description
+- Public contact information
+- School logo/branding
+
+Provide:
+
+Copy Admission Portal Link
+
+so the school can easily share the link.
+
+---
+
+PARENT ONLINE APPLICATION
+
+A parent should NOT be required to create a full EduCore Parent account before starting an admission application.
+
+The public flow should be:
+
+Open School Admission Portal
+→ Apply
+→ Complete Application
+→ Submit
+→ Receive Application ID
+→ Track Application
+
+Collect only information necessary for the application.
+
+Where email is unavailable, the parent should still be able to apply using a valid phone number where appropriate.
+
+---
+
+APPLICATION ID
+
+Generate a unique application ID.
+
+Example:
+
+"ADM-GFC-2026-00482"
+
+The parent should receive confirmation containing the application ID.
+
+Where the existing communication infrastructure supports it, use:
+
+- SMS
+- Email
+
+Do not create a separate communication system.
+
+---
+
+APPLICATION STATUS TRACKING
+
+Provide a public/parent-safe application tracking mechanism.
+
+The applicant should be able to check status using the application's secure identification method.
+
+Example:
+
+Application ID + applicant/parent phone number
+
+Do not expose confidential internal information.
+
+Possible status display:
+
+Application Submitted
+↓
+Under Review
+↓
+Interview/Assessment
+↓
+Decision
+↓
+Accepted / Waitlisted / Rejected
+
+Only show information intended for applicants.
+
+---
+
+SCHOOL STAFF ADMISSION ENTRY
+
+Not every parent will apply online.
+
+School staff should therefore be able to create an application on behalf of a parent.
+
+Flow:
+
+School Admin/authorized staff
+→ Admissions
+→ New Application
+→ Enter applicant details
+→ Save application
+→ Continue normal admission workflow
+
+Applications created by staff and applications submitted through the public portal must enter the same underlying admission workflow.
+
+Do not create two separate admission databases.
+
+---
+
+ADMISSION REVIEW
+
+School Admin should be able to:
+
+- View applications
+- Search applicants
+- Filter by status
+- Review applicant information
+- Review documents
+- Record assessment/interview results
+- Add internal notes
+- Change status
+- Accept
+- Reject
+- Waitlist
+
+Internal notes must never be visible through the public applicant portal unless explicitly marked public.
+
+---
+
+ADMISSION CONVERSION
+
+When an applicant is accepted, provide:
+
+Convert to Student
+
+The system must:
+
+- Create/link the correct Student
+- Preserve application history
+- Preserve application ID
+- Preserve school
+- Assign correct academic session
+- Assign intended class/section
+- Link the correct existing parent where applicable
+- Avoid duplicate parent/student identities
+- Create an audit record
+
+The applicant record must remain linked to the resulting Student.
+
+Do not force School Admin to manually re-enter all information.
+
+---
+
+PARENT ACCOUNT AFTER ACCEPTANCE
+
+After admission acceptance/conversion:
+
+The system should support inviting/activating the parent as an existing EduCore Parent.
+
+The Parent should then gain access according to the existing Parent RBAC.
+
+Do not create duplicate Parent identities if the parent already exists.
+
+The final relationship should be:
+
+Parent → Student
+
+using the existing parent/student relationship architecture.
+
+---
+
+3. STUDENT MEDICAL & WELFARE
+
+Create a secure Student Medical & Welfare module.
+
+Medical profile
+
+Support:
+
+- Blood group
+- Genotype
+- Allergies
+- Medical conditions
+- Disabilities/special support information where appropriate
+- Medication information
+- Emergency medical notes
+- Doctor/medical provider information
+- Emergency contacts
+- Other relevant school medical information
+
+Sensitive medical information must not be exposed to ordinary teachers unless explicitly permitted.
+
+Medical visits
+
+Record:
+
+- Student
+- Date/time
+- Reason
+- Symptoms/complaint
+- Basic observation
+- Action taken
+- Medication/treatment
+- Referral
+- Staff recording the event
+- Follow-up date
+- Notes
+
+Maintain historical records.
+
+Welfare
+
+Support:
+
+- Welfare concern
+- Counselling referral
+- Safeguarding concern
+- Family/support concern
+- Learning/welfare support
+- Follow-up
+- Assigned staff
+- Status
+- Resolution
+- Internal notes
+
+Sensitive welfare/safeguarding records require stricter permissions.
+
+---
+
+4. BEHAVIOUR & DISCIPLINE
+
+Create a Student Behaviour & Discipline module.
+
+Support:
+
+- Positive behaviour
+- Behaviour concern
+- Incident
+- Rule violation
+- Recognition/commendation
+
+Records should contain:
+
+- Student
+- Date/time
+- Category
+- Severity
+- Description
+- Location
+- Reporting staff
+- Action
+- Parent notification status
+- Follow-up
+- Status
+- Resolution
+- Notes
+
+Workflow:
+
+Incident → Review → Action → Parent Notification → Follow-up → Resolution
+
+Allow schools to configure behaviour categories and disciplinary actions.
+
+Possible actions:
+
+- Verbal warning
+- Written warning
+- Detention
+- Counselling
+- Parent meeting
+- Behaviour agreement
+- Suspension
+- Other school-defined action
+
+Confidential internal notes must not be exposed to parents/students.
+
+---
+
+5. AUTOMATED STUDENT PROMOTION
+
+Build a controlled academic promotion workflow.
+
+Example:
+
+2026/27 SS1 A → 2027/28 SS2 B
+
+The student's permanent identity must remain unchanged.
+
+Promotion statuses
+
+Support:
+
+- Pending
+- Eligible
+- Promoted
+- Repeat
+- Graduated
+- Withdrawn
+- Transferred
+
+Promotion process
+
+School Admin selects:
+
+- Current academic session
+- Target academic session
+
+The system loads eligible students.
+
+Display:
+
+- Student
+- Admission number
+- Current class
+- Current section
+- Academic performance
+- Attendance summary
+- Recommended status
+- Target class
+- Target section
+
+Admin must review before finalizing.
+
+Do NOT automatically promote students merely because the workflow is opened.
+
+---
+
+PROMOTION RESULTS
+
+For promoted students:
+
+- Preserve permanent Student ID.
+- Preserve admission/registration number.
+- Preserve NFC card.
+- Preserve historical attendance.
+- Preserve historical results.
+- Preserve historical class/section records.
+- Create new academic placement.
+- Do not overwrite historical placement.
+
+For repeat students:
+
+- Preserve historical records.
+- Create/retain appropriate new academic placement.
+
+For graduated students:
+
+- Preserve all history.
+- Mark graduated.
+- Do not delete student.
+- Do not automatically revoke NFC identity.
+
+For withdrawn/transferred students:
+
+- Preserve historical records.
+- Update lifecycle status appropriately.
+
+---
+
+CRITICAL NFC REQUIREMENT
+
+Never tie the physical NFC card permanently to a student's current class.
+
+The relationship remains:
+
+NFC UID → NFC Card → Student → Current School Record
+
+Example:
+
+JSS1/A → JSS2/B → JSS3/A → SS1 → SS2 → SS3
+
+The same physical NFC card continues to work.
+
+Do not require reprinting simply because the student changes class, section or academic session.
+
+---
+
+6. YEMAIT EDUCORE PROGRESSIVE WEB APP (PWA)
+
+Convert the existing EduCore web application into a properly installable Progressive Web App.
+
+This is not a request to rebuild EduCore as a separate native application.
+
+The existing web application remains the source of truth.
+
+PWA objective
+
+Users should be able to install EduCore on supported:
+
+- Android phones
+- Android tablets
+- iPhones
+- iPads
+- Windows computers
+- Other supported desktop browsers
+
+It should appear and behave like an installed application where the platform/browser supports PWA installation.
+
+---
+
+ALL EDUCORE USERS
+
+The PWA must support the existing role system, including:
+
+- Platform Owner
+- School Admin
+- Teacher
+- Accountant
+- Parent
+- Student
+- Partner
+- School Staff
+- Device Activation Officer
+- Company Accountant
+- Partner Staff
+- Other existing authorized roles
+
+Do not create separate applications for each role.
+
+The same EduCore application should load the correct dashboard and permissions after authentication.
+
+---
+
+PWA INSTALLATION
+
+Add proper:
+
+- Web App Manifest
+- Application name
+- Short name
+- Description
+- Application icons
+- Maskable icon where appropriate
+- Theme configuration
+- Background configuration
+- Standalone display mode
+- Correct start URL
+- Appropriate orientation
+- PWA metadata
+- Service worker where appropriate
+
+Use existing Yemait EduCore branding.
+
+Do not use a temporary placeholder icon if an existing EduCore logo is available.
+
+---
+
+INSTALL EXPERIENCE
+
+Where browser support allows:
+
+Users should see an appropriate:
+
+Install EduCore
+
+or browser-provided installation option.
+
+Do not create misleading fake browser installation prompts.
+
+If a browser does not support installation, the application should continue working normally as a responsive website.
+
+---
+
+MOBILE UI
+
+Do not redesign the entire application.
+
+Instead, audit existing major screens for mobile responsiveness.
+
+Ensure important workflows work properly on phones:
+
+- Login
+- Owner dashboard
+- School Admin dashboard
+- Teacher dashboard
+- Parent dashboard
+- Student dashboard
+- Accountant dashboard
+- Partner dashboard
+- Admissions
+- Application review
+- Medical/welfare
+- Behaviour
+- Promotion
+- Attendance
+- NFC-related screens
+- Finance
+- Results
+- Lesson notes
+- Notifications
+
+Tables should become appropriately scrollable or responsive.
+
+Forms should be usable on small screens.
+
+Buttons must be touch-friendly.
+
+Do not remove desktop functionality.
+
+---
+
+PWA AUTHENTICATION
+
+Do not weaken Clerk authentication or existing RBAC.
+
+The installed PWA must use the existing secure authentication system.
+
+Users must remain restricted to:
+
+their authorized role + school/tenant + permitted data.
+
+Do not store passwords in local storage.
+
+Do not store sensitive authentication credentials insecurely.
+
+---
+
+OFFLINE BEHAVIOUR
+
+Do NOT claim the entire EduCore system is offline-capable unless it actually is.
+
+For this task:
+
+- Make the PWA installable.
+- Cache only safe/static application resources where appropriate.
+- Do not cache sensitive school/student/parent/finance/medical data indiscriminately.
+- Do not create an unsafe offline authentication mechanism.
+
+If true offline data synchronization is not already implemented, report it as:
+
+Not Yet Implemented / Future Phase
+
+Do not pretend PWA installation automatically means offline functionality.
+
+---
+
+PUSH NOTIFICATIONS
+
+Inspect the existing notification architecture.
+
+If push notifications can be safely integrated without disrupting existing functionality, prepare the PWA architecture for browser push notifications.
+
+Potential future notifications include:
+
+- Admission status
+- Fee reminders
+- Attendance alerts
+- Result publication
+- Assignment notifications
+- Lesson-note notifications
+- School announcements
+- Transport notifications
+
+Do not introduce an unsafe or incomplete notification system merely to satisfy this task.
+
+If push notification infrastructure requires additional provider configuration, report it separately as not yet verified.
+
+---
+
+PWA SECURITY
+
+Verify:
+
+- HTTPS requirement for service worker/PWA functionality.
+- Secure authentication.
+- No sensitive data cached publicly.
+- No cross-school cached data leakage.
+- Logout behaviour.
+- Role switching behaviour.
+- Session expiration.
+- Browser refresh.
+- Multiple users on the same device.
+- PWA reopen after logout.
+- School tenant isolation.
+
+Pay particular attention to shared family phones where parents/students may use the same device.
+
+---
+
+RESPONSIVE/PWA TESTING
+
+Test at minimum:
+
+Android/mobile viewport
+
+- Login
+- Parent dashboard
+- Student dashboard
+- Teacher dashboard
+- School Admin
+- Admission portal
+- Admission application
+- Admission review
+- Medical/welfare
+- Behaviour
+- Promotion
+
+Desktop
+
+Verify existing desktop workflows remain intact.
+
+Installation
+
+Where the Development environment supports it, verify:
+
+- Manifest
+- Icons
+- Installability
+- Standalone launch
+- App name
+- App icon
+- Start URL
+- Authentication after launch
+
+If actual device installation cannot be verified from the Development environment, do not claim it was physically tested.
+
+Report it as not yet verified.
+
+---
+
+DATABASE REQUIREMENTS
+
+Use the existing PostgreSQL + Drizzle architecture.
+
+Before adding tables:
+
+1. Inspect existing schema.
+2. Reuse existing relationships.
+3. Avoid duplicate identity tables.
+4. Avoid duplicate parent/student relationships.
+5. Add only necessary tables/columns.
+6. Maintain foreign-key integrity.
+7. Add appropriate indexes.
+8. Enforce school/tenant ownership.
+9. Add uniqueness constraints where required.
+
+All migrations are Development-only.
+
+---
+
+API REQUIREMENTS
+
+Use the existing Express/OpenAPI/React Query/Zod architecture.
+
+Every new endpoint must have:
+
+- Authentication
+- Authorization
+- Tenant isolation
+- Request validation
+- Response validation
+- Error handling
+- Audit logging where appropriate
+
+Do not bypass existing API patterns.
+
+---
+
+SECURITY REQUIREMENTS
+
+Explicitly test:
+
+- Cross-school application access
+- Cross-school medical access
+- Cross-school welfare access
+- Cross-school behaviour access
+- Cross-school promotion access
+- Unauthorized sensitive-data access
+- Parent access to another child
+- Student access to another student
+- Teacher access outside assigned school
+- Duplicate applicant conversion
+- Duplicate promotion
+- Duplicate submissions
+- Unauthorized PWA/API access
+
+---
+
+AUDIT LOGGING
+
+Use the existing audit system.
+
+Audit important actions including:
+
+- Application creation
+- Application status changes
+- Admission decision
+- Applicant-to-student conversion
+- Medical record changes
+- Medical visit
+- Welfare record
+- Behaviour incident
+- Discipline action
+- Parent notification
+- Promotion preparation
+- Promotion decision
+- Promotion finalization
+- Graduation
+- Withdrawal/transfer
+- Relevant administrative configuration changes
+
+---
+
+DUPLICATE/RETRY PROTECTION
+
+Protect against:
+
+- Double-click
+- Browser refresh
+- Network retry
+- Duplicate API request
+- Duplicate application submission
+- Duplicate applicant conversion
+- Duplicate promotion
+
+Do not create duplicate students, parents, applications, promotions or identity relationships.
+
+---
+
+TESTING
+
+Run automated tests for:
+
+Admissions
+
+- Public application
+- Staff-created application
+- Application ID
+- Status changes
+- Documents
+- Review
+- Interview/assessment
+- Acceptance
+- Rejection
+- Waitlist
+- Conversion to student
+- Duplicate conversion
+- Parent linking
+- School isolation
+
+Medical/Welfare
+
+- Medical profile
+- Medical visit
+- Emergency contact
+- Welfare
+- Permissions
+- Sensitive-data protection
+- School isolation
+
+Behaviour
+
+- Incident
+- Positive behaviour
+- Discipline
+- Parent notification
+- Confidential notes
+- History
+- School isolation
+
+Promotion
+
+- Preparation
+- Review
+- Promotion
+- Repeat
+- Graduation
+- Withdrawal
+- Transfer
+- Historical preservation
+- NFC preservation
+- Duplicate prevention
+- School isolation
+
+PWA
+
+- Manifest
+- Service worker where implemented
+- Installability checks
+- Mobile responsiveness
+- Authentication
+- Logout
+- Role isolation
+- Tenant isolation
+- Sensitive-data caching checks
+- Desktop regression
+
+---
+
+BROWSER VERIFICATION
+
+Perform signed-in Development verification for:
+
+Platform Owner
+
+Verify appropriate global school visibility.
+
+School Admin
+
+Verify:
+
+- Admission portal configuration
+- Public portal
+- Application review
+- Applicant conversion
+- Medical/welfare
+- Behaviour/discipline
+- Promotion
+
+Teacher
+
+Verify permitted student information only.
+
+Parent
+
+Verify:
+
+- Application/status information where applicable
+- Parent dashboard
+- Parent-visible welfare/behaviour information only
+
+Student
+
+Verify permitted information only.
+
+Partner/other roles
+
+Verify existing RBAC remains unchanged.
+
+---
+
+DATA PRESERVATION
+
+Before and after development changes verify existing records remain intact.
+
+Pay particular attention to:
+
+- Schools
+- Students
+- Parents
+- Teachers
+- Attendance
+- NFC cards
+- NFC assignments
+- Academic records
+- Results
+- Finance
+- Payments
+- Subscriptions
+- Staff
+- Partners
+
+Do not reset or delete existing business data.
+
+Temporary test data must be identified and removed after testing.
+
+---
+
+FINAL VERIFICATION REPORT
+
+When finished, provide:
+
+VERIFIED IN DEVELOPMENT
+
+Report separately:
+
+Admissions
+
+- Public portal
+- Parent application
+- Staff application
+- Application tracking
+- Review
+- Admission decision
+- Student conversion
+
+Medical & Welfare
+
+- Medical profile
+- Medical visits
+- Welfare
+- Permissions
+
+Behaviour & Discipline
+
+- Incidents
+- Discipline workflow
+- Parent visibility
+- Confidential records
+
+Promotion
+
+- Promotion
+- Repeat
+- Graduation
+- Transfer/withdrawal
+- Historical records
+- NFC continuity
+
+PWA
+
+- Manifest
+- Installability
+- Mobile UI
+- Authentication
+- Role support
+- Tenant isolation
+- Caching/security
+
+Also report:
+
+- Backend tests passed
+- Frontend tests passed
+- Database checks
+- Typecheck
+- Browser checks
+- Regression checks
+- Files changed
+- Migrations created
+- Tables/columns added
+- API endpoints added
+- Frontend pages/components added
+
+NOT YET VERIFIED
+
+Clearly list anything that could not be verified.
+
+Especially distinguish:
+
+- Development verification
+- Actual physical phone installation
+- Actual Production verification
+- Production database verification
+- Real SMS/email provider delivery
+- Real payment provider transactions
+
+Do not claim any of these unless actually tested.
+
+---
+
+FINAL NON-NEGOTIABLE RULE
+
+DO NOT PUBLISH.
+
+Do not click Publish.
+
+Do not deploy.
+
+Do not modify Production.
+
+Do not attempt to solve the existing Replit Publish/schema-diff generator issue.
+
+All implementation and database changes for this task must remain in Development only.

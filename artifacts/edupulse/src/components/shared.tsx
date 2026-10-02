@@ -3,6 +3,7 @@ import { useState, type ReactNode, type FormEvent, createContext, useContext, us
 import { useAuth, UserButton } from '@clerk/react';
 import { FeePaymentNotifications } from './fee-payment-notifications';
 import { CommunicationInboxBadge } from '@/pages/communication-inbox';
+import { PwaInstall } from '@/components/pwa-install';
 import { 
   Activity, ArrowLeft, ArrowUpRight, BadgeCheck, BarChart3, Bell, BookOpen, Building2, Check, ChevronDown, 
   CircleAlert, CircleDollarSign, CreditCard, FileClock, GraduationCap, LayoutDashboard, Library, Menu, 
@@ -43,6 +44,11 @@ const nav: NavItem[] = [
   { href: '/', label: 'Command centre', icon: LayoutDashboard },
   { href: '/schools', label: 'Schools', icon: Building2, roles: ['PLATFORM_OWNER'] },
   { href: '/students', label: 'Students', icon: GraduationCap, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
+  { href: '/admissions', label: 'Admissions', icon: ClipboardList, roles: ['SCHOOL_ADMIN'] },
+  { href: '/student-care', label: 'Medical & Welfare', icon: ShieldCheck, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
+  { href: '/behaviour', label: 'Behaviour & Discipline', icon: ClipboardCheck, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STAFF'] },
+  { href: '/promotion', label: 'Promotion', icon: GraduationCap, roles: ['SCHOOL_ADMIN'] },
+  { href: '/my-care', label: 'Welfare & Behaviour', icon: ShieldCheck, roles: ['PARENT', 'STUDENT'] },
   { href: '/parents', label: 'Parents', icon: UsersRound, roles: ['SCHOOL_ADMIN'] },
   { href: '/employees', label: 'Employees', icon: Briefcase, roles: ['SCHOOL_ADMIN'] },
   { href: '/company-employees', label: 'Company Employees', icon: Briefcase, roles: ['PLATFORM_OWNER'] },
@@ -66,6 +72,8 @@ const nav: NavItem[] = [
   { href: '/transport', label: 'School Transport', icon: Smartphone, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
   { href: '/my-transport', label: 'My Transport', icon: Smartphone, roles: ['PARENT', 'STUDENT'] },
   { href: '/reporting', label: 'Reporting', icon: FileSpreadsheet, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT'] },
+  { href: '/security', label: 'School Security', icon: ShieldCheck, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'STAFF'] },
+  { href: '/parent/communication', label: 'Communication Centre', icon: Bell, roles: ['PARENT'] },
   { href: '/communications', label: 'Communications', icon: Bell, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT'] },
   { href: '/inbox', label: 'Inbox', icon: Bell, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'STAFF', 'PARENT'] },
   { href: '/notification-settings', label: 'Notification settings', icon: Settings2, roles: ['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT', 'STAFF', 'PARENT'] },
@@ -91,7 +99,7 @@ const nav: NavItem[] = [
 const ownerNavPaths = new Set([
   '/', '/schools', '/students', '/company-employees', '/users', '/partners',
   '/devices', '/subscriptions', '/cards', '/audit', '/reporting', '/activation', '/activation/history',
-  '/finance-workspace', '/employee-nfc', '/transport',
+  '/finance-workspace', '/employee-nfc', '/transport', '/security',
   '/curriculum-management',
 ]);
 
@@ -210,6 +218,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <UserButton />
           </div>
         </header>
+        <div className="px-5 pt-3 md:px-8"><PwaInstall /></div>
         <main className="nav-grid flex-1 p-5 md:p-8">
           <div className="mx-auto max-w-[1440px]">
             {children}

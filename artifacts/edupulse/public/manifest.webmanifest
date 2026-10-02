@@ -1,0 +1,32 @@
+{
+  "id": "./",
+  "name": "Yemait EduCore",
+  "short_name": "EduCore",
+  "description": "Secure school operations, academics, payments, attendance, and family engagement from Yemait Technologies Limited.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#FF3C00",
+  "background_color": "#FF3C00",
+  "icons": [
+    {
+      "src": "icons/educore-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/educore-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/educore-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

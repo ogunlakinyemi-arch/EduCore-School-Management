@@ -446,14 +446,37 @@ router.get("/students", async (req, res) => {
       values.push(query.classId);
       conditions.push(`st.class_name = (SELECT name FROM school_classes WHERE id = $${values.length} AND school_id = $1)`);
     }
+    const context = getUserContext(req);
+    const isOwner = context.roles.some((role) =>
+      role.role === "PLATFORM_OWNER" && role.schoolId === null && role.status === "ACTIVE");
+    const isSchoolAdmin = !isOwner && context.roles.some((role) =>
+      role.role === "SCHOOL_ADMIN" && role.schoolId === query.schoolId && role.status === "ACTIVE");
+    values.push(isSchoolAdmin);
+    const adminParameter = `$${values.length}`;
+    values.push(context.user.id);
+    const actorParameter = `$${values.length}`;
+    // General roster access is not a medical-record permission. Retain legacy
+    // fields for explicitly authorized clinical users without exposing them to
+    // ordinary teachers, accountants, staff, or platform owners.
+    const medicalAllowed = `(${adminParameter}::boolean OR (
+      NOT ${isOwner ? "TRUE" : "FALSE"} AND EXISTS (
+        SELECT 1 FROM student_care_grants g
+        JOIN app_users clinical_user ON clinical_user.id=g.user_id AND UPPER(clinical_user.status)='ACTIVE'
+        WHERE g.school_id=st.school_id AND g.user_id=${actorParameter} AND g.active=TRUE
+          AND 'MEDICAL_READ'=ANY(g.permissions)
+          AND EXISTS (SELECT 1 FROM school_memberships membership
+            WHERE membership.school_id=g.school_id AND membership.user_id=g.user_id
+              AND UPPER(membership.status)='ACTIVE')
+      )))`;
     const result = await pool.query(`
       SELECT st.id, st.school_id AS "schoolId", st.admission_no AS "admissionNo", st.email,
         (SELECT CASE WHEN au.clerk_user_id IS NULL THEN 'PENDING' ELSE au.status END FROM app_users au WHERE au.id=st.user_id) AS "accountStatus",
         st.first_name AS "firstName", st.last_name AS "lastName", st.middle_name AS "middleName",
         st.date_of_birth AS "dateOfBirth", st.photo AS "passportUrl", st.admission_date AS "admissionDate",
         LOWER(st.admission_status) AS "admissionStatus", st.address, st.previous_school AS "previousSchool",
-        st.medical_info AS "medicalInformation", st.emergency_contact_name AS "emergencyContactName",
-        st.emergency_contact_phone AS "emergencyContactPhone", st.gender,
+        CASE WHEN ${medicalAllowed} THEN st.medical_info ELSE NULL END AS "medicalInformation",
+        CASE WHEN ${medicalAllowed} THEN st.emergency_contact_name ELSE NULL END AS "emergencyContactName",
+        CASE WHEN ${medicalAllowed} THEN st.emergency_contact_phone ELSE NULL END AS "emergencyContactPhone", st.gender,
         CASE WHEN st.status IN ('active','ACTIVE') THEN 'ACTIVE' ELSE UPPER(st.status) END AS status,
         st.class_name AS "className", st.section, st.parent_name AS "parentName",
         st.parent_phone AS "parentPhone", st.created_at AS "createdAt", st.updated_at AS "updatedAt", st.joined_at AS "joinedAt",

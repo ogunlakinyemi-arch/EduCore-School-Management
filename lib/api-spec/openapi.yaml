@@ -32,7 +32,168 @@ tags:
   - name: attendance
   - name: finance
   - name: communication
+  - name: promotion
 paths:
+  /schools/{schoolId}/security/access:
+    $ref: "./school-security-core.yaml#/paths/~1schools~1{schoolId}~1security~1access"
+  /schools/{schoolId}/security/eligible-devices:
+    $ref: "./school-security-core.yaml#/paths/~1schools~1{schoolId}~1security~1eligible-devices"
+  /parent/children/{studentId}/security:
+    $ref: "./school-security-core.yaml#/paths/~1parent~1children~1{studentId}~1security"
+  /communication/notifications/{notificationId}/archive:
+    $ref: "./parent-communication.yaml#/paths/~1communication~1notifications~1{notificationId}~1archive"
+  /communication/notifications/{notificationId}/unarchive:
+    $ref: "./parent-communication.yaml#/paths/~1communication~1notifications~1{notificationId}~1unarchive"
+  /schools/{schoolId}/security/dashboard:
+    $ref: "./school-security-core.yaml#/paths/~1schools~1{schoolId}~1security~1dashboard"
+  /schools/{schoolId}/security/events:
+    $ref: "./school-security-core.yaml#/paths/~1schools~1{schoolId}~1security~1events"
+  /schools/{schoolId}/security/presence:
+    $ref: "./school-security-core.yaml#/paths/~1schools~1{schoolId}~1security~1presence"
+  /schools/{schoolId}/security/presence/{presenceId}/review:
+    $ref: "./school-security-core.yaml#/paths/~1schools~1{schoolId}~1security~1presence~1{presenceId}~1review"
+  /schools/{schoolId}/security/locations:
+    $ref: "./school-security-core.yaml#/paths/~1schools~1{schoolId}~1security~1locations"
+  /schools/{schoolId}/security/locations/{locationId}/status:
+    $ref: "./school-security-core.yaml#/paths/~1schools~1{schoolId}~1security~1locations~1{locationId}~1status"
+  /schools/{schoolId}/security/readers:
+    $ref: "./school-security-core.yaml#/paths/~1schools~1{schoolId}~1security~1readers"
+  /schools/{schoolId}/security/readers/{readerId}/status:
+    $ref: "./school-security-core.yaml#/paths/~1schools~1{schoolId}~1security~1readers~1{readerId}~1status"
+  /schools/{schoolId}/security/settings:
+    $ref: "./school-security-core.yaml#/paths/~1schools~1{schoolId}~1security~1settings"
+  /schools/{schoolId}/security/grants:
+    $ref: "./school-security-core.yaml#/paths/~1schools~1{schoolId}~1security~1grants"
+  /schools/{schoolId}/security/grants/{grantId}/revoke:
+    $ref: "./school-security-core.yaml#/paths/~1schools~1{schoolId}~1security~1grants~1{grantId}~1revoke"
+  /schools/{schoolId}/security/cards/{cardId}/lost:
+    $ref: "./school-security-core.yaml#/paths/~1schools~1{schoolId}~1security~1cards~1{cardId}~1lost"
+  /communication/channels:
+    $ref: "./parent-communication.yaml#/paths/~1communication~1channels"
+  /communication/children:
+    $ref: "./parent-communication.yaml#/paths/~1communication~1children"
+  /communication/parent/threads:
+    $ref: "./parent-communication.yaml#/paths/~1communication~1parent~1threads"
+  /communication/threads:
+    $ref: "./parent-communication.yaml#/paths/~1communication~1threads"
+  /communication/threads/{threadId}:
+    $ref: "./parent-communication.yaml#/paths/~1communication~1threads~1{threadId}"
+  /communication/threads/{threadId}/messages:
+    $ref: "./parent-communication.yaml#/paths/~1communication~1threads~1{threadId}~1messages"
+  /communication/threads/{threadId}/read:
+    $ref: "./parent-communication.yaml#/paths/~1communication~1threads~1{threadId}~1read"
+  /communication/threads/{threadId}/archive:
+    $ref: "./parent-communication.yaml#/paths/~1communication~1threads~1{threadId}~1archive"
+  /schools/{schoolId}/security/visitors:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1schools~1{schoolId}~1security~1visitors"
+  /schools/{schoolId}/security/visitors/{visitorId}:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1schools~1{schoolId}~1security~1visitors~1{visitorId}"
+  /schools/{schoolId}/security/visitors/{visitorId}/checkout:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1schools~1{schoolId}~1security~1visitors~1{visitorId}~1checkout"
+  /schools/{schoolId}/security/visitors/{visitorId}/history:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1schools~1{schoolId}~1security~1visitors~1{visitorId}~1history"
+  /parent/children/{studentId}/security/pickup-persons:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1parent~1children~1{studentId}~1security~1pickup-persons"
+  /schools/{schoolId}/students/{studentId}/security/pickup-persons:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1schools~1{schoolId}~1students~1{studentId}~1security~1pickup-persons"
+  /schools/{schoolId}/students/{studentId}/security/pickup-persons/{personId}/decision:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1schools~1{schoolId}~1students~1{studentId}~1security~1pickup-persons~1{personId}~1decision"
+  /parent/children/{studentId}/security/pickup-requests:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1parent~1children~1{studentId}~1security~1pickup-requests"
+  /schools/{schoolId}/students/{studentId}/security/pickup-requests:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1schools~1{schoolId}~1students~1{studentId}~1security~1pickup-requests"
+  /schools/{schoolId}/students/{studentId}/security/pickup-requests/{requestId}/decision:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1schools~1{schoolId}~1students~1{studentId}~1security~1pickup-requests~1{requestId}~1decision"
+  /parent/children/{studentId}/security/pickup-requests/{requestId}/cancel:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1parent~1children~1{studentId}~1security~1pickup-requests~1{requestId}~1cancel"
+  /schools/{schoolId}/students/{studentId}/security/pickup-requests/{requestId}/refuse:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1schools~1{schoolId}~1students~1{studentId}~1security~1pickup-requests~1{requestId}~1refuse"
+  /schools/{schoolId}/students/{studentId}/security/pickup-requests/{requestId}/completion:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1schools~1{schoolId}~1students~1{studentId}~1security~1pickup-requests~1{requestId}~1completion"
+  /schools/{schoolId}/students/{studentId}/security/pickup-requests/{requestId}/history:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1schools~1{schoolId}~1students~1{studentId}~1security~1pickup-requests~1{requestId}~1history"
+  /schools/{schoolId}/security/incidents:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1schools~1{schoolId}~1security~1incidents"
+  /schools/{schoolId}/security/incidents/{incidentId}:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1schools~1{schoolId}~1security~1incidents~1{incidentId}"
+  /schools/{schoolId}/security/incidents/{incidentId}/attachments:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1schools~1{schoolId}~1security~1incidents~1{incidentId}~1attachments"
+  /schools/{schoolId}/security/incidents/{incidentId}/attachments/upload-intent:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1schools~1{schoolId}~1security~1incidents~1{incidentId}~1attachments~1upload-intent"
+  /schools/{schoolId}/security/incidents/{incidentId}/attachments/{attachmentId}/confirm:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1schools~1{schoolId}~1security~1incidents~1{incidentId}~1attachments~1{attachmentId}~1confirm"
+  /schools/{schoolId}/security/incidents/{incidentId}/attachments/{attachmentId}/download:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1schools~1{schoolId}~1security~1incidents~1{incidentId}~1attachments~1{attachmentId}~1download"
+  /schools/{schoolId}/security/incidents/{incidentId}/history:
+    $ref: "./school-security-operations-expansion.yaml#/paths/~1schools~1{schoolId}~1security~1incidents~1{incidentId}~1history"
+  /admissions/portals/{portalKey}:
+    $ref: "./admissions-expansion.yaml#/paths/~1admissions~1portals~1{portalKey}"
+  /admissions/portals/{portalKey}/applications:
+    $ref: "./admissions-expansion.yaml#/paths/~1admissions~1portals~1{portalKey}~1applications"
+  /admissions/portals/{portalKey}/documents/upload:
+    $ref: "./admissions-expansion.yaml#/paths/~1admissions~1portals~1{portalKey}~1documents~1upload"
+  /admissions/applications/track:
+    $ref: "./admissions-expansion.yaml#/paths/~1admissions~1applications~1track"
+  /admissions/portal-settings:
+    $ref: "./admissions-expansion.yaml#/paths/~1admissions~1portal-settings"
+  /admissions/documents/upload:
+    $ref: "./admissions-expansion.yaml#/paths/~1admissions~1documents~1upload"
+  /admissions/applications:
+    $ref: "./admissions-expansion.yaml#/paths/~1admissions~1applications"
+  /admissions/applications/{applicationId}:
+    $ref: "./admissions-expansion.yaml#/paths/~1admissions~1applications~1{applicationId}"
+  /admissions/applications/{applicationId}/review:
+    $ref: "./admissions-expansion.yaml#/paths/~1admissions~1applications~1{applicationId}~1review"
+  /admissions/applications/{applicationId}/status:
+    $ref: "./admissions-expansion.yaml#/paths/~1admissions~1applications~1{applicationId}~1status"
+  /admissions/applications/{applicationId}/documents/upload:
+    $ref: "./admissions-expansion.yaml#/paths/~1admissions~1applications~1{applicationId}~1documents~1upload"
+  /admissions/applications/{applicationId}/documents/confirm:
+    $ref: "./admissions-expansion.yaml#/paths/~1admissions~1applications~1{applicationId}~1documents~1confirm"
+  /admissions/applications/{applicationId}/documents/{documentId}/download:
+    $ref: "./admissions-expansion.yaml#/paths/~1admissions~1applications~1{applicationId}~1documents~1{documentId}~1download"
+  /admissions/applications/{applicationId}/convert:
+    $ref: "./admissions-expansion.yaml#/paths/~1admissions~1applications~1{applicationId}~1convert"
+  /schools/{schoolId}/students/{studentId}/medical-profile:
+    $ref: "./student-care-expansion.yaml#/paths/~1schools~1{schoolId}~1students~1{studentId}~1medical-profile"
+  /schools/{schoolId}/students/{studentId}/medical-profile/history:
+    $ref: "./student-care-expansion.yaml#/paths/~1schools~1{schoolId}~1students~1{studentId}~1medical-profile~1history"
+  /schools/{schoolId}/students/{studentId}/medical-visits:
+    $ref: "./student-care-expansion.yaml#/paths/~1schools~1{schoolId}~1students~1{studentId}~1medical-visits"
+  /schools/{schoolId}/students/{studentId}/medical-visits/{visitId}:
+    $ref: "./student-care-expansion.yaml#/paths/~1schools~1{schoolId}~1students~1{studentId}~1medical-visits~1{visitId}"
+  /schools/{schoolId}/students/{studentId}/medical-visits/{visitId}/history:
+    $ref: "./student-care-expansion.yaml#/paths/~1schools~1{schoolId}~1students~1{studentId}~1medical-visits~1{visitId}~1history"
+  /schools/{schoolId}/students/{studentId}/welfare:
+    $ref: "./student-care-expansion.yaml#/paths/~1schools~1{schoolId}~1students~1{studentId}~1welfare"
+  /schools/{schoolId}/students/{studentId}/welfare/{recordId}:
+    $ref: "./student-care-expansion.yaml#/paths/~1schools~1{schoolId}~1students~1{studentId}~1welfare~1{recordId}"
+  /schools/{schoolId}/students/{studentId}/welfare/{recordId}/history:
+    $ref: "./student-care-expansion.yaml#/paths/~1schools~1{schoolId}~1students~1{studentId}~1welfare~1{recordId}~1history"
+  /schools/{schoolId}/students/{studentId}/behaviour:
+    $ref: "./student-care-expansion.yaml#/paths/~1schools~1{schoolId}~1students~1{studentId}~1behaviour"
+  /schools/{schoolId}/students/{studentId}/behaviour/{recordId}:
+    $ref: "./student-care-expansion.yaml#/paths/~1schools~1{schoolId}~1students~1{studentId}~1behaviour~1{recordId}"
+  /schools/{schoolId}/students/{studentId}/behaviour/{recordId}/history:
+    $ref: "./student-care-expansion.yaml#/paths/~1schools~1{schoolId}~1students~1{studentId}~1behaviour~1{recordId}~1history"
+  /schools/{schoolId}/behaviour/configuration:
+    $ref: "./student-care-expansion.yaml#/paths/~1schools~1{schoolId}~1behaviour~1configuration"
+  /schools/{schoolId}/care-access:
+    $ref: "./student-care-expansion.yaml#/paths/~1schools~1{schoolId}~1care-access"
+  /parent/children/{studentId}/care-summary:
+    $ref: "./student-care-expansion.yaml#/paths/~1parent~1children~1{studentId}~1care-summary"
+  /student/care-summary:
+    $ref: "./student-care-expansion.yaml#/paths/~1student~1care-summary"
+  /school/academics/promotions/batches:
+    $ref: "./promotion-expansion.yaml#/paths/~1school~1academics~1promotions~1batches"
+  /school/academics/promotions/batches/{batchId}:
+    $ref: "./promotion-expansion.yaml#/paths/~1school~1academics~1promotions~1batches~1{batchId}"
+  /school/academics/promotions/batches/{batchId}/history:
+    $ref: "./promotion-expansion.yaml#/paths/~1school~1academics~1promotions~1batches~1{batchId}~1history"
+  /school/academics/promotions/batches/{batchId}/students/{studentId}:
+    $ref: "./promotion-expansion.yaml#/paths/~1school~1academics~1promotions~1batches~1{batchId}~1students~1{studentId}"
+  /school/academics/promotions/batches/{batchId}/finalize:
+    $ref: "./promotion-expansion.yaml#/paths/~1school~1academics~1promotions~1batches~1{batchId}~1finalize"
   /cards/{cardId}/printable:
     get:
       operationId: downloadPrintableNfcCard
@@ -4469,6 +4630,30 @@ paths:
           in: query
           required: false
           schema: { type: integer, minimum: 1 }
+        - name: childId
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+        - name: category
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/CommunicationCategory" }
+        - name: isRead
+          in: query
+          required: false
+          schema: { type: boolean }
+        - name: includeArchived
+          in: query
+          required: false
+          schema: { type: boolean }
+        - name: includeExpired
+          in: query
+          required: false
+          schema: { type: boolean }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string, maxLength: 100 }
       responses:
         "200":
           description: Own visible notifications and unread count
@@ -5136,6 +5321,14 @@ components:
       required: true
       schema: { type: integer, minimum: 1 }
   schemas:
+    SecurityAccess:
+      $ref: "./school-security-core.yaml#/components/schemas/SecurityAccess"
+    EligibleSecurityDevice:
+      $ref: "./school-security-core.yaml#/components/schemas/EligibleSecurityDevice"
+    ParentChildSecuritySummary:
+      $ref: "./school-security-core.yaml#/components/schemas/ParentChildSecuritySummary"
+    ParentCommunicationNotificationArchiveResponse:
+      $ref: "./parent-communication.yaml#/components/schemas/ParentCommunicationNotificationArchiveResponse"
     ExistingActivationCandidate: { $ref: "./existing-activation-review.yaml#/components/schemas/ExistingActivationCandidate" }
     ParentChildLink: { $ref: "./existing-activation-review.yaml#/components/schemas/ParentChildLink" }
     ParentChildrenLinkRequest: { $ref: "./existing-activation-review.yaml#/components/schemas/ParentChildrenLinkRequest" }
@@ -8181,7 +8374,7 @@ components:
       additionalProperties: true
     CommunicationNotification:
       type: object
-      required: [id, schoolId, origin, category, subject, body, link, isRead, createdAt, readAt, deliveries]
+      required: [id, schoolId, origin, category, subject, body, link, isRead, isArchived, createdAt, readAt, deliveries]
       properties:
         id: { type: integer }
         schoolId: { type: ["integer", "null"] }
@@ -8194,6 +8387,7 @@ components:
         body: { type: string }
         link: { type: ["string", "null"] }
         isRead: { type: boolean }
+        isArchived: { type: boolean }
         createdAt: { type: string, format: date-time }
         readAt: { type: ["string", "null"], format: date-time }
         deliveries:
@@ -8307,6 +8501,8 @@ components:
       additionalProperties: false
       properties:
         schoolId: { type: integer, minimum: 1 }
+        category: { $ref: "#/components/schemas/CommunicationCategory" }
+        isEmergency: { type: boolean, default: false }
         targetType: { $ref: "#/components/schemas/CommunicationTargetType" }
         targetCriteria: { $ref: "#/components/schemas/CommunicationTargetCriteria" }
         channels:
@@ -8348,6 +8544,10 @@ components:
           items: { $ref: "#/components/schemas/CommunicationOutboundChannel" }
         templateId: { type: ["integer", "null"], minimum: 1 }
         idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+        expiresAt: { type: ["string", "null"], format: date-time }
+        isEmergency: { type: boolean, default: false }
+        emergencyConfirmation: { type: string, enum: ["I CONFIRM EMERGENCY BROADCAST"] }
+        confirmedRecipientCount: { type: integer, minimum: 0 }
     CommunicationAnnouncement:
       type: object
       required: [id, schoolId, createdByUserId, templateId, title, subject, body, category, targetType, targetCriteria, channels, status, recipientCount, createdAt, sentAt]
@@ -8369,6 +8569,8 @@ components:
         recipientCount: { type: integer, minimum: 0 }
         createdAt: { type: string, format: date-time }
         sentAt: { type: ["string", "null"], format: date-time }
+        isEmergency: { type: boolean }
+        expiresAt: { type: ["string", "null"], format: date-time }
     CommunicationAnnouncementHistory:
       type: object
       required: [items, hasMore, nextBeforeId]
@@ -8680,3 +8882,109 @@ components:
     TransportRequest: { $ref: "./transport-feedback.yaml#/components/schemas/TransportRequest" }
     TransportHistoryEntry: { $ref: "./transport-feedback.yaml#/components/schemas/TransportHistoryEntry" }
     TransportOwnerSchoolSummary: { $ref: "./transport-feedback.yaml#/components/schemas/TransportOwnerSchoolSummary" }
+    PromotionStatus: { $ref: "./promotion-expansion.yaml#/components/schemas/PromotionStatus" }
+    PreparePromotionBatchInput: { $ref: "./promotion-expansion.yaml#/components/schemas/PreparePromotionBatchInput" }
+    PromotionReviewInput: { $ref: "./promotion-expansion.yaml#/components/schemas/PromotionReviewInput" }
+    PromotionPlacement: { $ref: "./promotion-expansion.yaml#/components/schemas/PromotionPlacement" }
+    PromotionStudent: { $ref: "./promotion-expansion.yaml#/components/schemas/PromotionStudent" }
+    PromotionBatch: { $ref: "./promotion-expansion.yaml#/components/schemas/PromotionBatch" }
+    PromotionBatchDetail: { $ref: "./promotion-expansion.yaml#/components/schemas/PromotionBatchDetail" }
+    PromotionHistoryEntry: { $ref: "./promotion-expansion.yaml#/components/schemas/PromotionHistoryEntry" }
+    AdmissionApplicationStatus: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionApplicationStatus" }
+    AdmissionDocumentInput: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionDocumentInput" }
+    AdmissionApplicantInput: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionApplicantInput" }
+    AdmissionGuardianInput: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionGuardianInput" }
+    AdmissionEmergencyContactInput: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionEmergencyContactInput" }
+    AdmissionApplicantResponse: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionApplicantResponse" }
+    AdmissionApplicantProfilePatch: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionApplicantProfilePatch" }
+    AdmissionGuardianProfilePatch: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionGuardianProfilePatch" }
+    AdmissionApplicationPatchInput: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionApplicationPatchInput" }
+    AdmissionGuardianResponse: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionGuardianResponse" }
+    AdmissionEmergencyContactResponse: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionEmergencyContactResponse" }
+    AdmissionApplicationInput: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionApplicationInput" }
+    StaffAdmissionApplicationInput: { $ref: "./admissions-expansion.yaml#/components/schemas/StaffAdmissionApplicationInput" }
+    PublicAdmissionPortalResponse: { $ref: "./admissions-expansion.yaml#/components/schemas/PublicAdmissionPortalResponse" }
+    AdmissionPortalSettingsInput: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionPortalSettingsInput" }
+    AdmissionPortalSettingsResponse: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionPortalSettingsResponse" }
+    PublicAdmissionApplicationReceipt: { $ref: "./admissions-expansion.yaml#/components/schemas/PublicAdmissionApplicationReceipt" }
+    AdmissionTrackingInput: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionTrackingInput" }
+    PublicAdmissionApplicationStatus: { $ref: "./admissions-expansion.yaml#/components/schemas/PublicAdmissionApplicationStatus" }
+    AdmissionApplicationListResponse: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionApplicationListResponse" }
+    AdmissionApplicationResponse: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionApplicationResponse" }
+    AdmissionReviewInput: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionReviewInput" }
+    AdmissionStatusTransitionInput: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionStatusTransitionInput" }
+    AdmissionDocumentUploadInput: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionDocumentUploadInput" }
+    AdmissionDocumentUploadResponse: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionDocumentUploadResponse" }
+    AdmissionDocumentConfirmInput: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionDocumentConfirmInput" }
+    AdmissionDocumentResponse: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionDocumentResponse" }
+    AdmissionDocumentDownloadInput: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionDocumentDownloadInput" }
+    AdmissionDocumentDownloadResponse: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionDocumentDownloadResponse" }
+    AdmissionConversionInput: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionConversionInput" }
+    AdmissionConversionResponse: { $ref: "./admissions-expansion.yaml#/components/schemas/AdmissionConversionResponse" }
+    CareError: { $ref: "./student-care-expansion.yaml#/components/schemas/CareError" }
+    MedicalProfileInput: { $ref: "./student-care-expansion.yaml#/components/schemas/MedicalProfileInput" }
+    MedicalProfile: { $ref: "./student-care-expansion.yaml#/components/schemas/MedicalProfile" }
+    ProviderContact: { $ref: "./student-care-expansion.yaml#/components/schemas/ProviderContact" }
+    EmergencyContact: { $ref: "./student-care-expansion.yaml#/components/schemas/EmergencyContact" }
+    MedicalProfileRevision: { $ref: "./student-care-expansion.yaml#/components/schemas/MedicalProfileRevision" }
+    MedicalVisitInput: { $ref: "./student-care-expansion.yaml#/components/schemas/MedicalVisitInput" }
+    MedicalVisitPatch: { $ref: "./student-care-expansion.yaml#/components/schemas/MedicalVisitPatch" }
+    MedicalVisit: { $ref: "./student-care-expansion.yaml#/components/schemas/MedicalVisit" }
+    WelfareRecordInput: { $ref: "./student-care-expansion.yaml#/components/schemas/WelfareRecordInput" }
+    WelfareRecordPatch: { $ref: "./student-care-expansion.yaml#/components/schemas/WelfareRecordPatch" }
+    WelfareRecord: { $ref: "./student-care-expansion.yaml#/components/schemas/WelfareRecord" }
+    BehaviourRecordInput: { $ref: "./student-care-expansion.yaml#/components/schemas/BehaviourRecordInput" }
+    BehaviourRecordPatch: { $ref: "./student-care-expansion.yaml#/components/schemas/BehaviourRecordPatch" }
+    BehaviourRecord: { $ref: "./student-care-expansion.yaml#/components/schemas/BehaviourRecord" }
+    BehaviourConfigurationInput: { $ref: "./student-care-expansion.yaml#/components/schemas/BehaviourConfigurationInput" }
+    BehaviourConfiguration: { $ref: "./student-care-expansion.yaml#/components/schemas/BehaviourConfiguration" }
+    CareGrantInput: { $ref: "./student-care-expansion.yaml#/components/schemas/CareGrantInput" }
+    CareGrant: { $ref: "./student-care-expansion.yaml#/components/schemas/CareGrant" }
+    RecordRevision: { $ref: "./student-care-expansion.yaml#/components/schemas/RecordRevision" }
+    ParentCareSummary: { $ref: "./student-care-expansion.yaml#/components/schemas/ParentCareSummary" }
+    CommunicationAnnouncementExtensions: { $ref: "./parent-communication.yaml#/components/schemas/CommunicationAnnouncementExtensions" }
+    CommunicationChannelAvailability: { $ref: "./parent-communication.yaml#/components/schemas/CommunicationChannelAvailability" }
+    ParentCommunicationChild: { $ref: "./parent-communication.yaml#/components/schemas/ParentCommunicationChild" }
+    ParentCreateCommunicationThread: { $ref: "./parent-communication.yaml#/components/schemas/ParentCreateCommunicationThread" }
+    SchoolCreateCommunicationThread: { $ref: "./parent-communication.yaml#/components/schemas/SchoolCreateCommunicationThread" }
+    ParentCommunicationReply: { $ref: "./parent-communication.yaml#/components/schemas/ParentCommunicationReply" }
+    ParentCommunicationMessage: { $ref: "./parent-communication.yaml#/components/schemas/ParentCommunicationMessage" }
+    ParentCommunicationThread: { $ref: "./parent-communication.yaml#/components/schemas/ParentCommunicationThread" }
+    ParentCommunicationThreadPage: { $ref: "./parent-communication.yaml#/components/schemas/ParentCommunicationThreadPage" }
+    ParentCommunicationThreadDetail: { $ref: "./parent-communication.yaml#/components/schemas/ParentCommunicationThreadDetail" }
+    ParentCommunicationThreadMutation: { $ref: "./parent-communication.yaml#/components/schemas/ParentCommunicationThreadMutation" }
+    ExpectedVersion: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/ExpectedVersion" }
+    SecurityVisitorInput: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/SecurityVisitorInput" }
+    SecurityVisitorPatch: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/SecurityVisitorPatch" }
+    SecurityVisitor: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/SecurityVisitor" }
+    AuthorizedPickupPersonInput: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/AuthorizedPickupPersonInput" }
+    AuthorizedPickupPerson: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/AuthorizedPickupPerson" }
+    PickupPersonDecision: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/PickupPersonDecision" }
+    StudentPickupRequestInput: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/StudentPickupRequestInput" }
+    StudentPickupRequest: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/StudentPickupRequest" }
+    PickupDecision: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/PickupDecision" }
+    PickupCancelInput: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/PickupCancelInput" }
+    PickupCompletionInput: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/PickupCompletionInput" }
+    SecurityIncidentInput: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/SecurityIncidentInput" }
+    SecurityIncidentPatch: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/SecurityIncidentPatch" }
+    SecurityIncident: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/SecurityIncident" }
+    SecurityOperationHistory: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/SecurityOperationHistory" }
+    SecurityIncidentAttachmentUploadInput: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/SecurityIncidentAttachmentUploadInput" }
+    SecurityIncidentAttachment: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/SecurityIncidentAttachment" }
+    SecurityIncidentAttachmentUploadIntent: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/SecurityIncidentAttachmentUploadIntent" }
+    SecurityIncidentAttachmentDownload: { $ref: "./school-security-operations-expansion.yaml#/components/schemas/SecurityIncidentAttachmentDownload" }
+    SecurityDashboard: { $ref: "./school-security-core.yaml#/components/schemas/SecurityDashboard" }
+    SecurityEvent: { $ref: "./school-security-core.yaml#/components/schemas/SecurityEvent" }
+    SecurityEventPage: { $ref: "./school-security-core.yaml#/components/schemas/SecurityEventPage" }
+    CampusPresencePage: { $ref: "./school-security-core.yaml#/components/schemas/CampusPresencePage" }
+    PresenceReviewInput: { $ref: "./school-security-core.yaml#/components/schemas/PresenceReviewInput" }
+    SecurityLocationInput: { $ref: "./school-security-core.yaml#/components/schemas/SecurityLocationInput" }
+    SecurityLocation: { $ref: "./school-security-core.yaml#/components/schemas/SecurityLocation" }
+    SecurityReaderInput: { $ref: "./school-security-core.yaml#/components/schemas/SecurityReaderInput" }
+    SecurityReader: { $ref: "./school-security-core.yaml#/components/schemas/SecurityReader" }
+    SecuritySettings: { $ref: "./school-security-core.yaml#/components/schemas/SecuritySettings" }
+    SecuritySettingsInput: { $ref: "./school-security-core.yaml#/components/schemas/SecuritySettingsInput" }
+    SecurityGrantInput: { $ref: "./school-security-core.yaml#/components/schemas/SecurityGrantInput" }
+    SecurityStaffGrant: { $ref: "./school-security-core.yaml#/components/schemas/SecurityStaffGrant" }
+    StatusInput: { $ref: "./school-security-core.yaml#/components/schemas/StatusInput" }
+    LostCardInput: { $ref: "./school-security-core.yaml#/components/schemas/LostCardInput" }

@@ -1,6 +1,7 @@
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { pool } from "@workspace/db";
+import { joinSecurityAttendance, recordAuthenticatedNfcDenial } from "../services/security-attendance-integration";
 import {
   AuthError,
   assertSchoolAccess,
@@ -341,6 +342,7 @@ function hasSchoolWideAttendanceRead(context: ReturnType<typeof getUserContext>,
 
 const processDeviceAttendance = run(async (req, res) => {
   const device = await deviceAuth(req);
+  try {
   const body = req.body ?? {};
   const eventType = String(body.eventType ?? "").toUpperCase();
   const method = String(body.identificationMethod ?? "NFC").toUpperCase();
@@ -472,7 +474,9 @@ const processDeviceAttendance = run(async (req, res) => {
     if (!currentStudent.rows[0]) throw new AuthError(404, "Student not found for this NFC device");
    await reconcileAttendance(client, result.rows[0]);
     await reconcileMissingClass(device.schoolId, occurredAt.toISOString().slice(0, 10), client);
-    await queueAttendanceCommunicationBestEffort(
+   const securityRecorded = method === "NFC" && ["SCHOOL_ENTRY", "SCHOOL_EXIT"].includes(eventType)
+     ? await joinSecurityAttendance(client, Number(result.rows[0].id)) : false;
+   if (!securityRecorded) await queueAttendanceCommunicationBestEffort(
       client,
       req,
       () => queueSchoolEntryExitCommunication(client, result.rows[0]),
@@ -486,6 +490,10 @@ const processDeviceAttendance = run(async (req, res) => {
   } catch (error) { await client.query("ROLLBACK"); throw error; }
   finally { client.release(); }
     res.status(201).json({ ...result.rows[0], ...currentStudent.rows[0] });
+  } catch (error) {
+    await recordAuthenticatedNfcDenial(req, device, error);
+    throw error;
+  }
 });
 router.post("/device/attendance/events", processDeviceAttendance);
 router.post("/biometric/events", (req, res, next) => {

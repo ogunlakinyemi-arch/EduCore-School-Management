@@ -1,0 +1,761 @@
+paths:
+  /schools/{schoolId}/students/{studentId}/medical-profile:
+    get:
+      operationId: getStudentMedicalProfile
+      tags: [student-care]
+      summary: Read a medical profile using the medical-read school grant
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+      responses:
+        "200":
+          description: Sensitive medical profile, including its archived state when retained; never returned through ordinary student projections
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MedicalProfile" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: archiveStudentMedicalProfile
+      tags: [student-care]
+      summary: Archive a medical profile without removing its retained revisions
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/IfMatchVersion"
+      responses:
+        "200":
+          description: Profile archived; history retained
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MedicalProfile" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+    put:
+      operationId: upsertStudentMedicalProfile
+      tags: [student-care]
+      summary: Create, update, or restore a medical profile with optimistic concurrency and an idempotency key
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MedicalProfileInput" }
+      responses:
+        "200":
+          description: Saved or restored profile with the next version; archive and prior revisions remain in history
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MedicalProfile" }
+        "400": { $ref: "#/components/responses/ApiBadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+  /schools/{schoolId}/students/{studentId}/medical-profile/history:
+    get:
+      operationId: listStudentMedicalProfileHistory
+      tags: [student-care]
+      summary: List medical profile revisions for a permitted medical reader
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+      responses:
+        "200":
+          description: Historical snapshots in descending revision order
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MedicalProfileRevision" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /schools/{schoolId}/students/{studentId}/medical-visits:
+    get:
+      operationId: listStudentMedicalVisits
+      tags: [student-care]
+      summary: List current and archived medical visit records for a permitted medical reader
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+      responses:
+        "200":
+          description: Visits with version and archival state
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MedicalVisit" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      operationId: createStudentMedicalVisit
+      tags: [student-care]
+      summary: Record a medical visit; request retries reuse the original visit
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MedicalVisitInput" }
+      responses:
+        "201":
+          description: Created visit with server-recorded staff, timestamp, and version
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MedicalVisit" }
+        "400": { $ref: "#/components/responses/ApiBadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+  /schools/{schoolId}/students/{studentId}/medical-visits/{visitId}:
+    patch:
+      operationId: updateStudentMedicalVisit
+      tags: [student-care]
+      summary: Version-checked visit update preserving the previous revision
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/VisitIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MedicalVisitPatch" }
+      responses:
+        "200":
+          description: Updated visit
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MedicalVisit" }
+        "400": { $ref: "#/components/responses/ApiBadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+    delete:
+      operationId: archiveStudentMedicalVisit
+      tags: [student-care]
+      summary: Archive a visit without physical deletion
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/VisitIdPath"
+        - $ref: "#/components/parameters/IfMatchVersion"
+      responses:
+        "200": { description: Visit archived; history retained }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+  /schools/{schoolId}/students/{studentId}/medical-visits/{visitId}/history:
+    get:
+      operationId: listStudentMedicalVisitHistory
+      tags: [student-care]
+      summary: Read retained revisions of a medical visit
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/VisitIdPath"
+      responses:
+        "200":
+          description: Medical visit revision history
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RecordRevision" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /schools/{schoolId}/students/{studentId}/welfare:
+    get:
+      operationId: listStudentWelfareRecords
+      tags: [student-care]
+      summary: List welfare records; safeguarding records require their separate grant
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+      responses:
+        "200":
+          description: Authorized welfare records; parent visibility is not implied
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/WelfareRecord" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      operationId: createStudentWelfareRecord
+      tags: [student-care]
+      summary: Create a welfare record, with safeguarding access independently authorized
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WelfareRecordInput" }
+      responses:
+        "201":
+          description: Created versioned record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WelfareRecord" }
+        "400": { $ref: "#/components/responses/ApiBadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+  /schools/{schoolId}/students/{studentId}/welfare/{recordId}:
+    patch:
+      operationId: updateStudentWelfareRecord
+      tags: [student-care]
+      summary: Update welfare record with optimistic concurrency and retained history
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/RecordIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WelfareRecordPatch" }
+      responses:
+        "200":
+          description: Updated record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WelfareRecord" }
+        "400": { $ref: "#/components/responses/ApiBadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+    delete:
+      operationId: archiveStudentWelfareRecord
+      tags: [student-care]
+      summary: Archive a welfare record without removing its audit history
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/RecordIdPath"
+        - $ref: "#/components/parameters/IfMatchVersion"
+      responses:
+        "200": { description: Record archived; history retained }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+  /schools/{schoolId}/students/{studentId}/welfare/{recordId}/history:
+    get:
+      operationId: listStudentWelfareHistory
+      tags: [student-care]
+      summary: Read welfare revisions with welfare or safeguarding grant as applicable
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/RecordIdPath"
+      responses:
+        "200":
+          description: Welfare revisions; confidential fields are never family-visible
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RecordRevision" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /schools/{schoolId}/students/{studentId}/behaviour:
+    get:
+      operationId: listStudentBehaviourRecords
+      tags: [student-care]
+      summary: List behaviour records for an authorized administrator, granted staff member, or assigned teacher
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+      responses:
+        "200":
+          description: Authorized behaviour records; internal notes are excluded from parent projections
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/BehaviourRecord" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      operationId: createStudentBehaviourRecord
+      tags: [student-care]
+      summary: Create a behaviour record at the review stage
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BehaviourRecordInput" }
+      responses:
+        "201":
+          description: Created record with server-assigned reporter and lifecycle status REVIEW
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BehaviourRecord" }
+        "400": { $ref: "#/components/responses/ApiBadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+  /schools/{schoolId}/students/{studentId}/behaviour/{recordId}:
+    patch:
+      operationId: progressStudentBehaviourRecord
+      tags: [student-care]
+      summary: Advance lifecycle in order Review, Action, Parent Notification, Follow-up, Resolution
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/RecordIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BehaviourRecordPatch" }
+      responses:
+        "200":
+          description: Updated lifecycle record; notification status reports queued/configuration truthfully
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BehaviourRecord" }
+        "400": { $ref: "#/components/responses/ApiBadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+    delete:
+      operationId: archiveStudentBehaviourRecord
+      tags: [student-care]
+      summary: Archive behaviour record without deleting revisions
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/RecordIdPath"
+        - $ref: "#/components/parameters/IfMatchVersion"
+      responses:
+        "200": { description: Record archived; history retained }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/VersionConflict" }
+  /schools/{schoolId}/students/{studentId}/behaviour/{recordId}/history:
+    get:
+      operationId: listStudentBehaviourHistory
+      tags: [student-care]
+      summary: List retained behaviour revisions
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+        - $ref: "#/components/parameters/StudentIdPath"
+        - $ref: "#/components/parameters/RecordIdPath"
+      responses:
+        "200":
+          description: Behaviour record history
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RecordRevision" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /schools/{schoolId}/behaviour/configuration:
+    get:
+      operationId: listBehaviourConfiguration
+      tags: [student-care]
+      summary: List active school-configured behaviour categories and actions
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+      responses:
+        "200":
+          description: Behaviour category/action configuration
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BehaviourConfiguration" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    put:
+      operationId: updateBehaviourConfiguration
+      tags: [student-care]
+      summary: School Admin maintains school-specific category/action options
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BehaviourConfigurationInput" }
+      responses:
+        "200":
+          description: Persisted school configuration
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BehaviourConfiguration" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /schools/{schoolId}/care-access:
+    get:
+      operationId: listStudentCareGrants
+      tags: [student-care]
+      summary: School Admin lists medical, welfare, safeguarding, and behaviour grants
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+      responses:
+        "200":
+          description: Active and revoked care grants for existing school users
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CareGrant" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    put:
+      operationId: setStudentCareGrant
+      tags: [student-care]
+      summary: School Admin assigns or revokes explicit stable student-care permissions
+      parameters:
+        - $ref: "#/components/parameters/SchoolIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CareGrantInput" }
+      responses:
+        "200":
+          description: Persisted grant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CareGrant" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /student/care-summary:
+    get:
+      operationId: getStudentCareSummary
+      tags: [student-care, student-portal]
+      summary: Read the authenticated student's own parent-visible care summary
+      description: Requires an active student role and active verified school membership mapped to the requesting account. Returns only explicitly parent-visible welfare and behaviour records; never medical data, internal notes, safeguarding, or a school-wide catalogue.
+      responses:
+        "200":
+          description: Allowlisted own care summary
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ParentCareSummary" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /parent/children/{studentId}/care-summary:
+    get:
+      operationId: getParentStudentCareSummary
+      tags: [student-care, parent-portal]
+      summary: Read explicitly parent-visible welfare/behaviour summary for an actively linked child
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+      responses:
+        "200":
+          description: Explicitly parent-visible summary only; never diagnoses, medical profile, internal notes, or safeguarding content
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ParentCareSummary" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+components:
+  parameters:
+    SchoolIdPath:
+      name: schoolId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    StudentIdPath:
+      name: studentId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    VisitIdPath:
+      name: visitId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    RecordIdPath:
+      name: recordId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 8, maxLength: 128 }
+    IfMatchVersion:
+      name: If-Match-Version
+      in: header
+      required: true
+      schema: { type: integer, minimum: 1 }
+  responses:
+    ApiBadRequest:
+      $ref: "./openapi.yaml#/components/responses/ApiBadRequest"
+    Forbidden:
+      $ref: "./openapi.yaml#/components/responses/Forbidden"
+    NotFound:
+      $ref: "./openapi.yaml#/components/responses/NotFound"
+    VersionConflict:
+      description: Stale record version or idempotency key reused for another payload
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/CareError" }
+  schemas:
+    CareError:
+      type: object
+      required: [error, code]
+      properties:
+        error: { type: string }
+        code: { type: string }
+    MedicalProfileInput:
+      type: object
+      required: [expectedVersion]
+      properties:
+        expectedVersion: { type: integer, minimum: 0 }
+        bloodGroup: { type: [string, "null"], maxLength: 16 }
+        genotype: { type: [string, "null"], maxLength: 16 }
+        allergies: { type: array, items: { type: string, maxLength: 500 } }
+        conditions: { type: array, items: { type: string, maxLength: 1000 } }
+        supportNeeds: { type: array, items: { type: string, maxLength: 1000 } }
+        medications: { type: array, items: { type: string, maxLength: 1000 } }
+        emergencyMedicalNotes: { type: [string, "null"], maxLength: 5000 }
+        providerContacts: { type: array, items: { $ref: "#/components/schemas/ProviderContact" } }
+        emergencyContacts: { type: array, items: { $ref: "#/components/schemas/EmergencyContact" } }
+    MedicalProfile:
+      allOf:
+        - $ref: "#/components/schemas/MedicalProfileInput"
+        - type: object
+          required: [id, schoolId, studentId, version, updatedAt]
+          properties:
+            id: { type: integer }
+            schoolId: { type: integer }
+            studentId: { type: integer }
+            version: { type: integer }
+            updatedAt: { type: string, format: date-time }
+            archivedAt: { type: [string, "null"], format: date-time }
+    ProviderContact:
+      type: object
+      required: [name, phone]
+      properties:
+        name: { type: string, maxLength: 200 }
+        role: { type: [string, "null"], maxLength: 100 }
+        phone: { type: string, maxLength: 40 }
+        email: { type: [string, "null"], maxLength: 254 }
+    EmergencyContact:
+      type: object
+      required: [name, phone, relationship]
+      properties:
+        name: { type: string, maxLength: 200 }
+        phone: { type: string, maxLength: 40 }
+        relationship: { type: string, maxLength: 100 }
+    MedicalProfileRevision:
+      type: object
+      required: [revision, changedAt, changedByUserId, snapshot]
+      properties:
+        revision: { type: integer }
+        changedAt: { type: string, format: date-time }
+        changedByUserId: { type: integer }
+        snapshot: { $ref: "#/components/schemas/MedicalProfileInput" }
+    MedicalVisitInput:
+      type: object
+      required: [occurredAt, reason]
+      properties:
+        occurredAt: { type: string, format: date-time }
+        reason: { type: string, minLength: 1, maxLength: 2000 }
+        symptoms: { type: [string, "null"], maxLength: 5000 }
+        observations: { type: [string, "null"], maxLength: 5000 }
+        actionTaken: { type: [string, "null"], maxLength: 5000 }
+        treatment: { type: [string, "null"], maxLength: 5000 }
+        referral: { type: [string, "null"], maxLength: 2000 }
+        followUpAt: { type: [string, "null"], format: date-time }
+        followUpNotes: { type: [string, "null"], maxLength: 5000 }
+        notes: { type: [string, "null"], maxLength: 5000 }
+    MedicalVisitPatch:
+      allOf:
+        - $ref: "#/components/schemas/MedicalVisitInput"
+        - type: object
+          required: [expectedVersion]
+          properties:
+            expectedVersion: { type: integer, minimum: 1 }
+    MedicalVisit:
+      allOf:
+        - $ref: "#/components/schemas/MedicalVisitInput"
+        - type: object
+          required: [id, schoolId, studentId, recordedByUserId, version, createdAt]
+          properties:
+            id: { type: integer }
+            schoolId: { type: integer }
+            studentId: { type: integer }
+            recordedByUserId: { type: integer }
+            version: { type: integer }
+            createdAt: { type: string, format: date-time }
+            archivedAt: { type: [string, "null"], format: date-time }
+    WelfareRecordInput:
+      type: object
+      required: [category, concern]
+      properties:
+        category:
+          type: string
+          enum: [WELFARE_CONCERN, COUNSELLING_REFERRAL, SAFEGUARDING, FAMILY_SUPPORT, LEARNING_SUPPORT]
+        concern: { type: string, minLength: 1, maxLength: 5000 }
+        assignedStaffUserId: { type: [integer, "null"] }
+        followUpAt: { type: [string, "null"], format: date-time }
+        followUpStatus: { type: string, enum: [NOT_REQUIRED, PENDING, IN_PROGRESS, COMPLETE] }
+        status: { type: string, enum: [OPEN, IN_PROGRESS, RESOLVED] }
+        resolution: { type: [string, "null"], maxLength: 5000 }
+        internalNotes: { type: [string, "null"], maxLength: 10000 }
+        parentVisible: { type: boolean, default: false }
+    WelfareRecordPatch:
+      allOf:
+        - $ref: "#/components/schemas/WelfareRecordInput"
+        - type: object
+          required: [expectedVersion]
+          properties:
+            expectedVersion: { type: integer, minimum: 1 }
+    WelfareRecord:
+      allOf:
+        - $ref: "#/components/schemas/WelfareRecordInput"
+        - type: object
+          required: [id, schoolId, studentId, version, createdByUserId, createdAt]
+          properties:
+            id: { type: integer }
+            schoolId: { type: integer }
+            studentId: { type: integer }
+            version: { type: integer }
+            createdByUserId: { type: integer }
+            createdAt: { type: string, format: date-time }
+            archivedAt: { type: [string, "null"], format: date-time }
+    BehaviourRecordInput:
+      type: object
+      required: [category, severity, description]
+      properties:
+        category:
+          type: string
+          enum: [POSITIVE, CONCERN, INCIDENT, RULE_VIOLATION, RECOGNITION]
+        severity: { type: string, enum: [LOW, MODERATE, HIGH, CRITICAL] }
+        occurredAt: { type: string, format: date-time }
+        schoolClassId: { type: [integer, "null"] }
+        subjectId: { type: [integer, "null"] }
+        location: { type: [string, "null"], maxLength: 500 }
+        description: { type: string, minLength: 1, maxLength: 5000 }
+        action: { type: [string, "null"], maxLength: 2000 }
+        followUpAt: { type: [string, "null"], format: date-time }
+        followUpNotes: { type: [string, "null"], maxLength: 5000 }
+        resolution: { type: [string, "null"], maxLength: 5000 }
+        internalNotes: { type: [string, "null"], maxLength: 10000 }
+        parentVisible: { type: boolean, default: false }
+    BehaviourRecordPatch:
+      allOf:
+        - $ref: "#/components/schemas/BehaviourRecordInput"
+        - type: object
+          required: [expectedVersion]
+          properties:
+            expectedVersion: { type: integer, minimum: 1 }
+            status: { type: string, enum: [REVIEW, ACTION, PARENT_NOTIFICATION, FOLLOW_UP, RESOLVED] }
+            parentNotificationRequested: { type: boolean }
+    BehaviourRecord:
+      allOf:
+        - $ref: "#/components/schemas/BehaviourRecordInput"
+        - type: object
+          required: [id, schoolId, studentId, reporterUserId, status, parentNotificationStatus, version, createdAt]
+          properties:
+            id: { type: integer }
+            schoolId: { type: integer }
+            studentId: { type: integer }
+            reporterUserId: { type: integer }
+            status: { type: string, enum: [REVIEW, ACTION, PARENT_NOTIFICATION, FOLLOW_UP, RESOLVED] }
+            parentNotificationStatus: { type: string, enum: [NOT_REQUESTED, QUEUED, PARTIAL, NOT_CONFIGURED, FAILED] }
+            version: { type: integer }
+            createdAt: { type: string, format: date-time }
+            archivedAt: { type: [string, "null"], format: date-time }
+    BehaviourConfigurationInput:
+      type: object
+      required: [expectedVersion, categories, actions]
+      properties:
+        expectedVersion: { type: integer, minimum: 0 }
+        categories:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 100 }
+        actions:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 200 }
+    BehaviourConfiguration:
+      type: object
+      required: [categories, actions, version, updatedAt]
+      properties:
+        categories: { type: array, items: { type: string } }
+        actions: { type: array, items: { type: string } }
+        version: { type: integer, minimum: 0 }
+        updatedAt: { type: [string, "null"], format: date-time }
+    CareGrantInput:
+      type: object
+      required: [userId, permissions, active]
+      properties:
+        userId: { type: integer, minimum: 1 }
+        active: { type: boolean }
+        permissions:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - MEDICAL_READ
+              - MEDICAL_WRITE
+              - WELFARE_READ
+              - WELFARE_WRITE
+              - SAFEGUARDING_READ
+              - SAFEGUARDING_WRITE
+              - BEHAVIOUR_READ
+              - BEHAVIOUR_WRITE
+              - BEHAVIOUR_REVIEW
+              - BEHAVIOUR_ACTION
+    CareGrant:
+      allOf:
+        - $ref: "#/components/schemas/CareGrantInput"
+        - type: object
+          required: [schoolId, updatedAt]
+          properties:
+            schoolId: { type: integer }
+            updatedAt: { type: string, format: date-time }
+    RecordRevision:
+      type: object
+      required: [revision, changedAt, changedByUserId, snapshot]
+      properties:
+        revision: { type: integer }
+        changedAt: { type: string, format: date-time }
+        changedByUserId: { type: integer }
+        snapshot: { type: object, additionalProperties: true }
+    ParentCareSummary:
+      type: object
+      required: [studentId, welfare, behaviour]
+      properties:
+        studentId: { type: integer }
+        welfare:
+          type: array
+          items:
+            type: object
+            required: [id, category, concern, status, updatedAt]
+            properties:
+              id: { type: integer }
+              category: { type: string }
+              concern: { type: string }
+              status: { type: string }
+              updatedAt: { type: string, format: date-time }
+        behaviour:
+          type: array
+          items:
+            type: object
+            required: [id, category, description, status, occurredAt]
+            properties:
+              id: { type: integer }
+              category: { type: string }
+              description: { type: string }
+              status: { type: string }
+              occurredAt: { type: string, format: date-time }

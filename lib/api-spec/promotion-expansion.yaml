@@ -1,0 +1,256 @@
+openapi: 3.1.0
+info:
+  title: Promotion Expansion API
+  version: 1.0.0
+  description: Controlled school-admin-only student promotion, lifecycle, review and history.
+paths:
+  /school/academics/promotions/batches:
+    post:
+      operationId: preparePromotionBatch
+      tags: [academics, promotion]
+      summary: Prepare a review-only promotion batch from a source and target session
+      description: >
+        Preparation snapshots currently placed students and real published-results and
+        successful school-entry attendance summaries. Recommendation is advisory only:
+        it is Eligible when there is at least one published result with at least 50%
+        average and at least one recorded attendance day with at least 75% present/late;
+        otherwise it is Pending. Schools must independently review and decide. Preparation
+        does not move students or alter NFC identity. Target
+        session must follow source session. If it is not the school's currently active
+        calendar session, finalization is rejected; this endpoint never switches the
+        school's global active session. Only an active school-scoped School Admin may
+        operate; Platform Owner is excluded even on dual-role identities.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PreparePromotionBatchInput" }
+      responses:
+        "201":
+          description: Newly prepared immutable-source snapshot batch
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PromotionBatchDetail" }
+        "200":
+          description: Idempotent replay of the same preparation request
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PromotionBatchDetail" }
+        "409": { description: Idempotency conflict or stale placement/calendar state }
+    get:
+      operationId: listPromotionBatches
+      tags: [academics, promotion]
+      summary: List promotion batches and their review/finalization history
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        "200":
+          description: School-scoped batch history, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PromotionBatch" }
+  /school/academics/promotions/batches/{batchId}:
+    get:
+      operationId: getPromotionBatch
+      tags: [academics, promotion]
+      summary: Read a batch with placement snapshots and review decisions
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/BatchId"
+      responses:
+        "200":
+          description: Batch and student review rows
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PromotionBatchDetail" }
+        "404": { description: Batch not found in this school }
+  /school/academics/promotions/batches/{batchId}/history:
+    get:
+      operationId: listPromotionBatchHistory
+      tags: [academics, promotion, audit]
+      summary: Read append-only reviewed decisions and finalization outcomes for a batch
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/BatchId"
+      responses:
+        "200":
+          description: School-scoped chronological batch history
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PromotionHistoryEntry" }
+        "404": { description: Batch not found in this school }
+  /school/academics/promotions/batches/{batchId}/students/{studentId}:
+    patch:
+      operationId: reviewPromotionDecision
+      tags: [academics, promotion]
+      summary: Record a reviewed per-student decision and explicit target placement
+      description: >
+        Each review requires an explicit reason. Promoted and Repeat require a
+        school-valid target class, section and target term. Pending and Eligible are
+        non-final review states; only Promoted, Repeat, Graduated, Withdrawn, and
+        Transferred can be finalized.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/BatchId"
+        - in: path
+          name: studentId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PromotionReviewInput" }
+      responses:
+        "200":
+          description: Audited updated decision
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PromotionStudent" }
+        "409": { description: Batch finalized or source placement changed since preparation }
+  /school/academics/promotions/batches/{batchId}/finalize:
+    post:
+      operationId: finalizePromotionBatch
+      tags: [academics, promotion]
+      summary: Atomically finalize every reviewed decision in a batch
+      description: >
+        Strict all-or-nothing transaction: every row must have an explicit final
+        decision; source placement snapshots, session/calendar and target relations
+        are revalidated under locks. Idempotency-Key prevents duplicate finalization.
+        Existing student identity, admission number, cards and NFC assignments remain
+        untouched; historical placements are closed, never overwritten. Graduated,
+        Withdrawn and Transferred lifecycle results preserve the existing school
+        identity/history; cross-school identity migration is not attempted.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/BatchId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Finalized batch with per-student outcomes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PromotionBatchDetail" }
+        "409": { description: "Unreviewed rows, stale source/target state, calendar mismatch, or idempotency conflict" }
+components:
+  parameters:
+    SchoolId:
+      name: schoolId
+      in: query
+      required: true
+      schema: { type: integer, minimum: 1 }
+    BatchId:
+      name: batchId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 8, maxLength: 128 }
+  schemas:
+    PromotionStatus:
+      type: string
+      enum: [Pending, Eligible, Promoted, Repeat, Graduated, Withdrawn, Transferred]
+    PreparePromotionBatchInput:
+      type: object
+      additionalProperties: false
+      required: [sourceSessionId, targetSessionId]
+      properties:
+        sourceSessionId: { type: integer, minimum: 1 }
+        targetSessionId: { type: integer, minimum: 1 }
+    PromotionReviewInput:
+      type: object
+      additionalProperties: false
+      required: [status, reason]
+      properties:
+        status: { $ref: "#/components/schemas/PromotionStatus" }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+        targetTermId: { type: [integer, "null"], minimum: 1 }
+        targetClassId: { type: [integer, "null"], minimum: 1 }
+        targetSection: { type: [string, "null"], maxLength: 100 }
+    PromotionPlacement:
+      type: object
+      required: [sessionId, classId, className, section, termId]
+      properties:
+        sessionId: { type: integer }
+        classId: { type: integer }
+        className: { type: string }
+        section: { type: string }
+        termId: { type: [integer, "null"] }
+    PromotionStudent:
+      type: object
+      required: [studentId, studentName, admissionNumber, sourcePlacement, status, recommendation, academicPerformance, attendanceSummary]
+      properties:
+        studentId: { type: integer }
+        studentName: { type: string }
+        admissionNumber: { type: string }
+        sourcePlacement: { $ref: "#/components/schemas/PromotionPlacement" }
+        targetPlacement: { oneOf: [{ $ref: "#/components/schemas/PromotionPlacement" }, { type: "null" }] }
+        status: { $ref: "#/components/schemas/PromotionStatus" }
+        recommendation:
+          type: string
+          enum: [Pending, Eligible]
+          description: Advisory data-derived recommendation, not an automatic decision.
+        reason: { type: [string, "null"] }
+        academicPerformance:
+          type: object
+          required: [resultCount, averageScore, scoredCount]
+          properties:
+            resultCount: { type: integer }
+            scoredCount: { type: integer }
+            averageScore: { type: [number, "null"] }
+        attendanceSummary:
+          type: object
+          required: [presentCount, absentCount, lateCount, recordedCount, attendanceRate]
+          properties:
+            presentCount: { type: integer }
+            absentCount: { type: integer }
+            lateCount: { type: integer }
+            recordedCount: { type: integer }
+            attendanceRate: { type: [number, "null"] }
+    PromotionBatch:
+      type: object
+      required: [id, schoolId, sourceSessionId, targetSessionId, status, createdAt, studentCount]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        sourceSessionId: { type: integer }
+        targetSessionId: { type: integer }
+        status: { type: string, enum: [Prepared, Finalized] }
+        createdAt: { type: string, format: date-time }
+        finalizedAt: { type: [string, "null"], format: date-time }
+        studentCount: { type: integer }
+    PromotionBatchDetail:
+      allOf:
+        - $ref: "#/components/schemas/PromotionBatch"
+        - type: object
+          required: [students]
+          properties:
+            students:
+              type: array
+              items: { $ref: "#/components/schemas/PromotionStudent" }
+    PromotionHistoryEntry:
+      type: object
+      required: [id, batchId, batchStudentId, studentId, actorUserId, eventType, result, metadata, createdAt]
+      properties:
+        id: { type: integer }
+        batchId: { type: integer }
+        batchStudentId: { type: [integer, "null"] }
+        studentId: { type: [integer, "null"] }
+        actorUserId: { type: [integer, "null"] }
+        eventType: { type: string, enum: [BATCH_PREPARED, STUDENT_SNAPSHOTTED, STUDENT_REVIEWED, STUDENT_FINALIZED, BATCH_FINALIZED, FINALIZATION_REJECTED] }
+        result: { type: string, enum: [SUCCESS, REJECTED] }
+        metadata: { type: object, additionalProperties: true }
+        createdAt: { type: string, format: date-time }

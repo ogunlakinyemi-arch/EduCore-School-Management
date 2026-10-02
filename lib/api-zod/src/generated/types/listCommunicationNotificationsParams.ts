@@ -5,6 +5,7 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { CommunicationCategory } from './communicationCategory';
 
 export type ListCommunicationNotificationsParams = {
 /**
@@ -20,4 +21,16 @@ limit?: number;
  * @minimum 1
  */
 beforeId?: number;
+/**
+ * @minimum 1
+ */
+childId?: number;
+category?: CommunicationCategory;
+isRead?: boolean;
+includeArchived?: boolean;
+includeExpired?: boolean;
+/**
+ * @maxLength 100
+ */
+search?: string;
 };

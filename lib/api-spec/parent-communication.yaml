@@ -1,0 +1,488 @@
+openapi: 3.1.0
+info:
+  title: Parent Communication API Fragment
+  version: 1.0.0
+  description: >
+    Additive fragment for parent communication threads and channel availability.
+    Inbox, campaigns, preferences, notification deliveries, and push-device
+    registration continue to use their existing communication endpoints.
+paths:
+  /communication/notifications:
+    get:
+      operationId: listCommunicationNotifications
+      tags: [communication]
+      summary: List the authenticated recipient's visible notification inbox
+      description: SchoolId only filters data; it never grants school access. Archived and expired campaign notifications are excluded by default. Each notification DTO includes isArchived so clients can offer the correct archive or unarchive action.
+      parameters:
+        - in: query
+          name: schoolId
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - in: query
+          name: beforeId
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: childId
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: category
+          schema:
+            type: string
+            enum: [ATTENDANCE, ACADEMIC, ASSIGNMENT, FINANCE, PAYMENT, ANNOUNCEMENT, ACCOUNT, SYSTEM, SUBSCRIPTION, PARTNER, SECURITY]
+        - in: query
+          name: isRead
+          description: Return only read or unread notifications.
+          schema: { type: boolean }
+        - in: query
+          name: includeArchived
+          description: Include archived notifications; false by default.
+          schema: { type: boolean, default: false }
+        - in: query
+          name: includeExpired
+          description: Include notifications from expired campaigns; false by default.
+          schema: { type: boolean, default: false }
+        - in: query
+          name: search
+          description: Search notification subject and body.
+          schema: { type: string, maxLength: 100 }
+      responses:
+        "200":
+          description: Paginated, recipient-authorized inbox.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommunicationNotificationInbox"
+  /communication/notifications/{notificationId}/archive:
+    patch:
+      operationId: archiveCommunicationNotification
+      tags: [communication]
+      summary: Archive a notification for its authenticated recipient
+      parameters:
+        - in: path
+          name: notificationId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Updated notification; ACCOUNT and SECURITY notifications cannot be archived.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParentCommunicationNotificationArchiveResponse"
+        "404":
+          description: Notification is not visible to this recipient.
+  /communication/notifications/{notificationId}/unarchive:
+    patch:
+      operationId: unarchiveCommunicationNotification
+      tags: [communication]
+      summary: Restore an archived notification to the recipient's default inbox
+      parameters:
+        - in: path
+          name: notificationId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Updated notification.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParentCommunicationNotificationArchiveResponse"
+        "404":
+          description: Notification is not visible to this recipient.
+  /communication/channels:
+    get:
+      operationId: getParentCommunicationChannels
+      tags: [communication]
+      summary: Report configured communication channel availability
+      responses:
+        "200":
+          description: Channel availability; this does not claim that any individual message was delivered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommunicationChannelAvailability"
+  /communication/children:
+    get:
+      operationId: listParentCommunicationChildren
+      tags: [communication]
+      summary: List only the authenticated parent's active linked children
+      parameters:
+        - in: query
+          name: schoolId
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Active child-selector records.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [children]
+                properties:
+                  children:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ParentCommunicationChild"
+  /communication/parent/threads:
+    get:
+      operationId: listParentMessageThreads
+      tags: [communication]
+      summary: Search and paginate the parent's own active-child threads
+      parameters:
+        - in: query
+          name: schoolId
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: childId
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: search
+          schema: { type: string, maxLength: 100 }
+        - in: query
+          name: includeArchived
+          schema: { type: boolean, default: false }
+        - in: query
+          name: beforeId
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 50, default: 25 }
+      responses:
+        "200":
+          description: Parent-scoped thread page.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParentCommunicationThreadPage"
+    post:
+      operationId: createParentMessageThread
+      tags: [communication]
+      summary: Start a message thread about one of the parent's active linked children
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParentCreateCommunicationThread"
+      responses:
+        "201":
+          description: Thread and initial message created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParentCommunicationThreadMutation"
+        "200":
+          description: Idempotent replay of the original request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParentCommunicationThreadMutation"
+  /communication/threads:
+    get:
+      operationId: listSchoolParentMessageThreads
+      tags: [communication]
+      summary: List authorized school-side parent message threads
+      parameters:
+        - in: query
+          name: schoolId
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: childId
+          description: Required for delegated staff/teacher access; scope remains limited to that assigned student.
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: search
+          schema: { type: string, maxLength: 100 }
+        - in: query
+          name: includeArchived
+          schema: { type: boolean, default: false }
+        - in: query
+          name: beforeId
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 50, default: 25 }
+      responses:
+        "200":
+          description: School-side thread page.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParentCommunicationThreadPage"
+    post:
+      operationId: createSchoolParentMessageThread
+      tags: [communication]
+      summary: Start a school message to a parent of a selected active student
+      description: Teachers require an active COMMUNICATION_SEND grant and a current student class assignment. Other staff require the grant and an active assigned student-care follow-up. Accountants may create finance-only threads.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SchoolCreateCommunicationThread"
+      responses:
+        "201":
+          description: Thread and initial message created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParentCommunicationThreadMutation"
+        "200":
+          description: Idempotent replay of the original request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParentCommunicationThreadMutation"
+  /communication/threads/{threadId}:
+    get:
+      operationId: getParentCommunicationThread
+      tags: [communication]
+      summary: Read an authorized message thread and paginated messages
+      parameters:
+        - in: path
+          name: threadId
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: beforeMessageId
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        "200":
+          description: Authorized thread details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParentCommunicationThreadDetail"
+  /communication/threads/{threadId}/messages:
+    post:
+      operationId: replyToParentCommunicationThread
+      tags: [communication]
+      summary: Add an idempotent message to an authorized thread
+      parameters:
+        - in: path
+          name: threadId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParentCommunicationReply"
+      responses:
+        "201":
+          description: Message created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParentCommunicationThreadMutation"
+        "200":
+          description: Idempotent replay of the original request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParentCommunicationThreadMutation"
+  /communication/threads/{threadId}/read:
+    patch:
+      operationId: markParentCommunicationThreadRead
+      tags: [communication]
+      summary: Mark the authorized participant side of a thread as read
+      parameters:
+        - in: path
+          name: threadId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Updated unread state.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [thread, readAt]
+                properties:
+                  thread:
+                    $ref: "#/components/schemas/ParentCommunicationThread"
+                  readAt:
+                    type: string
+                    format: date-time
+  /communication/threads/{threadId}/archive:
+    patch:
+      operationId: archiveParentCommunicationThread
+      tags: [communication]
+      summary: Archive a thread for the authenticated participant side
+      parameters:
+        - in: path
+          name: threadId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Archived thread identifier.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [threadId, archived]
+                properties:
+                  threadId: { type: integer }
+                  archived: { type: boolean, const: true }
+components:
+  schemas:
+    ParentCommunicationNotificationArchiveResponse:
+      allOf:
+        - $ref: "#/components/schemas/CommunicationNotification"
+        - type: object
+          required: [isArchived]
+          properties:
+            isArchived:
+              type: boolean
+              description: Explicitly reports the notification's participant-visible archive state.
+    CommunicationAnnouncementExtensions:
+      description: >
+        Additive request/response fields on the existing
+        POST/GET /communication/announcements and POST
+        /communication/announcements/preview operations. Existing campaigns
+        remain the source of announcement history, recipients, and delivery
+        statistics. isEmergency requires SCHOOL_ADMIN, the
+        EMERGENCY_BROADCAST core permission, SECURITY category, the exact
+        confirmation phrase, and a confirmedRecipientCount matching the
+        current resolved audience.
+      type: object
+      properties:
+        expiresAt:
+          type: [string, "null"]
+          format: date-time
+          description: Optional future expiry for announcements.
+        isEmergency:
+          type: boolean
+          default: false
+        emergencyConfirmation:
+          type: string
+          const: I CONFIRM EMERGENCY BROADCAST
+        confirmedRecipientCount:
+          type: integer
+          minimum: 0
+          description: Required for an emergency and must equal the server-resolved current audience size.
+        category:
+          type: string
+          enum: [ATTENDANCE, ACADEMIC, ASSIGNMENT, FINANCE, PAYMENT, ANNOUNCEMENT, ACCOUNT, SYSTEM, SUBSCRIPTION, PARTNER, SECURITY]
+          description: SECURITY is accepted only when isEmergency is true and the caller has the core emergency permission.
+    CommunicationChannelAvailability:
+      type: object
+      required: [channels]
+      properties:
+        channels:
+          type: array
+          items:
+            type: object
+            required: [channel, available, status, detail]
+            properties:
+              channel:
+                type: string
+                enum: [IN_APP, PUSH, SMS, EMAIL]
+              available: { type: boolean }
+              status:
+                type: string
+                enum: [AVAILABLE, CONFIGURATION_REQUIRED, UNAVAILABLE]
+              detail: { type: string }
+    ParentCommunicationChild:
+      type: object
+      required: [studentId, schoolId, schoolName, firstName, lastName, className, section]
+      properties:
+        studentId: { type: integer }
+        schoolId: { type: integer }
+        schoolName: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        className: { type: [string, "null"] }
+        section: { type: [string, "null"] }
+    ParentCreateCommunicationThread:
+      type: object
+      required: [studentId, subject, category, body, idempotencyKey]
+      properties:
+        studentId: { type: integer, minimum: 1 }
+        subject: { type: string, minLength: 1, maxLength: 200 }
+        category: { type: string, enum: [GENERAL, ACADEMIC, ASSIGNMENT, FINANCE] }
+        body: { type: string, minLength: 1, maxLength: 5000 }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+      additionalProperties: false
+    SchoolCreateCommunicationThread:
+      type: object
+      required: [schoolId, studentId, parentUserId, subject, category, body, idempotencyKey]
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        studentId: { type: integer, minimum: 1 }
+        parentUserId: { type: integer, minimum: 1 }
+        subject: { type: string, minLength: 1, maxLength: 200 }
+        category: { type: string, enum: [GENERAL, ACADEMIC, ASSIGNMENT, FINANCE] }
+        body: { type: string, minLength: 1, maxLength: 5000 }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+      additionalProperties: false
+    ParentCommunicationReply:
+      type: object
+      required: [body, idempotencyKey]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 5000 }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+      additionalProperties: false
+    ParentCommunicationMessage:
+      type: object
+      required: [id, senderRole, body, createdAt]
+      properties:
+        id: { type: integer }
+        senderRole: { type: string, enum: [PARENT, SCHOOL] }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+    ParentCommunicationThread:
+      type: object
+      required: [id, schoolId, studentId, childName, schoolName, subject, category, lastMessageAt, unreadCount, archived]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        studentId: { type: integer }
+        childName: { type: string }
+        schoolName: { type: string }
+        subject: { type: string }
+        category: { type: string, enum: [GENERAL, ACADEMIC, ASSIGNMENT, FINANCE] }
+        lastMessageAt: { type: string, format: date-time }
+        unreadCount: { type: integer }
+        archived: { type: boolean }
+    ParentCommunicationThreadPage:
+      type: object
+      required: [items, hasMore, nextBeforeId]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParentCommunicationThread"
+        hasMore: { type: boolean }
+        nextBeforeId: { type: [integer, "null"] }
+    ParentCommunicationThreadDetail:
+      allOf:
+        - $ref: "#/components/schemas/ParentCommunicationThread"
+        - type: object
+          required: [messages, hasMoreMessages, nextBeforeMessageId]
+          properties:
+            messages:
+              type: array
+              items:
+                $ref: "#/components/schemas/ParentCommunicationMessage"
+            hasMoreMessages: { type: boolean }
+            nextBeforeMessageId: { type: [integer, "null"] }
+    ParentCommunicationThreadMutation:
+      type: object
+      required: [thread, message, idempotent]
+      properties:
+        thread:
+          $ref: "#/components/schemas/ParentCommunicationThread"
+        message:
+          $ref: "#/components/schemas/ParentCommunicationMessage"
+        idempotent: { type: boolean }

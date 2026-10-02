@@ -1,4 +1,5 @@
 import { UserButton } from '@clerk/react';
+import ParentCommunicationCentre from './parent-communication';
 import { useState } from 'react';
 import { Link, Route, Switch } from 'wouter';
 import { BookOpen, ChevronRight, GraduationCap, ShieldCheck, UserRound, UsersRound, Zap, LogIn, LogOut, Calendar, Clock, ReceiptText, FileSpreadsheet } from 'lucide-react';
@@ -38,6 +39,7 @@ function PortalHeader() {
         </div>
       </div>
       <nav aria-label="Family navigation" className="mx-auto flex max-w-6xl items-center gap-5 overflow-x-auto border-t border-[hsl(var(--border)/.6)] px-5 py-2 text-xs font-bold text-[hsl(var(--primary))]">
+        <Link href="/parent/communication" data-testid="link-parent-communication" className="whitespace-nowrap hover:underline">Communication centre</Link>
         <Link href="/my-transport" data-testid="link-parent-transport" className="whitespace-nowrap hover:underline">My transport</Link>
         <Link href="/academic-calendar" data-testid="link-parent-academic-calendar" className="whitespace-nowrap hover:underline">Academic calendar</Link>
       </nav>
@@ -367,5 +369,5 @@ function ChildLibraryRoute() {
 }
 
 export default function ParentPortal() {
-  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><Switch><Route path="/" component={ParentDashboard} /><Route path="/reporting"><main className="mx-auto max-w-6xl p-5 md:p-8"><ReportingPage audience="parent" /></main></Route><Route path="/inbox"><CommunicationInbox standalone /></Route><Route path="/notification-settings"><NotificationSettings standalone /></Route><Route path="/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route path="/parent/library/:studentId" component={ChildLibraryRoute} /><Route component={NotFound} /></Switch></div>;
+  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><Switch><Route path="/" component={ParentDashboard} /><Route path="/reporting"><main className="mx-auto max-w-6xl p-5 md:p-8"><ReportingPage audience="parent" /></main></Route><Route path="/parent/communication"><ParentCommunicationCentre /></Route><Route path="/inbox"><CommunicationInbox standalone /></Route><Route path="/notification-settings"><NotificationSettings standalone /></Route><Route path="/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route path="/parent/library/:studentId" component={ChildLibraryRoute} /><Route component={NotFound} /></Switch></div>;
 }

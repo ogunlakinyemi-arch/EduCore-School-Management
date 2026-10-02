@@ -33,6 +33,7 @@ export const communicationNotifications = pgTable(
     link: text("link"),
     isRead: boolean("is_read").notNull().default(false),
     readAt: timestamp("read_at", { withTimezone: true }),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -203,6 +204,8 @@ export const communicationCampaigns = pgTable(
     recipientCount: integer("recipient_count").notNull().default(0),
     scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
     sentAt: timestamp("sent_at", { withTimezone: true }),
+    isEmergency: boolean("is_emergency").notNull().default(false),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -232,7 +235,10 @@ export const communicationCampaigns = pgTable(
     )`),
     check("communication_campaigns_recipient_count_check", sql`${t.recipientCount} >= 0`),
     check("communication_campaigns_target_criteria_check", sql`jsonb_typeof(${t.targetCriteria}) = 'object'`),
+    check("communication_campaigns_emergency_category_check", sql`NOT ${t.isEmergency} OR ${t.category} = 'SECURITY'`),
     index("communication_campaigns_school_status_idx").on(t.schoolId, t.status, t.createdAt),
+    index("communication_campaigns_active_expiry_idx").on(t.schoolId, t.expiresAt, t.createdAt)
+      .where(sql`${t.expiresAt} IS NOT NULL`),
   ],
 );
 
@@ -303,6 +309,75 @@ export const communicationPushDevices = pgTable(
   ],
 );
 
+export const communicationMessageThreads = pgTable(
+  "communication_message_threads",
+  {
+    id: serial("id").primaryKey(),
+    schoolId: integer("school_id").notNull().references(() => schools.id),
+    studentId: integer("student_id").notNull(),
+    subjectClassId: integer("subject_class_id"),
+    parentUserId: integer("parent_user_id").notNull().references(() => appUsers.id),
+    createdByUserId: integer("created_by_user_id").notNull().references(() => appUsers.id),
+    requestKey: text("request_key").notNull(),
+    requestHash: text("request_hash").notNull(),
+    subject: text("subject").notNull(),
+    category: text("category").notNull().default("GENERAL"),
+    parentLastReadAt: timestamp("parent_last_read_at", { withTimezone: true }),
+    schoolLastReadAt: timestamp("school_last_read_at", { withTimezone: true }),
+    parentArchivedAt: timestamp("parent_archived_at", { withTimezone: true }),
+    schoolArchivedAt: timestamp("school_archived_at", { withTimezone: true }),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("communication_message_threads_id_school_unique").on(t.id, t.schoolId),
+    foreignKey({
+      columns: [t.studentId, t.schoolId],
+      foreignColumns: [students.id, students.schoolId],
+      name: "communication_message_threads_student_school_fk",
+    }),
+    foreignKey({
+      columns: [t.subjectClassId, t.schoolId],
+      foreignColumns: [schoolClasses.id, schoolClasses.schoolId],
+      name: "communication_message_threads_class_school_fk",
+    }),
+    check("communication_message_threads_request_key_check", sql`length(${t.requestKey}) BETWEEN 8 AND 128`),
+    check("communication_message_threads_request_hash_check", sql`length(${t.requestHash}) = 64`),
+    check("communication_message_threads_subject_check", sql`length(btrim(${t.subject})) BETWEEN 1 AND 200`),
+    check("communication_message_threads_category_check", sql`${t.category} IN ('GENERAL','ACADEMIC','ASSIGNMENT','FINANCE')`),
+    uniqueIndex("communication_message_threads_request_unique").on(t.schoolId, t.createdByUserId, t.requestKey),
+    index("communication_message_threads_parent_student_idx").on(t.parentUserId, t.studentId, t.lastMessageAt),
+    index("communication_message_threads_school_student_idx").on(t.schoolId, t.studentId, t.lastMessageAt),
+  ],
+);
+
+export const communicationMessages = pgTable(
+  "communication_messages",
+  {
+    id: serial("id").primaryKey(),
+    threadId: integer("thread_id").notNull(),
+    schoolId: integer("school_id").notNull(),
+    senderUserId: integer("sender_user_id").notNull().references(() => appUsers.id),
+    requestKey: text("request_key").notNull(),
+    contentHash: text("content_hash").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    foreignKey({
+      columns: [t.threadId, t.schoolId],
+      foreignColumns: [communicationMessageThreads.id, communicationMessageThreads.schoolId],
+      name: "communication_messages_thread_school_fk",
+    }).onDelete("cascade"),
+    check("communication_messages_request_key_check", sql`length(${t.requestKey}) BETWEEN 8 AND 128`),
+    check("communication_messages_content_hash_check", sql`length(${t.contentHash}) = 64`),
+    check("communication_messages_body_check", sql`length(btrim(${t.body})) BETWEEN 1 AND 5000`),
+    uniqueIndex("communication_messages_request_unique").on(t.threadId, t.senderUserId, t.requestKey),
+    index("communication_messages_thread_created_idx").on(t.threadId, t.createdAt, t.id),
+  ],
+);
+
 export const insertCommunicationNotificationSchema = createInsertSchema(communicationNotifications).omit({
   id: true,
   createdAt: true,
@@ -335,6 +410,15 @@ export const insertCommunicationPushDeviceSchema = createInsertSchema(communicat
   id: true,
   createdAt: true,
 });
+export const insertCommunicationMessageThreadSchema = createInsertSchema(communicationMessageThreads).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const insertCommunicationMessageSchema = createInsertSchema(communicationMessages).omit({
+  id: true,
+  createdAt: true,
+});
 
 export type CommunicationNotification = typeof communicationNotifications.$inferSelect;
 export type InsertCommunicationNotification = z.infer<typeof insertCommunicationNotificationSchema>;
@@ -350,3 +434,7 @@ export type CommunicationCampaignRecipient = typeof communicationCampaignRecipie
 export type InsertCommunicationCampaignRecipient = z.infer<typeof insertCommunicationCampaignRecipientSchema>;
 export type CommunicationPushDevice = typeof communicationPushDevices.$inferSelect;
 export type InsertCommunicationPushDevice = z.infer<typeof insertCommunicationPushDeviceSchema>;
+export type CommunicationMessageThread = typeof communicationMessageThreads.$inferSelect;
+export type InsertCommunicationMessageThread = z.infer<typeof insertCommunicationMessageThreadSchema>;
+export type CommunicationMessage = typeof communicationMessages.$inferSelect;
+export type InsertCommunicationMessage = z.infer<typeof insertCommunicationMessageSchema>;

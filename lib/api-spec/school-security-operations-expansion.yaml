@@ -1,0 +1,858 @@
+openapi: 3.1.0
+info:
+  title: School Security Operations API
+  version: 1.0.0
+  description: >
+    Tenant-scoped visitor, authorized-pickup, student-release and private security-incident
+    operations. Security authorization is delegated to the security-core permission service.
+    Parent endpoints re-check the active parent-child relationship on each request.
+paths:
+  /schools/{schoolId}/security/visitors:
+    get:
+      operationId: listSchoolSecurityVisitors
+      tags: [school-security, visitors]
+      summary: List paginated visitor check-ins for users with VISITOR_MANAGE
+      description: The VISITOR_MANAGE domain grant permits reading visitor-management screens; unrelated SECURITY_READ or card-only grants do not.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, maximum: 100000, default: 0 }
+        - in: query
+          name: status
+          schema: { type: string, enum: [ON_SITE, CHECKED_OUT] }
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          description: School-scoped visitor records, newest check-ins first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SecurityVisitor" }
+        "403": { description: VISITOR_MANAGE permission required }
+    post:
+      operationId: registerSecurityVisitor
+      tags: [school-security, visitors]
+      summary: Register and explicitly check a visitor in
+      description: >
+        This records a security officer-confirmed check-in; it does not assert physical
+        gate control. Location and device references are optional and validated in-school
+        when supplied.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SecurityVisitorInput" }
+      responses:
+        "201":
+          description: Visitor checked in and audit history appended
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecurityVisitor" }
+        "400": { description: Invalid visitor input }
+        "403": { description: Visitor-management permission required }
+  /schools/{schoolId}/security/visitors/{visitorId}:
+    patch:
+      operationId: updateSecurityVisitor
+      tags: [school-security, visitors]
+      summary: Amend an on-site visitor record using optimistic concurrency
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/VisitorId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SecurityVisitorPatch" }
+      responses:
+        "200":
+          description: Updated visitor record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecurityVisitor" }
+        "404": { description: Visitor not found in this school }
+        "409": { description: Stale version or visitor already checked out }
+  /schools/{schoolId}/security/visitors/{visitorId}/checkout:
+    post:
+      operationId: checkoutSecurityVisitor
+      tags: [school-security, visitors]
+      summary: Explicitly check out a visitor exactly once
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/VisitorId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExpectedVersion" }
+      responses:
+        "200":
+          description: Checked out record, or replay of the same idempotency key
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecurityVisitor" }
+        "409": { description: Stale version or visitor was checked out with another key }
+  /schools/{schoolId}/security/visitors/{visitorId}/history:
+    get:
+      operationId: getSecurityVisitorHistory
+      tags: [school-security, visitors, audit]
+      summary: Read immutable visitor check-in, amendment and checkout history
+      description: Requires VISITOR_MANAGE, the domain permission for visitor screens and records.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/VisitorId"
+      responses:
+        "200":
+          description: School-scoped append-only visitor audit snapshots
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/SecurityOperationHistory" } }
+  /parent/children/{studentId}/security/pickup-persons:
+    get:
+      operationId: listParentPickupPersonNominations
+      tags: [parent, school-security, pickup]
+      summary: List only the calling parent's pickup-person nominations for an actively linked child
+      parameters:
+        - $ref: "#/components/parameters/StudentId"
+      responses:
+        "200":
+          description: Parent-owned pickup nominations only
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AuthorizedPickupPerson" }
+        "404": { description: No active parent-child link }
+    post:
+      operationId: nominatePickupPerson
+      tags: [parent, school-security, pickup]
+      summary: Nominate a pickup person for school review
+      description: A nomination is pending until an authorized school security officer approves it.
+      parameters:
+        - $ref: "#/components/parameters/StudentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AuthorizedPickupPersonInput" }
+      responses:
+        "201":
+          description: Pending nomination
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthorizedPickupPerson" }
+        "404": { description: No active parent-child link }
+  /schools/{schoolId}/students/{studentId}/security/pickup-persons:
+    get:
+      operationId: listSchoolPickupPersons
+      tags: [school-security, pickup]
+      summary: List pickup-person nominations for users with PICKUP_APPROVE
+      description: PICKUP_APPROVE includes read access to school pickup-management lists; SECURITY_READ or unrelated card-only grants do not.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/StudentId"
+      responses:
+        "200":
+          description: School-authorized pickup-person records
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AuthorizedPickupPerson" }
+        "403": { description: PICKUP_APPROVE permission required }
+  /schools/{schoolId}/students/{studentId}/security/pickup-persons/{personId}/decision:
+    post:
+      operationId: decideAuthorizedPickupPerson
+      tags: [school-security, pickup]
+      summary: Approve, reject, or revoke a pickup-person nomination with compare-and-swap
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/StudentId"
+        - in: path
+          name: personId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PickupPersonDecision" }
+      responses:
+        "200":
+          description: Audited nomination decision
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthorizedPickupPerson" }
+        "409": { description: Stale version or invalid state transition }
+  /parent/children/{studentId}/security/pickup-requests:
+    get:
+      operationId: listParentPickupRequests
+      tags: [parent, school-security, pickup]
+      summary: List this parent's requests for an actively linked child
+      parameters:
+        - $ref: "#/components/parameters/StudentId"
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, maximum: 100000, default: 0 }
+      responses:
+        "200":
+          description: Parent-owned release requests only
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/StudentPickupRequest" }
+        "404": { description: No active parent-child link }
+    post:
+      operationId: requestStudentPickup
+      tags: [parent, school-security, pickup]
+      summary: Request a scheduled student pickup by an approved pickup person
+      description: >
+        Every request revalidates the calling parent's active family link and the pickup
+        person's school, student, approval and requested-time validity.
+      parameters:
+        - $ref: "#/components/parameters/StudentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentPickupRequestInput" }
+      responses:
+        "201":
+          description: Pending school approval with bounded release-validity window
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentPickupRequest" }
+        "409": { description: Pickup person is not approved or not valid at the requested time }
+  /schools/{schoolId}/students/{studentId}/security/pickup-requests:
+    get:
+      operationId: listSchoolPickupRequests
+      tags: [school-security, pickup]
+      summary: List paginated pickup requests for users with PICKUP_APPROVE
+      description: PICKUP_APPROVE includes read access to the school's pickup request queue.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/StudentId"
+        - in: query
+          name: status
+          schema: { type: string, enum: [PENDING, APPROVED, REJECTED, CANCELLED, REFUSED, COMPLETED] }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, maximum: 100000, default: 0 }
+      responses:
+        "200":
+          description: School-scoped release queue/history
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/StudentPickupRequest" }
+        "403": { description: PICKUP_APPROVE permission required }
+  /schools/{schoolId}/students/{studentId}/security/pickup-requests/{requestId}/decision:
+    post:
+      operationId: decideStudentPickupRequest
+      tags: [school-security, pickup]
+      summary: Approve or reject a pending pickup request
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/StudentId"
+        - $ref: "#/components/parameters/PickupRequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PickupDecision" }
+      responses:
+        "200":
+          description: Audited request decision
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentPickupRequest" }
+        "409": { description: Stale version or request is no longer pending }
+  /parent/children/{studentId}/security/pickup-requests/{requestId}/cancel:
+    post:
+      operationId: cancelParentPickupRequest
+      tags: [parent, school-security, pickup]
+      summary: Cancel this parent's pending or approved pickup request
+      parameters:
+        - $ref: "#/components/parameters/StudentId"
+        - $ref: "#/components/parameters/PickupRequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PickupCancelInput" }
+      responses:
+        "200":
+          description: Cancelled request
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentPickupRequest" }
+        "409": { description: "Request is stale, unavailable, or no longer cancellable" }
+  /schools/{schoolId}/students/{studentId}/security/pickup-requests/{requestId}/refuse:
+    post:
+      operationId: refuseStudentPickupAtExit
+      tags: [school-security, pickup]
+      summary: Record a pickup refusal without marking the student as released
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/StudentId"
+        - $ref: "#/components/parameters/PickupRequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PickupCancelInput" }
+      responses:
+        "200":
+          description: Request recorded as REFUSED; no release completion is inferred
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentPickupRequest" }
+        "409": { description: Request is no longer approved }
+  /schools/{schoolId}/students/{studentId}/security/pickup-requests/{requestId}/completion:
+    post:
+      operationId: completeStudentPickup
+      tags: [school-security, pickup]
+      summary: Complete a release only against an approved request and confirmed recorded student exit
+      description: >
+        Requires an active security authorization, current parent-child association,
+        the matching currently-valid approved pickup person, an in-window confirmed
+        EXIT event for this student and an idempotency key. A regular exit never completes
+        a pickup request. The transition uses a locked row and optimistic version check.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/StudentId"
+        - $ref: "#/components/parameters/PickupRequestId"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Reuse the same key to safely retry a completion after a lost response.
+          schema: { type: string, minLength: 8, maxLength: 128 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PickupCompletionInput" }
+      responses:
+        "200":
+          description: Completed release or idempotent replay
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StudentPickupRequest" }
+        "409": { description: "Stale request, invalid pickup person, invalid event, expired window, or conflicting replay" }
+  /schools/{schoolId}/students/{studentId}/security/pickup-requests/{requestId}/history:
+    get:
+      operationId: getStudentPickupRequestHistory
+      tags: [school-security, pickup, audit]
+      summary: Read immutable pickup request history
+      description: Requires PICKUP_APPROVE, the domain permission for school pickup lists and histories.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/StudentId"
+        - $ref: "#/components/parameters/PickupRequestId"
+      responses:
+        "200":
+          description: School-scoped append-only request history
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SecurityOperationHistory" }
+  /schools/{schoolId}/security/incidents:
+    get:
+      operationId: listSchoolSecurityIncidents
+      tags: [school-security, incidents]
+      summary: List paginated, private security incidents
+      description: Incident detail access requires INCIDENT_MANAGE; SECURITY_READ alone does not expose incident narratives or involved-person records.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - in: query
+          name: status
+          schema: { type: string, enum: [OPEN, INVESTIGATING, RESOLVED] }
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, maximum: 100000, default: 0 }
+      responses:
+        "200":
+          description: Security incidents scoped to the authorized school
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SecurityIncident" }
+        "403": { description: Incident-detail permission required }
+    post:
+      operationId: createSchoolSecurityIncident
+      tags: [school-security, incidents]
+      summary: Record a security incident and immutable creation history
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SecurityIncidentInput" }
+      responses:
+        "201":
+          description: Incident created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecurityIncident" }
+        "400": { description: Invalid incident input or inactive assigned staff }
+        "403": { description: Incident-management permission required }
+  /schools/{schoolId}/security/incidents/{incidentId}:
+    patch:
+      operationId: updateSchoolSecurityIncident
+      tags: [school-security, incidents]
+      summary: Update incident assignment or lifecycle using optimistic concurrency
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/IncidentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SecurityIncidentPatch" }
+      responses:
+        "200":
+          description: Updated incident
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecurityIncident" }
+        "409": { description: Stale version or invalid lifecycle transition }
+  /schools/{schoolId}/security/incidents/{incidentId}/attachments:
+    get:
+      operationId: listSchoolSecurityIncidentAttachments
+      tags: [school-security, incidents, attachments]
+      summary: List confirmed private attachments for an incident
+      description: Requires INCIDENT_MANAGE, the sensitive incident-detail permission. Parents and read-only Platform Owner sessions cannot access this route.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/IncidentId"
+      responses:
+        "200":
+          description: Confirmed attachment metadata only; never includes storage paths or signed URLs
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SecurityIncidentAttachment" }
+        "403": { description: Incident-detail permission required }
+  /schools/{schoolId}/security/incidents/{incidentId}/attachments/upload-intent:
+    post:
+      operationId: createSchoolSecurityIncidentAttachmentUploadIntent
+      tags: [school-security, incidents, attachments]
+      summary: Create a short-lived private upload intent for an incident attachment
+      description: >
+        Requires INCIDENT_MANAGE. Files are restricted to PDF, JPEG, PNG or WebP and
+        10 MiB. The returned URL is temporary and is never persisted in the application
+        database; confirm only after its 120-second upload window has expired.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/IncidentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SecurityIncidentAttachmentUploadInput" }
+      responses:
+        "201":
+          description: Pending attachment metadata and a temporary upload URL
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecurityIncidentAttachmentUploadIntent" }
+        "400": { description: Invalid attachment metadata }
+        "403": { description: Incident-detail permission required }
+  /schools/{schoolId}/security/incidents/{incidentId}/attachments/{attachmentId}/confirm:
+    post:
+      operationId: confirmSchoolSecurityIncidentAttachment
+      tags: [school-security, incidents, attachments]
+      summary: Confirm an uploaded private incident attachment and validate its object content
+      description: Only the user who staged the object may confirm it. The URL must have expired; metadata, exact tenant-owned object prefix, object existence, byte size and file signature are verified before the incident audit trail changes.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/IncidentId"
+        - $ref: "#/components/parameters/IncidentAttachmentId"
+      responses:
+        "200":
+          description: Confirmed incident attachment metadata
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecurityIncidentAttachment" }
+        "404": { description: Attachment not found in this incident or user scope }
+        "409": { description: Upload URL has not expired or staged object cannot be confirmed }
+  /schools/{schoolId}/security/incidents/{incidentId}/attachments/{attachmentId}/download:
+    get:
+      operationId: createSchoolSecurityIncidentAttachmentDownload
+      tags: [school-security, incidents, attachments]
+      summary: Create a short-lived private download URL for a confirmed attachment
+      description: Requires INCIDENT_MANAGE on every download request. No parent or read-only Platform Owner access is granted by student or school association alone.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/IncidentId"
+        - $ref: "#/components/parameters/IncidentAttachmentId"
+      responses:
+        "200":
+          description: Confirmed attachment metadata and a short-lived download URL
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SecurityIncidentAttachmentDownload" }
+        "404": { description: Confirmed attachment not found in this incident }
+        "403": { description: Incident-detail permission required }
+  /schools/{schoolId}/security/incidents/{incidentId}/history:
+    get:
+      operationId: getSchoolSecurityIncidentHistory
+      tags: [school-security, incidents, audit]
+      summary: Read append-only incident history
+      description: Requires INCIDENT_MANAGE to prevent incident narratives and person references leaking through history.
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - $ref: "#/components/parameters/IncidentId"
+      responses:
+        "200":
+          description: School-scoped incident history
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SecurityOperationHistory" }
+components:
+  parameters:
+    SchoolId:
+      name: schoolId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    StudentId:
+      name: studentId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    VisitorId:
+      name: visitorId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    PickupRequestId:
+      name: requestId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    IncidentId:
+      name: incidentId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    IncidentAttachmentId:
+      name: attachmentId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 8, maxLength: 128 }
+  schemas:
+    ExpectedVersion:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion]
+      properties:
+        expectedVersion: { type: integer, minimum: 1 }
+    SecurityVisitorInput:
+      type: object
+      additionalProperties: false
+      required: [visitorName, purpose]
+      properties:
+        visitorName: { type: string, minLength: 1, maxLength: 160 }
+        phone: { type: [string, "null"], maxLength: 40 }
+        idReference: { type: [string, "null"], maxLength: 160 }
+        purpose: { type: string, minLength: 1, maxLength: 1000 }
+        hostName: { type: [string, "null"], maxLength: 160 }
+        hostStudentId: { type: [integer, "null"], minimum: 1 }
+        notes: { type: [string, "null"], maxLength: 2000 }
+        securityLocationId: { type: [integer, "null"], minimum: 1 }
+        securityDeviceId: { type: [integer, "null"], minimum: 1 }
+    SecurityVisitorPatch:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion]
+      properties:
+        expectedVersion: { type: integer, minimum: 1 }
+        visitorName: { type: string, minLength: 1, maxLength: 160 }
+        phone: { type: [string, "null"], maxLength: 40 }
+        idReference: { type: [string, "null"], maxLength: 160 }
+        purpose: { type: string, minLength: 1, maxLength: 1000 }
+        hostName: { type: [string, "null"], maxLength: 160 }
+        hostStudentId: { type: [integer, "null"], minimum: 1 }
+        notes: { type: [string, "null"], maxLength: 2000 }
+      description: At least one visitor field plus expectedVersion; only on-site visitors can be amended.
+    SecurityVisitor:
+      type: object
+      additionalProperties: false
+      required: [id, schoolId, visitorName, phone, idReference, purpose, hostName, hostStudentId, checkedInAt, checkedOutAt, status, notes, securityOfficerUserId, securityLocationId, securityDeviceId, version, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        visitorName: { type: string }
+        phone: { type: [string, "null"] }
+        idReference: { type: [string, "null"] }
+        purpose: { type: string }
+        hostName: { type: [string, "null"] }
+        hostStudentId: { type: [integer, "null"] }
+        checkedInAt: { type: string, format: date-time }
+        checkedOutAt: { type: [string, "null"], format: date-time }
+        status: { type: string, enum: [ON_SITE, CHECKED_OUT] }
+        notes: { type: [string, "null"] }
+        securityOfficerUserId: { type: integer }
+        securityLocationId: { type: [integer, "null"] }
+        securityDeviceId: { type: [integer, "null"] }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    AuthorizedPickupPersonInput:
+      type: object
+      additionalProperties: false
+      required: [fullName, phone]
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 160 }
+        phone: { type: string, minLength: 3, maxLength: 40 }
+        relationship: { type: [string, "null"], maxLength: 100 }
+        identityReference: { type: [string, "null"], maxLength: 160 }
+        validFrom: { type: string, format: date-time }
+        validUntil: { type: string, format: date-time }
+    AuthorizedPickupPerson:
+      type: object
+      additionalProperties: false
+      required: [id, schoolId, studentId, fullName, phone, relationship, identityReference, status, validFrom, validUntil, requestedAt, decisionReason, decidedAt, version, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        studentId: { type: integer }
+        fullName: { type: string }
+        phone: { type: string }
+        relationship: { type: [string, "null"] }
+        identityReference: { type: [string, "null"] }
+        status: { type: string, enum: [PENDING, APPROVED, REJECTED, REVOKED] }
+        validFrom: { type: [string, "null"], format: date-time }
+        validUntil: { type: [string, "null"], format: date-time }
+        requestedAt: { type: string, format: date-time }
+        decisionReason: { type: [string, "null"] }
+        decidedAt: { type: [string, "null"], format: date-time }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    PickupPersonDecision:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion, decision]
+      properties:
+        expectedVersion: { type: integer, minimum: 1 }
+        decision: { type: string, enum: [APPROVE, REJECT, REVOKE] }
+        reason: { type: [string, "null"], maxLength: 1000 }
+    StudentPickupRequestInput:
+      type: object
+      additionalProperties: false
+      required: [pickupPersonId, requestedPickupAt]
+      properties:
+        pickupPersonId: { type: integer, minimum: 1 }
+        requestedPickupAt: { type: string, format: date-time }
+        reason: { type: [string, "null"], maxLength: 1000 }
+    StudentPickupRequest:
+      type: object
+      additionalProperties: false
+      required: [id, schoolId, studentId, requestedByParentId, pickupPersonId, requestedPickupAt, validFrom, validUntil, reason, status, decisionReason, decidedAt, completedAt, completionPickupPersonId, recordedSecurityEventId, version, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        studentId: { type: integer }
+        requestedByParentId: { type: integer }
+        pickupPersonId: { type: integer }
+        requestedPickupAt: { type: string, format: date-time }
+        validFrom: { type: string, format: date-time }
+        validUntil: { type: string, format: date-time }
+        reason: { type: [string, "null"] }
+        status: { type: string, enum: [PENDING, APPROVED, REJECTED, CANCELLED, REFUSED, COMPLETED] }
+        decisionReason: { type: [string, "null"] }
+        decidedAt: { type: [string, "null"], format: date-time }
+        completedAt: { type: [string, "null"], format: date-time }
+        completionPickupPersonId: { type: [integer, "null"] }
+        recordedSecurityEventId: { type: [integer, "null"] }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    PickupDecision:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion, decision, reason]
+      properties:
+        expectedVersion: { type: integer, minimum: 1 }
+        decision: { type: string, enum: [APPROVE, REJECT] }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    PickupCancelInput:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion]
+      properties:
+        expectedVersion: { type: integer, minimum: 1 }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    PickupCompletionInput:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion, pickupPersonId, recordedSecurityEventId]
+      properties:
+        expectedVersion: { type: integer, minimum: 1 }
+        pickupPersonId: { type: integer, minimum: 1 }
+        recordedSecurityEventId: { type: integer, minimum: 1 }
+    SecurityIncidentInput:
+      type: object
+      additionalProperties: false
+      required: [incidentType, occurredAt, description]
+      properties:
+        incidentType: { type: string, enum: [UNAUTHORIZED_ACCESS, LOST_CARD, VISITOR_ISSUE, STUDENT_RELEASE, GATE_INCIDENT, SECURITY_CONCERN, OTHER] }
+        occurredAt: { type: string, format: date-time }
+        securityLocationId: { type: [integer, "null"], minimum: 1 }
+        securityDeviceId: { type: [integer, "null"], minimum: 1 }
+        studentId: { type: [integer, "null"], minimum: 1 }
+        involvedPersons:
+          type: array
+          maxItems: 20
+          default: []
+          items:
+            type: object
+            additionalProperties: false
+            required: [personType, personId]
+            properties:
+              personType: { type: string, enum: [STUDENT, STAFF, VISITOR] }
+              personId: { type: integer, minimum: 1 }
+        assignedStaffUserId: { type: [integer, "null"], minimum: 1 }
+        description: { type: string, minLength: 1, maxLength: 5000 }
+        severity: { type: string, enum: [LOW, MODERATE, HIGH, CRITICAL], default: LOW }
+    SecurityIncidentPatch:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion]
+      properties:
+        expectedVersion: { type: integer, minimum: 1 }
+        status: { type: string, enum: [OPEN, INVESTIGATING, RESOLVED] }
+        involvedPersons:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            additionalProperties: false
+            required: [personType, personId]
+            properties:
+              personType: { type: string, enum: [STUDENT, STAFF, VISITOR] }
+              personId: { type: integer, minimum: 1 }
+        assignedStaffUserId: { type: [integer, "null"], minimum: 1 }
+        resolution: { type: [string, "null"], maxLength: 5000 }
+      description: Must include at least one mutable field with expectedVersion.
+    SecurityIncident:
+      type: object
+      additionalProperties: false
+      required: [id, schoolId, incidentType, occurredAt, securityLocationId, securityDeviceId, studentId, involvedPersons, assignedStaffUserId, description, severity, status, resolution, createdByUserId, version, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        incidentType: { type: string, enum: [UNAUTHORIZED_ACCESS, LOST_CARD, VISITOR_ISSUE, STUDENT_RELEASE, GATE_INCIDENT, SECURITY_CONCERN, OTHER] }
+        occurredAt: { type: string, format: date-time }
+        securityLocationId: { type: [integer, "null"] }
+        securityDeviceId: { type: [integer, "null"] }
+        studentId: { type: [integer, "null"] }
+        involvedPersons:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [personType, personId]
+            properties:
+              personType: { type: string, enum: [STUDENT, STAFF, VISITOR] }
+              personId: { type: integer }
+        assignedStaffUserId: { type: [integer, "null"] }
+        description: { type: string }
+        severity: { type: string, enum: [LOW, MODERATE, HIGH, CRITICAL] }
+        status: { type: string, enum: [OPEN, INVESTIGATING, RESOLVED] }
+        resolution: { type: [string, "null"] }
+        createdByUserId: { type: integer }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    SecurityOperationHistory:
+      type: object
+      additionalProperties: true
+      required: [revision, eventType, actorUserId, result, snapshot, createdAt]
+      properties:
+        revision: { type: integer }
+        eventType: { type: string }
+        actorUserId: { type: integer }
+        result: { type: string, enum: [SUCCESS, REJECTED] }
+        snapshot: { type: object }
+        createdAt: { type: string, format: date-time }
+    SecurityIncidentAttachmentUploadInput:
+      type: object
+      additionalProperties: false
+      required: [fileName, contentType, byteSize]
+      properties:
+        fileName: { type: string, minLength: 1, maxLength: 255 }
+        contentType: { type: string, enum: [application/pdf, image/jpeg, image/png, image/webp] }
+        byteSize: { type: integer, minimum: 1, maximum: 10485760 }
+    SecurityIncidentAttachment:
+      type: object
+      additionalProperties: false
+      required: [id, schoolId, incidentId, fileName, contentType, byteSize, status, uploadedByUserId, uploadExpiresAt, confirmedAt, createdAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        incidentId: { type: integer }
+        fileName: { type: string }
+        contentType: { type: string, enum: [application/pdf, image/jpeg, image/png, image/webp] }
+        byteSize: { type: integer, minimum: 1, maximum: 10485760 }
+        status: { type: string, enum: [PENDING_UPLOAD, CONFIRMED] }
+        uploadedByUserId: { type: integer }
+        uploadExpiresAt: { type: string, format: date-time }
+        confirmedAt: { type: [string, "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+    SecurityIncidentAttachmentUploadIntent:
+      type: object
+      additionalProperties: false
+      required: [attachment, uploadUrl]
+      properties:
+        attachment: { $ref: "#/components/schemas/SecurityIncidentAttachment" }
+        uploadUrl: { type: string, format: uri }
+    SecurityIncidentAttachmentDownload:
+      type: object
+      additionalProperties: false
+      required: [attachment, downloadUrl]
+      properties:
+        attachment: { $ref: "#/components/schemas/SecurityIncidentAttachment" }
+        downloadUrl: { type: string, format: uri }

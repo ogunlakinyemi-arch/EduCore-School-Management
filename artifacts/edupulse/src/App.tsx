@@ -1,4 +1,5 @@
 import { ClerkProvider, useAuth } from '@clerk/react';
+import SchoolSecurityPage from './pages/security';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { Route, Switch, Redirect, Link } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -45,6 +46,9 @@ import { SchoolBrandingPage } from '@/pages/school-branding';
 import { AcademicCalendarPage } from '@/pages/academic-calendar';
 import { TeacherAssignmentsPage } from '@/pages/teacher-assignments';
 import { TeacherDutyPage } from '@/pages/teacher-duty';
+import { AdmissionsPage, PublicAdmissionPortalPage } from '@/pages/admissions';
+import { StudentCarePage, BehaviourPage, FamilyCarePage } from '@/pages/student-care';
+import { PromotionPage } from '@/pages/promotion';
 import TransportPage from '@/pages/transport';
 import FamilyTransportPage from '@/pages/family-transport';
 import { EmployeeNfcPage, MyEmployeeNfcPage } from '@/pages/employee-nfc';
@@ -210,8 +214,10 @@ function ProtectedRoutes() {
 
   if (isOnlyParent) {
     return <TenantProvider><Switch>
+      <Route path="/my-care"><Shell><FamilyCarePage /></Shell></Route>
       <Route path="/my-transport"><Shell><FamilyTransportPage /></Shell></Route>
       <Route path="/academic-calendar"><Shell><AcademicCalendarPage /></Shell></Route>
+      <Route path="/parent/communication"><ParentPortal /></Route>
       <Route><ParentPortal /></Route>
     </Switch></TenantProvider>;
   }
@@ -229,6 +235,12 @@ function ProtectedRoutes() {
         <Switch>
           <Route path="/" component={Dashboard} />
           <Route path="/dashboard"><Redirect to="/" /></Route>
+          <Route path="/security"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'STAFF']} ownerCanView ownerReadOnly><SchoolSecurityPage /></RoleGuard></Route>
+          <Route path="/admissions"><RoleGuard allowedRoles={['SCHOOL_ADMIN']}><AdmissionsPage /></RoleGuard></Route>
+          <Route path="/student-care"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']}><StudentCarePage /></RoleGuard></Route>
+          <Route path="/behaviour"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF']}><BehaviourPage /></RoleGuard></Route>
+          <Route path="/promotion"><RoleGuard allowedRoles={['SCHOOL_ADMIN']}><PromotionPage /></RoleGuard></Route>
+          <Route path="/my-care"><RoleGuard allowedRoles={['PARENT', 'STUDENT']}><FamilyCarePage /></RoleGuard></Route>
           <Route path="/school-branding"><RoleGuard allowedRoles={['SCHOOL_ADMIN']}><SchoolBrandingPage /></RoleGuard></Route>
           <Route path="/academic-calendar"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STAFF', 'PARENT', 'STUDENT']} ownerCanView ownerReadOnly><AcademicCalendarPage /></RoleGuard></Route>
           <Route path="/teacher-assignments"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']}><TeacherAssignmentsPage /></RoleGuard></Route>
@@ -420,6 +432,7 @@ export default function App() {
         <AuthQueryProvider>
           <TooltipProvider>
             <Switch>
+              <Route path="/admissions/portal/:portalKey"><PublicAdmissionPortalPage /></Route>
               <Route path="/setup/platform-owner"><PlatformOwnerSetup /></Route>
               <Route path="/sign-in/*?"><AuthScreen mode="sign-in" /></Route>
               <Route path="/sign-up/*?"><AuthScreen mode="sign-up" /></Route>

@@ -1,0 +1,1570 @@
+YEMAIT EDUCORE — SCHOOL SECURITY & SERIOUS PARENT COMMUNICATION CENTRE
+
+IMPORTANT DEVELOPMENT RULE
+
+Work ONLY in the Replit Development environment.
+
+DO NOT click, execute, or initiate Publish.
+
+Do not deploy or make any Production database/schema changes.
+
+The existing Replit Publish/schema-diff generator issue is being handled separately through Replit Support. Do not attempt to fix, bypass, or work around that Production issue during this task.
+
+You may:
+
+- Modify Development code.
+- Add Development migrations.
+- Modify the Development database safely.
+- Run Development migrations.
+- Run automated tests.
+- Run typechecking.
+- Run API tests.
+- Run browser tests.
+- Fix Development errors.
+
+At completion, clearly report:
+
+1. Implemented.
+2. Verified in Development.
+3. Not yet verified.
+4. Production status.
+
+---
+
+1. OBJECTIVE
+
+Extend the existing Yemait EduCore platform with two tightly connected capabilities:
+
+A. SCHOOL SECURITY & CAMPUS ACCESS
+
+Use the existing NFC identity/card infrastructure as the foundation.
+
+Do NOT create a second independent NFC attendance system.
+
+NFC must remain a permanent digital identity/security mechanism that can support:
+
+- Student identification
+- Staff identification
+- School entry
+- School exit
+- Attendance
+- Access control
+- Visitor/security events
+- Early pickup
+- Card revocation
+- Lost-card handling
+- Security audit trails
+- Parent security notifications
+- Future school-bus integration with Yemait Track
+
+B. SERIOUS PARENT COMMUNICATION & ENGAGEMENT CENTRE
+
+Parents are the ultimate users/payors of the school service experience.
+
+Parent communication must therefore become a major platform capability rather than simply an announcement page.
+
+The system should proactively communicate important events to parents through available channels such as:
+
+- Push notifications
+- SMS
+- Email where configured
+- In-app notifications
+
+Do not fake provider delivery.
+
+If a provider is not configured, clearly show the channel as unavailable/configuration required.
+
+---
+
+2. PRESERVE EXISTING ARCHITECTURE
+
+Before making changes:
+
+Inspect the existing implementation.
+
+Reuse existing:
+
+- PostgreSQL database
+- Drizzle ORM
+- Express API
+- React/Vite frontend
+- TypeScript
+- React Query
+- Zod/OpenAPI validation
+- Clerk authentication
+- Existing RBAC
+- Existing tenant isolation
+- Existing audit logging
+- Existing NFC card/device architecture
+- Existing attendance architecture
+- Existing parent/student relationships
+- Existing notification infrastructure
+- Existing SMS/email infrastructure if already present
+- Existing school settings
+- Existing school branding
+- Existing communication structures
+
+Do NOT rebuild existing functionality.
+
+Do NOT create duplicate NFC cards, people, parents, students, attendance records, or communication workflows.
+
+---
+
+3. EXISTING NFC SYSTEM IS THE FOUNDATION
+
+Treat the existing NFC system as:
+
+DIGITAL SCHOOL IDENTITY + SECURITY INFRASTRUCTURE
+
+Not merely attendance.
+
+The fundamental identity chain must remain:
+
+NFC Card UID
+→ Person
+→ School
+→ Current School Record
+
+For students:
+
+NFC Card UID
+→ Student
+→ Current enrollment/class/section
+→ Security event
+
+For staff:
+
+NFC Card UID
+→ Staff/Employee
+→ School
+→ Staff security event
+
+Never store fingerprints or biometric templates unless the existing architecture explicitly supports an approved external biometric reference.
+
+Continue storing only external/provider biometric references where applicable.
+
+---
+
+4. SCHOOL SECURITY DASHBOARD
+
+Create a dedicated:
+
+School Admin → School Security
+
+section.
+
+The dashboard should provide a clear real-time/near-real-time security overview.
+
+Include:
+
+Campus status
+
+- Students currently on campus
+- Staff currently on campus
+- Visitors currently on campus
+- Students who have exited
+- Late arrivals
+- Early departures
+- Unknown/rejected card attempts
+- Revoked-card attempts
+- Security incidents
+
+Security activity feed
+
+Show events such as:
+
+- Student entered school
+- Student exited school
+- Teacher entered
+- Staff exited
+- Visitor checked in
+- Visitor checked out
+- Rejected card
+- Revoked card used
+- Early pickup approved
+- Early pickup completed
+- Security incident created
+
+Include:
+
+- Person
+- Event
+- Date
+- Time
+- Reader/device
+- School/location
+- Status
+
+---
+
+5. NFC ENTRY AND EXIT SECURITY
+
+Use the existing NFC card/device architecture.
+
+When a card is tapped:
+
+1. Read NFC UID.
+2. Identify card.
+3. Confirm card belongs to the school.
+4. Confirm card is active.
+5. Confirm person exists.
+6. Confirm student/staff status.
+7. Resolve current school record.
+8. Determine whether the event is entry, exit, attendance, or another authorized access event.
+9. Record the event.
+10. Trigger appropriate notifications.
+11. Update campus presence where applicable.
+
+Do not assume every NFC tap is automatically an attendance event.
+
+Security events and attendance events should be related but logically distinct.
+
+---
+
+6. VALID NFC EVENT
+
+Example:
+
+Student taps at Main Gate.
+
+System resolves:
+
+Student:
+David Ogun
+
+School:
+Greenfield College
+
+Card:
+Active
+
+Reader:
+Main Gate Reader
+
+Result:
+
+ACCESS GRANTED
+
+Record:
+
+- Person
+- School
+- Card
+- Reader
+- Entry/exit
+- Timestamp
+- Event type
+- Result
+- Audit information
+
+If configured, trigger:
+
+Parent notification:
+
+"David Ogun entered school at 7:32 AM."
+
+---
+
+7. INVALID / REVOKED CARD
+
+If a card is:
+
+- Revoked
+- Expired
+- Deactivated
+- Assigned to another school
+- Unknown
+- Not assigned
+- Otherwise unauthorized
+
+Do NOT grant normal access.
+
+Record:
+
+ACCESS DENIED
+
+Include:
+
+- Card UID/reference
+- Reason
+- Reader
+- School
+- Timestamp
+- Security event
+- Actor/device where applicable
+
+Where supported by the physical reader:
+
+- Red indicator
+- Buzzer/decline signal
+
+Do not claim physical LED/buzzer control unless the connected device actually supports it.
+
+---
+
+8. LOST CARD
+
+School Admin/Security Officer must be able to mark:
+
+Card → Lost
+
+This should safely transition the card into a non-authorized state.
+
+The student/person remains intact.
+
+The school can then issue a replacement NFC card.
+
+Do not create duplicate student/person records.
+
+Preserve card history.
+
+---
+
+9. CARD REPLACEMENT
+
+When a replacement card is assigned:
+
+Old card:
+
+- Revoked/retired
+
+New card:
+
+- Active
+
+Student:
+
+- Same student
+
+Historical events:
+
+- Preserved
+
+The student's permanent identity remains unchanged.
+
+---
+
+10. STUDENT LIFECYCLE
+
+The physical NFC card must remain usable when the student changes:
+
+JSS1 A
+→ JSS2 B
+→ JSS3 A
+→ SS1
+→ SS2
+→ SS3
+
+Do NOT print:
+
+- Current class
+- Section
+- Session
+- Term
+- Academic year
+
+on the permanent card.
+
+The backend dynamically resolves current information.
+
+---
+
+11. SECURITY ZONES / READERS
+
+Create support for school security locations/readers.
+
+Examples:
+
+- Main Gate
+- Secondary Gate
+- Staff Gate
+- Boarding House
+- Administration Block
+- Examination Area
+- Laboratory
+- Library
+- School Bus
+- Other authorized locations
+
+Each reader/device should be associated with:
+
+- School
+- Location
+- Device identifier
+- Status
+- Security permissions where appropriate
+
+Do not assume all readers support physical access control.
+
+The software must distinguish:
+
+Identity event
+
+from
+
+Physical door/gate unlocking
+
+A reader may only report a tap unless an actual access-control controller is integrated.
+
+---
+
+12. VISITOR MANAGEMENT
+
+Add:
+
+School Security → Visitors
+
+Features:
+
+- Register visitor
+- Visitor name
+- Phone number
+- Identification/reference where appropriate
+- Purpose of visit
+- Person being visited
+- Entry time
+- Exit time
+- Status
+- Notes
+- Security officer
+
+Optional:
+
+- Temporary QR/visitor pass
+- Visitor reference number
+
+Visitor records must be school-tenant isolated.
+
+---
+
+13. EARLY PICKUP / STUDENT RELEASE
+
+Parents or authorized school staff should be able to initiate an early-pickup request.
+
+Example:
+
+Parent requests:
+
+David Ogun — Pickup at 1:30 PM
+
+School authorizes the request.
+
+Security dashboard displays:
+
+AUTHORIZED EARLY PICKUP
+
+When the student exits:
+
+Record:
+
+- Student
+- Parent/authorized person
+- Time
+- Exit location
+- Approval reference
+- Security officer if applicable
+
+Notify the parent that the student has been released.
+
+Never allow a normal student exit event to automatically imply authorized early pickup.
+
+---
+
+14. AUTHORIZED PICKUP PERSONS
+
+Support authorized pickup persons where appropriate.
+
+A parent may specify an authorized person to collect the child.
+
+Store only necessary information.
+
+School must be able to:
+
+- Add authorized pickup person
+- Approve/revoke
+- View active authorized persons
+- Record pickup events
+
+Do not expose unrelated family information.
+
+---
+
+15. SECURITY INCIDENT MANAGEMENT
+
+Add:
+
+School Security → Incidents
+
+Security staff/Admin can record:
+
+- Incident type
+- Date/time
+- Location
+- Persons involved
+- Description
+- Severity
+- Status
+- Assigned staff
+- Resolution
+- Attachments if existing secure file infrastructure supports them
+
+Examples:
+
+- Unauthorized access attempt
+- Lost card
+- Visitor issue
+- Student release issue
+- Gate incident
+- Security concern
+- Other
+
+Maintain a complete audit trail.
+
+---
+
+16. CAMPUS PRESENCE
+
+Maintain a logical campus-presence state.
+
+Example:
+
+Student enters:
+
+ON CAMPUS
+
+Student exits:
+
+OFF CAMPUS
+
+Do not blindly infer presence where events are ambiguous.
+
+If there are missing or contradictory events, show:
+
+Presence requires review
+
+rather than inventing a status.
+
+---
+
+17. PARENT SECURITY ALERTS
+
+Connect School Security directly to the existing/new Parent Communication Centre.
+
+Examples:
+
+Arrival
+
+"David Ogun entered school at 7:32 AM."
+
+Departure
+
+"David Ogun exited school at 2:45 PM."
+
+Late arrival
+
+"David Ogun arrived at school at 8:17 AM."
+
+Early pickup
+
+"David Ogun was released from school at 1:34 PM."
+
+Security-related event
+
+Where appropriate and authorized:
+
+"Your child's school has recorded a security event requiring your attention."
+
+Do not expose sensitive security information unnecessarily.
+
+---
+
+18. PARENT COMMUNICATION CENTRE
+
+Create:
+
+Parent → Communication Centre
+
+and appropriate school/admin communication tools.
+
+The communication centre should become the central place for parent-facing communication.
+
+Include:
+
+- Inbox
+- Notifications
+- Announcements
+- Messages
+- Communication history
+- Read/unread status
+- Delivery status
+- Preferences
+- Child selector
+- Emergency communications
+
+---
+
+19. AUTOMATIC PARENT NOTIFICATIONS
+
+Build an event-driven notification architecture.
+
+Examples:
+
+Attendance/security
+
+- Student entered school
+- Student exited school
+- Late arrival
+- Absence
+- Unexpected/irregular event where supported
+
+Academics
+
+- Assignment posted
+- Assignment deadline approaching where supported
+- Assessment/result published
+- Report card published
+- Teacher review/request
+
+Finance
+
+- Invoice created
+- Fee reminder
+- Payment received
+- Payment confirmed
+- Receipt available
+- Outstanding balance notification
+
+Admissions
+
+- Application received
+- Application status changed
+- Interview scheduled
+- Entrance examination scheduled
+- Admission offered
+- Admission declined
+- Admission acceptance instructions
+
+Behaviour/welfare
+
+- Behaviour incident notification where school policy permits
+- Welfare notification
+- Medical/welfare communication where authorized
+
+Transport
+
+Prepare architecture for future Yemait Track integration:
+
+- Bus assigned
+- Student boarded
+- Student left bus
+- Bus approaching
+- School arrival
+- Home arrival
+
+Do not implement fake GPS functionality.
+
+---
+
+20. MULTIPLE CHILDREN
+
+A parent may have multiple children in the same school.
+
+The Parent Communication Centre must support:
+
+Parent
+→ Child 1
+→ Child 2
+→ Child 3
+
+Notifications must clearly identify the relevant child.
+
+Example:
+
+"Sarah Ogun — Mathematics result published."
+
+not simply:
+
+"Your child's result has been published."
+
+---
+
+21. COMMUNICATION CHANNELS
+
+Support a channel abstraction:
+
+In-App
+Push
+SMS
+Email
+
+A notification should have:
+
+- Event
+- Recipient
+- Channel
+- Status
+- Created time
+- Sent time
+- Delivered time where provider supports delivery reporting
+- Read time where applicable
+- Failure reason where applicable
+
+Provider delivery must be truthful.
+
+Never mark an SMS/email/push as delivered unless the provider actually confirms delivery.
+
+---
+
+22. SMS
+
+Prepare integration with the existing/approved SMS provider architecture, including Termii if already configured.
+
+Do not hard-code API keys.
+
+Use environment/secret configuration.
+
+If credentials are missing:
+
+Show:
+
+SMS provider not configured
+
+Do not pretend messages were sent.
+
+Implement provider-independent notification interfaces where practical.
+
+---
+
+23. PUSH NOTIFICATIONS
+
+Use the existing PWA architecture.
+
+Prepare push notification support for supported devices/browsers.
+
+Examples:
+
+«David Ogun entered school at 7:32 AM.»
+
+«New school fee invoice available.»
+
+«Mathematics result has been published.»
+
+Do not store passwords or sensitive authentication data in browser local storage.
+
+Respect notification permission.
+
+If push is unavailable, do not falsely report it as delivered.
+
+---
+
+24. EMAIL
+
+Use the existing email architecture if present.
+
+Email should be optional.
+
+Parents without email must still be able to receive important notifications through:
+
+- In-app
+- SMS
+- Push where available
+
+Do not make email mandatory for normal parent communication.
+
+---
+
+25. EMERGENCY BROADCAST
+
+Create a highly restricted:
+
+Emergency Communication
+
+feature.
+
+Authorized School Admin/security roles can send an emergency message to:
+
+- All parents
+- Specific class
+- Specific section
+- Selected students/parents
+- Staff
+- Other authorized recipients
+
+Emergency messages should be clearly marked.
+
+Require confirmation before sending a large broadcast.
+
+Record:
+
+- Sender
+- Target audience
+- Message
+- Channels
+- Timestamp
+- Delivery statistics
+- Audit record
+
+Do not allow ordinary teachers to send school-wide emergency broadcasts unless explicitly authorized.
+
+---
+
+26. SCHOOL ANNOUNCEMENTS
+
+School Admin can publish announcements.
+
+Support targeting:
+
+- Entire school
+- Class
+- Section
+- Parents
+- Students
+- Teachers
+- Staff
+
+Include:
+
+- Title
+- Message
+- Publish date
+- Expiry date where appropriate
+- Target audience
+- Attachments where existing secure storage supports them
+
+---
+
+27. TEACHER → PARENT COMMUNICATION
+
+Teachers should be able to communicate with parents only within appropriate permissions.
+
+Example:
+
+Teacher selects:
+
+JSS2 B → David Ogun → Parent
+
+Teacher can send:
+
+- Academic message
+- Assignment message
+- General student communication
+
+Do not expose other students.
+
+Teachers must not gain access to unrelated parent/student data.
+
+---
+
+28. SCHOOL ADMIN → PARENT
+
+School Admin can communicate with:
+
+- Individual parent
+- Parent of one student
+- Parent of selected students
+- Class parents
+- Section parents
+- Entire school
+
+Maintain full audit history.
+
+---
+
+29. PARENT MESSAGE INBOX
+
+Parent should have a simple inbox:
+
+Communication Centre
+
+Unread: 4
+
+● David's attendance
+  David entered school at 7:32 AM
+
+● Mathematics
+  New result published
+
+● Finance
+  New fee invoice available
+
+● School
+  PTA meeting announcement
+
+Allow:
+
+- Open
+- Mark read
+- Archive where appropriate
+- Filter
+- Search
+
+---
+
+30. NOTIFICATION PREFERENCES
+
+Parents should be able to manage non-critical preferences.
+
+Examples:
+
+- School announcements
+- Academic notifications
+- Finance notifications
+- Attendance notifications
+- Transport notifications
+- General messages
+
+However, security-critical or legally/operationally important notifications should not be silently disabled if school policy requires them.
+
+---
+
+31. COMMUNICATION DELIVERY LOG
+
+School Admin should be able to see:
+
+- Sent
+- Pending
+- Delivered
+- Failed
+- Read where applicable
+
+Example:
+
+Parent| Channel| Status
+Parent A| SMS| Delivered
+Parent B| Push| Read
+Parent C| Email| Failed
+Parent D| In-app| Read
+
+Do not expose sensitive provider credentials.
+
+---
+
+32. AUTOMATIC EVENT ENGINE
+
+Create a safe event-to-notification mechanism.
+
+Example:
+
+NFC ENTRY
+   ↓
+Security Event Created
+   ↓
+Student Identified
+   ↓
+Parent Relationship Resolved
+   ↓
+Notification Rule Checked
+   ↓
+Notification Created
+   ↓
+Available Channels Selected
+   ↓
+Provider Dispatch
+   ↓
+Delivery Status Updated
+
+This must be idempotent.
+
+A duplicate NFC event or retry must not create unlimited duplicate parent messages.
+
+Use event IDs/idempotency keys where appropriate.
+
+---
+
+33. PARENT SECURITY EXPERIENCE
+
+The parent should have a simple security timeline.
+
+Example:
+
+David Ogun
+
+Today
+
+7:32 AM
+Entered school — Main Gate
+
+8:18 AM
+Marked late
+
+2:45 PM
+Exited school — Main Gate
+
+1:30 PM
+Early pickup request — Approved
+
+Do not show contradictory events without clearly indicating the discrepancy.
+
+---
+
+34. SECURITY + ATTENDANCE RELATIONSHIP
+
+Do not duplicate attendance architecture.
+
+Instead:
+
+Security Event
+
+may contribute to:
+
+Attendance Event
+
+when the existing attendance rules determine that it should.
+
+For example:
+
+NFC Main Gate Entry
+→ Security event
+
+Classroom NFC/attendance process
+→ Classroom attendance
+
+These should remain distinguishable.
+
+This preserves the existing three-stage attendance/security architecture:
+
+Gate → Classroom → Exit
+
+Do not break the existing attendance workflow.
+
+---
+
+35. FUTURE YEMAIT TRACK INTEGRATION
+
+Design the communication/security architecture so Yemait Track can later integrate.
+
+Future flow:
+
+Student
+   ↓
+NFC Identity
+   ↓
+School Bus
+   ↓
+Yemait Track
+   ↓
+GPS/Transport Event
+   ↓
+Yemait EduCore
+   ↓
+Parent
+
+Possible future events:
+
+- Student assigned to bus
+- Student boarded
+- Bus departed
+- Bus approaching
+- Student dropped off
+- Student arrived home
+
+Do not build fake GPS functionality in this task.
+
+Prepare clean integration points/API contracts where appropriate.
+
+---
+
+36. ROLE AND PERMISSION REQUIREMENTS
+
+Preserve existing roles.
+
+Platform Owner
+
+Can oversee security/communication configuration across schools according to existing Owner permissions.
+
+School Admin
+
+Can manage school security and parent communication.
+
+Teacher
+
+Can access only permitted student/parent communication functions.
+
+Accountant
+
+Can send/trigger permitted finance communications.
+
+Parent
+
+Can see only their own children and authorized communications.
+
+Student
+
+Can see only their own permitted information.
+
+School Staff
+
+Only authorized security/staff functions.
+
+Device Activation Officer
+
+Only permitted device/card functions.
+
+Company Accountant
+
+No unrestricted school security access unless existing permissions explicitly grant it.
+
+Partner
+
+No access to private school security or parent communications unless explicitly authorized.
+
+Preserve RBAC and tenant isolation.
+
+---
+
+37. SECURITY / PRIVACY
+
+Strictly enforce:
+
+- School tenant isolation
+- Parent-child relationship authorization
+- Role authorization
+- Secure notification targeting
+- No cross-school data
+- No cross-parent data
+- No unauthorized student information
+- Audit logging
+- Rate limiting where appropriate
+- Input validation
+- Secure API authorization
+- No secrets in source code
+- No sensitive data in client local storage
+- No unauthorized bulk messaging
+
+A parent must never be able to manipulate a child ID or URL to access another student's security or academic information.
+
+---
+
+38. DATABASE DESIGN
+
+Inspect the existing schema first.
+
+Only add tables/columns where genuinely required.
+
+Potential concepts include:
+
+- security_readers/devices
+- security_locations
+- security_events
+- campus_presence
+- visitors
+- visitor_events
+- pickup_requests
+- authorized_pickup_persons
+- security_incidents
+- notification_events
+- notification_deliveries
+- parent_notification_preferences
+- communication_threads/messages
+
+Do not create duplicate versions of existing tables.
+
+Use existing NFC/card/person/student/parent tables whenever possible.
+
+Use proper foreign keys and indexes.
+
+Ensure migrations are additive and safe.
+
+---
+
+39. AUDIT LOGGING
+
+Record sensitive actions such as:
+
+- Card revoked
+- Card activated
+- Reader created
+- Reader disabled
+- Visitor registered
+- Visitor checkout
+- Pickup approved
+- Pickup rejected
+- Security incident created
+- Security incident updated
+- Emergency broadcast
+- Bulk communication
+- Parent communication
+- Communication settings changed
+
+Include actor, timestamp, school, action, and relevant entity reference.
+
+---
+
+40. OFFLINE / NETWORK INTERRUPTION
+
+Security devices may temporarily lose Internet connectivity.
+
+Inspect the existing NFC/device architecture.
+
+Where supported, safely allow devices to queue authorized events for later synchronization.
+
+Requirements:
+
+- No duplicate events after retry
+- Idempotent synchronization
+- Preserve original event timestamp
+- Preserve device identifier
+- Mark synchronization status
+- Never invent successful server confirmation while offline
+
+If the existing hardware cannot safely support offline operation, document this rather than pretending it does.
+
+---
+
+41. UI REQUIREMENTS
+
+The interface should be professional and mobile responsive.
+
+School Admin navigation should include:
+
+School Security
+
+with:
+
+- Security Overview
+- Entry/Exit Events
+- Campus Presence
+- Readers/Devices
+- Visitors
+- Pickup Requests
+- Security Incidents
+- Security Settings
+
+Parent navigation should include:
+
+Communication Centre
+
+with:
+
+- Notifications
+- Messages
+- Announcements
+- Child Security
+- Communication History
+- Preferences
+
+Do not redesign the entire existing application.
+
+Follow the existing Yemait EduCore visual system.
+
+---
+
+42. PWA
+
+Continue using the existing PWA implementation.
+
+Ensure:
+
+- Security dashboard works responsively
+- Parent communication works on mobile
+- Notifications integrate correctly with supported PWA capabilities
+- Authentication remains secure
+- Logout works correctly
+- Sensitive data is not unnecessarily cached
+
+Do not claim native-app capabilities that the PWA does not actually provide.
+
+---
+
+43. TESTING
+
+Create comprehensive automated tests.
+
+At minimum test:
+
+NFC/security
+
+- Valid student entry
+- Valid student exit
+- Valid staff entry
+- Valid staff exit
+- Revoked card
+- Lost card
+- Unknown card
+- Wrong-school card
+- Replacement card
+- Duplicate tap/idempotency
+- Reader isolation
+- School isolation
+- Campus presence
+- Security audit logging
+
+Visitors
+
+- Visitor registration
+- Visitor checkout
+- School isolation
+- Unauthorized access
+
+Pickup
+
+- Parent pickup request
+- Admin approval
+- Admin rejection
+- Authorized pickup person
+- Exit confirmation
+- Notification
+
+Parent communication
+
+- Parent notification creation
+- Correct child targeting
+- Multiple children
+- In-app delivery
+- SMS provider unavailable
+- Email provider unavailable
+- Push unavailable
+- Provider failure
+- Delivery status
+- Read status
+- Duplicate event prevention
+- Emergency broadcast authorization
+- Teacher-to-parent authorization
+- School-wide communication authorization
+
+Security
+
+- Cross-school access blocked
+- Cross-parent access blocked
+- Unauthorized API access blocked
+- Role restrictions
+- Sensitive data protection
+
+---
+
+44. BROWSER VERIFICATION
+
+Perform signed-in Development browser verification for:
+
+School Admin
+
+- Open School Security
+- View security dashboard
+- View entry/exit events
+- View campus presence
+- Register visitor
+- Process pickup
+- View security incidents
+- Manage permitted readers/devices
+- Send parent communication
+- View communication delivery
+
+Parent
+
+- Open Communication Centre
+- View notifications
+- View messages
+- View child security timeline
+- View multiple children
+- Read notification
+- View communication history
+- Check preferences
+
+Teacher
+
+- Verify permitted parent communication
+- Verify restricted information remains hidden
+
+Platform Owner
+
+- Verify existing Owner security/oversight permissions remain intact.
+
+---
+
+45. DATA PRESERVATION
+
+Before and after implementation verify:
+
+- Existing schools unchanged
+- Existing students unchanged
+- Existing parents unchanged
+- Existing teachers unchanged
+- Existing NFC cards unchanged
+- Existing NFC assignments unchanged
+- Existing attendance records unchanged
+- Existing academic records unchanged
+- Existing finance records unchanged
+- Existing payment records unchanged
+- Existing audit records unchanged
+
+Do not delete or reset production data.
+
+Do not delete existing Development business data merely to make tests pass.
+
+Temporary test records must be clearly identified and removed only when safe.
+
+---
+
+46. NO DUPLICATE WORKFLOWS
+
+Before implementing each feature:
+
+Search the existing codebase for equivalent functionality.
+
+If an existing:
+
+- notification
+- messaging
+- NFC event
+- attendance event
+- parent relationship
+- audit log
+- visitor structure
+- security structure
+- device structure
+
+already exists, extend it rather than creating a competing system.
+
+---
+
+47. API QUALITY
+
+All new API endpoints must:
+
+- Require authentication where appropriate
+- Enforce role authorization
+- Enforce school tenant isolation
+- Validate inputs
+- Validate outputs
+- Use consistent error responses
+- Prevent duplicate operations
+- Record audit events for sensitive operations
+- Avoid leaking internal database errors
+
+Update OpenAPI/Zod definitions consistently.
+
+---
+
+48. PERFORMANCE
+
+The security dashboard must remain usable with large schools.
+
+Do not load every historical event at once.
+
+Use:
+
+- Pagination
+- Filtering
+- Date ranges
+- Search
+- Appropriate indexes
+- Efficient queries
+
+Parent notification history must also use pagination.
+
+---
+
+49. FINAL VERIFICATION REPORT
+
+At completion provide a structured report:
+
+IMPLEMENTED
+
+List all completed functionality.
+
+DATABASE
+
+List migrations/tables/indexes added.
+
+API
+
+List major endpoints added/modified.
+
+SECURITY
+
+List RBAC, tenant isolation and audit protections verified.
+
+NFC
+
+List NFC security behavior verified.
+
+PARENT COMMUNICATION
+
+List notification channels and event triggers verified.
+
+TESTS
+
+Report exact:
+
+- Backend tests passed
+- Frontend tests passed
+- Database checks
+- Typecheck result
+- Browser checks
+
+Do not invent test numbers.
+
+VERIFIED IN DEVELOPMENT
+
+Clearly list what was actually tested.
+
+NOT YET VERIFIED
+
+Clearly list anything requiring:
+
+- Physical NFC hardware
+- Real NFC card
+- Real SMS provider
+- Real email provider
+- Real push notification device
+- Production environment
+- Real school deployment
+
+PRODUCTION
+
+Explicitly state:
+
+Production was not modified.
+
+Publish was not initiated.
+
+---
+
+50. MOST IMPORTANT PRODUCT PRINCIPLE
+
+Yemait EduCore should not be positioned as merely:
+
+School Management Software
+
+The architecture should increasingly provide:
+
+School Management + Digital Identity + Campus Security + Parent Engagement
+
+The NFC card is the student's/staff member's digital school identity.
+
+The security system uses that identity.
+
+The communication system uses the resulting events.
+
+Therefore:
+
+NFC Card
+→ Security Event
+→ EduCore
+→ Parent Communication
+
+should become one connected ecosystem.
+
+Do not replace the existing NFC infrastructure.
+
+Extend it.
+
+Do not replace the existing attendance system.
+
+Connect security events to it where appropriate.
+
+Do not build a simple announcement page and call it parent communication.
+
+Build a serious, event-driven Parent Communication Centre that keeps parents informed about the important things happening to their children.
+
+FINAL COMMAND
+
+Implement this entire phase in Development only.
+
+DO NOT PUBLISH.
+
+DO NOT modify Production.
+
+Preserve all existing Yemait EduCore functionality, records, permissions, NFC architecture, attendance workflows, academic workflows, finance workflows, admissions workflows, PWA functionality, and tenant isolation.
+
+At the end, provide the complete verification report described above.

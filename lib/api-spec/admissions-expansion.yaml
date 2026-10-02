@@ -1,0 +1,840 @@
+paths:
+  /admissions/portals/{portalKey}:
+    get:
+      operationId: getPublicAdmissionPortal
+      tags: [Admissions]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/AdmissionPortalKey"
+      responses:
+        "200":
+          description: Publicly approved school admission information only.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAdmissionPortalResponse"
+        "404":
+          description: Portal not found or school not publicly available.
+  /admissions/portals/{portalKey}/applications:
+    post:
+      operationId: submitPublicAdmissionApplication
+      tags: [Admissions]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/AdmissionPortalKey"
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdmissionApplicationInput"
+      responses:
+        "201":
+          description: Application submitted. Receipt secret is returned only in this response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAdmissionApplicationReceipt"
+        "409":
+          description: Idempotency key reused with a different request, or identical replay. A replay never creates another application and does not reissue the hashed receipt secret.
+        "429":
+          description: Submission rate limit reached.
+  /admissions/portals/{portalKey}/documents/upload:
+    post:
+      operationId: requestPublicAdmissionDocumentUpload
+      tags: [Admissions]
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/AdmissionPortalKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdmissionDocumentUploadInput"
+      responses:
+        "200":
+          description: Short-lived staged private upload URL. The path must be included in the eventual application submission.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdmissionDocumentUploadResponse"
+        "429":
+          description: Upload-request rate limit reached.
+  /admissions/documents/upload:
+    post:
+      operationId: requestStaffAdmissionDocumentUpload
+      tags: [Admissions]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdmissionDocumentUploadInput"
+      responses:
+        "200":
+          description: Short-lived private upload URL for an authorized School Admin; available while the public portal is closed and before application creation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdmissionDocumentUploadResponse"
+        "403":
+          description: School operational access required; platform Owners are excluded.
+  /admissions/applications/track:
+    post:
+      operationId: trackAdmissionApplication
+      tags: [Admissions]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdmissionTrackingInput"
+      responses:
+        "200":
+          description: Applicant-safe application tracking projection.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAdmissionApplicationStatus"
+        "404":
+          description: Application or receipt credentials not found.
+        "429":
+          description: Tracking rate limit reached.
+  /admissions/portal-settings:
+    get:
+      operationId: getAdmissionPortalSettings
+      tags: [Admissions]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: School-scoped public portal configuration and its stable URL key.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdmissionPortalSettingsResponse"
+        "403":
+          description: School operational access required; platform Owners are excluded.
+    put:
+      operationId: updateAdmissionPortalSettings
+      tags: [Admissions]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdmissionPortalSettingsInput"
+      responses:
+        "200":
+          description: Updated settings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdmissionPortalSettingsResponse"
+        "403":
+          description: School operational access required; platform Owners are excluded.
+  /admissions/applications:
+    get:
+      operationId: listAdmissionApplications
+      tags: [Admissions]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - in: query
+          name: status
+          schema:
+            $ref: "#/components/schemas/AdmissionApplicationStatus"
+        - in: query
+          name: search
+          schema:
+            type: string
+            maxLength: 100
+      responses:
+        "200":
+          description: Private school-scoped application list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdmissionApplicationListResponse"
+        "403":
+          description: School operational access required.
+    post:
+      operationId: createStaffAdmissionApplication
+      tags: [Admissions]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffAdmissionApplicationInput"
+      responses:
+        "201":
+          description: Saved into the shared admission workflow.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdmissionApplicationResponse"
+        "403":
+          description: School operational access required; platform Owners are excluded.
+  /admissions/applications/{applicationId}:
+    get:
+      operationId: getAdmissionApplication
+      tags: [Admissions]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AdmissionApplicationId"
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200":
+          description: Private application details and document metadata for the authorized school.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdmissionApplicationResponse"
+        "404":
+          description: Application not found in the active school.
+    patch:
+      operationId: updateAdmissionApplicationProfile
+      tags: [Admissions]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AdmissionApplicationId"
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdmissionApplicationPatchInput"
+      responses:
+        "200":
+          description: Updated school-scoped application profile; status and converted Student/Parent links are preserved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdmissionApplicationResponse"
+        "409":
+          description: Stale expectedVersion or the application is not in an editable Draft or Submitted status.
+  /admissions/applications/{applicationId}/review:
+    patch:
+      operationId: reviewAdmissionApplication
+      tags: [Admissions]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AdmissionApplicationId"
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdmissionReviewInput"
+      responses:
+        "200":
+          description: Updated application review record.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdmissionApplicationResponse"
+        "409":
+          description: Invalid transition or stale version.
+  /admissions/applications/{applicationId}/status:
+    put:
+      operationId: transitionAdmissionApplication
+      tags: [Admissions]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AdmissionApplicationId"
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdmissionStatusTransitionInput"
+      responses:
+        "200":
+          description: Transitioned application.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdmissionApplicationResponse"
+        "409":
+          description: Invalid transition or stale version.
+  /admissions/applications/{applicationId}/documents/upload:
+    post:
+      operationId: requestAdmissionDocumentUpload
+      tags: [Admissions]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AdmissionApplicationId"
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdmissionDocumentUploadInput"
+      responses:
+        "200":
+          description: Presigned private upload instructions; file bytes are never sent to this API.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdmissionDocumentUploadResponse"
+        "403":
+          description: Application access denied.
+  /admissions/applications/{applicationId}/documents/confirm:
+    post:
+      operationId: confirmAdmissionDocumentUpload
+      tags: [Admissions]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AdmissionApplicationId"
+        - $ref: "#/components/parameters/SchoolId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdmissionDocumentConfirmInput"
+      responses:
+        "201":
+          description: Private document metadata saved after staged upload validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdmissionDocumentResponse"
+        "403":
+          description: Application access denied.
+  /admissions/applications/{applicationId}/documents/{documentId}/download:
+    post:
+      operationId: downloadAdmissionDocument
+      tags: [Admissions]
+      description: Staff must have application authorization. Anonymous applicants must provide the receipt secret in the request body; it is never accepted in a URL.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/AdmissionApplicationId"
+        - in: path
+          name: documentId
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdmissionDocumentDownloadInput"
+      responses:
+        "200":
+          description: Short-lived private object download URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdmissionDocumentDownloadResponse"
+        "403":
+          description: Application or document access denied.
+  /admissions/applications/{applicationId}/convert:
+    post:
+      operationId: convertAcceptedAdmissionApplication
+      tags: [Admissions]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AdmissionApplicationId"
+        - $ref: "#/components/parameters/SchoolId"
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdmissionConversionInput"
+      responses:
+        "200":
+          description: Existing or newly created student linked to the preserved application.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdmissionConversionResponse"
+        "409":
+          description: Application is not accepted, ambiguous identity, or conflicting conversion.
+
+components:
+  parameters:
+    AdmissionPortalKey:
+      in: path
+      name: portalKey
+      required: true
+      schema:
+        type: string
+        pattern: "^[a-z0-9][a-z0-9-]{2,79}$"
+    SchoolId:
+      in: query
+      name: schoolId
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    AdmissionApplicationId:
+      in: path
+      name: applicationId
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+  schemas:
+    AdmissionApplicationStatus:
+      type: string
+      enum: [Draft, Submitted, UnderReview, Shortlisted, InterviewScheduled, AssessmentPending, AssessmentCompleted, Accepted, Waitlisted, Rejected, Withdrawn, Enrolled]
+    AdmissionDocumentInput:
+      type: object
+      additionalProperties: false
+      required: [documentType, fileName, contentType, byteSize, objectPath]
+      properties:
+        documentType: { type: string, minLength: 1, maxLength: 80 }
+        fileName: { type: string, minLength: 1, maxLength: 255 }
+        contentType: { type: string, enum: [application/pdf, image/jpeg, image/png, image/webp] }
+        byteSize: { type: integer, minimum: 1, maximum: 10485760 }
+        objectPath: { type: string, pattern: "^/objects/admissions/" }
+    AdmissionApplicantInput:
+      type: object
+      additionalProperties: false
+      required: [firstName, lastName, dateOfBirth, gender, intendedClassId]
+      properties:
+        firstName: { type: string, minLength: 1, maxLength: 100 }
+        middleName: { type: string, maxLength: 100, nullable: true }
+        lastName: { type: string, minLength: 1, maxLength: 100 }
+        dateOfBirth: { type: string, format: date }
+        gender: { type: string, enum: [Female, Male, Other, PreferNotToSay] }
+        photoObjectPath: { type: string, pattern: "^/objects/admissions/" }
+        previousSchool: { type: string, maxLength: 200, nullable: true }
+        previousClass: { type: string, maxLength: 100, nullable: true }
+        intendedClassId: { type: integer, minimum: 1 }
+        academicSessionId: { type: integer, minimum: 1 }
+        academicTermId: { type: integer, minimum: 1 }
+        address: { type: string, maxLength: 1000, nullable: true }
+    AdmissionGuardianInput:
+      type: object
+      additionalProperties: false
+      required: [fullName, phone]
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 200 }
+        phone: { type: string, pattern: "^\\+[1-9][0-9]{7,14}$" }
+        email: { type: string, format: email, maxLength: 254 }
+        relationship: { type: string, maxLength: 80, nullable: true }
+        address: { type: string, maxLength: 1000, nullable: true }
+    AdmissionEmergencyContactInput:
+      type: object
+      additionalProperties: false
+      required: [fullName, phone]
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 200 }
+        phone: { type: string, pattern: "^\\+[1-9][0-9]{7,14}$" }
+        relationship: { type: string, maxLength: 80, nullable: true }
+    AdmissionApplicantResponse:
+      type: object
+      additionalProperties: false
+      required: [firstName, middleName, lastName, dateOfBirth, gender, photoObjectPath, previousSchool, previousClass, intendedClassId, academicSessionId, academicTermId, address]
+      properties:
+        firstName: { type: string }
+        middleName: { type: string, nullable: true }
+        lastName: { type: string }
+        dateOfBirth: { type: string, format: date }
+        gender: { type: string, enum: [Female, Male, Other, PreferNotToSay] }
+        photoObjectPath: { type: string, pattern: "^/objects/admissions/", nullable: true }
+        previousSchool: { type: string, nullable: true }
+        previousClass: { type: string, nullable: true }
+        intendedClassId: { type: integer }
+        academicSessionId: { type: integer }
+        academicTermId: { type: integer, nullable: true }
+        address: { type: string, nullable: true }
+    AdmissionGuardianResponse:
+      type: object
+      additionalProperties: false
+      required: [fullName, phone, email, relationship, address]
+      properties:
+        fullName: { type: string }
+        phone: { type: string, pattern: "^\\+[1-9][0-9]{7,14}$" }
+        email: { type: string, format: email, nullable: true }
+        relationship: { type: string, nullable: true }
+        address: { type: string, nullable: true }
+    AdmissionEmergencyContactResponse:
+      type: object
+      additionalProperties: false
+      required: [fullName, phone, relationship]
+      properties:
+        fullName: { type: string }
+        phone: { type: string, pattern: "^\\+[1-9][0-9]{7,14}$" }
+        relationship: { type: string, nullable: true }
+    AdmissionApplicationInput:
+      type: object
+      additionalProperties: false
+      required: [applicant, guardian]
+      properties:
+        applicant: { $ref: "#/components/schemas/AdmissionApplicantInput" }
+        guardian: { $ref: "#/components/schemas/AdmissionGuardianInput" }
+        emergencyContact: { $ref: "#/components/schemas/AdmissionEmergencyContactInput" }
+        documents:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/AdmissionDocumentInput"
+    StaffAdmissionApplicationInput:
+      type: object
+      additionalProperties: false
+      required: [schoolId, applicant, guardian]
+      properties:
+        schoolId: { type: integer, minimum: 1 }
+        applicant: { $ref: "#/components/schemas/AdmissionApplicantInput" }
+        guardian: { $ref: "#/components/schemas/AdmissionGuardianInput" }
+        emergencyContact: { $ref: "#/components/schemas/AdmissionEmergencyContactInput" }
+        documents:
+          type: array
+          maxItems: 20
+          items: { $ref: "#/components/schemas/AdmissionDocumentInput" }
+        saveAsDraft: { type: boolean, default: true }
+    AdmissionApplicantProfilePatch:
+      type: object
+      additionalProperties: false
+      properties:
+        firstName: { type: string, minLength: 1, maxLength: 100 }
+        middleName: { type: string, maxLength: 100, nullable: true }
+        lastName: { type: string, minLength: 1, maxLength: 100 }
+        dateOfBirth: { type: string, format: date }
+        gender: { type: string, enum: [Female, Male, Other, PreferNotToSay] }
+        previousSchool: { type: string, maxLength: 200, nullable: true }
+        previousClass: { type: string, maxLength: 100, nullable: true }
+        intendedClassId: { type: integer, minimum: 1 }
+        academicSessionId: { type: integer, minimum: 1 }
+        academicTermId: { type: integer, minimum: 1, nullable: true }
+        address: { type: string, maxLength: 1000, nullable: true }
+    AdmissionGuardianProfilePatch:
+      type: object
+      additionalProperties: false
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 200 }
+        phone: { type: string, pattern: "^\\+[1-9][0-9]{7,14}$" }
+        email: { type: string, format: email, maxLength: 254, nullable: true }
+        relationship: { type: string, maxLength: 80, nullable: true }
+        address: { type: string, maxLength: 1000, nullable: true }
+    AdmissionApplicationPatchInput:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion]
+      properties:
+        expectedVersion: { type: integer, minimum: 1 }
+        applicant: { $ref: "#/components/schemas/AdmissionApplicantProfilePatch" }
+        guardian: { $ref: "#/components/schemas/AdmissionGuardianProfilePatch" }
+        emergencyContact:
+          type: object
+          nullable: true
+          additionalProperties: false
+          required: [fullName, phone]
+          properties:
+            fullName: { type: string, minLength: 1, maxLength: 200 }
+            phone: { type: string, pattern: "^\\+[1-9][0-9]{7,14}$" }
+            relationship: { type: string, maxLength: 80, nullable: true }
+    PublicAdmissionPortalResponse:
+      type: object
+      additionalProperties: false
+      required: [portalKey, school, admission, availableClasses]
+      properties:
+        portalKey: { type: string }
+        school:
+          type: object
+          additionalProperties: false
+          required: [name]
+          properties:
+            name: { type: string }
+            description: { type: string, nullable: true }
+            address: { type: string, nullable: true }
+            publicPhone: { type: string, nullable: true }
+            publicEmail: { type: string, format: email, nullable: true }
+            logoUrl: { type: string, format: uri, nullable: true }
+        admission:
+          type: object
+          additionalProperties: false
+          required: [open]
+          properties:
+            open: { type: boolean }
+            session: { type: string, nullable: true }
+            term: { type: string, nullable: true }
+            deadline: { type: string, format: date, nullable: true }
+            feeInfo: { type: string, nullable: true }
+            requirements: { type: array, items: { type: string } }
+            requiredDocuments: { type: array, items: { type: string } }
+            instructions: { type: string, nullable: true }
+            entranceExamination: { type: string, nullable: true }
+            interviewInformation: { type: string, nullable: true }
+        availableClasses:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, name, section]
+            properties:
+              id: { type: integer }
+              name: { type: string }
+              section: { type: string }
+    AdmissionPortalSettingsInput:
+      type: object
+      additionalProperties: false
+      required: [open, availableClassIds]
+      properties:
+        open: { type: boolean }
+        academicSessionId: { type: integer, minimum: 1, nullable: true }
+        academicTermId: { type: integer, minimum: 1, nullable: true }
+        availableClassIds: { type: array, uniqueItems: true, items: { type: integer, minimum: 1 } }
+        deadline: { type: string, format: date, nullable: true }
+        feeInfo: { type: string, maxLength: 1000, nullable: true }
+        requirements: { type: array, maxItems: 50, items: { type: string, maxLength: 500 } }
+        requiredDocuments: { type: array, maxItems: 50, items: { type: string, maxLength: 200 } }
+        instructions: { type: string, maxLength: 5000, nullable: true }
+        entranceExamination: { type: string, maxLength: 2000, nullable: true }
+        interviewInformation: { type: string, maxLength: 2000, nullable: true }
+        publicDescription: { type: string, maxLength: 3000, nullable: true }
+        publicAddress: { type: string, maxLength: 1000, nullable: true }
+        publicPhone: { type: string, pattern: "^\\+[1-9][0-9]{7,14}$", nullable: true }
+        publicEmail: { type: string, format: email, nullable: true }
+        logoObjectPath:
+          type: string
+          nullable: true
+          maxLength: 500
+          pattern: "^(/objects/admissions/[A-Za-z0-9/_-]+|/objects/school-logos/[1-9][0-9]*/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$"
+    AdmissionPortalSettingsResponse:
+      type: object
+      additionalProperties: false
+      required: [schoolId, portalKey, portalUrl, open, availableClassIds, requirements, requiredDocuments, availableSchoolLogoObjectPath]
+      properties:
+        schoolId: { type: integer }
+        portalKey: { type: string }
+        portalUrl: { type: string }
+        open: { type: boolean }
+        academicSessionId: { type: integer, minimum: 1, nullable: true }
+        academicTermId: { type: integer, minimum: 1, nullable: true }
+        availableClassIds: { type: array, uniqueItems: true, items: { type: integer, minimum: 1 } }
+        deadline: { type: string, format: date, nullable: true }
+        feeInfo: { type: string, nullable: true }
+        requirements: { type: array, items: { type: string } }
+        requiredDocuments: { type: array, items: { type: string } }
+        instructions: { type: string, nullable: true }
+        entranceExamination: { type: string, nullable: true }
+        interviewInformation: { type: string, nullable: true }
+        publicDescription: { type: string, nullable: true }
+        publicAddress: { type: string, nullable: true }
+        publicPhone: { type: string, nullable: true }
+        publicEmail: { type: string, format: email, nullable: true }
+        logoObjectPath:
+          type: string
+          nullable: true
+          maxLength: 500
+          pattern: "^(/objects/admissions/[A-Za-z0-9/_-]+|/objects/school-logos/[1-9][0-9]*/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$"
+        availableSchoolLogoObjectPath:
+          type: string
+          nullable: true
+          readOnly: true
+          pattern: "^/objects/school-logos/[1-9][0-9]*/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    PublicAdmissionApplicationReceipt:
+      type: object
+      additionalProperties: false
+      required: [applicationId, applicationNumber, status, receiptSecret, confirmation]
+      properties:
+        applicationId: { type: integer }
+        applicationNumber: { type: string }
+        status: { $ref: "#/components/schemas/AdmissionApplicationStatus" }
+        receiptSecret: { type: string, minLength: 32 }
+        confirmation:
+          type: object
+          required: [deliveryStatus, message]
+          properties:
+            deliveryStatus: { type: string, enum: [NOT_SENT, QUEUED, CONFIRMED, UNKNOWN] }
+            message: { type: string }
+    AdmissionTrackingInput:
+      type: object
+      additionalProperties: false
+      required: [applicationNumber, phone, receiptSecret]
+      properties:
+        applicationNumber: { type: string, minLength: 1, maxLength: 80 }
+        phone: { type: string, pattern: "^\\+[1-9][0-9]{7,14}$" }
+        receiptSecret: { type: string, minLength: 32, maxLength: 256 }
+    PublicAdmissionApplicationStatus:
+      type: object
+      additionalProperties: false
+      required: [applicationNumber, status, updatedAt]
+      properties:
+        applicationNumber: { type: string }
+        status: { $ref: "#/components/schemas/AdmissionApplicationStatus" }
+        publicMessage: { type: string, nullable: true }
+        updatedAt: { type: string, format: date-time }
+    AdmissionApplicationListResponse:
+      type: object
+      required: [applications]
+      properties:
+        applications:
+          type: array
+          items: { $ref: "#/components/schemas/AdmissionApplicationResponse" }
+    AdmissionApplicationResponse:
+      type: object
+      additionalProperties: false
+      required: [id, schoolId, applicationNumber, status, applicant, guardian, version, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        applicationNumber: { type: string }
+        status: { $ref: "#/components/schemas/AdmissionApplicationStatus" }
+        applicant: { $ref: "#/components/schemas/AdmissionApplicantResponse" }
+        guardian: { $ref: "#/components/schemas/AdmissionGuardianResponse" }
+        emergencyContact: { $ref: "#/components/schemas/AdmissionEmergencyContactResponse", nullable: true }
+        documents: { type: array, items: { $ref: "#/components/schemas/AdmissionDocumentResponse" } }
+        assessment: { type: object, nullable: true }
+        interview: { type: object, nullable: true }
+        internalNotes: { type: string, nullable: true }
+        publicMessage: { type: string, nullable: true }
+        studentId: { type: integer, nullable: true }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    AdmissionReviewInput:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion]
+      properties:
+        expectedVersion: { type: integer, minimum: 1 }
+        assessment:
+          type: object
+          properties:
+            result: { type: string, maxLength: 2000 }
+            score: { type: number, minimum: 0, maximum: 100 }
+            publicMessage: { type: string, maxLength: 2000 }
+            internalNotes: { type: string, maxLength: 10000 }
+        interview:
+          type: object
+          properties:
+            scheduledAt: { type: string, format: date-time }
+            result: { type: string, maxLength: 2000 }
+            publicMessage: { type: string, maxLength: 2000 }
+            internalNotes: { type: string, maxLength: 10000 }
+        internalNotes: { type: string, maxLength: 10000 }
+        publicMessage: { type: string, maxLength: 2000 }
+    AdmissionStatusTransitionInput:
+      type: object
+      additionalProperties: false
+      required: [status, expectedVersion]
+      properties:
+        status: { $ref: "#/components/schemas/AdmissionApplicationStatus" }
+        expectedVersion: { type: integer, minimum: 1 }
+        publicMessage: { type: string, maxLength: 2000, nullable: true }
+        internalNotes: { type: string, maxLength: 10000, nullable: true }
+    AdmissionDocumentUploadInput:
+      type: object
+      additionalProperties: false
+      required: [documentType, fileName, contentType, byteSize]
+      properties:
+        documentType: { type: string, minLength: 1, maxLength: 80 }
+        fileName: { type: string, minLength: 1, maxLength: 255 }
+        contentType: { type: string, enum: [application/pdf, image/jpeg, image/png, image/webp] }
+        byteSize: { type: integer, minimum: 1, maximum: 10485760 }
+    AdmissionDocumentUploadResponse:
+      type: object
+      required: [uploadUrl, objectPath, expiresAt]
+      properties:
+        uploadUrl: { type: string, format: uri }
+        objectPath: { type: string, pattern: "^/objects/" }
+        expiresAt: { type: string, format: date-time }
+    AdmissionDocumentConfirmInput:
+      type: object
+      additionalProperties: false
+      required: [documentType, fileName, contentType, byteSize, objectPath]
+      properties:
+        documentType: { type: string, minLength: 1, maxLength: 80 }
+        fileName: { type: string, minLength: 1, maxLength: 255 }
+        contentType: { type: string, enum: [application/pdf, image/jpeg, image/png, image/webp] }
+        byteSize: { type: integer, minimum: 1, maximum: 10485760 }
+        objectPath: { type: string, pattern: "^/objects/" }
+    AdmissionDocumentResponse:
+      type: object
+      additionalProperties: false
+      required: [id, documentType, fileName, contentType, byteSize, objectPath]
+      properties:
+        id: { type: integer }
+        documentType: { type: string, minLength: 1, maxLength: 80 }
+        fileName: { type: string, minLength: 1, maxLength: 255 }
+        contentType: { type: string, enum: [application/pdf, image/jpeg, image/png, image/webp] }
+        byteSize: { type: integer, minimum: 1, maximum: 10485760 }
+        objectPath: { type: string, pattern: "^/objects/" }
+    AdmissionDocumentDownloadInput:
+      type: object
+      additionalProperties: false
+      properties:
+        receiptSecret: { type: string, minLength: 32, maxLength: 256 }
+    AdmissionDocumentDownloadResponse:
+      type: object
+      required: [downloadUrl, expiresAt]
+      properties:
+        downloadUrl: { type: string, format: uri }
+        expiresAt: { type: string, format: date-time }
+    AdmissionConversionInput:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion]
+      properties:
+        expectedVersion: { type: integer, minimum: 1 }
+        existingStudentId: { type: integer, minimum: 1, nullable: true }
+        existingParentId: { type: integer, minimum: 1, nullable: true }
+        createParentRecord: { type: boolean, default: false }
+        parentRelationship: { type: string, maxLength: 80, default: Guardian }
+        section: { type: string, maxLength: 100 }
+    AdmissionConversionResponse:
+      type: object
+      required: [applicationId, studentId, admissionNumber, parentId, idempotent]
+      properties:
+        applicationId: { type: integer }
+        studentId: { type: integer }
+        admissionNumber: { type: string }
+        parentId: { type: integer, nullable: true }
+        idempotent: { type: boolean }

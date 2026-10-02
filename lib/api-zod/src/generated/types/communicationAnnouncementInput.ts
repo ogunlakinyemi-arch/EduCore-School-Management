@@ -5,6 +5,7 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { CommunicationAnnouncementInputEmergencyConfirmation } from './communicationAnnouncementInputEmergencyConfirmation';
 import type { CommunicationCategory } from './communicationCategory';
 import type { CommunicationOutboundChannel } from './communicationOutboundChannel';
 import type { CommunicationTargetCriteria } from './communicationTargetCriteria';
@@ -43,4 +44,10 @@ export interface CommunicationAnnouncementInput {
      * @maxLength 128
      */
   idempotencyKey: string;
+  /** @nullable */
+  expiresAt?: Date | null;
+  isEmergency?: boolean;
+  emergencyConfirmation?: CommunicationAnnouncementInputEmergencyConfirmation;
+  /** @minimum 0 */
+  confirmedRecipientCount?: number;
 }

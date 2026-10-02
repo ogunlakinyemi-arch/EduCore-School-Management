@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { Router, type NextFunction, type Request } from "express";
 import { pool } from "@workspace/db";
+import { joinSecurityAttendance, recordAuthenticatedNfcDenial } from "../services/security-attendance-integration";
 import {
   AuthError,
   assertSchoolAccess,
@@ -1114,6 +1115,7 @@ router.post("/devices/employee-nfc/attendance/events", run(async (req, res) => {
         status: event.status,
       })],
     );
+    await joinSecurityAttendance(client, Number(event.id));
     await client.query("COMMIT");
     res.status(201).json({
       ...event,
@@ -1122,6 +1124,7 @@ router.post("/devices/employee-nfc/attendance/events", run(async (req, res) => {
     });
   } catch (error) {
     await client.query("ROLLBACK");
+    await recordAuthenticatedNfcDenial(req, device, error);
     throw error;
   } finally {
     client.release();

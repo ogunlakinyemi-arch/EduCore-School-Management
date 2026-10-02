@@ -31,4 +31,7 @@ export interface CommunicationAnnouncement {
   createdAt: Date;
   /** @nullable */
   sentAt: Date | null;
+  isEmergency?: boolean;
+  /** @nullable */
+  expiresAt?: Date | null;
 }

@@ -5,6 +5,248 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+export type SecurityAccessActorRole = typeof SecurityAccessActorRole[keyof typeof SecurityAccessActorRole] | null;
+
+
+export const SecurityAccessActorRole = {
+  PLATFORM_OWNER: 'PLATFORM_OWNER',
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+  STAFF: 'STAFF',
+} as const;
+
+export type SecurityAccessPermissionsItem = typeof SecurityAccessPermissionsItem[keyof typeof SecurityAccessPermissionsItem];
+
+
+export const SecurityAccessPermissionsItem = {
+  SECURITY_READ: 'SECURITY_READ',
+  SECURITY_MANAGE: 'SECURITY_MANAGE',
+  VISITOR_MANAGE: 'VISITOR_MANAGE',
+  PICKUP_APPROVE: 'PICKUP_APPROVE',
+  INCIDENT_MANAGE: 'INCIDENT_MANAGE',
+  EMERGENCY_BROADCAST: 'EMERGENCY_BROADCAST',
+  COMMUNICATION_SEND: 'COMMUNICATION_SEND',
+  MANAGE_READERS: 'MANAGE_READERS',
+  MANAGE_CARDS: 'MANAGE_CARDS',
+  REVIEW_PRESENCE: 'REVIEW_PRESENCE',
+} as const;
+
+export type SecurityAccessGrantedPermissionsItem = typeof SecurityAccessGrantedPermissionsItem[keyof typeof SecurityAccessGrantedPermissionsItem];
+
+
+export const SecurityAccessGrantedPermissionsItem = {
+  READ: 'READ',
+  MANAGE_READERS: 'MANAGE_READERS',
+  MANAGE_CARDS: 'MANAGE_CARDS',
+  REVIEW_PRESENCE: 'REVIEW_PRESENCE',
+  SECURITY_READ: 'SECURITY_READ',
+  SECURITY_MANAGE: 'SECURITY_MANAGE',
+  VISITOR_MANAGE: 'VISITOR_MANAGE',
+  PICKUP_APPROVE: 'PICKUP_APPROVE',
+  INCIDENT_MANAGE: 'INCIDENT_MANAGE',
+  EMERGENCY_BROADCAST: 'EMERGENCY_BROADCAST',
+  COMMUNICATION_SEND: 'COMMUNICATION_SEND',
+} as const;
+
+export interface SecurityAccess {
+  /** @minimum 1 */
+  schoolId: number;
+  actorRole: SecurityAccessActorRole;
+  canView: boolean;
+  readOnly: boolean;
+  permissions: SecurityAccessPermissionsItem[];
+  grantedPermissions: SecurityAccessGrantedPermissionsItem[];
+}
+
+export type EligibleSecurityDeviceDeviceType = typeof EligibleSecurityDeviceDeviceType[keyof typeof EligibleSecurityDeviceDeviceType];
+
+
+export const EligibleSecurityDeviceDeviceType = {
+  NFC: 'NFC',
+  BIOMETRIC: 'BIOMETRIC',
+  HYBRID: 'HYBRID',
+} as const;
+
+export interface EligibleSecurityDevice {
+  /** @minimum 1 */
+  id: number;
+  name: string;
+  serialNumber: string;
+  deviceType: EligibleSecurityDeviceDeviceType;
+  /** @nullable */
+  readerId: number | null;
+  /** @nullable */
+  readerName: string | null;
+  /** @nullable */
+  locationId: number | null;
+}
+
+export type ParentChildSecuritySummaryNfcStatus = typeof ParentChildSecuritySummaryNfcStatus[keyof typeof ParentChildSecuritySummaryNfcStatus];
+
+
+export const ParentChildSecuritySummaryNfcStatus = {
+  ACTIVE: 'ACTIVE',
+  LOST: 'LOST',
+  INACTIVE: 'INACTIVE',
+  NO_CARD: 'NO_CARD',
+} as const;
+
+export type ParentChildSecuritySummaryCurrentPresenceState = typeof ParentChildSecuritySummaryCurrentPresenceState[keyof typeof ParentChildSecuritySummaryCurrentPresenceState];
+
+
+export const ParentChildSecuritySummaryCurrentPresenceState = {
+  ON_CAMPUS: 'ON_CAMPUS',
+  OFF_CAMPUS: 'OFF_CAMPUS',
+  REQUIRES_REVIEW: 'REQUIRES_REVIEW',
+} as const;
+
+export type ParentChildSecuritySummaryCurrentPresence = {
+  state: ParentChildSecuritySummaryCurrentPresenceState;
+  lastOccurredAt: string;
+} | null;
+
+export type ParentChildSecuritySummaryRecentEventsItemEventType = typeof ParentChildSecuritySummaryRecentEventsItemEventType[keyof typeof ParentChildSecuritySummaryRecentEventsItemEventType];
+
+
+export const ParentChildSecuritySummaryRecentEventsItemEventType = {
+  ENTRY: 'ENTRY',
+  EXIT: 'EXIT',
+} as const;
+
+export type ParentChildSecuritySummaryRecentEventsItem = {
+  eventType: ParentChildSecuritySummaryRecentEventsItemEventType;
+  occurredAt: string;
+};
+
+export interface ParentChildSecuritySummary {
+  /** @minimum 1 */
+  studentId: number;
+  /** @minimum 1 */
+  schoolId: number;
+  nfcStatus: ParentChildSecuritySummaryNfcStatus;
+  currentPresence: ParentChildSecuritySummaryCurrentPresence;
+  /** @maxItems 10 */
+  recentEvents: ParentChildSecuritySummaryRecentEventsItem[];
+}
+
+/**
+ * CAMPAIGN is a manually authored school message; SYSTEM is a backend event, including finance notifications.
+ */
+export type CommunicationNotificationOrigin = typeof CommunicationNotificationOrigin[keyof typeof CommunicationNotificationOrigin];
+
+
+export const CommunicationNotificationOrigin = {
+  CAMPAIGN: 'CAMPAIGN',
+  SYSTEM: 'SYSTEM',
+} as const;
+
+export type CommunicationCategory = typeof CommunicationCategory[keyof typeof CommunicationCategory];
+
+
+export const CommunicationCategory = {
+  ATTENDANCE: 'ATTENDANCE',
+  ACADEMIC: 'ACADEMIC',
+  ASSIGNMENT: 'ASSIGNMENT',
+  FINANCE: 'FINANCE',
+  PAYMENT: 'PAYMENT',
+  ANNOUNCEMENT: 'ANNOUNCEMENT',
+  ACCOUNT: 'ACCOUNT',
+  SYSTEM: 'SYSTEM',
+  SUBSCRIPTION: 'SUBSCRIPTION',
+  PARTNER: 'PARTNER',
+  SECURITY: 'SECURITY',
+} as const;
+
+export type CommunicationChannel = typeof CommunicationChannel[keyof typeof CommunicationChannel];
+
+
+export const CommunicationChannel = {
+  IN_APP: 'IN_APP',
+  SMS: 'SMS',
+  EMAIL: 'EMAIL',
+  PUSH: 'PUSH',
+} as const;
+
+export type CommunicationDeliveryStatus = typeof CommunicationDeliveryStatus[keyof typeof CommunicationDeliveryStatus];
+
+
+export const CommunicationDeliveryStatus = {
+  QUEUED: 'QUEUED',
+  PROCESSING: 'PROCESSING',
+  SENT: 'SENT',
+  DELIVERED: 'DELIVERED',
+  READ: 'READ',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export interface CommunicationDelivery {
+  id: number;
+  channel: CommunicationChannel;
+  status: CommunicationDeliveryStatus;
+  /**
+     * Provider identifier, or dev-test for the explicit no-network adapter.
+     * @nullable
+     */
+  provider: string | null;
+  /** @nullable */
+  providerMessageId: string | null;
+  /**
+     * Provider acceptance is not proof of delivery.
+     * @nullable
+     */
+  providerAcknowledgedAt: string | null;
+  /** @nullable */
+  sentAt: string | null;
+  /** @nullable */
+  deliveredAt: string | null;
+  /** @nullable */
+  failedAt: string | null;
+  /** @nullable */
+  errorCode: string | null;
+  /**
+     * Sanitized error text. Never contains recipient addresses, raw provider payloads, or credentials.
+     * @nullable
+     */
+  lastError: string | null;
+  /** @minimum 0 */
+  attempts: number;
+  nextAttemptAt: string;
+  /** @nullable */
+  lastAttemptAt: string | null;
+  /** True indicates a no-network simulation and never means a real send. */
+  simulated: boolean;
+  /**
+     * Human-readable delivery label; simulation labels explicitly indicate that no message was sent.
+     * @nullable
+     */
+  label: string | null;
+}
+
+export interface CommunicationNotification {
+  id: number;
+  /** @nullable */
+  schoolId: number | null;
+  /** CAMPAIGN is a manually authored school message; SYSTEM is a backend event, including finance notifications. */
+  origin: CommunicationNotificationOrigin;
+  category: CommunicationCategory;
+  /** @nullable */
+  subject: string | null;
+  body: string;
+  /** @nullable */
+  link: string | null;
+  isRead: boolean;
+  isArchived: boolean;
+  createdAt: string;
+  /** @nullable */
+  readAt: string | null;
+  deliveries: CommunicationDelivery[];
+}
+
+export type ParentCommunicationNotificationArchiveResponse = CommunicationNotification & {
+  /** Explicitly reports the notification's participant-visible archive state. */
+  isArchived: boolean;
+};
+
 export interface ExistingActivationCandidate {
   personId: number;
   personType: string;
@@ -6102,33 +6344,6 @@ export interface FeeProviderCheckoutReconciliation {
   outcome: FeeProviderCheckoutReconciliationOutcome;
 }
 
-export type CommunicationCategory = typeof CommunicationCategory[keyof typeof CommunicationCategory];
-
-
-export const CommunicationCategory = {
-  ATTENDANCE: 'ATTENDANCE',
-  ACADEMIC: 'ACADEMIC',
-  ASSIGNMENT: 'ASSIGNMENT',
-  FINANCE: 'FINANCE',
-  PAYMENT: 'PAYMENT',
-  ANNOUNCEMENT: 'ANNOUNCEMENT',
-  ACCOUNT: 'ACCOUNT',
-  SYSTEM: 'SYSTEM',
-  SUBSCRIPTION: 'SUBSCRIPTION',
-  PARTNER: 'PARTNER',
-  SECURITY: 'SECURITY',
-} as const;
-
-export type CommunicationChannel = typeof CommunicationChannel[keyof typeof CommunicationChannel];
-
-
-export const CommunicationChannel = {
-  IN_APP: 'IN_APP',
-  SMS: 'SMS',
-  EMAIL: 'EMAIL',
-  PUSH: 'PUSH',
-} as const;
-
 export type CommunicationOutboundChannel = typeof CommunicationOutboundChannel[keyof typeof CommunicationOutboundChannel];
 
 
@@ -6136,19 +6351,6 @@ export const CommunicationOutboundChannel = {
   IN_APP: 'IN_APP',
   SMS: 'SMS',
   EMAIL: 'EMAIL',
-} as const;
-
-export type CommunicationDeliveryStatus = typeof CommunicationDeliveryStatus[keyof typeof CommunicationDeliveryStatus];
-
-
-export const CommunicationDeliveryStatus = {
-  QUEUED: 'QUEUED',
-  PROCESSING: 'PROCESSING',
-  SENT: 'SENT',
-  DELIVERED: 'DELIVERED',
-  READ: 'READ',
-  FAILED: 'FAILED',
-  CANCELLED: 'CANCELLED',
 } as const;
 
 export type CommunicationCampaignStatus = typeof CommunicationCampaignStatus[keyof typeof CommunicationCampaignStatus];
@@ -6181,79 +6383,6 @@ export const CommunicationTargetType = {
  * Target details validated against the caller's active school, class assignments, and parent-child relationships. Never interpreted as arbitrary recipient IDs.
  */
 export interface CommunicationTargetCriteria { [key: string]: unknown }
-
-/**
- * CAMPAIGN is a manually authored school message; SYSTEM is a backend event, including finance notifications.
- */
-export type CommunicationNotificationOrigin = typeof CommunicationNotificationOrigin[keyof typeof CommunicationNotificationOrigin];
-
-
-export const CommunicationNotificationOrigin = {
-  CAMPAIGN: 'CAMPAIGN',
-  SYSTEM: 'SYSTEM',
-} as const;
-
-export interface CommunicationDelivery {
-  id: number;
-  channel: CommunicationChannel;
-  status: CommunicationDeliveryStatus;
-  /**
-     * Provider identifier, or dev-test for the explicit no-network adapter.
-     * @nullable
-     */
-  provider: string | null;
-  /** @nullable */
-  providerMessageId: string | null;
-  /**
-     * Provider acceptance is not proof of delivery.
-     * @nullable
-     */
-  providerAcknowledgedAt: string | null;
-  /** @nullable */
-  sentAt: string | null;
-  /** @nullable */
-  deliveredAt: string | null;
-  /** @nullable */
-  failedAt: string | null;
-  /** @nullable */
-  errorCode: string | null;
-  /**
-     * Sanitized error text. Never contains recipient addresses, raw provider payloads, or credentials.
-     * @nullable
-     */
-  lastError: string | null;
-  /** @minimum 0 */
-  attempts: number;
-  nextAttemptAt: string;
-  /** @nullable */
-  lastAttemptAt: string | null;
-  /** True indicates a no-network simulation and never means a real send. */
-  simulated: boolean;
-  /**
-     * Human-readable delivery label; simulation labels explicitly indicate that no message was sent.
-     * @nullable
-     */
-  label: string | null;
-}
-
-export interface CommunicationNotification {
-  id: number;
-  /** @nullable */
-  schoolId: number | null;
-  /** CAMPAIGN is a manually authored school message; SYSTEM is a backend event, including finance notifications. */
-  origin: CommunicationNotificationOrigin;
-  category: CommunicationCategory;
-  /** @nullable */
-  subject: string | null;
-  body: string;
-  /** @nullable */
-  link: string | null;
-  isRead: boolean;
-  createdAt: string;
-  /** @nullable */
-  readAt: string | null;
-  deliveries: CommunicationDelivery[];
-}
 
 export interface CommunicationNotificationInbox {
   items: CommunicationNotification[];
@@ -6392,6 +6521,8 @@ export interface CommunicationTemplateUpdate {
 export interface CommunicationAnnouncementPreviewInput {
   /** @minimum 1 */
   schoolId: number;
+  category?: CommunicationCategory;
+  isEmergency?: boolean;
   targetType: CommunicationTargetType;
   targetCriteria: CommunicationTargetCriteria;
   /** @minItems 1 */
@@ -6410,6 +6541,13 @@ export interface CommunicationAnnouncementPreview {
   recipientCount: number;
   channelCounts: CommunicationAnnouncementChannelCount[];
 }
+
+export type CommunicationAnnouncementInputEmergencyConfirmation = typeof CommunicationAnnouncementInputEmergencyConfirmation[keyof typeof CommunicationAnnouncementInputEmergencyConfirmation];
+
+
+export const CommunicationAnnouncementInputEmergencyConfirmation = {
+  I_CONFIRM_EMERGENCY_BROADCAST: 'I CONFIRM EMERGENCY BROADCAST',
+} as const;
 
 export interface CommunicationAnnouncementInput {
   /** @minimum 1 */
@@ -6444,6 +6582,12 @@ export interface CommunicationAnnouncementInput {
      * @maxLength 128
      */
   idempotencyKey: string;
+  /** @nullable */
+  expiresAt?: string | null;
+  isEmergency?: boolean;
+  emergencyConfirmation?: CommunicationAnnouncementInputEmergencyConfirmation;
+  /** @minimum 0 */
+  confirmedRecipientCount?: number;
 }
 
 export interface CommunicationAnnouncement {
@@ -6466,6 +6610,9 @@ export interface CommunicationAnnouncement {
   createdAt: string;
   /** @nullable */
   sentAt: string | null;
+  isEmergency?: boolean;
+  /** @nullable */
+  expiresAt?: string | null;
 }
 
 export interface CommunicationAnnouncementHistory {
@@ -9994,6 +10141,2317 @@ export interface TransportOwnerSchoolSummary {
   transportRevenueMinor: number;
 }
 
+export type PromotionStatus = typeof PromotionStatus[keyof typeof PromotionStatus];
+
+
+export const PromotionStatus = {
+  Pending: 'Pending',
+  Eligible: 'Eligible',
+  Promoted: 'Promoted',
+  Repeat: 'Repeat',
+  Graduated: 'Graduated',
+  Withdrawn: 'Withdrawn',
+  Transferred: 'Transferred',
+} as const;
+
+export interface PreparePromotionBatchInput {
+  /** @minimum 1 */
+  sourceSessionId: number;
+  /** @minimum 1 */
+  targetSessionId: number;
+}
+
+export interface PromotionReviewInput {
+  status: PromotionStatus;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  reason: string;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  targetTermId?: number | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  targetClassId?: number | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  targetSection?: string | null;
+}
+
+export interface PromotionPlacement {
+  sessionId: number;
+  classId: number;
+  className: string;
+  section: string;
+  /** @nullable */
+  termId: number | null;
+}
+
+/**
+ * Advisory data-derived recommendation, not an automatic decision.
+ */
+export type PromotionStudentRecommendation = typeof PromotionStudentRecommendation[keyof typeof PromotionStudentRecommendation];
+
+
+export const PromotionStudentRecommendation = {
+  Pending: 'Pending',
+  Eligible: 'Eligible',
+} as const;
+
+export type PromotionStudentAcademicPerformance = {
+  resultCount: number;
+  scoredCount: number;
+  /** @nullable */
+  averageScore: number | null;
+};
+
+export type PromotionStudentAttendanceSummary = {
+  presentCount: number;
+  absentCount: number;
+  lateCount: number;
+  recordedCount: number;
+  /** @nullable */
+  attendanceRate: number | null;
+};
+
+export interface PromotionStudent {
+  studentId: number;
+  studentName: string;
+  admissionNumber: string;
+  sourcePlacement: PromotionPlacement;
+  targetPlacement?: PromotionPlacement | null;
+  status: PromotionStatus;
+  /** Advisory data-derived recommendation, not an automatic decision. */
+  recommendation: PromotionStudentRecommendation;
+  /** @nullable */
+  reason?: string | null;
+  academicPerformance: PromotionStudentAcademicPerformance;
+  attendanceSummary: PromotionStudentAttendanceSummary;
+}
+
+export type PromotionBatchStatus = typeof PromotionBatchStatus[keyof typeof PromotionBatchStatus];
+
+
+export const PromotionBatchStatus = {
+  Prepared: 'Prepared',
+  Finalized: 'Finalized',
+} as const;
+
+export interface PromotionBatch {
+  id: number;
+  schoolId: number;
+  sourceSessionId: number;
+  targetSessionId: number;
+  status: PromotionBatchStatus;
+  createdAt: string;
+  /** @nullable */
+  finalizedAt?: string | null;
+  studentCount: number;
+}
+
+export type PromotionBatchDetail = PromotionBatch & {
+  students: PromotionStudent[];
+};
+
+export type PromotionHistoryEntryEventType = typeof PromotionHistoryEntryEventType[keyof typeof PromotionHistoryEntryEventType];
+
+
+export const PromotionHistoryEntryEventType = {
+  BATCH_PREPARED: 'BATCH_PREPARED',
+  STUDENT_SNAPSHOTTED: 'STUDENT_SNAPSHOTTED',
+  STUDENT_REVIEWED: 'STUDENT_REVIEWED',
+  STUDENT_FINALIZED: 'STUDENT_FINALIZED',
+  BATCH_FINALIZED: 'BATCH_FINALIZED',
+  FINALIZATION_REJECTED: 'FINALIZATION_REJECTED',
+} as const;
+
+export type PromotionHistoryEntryResult = typeof PromotionHistoryEntryResult[keyof typeof PromotionHistoryEntryResult];
+
+
+export const PromotionHistoryEntryResult = {
+  SUCCESS: 'SUCCESS',
+  REJECTED: 'REJECTED',
+} as const;
+
+export type PromotionHistoryEntryMetadata = { [key: string]: unknown };
+
+export interface PromotionHistoryEntry {
+  id: number;
+  batchId: number;
+  /** @nullable */
+  batchStudentId: number | null;
+  /** @nullable */
+  studentId: number | null;
+  /** @nullable */
+  actorUserId: number | null;
+  eventType: PromotionHistoryEntryEventType;
+  result: PromotionHistoryEntryResult;
+  metadata: PromotionHistoryEntryMetadata;
+  createdAt: string;
+}
+
+export type AdmissionApplicationStatus = typeof AdmissionApplicationStatus[keyof typeof AdmissionApplicationStatus];
+
+
+export const AdmissionApplicationStatus = {
+  Draft: 'Draft',
+  Submitted: 'Submitted',
+  UnderReview: 'UnderReview',
+  Shortlisted: 'Shortlisted',
+  InterviewScheduled: 'InterviewScheduled',
+  AssessmentPending: 'AssessmentPending',
+  AssessmentCompleted: 'AssessmentCompleted',
+  Accepted: 'Accepted',
+  Waitlisted: 'Waitlisted',
+  Rejected: 'Rejected',
+  Withdrawn: 'Withdrawn',
+  Enrolled: 'Enrolled',
+} as const;
+
+export type AdmissionDocumentInputContentType = typeof AdmissionDocumentInputContentType[keyof typeof AdmissionDocumentInputContentType];
+
+
+export const AdmissionDocumentInputContentType = {
+  'application/pdf': 'application/pdf',
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+} as const;
+
+export interface AdmissionDocumentInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  documentType: string;
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  fileName: string;
+  contentType: AdmissionDocumentInputContentType;
+  /**
+     * @minimum 1
+     * @maximum 10485760
+     */
+  byteSize: number;
+  /** @pattern ^/objects/admissions/ */
+  objectPath: string;
+}
+
+export type AdmissionApplicantInputGender = typeof AdmissionApplicantInputGender[keyof typeof AdmissionApplicantInputGender];
+
+
+export const AdmissionApplicantInputGender = {
+  Female: 'Female',
+  Male: 'Male',
+  Other: 'Other',
+  PreferNotToSay: 'PreferNotToSay',
+} as const;
+
+export interface AdmissionApplicantInput {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  firstName: string;
+  /** @maxLength 100 */
+  middleName?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  lastName: string;
+  dateOfBirth: string;
+  gender: AdmissionApplicantInputGender;
+  /** @pattern ^/objects/admissions/ */
+  photoObjectPath?: string;
+  /** @maxLength 200 */
+  previousSchool?: string | null;
+  /** @maxLength 100 */
+  previousClass?: string | null;
+  /** @minimum 1 */
+  intendedClassId: number;
+  /** @minimum 1 */
+  academicSessionId?: number;
+  /** @minimum 1 */
+  academicTermId?: number;
+  /** @maxLength 1000 */
+  address?: string | null;
+}
+
+export interface AdmissionGuardianInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  fullName: string;
+  /** @pattern ^\+[1-9][0-9]{7,14}$ */
+  phone: string;
+  /** @maxLength 254 */
+  email?: string;
+  /** @maxLength 80 */
+  relationship?: string | null;
+  /** @maxLength 1000 */
+  address?: string | null;
+}
+
+export interface AdmissionEmergencyContactInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  fullName: string;
+  /** @pattern ^\+[1-9][0-9]{7,14}$ */
+  phone: string;
+  /** @maxLength 80 */
+  relationship?: string | null;
+}
+
+export type AdmissionApplicantResponseGender = typeof AdmissionApplicantResponseGender[keyof typeof AdmissionApplicantResponseGender];
+
+
+export const AdmissionApplicantResponseGender = {
+  Female: 'Female',
+  Male: 'Male',
+  Other: 'Other',
+  PreferNotToSay: 'PreferNotToSay',
+} as const;
+
+export interface AdmissionApplicantResponse {
+  firstName: string;
+  middleName: string | null;
+  lastName: string;
+  dateOfBirth: string;
+  gender: AdmissionApplicantResponseGender;
+  /** @pattern ^/objects/admissions/ */
+  photoObjectPath: string | null;
+  previousSchool: string | null;
+  previousClass: string | null;
+  intendedClassId: number;
+  academicSessionId: number;
+  academicTermId: number | null;
+  address: string | null;
+}
+
+export type AdmissionApplicantProfilePatchGender = typeof AdmissionApplicantProfilePatchGender[keyof typeof AdmissionApplicantProfilePatchGender];
+
+
+export const AdmissionApplicantProfilePatchGender = {
+  Female: 'Female',
+  Male: 'Male',
+  Other: 'Other',
+  PreferNotToSay: 'PreferNotToSay',
+} as const;
+
+export interface AdmissionApplicantProfilePatch {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  firstName?: string;
+  /** @maxLength 100 */
+  middleName?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  lastName?: string;
+  dateOfBirth?: string;
+  gender?: AdmissionApplicantProfilePatchGender;
+  /** @maxLength 200 */
+  previousSchool?: string | null;
+  /** @maxLength 100 */
+  previousClass?: string | null;
+  /** @minimum 1 */
+  intendedClassId?: number;
+  /** @minimum 1 */
+  academicSessionId?: number;
+  /** @minimum 1 */
+  academicTermId?: number | null;
+  /** @maxLength 1000 */
+  address?: string | null;
+}
+
+export interface AdmissionGuardianProfilePatch {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  fullName?: string;
+  /** @pattern ^\+[1-9][0-9]{7,14}$ */
+  phone?: string;
+  /** @maxLength 254 */
+  email?: string | null;
+  /** @maxLength 80 */
+  relationship?: string | null;
+  /** @maxLength 1000 */
+  address?: string | null;
+}
+
+export type AdmissionApplicationPatchInputEmergencyContact = {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  fullName: string;
+  /** @pattern ^\+[1-9][0-9]{7,14}$ */
+  phone: string;
+  /** @maxLength 80 */
+  relationship?: string | null;
+} | null;
+
+export interface AdmissionApplicationPatchInput {
+  /** @minimum 1 */
+  expectedVersion: number;
+  applicant?: AdmissionApplicantProfilePatch;
+  guardian?: AdmissionGuardianProfilePatch;
+  emergencyContact?: AdmissionApplicationPatchInputEmergencyContact;
+}
+
+export interface AdmissionGuardianResponse {
+  fullName: string;
+  /** @pattern ^\+[1-9][0-9]{7,14}$ */
+  phone: string;
+  email: string | null;
+  relationship: string | null;
+  address: string | null;
+}
+
+export interface AdmissionEmergencyContactResponse {
+  fullName: string;
+  /** @pattern ^\+[1-9][0-9]{7,14}$ */
+  phone: string;
+  relationship: string | null;
+}
+
+export interface AdmissionApplicationInput {
+  applicant: AdmissionApplicantInput;
+  guardian: AdmissionGuardianInput;
+  emergencyContact?: AdmissionEmergencyContactInput;
+  /** @maxItems 20 */
+  documents?: AdmissionDocumentInput[];
+}
+
+export interface StaffAdmissionApplicationInput {
+  /** @minimum 1 */
+  schoolId: number;
+  applicant: AdmissionApplicantInput;
+  guardian: AdmissionGuardianInput;
+  emergencyContact?: AdmissionEmergencyContactInput;
+  /** @maxItems 20 */
+  documents?: AdmissionDocumentInput[];
+  saveAsDraft?: boolean;
+}
+
+export type PublicAdmissionPortalResponseSchool = {
+  name: string;
+  description?: string | null;
+  address?: string | null;
+  publicPhone?: string | null;
+  publicEmail?: string | null;
+  logoUrl?: string | null;
+};
+
+export type PublicAdmissionPortalResponseAdmission = {
+  open: boolean;
+  session?: string | null;
+  term?: string | null;
+  deadline?: string | null;
+  feeInfo?: string | null;
+  requirements?: string[];
+  requiredDocuments?: string[];
+  instructions?: string | null;
+  entranceExamination?: string | null;
+  interviewInformation?: string | null;
+};
+
+export type PublicAdmissionPortalResponseAvailableClassesItem = {
+  id: number;
+  name: string;
+  section: string;
+};
+
+export interface PublicAdmissionPortalResponse {
+  portalKey: string;
+  school: PublicAdmissionPortalResponseSchool;
+  admission: PublicAdmissionPortalResponseAdmission;
+  availableClasses: PublicAdmissionPortalResponseAvailableClassesItem[];
+}
+
+export interface AdmissionPortalSettingsInput {
+  open: boolean;
+  /** @minimum 1 */
+  academicSessionId?: number | null;
+  /** @minimum 1 */
+  academicTermId?: number | null;
+  /** @items.minimum 1 */
+  availableClassIds: number[];
+  deadline?: string | null;
+  /** @maxLength 1000 */
+  feeInfo?: string | null;
+  /**
+     * @maxItems 50
+     * @items.maxLength 500
+     */
+  requirements?: string[];
+  /**
+     * @maxItems 50
+     * @items.maxLength 200
+     */
+  requiredDocuments?: string[];
+  /** @maxLength 5000 */
+  instructions?: string | null;
+  /** @maxLength 2000 */
+  entranceExamination?: string | null;
+  /** @maxLength 2000 */
+  interviewInformation?: string | null;
+  /** @maxLength 3000 */
+  publicDescription?: string | null;
+  /** @maxLength 1000 */
+  publicAddress?: string | null;
+  /** @pattern ^\+[1-9][0-9]{7,14}$ */
+  publicPhone?: string | null;
+  publicEmail?: string | null;
+  /**
+     * @maxLength 500
+     * @pattern ^(/objects/admissions/[A-Za-z0-9/_-]+|/objects/school-logos/[1-9][0-9]*\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$
+     */
+  logoObjectPath?: string | null;
+}
+
+export interface AdmissionPortalSettingsResponse {
+  schoolId: number;
+  portalKey: string;
+  portalUrl: string;
+  open: boolean;
+  /** @minimum 1 */
+  academicSessionId?: number | null;
+  /** @minimum 1 */
+  academicTermId?: number | null;
+  /** @items.minimum 1 */
+  availableClassIds: number[];
+  deadline?: string | null;
+  feeInfo?: string | null;
+  requirements: string[];
+  requiredDocuments: string[];
+  instructions?: string | null;
+  entranceExamination?: string | null;
+  interviewInformation?: string | null;
+  publicDescription?: string | null;
+  publicAddress?: string | null;
+  publicPhone?: string | null;
+  publicEmail?: string | null;
+  /**
+     * @maxLength 500
+     * @pattern ^(/objects/admissions/[A-Za-z0-9/_-]+|/objects/school-logos/[1-9][0-9]*\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$
+     */
+  logoObjectPath?: string | null;
+  /** @pattern ^/objects/school-logos/[1-9][0-9]*\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ */
+  readonly availableSchoolLogoObjectPath: string | null;
+}
+
+export type PublicAdmissionApplicationReceiptConfirmationDeliveryStatus = typeof PublicAdmissionApplicationReceiptConfirmationDeliveryStatus[keyof typeof PublicAdmissionApplicationReceiptConfirmationDeliveryStatus];
+
+
+export const PublicAdmissionApplicationReceiptConfirmationDeliveryStatus = {
+  NOT_SENT: 'NOT_SENT',
+  QUEUED: 'QUEUED',
+  CONFIRMED: 'CONFIRMED',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type PublicAdmissionApplicationReceiptConfirmation = {
+  deliveryStatus: PublicAdmissionApplicationReceiptConfirmationDeliveryStatus;
+  message: string;
+};
+
+export interface PublicAdmissionApplicationReceipt {
+  applicationId: number;
+  applicationNumber: string;
+  status: AdmissionApplicationStatus;
+  /** @minLength 32 */
+  receiptSecret: string;
+  confirmation: PublicAdmissionApplicationReceiptConfirmation;
+}
+
+export interface AdmissionTrackingInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  applicationNumber: string;
+  /** @pattern ^\+[1-9][0-9]{7,14}$ */
+  phone: string;
+  /**
+     * @minLength 32
+     * @maxLength 256
+     */
+  receiptSecret: string;
+}
+
+export interface PublicAdmissionApplicationStatus {
+  applicationNumber: string;
+  status: AdmissionApplicationStatus;
+  publicMessage?: string | null;
+  updatedAt: string;
+}
+
+export type AdmissionDocumentResponseContentType = typeof AdmissionDocumentResponseContentType[keyof typeof AdmissionDocumentResponseContentType];
+
+
+export const AdmissionDocumentResponseContentType = {
+  'application/pdf': 'application/pdf',
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+} as const;
+
+export interface AdmissionDocumentResponse {
+  id: number;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  documentType: string;
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  fileName: string;
+  contentType: AdmissionDocumentResponseContentType;
+  /**
+     * @minimum 1
+     * @maximum 10485760
+     */
+  byteSize: number;
+  /** @pattern ^/objects/ */
+  objectPath: string;
+}
+
+export type AdmissionApplicationResponseAssessment = { [key: string]: unknown } | null;
+
+export type AdmissionApplicationResponseInterview = { [key: string]: unknown } | null;
+
+export interface AdmissionApplicationResponse {
+  id: number;
+  schoolId: number;
+  applicationNumber: string;
+  status: AdmissionApplicationStatus;
+  applicant: AdmissionApplicantResponse;
+  guardian: AdmissionGuardianResponse;
+  emergencyContact?: AdmissionEmergencyContactResponse;
+  documents?: AdmissionDocumentResponse[];
+  assessment?: AdmissionApplicationResponseAssessment;
+  interview?: AdmissionApplicationResponseInterview;
+  internalNotes?: string | null;
+  publicMessage?: string | null;
+  studentId?: number | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdmissionApplicationListResponse {
+  applications: AdmissionApplicationResponse[];
+}
+
+export type AdmissionReviewInputAssessment = {
+  /** @maxLength 2000 */
+  result?: string;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  score?: number;
+  /** @maxLength 2000 */
+  publicMessage?: string;
+  /** @maxLength 10000 */
+  internalNotes?: string;
+};
+
+export type AdmissionReviewInputInterview = {
+  scheduledAt?: string;
+  /** @maxLength 2000 */
+  result?: string;
+  /** @maxLength 2000 */
+  publicMessage?: string;
+  /** @maxLength 10000 */
+  internalNotes?: string;
+};
+
+export interface AdmissionReviewInput {
+  /** @minimum 1 */
+  expectedVersion: number;
+  assessment?: AdmissionReviewInputAssessment;
+  interview?: AdmissionReviewInputInterview;
+  /** @maxLength 10000 */
+  internalNotes?: string;
+  /** @maxLength 2000 */
+  publicMessage?: string;
+}
+
+export interface AdmissionStatusTransitionInput {
+  status: AdmissionApplicationStatus;
+  /** @minimum 1 */
+  expectedVersion: number;
+  /** @maxLength 2000 */
+  publicMessage?: string | null;
+  /** @maxLength 10000 */
+  internalNotes?: string | null;
+}
+
+export type AdmissionDocumentUploadInputContentType = typeof AdmissionDocumentUploadInputContentType[keyof typeof AdmissionDocumentUploadInputContentType];
+
+
+export const AdmissionDocumentUploadInputContentType = {
+  'application/pdf': 'application/pdf',
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+} as const;
+
+export interface AdmissionDocumentUploadInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  documentType: string;
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  fileName: string;
+  contentType: AdmissionDocumentUploadInputContentType;
+  /**
+     * @minimum 1
+     * @maximum 10485760
+     */
+  byteSize: number;
+}
+
+export interface AdmissionDocumentUploadResponse {
+  uploadUrl: string;
+  /** @pattern ^/objects/ */
+  objectPath: string;
+  expiresAt: string;
+}
+
+export type AdmissionDocumentConfirmInputContentType = typeof AdmissionDocumentConfirmInputContentType[keyof typeof AdmissionDocumentConfirmInputContentType];
+
+
+export const AdmissionDocumentConfirmInputContentType = {
+  'application/pdf': 'application/pdf',
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+} as const;
+
+export interface AdmissionDocumentConfirmInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  documentType: string;
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  fileName: string;
+  contentType: AdmissionDocumentConfirmInputContentType;
+  /**
+     * @minimum 1
+     * @maximum 10485760
+     */
+  byteSize: number;
+  /** @pattern ^/objects/ */
+  objectPath: string;
+}
+
+export interface AdmissionDocumentDownloadInput {
+  /**
+     * @minLength 32
+     * @maxLength 256
+     */
+  receiptSecret?: string;
+}
+
+export interface AdmissionDocumentDownloadResponse {
+  downloadUrl: string;
+  expiresAt: string;
+}
+
+export interface AdmissionConversionInput {
+  /** @minimum 1 */
+  expectedVersion: number;
+  /** @minimum 1 */
+  existingStudentId?: number | null;
+  /** @minimum 1 */
+  existingParentId?: number | null;
+  createParentRecord?: boolean;
+  /** @maxLength 80 */
+  parentRelationship?: string;
+  /** @maxLength 100 */
+  section?: string;
+}
+
+export interface AdmissionConversionResponse {
+  applicationId: number;
+  studentId: number;
+  admissionNumber: string;
+  parentId: number | null;
+  idempotent: boolean;
+}
+
+export interface CareError {
+  error: string;
+  code: string;
+}
+
+export interface ProviderContact {
+  /** @maxLength 200 */
+  name: string;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  role?: string | null;
+  /** @maxLength 40 */
+  phone: string;
+  /**
+     * @maxLength 254
+     * @nullable
+     */
+  email?: string | null;
+}
+
+export interface EmergencyContact {
+  /** @maxLength 200 */
+  name: string;
+  /** @maxLength 40 */
+  phone: string;
+  /** @maxLength 100 */
+  relationship: string;
+}
+
+export interface MedicalProfileInput {
+  /** @minimum 0 */
+  expectedVersion: number;
+  /**
+     * @maxLength 16
+     * @nullable
+     */
+  bloodGroup?: string | null;
+  /**
+     * @maxLength 16
+     * @nullable
+     */
+  genotype?: string | null;
+  /** @items.maxLength 500 */
+  allergies?: string[];
+  /** @items.maxLength 1000 */
+  conditions?: string[];
+  /** @items.maxLength 1000 */
+  supportNeeds?: string[];
+  /** @items.maxLength 1000 */
+  medications?: string[];
+  /**
+     * @maxLength 5000
+     * @nullable
+     */
+  emergencyMedicalNotes?: string | null;
+  providerContacts?: ProviderContact[];
+  emergencyContacts?: EmergencyContact[];
+}
+
+export type MedicalProfile = MedicalProfileInput & ({
+  id: number;
+  schoolId: number;
+  studentId: number;
+  version: number;
+  updatedAt: string;
+  /** @nullable */
+  archivedAt?: string | null;
+});
+
+export interface MedicalProfileRevision {
+  revision: number;
+  changedAt: string;
+  changedByUserId: number;
+  snapshot: MedicalProfileInput;
+}
+
+export interface MedicalVisitInput {
+  occurredAt: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  reason: string;
+  /**
+     * @maxLength 5000
+     * @nullable
+     */
+  symptoms?: string | null;
+  /**
+     * @maxLength 5000
+     * @nullable
+     */
+  observations?: string | null;
+  /**
+     * @maxLength 5000
+     * @nullable
+     */
+  actionTaken?: string | null;
+  /**
+     * @maxLength 5000
+     * @nullable
+     */
+  treatment?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  referral?: string | null;
+  /** @nullable */
+  followUpAt?: string | null;
+  /**
+     * @maxLength 5000
+     * @nullable
+     */
+  followUpNotes?: string | null;
+  /**
+     * @maxLength 5000
+     * @nullable
+     */
+  notes?: string | null;
+}
+
+export type MedicalVisitPatch = MedicalVisitInput & {
+  /** @minimum 1 */
+  expectedVersion: number;
+};
+
+export type MedicalVisit = MedicalVisitInput & ({
+  id: number;
+  schoolId: number;
+  studentId: number;
+  recordedByUserId: number;
+  version: number;
+  createdAt: string;
+  /** @nullable */
+  archivedAt?: string | null;
+});
+
+export type WelfareRecordInputCategory = typeof WelfareRecordInputCategory[keyof typeof WelfareRecordInputCategory];
+
+
+export const WelfareRecordInputCategory = {
+  WELFARE_CONCERN: 'WELFARE_CONCERN',
+  COUNSELLING_REFERRAL: 'COUNSELLING_REFERRAL',
+  SAFEGUARDING: 'SAFEGUARDING',
+  FAMILY_SUPPORT: 'FAMILY_SUPPORT',
+  LEARNING_SUPPORT: 'LEARNING_SUPPORT',
+} as const;
+
+export type WelfareRecordInputFollowUpStatus = typeof WelfareRecordInputFollowUpStatus[keyof typeof WelfareRecordInputFollowUpStatus];
+
+
+export const WelfareRecordInputFollowUpStatus = {
+  NOT_REQUIRED: 'NOT_REQUIRED',
+  PENDING: 'PENDING',
+  IN_PROGRESS: 'IN_PROGRESS',
+  COMPLETE: 'COMPLETE',
+} as const;
+
+export type WelfareRecordInputStatus = typeof WelfareRecordInputStatus[keyof typeof WelfareRecordInputStatus];
+
+
+export const WelfareRecordInputStatus = {
+  OPEN: 'OPEN',
+  IN_PROGRESS: 'IN_PROGRESS',
+  RESOLVED: 'RESOLVED',
+} as const;
+
+export interface WelfareRecordInput {
+  category: WelfareRecordInputCategory;
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  concern: string;
+  /** @nullable */
+  assignedStaffUserId?: number | null;
+  /** @nullable */
+  followUpAt?: string | null;
+  followUpStatus?: WelfareRecordInputFollowUpStatus;
+  status?: WelfareRecordInputStatus;
+  /**
+     * @maxLength 5000
+     * @nullable
+     */
+  resolution?: string | null;
+  /**
+     * @maxLength 10000
+     * @nullable
+     */
+  internalNotes?: string | null;
+  parentVisible?: boolean;
+}
+
+export type WelfareRecordPatch = WelfareRecordInput & {
+  /** @minimum 1 */
+  expectedVersion: number;
+};
+
+export type WelfareRecord = WelfareRecordInput & ({
+  id: number;
+  schoolId: number;
+  studentId: number;
+  version: number;
+  createdByUserId: number;
+  createdAt: string;
+  /** @nullable */
+  archivedAt?: string | null;
+});
+
+export type BehaviourRecordInputCategory = typeof BehaviourRecordInputCategory[keyof typeof BehaviourRecordInputCategory];
+
+
+export const BehaviourRecordInputCategory = {
+  POSITIVE: 'POSITIVE',
+  CONCERN: 'CONCERN',
+  INCIDENT: 'INCIDENT',
+  RULE_VIOLATION: 'RULE_VIOLATION',
+  RECOGNITION: 'RECOGNITION',
+} as const;
+
+export type BehaviourRecordInputSeverity = typeof BehaviourRecordInputSeverity[keyof typeof BehaviourRecordInputSeverity];
+
+
+export const BehaviourRecordInputSeverity = {
+  LOW: 'LOW',
+  MODERATE: 'MODERATE',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL',
+} as const;
+
+export interface BehaviourRecordInput {
+  category: BehaviourRecordInputCategory;
+  severity: BehaviourRecordInputSeverity;
+  occurredAt?: string;
+  /** @nullable */
+  schoolClassId?: number | null;
+  /** @nullable */
+  subjectId?: number | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  location?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  description: string;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  action?: string | null;
+  /** @nullable */
+  followUpAt?: string | null;
+  /**
+     * @maxLength 5000
+     * @nullable
+     */
+  followUpNotes?: string | null;
+  /**
+     * @maxLength 5000
+     * @nullable
+     */
+  resolution?: string | null;
+  /**
+     * @maxLength 10000
+     * @nullable
+     */
+  internalNotes?: string | null;
+  parentVisible?: boolean;
+}
+
+export type BehaviourRecordPatchStatus = typeof BehaviourRecordPatchStatus[keyof typeof BehaviourRecordPatchStatus];
+
+
+export const BehaviourRecordPatchStatus = {
+  REVIEW: 'REVIEW',
+  ACTION: 'ACTION',
+  PARENT_NOTIFICATION: 'PARENT_NOTIFICATION',
+  FOLLOW_UP: 'FOLLOW_UP',
+  RESOLVED: 'RESOLVED',
+} as const;
+
+export type BehaviourRecordPatch = BehaviourRecordInput & {
+  /** @minimum 1 */
+  expectedVersion: number;
+  status?: BehaviourRecordPatchStatus;
+  parentNotificationRequested?: boolean;
+};
+
+export type BehaviourRecordStatus = typeof BehaviourRecordStatus[keyof typeof BehaviourRecordStatus];
+
+
+export const BehaviourRecordStatus = {
+  REVIEW: 'REVIEW',
+  ACTION: 'ACTION',
+  PARENT_NOTIFICATION: 'PARENT_NOTIFICATION',
+  FOLLOW_UP: 'FOLLOW_UP',
+  RESOLVED: 'RESOLVED',
+} as const;
+
+export type BehaviourRecordParentNotificationStatus = typeof BehaviourRecordParentNotificationStatus[keyof typeof BehaviourRecordParentNotificationStatus];
+
+
+export const BehaviourRecordParentNotificationStatus = {
+  NOT_REQUESTED: 'NOT_REQUESTED',
+  QUEUED: 'QUEUED',
+  PARTIAL: 'PARTIAL',
+  NOT_CONFIGURED: 'NOT_CONFIGURED',
+  FAILED: 'FAILED',
+} as const;
+
+export type BehaviourRecord = BehaviourRecordInput & ({
+  id: number;
+  schoolId: number;
+  studentId: number;
+  reporterUserId: number;
+  status: BehaviourRecordStatus;
+  parentNotificationStatus: BehaviourRecordParentNotificationStatus;
+  version: number;
+  createdAt: string;
+  /** @nullable */
+  archivedAt?: string | null;
+});
+
+export interface BehaviourConfigurationInput {
+  /** @minimum 0 */
+  expectedVersion: number;
+  /**
+     * @items.minLength 1
+     * @items.maxLength 100
+     */
+  categories: string[];
+  /**
+     * @items.minLength 1
+     * @items.maxLength 200
+     */
+  actions: string[];
+}
+
+export interface BehaviourConfiguration {
+  categories: string[];
+  actions: string[];
+  /** @minimum 0 */
+  version: number;
+  /** @nullable */
+  updatedAt: string | null;
+}
+
+export type CareGrantInputPermissionsItem = typeof CareGrantInputPermissionsItem[keyof typeof CareGrantInputPermissionsItem];
+
+
+export const CareGrantInputPermissionsItem = {
+  MEDICAL_READ: 'MEDICAL_READ',
+  MEDICAL_WRITE: 'MEDICAL_WRITE',
+  WELFARE_READ: 'WELFARE_READ',
+  WELFARE_WRITE: 'WELFARE_WRITE',
+  SAFEGUARDING_READ: 'SAFEGUARDING_READ',
+  SAFEGUARDING_WRITE: 'SAFEGUARDING_WRITE',
+  BEHAVIOUR_READ: 'BEHAVIOUR_READ',
+  BEHAVIOUR_WRITE: 'BEHAVIOUR_WRITE',
+  BEHAVIOUR_REVIEW: 'BEHAVIOUR_REVIEW',
+  BEHAVIOUR_ACTION: 'BEHAVIOUR_ACTION',
+} as const;
+
+export interface CareGrantInput {
+  /** @minimum 1 */
+  userId: number;
+  active: boolean;
+  permissions: CareGrantInputPermissionsItem[];
+}
+
+export type CareGrant = CareGrantInput & {
+  schoolId: number;
+  updatedAt: string;
+};
+
+export type RecordRevisionSnapshot = { [key: string]: unknown };
+
+export interface RecordRevision {
+  revision: number;
+  changedAt: string;
+  changedByUserId: number;
+  snapshot: RecordRevisionSnapshot;
+}
+
+export type ParentCareSummaryWelfareItem = {
+  id: number;
+  category: string;
+  concern: string;
+  status: string;
+  updatedAt: string;
+};
+
+export type ParentCareSummaryBehaviourItem = {
+  id: number;
+  category: string;
+  description: string;
+  status: string;
+  occurredAt: string;
+};
+
+export interface ParentCareSummary {
+  studentId: number;
+  welfare: ParentCareSummaryWelfareItem[];
+  behaviour: ParentCareSummaryBehaviourItem[];
+}
+
+/**
+ * SECURITY is accepted only when isEmergency is true and the caller has the core emergency permission.
+ */
+export type CommunicationAnnouncementExtensionsCategory = typeof CommunicationAnnouncementExtensionsCategory[keyof typeof CommunicationAnnouncementExtensionsCategory];
+
+
+export const CommunicationAnnouncementExtensionsCategory = {
+  ATTENDANCE: 'ATTENDANCE',
+  ACADEMIC: 'ACADEMIC',
+  ASSIGNMENT: 'ASSIGNMENT',
+  FINANCE: 'FINANCE',
+  PAYMENT: 'PAYMENT',
+  ANNOUNCEMENT: 'ANNOUNCEMENT',
+  ACCOUNT: 'ACCOUNT',
+  SYSTEM: 'SYSTEM',
+  SUBSCRIPTION: 'SUBSCRIPTION',
+  PARTNER: 'PARTNER',
+  SECURITY: 'SECURITY',
+} as const;
+
+/**
+ * Additive request/response fields on the existing POST/GET /communication/announcements and POST /communication/announcements/preview operations. Existing campaigns remain the source of announcement history, recipients, and delivery statistics. isEmergency requires SCHOOL_ADMIN, the EMERGENCY_BROADCAST core permission, SECURITY category, the exact confirmation phrase, and a confirmedRecipientCount matching the current resolved audience.
+ */
+export interface CommunicationAnnouncementExtensions {
+  /**
+     * Optional future expiry for announcements.
+     * @nullable
+     */
+  expiresAt?: string | null;
+  isEmergency?: boolean;
+  emergencyConfirmation?: 'I CONFIRM EMERGENCY BROADCAST';
+  /**
+     * Required for an emergency and must equal the server-resolved current audience size.
+     * @minimum 0
+     */
+  confirmedRecipientCount?: number;
+  /** SECURITY is accepted only when isEmergency is true and the caller has the core emergency permission. */
+  category?: CommunicationAnnouncementExtensionsCategory;
+}
+
+export type CommunicationChannelAvailabilityChannelsItemChannel = typeof CommunicationChannelAvailabilityChannelsItemChannel[keyof typeof CommunicationChannelAvailabilityChannelsItemChannel];
+
+
+export const CommunicationChannelAvailabilityChannelsItemChannel = {
+  IN_APP: 'IN_APP',
+  PUSH: 'PUSH',
+  SMS: 'SMS',
+  EMAIL: 'EMAIL',
+} as const;
+
+export type CommunicationChannelAvailabilityChannelsItemStatus = typeof CommunicationChannelAvailabilityChannelsItemStatus[keyof typeof CommunicationChannelAvailabilityChannelsItemStatus];
+
+
+export const CommunicationChannelAvailabilityChannelsItemStatus = {
+  AVAILABLE: 'AVAILABLE',
+  CONFIGURATION_REQUIRED: 'CONFIGURATION_REQUIRED',
+  UNAVAILABLE: 'UNAVAILABLE',
+} as const;
+
+export type CommunicationChannelAvailabilityChannelsItem = {
+  channel: CommunicationChannelAvailabilityChannelsItemChannel;
+  available: boolean;
+  status: CommunicationChannelAvailabilityChannelsItemStatus;
+  detail: string;
+};
+
+export interface CommunicationChannelAvailability {
+  channels: CommunicationChannelAvailabilityChannelsItem[];
+}
+
+export interface ParentCommunicationChild {
+  studentId: number;
+  schoolId: number;
+  schoolName: string;
+  firstName: string;
+  lastName: string;
+  /** @nullable */
+  className: string | null;
+  /** @nullable */
+  section: string | null;
+}
+
+export type ParentCreateCommunicationThreadCategory = typeof ParentCreateCommunicationThreadCategory[keyof typeof ParentCreateCommunicationThreadCategory];
+
+
+export const ParentCreateCommunicationThreadCategory = {
+  GENERAL: 'GENERAL',
+  ACADEMIC: 'ACADEMIC',
+  ASSIGNMENT: 'ASSIGNMENT',
+  FINANCE: 'FINANCE',
+} as const;
+
+export interface ParentCreateCommunicationThread {
+  /** @minimum 1 */
+  studentId: number;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  subject: string;
+  category: ParentCreateCommunicationThreadCategory;
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  body: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+}
+
+export type SchoolCreateCommunicationThreadCategory = typeof SchoolCreateCommunicationThreadCategory[keyof typeof SchoolCreateCommunicationThreadCategory];
+
+
+export const SchoolCreateCommunicationThreadCategory = {
+  GENERAL: 'GENERAL',
+  ACADEMIC: 'ACADEMIC',
+  ASSIGNMENT: 'ASSIGNMENT',
+  FINANCE: 'FINANCE',
+} as const;
+
+export interface SchoolCreateCommunicationThread {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  studentId: number;
+  /** @minimum 1 */
+  parentUserId: number;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  subject: string;
+  category: SchoolCreateCommunicationThreadCategory;
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  body: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+}
+
+export interface ParentCommunicationReply {
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  body: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+}
+
+export type ParentCommunicationMessageSenderRole = typeof ParentCommunicationMessageSenderRole[keyof typeof ParentCommunicationMessageSenderRole];
+
+
+export const ParentCommunicationMessageSenderRole = {
+  PARENT: 'PARENT',
+  SCHOOL: 'SCHOOL',
+} as const;
+
+export interface ParentCommunicationMessage {
+  id: number;
+  senderRole: ParentCommunicationMessageSenderRole;
+  body: string;
+  createdAt: string;
+}
+
+export type ParentCommunicationThreadCategory = typeof ParentCommunicationThreadCategory[keyof typeof ParentCommunicationThreadCategory];
+
+
+export const ParentCommunicationThreadCategory = {
+  GENERAL: 'GENERAL',
+  ACADEMIC: 'ACADEMIC',
+  ASSIGNMENT: 'ASSIGNMENT',
+  FINANCE: 'FINANCE',
+} as const;
+
+export interface ParentCommunicationThread {
+  id: number;
+  schoolId: number;
+  studentId: number;
+  childName: string;
+  schoolName: string;
+  subject: string;
+  category: ParentCommunicationThreadCategory;
+  lastMessageAt: string;
+  unreadCount: number;
+  archived: boolean;
+}
+
+export interface ParentCommunicationThreadPage {
+  items: ParentCommunicationThread[];
+  hasMore: boolean;
+  /** @nullable */
+  nextBeforeId: number | null;
+}
+
+export type ParentCommunicationThreadDetail = ParentCommunicationThread & ({
+  messages: ParentCommunicationMessage[];
+  hasMoreMessages: boolean;
+  /** @nullable */
+  nextBeforeMessageId: number | null;
+});
+
+export interface ParentCommunicationThreadMutation {
+  thread: ParentCommunicationThread;
+  message: ParentCommunicationMessage;
+  idempotent: boolean;
+}
+
+export interface ExpectedVersion {
+  /** @minimum 1 */
+  expectedVersion: number;
+}
+
+export interface SecurityVisitorInput {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  visitorName: string;
+  /**
+     * @maxLength 40
+     * @nullable
+     */
+  phone?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  idReference?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  purpose: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  hostName?: string | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  hostStudentId?: number | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  notes?: string | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  securityLocationId?: number | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  securityDeviceId?: number | null;
+}
+
+/**
+ * At least one visitor field plus expectedVersion; only on-site visitors can be amended.
+ */
+export interface SecurityVisitorPatch {
+  /** @minimum 1 */
+  expectedVersion: number;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  visitorName?: string;
+  /**
+     * @maxLength 40
+     * @nullable
+     */
+  phone?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  idReference?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  purpose?: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  hostName?: string | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  hostStudentId?: number | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  notes?: string | null;
+}
+
+export type SecurityVisitorStatus = typeof SecurityVisitorStatus[keyof typeof SecurityVisitorStatus];
+
+
+export const SecurityVisitorStatus = {
+  ON_SITE: 'ON_SITE',
+  CHECKED_OUT: 'CHECKED_OUT',
+} as const;
+
+export interface SecurityVisitor {
+  id: number;
+  schoolId: number;
+  visitorName: string;
+  /** @nullable */
+  phone: string | null;
+  /** @nullable */
+  idReference: string | null;
+  purpose: string;
+  /** @nullable */
+  hostName: string | null;
+  /** @nullable */
+  hostStudentId: number | null;
+  checkedInAt: string;
+  /** @nullable */
+  checkedOutAt: string | null;
+  status: SecurityVisitorStatus;
+  /** @nullable */
+  notes: string | null;
+  securityOfficerUserId: number;
+  /** @nullable */
+  securityLocationId: number | null;
+  /** @nullable */
+  securityDeviceId: number | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuthorizedPickupPersonInput {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  fullName: string;
+  /**
+     * @minLength 3
+     * @maxLength 40
+     */
+  phone: string;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  relationship?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  identityReference?: string | null;
+  validFrom?: string;
+  validUntil?: string;
+}
+
+export type AuthorizedPickupPersonStatus = typeof AuthorizedPickupPersonStatus[keyof typeof AuthorizedPickupPersonStatus];
+
+
+export const AuthorizedPickupPersonStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  REVOKED: 'REVOKED',
+} as const;
+
+export interface AuthorizedPickupPerson {
+  id: number;
+  schoolId: number;
+  studentId: number;
+  fullName: string;
+  phone: string;
+  /** @nullable */
+  relationship: string | null;
+  /** @nullable */
+  identityReference: string | null;
+  status: AuthorizedPickupPersonStatus;
+  /** @nullable */
+  validFrom: string | null;
+  /** @nullable */
+  validUntil: string | null;
+  requestedAt: string;
+  /** @nullable */
+  decisionReason: string | null;
+  /** @nullable */
+  decidedAt: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type PickupPersonDecisionDecision = typeof PickupPersonDecisionDecision[keyof typeof PickupPersonDecisionDecision];
+
+
+export const PickupPersonDecisionDecision = {
+  APPROVE: 'APPROVE',
+  REJECT: 'REJECT',
+  REVOKE: 'REVOKE',
+} as const;
+
+export interface PickupPersonDecision {
+  /** @minimum 1 */
+  expectedVersion: number;
+  decision: PickupPersonDecisionDecision;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  reason?: string | null;
+}
+
+export interface StudentPickupRequestInput {
+  /** @minimum 1 */
+  pickupPersonId: number;
+  requestedPickupAt: string;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  reason?: string | null;
+}
+
+export type StudentPickupRequestStatus = typeof StudentPickupRequestStatus[keyof typeof StudentPickupRequestStatus];
+
+
+export const StudentPickupRequestStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  CANCELLED: 'CANCELLED',
+  REFUSED: 'REFUSED',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export interface StudentPickupRequest {
+  id: number;
+  schoolId: number;
+  studentId: number;
+  requestedByParentId: number;
+  pickupPersonId: number;
+  requestedPickupAt: string;
+  validFrom: string;
+  validUntil: string;
+  /** @nullable */
+  reason: string | null;
+  status: StudentPickupRequestStatus;
+  /** @nullable */
+  decisionReason: string | null;
+  /** @nullable */
+  decidedAt: string | null;
+  /** @nullable */
+  completedAt: string | null;
+  /** @nullable */
+  completionPickupPersonId: number | null;
+  /** @nullable */
+  recordedSecurityEventId: number | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type PickupDecisionDecision = typeof PickupDecisionDecision[keyof typeof PickupDecisionDecision];
+
+
+export const PickupDecisionDecision = {
+  APPROVE: 'APPROVE',
+  REJECT: 'REJECT',
+} as const;
+
+export interface PickupDecision {
+  /** @minimum 1 */
+  expectedVersion: number;
+  decision: PickupDecisionDecision;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  reason: string;
+}
+
+export interface PickupCancelInput {
+  /** @minimum 1 */
+  expectedVersion: number;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  reason?: string;
+}
+
+export interface PickupCompletionInput {
+  /** @minimum 1 */
+  expectedVersion: number;
+  /** @minimum 1 */
+  pickupPersonId: number;
+  /** @minimum 1 */
+  recordedSecurityEventId: number;
+}
+
+export type SecurityIncidentInputIncidentType = typeof SecurityIncidentInputIncidentType[keyof typeof SecurityIncidentInputIncidentType];
+
+
+export const SecurityIncidentInputIncidentType = {
+  UNAUTHORIZED_ACCESS: 'UNAUTHORIZED_ACCESS',
+  LOST_CARD: 'LOST_CARD',
+  VISITOR_ISSUE: 'VISITOR_ISSUE',
+  STUDENT_RELEASE: 'STUDENT_RELEASE',
+  GATE_INCIDENT: 'GATE_INCIDENT',
+  SECURITY_CONCERN: 'SECURITY_CONCERN',
+  OTHER: 'OTHER',
+} as const;
+
+export type SecurityIncidentInputInvolvedPersonsItemPersonType = typeof SecurityIncidentInputInvolvedPersonsItemPersonType[keyof typeof SecurityIncidentInputInvolvedPersonsItemPersonType];
+
+
+export const SecurityIncidentInputInvolvedPersonsItemPersonType = {
+  STUDENT: 'STUDENT',
+  STAFF: 'STAFF',
+  VISITOR: 'VISITOR',
+} as const;
+
+export type SecurityIncidentInputInvolvedPersonsItem = {
+  personType: SecurityIncidentInputInvolvedPersonsItemPersonType;
+  /** @minimum 1 */
+  personId: number;
+};
+
+export type SecurityIncidentInputSeverity = typeof SecurityIncidentInputSeverity[keyof typeof SecurityIncidentInputSeverity];
+
+
+export const SecurityIncidentInputSeverity = {
+  LOW: 'LOW',
+  MODERATE: 'MODERATE',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL',
+} as const;
+
+export interface SecurityIncidentInput {
+  incidentType: SecurityIncidentInputIncidentType;
+  occurredAt: string;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  securityLocationId?: number | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  securityDeviceId?: number | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  studentId?: number | null;
+  /** @maxItems 20 */
+  involvedPersons?: SecurityIncidentInputInvolvedPersonsItem[];
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  assignedStaffUserId?: number | null;
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  description: string;
+  severity?: SecurityIncidentInputSeverity;
+}
+
+export type SecurityIncidentPatchStatus = typeof SecurityIncidentPatchStatus[keyof typeof SecurityIncidentPatchStatus];
+
+
+export const SecurityIncidentPatchStatus = {
+  OPEN: 'OPEN',
+  INVESTIGATING: 'INVESTIGATING',
+  RESOLVED: 'RESOLVED',
+} as const;
+
+export type SecurityIncidentPatchInvolvedPersonsItemPersonType = typeof SecurityIncidentPatchInvolvedPersonsItemPersonType[keyof typeof SecurityIncidentPatchInvolvedPersonsItemPersonType];
+
+
+export const SecurityIncidentPatchInvolvedPersonsItemPersonType = {
+  STUDENT: 'STUDENT',
+  STAFF: 'STAFF',
+  VISITOR: 'VISITOR',
+} as const;
+
+export type SecurityIncidentPatchInvolvedPersonsItem = {
+  personType: SecurityIncidentPatchInvolvedPersonsItemPersonType;
+  /** @minimum 1 */
+  personId: number;
+};
+
+/**
+ * Must include at least one mutable field with expectedVersion.
+ */
+export interface SecurityIncidentPatch {
+  /** @minimum 1 */
+  expectedVersion: number;
+  status?: SecurityIncidentPatchStatus;
+  /** @maxItems 20 */
+  involvedPersons?: SecurityIncidentPatchInvolvedPersonsItem[];
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  assignedStaffUserId?: number | null;
+  /**
+     * @maxLength 5000
+     * @nullable
+     */
+  resolution?: string | null;
+}
+
+export type SecurityIncidentIncidentType = typeof SecurityIncidentIncidentType[keyof typeof SecurityIncidentIncidentType];
+
+
+export const SecurityIncidentIncidentType = {
+  UNAUTHORIZED_ACCESS: 'UNAUTHORIZED_ACCESS',
+  LOST_CARD: 'LOST_CARD',
+  VISITOR_ISSUE: 'VISITOR_ISSUE',
+  STUDENT_RELEASE: 'STUDENT_RELEASE',
+  GATE_INCIDENT: 'GATE_INCIDENT',
+  SECURITY_CONCERN: 'SECURITY_CONCERN',
+  OTHER: 'OTHER',
+} as const;
+
+export type SecurityIncidentInvolvedPersonsItemPersonType = typeof SecurityIncidentInvolvedPersonsItemPersonType[keyof typeof SecurityIncidentInvolvedPersonsItemPersonType];
+
+
+export const SecurityIncidentInvolvedPersonsItemPersonType = {
+  STUDENT: 'STUDENT',
+  STAFF: 'STAFF',
+  VISITOR: 'VISITOR',
+} as const;
+
+export type SecurityIncidentInvolvedPersonsItem = {
+  personType: SecurityIncidentInvolvedPersonsItemPersonType;
+  personId: number;
+};
+
+export type SecurityIncidentSeverity = typeof SecurityIncidentSeverity[keyof typeof SecurityIncidentSeverity];
+
+
+export const SecurityIncidentSeverity = {
+  LOW: 'LOW',
+  MODERATE: 'MODERATE',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL',
+} as const;
+
+export type SecurityIncidentStatus = typeof SecurityIncidentStatus[keyof typeof SecurityIncidentStatus];
+
+
+export const SecurityIncidentStatus = {
+  OPEN: 'OPEN',
+  INVESTIGATING: 'INVESTIGATING',
+  RESOLVED: 'RESOLVED',
+} as const;
+
+export interface SecurityIncident {
+  id: number;
+  schoolId: number;
+  incidentType: SecurityIncidentIncidentType;
+  occurredAt: string;
+  /** @nullable */
+  securityLocationId: number | null;
+  /** @nullable */
+  securityDeviceId: number | null;
+  /** @nullable */
+  studentId: number | null;
+  involvedPersons: SecurityIncidentInvolvedPersonsItem[];
+  /** @nullable */
+  assignedStaffUserId: number | null;
+  description: string;
+  severity: SecurityIncidentSeverity;
+  status: SecurityIncidentStatus;
+  /** @nullable */
+  resolution: string | null;
+  createdByUserId: number;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type SecurityOperationHistoryResult = typeof SecurityOperationHistoryResult[keyof typeof SecurityOperationHistoryResult];
+
+
+export const SecurityOperationHistoryResult = {
+  SUCCESS: 'SUCCESS',
+  REJECTED: 'REJECTED',
+} as const;
+
+export type SecurityOperationHistorySnapshot = { [key: string]: unknown };
+
+export interface SecurityOperationHistory {
+  revision: number;
+  eventType: string;
+  actorUserId: number;
+  result: SecurityOperationHistoryResult;
+  snapshot: SecurityOperationHistorySnapshot;
+  createdAt: string;
+  [key: string]: unknown;
+ }
+
+export type SecurityIncidentAttachmentUploadInputContentType = typeof SecurityIncidentAttachmentUploadInputContentType[keyof typeof SecurityIncidentAttachmentUploadInputContentType];
+
+
+export const SecurityIncidentAttachmentUploadInputContentType = {
+  'application/pdf': 'application/pdf',
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+} as const;
+
+export interface SecurityIncidentAttachmentUploadInput {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  fileName: string;
+  contentType: SecurityIncidentAttachmentUploadInputContentType;
+  /**
+     * @minimum 1
+     * @maximum 10485760
+     */
+  byteSize: number;
+}
+
+export type SecurityIncidentAttachmentContentType = typeof SecurityIncidentAttachmentContentType[keyof typeof SecurityIncidentAttachmentContentType];
+
+
+export const SecurityIncidentAttachmentContentType = {
+  'application/pdf': 'application/pdf',
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+} as const;
+
+export type SecurityIncidentAttachmentStatus = typeof SecurityIncidentAttachmentStatus[keyof typeof SecurityIncidentAttachmentStatus];
+
+
+export const SecurityIncidentAttachmentStatus = {
+  PENDING_UPLOAD: 'PENDING_UPLOAD',
+  CONFIRMED: 'CONFIRMED',
+} as const;
+
+export interface SecurityIncidentAttachment {
+  id: number;
+  schoolId: number;
+  incidentId: number;
+  fileName: string;
+  contentType: SecurityIncidentAttachmentContentType;
+  /**
+     * @minimum 1
+     * @maximum 10485760
+     */
+  byteSize: number;
+  status: SecurityIncidentAttachmentStatus;
+  uploadedByUserId: number;
+  uploadExpiresAt: string;
+  /** @nullable */
+  confirmedAt: string | null;
+  createdAt: string;
+}
+
+export interface SecurityIncidentAttachmentUploadIntent {
+  attachment: SecurityIncidentAttachment;
+  uploadUrl: string;
+}
+
+export interface SecurityIncidentAttachmentDownload {
+  attachment: SecurityIncidentAttachment;
+  downloadUrl: string;
+}
+
+export type SecurityDashboardRange = {
+  from: string;
+  to: string;
+};
+
+export interface SecurityDashboard {
+  schoolId: number;
+  range: SecurityDashboardRange;
+  /** @minimum 0 */
+  studentsOnCampus: number;
+  /** @minimum 0 */
+  staffOnCampus: number;
+  /** @minimum 0 */
+  offCampusPeople: number;
+  /** @minimum 0 */
+  presenceRequiresReview: number;
+  /** @minimum 0 */
+  acceptedEntryEvents: number;
+  /** @minimum 0 */
+  acceptedExitEvents: number;
+  /** @minimum 0 */
+  visitorsCurrentlyOnCampus: number;
+  /** @minimum 0 */
+  todayVisitorCheckIns: number;
+  /** @minimum 0 */
+  openIncidents: number;
+  /** @minimum 0 */
+  pendingPickupRequests: number;
+  /** @minimum 0 */
+  lateArrivals: number;
+  /** @minimum 0 */
+  earlyDepartures: number;
+  /** @minimum 0 */
+  rejectedAttempts: number;
+  /** @minimum 0 */
+  revokedCardAttempts: number;
+  visitorCountsAvailable: true;
+  physicalAccessControl: 'NOT_CONNECTED';
+}
+
+export type SecurityEventPersonType = typeof SecurityEventPersonType[keyof typeof SecurityEventPersonType];
+
+
+export const SecurityEventPersonType = {
+  STUDENT: 'STUDENT',
+  STAFF: 'STAFF',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type SecurityEventEventType = typeof SecurityEventEventType[keyof typeof SecurityEventEventType];
+
+
+export const SecurityEventEventType = {
+  ENTRY: 'ENTRY',
+  EXIT: 'EXIT',
+} as const;
+
+export type SecurityEventIdentityResult = typeof SecurityEventIdentityResult[keyof typeof SecurityEventIdentityResult];
+
+
+export const SecurityEventIdentityResult = {
+  CONFIRMED: 'CONFIRMED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface SecurityEvent {
+  id: number;
+  schoolId: number;
+  /** @nullable */
+  readerId: number | null;
+  /** @nullable */
+  locationId: number | null;
+  deviceId: number;
+  personType: SecurityEventPersonType;
+  /** @nullable */
+  personName: string | null;
+  /** @nullable */
+  studentId: number | null;
+  /** @nullable */
+  employeeId: number | null;
+  eventType: SecurityEventEventType;
+  identityResult: SecurityEventIdentityResult;
+  /** @nullable */
+  reasonCode: string | null;
+  /** @nullable */
+  locationName: string | null;
+  /** @nullable */
+  readerName: string | null;
+  /** @nullable */
+  className: string | null;
+  /** @nullable */
+  section: string | null;
+  occurredAt: string;
+  receivedAt: string;
+  syncStatus: 'SYNCED';
+  physicalControlStatus: 'NOT_CONNECTED';
+}
+
+export interface SecurityEventPage {
+  items: SecurityEvent[];
+  /** @nullable */
+  nextCursor: number | null;
+}
+
+export type CampusPresencePageItemsItemPersonType = typeof CampusPresencePageItemsItemPersonType[keyof typeof CampusPresencePageItemsItemPersonType];
+
+
+export const CampusPresencePageItemsItemPersonType = {
+  STUDENT: 'STUDENT',
+  STAFF: 'STAFF',
+} as const;
+
+export type CampusPresencePageItemsItemState = typeof CampusPresencePageItemsItemState[keyof typeof CampusPresencePageItemsItemState];
+
+
+export const CampusPresencePageItemsItemState = {
+  ON_CAMPUS: 'ON_CAMPUS',
+  OFF_CAMPUS: 'OFF_CAMPUS',
+  REQUIRES_REVIEW: 'REQUIRES_REVIEW',
+} as const;
+
+export type CampusPresencePageItemsItem = {
+  id: number;
+  schoolId: number;
+  personType: CampusPresencePageItemsItemPersonType;
+  /** @nullable */
+  studentId: number | null;
+  /** @nullable */
+  employeeId: number | null;
+  personName: string;
+  /** @nullable */
+  admissionNumber: string | null;
+  /** @nullable */
+  employeeNumber: string | null;
+  /** @nullable */
+  className: string | null;
+  /** @nullable */
+  section: string | null;
+  state: CampusPresencePageItemsItemState;
+  lastOccurredAt: string;
+  /** @nullable */
+  reviewReason: string | null;
+};
+
+export interface CampusPresencePage {
+  items: CampusPresencePageItemsItem[];
+  /** @nullable */
+  nextCursor: number | null;
+}
+
+export type PresenceReviewInputState = typeof PresenceReviewInputState[keyof typeof PresenceReviewInputState];
+
+
+export const PresenceReviewInputState = {
+  ON_CAMPUS: 'ON_CAMPUS',
+  OFF_CAMPUS: 'OFF_CAMPUS',
+} as const;
+
+export interface PresenceReviewInput {
+  state: PresenceReviewInputState;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export type SecurityLocationInputZoneType = typeof SecurityLocationInputZoneType[keyof typeof SecurityLocationInputZoneType];
+
+
+export const SecurityLocationInputZoneType = {
+  GATE: 'GATE',
+  CAMPUS: 'CAMPUS',
+  BUILDING: 'BUILDING',
+  OTHER: 'OTHER',
+} as const;
+
+export interface SecurityLocationInput {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name: string;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  description?: string | null;
+  zoneType?: SecurityLocationInputZoneType;
+}
+
+export type SecurityLocationStatus = typeof SecurityLocationStatus[keyof typeof SecurityLocationStatus];
+
+
+export const SecurityLocationStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export type SecurityLocation = SecurityLocationInput & {
+  id: number;
+  schoolId: number;
+  status: SecurityLocationStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SecurityReaderInputPermissionsItem = typeof SecurityReaderInputPermissionsItem[keyof typeof SecurityReaderInputPermissionsItem];
+
+
+export const SecurityReaderInputPermissionsItem = {
+  ENTRY: 'ENTRY',
+  EXIT: 'EXIT',
+} as const;
+
+export interface SecurityReaderInput {
+  /** @minimum 1 */
+  locationId: number;
+  /** @minimum 1 */
+  deviceId: number;
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name: string;
+  /**
+     * @minItems 1
+     * @maxItems 2
+     */
+  permissions: SecurityReaderInputPermissionsItem[];
+}
+
+export type SecurityReaderStatus = typeof SecurityReaderStatus[keyof typeof SecurityReaderStatus];
+
+
+export const SecurityReaderStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export type SecurityReader = SecurityReaderInput & {
+  id: number;
+  schoolId: number;
+  deviceName: string;
+  deviceSerial: string;
+  status: SecurityReaderStatus;
+  locationName: string;
+};
+
+export interface SecuritySettings {
+  schoolId: number;
+  securityEnabled: boolean;
+  parentEntryAlerts: boolean;
+  parentExitAlerts: boolean;
+  /** @nullable */
+  updatedAt: string | null;
+}
+
+export interface SecuritySettingsInput {
+  securityEnabled: boolean;
+  parentEntryAlerts: boolean;
+  parentExitAlerts: boolean;
+}
+
+export type SecurityGrantInputPermissionsItem = typeof SecurityGrantInputPermissionsItem[keyof typeof SecurityGrantInputPermissionsItem];
+
+
+export const SecurityGrantInputPermissionsItem = {
+  READ: 'READ',
+  MANAGE_READERS: 'MANAGE_READERS',
+  MANAGE_CARDS: 'MANAGE_CARDS',
+  REVIEW_PRESENCE: 'REVIEW_PRESENCE',
+  SECURITY_READ: 'SECURITY_READ',
+  SECURITY_MANAGE: 'SECURITY_MANAGE',
+  VISITOR_MANAGE: 'VISITOR_MANAGE',
+  PICKUP_APPROVE: 'PICKUP_APPROVE',
+  INCIDENT_MANAGE: 'INCIDENT_MANAGE',
+  EMERGENCY_BROADCAST: 'EMERGENCY_BROADCAST',
+  COMMUNICATION_SEND: 'COMMUNICATION_SEND',
+} as const;
+
+export interface SecurityGrantInput {
+  /** @minimum 1 */
+  userId: number;
+  /**
+     * @minItems 1
+     * @maxItems 11
+     */
+  permissions: SecurityGrantInputPermissionsItem[];
+  /** @nullable */
+  expiresAt?: string | null;
+}
+
+export type SecurityStaffGrantStatus = typeof SecurityStaffGrantStatus[keyof typeof SecurityStaffGrantStatus];
+
+
+export const SecurityStaffGrantStatus = {
+  ACTIVE: 'ACTIVE',
+  REVOKED: 'REVOKED',
+  EXPIRED: 'EXPIRED',
+} as const;
+
+export interface SecurityStaffGrant {
+  id: number;
+  userId: number;
+  schoolId: number;
+  permissions: string[];
+  /** @nullable */
+  expiresAt: string | null;
+  status: SecurityStaffGrantStatus;
+}
+
+export type StatusInputStatus = typeof StatusInputStatus[keyof typeof StatusInputStatus];
+
+
+export const StatusInputStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface StatusInput {
+  status: StatusInputStatus;
+}
+
+export interface LostCardInput {
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
 export type ExistingProfileInvitationRequestRole = typeof ExistingProfileInvitationRequestRole[keyof typeof ExistingProfileInvitationRequestRole];
 
 
@@ -10061,6 +12519,6583 @@ export interface SchoolCurriculumTopicsResponse {
   curriculumVersion: CurriculumVersion;
 }
 
+export type SecurityAccess4b96100 = SecurityAccess;
+
+export type EligibleSecurityDevice4b96100 = EligibleSecurityDevice;
+
+export type ParentChildSecuritySummary4b96100 = ParentChildSecuritySummary;
+
+export type ParentCommunicationNotificationArchiveResponse4b96100 = ParentCommunicationNotificationArchiveResponse;
+
+export type ExistingActivationCandidate4b96100 = ExistingActivationCandidate;
+
+export type ParentChildLink4b96100 = ParentChildLink;
+
+export type ParentChildrenLinkRequest4b96100 = ParentChildrenLinkRequest;
+
+export type AcademicResultSchoolRequest4b96100 = AcademicResultSchoolRequest;
+
+export type AcademicResultReviewRequest4b96100 = AcademicResultReviewRequest;
+
+export type AcademicResultReviewItem4b96100 = AcademicResultReviewItem;
+
+export type CurriculumVersionInput4b96100 = CurriculumVersionInput;
+
+export type CurriculumVersion4b96100 = CurriculumVersion;
+
+export type CurriculumVersionDetail4b96100 = CurriculumVersionDetail;
+
+export type CurriculumTopicInput4b96100 = CurriculumTopicInput;
+
+export type CurriculumTopic4b96100 = CurriculumTopic;
+
+export type CurriculumImportPreviewInput4b96100 = CurriculumImportPreviewInput;
+
+export type CurriculumImportPreview4b96100 = CurriculumImportPreview;
+
+export type CurriculumImportConfirmInput4b96100 = CurriculumImportConfirmInput;
+
+export type SchoolCurriculumMappingInput4b96100 = SchoolCurriculumMappingInput;
+
+export type SchoolCurriculumMapping4b96100 = SchoolCurriculumMapping;
+
+export type SchoolCurriculumTopicInput4b96100 = SchoolCurriculumTopicInput;
+
+export type CurriculumProgressInput4b96100 = CurriculumProgressInput;
+
+export type CurriculumProgress4b96100 = CurriculumProgress;
+
+export type LessonNoteInput4b96100 = LessonNoteInput;
+
+export type LessonNoteUpdate4b96100 = LessonNoteUpdate;
+
+export type LessonNoteTransitionInput4b96100 = LessonNoteTransitionInput;
+
+export type LessonNote4b96100 = LessonNote;
+
+export type LessonNoteDetail4b96100 = LessonNoteDetail;
+
+export type LessonNoteReviewInput4b96100 = LessonNoteReviewInput;
+
+export type LessonNoteReview4b96100 = LessonNoteReview;
+
+export type LessonNoteMonitoringRow4b96100 = LessonNoteMonitoringRow;
+
+export type LessonNoteReminderInput4b96100 = LessonNoteReminderInput;
+
+export type LessonNoteReminderResult4b96100 = LessonNoteReminderResult;
+
+export interface PlatformOwnerBootstrapStatus4b96100 {
+  available: boolean;
+  configured: boolean;
+}
+
+export interface PlatformOwnerBootstrapInput4b96100 {
+  /**
+     * @minLength 16
+     * @maxLength 256
+     */
+  setupKey: string;
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  fullName: string;
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 8
+     * @maxLength 25
+     */
+  phone: string;
+  /**
+     * @minLength 15
+     * @maxLength 256
+     */
+  password: string;
+}
+
+export interface PlatformOwnerBootstrapResult4b96100 {
+  created: true;
+  signInPath: string;
+}
+
+export interface ApiError4b96100 {
+  error: string;
+  code?: string;
+}
+
+export interface HealthStatus4b96100 {
+  status: string;
+}
+
+export interface PeopleImportClass4b96100 {
+  id: number;
+  name: string;
+  section: string;
+}
+
+export interface PeopleImportClasses4b96100 {
+  classes: PeopleImportClass4b96100[];
+}
+
+export type PeopleImportUpload4b96100Kind = typeof PeopleImportUpload4b96100Kind[keyof typeof PeopleImportUpload4b96100Kind];
+
+
+export const PeopleImportUpload4b96100Kind = {
+  students: 'students',
+  parents: 'parents',
+  teachers: 'teachers',
+  staff: 'staff',
+} as const;
+
+export interface PeopleImportUpload4b96100 {
+  file: Blob;
+  kind: PeopleImportUpload4b96100Kind;
+}
+
+export type PeopleImportPreviewUpload4b96100Kind = typeof PeopleImportPreviewUpload4b96100Kind[keyof typeof PeopleImportPreviewUpload4b96100Kind];
+
+
+export const PeopleImportPreviewUpload4b96100Kind = {
+  students: 'students',
+  parents: 'parents',
+  teachers: 'teachers',
+  staff: 'staff',
+} as const;
+
+export interface PeopleImportPreviewUpload4b96100 {
+  file: Blob;
+  kind: PeopleImportPreviewUpload4b96100Kind;
+  /** JSON object mapping canonical fields to file headers */
+  mapping: string;
+  /** JSON object mapping imported class values to existing class IDs */
+  classMapping: string;
+}
+
+export type PeopleImportInspection4b96100DetectedType = typeof PeopleImportInspection4b96100DetectedType[keyof typeof PeopleImportInspection4b96100DetectedType];
+
+
+export const PeopleImportInspection4b96100DetectedType = {
+  csv: 'csv',
+  xlsx: 'xlsx',
+  pdf: 'pdf',
+} as const;
+
+export type PeopleImportInspection4b96100Kind = typeof PeopleImportInspection4b96100Kind[keyof typeof PeopleImportInspection4b96100Kind];
+
+
+export const PeopleImportInspection4b96100Kind = {
+  students: 'students',
+  parents: 'parents',
+  teachers: 'teachers',
+  staff: 'staff',
+} as const;
+
+export interface PeopleImportInspection4b96100 {
+  filename: string;
+  detectedType: PeopleImportInspection4b96100DetectedType;
+  kind: PeopleImportInspection4b96100Kind;
+  columns: string[];
+  classes: PeopleImportClass4b96100[];
+}
+
+export interface PeopleImportIssue4b96100 {
+  field?: string;
+  message: string;
+}
+
+export type PeopleImportRow4b96100Values = { [key: string]: unknown };
+
+export type PeopleImportRow4b96100Status = typeof PeopleImportRow4b96100Status[keyof typeof PeopleImportRow4b96100Status];
+
+
+export const PeopleImportRow4b96100Status = {
+  READY: 'READY',
+  INVALID: 'INVALID',
+  DUPLICATE: 'DUPLICATE',
+  POTENTIAL_DUPLICATE: 'POTENTIAL_DUPLICATE',
+} as const;
+
+export interface PeopleImportRow4b96100 {
+  index: number;
+  sourceRow: number;
+  values: PeopleImportRow4b96100Values;
+  status: PeopleImportRow4b96100Status;
+  errors: PeopleImportIssue4b96100[];
+  warnings: PeopleImportIssue4b96100[];
+}
+
+export type PeopleImportPreview4b96100DetectedType = typeof PeopleImportPreview4b96100DetectedType[keyof typeof PeopleImportPreview4b96100DetectedType];
+
+
+export const PeopleImportPreview4b96100DetectedType = {
+  csv: 'csv',
+  xlsx: 'xlsx',
+  pdf: 'pdf',
+} as const;
+
+export type PeopleImportPreview4b96100Kind = typeof PeopleImportPreview4b96100Kind[keyof typeof PeopleImportPreview4b96100Kind];
+
+
+export const PeopleImportPreview4b96100Kind = {
+  students: 'students',
+  parents: 'parents',
+  teachers: 'teachers',
+  staff: 'staff',
+} as const;
+
+export type PeopleImportPreview4b96100Counts = {
+  ready?: number;
+  potentialDuplicates?: number;
+  duplicates?: number;
+  invalid?: number;
+};
+
+export interface PeopleImportPreview4b96100 {
+  previewId: string;
+  filename: string;
+  detectedType: PeopleImportPreview4b96100DetectedType;
+  kind: PeopleImportPreview4b96100Kind;
+  detected: number;
+  counts: PeopleImportPreview4b96100Counts;
+  columns: string[];
+  classes: PeopleImportClass4b96100[];
+  classValues: string[];
+  rows: PeopleImportRow4b96100[];
+}
+
+export interface PeopleImportConfirmationInput4b96100 {
+  previewId: string;
+  selectedRows: number[];
+  includePotentialDuplicates?: boolean;
+}
+
+export type PeopleImportResult4b96100ResultsItemStatus = typeof PeopleImportResult4b96100ResultsItemStatus[keyof typeof PeopleImportResult4b96100ResultsItemStatus];
+
+
+export const PeopleImportResult4b96100ResultsItemStatus = {
+  IMPORTED: 'IMPORTED',
+  FAILED: 'FAILED',
+  SKIPPED: 'SKIPPED',
+} as const;
+
+export type PeopleImportResult4b96100ResultsItem = {
+  index?: number;
+  sourceRow?: number;
+  status?: PeopleImportResult4b96100ResultsItemStatus;
+  recordId?: number;
+  message?: string;
+};
+
+export interface PeopleImportResult4b96100 {
+  detected: number;
+  imported: number;
+  skipped: number;
+  failed: number;
+  results: PeopleImportResult4b96100ResultsItem[];
+}
+
+export type OwnerSchool4b96100AdministratorsItem = {
+  id?: number;
+  name?: string;
+  email?: string;
+  status?: string;
+};
+
+export type OwnerSchool4b96100RegistrationStatus = typeof OwnerSchool4b96100RegistrationStatus[keyof typeof OwnerSchool4b96100RegistrationStatus];
+
+
+export const OwnerSchool4b96100RegistrationStatus = {
+  PENDING: 'PENDING',
+  ACTIVE: 'ACTIVE',
+} as const;
+
+/**
+ * @nullable
+ */
+export type OwnerSchool4b96100InvitationStatus = typeof OwnerSchool4b96100InvitationStatus[keyof typeof OwnerSchool4b96100InvitationStatus] | null;
+
+
+export const OwnerSchool4b96100InvitationStatus = {
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  UNKNOWN: 'UNKNOWN',
+  FAILED: 'FAILED',
+} as const;
+
+/**
+ * @nullable
+ */
+export type OwnerSchool4b96100PartnerReferral = {
+  partnerId?: number;
+  partnerName?: string;
+  source?: string;
+  status?: string;
+  /** @nullable */
+  referralLinkId?: number | null;
+  registrationDate?: string;
+} | null;
+
+export interface OwnerSchool4b96100 {
+  id: number;
+  code: string;
+  name: string;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  state?: string | null;
+  status: string;
+  createdAt?: string;
+  studentCount: number;
+  activeStudentCount: number;
+  teacherCount: number;
+  staffCount: number;
+  employeeCount: number;
+  accountantCount: number;
+  parentCount: number;
+  classCount: number;
+  administrators: OwnerSchool4b96100AdministratorsItem[];
+  subscriptionStatus: string;
+  /** @nullable */
+  adminName: string | null;
+  /** @nullable */
+  adminEmail: string | null;
+  /** @nullable */
+  adminPhone: string | null;
+  registrationStatus: OwnerSchool4b96100RegistrationStatus;
+  /** @nullable */
+  invitationId: string | null;
+  /** @nullable */
+  invitationStatus: OwnerSchool4b96100InvitationStatus;
+  /** @nullable */
+  invitationSentAt: string | null;
+  /** @nullable */
+  acceptedAt: string | null;
+  /** @nullable */
+  dateAdded: string | null;
+  totalStudents: number;
+  /** @nullable */
+  partnerReferral?: OwnerSchool4b96100PartnerReferral;
+}
+
+export type OwnerSchoolDirectory4b96100Totals = {
+  schoolCount: number;
+  studentCount: number;
+  activeStudentCount: number;
+  teacherCount: number;
+  staffCount: number;
+  parentCount: number;
+};
+
+export interface OwnerSchoolDirectory4b96100 {
+  schools: OwnerSchool4b96100[];
+  totals: OwnerSchoolDirectory4b96100Totals;
+}
+
+export type OwnerSchoolOverview4b96100RecentActivityItem = { [key: string]: unknown };
+
+export type OwnerSchoolOverview4b96100 = OwnerSchool4b96100 & {
+  attendanceEventCount?: number;
+  resultCount?: number;
+  subscriptionCount?: number;
+  deviceCount?: number;
+  cardCount?: number;
+  activeCardCount?: number;
+  recentActivity?: OwnerSchoolOverview4b96100RecentActivityItem[];
+};
+
+export type PlatformDashboard4b96100SubscriptionSummary = {[key: string]: number};
+
+export type AuditLog4b96100Severity = typeof AuditLog4b96100Severity[keyof typeof AuditLog4b96100Severity];
+
+
+export const AuditLog4b96100Severity = {
+  info: 'info',
+  warning: 'warning',
+  critical: 'critical',
+} as const;
+
+export interface AuditLog4b96100 {
+  id: number;
+  user: string;
+  role: string;
+  /** @nullable */
+  school: string | null;
+  action: string;
+  module: string;
+  /** @nullable */
+  recordId?: number | null;
+  timestamp: string;
+  severity: AuditLog4b96100Severity;
+}
+
+export interface PlatformDashboard4b96100 {
+  totalSchools: number;
+  activeSchools: number;
+  suspendedSchools: number;
+  totalStudents: number;
+  activeSubscriptions: number;
+  pendingPayments: number;
+  revenue: number;
+  schoolAllocation: number;
+  edupulseAllocation: number;
+  activeCards: number;
+  lockedCards: number;
+  inactiveSchools?: number;
+  totalTeachers?: number;
+  totalParents?: number;
+  subscriptionSummary?: PlatformDashboard4b96100SubscriptionSummary;
+  recentActivity: AuditLog4b96100[];
+}
+
+export interface SchoolUser4b96100 {
+  id: number;
+  email: string;
+  /** @nullable */
+  firstName?: string | null;
+  /** @nullable */
+  lastName?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  userStatus: string;
+  membershipId: number;
+  role: string;
+  membershipStatus: string;
+  schoolId: number;
+}
+
+export type School4b96100Status = typeof School4b96100Status[keyof typeof School4b96100Status];
+
+
+export const School4b96100Status = {
+  active: 'active',
+  suspended: 'suspended',
+  inactive: 'inactive',
+} as const;
+
+export type School4b96100SubscriptionStatus = typeof School4b96100SubscriptionStatus[keyof typeof School4b96100SubscriptionStatus];
+
+
+export const School4b96100SubscriptionStatus = {
+  active: 'active',
+  attention: 'attention',
+  expired: 'expired',
+} as const;
+
+export interface School4b96100 {
+  id: number;
+  code: string;
+  name: string;
+  city: string;
+  state: string;
+  /** @nullable */
+  registrationNumber?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  lga?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  logoUrl?: string | null;
+  /** @nullable */
+  schoolType?: string | null;
+  administrators?: SchoolUser4b96100[];
+  /** @nullable */
+  academicSetupStatus?: string | null;
+  status: School4b96100Status;
+  studentCount: number;
+  staffCount: number;
+  subscriptionStatus: School4b96100SubscriptionStatus;
+  createdAt: string;
+}
+
+export type AcademicSession4b96100Status = typeof AcademicSession4b96100Status[keyof typeof AcademicSession4b96100Status];
+
+
+export const AcademicSession4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export interface AcademicSession4b96100 {
+  id: number;
+  schoolId: number;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: AcademicSession4b96100Status;
+  isCurrent?: boolean;
+}
+
+export type AcademicTerm4b96100Name = typeof AcademicTerm4b96100Name[keyof typeof AcademicTerm4b96100Name];
+
+
+export const AcademicTerm4b96100Name = {
+  FIRST: 'FIRST',
+  SECOND: 'SECOND',
+  THIRD: 'THIRD',
+} as const;
+
+export type AcademicTerm4b96100Status = typeof AcademicTerm4b96100Status[keyof typeof AcademicTerm4b96100Status];
+
+
+export const AcademicTerm4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export interface AcademicTerm4b96100 {
+  id: number;
+  sessionId: number;
+  name: AcademicTerm4b96100Name;
+  startDate: string;
+  endDate: string;
+  status: AcademicTerm4b96100Status;
+  isCurrent?: boolean;
+}
+
+export interface SchoolDashboard4b96100 {
+  school: School4b96100;
+  totalStudents: number;
+  activeStudents: number;
+  unpaidStudents: number;
+  /** @nullable */
+  attendanceRate?: number | null;
+  pendingPayments: number;
+  activeCards: number;
+  lockedCards: number;
+  totalParents?: number;
+  activeTeachers?: number;
+  otherStaff?: number;
+  totalClasses?: number;
+  totalSections?: number;
+  totalSubjects?: number;
+  currentAcademicSession?: AcademicSession4b96100;
+  currentTerm?: AcademicTerm4b96100;
+  /** @nullable */
+  subscriptionStatus?: string | null;
+  recentActivity: AuditLog4b96100[];
+}
+
+export type SchoolWithAdministratorInput4b96100SchoolStatus = typeof SchoolWithAdministratorInput4b96100SchoolStatus[keyof typeof SchoolWithAdministratorInput4b96100SchoolStatus];
+
+
+export const SchoolWithAdministratorInput4b96100SchoolStatus = {
+  active: 'active',
+  inactive: 'inactive',
+  suspended: 'suspended',
+} as const;
+
+export type SchoolWithAdministratorInput4b96100School = {
+  /**
+     * @minLength 1
+     * @maxLength 10
+     */
+  code: string;
+  /** @minLength 2 */
+  name: string;
+  /** @minLength 1 */
+  city: string;
+  /** @minLength 1 */
+  state: string;
+  status?: SchoolWithAdministratorInput4b96100SchoolStatus;
+};
+
+export type SchoolWithAdministratorInput4b96100Administrator = {
+  /** @minLength 2 */
+  fullName: string;
+  /** @maxLength 254 */
+  email: string;
+};
+
+export interface SchoolWithAdministratorInput4b96100 {
+  school: SchoolWithAdministratorInput4b96100School;
+  administrator: SchoolWithAdministratorInput4b96100Administrator;
+}
+
+export type PartnerSchoolRegistrationInput4b96100School = {
+  /**
+     * @minLength 2
+     * @maxLength 200
+     */
+  name: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  city: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  state: string;
+  /** @maxLength 40 */
+  phone?: string;
+  /** @maxLength 254 */
+  email?: string;
+};
+
+export type PartnerSchoolRegistrationInput4b96100Administrator = {
+  /**
+     * @minLength 2
+     * @maxLength 200
+     */
+  fullName: string;
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  phone: string;
+};
+
+export interface PartnerSchoolRegistrationInput4b96100 {
+  school: PartnerSchoolRegistrationInput4b96100School;
+  administrator: PartnerSchoolRegistrationInput4b96100Administrator;
+}
+
+export interface EmptyInput4b96100 { [key: string]: unknown }
+
+export type SchoolInvitationReplacementResult4b96100Status = typeof SchoolInvitationReplacementResult4b96100Status[keyof typeof SchoolInvitationReplacementResult4b96100Status];
+
+
+export const SchoolInvitationReplacementResult4b96100Status = {
+  PENDING: 'PENDING',
+} as const;
+
+export type SchoolInvitationReplacementResult4b96100Role = typeof SchoolInvitationReplacementResult4b96100Role[keyof typeof SchoolInvitationReplacementResult4b96100Role];
+
+
+export const SchoolInvitationReplacementResult4b96100Role = {
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+} as const;
+
+export type SchoolInvitationReplacementResult4b96100DispatchStatus = typeof SchoolInvitationReplacementResult4b96100DispatchStatus[keyof typeof SchoolInvitationReplacementResult4b96100DispatchStatus];
+
+
+export const SchoolInvitationReplacementResult4b96100DispatchStatus = {
+  REQUEST_ACCEPTED: 'REQUEST_ACCEPTED',
+} as const;
+
+export type SchoolInvitationReplacementResult4b96100DeliveryStatus = typeof SchoolInvitationReplacementResult4b96100DeliveryStatus[keyof typeof SchoolInvitationReplacementResult4b96100DeliveryStatus];
+
+
+export const SchoolInvitationReplacementResult4b96100DeliveryStatus = {
+  UNVERIFIED: 'UNVERIFIED',
+} as const;
+
+export interface SchoolInvitationReplacementResult4b96100 {
+  status: SchoolInvitationReplacementResult4b96100Status;
+  invitationId: string;
+  supersededInvitationId: string;
+  previousInviteRevoked: boolean;
+  email: string;
+  schoolId: number;
+  role: SchoolInvitationReplacementResult4b96100Role;
+  dispatchStatus: SchoolInvitationReplacementResult4b96100DispatchStatus;
+  deliveryStatus: SchoolInvitationReplacementResult4b96100DeliveryStatus;
+  recoveryStatus: string;
+}
+
+export type SchoolWithAdministratorResult4b96100AdministratorInvitationRole = typeof SchoolWithAdministratorResult4b96100AdministratorInvitationRole[keyof typeof SchoolWithAdministratorResult4b96100AdministratorInvitationRole];
+
+
+export const SchoolWithAdministratorResult4b96100AdministratorInvitationRole = {
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+} as const;
+
+export type SchoolWithAdministratorResult4b96100AdministratorInvitationStatus = typeof SchoolWithAdministratorResult4b96100AdministratorInvitationStatus[keyof typeof SchoolWithAdministratorResult4b96100AdministratorInvitationStatus];
+
+
+export const SchoolWithAdministratorResult4b96100AdministratorInvitationStatus = {
+  DISPATCH_REQUESTED: 'DISPATCH_REQUESTED',
+} as const;
+
+export type SchoolWithAdministratorResult4b96100AdministratorInvitationDispatchStatus = typeof SchoolWithAdministratorResult4b96100AdministratorInvitationDispatchStatus[keyof typeof SchoolWithAdministratorResult4b96100AdministratorInvitationDispatchStatus];
+
+
+export const SchoolWithAdministratorResult4b96100AdministratorInvitationDispatchStatus = {
+  REQUEST_ACCEPTED: 'REQUEST_ACCEPTED',
+} as const;
+
+export type SchoolWithAdministratorResult4b96100AdministratorInvitationDeliveryStatus = typeof SchoolWithAdministratorResult4b96100AdministratorInvitationDeliveryStatus[keyof typeof SchoolWithAdministratorResult4b96100AdministratorInvitationDeliveryStatus];
+
+
+export const SchoolWithAdministratorResult4b96100AdministratorInvitationDeliveryStatus = {
+  UNVERIFIED: 'UNVERIFIED',
+} as const;
+
+export type SchoolWithAdministratorResult4b96100AdministratorInvitation = {
+  invitationId: string;
+  email: string;
+  role: SchoolWithAdministratorResult4b96100AdministratorInvitationRole;
+  status: SchoolWithAdministratorResult4b96100AdministratorInvitationStatus;
+  dispatchStatus: SchoolWithAdministratorResult4b96100AdministratorInvitationDispatchStatus;
+  deliveryStatus: SchoolWithAdministratorResult4b96100AdministratorInvitationDeliveryStatus;
+  deliveryNote: string;
+};
+
+export interface SchoolWithAdministratorResult4b96100 {
+  schoolId: number;
+  administratorInvitation: SchoolWithAdministratorResult4b96100AdministratorInvitation;
+}
+
+export type SchoolInput4b96100Status = typeof SchoolInput4b96100Status[keyof typeof SchoolInput4b96100Status];
+
+
+export const SchoolInput4b96100Status = {
+  active: 'active',
+  suspended: 'suspended',
+  inactive: 'inactive',
+} as const;
+
+export interface SchoolInput4b96100 {
+  /** @minLength 1 */
+  code: string;
+  /** @minLength 2 */
+  name: string;
+  /** @minLength 2 */
+  city: string;
+  /** @minLength 2 */
+  state: string;
+  registrationNumber?: string;
+  address?: string;
+  lga?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  logoUrl?: string;
+  schoolType?: string;
+  status?: SchoolInput4b96100Status;
+}
+
+export type SchoolUpdate4b96100Status = typeof SchoolUpdate4b96100Status[keyof typeof SchoolUpdate4b96100Status];
+
+
+export const SchoolUpdate4b96100Status = {
+  active: 'active',
+  suspended: 'suspended',
+  inactive: 'inactive',
+} as const;
+
+export interface SchoolUpdate4b96100 {
+  /** @minLength 2 */
+  name?: string;
+  /** @minLength 2 */
+  city?: string;
+  /** @minLength 2 */
+  state?: string;
+  /** @minLength 1 */
+  code?: string;
+  registrationNumber?: string;
+  address?: string;
+  lga?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  logoUrl?: string;
+  schoolType?: string;
+  status?: SchoolUpdate4b96100Status;
+}
+
+export type SchoolStatusUpdate4b96100Status = typeof SchoolStatusUpdate4b96100Status[keyof typeof SchoolStatusUpdate4b96100Status];
+
+
+export const SchoolStatusUpdate4b96100Status = {
+  active: 'active',
+  suspended: 'suspended',
+  inactive: 'inactive',
+} as const;
+
+export interface SchoolStatusUpdate4b96100 {
+  status: SchoolStatusUpdate4b96100Status;
+}
+
+/**
+ * @nullable
+ */
+export type Student4b96100AdmissionStatus = typeof Student4b96100AdmissionStatus[keyof typeof Student4b96100AdmissionStatus] | null;
+
+
+export const Student4b96100AdmissionStatus = {
+  pending: 'pending',
+  admitted: 'admitted',
+  rejected: 'rejected',
+} as const;
+
+export type Student4b96100Gender = typeof Student4b96100Gender[keyof typeof Student4b96100Gender];
+
+
+export const Student4b96100Gender = {
+  female: 'female',
+  male: 'male',
+  other: 'other',
+} as const;
+
+export type Student4b96100Status = typeof Student4b96100Status[keyof typeof Student4b96100Status];
+
+
+export const Student4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  GRADUATED: 'GRADUATED',
+  TRANSFERRED: 'TRANSFERRED',
+  WITHDRAWN: 'WITHDRAWN',
+} as const;
+
+export type Student4b96100SubscriptionStatus = typeof Student4b96100SubscriptionStatus[keyof typeof Student4b96100SubscriptionStatus];
+
+
+export const Student4b96100SubscriptionStatus = {
+  active: 'active',
+  unpaid: 'unpaid',
+  pending: 'pending',
+  expired: 'expired',
+} as const;
+
+export type Student4b96100CardStatus = typeof Student4b96100CardStatus[keyof typeof Student4b96100CardStatus];
+
+
+export const Student4b96100CardStatus = {
+  active: 'active',
+  locked: 'locked',
+  unassigned: 'unassigned',
+  lost: 'lost',
+} as const;
+
+export interface Student4b96100 {
+  id: number;
+  schoolId: number;
+  admissionNo: string;
+  /** @nullable */
+  email?: string | null;
+  /**
+     * Linked login account state
+     * @nullable
+     */
+  accountStatus?: string | null;
+  firstName: string;
+  lastName: string;
+  /** @nullable */
+  middleName?: string | null;
+  /** @nullable */
+  dateOfBirth?: string | null;
+  /** @nullable */
+  passportUrl?: string | null;
+  /** @nullable */
+  admissionDate?: string | null;
+  /** @nullable */
+  admissionStatus?: Student4b96100AdmissionStatus;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  previousSchool?: string | null;
+  /** @nullable */
+  medicalInformation?: string | null;
+  /** @nullable */
+  emergencyContactName?: string | null;
+  /** @nullable */
+  emergencyContactPhone?: string | null;
+  /** @nullable */
+  currentClassId?: number | null;
+  /** @nullable */
+  currentSessionId?: number | null;
+  /** @nullable */
+  currentTermId?: number | null;
+  /** @nullable */
+  createdAt?: string | null;
+  /** @nullable */
+  updatedAt?: string | null;
+  gender: Student4b96100Gender;
+  className: string;
+  section: string;
+  /** @nullable */
+  parentName?: string | null;
+  /** @nullable */
+  parentPhone?: string | null;
+  status: Student4b96100Status;
+  subscriptionStatus: Student4b96100SubscriptionStatus;
+  cardStatus: Student4b96100CardStatus;
+  joinedAt: string;
+}
+
+export type StudentInput4b96100AdmissionStatus = typeof StudentInput4b96100AdmissionStatus[keyof typeof StudentInput4b96100AdmissionStatus];
+
+
+export const StudentInput4b96100AdmissionStatus = {
+  pending: 'pending',
+  admitted: 'admitted',
+  rejected: 'rejected',
+} as const;
+
+export type StudentInput4b96100Gender = typeof StudentInput4b96100Gender[keyof typeof StudentInput4b96100Gender];
+
+
+export const StudentInput4b96100Gender = {
+  female: 'female',
+  male: 'male',
+  other: 'other',
+} as const;
+
+export interface StudentInput4b96100 {
+  /**
+     * Optional; generated by the server when omitted or blank
+     * @nullable
+     */
+  admissionNo?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @minLength 2 */
+  firstName: string;
+  /** @minLength 2 */
+  lastName: string;
+  middleName?: string;
+  dateOfBirth?: string;
+  passportUrl?: string;
+  admissionDate?: string;
+  admissionStatus?: StudentInput4b96100AdmissionStatus;
+  address?: string;
+  previousSchool?: string;
+  medicalInformation?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  gender: StudentInput4b96100Gender;
+  /** @minLength 1 */
+  className: string;
+  /** @minLength 1 */
+  section: string;
+  parentName?: string;
+  parentPhone?: string;
+}
+
+export type StudentUpdate4b96100AdmissionStatus = typeof StudentUpdate4b96100AdmissionStatus[keyof typeof StudentUpdate4b96100AdmissionStatus];
+
+
+export const StudentUpdate4b96100AdmissionStatus = {
+  pending: 'pending',
+  admitted: 'admitted',
+  rejected: 'rejected',
+} as const;
+
+export type StudentUpdate4b96100Status = typeof StudentUpdate4b96100Status[keyof typeof StudentUpdate4b96100Status];
+
+
+export const StudentUpdate4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  GRADUATED: 'GRADUATED',
+  TRANSFERRED: 'TRANSFERRED',
+  WITHDRAWN: 'WITHDRAWN',
+} as const;
+
+export interface StudentUpdate4b96100 {
+  /** @minLength 2 */
+  firstName?: string;
+  /** @minLength 2 */
+  lastName?: string;
+  className?: string;
+  section?: string;
+  middleName?: string;
+  dateOfBirth?: string;
+  passportUrl?: string;
+  admissionStatus?: StudentUpdate4b96100AdmissionStatus;
+  address?: string;
+  previousSchool?: string;
+  medicalInformation?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  status?: StudentUpdate4b96100Status;
+}
+
+export type StudentStatusUpdate4b96100Status = typeof StudentStatusUpdate4b96100Status[keyof typeof StudentStatusUpdate4b96100Status];
+
+
+export const StudentStatusUpdate4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  GRADUATED: 'GRADUATED',
+  TRANSFERRED: 'TRANSFERRED',
+  WITHDRAWN: 'WITHDRAWN',
+} as const;
+
+export interface StudentStatusUpdate4b96100 {
+  status: StudentStatusUpdate4b96100Status;
+}
+
+export type StudentPhotoUploadIntent4b96100ContentType = typeof StudentPhotoUploadIntent4b96100ContentType[keyof typeof StudentPhotoUploadIntent4b96100ContentType];
+
+
+export const StudentPhotoUploadIntent4b96100ContentType = {
+  'image/jpeg': 'image/jpeg',
+  'image/jpg': 'image/jpg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+} as const;
+
+export interface StudentPhotoUploadIntent4b96100 {
+  /** @minimum 1 */
+  schoolId: number;
+  contentType: StudentPhotoUploadIntent4b96100ContentType;
+  /**
+     * @minimum 1
+     * @maximum 3145728
+     */
+  size: number;
+}
+
+export interface StudentPhotoUploadTarget4b96100 {
+  uploadURL: string;
+  objectPath: string;
+}
+
+export interface StudentPhotoConfirmation4b96100 {
+  /** @minimum 1 */
+  schoolId: number;
+  objectPath: string;
+}
+
+export interface StudentPhotoResult4b96100 {
+  passportUrl: string;
+}
+
+/**
+ * @nullable
+ */
+export type Parent4b96100RelationshipType = typeof Parent4b96100RelationshipType[keyof typeof Parent4b96100RelationshipType] | null;
+
+
+export const Parent4b96100RelationshipType = {
+  Father: 'Father',
+  Mother: 'Mother',
+  Guardian: 'Guardian',
+  Grandparent: 'Grandparent',
+  Other: 'Other',
+} as const;
+
+export type Parent4b96100Status = typeof Parent4b96100Status[keyof typeof Parent4b96100Status];
+
+
+export const Parent4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface Parent4b96100 {
+  id: number;
+  schoolId: number;
+  name: string;
+  email: string;
+  phone: string;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  relationshipType?: Parent4b96100RelationshipType;
+  status?: Parent4b96100Status;
+  /** @nullable */
+  clerkUserId?: string | null;
+  /** @nullable */
+  emergencyContactName?: string | null;
+  /** @nullable */
+  emergencyContactPhone?: string | null;
+  childrenCount: number;
+  activeChildren: number;
+}
+
+export type RoleAssignment4b96100Role = typeof RoleAssignment4b96100Role[keyof typeof RoleAssignment4b96100Role];
+
+
+export const RoleAssignment4b96100Role = {
+  PLATFORM_OWNER: 'PLATFORM_OWNER',
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+  TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+  STAFF: 'STAFF',
+  PARTNER: 'PARTNER',
+  DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
+} as const;
+
+export type RoleAssignment4b96100Status = typeof RoleAssignment4b96100Status[keyof typeof RoleAssignment4b96100Status];
+
+
+export const RoleAssignment4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface RoleAssignment4b96100 {
+  id: number;
+  role: RoleAssignment4b96100Role;
+  /** @nullable */
+  schoolId?: number | null;
+  status: RoleAssignment4b96100Status;
+}
+
+export interface SchoolAdministratorInput4b96100 {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  fullName: string;
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 8
+     * @maxLength 25
+     */
+  phone?: string;
+}
+
+export type SchoolUserInvitationInput4b96100Role = typeof SchoolUserInvitationInput4b96100Role[keyof typeof SchoolUserInvitationInput4b96100Role];
+
+
+export const SchoolUserInvitationInput4b96100Role = {
+  TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  STAFF: 'STAFF',
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+} as const;
+
+export type SchoolUserInvitationInput4b96100 = ({
+  role?: 'STUDENT';
+  /** @minimum 1 */
+  studentId: number;
+} | {
+  role?: 'TEACHER' | 'ACCOUNTANT' | 'STAFF' | 'PARENT';
+}) & {
+  /**
+     * Existing same-school profile; identity is resolved by the server
+     * @minimum 1
+     */
+  personId: number;
+  /** @minimum 1 */
+  schoolId: number;
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  fullName?: string;
+  /** @maxLength 254 */
+  email?: string;
+  /**
+     * @minLength 8
+     * @maxLength 25
+     */
+  phone?: string;
+  role: SchoolUserInvitationInput4b96100Role;
+};
+
+export type SchoolAdministratorResult4b96100Status = typeof SchoolAdministratorResult4b96100Status[keyof typeof SchoolAdministratorResult4b96100Status];
+
+
+export const SchoolAdministratorResult4b96100Status = {
+  DISPATCH_REQUESTED: 'DISPATCH_REQUESTED',
+  ACTIVE: 'ACTIVE',
+} as const;
+
+export type SchoolAdministratorResult4b96100Role = typeof SchoolAdministratorResult4b96100Role[keyof typeof SchoolAdministratorResult4b96100Role];
+
+
+export const SchoolAdministratorResult4b96100Role = {
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+  TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  STAFF: 'STAFF',
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+} as const;
+
+export type SchoolAdministratorResult4b96100DispatchStatus = typeof SchoolAdministratorResult4b96100DispatchStatus[keyof typeof SchoolAdministratorResult4b96100DispatchStatus];
+
+
+export const SchoolAdministratorResult4b96100DispatchStatus = {
+  REQUEST_ACCEPTED: 'REQUEST_ACCEPTED',
+} as const;
+
+export type SchoolAdministratorResult4b96100DeliveryStatus = typeof SchoolAdministratorResult4b96100DeliveryStatus[keyof typeof SchoolAdministratorResult4b96100DeliveryStatus];
+
+
+export const SchoolAdministratorResult4b96100DeliveryStatus = {
+  UNVERIFIED: 'UNVERIFIED',
+} as const;
+
+export interface SchoolAdministratorResult4b96100 {
+  status: SchoolAdministratorResult4b96100Status;
+  email: string;
+  schoolId: number;
+  role: SchoolAdministratorResult4b96100Role;
+  invitationId?: string;
+  expiresAt?: string;
+  dispatchStatus?: SchoolAdministratorResult4b96100DispatchStatus;
+  deliveryStatus?: SchoolAdministratorResult4b96100DeliveryStatus;
+  deliveryNote?: string;
+  membership?: RoleAssignment4b96100;
+}
+
+export type SchoolAdministratorInvitation4b96100Status = typeof SchoolAdministratorInvitation4b96100Status[keyof typeof SchoolAdministratorInvitation4b96100Status];
+
+
+export const SchoolAdministratorInvitation4b96100Status = {
+  PENDING: 'PENDING',
+  ACTIVE: 'ACTIVE',
+  ACCEPTED: 'ACCEPTED',
+  EXPIRED: 'EXPIRED',
+  REVOKED: 'REVOKED',
+  SUPERSEDED: 'SUPERSEDED',
+  RECOVERY_REQUIRED: 'RECOVERY_REQUIRED',
+} as const;
+
+/**
+ * @nullable
+ */
+export type SchoolAdministratorInvitation4b96100ClerkStatus = typeof SchoolAdministratorInvitation4b96100ClerkStatus[keyof typeof SchoolAdministratorInvitation4b96100ClerkStatus] | null;
+
+
+export const SchoolAdministratorInvitation4b96100ClerkStatus = {
+  pending: 'pending',
+  accepted: 'accepted',
+  expired: 'expired',
+  revoked: 'revoked',
+  'revoked-or-ignored': 'revoked-or-ignored',
+} as const;
+
+export type SchoolAdministratorInvitation4b96100RecoveryState = typeof SchoolAdministratorInvitation4b96100RecoveryState[keyof typeof SchoolAdministratorInvitation4b96100RecoveryState];
+
+
+export const SchoolAdministratorInvitation4b96100RecoveryState = {
+  PREPARED: 'PREPARED',
+  REVOCATION_REJECTED: 'REVOCATION_REJECTED',
+  REVOCATION_UNKNOWN: 'REVOCATION_UNKNOWN',
+  DISPATCHING: 'DISPATCHING',
+  DISPATCH_REJECTED: 'DISPATCH_REJECTED',
+  OUTCOME_UNKNOWN: 'OUTCOME_UNKNOWN',
+  MULTIPLE_MATCHES: 'MULTIPLE_MATCHES',
+} as const;
+
+export interface SchoolAdministratorInvitation4b96100 {
+  /** @nullable */
+  invitationId: string | null;
+  /** @nullable */
+  claimId: string | null;
+  email: string;
+  /** @nullable */
+  fullName: string | null;
+  schoolId: number;
+  role: 'SCHOOL_ADMIN';
+  status: SchoolAdministratorInvitation4b96100Status;
+  /** @nullable */
+  clerkStatus: SchoolAdministratorInvitation4b96100ClerkStatus;
+  isCurrent: boolean;
+  /** @nullable */
+  membershipId: number | null;
+  /** @nullable */
+  userId: number | null;
+  /** @nullable */
+  createdAt: string | null;
+  /** @nullable */
+  expiresAt: string | null;
+  recoveryAttemptId?: string;
+  recoveryState?: SchoolAdministratorInvitation4b96100RecoveryState;
+}
+
+export interface SchoolAdministratorInvitationList4b96100 {
+  schoolId: number;
+  role: 'SCHOOL_ADMIN';
+  invitations: SchoolAdministratorInvitation4b96100[];
+}
+
+export interface SchoolAdministratorInvitationEmailUpdate4b96100 {
+  /**
+     * @minLength 1
+     * @maxLength 254
+     */
+  email: string;
+}
+
+export interface SchoolAdministratorInvitationReplacement4b96100 {
+  status: 'PENDING';
+  invitationId: string;
+  supersededInvitationId: string;
+  previousInviteRevoked: boolean;
+  email: string;
+  schoolId: number;
+  role: 'SCHOOL_ADMIN';
+  dispatchStatus: 'REQUEST_ACCEPTED';
+  deliveryStatus: 'UNVERIFIED';
+  /** @nullable */
+  expiresAt: string | null;
+  recoveryStatus?: 'COMPLETED';
+}
+
+export type SchoolUserInvitation4b96100Role = typeof SchoolUserInvitation4b96100Role[keyof typeof SchoolUserInvitation4b96100Role];
+
+
+export const SchoolUserInvitation4b96100Role = {
+  TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+  STAFF: 'STAFF',
+} as const;
+
+export type SchoolUserInvitation4b96100Status = typeof SchoolUserInvitation4b96100Status[keyof typeof SchoolUserInvitation4b96100Status];
+
+
+export const SchoolUserInvitation4b96100Status = {
+  PENDING: 'PENDING',
+  EXPIRED: 'EXPIRED',
+  RECOVERY_REQUIRED: 'RECOVERY_REQUIRED',
+} as const;
+
+/**
+ * @nullable
+ */
+export type SchoolUserInvitation4b96100ClerkStatus = typeof SchoolUserInvitation4b96100ClerkStatus[keyof typeof SchoolUserInvitation4b96100ClerkStatus] | null;
+
+
+export const SchoolUserInvitation4b96100ClerkStatus = {
+  pending: 'pending',
+  expired: 'expired',
+} as const;
+
+export type SchoolUserInvitation4b96100RecoveryState = typeof SchoolUserInvitation4b96100RecoveryState[keyof typeof SchoolUserInvitation4b96100RecoveryState];
+
+
+export const SchoolUserInvitation4b96100RecoveryState = {
+  PREPARED: 'PREPARED',
+  REVOCATION_REJECTED: 'REVOCATION_REJECTED',
+  REVOCATION_UNKNOWN: 'REVOCATION_UNKNOWN',
+  DISPATCHING: 'DISPATCHING',
+  DISPATCH_REJECTED: 'DISPATCH_REJECTED',
+  OUTCOME_UNKNOWN: 'OUTCOME_UNKNOWN',
+  MULTIPLE_MATCHES: 'MULTIPLE_MATCHES',
+} as const;
+
+export interface SchoolUserInvitation4b96100 {
+  /** @minLength 1 */
+  invitationId: string;
+  /** @nullable */
+  claimId: string | null;
+  email: string;
+  /** @nullable */
+  fullName: string | null;
+  schoolId: number;
+  role: SchoolUserInvitation4b96100Role;
+  status: SchoolUserInvitation4b96100Status;
+  /** @nullable */
+  clerkStatus: SchoolUserInvitation4b96100ClerkStatus;
+  isCurrent: true;
+  /** @nullable */
+  createdAt: string | null;
+  recoveryAttemptId?: string;
+  recoveryState?: SchoolUserInvitation4b96100RecoveryState;
+}
+
+export interface SchoolUserInvitationList4b96100 {
+  schoolId: number;
+  invitations: SchoolUserInvitation4b96100[];
+}
+
+export type SchoolUserInvitationReplacement4b96100Role = typeof SchoolUserInvitationReplacement4b96100Role[keyof typeof SchoolUserInvitationReplacement4b96100Role];
+
+
+export const SchoolUserInvitationReplacement4b96100Role = {
+  TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+  STAFF: 'STAFF',
+} as const;
+
+export interface SchoolUserInvitationReplacement4b96100 {
+  status: 'PENDING';
+  invitationId: string;
+  supersededInvitationId: string;
+  previousInviteRevoked: boolean;
+  email: string;
+  schoolId: number;
+  role: SchoolUserInvitationReplacement4b96100Role;
+  dispatchStatus: 'REQUEST_ACCEPTED';
+  deliveryStatus: 'UNVERIFIED';
+  /** @nullable */
+  expiresAt: string | null;
+  recoveryStatus?: 'COMPLETED';
+}
+
+export type SchoolInvitationRecovery4b96100Status = typeof SchoolInvitationRecovery4b96100Status[keyof typeof SchoolInvitationRecovery4b96100Status];
+
+
+export const SchoolInvitationRecovery4b96100Status = {
+  RECOVERED: 'RECOVERED',
+  RECOVERY_REQUIRED: 'RECOVERY_REQUIRED',
+} as const;
+
+export type SchoolInvitationRecovery4b96100Role = typeof SchoolInvitationRecovery4b96100Role[keyof typeof SchoolInvitationRecovery4b96100Role];
+
+
+export const SchoolInvitationRecovery4b96100Role = {
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+  TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+  STAFF: 'STAFF',
+} as const;
+
+/**
+ * @nullable
+ */
+export type SchoolInvitationRecovery4b96100ClerkStatus = typeof SchoolInvitationRecovery4b96100ClerkStatus[keyof typeof SchoolInvitationRecovery4b96100ClerkStatus] | null;
+
+
+export const SchoolInvitationRecovery4b96100ClerkStatus = {
+  pending: 'pending',
+  accepted: 'accepted',
+  expired: 'expired',
+  revoked: 'revoked',
+} as const;
+
+export type SchoolInvitationRecovery4b96100RecoveryState = typeof SchoolInvitationRecovery4b96100RecoveryState[keyof typeof SchoolInvitationRecovery4b96100RecoveryState];
+
+
+export const SchoolInvitationRecovery4b96100RecoveryState = {
+  PREPARED: 'PREPARED',
+  REVOCATION_REJECTED: 'REVOCATION_REJECTED',
+  REVOCATION_UNKNOWN: 'REVOCATION_UNKNOWN',
+  DISPATCHING: 'DISPATCHING',
+  DISPATCH_REJECTED: 'DISPATCH_REJECTED',
+  OUTCOME_UNKNOWN: 'OUTCOME_UNKNOWN',
+  MULTIPLE_MATCHES: 'MULTIPLE_MATCHES',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export interface SchoolInvitationRecovery4b96100 {
+  status: SchoolInvitationRecovery4b96100Status;
+  attemptId: string;
+  /** @nullable */
+  invitationId: string | null;
+  email: string;
+  role: SchoolInvitationRecovery4b96100Role;
+  /** @nullable */
+  clerkStatus?: SchoolInvitationRecovery4b96100ClerkStatus;
+  previousInviteRevoked?: boolean;
+  recoveryState: SchoolInvitationRecovery4b96100RecoveryState;
+}
+
+export type SchoolInvitationRecoveryResult4b96100 = SchoolInvitationRecovery4b96100 | SchoolAdministratorInvitationReplacement4b96100 | SchoolUserInvitationReplacement4b96100;
+
+export type InvitationDiagnostics4b96100DispatchStatus = typeof InvitationDiagnostics4b96100DispatchStatus[keyof typeof InvitationDiagnostics4b96100DispatchStatus];
+
+
+export const InvitationDiagnostics4b96100DispatchStatus = {
+  REQUEST_ACCEPTED: 'REQUEST_ACCEPTED',
+} as const;
+
+export type InvitationDiagnostics4b96100DeliveryStatus = typeof InvitationDiagnostics4b96100DeliveryStatus[keyof typeof InvitationDiagnostics4b96100DeliveryStatus];
+
+
+export const InvitationDiagnostics4b96100DeliveryStatus = {
+  UNVERIFIED: 'UNVERIFIED',
+} as const;
+
+export interface InvitationDiagnostics4b96100 {
+  invitationId: string;
+  clerkStatus: string;
+  /** @nullable */
+  expiresAt: string | null;
+  dispatchStatus: InvitationDiagnostics4b96100DispatchStatus;
+  deliveryStatus: InvitationDiagnostics4b96100DeliveryStatus;
+  note: string;
+}
+
+export type PlatformDevice4b96100DeviceType = typeof PlatformDevice4b96100DeviceType[keyof typeof PlatformDevice4b96100DeviceType];
+
+
+export const PlatformDevice4b96100DeviceType = {
+  NFC: 'NFC',
+  BIOMETRIC: 'BIOMETRIC',
+  HYBRID: 'HYBRID',
+} as const;
+
+export type PlatformDevice4b96100Status = typeof PlatformDevice4b96100Status[keyof typeof PlatformDevice4b96100Status];
+
+
+export const PlatformDevice4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  UNASSIGNED: 'UNASSIGNED',
+  MAINTENANCE: 'MAINTENANCE',
+} as const;
+
+export interface PlatformDevice4b96100 {
+  id: number;
+  serialNumber: string;
+  name: string;
+  deviceType: PlatformDevice4b96100DeviceType;
+  status: PlatformDevice4b96100Status;
+  /** @nullable */
+  schoolId?: number | null;
+  /** @nullable */
+  schoolName?: string | null;
+  /** @nullable */
+  lastSeenAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type PlatformDeviceInput4b96100DeviceType = typeof PlatformDeviceInput4b96100DeviceType[keyof typeof PlatformDeviceInput4b96100DeviceType];
+
+
+export const PlatformDeviceInput4b96100DeviceType = {
+  NFC: 'NFC',
+  BIOMETRIC: 'BIOMETRIC',
+  HYBRID: 'HYBRID',
+} as const;
+
+export interface PlatformDeviceInput4b96100 {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  serialNumber: string;
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name: string;
+  deviceType: PlatformDeviceInput4b96100DeviceType;
+  /** @nullable */
+  schoolId?: number | null;
+}
+
+export type PlatformDeviceUpdate4b96100Status = typeof PlatformDeviceUpdate4b96100Status[keyof typeof PlatformDeviceUpdate4b96100Status];
+
+
+export const PlatformDeviceUpdate4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  UNASSIGNED: 'UNASSIGNED',
+  MAINTENANCE: 'MAINTENANCE',
+} as const;
+
+export interface PlatformDeviceUpdate4b96100 {
+  /** @nullable */
+  schoolId?: number | null;
+  status?: PlatformDeviceUpdate4b96100Status;
+}
+
+export type PlatformNotification4b96100Severity = typeof PlatformNotification4b96100Severity[keyof typeof PlatformNotification4b96100Severity];
+
+
+export const PlatformNotification4b96100Severity = {
+  info: 'info',
+  warning: 'warning',
+  critical: 'critical',
+} as const;
+
+export interface PlatformNotification4b96100 {
+  id: number;
+  title: string;
+  message: string;
+  severity: PlatformNotification4b96100Severity;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export type CurrentUser4b96100Status = typeof CurrentUser4b96100Status[keyof typeof CurrentUser4b96100Status];
+
+
+export const CurrentUser4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface CurrentUser4b96100 {
+  id: number;
+  clerkUserId: string;
+  email: string;
+  /** @nullable */
+  firstName?: string | null;
+  /** @nullable */
+  lastName?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  status: CurrentUser4b96100Status;
+  name: string;
+  roles: RoleAssignment4b96100[];
+}
+
+export interface AuthorizedSchool4b96100 {
+  id: number;
+  schoolId: number;
+  role: string;
+  status: string;
+  code: string;
+  name: string;
+  city: string;
+  state: string;
+}
+
+export type AuthorizedContext4b96100User = {
+  id: number;
+  name: string;
+  email: string;
+  status: string;
+};
+
+export interface AuthorizedContext4b96100 {
+  user: AuthorizedContext4b96100User;
+  isPlatformOwner: boolean;
+  roles: RoleAssignment4b96100[];
+}
+
+export type ParentProfile4b96100RelationshipTypesItem = typeof ParentProfile4b96100RelationshipTypesItem[keyof typeof ParentProfile4b96100RelationshipTypesItem];
+
+
+export const ParentProfile4b96100RelationshipTypesItem = {
+  Father: 'Father',
+  Mother: 'Mother',
+  Guardian: 'Guardian',
+  Grandparent: 'Grandparent',
+  Other: 'Other',
+} as const;
+
+export type ParentProfile4b96100Status = typeof ParentProfile4b96100Status[keyof typeof ParentProfile4b96100Status];
+
+
+export const ParentProfile4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface ParentProfile4b96100 {
+  id: number;
+  schoolId: number;
+  name: string;
+  email: string;
+  phone: string;
+  /** @nullable */
+  address?: string | null;
+  relationshipTypes?: ParentProfile4b96100RelationshipTypesItem[];
+  status?: ParentProfile4b96100Status;
+  /** @nullable */
+  clerkUserId?: string | null;
+  /** @nullable */
+  emergencyContactName?: string | null;
+  /** @nullable */
+  emergencyContactPhone?: string | null;
+}
+
+export interface ParentChild4b96100 {
+  id: number;
+  schoolId: number;
+  admissionNo: string;
+  firstName: string;
+  lastName: string;
+  gender?: string;
+  className: string;
+  section: string;
+  status: string;
+  schoolCode?: string;
+  schoolName: string;
+  city?: string;
+  state?: string;
+  relationshipType?: string;
+  isPrimaryGuardian?: boolean;
+  isEmergencyContact?: boolean;
+  contactPriority?: number;
+}
+
+export type ParentStudentRelationship4b96100Status = typeof ParentStudentRelationship4b96100Status[keyof typeof ParentStudentRelationship4b96100Status];
+
+
+export const ParentStudentRelationship4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface ParentStudentRelationship4b96100 {
+  id: number;
+  parentId: number;
+  studentId: number;
+  relationshipType: string;
+  isPrimaryGuardian: boolean;
+  isEmergencyContact: boolean;
+  contactPriority: number;
+  status: ParentStudentRelationship4b96100Status;
+  studentName?: string;
+  parentName?: string;
+}
+
+export type ParentStudentRelationshipInput4b96100RelationshipType = typeof ParentStudentRelationshipInput4b96100RelationshipType[keyof typeof ParentStudentRelationshipInput4b96100RelationshipType];
+
+
+export const ParentStudentRelationshipInput4b96100RelationshipType = {
+  Father: 'Father',
+  Mother: 'Mother',
+  Guardian: 'Guardian',
+  Grandparent: 'Grandparent',
+  Other: 'Other',
+} as const;
+
+export interface ParentStudentRelationshipInput4b96100 {
+  /** @minimum 1 */
+  parentId: number;
+  /** @minimum 1 */
+  studentId: number;
+  relationshipType: ParentStudentRelationshipInput4b96100RelationshipType;
+  isPrimaryGuardian?: boolean;
+  isEmergencyContact?: boolean;
+  /** @minimum 1 */
+  contactPriority?: number;
+}
+
+export type ParentStudentRelationshipUpdate4b96100RelationshipType = typeof ParentStudentRelationshipUpdate4b96100RelationshipType[keyof typeof ParentStudentRelationshipUpdate4b96100RelationshipType];
+
+
+export const ParentStudentRelationshipUpdate4b96100RelationshipType = {
+  Father: 'Father',
+  Mother: 'Mother',
+  Guardian: 'Guardian',
+  Grandparent: 'Grandparent',
+  Other: 'Other',
+} as const;
+
+export type ParentStudentRelationshipUpdate4b96100Status = typeof ParentStudentRelationshipUpdate4b96100Status[keyof typeof ParentStudentRelationshipUpdate4b96100Status];
+
+
+export const ParentStudentRelationshipUpdate4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface ParentStudentRelationshipUpdate4b96100 {
+  relationshipType?: ParentStudentRelationshipUpdate4b96100RelationshipType;
+  isPrimaryGuardian?: boolean;
+  isEmergencyContact?: boolean;
+  /** @minimum 1 */
+  contactPriority?: number;
+  status?: ParentStudentRelationshipUpdate4b96100Status;
+}
+
+export interface AppUser4b96100 {
+  id: number;
+  clerkUserId: string;
+  email: string;
+  /** @nullable */
+  firstName?: string | null;
+  /** @nullable */
+  lastName?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  status: string;
+  createdAt?: string;
+  memberships: RoleAssignment4b96100[];
+}
+
+export type SchoolMembershipInput4b96100Role = typeof SchoolMembershipInput4b96100Role[keyof typeof SchoolMembershipInput4b96100Role];
+
+
+export const SchoolMembershipInput4b96100Role = {
+  TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+  STAFF: 'STAFF',
+} as const;
+
+export interface SchoolMembershipInput4b96100 {
+  /** @minimum 1 */
+  userId: number;
+  /** @minimum 1 */
+  schoolId: number;
+  role: SchoolMembershipInput4b96100Role;
+}
+
+export type PlatformMembershipInput4b96100Role = typeof PlatformMembershipInput4b96100Role[keyof typeof PlatformMembershipInput4b96100Role];
+
+
+export const PlatformMembershipInput4b96100Role = {
+  PLATFORM_OWNER: 'PLATFORM_OWNER',
+} as const;
+
+export interface PlatformMembershipInput4b96100 {
+  email: string;
+  role: PlatformMembershipInput4b96100Role;
+}
+
+export type ParentInput4b96100RelationshipType = typeof ParentInput4b96100RelationshipType[keyof typeof ParentInput4b96100RelationshipType];
+
+
+export const ParentInput4b96100RelationshipType = {
+  Father: 'Father',
+  Mother: 'Mother',
+  Guardian: 'Guardian',
+  Grandparent: 'Grandparent',
+  Other: 'Other',
+} as const;
+
+export interface ParentInput4b96100 {
+  /** @minLength 2 */
+  name: string;
+  email: string;
+  /** @minLength 7 */
+  phone: string;
+  address?: string;
+  relationshipType?: ParentInput4b96100RelationshipType;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+}
+
+export type ParentUpdate4b96100Status = typeof ParentUpdate4b96100Status[keyof typeof ParentUpdate4b96100Status];
+
+
+export const ParentUpdate4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface ParentUpdate4b96100 {
+  /** @minLength 2 */
+  name?: string;
+  email?: string;
+  /** @minLength 7 */
+  phone?: string;
+  address?: string;
+  status?: ParentUpdate4b96100Status;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+}
+
+export type EmployeeStatus4b96100 = typeof EmployeeStatus4b96100[keyof typeof EmployeeStatus4b96100];
+
+
+export const EmployeeStatus4b96100 = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  RESIGNED: 'RESIGNED',
+  TERMINATED: 'TERMINATED',
+} as const;
+
+export type EmployeeType4b96100 = typeof EmployeeType4b96100[keyof typeof EmployeeType4b96100];
+
+
+export const EmployeeType4b96100 = {
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+} as const;
+
+/**
+ * @nullable
+ */
+export type Employee4b96100Gender = typeof Employee4b96100Gender[keyof typeof Employee4b96100Gender] | null;
+
+
+export const Employee4b96100Gender = {
+  female: 'female',
+  male: 'male',
+  other: 'other',
+} as const;
+
+export interface Employee4b96100 {
+  /**
+     * Linked login account state
+     * @nullable
+     */
+  accountStatus?: string | null;
+  id: number;
+  schoolId: number;
+  employeeId: string;
+  firstName: string;
+  /** @nullable */
+  middleName?: string | null;
+  lastName: string;
+  type: EmployeeType4b96100;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  photoUrl?: string | null;
+  /** @nullable */
+  gender?: Employee4b96100Gender;
+  status: EmployeeStatus4b96100;
+  /** @nullable */
+  dateEmployed?: string | null;
+  /** @nullable */
+  department?: string | null;
+  /** @nullable */
+  qualification?: string | null;
+  /** @nullable */
+  userId?: number | null;
+}
+
+export type EmployeeInput4b96100Gender = typeof EmployeeInput4b96100Gender[keyof typeof EmployeeInput4b96100Gender];
+
+
+export const EmployeeInput4b96100Gender = {
+  female: 'female',
+  male: 'male',
+  other: 'other',
+} as const;
+
+export interface EmployeeInput4b96100 {
+  /** @minLength 1 */
+  employeeId: string;
+  /** @minLength 2 */
+  firstName: string;
+  middleName?: string;
+  /** @minLength 2 */
+  lastName: string;
+  type: EmployeeType4b96100;
+  phone?: string;
+  email?: string;
+  address?: string;
+  photoUrl?: string;
+  gender?: EmployeeInput4b96100Gender;
+  dateEmployed?: string;
+  department?: string;
+  qualification?: string;
+  /** @minimum 1 */
+  userId?: number;
+}
+
+export type EmployeeUpdate4b96100Gender = typeof EmployeeUpdate4b96100Gender[keyof typeof EmployeeUpdate4b96100Gender];
+
+
+export const EmployeeUpdate4b96100Gender = {
+  female: 'female',
+  male: 'male',
+  other: 'other',
+} as const;
+
+export interface EmployeeUpdate4b96100 {
+  /** @minLength 2 */
+  firstName?: string;
+  middleName?: string;
+  /** @minLength 2 */
+  lastName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  photoUrl?: string;
+  gender?: EmployeeUpdate4b96100Gender;
+  dateEmployed?: string;
+  department?: string;
+  qualification?: string;
+  /** @minimum 1 */
+  userId?: number;
+}
+
+export interface EmployeeStatusUpdate4b96100 {
+  status: EmployeeStatus4b96100;
+}
+
+export type AcademicSessionInput4b96100Status = typeof AcademicSessionInput4b96100Status[keyof typeof AcademicSessionInput4b96100Status];
+
+
+export const AcademicSessionInput4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export interface AcademicSessionInput4b96100 {
+  name: string;
+  startDate: string;
+  endDate: string;
+  status?: AcademicSessionInput4b96100Status;
+  isCurrent?: boolean;
+}
+
+export type AcademicSessionUpdate4b96100Status = typeof AcademicSessionUpdate4b96100Status[keyof typeof AcademicSessionUpdate4b96100Status];
+
+
+export const AcademicSessionUpdate4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export interface AcademicSessionUpdate4b96100 {
+  name?: string;
+  startDate?: string;
+  endDate?: string;
+  status?: AcademicSessionUpdate4b96100Status;
+  isCurrent?: boolean;
+}
+
+export type AcademicTermInput4b96100Name = typeof AcademicTermInput4b96100Name[keyof typeof AcademicTermInput4b96100Name];
+
+
+export const AcademicTermInput4b96100Name = {
+  FIRST: 'FIRST',
+  SECOND: 'SECOND',
+  THIRD: 'THIRD',
+} as const;
+
+export type AcademicTermInput4b96100Status = typeof AcademicTermInput4b96100Status[keyof typeof AcademicTermInput4b96100Status];
+
+
+export const AcademicTermInput4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export interface AcademicTermInput4b96100 {
+  name: AcademicTermInput4b96100Name;
+  startDate: string;
+  endDate: string;
+  status?: AcademicTermInput4b96100Status;
+  isCurrent?: boolean;
+}
+
+export type AcademicTermUpdate4b96100Name = typeof AcademicTermUpdate4b96100Name[keyof typeof AcademicTermUpdate4b96100Name];
+
+
+export const AcademicTermUpdate4b96100Name = {
+  FIRST: 'FIRST',
+  SECOND: 'SECOND',
+  THIRD: 'THIRD',
+} as const;
+
+export type AcademicTermUpdate4b96100Status = typeof AcademicTermUpdate4b96100Status[keyof typeof AcademicTermUpdate4b96100Status];
+
+
+export const AcademicTermUpdate4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export interface AcademicTermUpdate4b96100 {
+  name?: AcademicTermUpdate4b96100Name;
+  startDate?: string;
+  endDate?: string;
+  status?: AcademicTermUpdate4b96100Status;
+  isCurrent?: boolean;
+}
+
+export type StudentClassAssignment4b96100Status = typeof StudentClassAssignment4b96100Status[keyof typeof StudentClassAssignment4b96100Status];
+
+
+export const StudentClassAssignment4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface StudentClassAssignment4b96100 {
+  id: number;
+  studentId: number;
+  schoolId: number;
+  sessionId: number;
+  /** @nullable */
+  termId?: number | null;
+  classId: number;
+  className?: string;
+  section: string;
+  startDate?: string;
+  /** @nullable */
+  endDate?: string | null;
+  status: StudentClassAssignment4b96100Status;
+}
+
+export interface StudentClassAssignmentInput4b96100 {
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  termId?: number;
+  /** @minimum 1 */
+  classId: number;
+  section: string;
+  startDate?: string;
+}
+
+export type SubjectStatus4b96100 = typeof SubjectStatus4b96100[keyof typeof SubjectStatus4b96100];
+
+
+export const SubjectStatus4b96100 = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface Subject4b96100 {
+  id: number;
+  schoolId: number;
+  name: string;
+  code: string;
+  /** @nullable */
+  description?: string | null;
+  status: SubjectStatus4b96100;
+}
+
+export interface SubjectInput4b96100 {
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  code: string;
+  description?: string;
+  status?: SubjectStatus4b96100;
+}
+
+export interface SubjectUpdate4b96100 {
+  /** @minLength 1 */
+  name?: string;
+  /** @minLength 1 */
+  code?: string;
+  description?: string;
+  status?: SubjectStatus4b96100;
+}
+
+export interface ClassSubjectAssignment4b96100 {
+  id: number;
+  schoolId: number;
+  classId: number;
+  subjectId: number;
+  sessionId: number;
+  /** @nullable */
+  termId?: number | null;
+  /** @nullable */
+  teacherId?: number | null;
+  /** @nullable */
+  section?: string | null;
+  status: SubjectStatus4b96100;
+}
+
+export interface ClassSubjectAssignmentInput4b96100 {
+  /** @minimum 1 */
+  classId: number;
+  /** @minimum 1 */
+  subjectId: number;
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  termId?: number;
+  /** @minimum 1 */
+  teacherId?: number;
+  section?: string;
+}
+
+export type TeacherClassAssignment4b96100AssignmentType = typeof TeacherClassAssignment4b96100AssignmentType[keyof typeof TeacherClassAssignment4b96100AssignmentType];
+
+
+export const TeacherClassAssignment4b96100AssignmentType = {
+  CLASS_TEACHER: 'CLASS_TEACHER',
+  SUBJECT_TEACHER: 'SUBJECT_TEACHER',
+  ASSISTANT_TEACHER: 'ASSISTANT_TEACHER',
+} as const;
+
+export type TeacherClassAssignment4b96100Status = typeof TeacherClassAssignment4b96100Status[keyof typeof TeacherClassAssignment4b96100Status];
+
+
+export const TeacherClassAssignment4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface TeacherClassAssignment4b96100 {
+  id: number;
+  schoolId: number;
+  teacherId: number;
+  sessionId: number;
+  classId: number;
+  /** @nullable */
+  section?: string | null;
+  assignmentType: TeacherClassAssignment4b96100AssignmentType;
+  /** @nullable */
+  subjectId?: number | null;
+  startDate: string;
+  /** @nullable */
+  endDate?: string | null;
+  status: TeacherClassAssignment4b96100Status;
+}
+
+export type TeacherClassAssignmentInput4b96100AssignmentType = typeof TeacherClassAssignmentInput4b96100AssignmentType[keyof typeof TeacherClassAssignmentInput4b96100AssignmentType];
+
+
+export const TeacherClassAssignmentInput4b96100AssignmentType = {
+  CLASS_TEACHER: 'CLASS_TEACHER',
+  SUBJECT_TEACHER: 'SUBJECT_TEACHER',
+  ASSISTANT_TEACHER: 'ASSISTANT_TEACHER',
+} as const;
+
+export interface TeacherClassAssignmentInput4b96100 {
+  /** @minimum 1 */
+  teacherId: number;
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  classId: number;
+  section?: string;
+  assignmentType: TeacherClassAssignmentInput4b96100AssignmentType;
+  /** @minimum 1 */
+  subjectId?: number;
+  startDate: string;
+}
+
+export interface SchoolClass4b96100 {
+  id: number;
+  schoolId: number;
+  name: string;
+  section: string;
+  /** @nullable */
+  classTeacher: string | null;
+  studentCount: number;
+  capacity: number;
+}
+
+export interface ClassInput4b96100 {
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  section: string;
+  /** @minimum 1 */
+  capacity: number;
+  classTeacher?: string;
+}
+
+export type Subscription4b96100Status = typeof Subscription4b96100Status[keyof typeof Subscription4b96100Status];
+
+
+export const Subscription4b96100Status = {
+  active: 'active',
+  pending: 'pending',
+  expired: 'expired',
+  failed: 'failed',
+} as const;
+
+export type Subscription4b96100VerificationStatus = typeof Subscription4b96100VerificationStatus[keyof typeof Subscription4b96100VerificationStatus];
+
+
+export const Subscription4b96100VerificationStatus = {
+  verified: 'verified',
+  pending: 'pending',
+  unverified: 'unverified',
+} as const;
+
+/**
+ * @nullable
+ */
+export type Subscription4b96100LastPaymentStatus = typeof Subscription4b96100LastPaymentStatus[keyof typeof Subscription4b96100LastPaymentStatus] | null;
+
+
+export const Subscription4b96100LastPaymentStatus = {
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+} as const;
+
+export interface Subscription4b96100 {
+  id: number;
+  schoolId: number;
+  studentId: number;
+  studentName: string;
+  amount: number;
+  schoolShare: number;
+  edupulseShare: number;
+  status: Subscription4b96100Status;
+  verificationStatus: Subscription4b96100VerificationStatus;
+  provider: string;
+  term: string;
+  expiresAt: string;
+  /** @nullable */
+  lastPaymentId?: number | null;
+  /** @nullable */
+  lastPaymentStatus?: Subscription4b96100LastPaymentStatus;
+  /** @nullable */
+  lastPaymentReference?: string | null;
+}
+
+export type SubscriptionInput4b96100Provider = typeof SubscriptionInput4b96100Provider[keyof typeof SubscriptionInput4b96100Provider];
+
+
+export const SubscriptionInput4b96100Provider = {
+  paystack: 'paystack',
+  flutterwave: 'flutterwave',
+  remita: 'remita',
+  test: 'test',
+} as const;
+
+export interface SubscriptionInput4b96100 {
+  /** @minimum 1 */
+  studentId: number;
+  /** @minLength 1 */
+  term: string;
+  provider?: SubscriptionInput4b96100Provider;
+}
+
+export interface PaymentVerificationInput4b96100 {
+  /** @minLength 3 */
+  providerReference: string;
+}
+
+/**
+ * @nullable
+ */
+export type NfcCard4b96100PersonType = typeof NfcCard4b96100PersonType[keyof typeof NfcCard4b96100PersonType] | null;
+
+
+export const NfcCard4b96100PersonType = {
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+} as const;
+
+export type NfcCard4b96100Status = typeof NfcCard4b96100Status[keyof typeof NfcCard4b96100Status];
+
+
+export const NfcCard4b96100Status = {
+  active: 'active',
+  inactive: 'inactive',
+  locked: 'locked',
+  unassigned: 'unassigned',
+  lost: 'lost',
+  blocked: 'blocked',
+  suspended: 'suspended',
+  replaced: 'replaced',
+  expired: 'expired',
+} as const;
+
+export interface NfcCard4b96100 {
+  id: number;
+  schoolId: number;
+  uid: string;
+  /** @nullable */
+  studentId: number | null;
+  /** @nullable */
+  studentName: string | null;
+  /** @nullable */
+  employeeId?: number | null;
+  /** @nullable */
+  employeeName?: string | null;
+  /** @nullable */
+  personType?: NfcCard4b96100PersonType;
+  status: NfcCard4b96100Status;
+  scans: number;
+  /** @nullable */
+  lastScan: string | null;
+}
+
+export interface CardReassignmentInput4b96100 {
+  /** @minimum 1 */
+  studentId: number;
+}
+
+export type CompanyEmployee4b96100Status = typeof CompanyEmployee4b96100Status[keyof typeof CompanyEmployee4b96100Status];
+
+
+export const CompanyEmployee4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface CompanyEmployee4b96100 {
+  id: number;
+  fullName: string;
+  email: string;
+  /** @nullable */
+  phone: string | null;
+  /** @nullable */
+  jobTitle: string | null;
+  status: CompanyEmployee4b96100Status;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CompanyEmployeeInvitationStatus4b96100Status = typeof CompanyEmployeeInvitationStatus4b96100Status[keyof typeof CompanyEmployeeInvitationStatus4b96100Status];
+
+
+export const CompanyEmployeeInvitationStatus4b96100Status = {
+  NOT_INVITED: 'NOT_INVITED',
+  ACTIVE: 'ACTIVE',
+  PENDING: 'PENDING',
+  EXPIRED: 'EXPIRED',
+} as const;
+
+/**
+ * @nullable
+ */
+export type CompanyEmployeeInvitationStatus4b96100InvitationRole = typeof CompanyEmployeeInvitationStatus4b96100InvitationRole[keyof typeof CompanyEmployeeInvitationStatus4b96100InvitationRole] | null;
+
+
+export const CompanyEmployeeInvitationStatus4b96100InvitationRole = {
+  COMPANY_ACCOUNTANT: 'COMPANY_ACCOUNTANT',
+  DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
+} as const;
+
+export type CompanyEmployeeInvitationStatus4b96100InvitationStatus = typeof CompanyEmployeeInvitationStatus4b96100InvitationStatus[keyof typeof CompanyEmployeeInvitationStatus4b96100InvitationStatus];
+
+
+export const CompanyEmployeeInvitationStatus4b96100InvitationStatus = {
+  NOT_INVITED: 'NOT_INVITED',
+  ACTIVE: 'ACTIVE',
+  PENDING: 'PENDING',
+  EXPIRED: 'EXPIRED',
+} as const;
+
+export type CompanyEmployeeInvitationStatus4b96100Invitation = {
+  /** @nullable */
+  role: CompanyEmployeeInvitationStatus4b96100InvitationRole;
+  /** @nullable */
+  schoolId: number | null;
+  /** @nullable */
+  invitationId: string | null;
+  /**
+     * Creation time of the invitation audit record
+     * @nullable
+     */
+  createdAt?: string | null;
+  /** @nullable */
+  expiresAt: string | null;
+  status: CompanyEmployeeInvitationStatus4b96100InvitationStatus;
+} | null;
+
+export interface CompanyEmployeeInvitationStatus4b96100 {
+  employeeId: number;
+  email: string;
+  status: CompanyEmployeeInvitationStatus4b96100Status;
+  invitation: CompanyEmployeeInvitationStatus4b96100Invitation;
+}
+
+export type CompanyEmployeeWithInvitationStatus4b96100 = CompanyEmployee4b96100 & {
+  invitationStatus: CompanyEmployeeInvitationStatus4b96100;
+};
+
+export type CompanyEmployeeInput4b96100Role = typeof CompanyEmployeeInput4b96100Role[keyof typeof CompanyEmployeeInput4b96100Role];
+
+
+export const CompanyEmployeeInput4b96100Role = {
+  COMPANY_ACCOUNTANT: 'COMPANY_ACCOUNTANT',
+  DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
+} as const;
+
+export type CompanyEmployeeInput4b96100 = ({
+  role?: 'DEVICE_ACTIVATION_OFFICER';
+  /** @minimum 1 */
+  schoolId: number;
+} | {
+  role?: 'COMPANY_ACCOUNTANT';
+}) & ({
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  fullName: string;
+  /**
+     * @minLength 1
+     * @maxLength 254
+     */
+  email: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  phone?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  jobTitle?: string | null;
+  role: CompanyEmployeeInput4b96100Role;
+});
+
+export type CompanyEmployeeUpdate4b96100Status = typeof CompanyEmployeeUpdate4b96100Status[keyof typeof CompanyEmployeeUpdate4b96100Status];
+
+
+export const CompanyEmployeeUpdate4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface CompanyEmployeeUpdate4b96100 {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  fullName?: string;
+  /**
+     * @minLength 1
+     * @maxLength 254
+     */
+  email?: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  phone?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  jobTitle?: string | null;
+  status?: CompanyEmployeeUpdate4b96100Status;
+}
+
+export type CompanyEmployeeCreated4b96100Status = typeof CompanyEmployeeCreated4b96100Status[keyof typeof CompanyEmployeeCreated4b96100Status];
+
+
+export const CompanyEmployeeCreated4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export type CompanyEmployeeCreated4b96100Role = typeof CompanyEmployeeCreated4b96100Role[keyof typeof CompanyEmployeeCreated4b96100Role];
+
+
+export const CompanyEmployeeCreated4b96100Role = {
+  COMPANY_ACCOUNTANT: 'COMPANY_ACCOUNTANT',
+  DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
+} as const;
+
+export type CompanyEmployeeCreated4b96100InvitationStatus = typeof CompanyEmployeeCreated4b96100InvitationStatus[keyof typeof CompanyEmployeeCreated4b96100InvitationStatus];
+
+
+export const CompanyEmployeeCreated4b96100InvitationStatus = {
+  DISPATCH_REQUEST_ACCEPTED: 'DISPATCH_REQUEST_ACCEPTED',
+} as const;
+
+export type CompanyEmployeeCreated4b96100Invitation = {
+  status: CompanyEmployeeCreated4b96100InvitationStatus;
+  deliveryConfirmed: false;
+  expiresAt: string;
+};
+
+export interface CompanyEmployeeCreated4b96100 {
+  id: number;
+  fullName: string;
+  email: string;
+  /** @nullable */
+  phone: string | null;
+  /** @nullable */
+  jobTitle: string | null;
+  status: CompanyEmployeeCreated4b96100Status;
+  createdAt: string;
+  updatedAt: string;
+  role: CompanyEmployeeCreated4b96100Role;
+  /** @nullable */
+  schoolId: number | null;
+  invitation: CompanyEmployeeCreated4b96100Invitation;
+}
+
+export type CompanyEmployeeInvitationInput4b96100Role = typeof CompanyEmployeeInvitationInput4b96100Role[keyof typeof CompanyEmployeeInvitationInput4b96100Role];
+
+
+export const CompanyEmployeeInvitationInput4b96100Role = {
+  COMPANY_ACCOUNTANT: 'COMPANY_ACCOUNTANT',
+  DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
+} as const;
+
+export type CompanyEmployeeInvitationInput4b96100 = ({
+  role?: 'DEVICE_ACTIVATION_OFFICER';
+  /** @minimum 1 */
+  schoolId: number;
+} | {
+  role?: 'COMPANY_ACCOUNTANT';
+}) & {
+  role: CompanyEmployeeInvitationInput4b96100Role;
+};
+
+export interface CompanyEmployeeInvitationSelection4b96100 {
+  /**
+     * Current Clerk invitation ID returned by the selected employee's invitation status; stale IDs are rejected.
+     * @minLength 1
+     */
+  invitationId: string;
+}
+
+export interface PartnerInvitationSelection4b96100 {
+  /**
+     * Selected local owner invitation ID from the platform invitation list, scoped to the partner in the route.
+     * @minimum 1
+     */
+  invitationId: number;
+}
+
+export type CompanyEmployeeInvitationResult4b96100Role = typeof CompanyEmployeeInvitationResult4b96100Role[keyof typeof CompanyEmployeeInvitationResult4b96100Role];
+
+
+export const CompanyEmployeeInvitationResult4b96100Role = {
+  COMPANY_ACCOUNTANT: 'COMPANY_ACCOUNTANT',
+  DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
+} as const;
+
+export type CompanyEmployeeInvitationResult4b96100InvitationStatus = typeof CompanyEmployeeInvitationResult4b96100InvitationStatus[keyof typeof CompanyEmployeeInvitationResult4b96100InvitationStatus];
+
+
+export const CompanyEmployeeInvitationResult4b96100InvitationStatus = {
+  DISPATCH_REQUEST_ACCEPTED: 'DISPATCH_REQUEST_ACCEPTED',
+} as const;
+
+export type CompanyEmployeeInvitationResult4b96100Invitation = {
+  status: CompanyEmployeeInvitationResult4b96100InvitationStatus;
+  deliveryConfirmed: false;
+  invitationId?: string;
+  expiresAt: string;
+};
+
+export interface CompanyEmployeeInvitationResult4b96100 {
+  employeeId: number;
+  email: string;
+  role: CompanyEmployeeInvitationResult4b96100Role;
+  /** @nullable */
+  schoolId: number | null;
+  invitation: CompanyEmployeeInvitationResult4b96100Invitation;
+}
+
+export interface CompanyEmployeeInvitationEmailUpdate4b96100 {
+  /**
+     * @minLength 1
+     * @maxLength 254
+     */
+  email: string;
+}
+
+export type CompanyAccountantOverview4b96100Subscriptions = {
+  verifiedSubscriptionCount: number;
+  verifiedRevenue: string;
+  verifiedEduPulseShare: string;
+  unverifiedSubscriptionCount: number;
+  activeVerifiedCount: number;
+};
+
+export interface CompanyAccountantStatusTotal4b96100 {
+  status: string;
+  currency: string;
+  count: number;
+  amount: string;
+}
+
+export interface CompanyAccountantOverview4b96100 {
+  subscriptions: CompanyAccountantOverview4b96100Subscriptions;
+  commissions: CompanyAccountantStatusTotal4b96100[];
+  payouts: CompanyAccountantStatusTotal4b96100[];
+}
+
+export interface CompanyAccountantSubscription4b96100 {
+  id: number;
+  term: string;
+  amount: string;
+  edupulseShare: string;
+  provider: string;
+  /** @nullable */
+  providerReference: string | null;
+  status: string;
+  verificationStatus: string;
+  createdAt: string;
+}
+
+export interface CompanyAccountantReconciliationItem4b96100 {
+  id: number;
+  term: string;
+  amount: string;
+  provider: string;
+  /** @nullable */
+  providerReference: string | null;
+  status: string;
+  verificationStatus: string;
+  createdAt: string;
+}
+
+export interface CompanyAccountantCommission4b96100 {
+  id: number;
+  partnerCode: string;
+  partnerName: string;
+  term: string;
+  amount: string;
+  currency: string;
+  status: string;
+  /** @nullable */
+  paymentReference: string | null;
+  createdAt: string;
+  /** @nullable */
+  paidAt: string | null;
+}
+
+export interface CompanyAccountantPayout4b96100 {
+  id: number;
+  partnerCode: string;
+  partnerName: string;
+  amount: string;
+  currency: string;
+  status: string;
+  /** @nullable */
+  paymentReference: string | null;
+  periodStart: string;
+  periodEnd: string;
+  /** @nullable */
+  paidAt: string | null;
+  createdAt: string;
+}
+
+export interface CardInput4b96100 {
+  /** @minLength 4 */
+  uid: string;
+  /** @minimum 1 */
+  studentId?: number;
+}
+
+export type CardStatusInput4b96100Status = typeof CardStatusInput4b96100Status[keyof typeof CardStatusInput4b96100Status];
+
+
+export const CardStatusInput4b96100Status = {
+  active: 'active',
+  inactive: 'inactive',
+  locked: 'locked',
+  unassigned: 'unassigned',
+  lost: 'lost',
+  blocked: 'blocked',
+  suspended: 'suspended',
+  replaced: 'replaced',
+  expired: 'expired',
+} as const;
+
+export interface CardStatusInput4b96100 {
+  status: CardStatusInput4b96100Status;
+}
+
+export type PartnerStatus4b96100 = typeof PartnerStatus4b96100[keyof typeof PartnerStatus4b96100];
+
+
+export const PartnerStatus4b96100 = {
+  INVITED: 'INVITED',
+  ACTIVE: 'ACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  DEACTIVATED: 'DEACTIVATED',
+} as const;
+
+export type PartnerType4b96100 = typeof PartnerType4b96100[keyof typeof PartnerType4b96100];
+
+
+export const PartnerType4b96100 = {
+  INDIVIDUAL: 'INDIVIDUAL',
+  BUSINESS: 'BUSINESS',
+} as const;
+
+export interface Partner4b96100 {
+  id: number;
+  partnerCode: string;
+  partnerType: PartnerType4b96100;
+  fullName: string;
+  /** @nullable */
+  businessName?: string | null;
+  email: string;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  state?: string | null;
+  /** @nullable */
+  lga?: string | null;
+  status: PartnerStatus4b96100;
+  /** @nullable */
+  clerkUserId?: string | null;
+  /** @nullable */
+  userId?: number | null;
+  /** @nullable */
+  registrationDate?: string | null;
+  /** @nullable */
+  activationDate?: string | null;
+  /** @nullable */
+  deactivationDate?: string | null;
+  createdAt: string;
+  /** @nullable */
+  updatedAt?: string | null;
+}
+
+export type PartnerProfile4b96100 = Partner4b96100 & {
+  status?: 'ACTIVE';
+};
+
+export interface PartnerInvitationInput4b96100 {
+  email: string;
+  /** @minLength 2 */
+  fullName: string;
+  businessName?: string;
+  phone?: string;
+  partnerType?: PartnerType4b96100;
+}
+
+export type PartnerInvitation4b96100Status = typeof PartnerInvitation4b96100Status[keyof typeof PartnerInvitation4b96100Status];
+
+
+export const PartnerInvitation4b96100Status = {
+  PENDING: 'PENDING',
+} as const;
+
+export type PartnerInvitation4b96100InvitationDispatchStatus = typeof PartnerInvitation4b96100InvitationDispatchStatus[keyof typeof PartnerInvitation4b96100InvitationDispatchStatus];
+
+
+export const PartnerInvitation4b96100InvitationDispatchStatus = {
+  REQUEST_ACCEPTED: 'REQUEST_ACCEPTED',
+} as const;
+
+export type PartnerInvitation4b96100InvitationDeliveryStatus = typeof PartnerInvitation4b96100InvitationDeliveryStatus[keyof typeof PartnerInvitation4b96100InvitationDeliveryStatus];
+
+
+export const PartnerInvitation4b96100InvitationDeliveryStatus = {
+  UNVERIFIED: 'UNVERIFIED',
+} as const;
+
+export interface PartnerInvitation4b96100 {
+  id: number;
+  partnerId: number;
+  email: string;
+  status: PartnerInvitation4b96100Status;
+  /** Clerk invitation identifier; it is not the invitation token */
+  clerkInvitationId?: string;
+  invitationDispatchStatus: PartnerInvitation4b96100InvitationDispatchStatus;
+  invitationDeliveryStatus: PartnerInvitation4b96100InvitationDeliveryStatus;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export type PartnerInvitationReconciliation4b96100 = (PartnerInvitation4b96100 | Partner4b96100) & {
+  reconciliationOnly: true;
+};
+
+export type PartnerInvitationListItem4b96100InvitationStatus = typeof PartnerInvitationListItem4b96100InvitationStatus[keyof typeof PartnerInvitationListItem4b96100InvitationStatus];
+
+
+export const PartnerInvitationListItem4b96100InvitationStatus = {
+  ACTIVE: 'ACTIVE',
+  ACCEPTED: 'ACCEPTED',
+  REVOKED: 'REVOKED',
+  DISPATCHING: 'DISPATCHING',
+  UNKNOWN_PROVIDER_STATE: 'UNKNOWN_PROVIDER_STATE',
+  FAILED: 'FAILED',
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type PartnerInvitationListItem4b96100Status = typeof PartnerInvitationListItem4b96100Status[keyof typeof PartnerInvitationListItem4b96100Status];
+
+
+export const PartnerInvitationListItem4b96100Status = {
+  PENDING: 'PENDING',
+  ACTIVE: 'ACTIVE',
+  ACCEPTED: 'ACCEPTED',
+  EXPIRED: 'EXPIRED',
+  REVOKED: 'REVOKED',
+  DISPATCHING: 'DISPATCHING',
+  UNKNOWN_PROVIDER_STATE: 'UNKNOWN_PROVIDER_STATE',
+  FAILED: 'FAILED',
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export interface PartnerInvitationListItem4b96100 {
+  id: number;
+  partnerId: number;
+  email: string;
+  invitationStatus: PartnerInvitationListItem4b96100InvitationStatus;
+  partnerStatus: PartnerStatus4b96100;
+  createdAt: string;
+  expiresAt: string;
+  /** @nullable */
+  redeemedAt: string | null;
+  status: PartnerInvitationListItem4b96100Status;
+}
+
+export interface PartnerUpdate4b96100 {
+  /** @minLength 2 */
+  fullName?: string;
+  businessName?: string;
+  /**
+     * @minLength 1
+     * @maxLength 254
+     */
+  email?: string;
+  /**
+     * Required when changing a pending invitation email; binds replacement to the selected invitation
+     * @minimum 1
+     */
+  invitationId?: number;
+  phone?: string;
+  address?: string;
+  state?: string;
+  lga?: string;
+}
+
+export interface PartnerSelfUpdate4b96100 {
+  /** @minLength 2 */
+  fullName?: string;
+  businessName?: string;
+  phone?: string;
+  address?: string;
+  state?: string;
+  lga?: string;
+}
+
+export interface PartnerStatusUpdate4b96100 {
+  status: PartnerStatus4b96100;
+}
+
+export interface PartnerInvitationAcceptanceInput4b96100 {
+  /**
+     * @minLength 32
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  partnerInvitation?: string;
+}
+
+export type PartnerInvitationAcceptance4b96100Role = typeof PartnerInvitationAcceptance4b96100Role[keyof typeof PartnerInvitationAcceptance4b96100Role];
+
+
+export const PartnerInvitationAcceptance4b96100Role = {
+  PARTNER_OWNER: 'PARTNER_OWNER',
+  PARTNER_STAFF: 'PARTNER_STAFF',
+  PARTNER_FINANCE: 'PARTNER_FINANCE',
+  PARTNER_ADMIN: 'PARTNER_ADMIN',
+} as const;
+
+export type PartnerInvitationAcceptance4b96100 = Partner4b96100 & {
+  status?: 'ACTIVE';
+  role: PartnerInvitationAcceptance4b96100Role;
+  redirectTo: '/partner';
+};
+
+export type PartnerStaffPermission4b96100 = typeof PartnerStaffPermission4b96100[keyof typeof PartnerStaffPermission4b96100];
+
+
+export const PartnerStaffPermission4b96100 = {
+  STANDARD: 'STANDARD',
+  FINANCE: 'FINANCE',
+  ADMIN: 'ADMIN',
+} as const;
+
+export type PartnerStaffRole4b96100 = typeof PartnerStaffRole4b96100[keyof typeof PartnerStaffRole4b96100];
+
+
+export const PartnerStaffRole4b96100 = {
+  PARTNER_STAFF: 'PARTNER_STAFF',
+  PARTNER_FINANCE: 'PARTNER_FINANCE',
+  PARTNER_ADMIN: 'PARTNER_ADMIN',
+} as const;
+
+export type PartnerStaffMember4b96100Status = typeof PartnerStaffMember4b96100Status[keyof typeof PartnerStaffMember4b96100Status];
+
+
+export const PartnerStaffMember4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface PartnerStaffMember4b96100 {
+  userId: number;
+  email: string;
+  fullName: string;
+  role: PartnerStaffRole4b96100;
+  status: PartnerStaffMember4b96100Status;
+  joinedAt: string;
+}
+
+export interface PartnerStaffPermissionUpdate4b96100 {
+  permission: PartnerStaffPermission4b96100;
+}
+
+export interface PartnerStaffPermissionResult4b96100 {
+  userId: number;
+  role: PartnerStaffRole4b96100;
+  status: 'ACTIVE';
+}
+
+export interface PartnerStaffInvitationInput4b96100 {
+  /**
+     * @minLength 1
+     * @maxLength 254
+     */
+  email: string;
+  permission?: PartnerStaffPermission4b96100;
+}
+
+export type PartnerStaffInvitation4b96100InvitationAttemptStatus = typeof PartnerStaffInvitation4b96100InvitationAttemptStatus[keyof typeof PartnerStaffInvitation4b96100InvitationAttemptStatus];
+
+
+export const PartnerStaffInvitation4b96100InvitationAttemptStatus = {
+  FINALIZED: 'FINALIZED',
+  RECOVERED: 'RECOVERED',
+} as const;
+
+export interface PartnerStaffInvitation4b96100 {
+  id: number;
+  partnerId: number;
+  email: string;
+  role: PartnerStaffRole4b96100;
+  permission: PartnerStaffPermission4b96100;
+  status: 'PENDING';
+  invitationDispatchStatus: 'REQUEST_ACCEPTED';
+  invitationDeliveryStatus: 'UNVERIFIED';
+  invitationAttemptId?: string;
+  invitationAttemptStatus?: PartnerStaffInvitation4b96100InvitationAttemptStatus;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export const PartnerStaffInvitationRecoveryInput4b96100Value = {
+  mode: 'reconcile',
+} as const;
+export type PartnerStaffInvitationRecoveryInput4b96100 = typeof PartnerStaffInvitationRecoveryInput4b96100Value;
+
+export type PartnerStaffInvitationListItem4b96100Status = typeof PartnerStaffInvitationListItem4b96100Status[keyof typeof PartnerStaffInvitationListItem4b96100Status];
+
+
+export const PartnerStaffInvitationListItem4b96100Status = {
+  PENDING: 'PENDING',
+  EXPIRED: 'EXPIRED',
+  DISPATCHING: 'DISPATCHING',
+  UNKNOWN_PROVIDER_STATE: 'UNKNOWN_PROVIDER_STATE',
+} as const;
+
+export interface PartnerStaffInvitationListItem4b96100 {
+  id: number;
+  recipient: string;
+  email: string;
+  role: PartnerStaffRole4b96100;
+  permission: PartnerStaffPermission4b96100;
+  status: PartnerStaffInvitationListItem4b96100Status;
+  createdAt: string;
+  expiresAt: string;
+  invitationAttemptId?: string;
+  /** @nullable */
+  selectedInvitationId?: number | null;
+}
+
+export interface PartnerStaffInvitationRevocation4b96100 {
+  id: number;
+  partnerId: number;
+  status: 'REVOKED';
+}
+
+export type PartnerSchool4b96100AttributionStatus = typeof PartnerSchool4b96100AttributionStatus[keyof typeof PartnerSchool4b96100AttributionStatus];
+
+
+export const PartnerSchool4b96100AttributionStatus = {
+  ACTIVE: 'ACTIVE',
+  ENDED: 'ENDED',
+  PENDING: 'PENDING',
+} as const;
+
+export type PartnerSchool4b96100AttributionSource = typeof PartnerSchool4b96100AttributionSource[keyof typeof PartnerSchool4b96100AttributionSource];
+
+
+export const PartnerSchool4b96100AttributionSource = {
+  REFERRAL: 'REFERRAL',
+  REFERRAL_LINK: 'REFERRAL_LINK',
+  PLATFORM_ASSIGNED: 'PLATFORM_ASSIGNED',
+  DIRECT: 'DIRECT',
+  PARTNER_DIRECT: 'PARTNER_DIRECT',
+} as const;
+
+export type PartnerSchool4b96100RegistrationStatus = typeof PartnerSchool4b96100RegistrationStatus[keyof typeof PartnerSchool4b96100RegistrationStatus];
+
+
+export const PartnerSchool4b96100RegistrationStatus = {
+  PENDING: 'PENDING',
+  ACTIVE: 'ACTIVE',
+} as const;
+
+/**
+ * @nullable
+ */
+export type PartnerSchool4b96100InvitationStatus = typeof PartnerSchool4b96100InvitationStatus[keyof typeof PartnerSchool4b96100InvitationStatus] | null;
+
+
+export const PartnerSchool4b96100InvitationStatus = {
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  UNKNOWN: 'UNKNOWN',
+  FAILED: 'FAILED',
+} as const;
+
+export interface PartnerSchool4b96100 {
+  schoolId: number;
+  schoolName: string;
+  /** @nullable */
+  schoolCode?: string | null;
+  attributionStatus: PartnerSchool4b96100AttributionStatus;
+  attributionSource: PartnerSchool4b96100AttributionSource;
+  /** @nullable */
+  referralLinkId?: number | null;
+  startDate: string;
+  /** @nullable */
+  endDate?: string | null;
+  eligibleStudentCount?: number;
+  /** @nullable */
+  adminName: string | null;
+  /** @nullable */
+  adminEmail: string | null;
+  /** @nullable */
+  adminPhone: string | null;
+  registrationStatus: PartnerSchool4b96100RegistrationStatus;
+  /** @nullable */
+  invitationId: string | null;
+  /** @nullable */
+  invitationStatus: PartnerSchool4b96100InvitationStatus;
+  /** @nullable */
+  invitationSentAt: string | null;
+  /** @nullable */
+  acceptedAt: string | null;
+  /** @nullable */
+  dateAdded: string | null;
+  totalStudents: number;
+  subscriptionStatus: string;
+}
+
+export type PartnerAttributionConflict4b96100Status = typeof PartnerAttributionConflict4b96100Status[keyof typeof PartnerAttributionConflict4b96100Status];
+
+
+export const PartnerAttributionConflict4b96100Status = {
+  OPEN: 'OPEN',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface PartnerAttributionConflict4b96100 {
+  id: number;
+  schoolId: number;
+  /** @nullable */
+  existingPartnerId?: number | null;
+  attemptedPartnerId: number;
+  attemptedAttributionSource?: string;
+  status: PartnerAttributionConflict4b96100Status;
+  /** @nullable */
+  resolutionNote?: string | null;
+  createdAt: string;
+  /** @nullable */
+  resolvedAt?: string | null;
+}
+
+export type PartnerAttributionHistory4b96100AttributionStatus = typeof PartnerAttributionHistory4b96100AttributionStatus[keyof typeof PartnerAttributionHistory4b96100AttributionStatus];
+
+
+export const PartnerAttributionHistory4b96100AttributionStatus = {
+  ACTIVE: 'ACTIVE',
+  ENDED: 'ENDED',
+  PENDING: 'PENDING',
+} as const;
+
+export type PartnerAttributionHistory4b96100AttributionSource = typeof PartnerAttributionHistory4b96100AttributionSource[keyof typeof PartnerAttributionHistory4b96100AttributionSource];
+
+
+export const PartnerAttributionHistory4b96100AttributionSource = {
+  REFERRAL: 'REFERRAL',
+  PLATFORM_ASSIGNED: 'PLATFORM_ASSIGNED',
+  DIRECT: 'DIRECT',
+} as const;
+
+export interface PartnerAttributionHistory4b96100 {
+  id: number;
+  partnerId: number;
+  schoolId: number;
+  attributionStatus: PartnerAttributionHistory4b96100AttributionStatus;
+  attributionSource: PartnerAttributionHistory4b96100AttributionSource;
+  /** @nullable */
+  referralLinkId?: number | null;
+  startDate: string;
+  /** @nullable */
+  endDate?: string | null;
+  /** @nullable */
+  changedBy?: number | null;
+  /** @nullable */
+  changeReason?: string | null;
+}
+
+export type AttributionConflictResolution4b96100Decision = typeof AttributionConflictResolution4b96100Decision[keyof typeof AttributionConflictResolution4b96100Decision];
+
+
+export const AttributionConflictResolution4b96100Decision = {
+  ACCEPT: 'ACCEPT',
+  REJECT: 'REJECT',
+} as const;
+
+export interface AttributionConflictResolution4b96100 {
+  decision: AttributionConflictResolution4b96100Decision;
+  note?: string;
+}
+
+export type PartnerCommissionRule4b96100CalculationBasis = typeof PartnerCommissionRule4b96100CalculationBasis[keyof typeof PartnerCommissionRule4b96100CalculationBasis];
+
+
+export const PartnerCommissionRule4b96100CalculationBasis = {
+  PER_ELIGIBLE_STUDENT_PER_TERM: 'PER_ELIGIBLE_STUDENT_PER_TERM',
+} as const;
+
+export type PartnerCommissionRule4b96100Status = typeof PartnerCommissionRule4b96100Status[keyof typeof PartnerCommissionRule4b96100Status];
+
+
+export const PartnerCommissionRule4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface PartnerCommissionRule4b96100 {
+  id: number;
+  /** @minimum 0 */
+  rate: number;
+  /**
+     * @minLength 3
+     * @maxLength 3
+     */
+  currency: string;
+  calculationBasis: PartnerCommissionRule4b96100CalculationBasis;
+  effectiveDate: string;
+  /** @nullable */
+  endDate?: string | null;
+  status: PartnerCommissionRule4b96100Status;
+  createdAt?: string;
+}
+
+export type PartnerCommissionRuleInput4b96100CalculationBasis = typeof PartnerCommissionRuleInput4b96100CalculationBasis[keyof typeof PartnerCommissionRuleInput4b96100CalculationBasis];
+
+
+export const PartnerCommissionRuleInput4b96100CalculationBasis = {
+  PER_ELIGIBLE_STUDENT_PER_TERM: 'PER_ELIGIBLE_STUDENT_PER_TERM',
+} as const;
+
+export interface PartnerCommissionRuleInput4b96100 {
+  /** @minimum 0 */
+  rate: number;
+  /**
+     * @minLength 3
+     * @maxLength 3
+     */
+  currency: string;
+  calculationBasis: PartnerCommissionRuleInput4b96100CalculationBasis;
+  effectiveDate: string;
+}
+
+export type PartnerCommissionRuleUpdate4b96100Status = typeof PartnerCommissionRuleUpdate4b96100Status[keyof typeof PartnerCommissionRuleUpdate4b96100Status];
+
+
+export const PartnerCommissionRuleUpdate4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface PartnerCommissionRuleUpdate4b96100 {
+  endDate?: string;
+  status?: PartnerCommissionRuleUpdate4b96100Status;
+}
+
+export type PartnerCommission4b96100Status = typeof PartnerCommission4b96100Status[keyof typeof PartnerCommission4b96100Status];
+
+
+export const PartnerCommission4b96100Status = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  PAYABLE: 'PAYABLE',
+  PAID: 'PAID',
+  HELD: 'HELD',
+  REVERSED: 'REVERSED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export interface PartnerCommission4b96100 {
+  id: number;
+  partnerId: number;
+  schoolId: number;
+  /** @nullable */
+  studentId?: number | null;
+  /** @nullable */
+  subscriptionId?: number | null;
+  /** @nullable */
+  academicSession?: string | null;
+  /** @nullable */
+  term?: string | null;
+  commissionRuleId: number;
+  rate: number;
+  eligibleStudentCount: number;
+  amount: number;
+  currency: string;
+  status: PartnerCommission4b96100Status;
+  generatedAt: string;
+  /** @nullable */
+  approvedAt?: string | null;
+  /** @nullable */
+  payableAt?: string | null;
+  /** @nullable */
+  paidAt?: string | null;
+  /** @nullable */
+  paymentReference?: string | null;
+}
+
+export type PartnerCommissionStatusUpdate4b96100Status = typeof PartnerCommissionStatusUpdate4b96100Status[keyof typeof PartnerCommissionStatusUpdate4b96100Status];
+
+
+export const PartnerCommissionStatusUpdate4b96100Status = {
+  APPROVED: 'APPROVED',
+  PAYABLE: 'PAYABLE',
+  HELD: 'HELD',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export interface PartnerCommissionStatusUpdate4b96100 {
+  status: PartnerCommissionStatusUpdate4b96100Status;
+}
+
+export type PartnerPayout4b96100Status = typeof PartnerPayout4b96100Status[keyof typeof PartnerPayout4b96100Status];
+
+
+export const PartnerPayout4b96100Status = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  REVERSED: 'REVERSED',
+} as const;
+
+export interface PartnerPayout4b96100 {
+  id: number;
+  partnerId: number;
+  /** @minimum 0 */
+  amount: number;
+  currency: string;
+  status: PartnerPayout4b96100Status;
+  /** @nullable */
+  paymentReference?: string | null;
+  /** @nullable */
+  periodStart?: string | null;
+  /** @nullable */
+  periodEnd?: string | null;
+  createdAt: string;
+  /** @nullable */
+  paidAt?: string | null;
+}
+
+export interface PartnerPayoutInput4b96100 {
+  /** @minimum 1 */
+  partnerId: number;
+  /** @minimum 0 */
+  amount: number;
+  /**
+     * @minLength 3
+     * @maxLength 3
+     */
+  currency: string;
+  periodStart?: string;
+  periodEnd?: string;
+}
+
+export type PartnerPayoutUpdate4b96100Status = typeof PartnerPayoutUpdate4b96100Status[keyof typeof PartnerPayoutUpdate4b96100Status];
+
+
+export const PartnerPayoutUpdate4b96100Status = {
+  PROCESSING: 'PROCESSING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  REVERSED: 'REVERSED',
+} as const;
+
+export interface PartnerPayoutUpdate4b96100 {
+  status: PartnerPayoutUpdate4b96100Status;
+  paymentReference?: string;
+}
+
+export interface PartnerDashboard4b96100 {
+  referredSchools: number;
+  eligibleStudents: number;
+  currentTermCommission: number;
+  lifetimeCommission: number;
+  paidCommission: number;
+  outstandingCommission: number;
+}
+
+export type PartnerReferralLink4b96100Status = typeof PartnerReferralLink4b96100Status[keyof typeof PartnerReferralLink4b96100Status];
+
+
+export const PartnerReferralLink4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  REVOKED: 'REVOKED',
+} as const;
+
+export interface PartnerReferralLink4b96100 {
+  id: number;
+  /**
+     * Stable indefinite referral URL in the form /school/register?ref=<opaque-token>; token is not returned as a separate field
+     * @pattern ^/school/register\?ref=[A-Za-z0-9_-]{32,}$
+     */
+  url: string;
+  status: PartnerReferralLink4b96100Status;
+  createdAt?: string;
+}
+
+export type PartnerPayoutInformationMasked4b96100PayoutMethod = typeof PartnerPayoutInformationMasked4b96100PayoutMethod[keyof typeof PartnerPayoutInformationMasked4b96100PayoutMethod];
+
+
+export const PartnerPayoutInformationMasked4b96100PayoutMethod = {
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  MOBILE_MONEY: 'MOBILE_MONEY',
+  OTHER: 'OTHER',
+} as const;
+
+export interface PartnerPayoutInformationMasked4b96100 {
+  id: number;
+  payoutMethod: PartnerPayoutInformationMasked4b96100PayoutMethod;
+  /** @nullable */
+  bankName: string | null;
+  /** @nullable */
+  accountName: string | null;
+  /**
+     * Masked value only, for example ****1234
+     * @nullable
+     */
+  maskedAccountNumber: string | null;
+  /** @nullable */
+  bankCode?: string | null;
+  updatedAt: string;
+}
+
+export type PartnerPayoutInformationPrivate4b96100PayoutMethod = typeof PartnerPayoutInformationPrivate4b96100PayoutMethod[keyof typeof PartnerPayoutInformationPrivate4b96100PayoutMethod];
+
+
+export const PartnerPayoutInformationPrivate4b96100PayoutMethod = {
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  MOBILE_MONEY: 'MOBILE_MONEY',
+  OTHER: 'OTHER',
+} as const;
+
+export interface PartnerPayoutInformationPrivate4b96100 {
+  id: number;
+  partnerId: number;
+  payoutMethod: PartnerPayoutInformationPrivate4b96100PayoutMethod;
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  /** @nullable */
+  bankCode?: string | null;
+  updatedAt: string;
+}
+
+export type PartnerPayoutInformationInput4b96100PayoutMethod = typeof PartnerPayoutInformationInput4b96100PayoutMethod[keyof typeof PartnerPayoutInformationInput4b96100PayoutMethod];
+
+
+export const PartnerPayoutInformationInput4b96100PayoutMethod = {
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  MOBILE_MONEY: 'MOBILE_MONEY',
+  OTHER: 'OTHER',
+} as const;
+
+export interface PartnerPayoutInformationInput4b96100 {
+  payoutMethod: PartnerPayoutInformationInput4b96100PayoutMethod;
+  bankName?: string;
+  accountName: string;
+  /**
+     * Write-only; never returned by the API
+     * @minLength 4
+     */
+  accountNumber?: string;
+  bankCode?: string;
+  otherDetails?: string;
+}
+
+export interface ReferralValidationInput4b96100 {
+  /** @minLength 16 */
+  referralToken: string;
+}
+
+export type ReferralValidation4b96100Status = typeof ReferralValidation4b96100Status[keyof typeof ReferralValidation4b96100Status];
+
+
+export const ReferralValidation4b96100Status = {
+  VALID: 'VALID',
+  INVALID: 'INVALID',
+  EXPIRED: 'EXPIRED',
+  REVOKED: 'REVOKED',
+} as const;
+
+export interface ReferralValidation4b96100 {
+  valid: boolean;
+  status: ReferralValidation4b96100Status;
+  /** @nullable */
+  partnerCode?: string | null;
+  /** @nullable */
+  referralLinkId?: number | null;
+}
+
+export type PartnerSchoolOnboardingInput4b96100Administrator = {
+  /** @minLength 2 */
+  fullName: string;
+  email: string;
+};
+
+export interface PartnerSchoolOnboardingInput4b96100 {
+  /** @minLength 16 */
+  referralToken: string;
+  school: SchoolInput4b96100;
+  administrator: PartnerSchoolOnboardingInput4b96100Administrator;
+}
+
+export type PartnerOnboardingResult4b96100School = {
+  id: number;
+  code: string;
+  name: string;
+  city: string;
+  state: string;
+  status: string;
+  createdAt: string;
+};
+
+export type PartnerOnboardingResult4b96100AttributionStatus = typeof PartnerOnboardingResult4b96100AttributionStatus[keyof typeof PartnerOnboardingResult4b96100AttributionStatus];
+
+
+export const PartnerOnboardingResult4b96100AttributionStatus = {
+  CREATED: 'CREATED',
+} as const;
+
+export type PartnerOnboardingResult4b96100AdministratorInvitationStatus = typeof PartnerOnboardingResult4b96100AdministratorInvitationStatus[keyof typeof PartnerOnboardingResult4b96100AdministratorInvitationStatus];
+
+
+export const PartnerOnboardingResult4b96100AdministratorInvitationStatus = {
+  DISPATCH_REQUESTED: 'DISPATCH_REQUESTED',
+} as const;
+
+export type PartnerOnboardingResult4b96100AdministratorInvitationDispatchStatus = typeof PartnerOnboardingResult4b96100AdministratorInvitationDispatchStatus[keyof typeof PartnerOnboardingResult4b96100AdministratorInvitationDispatchStatus];
+
+
+export const PartnerOnboardingResult4b96100AdministratorInvitationDispatchStatus = {
+  REQUEST_ACCEPTED: 'REQUEST_ACCEPTED',
+} as const;
+
+export type PartnerOnboardingResult4b96100AdministratorInvitationDeliveryStatus = typeof PartnerOnboardingResult4b96100AdministratorInvitationDeliveryStatus[keyof typeof PartnerOnboardingResult4b96100AdministratorInvitationDeliveryStatus];
+
+
+export const PartnerOnboardingResult4b96100AdministratorInvitationDeliveryStatus = {
+  UNVERIFIED: 'UNVERIFIED',
+} as const;
+
+export type PartnerOnboardingResult4b96100AdministratorInvitation = {
+  invitationId: string;
+  email: string;
+  status: PartnerOnboardingResult4b96100AdministratorInvitationStatus;
+  dispatchStatus: PartnerOnboardingResult4b96100AdministratorInvitationDispatchStatus;
+  deliveryStatus: PartnerOnboardingResult4b96100AdministratorInvitationDeliveryStatus;
+  deliveryNote: string;
+  expiresInDays: number;
+};
+
+export interface PartnerOnboardingResult4b96100 {
+  school: PartnerOnboardingResult4b96100School;
+  attributionStatus: PartnerOnboardingResult4b96100AttributionStatus;
+  administratorInvitation: PartnerOnboardingResult4b96100AdministratorInvitation;
+}
+
+export interface DeviceAssignmentInput4b96100 {
+  /** @minimum 1 */
+  schoolId: number;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  location?: string | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  classId?: number | null;
+}
+
+export interface DeviceSuspensionInput4b96100 {
+  /** @maxLength 500 */
+  reason?: string;
+}
+
+export interface DeviceCredentialRotation4b96100 {
+  deviceId: number;
+  /**
+     * Returned only once; never a credential hash
+     * @minLength 32
+     */
+  credential: string;
+}
+
+export type AttendanceEventType4b96100 = typeof AttendanceEventType4b96100[keyof typeof AttendanceEventType4b96100];
+
+
+export const AttendanceEventType4b96100 = {
+  SCHOOL_ENTRY: 'SCHOOL_ENTRY',
+  SCHOOL_EXIT: 'SCHOOL_EXIT',
+  CLASSROOM_ENTRY: 'CLASSROOM_ENTRY',
+  CLASSROOM_EXIT: 'CLASSROOM_EXIT',
+} as const;
+
+export type AttendanceStatus4b96100 = typeof AttendanceStatus4b96100[keyof typeof AttendanceStatus4b96100];
+
+
+export const AttendanceStatus4b96100 = {
+  PRESENT: 'PRESENT',
+  ABSENT: 'ABSENT',
+  LATE: 'LATE',
+  LEFT_EARLY: 'LEFT_EARLY',
+  EXCUSED: 'EXCUSED',
+  UNKNOWN: 'UNKNOWN',
+  MISMATCH: 'MISMATCH',
+} as const;
+
+export type IdentificationMethod4b96100 = typeof IdentificationMethod4b96100[keyof typeof IdentificationMethod4b96100];
+
+
+export const IdentificationMethod4b96100 = {
+  NFC: 'NFC',
+  FINGERPRINT: 'FINGERPRINT',
+  MANUAL: 'MANUAL',
+  DEVICE_API: 'DEVICE_API',
+  OTHER_SUPPORTED_METHOD: 'OTHER_SUPPORTED_METHOD',
+} as const;
+
+export type AttendanceEvent4b96100Result = typeof AttendanceEvent4b96100Result[keyof typeof AttendanceEvent4b96100Result];
+
+
+export const AttendanceEvent4b96100Result = {
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+  DUPLICATE: 'DUPLICATE',
+  MISMATCH: 'MISMATCH',
+} as const;
+
+export interface AttendanceEvent4b96100 {
+  id: number;
+  schoolId: number;
+  /** @nullable */
+  studentId?: number | null;
+  /** @nullable */
+  employeeId?: number | null;
+  /** @nullable */
+  deviceId: number | null;
+  /** @nullable */
+  classId?: number | null;
+  /** @nullable */
+  section?: string | null;
+  eventType: AttendanceEventType4b96100;
+  identificationMethod: IdentificationMethod4b96100;
+  occurredAt: string;
+  status: AttendanceStatus4b96100;
+  result?: AttendanceEvent4b96100Result;
+  /** @nullable */
+  failureReason?: string | null;
+  /** @nullable */
+  sessionId?: number | null;
+  /** @nullable */
+  termId?: number | null;
+  createdAt: string;
+}
+
+/**
+ * Authorized device receipt with current student information; persisted event history remains unchanged.
+ */
+export type DeviceAttendanceReceipt4b96100 = AttendanceEvent4b96100 & ({
+  studentName: string;
+  /** @nullable */
+  className: string | null;
+  /** @nullable */
+  section: string | null;
+  /** @nullable */
+  academicSession: string | null;
+  /** @nullable */
+  term: string | null;
+});
+
+export interface AttendanceToday4b96100 {
+  date: string;
+  /** @minimum 0 */
+  entries: number;
+  /** @minimum 0 */
+  exits: number;
+  /** @minimum 0 */
+  present: number;
+  /** @minimum 0 */
+  absent: number;
+  /** @minimum 0 */
+  late: number;
+  /** @minimum 0 */
+  discrepancies: number;
+}
+
+export type AttendanceDiscrepancy4b96100Kind = typeof AttendanceDiscrepancy4b96100Kind[keyof typeof AttendanceDiscrepancy4b96100Kind];
+
+
+export const AttendanceDiscrepancy4b96100Kind = {
+  SCHOOL_PRESENT_CLASS_MISSING: 'SCHOOL_PRESENT_CLASS_MISSING',
+  SCHOOL_ABSENT_CLASS_PRESENT: 'SCHOOL_ABSENT_CLASS_PRESENT',
+  EXIT_WITHOUT_ENTRY: 'EXIT_WITHOUT_ENTRY',
+  INVALID_DEVICE_EVENT: 'INVALID_DEVICE_EVENT',
+  DUPLICATE: 'DUPLICATE',
+} as const;
+
+export type AttendanceDiscrepancy4b96100Status = typeof AttendanceDiscrepancy4b96100Status[keyof typeof AttendanceDiscrepancy4b96100Status];
+
+
+export const AttendanceDiscrepancy4b96100Status = {
+  OPEN: 'OPEN',
+  RESOLVED: 'RESOLVED',
+  DISMISSED: 'DISMISSED',
+} as const;
+
+export type AttendanceDiscrepancy4b96100ResolutionHistoryItem = { [key: string]: unknown };
+
+/**
+ * @nullable
+ */
+export type AttendanceDiscrepancy4b96100Resolver = {
+  id?: number;
+  name?: string;
+} | null;
+
+export interface AttendanceDiscrepancy4b96100 {
+  id: number;
+  schoolId: number;
+  studentId: number;
+  kind: AttendanceDiscrepancy4b96100Kind;
+  status: AttendanceDiscrepancy4b96100Status;
+  detectedAt: string;
+  /** @nullable */
+  resolvedAt?: string | null;
+  /** @nullable */
+  resolvedBy?: number | null;
+  /** @nullable */
+  attendanceEventId?: number | null;
+  createdAt?: string;
+  /** @nullable */
+  resolutionReason?: string | null;
+  resolutionHistory?: AttendanceDiscrepancy4b96100ResolutionHistoryItem[];
+  /** @nullable */
+  resolver?: AttendanceDiscrepancy4b96100Resolver;
+  /** @nullable */
+  note?: string | null;
+}
+
+export type DiscrepancyResolutionInput4b96100Status = typeof DiscrepancyResolutionInput4b96100Status[keyof typeof DiscrepancyResolutionInput4b96100Status];
+
+
+export const DiscrepancyResolutionInput4b96100Status = {
+  RESOLVED: 'RESOLVED',
+  DISMISSED: 'DISMISSED',
+} as const;
+
+export interface DiscrepancyResolutionInput4b96100 {
+  /** @minimum 1 */
+  schoolId: number;
+  status: DiscrepancyResolutionInput4b96100Status;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+/**
+ * @nullable
+ */
+export type FamilyAttendanceEvent4b96100DiscrepancyStatus = typeof FamilyAttendanceEvent4b96100DiscrepancyStatus[keyof typeof FamilyAttendanceEvent4b96100DiscrepancyStatus] | null;
+
+
+export const FamilyAttendanceEvent4b96100DiscrepancyStatus = {
+  OPEN: 'OPEN',
+  RESOLVED: 'RESOLVED',
+  DISMISSED: 'DISMISSED',
+} as const;
+
+export interface FamilyAttendanceEvent4b96100 {
+  id: number;
+  studentId: number;
+  schoolId: number;
+  date: string;
+  eventType: AttendanceEventType4b96100;
+  status: AttendanceStatus4b96100;
+  occurredAt: string;
+  identificationMethod: IdentificationMethod4b96100;
+  /** @nullable */
+  discrepancyStatus?: FamilyAttendanceEvent4b96100DiscrepancyStatus;
+}
+
+/**
+ * Exactly one of studentId or employeeId must be provided. Staff attendance supports school entry and exit only.
+ */
+export interface ManualAttendanceInput4b96100 {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  studentId?: number;
+  /** @minimum 1 */
+  employeeId?: number;
+  eventType: AttendanceEventType4b96100;
+  occurredAt: string;
+  status: AttendanceStatus4b96100;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+  /** @maxLength 1000 */
+  note?: string;
+}
+
+export interface AttendanceCorrectionInput4b96100 {
+  status: AttendanceStatus4b96100;
+  occurredAt?: string;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+  /** @maxLength 1000 */
+  note?: string;
+}
+
+export type DeviceAttendanceEventInput4b96100IdentificationMethod = typeof DeviceAttendanceEventInput4b96100IdentificationMethod[keyof typeof DeviceAttendanceEventInput4b96100IdentificationMethod];
+
+
+export const DeviceAttendanceEventInput4b96100IdentificationMethod = {
+  NFC: 'NFC',
+  FINGERPRINT: 'FINGERPRINT',
+} as const;
+
+export type DeviceAttendanceEventInput4b96100MatchResult = typeof DeviceAttendanceEventInput4b96100MatchResult[keyof typeof DeviceAttendanceEventInput4b96100MatchResult];
+
+
+export const DeviceAttendanceEventInput4b96100MatchResult = {
+  MATCH: 'MATCH',
+  NO_MATCH: 'NO_MATCH',
+} as const;
+
+/**
+ * NFC resolves the current student from the UID in the authenticated device's school. Fingerprint events require studentId and matched provider evidence.
+ */
+export interface DeviceAttendanceEventInput4b96100 {
+  eventType: AttendanceEventType4b96100;
+  identificationMethod: DeviceAttendanceEventInput4b96100IdentificationMethod;
+  occurredAt: string;
+  /**
+     * Required for FINGERPRINT; optional for NFC, but when supplied must match the current UID assignment.
+     * @minimum 1
+     */
+  studentId?: number;
+  /**
+     * @minLength 4
+     * @maxLength 128
+     */
+  nfcUid?: string;
+  /** @maxLength 256 */
+  providerReference?: string;
+  /** @maxLength 120 */
+  provider?: string;
+  matchResult?: DeviceAttendanceEventInput4b96100MatchResult;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  confidence?: number;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey?: string;
+}
+
+export type StudentIdentificationPolicy4b96100Policy = typeof StudentIdentificationPolicy4b96100Policy[keyof typeof StudentIdentificationPolicy4b96100Policy];
+
+
+export const StudentIdentificationPolicy4b96100Policy = {
+  NFC_ONLY: 'NFC_ONLY',
+  BIOMETRIC_ONLY: 'BIOMETRIC_ONLY',
+  NFC_AND_BIOMETRIC: 'NFC_AND_BIOMETRIC',
+  MANUAL_FALLBACK: 'MANUAL_FALLBACK',
+} as const;
+
+export type BiometricEnrollment4b96100Status = typeof BiometricEnrollment4b96100Status[keyof typeof BiometricEnrollment4b96100Status];
+
+
+export const BiometricEnrollment4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  REVOKED: 'REVOKED',
+  PENDING: 'PENDING',
+} as const;
+
+export interface BiometricEnrollment4b96100 {
+  id: number;
+  provider: string;
+  /** @nullable */
+  deviceReference?: string | null;
+  status: BiometricEnrollment4b96100Status;
+  enrolledAt: string;
+}
+
+export interface StudentIdentificationPolicy4b96100 {
+  studentId: number;
+  schoolId: number;
+  policy: StudentIdentificationPolicy4b96100Policy;
+  biometricEnrollments: BiometricEnrollment4b96100[];
+}
+
+export type StudentIdentificationPolicyInput4b96100Policy = typeof StudentIdentificationPolicyInput4b96100Policy[keyof typeof StudentIdentificationPolicyInput4b96100Policy];
+
+
+export const StudentIdentificationPolicyInput4b96100Policy = {
+  NFC_ONLY: 'NFC_ONLY',
+  BIOMETRIC_ONLY: 'BIOMETRIC_ONLY',
+  NFC_AND_BIOMETRIC: 'NFC_AND_BIOMETRIC',
+  MANUAL_FALLBACK: 'MANUAL_FALLBACK',
+} as const;
+
+export interface StudentIdentificationPolicyInput4b96100 {
+  policy: StudentIdentificationPolicyInput4b96100Policy;
+}
+
+export interface BiometricEnrollmentInput4b96100 {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  provider: string;
+  /**
+     * @minLength 1
+     * @maxLength 256
+     */
+  enrollmentReference: string;
+  /** @maxLength 256 */
+  deviceReference?: string;
+}
+
+export type BiometricProviderEventInput4b96100MatchResult = typeof BiometricProviderEventInput4b96100MatchResult[keyof typeof BiometricProviderEventInput4b96100MatchResult];
+
+
+export const BiometricProviderEventInput4b96100MatchResult = {
+  MATCH: 'MATCH',
+  NO_MATCH: 'NO_MATCH',
+} as const;
+
+export interface BiometricProviderEventInput4b96100 {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  provider: string;
+  /**
+     * @minLength 1
+     * @maxLength 256
+     */
+  providerReference: string;
+  matchResult: BiometricProviderEventInput4b96100MatchResult;
+  /** @minimum 1 */
+  studentId?: number;
+  occurredAt: string;
+  eventType: AttendanceEventType4b96100;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  confidence?: number;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey?: string;
+}
+
+export interface CardReplacementInput4b96100 {
+  /**
+     * @minLength 4
+     * @maxLength 128
+     */
+  uid: string;
+  /** @maxLength 500 */
+  reason?: string;
+}
+
+export type CardHistoryEntry4b96100Action = typeof CardHistoryEntry4b96100Action[keyof typeof CardHistoryEntry4b96100Action];
+
+
+export const CardHistoryEntry4b96100Action = {
+  REGISTERED: 'REGISTERED',
+  ACTIVATED: 'ACTIVATED',
+  DEACTIVATED: 'DEACTIVATED',
+  BLOCKED: 'BLOCKED',
+  LOST: 'LOST',
+  REPLACED: 'REPLACED',
+  REASSIGNED: 'REASSIGNED',
+} as const;
+
+export interface CardHistoryEntry4b96100 {
+  id: number;
+  cardId: number;
+  action: CardHistoryEntry4b96100Action;
+  /** @nullable */
+  actorId?: number | null;
+  occurredAt: string;
+  /** @nullable */
+  note?: string | null;
+}
+
+export type AssignmentStatus4b96100 = typeof AssignmentStatus4b96100[keyof typeof AssignmentStatus4b96100];
+
+
+export const AssignmentStatus4b96100 = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  CLOSED: 'CLOSED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type AssessmentStatus4b96100 = typeof AssessmentStatus4b96100[keyof typeof AssessmentStatus4b96100];
+
+
+export const AssessmentStatus4b96100 = {
+  DRAFT: 'DRAFT',
+  OPEN: 'OPEN',
+  CLOSED: 'CLOSED',
+  PUBLISHED: 'PUBLISHED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type AssessmentTypeStatus4b96100 = typeof AssessmentTypeStatus4b96100[keyof typeof AssessmentTypeStatus4b96100];
+
+
+export const AssessmentTypeStatus4b96100 = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type GradingRuleStatus4b96100 = typeof GradingRuleStatus4b96100[keyof typeof GradingRuleStatus4b96100];
+
+
+export const GradingRuleStatus4b96100 = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type ResultStatus4b96100 = typeof ResultStatus4b96100[keyof typeof ResultStatus4b96100];
+
+
+export const ResultStatus4b96100 = {
+  DRAFT: 'DRAFT',
+  SUBMITTED: 'SUBMITTED',
+  PUBLISHED: 'PUBLISHED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type ReportCardStatus4b96100 = typeof ReportCardStatus4b96100[keyof typeof ReportCardStatus4b96100];
+
+
+export const ReportCardStatus4b96100 = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type TimetableEntryStatus4b96100 = typeof TimetableEntryStatus4b96100[keyof typeof TimetableEntryStatus4b96100];
+
+
+export const TimetableEntryStatus4b96100 = {
+  ACTIVE: 'ACTIVE',
+  CANCELLED: 'CANCELLED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type Weekday4b96100 = typeof Weekday4b96100[keyof typeof Weekday4b96100];
+
+
+export const Weekday4b96100 = {
+  MONDAY: 'MONDAY',
+  TUESDAY: 'TUESDAY',
+  WEDNESDAY: 'WEDNESDAY',
+  THURSDAY: 'THURSDAY',
+  FRIDAY: 'FRIDAY',
+  SATURDAY: 'SATURDAY',
+  SUNDAY: 'SUNDAY',
+} as const;
+
+export interface AcademicAssignment4b96100 {
+  id: number;
+  schoolId: number;
+  sessionId: number;
+  termId: number;
+  classId: number;
+  /** @nullable */
+  section?: string | null;
+  subjectId: number;
+  teacherId: number;
+  createdBy: number;
+  title: string;
+  description: string;
+  issueDate: string;
+  dueDate: string;
+  maxScore: number;
+  status: AssignmentStatus4b96100;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AcademicAssignmentInput4b96100 {
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  termId: number;
+  /** @minimum 1 */
+  classId: number;
+  /** @nullable */
+  section?: string | null;
+  /** @minimum 1 */
+  subjectId: number;
+  /** @minimum 1 */
+  teacherId?: number;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /**
+     * @maxLength 10000
+     * @nullable
+     */
+  description?: string | null;
+  issueDate: string;
+  dueDate: string;
+  /** @exclusiveMinimum 0 */
+  maxScore: number;
+  status?: AssignmentStatus4b96100;
+}
+
+export interface AcademicAssignmentUpdate4b96100 {
+  /** @minimum 1 */
+  sessionId?: number;
+  /** @minimum 1 */
+  termId?: number;
+  /** @minimum 1 */
+  classId?: number;
+  /** @nullable */
+  section?: string | null;
+  /** @minimum 1 */
+  subjectId?: number;
+  /** @minimum 1 */
+  teacherId?: number;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title?: string;
+  /**
+     * @maxLength 10000
+     * @nullable
+     */
+  description?: string | null;
+  issueDate?: string;
+  dueDate?: string;
+  /** @exclusiveMinimum 0 */
+  maxScore?: number;
+  status?: AssignmentStatus4b96100;
+}
+
+export interface AcademicAssessmentType4b96100 {
+  id: number;
+  schoolId: number;
+  name: string;
+  code: string;
+  status: AssessmentTypeStatus4b96100;
+}
+
+export interface AcademicAssessmentTypeInput4b96100 {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  /**
+     * @minLength 1
+     * @maxLength 64
+     */
+  code: string;
+  status?: AssessmentTypeStatus4b96100;
+}
+
+export interface AcademicAssessment4b96100 {
+  id: number;
+  schoolId: number;
+  sessionId: number;
+  termId: number;
+  classId: number;
+  /** @nullable */
+  section?: string | null;
+  subjectId: number;
+  assessmentTypeId: number;
+  teacherId: number;
+  assessmentTypeName?: string;
+  createdBy: number;
+  title: string;
+  description: string;
+  date: string;
+  maxScore: number;
+  status: AssessmentStatus4b96100;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AcademicAssessmentInput4b96100 {
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  termId: number;
+  /** @minimum 1 */
+  classId: number;
+  /** @nullable */
+  section?: string | null;
+  /** @minimum 1 */
+  subjectId: number;
+  /** @minimum 1 */
+  assessmentTypeId: number;
+  /** @minimum 1 */
+  teacherId?: number;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /**
+     * @maxLength 10000
+     * @nullable
+     */
+  description?: string | null;
+  date: string;
+  /** @exclusiveMinimum 0 */
+  maxScore: number;
+  status?: AssessmentStatus4b96100;
+}
+
+export interface AcademicAssessmentUpdate4b96100 {
+  /** @minimum 1 */
+  sessionId?: number;
+  /** @minimum 1 */
+  termId?: number;
+  /** @minimum 1 */
+  classId?: number;
+  /** @nullable */
+  section?: string | null;
+  /** @minimum 1 */
+  subjectId?: number;
+  /** @minimum 1 */
+  assessmentTypeId?: number;
+  /** @minimum 1 */
+  teacherId?: number;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title?: string;
+  /**
+     * @maxLength 10000
+     * @nullable
+     */
+  description?: string | null;
+  date?: string;
+  /** @exclusiveMinimum 0 */
+  maxScore?: number;
+  status?: AssessmentStatus4b96100;
+}
+
+export interface AcademicGradingRule4b96100 {
+  id: number;
+  schoolId: number;
+  minScore: number;
+  maxScore: number;
+  grade: string;
+  /** @nullable */
+  gradePoint: number | null;
+  remark: string;
+  status: GradingRuleStatus4b96100;
+}
+
+export interface AcademicGradingRuleInput4b96100 {
+  /** @minimum 0 */
+  minScore: number;
+  /** @minimum 0 */
+  maxScore: number;
+  /**
+     * @minLength 1
+     * @maxLength 32
+     */
+  grade: string;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  gradePoint?: number | null;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  remark: string;
+}
+
+export interface AcademicGradingRuleUpdate4b96100 {
+  /** @minimum 0 */
+  minScore?: number;
+  /** @minimum 0 */
+  maxScore?: number;
+  /**
+     * @minLength 1
+     * @maxLength 32
+     */
+  grade?: string;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  gradePoint?: number | null;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  remark?: string;
+  status?: GradingRuleStatus4b96100;
+}
+
+export interface AcademicResult4b96100 {
+  id: number;
+  schoolId: number;
+  assessmentId: number;
+  studentId: number;
+  studentClassAssignmentId: number;
+  teacherId: number;
+  sessionId: number;
+  termId: number;
+  classId: number;
+  /** @nullable */
+  section: string | null;
+  subjectId: number;
+  /** @minimum 0 */
+  score: number;
+  /** @exclusiveMinimum 0 */
+  maxScore: number;
+  /** @nullable */
+  grade: string | null;
+  /** @nullable */
+  gradePoint: number | null;
+  /** @nullable */
+  remark: string | null;
+  status: ResultStatus4b96100;
+  /** @nullable */
+  publishedAt: string | null;
+}
+
+export interface AcademicResultInput4b96100 {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  assessmentId: number;
+  /** @minimum 1 */
+  studentId: number;
+  /** @minimum 0 */
+  score: number;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  remark?: string | null;
+}
+
+export interface AcademicResultUpdate4b96100 {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 0 */
+  score?: number;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  remark?: string | null;
+}
+
+export interface AcademicResultsPublicationInput4b96100 {
+  /** @minimum 1 */
+  schoolId: number;
+}
+
+export interface AcademicResultsPublication4b96100 {
+  assessmentId: number;
+  /** @minimum 0 */
+  publishedCount: number;
+  results: AcademicResult4b96100[];
+}
+
+export interface AcademicReportCardLine4b96100 {
+  id: number;
+  subjectId: number;
+  subjectName: string;
+  assessmentName: string;
+  score: number;
+  maxScore: number;
+  grade: string;
+  gradePoint: number;
+  remark: string;
+}
+
+export type AcademicReportCard4b96100ResultState = typeof AcademicReportCard4b96100ResultState[keyof typeof AcademicReportCard4b96100ResultState];
+
+
+export const AcademicReportCard4b96100ResultState = {
+  SOME_RESULTS_UNPUBLISHED: 'SOME_RESULTS_UNPUBLISHED',
+  INCOMPLETE_RESULTS: 'INCOMPLETE_RESULTS',
+  COMPLETE: 'COMPLETE',
+  NO_PUBLISHED_RESULTS: 'NO_PUBLISHED_RESULTS',
+} as const;
+
+export interface AcademicReportCard4b96100 {
+  id: number;
+  schoolId: number;
+  studentId: number;
+  sessionId: number;
+  termId: number;
+  sessionName?: string;
+  termName?: string;
+  studentClassAssignmentId: number;
+  classId: number;
+  className: string;
+  section: string;
+  status: ReportCardStatus4b96100;
+  teacherRemark: string;
+  schoolRemark: string;
+  /** @nullable */
+  publishedAt: string | null;
+  hasUnpublishedResults?: boolean;
+  resultState: AcademicReportCard4b96100ResultState;
+  lines: AcademicReportCardLine4b96100[];
+}
+
+export interface AcademicReportCardInput4b96100 {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  studentId: number;
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  termId: number;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  teacherRemark?: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  schoolRemark?: string | null;
+}
+
+export interface AcademicReportCardPublicationInput4b96100 {
+  /** @minimum 1 */
+  schoolId: number;
+}
+
+export interface AcademicTimetableEntry4b96100 {
+  id: number;
+  schoolId: number;
+  sessionId: number;
+  termId: number;
+  classId: number;
+  section: string;
+  subjectId: number;
+  teacherId: number;
+  weekday: Weekday4b96100;
+  startTime: string;
+  endTime: string;
+  /** @nullable */
+  room: string | null;
+  status: TimetableEntryStatus4b96100;
+  createdAt: string;
+  updatedAt: string;
+  className?: string;
+  subjectName?: string;
+  teacherFirstName?: string;
+  teacherLastName?: string;
+}
+
+export interface AcademicTimetableEntryInput4b96100 {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  termId: number;
+  /** @minimum 1 */
+  classId: number;
+  /** @maxLength 80 */
+  section?: string;
+  /** @minimum 1 */
+  subjectId: number;
+  /** @minimum 1 */
+  teacherId: number;
+  weekday: Weekday4b96100;
+  startTime: string;
+  endTime: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  room?: string | null;
+}
+
+export interface AcademicTimetableEntryUpdate4b96100 {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  sessionId?: number;
+  /** @minimum 1 */
+  termId?: number;
+  /** @minimum 1 */
+  classId?: number;
+  /** @maxLength 80 */
+  section?: string;
+  /** @minimum 1 */
+  subjectId?: number;
+  /** @minimum 1 */
+  teacherId?: number;
+  weekday?: Weekday4b96100;
+  startTime?: string;
+  endTime?: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  room?: string | null;
+  status?: TimetableEntryStatus4b96100;
+}
+
+export type FeeCategory4b96100Status = typeof FeeCategory4b96100Status[keyof typeof FeeCategory4b96100Status];
+
+
+export const FeeCategory4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface FeeCategory4b96100 {
+  id: number;
+  schoolId: number;
+  name: string;
+  /** @nullable */
+  description: string | null;
+  compulsory: boolean;
+  status: FeeCategory4b96100Status;
+}
+
+export interface FeeCategoryInput4b96100 {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  /** @maxLength 500 */
+  description?: string;
+  compulsory?: boolean;
+}
+
+export type FeeCategoryUpdate4b96100Status = typeof FeeCategoryUpdate4b96100Status[keyof typeof FeeCategoryUpdate4b96100Status];
+
+
+export const FeeCategoryUpdate4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface FeeCategoryUpdate4b96100 {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name?: string;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  description?: string | null;
+  compulsory?: boolean;
+  status?: FeeCategoryUpdate4b96100Status;
+}
+
+export interface FeeStructureLineInput4b96100 {
+  /** @minimum 1 */
+  categoryId: number;
+  /** @minimum 1 */
+  amountMinor: number;
+  /** @maxLength 300 */
+  description?: string;
+}
+
+export interface FeeStructureInput4b96100 {
+  /** @minimum 1 */
+  sessionId: number;
+  /** @minimum 1 */
+  termId: number;
+  /** @minimum 1 */
+  classId: number;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  section?: string | null;
+  /** @minItems 1 */
+  lines: FeeStructureLineInput4b96100[];
+}
+
+export type FeeStructure4b96100Status = typeof FeeStructure4b96100Status[keyof typeof FeeStructure4b96100Status];
+
+
+export const FeeStructure4b96100Status = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface FeeStructureLine4b96100 {
+  categoryId: number;
+  categoryName: string;
+  description: string;
+  amountMinor: number;
+}
+
+export interface FeeStructure4b96100 {
+  id: number;
+  schoolId: number;
+  sessionId: number;
+  termId: number;
+  classId: number;
+  /** @nullable */
+  section?: string | null;
+  version: number;
+  status: FeeStructure4b96100Status;
+  lines: FeeStructureLine4b96100[];
+}
+
+export interface FeeAssignmentInput4b96100 {
+  /** @minimum 1 */
+  structureId: number;
+  /** @minimum 1 */
+  studentId: number;
+  issueDate: string;
+  dueDate: string;
+}
+
+export type FeeInvoice4b96100Status = typeof FeeInvoice4b96100Status[keyof typeof FeeInvoice4b96100Status];
+
+
+export const FeeInvoice4b96100Status = {
+  UNPAID: 'UNPAID',
+  PARTIALLY_PAID: 'PARTIALLY_PAID',
+  PAID: 'PAID',
+  OVERDUE: 'OVERDUE',
+  WAIVED: 'WAIVED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export interface FeeInvoice4b96100 {
+  id: number;
+  schoolId: number;
+  studentId: number;
+  invoiceNumber: string;
+  studentName: string;
+  sessionId: number;
+  termId: number;
+  currency: string;
+  subtotalMinor: number;
+  discountMinor: number;
+  waiverMinor: number;
+  totalMinor: number;
+  paidMinor: number;
+  outstandingMinor: number;
+  status: FeeInvoice4b96100Status;
+}
+
+export type FeePayment4b96100Status = typeof FeePayment4b96100Status[keyof typeof FeePayment4b96100Status];
+
+
+export const FeePayment4b96100Status = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  VERIFIED: 'VERIFIED',
+  FAILED: 'FAILED',
+  REJECTED: 'REJECTED',
+  CANCELLED: 'CANCELLED',
+  REVERSED: 'REVERSED',
+  REFUNDED: 'REFUNDED',
+} as const;
+
+export interface FeePayment4b96100 {
+  id: number;
+  schoolId: number;
+  invoiceId: number;
+  reference: string;
+  amountMinor: number;
+  currency: string;
+  method: string;
+  status: FeePayment4b96100Status;
+  /** @nullable */
+  receiptNumber?: string | null;
+}
+
+export type FeePaymentVerificationResult4b96100Status = typeof FeePaymentVerificationResult4b96100Status[keyof typeof FeePaymentVerificationResult4b96100Status];
+
+
+export const FeePaymentVerificationResult4b96100Status = {
+  VERIFIED: 'VERIFIED',
+} as const;
+
+export interface FeePaymentVerificationResult4b96100 {
+  id: number;
+  schoolId: number;
+  invoiceId: number;
+  reference: string;
+  amountMinor: number;
+  currency: string;
+  method: string;
+  status: FeePaymentVerificationResult4b96100Status;
+  /** @minLength 1 */
+  receiptNumber: string;
+}
+
+export type FeePaymentHistory4b96100Method = typeof FeePaymentHistory4b96100Method[keyof typeof FeePaymentHistory4b96100Method];
+
+
+export const FeePaymentHistory4b96100Method = {
+  BANK_TRANSFER: 'BANK_TRANSFER',
+  REMITA: 'REMITA',
+  FLUTTERWAVE: 'FLUTTERWAVE',
+  PAYSTACK: 'PAYSTACK',
+} as const;
+
+export type FeePaymentHistory4b96100Status = typeof FeePaymentHistory4b96100Status[keyof typeof FeePaymentHistory4b96100Status];
+
+
+export const FeePaymentHistory4b96100Status = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  VERIFIED: 'VERIFIED',
+  FAILED: 'FAILED',
+  REJECTED: 'REJECTED',
+  CANCELLED: 'CANCELLED',
+  REVERSED: 'REVERSED',
+  REFUNDED: 'REFUNDED',
+} as const;
+
+export interface FeePaymentHistory4b96100 {
+  id: number;
+  schoolId: number;
+  invoiceId: number;
+  invoiceNumber: string;
+  studentId: number;
+  studentName: string;
+  schoolName: string;
+  reference: string;
+  amountMinor: number;
+  currency: string;
+  method: FeePaymentHistory4b96100Method;
+  status: FeePaymentHistory4b96100Status;
+  /** @nullable */
+  transferBank: string | null;
+  /** @nullable */
+  transferReference: string | null;
+  /** @nullable */
+  transferDate: string | null;
+  /** @nullable */
+  proofUrl: string | null;
+  /** @nullable */
+  rejectionReason: string | null;
+  /** @nullable */
+  verificationEvidenceReference: string | null;
+  /** @nullable */
+  reviewerNotes: string | null;
+  createdAt: string;
+  /** @nullable */
+  verifiedAt: string | null;
+  /** @nullable */
+  receiptNumber: string | null;
+}
+
+export type FeeReceipt4b96100Snapshot = {
+  invoiceId: number;
+  schoolId: number;
+  [key: string]: unknown;
+ };
+
+export interface FeeReceipt4b96100 {
+  receiptNumber: string;
+  paymentId: number;
+  schoolId: number;
+  snapshot: FeeReceipt4b96100Snapshot;
+}
+
+export interface BankTransferInput4b96100 {
+  /** @minimum 1 */
+  amountMinor: number;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  bank: string;
+  /**
+     * @minLength 2
+     * @maxLength 150
+     */
+  transferReference: string;
+  transferDate: string;
+  /** @maxLength 1000 */
+  proofUrl?: string;
+}
+
+export interface PaymentRejectionInput4b96100 {
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export interface FeePaymentVerificationInput4b96100 {
+  /**
+     * @minLength 3
+     * @maxLength 200
+     */
+  evidenceReference: string;
+  /**
+     * @minLength 3
+     * @maxLength 1000
+     */
+  reviewerNotes: string;
+}
+
+export type FeeAdjustmentInput4b96100Kind = typeof FeeAdjustmentInput4b96100Kind[keyof typeof FeeAdjustmentInput4b96100Kind];
+
+
+export const FeeAdjustmentInput4b96100Kind = {
+  DISCOUNT: 'DISCOUNT',
+  SCHOLARSHIP: 'SCHOLARSHIP',
+  WAIVER: 'WAIVER',
+} as const;
+
+export interface FeeAdjustmentInput4b96100 {
+  kind: FeeAdjustmentInput4b96100Kind;
+  /**
+     * Required for fixed adjustments; do not send with percentage.
+     * @minimum 1
+     */
+  amountMinor?: number;
+  /**
+     * Discount percentage from 0.01 through 100; only valid for DISCOUNT. Calculated from the invoice's original subtotal in integer basis points with half-up minor-unit rounding.
+     * @minimum 0.01
+     * @maximum 100
+     */
+  percentage?: number;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export type FeeAdjustment4b96100Kind = typeof FeeAdjustment4b96100Kind[keyof typeof FeeAdjustment4b96100Kind];
+
+
+export const FeeAdjustment4b96100Kind = {
+  DISCOUNT: 'DISCOUNT',
+  SCHOLARSHIP: 'SCHOLARSHIP',
+  WAIVER: 'WAIVER',
+} as const;
+
+export type FeeAdjustment4b96100Status = typeof FeeAdjustment4b96100Status[keyof typeof FeeAdjustment4b96100Status];
+
+
+export const FeeAdjustment4b96100Status = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface FeeAdjustment4b96100 {
+  id: number;
+  schoolId: number;
+  invoiceId: number;
+  kind: FeeAdjustment4b96100Kind;
+  amountMinor: number;
+  /** @nullable */
+  percentage: number | null;
+  /** @nullable */
+  approvedAmountMinor: number | null;
+  /** @nullable */
+  originalBalanceMinor: number | null;
+  /** @nullable */
+  resultingBalanceMinor: number | null;
+  reason: string;
+  status: FeeAdjustment4b96100Status;
+  requestedBy: number;
+  requestedAt: string;
+  /** @nullable */
+  approvedBy: number | null;
+  /** @nullable */
+  approvedAt: string | null;
+}
+
+export type PendingFeeAdjustment4b96100Kind = typeof PendingFeeAdjustment4b96100Kind[keyof typeof PendingFeeAdjustment4b96100Kind];
+
+
+export const PendingFeeAdjustment4b96100Kind = {
+  DISCOUNT: 'DISCOUNT',
+  SCHOLARSHIP: 'SCHOLARSHIP',
+  WAIVER: 'WAIVER',
+} as const;
+
+export type PendingFeeAdjustment4b96100Status = typeof PendingFeeAdjustment4b96100Status[keyof typeof PendingFeeAdjustment4b96100Status];
+
+
+export const PendingFeeAdjustment4b96100Status = {
+  PENDING: 'PENDING',
+} as const;
+
+export interface PendingFeeAdjustment4b96100 {
+  id: number;
+  schoolId: number;
+  invoiceId: number;
+  invoiceNumber: string;
+  studentId: number;
+  studentName: string;
+  kind: PendingFeeAdjustment4b96100Kind;
+  amountMinor: number;
+  /** @nullable */
+  percentage: number | null;
+  /** @nullable */
+  originalBalanceMinor: number | null;
+  requestedBy: number;
+  reason: string;
+  status: PendingFeeAdjustment4b96100Status;
+  requestedAt: string;
+}
+
+export interface FinanceSummary4b96100 {
+  totalBilledMinor: number;
+  totalCollectedMinor: number;
+  totalOutstandingMinor: number;
+  totalAdjustmentsMinor: number;
+  totalRefundedMinor: number;
+  totalReversedMinor: number;
+  pendingPayments: number;
+}
+
+export interface FeeBulkAssignmentInput4b96100 {
+  /** @minimum 1 */
+  structureId: number;
+  issueDate: string;
+  dueDate: string;
+  /** @minimum 1 */
+  classId?: number;
+  /** @maxLength 100 */
+  section?: string;
+}
+
+export type FeeBulkAssignmentItem4b96100Status = typeof FeeBulkAssignmentItem4b96100Status[keyof typeof FeeBulkAssignmentItem4b96100Status];
+
+
+export const FeeBulkAssignmentItem4b96100Status = {
+  CREATED: 'CREATED',
+  SKIPPED: 'SKIPPED',
+} as const;
+
+export interface FeeBulkAssignmentItem4b96100 {
+  studentId: number;
+  /** @nullable */
+  invoiceId?: number | null;
+  status: FeeBulkAssignmentItem4b96100Status;
+  /** @nullable */
+  reason: string | null;
+}
+
+export interface FeeBulkAssignmentResult4b96100 {
+  createdCount: number;
+  skippedCount: number;
+  results: FeeBulkAssignmentItem4b96100[];
+}
+
+/**
+ * Internal ledger event classification; neither value asserts provider payout.
+ */
+export type FeeRefundInput4b96100TransactionType = typeof FeeRefundInput4b96100TransactionType[keyof typeof FeeRefundInput4b96100TransactionType];
+
+
+export const FeeRefundInput4b96100TransactionType = {
+  REFUND: 'REFUND',
+  REVERSAL: 'REVERSAL',
+} as const;
+
+export interface FeeRefundInput4b96100 {
+  /** @minimum 1 */
+  amountMinor: number;
+  /** Internal ledger event classification; neither value asserts provider payout. */
+  transactionType?: FeeRefundInput4b96100TransactionType;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export interface FeeRefundApprovalInput4b96100 {
+  /**
+     * @minLength 3
+     * @maxLength 200
+     */
+  evidenceReference: string;
+  /**
+     * @minLength 3
+     * @maxLength 1000
+     */
+  reviewerNotes: string;
+}
+
+export type FeeRefund4b96100TransactionType = typeof FeeRefund4b96100TransactionType[keyof typeof FeeRefund4b96100TransactionType];
+
+
+export const FeeRefund4b96100TransactionType = {
+  REFUND: 'REFUND',
+  REVERSAL: 'REVERSAL',
+} as const;
+
+export type FeeRefund4b96100Status = typeof FeeRefund4b96100Status[keyof typeof FeeRefund4b96100Status];
+
+
+export const FeeRefund4b96100Status = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface FeeRefund4b96100 {
+  id: number;
+  schoolId: number;
+  paymentId: number;
+  invoiceId: number;
+  transactionType: FeeRefund4b96100TransactionType;
+  amountMinor: number;
+  currency: string;
+  reason: string;
+  status: FeeRefund4b96100Status;
+  reference: string;
+  /** @nullable */
+  evidenceReference: string | null;
+  /** @nullable */
+  reviewerNotes: string | null;
+}
+
+export type SchoolFeeRefund4b96100TransactionType = typeof SchoolFeeRefund4b96100TransactionType[keyof typeof SchoolFeeRefund4b96100TransactionType];
+
+
+export const SchoolFeeRefund4b96100TransactionType = {
+  REFUND: 'REFUND',
+  REVERSAL: 'REVERSAL',
+} as const;
+
+export type SchoolFeeRefund4b96100Status = typeof SchoolFeeRefund4b96100Status[keyof typeof SchoolFeeRefund4b96100Status];
+
+
+export const SchoolFeeRefund4b96100Status = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface SchoolFeeRefund4b96100 {
+  id: number;
+  schoolId: number;
+  paymentId: number;
+  invoiceId: number;
+  transactionType: SchoolFeeRefund4b96100TransactionType;
+  invoiceNumber: string;
+  studentId: number;
+  studentName: string;
+  className: string;
+  section: string;
+  paymentReference: string;
+  paymentAmountMinor: number;
+  paymentMethod: string;
+  paymentStatus: string;
+  amountMinor: number;
+  currency: string;
+  reason: string;
+  status: SchoolFeeRefund4b96100Status;
+  reference: string;
+  /** @nullable */
+  evidenceReference: string | null;
+  /** @nullable */
+  reviewerNotes: string | null;
+  requestedAt: string;
+  /** @nullable */
+  approvedAt: string | null;
+}
+
+export type FeePaymentNotification4b96100EventType = typeof FeePaymentNotification4b96100EventType[keyof typeof FeePaymentNotification4b96100EventType];
+
+
+export const FeePaymentNotification4b96100EventType = {
+  PAYMENT_VERIFIED: 'PAYMENT_VERIFIED',
+  PAYMENT_REJECTED: 'PAYMENT_REJECTED',
+  PROVIDER_CHECKOUT_INITIATED: 'PROVIDER_CHECKOUT_INITIATED',
+  PROVIDER_CHECKOUT_PROCESSING: 'PROVIDER_CHECKOUT_PROCESSING',
+  PROVIDER_PAYMENT_FAILED: 'PROVIDER_PAYMENT_FAILED',
+  MANUAL_TRANSFER_SUBMITTED: 'MANUAL_TRANSFER_SUBMITTED',
+  MANUAL_TRANSFER_APPROVED: 'MANUAL_TRANSFER_APPROVED',
+  MANUAL_TRANSFER_REJECTED: 'MANUAL_TRANSFER_REJECTED',
+  REFUND_APPROVED: 'REFUND_APPROVED',
+  REVERSAL_APPROVED: 'REVERSAL_APPROVED',
+} as const;
+
+export interface FeePaymentNotification4b96100 {
+  id: number;
+  schoolId: number;
+  eventType: FeePaymentNotification4b96100EventType;
+  isRead: boolean;
+  createdAt: string;
+  /** @nullable */
+  readAt: string | null;
+  receiptNumber: string;
+  invoiceNumber: string;
+  studentName: string;
+  paymentReference: string;
+  amountMinor?: number;
+  /** @nullable */
+  refundId: number | null;
+  eventAmountMinor: number;
+  currency: string;
+  method: string;
+}
+
+export type FeeInvoiceNotification4b96100EventType = typeof FeeInvoiceNotification4b96100EventType[keyof typeof FeeInvoiceNotification4b96100EventType];
+
+
+export const FeeInvoiceNotification4b96100EventType = {
+  INVOICE_GENERATED: 'INVOICE_GENERATED',
+} as const;
+
+export interface FeeInvoiceNotification4b96100 {
+  id: number;
+  schoolId: number;
+  eventType: FeeInvoiceNotification4b96100EventType;
+  isRead: boolean;
+  createdAt: string;
+  /** @nullable */
+  readAt: string | null;
+  invoiceNumber: string;
+  studentName: string;
+  amountMinor: number;
+  outstandingMinor: number;
+  currency: string;
+  status: string;
+}
+
+/**
+ * @nullable
+ */
+export type FinanceReportRow4b96100SourceType = typeof FinanceReportRow4b96100SourceType[keyof typeof FinanceReportRow4b96100SourceType] | null;
+
+
+export const FinanceReportRow4b96100SourceType = {
+  CHECKOUT: 'CHECKOUT',
+  WEBHOOK: 'WEBHOOK',
+} as const;
+
+/**
+ * @nullable
+ */
+export type FinanceReportRow4b96100Provider = typeof FinanceReportRow4b96100Provider[keyof typeof FinanceReportRow4b96100Provider] | null;
+
+
+export const FinanceReportRow4b96100Provider = {
+  PAYSTACK: 'PAYSTACK',
+  FLUTTERWAVE: 'FLUTTERWAVE',
+  REMITA: 'REMITA',
+  MANUAL_BANK_TRANSFER: 'MANUAL_BANK_TRANSFER',
+} as const;
+
+/**
+ * @nullable
+ */
+export type FinanceReportRow4b96100CheckoutState = typeof FinanceReportRow4b96100CheckoutState[keyof typeof FinanceReportRow4b96100CheckoutState] | null;
+
+
+export const FinanceReportRow4b96100CheckoutState = {
+  INITIALIZING: 'INITIALIZING',
+  READY: 'READY',
+  FAILED: 'FAILED',
+  SETTLED: 'SETTLED',
+  RELEASED: 'RELEASED',
+} as const;
+
+/**
+ * @nullable
+ */
+export type FinanceReportRow4b96100ReconciliationStatus = typeof FinanceReportRow4b96100ReconciliationStatus[keyof typeof FinanceReportRow4b96100ReconciliationStatus] | null;
+
+
+export const FinanceReportRow4b96100ReconciliationStatus = {
+  RECEIVED: 'RECEIVED',
+  VERIFIED: 'VERIFIED',
+  PENDING: 'PENDING',
+  FAILED: 'FAILED',
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+} as const;
+
+export interface FinanceReportRow4b96100 {
+  label: string;
+  count: number;
+  amountMinor: number;
+  secondaryAmountMinor: number;
+  /** @nullable */
+  studentId?: number | null;
+  /** @nullable */
+  studentName?: string | null;
+  /** @nullable */
+  invoiceId?: number | null;
+  /** @nullable */
+  invoiceNumber?: string | null;
+  /** @nullable */
+  reference?: string | null;
+  /** @nullable */
+  paymentDate?: string | null;
+  /** @nullable */
+  originalAmountMinor?: number | null;
+  /** @nullable */
+  paidMinor?: number | null;
+  /** @nullable */
+  outstandingMinor?: number | null;
+  /** @nullable */
+  overdue?: boolean | null;
+  /** @nullable */
+  schoolId?: number | null;
+  /** @nullable */
+  sourceType?: FinanceReportRow4b96100SourceType;
+  /** @nullable */
+  provider?: FinanceReportRow4b96100Provider;
+  /** @nullable */
+  checkoutState?: FinanceReportRow4b96100CheckoutState;
+  /** @nullable */
+  reconciliationStatus?: FinanceReportRow4b96100ReconciliationStatus;
+  /** @nullable */
+  signatureVerified?: boolean | null;
+  /** @nullable */
+  eventId?: string | null;
+  /** @nullable */
+  webhookTransactionId?: string | null;
+  /** @nullable */
+  verifiedTransactionId?: string | null;
+  /** @nullable */
+  providerReference?: string | null;
+  /** @nullable */
+  paymentStatus?: string | null;
+  /** @nullable */
+  eventDate?: string | null;
+  /**
+     * Sanitized checkout failure or webhook reconciliation reason; never includes provider credentials or raw payload data.
+     * @nullable
+     */
+  reason?: string | null;
+}
+
+export interface FinanceReport4b96100 {
+  schoolId: number;
+  reportType: string;
+  totalBilledMinor: number;
+  totalCollectedMinor: number;
+  totalOutstandingMinor: number;
+  totalDiscountMinor: number;
+  totalWaiverMinor: number;
+  totalRefundedMinor: number;
+  totalReversedMinor: number;
+  rows: FinanceReportRow4b96100[];
+}
+
+export interface FinanceSettings4b96100 {
+  schoolId: number;
+  partialPaymentsEnabled: boolean;
+  /** Explicit school-admin approval and enablement for parent bank transfers */
+  bankTransferEnabled: boolean;
+  /** School-approved Paystack test-provider checkout enablement */
+  paystackEnabled: boolean;
+  /** School-approved Flutterwave test-provider checkout enablement */
+  flutterwaveEnabled: boolean;
+  /** @nullable */
+  bankName: string | null;
+  /** @nullable */
+  accountName: string | null;
+  /**
+     * @nullable
+     * @pattern ^[0-9]{10}$
+     */
+  accountNumber: string | null;
+}
+
+export interface FinanceSettingsUpdate4b96100 {
+  partialPaymentsEnabled?: boolean;
+  bankTransferEnabled?: boolean;
+  paystackEnabled?: boolean;
+  flutterwaveEnabled?: boolean;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     * @nullable
+     */
+  bankName?: string | null;
+  /**
+     * @minLength 2
+     * @maxLength 150
+     * @nullable
+     */
+  accountName?: string | null;
+  /**
+     * @nullable
+     * @pattern ^[0-9]{10}$
+     */
+  accountNumber?: string | null;
+}
+
+export interface ParentInvoiceBankDetailsAvailable4b96100 {
+  invoiceId: number;
+  schoolId: number;
+  available: true;
+  bankName: string;
+  accountName: string;
+  /** @pattern ^[0-9]{10}$ */
+  accountNumber: string;
+}
+
+export type ParentInvoiceBankDetailsUnavailable4b96100Reason = typeof ParentInvoiceBankDetailsUnavailable4b96100Reason[keyof typeof ParentInvoiceBankDetailsUnavailable4b96100Reason];
+
+
+export const ParentInvoiceBankDetailsUnavailable4b96100Reason = {
+  BANK_DETAILS_UNAVAILABLE: 'BANK_DETAILS_UNAVAILABLE',
+} as const;
+
+export interface ParentInvoiceBankDetailsUnavailable4b96100 {
+  invoiceId: number;
+  schoolId: number;
+  available: false;
+  reason: ParentInvoiceBankDetailsUnavailable4b96100Reason;
+}
+
+export type ParentInvoiceBankDetails4b96100 = ParentInvoiceBankDetailsAvailable4b96100 | ParentInvoiceBankDetailsUnavailable4b96100;
+
+export type FeeProviderCheckout4b96100Provider = typeof FeeProviderCheckout4b96100Provider[keyof typeof FeeProviderCheckout4b96100Provider];
+
+
+export const FeeProviderCheckout4b96100Provider = {
+  PAYSTACK: 'PAYSTACK',
+  FLUTTERWAVE: 'FLUTTERWAVE',
+} as const;
+
+export type FeeProviderCheckout4b96100Status = typeof FeeProviderCheckout4b96100Status[keyof typeof FeeProviderCheckout4b96100Status];
+
+
+export const FeeProviderCheckout4b96100Status = {
+  PENDING: 'PENDING',
+} as const;
+
+export interface FeeProviderCheckout4b96100 {
+  paymentId: number;
+  invoiceId: number;
+  reference: string;
+  provider: FeeProviderCheckout4b96100Provider;
+  amountMinor: number;
+  /** @pattern ^[A-Z]{3}$ */
+  currency: string;
+  status: FeeProviderCheckout4b96100Status;
+  checkoutUrl: string;
+}
+
+export type FeeProviderCheckoutProcessing4b96100Outcome = typeof FeeProviderCheckoutProcessing4b96100Outcome[keyof typeof FeeProviderCheckoutProcessing4b96100Outcome];
+
+
+export const FeeProviderCheckoutProcessing4b96100Outcome = {
+  processing: 'processing',
+  reconciliation_required: 'reconciliation_required',
+} as const;
+
+export interface FeeProviderCheckoutProcessing4b96100 {
+  outcome: FeeProviderCheckoutProcessing4b96100Outcome;
+  error: string;
+}
+
+export interface FeeProviderCheckoutInitializeInput4b96100 {
+  /**
+     * @minimum 1
+     * @maximum 9007199254740991
+     */
+  amountMinor?: number;
+}
+
+export interface ParentFeeInvoiceCheckoutPolicy4b96100 {
+  invoiceId: number;
+  schoolId: number;
+  /** @minimum 0 */
+  outstandingMinor: number;
+  partialPaymentsEnabled: boolean;
+}
+
+export type FeeProviderReconciliationEvent4b96100Provider = typeof FeeProviderReconciliationEvent4b96100Provider[keyof typeof FeeProviderReconciliationEvent4b96100Provider];
+
+
+export const FeeProviderReconciliationEvent4b96100Provider = {
+  PAYSTACK: 'PAYSTACK',
+  FLUTTERWAVE: 'FLUTTERWAVE',
+} as const;
+
+export type FeeProviderReconciliationEvent4b96100Status = typeof FeeProviderReconciliationEvent4b96100Status[keyof typeof FeeProviderReconciliationEvent4b96100Status];
+
+
+export const FeeProviderReconciliationEvent4b96100Status = {
+  RECONCILIATION_REQUIRED: 'RECONCILIATION_REQUIRED',
+} as const;
+
+export interface FeeProviderReconciliationEvent4b96100 {
+  id: number;
+  provider: FeeProviderReconciliationEvent4b96100Provider;
+  eventId: string;
+  /** @nullable */
+  paymentId: number | null;
+  /** @nullable */
+  schoolId: number | null;
+  /** @nullable */
+  providerReference: string | null;
+  /** @nullable */
+  webhookTransactionId: string | null;
+  /** @nullable */
+  verifiedTransactionId: string | null;
+  status: FeeProviderReconciliationEvent4b96100Status;
+  /** @nullable */
+  errorMessage: string | null;
+  signatureVerified: boolean;
+  receivedAt: string;
+  updatedAt: string;
+}
+
+export type FeeProviderReconciliationRetry4b96100Outcome = typeof FeeProviderReconciliationRetry4b96100Outcome[keyof typeof FeeProviderReconciliationRetry4b96100Outcome];
+
+
+export const FeeProviderReconciliationRetry4b96100Outcome = {
+  verified: 'verified',
+  pending: 'pending',
+  failed: 'failed',
+  duplicate: 'duplicate',
+  reconciliation_required: 'reconciliation_required',
+} as const;
+
+export interface FeeProviderReconciliationRetry4b96100 {
+  eventId: string;
+  outcome: FeeProviderReconciliationRetry4b96100Outcome;
+}
+
+export type FeeProviderCheckoutReconciliation4b96100Outcome = typeof FeeProviderCheckoutReconciliation4b96100Outcome[keyof typeof FeeProviderCheckoutReconciliation4b96100Outcome];
+
+
+export const FeeProviderCheckoutReconciliation4b96100Outcome = {
+  verified: 'verified',
+  pending: 'pending',
+  released: 'released',
+  duplicate: 'duplicate',
+  reconciliation_required: 'reconciliation_required',
+} as const;
+
+export interface FeeProviderCheckoutReconciliation4b96100 {
+  paymentId: number;
+  outcome: FeeProviderCheckoutReconciliation4b96100Outcome;
+}
+
+export type CommunicationCategory4b96100 = typeof CommunicationCategory4b96100[keyof typeof CommunicationCategory4b96100];
+
+
+export const CommunicationCategory4b96100 = {
+  ATTENDANCE: 'ATTENDANCE',
+  ACADEMIC: 'ACADEMIC',
+  ASSIGNMENT: 'ASSIGNMENT',
+  FINANCE: 'FINANCE',
+  PAYMENT: 'PAYMENT',
+  ANNOUNCEMENT: 'ANNOUNCEMENT',
+  ACCOUNT: 'ACCOUNT',
+  SYSTEM: 'SYSTEM',
+  SUBSCRIPTION: 'SUBSCRIPTION',
+  PARTNER: 'PARTNER',
+  SECURITY: 'SECURITY',
+} as const;
+
+export type CommunicationChannel4b96100 = typeof CommunicationChannel4b96100[keyof typeof CommunicationChannel4b96100];
+
+
+export const CommunicationChannel4b96100 = {
+  IN_APP: 'IN_APP',
+  SMS: 'SMS',
+  EMAIL: 'EMAIL',
+  PUSH: 'PUSH',
+} as const;
+
+export type CommunicationOutboundChannel4b96100 = typeof CommunicationOutboundChannel4b96100[keyof typeof CommunicationOutboundChannel4b96100];
+
+
+export const CommunicationOutboundChannel4b96100 = {
+  IN_APP: 'IN_APP',
+  SMS: 'SMS',
+  EMAIL: 'EMAIL',
+} as const;
+
+export type CommunicationDeliveryStatus4b96100 = typeof CommunicationDeliveryStatus4b96100[keyof typeof CommunicationDeliveryStatus4b96100];
+
+
+export const CommunicationDeliveryStatus4b96100 = {
+  QUEUED: 'QUEUED',
+  PROCESSING: 'PROCESSING',
+  SENT: 'SENT',
+  DELIVERED: 'DELIVERED',
+  READ: 'READ',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type CommunicationCampaignStatus4b96100 = typeof CommunicationCampaignStatus4b96100[keyof typeof CommunicationCampaignStatus4b96100];
+
+
+export const CommunicationCampaignStatus4b96100 = {
+  DRAFT: 'DRAFT',
+  QUEUED: 'QUEUED',
+  SENDING: 'SENDING',
+  SENT: 'SENT',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type CommunicationTargetType4b96100 = typeof CommunicationTargetType4b96100[keyof typeof CommunicationTargetType4b96100];
+
+
+export const CommunicationTargetType4b96100 = {
+  SCHOOL: 'SCHOOL',
+  PARENTS: 'PARENTS',
+  STUDENTS: 'STUDENTS',
+  TEACHERS: 'TEACHERS',
+  STAFF: 'STAFF',
+  CLASS: 'CLASS',
+  SECTION: 'SECTION',
+  USERS: 'USERS',
+} as const;
+
+/**
+ * Target details validated against the caller's active school, class assignments, and parent-child relationships. Never interpreted as arbitrary recipient IDs.
+ */
+export interface CommunicationTargetCriteria4b96100 { [key: string]: unknown }
+
+/**
+ * CAMPAIGN is a manually authored school message; SYSTEM is a backend event, including finance notifications.
+ */
+export type CommunicationNotification4b96100Origin = typeof CommunicationNotification4b96100Origin[keyof typeof CommunicationNotification4b96100Origin];
+
+
+export const CommunicationNotification4b96100Origin = {
+  CAMPAIGN: 'CAMPAIGN',
+  SYSTEM: 'SYSTEM',
+} as const;
+
+export interface CommunicationDelivery4b96100 {
+  id: number;
+  channel: CommunicationChannel4b96100;
+  status: CommunicationDeliveryStatus4b96100;
+  /**
+     * Provider identifier, or dev-test for the explicit no-network adapter.
+     * @nullable
+     */
+  provider: string | null;
+  /** @nullable */
+  providerMessageId: string | null;
+  /**
+     * Provider acceptance is not proof of delivery.
+     * @nullable
+     */
+  providerAcknowledgedAt: string | null;
+  /** @nullable */
+  sentAt: string | null;
+  /** @nullable */
+  deliveredAt: string | null;
+  /** @nullable */
+  failedAt: string | null;
+  /** @nullable */
+  errorCode: string | null;
+  /**
+     * Sanitized error text. Never contains recipient addresses, raw provider payloads, or credentials.
+     * @nullable
+     */
+  lastError: string | null;
+  /** @minimum 0 */
+  attempts: number;
+  nextAttemptAt: string;
+  /** @nullable */
+  lastAttemptAt: string | null;
+  /** True indicates a no-network simulation and never means a real send. */
+  simulated: boolean;
+  /**
+     * Human-readable delivery label; simulation labels explicitly indicate that no message was sent.
+     * @nullable
+     */
+  label: string | null;
+}
+
+export interface CommunicationNotification4b96100 {
+  id: number;
+  /** @nullable */
+  schoolId: number | null;
+  /** CAMPAIGN is a manually authored school message; SYSTEM is a backend event, including finance notifications. */
+  origin: CommunicationNotification4b96100Origin;
+  category: CommunicationCategory4b96100;
+  /** @nullable */
+  subject: string | null;
+  body: string;
+  /** @nullable */
+  link: string | null;
+  isRead: boolean;
+  isArchived: boolean;
+  createdAt: string;
+  /** @nullable */
+  readAt: string | null;
+  deliveries: CommunicationDelivery4b96100[];
+}
+
+export interface CommunicationNotificationInbox4b96100 {
+  items: CommunicationNotification4b96100[];
+  /** @minimum 0 */
+  unreadCount: number;
+  hasMore: boolean;
+  /** @nullable */
+  nextBeforeId: number | null;
+}
+
+export interface CommunicationNotificationReadAllInput4b96100 {
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  schoolId?: number | null;
+}
+
+export interface CommunicationNotificationReadAllResult4b96100 {
+  /** @minimum 0 */
+  updatedCount: number;
+}
+
+export interface CommunicationPreference4b96100 {
+  /** @nullable */
+  schoolId: number | null;
+  category: CommunicationCategory4b96100;
+  channel: CommunicationChannel4b96100;
+  enabled: boolean;
+  /** Security/account notifications may be mandatory and cannot be suppressed. */
+  mandatory: boolean;
+  updatedAt: string;
+}
+
+export interface CommunicationPreferences4b96100 {
+  /** @nullable */
+  schoolId: number | null;
+  preferences: CommunicationPreference4b96100[];
+}
+
+export interface CommunicationPreferenceUpdate4b96100 {
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  schoolId: number | null;
+  category: CommunicationCategory4b96100;
+  channel: CommunicationChannel4b96100;
+  enabled: boolean;
+}
+
+export type CommunicationTemplateVariable4b96100 = typeof CommunicationTemplateVariable4b96100[keyof typeof CommunicationTemplateVariable4b96100];
+
+
+export const CommunicationTemplateVariable4b96100 = {
+  student_name: 'student_name',
+  parent_name: 'parent_name',
+  school_name: 'school_name',
+  class_name: 'class_name',
+  amount: 'amount',
+  invoice_number: 'invoice_number',
+  payment_date: 'payment_date',
+  attendance_date: 'attendance_date',
+  term_name: 'term_name',
+  assignment_title: 'assignment_title',
+} as const;
+
+export interface CommunicationTemplate4b96100 {
+  id: number;
+  schoolId: number;
+  templateKey: string;
+  name: string;
+  category: CommunicationCategory4b96100;
+  channel: CommunicationChannel4b96100;
+  /** @nullable */
+  subject: string | null;
+  body: string;
+  allowedVariables: CommunicationTemplateVariable4b96100[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommunicationTemplateInput4b96100 {
+  /** @minimum 1 */
+  schoolId: number;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     * @pattern ^[a-zA-Z0-9_-]+$
+     */
+  templateKey: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  category: CommunicationCategory4b96100;
+  channel: CommunicationChannel4b96100;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  subject?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  body: string;
+  allowedVariables?: CommunicationTemplateVariable4b96100[];
+  isActive?: boolean;
+}
+
+export interface CommunicationTemplateUpdate4b96100 {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name?: string;
+  category?: CommunicationCategory4b96100;
+  channel?: CommunicationChannel4b96100;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  subject?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  body?: string;
+  allowedVariables?: CommunicationTemplateVariable4b96100[];
+  isActive?: boolean;
+}
+
+export interface CommunicationAnnouncementPreviewInput4b96100 {
+  /** @minimum 1 */
+  schoolId: number;
+  category?: CommunicationCategory4b96100;
+  isEmergency?: boolean;
+  targetType: CommunicationTargetType4b96100;
+  targetCriteria: CommunicationTargetCriteria4b96100;
+  /** @minItems 1 */
+  channels: CommunicationOutboundChannel4b96100[];
+}
+
+export interface CommunicationAnnouncementChannelCount4b96100 {
+  channel: CommunicationOutboundChannel4b96100;
+  /** @minimum 0 */
+  eligibleRecipientCount: number;
+}
+
+export interface CommunicationAnnouncementPreview4b96100 {
+  schoolId: number;
+  /** @minimum 0 */
+  recipientCount: number;
+  channelCounts: CommunicationAnnouncementChannelCount4b96100[];
+}
+
+export type CommunicationAnnouncementInput4b96100EmergencyConfirmation = typeof CommunicationAnnouncementInput4b96100EmergencyConfirmation[keyof typeof CommunicationAnnouncementInput4b96100EmergencyConfirmation];
+
+
+export const CommunicationAnnouncementInput4b96100EmergencyConfirmation = {
+  I_CONFIRM_EMERGENCY_BROADCAST: 'I CONFIRM EMERGENCY BROADCAST',
+} as const;
+
+export interface CommunicationAnnouncementInput4b96100 {
+  /** @minimum 1 */
+  schoolId: number;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  title: string;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  subject?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 10000
+     */
+  body: string;
+  category: CommunicationCategory4b96100;
+  targetType: CommunicationTargetType4b96100;
+  targetCriteria: CommunicationTargetCriteria4b96100;
+  /** @minItems 1 */
+  channels: CommunicationOutboundChannel4b96100[];
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  templateId?: number | null;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+  /** @nullable */
+  expiresAt?: string | null;
+  isEmergency?: boolean;
+  emergencyConfirmation?: CommunicationAnnouncementInput4b96100EmergencyConfirmation;
+  /** @minimum 0 */
+  confirmedRecipientCount?: number;
+}
+
+export interface CommunicationAnnouncement4b96100 {
+  id: number;
+  schoolId: number;
+  createdByUserId: number;
+  /** @nullable */
+  templateId: number | null;
+  title: string;
+  /** @nullable */
+  subject: string | null;
+  body: string;
+  category: CommunicationCategory4b96100;
+  targetType: CommunicationTargetType4b96100;
+  targetCriteria: CommunicationTargetCriteria4b96100;
+  channels: CommunicationOutboundChannel4b96100[];
+  status: CommunicationCampaignStatus4b96100;
+  /** @minimum 0 */
+  recipientCount: number;
+  createdAt: string;
+  /** @nullable */
+  sentAt: string | null;
+  isEmergency?: boolean;
+  /** @nullable */
+  expiresAt?: string | null;
+}
+
+export interface CommunicationAnnouncementHistory4b96100 {
+  items: CommunicationAnnouncement4b96100[];
+  hasMore: boolean;
+  /** @nullable */
+  nextBeforeId: number | null;
+}
+
+export type CommunicationAnnouncementRecipient4b96100RecipientRole = typeof CommunicationAnnouncementRecipient4b96100RecipientRole[keyof typeof CommunicationAnnouncementRecipient4b96100RecipientRole];
+
+
+export const CommunicationAnnouncementRecipient4b96100RecipientRole = {
+  SCHOOL_ADMIN: 'SCHOOL_ADMIN',
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+  ACCOUNTANT: 'ACCOUNTANT',
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+} as const;
+
+export type CommunicationAnnouncementRecipient4b96100Status = typeof CommunicationAnnouncementRecipient4b96100Status[keyof typeof CommunicationAnnouncementRecipient4b96100Status];
+
+
+export const CommunicationAnnouncementRecipient4b96100Status = {
+  QUEUED: 'QUEUED',
+  SENT: 'SENT',
+  FAILED: 'FAILED',
+  SKIPPED: 'SKIPPED',
+} as const;
+
+export interface CommunicationAnnouncementRecipient4b96100 {
+  /** Internal user id is returned only to authorized school communication managers. */
+  recipientUserId: number;
+  recipientRole: CommunicationAnnouncementRecipient4b96100RecipientRole;
+  status: CommunicationAnnouncementRecipient4b96100Status;
+  deliveries: CommunicationDelivery4b96100[];
+}
+
+export type CommunicationAnnouncementDetail4b96100 = CommunicationAnnouncement4b96100 & {
+  recipients: CommunicationAnnouncementRecipient4b96100[];
+};
+
+export type CommunicationPushDevice4b96100Provider = typeof CommunicationPushDevice4b96100Provider[keyof typeof CommunicationPushDevice4b96100Provider];
+
+
+export const CommunicationPushDevice4b96100Provider = {
+  WEB_PUSH: 'WEB_PUSH',
+} as const;
+
+export type CommunicationPushDevice4b96100Status = typeof CommunicationPushDevice4b96100Status[keyof typeof CommunicationPushDevice4b96100Status];
+
+
+export const CommunicationPushDevice4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  REVOKED: 'REVOKED',
+} as const;
+
+export interface CommunicationPushDevice4b96100 {
+  id: number;
+  /** @nullable */
+  schoolId: number | null;
+  provider: CommunicationPushDevice4b96100Provider;
+  status: CommunicationPushDevice4b96100Status;
+  createdAt: string;
+  /** @nullable */
+  lastUsedAt: string | null;
+  /** @nullable */
+  revokedAt: string | null;
+}
+
+export interface CommunicationPushDeviceInput4b96100 {
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  schoolId?: number | null;
+  /**
+     * @minLength 1
+     * @maxLength 256
+     */
+  opaqueDeviceReference: string;
+}
+
+export interface ActivationSchool4b96100 {
+  id: number;
+  name: string;
+  code: string;
+  city: string;
+  state: string;
+  /** @nullable */
+  logo: string | null;
+}
+
+export type ActivationDevice4b96100DeviceType = typeof ActivationDevice4b96100DeviceType[keyof typeof ActivationDevice4b96100DeviceType];
+
+
+export const ActivationDevice4b96100DeviceType = {
+  NFC: 'NFC',
+  HYBRID: 'HYBRID',
+} as const;
+
+export interface ActivationDevice4b96100 {
+  id: number;
+  serialNumber: string;
+  name: string;
+  deviceType: ActivationDevice4b96100DeviceType;
+  status: string;
+  /** @nullable */
+  location: string | null;
+}
+
+export interface ActivationStudent4b96100 {
+  id: number;
+  admissionNo: string;
+  firstName: string;
+  /** @nullable */
+  middleName: string | null;
+  lastName: string;
+  className: string;
+  section: string;
+  /** @nullable */
+  photo: string | null;
+}
+
+export interface ActivationHistory4b96100 {
+  id: number;
+  cardId: number;
+  cardNumber: string;
+  /** @nullable */
+  studentId: number | null;
+  /** @nullable */
+  admissionNo: string | null;
+  /** @nullable */
+  firstName: string | null;
+  /** @nullable */
+  lastName: string | null;
+  action: string;
+  /** @nullable */
+  previousStatus: string | null;
+  /** @nullable */
+  newStatus: string | null;
+  /** @nullable */
+  reason: string | null;
+  /** @nullable */
+  actorUserId: number | null;
+  createdAt: string;
+  /** @nullable */
+  deviceId: number | null;
+  /** @nullable */
+  deviceSerialNumber: string | null;
+}
+
+export interface ActivationAssignmentInput4b96100 {
+  /** @minimum 1 */
+  deviceId: number;
+  /** @minimum 1 */
+  studentId: number;
+  /** @minLength 4 */
+  cardNumber: string;
+}
+
+export type ActivationAssignment4b96100Status = typeof ActivationAssignment4b96100Status[keyof typeof ActivationAssignment4b96100Status];
+
+
+export const ActivationAssignment4b96100Status = {
+  active: 'active',
+} as const;
+
+export interface ActivationEId4b96100 {
+  schoolId: number;
+  schoolName: string;
+  schoolCode: string;
+  /** @nullable */
+  schoolLogo: string | null;
+  /** @nullable */
+  schoolAddress: string | null;
+  studentId: number;
+  admissionNo: string;
+  firstName: string;
+  /** @nullable */
+  middleName: string | null;
+  lastName: string;
+  className: string;
+  section: string;
+  /** @nullable */
+  photo: string | null;
+  /** @nullable */
+  cardId: number | null;
+  /** @nullable */
+  cardNumber: string | null;
+  /** @nullable */
+  activatedAt: string | null;
+}
+
+export interface ActivationAssignment4b96100 {
+  id: number;
+  schoolId: number;
+  uid: string;
+  studentId: number;
+  status: ActivationAssignment4b96100Status;
+  scans: number;
+  /** @nullable */
+  lastScan: string | null;
+  /** @nullable */
+  activatedAt: string | null;
+  student: ActivationStudent4b96100;
+  device: ActivationDevice4b96100;
+  eId: ActivationEId4b96100;
+}
+
+export type DeviceActivationOfficerGrantInput4b96100 = (unknown & {
+  /** @minimum 1 */
+  userId?: number;
+  /** @maxLength 254 */
+  email?: string;
+});
+
+export type DeviceActivationOfficerGrant4b96100Role = typeof DeviceActivationOfficerGrant4b96100Role[keyof typeof DeviceActivationOfficerGrant4b96100Role];
+
+
+export const DeviceActivationOfficerGrant4b96100Role = {
+  DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
+} as const;
+
+export type DeviceActivationOfficerGrant4b96100Status = typeof DeviceActivationOfficerGrant4b96100Status[keyof typeof DeviceActivationOfficerGrant4b96100Status];
+
+
+export const DeviceActivationOfficerGrant4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface DeviceActivationOfficerGrant4b96100 {
+  id: number;
+  userId: number;
+  schoolId: number;
+  role: DeviceActivationOfficerGrant4b96100Role;
+  status: DeviceActivationOfficerGrant4b96100Status;
+}
+
+export type DeviceActivationOfficerGrantListItem4b96100Role = typeof DeviceActivationOfficerGrantListItem4b96100Role[keyof typeof DeviceActivationOfficerGrantListItem4b96100Role];
+
+
+export const DeviceActivationOfficerGrantListItem4b96100Role = {
+  DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
+} as const;
+
+export type DeviceActivationOfficerGrantListItem4b96100Status = typeof DeviceActivationOfficerGrantListItem4b96100Status[keyof typeof DeviceActivationOfficerGrantListItem4b96100Status];
+
+
+export const DeviceActivationOfficerGrantListItem4b96100Status = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface DeviceActivationOfficerGrantListItem4b96100 {
+  id: number;
+  userId: number;
+  schoolId: number;
+  role: DeviceActivationOfficerGrantListItem4b96100Role;
+  status: DeviceActivationOfficerGrantListItem4b96100Status;
+  email: string;
+  /** @nullable */
+  fullName: string | null;
+}
+
+export type EmployeeNfcError4b96100 = EmployeeNfcError;
+
+export type EmployeeNfcCardView4b96100 = EmployeeNfcCardView;
+
+export type EmployeeNfcCardHistory4b96100 = EmployeeNfcCardHistory;
+
+export type EmployeeNfcProfile4b96100 = EmployeeNfcProfile;
+
+export type EmployeeNfcAttendanceEvent4b96100 = EmployeeNfcAttendanceEvent;
+
+export type EmployeeNfcAttendanceDaily4b96100 = EmployeeNfcAttendanceDaily;
+
+export type EmployeeNfcAttendanceMonthly4b96100 = EmployeeNfcAttendanceMonthly;
+
+export type EmployeeNfcDiscrepancy4b96100 = EmployeeNfcDiscrepancy;
+
+export type PayrollError4b96100 = PayrollError;
+
+export type SettlementProviderCapability4b96100 = SettlementProviderCapability;
+
+export type CompanySettlementInput4b96100 = CompanySettlementInput;
+
+export type SchoolSettlementInput4b96100 = SchoolSettlementInput;
+
+export type PaymentSettlementProfile4b96100 = PaymentSettlementProfile;
+
+export type SchoolSettlementSummary4b96100 = SchoolSettlementSummary;
+
+export type SettlementHistoryEntry4b96100 = SettlementHistoryEntry;
+
+export type PayrollEmployeeProfile4b96100 = PayrollEmployeeProfile;
+
+export type PayrollEmployeeProfileInput4b96100 = PayrollEmployeeProfileInput;
+
+export type CompanyPayrollEmployeeInput4b96100 = CompanyPayrollEmployeeInput;
+
+export type PayrollPeriodInput4b96100 = PayrollPeriodInput;
+
+export type PayrollItemAdjustment4b96100 = PayrollItemAdjustment;
+
+export type PayrollItemsUpdate4b96100 = PayrollItemsUpdate;
+
+export type PayrollPeriodSummary4b96100 = PayrollPeriodSummary;
+
+export type PayrollItem4b96100 = PayrollItem;
+
+export type PayrollTransferAttemptSummary4b96100 = PayrollTransferAttemptSummary;
+
+export type PayrollPeriod4b96100 = PayrollPeriod;
+
+export type PayrollTransfersInput4b96100 = PayrollTransfersInput;
+
+export type PayrollTransfer4b96100 = PayrollTransfer;
+
+export type PayrollTransfersResponse4b96100 = PayrollTransfersResponse;
+
+export type PayrollReportRow4b96100 = PayrollReportRow;
+
+export type OwnPayrollPayslip4b96100 = OwnPayrollPayslip;
+
+export type SchoolCoreApiError4b96100 = ApiError0a0c478;
+
+export type SchoolBranding4b96100 = SchoolBranding;
+
+export type UpdateSchoolBrandingBody4b96100 = UpdateSchoolBrandingBody;
+
+export type SchoolLogoUploadRequest4b96100 = SchoolLogoUploadRequest;
+
+export type SchoolLogoUploadResponse4b96100 = SchoolLogoUploadResponse;
+
+export type ConfirmSchoolLogoUploadBody4b96100 = ConfirmSchoolLogoUploadBody;
+
+export type SchoolCalendarEntry4b96100 = SchoolCalendarEntry;
+
+export type CalendarDateItem4b96100 = CalendarDateItem;
+
+export type CalendarTermConfiguration4b96100 = CalendarTermConfiguration;
+
+export type GenerateSchoolCalendarBody4b96100 = GenerateSchoolCalendarBody;
+
+export type CreateSchoolCalendarEventBody4b96100 = CreateSchoolCalendarEventBody;
+
+export type UpdateSchoolCalendarEventBody4b96100 = UpdateSchoolCalendarEventBody;
+
+export type SchoolTeacherAssignment4b96100 = SchoolTeacherAssignment;
+
+export type CreateSchoolTeacherAssignmentBody4b96100 = CreateSchoolTeacherAssignmentBody;
+
+export type UpdateSchoolTeacherAssignmentBody4b96100 = UpdateSchoolTeacherAssignmentBody;
+
+export type TeacherDuty4b96100 = TeacherDuty;
+
+export type CreateTeacherDutyBody4b96100 = CreateTeacherDutyBody;
+
+export type UpdateTeacherDutyBody4b96100 = UpdateTeacherDutyBody;
+
+export type StaffNfcError4b96100 = StaffNfcError;
+
+export type StaffNfcBillingRule4b96100 = StaffNfcBillingRule;
+
+export type StaffNfcBillingRuleInput4b96100 = StaffNfcBillingRuleInput;
+
+export type StaffNfcTermContext4b96100 = StaffNfcTermContext;
+
+export type StaffNfcAllocation4b96100 = StaffNfcAllocation;
+
+export type StaffNfcPaymentSummary4b96100 = StaffNfcPaymentSummary;
+
+export type StaffNfcSubscription4b96100 = StaffNfcSubscription;
+
+export type StaffNfcMineResponse4b96100 = StaffNfcMineResponse;
+
+export type StaffNfcGenerationResponse4b96100 = StaffNfcGenerationResponse;
+
+export type StaffNfcCheckoutResponse4b96100 = StaffNfcCheckoutResponse;
+
+export type StaffNfcVerificationInput4b96100 = StaffNfcVerificationInput;
+
+export type StaffNfcPaymentResponse4b96100 = StaffNfcPaymentResponse;
+
+export type StaffNfcReceipt4b96100 = StaffNfcReceipt;
+
+export type StaffNfcFinanceResponse4b96100 = StaffNfcFinanceResponse;
+
+export type StaffNfcRefundInput4b96100 = StaffNfcRefundInput;
+
+export type StaffNfcRefundResponse4b96100 = StaffNfcRefundResponse;
+
+export type StaffNfcPartnerResponse4b96100 = StaffNfcPartnerResponse;
+
+export type StaffNfcWebhookAck4b96100 = StaffNfcWebhookAck;
+
+export type StudentSubscriptionPayment4b96100 = StudentSubscriptionPayment;
+
+export type StudentSubscriptionCheckoutResponse4b96100 = StudentSubscriptionCheckoutResponse;
+
+export type StudentSubscriptionVerificationInput4b96100 = StudentSubscriptionVerificationInput;
+
+export type StudentSubscriptionPaymentResponse4b96100 = StudentSubscriptionPaymentResponse;
+
+export type StudentSubscriptionReceipt4b96100 = StudentSubscriptionReceipt;
+
+export type TransportError4b96100 = TransportError;
+
+export type TransportStopInput4b96100 = TransportStopInput;
+
+export type TransportStop4b96100 = TransportStop;
+
+export type TransportBusInput4b96100 = TransportBusInput;
+
+export type TransportBusUpdate4b96100 = TransportBusUpdate;
+
+export type TransportBus4b96100 = TransportBus;
+
+export type TransportDriver4b96100 = TransportDriver;
+
+export type TransportRouteInput4b96100 = TransportRouteInput;
+
+export type TransportRouteUpdate4b96100 = TransportRouteUpdate;
+
+export type TransportRoute4b96100 = TransportRoute;
+
+export type TransportGuardian4b96100 = TransportGuardian;
+
+export type TransportStudentOption4b96100 = TransportStudentOption;
+
+export type TransportAssignmentInput4b96100 = TransportAssignmentInput;
+
+export type TransportAssignmentFeePlanInput4b96100 = TransportAssignmentFeePlanInput;
+
+export type TransportAssignmentUpdate4b96100 = TransportAssignmentUpdate;
+
+export type TransportInvoiceStatus4b96100 = TransportInvoiceStatus;
+
+export type TransportReceipt4b96100 = TransportReceipt;
+
+export type TransportAssignment4b96100 = TransportAssignment;
+
+export type TransportAssignmentFeePlan4b96100 = TransportAssignmentFeePlan;
+
+export type TransportEmployeeOption4b96100 = TransportEmployeeOption;
+
+export type TransportSchedule4b96100 = TransportSchedule;
+
+export type TransportSelfView4b96100 = TransportSelfView;
+
+export type TransportStudentAssignmentBadge4b96100 = TransportStudentAssignmentBadge;
+
+export type TransportSelfAssignment4b96100 = TransportSelfAssignment;
+
+export type TransportRouteStaffInput4b96100 = TransportRouteStaffInput;
+
+export type TransportRouteStaff4b96100 = TransportRouteStaff;
+
+export type TransportSchoolPolicy4b96100 = TransportSchoolPolicy;
+
+export type TransportSchoolPolicyUpdate4b96100 = TransportSchoolPolicyUpdate;
+
+export type TransportTermInvoiceGeneration4b96100 = TransportTermInvoiceGeneration;
+
+export type TransportPlatformOverview4b96100 = TransportPlatformOverview;
+
+export type TransportOwnerInvoice4b96100 = TransportOwnerInvoice;
+
+export type TransportRequestInput4b96100 = TransportRequestInput;
+
+export type TransportRequestDecision4b96100 = TransportRequestDecision;
+
+export type TransportRequest4b96100 = TransportRequest;
+
+export type TransportHistoryEntry4b96100 = TransportHistoryEntry;
+
+export type TransportOwnerSchoolSummary4b96100 = TransportOwnerSchoolSummary;
+
+export type PromotionStatus4b96100 = PromotionStatus;
+
+export type PreparePromotionBatchInput4b96100 = PreparePromotionBatchInput;
+
+export type PromotionReviewInput4b96100 = PromotionReviewInput;
+
+export type PromotionPlacement4b96100 = PromotionPlacement;
+
+export type PromotionStudent4b96100 = PromotionStudent;
+
+export type PromotionBatch4b96100 = PromotionBatch;
+
+export type PromotionBatchDetail4b96100 = PromotionBatchDetail;
+
+export type PromotionHistoryEntry4b96100 = PromotionHistoryEntry;
+
+export type AdmissionApplicationStatus4b96100 = AdmissionApplicationStatus;
+
+export type AdmissionDocumentInput4b96100 = AdmissionDocumentInput;
+
+export type AdmissionApplicantInput4b96100 = AdmissionApplicantInput;
+
+export type AdmissionGuardianInput4b96100 = AdmissionGuardianInput;
+
+export type AdmissionEmergencyContactInput4b96100 = AdmissionEmergencyContactInput;
+
+export type AdmissionApplicantResponse4b96100 = AdmissionApplicantResponse;
+
+export type AdmissionApplicantProfilePatch4b96100 = AdmissionApplicantProfilePatch;
+
+export type AdmissionGuardianProfilePatch4b96100 = AdmissionGuardianProfilePatch;
+
+export type AdmissionApplicationPatchInput4b96100 = AdmissionApplicationPatchInput;
+
+export type AdmissionGuardianResponse4b96100 = AdmissionGuardianResponse;
+
+export type AdmissionEmergencyContactResponse4b96100 = AdmissionEmergencyContactResponse;
+
+export type AdmissionApplicationInput4b96100 = AdmissionApplicationInput;
+
+export type StaffAdmissionApplicationInput4b96100 = StaffAdmissionApplicationInput;
+
+export type PublicAdmissionPortalResponse4b96100 = PublicAdmissionPortalResponse;
+
+export type AdmissionPortalSettingsInput4b96100 = AdmissionPortalSettingsInput;
+
+export type AdmissionPortalSettingsResponse4b96100 = AdmissionPortalSettingsResponse;
+
+export type PublicAdmissionApplicationReceipt4b96100 = PublicAdmissionApplicationReceipt;
+
+export type AdmissionTrackingInput4b96100 = AdmissionTrackingInput;
+
+export type PublicAdmissionApplicationStatus4b96100 = PublicAdmissionApplicationStatus;
+
+export type AdmissionApplicationListResponse4b96100 = AdmissionApplicationListResponse;
+
+export type AdmissionApplicationResponse4b96100 = AdmissionApplicationResponse;
+
+export type AdmissionReviewInput4b96100 = AdmissionReviewInput;
+
+export type AdmissionStatusTransitionInput4b96100 = AdmissionStatusTransitionInput;
+
+export type AdmissionDocumentUploadInput4b96100 = AdmissionDocumentUploadInput;
+
+export type AdmissionDocumentUploadResponse4b96100 = AdmissionDocumentUploadResponse;
+
+export type AdmissionDocumentConfirmInput4b96100 = AdmissionDocumentConfirmInput;
+
+export type AdmissionDocumentResponse4b96100 = AdmissionDocumentResponse;
+
+export type AdmissionDocumentDownloadInput4b96100 = AdmissionDocumentDownloadInput;
+
+export type AdmissionDocumentDownloadResponse4b96100 = AdmissionDocumentDownloadResponse;
+
+export type AdmissionConversionInput4b96100 = AdmissionConversionInput;
+
+export type AdmissionConversionResponse4b96100 = AdmissionConversionResponse;
+
+export type CareError4b96100 = CareError;
+
+export type MedicalProfileInput4b96100 = MedicalProfileInput;
+
+export type MedicalProfile4b96100 = MedicalProfile;
+
+export type ProviderContact4b96100 = ProviderContact;
+
+export type EmergencyContact4b96100 = EmergencyContact;
+
+export type MedicalProfileRevision4b96100 = MedicalProfileRevision;
+
+export type MedicalVisitInput4b96100 = MedicalVisitInput;
+
+export type MedicalVisitPatch4b96100 = MedicalVisitPatch;
+
+export type MedicalVisit4b96100 = MedicalVisit;
+
+export type WelfareRecordInput4b96100 = WelfareRecordInput;
+
+export type WelfareRecordPatch4b96100 = WelfareRecordPatch;
+
+export type WelfareRecord4b96100 = WelfareRecord;
+
+export type BehaviourRecordInput4b96100 = BehaviourRecordInput;
+
+export type BehaviourRecordPatch4b96100 = BehaviourRecordPatch;
+
+export type BehaviourRecord4b96100 = BehaviourRecord;
+
+export type BehaviourConfigurationInput4b96100 = BehaviourConfigurationInput;
+
+export type BehaviourConfiguration4b96100 = BehaviourConfiguration;
+
+export type CareGrantInput4b96100 = CareGrantInput;
+
+export type CareGrant4b96100 = CareGrant;
+
+export type RecordRevision4b96100 = RecordRevision;
+
+export type ParentCareSummary4b96100 = ParentCareSummary;
+
+export type CommunicationAnnouncementExtensions4b96100 = CommunicationAnnouncementExtensions;
+
+export type CommunicationChannelAvailability4b96100 = CommunicationChannelAvailability;
+
+export type ParentCommunicationChild4b96100 = ParentCommunicationChild;
+
+export type ParentCreateCommunicationThread4b96100 = ParentCreateCommunicationThread;
+
+export type SchoolCreateCommunicationThread4b96100 = SchoolCreateCommunicationThread;
+
+export type ParentCommunicationReply4b96100 = ParentCommunicationReply;
+
+export type ParentCommunicationMessage4b96100 = ParentCommunicationMessage;
+
+export type ParentCommunicationThread4b96100 = ParentCommunicationThread;
+
+export type ParentCommunicationThreadPage4b96100 = ParentCommunicationThreadPage;
+
+export type ParentCommunicationThreadDetail4b96100 = ParentCommunicationThreadDetail;
+
+export type ParentCommunicationThreadMutation4b96100 = ParentCommunicationThreadMutation;
+
+export type ExpectedVersion4b96100 = ExpectedVersion;
+
+export type SecurityVisitorInput4b96100 = SecurityVisitorInput;
+
+export type SecurityVisitorPatch4b96100 = SecurityVisitorPatch;
+
+export type SecurityVisitor4b96100 = SecurityVisitor;
+
+export type AuthorizedPickupPersonInput4b96100 = AuthorizedPickupPersonInput;
+
+export type AuthorizedPickupPerson4b96100 = AuthorizedPickupPerson;
+
+export type PickupPersonDecision4b96100 = PickupPersonDecision;
+
+export type StudentPickupRequestInput4b96100 = StudentPickupRequestInput;
+
+export type StudentPickupRequest4b96100 = StudentPickupRequest;
+
+export type PickupDecision4b96100 = PickupDecision;
+
+export type PickupCancelInput4b96100 = PickupCancelInput;
+
+export type PickupCompletionInput4b96100 = PickupCompletionInput;
+
+export type SecurityIncidentInput4b96100 = SecurityIncidentInput;
+
+export type SecurityIncidentPatch4b96100 = SecurityIncidentPatch;
+
+export type SecurityIncident4b96100 = SecurityIncident;
+
+export type SecurityOperationHistory4b96100 = SecurityOperationHistory;
+
+export type SecurityIncidentAttachmentUploadInput4b96100 = SecurityIncidentAttachmentUploadInput;
+
+export type SecurityIncidentAttachment4b96100 = SecurityIncidentAttachment;
+
+export type SecurityIncidentAttachmentUploadIntent4b96100 = SecurityIncidentAttachmentUploadIntent;
+
+export type SecurityIncidentAttachmentDownload4b96100 = SecurityIncidentAttachmentDownload;
+
+export type SecurityDashboard4b96100 = SecurityDashboard;
+
+export type SecurityEvent4b96100 = SecurityEvent;
+
+export type SecurityEventPage4b96100 = SecurityEventPage;
+
+export type CampusPresencePage4b96100 = CampusPresencePage;
+
+export type PresenceReviewInput4b96100 = PresenceReviewInput;
+
+export type SecurityLocationInput4b96100 = SecurityLocationInput;
+
+export type SecurityLocation4b96100 = SecurityLocation;
+
+export type SecurityReaderInput4b96100 = SecurityReaderInput;
+
+export type SecurityReader4b96100 = SecurityReader;
+
+export type SecuritySettings4b96100 = SecuritySettings;
+
+export type SecuritySettingsInput4b96100 = SecuritySettingsInput;
+
+export type SecurityGrantInput4b96100 = SecurityGrantInput;
+
+export type SecurityStaffGrant4b96100 = SecurityStaffGrant;
+
+export type StatusInput4b96100 = StatusInput;
+
+export type LostCardInput4b96100 = LostCardInput;
+
 /**
  * Invalid request or rejected school/device/student relationship
  */
@@ -10095,6 +19130,363 @@ export const StatusFilterParameter = {
 } as const;
 
 export type SearchParameter = string;
+
+export type GetSchoolSecurityDashboardParams = {
+from?: string;
+to?: string;
+};
+
+export type ListSchoolSecurityEventsParams = {
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 1
+ */
+beforeId?: number;
+from?: string;
+to?: string;
+eventType?: ListSchoolSecurityEventsEventType;
+result?: ListSchoolSecurityEventsResult;
+/**
+ * Optional school-scoped student filter. PICKUP_APPROVE access requires studentId with eventType EXIT and result CONFIRMED.
+ * @minimum 1
+ */
+studentId?: number;
+};
+
+export type ListSchoolSecurityEventsEventType = typeof ListSchoolSecurityEventsEventType[keyof typeof ListSchoolSecurityEventsEventType];
+
+
+export const ListSchoolSecurityEventsEventType = {
+  ENTRY: 'ENTRY',
+  EXIT: 'EXIT',
+} as const;
+
+export type ListSchoolSecurityEventsResult = typeof ListSchoolSecurityEventsResult[keyof typeof ListSchoolSecurityEventsResult];
+
+
+export const ListSchoolSecurityEventsResult = {
+  CONFIRMED: 'CONFIRMED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export type ListSchoolCampusPresenceParams = {
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 1
+ */
+beforeId?: number;
+from?: string;
+to?: string;
+};
+
+export type ListParentCommunicationChildrenParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+};
+
+export type ListParentCommunicationChildren200 = {
+  children: ParentCommunicationChild[];
+};
+
+export type ListParentMessageThreadsParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+/**
+ * @minimum 1
+ */
+childId?: number;
+/**
+ * @maxLength 100
+ */
+search?: string;
+includeArchived?: boolean;
+/**
+ * @minimum 1
+ */
+beforeId?: number;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+};
+
+export type ListSchoolParentMessageThreadsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * Required for delegated staff/teacher access; scope remains limited to that assigned student.
+ * @minimum 1
+ */
+childId?: number;
+/**
+ * @maxLength 100
+ */
+search?: string;
+includeArchived?: boolean;
+/**
+ * @minimum 1
+ */
+beforeId?: number;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+};
+
+export type GetParentCommunicationThreadParams = {
+/**
+ * @minimum 1
+ */
+beforeMessageId?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+};
+
+export type MarkParentCommunicationThreadRead200 = {
+  thread: ParentCommunicationThread;
+  readAt: string;
+};
+
+export type ArchiveParentCommunicationThread200 = {
+  threadId: number;
+  archived: true;
+};
+
+export type ListSchoolSecurityVisitorsParams = {
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ * @maximum 100000
+ */
+offset?: number;
+status?: ListSchoolSecurityVisitorsStatus;
+from?: string;
+to?: string;
+};
+
+export type ListSchoolSecurityVisitorsStatus = typeof ListSchoolSecurityVisitorsStatus[keyof typeof ListSchoolSecurityVisitorsStatus];
+
+
+export const ListSchoolSecurityVisitorsStatus = {
+  ON_SITE: 'ON_SITE',
+  CHECKED_OUT: 'CHECKED_OUT',
+} as const;
+
+export type ListParentPickupRequestsParams = {
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ * @maximum 100000
+ */
+offset?: number;
+};
+
+export type ListSchoolPickupRequestsParams = {
+status?: ListSchoolPickupRequestsStatus;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ * @maximum 100000
+ */
+offset?: number;
+};
+
+export type ListSchoolPickupRequestsStatus = typeof ListSchoolPickupRequestsStatus[keyof typeof ListSchoolPickupRequestsStatus];
+
+
+export const ListSchoolPickupRequestsStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  CANCELLED: 'CANCELLED',
+  REFUSED: 'REFUSED',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export type ListSchoolSecurityIncidentsParams = {
+status?: ListSchoolSecurityIncidentsStatus;
+from?: string;
+to?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ * @maximum 100000
+ */
+offset?: number;
+};
+
+export type ListSchoolSecurityIncidentsStatus = typeof ListSchoolSecurityIncidentsStatus[keyof typeof ListSchoolSecurityIncidentsStatus];
+
+
+export const ListSchoolSecurityIncidentsStatus = {
+  OPEN: 'OPEN',
+  INVESTIGATING: 'INVESTIGATING',
+  RESOLVED: 'RESOLVED',
+} as const;
+
+export type GetAdmissionPortalSettingsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type UpdateAdmissionPortalSettingsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type RequestStaffAdmissionDocumentUploadParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type ListAdmissionApplicationsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+status?: AdmissionApplicationStatus;
+/**
+ * @maxLength 100
+ */
+search?: string;
+};
+
+export type GetAdmissionApplicationParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type UpdateAdmissionApplicationProfileParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type ReviewAdmissionApplicationParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type TransitionAdmissionApplicationParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type RequestAdmissionDocumentUploadParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type ConfirmAdmissionDocumentUploadParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type ConvertAcceptedAdmissionApplicationParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type PreparePromotionBatchParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type ListPromotionBatchesParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+};
+
+export type GetPromotionBatchParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type ListPromotionBatchHistoryParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type ReviewPromotionDecisionParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type FinalizePromotionBatchParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
 
 export type DownloadPrintableNfcCardParams = {
 /**
@@ -11331,6 +20723,18 @@ limit?: number;
  * @minimum 1
  */
 beforeId?: number;
+/**
+ * @minimum 1
+ */
+childId?: number;
+category?: CommunicationCategory;
+isRead?: boolean;
+includeArchived?: boolean;
+includeExpired?: boolean;
+/**
+ * @maxLength 100
+ */
+search?: string;
 };
 
 export type GetCommunicationPreferencesParams = {

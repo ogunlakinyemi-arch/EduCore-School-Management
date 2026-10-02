@@ -25,6 +25,7 @@ const state = vi.hoisted(() => ({
   activePushDeviceCount: 0,
   recentPushRegistrationCount: 0,
   notificationExists: true,
+  notificationArchived: false,
 }));
 
 const dbMock = vi.hoisted(() => {
@@ -81,10 +82,33 @@ const dbMock = vi.hoisted(() => {
         rowCount: state.notificationExists ? 1 : 0,
       };
     }
+    if (sql.includes("FROM communication_notifications n") && sql.includes("FOR UPDATE")) {
+      return {
+        rows: state.notificationExists
+          ? [{
+              ...state.notification,
+              archivedAt: state.notificationArchived ? "2026-09-01T10:05:00.000Z" : null,
+              category: state.notification.category,
+            }]
+          : [],
+        rowCount: state.notificationExists ? 1 : 0,
+      };
+    }
+    if (sql.includes("UPDATE communication_notifications") && sql.includes("SET archived_at")) {
+      state.notificationArchived = Boolean(values[1]);
+      return { rows: [], rowCount: 1 };
+    }
     if (sql.includes("FROM communication_notifications n")) {
       return {
         rows: state.notificationExists
-          ? [{ ...state.notification, isRead: true, readAt: "2026-09-01T10:05:00.000Z", deliveries: [] }]
+          ? [{
+              ...state.notification,
+              isArchived: state.notificationArchived,
+              archivedAt: state.notificationArchived ? "2026-09-01T10:05:00.000Z" : null,
+              isRead: true,
+              readAt: "2026-09-01T10:05:00.000Z",
+              deliveries: [],
+            }]
           : [],
         rowCount: state.notificationExists ? 1 : 0,
       };
@@ -171,6 +195,7 @@ beforeEach(() => {
   state.calls.length = 0;
   state.entitled = true;
   state.notificationExists = true;
+  state.notificationArchived = false;
   state.notification = {
     id: 8, schoolId: 4, category: "ANNOUNCEMENT", subject: "School update",
     body: "A notice", link: "/students", origin: "CAMPAIGN", isRead: false,
@@ -207,11 +232,11 @@ describe("communication inbox recipient, tenant, and push privacy", () => {
       nextBeforeId: null,
       items: [{
         id: 8, schoolId: 4, category: "ANNOUNCEMENT", subject: "School update",
-        body: "A notice", origin: "CAMPAIGN", isRead: false,
+        body: "A notice", origin: "CAMPAIGN", isRead: false, isArchived: false,
       }],
     });
     expect(Object.keys(body.items[0]).sort()).toEqual([
-      "body", "category", "createdAt", "deliveries", "id", "isRead", "link", "origin", "readAt", "schoolId", "subject",
+      "body", "category", "createdAt", "deliveries", "id", "isArchived", "isRead", "link", "origin", "readAt", "schoolId", "subject",
     ]);
     const listQuery = state.calls.find(({ sql }) => sql.includes("FROM communication_notifications n") && !sql.includes("COUNT(*)"))!;
     expect(listQuery.values).toEqual([73, 51]);
@@ -221,6 +246,37 @@ describe("communication inbox recipient, tenant, and push privacy", () => {
     expect(listQuery.sql).toContain("parent_student_relationships");
     expect(listQuery.sql).toContain("rel.status='ACTIVE'");
     expect(listQuery.sql).toContain("partner_profile_users");
+  });
+
+  it("filters notifications by linked child, category, read state, and search while excluding archived/expired items", async () => {
+    const response = await fetch(
+      `${baseUrl}/communication/notifications?childId=321&category=ACADEMIC&isRead=false&search=math`,
+    );
+    expect(response.status).toBe(200);
+    const listQuery = state.calls.find(({ sql }) =>
+      sql.includes("FROM communication_notifications n") && !sql.includes("COUNT(*)"),
+    )!;
+    expect(listQuery.values).toEqual([73, 321, "ACADEMIC", false, "%math%", 51]);
+    expect(listQuery.sql).toContain("n.subject_student_id=$2");
+    expect(listQuery.sql).toContain("n.archived_at IS NULL");
+    expect(listQuery.sql).toContain("communication_campaigns expiring_campaign");
+  });
+
+  it("archives recipient-owned notices but protects mandatory security/account notices", async () => {
+    const response = await fetch(`${baseUrl}/communication/notifications/8/archive`, { method: "PATCH" });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ isArchived: true });
+    expect(state.calls.some(({ sql }) => sql.includes("SET archived_at=CASE WHEN $2"))).toBe(true);
+    const audit = state.calls.find(({ sql }) => sql.includes("INSERT INTO audit_logs"))!;
+    expect(audit.values).toContain("COMMUNICATION_NOTIFICATION_ARCHIVED");
+
+    const unarchiveResponse = await fetch(`${baseUrl}/communication/notifications/8/unarchive`, { method: "PATCH" });
+    expect(unarchiveResponse.status).toBe(200);
+    expect(await unarchiveResponse.json()).toMatchObject({ isArchived: false });
+
+    state.notification.category = "SECURITY";
+    const protectedResponse = await fetch(`${baseUrl}/communication/notifications/8/archive`, { method: "PATCH" });
+    expect(protectedResponse.status).toBe(400);
   });
 
   it("marks manual finance campaign notices as campaign-origin", async () => {

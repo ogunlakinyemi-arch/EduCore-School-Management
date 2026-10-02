@@ -9,6 +9,5035 @@ import * as zod from 'zod';
 
 
 /**
+ * School Admins receive all permissions, Platform Owners receive read-only oversight, and staff receive only explicit current school grants.
+ * @summary Return the current actor’s live effective security permissions
+ */
+
+
+
+export const GetSchoolSecurityAccessParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GetSchoolSecurityAccessResponse = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "actorRole": zod.union([zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'STAFF']),zod.null()]),
+  "canView": zod.boolean(),
+  "readOnly": zod.boolean(),
+  "permissions": zod.array(zod.enum(['SECURITY_READ', 'SECURITY_MANAGE', 'VISITOR_MANAGE', 'PICKUP_APPROVE', 'INCIDENT_MANAGE', 'EMERGENCY_BROADCAST', 'COMMUNICATION_SEND', 'MANAGE_READERS', 'MANAGE_CARDS', 'REVIEW_PRESENCE'])),
+  "grantedPermissions": zod.array(zod.enum(['READ', 'MANAGE_READERS', 'MANAGE_CARDS', 'REVIEW_PRESENCE', 'SECURITY_READ', 'SECURITY_MANAGE', 'VISITOR_MANAGE', 'PICKUP_APPROVE', 'INCIDENT_MANAGE', 'EMERGENCY_BROADCAST', 'COMMUNICATION_SEND']))
+})
+
+
+/**
+ * School-scoped safe-read endpoint; never exposes device credentials or uses a platform-wide device listing.
+ * @summary List active, configured, credentialed devices currently bound to this school
+ */
+
+
+
+export const ListEligibleSchoolSecurityDevicesParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ListEligibleSchoolSecurityDevicesResponseItem = zod.object({
+  "id": zod.number().int().min(1),
+  "name": zod.string(),
+  "serialNumber": zod.string(),
+  "deviceType": zod.enum(['NFC', 'BIOMETRIC', 'HYBRID']),
+  "readerId": zod.number().int().nullable(),
+  "readerName": zod.string().nullable(),
+  "locationId": zod.number().int().nullable()
+})
+export const ListEligibleSchoolSecurityDevicesResponse = zod.array(ListEligibleSchoolSecurityDevicesResponseItem)
+
+
+/**
+ * Uses the live parent-child relation and returns no card UID or unrelated student data.
+ * @summary Read an authenticated parent’s own child NFC and campus-presence summary
+ */
+
+
+
+export const GetParentChildSecuritySummaryParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+export const getParentChildSecuritySummaryResponseRecentEventsMax = 10;
+
+
+
+export const GetParentChildSecuritySummaryResponse = zod.object({
+  "studentId": zod.number().int().min(1),
+  "schoolId": zod.number().int().min(1),
+  "nfcStatus": zod.enum(['ACTIVE', 'LOST', 'INACTIVE', 'NO_CARD']),
+  "currentPresence": zod.union([zod.null(),zod.object({
+  "state": zod.enum(['ON_CAMPUS', 'OFF_CAMPUS', 'REQUIRES_REVIEW']),
+  "lastOccurredAt": zod.coerce.date()
+})]),
+  "recentEvents": zod.array(zod.object({
+  "eventType": zod.enum(['ENTRY', 'EXIT']),
+  "occurredAt": zod.coerce.date()
+})).max(getParentChildSecuritySummaryResponseRecentEventsMax)
+})
+
+
+/**
+ * @summary Archive a notification for its authenticated recipient
+ */
+
+
+
+export const ArchiveCommunicationNotificationParams = zod.object({
+  "notificationId": zod.coerce.number().int().min(1)
+})
+
+export const archiveCommunicationNotificationResponseOneDeliveriesItemAttemptsMin = 0;
+
+
+
+export const ArchiveCommunicationNotificationResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int().nullable(),
+  "origin": zod.enum(['CAMPAIGN', 'SYSTEM']).describe('CAMPAIGN is a manually authored school message; SYSTEM is a backend event, including finance notifications.'),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
+  "subject": zod.string().nullable(),
+  "body": zod.string(),
+  "link": zod.string().nullable(),
+  "isRead": zod.boolean(),
+  "isArchived": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "readAt": zod.coerce.date().nullable(),
+  "deliveries": zod.array(zod.object({
+  "id": zod.number().int(),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "status": zod.enum(['QUEUED', 'PROCESSING', 'SENT', 'DELIVERED', 'READ', 'FAILED', 'CANCELLED']),
+  "provider": zod.string().nullable().describe('Provider identifier, or dev-test for the explicit no-network adapter.'),
+  "providerMessageId": zod.string().nullable(),
+  "providerAcknowledgedAt": zod.coerce.date().nullable().describe('Provider acceptance is not proof of delivery.'),
+  "sentAt": zod.coerce.date().nullable(),
+  "deliveredAt": zod.coerce.date().nullable(),
+  "failedAt": zod.coerce.date().nullable(),
+  "errorCode": zod.string().nullable(),
+  "lastError": zod.string().nullable().describe('Sanitized error text. Never contains recipient addresses, raw provider payloads, or credentials.'),
+  "attempts": zod.number().int().min(archiveCommunicationNotificationResponseOneDeliveriesItemAttemptsMin),
+  "nextAttemptAt": zod.coerce.date(),
+  "lastAttemptAt": zod.coerce.date().nullable(),
+  "simulated": zod.boolean().describe('True indicates a no-network simulation and never means a real send.'),
+  "label": zod.string().nullable().describe('Human-readable delivery label; simulation labels explicitly indicate that no message was sent.')
+}))
+}).and(zod.object({
+  "isArchived": zod.boolean().describe('Explicitly reports the notification\'s participant-visible archive state.')
+}))
+
+
+/**
+ * @summary Restore an archived notification to the recipient's default inbox
+ */
+
+
+
+export const UnarchiveCommunicationNotificationParams = zod.object({
+  "notificationId": zod.coerce.number().int().min(1)
+})
+
+export const unarchiveCommunicationNotificationResponseOneDeliveriesItemAttemptsMin = 0;
+
+
+
+export const UnarchiveCommunicationNotificationResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int().nullable(),
+  "origin": zod.enum(['CAMPAIGN', 'SYSTEM']).describe('CAMPAIGN is a manually authored school message; SYSTEM is a backend event, including finance notifications.'),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']),
+  "subject": zod.string().nullable(),
+  "body": zod.string(),
+  "link": zod.string().nullable(),
+  "isRead": zod.boolean(),
+  "isArchived": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "readAt": zod.coerce.date().nullable(),
+  "deliveries": zod.array(zod.object({
+  "id": zod.number().int(),
+  "channel": zod.enum(['IN_APP', 'SMS', 'EMAIL', 'PUSH']),
+  "status": zod.enum(['QUEUED', 'PROCESSING', 'SENT', 'DELIVERED', 'READ', 'FAILED', 'CANCELLED']),
+  "provider": zod.string().nullable().describe('Provider identifier, or dev-test for the explicit no-network adapter.'),
+  "providerMessageId": zod.string().nullable(),
+  "providerAcknowledgedAt": zod.coerce.date().nullable().describe('Provider acceptance is not proof of delivery.'),
+  "sentAt": zod.coerce.date().nullable(),
+  "deliveredAt": zod.coerce.date().nullable(),
+  "failedAt": zod.coerce.date().nullable(),
+  "errorCode": zod.string().nullable(),
+  "lastError": zod.string().nullable().describe('Sanitized error text. Never contains recipient addresses, raw provider payloads, or credentials.'),
+  "attempts": zod.number().int().min(unarchiveCommunicationNotificationResponseOneDeliveriesItemAttemptsMin),
+  "nextAttemptAt": zod.coerce.date(),
+  "lastAttemptAt": zod.coerce.date().nullable(),
+  "simulated": zod.boolean().describe('True indicates a no-network simulation and never means a real send.'),
+  "label": zod.string().nullable().describe('Human-readable delivery label; simulation labels explicitly indicate that no message was sent.')
+}))
+}).and(zod.object({
+  "isArchived": zod.boolean().describe('Explicitly reports the notification\'s participant-visible archive state.')
+}))
+
+
+/**
+ * todayVisitorCheckIns is calculated for the current UTC calendar day; event activity uses the supplied range.
+ * @summary Read aggregate security and current campus presence counts
+ */
+
+
+
+export const GetSchoolSecurityDashboardParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const GetSchoolSecurityDashboardQueryParams = zod.object({
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
+export const getSchoolSecurityDashboardResponseStudentsOnCampusMin = 0;
+
+export const getSchoolSecurityDashboardResponseStaffOnCampusMin = 0;
+
+export const getSchoolSecurityDashboardResponseOffCampusPeopleMin = 0;
+
+export const getSchoolSecurityDashboardResponsePresenceRequiresReviewMin = 0;
+
+export const getSchoolSecurityDashboardResponseAcceptedEntryEventsMin = 0;
+
+export const getSchoolSecurityDashboardResponseAcceptedExitEventsMin = 0;
+
+export const getSchoolSecurityDashboardResponseVisitorsCurrentlyOnCampusMin = 0;
+
+export const getSchoolSecurityDashboardResponseTodayVisitorCheckInsMin = 0;
+
+export const getSchoolSecurityDashboardResponseOpenIncidentsMin = 0;
+
+export const getSchoolSecurityDashboardResponsePendingPickupRequestsMin = 0;
+
+export const getSchoolSecurityDashboardResponseLateArrivalsMin = 0;
+
+export const getSchoolSecurityDashboardResponseEarlyDeparturesMin = 0;
+
+export const getSchoolSecurityDashboardResponseRejectedAttemptsMin = 0;
+
+export const getSchoolSecurityDashboardResponseRevokedCardAttemptsMin = 0;
+
+
+
+export const GetSchoolSecurityDashboardResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "range": zod.object({
+  "from": zod.coerce.date(),
+  "to": zod.coerce.date()
+}),
+  "studentsOnCampus": zod.number().int().min(getSchoolSecurityDashboardResponseStudentsOnCampusMin),
+  "staffOnCampus": zod.number().int().min(getSchoolSecurityDashboardResponseStaffOnCampusMin),
+  "offCampusPeople": zod.number().int().min(getSchoolSecurityDashboardResponseOffCampusPeopleMin),
+  "presenceRequiresReview": zod.number().int().min(getSchoolSecurityDashboardResponsePresenceRequiresReviewMin),
+  "acceptedEntryEvents": zod.number().int().min(getSchoolSecurityDashboardResponseAcceptedEntryEventsMin),
+  "acceptedExitEvents": zod.number().int().min(getSchoolSecurityDashboardResponseAcceptedExitEventsMin),
+  "visitorsCurrentlyOnCampus": zod.number().int().min(getSchoolSecurityDashboardResponseVisitorsCurrentlyOnCampusMin),
+  "todayVisitorCheckIns": zod.number().int().min(getSchoolSecurityDashboardResponseTodayVisitorCheckInsMin),
+  "openIncidents": zod.number().int().min(getSchoolSecurityDashboardResponseOpenIncidentsMin),
+  "pendingPickupRequests": zod.number().int().min(getSchoolSecurityDashboardResponsePendingPickupRequestsMin),
+  "lateArrivals": zod.number().int().min(getSchoolSecurityDashboardResponseLateArrivalsMin),
+  "earlyDepartures": zod.number().int().min(getSchoolSecurityDashboardResponseEarlyDeparturesMin),
+  "rejectedAttempts": zod.number().int().min(getSchoolSecurityDashboardResponseRejectedAttemptsMin),
+  "revokedCardAttempts": zod.number().int().min(getSchoolSecurityDashboardResponseRevokedCardAttemptsMin),
+  "visitorCountsAvailable": zod.literal(true),
+  "physicalAccessControl": zod.literal("NOT_CONNECTED")
+})
+
+
+/**
+ * Global event queries require SECURITY_READ. PICKUP_APPROVE may use only a confirmed EXIT query scoped to one student in the requested school.
+ * @summary List a school’s immutable NFC security identity events
+ */
+
+
+
+export const ListSchoolSecurityEventsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const listSchoolSecurityEventsQueryLimitDefault = 50;
+export const listSchoolSecurityEventsQueryLimitMax = 100;
+
+
+
+
+
+export const ListSchoolSecurityEventsQueryParams = zod.object({
+  "limit": zod.coerce.number().int().min(1).max(listSchoolSecurityEventsQueryLimitMax).default(listSchoolSecurityEventsQueryLimitDefault),
+  "beforeId": zod.coerce.number().int().min(1).optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional(),
+  "eventType": zod.enum(['ENTRY', 'EXIT']).optional(),
+  "result": zod.enum(['CONFIRMED', 'REJECTED']).optional(),
+  "studentId": zod.coerce.number().int().min(1).optional().describe('Optional school-scoped student filter. PICKUP_APPROVE access requires studentId with eventType EXIT and result CONFIRMED.')
+})
+
+export const ListSchoolSecurityEventsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "readerId": zod.number().int().nullable(),
+  "locationId": zod.number().int().nullable(),
+  "deviceId": zod.number().int(),
+  "personType": zod.enum(['STUDENT', 'STAFF', 'UNKNOWN']),
+  "personName": zod.string().nullable(),
+  "studentId": zod.number().int().nullable(),
+  "employeeId": zod.number().int().nullable(),
+  "eventType": zod.enum(['ENTRY', 'EXIT']),
+  "identityResult": zod.enum(['CONFIRMED', 'REJECTED']),
+  "reasonCode": zod.string().nullable(),
+  "locationName": zod.string().nullable(),
+  "readerName": zod.string().nullable(),
+  "className": zod.string().nullable(),
+  "section": zod.string().nullable(),
+  "occurredAt": zod.coerce.date(),
+  "receivedAt": zod.coerce.date(),
+  "syncStatus": zod.literal("SYNCED"),
+  "physicalControlStatus": zod.literal("NOT_CONNECTED")
+})),
+  "nextCursor": zod.number().int().nullable()
+})
+
+
+/**
+ * @summary List current student and staff campus presence
+ */
+
+
+
+export const ListSchoolCampusPresenceParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const listSchoolCampusPresenceQueryLimitDefault = 50;
+export const listSchoolCampusPresenceQueryLimitMax = 100;
+
+
+
+
+export const ListSchoolCampusPresenceQueryParams = zod.object({
+  "limit": zod.coerce.number().int().min(1).max(listSchoolCampusPresenceQueryLimitMax).default(listSchoolCampusPresenceQueryLimitDefault),
+  "beforeId": zod.coerce.number().int().min(1).optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
+export const ListSchoolCampusPresenceResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "personType": zod.enum(['STUDENT', 'STAFF']),
+  "studentId": zod.number().int().nullable(),
+  "employeeId": zod.number().int().nullable(),
+  "personName": zod.string(),
+  "admissionNumber": zod.string().nullable(),
+  "employeeNumber": zod.string().nullable(),
+  "className": zod.string().nullable(),
+  "section": zod.string().nullable(),
+  "state": zod.enum(['ON_CAMPUS', 'OFF_CAMPUS', 'REQUIRES_REVIEW']),
+  "lastOccurredAt": zod.coerce.date(),
+  "reviewReason": zod.string().nullable()
+})),
+  "nextCursor": zod.number().int().nullable()
+})
+
+
+/**
+ * @summary Resolve an ambiguous presence sequence with an explicit audited state
+ */
+
+
+
+
+export const ResolveSchoolCampusPresenceReviewParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "presenceId": zod.coerce.number().int().min(1)
+})
+
+export const resolveSchoolCampusPresenceReviewBodyReasonMin = 3;
+export const resolveSchoolCampusPresenceReviewBodyReasonMax = 500;
+
+
+
+export const ResolveSchoolCampusPresenceReviewBody = zod.object({
+  "state": zod.enum(['ON_CAMPUS', 'OFF_CAMPUS']),
+  "reason": zod.string().min(resolveSchoolCampusPresenceReviewBodyReasonMin).max(resolveSchoolCampusPresenceReviewBodyReasonMax)
+})
+
+export const ResolveSchoolCampusPresenceReviewResponse = zod.unknown()
+
+
+/**
+ * @summary List campus security locations
+ */
+
+
+
+export const ListSchoolSecurityLocationsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const listSchoolSecurityLocationsResponseOneNameMin = 2;
+export const listSchoolSecurityLocationsResponseOneNameMax = 120;
+
+export const listSchoolSecurityLocationsResponseOneDescriptionMax = 500;
+
+export const listSchoolSecurityLocationsResponseOneZoneTypeDefault = `OTHER`;
+
+export const ListSchoolSecurityLocationsResponseItem = zod.object({
+  "name": zod.string().min(listSchoolSecurityLocationsResponseOneNameMin).max(listSchoolSecurityLocationsResponseOneNameMax),
+  "description": zod.string().max(listSchoolSecurityLocationsResponseOneDescriptionMax).nullish(),
+  "zoneType": zod.enum(['GATE', 'CAMPUS', 'BUILDING', 'OTHER']).default(listSchoolSecurityLocationsResponseOneZoneTypeDefault)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+export const ListSchoolSecurityLocationsResponse = zod.array(ListSchoolSecurityLocationsResponseItem)
+
+
+/**
+ * @summary Create a security location
+ */
+
+
+
+export const CreateSchoolSecurityLocationParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const createSchoolSecurityLocationBodyNameMin = 2;
+export const createSchoolSecurityLocationBodyNameMax = 120;
+
+export const createSchoolSecurityLocationBodyDescriptionMax = 500;
+
+export const createSchoolSecurityLocationBodyZoneTypeDefault = `OTHER`;
+
+export const CreateSchoolSecurityLocationBody = zod.object({
+  "name": zod.string().min(createSchoolSecurityLocationBodyNameMin).max(createSchoolSecurityLocationBodyNameMax),
+  "description": zod.string().max(createSchoolSecurityLocationBodyDescriptionMax).nullish(),
+  "zoneType": zod.enum(['GATE', 'CAMPUS', 'BUILDING', 'OTHER']).default(createSchoolSecurityLocationBodyZoneTypeDefault)
+})
+
+export const createSchoolSecurityLocationResponseOneNameMin = 2;
+export const createSchoolSecurityLocationResponseOneNameMax = 120;
+
+export const createSchoolSecurityLocationResponseOneDescriptionMax = 500;
+
+export const createSchoolSecurityLocationResponseOneZoneTypeDefault = `OTHER`;
+
+export const CreateSchoolSecurityLocationResponse = zod.object({
+  "name": zod.string().min(createSchoolSecurityLocationResponseOneNameMin).max(createSchoolSecurityLocationResponseOneNameMax),
+  "description": zod.string().max(createSchoolSecurityLocationResponseOneDescriptionMax).nullish(),
+  "zoneType": zod.enum(['GATE', 'CAMPUS', 'BUILDING', 'OTHER']).default(createSchoolSecurityLocationResponseOneZoneTypeDefault)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+
+
+/**
+ * @summary Activate or deactivate a security location
+ */
+
+
+
+
+export const SetSchoolSecurityLocationStatusParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "locationId": zod.coerce.number().int().min(1)
+})
+
+export const SetSchoolSecurityLocationStatusBody = zod.object({
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+
+export const SetSchoolSecurityLocationStatusResponse = zod.unknown()
+
+
+/**
+ * @summary List configured readers and their existing device bindings
+ */
+
+
+
+export const ListSchoolSecurityReadersParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+export const listSchoolSecurityReadersResponseOneNameMin = 2;
+export const listSchoolSecurityReadersResponseOneNameMax = 120;
+
+export const listSchoolSecurityReadersResponseOnePermissionsMax = 2;
+
+
+
+export const ListSchoolSecurityReadersResponseItem = zod.object({
+  "locationId": zod.number().int().min(1),
+  "deviceId": zod.number().int().min(1),
+  "name": zod.string().min(listSchoolSecurityReadersResponseOneNameMin).max(listSchoolSecurityReadersResponseOneNameMax),
+  "permissions": zod.array(zod.enum(['ENTRY', 'EXIT'])).min(1).max(listSchoolSecurityReadersResponseOnePermissionsMax)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "deviceName": zod.string(),
+  "deviceSerial": zod.string(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "locationName": zod.string()
+}))
+export const ListSchoolSecurityReadersResponse = zod.array(ListSchoolSecurityReadersResponseItem)
+
+
+/**
+ * This does not provision device credentials or provide lock or gate control.
+ * @summary Bind an already-configured school device to a location and entry/exit permissions
+ */
+
+
+
+export const ConfigureSchoolSecurityReaderParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+export const configureSchoolSecurityReaderBodyNameMin = 2;
+export const configureSchoolSecurityReaderBodyNameMax = 120;
+
+export const configureSchoolSecurityReaderBodyPermissionsMax = 2;
+
+
+
+export const ConfigureSchoolSecurityReaderBody = zod.object({
+  "locationId": zod.number().int().min(1),
+  "deviceId": zod.number().int().min(1),
+  "name": zod.string().min(configureSchoolSecurityReaderBodyNameMin).max(configureSchoolSecurityReaderBodyNameMax),
+  "permissions": zod.array(zod.enum(['ENTRY', 'EXIT'])).min(1).max(configureSchoolSecurityReaderBodyPermissionsMax)
+})
+
+
+
+export const configureSchoolSecurityReaderResponseOneNameMin = 2;
+export const configureSchoolSecurityReaderResponseOneNameMax = 120;
+
+export const configureSchoolSecurityReaderResponseOnePermissionsMax = 2;
+
+
+
+export const ConfigureSchoolSecurityReaderResponse = zod.object({
+  "locationId": zod.number().int().min(1),
+  "deviceId": zod.number().int().min(1),
+  "name": zod.string().min(configureSchoolSecurityReaderResponseOneNameMin).max(configureSchoolSecurityReaderResponseOneNameMax),
+  "permissions": zod.array(zod.enum(['ENTRY', 'EXIT'])).min(1).max(configureSchoolSecurityReaderResponseOnePermissionsMax)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "deviceName": zod.string(),
+  "deviceSerial": zod.string(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "locationName": zod.string()
+}))
+
+
+/**
+ * @summary Activate or deactivate a configured reader
+ */
+
+
+
+
+export const SetSchoolSecurityReaderStatusParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "readerId": zod.coerce.number().int().min(1)
+})
+
+export const SetSchoolSecurityReaderStatusBody = zod.object({
+  "status": zod.enum(['ACTIVE', 'INACTIVE'])
+})
+
+export const SetSchoolSecurityReaderStatusResponse = zod.unknown()
+
+
+/**
+ * @summary Read security and parent arrival/departure notification settings
+ */
+
+
+
+export const GetSchoolSecuritySettingsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const GetSchoolSecuritySettingsResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "securityEnabled": zod.boolean(),
+  "parentEntryAlerts": zod.boolean(),
+  "parentExitAlerts": zod.boolean(),
+  "updatedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Update security event recording and parent in-app notification settings
+ */
+
+
+
+export const UpdateSchoolSecuritySettingsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const UpdateSchoolSecuritySettingsBody = zod.object({
+  "securityEnabled": zod.boolean(),
+  "parentEntryAlerts": zod.boolean(),
+  "parentExitAlerts": zod.boolean()
+})
+
+export const UpdateSchoolSecuritySettingsResponse = zod.unknown()
+
+
+/**
+ * @summary List explicit delegated school-security staff grants
+ */
+
+
+
+export const ListSchoolSecurityStaffGrantsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ListSchoolSecurityStaffGrantsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "permissions": zod.array(zod.string()),
+  "expiresAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['ACTIVE', 'REVOKED', 'EXPIRED'])
+})
+export const ListSchoolSecurityStaffGrantsResponse = zod.array(ListSchoolSecurityStaffGrantsResponseItem)
+
+
+/**
+ * Only an active School Admin may create or revoke staff grants.
+ * @summary Grant an active school staff member explicit security permissions
+ */
+
+
+
+export const GrantSchoolSecurityStaffParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+export const grantSchoolSecurityStaffBodyPermissionsMax = 11;
+
+
+
+export const GrantSchoolSecurityStaffBody = zod.object({
+  "userId": zod.number().int().min(1),
+  "permissions": zod.array(zod.enum(['READ', 'MANAGE_READERS', 'MANAGE_CARDS', 'REVIEW_PRESENCE', 'SECURITY_READ', 'SECURITY_MANAGE', 'VISITOR_MANAGE', 'PICKUP_APPROVE', 'INCIDENT_MANAGE', 'EMERGENCY_BROADCAST', 'COMMUNICATION_SEND'])).min(1).max(grantSchoolSecurityStaffBodyPermissionsMax),
+  "expiresAt": zod.coerce.date().nullish()
+})
+
+export const GrantSchoolSecurityStaffResponse = zod.object({
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "permissions": zod.array(zod.string()),
+  "expiresAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['ACTIVE', 'REVOKED', 'EXPIRED'])
+})
+
+
+/**
+ * @summary Revoke an active delegated security grant
+ */
+
+
+
+
+export const RevokeSchoolSecurityStaffGrantParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "grantId": zod.coerce.number().int().min(1)
+})
+
+export const RevokeSchoolSecurityStaffGrantResponse = zod.unknown()
+
+
+/**
+ * Preserves card and person history and appends the existing NFC card-history record. Replacement remains in the pre-existing student or staff NFC lifecycle.
+ * @summary Mark an existing student or staff NFC card lost without replacing its identity
+ */
+
+
+
+
+export const MarkSchoolNfcCardLostParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "cardId": zod.coerce.number().int().min(1)
+})
+
+export const markSchoolNfcCardLostBodyReasonMin = 3;
+export const markSchoolNfcCardLostBodyReasonMax = 500;
+
+
+
+export const MarkSchoolNfcCardLostBody = zod.object({
+  "reason": zod.string().min(markSchoolNfcCardLostBodyReasonMin).max(markSchoolNfcCardLostBodyReasonMax)
+})
+
+export const MarkSchoolNfcCardLostResponse = zod.unknown()
+
+
+/**
+ * @summary Report configured communication channel availability
+ */
+export const GetParentCommunicationChannelsResponse = zod.object({
+  "channels": zod.array(zod.object({
+  "channel": zod.enum(['IN_APP', 'PUSH', 'SMS', 'EMAIL']),
+  "available": zod.boolean(),
+  "status": zod.enum(['AVAILABLE', 'CONFIGURATION_REQUIRED', 'UNAVAILABLE']),
+  "detail": zod.string()
+}))
+})
+
+
+/**
+ * @summary List only the authenticated parent's active linked children
+ */
+
+
+
+export const ListParentCommunicationChildrenQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional()
+})
+
+export const ListParentCommunicationChildrenResponse = zod.object({
+  "children": zod.array(zod.object({
+  "studentId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "className": zod.string().nullable(),
+  "section": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Search and paginate the parent's own active-child threads
+ */
+
+
+export const listParentMessageThreadsQuerySearchMax = 100;
+
+export const listParentMessageThreadsQueryIncludeArchivedDefault = false;
+export const listParentMessageThreadsQueryLimitDefault = 25;
+export const listParentMessageThreadsQueryLimitMax = 50;
+
+
+
+export const ListParentMessageThreadsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional(),
+  "childId": zod.coerce.number().int().min(1).optional(),
+  "search": zod.coerce.string().max(listParentMessageThreadsQuerySearchMax).optional(),
+  "includeArchived": zod.coerce.boolean().default(listParentMessageThreadsQueryIncludeArchivedDefault),
+  "beforeId": zod.coerce.number().int().min(1).optional(),
+  "limit": zod.coerce.number().int().min(1).max(listParentMessageThreadsQueryLimitMax).default(listParentMessageThreadsQueryLimitDefault)
+})
+
+export const ListParentMessageThreadsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "childName": zod.string(),
+  "schoolName": zod.string(),
+  "subject": zod.string(),
+  "category": zod.enum(['GENERAL', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE']),
+  "lastMessageAt": zod.coerce.date(),
+  "unreadCount": zod.number().int(),
+  "archived": zod.boolean()
+})),
+  "hasMore": zod.boolean(),
+  "nextBeforeId": zod.number().int().nullable()
+})
+
+
+/**
+ * @summary Start a message thread about one of the parent's active linked children
+ */
+
+export const createParentMessageThreadBodySubjectMax = 200;
+
+export const createParentMessageThreadBodyBodyMax = 5000;
+
+export const createParentMessageThreadBodyIdempotencyKeyMin = 8;
+export const createParentMessageThreadBodyIdempotencyKeyMax = 128;
+
+
+
+export const CreateParentMessageThreadBody = zod.object({
+  "studentId": zod.number().int().min(1),
+  "subject": zod.string().min(1).max(createParentMessageThreadBodySubjectMax),
+  "category": zod.enum(['GENERAL', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE']),
+  "body": zod.string().min(1).max(createParentMessageThreadBodyBodyMax),
+  "idempotencyKey": zod.string().min(createParentMessageThreadBodyIdempotencyKeyMin).max(createParentMessageThreadBodyIdempotencyKeyMax)
+})
+
+export const CreateParentMessageThreadResponse = zod.object({
+  "thread": zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "childName": zod.string(),
+  "schoolName": zod.string(),
+  "subject": zod.string(),
+  "category": zod.enum(['GENERAL', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE']),
+  "lastMessageAt": zod.coerce.date(),
+  "unreadCount": zod.number().int(),
+  "archived": zod.boolean()
+}),
+  "message": zod.object({
+  "id": zod.number().int(),
+  "senderRole": zod.enum(['PARENT', 'SCHOOL']),
+  "body": zod.string(),
+  "createdAt": zod.coerce.date()
+}),
+  "idempotent": zod.boolean()
+})
+
+
+/**
+ * @summary List authorized school-side parent message threads
+ */
+
+
+export const listSchoolParentMessageThreadsQuerySearchMax = 100;
+
+export const listSchoolParentMessageThreadsQueryIncludeArchivedDefault = false;
+export const listSchoolParentMessageThreadsQueryLimitDefault = 25;
+export const listSchoolParentMessageThreadsQueryLimitMax = 50;
+
+
+
+export const ListSchoolParentMessageThreadsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "childId": zod.coerce.number().int().min(1).optional().describe('Required for delegated staff/teacher access; scope remains limited to that assigned student.'),
+  "search": zod.coerce.string().max(listSchoolParentMessageThreadsQuerySearchMax).optional(),
+  "includeArchived": zod.coerce.boolean().default(listSchoolParentMessageThreadsQueryIncludeArchivedDefault),
+  "beforeId": zod.coerce.number().int().min(1).optional(),
+  "limit": zod.coerce.number().int().min(1).max(listSchoolParentMessageThreadsQueryLimitMax).default(listSchoolParentMessageThreadsQueryLimitDefault)
+})
+
+export const ListSchoolParentMessageThreadsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "childName": zod.string(),
+  "schoolName": zod.string(),
+  "subject": zod.string(),
+  "category": zod.enum(['GENERAL', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE']),
+  "lastMessageAt": zod.coerce.date(),
+  "unreadCount": zod.number().int(),
+  "archived": zod.boolean()
+})),
+  "hasMore": zod.boolean(),
+  "nextBeforeId": zod.number().int().nullable()
+})
+
+
+/**
+ * Teachers require an active COMMUNICATION_SEND grant and a current student class assignment. Other staff require the grant and an active assigned student-care follow-up. Accountants may create finance-only threads.
+ * @summary Start a school message to a parent of a selected active student
+ */
+
+
+
+export const createSchoolParentMessageThreadBodySubjectMax = 200;
+
+export const createSchoolParentMessageThreadBodyBodyMax = 5000;
+
+export const createSchoolParentMessageThreadBodyIdempotencyKeyMin = 8;
+export const createSchoolParentMessageThreadBodyIdempotencyKeyMax = 128;
+
+
+
+export const CreateSchoolParentMessageThreadBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "studentId": zod.number().int().min(1),
+  "parentUserId": zod.number().int().min(1),
+  "subject": zod.string().min(1).max(createSchoolParentMessageThreadBodySubjectMax),
+  "category": zod.enum(['GENERAL', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE']),
+  "body": zod.string().min(1).max(createSchoolParentMessageThreadBodyBodyMax),
+  "idempotencyKey": zod.string().min(createSchoolParentMessageThreadBodyIdempotencyKeyMin).max(createSchoolParentMessageThreadBodyIdempotencyKeyMax)
+})
+
+export const CreateSchoolParentMessageThreadResponse = zod.object({
+  "thread": zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "childName": zod.string(),
+  "schoolName": zod.string(),
+  "subject": zod.string(),
+  "category": zod.enum(['GENERAL', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE']),
+  "lastMessageAt": zod.coerce.date(),
+  "unreadCount": zod.number().int(),
+  "archived": zod.boolean()
+}),
+  "message": zod.object({
+  "id": zod.number().int(),
+  "senderRole": zod.enum(['PARENT', 'SCHOOL']),
+  "body": zod.string(),
+  "createdAt": zod.coerce.date()
+}),
+  "idempotent": zod.boolean()
+})
+
+
+/**
+ * @summary Read an authorized message thread and paginated messages
+ */
+
+
+
+export const GetParentCommunicationThreadParams = zod.object({
+  "threadId": zod.coerce.number().int().min(1)
+})
+
+
+export const getParentCommunicationThreadQueryLimitDefault = 50;
+export const getParentCommunicationThreadQueryLimitMax = 100;
+
+
+
+export const GetParentCommunicationThreadQueryParams = zod.object({
+  "beforeMessageId": zod.coerce.number().int().min(1).optional(),
+  "limit": zod.coerce.number().int().min(1).max(getParentCommunicationThreadQueryLimitMax).default(getParentCommunicationThreadQueryLimitDefault)
+})
+
+export const GetParentCommunicationThreadResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "childName": zod.string(),
+  "schoolName": zod.string(),
+  "subject": zod.string(),
+  "category": zod.enum(['GENERAL', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE']),
+  "lastMessageAt": zod.coerce.date(),
+  "unreadCount": zod.number().int(),
+  "archived": zod.boolean()
+}).and(zod.object({
+  "messages": zod.array(zod.object({
+  "id": zod.number().int(),
+  "senderRole": zod.enum(['PARENT', 'SCHOOL']),
+  "body": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "hasMoreMessages": zod.boolean(),
+  "nextBeforeMessageId": zod.number().int().nullable()
+}))
+
+
+/**
+ * @summary Add an idempotent message to an authorized thread
+ */
+
+
+
+export const ReplyToParentCommunicationThreadParams = zod.object({
+  "threadId": zod.coerce.number().int().min(1)
+})
+
+export const replyToParentCommunicationThreadBodyBodyMax = 5000;
+
+export const replyToParentCommunicationThreadBodyIdempotencyKeyMin = 8;
+export const replyToParentCommunicationThreadBodyIdempotencyKeyMax = 128;
+
+
+
+export const ReplyToParentCommunicationThreadBody = zod.object({
+  "body": zod.string().min(1).max(replyToParentCommunicationThreadBodyBodyMax),
+  "idempotencyKey": zod.string().min(replyToParentCommunicationThreadBodyIdempotencyKeyMin).max(replyToParentCommunicationThreadBodyIdempotencyKeyMax)
+})
+
+export const ReplyToParentCommunicationThreadResponse = zod.object({
+  "thread": zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "childName": zod.string(),
+  "schoolName": zod.string(),
+  "subject": zod.string(),
+  "category": zod.enum(['GENERAL', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE']),
+  "lastMessageAt": zod.coerce.date(),
+  "unreadCount": zod.number().int(),
+  "archived": zod.boolean()
+}),
+  "message": zod.object({
+  "id": zod.number().int(),
+  "senderRole": zod.enum(['PARENT', 'SCHOOL']),
+  "body": zod.string(),
+  "createdAt": zod.coerce.date()
+}),
+  "idempotent": zod.boolean()
+})
+
+
+/**
+ * @summary Mark the authorized participant side of a thread as read
+ */
+
+
+
+export const MarkParentCommunicationThreadReadParams = zod.object({
+  "threadId": zod.coerce.number().int().min(1)
+})
+
+export const MarkParentCommunicationThreadReadResponse = zod.object({
+  "thread": zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "childName": zod.string(),
+  "schoolName": zod.string(),
+  "subject": zod.string(),
+  "category": zod.enum(['GENERAL', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE']),
+  "lastMessageAt": zod.coerce.date(),
+  "unreadCount": zod.number().int(),
+  "archived": zod.boolean()
+}),
+  "readAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Archive a thread for the authenticated participant side
+ */
+
+
+
+export const ArchiveParentCommunicationThreadParams = zod.object({
+  "threadId": zod.coerce.number().int().min(1)
+})
+
+export const ArchiveParentCommunicationThreadResponse = zod.object({
+  "threadId": zod.number().int(),
+  "archived": zod.literal(true)
+})
+
+
+/**
+ * The VISITOR_MANAGE domain grant permits reading visitor-management screens; unrelated SECURITY_READ or card-only grants do not.
+ * @summary List paginated visitor check-ins for users with VISITOR_MANAGE
+ */
+
+
+
+export const ListSchoolSecurityVisitorsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const listSchoolSecurityVisitorsQueryLimitDefault = 50;
+export const listSchoolSecurityVisitorsQueryLimitMax = 100;
+
+export const listSchoolSecurityVisitorsQueryOffsetDefault = 0;
+export const listSchoolSecurityVisitorsQueryOffsetMin = 0;
+export const listSchoolSecurityVisitorsQueryOffsetMax = 100000;
+
+
+
+export const ListSchoolSecurityVisitorsQueryParams = zod.object({
+  "limit": zod.coerce.number().int().min(1).max(listSchoolSecurityVisitorsQueryLimitMax).default(listSchoolSecurityVisitorsQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(listSchoolSecurityVisitorsQueryOffsetMin).max(listSchoolSecurityVisitorsQueryOffsetMax).default(listSchoolSecurityVisitorsQueryOffsetDefault),
+  "status": zod.enum(['ON_SITE', 'CHECKED_OUT']).optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
+export const ListSchoolSecurityVisitorsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "visitorName": zod.string(),
+  "phone": zod.string().nullable(),
+  "idReference": zod.string().nullable(),
+  "purpose": zod.string(),
+  "hostName": zod.string().nullable(),
+  "hostStudentId": zod.number().int().nullable(),
+  "checkedInAt": zod.coerce.date(),
+  "checkedOutAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['ON_SITE', 'CHECKED_OUT']),
+  "notes": zod.string().nullable(),
+  "securityOfficerUserId": zod.number().int(),
+  "securityLocationId": zod.number().int().nullable(),
+  "securityDeviceId": zod.number().int().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListSchoolSecurityVisitorsResponse = zod.array(ListSchoolSecurityVisitorsResponseItem)
+
+
+/**
+ * This records a security officer-confirmed check-in; it does not assert physical gate control. Location and device references are optional and validated in-school when supplied.
+ * @summary Register and explicitly check a visitor in
+ */
+
+
+
+export const RegisterSecurityVisitorParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const registerSecurityVisitorBodyVisitorNameMax = 160;
+
+export const registerSecurityVisitorBodyPhoneMax = 40;
+
+export const registerSecurityVisitorBodyIdReferenceMax = 160;
+
+export const registerSecurityVisitorBodyPurposeMax = 1000;
+
+export const registerSecurityVisitorBodyHostNameMax = 160;
+
+
+export const registerSecurityVisitorBodyNotesMax = 2000;
+
+
+
+
+
+export const RegisterSecurityVisitorBody = zod.object({
+  "visitorName": zod.string().min(1).max(registerSecurityVisitorBodyVisitorNameMax),
+  "phone": zod.string().max(registerSecurityVisitorBodyPhoneMax).nullish(),
+  "idReference": zod.string().max(registerSecurityVisitorBodyIdReferenceMax).nullish(),
+  "purpose": zod.string().min(1).max(registerSecurityVisitorBodyPurposeMax),
+  "hostName": zod.string().max(registerSecurityVisitorBodyHostNameMax).nullish(),
+  "hostStudentId": zod.number().int().min(1).nullish(),
+  "notes": zod.string().max(registerSecurityVisitorBodyNotesMax).nullish(),
+  "securityLocationId": zod.number().int().min(1).nullish(),
+  "securityDeviceId": zod.number().int().min(1).nullish()
+})
+
+export const RegisterSecurityVisitorResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "visitorName": zod.string(),
+  "phone": zod.string().nullable(),
+  "idReference": zod.string().nullable(),
+  "purpose": zod.string(),
+  "hostName": zod.string().nullable(),
+  "hostStudentId": zod.number().int().nullable(),
+  "checkedInAt": zod.coerce.date(),
+  "checkedOutAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['ON_SITE', 'CHECKED_OUT']),
+  "notes": zod.string().nullable(),
+  "securityOfficerUserId": zod.number().int(),
+  "securityLocationId": zod.number().int().nullable(),
+  "securityDeviceId": zod.number().int().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Amend an on-site visitor record using optimistic concurrency
+ */
+
+
+
+
+export const UpdateSecurityVisitorParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "visitorId": zod.coerce.number().int().min(1)
+})
+
+
+export const updateSecurityVisitorBodyVisitorNameMax = 160;
+
+export const updateSecurityVisitorBodyPhoneMax = 40;
+
+export const updateSecurityVisitorBodyIdReferenceMax = 160;
+
+export const updateSecurityVisitorBodyPurposeMax = 1000;
+
+export const updateSecurityVisitorBodyHostNameMax = 160;
+
+
+export const updateSecurityVisitorBodyNotesMax = 2000;
+
+
+
+export const UpdateSecurityVisitorBody = zod.object({
+  "expectedVersion": zod.number().int().min(1),
+  "visitorName": zod.string().min(1).max(updateSecurityVisitorBodyVisitorNameMax).optional(),
+  "phone": zod.string().max(updateSecurityVisitorBodyPhoneMax).nullish(),
+  "idReference": zod.string().max(updateSecurityVisitorBodyIdReferenceMax).nullish(),
+  "purpose": zod.string().min(1).max(updateSecurityVisitorBodyPurposeMax).optional(),
+  "hostName": zod.string().max(updateSecurityVisitorBodyHostNameMax).nullish(),
+  "hostStudentId": zod.number().int().min(1).nullish(),
+  "notes": zod.string().max(updateSecurityVisitorBodyNotesMax).nullish()
+}).describe('At least one visitor field plus expectedVersion; only on-site visitors can be amended.')
+
+export const UpdateSecurityVisitorResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "visitorName": zod.string(),
+  "phone": zod.string().nullable(),
+  "idReference": zod.string().nullable(),
+  "purpose": zod.string(),
+  "hostName": zod.string().nullable(),
+  "hostStudentId": zod.number().int().nullable(),
+  "checkedInAt": zod.coerce.date(),
+  "checkedOutAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['ON_SITE', 'CHECKED_OUT']),
+  "notes": zod.string().nullable(),
+  "securityOfficerUserId": zod.number().int(),
+  "securityLocationId": zod.number().int().nullable(),
+  "securityDeviceId": zod.number().int().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Explicitly check out a visitor exactly once
+ */
+
+
+
+
+export const CheckoutSecurityVisitorParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "visitorId": zod.coerce.number().int().min(1)
+})
+
+export const checkoutSecurityVisitorHeaderIdempotencyKeyMin = 8;
+export const checkoutSecurityVisitorHeaderIdempotencyKeyMax = 128;
+
+
+
+export const CheckoutSecurityVisitorHeader = zod.object({
+  "Idempotency-Key": zod.string().min(checkoutSecurityVisitorHeaderIdempotencyKeyMin).max(checkoutSecurityVisitorHeaderIdempotencyKeyMax)
+})
+
+
+
+
+export const CheckoutSecurityVisitorBody = zod.object({
+  "expectedVersion": zod.number().int().min(1)
+})
+
+export const CheckoutSecurityVisitorResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "visitorName": zod.string(),
+  "phone": zod.string().nullable(),
+  "idReference": zod.string().nullable(),
+  "purpose": zod.string(),
+  "hostName": zod.string().nullable(),
+  "hostStudentId": zod.number().int().nullable(),
+  "checkedInAt": zod.coerce.date(),
+  "checkedOutAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['ON_SITE', 'CHECKED_OUT']),
+  "notes": zod.string().nullable(),
+  "securityOfficerUserId": zod.number().int(),
+  "securityLocationId": zod.number().int().nullable(),
+  "securityDeviceId": zod.number().int().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Requires VISITOR_MANAGE, the domain permission for visitor screens and records.
+ * @summary Read immutable visitor check-in, amendment and checkout history
+ */
+
+
+
+
+export const GetSecurityVisitorHistoryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "visitorId": zod.coerce.number().int().min(1)
+})
+
+export const GetSecurityVisitorHistoryResponseItem = zod.object({
+  "revision": zod.number().int(),
+  "eventType": zod.string(),
+  "actorUserId": zod.number().int(),
+  "result": zod.enum(['SUCCESS', 'REJECTED']),
+  "snapshot": zod.object({
+
+}).passthrough(),
+  "createdAt": zod.coerce.date()
+})
+export const GetSecurityVisitorHistoryResponse = zod.array(GetSecurityVisitorHistoryResponseItem)
+
+
+/**
+ * @summary List only the calling parent's pickup-person nominations for an actively linked child
+ */
+
+
+
+export const ListParentPickupPersonNominationsParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const ListParentPickupPersonNominationsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "fullName": zod.string(),
+  "phone": zod.string(),
+  "relationship": zod.string().nullable(),
+  "identityReference": zod.string().nullable(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'REVOKED']),
+  "validFrom": zod.coerce.date().nullable(),
+  "validUntil": zod.coerce.date().nullable(),
+  "requestedAt": zod.coerce.date(),
+  "decisionReason": zod.string().nullable(),
+  "decidedAt": zod.coerce.date().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListParentPickupPersonNominationsResponse = zod.array(ListParentPickupPersonNominationsResponseItem)
+
+
+/**
+ * A nomination is pending until an authorized school security officer approves it.
+ * @summary Nominate a pickup person for school review
+ */
+
+
+
+export const NominatePickupPersonParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const nominatePickupPersonBodyFullNameMax = 160;
+
+export const nominatePickupPersonBodyPhoneMin = 3;
+export const nominatePickupPersonBodyPhoneMax = 40;
+
+export const nominatePickupPersonBodyRelationshipMax = 100;
+
+export const nominatePickupPersonBodyIdentityReferenceMax = 160;
+
+
+
+export const NominatePickupPersonBody = zod.object({
+  "fullName": zod.string().min(1).max(nominatePickupPersonBodyFullNameMax),
+  "phone": zod.string().min(nominatePickupPersonBodyPhoneMin).max(nominatePickupPersonBodyPhoneMax),
+  "relationship": zod.string().max(nominatePickupPersonBodyRelationshipMax).nullish(),
+  "identityReference": zod.string().max(nominatePickupPersonBodyIdentityReferenceMax).nullish(),
+  "validFrom": zod.coerce.date().optional(),
+  "validUntil": zod.coerce.date().optional()
+})
+
+export const NominatePickupPersonResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "fullName": zod.string(),
+  "phone": zod.string(),
+  "relationship": zod.string().nullable(),
+  "identityReference": zod.string().nullable(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'REVOKED']),
+  "validFrom": zod.coerce.date().nullable(),
+  "validUntil": zod.coerce.date().nullable(),
+  "requestedAt": zod.coerce.date(),
+  "decisionReason": zod.string().nullable(),
+  "decidedAt": zod.coerce.date().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * PICKUP_APPROVE includes read access to school pickup-management lists; SECURITY_READ or unrelated card-only grants do not.
+ * @summary List pickup-person nominations for users with PICKUP_APPROVE
+ */
+
+
+
+
+export const ListSchoolPickupPersonsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const ListSchoolPickupPersonsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "fullName": zod.string(),
+  "phone": zod.string(),
+  "relationship": zod.string().nullable(),
+  "identityReference": zod.string().nullable(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'REVOKED']),
+  "validFrom": zod.coerce.date().nullable(),
+  "validUntil": zod.coerce.date().nullable(),
+  "requestedAt": zod.coerce.date(),
+  "decisionReason": zod.string().nullable(),
+  "decidedAt": zod.coerce.date().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListSchoolPickupPersonsResponse = zod.array(ListSchoolPickupPersonsResponseItem)
+
+
+/**
+ * @summary Approve, reject, or revoke a pickup-person nomination with compare-and-swap
+ */
+
+
+
+
+
+export const DecideAuthorizedPickupPersonParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1),
+  "personId": zod.coerce.number().int().min(1)
+})
+
+
+export const decideAuthorizedPickupPersonBodyReasonMax = 1000;
+
+
+
+export const DecideAuthorizedPickupPersonBody = zod.object({
+  "expectedVersion": zod.number().int().min(1),
+  "decision": zod.enum(['APPROVE', 'REJECT', 'REVOKE']),
+  "reason": zod.string().max(decideAuthorizedPickupPersonBodyReasonMax).nullish()
+})
+
+export const DecideAuthorizedPickupPersonResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "fullName": zod.string(),
+  "phone": zod.string(),
+  "relationship": zod.string().nullable(),
+  "identityReference": zod.string().nullable(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'REVOKED']),
+  "validFrom": zod.coerce.date().nullable(),
+  "validUntil": zod.coerce.date().nullable(),
+  "requestedAt": zod.coerce.date(),
+  "decisionReason": zod.string().nullable(),
+  "decidedAt": zod.coerce.date().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List this parent's requests for an actively linked child
+ */
+
+
+
+export const ListParentPickupRequestsParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const listParentPickupRequestsQueryLimitDefault = 50;
+export const listParentPickupRequestsQueryLimitMax = 100;
+
+export const listParentPickupRequestsQueryOffsetDefault = 0;
+export const listParentPickupRequestsQueryOffsetMin = 0;
+export const listParentPickupRequestsQueryOffsetMax = 100000;
+
+
+
+export const ListParentPickupRequestsQueryParams = zod.object({
+  "limit": zod.coerce.number().int().min(1).max(listParentPickupRequestsQueryLimitMax).default(listParentPickupRequestsQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(listParentPickupRequestsQueryOffsetMin).max(listParentPickupRequestsQueryOffsetMax).default(listParentPickupRequestsQueryOffsetDefault)
+})
+
+export const ListParentPickupRequestsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "requestedByParentId": zod.number().int(),
+  "pickupPersonId": zod.number().int(),
+  "requestedPickupAt": zod.coerce.date(),
+  "validFrom": zod.coerce.date(),
+  "validUntil": zod.coerce.date(),
+  "reason": zod.string().nullable(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'REFUSED', 'COMPLETED']),
+  "decisionReason": zod.string().nullable(),
+  "decidedAt": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "completionPickupPersonId": zod.number().int().nullable(),
+  "recordedSecurityEventId": zod.number().int().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListParentPickupRequestsResponse = zod.array(ListParentPickupRequestsResponseItem)
+
+
+/**
+ * Every request revalidates the calling parent's active family link and the pickup person's school, student, approval and requested-time validity.
+ * @summary Request a scheduled student pickup by an approved pickup person
+ */
+
+
+
+export const RequestStudentPickupParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+export const requestStudentPickupBodyReasonMax = 1000;
+
+
+
+export const RequestStudentPickupBody = zod.object({
+  "pickupPersonId": zod.number().int().min(1),
+  "requestedPickupAt": zod.coerce.date(),
+  "reason": zod.string().max(requestStudentPickupBodyReasonMax).nullish()
+})
+
+export const RequestStudentPickupResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "requestedByParentId": zod.number().int(),
+  "pickupPersonId": zod.number().int(),
+  "requestedPickupAt": zod.coerce.date(),
+  "validFrom": zod.coerce.date(),
+  "validUntil": zod.coerce.date(),
+  "reason": zod.string().nullable(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'REFUSED', 'COMPLETED']),
+  "decisionReason": zod.string().nullable(),
+  "decidedAt": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "completionPickupPersonId": zod.number().int().nullable(),
+  "recordedSecurityEventId": zod.number().int().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * PICKUP_APPROVE includes read access to the school's pickup request queue.
+ * @summary List paginated pickup requests for users with PICKUP_APPROVE
+ */
+
+
+
+
+export const ListSchoolPickupRequestsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const listSchoolPickupRequestsQueryLimitDefault = 50;
+export const listSchoolPickupRequestsQueryLimitMax = 100;
+
+export const listSchoolPickupRequestsQueryOffsetDefault = 0;
+export const listSchoolPickupRequestsQueryOffsetMin = 0;
+export const listSchoolPickupRequestsQueryOffsetMax = 100000;
+
+
+
+export const ListSchoolPickupRequestsQueryParams = zod.object({
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'REFUSED', 'COMPLETED']).optional(),
+  "limit": zod.coerce.number().int().min(1).max(listSchoolPickupRequestsQueryLimitMax).default(listSchoolPickupRequestsQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(listSchoolPickupRequestsQueryOffsetMin).max(listSchoolPickupRequestsQueryOffsetMax).default(listSchoolPickupRequestsQueryOffsetDefault)
+})
+
+export const ListSchoolPickupRequestsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "requestedByParentId": zod.number().int(),
+  "pickupPersonId": zod.number().int(),
+  "requestedPickupAt": zod.coerce.date(),
+  "validFrom": zod.coerce.date(),
+  "validUntil": zod.coerce.date(),
+  "reason": zod.string().nullable(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'REFUSED', 'COMPLETED']),
+  "decisionReason": zod.string().nullable(),
+  "decidedAt": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "completionPickupPersonId": zod.number().int().nullable(),
+  "recordedSecurityEventId": zod.number().int().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListSchoolPickupRequestsResponse = zod.array(ListSchoolPickupRequestsResponseItem)
+
+
+/**
+ * @summary Approve or reject a pending pickup request
+ */
+
+
+
+
+
+export const DecideStudentPickupRequestParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1),
+  "requestId": zod.coerce.number().int().min(1)
+})
+
+
+export const decideStudentPickupRequestBodyReasonMax = 1000;
+
+
+
+export const DecideStudentPickupRequestBody = zod.object({
+  "expectedVersion": zod.number().int().min(1),
+  "decision": zod.enum(['APPROVE', 'REJECT']),
+  "reason": zod.string().min(1).max(decideStudentPickupRequestBodyReasonMax)
+})
+
+export const DecideStudentPickupRequestResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "requestedByParentId": zod.number().int(),
+  "pickupPersonId": zod.number().int(),
+  "requestedPickupAt": zod.coerce.date(),
+  "validFrom": zod.coerce.date(),
+  "validUntil": zod.coerce.date(),
+  "reason": zod.string().nullable(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'REFUSED', 'COMPLETED']),
+  "decisionReason": zod.string().nullable(),
+  "decidedAt": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "completionPickupPersonId": zod.number().int().nullable(),
+  "recordedSecurityEventId": zod.number().int().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Cancel this parent's pending or approved pickup request
+ */
+
+
+
+
+export const CancelParentPickupRequestParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1),
+  "requestId": zod.coerce.number().int().min(1)
+})
+
+
+export const cancelParentPickupRequestBodyReasonMax = 1000;
+
+
+
+export const CancelParentPickupRequestBody = zod.object({
+  "expectedVersion": zod.number().int().min(1),
+  "reason": zod.string().min(1).max(cancelParentPickupRequestBodyReasonMax).optional()
+})
+
+export const CancelParentPickupRequestResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "requestedByParentId": zod.number().int(),
+  "pickupPersonId": zod.number().int(),
+  "requestedPickupAt": zod.coerce.date(),
+  "validFrom": zod.coerce.date(),
+  "validUntil": zod.coerce.date(),
+  "reason": zod.string().nullable(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'REFUSED', 'COMPLETED']),
+  "decisionReason": zod.string().nullable(),
+  "decidedAt": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "completionPickupPersonId": zod.number().int().nullable(),
+  "recordedSecurityEventId": zod.number().int().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Record a pickup refusal without marking the student as released
+ */
+
+
+
+
+
+export const RefuseStudentPickupAtExitParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1),
+  "requestId": zod.coerce.number().int().min(1)
+})
+
+
+export const refuseStudentPickupAtExitBodyReasonMax = 1000;
+
+
+
+export const RefuseStudentPickupAtExitBody = zod.object({
+  "expectedVersion": zod.number().int().min(1),
+  "reason": zod.string().min(1).max(refuseStudentPickupAtExitBodyReasonMax).optional()
+})
+
+export const RefuseStudentPickupAtExitResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "requestedByParentId": zod.number().int(),
+  "pickupPersonId": zod.number().int(),
+  "requestedPickupAt": zod.coerce.date(),
+  "validFrom": zod.coerce.date(),
+  "validUntil": zod.coerce.date(),
+  "reason": zod.string().nullable(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'REFUSED', 'COMPLETED']),
+  "decisionReason": zod.string().nullable(),
+  "decidedAt": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "completionPickupPersonId": zod.number().int().nullable(),
+  "recordedSecurityEventId": zod.number().int().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Requires an active security authorization, current parent-child association, the matching currently-valid approved pickup person, an in-window confirmed EXIT event for this student and an idempotency key. A regular exit never completes a pickup request. The transition uses a locked row and optimistic version check.
+ * @summary Complete a release only against an approved request and confirmed recorded student exit
+ */
+
+
+
+
+
+export const CompleteStudentPickupParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1),
+  "requestId": zod.coerce.number().int().min(1)
+})
+
+export const completeStudentPickupHeaderIdempotencyKeyMin = 8;
+export const completeStudentPickupHeaderIdempotencyKeyMax = 128;
+
+
+
+export const CompleteStudentPickupHeader = zod.object({
+  "Idempotency-Key": zod.string().min(completeStudentPickupHeaderIdempotencyKeyMin).max(completeStudentPickupHeaderIdempotencyKeyMax).describe('Reuse the same key to safely retry a completion after a lost response.')
+})
+
+
+
+
+
+
+export const CompleteStudentPickupBody = zod.object({
+  "expectedVersion": zod.number().int().min(1),
+  "pickupPersonId": zod.number().int().min(1),
+  "recordedSecurityEventId": zod.number().int().min(1)
+})
+
+export const CompleteStudentPickupResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "requestedByParentId": zod.number().int(),
+  "pickupPersonId": zod.number().int(),
+  "requestedPickupAt": zod.coerce.date(),
+  "validFrom": zod.coerce.date(),
+  "validUntil": zod.coerce.date(),
+  "reason": zod.string().nullable(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'REFUSED', 'COMPLETED']),
+  "decisionReason": zod.string().nullable(),
+  "decidedAt": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "completionPickupPersonId": zod.number().int().nullable(),
+  "recordedSecurityEventId": zod.number().int().nullable(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Requires PICKUP_APPROVE, the domain permission for school pickup lists and histories.
+ * @summary Read immutable pickup request history
+ */
+
+
+
+
+
+export const GetStudentPickupRequestHistoryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1),
+  "requestId": zod.coerce.number().int().min(1)
+})
+
+export const GetStudentPickupRequestHistoryResponseItem = zod.object({
+  "revision": zod.number().int(),
+  "eventType": zod.string(),
+  "actorUserId": zod.number().int(),
+  "result": zod.enum(['SUCCESS', 'REJECTED']),
+  "snapshot": zod.object({
+
+}).passthrough(),
+  "createdAt": zod.coerce.date()
+})
+export const GetStudentPickupRequestHistoryResponse = zod.array(GetStudentPickupRequestHistoryResponseItem)
+
+
+/**
+ * Incident detail access requires INCIDENT_MANAGE; SECURITY_READ alone does not expose incident narratives or involved-person records.
+ * @summary List paginated, private security incidents
+ */
+
+
+
+export const ListSchoolSecurityIncidentsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const listSchoolSecurityIncidentsQueryLimitDefault = 50;
+export const listSchoolSecurityIncidentsQueryLimitMax = 100;
+
+export const listSchoolSecurityIncidentsQueryOffsetDefault = 0;
+export const listSchoolSecurityIncidentsQueryOffsetMin = 0;
+export const listSchoolSecurityIncidentsQueryOffsetMax = 100000;
+
+
+
+export const ListSchoolSecurityIncidentsQueryParams = zod.object({
+  "status": zod.enum(['OPEN', 'INVESTIGATING', 'RESOLVED']).optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional(),
+  "limit": zod.coerce.number().int().min(1).max(listSchoolSecurityIncidentsQueryLimitMax).default(listSchoolSecurityIncidentsQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(listSchoolSecurityIncidentsQueryOffsetMin).max(listSchoolSecurityIncidentsQueryOffsetMax).default(listSchoolSecurityIncidentsQueryOffsetDefault)
+})
+
+export const ListSchoolSecurityIncidentsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "incidentType": zod.enum(['UNAUTHORIZED_ACCESS', 'LOST_CARD', 'VISITOR_ISSUE', 'STUDENT_RELEASE', 'GATE_INCIDENT', 'SECURITY_CONCERN', 'OTHER']),
+  "occurredAt": zod.coerce.date(),
+  "securityLocationId": zod.number().int().nullable(),
+  "securityDeviceId": zod.number().int().nullable(),
+  "studentId": zod.number().int().nullable(),
+  "involvedPersons": zod.array(zod.object({
+  "personType": zod.enum(['STUDENT', 'STAFF', 'VISITOR']),
+  "personId": zod.number().int()
+})),
+  "assignedStaffUserId": zod.number().int().nullable(),
+  "description": zod.string(),
+  "severity": zod.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL']),
+  "status": zod.enum(['OPEN', 'INVESTIGATING', 'RESOLVED']),
+  "resolution": zod.string().nullable(),
+  "createdByUserId": zod.number().int(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListSchoolSecurityIncidentsResponse = zod.array(ListSchoolSecurityIncidentsResponseItem)
+
+
+/**
+ * @summary Record a security incident and immutable creation history
+ */
+
+
+
+export const CreateSchoolSecurityIncidentParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+
+export const createSchoolSecurityIncidentBodyInvolvedPersonsDefault = [];
+export const createSchoolSecurityIncidentBodyInvolvedPersonsMax = 20;
+
+
+export const createSchoolSecurityIncidentBodyDescriptionMax = 5000;
+
+export const createSchoolSecurityIncidentBodySeverityDefault = `LOW`;
+
+export const CreateSchoolSecurityIncidentBody = zod.object({
+  "incidentType": zod.enum(['UNAUTHORIZED_ACCESS', 'LOST_CARD', 'VISITOR_ISSUE', 'STUDENT_RELEASE', 'GATE_INCIDENT', 'SECURITY_CONCERN', 'OTHER']),
+  "occurredAt": zod.coerce.date(),
+  "securityLocationId": zod.number().int().min(1).nullish(),
+  "securityDeviceId": zod.number().int().min(1).nullish(),
+  "studentId": zod.number().int().min(1).nullish(),
+  "involvedPersons": zod.array(zod.object({
+  "personType": zod.enum(['STUDENT', 'STAFF', 'VISITOR']),
+  "personId": zod.number().int().min(1)
+})).max(createSchoolSecurityIncidentBodyInvolvedPersonsMax).default(createSchoolSecurityIncidentBodyInvolvedPersonsDefault),
+  "assignedStaffUserId": zod.number().int().min(1).nullish(),
+  "description": zod.string().min(1).max(createSchoolSecurityIncidentBodyDescriptionMax),
+  "severity": zod.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL']).default(createSchoolSecurityIncidentBodySeverityDefault)
+})
+
+export const CreateSchoolSecurityIncidentResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "incidentType": zod.enum(['UNAUTHORIZED_ACCESS', 'LOST_CARD', 'VISITOR_ISSUE', 'STUDENT_RELEASE', 'GATE_INCIDENT', 'SECURITY_CONCERN', 'OTHER']),
+  "occurredAt": zod.coerce.date(),
+  "securityLocationId": zod.number().int().nullable(),
+  "securityDeviceId": zod.number().int().nullable(),
+  "studentId": zod.number().int().nullable(),
+  "involvedPersons": zod.array(zod.object({
+  "personType": zod.enum(['STUDENT', 'STAFF', 'VISITOR']),
+  "personId": zod.number().int()
+})),
+  "assignedStaffUserId": zod.number().int().nullable(),
+  "description": zod.string(),
+  "severity": zod.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL']),
+  "status": zod.enum(['OPEN', 'INVESTIGATING', 'RESOLVED']),
+  "resolution": zod.string().nullable(),
+  "createdByUserId": zod.number().int(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update incident assignment or lifecycle using optimistic concurrency
+ */
+
+
+
+
+export const UpdateSchoolSecurityIncidentParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "incidentId": zod.coerce.number().int().min(1)
+})
+
+
+
+export const updateSchoolSecurityIncidentBodyInvolvedPersonsMax = 20;
+
+
+export const updateSchoolSecurityIncidentBodyResolutionMax = 5000;
+
+
+
+export const UpdateSchoolSecurityIncidentBody = zod.object({
+  "expectedVersion": zod.number().int().min(1),
+  "status": zod.enum(['OPEN', 'INVESTIGATING', 'RESOLVED']).optional(),
+  "involvedPersons": zod.array(zod.object({
+  "personType": zod.enum(['STUDENT', 'STAFF', 'VISITOR']),
+  "personId": zod.number().int().min(1)
+})).max(updateSchoolSecurityIncidentBodyInvolvedPersonsMax).optional(),
+  "assignedStaffUserId": zod.number().int().min(1).nullish(),
+  "resolution": zod.string().max(updateSchoolSecurityIncidentBodyResolutionMax).nullish()
+}).describe('Must include at least one mutable field with expectedVersion.')
+
+export const UpdateSchoolSecurityIncidentResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "incidentType": zod.enum(['UNAUTHORIZED_ACCESS', 'LOST_CARD', 'VISITOR_ISSUE', 'STUDENT_RELEASE', 'GATE_INCIDENT', 'SECURITY_CONCERN', 'OTHER']),
+  "occurredAt": zod.coerce.date(),
+  "securityLocationId": zod.number().int().nullable(),
+  "securityDeviceId": zod.number().int().nullable(),
+  "studentId": zod.number().int().nullable(),
+  "involvedPersons": zod.array(zod.object({
+  "personType": zod.enum(['STUDENT', 'STAFF', 'VISITOR']),
+  "personId": zod.number().int()
+})),
+  "assignedStaffUserId": zod.number().int().nullable(),
+  "description": zod.string(),
+  "severity": zod.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL']),
+  "status": zod.enum(['OPEN', 'INVESTIGATING', 'RESOLVED']),
+  "resolution": zod.string().nullable(),
+  "createdByUserId": zod.number().int(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Requires INCIDENT_MANAGE, the sensitive incident-detail permission. Parents and read-only Platform Owner sessions cannot access this route.
+ * @summary List confirmed private attachments for an incident
+ */
+
+
+
+
+export const ListSchoolSecurityIncidentAttachmentsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "incidentId": zod.coerce.number().int().min(1)
+})
+
+export const listSchoolSecurityIncidentAttachmentsResponseByteSizeMax = 10485760;
+
+
+
+export const ListSchoolSecurityIncidentAttachmentsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "incidentId": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "byteSize": zod.number().int().min(1).max(listSchoolSecurityIncidentAttachmentsResponseByteSizeMax),
+  "status": zod.enum(['PENDING_UPLOAD', 'CONFIRMED']),
+  "uploadedByUserId": zod.number().int(),
+  "uploadExpiresAt": zod.coerce.date(),
+  "confirmedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+export const ListSchoolSecurityIncidentAttachmentsResponse = zod.array(ListSchoolSecurityIncidentAttachmentsResponseItem)
+
+
+/**
+ * Requires INCIDENT_MANAGE. Files are restricted to PDF, JPEG, PNG or WebP and 10 MiB. The returned URL is temporary and is never persisted in the application database; confirm only after its 120-second upload window has expired.
+ * @summary Create a short-lived private upload intent for an incident attachment
+ */
+
+
+
+
+export const CreateSchoolSecurityIncidentAttachmentUploadIntentParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "incidentId": zod.coerce.number().int().min(1)
+})
+
+export const createSchoolSecurityIncidentAttachmentUploadIntentBodyFileNameMax = 255;
+
+export const createSchoolSecurityIncidentAttachmentUploadIntentBodyByteSizeMax = 10485760;
+
+
+
+export const CreateSchoolSecurityIncidentAttachmentUploadIntentBody = zod.object({
+  "fileName": zod.string().min(1).max(createSchoolSecurityIncidentAttachmentUploadIntentBodyFileNameMax),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "byteSize": zod.number().int().min(1).max(createSchoolSecurityIncidentAttachmentUploadIntentBodyByteSizeMax)
+})
+
+export const createSchoolSecurityIncidentAttachmentUploadIntentResponseAttachmentByteSizeMax = 10485760;
+
+
+
+export const CreateSchoolSecurityIncidentAttachmentUploadIntentResponse = zod.object({
+  "attachment": zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "incidentId": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "byteSize": zod.number().int().min(1).max(createSchoolSecurityIncidentAttachmentUploadIntentResponseAttachmentByteSizeMax),
+  "status": zod.enum(['PENDING_UPLOAD', 'CONFIRMED']),
+  "uploadedByUserId": zod.number().int(),
+  "uploadExpiresAt": zod.coerce.date(),
+  "confirmedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+}),
+  "uploadUrl": zod.string().url()
+})
+
+
+/**
+ * Only the user who staged the object may confirm it. The URL must have expired; metadata, exact tenant-owned object prefix, object existence, byte size and file signature are verified before the incident audit trail changes.
+ * @summary Confirm an uploaded private incident attachment and validate its object content
+ */
+
+
+
+
+
+export const ConfirmSchoolSecurityIncidentAttachmentParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "incidentId": zod.coerce.number().int().min(1),
+  "attachmentId": zod.coerce.number().int().min(1)
+})
+
+export const confirmSchoolSecurityIncidentAttachmentResponseByteSizeMax = 10485760;
+
+
+
+export const ConfirmSchoolSecurityIncidentAttachmentResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "incidentId": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "byteSize": zod.number().int().min(1).max(confirmSchoolSecurityIncidentAttachmentResponseByteSizeMax),
+  "status": zod.enum(['PENDING_UPLOAD', 'CONFIRMED']),
+  "uploadedByUserId": zod.number().int(),
+  "uploadExpiresAt": zod.coerce.date(),
+  "confirmedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * Requires INCIDENT_MANAGE on every download request. No parent or read-only Platform Owner access is granted by student or school association alone.
+ * @summary Create a short-lived private download URL for a confirmed attachment
+ */
+
+
+
+
+
+export const CreateSchoolSecurityIncidentAttachmentDownloadParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "incidentId": zod.coerce.number().int().min(1),
+  "attachmentId": zod.coerce.number().int().min(1)
+})
+
+export const createSchoolSecurityIncidentAttachmentDownloadResponseAttachmentByteSizeMax = 10485760;
+
+
+
+export const CreateSchoolSecurityIncidentAttachmentDownloadResponse = zod.object({
+  "attachment": zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "incidentId": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "byteSize": zod.number().int().min(1).max(createSchoolSecurityIncidentAttachmentDownloadResponseAttachmentByteSizeMax),
+  "status": zod.enum(['PENDING_UPLOAD', 'CONFIRMED']),
+  "uploadedByUserId": zod.number().int(),
+  "uploadExpiresAt": zod.coerce.date(),
+  "confirmedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+}),
+  "downloadUrl": zod.string().url()
+})
+
+
+/**
+ * Requires INCIDENT_MANAGE to prevent incident narratives and person references leaking through history.
+ * @summary Read append-only incident history
+ */
+
+
+
+
+export const GetSchoolSecurityIncidentHistoryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "incidentId": zod.coerce.number().int().min(1)
+})
+
+export const GetSchoolSecurityIncidentHistoryResponseItem = zod.object({
+  "revision": zod.number().int(),
+  "eventType": zod.string(),
+  "actorUserId": zod.number().int(),
+  "result": zod.enum(['SUCCESS', 'REJECTED']),
+  "snapshot": zod.object({
+
+}).passthrough(),
+  "createdAt": zod.coerce.date()
+})
+export const GetSchoolSecurityIncidentHistoryResponse = zod.array(GetSchoolSecurityIncidentHistoryResponseItem)
+
+
+export const getPublicAdmissionPortalPathPortalKeyRegExp = new RegExp('^[a-z0-9][a-z0-9-]{2,79}$');
+
+
+export const GetPublicAdmissionPortalParams = zod.object({
+  "portalKey": zod.coerce.string().regex(getPublicAdmissionPortalPathPortalKeyRegExp)
+})
+
+export const GetPublicAdmissionPortalResponse = zod.object({
+  "portalKey": zod.string(),
+  "school": zod.object({
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "publicPhone": zod.string().nullish(),
+  "publicEmail": zod.string().email().nullish(),
+  "logoUrl": zod.string().url().nullish()
+}),
+  "admission": zod.object({
+  "open": zod.boolean(),
+  "session": zod.string().nullish(),
+  "term": zod.string().nullish(),
+  "deadline": zod.coerce.date().nullish(),
+  "feeInfo": zod.string().nullish(),
+  "requirements": zod.array(zod.string()).optional(),
+  "requiredDocuments": zod.array(zod.string()).optional(),
+  "instructions": zod.string().nullish(),
+  "entranceExamination": zod.string().nullish(),
+  "interviewInformation": zod.string().nullish()
+}),
+  "availableClasses": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "section": zod.string()
+}))
+})
+
+
+export const submitPublicAdmissionApplicationPathPortalKeyRegExp = new RegExp('^[a-z0-9][a-z0-9-]{2,79}$');
+
+
+export const SubmitPublicAdmissionApplicationParams = zod.object({
+  "portalKey": zod.coerce.string().regex(submitPublicAdmissionApplicationPathPortalKeyRegExp)
+})
+
+export const submitPublicAdmissionApplicationHeaderIdempotencyKeyMin = 16;
+export const submitPublicAdmissionApplicationHeaderIdempotencyKeyMax = 128;
+
+
+
+export const SubmitPublicAdmissionApplicationHeader = zod.object({
+  "Idempotency-Key": zod.string().min(submitPublicAdmissionApplicationHeaderIdempotencyKeyMin).max(submitPublicAdmissionApplicationHeaderIdempotencyKeyMax)
+})
+
+export const submitPublicAdmissionApplicationBodyApplicantFirstNameMax = 100;
+
+export const submitPublicAdmissionApplicationBodyApplicantMiddleNameMax = 100;
+
+export const submitPublicAdmissionApplicationBodyApplicantLastNameMax = 100;
+
+export const submitPublicAdmissionApplicationBodyApplicantPhotoObjectPathRegExp = new RegExp('^/objects/admissions');
+export const submitPublicAdmissionApplicationBodyApplicantPreviousSchoolMax = 200;
+
+export const submitPublicAdmissionApplicationBodyApplicantPreviousClassMax = 100;
+
+
+
+
+export const submitPublicAdmissionApplicationBodyApplicantAddressMax = 1000;
+
+export const submitPublicAdmissionApplicationBodyGuardianFullNameMax = 200;
+
+export const submitPublicAdmissionApplicationBodyGuardianPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const submitPublicAdmissionApplicationBodyGuardianEmailMax = 254;
+
+export const submitPublicAdmissionApplicationBodyGuardianRelationshipMax = 80;
+
+export const submitPublicAdmissionApplicationBodyGuardianAddressMax = 1000;
+
+export const submitPublicAdmissionApplicationBodyEmergencyContactFullNameMax = 200;
+
+export const submitPublicAdmissionApplicationBodyEmergencyContactPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const submitPublicAdmissionApplicationBodyEmergencyContactRelationshipMax = 80;
+
+export const submitPublicAdmissionApplicationBodyDocumentsItemDocumentTypeMax = 80;
+
+export const submitPublicAdmissionApplicationBodyDocumentsItemFileNameMax = 255;
+
+export const submitPublicAdmissionApplicationBodyDocumentsItemByteSizeMax = 10485760;
+
+export const submitPublicAdmissionApplicationBodyDocumentsItemObjectPathRegExp = new RegExp('^/objects/admissions');
+export const submitPublicAdmissionApplicationBodyDocumentsMax = 20;
+
+
+
+export const SubmitPublicAdmissionApplicationBody = zod.object({
+  "applicant": zod.object({
+  "firstName": zod.string().min(1).max(submitPublicAdmissionApplicationBodyApplicantFirstNameMax),
+  "middleName": zod.string().max(submitPublicAdmissionApplicationBodyApplicantMiddleNameMax).nullish(),
+  "lastName": zod.string().min(1).max(submitPublicAdmissionApplicationBodyApplicantLastNameMax),
+  "dateOfBirth": zod.coerce.date(),
+  "gender": zod.enum(['Female', 'Male', 'Other', 'PreferNotToSay']),
+  "photoObjectPath": zod.string().regex(submitPublicAdmissionApplicationBodyApplicantPhotoObjectPathRegExp).optional(),
+  "previousSchool": zod.string().max(submitPublicAdmissionApplicationBodyApplicantPreviousSchoolMax).nullish(),
+  "previousClass": zod.string().max(submitPublicAdmissionApplicationBodyApplicantPreviousClassMax).nullish(),
+  "intendedClassId": zod.number().int().min(1),
+  "academicSessionId": zod.number().int().min(1).optional(),
+  "academicTermId": zod.number().int().min(1).optional(),
+  "address": zod.string().max(submitPublicAdmissionApplicationBodyApplicantAddressMax).nullish()
+}),
+  "guardian": zod.object({
+  "fullName": zod.string().min(1).max(submitPublicAdmissionApplicationBodyGuardianFullNameMax),
+  "phone": zod.string().regex(submitPublicAdmissionApplicationBodyGuardianPhoneRegExp),
+  "email": zod.string().email().max(submitPublicAdmissionApplicationBodyGuardianEmailMax).optional(),
+  "relationship": zod.string().max(submitPublicAdmissionApplicationBodyGuardianRelationshipMax).nullish(),
+  "address": zod.string().max(submitPublicAdmissionApplicationBodyGuardianAddressMax).nullish()
+}),
+  "emergencyContact": zod.object({
+  "fullName": zod.string().min(1).max(submitPublicAdmissionApplicationBodyEmergencyContactFullNameMax),
+  "phone": zod.string().regex(submitPublicAdmissionApplicationBodyEmergencyContactPhoneRegExp),
+  "relationship": zod.string().max(submitPublicAdmissionApplicationBodyEmergencyContactRelationshipMax).nullish()
+}).optional(),
+  "documents": zod.array(zod.object({
+  "documentType": zod.string().min(1).max(submitPublicAdmissionApplicationBodyDocumentsItemDocumentTypeMax),
+  "fileName": zod.string().min(1).max(submitPublicAdmissionApplicationBodyDocumentsItemFileNameMax),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "byteSize": zod.number().int().min(1).max(submitPublicAdmissionApplicationBodyDocumentsItemByteSizeMax),
+  "objectPath": zod.string().regex(submitPublicAdmissionApplicationBodyDocumentsItemObjectPathRegExp)
+})).max(submitPublicAdmissionApplicationBodyDocumentsMax).optional()
+})
+
+export const submitPublicAdmissionApplicationResponseReceiptSecretMin = 32;
+
+
+
+export const SubmitPublicAdmissionApplicationResponse = zod.object({
+  "applicationId": zod.number().int(),
+  "applicationNumber": zod.string(),
+  "status": zod.enum(['Draft', 'Submitted', 'UnderReview', 'Shortlisted', 'InterviewScheduled', 'AssessmentPending', 'AssessmentCompleted', 'Accepted', 'Waitlisted', 'Rejected', 'Withdrawn', 'Enrolled']),
+  "receiptSecret": zod.string().min(submitPublicAdmissionApplicationResponseReceiptSecretMin),
+  "confirmation": zod.object({
+  "deliveryStatus": zod.enum(['NOT_SENT', 'QUEUED', 'CONFIRMED', 'UNKNOWN']),
+  "message": zod.string()
+})
+})
+
+
+export const requestPublicAdmissionDocumentUploadPathPortalKeyRegExp = new RegExp('^[a-z0-9][a-z0-9-]{2,79}$');
+
+
+export const RequestPublicAdmissionDocumentUploadParams = zod.object({
+  "portalKey": zod.coerce.string().regex(requestPublicAdmissionDocumentUploadPathPortalKeyRegExp)
+})
+
+export const requestPublicAdmissionDocumentUploadBodyDocumentTypeMax = 80;
+
+export const requestPublicAdmissionDocumentUploadBodyFileNameMax = 255;
+
+export const requestPublicAdmissionDocumentUploadBodyByteSizeMax = 10485760;
+
+
+
+export const RequestPublicAdmissionDocumentUploadBody = zod.object({
+  "documentType": zod.string().min(1).max(requestPublicAdmissionDocumentUploadBodyDocumentTypeMax),
+  "fileName": zod.string().min(1).max(requestPublicAdmissionDocumentUploadBodyFileNameMax),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "byteSize": zod.number().int().min(1).max(requestPublicAdmissionDocumentUploadBodyByteSizeMax)
+})
+
+export const requestPublicAdmissionDocumentUploadResponseObjectPathRegExp = new RegExp('^/objects');
+
+
+export const RequestPublicAdmissionDocumentUploadResponse = zod.object({
+  "uploadUrl": zod.string().url(),
+  "objectPath": zod.string().regex(requestPublicAdmissionDocumentUploadResponseObjectPathRegExp),
+  "expiresAt": zod.coerce.date()
+})
+
+
+export const trackAdmissionApplicationBodyApplicationNumberMax = 80;
+
+export const trackAdmissionApplicationBodyPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const trackAdmissionApplicationBodyReceiptSecretMin = 32;
+export const trackAdmissionApplicationBodyReceiptSecretMax = 256;
+
+
+
+export const TrackAdmissionApplicationBody = zod.object({
+  "applicationNumber": zod.string().min(1).max(trackAdmissionApplicationBodyApplicationNumberMax),
+  "phone": zod.string().regex(trackAdmissionApplicationBodyPhoneRegExp),
+  "receiptSecret": zod.string().min(trackAdmissionApplicationBodyReceiptSecretMin).max(trackAdmissionApplicationBodyReceiptSecretMax)
+})
+
+export const TrackAdmissionApplicationResponse = zod.object({
+  "applicationNumber": zod.string(),
+  "status": zod.enum(['Draft', 'Submitted', 'UnderReview', 'Shortlisted', 'InterviewScheduled', 'AssessmentPending', 'AssessmentCompleted', 'Accepted', 'Waitlisted', 'Rejected', 'Withdrawn', 'Enrolled']),
+  "publicMessage": zod.string().nullish(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+
+
+
+export const GetAdmissionPortalSettingsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const getAdmissionPortalSettingsResponseLogoObjectPathMax = 500;
+
+
+export const getAdmissionPortalSettingsResponseLogoObjectPathRegExp = new RegExp('^(/objects/admissions/[A-Za-z0-9/_-]+|/objects/school-logos/[1-9][0-9]*/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$');
+export const getAdmissionPortalSettingsResponseAvailableSchoolLogoObjectPathRegExp = new RegExp('^/objects/school-logos/[1-9][0-9]*/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$');
+
+
+export const GetAdmissionPortalSettingsResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "portalKey": zod.string(),
+  "portalUrl": zod.string(),
+  "open": zod.boolean(),
+  "academicSessionId": zod.number().int().min(1).nullish(),
+  "academicTermId": zod.number().int().min(1).nullish(),
+  "availableClassIds": zod.array(zod.number().int().min(1)),
+  "deadline": zod.coerce.date().nullish(),
+  "feeInfo": zod.string().nullish(),
+  "requirements": zod.array(zod.string()),
+  "requiredDocuments": zod.array(zod.string()),
+  "instructions": zod.string().nullish(),
+  "entranceExamination": zod.string().nullish(),
+  "interviewInformation": zod.string().nullish(),
+  "publicDescription": zod.string().nullish(),
+  "publicAddress": zod.string().nullish(),
+  "publicPhone": zod.string().nullish(),
+  "publicEmail": zod.string().email().nullish(),
+  "logoObjectPath": zod.string().max(getAdmissionPortalSettingsResponseLogoObjectPathMax).regex(getAdmissionPortalSettingsResponseLogoObjectPathRegExp).nullish(),
+  "availableSchoolLogoObjectPath": zod.string().regex(getAdmissionPortalSettingsResponseAvailableSchoolLogoObjectPathRegExp).nullable()
+})
+
+
+
+
+
+export const UpdateAdmissionPortalSettingsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const updateAdmissionPortalSettingsBodyFeeInfoMax = 1000;
+
+export const updateAdmissionPortalSettingsBodyRequirementsItemMax = 500;
+
+export const updateAdmissionPortalSettingsBodyRequirementsMax = 50;
+
+export const updateAdmissionPortalSettingsBodyRequiredDocumentsItemMax = 200;
+
+export const updateAdmissionPortalSettingsBodyRequiredDocumentsMax = 50;
+
+export const updateAdmissionPortalSettingsBodyInstructionsMax = 5000;
+
+export const updateAdmissionPortalSettingsBodyEntranceExaminationMax = 2000;
+
+export const updateAdmissionPortalSettingsBodyInterviewInformationMax = 2000;
+
+export const updateAdmissionPortalSettingsBodyPublicDescriptionMax = 3000;
+
+export const updateAdmissionPortalSettingsBodyPublicAddressMax = 1000;
+
+export const updateAdmissionPortalSettingsBodyPublicPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const updateAdmissionPortalSettingsBodyLogoObjectPathMax = 500;
+
+
+export const updateAdmissionPortalSettingsBodyLogoObjectPathRegExp = new RegExp('^(/objects/admissions/[A-Za-z0-9/_-]+|/objects/school-logos/[1-9][0-9]*/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$');
+
+
+export const UpdateAdmissionPortalSettingsBody = zod.object({
+  "open": zod.boolean(),
+  "academicSessionId": zod.number().int().min(1).nullish(),
+  "academicTermId": zod.number().int().min(1).nullish(),
+  "availableClassIds": zod.array(zod.number().int().min(1)),
+  "deadline": zod.coerce.date().nullish(),
+  "feeInfo": zod.string().max(updateAdmissionPortalSettingsBodyFeeInfoMax).nullish(),
+  "requirements": zod.array(zod.string().max(updateAdmissionPortalSettingsBodyRequirementsItemMax)).max(updateAdmissionPortalSettingsBodyRequirementsMax).optional(),
+  "requiredDocuments": zod.array(zod.string().max(updateAdmissionPortalSettingsBodyRequiredDocumentsItemMax)).max(updateAdmissionPortalSettingsBodyRequiredDocumentsMax).optional(),
+  "instructions": zod.string().max(updateAdmissionPortalSettingsBodyInstructionsMax).nullish(),
+  "entranceExamination": zod.string().max(updateAdmissionPortalSettingsBodyEntranceExaminationMax).nullish(),
+  "interviewInformation": zod.string().max(updateAdmissionPortalSettingsBodyInterviewInformationMax).nullish(),
+  "publicDescription": zod.string().max(updateAdmissionPortalSettingsBodyPublicDescriptionMax).nullish(),
+  "publicAddress": zod.string().max(updateAdmissionPortalSettingsBodyPublicAddressMax).nullish(),
+  "publicPhone": zod.string().regex(updateAdmissionPortalSettingsBodyPublicPhoneRegExp).nullish(),
+  "publicEmail": zod.string().email().nullish(),
+  "logoObjectPath": zod.string().max(updateAdmissionPortalSettingsBodyLogoObjectPathMax).regex(updateAdmissionPortalSettingsBodyLogoObjectPathRegExp).nullish()
+})
+
+
+
+
+export const updateAdmissionPortalSettingsResponseLogoObjectPathMax = 500;
+
+
+export const updateAdmissionPortalSettingsResponseLogoObjectPathRegExp = new RegExp('^(/objects/admissions/[A-Za-z0-9/_-]+|/objects/school-logos/[1-9][0-9]*/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$');
+export const updateAdmissionPortalSettingsResponseAvailableSchoolLogoObjectPathRegExp = new RegExp('^/objects/school-logos/[1-9][0-9]*/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$');
+
+
+export const UpdateAdmissionPortalSettingsResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "portalKey": zod.string(),
+  "portalUrl": zod.string(),
+  "open": zod.boolean(),
+  "academicSessionId": zod.number().int().min(1).nullish(),
+  "academicTermId": zod.number().int().min(1).nullish(),
+  "availableClassIds": zod.array(zod.number().int().min(1)),
+  "deadline": zod.coerce.date().nullish(),
+  "feeInfo": zod.string().nullish(),
+  "requirements": zod.array(zod.string()),
+  "requiredDocuments": zod.array(zod.string()),
+  "instructions": zod.string().nullish(),
+  "entranceExamination": zod.string().nullish(),
+  "interviewInformation": zod.string().nullish(),
+  "publicDescription": zod.string().nullish(),
+  "publicAddress": zod.string().nullish(),
+  "publicPhone": zod.string().nullish(),
+  "publicEmail": zod.string().email().nullish(),
+  "logoObjectPath": zod.string().max(updateAdmissionPortalSettingsResponseLogoObjectPathMax).regex(updateAdmissionPortalSettingsResponseLogoObjectPathRegExp).nullish(),
+  "availableSchoolLogoObjectPath": zod.string().regex(updateAdmissionPortalSettingsResponseAvailableSchoolLogoObjectPathRegExp).nullable()
+})
+
+
+
+
+
+export const RequestStaffAdmissionDocumentUploadQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const requestStaffAdmissionDocumentUploadBodyDocumentTypeMax = 80;
+
+export const requestStaffAdmissionDocumentUploadBodyFileNameMax = 255;
+
+export const requestStaffAdmissionDocumentUploadBodyByteSizeMax = 10485760;
+
+
+
+export const RequestStaffAdmissionDocumentUploadBody = zod.object({
+  "documentType": zod.string().min(1).max(requestStaffAdmissionDocumentUploadBodyDocumentTypeMax),
+  "fileName": zod.string().min(1).max(requestStaffAdmissionDocumentUploadBodyFileNameMax),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "byteSize": zod.number().int().min(1).max(requestStaffAdmissionDocumentUploadBodyByteSizeMax)
+})
+
+export const requestStaffAdmissionDocumentUploadResponseObjectPathRegExp = new RegExp('^/objects');
+
+
+export const RequestStaffAdmissionDocumentUploadResponse = zod.object({
+  "uploadUrl": zod.string().url(),
+  "objectPath": zod.string().regex(requestStaffAdmissionDocumentUploadResponseObjectPathRegExp),
+  "expiresAt": zod.coerce.date()
+})
+
+
+
+export const listAdmissionApplicationsQuerySearchMax = 100;
+
+
+
+export const ListAdmissionApplicationsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "status": zod.enum(['Draft', 'Submitted', 'UnderReview', 'Shortlisted', 'InterviewScheduled', 'AssessmentPending', 'AssessmentCompleted', 'Accepted', 'Waitlisted', 'Rejected', 'Withdrawn', 'Enrolled']).optional(),
+  "search": zod.coerce.string().max(listAdmissionApplicationsQuerySearchMax).optional()
+})
+
+export const listAdmissionApplicationsResponseApplicationsItemApplicantPhotoObjectPathRegExp = new RegExp('^/objects/admissions');
+export const listAdmissionApplicationsResponseApplicationsItemGuardianPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const listAdmissionApplicationsResponseApplicationsItemEmergencyContactPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const listAdmissionApplicationsResponseApplicationsItemDocumentsItemDocumentTypeMax = 80;
+
+export const listAdmissionApplicationsResponseApplicationsItemDocumentsItemFileNameMax = 255;
+
+export const listAdmissionApplicationsResponseApplicationsItemDocumentsItemByteSizeMax = 10485760;
+
+export const listAdmissionApplicationsResponseApplicationsItemDocumentsItemObjectPathRegExp = new RegExp('^/objects');
+
+
+export const ListAdmissionApplicationsResponse = zod.object({
+  "applications": zod.array(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "applicationNumber": zod.string(),
+  "status": zod.enum(['Draft', 'Submitted', 'UnderReview', 'Shortlisted', 'InterviewScheduled', 'AssessmentPending', 'AssessmentCompleted', 'Accepted', 'Waitlisted', 'Rejected', 'Withdrawn', 'Enrolled']),
+  "applicant": zod.object({
+  "firstName": zod.string(),
+  "middleName": zod.string().nullable(),
+  "lastName": zod.string(),
+  "dateOfBirth": zod.coerce.date(),
+  "gender": zod.enum(['Female', 'Male', 'Other', 'PreferNotToSay']),
+  "photoObjectPath": zod.string().regex(listAdmissionApplicationsResponseApplicationsItemApplicantPhotoObjectPathRegExp).nullable(),
+  "previousSchool": zod.string().nullable(),
+  "previousClass": zod.string().nullable(),
+  "intendedClassId": zod.number().int(),
+  "academicSessionId": zod.number().int(),
+  "academicTermId": zod.number().int().nullable(),
+  "address": zod.string().nullable()
+}),
+  "guardian": zod.object({
+  "fullName": zod.string(),
+  "phone": zod.string().regex(listAdmissionApplicationsResponseApplicationsItemGuardianPhoneRegExp),
+  "email": zod.string().email().nullable(),
+  "relationship": zod.string().nullable(),
+  "address": zod.string().nullable()
+}),
+  "emergencyContact": zod.object({
+  "fullName": zod.string(),
+  "phone": zod.string().regex(listAdmissionApplicationsResponseApplicationsItemEmergencyContactPhoneRegExp),
+  "relationship": zod.string().nullable()
+}).optional(),
+  "documents": zod.array(zod.object({
+  "id": zod.number().int(),
+  "documentType": zod.string().min(1).max(listAdmissionApplicationsResponseApplicationsItemDocumentsItemDocumentTypeMax),
+  "fileName": zod.string().min(1).max(listAdmissionApplicationsResponseApplicationsItemDocumentsItemFileNameMax),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "byteSize": zod.number().int().min(1).max(listAdmissionApplicationsResponseApplicationsItemDocumentsItemByteSizeMax),
+  "objectPath": zod.string().regex(listAdmissionApplicationsResponseApplicationsItemDocumentsItemObjectPathRegExp)
+})).optional(),
+  "assessment": zod.object({
+
+}).passthrough().nullish(),
+  "interview": zod.object({
+
+}).passthrough().nullish(),
+  "internalNotes": zod.string().nullish(),
+  "publicMessage": zod.string().nullish(),
+  "studentId": zod.number().int().nullish(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+export const createStaffAdmissionApplicationHeaderIdempotencyKeyMin = 16;
+export const createStaffAdmissionApplicationHeaderIdempotencyKeyMax = 128;
+
+
+
+export const CreateStaffAdmissionApplicationHeader = zod.object({
+  "Idempotency-Key": zod.string().min(createStaffAdmissionApplicationHeaderIdempotencyKeyMin).max(createStaffAdmissionApplicationHeaderIdempotencyKeyMax)
+})
+
+
+export const createStaffAdmissionApplicationBodyApplicantFirstNameMax = 100;
+
+export const createStaffAdmissionApplicationBodyApplicantMiddleNameMax = 100;
+
+export const createStaffAdmissionApplicationBodyApplicantLastNameMax = 100;
+
+export const createStaffAdmissionApplicationBodyApplicantPhotoObjectPathRegExp = new RegExp('^/objects/admissions');
+export const createStaffAdmissionApplicationBodyApplicantPreviousSchoolMax = 200;
+
+export const createStaffAdmissionApplicationBodyApplicantPreviousClassMax = 100;
+
+
+
+
+export const createStaffAdmissionApplicationBodyApplicantAddressMax = 1000;
+
+export const createStaffAdmissionApplicationBodyGuardianFullNameMax = 200;
+
+export const createStaffAdmissionApplicationBodyGuardianPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const createStaffAdmissionApplicationBodyGuardianEmailMax = 254;
+
+export const createStaffAdmissionApplicationBodyGuardianRelationshipMax = 80;
+
+export const createStaffAdmissionApplicationBodyGuardianAddressMax = 1000;
+
+export const createStaffAdmissionApplicationBodyEmergencyContactFullNameMax = 200;
+
+export const createStaffAdmissionApplicationBodyEmergencyContactPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const createStaffAdmissionApplicationBodyEmergencyContactRelationshipMax = 80;
+
+export const createStaffAdmissionApplicationBodyDocumentsItemDocumentTypeMax = 80;
+
+export const createStaffAdmissionApplicationBodyDocumentsItemFileNameMax = 255;
+
+export const createStaffAdmissionApplicationBodyDocumentsItemByteSizeMax = 10485760;
+
+export const createStaffAdmissionApplicationBodyDocumentsItemObjectPathRegExp = new RegExp('^/objects/admissions');
+export const createStaffAdmissionApplicationBodyDocumentsMax = 20;
+
+export const createStaffAdmissionApplicationBodySaveAsDraftDefault = true;
+
+export const CreateStaffAdmissionApplicationBody = zod.object({
+  "schoolId": zod.number().int().min(1),
+  "applicant": zod.object({
+  "firstName": zod.string().min(1).max(createStaffAdmissionApplicationBodyApplicantFirstNameMax),
+  "middleName": zod.string().max(createStaffAdmissionApplicationBodyApplicantMiddleNameMax).nullish(),
+  "lastName": zod.string().min(1).max(createStaffAdmissionApplicationBodyApplicantLastNameMax),
+  "dateOfBirth": zod.coerce.date(),
+  "gender": zod.enum(['Female', 'Male', 'Other', 'PreferNotToSay']),
+  "photoObjectPath": zod.string().regex(createStaffAdmissionApplicationBodyApplicantPhotoObjectPathRegExp).optional(),
+  "previousSchool": zod.string().max(createStaffAdmissionApplicationBodyApplicantPreviousSchoolMax).nullish(),
+  "previousClass": zod.string().max(createStaffAdmissionApplicationBodyApplicantPreviousClassMax).nullish(),
+  "intendedClassId": zod.number().int().min(1),
+  "academicSessionId": zod.number().int().min(1).optional(),
+  "academicTermId": zod.number().int().min(1).optional(),
+  "address": zod.string().max(createStaffAdmissionApplicationBodyApplicantAddressMax).nullish()
+}),
+  "guardian": zod.object({
+  "fullName": zod.string().min(1).max(createStaffAdmissionApplicationBodyGuardianFullNameMax),
+  "phone": zod.string().regex(createStaffAdmissionApplicationBodyGuardianPhoneRegExp),
+  "email": zod.string().email().max(createStaffAdmissionApplicationBodyGuardianEmailMax).optional(),
+  "relationship": zod.string().max(createStaffAdmissionApplicationBodyGuardianRelationshipMax).nullish(),
+  "address": zod.string().max(createStaffAdmissionApplicationBodyGuardianAddressMax).nullish()
+}),
+  "emergencyContact": zod.object({
+  "fullName": zod.string().min(1).max(createStaffAdmissionApplicationBodyEmergencyContactFullNameMax),
+  "phone": zod.string().regex(createStaffAdmissionApplicationBodyEmergencyContactPhoneRegExp),
+  "relationship": zod.string().max(createStaffAdmissionApplicationBodyEmergencyContactRelationshipMax).nullish()
+}).optional(),
+  "documents": zod.array(zod.object({
+  "documentType": zod.string().min(1).max(createStaffAdmissionApplicationBodyDocumentsItemDocumentTypeMax),
+  "fileName": zod.string().min(1).max(createStaffAdmissionApplicationBodyDocumentsItemFileNameMax),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "byteSize": zod.number().int().min(1).max(createStaffAdmissionApplicationBodyDocumentsItemByteSizeMax),
+  "objectPath": zod.string().regex(createStaffAdmissionApplicationBodyDocumentsItemObjectPathRegExp)
+})).max(createStaffAdmissionApplicationBodyDocumentsMax).optional(),
+  "saveAsDraft": zod.boolean().default(createStaffAdmissionApplicationBodySaveAsDraftDefault)
+})
+
+export const createStaffAdmissionApplicationResponseApplicantPhotoObjectPathRegExp = new RegExp('^/objects/admissions');
+export const createStaffAdmissionApplicationResponseGuardianPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const createStaffAdmissionApplicationResponseEmergencyContactPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const createStaffAdmissionApplicationResponseDocumentsItemDocumentTypeMax = 80;
+
+export const createStaffAdmissionApplicationResponseDocumentsItemFileNameMax = 255;
+
+export const createStaffAdmissionApplicationResponseDocumentsItemByteSizeMax = 10485760;
+
+export const createStaffAdmissionApplicationResponseDocumentsItemObjectPathRegExp = new RegExp('^/objects');
+
+
+export const CreateStaffAdmissionApplicationResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "applicationNumber": zod.string(),
+  "status": zod.enum(['Draft', 'Submitted', 'UnderReview', 'Shortlisted', 'InterviewScheduled', 'AssessmentPending', 'AssessmentCompleted', 'Accepted', 'Waitlisted', 'Rejected', 'Withdrawn', 'Enrolled']),
+  "applicant": zod.object({
+  "firstName": zod.string(),
+  "middleName": zod.string().nullable(),
+  "lastName": zod.string(),
+  "dateOfBirth": zod.coerce.date(),
+  "gender": zod.enum(['Female', 'Male', 'Other', 'PreferNotToSay']),
+  "photoObjectPath": zod.string().regex(createStaffAdmissionApplicationResponseApplicantPhotoObjectPathRegExp).nullable(),
+  "previousSchool": zod.string().nullable(),
+  "previousClass": zod.string().nullable(),
+  "intendedClassId": zod.number().int(),
+  "academicSessionId": zod.number().int(),
+  "academicTermId": zod.number().int().nullable(),
+  "address": zod.string().nullable()
+}),
+  "guardian": zod.object({
+  "fullName": zod.string(),
+  "phone": zod.string().regex(createStaffAdmissionApplicationResponseGuardianPhoneRegExp),
+  "email": zod.string().email().nullable(),
+  "relationship": zod.string().nullable(),
+  "address": zod.string().nullable()
+}),
+  "emergencyContact": zod.object({
+  "fullName": zod.string(),
+  "phone": zod.string().regex(createStaffAdmissionApplicationResponseEmergencyContactPhoneRegExp),
+  "relationship": zod.string().nullable()
+}).optional(),
+  "documents": zod.array(zod.object({
+  "id": zod.number().int(),
+  "documentType": zod.string().min(1).max(createStaffAdmissionApplicationResponseDocumentsItemDocumentTypeMax),
+  "fileName": zod.string().min(1).max(createStaffAdmissionApplicationResponseDocumentsItemFileNameMax),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "byteSize": zod.number().int().min(1).max(createStaffAdmissionApplicationResponseDocumentsItemByteSizeMax),
+  "objectPath": zod.string().regex(createStaffAdmissionApplicationResponseDocumentsItemObjectPathRegExp)
+})).optional(),
+  "assessment": zod.object({
+
+}).passthrough().nullish(),
+  "interview": zod.object({
+
+}).passthrough().nullish(),
+  "internalNotes": zod.string().nullish(),
+  "publicMessage": zod.string().nullish(),
+  "studentId": zod.number().int().nullish(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+
+
+
+export const GetAdmissionApplicationParams = zod.object({
+  "applicationId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GetAdmissionApplicationQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const getAdmissionApplicationResponseApplicantPhotoObjectPathRegExp = new RegExp('^/objects/admissions');
+export const getAdmissionApplicationResponseGuardianPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const getAdmissionApplicationResponseEmergencyContactPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const getAdmissionApplicationResponseDocumentsItemDocumentTypeMax = 80;
+
+export const getAdmissionApplicationResponseDocumentsItemFileNameMax = 255;
+
+export const getAdmissionApplicationResponseDocumentsItemByteSizeMax = 10485760;
+
+export const getAdmissionApplicationResponseDocumentsItemObjectPathRegExp = new RegExp('^/objects');
+
+
+export const GetAdmissionApplicationResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "applicationNumber": zod.string(),
+  "status": zod.enum(['Draft', 'Submitted', 'UnderReview', 'Shortlisted', 'InterviewScheduled', 'AssessmentPending', 'AssessmentCompleted', 'Accepted', 'Waitlisted', 'Rejected', 'Withdrawn', 'Enrolled']),
+  "applicant": zod.object({
+  "firstName": zod.string(),
+  "middleName": zod.string().nullable(),
+  "lastName": zod.string(),
+  "dateOfBirth": zod.coerce.date(),
+  "gender": zod.enum(['Female', 'Male', 'Other', 'PreferNotToSay']),
+  "photoObjectPath": zod.string().regex(getAdmissionApplicationResponseApplicantPhotoObjectPathRegExp).nullable(),
+  "previousSchool": zod.string().nullable(),
+  "previousClass": zod.string().nullable(),
+  "intendedClassId": zod.number().int(),
+  "academicSessionId": zod.number().int(),
+  "academicTermId": zod.number().int().nullable(),
+  "address": zod.string().nullable()
+}),
+  "guardian": zod.object({
+  "fullName": zod.string(),
+  "phone": zod.string().regex(getAdmissionApplicationResponseGuardianPhoneRegExp),
+  "email": zod.string().email().nullable(),
+  "relationship": zod.string().nullable(),
+  "address": zod.string().nullable()
+}),
+  "emergencyContact": zod.object({
+  "fullName": zod.string(),
+  "phone": zod.string().regex(getAdmissionApplicationResponseEmergencyContactPhoneRegExp),
+  "relationship": zod.string().nullable()
+}).optional(),
+  "documents": zod.array(zod.object({
+  "id": zod.number().int(),
+  "documentType": zod.string().min(1).max(getAdmissionApplicationResponseDocumentsItemDocumentTypeMax),
+  "fileName": zod.string().min(1).max(getAdmissionApplicationResponseDocumentsItemFileNameMax),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "byteSize": zod.number().int().min(1).max(getAdmissionApplicationResponseDocumentsItemByteSizeMax),
+  "objectPath": zod.string().regex(getAdmissionApplicationResponseDocumentsItemObjectPathRegExp)
+})).optional(),
+  "assessment": zod.object({
+
+}).passthrough().nullish(),
+  "interview": zod.object({
+
+}).passthrough().nullish(),
+  "internalNotes": zod.string().nullish(),
+  "publicMessage": zod.string().nullish(),
+  "studentId": zod.number().int().nullish(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+
+
+
+export const UpdateAdmissionApplicationProfileParams = zod.object({
+  "applicationId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const UpdateAdmissionApplicationProfileQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+export const updateAdmissionApplicationProfileBodyApplicantFirstNameMax = 100;
+
+export const updateAdmissionApplicationProfileBodyApplicantMiddleNameMax = 100;
+
+export const updateAdmissionApplicationProfileBodyApplicantLastNameMax = 100;
+
+export const updateAdmissionApplicationProfileBodyApplicantPreviousSchoolMax = 200;
+
+export const updateAdmissionApplicationProfileBodyApplicantPreviousClassMax = 100;
+
+
+
+
+export const updateAdmissionApplicationProfileBodyApplicantAddressMax = 1000;
+
+export const updateAdmissionApplicationProfileBodyGuardianFullNameMax = 200;
+
+export const updateAdmissionApplicationProfileBodyGuardianPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const updateAdmissionApplicationProfileBodyGuardianEmailMax = 254;
+
+export const updateAdmissionApplicationProfileBodyGuardianRelationshipMax = 80;
+
+export const updateAdmissionApplicationProfileBodyGuardianAddressMax = 1000;
+
+export const updateAdmissionApplicationProfileBodyEmergencyContactFullNameMax = 200;
+
+export const updateAdmissionApplicationProfileBodyEmergencyContactPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const updateAdmissionApplicationProfileBodyEmergencyContactRelationshipMax = 80;
+
+
+
+export const UpdateAdmissionApplicationProfileBody = zod.object({
+  "expectedVersion": zod.number().int().min(1),
+  "applicant": zod.object({
+  "firstName": zod.string().min(1).max(updateAdmissionApplicationProfileBodyApplicantFirstNameMax).optional(),
+  "middleName": zod.string().max(updateAdmissionApplicationProfileBodyApplicantMiddleNameMax).nullish(),
+  "lastName": zod.string().min(1).max(updateAdmissionApplicationProfileBodyApplicantLastNameMax).optional(),
+  "dateOfBirth": zod.coerce.date().optional(),
+  "gender": zod.enum(['Female', 'Male', 'Other', 'PreferNotToSay']).optional(),
+  "previousSchool": zod.string().max(updateAdmissionApplicationProfileBodyApplicantPreviousSchoolMax).nullish(),
+  "previousClass": zod.string().max(updateAdmissionApplicationProfileBodyApplicantPreviousClassMax).nullish(),
+  "intendedClassId": zod.number().int().min(1).optional(),
+  "academicSessionId": zod.number().int().min(1).optional(),
+  "academicTermId": zod.number().int().min(1).nullish(),
+  "address": zod.string().max(updateAdmissionApplicationProfileBodyApplicantAddressMax).nullish()
+}).optional(),
+  "guardian": zod.object({
+  "fullName": zod.string().min(1).max(updateAdmissionApplicationProfileBodyGuardianFullNameMax).optional(),
+  "phone": zod.string().regex(updateAdmissionApplicationProfileBodyGuardianPhoneRegExp).optional(),
+  "email": zod.string().email().max(updateAdmissionApplicationProfileBodyGuardianEmailMax).nullish(),
+  "relationship": zod.string().max(updateAdmissionApplicationProfileBodyGuardianRelationshipMax).nullish(),
+  "address": zod.string().max(updateAdmissionApplicationProfileBodyGuardianAddressMax).nullish()
+}).optional(),
+  "emergencyContact": zod.object({
+  "fullName": zod.string().min(1).max(updateAdmissionApplicationProfileBodyEmergencyContactFullNameMax),
+  "phone": zod.string().regex(updateAdmissionApplicationProfileBodyEmergencyContactPhoneRegExp),
+  "relationship": zod.string().max(updateAdmissionApplicationProfileBodyEmergencyContactRelationshipMax).nullish()
+}).nullish()
+})
+
+export const updateAdmissionApplicationProfileResponseApplicantPhotoObjectPathRegExp = new RegExp('^/objects/admissions');
+export const updateAdmissionApplicationProfileResponseGuardianPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const updateAdmissionApplicationProfileResponseEmergencyContactPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const updateAdmissionApplicationProfileResponseDocumentsItemDocumentTypeMax = 80;
+
+export const updateAdmissionApplicationProfileResponseDocumentsItemFileNameMax = 255;
+
+export const updateAdmissionApplicationProfileResponseDocumentsItemByteSizeMax = 10485760;
+
+export const updateAdmissionApplicationProfileResponseDocumentsItemObjectPathRegExp = new RegExp('^/objects');
+
+
+export const UpdateAdmissionApplicationProfileResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "applicationNumber": zod.string(),
+  "status": zod.enum(['Draft', 'Submitted', 'UnderReview', 'Shortlisted', 'InterviewScheduled', 'AssessmentPending', 'AssessmentCompleted', 'Accepted', 'Waitlisted', 'Rejected', 'Withdrawn', 'Enrolled']),
+  "applicant": zod.object({
+  "firstName": zod.string(),
+  "middleName": zod.string().nullable(),
+  "lastName": zod.string(),
+  "dateOfBirth": zod.coerce.date(),
+  "gender": zod.enum(['Female', 'Male', 'Other', 'PreferNotToSay']),
+  "photoObjectPath": zod.string().regex(updateAdmissionApplicationProfileResponseApplicantPhotoObjectPathRegExp).nullable(),
+  "previousSchool": zod.string().nullable(),
+  "previousClass": zod.string().nullable(),
+  "intendedClassId": zod.number().int(),
+  "academicSessionId": zod.number().int(),
+  "academicTermId": zod.number().int().nullable(),
+  "address": zod.string().nullable()
+}),
+  "guardian": zod.object({
+  "fullName": zod.string(),
+  "phone": zod.string().regex(updateAdmissionApplicationProfileResponseGuardianPhoneRegExp),
+  "email": zod.string().email().nullable(),
+  "relationship": zod.string().nullable(),
+  "address": zod.string().nullable()
+}),
+  "emergencyContact": zod.object({
+  "fullName": zod.string(),
+  "phone": zod.string().regex(updateAdmissionApplicationProfileResponseEmergencyContactPhoneRegExp),
+  "relationship": zod.string().nullable()
+}).optional(),
+  "documents": zod.array(zod.object({
+  "id": zod.number().int(),
+  "documentType": zod.string().min(1).max(updateAdmissionApplicationProfileResponseDocumentsItemDocumentTypeMax),
+  "fileName": zod.string().min(1).max(updateAdmissionApplicationProfileResponseDocumentsItemFileNameMax),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "byteSize": zod.number().int().min(1).max(updateAdmissionApplicationProfileResponseDocumentsItemByteSizeMax),
+  "objectPath": zod.string().regex(updateAdmissionApplicationProfileResponseDocumentsItemObjectPathRegExp)
+})).optional(),
+  "assessment": zod.object({
+
+}).passthrough().nullish(),
+  "interview": zod.object({
+
+}).passthrough().nullish(),
+  "internalNotes": zod.string().nullish(),
+  "publicMessage": zod.string().nullish(),
+  "studentId": zod.number().int().nullish(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+
+
+
+export const ReviewAdmissionApplicationParams = zod.object({
+  "applicationId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ReviewAdmissionApplicationQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+export const reviewAdmissionApplicationBodyAssessmentResultMax = 2000;
+
+export const reviewAdmissionApplicationBodyAssessmentScoreMin = 0;
+export const reviewAdmissionApplicationBodyAssessmentScoreMax = 100;
+
+export const reviewAdmissionApplicationBodyAssessmentPublicMessageMax = 2000;
+
+export const reviewAdmissionApplicationBodyAssessmentInternalNotesMax = 10000;
+
+export const reviewAdmissionApplicationBodyInterviewResultMax = 2000;
+
+export const reviewAdmissionApplicationBodyInterviewPublicMessageMax = 2000;
+
+export const reviewAdmissionApplicationBodyInterviewInternalNotesMax = 10000;
+
+export const reviewAdmissionApplicationBodyInternalNotesMax = 10000;
+
+export const reviewAdmissionApplicationBodyPublicMessageMax = 2000;
+
+
+
+export const ReviewAdmissionApplicationBody = zod.object({
+  "expectedVersion": zod.number().int().min(1),
+  "assessment": zod.object({
+  "result": zod.string().max(reviewAdmissionApplicationBodyAssessmentResultMax).optional(),
+  "score": zod.number().min(reviewAdmissionApplicationBodyAssessmentScoreMin).max(reviewAdmissionApplicationBodyAssessmentScoreMax).optional(),
+  "publicMessage": zod.string().max(reviewAdmissionApplicationBodyAssessmentPublicMessageMax).optional(),
+  "internalNotes": zod.string().max(reviewAdmissionApplicationBodyAssessmentInternalNotesMax).optional()
+}).optional(),
+  "interview": zod.object({
+  "scheduledAt": zod.coerce.date().optional(),
+  "result": zod.string().max(reviewAdmissionApplicationBodyInterviewResultMax).optional(),
+  "publicMessage": zod.string().max(reviewAdmissionApplicationBodyInterviewPublicMessageMax).optional(),
+  "internalNotes": zod.string().max(reviewAdmissionApplicationBodyInterviewInternalNotesMax).optional()
+}).optional(),
+  "internalNotes": zod.string().max(reviewAdmissionApplicationBodyInternalNotesMax).optional(),
+  "publicMessage": zod.string().max(reviewAdmissionApplicationBodyPublicMessageMax).optional()
+})
+
+export const reviewAdmissionApplicationResponseApplicantPhotoObjectPathRegExp = new RegExp('^/objects/admissions');
+export const reviewAdmissionApplicationResponseGuardianPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const reviewAdmissionApplicationResponseEmergencyContactPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const reviewAdmissionApplicationResponseDocumentsItemDocumentTypeMax = 80;
+
+export const reviewAdmissionApplicationResponseDocumentsItemFileNameMax = 255;
+
+export const reviewAdmissionApplicationResponseDocumentsItemByteSizeMax = 10485760;
+
+export const reviewAdmissionApplicationResponseDocumentsItemObjectPathRegExp = new RegExp('^/objects');
+
+
+export const ReviewAdmissionApplicationResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "applicationNumber": zod.string(),
+  "status": zod.enum(['Draft', 'Submitted', 'UnderReview', 'Shortlisted', 'InterviewScheduled', 'AssessmentPending', 'AssessmentCompleted', 'Accepted', 'Waitlisted', 'Rejected', 'Withdrawn', 'Enrolled']),
+  "applicant": zod.object({
+  "firstName": zod.string(),
+  "middleName": zod.string().nullable(),
+  "lastName": zod.string(),
+  "dateOfBirth": zod.coerce.date(),
+  "gender": zod.enum(['Female', 'Male', 'Other', 'PreferNotToSay']),
+  "photoObjectPath": zod.string().regex(reviewAdmissionApplicationResponseApplicantPhotoObjectPathRegExp).nullable(),
+  "previousSchool": zod.string().nullable(),
+  "previousClass": zod.string().nullable(),
+  "intendedClassId": zod.number().int(),
+  "academicSessionId": zod.number().int(),
+  "academicTermId": zod.number().int().nullable(),
+  "address": zod.string().nullable()
+}),
+  "guardian": zod.object({
+  "fullName": zod.string(),
+  "phone": zod.string().regex(reviewAdmissionApplicationResponseGuardianPhoneRegExp),
+  "email": zod.string().email().nullable(),
+  "relationship": zod.string().nullable(),
+  "address": zod.string().nullable()
+}),
+  "emergencyContact": zod.object({
+  "fullName": zod.string(),
+  "phone": zod.string().regex(reviewAdmissionApplicationResponseEmergencyContactPhoneRegExp),
+  "relationship": zod.string().nullable()
+}).optional(),
+  "documents": zod.array(zod.object({
+  "id": zod.number().int(),
+  "documentType": zod.string().min(1).max(reviewAdmissionApplicationResponseDocumentsItemDocumentTypeMax),
+  "fileName": zod.string().min(1).max(reviewAdmissionApplicationResponseDocumentsItemFileNameMax),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "byteSize": zod.number().int().min(1).max(reviewAdmissionApplicationResponseDocumentsItemByteSizeMax),
+  "objectPath": zod.string().regex(reviewAdmissionApplicationResponseDocumentsItemObjectPathRegExp)
+})).optional(),
+  "assessment": zod.object({
+
+}).passthrough().nullish(),
+  "interview": zod.object({
+
+}).passthrough().nullish(),
+  "internalNotes": zod.string().nullish(),
+  "publicMessage": zod.string().nullish(),
+  "studentId": zod.number().int().nullish(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+
+
+
+export const TransitionAdmissionApplicationParams = zod.object({
+  "applicationId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const TransitionAdmissionApplicationQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+export const transitionAdmissionApplicationBodyPublicMessageMax = 2000;
+
+export const transitionAdmissionApplicationBodyInternalNotesMax = 10000;
+
+
+
+export const TransitionAdmissionApplicationBody = zod.object({
+  "status": zod.enum(['Draft', 'Submitted', 'UnderReview', 'Shortlisted', 'InterviewScheduled', 'AssessmentPending', 'AssessmentCompleted', 'Accepted', 'Waitlisted', 'Rejected', 'Withdrawn', 'Enrolled']),
+  "expectedVersion": zod.number().int().min(1),
+  "publicMessage": zod.string().max(transitionAdmissionApplicationBodyPublicMessageMax).nullish(),
+  "internalNotes": zod.string().max(transitionAdmissionApplicationBodyInternalNotesMax).nullish()
+})
+
+export const transitionAdmissionApplicationResponseApplicantPhotoObjectPathRegExp = new RegExp('^/objects/admissions');
+export const transitionAdmissionApplicationResponseGuardianPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const transitionAdmissionApplicationResponseEmergencyContactPhoneRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+export const transitionAdmissionApplicationResponseDocumentsItemDocumentTypeMax = 80;
+
+export const transitionAdmissionApplicationResponseDocumentsItemFileNameMax = 255;
+
+export const transitionAdmissionApplicationResponseDocumentsItemByteSizeMax = 10485760;
+
+export const transitionAdmissionApplicationResponseDocumentsItemObjectPathRegExp = new RegExp('^/objects');
+
+
+export const TransitionAdmissionApplicationResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "applicationNumber": zod.string(),
+  "status": zod.enum(['Draft', 'Submitted', 'UnderReview', 'Shortlisted', 'InterviewScheduled', 'AssessmentPending', 'AssessmentCompleted', 'Accepted', 'Waitlisted', 'Rejected', 'Withdrawn', 'Enrolled']),
+  "applicant": zod.object({
+  "firstName": zod.string(),
+  "middleName": zod.string().nullable(),
+  "lastName": zod.string(),
+  "dateOfBirth": zod.coerce.date(),
+  "gender": zod.enum(['Female', 'Male', 'Other', 'PreferNotToSay']),
+  "photoObjectPath": zod.string().regex(transitionAdmissionApplicationResponseApplicantPhotoObjectPathRegExp).nullable(),
+  "previousSchool": zod.string().nullable(),
+  "previousClass": zod.string().nullable(),
+  "intendedClassId": zod.number().int(),
+  "academicSessionId": zod.number().int(),
+  "academicTermId": zod.number().int().nullable(),
+  "address": zod.string().nullable()
+}),
+  "guardian": zod.object({
+  "fullName": zod.string(),
+  "phone": zod.string().regex(transitionAdmissionApplicationResponseGuardianPhoneRegExp),
+  "email": zod.string().email().nullable(),
+  "relationship": zod.string().nullable(),
+  "address": zod.string().nullable()
+}),
+  "emergencyContact": zod.object({
+  "fullName": zod.string(),
+  "phone": zod.string().regex(transitionAdmissionApplicationResponseEmergencyContactPhoneRegExp),
+  "relationship": zod.string().nullable()
+}).optional(),
+  "documents": zod.array(zod.object({
+  "id": zod.number().int(),
+  "documentType": zod.string().min(1).max(transitionAdmissionApplicationResponseDocumentsItemDocumentTypeMax),
+  "fileName": zod.string().min(1).max(transitionAdmissionApplicationResponseDocumentsItemFileNameMax),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "byteSize": zod.number().int().min(1).max(transitionAdmissionApplicationResponseDocumentsItemByteSizeMax),
+  "objectPath": zod.string().regex(transitionAdmissionApplicationResponseDocumentsItemObjectPathRegExp)
+})).optional(),
+  "assessment": zod.object({
+
+}).passthrough().nullish(),
+  "interview": zod.object({
+
+}).passthrough().nullish(),
+  "internalNotes": zod.string().nullish(),
+  "publicMessage": zod.string().nullish(),
+  "studentId": zod.number().int().nullish(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+
+
+
+export const RequestAdmissionDocumentUploadParams = zod.object({
+  "applicationId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const RequestAdmissionDocumentUploadQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const requestAdmissionDocumentUploadBodyDocumentTypeMax = 80;
+
+export const requestAdmissionDocumentUploadBodyFileNameMax = 255;
+
+export const requestAdmissionDocumentUploadBodyByteSizeMax = 10485760;
+
+
+
+export const RequestAdmissionDocumentUploadBody = zod.object({
+  "documentType": zod.string().min(1).max(requestAdmissionDocumentUploadBodyDocumentTypeMax),
+  "fileName": zod.string().min(1).max(requestAdmissionDocumentUploadBodyFileNameMax),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "byteSize": zod.number().int().min(1).max(requestAdmissionDocumentUploadBodyByteSizeMax)
+})
+
+export const requestAdmissionDocumentUploadResponseObjectPathRegExp = new RegExp('^/objects');
+
+
+export const RequestAdmissionDocumentUploadResponse = zod.object({
+  "uploadUrl": zod.string().url(),
+  "objectPath": zod.string().regex(requestAdmissionDocumentUploadResponseObjectPathRegExp),
+  "expiresAt": zod.coerce.date()
+})
+
+
+
+
+
+export const ConfirmAdmissionDocumentUploadParams = zod.object({
+  "applicationId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ConfirmAdmissionDocumentUploadQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const confirmAdmissionDocumentUploadBodyDocumentTypeMax = 80;
+
+export const confirmAdmissionDocumentUploadBodyFileNameMax = 255;
+
+export const confirmAdmissionDocumentUploadBodyByteSizeMax = 10485760;
+
+export const confirmAdmissionDocumentUploadBodyObjectPathRegExp = new RegExp('^/objects');
+
+
+export const ConfirmAdmissionDocumentUploadBody = zod.object({
+  "documentType": zod.string().min(1).max(confirmAdmissionDocumentUploadBodyDocumentTypeMax),
+  "fileName": zod.string().min(1).max(confirmAdmissionDocumentUploadBodyFileNameMax),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "byteSize": zod.number().int().min(1).max(confirmAdmissionDocumentUploadBodyByteSizeMax),
+  "objectPath": zod.string().regex(confirmAdmissionDocumentUploadBodyObjectPathRegExp)
+})
+
+export const confirmAdmissionDocumentUploadResponseDocumentTypeMax = 80;
+
+export const confirmAdmissionDocumentUploadResponseFileNameMax = 255;
+
+export const confirmAdmissionDocumentUploadResponseByteSizeMax = 10485760;
+
+export const confirmAdmissionDocumentUploadResponseObjectPathRegExp = new RegExp('^/objects');
+
+
+export const ConfirmAdmissionDocumentUploadResponse = zod.object({
+  "id": zod.number().int(),
+  "documentType": zod.string().min(1).max(confirmAdmissionDocumentUploadResponseDocumentTypeMax),
+  "fileName": zod.string().min(1).max(confirmAdmissionDocumentUploadResponseFileNameMax),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "byteSize": zod.number().int().min(1).max(confirmAdmissionDocumentUploadResponseByteSizeMax),
+  "objectPath": zod.string().regex(confirmAdmissionDocumentUploadResponseObjectPathRegExp)
+})
+
+
+/**
+ * Staff must have application authorization. Anonymous applicants must provide the receipt secret in the request body; it is never accepted in a URL.
+ */
+
+
+
+
+export const DownloadAdmissionDocumentParams = zod.object({
+  "applicationId": zod.coerce.number().int().min(1),
+  "documentId": zod.coerce.number().int().min(1)
+})
+
+export const downloadAdmissionDocumentBodyReceiptSecretMin = 32;
+export const downloadAdmissionDocumentBodyReceiptSecretMax = 256;
+
+
+
+export const DownloadAdmissionDocumentBody = zod.object({
+  "receiptSecret": zod.string().min(downloadAdmissionDocumentBodyReceiptSecretMin).max(downloadAdmissionDocumentBodyReceiptSecretMax).optional()
+})
+
+export const DownloadAdmissionDocumentResponse = zod.object({
+  "downloadUrl": zod.string().url(),
+  "expiresAt": zod.coerce.date()
+})
+
+
+
+
+
+export const ConvertAcceptedAdmissionApplicationParams = zod.object({
+  "applicationId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ConvertAcceptedAdmissionApplicationQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const convertAcceptedAdmissionApplicationHeaderIdempotencyKeyMin = 16;
+export const convertAcceptedAdmissionApplicationHeaderIdempotencyKeyMax = 128;
+
+
+
+export const ConvertAcceptedAdmissionApplicationHeader = zod.object({
+  "Idempotency-Key": zod.string().min(convertAcceptedAdmissionApplicationHeaderIdempotencyKeyMin).max(convertAcceptedAdmissionApplicationHeaderIdempotencyKeyMax)
+})
+
+
+
+
+export const convertAcceptedAdmissionApplicationBodyCreateParentRecordDefault = false;
+export const convertAcceptedAdmissionApplicationBodyParentRelationshipDefault = `Guardian`;
+export const convertAcceptedAdmissionApplicationBodyParentRelationshipMax = 80;
+
+export const convertAcceptedAdmissionApplicationBodySectionMax = 100;
+
+
+
+export const ConvertAcceptedAdmissionApplicationBody = zod.object({
+  "expectedVersion": zod.number().int().min(1),
+  "existingStudentId": zod.number().int().min(1).nullish(),
+  "existingParentId": zod.number().int().min(1).nullish(),
+  "createParentRecord": zod.boolean().default(convertAcceptedAdmissionApplicationBodyCreateParentRecordDefault),
+  "parentRelationship": zod.string().max(convertAcceptedAdmissionApplicationBodyParentRelationshipMax).default(convertAcceptedAdmissionApplicationBodyParentRelationshipDefault),
+  "section": zod.string().max(convertAcceptedAdmissionApplicationBodySectionMax).optional()
+})
+
+export const ConvertAcceptedAdmissionApplicationResponse = zod.object({
+  "applicationId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "admissionNumber": zod.string(),
+  "parentId": zod.number().int().nullable(),
+  "idempotent": zod.boolean()
+})
+
+
+/**
+ * @summary Read a medical profile using the medical-read school grant
+ */
+
+
+
+
+export const GetStudentMedicalProfileParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const getStudentMedicalProfileResponseOneExpectedVersionMin = 0;
+
+export const getStudentMedicalProfileResponseOneBloodGroupMax = 16;
+
+export const getStudentMedicalProfileResponseOneGenotypeMax = 16;
+
+export const getStudentMedicalProfileResponseOneAllergiesItemMax = 500;
+
+export const getStudentMedicalProfileResponseOneConditionsItemMax = 1000;
+
+export const getStudentMedicalProfileResponseOneSupportNeedsItemMax = 1000;
+
+export const getStudentMedicalProfileResponseOneMedicationsItemMax = 1000;
+
+export const getStudentMedicalProfileResponseOneEmergencyMedicalNotesMax = 5000;
+
+export const getStudentMedicalProfileResponseOneProviderContactsItemNameMax = 200;
+
+export const getStudentMedicalProfileResponseOneProviderContactsItemRoleMax = 100;
+
+export const getStudentMedicalProfileResponseOneProviderContactsItemPhoneMax = 40;
+
+export const getStudentMedicalProfileResponseOneProviderContactsItemEmailMax = 254;
+
+export const getStudentMedicalProfileResponseOneEmergencyContactsItemNameMax = 200;
+
+export const getStudentMedicalProfileResponseOneEmergencyContactsItemPhoneMax = 40;
+
+export const getStudentMedicalProfileResponseOneEmergencyContactsItemRelationshipMax = 100;
+
+
+
+export const GetStudentMedicalProfileResponse = zod.object({
+  "expectedVersion": zod.number().int().min(getStudentMedicalProfileResponseOneExpectedVersionMin),
+  "bloodGroup": zod.string().max(getStudentMedicalProfileResponseOneBloodGroupMax).nullish(),
+  "genotype": zod.string().max(getStudentMedicalProfileResponseOneGenotypeMax).nullish(),
+  "allergies": zod.array(zod.string().max(getStudentMedicalProfileResponseOneAllergiesItemMax)).optional(),
+  "conditions": zod.array(zod.string().max(getStudentMedicalProfileResponseOneConditionsItemMax)).optional(),
+  "supportNeeds": zod.array(zod.string().max(getStudentMedicalProfileResponseOneSupportNeedsItemMax)).optional(),
+  "medications": zod.array(zod.string().max(getStudentMedicalProfileResponseOneMedicationsItemMax)).optional(),
+  "emergencyMedicalNotes": zod.string().max(getStudentMedicalProfileResponseOneEmergencyMedicalNotesMax).nullish(),
+  "providerContacts": zod.array(zod.object({
+  "name": zod.string().max(getStudentMedicalProfileResponseOneProviderContactsItemNameMax),
+  "role": zod.string().max(getStudentMedicalProfileResponseOneProviderContactsItemRoleMax).nullish(),
+  "phone": zod.string().max(getStudentMedicalProfileResponseOneProviderContactsItemPhoneMax),
+  "email": zod.string().max(getStudentMedicalProfileResponseOneProviderContactsItemEmailMax).nullish()
+})).optional(),
+  "emergencyContacts": zod.array(zod.object({
+  "name": zod.string().max(getStudentMedicalProfileResponseOneEmergencyContactsItemNameMax),
+  "phone": zod.string().max(getStudentMedicalProfileResponseOneEmergencyContactsItemPhoneMax),
+  "relationship": zod.string().max(getStudentMedicalProfileResponseOneEmergencyContactsItemRelationshipMax)
+})).optional()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "version": zod.number().int(),
+  "updatedAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullish()
+}))
+
+
+/**
+ * @summary Archive a medical profile without removing its retained revisions
+ */
+
+
+
+
+export const ArchiveStudentMedicalProfileParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ArchiveStudentMedicalProfileHeader = zod.object({
+  "If-Match-Version": zod.number().int().min(1)
+})
+
+export const archiveStudentMedicalProfileResponseOneExpectedVersionMin = 0;
+
+export const archiveStudentMedicalProfileResponseOneBloodGroupMax = 16;
+
+export const archiveStudentMedicalProfileResponseOneGenotypeMax = 16;
+
+export const archiveStudentMedicalProfileResponseOneAllergiesItemMax = 500;
+
+export const archiveStudentMedicalProfileResponseOneConditionsItemMax = 1000;
+
+export const archiveStudentMedicalProfileResponseOneSupportNeedsItemMax = 1000;
+
+export const archiveStudentMedicalProfileResponseOneMedicationsItemMax = 1000;
+
+export const archiveStudentMedicalProfileResponseOneEmergencyMedicalNotesMax = 5000;
+
+export const archiveStudentMedicalProfileResponseOneProviderContactsItemNameMax = 200;
+
+export const archiveStudentMedicalProfileResponseOneProviderContactsItemRoleMax = 100;
+
+export const archiveStudentMedicalProfileResponseOneProviderContactsItemPhoneMax = 40;
+
+export const archiveStudentMedicalProfileResponseOneProviderContactsItemEmailMax = 254;
+
+export const archiveStudentMedicalProfileResponseOneEmergencyContactsItemNameMax = 200;
+
+export const archiveStudentMedicalProfileResponseOneEmergencyContactsItemPhoneMax = 40;
+
+export const archiveStudentMedicalProfileResponseOneEmergencyContactsItemRelationshipMax = 100;
+
+
+
+export const ArchiveStudentMedicalProfileResponse = zod.object({
+  "expectedVersion": zod.number().int().min(archiveStudentMedicalProfileResponseOneExpectedVersionMin),
+  "bloodGroup": zod.string().max(archiveStudentMedicalProfileResponseOneBloodGroupMax).nullish(),
+  "genotype": zod.string().max(archiveStudentMedicalProfileResponseOneGenotypeMax).nullish(),
+  "allergies": zod.array(zod.string().max(archiveStudentMedicalProfileResponseOneAllergiesItemMax)).optional(),
+  "conditions": zod.array(zod.string().max(archiveStudentMedicalProfileResponseOneConditionsItemMax)).optional(),
+  "supportNeeds": zod.array(zod.string().max(archiveStudentMedicalProfileResponseOneSupportNeedsItemMax)).optional(),
+  "medications": zod.array(zod.string().max(archiveStudentMedicalProfileResponseOneMedicationsItemMax)).optional(),
+  "emergencyMedicalNotes": zod.string().max(archiveStudentMedicalProfileResponseOneEmergencyMedicalNotesMax).nullish(),
+  "providerContacts": zod.array(zod.object({
+  "name": zod.string().max(archiveStudentMedicalProfileResponseOneProviderContactsItemNameMax),
+  "role": zod.string().max(archiveStudentMedicalProfileResponseOneProviderContactsItemRoleMax).nullish(),
+  "phone": zod.string().max(archiveStudentMedicalProfileResponseOneProviderContactsItemPhoneMax),
+  "email": zod.string().max(archiveStudentMedicalProfileResponseOneProviderContactsItemEmailMax).nullish()
+})).optional(),
+  "emergencyContacts": zod.array(zod.object({
+  "name": zod.string().max(archiveStudentMedicalProfileResponseOneEmergencyContactsItemNameMax),
+  "phone": zod.string().max(archiveStudentMedicalProfileResponseOneEmergencyContactsItemPhoneMax),
+  "relationship": zod.string().max(archiveStudentMedicalProfileResponseOneEmergencyContactsItemRelationshipMax)
+})).optional()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "version": zod.number().int(),
+  "updatedAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullish()
+}))
+
+
+/**
+ * @summary Create, update, or restore a medical profile with optimistic concurrency and an idempotency key
+ */
+
+
+
+
+export const UpsertStudentMedicalProfileParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const upsertStudentMedicalProfileHeaderIdempotencyKeyMin = 8;
+export const upsertStudentMedicalProfileHeaderIdempotencyKeyMax = 128;
+
+
+
+export const UpsertStudentMedicalProfileHeader = zod.object({
+  "Idempotency-Key": zod.string().min(upsertStudentMedicalProfileHeaderIdempotencyKeyMin).max(upsertStudentMedicalProfileHeaderIdempotencyKeyMax)
+})
+
+export const upsertStudentMedicalProfileBodyExpectedVersionMin = 0;
+
+export const upsertStudentMedicalProfileBodyBloodGroupMax = 16;
+
+export const upsertStudentMedicalProfileBodyGenotypeMax = 16;
+
+export const upsertStudentMedicalProfileBodyAllergiesItemMax = 500;
+
+export const upsertStudentMedicalProfileBodyConditionsItemMax = 1000;
+
+export const upsertStudentMedicalProfileBodySupportNeedsItemMax = 1000;
+
+export const upsertStudentMedicalProfileBodyMedicationsItemMax = 1000;
+
+export const upsertStudentMedicalProfileBodyEmergencyMedicalNotesMax = 5000;
+
+export const upsertStudentMedicalProfileBodyProviderContactsItemNameMax = 200;
+
+export const upsertStudentMedicalProfileBodyProviderContactsItemRoleMax = 100;
+
+export const upsertStudentMedicalProfileBodyProviderContactsItemPhoneMax = 40;
+
+export const upsertStudentMedicalProfileBodyProviderContactsItemEmailMax = 254;
+
+export const upsertStudentMedicalProfileBodyEmergencyContactsItemNameMax = 200;
+
+export const upsertStudentMedicalProfileBodyEmergencyContactsItemPhoneMax = 40;
+
+export const upsertStudentMedicalProfileBodyEmergencyContactsItemRelationshipMax = 100;
+
+
+
+export const UpsertStudentMedicalProfileBody = zod.object({
+  "expectedVersion": zod.number().int().min(upsertStudentMedicalProfileBodyExpectedVersionMin),
+  "bloodGroup": zod.string().max(upsertStudentMedicalProfileBodyBloodGroupMax).nullish(),
+  "genotype": zod.string().max(upsertStudentMedicalProfileBodyGenotypeMax).nullish(),
+  "allergies": zod.array(zod.string().max(upsertStudentMedicalProfileBodyAllergiesItemMax)).optional(),
+  "conditions": zod.array(zod.string().max(upsertStudentMedicalProfileBodyConditionsItemMax)).optional(),
+  "supportNeeds": zod.array(zod.string().max(upsertStudentMedicalProfileBodySupportNeedsItemMax)).optional(),
+  "medications": zod.array(zod.string().max(upsertStudentMedicalProfileBodyMedicationsItemMax)).optional(),
+  "emergencyMedicalNotes": zod.string().max(upsertStudentMedicalProfileBodyEmergencyMedicalNotesMax).nullish(),
+  "providerContacts": zod.array(zod.object({
+  "name": zod.string().max(upsertStudentMedicalProfileBodyProviderContactsItemNameMax),
+  "role": zod.string().max(upsertStudentMedicalProfileBodyProviderContactsItemRoleMax).nullish(),
+  "phone": zod.string().max(upsertStudentMedicalProfileBodyProviderContactsItemPhoneMax),
+  "email": zod.string().max(upsertStudentMedicalProfileBodyProviderContactsItemEmailMax).nullish()
+})).optional(),
+  "emergencyContacts": zod.array(zod.object({
+  "name": zod.string().max(upsertStudentMedicalProfileBodyEmergencyContactsItemNameMax),
+  "phone": zod.string().max(upsertStudentMedicalProfileBodyEmergencyContactsItemPhoneMax),
+  "relationship": zod.string().max(upsertStudentMedicalProfileBodyEmergencyContactsItemRelationshipMax)
+})).optional()
+})
+
+export const upsertStudentMedicalProfileResponseOneExpectedVersionMin = 0;
+
+export const upsertStudentMedicalProfileResponseOneBloodGroupMax = 16;
+
+export const upsertStudentMedicalProfileResponseOneGenotypeMax = 16;
+
+export const upsertStudentMedicalProfileResponseOneAllergiesItemMax = 500;
+
+export const upsertStudentMedicalProfileResponseOneConditionsItemMax = 1000;
+
+export const upsertStudentMedicalProfileResponseOneSupportNeedsItemMax = 1000;
+
+export const upsertStudentMedicalProfileResponseOneMedicationsItemMax = 1000;
+
+export const upsertStudentMedicalProfileResponseOneEmergencyMedicalNotesMax = 5000;
+
+export const upsertStudentMedicalProfileResponseOneProviderContactsItemNameMax = 200;
+
+export const upsertStudentMedicalProfileResponseOneProviderContactsItemRoleMax = 100;
+
+export const upsertStudentMedicalProfileResponseOneProviderContactsItemPhoneMax = 40;
+
+export const upsertStudentMedicalProfileResponseOneProviderContactsItemEmailMax = 254;
+
+export const upsertStudentMedicalProfileResponseOneEmergencyContactsItemNameMax = 200;
+
+export const upsertStudentMedicalProfileResponseOneEmergencyContactsItemPhoneMax = 40;
+
+export const upsertStudentMedicalProfileResponseOneEmergencyContactsItemRelationshipMax = 100;
+
+
+
+export const UpsertStudentMedicalProfileResponse = zod.object({
+  "expectedVersion": zod.number().int().min(upsertStudentMedicalProfileResponseOneExpectedVersionMin),
+  "bloodGroup": zod.string().max(upsertStudentMedicalProfileResponseOneBloodGroupMax).nullish(),
+  "genotype": zod.string().max(upsertStudentMedicalProfileResponseOneGenotypeMax).nullish(),
+  "allergies": zod.array(zod.string().max(upsertStudentMedicalProfileResponseOneAllergiesItemMax)).optional(),
+  "conditions": zod.array(zod.string().max(upsertStudentMedicalProfileResponseOneConditionsItemMax)).optional(),
+  "supportNeeds": zod.array(zod.string().max(upsertStudentMedicalProfileResponseOneSupportNeedsItemMax)).optional(),
+  "medications": zod.array(zod.string().max(upsertStudentMedicalProfileResponseOneMedicationsItemMax)).optional(),
+  "emergencyMedicalNotes": zod.string().max(upsertStudentMedicalProfileResponseOneEmergencyMedicalNotesMax).nullish(),
+  "providerContacts": zod.array(zod.object({
+  "name": zod.string().max(upsertStudentMedicalProfileResponseOneProviderContactsItemNameMax),
+  "role": zod.string().max(upsertStudentMedicalProfileResponseOneProviderContactsItemRoleMax).nullish(),
+  "phone": zod.string().max(upsertStudentMedicalProfileResponseOneProviderContactsItemPhoneMax),
+  "email": zod.string().max(upsertStudentMedicalProfileResponseOneProviderContactsItemEmailMax).nullish()
+})).optional(),
+  "emergencyContacts": zod.array(zod.object({
+  "name": zod.string().max(upsertStudentMedicalProfileResponseOneEmergencyContactsItemNameMax),
+  "phone": zod.string().max(upsertStudentMedicalProfileResponseOneEmergencyContactsItemPhoneMax),
+  "relationship": zod.string().max(upsertStudentMedicalProfileResponseOneEmergencyContactsItemRelationshipMax)
+})).optional()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "version": zod.number().int(),
+  "updatedAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullish()
+}))
+
+
+/**
+ * @summary List medical profile revisions for a permitted medical reader
+ */
+
+
+
+
+export const ListStudentMedicalProfileHistoryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const listStudentMedicalProfileHistoryResponseSnapshotExpectedVersionMin = 0;
+
+export const listStudentMedicalProfileHistoryResponseSnapshotBloodGroupMax = 16;
+
+export const listStudentMedicalProfileHistoryResponseSnapshotGenotypeMax = 16;
+
+export const listStudentMedicalProfileHistoryResponseSnapshotAllergiesItemMax = 500;
+
+export const listStudentMedicalProfileHistoryResponseSnapshotConditionsItemMax = 1000;
+
+export const listStudentMedicalProfileHistoryResponseSnapshotSupportNeedsItemMax = 1000;
+
+export const listStudentMedicalProfileHistoryResponseSnapshotMedicationsItemMax = 1000;
+
+export const listStudentMedicalProfileHistoryResponseSnapshotEmergencyMedicalNotesMax = 5000;
+
+export const listStudentMedicalProfileHistoryResponseSnapshotProviderContactsItemNameMax = 200;
+
+export const listStudentMedicalProfileHistoryResponseSnapshotProviderContactsItemRoleMax = 100;
+
+export const listStudentMedicalProfileHistoryResponseSnapshotProviderContactsItemPhoneMax = 40;
+
+export const listStudentMedicalProfileHistoryResponseSnapshotProviderContactsItemEmailMax = 254;
+
+export const listStudentMedicalProfileHistoryResponseSnapshotEmergencyContactsItemNameMax = 200;
+
+export const listStudentMedicalProfileHistoryResponseSnapshotEmergencyContactsItemPhoneMax = 40;
+
+export const listStudentMedicalProfileHistoryResponseSnapshotEmergencyContactsItemRelationshipMax = 100;
+
+
+
+export const ListStudentMedicalProfileHistoryResponseItem = zod.object({
+  "revision": zod.number().int(),
+  "changedAt": zod.coerce.date(),
+  "changedByUserId": zod.number().int(),
+  "snapshot": zod.object({
+  "expectedVersion": zod.number().int().min(listStudentMedicalProfileHistoryResponseSnapshotExpectedVersionMin),
+  "bloodGroup": zod.string().max(listStudentMedicalProfileHistoryResponseSnapshotBloodGroupMax).nullish(),
+  "genotype": zod.string().max(listStudentMedicalProfileHistoryResponseSnapshotGenotypeMax).nullish(),
+  "allergies": zod.array(zod.string().max(listStudentMedicalProfileHistoryResponseSnapshotAllergiesItemMax)).optional(),
+  "conditions": zod.array(zod.string().max(listStudentMedicalProfileHistoryResponseSnapshotConditionsItemMax)).optional(),
+  "supportNeeds": zod.array(zod.string().max(listStudentMedicalProfileHistoryResponseSnapshotSupportNeedsItemMax)).optional(),
+  "medications": zod.array(zod.string().max(listStudentMedicalProfileHistoryResponseSnapshotMedicationsItemMax)).optional(),
+  "emergencyMedicalNotes": zod.string().max(listStudentMedicalProfileHistoryResponseSnapshotEmergencyMedicalNotesMax).nullish(),
+  "providerContacts": zod.array(zod.object({
+  "name": zod.string().max(listStudentMedicalProfileHistoryResponseSnapshotProviderContactsItemNameMax),
+  "role": zod.string().max(listStudentMedicalProfileHistoryResponseSnapshotProviderContactsItemRoleMax).nullish(),
+  "phone": zod.string().max(listStudentMedicalProfileHistoryResponseSnapshotProviderContactsItemPhoneMax),
+  "email": zod.string().max(listStudentMedicalProfileHistoryResponseSnapshotProviderContactsItemEmailMax).nullish()
+})).optional(),
+  "emergencyContacts": zod.array(zod.object({
+  "name": zod.string().max(listStudentMedicalProfileHistoryResponseSnapshotEmergencyContactsItemNameMax),
+  "phone": zod.string().max(listStudentMedicalProfileHistoryResponseSnapshotEmergencyContactsItemPhoneMax),
+  "relationship": zod.string().max(listStudentMedicalProfileHistoryResponseSnapshotEmergencyContactsItemRelationshipMax)
+})).optional()
+})
+})
+export const ListStudentMedicalProfileHistoryResponse = zod.array(ListStudentMedicalProfileHistoryResponseItem)
+
+
+/**
+ * @summary List current and archived medical visit records for a permitted medical reader
+ */
+
+
+
+
+export const ListStudentMedicalVisitsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const listStudentMedicalVisitsResponseOneReasonMax = 2000;
+
+export const listStudentMedicalVisitsResponseOneSymptomsMax = 5000;
+
+export const listStudentMedicalVisitsResponseOneObservationsMax = 5000;
+
+export const listStudentMedicalVisitsResponseOneActionTakenMax = 5000;
+
+export const listStudentMedicalVisitsResponseOneTreatmentMax = 5000;
+
+export const listStudentMedicalVisitsResponseOneReferralMax = 2000;
+
+export const listStudentMedicalVisitsResponseOneFollowUpNotesMax = 5000;
+
+export const listStudentMedicalVisitsResponseOneNotesMax = 5000;
+
+
+
+export const ListStudentMedicalVisitsResponseItem = zod.object({
+  "occurredAt": zod.coerce.date(),
+  "reason": zod.string().min(1).max(listStudentMedicalVisitsResponseOneReasonMax),
+  "symptoms": zod.string().max(listStudentMedicalVisitsResponseOneSymptomsMax).nullish(),
+  "observations": zod.string().max(listStudentMedicalVisitsResponseOneObservationsMax).nullish(),
+  "actionTaken": zod.string().max(listStudentMedicalVisitsResponseOneActionTakenMax).nullish(),
+  "treatment": zod.string().max(listStudentMedicalVisitsResponseOneTreatmentMax).nullish(),
+  "referral": zod.string().max(listStudentMedicalVisitsResponseOneReferralMax).nullish(),
+  "followUpAt": zod.coerce.date().nullish(),
+  "followUpNotes": zod.string().max(listStudentMedicalVisitsResponseOneFollowUpNotesMax).nullish(),
+  "notes": zod.string().max(listStudentMedicalVisitsResponseOneNotesMax).nullish()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "recordedByUserId": zod.number().int(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullish()
+}))
+export const ListStudentMedicalVisitsResponse = zod.array(ListStudentMedicalVisitsResponseItem)
+
+
+/**
+ * @summary Record a medical visit; request retries reuse the original visit
+ */
+
+
+
+
+export const CreateStudentMedicalVisitParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const createStudentMedicalVisitHeaderIdempotencyKeyMin = 8;
+export const createStudentMedicalVisitHeaderIdempotencyKeyMax = 128;
+
+
+
+export const CreateStudentMedicalVisitHeader = zod.object({
+  "Idempotency-Key": zod.string().min(createStudentMedicalVisitHeaderIdempotencyKeyMin).max(createStudentMedicalVisitHeaderIdempotencyKeyMax)
+})
+
+export const createStudentMedicalVisitBodyReasonMax = 2000;
+
+export const createStudentMedicalVisitBodySymptomsMax = 5000;
+
+export const createStudentMedicalVisitBodyObservationsMax = 5000;
+
+export const createStudentMedicalVisitBodyActionTakenMax = 5000;
+
+export const createStudentMedicalVisitBodyTreatmentMax = 5000;
+
+export const createStudentMedicalVisitBodyReferralMax = 2000;
+
+export const createStudentMedicalVisitBodyFollowUpNotesMax = 5000;
+
+export const createStudentMedicalVisitBodyNotesMax = 5000;
+
+
+
+export const CreateStudentMedicalVisitBody = zod.object({
+  "occurredAt": zod.coerce.date(),
+  "reason": zod.string().min(1).max(createStudentMedicalVisitBodyReasonMax),
+  "symptoms": zod.string().max(createStudentMedicalVisitBodySymptomsMax).nullish(),
+  "observations": zod.string().max(createStudentMedicalVisitBodyObservationsMax).nullish(),
+  "actionTaken": zod.string().max(createStudentMedicalVisitBodyActionTakenMax).nullish(),
+  "treatment": zod.string().max(createStudentMedicalVisitBodyTreatmentMax).nullish(),
+  "referral": zod.string().max(createStudentMedicalVisitBodyReferralMax).nullish(),
+  "followUpAt": zod.coerce.date().nullish(),
+  "followUpNotes": zod.string().max(createStudentMedicalVisitBodyFollowUpNotesMax).nullish(),
+  "notes": zod.string().max(createStudentMedicalVisitBodyNotesMax).nullish()
+})
+
+export const createStudentMedicalVisitResponseOneReasonMax = 2000;
+
+export const createStudentMedicalVisitResponseOneSymptomsMax = 5000;
+
+export const createStudentMedicalVisitResponseOneObservationsMax = 5000;
+
+export const createStudentMedicalVisitResponseOneActionTakenMax = 5000;
+
+export const createStudentMedicalVisitResponseOneTreatmentMax = 5000;
+
+export const createStudentMedicalVisitResponseOneReferralMax = 2000;
+
+export const createStudentMedicalVisitResponseOneFollowUpNotesMax = 5000;
+
+export const createStudentMedicalVisitResponseOneNotesMax = 5000;
+
+
+
+export const CreateStudentMedicalVisitResponse = zod.object({
+  "occurredAt": zod.coerce.date(),
+  "reason": zod.string().min(1).max(createStudentMedicalVisitResponseOneReasonMax),
+  "symptoms": zod.string().max(createStudentMedicalVisitResponseOneSymptomsMax).nullish(),
+  "observations": zod.string().max(createStudentMedicalVisitResponseOneObservationsMax).nullish(),
+  "actionTaken": zod.string().max(createStudentMedicalVisitResponseOneActionTakenMax).nullish(),
+  "treatment": zod.string().max(createStudentMedicalVisitResponseOneTreatmentMax).nullish(),
+  "referral": zod.string().max(createStudentMedicalVisitResponseOneReferralMax).nullish(),
+  "followUpAt": zod.coerce.date().nullish(),
+  "followUpNotes": zod.string().max(createStudentMedicalVisitResponseOneFollowUpNotesMax).nullish(),
+  "notes": zod.string().max(createStudentMedicalVisitResponseOneNotesMax).nullish()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "recordedByUserId": zod.number().int(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullish()
+}))
+
+
+/**
+ * @summary Version-checked visit update preserving the previous revision
+ */
+
+
+
+
+
+export const UpdateStudentMedicalVisitParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1),
+  "visitId": zod.coerce.number().int().min(1)
+})
+
+export const updateStudentMedicalVisitBodyOneReasonMax = 2000;
+
+export const updateStudentMedicalVisitBodyOneSymptomsMax = 5000;
+
+export const updateStudentMedicalVisitBodyOneObservationsMax = 5000;
+
+export const updateStudentMedicalVisitBodyOneActionTakenMax = 5000;
+
+export const updateStudentMedicalVisitBodyOneTreatmentMax = 5000;
+
+export const updateStudentMedicalVisitBodyOneReferralMax = 2000;
+
+export const updateStudentMedicalVisitBodyOneFollowUpNotesMax = 5000;
+
+export const updateStudentMedicalVisitBodyOneNotesMax = 5000;
+
+
+
+
+export const UpdateStudentMedicalVisitBody = zod.object({
+  "occurredAt": zod.coerce.date(),
+  "reason": zod.string().min(1).max(updateStudentMedicalVisitBodyOneReasonMax),
+  "symptoms": zod.string().max(updateStudentMedicalVisitBodyOneSymptomsMax).nullish(),
+  "observations": zod.string().max(updateStudentMedicalVisitBodyOneObservationsMax).nullish(),
+  "actionTaken": zod.string().max(updateStudentMedicalVisitBodyOneActionTakenMax).nullish(),
+  "treatment": zod.string().max(updateStudentMedicalVisitBodyOneTreatmentMax).nullish(),
+  "referral": zod.string().max(updateStudentMedicalVisitBodyOneReferralMax).nullish(),
+  "followUpAt": zod.coerce.date().nullish(),
+  "followUpNotes": zod.string().max(updateStudentMedicalVisitBodyOneFollowUpNotesMax).nullish(),
+  "notes": zod.string().max(updateStudentMedicalVisitBodyOneNotesMax).nullish()
+}).and(zod.object({
+  "expectedVersion": zod.number().int().min(1)
+}))
+
+export const updateStudentMedicalVisitResponseOneReasonMax = 2000;
+
+export const updateStudentMedicalVisitResponseOneSymptomsMax = 5000;
+
+export const updateStudentMedicalVisitResponseOneObservationsMax = 5000;
+
+export const updateStudentMedicalVisitResponseOneActionTakenMax = 5000;
+
+export const updateStudentMedicalVisitResponseOneTreatmentMax = 5000;
+
+export const updateStudentMedicalVisitResponseOneReferralMax = 2000;
+
+export const updateStudentMedicalVisitResponseOneFollowUpNotesMax = 5000;
+
+export const updateStudentMedicalVisitResponseOneNotesMax = 5000;
+
+
+
+export const UpdateStudentMedicalVisitResponse = zod.object({
+  "occurredAt": zod.coerce.date(),
+  "reason": zod.string().min(1).max(updateStudentMedicalVisitResponseOneReasonMax),
+  "symptoms": zod.string().max(updateStudentMedicalVisitResponseOneSymptomsMax).nullish(),
+  "observations": zod.string().max(updateStudentMedicalVisitResponseOneObservationsMax).nullish(),
+  "actionTaken": zod.string().max(updateStudentMedicalVisitResponseOneActionTakenMax).nullish(),
+  "treatment": zod.string().max(updateStudentMedicalVisitResponseOneTreatmentMax).nullish(),
+  "referral": zod.string().max(updateStudentMedicalVisitResponseOneReferralMax).nullish(),
+  "followUpAt": zod.coerce.date().nullish(),
+  "followUpNotes": zod.string().max(updateStudentMedicalVisitResponseOneFollowUpNotesMax).nullish(),
+  "notes": zod.string().max(updateStudentMedicalVisitResponseOneNotesMax).nullish()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "recordedByUserId": zod.number().int(),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullish()
+}))
+
+
+/**
+ * @summary Archive a visit without physical deletion
+ */
+
+
+
+
+
+export const ArchiveStudentMedicalVisitParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1),
+  "visitId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ArchiveStudentMedicalVisitHeader = zod.object({
+  "If-Match-Version": zod.number().int().min(1)
+})
+
+export const ArchiveStudentMedicalVisitResponse = zod.unknown()
+
+
+/**
+ * @summary Read retained revisions of a medical visit
+ */
+
+
+
+
+
+export const ListStudentMedicalVisitHistoryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1),
+  "visitId": zod.coerce.number().int().min(1)
+})
+
+export const ListStudentMedicalVisitHistoryResponseItem = zod.object({
+  "revision": zod.number().int(),
+  "changedAt": zod.coerce.date(),
+  "changedByUserId": zod.number().int(),
+  "snapshot": zod.record(zod.string(), zod.unknown())
+})
+export const ListStudentMedicalVisitHistoryResponse = zod.array(ListStudentMedicalVisitHistoryResponseItem)
+
+
+/**
+ * @summary List welfare records; safeguarding records require their separate grant
+ */
+
+
+
+
+export const ListStudentWelfareRecordsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const listStudentWelfareRecordsResponseOneConcernMax = 5000;
+
+export const listStudentWelfareRecordsResponseOneResolutionMax = 5000;
+
+export const listStudentWelfareRecordsResponseOneInternalNotesMax = 10000;
+
+export const listStudentWelfareRecordsResponseOneParentVisibleDefault = false;
+
+export const ListStudentWelfareRecordsResponseItem = zod.object({
+  "category": zod.enum(['WELFARE_CONCERN', 'COUNSELLING_REFERRAL', 'SAFEGUARDING', 'FAMILY_SUPPORT', 'LEARNING_SUPPORT']),
+  "concern": zod.string().min(1).max(listStudentWelfareRecordsResponseOneConcernMax),
+  "assignedStaffUserId": zod.number().int().nullish(),
+  "followUpAt": zod.coerce.date().nullish(),
+  "followUpStatus": zod.enum(['NOT_REQUIRED', 'PENDING', 'IN_PROGRESS', 'COMPLETE']).optional(),
+  "status": zod.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED']).optional(),
+  "resolution": zod.string().max(listStudentWelfareRecordsResponseOneResolutionMax).nullish(),
+  "internalNotes": zod.string().max(listStudentWelfareRecordsResponseOneInternalNotesMax).nullish(),
+  "parentVisible": zod.boolean().default(listStudentWelfareRecordsResponseOneParentVisibleDefault)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "version": zod.number().int(),
+  "createdByUserId": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullish()
+}))
+export const ListStudentWelfareRecordsResponse = zod.array(ListStudentWelfareRecordsResponseItem)
+
+
+/**
+ * @summary Create a welfare record, with safeguarding access independently authorized
+ */
+
+
+
+
+export const CreateStudentWelfareRecordParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const createStudentWelfareRecordHeaderIdempotencyKeyMin = 8;
+export const createStudentWelfareRecordHeaderIdempotencyKeyMax = 128;
+
+
+
+export const CreateStudentWelfareRecordHeader = zod.object({
+  "Idempotency-Key": zod.string().min(createStudentWelfareRecordHeaderIdempotencyKeyMin).max(createStudentWelfareRecordHeaderIdempotencyKeyMax)
+})
+
+export const createStudentWelfareRecordBodyConcernMax = 5000;
+
+export const createStudentWelfareRecordBodyResolutionMax = 5000;
+
+export const createStudentWelfareRecordBodyInternalNotesMax = 10000;
+
+export const createStudentWelfareRecordBodyParentVisibleDefault = false;
+
+export const CreateStudentWelfareRecordBody = zod.object({
+  "category": zod.enum(['WELFARE_CONCERN', 'COUNSELLING_REFERRAL', 'SAFEGUARDING', 'FAMILY_SUPPORT', 'LEARNING_SUPPORT']),
+  "concern": zod.string().min(1).max(createStudentWelfareRecordBodyConcernMax),
+  "assignedStaffUserId": zod.number().int().nullish(),
+  "followUpAt": zod.coerce.date().nullish(),
+  "followUpStatus": zod.enum(['NOT_REQUIRED', 'PENDING', 'IN_PROGRESS', 'COMPLETE']).optional(),
+  "status": zod.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED']).optional(),
+  "resolution": zod.string().max(createStudentWelfareRecordBodyResolutionMax).nullish(),
+  "internalNotes": zod.string().max(createStudentWelfareRecordBodyInternalNotesMax).nullish(),
+  "parentVisible": zod.boolean().default(createStudentWelfareRecordBodyParentVisibleDefault)
+})
+
+export const createStudentWelfareRecordResponseOneConcernMax = 5000;
+
+export const createStudentWelfareRecordResponseOneResolutionMax = 5000;
+
+export const createStudentWelfareRecordResponseOneInternalNotesMax = 10000;
+
+export const createStudentWelfareRecordResponseOneParentVisibleDefault = false;
+
+export const CreateStudentWelfareRecordResponse = zod.object({
+  "category": zod.enum(['WELFARE_CONCERN', 'COUNSELLING_REFERRAL', 'SAFEGUARDING', 'FAMILY_SUPPORT', 'LEARNING_SUPPORT']),
+  "concern": zod.string().min(1).max(createStudentWelfareRecordResponseOneConcernMax),
+  "assignedStaffUserId": zod.number().int().nullish(),
+  "followUpAt": zod.coerce.date().nullish(),
+  "followUpStatus": zod.enum(['NOT_REQUIRED', 'PENDING', 'IN_PROGRESS', 'COMPLETE']).optional(),
+  "status": zod.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED']).optional(),
+  "resolution": zod.string().max(createStudentWelfareRecordResponseOneResolutionMax).nullish(),
+  "internalNotes": zod.string().max(createStudentWelfareRecordResponseOneInternalNotesMax).nullish(),
+  "parentVisible": zod.boolean().default(createStudentWelfareRecordResponseOneParentVisibleDefault)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "version": zod.number().int(),
+  "createdByUserId": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullish()
+}))
+
+
+/**
+ * @summary Update welfare record with optimistic concurrency and retained history
+ */
+
+
+
+
+
+export const UpdateStudentWelfareRecordParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1),
+  "recordId": zod.coerce.number().int().min(1)
+})
+
+export const updateStudentWelfareRecordBodyOneConcernMax = 5000;
+
+export const updateStudentWelfareRecordBodyOneResolutionMax = 5000;
+
+export const updateStudentWelfareRecordBodyOneInternalNotesMax = 10000;
+
+export const updateStudentWelfareRecordBodyOneParentVisibleDefault = false;
+
+
+export const UpdateStudentWelfareRecordBody = zod.object({
+  "category": zod.enum(['WELFARE_CONCERN', 'COUNSELLING_REFERRAL', 'SAFEGUARDING', 'FAMILY_SUPPORT', 'LEARNING_SUPPORT']),
+  "concern": zod.string().min(1).max(updateStudentWelfareRecordBodyOneConcernMax),
+  "assignedStaffUserId": zod.number().int().nullish(),
+  "followUpAt": zod.coerce.date().nullish(),
+  "followUpStatus": zod.enum(['NOT_REQUIRED', 'PENDING', 'IN_PROGRESS', 'COMPLETE']).optional(),
+  "status": zod.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED']).optional(),
+  "resolution": zod.string().max(updateStudentWelfareRecordBodyOneResolutionMax).nullish(),
+  "internalNotes": zod.string().max(updateStudentWelfareRecordBodyOneInternalNotesMax).nullish(),
+  "parentVisible": zod.boolean().default(updateStudentWelfareRecordBodyOneParentVisibleDefault)
+}).and(zod.object({
+  "expectedVersion": zod.number().int().min(1)
+}))
+
+export const updateStudentWelfareRecordResponseOneConcernMax = 5000;
+
+export const updateStudentWelfareRecordResponseOneResolutionMax = 5000;
+
+export const updateStudentWelfareRecordResponseOneInternalNotesMax = 10000;
+
+export const updateStudentWelfareRecordResponseOneParentVisibleDefault = false;
+
+export const UpdateStudentWelfareRecordResponse = zod.object({
+  "category": zod.enum(['WELFARE_CONCERN', 'COUNSELLING_REFERRAL', 'SAFEGUARDING', 'FAMILY_SUPPORT', 'LEARNING_SUPPORT']),
+  "concern": zod.string().min(1).max(updateStudentWelfareRecordResponseOneConcernMax),
+  "assignedStaffUserId": zod.number().int().nullish(),
+  "followUpAt": zod.coerce.date().nullish(),
+  "followUpStatus": zod.enum(['NOT_REQUIRED', 'PENDING', 'IN_PROGRESS', 'COMPLETE']).optional(),
+  "status": zod.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED']).optional(),
+  "resolution": zod.string().max(updateStudentWelfareRecordResponseOneResolutionMax).nullish(),
+  "internalNotes": zod.string().max(updateStudentWelfareRecordResponseOneInternalNotesMax).nullish(),
+  "parentVisible": zod.boolean().default(updateStudentWelfareRecordResponseOneParentVisibleDefault)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "version": zod.number().int(),
+  "createdByUserId": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullish()
+}))
+
+
+/**
+ * @summary Archive a welfare record without removing its audit history
+ */
+
+
+
+
+
+export const ArchiveStudentWelfareRecordParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1),
+  "recordId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ArchiveStudentWelfareRecordHeader = zod.object({
+  "If-Match-Version": zod.number().int().min(1)
+})
+
+export const ArchiveStudentWelfareRecordResponse = zod.unknown()
+
+
+/**
+ * @summary Read welfare revisions with welfare or safeguarding grant as applicable
+ */
+
+
+
+
+
+export const ListStudentWelfareHistoryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1),
+  "recordId": zod.coerce.number().int().min(1)
+})
+
+export const ListStudentWelfareHistoryResponseItem = zod.object({
+  "revision": zod.number().int(),
+  "changedAt": zod.coerce.date(),
+  "changedByUserId": zod.number().int(),
+  "snapshot": zod.record(zod.string(), zod.unknown())
+})
+export const ListStudentWelfareHistoryResponse = zod.array(ListStudentWelfareHistoryResponseItem)
+
+
+/**
+ * @summary List behaviour records for an authorized administrator, granted staff member, or assigned teacher
+ */
+
+
+
+
+export const ListStudentBehaviourRecordsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const listStudentBehaviourRecordsResponseOneLocationMax = 500;
+
+export const listStudentBehaviourRecordsResponseOneDescriptionMax = 5000;
+
+export const listStudentBehaviourRecordsResponseOneActionMax = 2000;
+
+export const listStudentBehaviourRecordsResponseOneFollowUpNotesMax = 5000;
+
+export const listStudentBehaviourRecordsResponseOneResolutionMax = 5000;
+
+export const listStudentBehaviourRecordsResponseOneInternalNotesMax = 10000;
+
+export const listStudentBehaviourRecordsResponseOneParentVisibleDefault = false;
+
+export const ListStudentBehaviourRecordsResponseItem = zod.object({
+  "category": zod.enum(['POSITIVE', 'CONCERN', 'INCIDENT', 'RULE_VIOLATION', 'RECOGNITION']),
+  "severity": zod.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL']),
+  "occurredAt": zod.coerce.date().optional(),
+  "schoolClassId": zod.number().int().nullish(),
+  "subjectId": zod.number().int().nullish(),
+  "location": zod.string().max(listStudentBehaviourRecordsResponseOneLocationMax).nullish(),
+  "description": zod.string().min(1).max(listStudentBehaviourRecordsResponseOneDescriptionMax),
+  "action": zod.string().max(listStudentBehaviourRecordsResponseOneActionMax).nullish(),
+  "followUpAt": zod.coerce.date().nullish(),
+  "followUpNotes": zod.string().max(listStudentBehaviourRecordsResponseOneFollowUpNotesMax).nullish(),
+  "resolution": zod.string().max(listStudentBehaviourRecordsResponseOneResolutionMax).nullish(),
+  "internalNotes": zod.string().max(listStudentBehaviourRecordsResponseOneInternalNotesMax).nullish(),
+  "parentVisible": zod.boolean().default(listStudentBehaviourRecordsResponseOneParentVisibleDefault)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "reporterUserId": zod.number().int(),
+  "status": zod.enum(['REVIEW', 'ACTION', 'PARENT_NOTIFICATION', 'FOLLOW_UP', 'RESOLVED']),
+  "parentNotificationStatus": zod.enum(['NOT_REQUESTED', 'QUEUED', 'PARTIAL', 'NOT_CONFIGURED', 'FAILED']),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullish()
+}))
+export const ListStudentBehaviourRecordsResponse = zod.array(ListStudentBehaviourRecordsResponseItem)
+
+
+/**
+ * @summary Create a behaviour record at the review stage
+ */
+
+
+
+
+export const CreateStudentBehaviourRecordParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const createStudentBehaviourRecordHeaderIdempotencyKeyMin = 8;
+export const createStudentBehaviourRecordHeaderIdempotencyKeyMax = 128;
+
+
+
+export const CreateStudentBehaviourRecordHeader = zod.object({
+  "Idempotency-Key": zod.string().min(createStudentBehaviourRecordHeaderIdempotencyKeyMin).max(createStudentBehaviourRecordHeaderIdempotencyKeyMax)
+})
+
+export const createStudentBehaviourRecordBodyLocationMax = 500;
+
+export const createStudentBehaviourRecordBodyDescriptionMax = 5000;
+
+export const createStudentBehaviourRecordBodyActionMax = 2000;
+
+export const createStudentBehaviourRecordBodyFollowUpNotesMax = 5000;
+
+export const createStudentBehaviourRecordBodyResolutionMax = 5000;
+
+export const createStudentBehaviourRecordBodyInternalNotesMax = 10000;
+
+export const createStudentBehaviourRecordBodyParentVisibleDefault = false;
+
+export const CreateStudentBehaviourRecordBody = zod.object({
+  "category": zod.enum(['POSITIVE', 'CONCERN', 'INCIDENT', 'RULE_VIOLATION', 'RECOGNITION']),
+  "severity": zod.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL']),
+  "occurredAt": zod.coerce.date().optional(),
+  "schoolClassId": zod.number().int().nullish(),
+  "subjectId": zod.number().int().nullish(),
+  "location": zod.string().max(createStudentBehaviourRecordBodyLocationMax).nullish(),
+  "description": zod.string().min(1).max(createStudentBehaviourRecordBodyDescriptionMax),
+  "action": zod.string().max(createStudentBehaviourRecordBodyActionMax).nullish(),
+  "followUpAt": zod.coerce.date().nullish(),
+  "followUpNotes": zod.string().max(createStudentBehaviourRecordBodyFollowUpNotesMax).nullish(),
+  "resolution": zod.string().max(createStudentBehaviourRecordBodyResolutionMax).nullish(),
+  "internalNotes": zod.string().max(createStudentBehaviourRecordBodyInternalNotesMax).nullish(),
+  "parentVisible": zod.boolean().default(createStudentBehaviourRecordBodyParentVisibleDefault)
+})
+
+export const createStudentBehaviourRecordResponseOneLocationMax = 500;
+
+export const createStudentBehaviourRecordResponseOneDescriptionMax = 5000;
+
+export const createStudentBehaviourRecordResponseOneActionMax = 2000;
+
+export const createStudentBehaviourRecordResponseOneFollowUpNotesMax = 5000;
+
+export const createStudentBehaviourRecordResponseOneResolutionMax = 5000;
+
+export const createStudentBehaviourRecordResponseOneInternalNotesMax = 10000;
+
+export const createStudentBehaviourRecordResponseOneParentVisibleDefault = false;
+
+export const CreateStudentBehaviourRecordResponse = zod.object({
+  "category": zod.enum(['POSITIVE', 'CONCERN', 'INCIDENT', 'RULE_VIOLATION', 'RECOGNITION']),
+  "severity": zod.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL']),
+  "occurredAt": zod.coerce.date().optional(),
+  "schoolClassId": zod.number().int().nullish(),
+  "subjectId": zod.number().int().nullish(),
+  "location": zod.string().max(createStudentBehaviourRecordResponseOneLocationMax).nullish(),
+  "description": zod.string().min(1).max(createStudentBehaviourRecordResponseOneDescriptionMax),
+  "action": zod.string().max(createStudentBehaviourRecordResponseOneActionMax).nullish(),
+  "followUpAt": zod.coerce.date().nullish(),
+  "followUpNotes": zod.string().max(createStudentBehaviourRecordResponseOneFollowUpNotesMax).nullish(),
+  "resolution": zod.string().max(createStudentBehaviourRecordResponseOneResolutionMax).nullish(),
+  "internalNotes": zod.string().max(createStudentBehaviourRecordResponseOneInternalNotesMax).nullish(),
+  "parentVisible": zod.boolean().default(createStudentBehaviourRecordResponseOneParentVisibleDefault)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "reporterUserId": zod.number().int(),
+  "status": zod.enum(['REVIEW', 'ACTION', 'PARENT_NOTIFICATION', 'FOLLOW_UP', 'RESOLVED']),
+  "parentNotificationStatus": zod.enum(['NOT_REQUESTED', 'QUEUED', 'PARTIAL', 'NOT_CONFIGURED', 'FAILED']),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullish()
+}))
+
+
+/**
+ * @summary Advance lifecycle in order Review, Action, Parent Notification, Follow-up, Resolution
+ */
+
+
+
+
+
+export const ProgressStudentBehaviourRecordParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1),
+  "recordId": zod.coerce.number().int().min(1)
+})
+
+export const progressStudentBehaviourRecordBodyOneLocationMax = 500;
+
+export const progressStudentBehaviourRecordBodyOneDescriptionMax = 5000;
+
+export const progressStudentBehaviourRecordBodyOneActionMax = 2000;
+
+export const progressStudentBehaviourRecordBodyOneFollowUpNotesMax = 5000;
+
+export const progressStudentBehaviourRecordBodyOneResolutionMax = 5000;
+
+export const progressStudentBehaviourRecordBodyOneInternalNotesMax = 10000;
+
+export const progressStudentBehaviourRecordBodyOneParentVisibleDefault = false;
+
+
+export const ProgressStudentBehaviourRecordBody = zod.object({
+  "category": zod.enum(['POSITIVE', 'CONCERN', 'INCIDENT', 'RULE_VIOLATION', 'RECOGNITION']),
+  "severity": zod.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL']),
+  "occurredAt": zod.coerce.date().optional(),
+  "schoolClassId": zod.number().int().nullish(),
+  "subjectId": zod.number().int().nullish(),
+  "location": zod.string().max(progressStudentBehaviourRecordBodyOneLocationMax).nullish(),
+  "description": zod.string().min(1).max(progressStudentBehaviourRecordBodyOneDescriptionMax),
+  "action": zod.string().max(progressStudentBehaviourRecordBodyOneActionMax).nullish(),
+  "followUpAt": zod.coerce.date().nullish(),
+  "followUpNotes": zod.string().max(progressStudentBehaviourRecordBodyOneFollowUpNotesMax).nullish(),
+  "resolution": zod.string().max(progressStudentBehaviourRecordBodyOneResolutionMax).nullish(),
+  "internalNotes": zod.string().max(progressStudentBehaviourRecordBodyOneInternalNotesMax).nullish(),
+  "parentVisible": zod.boolean().default(progressStudentBehaviourRecordBodyOneParentVisibleDefault)
+}).and(zod.object({
+  "expectedVersion": zod.number().int().min(1),
+  "status": zod.enum(['REVIEW', 'ACTION', 'PARENT_NOTIFICATION', 'FOLLOW_UP', 'RESOLVED']).optional(),
+  "parentNotificationRequested": zod.boolean().optional()
+}))
+
+export const progressStudentBehaviourRecordResponseOneLocationMax = 500;
+
+export const progressStudentBehaviourRecordResponseOneDescriptionMax = 5000;
+
+export const progressStudentBehaviourRecordResponseOneActionMax = 2000;
+
+export const progressStudentBehaviourRecordResponseOneFollowUpNotesMax = 5000;
+
+export const progressStudentBehaviourRecordResponseOneResolutionMax = 5000;
+
+export const progressStudentBehaviourRecordResponseOneInternalNotesMax = 10000;
+
+export const progressStudentBehaviourRecordResponseOneParentVisibleDefault = false;
+
+export const ProgressStudentBehaviourRecordResponse = zod.object({
+  "category": zod.enum(['POSITIVE', 'CONCERN', 'INCIDENT', 'RULE_VIOLATION', 'RECOGNITION']),
+  "severity": zod.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL']),
+  "occurredAt": zod.coerce.date().optional(),
+  "schoolClassId": zod.number().int().nullish(),
+  "subjectId": zod.number().int().nullish(),
+  "location": zod.string().max(progressStudentBehaviourRecordResponseOneLocationMax).nullish(),
+  "description": zod.string().min(1).max(progressStudentBehaviourRecordResponseOneDescriptionMax),
+  "action": zod.string().max(progressStudentBehaviourRecordResponseOneActionMax).nullish(),
+  "followUpAt": zod.coerce.date().nullish(),
+  "followUpNotes": zod.string().max(progressStudentBehaviourRecordResponseOneFollowUpNotesMax).nullish(),
+  "resolution": zod.string().max(progressStudentBehaviourRecordResponseOneResolutionMax).nullish(),
+  "internalNotes": zod.string().max(progressStudentBehaviourRecordResponseOneInternalNotesMax).nullish(),
+  "parentVisible": zod.boolean().default(progressStudentBehaviourRecordResponseOneParentVisibleDefault)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "reporterUserId": zod.number().int(),
+  "status": zod.enum(['REVIEW', 'ACTION', 'PARENT_NOTIFICATION', 'FOLLOW_UP', 'RESOLVED']),
+  "parentNotificationStatus": zod.enum(['NOT_REQUESTED', 'QUEUED', 'PARTIAL', 'NOT_CONFIGURED', 'FAILED']),
+  "version": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullish()
+}))
+
+
+/**
+ * @summary Archive behaviour record without deleting revisions
+ */
+
+
+
+
+
+export const ArchiveStudentBehaviourRecordParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1),
+  "recordId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ArchiveStudentBehaviourRecordHeader = zod.object({
+  "If-Match-Version": zod.number().int().min(1)
+})
+
+export const ArchiveStudentBehaviourRecordResponse = zod.unknown()
+
+
+/**
+ * @summary List retained behaviour revisions
+ */
+
+
+
+
+
+export const ListStudentBehaviourHistoryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1),
+  "recordId": zod.coerce.number().int().min(1)
+})
+
+export const ListStudentBehaviourHistoryResponseItem = zod.object({
+  "revision": zod.number().int(),
+  "changedAt": zod.coerce.date(),
+  "changedByUserId": zod.number().int(),
+  "snapshot": zod.record(zod.string(), zod.unknown())
+})
+export const ListStudentBehaviourHistoryResponse = zod.array(ListStudentBehaviourHistoryResponseItem)
+
+
+/**
+ * @summary List active school-configured behaviour categories and actions
+ */
+
+
+
+export const ListBehaviourConfigurationParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const listBehaviourConfigurationResponseVersionMin = 0;
+
+
+
+export const ListBehaviourConfigurationResponse = zod.object({
+  "categories": zod.array(zod.string()),
+  "actions": zod.array(zod.string()),
+  "version": zod.number().int().min(listBehaviourConfigurationResponseVersionMin),
+  "updatedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary School Admin maintains school-specific category/action options
+ */
+
+
+
+export const UpdateBehaviourConfigurationParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const updateBehaviourConfigurationBodyExpectedVersionMin = 0;
+
+export const updateBehaviourConfigurationBodyCategoriesItemMax = 100;
+
+export const updateBehaviourConfigurationBodyActionsItemMax = 200;
+
+
+
+export const UpdateBehaviourConfigurationBody = zod.object({
+  "expectedVersion": zod.number().int().min(updateBehaviourConfigurationBodyExpectedVersionMin),
+  "categories": zod.array(zod.string().min(1).max(updateBehaviourConfigurationBodyCategoriesItemMax)),
+  "actions": zod.array(zod.string().min(1).max(updateBehaviourConfigurationBodyActionsItemMax))
+})
+
+export const updateBehaviourConfigurationResponseVersionMin = 0;
+
+
+
+export const UpdateBehaviourConfigurationResponse = zod.object({
+  "categories": zod.array(zod.string()),
+  "actions": zod.array(zod.string()),
+  "version": zod.number().int().min(updateBehaviourConfigurationResponseVersionMin),
+  "updatedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary School Admin lists medical, welfare, safeguarding, and behaviour grants
+ */
+
+
+
+export const ListStudentCareGrantsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ListStudentCareGrantsResponseItem = zod.object({
+  "userId": zod.number().int().min(1),
+  "active": zod.boolean(),
+  "permissions": zod.array(zod.enum(['MEDICAL_READ', 'MEDICAL_WRITE', 'WELFARE_READ', 'WELFARE_WRITE', 'SAFEGUARDING_READ', 'SAFEGUARDING_WRITE', 'BEHAVIOUR_READ', 'BEHAVIOUR_WRITE', 'BEHAVIOUR_REVIEW', 'BEHAVIOUR_ACTION']))
+}).and(zod.object({
+  "schoolId": zod.number().int(),
+  "updatedAt": zod.coerce.date()
+}))
+export const ListStudentCareGrantsResponse = zod.array(ListStudentCareGrantsResponseItem)
+
+
+/**
+ * @summary School Admin assigns or revokes explicit stable student-care permissions
+ */
+
+
+
+export const SetStudentCareGrantParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const SetStudentCareGrantBody = zod.object({
+  "userId": zod.number().int().min(1),
+  "active": zod.boolean(),
+  "permissions": zod.array(zod.enum(['MEDICAL_READ', 'MEDICAL_WRITE', 'WELFARE_READ', 'WELFARE_WRITE', 'SAFEGUARDING_READ', 'SAFEGUARDING_WRITE', 'BEHAVIOUR_READ', 'BEHAVIOUR_WRITE', 'BEHAVIOUR_REVIEW', 'BEHAVIOUR_ACTION']))
+})
+
+
+
+
+export const SetStudentCareGrantResponse = zod.object({
+  "userId": zod.number().int().min(1),
+  "active": zod.boolean(),
+  "permissions": zod.array(zod.enum(['MEDICAL_READ', 'MEDICAL_WRITE', 'WELFARE_READ', 'WELFARE_WRITE', 'SAFEGUARDING_READ', 'SAFEGUARDING_WRITE', 'BEHAVIOUR_READ', 'BEHAVIOUR_WRITE', 'BEHAVIOUR_REVIEW', 'BEHAVIOUR_ACTION']))
+}).and(zod.object({
+  "schoolId": zod.number().int(),
+  "updatedAt": zod.coerce.date()
+}))
+
+
+/**
+ * @summary Read explicitly parent-visible welfare/behaviour summary for an actively linked child
+ */
+
+
+
+export const GetParentStudentCareSummaryParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const GetParentStudentCareSummaryResponse = zod.object({
+  "studentId": zod.number().int(),
+  "welfare": zod.array(zod.object({
+  "id": zod.number().int(),
+  "category": zod.string(),
+  "concern": zod.string(),
+  "status": zod.string(),
+  "updatedAt": zod.coerce.date()
+})),
+  "behaviour": zod.array(zod.object({
+  "id": zod.number().int(),
+  "category": zod.string(),
+  "description": zod.string(),
+  "status": zod.string(),
+  "occurredAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * Requires an active student role and active verified school membership mapped to the requesting account. Returns only explicitly parent-visible welfare and behaviour records; never medical data, internal notes, safeguarding, or a school-wide catalogue.
+ * @summary Read the authenticated student's own parent-visible care summary
+ */
+export const GetStudentCareSummaryResponse = zod.object({
+  "studentId": zod.number().int(),
+  "welfare": zod.array(zod.object({
+  "id": zod.number().int(),
+  "category": zod.string(),
+  "concern": zod.string(),
+  "status": zod.string(),
+  "updatedAt": zod.coerce.date()
+})),
+  "behaviour": zod.array(zod.object({
+  "id": zod.number().int(),
+  "category": zod.string(),
+  "description": zod.string(),
+  "status": zod.string(),
+  "occurredAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * Preparation snapshots currently placed students and real published-results and successful school-entry attendance summaries. Recommendation is advisory only: it is Eligible when there is at least one published result with at least 50% average and at least one recorded attendance day with at least 75% present/late; otherwise it is Pending. Schools must independently review and decide. Preparation does not move students or alter NFC identity. Target session must follow source session. If it is not the school's currently active calendar session, finalization is rejected; this endpoint never switches the school's global active session. Only an active school-scoped School Admin may operate; Platform Owner is excluded even on dual-role identities.
+ * @summary Prepare a review-only promotion batch from a source and target session
+ */
+
+
+
+export const PreparePromotionBatchQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const preparePromotionBatchHeaderIdempotencyKeyMin = 8;
+export const preparePromotionBatchHeaderIdempotencyKeyMax = 128;
+
+
+
+export const PreparePromotionBatchHeader = zod.object({
+  "Idempotency-Key": zod.string().min(preparePromotionBatchHeaderIdempotencyKeyMin).max(preparePromotionBatchHeaderIdempotencyKeyMax)
+})
+
+
+
+
+
+export const PreparePromotionBatchBody = zod.object({
+  "sourceSessionId": zod.number().int().min(1),
+  "targetSessionId": zod.number().int().min(1)
+})
+
+export const PreparePromotionBatchResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sourceSessionId": zod.number().int(),
+  "targetSessionId": zod.number().int(),
+  "status": zod.enum(['Prepared', 'Finalized']),
+  "createdAt": zod.coerce.date(),
+  "finalizedAt": zod.coerce.date().nullish(),
+  "studentCount": zod.number().int()
+}).and(zod.object({
+  "students": zod.array(zod.object({
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "admissionNumber": zod.string(),
+  "sourcePlacement": zod.object({
+  "sessionId": zod.number().int(),
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "termId": zod.number().int().nullable()
+}),
+  "targetPlacement": zod.union([zod.object({
+  "sessionId": zod.number().int(),
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "termId": zod.number().int().nullable()
+}),zod.null()]).optional(),
+  "status": zod.enum(['Pending', 'Eligible', 'Promoted', 'Repeat', 'Graduated', 'Withdrawn', 'Transferred']),
+  "recommendation": zod.enum(['Pending', 'Eligible']).describe('Advisory data-derived recommendation, not an automatic decision.'),
+  "reason": zod.string().nullish(),
+  "academicPerformance": zod.object({
+  "resultCount": zod.number().int(),
+  "scoredCount": zod.number().int(),
+  "averageScore": zod.number().nullable()
+}),
+  "attendanceSummary": zod.object({
+  "presentCount": zod.number().int(),
+  "absentCount": zod.number().int(),
+  "lateCount": zod.number().int(),
+  "recordedCount": zod.number().int(),
+  "attendanceRate": zod.number().nullable()
+})
+}))
+}))
+
+
+/**
+ * @summary List promotion batches and their review/finalization history
+ */
+
+export const listPromotionBatchesQueryLimitDefault = 50;
+export const listPromotionBatchesQueryLimitMax = 100;
+
+
+
+export const ListPromotionBatchesQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "limit": zod.coerce.number().int().min(1).max(listPromotionBatchesQueryLimitMax).default(listPromotionBatchesQueryLimitDefault)
+})
+
+export const ListPromotionBatchesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sourceSessionId": zod.number().int(),
+  "targetSessionId": zod.number().int(),
+  "status": zod.enum(['Prepared', 'Finalized']),
+  "createdAt": zod.coerce.date(),
+  "finalizedAt": zod.coerce.date().nullish(),
+  "studentCount": zod.number().int()
+})
+export const ListPromotionBatchesResponse = zod.array(ListPromotionBatchesResponseItem)
+
+
+/**
+ * @summary Read a batch with placement snapshots and review decisions
+ */
+
+
+
+export const GetPromotionBatchParams = zod.object({
+  "batchId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GetPromotionBatchQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const GetPromotionBatchResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sourceSessionId": zod.number().int(),
+  "targetSessionId": zod.number().int(),
+  "status": zod.enum(['Prepared', 'Finalized']),
+  "createdAt": zod.coerce.date(),
+  "finalizedAt": zod.coerce.date().nullish(),
+  "studentCount": zod.number().int()
+}).and(zod.object({
+  "students": zod.array(zod.object({
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "admissionNumber": zod.string(),
+  "sourcePlacement": zod.object({
+  "sessionId": zod.number().int(),
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "termId": zod.number().int().nullable()
+}),
+  "targetPlacement": zod.union([zod.object({
+  "sessionId": zod.number().int(),
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "termId": zod.number().int().nullable()
+}),zod.null()]).optional(),
+  "status": zod.enum(['Pending', 'Eligible', 'Promoted', 'Repeat', 'Graduated', 'Withdrawn', 'Transferred']),
+  "recommendation": zod.enum(['Pending', 'Eligible']).describe('Advisory data-derived recommendation, not an automatic decision.'),
+  "reason": zod.string().nullish(),
+  "academicPerformance": zod.object({
+  "resultCount": zod.number().int(),
+  "scoredCount": zod.number().int(),
+  "averageScore": zod.number().nullable()
+}),
+  "attendanceSummary": zod.object({
+  "presentCount": zod.number().int(),
+  "absentCount": zod.number().int(),
+  "lateCount": zod.number().int(),
+  "recordedCount": zod.number().int(),
+  "attendanceRate": zod.number().nullable()
+})
+}))
+}))
+
+
+/**
+ * @summary Read append-only reviewed decisions and finalization outcomes for a batch
+ */
+
+
+
+export const ListPromotionBatchHistoryParams = zod.object({
+  "batchId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ListPromotionBatchHistoryQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ListPromotionBatchHistoryResponseItem = zod.object({
+  "id": zod.number().int(),
+  "batchId": zod.number().int(),
+  "batchStudentId": zod.number().int().nullable(),
+  "studentId": zod.number().int().nullable(),
+  "actorUserId": zod.number().int().nullable(),
+  "eventType": zod.enum(['BATCH_PREPARED', 'STUDENT_SNAPSHOTTED', 'STUDENT_REVIEWED', 'STUDENT_FINALIZED', 'BATCH_FINALIZED', 'FINALIZATION_REJECTED']),
+  "result": zod.enum(['SUCCESS', 'REJECTED']),
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "createdAt": zod.coerce.date()
+})
+export const ListPromotionBatchHistoryResponse = zod.array(ListPromotionBatchHistoryResponseItem)
+
+
+/**
+ * Each review requires an explicit reason. Promoted and Repeat require a school-valid target class, section and target term. Pending and Eligible are non-final review states; only Promoted, Repeat, Graduated, Withdrawn, and Transferred can be finalized.
+ * @summary Record a reviewed per-student decision and explicit target placement
+ */
+
+
+
+
+export const ReviewPromotionDecisionParams = zod.object({
+  "batchId": zod.coerce.number().int().min(1),
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ReviewPromotionDecisionQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const reviewPromotionDecisionBodyReasonMax = 1000;
+
+
+
+export const reviewPromotionDecisionBodyTargetSectionMax = 100;
+
+
+
+export const ReviewPromotionDecisionBody = zod.object({
+  "status": zod.enum(['Pending', 'Eligible', 'Promoted', 'Repeat', 'Graduated', 'Withdrawn', 'Transferred']),
+  "reason": zod.string().min(1).max(reviewPromotionDecisionBodyReasonMax),
+  "targetTermId": zod.number().int().min(1).nullish(),
+  "targetClassId": zod.number().int().min(1).nullish(),
+  "targetSection": zod.string().max(reviewPromotionDecisionBodyTargetSectionMax).nullish()
+})
+
+export const ReviewPromotionDecisionResponse = zod.object({
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "admissionNumber": zod.string(),
+  "sourcePlacement": zod.object({
+  "sessionId": zod.number().int(),
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "termId": zod.number().int().nullable()
+}),
+  "targetPlacement": zod.union([zod.object({
+  "sessionId": zod.number().int(),
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "termId": zod.number().int().nullable()
+}),zod.null()]).optional(),
+  "status": zod.enum(['Pending', 'Eligible', 'Promoted', 'Repeat', 'Graduated', 'Withdrawn', 'Transferred']),
+  "recommendation": zod.enum(['Pending', 'Eligible']).describe('Advisory data-derived recommendation, not an automatic decision.'),
+  "reason": zod.string().nullish(),
+  "academicPerformance": zod.object({
+  "resultCount": zod.number().int(),
+  "scoredCount": zod.number().int(),
+  "averageScore": zod.number().nullable()
+}),
+  "attendanceSummary": zod.object({
+  "presentCount": zod.number().int(),
+  "absentCount": zod.number().int(),
+  "lateCount": zod.number().int(),
+  "recordedCount": zod.number().int(),
+  "attendanceRate": zod.number().nullable()
+})
+})
+
+
+/**
+ * Strict all-or-nothing transaction: every row must have an explicit final decision; source placement snapshots, session/calendar and target relations are revalidated under locks. Idempotency-Key prevents duplicate finalization. Existing student identity, admission number, cards and NFC assignments remain untouched; historical placements are closed, never overwritten. Graduated, Withdrawn and Transferred lifecycle results preserve the existing school identity/history; cross-school identity migration is not attempted.
+ * @summary Atomically finalize every reviewed decision in a batch
+ */
+
+
+
+export const FinalizePromotionBatchParams = zod.object({
+  "batchId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const FinalizePromotionBatchQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const finalizePromotionBatchHeaderIdempotencyKeyMin = 8;
+export const finalizePromotionBatchHeaderIdempotencyKeyMax = 128;
+
+
+
+export const FinalizePromotionBatchHeader = zod.object({
+  "Idempotency-Key": zod.string().min(finalizePromotionBatchHeaderIdempotencyKeyMin).max(finalizePromotionBatchHeaderIdempotencyKeyMax)
+})
+
+export const FinalizePromotionBatchResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sourceSessionId": zod.number().int(),
+  "targetSessionId": zod.number().int(),
+  "status": zod.enum(['Prepared', 'Finalized']),
+  "createdAt": zod.coerce.date(),
+  "finalizedAt": zod.coerce.date().nullish(),
+  "studentCount": zod.number().int()
+}).and(zod.object({
+  "students": zod.array(zod.object({
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "admissionNumber": zod.string(),
+  "sourcePlacement": zod.object({
+  "sessionId": zod.number().int(),
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "termId": zod.number().int().nullable()
+}),
+  "targetPlacement": zod.union([zod.object({
+  "sessionId": zod.number().int(),
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "termId": zod.number().int().nullable()
+}),zod.null()]).optional(),
+  "status": zod.enum(['Pending', 'Eligible', 'Promoted', 'Repeat', 'Graduated', 'Withdrawn', 'Transferred']),
+  "recommendation": zod.enum(['Pending', 'Eligible']).describe('Advisory data-derived recommendation, not an automatic decision.'),
+  "reason": zod.string().nullish(),
+  "academicPerformance": zod.object({
+  "resultCount": zod.number().int(),
+  "scoredCount": zod.number().int(),
+  "averageScore": zod.number().nullable()
+}),
+  "attendanceSummary": zod.object({
+  "presentCount": zod.number().int(),
+  "absentCount": zod.number().int(),
+  "lateCount": zod.number().int(),
+  "recordedCount": zod.number().int(),
+  "attendanceRate": zod.number().nullable()
+})
+}))
+}))
+
+
+/**
  * Read-only download for the existing active Platform Owner card-management permission. Requires the card's school to match schoolId and an eligible current assignment. Teachers may print after assignment, before the separate NFC activation step. Printing never creates or changes a person, card, UID or assignment. Student cards contain permanent identification only, not class, section, session or term.
  * @summary Download the existing assigned Teacher or Student NFC card as a front-and-back CR80 PDF
  */
@@ -8957,11 +13986,20 @@ export const listCommunicationNotificationsQueryLimitMax = 100;
 
 
 
+export const listCommunicationNotificationsQuerySearchMax = 100;
+
+
 
 export const ListCommunicationNotificationsQueryParams = zod.object({
   "schoolId": zod.coerce.number().int().min(1).optional(),
   "limit": zod.coerce.number().int().min(1).max(listCommunicationNotificationsQueryLimitMax).default(listCommunicationNotificationsQueryLimitDefault),
-  "beforeId": zod.coerce.number().int().min(1).optional()
+  "beforeId": zod.coerce.number().int().min(1).optional(),
+  "childId": zod.coerce.number().int().min(1).optional(),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']).optional(),
+  "isRead": zod.coerce.boolean().optional(),
+  "includeArchived": zod.coerce.boolean().optional(),
+  "includeExpired": zod.coerce.boolean().optional(),
+  "search": zod.coerce.string().max(listCommunicationNotificationsQuerySearchMax).optional()
 })
 
 export const listCommunicationNotificationsResponseItemsItemDeliveriesItemAttemptsMin = 0;
@@ -8980,6 +14018,7 @@ export const ListCommunicationNotificationsResponse = zod.object({
   "body": zod.string(),
   "link": zod.string().nullable(),
   "isRead": zod.boolean(),
+  "isArchived": zod.boolean(),
   "createdAt": zod.coerce.date(),
   "readAt": zod.coerce.date().nullable(),
   "deliveries": zod.array(zod.object({
@@ -9030,6 +14069,7 @@ export const MarkCommunicationNotificationReadResponse = zod.object({
   "body": zod.string(),
   "link": zod.string().nullable(),
   "isRead": zod.boolean(),
+  "isArchived": zod.boolean(),
   "createdAt": zod.coerce.date(),
   "readAt": zod.coerce.date().nullable(),
   "deliveries": zod.array(zod.object({
@@ -9241,11 +14281,13 @@ export const UpdateCommunicationTemplateResponse = zod.object({
  * @summary Count validated recipients before a school announcement is sent
  */
 
-
+export const previewCommunicationAnnouncementBodyIsEmergencyDefault = false;
 
 
 export const PreviewCommunicationAnnouncementBody = zod.object({
   "schoolId": zod.number().int().min(1),
+  "category": zod.enum(['ATTENDANCE', 'ACADEMIC', 'ASSIGNMENT', 'FINANCE', 'PAYMENT', 'ANNOUNCEMENT', 'ACCOUNT', 'SYSTEM', 'SUBSCRIPTION', 'PARTNER', 'SECURITY']).optional(),
+  "isEmergency": zod.boolean().default(previewCommunicationAnnouncementBodyIsEmergencyDefault),
   "targetType": zod.enum(['SCHOOL', 'PARENTS', 'STUDENTS', 'TEACHERS', 'STAFF', 'CLASS', 'SECTION', 'USERS']),
   "targetCriteria": zod.record(zod.string(), zod.unknown()).describe('Target details validated against the caller\'s active school, class assignments, and parent-child relationships. Never interpreted as arbitrary recipient IDs.'),
   "channels": zod.array(zod.enum(['IN_APP', 'SMS', 'EMAIL'])).min(1)
@@ -9304,7 +14346,9 @@ export const ListCommunicationAnnouncementsResponse = zod.object({
   "status": zod.enum(['DRAFT', 'QUEUED', 'SENDING', 'SENT', 'FAILED', 'CANCELLED']),
   "recipientCount": zod.number().int().min(listCommunicationAnnouncementsResponseItemsItemRecipientCountMin),
   "createdAt": zod.coerce.date(),
-  "sentAt": zod.coerce.date().nullable()
+  "sentAt": zod.coerce.date().nullable(),
+  "isEmergency": zod.boolean().optional(),
+  "expiresAt": zod.coerce.date().nullish()
 })),
   "hasMore": zod.boolean(),
   "nextBeforeId": zod.number().int().nullable()
@@ -9327,6 +14371,9 @@ export const createCommunicationAnnouncementBodyBodyMax = 10000;
 export const createCommunicationAnnouncementBodyIdempotencyKeyMin = 8;
 export const createCommunicationAnnouncementBodyIdempotencyKeyMax = 128;
 
+export const createCommunicationAnnouncementBodyIsEmergencyDefault = false;
+export const createCommunicationAnnouncementBodyConfirmedRecipientCountMin = 0;
+
 
 
 export const CreateCommunicationAnnouncementBody = zod.object({
@@ -9339,7 +14386,11 @@ export const CreateCommunicationAnnouncementBody = zod.object({
   "targetCriteria": zod.record(zod.string(), zod.unknown()).describe('Target details validated against the caller\'s active school, class assignments, and parent-child relationships. Never interpreted as arbitrary recipient IDs.'),
   "channels": zod.array(zod.enum(['IN_APP', 'SMS', 'EMAIL'])).min(1),
   "templateId": zod.number().int().min(1).nullish(),
-  "idempotencyKey": zod.string().min(createCommunicationAnnouncementBodyIdempotencyKeyMin).max(createCommunicationAnnouncementBodyIdempotencyKeyMax)
+  "idempotencyKey": zod.string().min(createCommunicationAnnouncementBodyIdempotencyKeyMin).max(createCommunicationAnnouncementBodyIdempotencyKeyMax),
+  "expiresAt": zod.coerce.date().nullish(),
+  "isEmergency": zod.boolean().default(createCommunicationAnnouncementBodyIsEmergencyDefault),
+  "emergencyConfirmation": zod.enum(['I CONFIRM EMERGENCY BROADCAST']).optional(),
+  "confirmedRecipientCount": zod.number().int().min(createCommunicationAnnouncementBodyConfirmedRecipientCountMin).optional()
 })
 
 export const createCommunicationAnnouncementResponseRecipientCountMin = 0;
@@ -9361,7 +14412,9 @@ export const CreateCommunicationAnnouncementResponse = zod.object({
   "status": zod.enum(['DRAFT', 'QUEUED', 'SENDING', 'SENT', 'FAILED', 'CANCELLED']),
   "recipientCount": zod.number().int().min(createCommunicationAnnouncementResponseRecipientCountMin),
   "createdAt": zod.coerce.date(),
-  "sentAt": zod.coerce.date().nullable()
+  "sentAt": zod.coerce.date().nullable(),
+  "isEmergency": zod.boolean().optional(),
+  "expiresAt": zod.coerce.date().nullish()
 })
 
 
@@ -9396,7 +14449,9 @@ export const GetCommunicationAnnouncementResponse = zod.object({
   "status": zod.enum(['DRAFT', 'QUEUED', 'SENDING', 'SENT', 'FAILED', 'CANCELLED']),
   "recipientCount": zod.number().int().min(getCommunicationAnnouncementResponseOneRecipientCountMin),
   "createdAt": zod.coerce.date(),
-  "sentAt": zod.coerce.date().nullable()
+  "sentAt": zod.coerce.date().nullable(),
+  "isEmergency": zod.boolean().optional(),
+  "expiresAt": zod.coerce.date().nullish()
 }).and(zod.object({
   "recipients": zod.array(zod.object({
   "recipientUserId": zod.number().int().describe('Internal user id is returned only to authorized school communication managers.'),

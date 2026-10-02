@@ -21,7 +21,7 @@ import financeNotificationsRouter from "./finance-notifications";
 import invoiceNotificationsRouter from "./invoice-notifications";
 import platformCompanyEmployeesRouter from "./platform-company-employees";
 import communicationInboxRouter from "./communication-inbox";
-import communicationCampaignsRouter from "./communication-campaigns";
+import { createCommunicationCampaignsRouter } from "./communication-campaigns";
 import libraryRouter from "./library";
 import operationsRouter from "./operations";
 import reportingRouter from "./reporting";
@@ -36,6 +36,13 @@ import { staffNfcBillingRouter } from "./staff-nfc-billing";
 import schoolWorkflowsRouter from "./school-workflows";
 import transportRouter from "./transport";
 import settlementPayrollRouter from "./settlement-payroll";
+import admissionsExpansionRouter from "./admissions-expansion";
+import studentCareRouter from "./student-care";
+import schoolSecurityCoreRouter from "./school-security-core";
+import schoolSecurityOperationsRouter from "./school-security-operations";
+import { createParentCommunicationRouter } from "./parent-communication";
+import { requireSecurityAccess } from "../services/school-security-core-service";
+import promotionExpansionRouter from "./promotion-expansion";
 
 const router: IRouter = Router();
 
@@ -45,12 +52,20 @@ if (process.env.NODE_ENV === "development") {
   router.use(devOwnerAccessDiagnosticRouter);
 }
 router.use(publicPartnersRouter);
+// Anonymous admissions handlers authenticate applicants with receipt credentials;
+// school handlers apply their own operational authorization before every access.
+router.use(admissionsExpansionRouter);
 // Device credentials authenticate independently of Clerk. Every human-facing
 // attendance handler applies requireAuthentication() explicitly.
 router.use(attendanceRouter);
 router.use(employeeNfcRouter);
 router.use(nfcPrintableRouter);
 router.use(authRouter);
+router.use(studentCareRouter);
+router.use(schoolSecurityCoreRouter);
+router.use(schoolSecurityOperationsRouter);
+router.use(createParentCommunicationRouter(requireSecurityAccess));
+router.use(promotionExpansionRouter);
 router.use(peopleRouter);
 router.use(academicRouter);
 router.use(edupulseRouter);
@@ -68,7 +83,7 @@ router.use(financeRouter);
 router.use(financeNotificationsRouter);
 router.use(invoiceNotificationsRouter);
 router.use(communicationInboxRouter);
-router.use(communicationCampaignsRouter);
+router.use(createCommunicationCampaignsRouter(requireSecurityAccess));
 router.use(libraryRouter);
 router.use(operationsRouter);
 router.use(reportingRouter);

@@ -80,6 +80,21 @@ function parseBoundedQueryInt(value: unknown, label: string, fallback: number, m
   return parsed;
 }
 
+function parseOptionalQueryBoolean(value: unknown, label: string, fallback = false) {
+  if (value === undefined) return fallback;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  throw new AuthError(400, `${label} must be true or false`);
+}
+
+function parseSearch(value: unknown) {
+  if (value === undefined) return null;
+  if (typeof value !== "string" || value.trim().length > 100) {
+    throw new AuthError(400, "search must be at most 100 characters");
+  }
+  return value.trim() || null;
+}
+
 function fail(res: Response, error: unknown, fallback: string) {
   if (error instanceof AuthError) {
     res.status(error.statusCode).json({ error: error.message, code: error.eventType });
@@ -286,6 +301,7 @@ function notificationResponse(row: Record<string, any>) {
     link: row.link ?? null,
     origin: row.origin,
     isRead: row.isRead,
+    isArchived: Boolean(row.isArchived),
     createdAt: row.createdAt,
     readAt: row.readAt ?? null,
     deliveries: row.deliveries ?? [],
@@ -294,7 +310,7 @@ function notificationResponse(row: Record<string, any>) {
 
 function buildNotificationSelect(where: string) {
   return `SELECT n.id,n.school_id AS "schoolId",n.category,n.subject,n.body,n.link,
-      n.is_read AS "isRead",
+      n.is_read AS "isRead",(n.archived_at IS NOT NULL) AS "isArchived",
       to_char(n.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt",
       CASE WHEN n.read_at IS NULL THEN NULL
         ELSE to_char(n.read_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS "readAt",
@@ -324,13 +340,54 @@ router.get("/communication/notifications", async (req, res): Promise<void> => {
     const context = getUserContext(req);
     const schoolId = parseSchoolId(req.query.schoolId);
     const limit = parseBoundedQueryInt(req.query.limit, "limit", 50, 100);
+    const childId = req.query.childId === undefined
+      ? null : parseBoundedQueryInt(req.query.childId, "childId", 1, Number.MAX_SAFE_INTEGER);
+    const category = req.query.category;
+    if (category !== undefined && (typeof category !== "string" || !categories.has(category))) {
+      throw new AuthError(400, "category is invalid");
+    }
+    const isRead = parseOptionalQueryBoolean(req.query.isRead, "isRead");
+    const includeArchived = parseOptionalQueryBoolean(req.query.includeArchived, "includeArchived");
+    const includeExpired = parseOptionalQueryBoolean(req.query.includeExpired, "includeExpired");
+    const search = parseSearch(req.query.search);
     const beforeId = req.query.beforeId === undefined
       ? null
       : parseBoundedQueryInt(req.query.beforeId, "beforeId", 1, Number.MAX_SAFE_INTEGER);
     await assertSchoolEntitlement(context, schoolId);
     const visibility = notificationVisibility(context, schoolId);
-    const listValues = [...visibility.values];
-    let listWhere = visibility.where;
+    const filterValues = [...visibility.values];
+    let filterWhere = visibility.where;
+    if (childId !== null) {
+      filterValues.push(childId);
+      filterWhere += ` AND n.subject_student_id=$${filterValues.length}`;
+    }
+    if (category !== undefined) {
+      filterValues.push(category);
+      filterWhere += ` AND n.category=$${filterValues.length}`;
+    }
+    if (req.query.isRead !== undefined) {
+      filterValues.push(isRead);
+      filterWhere += ` AND n.is_read=$${filterValues.length}`;
+    }
+    if (search) {
+      filterValues.push(`%${search.replace(/[\\%_]/g, "\\$&")}%`);
+      filterWhere += ` AND (COALESCE(n.subject,'') ILIKE $${filterValues.length} ESCAPE '\\'
+        OR n.body ILIKE $${filterValues.length} ESCAPE '\\')`;
+    }
+    if (!includeArchived) filterWhere += " AND n.archived_at IS NULL";
+    if (!includeExpired) {
+      filterWhere += ` AND NOT EXISTS (
+        SELECT 1 FROM communication_campaign_recipients expiring_recipient
+        JOIN communication_campaigns expiring_campaign
+          ON expiring_campaign.id=expiring_recipient.campaign_id
+          AND expiring_campaign.school_id=expiring_recipient.school_id
+        WHERE expiring_recipient.notification_id=n.id
+          AND expiring_campaign.expires_at IS NOT NULL
+          AND expiring_campaign.expires_at<=NOW()
+      )`;
+    }
+    const listValues = [...filterValues];
+    let listWhere = filterWhere;
     if (beforeId !== null) {
       listValues.push(beforeId);
       listWhere += ` AND n.id<$${listValues.length}`;
@@ -343,8 +400,8 @@ router.get("/communication/notifications", async (req, res): Promise<void> => {
       ),
       pool.query(
         `SELECT COUNT(*)::int AS count FROM communication_notifications n
-         WHERE ${visibility.where} AND n.is_read=false`,
-        visibility.values,
+          WHERE ${filterWhere} AND n.is_read=false`,
+        filterValues,
       ),
     ]);
     const hasMore = items.rows.length > limit;
@@ -408,6 +465,62 @@ router.patch("/communication/notifications/:notificationId/read", async (req, re
   }
 });
 
+async function setNotificationArchived(req: Request, res: Response, archived: boolean) {
+  const client = await pool.connect();
+  try {
+    const context = getUserContext(req);
+    const notificationId = parsePositiveId(req.params.notificationId, "Notification");
+    const visibility = notificationVisibility(context, null);
+    await client.query("BEGIN");
+    const existing = await client.query(
+      `SELECT n.id,n.school_id AS "schoolId",n.archived_at AS "archivedAt",n.category
+       FROM communication_notifications n
+       WHERE ${visibility.where} AND n.id=$${visibility.values.length + 1}
+       FOR UPDATE`,
+      [...visibility.values, notificationId],
+    );
+    const record = existing.rows[0];
+    if (!record) throw new AuthError(404, "Notification not found");
+    if (archived && ["ACCOUNT", "SECURITY"].includes(record.category)) {
+      throw new AuthError(400, "Account and security notifications cannot be archived");
+    }
+    const wasArchived = Boolean(record.archivedAt);
+    await client.query(
+      `UPDATE communication_notifications
+       SET archived_at=CASE WHEN $2 THEN COALESCE(archived_at,NOW()) ELSE NULL END
+       WHERE id=$1`,
+      [notificationId, archived],
+    );
+    const details = await client.query(
+      `${buildNotificationSelect(visibility.where)} AND n.id=$${visibility.values.length + 1}`,
+      [...visibility.values, notificationId],
+    );
+    if (wasArchived !== archived) {
+      await auditAction(
+        client, context, record.schoolId ?? null,
+        archived ? "archived communication notification" : "unarchived communication notification",
+        archived ? "COMMUNICATION_NOTIFICATION_ARCHIVED" : "COMMUNICATION_NOTIFICATION_UNARCHIVED",
+        notificationId,
+      );
+    }
+    await client.query("COMMIT");
+    res.json(notificationResponse(details.rows[0]));
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    fail(res, error, "Could not archive communication notification");
+  } finally {
+    client.release();
+  }
+}
+
+router.patch("/communication/notifications/:notificationId/archive", async (req, res): Promise<void> => {
+  await setNotificationArchived(req, res, true);
+});
+
+router.patch("/communication/notifications/:notificationId/unarchive", async (req, res): Promise<void> => {
+  await setNotificationArchived(req, res, false);
+});
+
 router.post("/communication/notifications/read-all", async (req, res): Promise<void> => {
   try {
     const context = getUserContext(req);
@@ -420,7 +533,8 @@ router.post("/communication/notifications/read-all", async (req, res): Promise<v
       `WITH changed AS (
          UPDATE communication_notifications n
          SET is_read=true,read_at=COALESCE(n.read_at,NOW())
-         WHERE ${visibility.where} AND n.is_read=false RETURNING n.id,n.school_id
+          WHERE ${visibility.where} AND n.is_read=false AND n.archived_at IS NULL
+          RETURNING n.id,n.school_id
        ), delivery_updates AS (
          UPDATE communication_deliveries d SET status='READ',updated_at=NOW()
          FROM changed c WHERE d.notification_id=c.id AND d.channel='IN_APP'

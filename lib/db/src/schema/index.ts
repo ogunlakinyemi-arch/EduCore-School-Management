@@ -30,3 +30,8 @@ export * from "./transport";
 export * from "./settlement-payroll";
 export * from "./student-subscription-billing";
 export * from "./curriculum-learning";
+export * from "./admissions-expansion";
+export * from "./student-care-expansion";
+export * from "./promotion-expansion";
+export * from "./school-security-core";
+export * from "./school-security-operations";

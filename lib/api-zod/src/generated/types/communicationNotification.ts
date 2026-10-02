@@ -22,6 +22,7 @@ export interface CommunicationNotification {
   /** @nullable */
   link: string | null;
   isRead: boolean;
+  isArchived: boolean;
   createdAt: Date;
   /** @nullable */
   readAt: Date | null;

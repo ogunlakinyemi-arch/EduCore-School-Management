@@ -44,6 +44,106 @@ export interface QueueCommunicationNotificationInput {
   channels: CommunicationDeliveryChannel[];
 }
 
+export interface DomainParentEventInput {
+  schoolId: number;
+  studentId: number;
+  eventType: string;
+  eventId: string | number;
+  category: Extract<
+    CommunicationCategory,
+    "ATTENDANCE" | "ACADEMIC" | "ASSIGNMENT" | "FINANCE" | "PAYMENT" | "ANNOUNCEMENT" | "SECURITY" | "SYSTEM"
+  >;
+  subject: string;
+  body: string;
+  /** GENERIC discards subject/body details that must remain private to school staff. */
+  privacy?: "PARENT_SAFE" | "GENERIC";
+  link?: string | null;
+  channels?: Array<Extract<CommunicationDeliveryChannel, "IN_APP" | "SMS" | "EMAIL">>;
+}
+
+/**
+ * Emits one notification per currently-linked parent for a single child event.
+ * The caller owns the database transaction; this helper never commits or
+ * dispatches providers. The event key includes the event, child and recipient.
+ */
+export async function emitDomainParentEvent(
+  client: CommunicationQueryClient,
+  input: DomainParentEventInput,
+): Promise<Array<{ parentUserId: number; notificationId: number | null }>> {
+  if (!Number.isSafeInteger(input.schoolId) || input.schoolId < 1
+    || !Number.isSafeInteger(input.studentId) || input.studentId < 1) {
+    throw new TypeError("schoolId and studentId must be positive integers.");
+  }
+  if (!/^[A-Z][A-Z0-9_]{1,63}$/.test(input.eventType)
+    || !/^[A-Za-z0-9:._-]{1,128}$/.test(String(input.eventId))) {
+    throw new TypeError("eventType and eventId must be stable event identifiers.");
+  }
+  if (!input.subject.trim() || input.subject.length > 500
+    || !input.body.trim() || input.body.length > 10_000) {
+    throw new TypeError("Parent event subject/body are invalid.");
+  }
+  const channels: Array<Extract<CommunicationDeliveryChannel, "IN_APP" | "SMS" | "EMAIL">> =
+    [...new Set(input.channels ?? ["IN_APP" as const])];
+  if (channels.length === 0 || channels.some(channel => !["IN_APP", "SMS", "EMAIL"].includes(channel))) {
+    throw new TypeError("Parent event channels must be IN_APP, SMS or EMAIL.");
+  }
+
+  const parents = await client.query<{
+    parentUserId: number | string;
+    studentName: string;
+    subjectClassId: number | string | null;
+  }>(
+    `SELECT DISTINCT ON (p.user_id) p.user_id AS "parentUserId",
+       concat_ws(' ',st.first_name,st.last_name) AS "studentName",
+       current_enrollment.school_class_id AS "subjectClassId"
+     FROM students st
+     JOIN parents p ON p.school_id=st.school_id AND p.status='ACTIVE' AND p.user_id IS NOT NULL
+     JOIN parent_student_relationships rel
+       ON rel.parent_id=p.id AND rel.student_id=st.id AND rel.status='ACTIVE'
+     JOIN app_users u ON u.id=p.user_id AND u.status='ACTIVE'
+     LEFT JOIN student_class_assignments current_enrollment
+       ON current_enrollment.student_id=st.id AND current_enrollment.school_id=st.school_id
+       AND current_enrollment.status='ACTIVE' AND current_enrollment.is_current=true
+     LEFT JOIN school_classes class
+       ON class.id=current_enrollment.school_class_id AND class.school_id=current_enrollment.school_id
+       AND class.section=current_enrollment.section
+     WHERE st.id=$1 AND st.school_id=$2 AND LOWER(st.status)='active'
+       AND NOT EXISTS (
+         SELECT 1 FROM school_memberships owner_role
+         WHERE owner_role.user_id=u.id AND owner_role.school_id IS NULL
+           AND owner_role.role='PLATFORM_OWNER' AND owner_role.status='ACTIVE'
+       )
+     ORDER BY p.user_id,p.id`,
+    [input.studentId, input.schoolId],
+  );
+  const results: Array<{ parentUserId: number; notificationId: number | null }> = [];
+  for (const parent of parents.rows) {
+    const parentUserId = Number(parent.parentUserId);
+    if (!Number.isSafeInteger(parentUserId) || parentUserId < 1) continue;
+    const childName = parent.studentName?.trim() || "Your child";
+    const subject = input.privacy === "GENERIC"
+      ? "Your child's school has an important update"
+      : input.subject;
+    const body = input.privacy === "GENERIC"
+      ? "Please contact the school through the Communication Centre for more information."
+      : input.body;
+    const notificationId = await queueCommunicationNotification(client, {
+      recipientUserId: parentUserId,
+      schoolId: input.schoolId,
+      subjectStudentId: input.studentId,
+      subjectClassId: parent.subjectClassId == null ? null : Number(parent.subjectClassId),
+      category: input.category,
+      eventKey: `PARENT_EVENT:${input.eventType}:${input.eventId}:${input.studentId}:${parentUserId}`,
+      subject: `${childName} — ${subject}`,
+      body: `${childName} — ${body}`,
+      link: input.link ?? null,
+      channels,
+    });
+    results.push({ parentUserId, notificationId });
+  }
+  return results;
+}
+
 const categories = new Set<CommunicationCategory>([
   "ATTENDANCE",
   "ACADEMIC",

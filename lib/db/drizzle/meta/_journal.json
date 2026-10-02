@@ -260,6 +260,48 @@
       "when": 1790856005000,
       "tag": "0036_student_subscription_allocations",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790959800000,
+      "tag": "0042_admissions_expansion",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790959801000,
+      "tag": "0043_student_care_expansion",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1790959802000,
+      "tag": "0044_promotion_expansion",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1790959803000,
+      "tag": "0045_school_security_core",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1790959804000,
+      "tag": "0046_school_security_operations",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1790959805000,
+      "tag": "0047_parent_communication_extensions",
+      "breakpoints": true
     }
   ]
 }

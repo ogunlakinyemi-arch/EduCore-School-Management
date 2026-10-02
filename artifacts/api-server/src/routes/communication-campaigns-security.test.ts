@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   history: [] as Array<Record<string, unknown>>,
   details: [] as Array<Record<string, unknown>>,
   nextId: 1,
+  securityPermissions: [] as Array<{ permission: string; schoolId: number }>,
 }));
 
 const mocks = vi.hoisted(() => ({
@@ -20,6 +21,9 @@ const mocks = vi.hoisted(() => ({
     return 900;
   }),
   dispatch: vi.fn(async () => ({ claimed: 0, accepted: 0, simulated: 0, delivered: 0, failed: 0, skipped: 0 })),
+  requireSecurityAccess: vi.fn(async (_req: unknown, schoolId: number, permission: string) => {
+    state.securityPermissions.push({ schoolId, permission });
+  }),
 }));
 
 const poolMock = vi.hoisted(() => {
@@ -36,7 +40,8 @@ const poolMock = vi.hoisted(() => {
         id: state.nextId++, schoolId: values[0], createdByUserId: values[1], templateId: values[2],
         title: values[4], subject: values[5], body: values[6], category: values[7],
         targetType: values[8], targetCriteria: JSON.parse(String(values[9])), channels: values[10],
-        status: "QUEUED", recipientCount: values[11], createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        status: "QUEUED", recipientCount: values[11], isEmergency: values[12], expiresAt: values[13] ?? null,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
         sentAt: null,
       };
       return { rows: [campaign] };
@@ -91,11 +96,11 @@ vi.mock("../services/communication-service", () => ({
   }),
 }));
 
-import communicationCampaignsRouter from "./communication-campaigns";
+import { createCommunicationCampaignsRouter } from "./communication-campaigns";
 
 const app = express();
 app.use(express.json());
-app.use(communicationCampaignsRouter);
+app.use(createCommunicationCampaignsRouter(mocks.requireSecurityAccess));
 let server: ReturnType<typeof app.listen>;
 let baseUrl = "";
 
@@ -124,10 +129,20 @@ beforeEach(() => {
   state.nextId = 1;
   mocks.queue.mockClear();
   mocks.dispatch.mockClear();
+  state.securityPermissions.length = 0;
+  mocks.requireSecurityAccess.mockClear();
 });
 
 async function post(body: unknown) {
   return fetch(`${baseUrl}/communication/announcements`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+async function preview(body: unknown) {
+  return fetch(`${baseUrl}/communication/announcements/preview`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -153,6 +168,57 @@ describe("manual communication security", () => {
     }
     expect(state.sql.some(sql => sql.includes("WITH candidates AS"))).toBe(false);
     expect(mocks.queue).not.toHaveBeenCalled();
+  });
+
+  it("requires a School Admin, core emergency grant, audience count confirmation, and campaign audit", async () => {
+    const body = {
+      ...campaign("SECURITY"),
+      isEmergency: true,
+      emergencyConfirmation: "I CONFIRM EMERGENCY BROADCAST",
+      confirmedRecipientCount: 1,
+    };
+    const response = await post(body);
+    expect(response.status).toBe(201);
+    expect(state.securityPermissions).toEqual([{ schoolId: 1, permission: "EMERGENCY_BROADCAST" }]);
+    expect(state.queued[0]).toMatchObject({ category: "SECURITY", subject: expect.stringContaining("EMERGENCY") });
+    expect(state.queued[0]?.body).toContain("EMERGENCY BROADCAST");
+    expect(state.sql.some(sql => sql.includes("INSERT INTO audit_logs"))).toBe(true);
+    expect(await response.json()).toMatchObject({ isEmergency: true, expiresAt: null });
+  });
+
+  it("provides a permission-checked emergency audience count before confirmation", async () => {
+    const response = await preview({
+      schoolId: 1, targetType: "PARENTS", targetCriteria: {}, channels: ["IN_APP"],
+      category: "SECURITY", isEmergency: true,
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      schoolId: 1, recipientCount: 1, channelCounts: [{ channel: "IN_APP", eligibleRecipientCount: 1 }],
+    });
+    expect(state.securityPermissions).toEqual([{ schoolId: 1, permission: "EMERGENCY_BROADCAST" }]);
+  });
+
+  it("rejects emergency broadcasts when the resolved audience differs from the confirmed count", async () => {
+    const response = await post({
+      ...campaign("SECURITY"),
+      isEmergency: true,
+      emergencyConfirmation: "I CONFIRM EMERGENCY BROADCAST",
+      confirmedRecipientCount: 2,
+    });
+    expect(response.status).toBe(409);
+    expect(mocks.queue).not.toHaveBeenCalled();
+  });
+
+  it("does not allow a Teacher to send emergency broadcasts", async () => {
+    state.roles = [{ role: "TEACHER", schoolId: 1, status: "ACTIVE" }];
+    const response = await post({
+      ...campaign("SECURITY"),
+      isEmergency: true,
+      emergencyConfirmation: "I CONFIRM EMERGENCY BROADCAST",
+      confirmedRecipientCount: 1,
+    });
+    expect(response.status).toBe(403);
+    expect(state.securityPermissions).toHaveLength(0);
   });
 
   it("labels accountant finance messages and passes scoped subject links to the queue", async () => {

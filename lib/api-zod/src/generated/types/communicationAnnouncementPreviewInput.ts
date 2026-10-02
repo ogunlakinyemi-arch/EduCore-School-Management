@@ -5,6 +5,7 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { CommunicationCategory } from './communicationCategory';
 import type { CommunicationOutboundChannel } from './communicationOutboundChannel';
 import type { CommunicationTargetCriteria } from './communicationTargetCriteria';
 import type { CommunicationTargetType } from './communicationTargetType';
@@ -12,6 +13,8 @@ import type { CommunicationTargetType } from './communicationTargetType';
 export interface CommunicationAnnouncementPreviewInput {
   /** @minimum 1 */
   schoolId: number;
+  category?: CommunicationCategory;
+  isEmergency?: boolean;
   targetType: CommunicationTargetType;
   targetCriteria: CommunicationTargetCriteria;
   /** @minItems 1 */

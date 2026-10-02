@@ -1,4 +1,6 @@
+import { SchoolThreads } from './school-threads';
 import { useState, type FormEvent } from 'react';
+import { checkEmergency, EMERGENCY_CONFIRMATION } from './security/security-contract';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { Send, FileText, History, UsersRound, RefreshCw, ChevronRight, RotateCcw } from 'lucide-react';
@@ -26,15 +28,16 @@ export function CommunicationsPage() {
   const admin = !context?.isPlatformOwner && roles.includes('SCHOOL_ADMIN');
   const teacher = !context?.isPlatformOwner && roles.includes('TEACHER');
   const accountant = !context?.isPlatformOwner && roles.includes('ACCOUNTANT');
-  const [tab, setTab] = useState<'compose' | 'history' | 'templates'>('compose');
+  const [tab, setTab] = useState<'compose' | 'history' | 'templates' | 'messages'>('compose');
   if (context?.isPlatformOwner) return <div className="panel p-8" role="alert">School communication is not available to Platform Owners.</div>;
   return <div className="fade-up">
     <PageHeading eyebrow="School / Community" title="Communications." description={accountant && !admin && !teacher ? 'Send general finance notices to families and review communication history. This is not a payment confirmation channel.' : 'Write with care. Preview the audience before sending a school message.'} action={<TenantPicker />} />
     {!schoolId ? <EmptyState icon={UsersRound} title="Choose a school" description="Select an authorized school to view its communication workspace." /> : !(admin || teacher || accountant) ? <div className="panel p-8" role="alert">You do not have communication access for this school.</div> : <>
       <div role="tablist" aria-label="Communication workspace" className="mb-6 flex gap-1 overflow-x-auto rounded-xl bg-[hsl(var(--secondary)/.65)] p-1.5">
-        {([{ id: 'compose' as const, title: 'Compose', icon: Send }, { id: 'history' as const, title: 'Delivery history', icon: History }, ...(admin ? [{ id: 'templates' as const, title: 'Templates', icon: FileText }] : [])]).map(({ id, title, icon: Icon }) => <button type="button" key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} data-testid={`tab-communications-${id}`} className={cx('inline-flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold', tab === id ? 'bg-[hsl(var(--card))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]')}><Icon size={16} />{title}</button>)}
+        {([{ id: 'compose' as const, title: 'Compose', icon: Send }, { id: 'history' as const, title: 'Delivery history', icon: History }, ...(admin || teacher ? [{ id: 'messages' as const, title: 'Parent messages', icon: UsersRound }] : []), ...(admin ? [{ id: 'templates' as const, title: 'Templates', icon: FileText }] : [])]).map(({ id, title, icon: Icon }) => <button type="button" key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} data-testid={`tab-communications-${id}`} className={cx('inline-flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold', tab === id ? 'bg-[hsl(var(--card))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]')}><Icon size={16} />{title}</button>)}
       </div>
       {tab === 'compose' && <Compose key={schoolId} schoolId={schoolId} role={admin ? 'admin' : teacher ? 'teacher' : 'accountant'} onSent={() => setTab('history')} />}
+      {tab === 'messages' && (admin || teacher) && <SchoolThreads schoolId={schoolId} teacher={teacher && !admin} />}
       {tab === 'history' && <DeliveryHistory schoolId={schoolId} />}
       {tab === 'templates' && admin && <Templates schoolId={schoolId} />}
     </>}
@@ -46,7 +49,10 @@ function Compose({ schoolId, role, onSent }: { schoolId: number; role: ComposeRo
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
-  const category = manualCategory(role);
+  const [emergency, setEmergency] = useState(false);
+  const [confirmation, setConfirmation] = useState('');
+  const [expiresAt, setExpiresAt] = useState('');
+  const category = emergency ? 'SECURITY' as const : manualCategory(role);
   const [targetType, setTargetType] = useState<TargetType>(role === 'teacher' ? 'CLASS' : role === 'accountant' ? 'PARENTS' : 'SCHOOL');
   const [classId, setClassId] = useState('');
   const [section, setSection] = useState('');
@@ -63,15 +69,16 @@ function Compose({ schoolId, role, onSent }: { schoolId: number; role: ComposeRo
   const ready = !!title.trim() && !!body.trim() && !!channels.length && (!['CLASS', 'SECTION'].includes(targetType) || (Number(classId) > 0 && (targetType !== 'SECTION' || !!section.trim())));
   const dirty = () => { setPreviewValid(false); setMessage(''); };
   const onPreview = async () => {
-    try { await preview.mutateAsync({ data: { schoolId, targetType, targetCriteria: criteria, channels } }); setPreviewValid(true); setMessage(''); }
+    try { await preview.mutateAsync({ data: { schoolId, targetType, targetCriteria: criteria, channels, ...(emergency ? { category, isEmergency: true } : {}) } }); setPreviewValid(true); setMessage(''); }
     catch (cause) { setPreviewValid(false); setMessage(cause instanceof Error ? cause.message : 'Audience preview failed.'); }
   };
   const onSend = async () => {
     if (!previewValid || !preview.data?.recipientCount) return;
+    if (emergency) { const chk = checkEmergency({ confirmation, previewCount: preview.data.recipientCount, previewFresh: previewValid, channels }); if (!chk.ok) { setMessage(chk.reason ?? ''); return; } }
     if (!window.confirm(`Queue this message for ${preview.data.recipientCount} recipients? SMS and email use the current development test adapter; this does not confirm real-world delivery.`)) return;
     try {
-      await create.mutateAsync({ data: { schoolId, title: title.trim(), subject: subject.trim() || null, body: body.trim(), category, targetType, targetCriteria: criteria, channels, templateId, idempotencyKey: key } });
-      setKey(crypto.randomUUID()); setMessage('Message queued. Review delivery history for progress.'); setPreviewValid(false);
+      await create.mutateAsync({ data: { schoolId, title: title.trim(), subject: subject.trim() || null, body: body.trim(), category, targetType, targetCriteria: criteria, channels, templateId, idempotencyKey: key, ...(expiresAt ? { expiresAt: new Date(expiresAt).toISOString() } : {}), ...(emergency ? { isEmergency: true, emergencyConfirmation: EMERGENCY_CONFIRMATION, confirmedRecipientCount: preview.data.recipientCount } : {}) } });
+      setKey(crypto.randomUUID()); setEmergency(false); setConfirmation(''); setMessage('Message queued. Review delivery history for progress.'); setPreviewValid(false);
       await qc.invalidateQueries({ queryKey: getListCommunicationAnnouncementsQueryKey({ schoolId }) }); onSent();
     } catch (cause) { setMessage(cause instanceof Error ? cause.message : 'Message could not be queued. The same request key is retained for a safe retry.'); }
   };
@@ -90,15 +97,17 @@ function Compose({ schoolId, role, onSent }: { schoolId: number; role: ComposeRo
         <div className="mt-5 space-y-4"><Field label="Recipients"><select className={inputClass} data-testid="select-announcement-target" value={targetType} onChange={e => { setTargetType(e.target.value as TargetType); dirty(); }}>{options.map(item => <option key={item} value={item}>{label(item)}</option>)}</select></Field>
           {(targetType === 'CLASS' || targetType === 'SECTION') && <Field label="Class"><select className={inputClass} data-testid="select-announcement-class" value={classId} onChange={e => { setClassId(e.target.value); dirty(); }}><option value="">Select a class</option>{classes.data?.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{classes.isError && <button type="button" onClick={() => void classes.refetch()} className="mt-2 text-xs font-bold text-[hsl(var(--primary))]">Retry classes</button>}</Field>}
           {targetType === 'SECTION' && <Field label="Section name"><input className={inputClass} data-testid="input-announcement-section" value={section} maxLength={100} onChange={e => { setSection(e.target.value); dirty(); }} /></Field>}
-          <fieldset><legend className="mb-2 text-xs font-bold text-[hsl(var(--muted-foreground))]">Channels</legend><div className="flex flex-wrap gap-2">{outbound.map(item => <label key={item} className="flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] px-3 py-2 text-xs font-bold"><input type="checkbox" data-testid={`checkbox-channel-${item}`} checked={channels.includes(item)} onChange={() => { setChannels(prev => prev.includes(item) ? prev.filter(channel => channel !== item) : [...prev, item]); dirty(); }} />{label(item)}</label>)}</div></fieldset>
+          <fieldset><legend className="mb-2 text-xs font-bold text-[hsl(var(--muted-foreground))]">Channels</legend><div className="flex flex-wrap gap-2">{outbound.map(item => <label key={item} className="flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] px-3 py-2 text-xs font-bold"><input type="checkbox" data-testid={`checkbox-channel-${item}`} checked={channels.includes(item)} disabled={emergency && item === 'IN_APP'} onChange={() => { setChannels(prev => prev.includes(item) ? prev.filter(channel => channel !== item) : [...prev, item]); dirty(); }} />{label(item)}</label>)}</div></fieldset>
+          <Field label="Expires (optional)"><input type="datetime-local" className={inputClass} data-testid="input-announcement-expiry" value={expiresAt} onChange={e => { setExpiresAt(e.target.value); dirty(); }} /></Field>
+          {role === 'admin' && <div className="rounded-xl border border-[hsl(var(--destructive)/.4)] p-3"><label className="flex items-center gap-2 text-xs font-bold"><input type="checkbox" data-testid="checkbox-emergency" checked={emergency} onChange={e => { setEmergency(e.target.checked); if (e.target.checked && !channels.includes('IN_APP')) setChannels(c => [...c, 'IN_APP']); setConfirmation(''); dirty(); }} />Emergency broadcast (SECURITY)</label>{emergency && <div className="mt-3 space-y-2"><p className="text-xs">In-app delivery is mandatory. Preview the audience, then type the confirmation exactly.</p><input className={inputClass} data-testid="input-emergency-confirmation" value={confirmation} onChange={e => setConfirmation(e.target.value)} placeholder={EMERGENCY_CONFIRMATION} /></div>}</div>}
           <Button variant="outline" className="w-full" onClick={() => void onPreview()} disabled={!ready || preview.isPending}><UsersRound size={16} />{preview.isPending ? 'Checking recipients...' : 'Preview recipients'}</Button>
         </div>
       </section>
       <section className="panel p-5 md:p-6"><div className="eyebrow">03 / Dispatch</div><h2 className="display-font mt-2 text-xl font-bold">Review before sending</h2>
-        {previewValid && preview.data ? <div className="mt-4"><div className="display-font text-4xl font-bold" data-testid="text-recipient-count">{preview.data.recipientCount}</div><p className="text-xs text-[hsl(var(--muted-foreground))]">eligible recipients</p><div className="mt-4 space-y-2">{preview.data.channelCounts.map(row => <div key={row.channel} className="flex justify-between text-xs"><span>{label(row.channel)}</span><strong>{row.eligibleRecipientCount}</strong></div>)}</div></div> : <p className="mt-4 text-sm text-[hsl(var(--muted-foreground))]">Preview the current audience to unlock sending. Changing any field resets the preview.</p>}
+        {previewValid && preview.data ? <div className="mt-4"><p className="mb-2 text-xs font-bold" data-testid="text-target-preview">Target: {label(targetType)}{expiresAt ? ` · expires ${new Date(expiresAt).toLocaleString()}` : ' · no expiry'}{emergency ? ' · EMERGENCY' : ''}</p><div className="display-font text-4xl font-bold" data-testid="text-recipient-count">{preview.data.recipientCount}</div><p className="text-xs text-[hsl(var(--muted-foreground))]">eligible recipients</p><div className="mt-4 space-y-2">{preview.data.channelCounts.map(row => <div key={row.channel} className="flex justify-between text-xs"><span>{label(row.channel)}</span><strong>{row.eligibleRecipientCount}</strong></div>)}</div></div> : <p className="mt-4 text-sm text-[hsl(var(--muted-foreground))]">Preview the current audience to unlock sending. Changing any field resets the preview.</p>}
         <p className="mt-4 text-xs leading-5 text-[hsl(var(--muted-foreground))]">SMS and email provider acceptance is simulated in development. Queued and sent statuses do not prove delivery to a real device.</p>
         {message && <p className="mt-3 text-sm text-[hsl(var(--destructive))]" role="status">{message}</p>}
-        <Button className="mt-5 w-full" disabled={!previewValid || !preview.data?.recipientCount || create.isPending} onClick={() => void onSend()}><Send size={16} />{create.isPending ? 'Queuing...' : 'Queue message'}</Button>
+        <Button className="mt-5 w-full" disabled={!previewValid || !preview.data?.recipientCount || create.isPending || (emergency && confirmation !== EMERGENCY_CONFIRMATION)} onClick={() => void onSend()}><Send size={16} />{create.isPending ? 'Queuing...' : 'Queue message'}</Button>
       </section>
     </aside>
   </div>;
