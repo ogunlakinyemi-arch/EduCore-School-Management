@@ -3385,6 +3385,12 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Student" }
+  /subscription-enforcement:
+    $ref: './subscription-enforcement.yaml#/paths/~1subscription-enforcement'
+  /subscription-enforcement/me:
+    $ref: './subscription-enforcement.yaml#/paths/~1subscription-enforcement~1me'
+  /subscription-enforcement/lock:
+    $ref: './subscription-enforcement.yaml#/paths/~1subscription-enforcement~1lock'
   /subscriptions:
     get:
       operationId: listSubscriptions

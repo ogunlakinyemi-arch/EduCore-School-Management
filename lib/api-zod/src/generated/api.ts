@@ -11028,6 +11028,99 @@ export const GetStudentSelfProfileResponse = zod.object({
 })
 
 
+
+
+
+export const GetSubscriptionEnforcementOverviewQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional()
+})
+
+export const GetSubscriptionEnforcementOverviewResponseItem = zod.object({
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "status": zod.string(),
+  "state": zod.string(),
+  "termId": zod.number().int().optional(),
+  "termName": zod.string().optional(),
+  "startDate": zod.string().optional(),
+  "endDate": zod.string().optional(),
+  "enforcementDate": zod.string().optional(),
+  "inGracePeriod": zod.boolean().optional(),
+  "schoolLocked": zod.boolean().optional(),
+  "studentsTotal": zod.number().int().optional(),
+  "studentsPaid": zod.number().int().optional(),
+  "studentsAffected": zod.number().int().optional(),
+  "teachersAffected": zod.number().int().optional(),
+  "parentsAffected": zod.number().int().optional(),
+  "cardsLocked": zod.number().int().optional(),
+  "teacherCardsLocked": zod.number().int().optional(),
+  "devicesLocked": zod.number().int().optional(),
+  "amountDueMinor": zod.number().int().optional(),
+  "amountPaidMinor": zod.number().int().optional(),
+  "outstandingMinor": zod.number().int().optional()
+})
+export const GetSubscriptionEnforcementOverviewResponse = zod.array(GetSubscriptionEnforcementOverviewResponseItem)
+
+
+export const GetMySubscriptionEnforcementResponseItem = zod.object({
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int().nullable(),
+  "schoolName": zod.string(),
+  "termName": zod.string().nullable(),
+  "startDate": zod.string().nullable(),
+  "enforcementDate": zod.string().nullable(),
+  "state": zod.string(),
+  "restricted": zod.boolean()
+})
+export const GetMySubscriptionEnforcementResponse = zod.array(GetMySubscriptionEnforcementResponseItem)
+
+
+
+
+export const lockSchoolSubscriptionsBodySchoolsMax = 50;
+
+
+
+export const LockSchoolSubscriptionsBody = zod.object({
+  "confirmed": zod.literal(true),
+  "schools": zod.array(zod.object({
+  "schoolId": zod.number().int().min(1),
+  "termId": zod.number().int().min(1)
+})).min(1).max(lockSchoolSubscriptionsBodySchoolsMax)
+})
+
+export const LockSchoolSubscriptionsResponseItem = zod.object({
+  "schoolId": zod.number().int(),
+  "changed": zod.boolean(),
+  "state": zod.string(),
+  "summary": zod.object({
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "status": zod.string(),
+  "state": zod.string(),
+  "termId": zod.number().int().optional(),
+  "termName": zod.string().optional(),
+  "startDate": zod.string().optional(),
+  "endDate": zod.string().optional(),
+  "enforcementDate": zod.string().optional(),
+  "inGracePeriod": zod.boolean().optional(),
+  "schoolLocked": zod.boolean().optional(),
+  "studentsTotal": zod.number().int().optional(),
+  "studentsPaid": zod.number().int().optional(),
+  "studentsAffected": zod.number().int().optional(),
+  "teachersAffected": zod.number().int().optional(),
+  "parentsAffected": zod.number().int().optional(),
+  "cardsLocked": zod.number().int().optional(),
+  "teacherCardsLocked": zod.number().int().optional(),
+  "devicesLocked": zod.number().int().optional(),
+  "amountDueMinor": zod.number().int().optional(),
+  "amountPaidMinor": zod.number().int().optional(),
+  "outstandingMinor": zod.number().int().optional()
+}).optional()
+})
+export const LockSchoolSubscriptionsResponse = zod.array(LockSchoolSubscriptionsResponseItem)
+
+
 /**
  * @summary List subscription ledger records
  */

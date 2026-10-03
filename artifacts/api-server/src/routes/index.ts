@@ -44,6 +44,7 @@ import schoolSecurityOperationsRouter from "./school-security-operations";
 import { createParentCommunicationRouter } from "./parent-communication";
 import { requireSecurityAccess } from "../services/school-security-core-service";
 import promotionExpansionRouter from "./promotion-expansion";
+import subscriptionEnforcementRouter from "./subscription-enforcement";
 
 const router: IRouter = Router();
 
@@ -62,6 +63,7 @@ router.use(attendanceRouter);
 router.use(employeeNfcRouter);
 router.use(nfcPrintableRouter);
 router.use(authRouter);
+router.use(subscriptionEnforcementRouter);
 router.use(studentCareRouter);
 router.use(schoolSecurityCoreRouter);
 router.use(schoolSecurityOperationsRouter);

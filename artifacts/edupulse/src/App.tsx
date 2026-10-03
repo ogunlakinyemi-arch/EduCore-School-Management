@@ -41,6 +41,7 @@ import { ClassesPage } from '@/pages/classes';
 import { UsersPage } from '@/pages/users';
 import { PeopleImportsPage } from '@/pages/people-imports';
 import { SubscriptionsPage } from '@/pages/subscriptions';
+import { SubscriptionEnforcementPage } from '@/pages/subscription-enforcement';
 import { CardsPage } from '@/pages/cards';
 import { SchoolBrandingPage } from '@/pages/school-branding';
 import { AcademicCalendarPage } from '@/pages/academic-calendar';
@@ -347,6 +348,9 @@ function ProtectedRoutes() {
           </Route>
           <Route path="/subscriptions">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']} ownerCanView ownerReadOnly><SubscriptionsPage /></RoleGuard>
+          </Route>
+          <Route path="/subscription-enforcement">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']} ownerCanView><SubscriptionEnforcementPage /></RoleGuard>
           </Route>
           <Route path="/cards">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'STAFF']} ownerCanView><CardsPage /></RoleGuard>

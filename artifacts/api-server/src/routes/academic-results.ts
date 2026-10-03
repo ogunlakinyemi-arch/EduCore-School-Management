@@ -1,5 +1,6 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { pool } from "@workspace/db";
+import { familyChildSchoolScope } from "../lib/family-child-school-scope";
 import {
   AuthError,
   assertSchoolOperationalAccess,
@@ -654,8 +655,9 @@ async function ensureChild(req: Request, schoolId: number, studentId: number) {
   const context = getUserContext(req);
   const parent = await pool.query(
     `SELECT 1 FROM parents p JOIN parent_student_relationships psr ON psr.parent_id=p.id
-      JOIN students st ON st.id=psr.student_id AND st.school_id=p.school_id
-     WHERE p.user_id=$1 AND p.school_id=$2 AND psr.student_id=$3 AND psr.status='ACTIVE'`,
+      JOIN students st ON st.id=psr.student_id
+     WHERE p.user_id=$1 AND st.school_id=$2 AND psr.student_id=$3 AND psr.status='ACTIVE'
+       AND UPPER(p.status)='ACTIVE' AND ${familyChildSchoolScope()}`,
     [context.user.id, schoolId, studentId],
   );
   if (!parent.rows[0]) throw new AuthError(404, "Student not found");

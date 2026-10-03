@@ -112,3 +112,17 @@ mtime_ms = 1790975599914
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/aceb9821-edd5-4086-9909-3014d32f24bb/b84fab7e-6275-41f0-9c44-754960a068b3"
 storage_version_token = "1790975601286222"
 content_type = "text/html"
+
+[[outputs]]
+id = "33N2UxU3VMccq33wiXunw"
+uri = "file://docs/development-term-subscription-enforcement-verification-2026-10-03.md"
+type = "text"
+title = "Development subscription enforcement report"
+description = "Implementation, exact test results, browser evidence, data preservation, and remaining verification gaps."
+logical_id = "bddf4f38-f733-4ade-8022-f0880685b713"
+content_hash = "sha256:fafa87ade46838f2a7e076d7fe000c3f6f376540b8fab7433a8fc6626ece3776"
+size = 9253
+mtime_ms = 1790989708794
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/bddf4f38-f733-4ade-8022-f0880685b713/ad18992c-597e-4976-b357-a32645c3fa10"
+storage_version_token = "1790989714270831"
+content_type = "text/markdown"

@@ -12483,6 +12483,46 @@ export interface LostCardInput {
   reason: string;
 }
 
+export interface SchoolSubscriptionSummary {
+  schoolId: number;
+  schoolName: string;
+  status: string;
+  state: string;
+  termId?: number;
+  termName?: string;
+  startDate?: string;
+  endDate?: string;
+  enforcementDate?: string;
+  inGracePeriod?: boolean;
+  schoolLocked?: boolean;
+  studentsTotal?: number;
+  studentsPaid?: number;
+  studentsAffected?: number;
+  teachersAffected?: number;
+  parentsAffected?: number;
+  cardsLocked?: number;
+  teacherCardsLocked?: number;
+  devicesLocked?: number;
+  amountDueMinor?: number;
+  amountPaidMinor?: number;
+  outstandingMinor?: number;
+}
+
+export interface SubscriptionAccessStatus {
+  schoolId: number;
+  /** @nullable */
+  studentId: number | null;
+  schoolName: string;
+  /** @nullable */
+  termName: string | null;
+  /** @nullable */
+  startDate: string | null;
+  /** @nullable */
+  enforcementDate: string | null;
+  state: string;
+  restricted: boolean;
+}
+
 export type ExistingProfileInvitationRequestRole = typeof ExistingProfileInvitationRequestRole[keyof typeof ExistingProfileInvitationRequestRole];
 
 
@@ -20391,6 +20431,36 @@ export type AssignTeacherClassParams = {
  * @minimum 1
  */
 schoolId: SchoolIdParameter;
+};
+
+export type GetSubscriptionEnforcementOverviewParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+};
+
+export type LockSchoolSubscriptionsBodySchoolsItem = {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 1 */
+  termId: number;
+};
+
+export type LockSchoolSubscriptionsBody = {
+  confirmed: true;
+  /**
+     * @minItems 1
+     * @maxItems 50
+     */
+  schools: LockSchoolSubscriptionsBodySchoolsItem[];
+};
+
+export type LockSchoolSubscriptions200Item = {
+  schoolId: number;
+  changed: boolean;
+  state: string;
+  summary?: SchoolSubscriptionSummary;
 };
 
 export type ListSubscriptionsParams = {

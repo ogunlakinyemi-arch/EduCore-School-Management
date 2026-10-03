@@ -1,5 +1,6 @@
 import { clerkClient, getAuth } from "@clerk/express";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
+import { enforceRequestSubscription } from "../services/subscription-request-access";
 import { pool } from "@workspace/db";
 
 export const ROLES = [
@@ -208,8 +209,16 @@ export function requireAuthentication(): RequestHandler {
     if (!userId) return res.status(401).json({ error: "Authentication required" });
 
     loadUserContext(userId)
-      .then((context) => {
+      .then(async (context) => {
         (req as Request & { edupulseUser?: UserContext }).edupulseUser = context;
+        try {
+          await enforceRequestSubscription(req, context);
+        } catch (error) {
+          if (error instanceof AuthError) throw error;
+          // Additional eligibility infrastructure must not invalidate a genuine
+          // session or manufacture a nonpayment restriction.
+          req.log?.error({ category: "subscription_eligibility_unavailable" }, "Subscription eligibility unavailable");
+        }
         next();
       })
       .catch((error) => respondAuthError(res, error));

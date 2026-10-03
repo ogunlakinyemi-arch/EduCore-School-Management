@@ -44,6 +44,7 @@ export async function recordAuthenticatedNfcDenial(req: Request, device: DeviceI
   const uid = String(body.nfcUid ?? "").trim();
   if (!uid || uid.length > 160) return;
   const reasonCode = error instanceof SecurityIdentityRejection ? error.reasonCode
+    : error.eventType === "SUBSCRIPTION_REQUIRED" ? "OTHER"
     : /card/i.test(error.message) ? "UNKNOWN_CARD"
     : /payment|billing|subscription/i.test(error.message) ? "STAFF_BILLING_INELIGIBLE"
     : "INACTIVE_PERSON";

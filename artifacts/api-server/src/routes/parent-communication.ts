@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { pool } from "@workspace/db";
+import { familyChildSchoolScope } from "../lib/family-child-school-scope";
 import {
   AuthError,
   assertSchoolOperationalAccess,
@@ -148,23 +149,23 @@ async function assertLiveParentChild(
   schoolId?: number,
 ) {
   const result = await db.query(
-    `SELECT p.school_id AS "schoolId",st.id AS "studentId",st.first_name AS "firstName",
+    `SELECT st.school_id AS "schoolId",st.id AS "studentId",st.first_name AS "firstName",
        st.last_name AS "lastName",school.name AS "schoolName",
        current_enrollment.school_class_id AS "classId",
        current_enrollment.section AS section,
        class.name AS "className"
      FROM parents p
      JOIN parent_student_relationships rel ON rel.parent_id=p.id AND rel.status='ACTIVE'
-     JOIN students st ON st.id=rel.student_id AND st.school_id=p.school_id
+     JOIN students st ON st.id=rel.student_id
        AND LOWER(st.status)='active'
-     JOIN schools school ON school.id=p.school_id AND LOWER(school.status)='active'
+     JOIN schools school ON school.id=st.school_id AND LOWER(school.status)='active'
      JOIN app_users parent_user ON parent_user.id=p.user_id AND parent_user.status='ACTIVE'
      LEFT JOIN student_class_assignments current_enrollment
        ON current_enrollment.student_id=st.id AND current_enrollment.school_id=st.school_id
        AND current_enrollment.status='ACTIVE' AND current_enrollment.is_current=true
      LEFT JOIN school_classes class ON class.id=current_enrollment.school_class_id
        AND class.school_id=current_enrollment.school_id AND class.section=current_enrollment.section
-     WHERE p.user_id=$1 AND st.id=$2 AND ($3::int IS NULL OR p.school_id=$3)
+     WHERE p.user_id=$1 AND st.id=$2 AND ($3::int IS NULL OR st.school_id=$3) AND ${familyChildSchoolScope()}
        AND p.status='ACTIVE'
      LIMIT 1`,
     [parentUserId, studentId, schoolId ?? null],
@@ -445,20 +446,20 @@ router.get("/communication/children", asyncRoute(async (req, res) => {
   const context = requireParentRole(req);
   const query = parse(parentThreadQuerySchema, req.query);
   const result = await pool.query(
-    `SELECT DISTINCT st.id AS "studentId",p.school_id AS "schoolId",school.name AS "schoolName",
+    `SELECT DISTINCT st.id AS "studentId",st.school_id AS "schoolId",school.name AS "schoolName",
        st.first_name AS "firstName",st.last_name AS "lastName",
        current_enrollment.section AS section,class.name AS "className"
      FROM parents p
      JOIN parent_student_relationships rel ON rel.parent_id=p.id AND rel.status='ACTIVE'
-     JOIN students st ON st.id=rel.student_id AND st.school_id=p.school_id AND LOWER(st.status)='active'
-     JOIN schools school ON school.id=p.school_id AND LOWER(school.status)='active'
+     JOIN students st ON st.id=rel.student_id AND LOWER(st.status)='active'
+     JOIN schools school ON school.id=st.school_id AND LOWER(school.status)='active'
      LEFT JOIN student_class_assignments current_enrollment
        ON current_enrollment.student_id=st.id AND current_enrollment.school_id=st.school_id
        AND current_enrollment.status='ACTIVE' AND current_enrollment.is_current=true
      LEFT JOIN school_classes class ON class.id=current_enrollment.school_class_id
        AND class.school_id=current_enrollment.school_id AND class.section=current_enrollment.section
-     WHERE p.user_id=$1 AND p.status='ACTIVE' AND ($2::int IS NULL OR p.school_id=$2)
-     ORDER BY p.school_id,st.last_name,st.first_name,st.id`,
+     WHERE p.user_id=$1 AND p.status='ACTIVE' AND ($2::int IS NULL OR st.school_id=$2) AND ${familyChildSchoolScope()}
+     ORDER BY st.school_id,st.last_name,st.first_name,st.id`,
     [context.user.id, query.schoolId ?? null],
   );
   res.json(parentCommunicationChildrenResponseSchema.parse({ children: result.rows }));
@@ -521,8 +522,8 @@ async function listThreads(
     filters.push(`EXISTS (
       SELECT 1 FROM parents p
       JOIN parent_student_relationships rel ON rel.parent_id=p.id AND rel.status='ACTIVE'
-      WHERE p.user_id=$${values.length} AND p.school_id=t.school_id AND p.status='ACTIVE'
-        AND rel.student_id=t.student_id
+      WHERE p.user_id=$${values.length} AND p.status='ACTIVE'
+        AND rel.student_id=t.student_id AND ${familyChildSchoolScope()}
     )`);
     if (query.schoolId !== undefined) {
       values.push(query.schoolId);

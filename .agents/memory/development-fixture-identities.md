@@ -26,3 +26,9 @@ When additive migrations introduce immutable security/history tables, explicitly
 **Why:** A guard designed for the earlier schema rejected the new security-history triggers. Stopping provisioning avoids creating records whose safe cleanup has not been proven.
 
 **How to apply:** Recognize only reviewed trigger definitions, retain scoped deletion and original-data checks, and compare original columns when additive defaults change whole-row JSON fingerprints.
+
+Derive family-test ownership from the actual active relationship graph, not numbered fixture identities or a presumed ordering of children.
+
+**Why:** A reusable fixture's guardian assignments differed from the initial test description. Successful reads under two different parents did not establish paid-sibling access under one parent.
+
+**How to apply:** Inspect owned fixtures after provisioning, verify each caller-child relationship, and distinguish same-parent browser evidence from separate-account evidence. Add only explicitly scoped QA relationships when needed.

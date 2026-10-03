@@ -5,9 +5,12 @@ import { Link, Route, Switch } from 'wouter';
 import { BookOpen, ChevronRight, GraduationCap, ShieldCheck, UserRound, UsersRound, Zap, LogIn, LogOut, Calendar, Clock, ReceiptText, FileSpreadsheet } from 'lucide-react';
 import { 
   useGetParentChild, useGetParentChildren, useGetParentProfile, useGetParentChildAttendance,
-  useListChildAcademicAssignments, useListChildAcademicResults, useListChildAcademicReportCards, useGetChildAcademicTimetable
+  useListChildAcademicAssignments, useListChildAcademicResults, useListChildAcademicReportCards, useGetChildAcademicTimetable,
+  getListChildAcademicAssignmentsQueryKey, getListChildAcademicResultsQueryKey,
+  getListChildAcademicReportCardsQueryKey, getGetChildAcademicTimetableQueryKey
 } from '@workspace/api-client-react';
 import NotFound from './not-found';
+import { SubscriptionAccessBanner } from '@/components/subscription-access-banner';
 import { ParentFeesPage } from './finance';
 import { ParentCheckoutReturn } from './finance-online';
 import { FeePaymentNotifications } from '@/components/fee-payment-notifications';
@@ -215,10 +218,19 @@ function ChildAcademics({ studentId, schoolId }: { studentId: number; schoolId: 
   );
 }
 
+function ChildAcademicFailure({ error, retry }: { error: unknown; retry: () => void }) {
+  return (
+    <div role="alert" className="rounded-xl border border-[hsl(var(--destructive)/.3)] p-5 text-sm text-[hsl(var(--destructive))]">
+      <p>{error instanceof Error ? error.message : 'Unable to load this academic information.'}</p>
+      <button type="button" className="mt-3 font-bold underline" onClick={retry}>Retry</button>
+    </div>
+  );
+}
+
 function ChildAssignments({ studentId, schoolId }: { studentId: number; schoolId: number }) {
-  const query = useListChildAcademicAssignments(studentId, { schoolId });
+  const query = useListChildAcademicAssignments(studentId, { schoolId }, { query: { queryKey: getListChildAcademicAssignmentsQueryKey(studentId, { schoolId }), retry: false } });
   if (query.isLoading) return <div className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading assignments...</div>;
-  if (query.isError) return <div className="py-10 text-center text-sm text-[hsl(var(--destructive))]">Failed to load assignments</div>;
+  if (query.isError) return <ChildAcademicFailure error={query.error} retry={() => void query.refetch()} />;
   const assignments = query.data ?? [];
   
   if (!assignments.length) return <div className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))] border border-dashed border-[hsl(var(--border))] rounded-xl">No active assignments.</div>;
@@ -245,8 +257,9 @@ function ChildAssignments({ studentId, schoolId }: { studentId: number; schoolId
 }
 
 function ChildResults({ studentId, schoolId }: { studentId: number; schoolId: number }) {
-  const query = useListChildAcademicResults(studentId, { schoolId });
+  const query = useListChildAcademicResults(studentId, { schoolId }, { query: { queryKey: getListChildAcademicResultsQueryKey(studentId, { schoolId }), retry: false } });
   if (query.isLoading) return <div className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading results...</div>;
+  if (query.isError) return <ChildAcademicFailure error={query.error} retry={() => void query.refetch()} />;
   const results = (query.data ?? []).filter((r: any) => r.status === 'PUBLISHED' || !r.status);
   
   if (!results.length) return <div className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))] border border-dashed border-[hsl(var(--border))] rounded-xl">No published assessment results.</div>;
@@ -271,8 +284,9 @@ function ChildResults({ studentId, schoolId }: { studentId: number; schoolId: nu
 }
 
 function ChildReportCards({ studentId, schoolId }: { studentId: number; schoolId: number }) {
-  const query = useListChildAcademicReportCards(studentId, { schoolId });
+  const query = useListChildAcademicReportCards(studentId, { schoolId }, { query: { queryKey: getListChildAcademicReportCardsQueryKey(studentId, { schoolId }), retry: false } });
   if (query.isLoading) return <div className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading report cards...</div>;
+  if (query.isError) return <ChildAcademicFailure error={query.error} retry={() => void query.refetch()} />;
   const cards = (query.data ?? []).filter((r: any) => r.status === 'PUBLISHED');
   
   if (!cards.length) return <div className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))] border border-dashed border-[hsl(var(--border))] rounded-xl">No published report cards.</div>;
@@ -312,8 +326,9 @@ function ChildReportCards({ studentId, schoolId }: { studentId: number; schoolId
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
 
 function ChildTimetable({ studentId, schoolId }: { studentId: number; schoolId: number }) {
-  const query = useGetChildAcademicTimetable(studentId, { schoolId });
+  const query = useGetChildAcademicTimetable(studentId, { schoolId }, { query: { queryKey: getGetChildAcademicTimetableQueryKey(studentId, { schoolId }), retry: false } });
   if (query.isLoading) return <div className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading timetable...</div>;
+  if (query.isError) return <ChildAcademicFailure error={query.error} retry={() => void query.refetch()} />;
   const entries = query.data ?? [];
   
   if (!entries.length) return <div className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))] border border-dashed border-[hsl(var(--border))] rounded-xl">No class timetable available.</div>;
@@ -369,5 +384,5 @@ function ChildLibraryRoute() {
 }
 
 export default function ParentPortal() {
-  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><Switch><Route path="/" component={ParentDashboard} /><Route path="/reporting"><main className="mx-auto max-w-6xl p-5 md:p-8"><ReportingPage audience="parent" /></main></Route><Route path="/parent/communication"><ParentCommunicationCentre /></Route><Route path="/inbox"><CommunicationInbox standalone /></Route><Route path="/notification-settings"><NotificationSettings standalone /></Route><Route path="/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route path="/parent/library/:studentId" component={ChildLibraryRoute} /><Route component={NotFound} /></Switch></div>;
+  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><div className="mx-auto max-w-6xl px-5 pt-5 md:px-8"><SubscriptionAccessBanner audience="parent" /></div><Switch><Route path="/" component={ParentDashboard} /><Route path="/reporting"><main className="mx-auto max-w-6xl p-5 md:p-8"><ReportingPage audience="parent" /></main></Route><Route path="/parent/communication"><ParentCommunicationCentre /></Route><Route path="/inbox"><CommunicationInbox standalone /></Route><Route path="/notification-settings"><NotificationSettings standalone /></Route><Route path="/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route path="/parent/library/:studentId" component={ChildLibraryRoute} /><Route component={NotFound} /></Switch></div>;
 }

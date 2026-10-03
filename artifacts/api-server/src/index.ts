@@ -3,6 +3,7 @@ import { pool } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { dispatchCommunicationDeliveries } from "./services/communication-service";
 import { reconcileFinanceCommunicationIntents } from "./routes/finance-communication-service";
+import { evaluateSubscriptionSchools } from "./services/subscription-enforcement";
 
 const rawPort = process.env["PORT"];
 
@@ -29,10 +30,15 @@ app.listen(port, (err) => {
   // Provider work runs after request transactions commit. In development the
   // dispatcher uses no-network adapters; real providers require explicit setup.
   let dispatching = false;
+  let lastSubscriptionEvaluation = 0;
   const dispatch = async () => {
     if (dispatching) return;
     dispatching = true;
     try {
+      if (Date.now() - lastSubscriptionEvaluation >= 60_000) {
+        await evaluateSubscriptionSchools();
+        lastSubscriptionEvaluation = Date.now();
+      }
       // The existing invoice notification ledger is durable. Reconcile any
       // missed channel intents before claiming due deliveries.
       await reconcileFinanceCommunicationIntents(pool, 50);

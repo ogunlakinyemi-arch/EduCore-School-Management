@@ -4,6 +4,7 @@ import { useAuth, UserButton } from '@clerk/react';
 import { FeePaymentNotifications } from './fee-payment-notifications';
 import { CommunicationInboxBadge } from '@/pages/communication-inbox';
 import { PwaInstall } from '@/components/pwa-install';
+import { SubscriptionAccessBanner } from '@/components/subscription-access-banner';
 import { 
   Activity, ArrowLeft, ArrowUpRight, BadgeCheck, BarChart3, Bell, BookOpen, Building2, Check, ChevronDown, 
   CircleAlert, CircleDollarSign, CreditCard, FileClock, GraduationCap, LayoutDashboard, Library, Menu, 
@@ -85,6 +86,7 @@ const nav: NavItem[] = [
   { href: '/partners', label: 'Partners', icon: Handshake, roles: ['PLATFORM_OWNER'] },
   { href: '/devices', label: 'Devices', icon: Smartphone, roles: ['PLATFORM_OWNER'] },
   { href: '/subscriptions', label: 'Subscriptions', icon: WalletCards, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
+  { href: '/subscription-enforcement', label: 'Term Enforcement', icon: ShieldCheck, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/cards', label: 'NFC Cards', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'STAFF'] },
   { href: '/employee-nfc', label: 'Employee NFC', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
   { href: '/my-employee-nfc', label: 'My Employee E-ID', icon: CreditCard, roles: ['TEACHER', 'STAFF'] },
@@ -98,7 +100,7 @@ const nav: NavItem[] = [
 ];
 const ownerNavPaths = new Set([
   '/', '/schools', '/students', '/company-employees', '/users', '/partners',
-  '/devices', '/subscriptions', '/cards', '/audit', '/reporting', '/activation', '/activation/history',
+  '/devices', '/subscriptions', '/subscription-enforcement', '/cards', '/audit', '/reporting', '/activation', '/activation/history',
   '/finance-workspace', '/employee-nfc', '/transport', '/security',
   '/curriculum-management',
 ]);
@@ -221,6 +223,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="px-5 pt-3 md:px-8"><PwaInstall /></div>
         <main className="nav-grid flex-1 p-5 md:p-8">
           <div className="mx-auto max-w-[1440px]">
+            {!isPlatformOwner && !isActivationOfficer && !isCompanyAccountant && (studentRole || roles.includes('TEACHER') || roles.includes('PARENT')) && <SubscriptionAccessBanner audience={studentRole ? 'student' : roles.includes('TEACHER') ? 'teacher' : 'parent'} />}
             {children}
           </div>
         </main>

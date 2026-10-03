@@ -29,6 +29,7 @@ export * from "./school-workflows";
 export * from "./transport";
 export * from "./settlement-payroll";
 export * from "./student-subscription-billing";
+export * from "./subscription-enforcement";
 export * from "./curriculum-learning";
 export * from "./admissions-expansion";
 export * from "./student-care-expansion";

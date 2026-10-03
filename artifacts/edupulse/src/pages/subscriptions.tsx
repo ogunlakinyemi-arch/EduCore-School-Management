@@ -16,6 +16,7 @@ import {
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState,
   TenantPicker, useTenant, money, date, useSchoolAdminAccess,
 } from '@/components/shared';
+import { Link } from 'wouter';
 import { useGetAuthorizedContext } from '@workspace/api-client-react';
 import {
   checkoutEvidenceMatchesServer,
@@ -599,7 +600,7 @@ export function SubscriptionsPage() {
         eyebrow="Financials / Subscriptions"
         title="Revenue & Access."
         description="Monitor student payment statuses and term enrollment. Only independently verified server payments are marked paid."
-        action={<div className="flex items-center gap-3"><TenantPicker /></div>}
+        action={<div className="flex items-center gap-3"><Link href="/subscription-enforcement" className="text-xs font-bold text-[hsl(var(--primary))] underline" data-testid="link-term-enforcement">Term enforcement</Link><TenantPicker /></div>}
       />
 
       {message && (

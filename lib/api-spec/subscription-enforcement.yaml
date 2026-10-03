@@ -1,0 +1,111 @@
+openapi: 3.1.0
+info:
+  title: Term subscription enforcement
+  version: 1.0.0
+paths:
+  /subscription-enforcement:
+    get:
+      operationId: getSubscriptionEnforcementOverview
+      tags: [SubscriptionEnforcement]
+      parameters:
+        - in: query
+          name: schoolId
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Owner overview or authorized School Admin school summary
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SchoolSubscriptionSummary' }
+  /subscription-enforcement/me:
+    get:
+      operationId: getMySubscriptionEnforcement
+      tags: [SubscriptionEnforcement]
+      responses:
+        '200':
+          description: Own student or related child access; no financial information
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SubscriptionAccessStatus' }
+  /subscription-enforcement/lock:
+    post:
+      operationId: lockSchoolSubscriptions
+      tags: [SubscriptionEnforcement]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmed, schools]
+              properties:
+                confirmed: { type: boolean, const: true }
+                schools:
+                  type: array
+                  minItems: 1
+                  maxItems: 50
+                  items:
+                    type: object
+                    required: [schoolId, termId]
+                    properties:
+                      schoolId: { type: integer, minimum: 1 }
+                      termId: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Confirmed Owner action, using the same automatic policy
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [schoolId, changed, state]
+                  properties:
+                    schoolId: { type: integer }
+                    changed: { type: boolean }
+                    state: { type: string }
+                    summary: { $ref: '#/components/schemas/SchoolSubscriptionSummary' }
+components:
+  schemas:
+    SchoolSubscriptionSummary:
+      type: object
+      required: [schoolId, schoolName, status, state]
+      properties:
+        schoolId: { type: integer }
+        schoolName: { type: string }
+        status: { type: string }
+        state: { type: string }
+        termId: { type: integer }
+        termName: { type: string }
+        startDate: { type: string }
+        endDate: { type: string }
+        enforcementDate: { type: string }
+        inGracePeriod: { type: boolean }
+        schoolLocked: { type: boolean }
+        studentsTotal: { type: integer }
+        studentsPaid: { type: integer }
+        studentsAffected: { type: integer }
+        teachersAffected: { type: integer }
+        parentsAffected: { type: integer }
+        cardsLocked: { type: integer }
+        teacherCardsLocked: { type: integer }
+        devicesLocked: { type: integer }
+        amountDueMinor: { type: integer }
+        amountPaidMinor: { type: integer }
+        outstandingMinor: { type: integer }
+    SubscriptionAccessStatus:
+      type: object
+      required: [schoolId, studentId, schoolName, termName, startDate, enforcementDate, state, restricted]
+      properties:
+        schoolId: { type: integer }
+        studentId: { type: [integer, 'null'] }
+        schoolName: { type: string }
+        termName: { type: [string, 'null'] }
+        startDate: { type: [string, 'null'] }
+        enforcementDate: { type: [string, 'null'] }
+        state: { type: string }
+        restricted: { type: boolean }

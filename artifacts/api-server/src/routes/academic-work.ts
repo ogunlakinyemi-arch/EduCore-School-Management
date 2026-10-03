@@ -1,5 +1,6 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { pool } from "@workspace/db";
+import { familyChildSchoolScope } from "../lib/family-child-school-scope";
 import {
   AuthError,
   assertSchoolOperationalAccess,
@@ -579,8 +580,8 @@ router.get("/academic/parents/children/:studentId/assignments", asyncRoute(async
     `SELECT st.id, st.school_id AS "schoolId"
        FROM parents p
        JOIN parent_student_relationships psr ON psr.parent_id=p.id AND UPPER(psr.status)='ACTIVE'
-       JOIN students st ON st.id=psr.student_id AND st.school_id=p.school_id
-      WHERE p.user_id=$1 AND p.school_id=$2 AND UPPER(p.status)='ACTIVE' AND st.id=$3`,
+       JOIN students st ON st.id=psr.student_id
+      WHERE p.user_id=$1 AND st.school_id=$2 AND UPPER(p.status)='ACTIVE' AND st.id=$3 AND ${familyChildSchoolScope()}`,
     [context.user.id, id(req.query.schoolId, "schoolId"), studentId],
   );
   if (!result.rows[0]) throw new AuthError(404, "Student not found");

@@ -302,6 +302,7 @@ import type {
   GetStudentParams,
   GetStudentPhotoParams,
   GetSubjectParams,
+  GetSubscriptionEnforcementOverviewParams,
   GetTransportAssignmentHistoryParams,
   GetTransportAssignmentParams,
   GetTransportRouteHistoryParams,
@@ -413,6 +414,8 @@ import type {
   ListTransportRequestsParams,
   ListTransportRouteStaffParams,
   ListTransportRoutesParams,
+  LockSchoolSubscriptions200Item,
+  LockSchoolSubscriptionsBody,
   LostCardInput,
   ManualAttendanceInput,
   MarkParentCommunicationThreadRead200,
@@ -583,6 +586,7 @@ import type {
   SchoolSettlementInput,
   SchoolSettlementSummary,
   SchoolStatusUpdate,
+  SchoolSubscriptionSummary,
   SchoolTeacherAssignment,
   SchoolUpdate,
   SchoolUser,
@@ -655,6 +659,7 @@ import type {
   SubjectInput,
   SubjectUpdate,
   Subscription,
+  SubscriptionAccessStatus,
   SubscriptionInput,
   TeacherClassAssignment,
   TeacherClassAssignmentInput,
@@ -24542,6 +24547,237 @@ export function useGetStudentSelfProfile<TData = Awaited<ReturnType<typeof getSt
 
 
 
+
+export const getGetSubscriptionEnforcementOverviewUrl = (params?: GetSubscriptionEnforcementOverviewParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/subscription-enforcement?${stringifiedParams}` : `/api/subscription-enforcement`
+}
+
+export const getSubscriptionEnforcementOverview = async (params?: GetSubscriptionEnforcementOverviewParams, options?: Parameters<typeof customFetch>[1]): Promise<SchoolSubscriptionSummary[]> => {
+
+  return customFetch<SchoolSubscriptionSummary[]>(getGetSubscriptionEnforcementOverviewUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSubscriptionEnforcementOverviewQueryKey = (params?: GetSubscriptionEnforcementOverviewParams,) => {
+    return [
+    `/api/subscription-enforcement`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSubscriptionEnforcementOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getSubscriptionEnforcementOverview>>, TError = ErrorType<unknown>>(params?: GetSubscriptionEnforcementOverviewParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSubscriptionEnforcementOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSubscriptionEnforcementOverviewQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSubscriptionEnforcementOverview>>> = ({ signal }) => getSubscriptionEnforcementOverview(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSubscriptionEnforcementOverview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSubscriptionEnforcementOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof getSubscriptionEnforcementOverview>>>
+export type GetSubscriptionEnforcementOverviewQueryError = ErrorType<unknown>
+
+
+
+export function useGetSubscriptionEnforcementOverview<TData = Awaited<ReturnType<typeof getSubscriptionEnforcementOverview>>, TError = ErrorType<unknown>>(
+ params?: GetSubscriptionEnforcementOverviewParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSubscriptionEnforcementOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSubscriptionEnforcementOverviewQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMySubscriptionEnforcementUrl = () => {
+
+
+
+
+  return `/api/subscription-enforcement/me`
+}
+
+export const getMySubscriptionEnforcement = async ( options?: Parameters<typeof customFetch>[1]): Promise<SubscriptionAccessStatus[]> => {
+
+  return customFetch<SubscriptionAccessStatus[]>(getGetMySubscriptionEnforcementUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMySubscriptionEnforcementQueryKey = () => {
+    return [
+    `/api/subscription-enforcement/me`
+    ] as const;
+    }
+
+
+export const getGetMySubscriptionEnforcementQueryOptions = <TData = Awaited<ReturnType<typeof getMySubscriptionEnforcement>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMySubscriptionEnforcement>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMySubscriptionEnforcementQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMySubscriptionEnforcement>>> = ({ signal }) => getMySubscriptionEnforcement({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMySubscriptionEnforcement>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMySubscriptionEnforcementQueryResult = NonNullable<Awaited<ReturnType<typeof getMySubscriptionEnforcement>>>
+export type GetMySubscriptionEnforcementQueryError = ErrorType<unknown>
+
+
+
+export function useGetMySubscriptionEnforcement<TData = Awaited<ReturnType<typeof getMySubscriptionEnforcement>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMySubscriptionEnforcement>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMySubscriptionEnforcementQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getLockSchoolSubscriptionsUrl = () => {
+
+
+
+
+  return `/api/subscription-enforcement/lock`
+}
+
+export const lockSchoolSubscriptions = async (lockSchoolSubscriptionsBody: LockSchoolSubscriptionsBody, options?: Parameters<typeof customFetch>[1]): Promise<LockSchoolSubscriptions200Item[]> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LockSchoolSubscriptions200Item[]>(getLockSchoolSubscriptionsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(lockSchoolSubscriptionsBody)
+  }
+);}
+
+
+
+
+
+export const getLockSchoolSubscriptionsMutationKey = () => ['lockSchoolSubscriptions'] as const;
+
+export const getLockSchoolSubscriptionsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lockSchoolSubscriptions>>, TError,LockSchoolSubscriptionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof lockSchoolSubscriptions>>, TError,LockSchoolSubscriptionsMutationVariables, TContext> => {
+
+const mutationKey = getLockSchoolSubscriptionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof lockSchoolSubscriptions>>, LockSchoolSubscriptionsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  lockSchoolSubscriptions(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LockSchoolSubscriptionsMutationResult = NonNullable<Awaited<ReturnType<typeof lockSchoolSubscriptions>>>
+    export type LockSchoolSubscriptionsMutationBody = BodyType<LockSchoolSubscriptionsBody>
+    export type LockSchoolSubscriptionsMutationError = ErrorType<unknown>
+    export type LockSchoolSubscriptionsMutationVariables = {data: BodyType<LockSchoolSubscriptionsBody>}
+
+    export const useLockSchoolSubscriptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lockSchoolSubscriptions>>, TError,LockSchoolSubscriptionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof lockSchoolSubscriptions>>,
+        TError,
+        LockSchoolSubscriptionsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLockSchoolSubscriptionsMutationOptions(options));
+    }
 
 export const getListSubscriptionsUrl = (params: ListSubscriptionsParams,) => {
   const normalizedParams = new URLSearchParams();

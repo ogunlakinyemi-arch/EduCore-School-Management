@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { Router, type NextFunction, type Request } from "express";
 import { pool } from "@workspace/db";
+import { assertSubscriptionAccess } from "../services/subscription-enforcement";
 import { joinSecurityAttendance, recordAuthenticatedNfcDenial } from "../services/security-attendance-integration";
 import {
   AuthError,
@@ -973,6 +974,7 @@ router.post("/devices/employee-nfc/attendance/events", run(async (req, res) => {
     const suppression = Math.max(0, Math.min(3600, Number(settings.rows[0]?.suppressionSeconds ?? 30)));
     const lockKey = `${device.schoolId}:${employeeId}:${device.deviceId}:${eventType}`;
     await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, [lockKey]);
+    await assertSubscriptionAccess(device.schoolId, null, client);
     const recent = await client.query(
       `SELECT id,school_id AS "schoolId",employee_id AS "employeeId",
               event_type AS "eventType",identification_method AS "identificationMethod",

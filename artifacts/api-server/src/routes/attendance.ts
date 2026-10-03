@@ -16,6 +16,7 @@ import {
 } from "../services/communication-service";
 import { logger } from "../lib/logger";
 import employeeNfcRouter from "./employee-nfc";
+import { assertSubscriptionAccess } from "../services/subscription-enforcement";
 
 const router = Router();
 const run = (handler: (req: Request, res: Response) => Promise<void>) =>
@@ -380,6 +381,7 @@ const processDeviceAttendance = run(async (req, res) => {
     `SELECT id FROM students WHERE id=$1 AND school_id=$2 AND UPPER(status)='ACTIVE'`, [studentId, device.schoolId],
   );
   if (!student.rows[0]) throw new AuthError(404, "Student not found");
+  await assertSubscriptionAccess(device.schoolId, studentId);
   await enforcePolicy(device.schoolId, studentId, method);
   if (!body.occurredAt) throw new AuthError(400, "occurredAt is required");
   if (method === "FINGERPRINT") {
@@ -647,6 +649,7 @@ router.post("/school/attendance/manual", requireAuthentication(), run(async (req
     ? await pool.query(`SELECT id FROM students WHERE id=$1 AND school_id=$2 AND UPPER(status)='ACTIVE'`, [studentId, schoolId])
     : await pool.query(`SELECT id FROM employees WHERE id=$1 AND school_id=$2 AND UPPER(employment_status)='ACTIVE'`, [employeeId, schoolId]);
   if (!subject.rows[0]) throw new AuthError(404, "Student or employee not found");
+  await assertSubscriptionAccess(schoolId, studentId);
    const occurred = new Date(req.body.occurredAt);
    if (Number.isNaN(occurred.getTime())) throw new AuthError(400, "Invalid occurredAt");
   const client = await pool.connect();

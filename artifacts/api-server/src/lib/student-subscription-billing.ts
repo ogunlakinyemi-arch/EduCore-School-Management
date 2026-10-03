@@ -32,7 +32,7 @@ export type StudentSubscriptionTermPaymentScope = {
   termId: number;
 };
 
-const STUDENT_SUBSCRIPTION_GROSS_MINOR = 500_000;
+export const STUDENT_SUBSCRIPTION_GROSS_MINOR = 500_000;
 
 export class StudentSubscriptionBillingError extends Error {
   constructor(
@@ -561,7 +561,7 @@ export async function finalizeVerifiedStudentSubscriptionPayment(
     }
     await client.query(
       `UPDATE nfc_cards SET status='active'
-        WHERE student_id=$1 AND school_id=$2 AND status IN ('locked','unassigned')`,
+        WHERE student_id=$1 AND school_id=$2 AND status='unassigned'`,
       [payment.studentId, payment.schoolId],
     );
     await client.query(

@@ -7,6 +7,7 @@ import {
 import { dispatchPushDevices } from "./web-push-dispatch";
 import { WebPushProvider } from "./web-push-provider";
 import { duplicateCampaignDelivery } from "./communication-external-identity";
+import { familyChildSchoolScope } from "../lib/family-child-school-scope";
 
 export type CommunicationCategory =
   | "ATTENDANCE"
@@ -254,9 +255,9 @@ const activeSchoolRecipientSql = `
            ON psr.parent_id = p.id AND UPPER(psr.status) = 'ACTIVE'
          JOIN students child
            ON child.id = psr.student_id
-          AND child.school_id = p.school_id
           AND UPPER(child.status) = 'ACTIVE'
-         WHERE p.user_id = u.id AND p.school_id = $2 AND UPPER(p.status) = 'ACTIVE'
+         WHERE p.user_id = u.id AND child.school_id = $2 AND UPPER(p.status) = 'ACTIVE'
+           AND ${familyChildSchoolScope("p", "child")}
       )
     )
 `;
@@ -275,7 +276,7 @@ const subjectStudentRecipientSql = `
         JOIN parents p ON p.id = psr.parent_id
         WHERE psr.student_id = subject.id
           AND p.user_id = $3
-          AND p.school_id = subject.school_id
+          AND ${familyChildSchoolScope("p", "subject")}
           AND UPPER(p.status) = 'ACTIVE'
           AND UPPER(psr.status) = 'ACTIVE'
       )
@@ -763,10 +764,10 @@ async function loadDispatchRecord(
                       FROM parent_student_relationships subject_rel
                       JOIN parents subject_parent
                         ON subject_parent.id = subject_rel.parent_id
-                       AND subject_parent.school_id = n.school_id
                        AND UPPER(subject_parent.status) = 'ACTIVE'
                       WHERE subject_rel.student_id = subject.id
                         AND subject_parent.user_id = u.id
+                        AND ${familyChildSchoolScope("subject_parent", "subject")}
                         AND UPPER(subject_rel.status) = 'ACTIVE'
                     )
                   )

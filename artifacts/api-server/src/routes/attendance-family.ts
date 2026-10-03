@@ -1,5 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { pool } from "@workspace/db";
+import { familyChildSchoolScope } from "../lib/family-child-school-scope";
 import {
   assertRoles,
   AuthError,
@@ -96,9 +97,9 @@ router.get(
          JOIN parent_student_relationships psr
            ON psr.parent_id = p.id AND UPPER(psr.status) = 'ACTIVE'
          JOIN students st ON st.id = psr.student_id
-         JOIN schools s ON s.id = st.school_id AND s.id = p.school_id
+         JOIN schools s ON s.id = st.school_id
         WHERE p.user_id = $1 AND UPPER(p.status) = 'ACTIVE'
-          AND psr.student_id = $2
+          AND psr.student_id = $2 AND ${familyChildSchoolScope()}
         LIMIT 1`,
       [context.user.id, studentId],
     );
