@@ -11040,6 +11040,18 @@ export const GetSubscriptionEnforcementOverviewResponseItem = zod.object({
   "schoolName": zod.string(),
   "status": zod.string(),
   "state": zod.string(),
+  "schoolEnforcementStatus": zod.enum(['ACTIVE', 'LOCKED']),
+  "manualVersion": zod.number().int(),
+  "registrationNumber": zod.string().optional(),
+  "sessionId": zod.number().int().optional(),
+  "sessionName": zod.string().optional(),
+  "lockedAt": zod.string().nullish(),
+  "lockedByUserId": zod.number().int().nullish(),
+  "lockedByName": zod.string().nullish(),
+  "lastUnlockedAt": zod.string().nullish(),
+  "lastUnlockedByUserId": zod.number().int().nullish(),
+  "lastUnlockedByName": zod.string().nullish(),
+  "reason": zod.string().nullish(),
   "termId": zod.number().int().optional(),
   "termName": zod.string().optional(),
   "startDate": zod.string().optional(),
@@ -11070,12 +11082,16 @@ export const GetMySubscriptionEnforcementResponseItem = zod.object({
   "startDate": zod.string().nullable(),
   "enforcementDate": zod.string().nullable(),
   "state": zod.string(),
-  "restricted": zod.boolean()
+  "restricted": zod.boolean(),
+  "restrictionReason": zod.union([zod.literal('SCHOOL_SUBSCRIPTION_LOCKED'),zod.literal('SUBSCRIPTION_RESTRICTED'),zod.literal(null)]).nullish()
 })
 export const GetMySubscriptionEnforcementResponse = zod.array(GetMySubscriptionEnforcementResponseItem)
 
 
+export const lockSchoolSubscriptionsBodyReasonMax = 500;
 
+
+export const lockSchoolSubscriptionsBodySchoolsItemExpectedVersionMin = 0;
 
 export const lockSchoolSubscriptionsBodySchoolsMax = 50;
 
@@ -11083,42 +11099,71 @@ export const lockSchoolSubscriptionsBodySchoolsMax = 50;
 
 export const LockSchoolSubscriptionsBody = zod.object({
   "confirmed": zod.literal(true),
+  "reason": zod.string().max(lockSchoolSubscriptionsBodyReasonMax).optional(),
   "schools": zod.array(zod.object({
   "schoolId": zod.number().int().min(1),
-  "termId": zod.number().int().min(1)
+  "expectedVersion": zod.number().int().min(lockSchoolSubscriptionsBodySchoolsItemExpectedVersionMin)
 })).min(1).max(lockSchoolSubscriptionsBodySchoolsMax)
 })
 
 export const LockSchoolSubscriptionsResponseItem = zod.object({
   "schoolId": zod.number().int(),
   "changed": zod.boolean(),
-  "state": zod.string(),
-  "summary": zod.object({
-  "schoolId": zod.number().int(),
-  "schoolName": zod.string(),
-  "status": zod.string(),
-  "state": zod.string(),
-  "termId": zod.number().int().optional(),
-  "termName": zod.string().optional(),
-  "startDate": zod.string().optional(),
-  "endDate": zod.string().optional(),
-  "enforcementDate": zod.string().optional(),
-  "inGracePeriod": zod.boolean().optional(),
-  "schoolLocked": zod.boolean().optional(),
-  "studentsTotal": zod.number().int().optional(),
-  "studentsPaid": zod.number().int().optional(),
-  "studentsAffected": zod.number().int().optional(),
-  "teachersAffected": zod.number().int().optional(),
-  "parentsAffected": zod.number().int().optional(),
-  "cardsLocked": zod.number().int().optional(),
-  "teacherCardsLocked": zod.number().int().optional(),
-  "devicesLocked": zod.number().int().optional(),
-  "amountDueMinor": zod.number().int().optional(),
-  "amountPaidMinor": zod.number().int().optional(),
-  "outstandingMinor": zod.number().int().optional()
-}).optional()
+  "state": zod.enum(['ACTIVE', 'LOCKED', 'FAILED']),
+  "manualVersion": zod.number().int().optional(),
+  "error": zod.string().optional()
 })
 export const LockSchoolSubscriptionsResponse = zod.array(LockSchoolSubscriptionsResponseItem)
+
+
+export const unlockSchoolSubscriptionsBodyReasonMax = 500;
+
+
+export const unlockSchoolSubscriptionsBodySchoolsItemExpectedVersionMin = 0;
+
+export const unlockSchoolSubscriptionsBodySchoolsMax = 50;
+
+
+
+export const UnlockSchoolSubscriptionsBody = zod.object({
+  "confirmed": zod.literal(true),
+  "reason": zod.string().max(unlockSchoolSubscriptionsBodyReasonMax).optional(),
+  "schools": zod.array(zod.object({
+  "schoolId": zod.number().int().min(1),
+  "expectedVersion": zod.number().int().min(unlockSchoolSubscriptionsBodySchoolsItemExpectedVersionMin)
+})).min(1).max(unlockSchoolSubscriptionsBodySchoolsMax)
+})
+
+export const UnlockSchoolSubscriptionsResponseItem = zod.object({
+  "schoolId": zod.number().int(),
+  "changed": zod.boolean(),
+  "state": zod.enum(['ACTIVE', 'LOCKED', 'FAILED']),
+  "manualVersion": zod.number().int().optional(),
+  "error": zod.string().optional()
+})
+export const UnlockSchoolSubscriptionsResponse = zod.array(UnlockSchoolSubscriptionsResponseItem)
+
+
+
+
+
+export const GetSchoolSubscriptionAuditQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const GetSchoolSubscriptionAuditResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "action": zod.string(),
+  "timestamp": zod.string(),
+  "actorUserId": zod.number().int().nullable(),
+  "previousState": zod.string().nullable(),
+  "newState": zod.string().nullable(),
+  "reason": zod.string().nullable(),
+  "requestId": zod.string().nullable(),
+  "studentId": zod.number().int().nullable()
+})
+export const GetSchoolSubscriptionAuditResponse = zod.array(GetSchoolSubscriptionAuditResponseItem)
 
 
 /**

@@ -6,9 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type LockSchoolSubscriptionsBodySchoolsItem = {
+export type SchoolEnforcementSelectionSchoolsItem = {
   /** @minimum 1 */
   schoolId: number;
-  /** @minimum 1 */
-  termId: number;
+  /** @minimum 0 */
+  expectedVersion: number;
 };

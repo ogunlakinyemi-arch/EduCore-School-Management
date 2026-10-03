@@ -2,7 +2,8 @@ import { Router } from "express";
 import { pool } from "@workspace/db";
 import { z } from "zod";
 import { AuthError, assertSchoolOperationalAccess, getUserContext, isPlatformOwner, requireAuthentication } from "../middlewares/auth";
-import { readSchoolSubscription, reconcileSchoolSubscription } from "../services/subscription-enforcement";
+import { readSchoolSubscription, readSchoolEnforcementSummary } from "../services/subscription-enforcement";
+import { readManualSchoolState, changeManualSchoolLock } from "../services/school-subscription-lock";
 import { familyChildSchoolScope } from "../lib/family-child-school-scope";
 
 const router = Router();
@@ -22,12 +23,7 @@ router.get("/subscription-enforcement", async (req, res, next) => {
     );
     const result = [];
     for (const school of schools.rows) {
-      const snapshot = await readSchoolSubscription(pool, school.id);
-      // Internal student IDs are never included in aggregate overview responses.
-      if (snapshot) {
-        const { restrictedStudentIds: _ids, today: _today, ...summary } = snapshot;
-        result.push(summary);
-      } else result.push({ schoolId: school.id, schoolName: school.name, state: "UNAVAILABLE", status: "UNAVAILABLE" });
+      result.push(await readSchoolEnforcementSummary(pool, school.id));
     }
     res.json(result);
   } catch (error) { next(error); }
@@ -51,13 +47,15 @@ router.get("/subscription-enforcement/me", async (req, res, next) => {
     for (const profile of profiles.rows) {
       if (!summaries.has(profile.schoolId)) summaries.set(profile.schoolId, await readSchoolSubscription(pool, profile.schoolId));
       const snapshot = summaries.get(profile.schoolId);
+      const manual = await readManualSchoolState(pool, profile.schoolId);
+      const automatic = !!snapshot && profile.studentId != null && snapshot.restrictedStudentIds.includes(profile.studentId);
       result.push({
         schoolId: profile.schoolId, studentId: profile.studentId,
         schoolName: snapshot?.schoolName ?? "", termName: snapshot?.termName ?? null,
         startDate: snapshot?.startDate ?? null, enforcementDate: snapshot?.enforcementDate ?? null,
-        state: snapshot?.state ?? "UNAVAILABLE",
-        restricted: snapshot ? profile.studentId == null ? snapshot.schoolLocked
-          : snapshot.restrictedStudentIds.includes(profile.studentId) : false,
+        state: manual.schoolLocked ? "SCHOOL_SUBSCRIPTION_LOCKED" : snapshot?.state ?? "UNAVAILABLE",
+        restricted: manual.schoolLocked || automatic,
+        restrictionReason: manual.schoolLocked ? "SCHOOL_SUBSCRIPTION_LOCKED" : automatic ? "SUBSCRIPTION_RESTRICTED" : null,
       });
     }
     // No financial totals or other children's identities are exposed.
@@ -67,9 +65,10 @@ router.get("/subscription-enforcement/me", async (req, res, next) => {
 
 const confirmedSelection = z.object({
   confirmed: z.literal(true),
-  schools: z.array(z.object({ schoolId: positive, termId: positive })).min(1).max(50),
+  reason: z.string().trim().max(500).optional(),
+  schools: z.array(z.object({ schoolId: positive, expectedVersion: z.number().int().nonnegative() }).strict()).min(1).max(50),
 }).strict();
-router.post("/subscription-enforcement/lock", async (req, res, next) => {
+for (const action of ["lock", "unlock"] as const) router.post(`/subscription-enforcement/${action}`, async (req, res, next) => {
   try {
     const context = getUserContext(req);
     if (!isPlatformOwner(context)) throw new AuthError(403, "Platform Owner permission required");
@@ -77,23 +76,44 @@ router.post("/subscription-enforcement/lock", async (req, res, next) => {
     if (new Set(body.schools.map(school => school.schoolId)).size !== body.schools.length) {
       throw new AuthError(400, "Select each school only once");
     }
-    // Validate EVERY selected school and term before mutating ANY school.
+    // Payment/grace/calendar do not control explicit school lock or unlock.
+    // Validate EVERY selection before mutating ANY school.
     for (const selected of body.schools) {
-      const snapshot = await readSchoolSubscription(pool, selected.schoolId);
-      if (!snapshot || snapshot.termId !== selected.termId) {
-        throw new AuthError(409, "A selected school or term is unavailable. Refresh your selection.");
+      const school = await pool.query("SELECT id FROM schools WHERE id=$1 AND LOWER(status)='active'", [selected.schoolId]);
+      const manual = await readManualSchoolState(pool, selected.schoolId);
+      if (!school.rows[0] || manual.manualVersion !== selected.expectedVersion) {
+        throw new AuthError(409, "A selected school or lock state changed. Refresh your selection.");
       }
     }
     const result = [];
     for (const selected of body.schools) {
       try {
-        result.push(await reconcileSchoolSubscription(selected.schoolId, "OWNER_MANUAL_LOCK", context.user, selected.termId));
-      } catch {
-        req.log?.error({ schoolId: selected.schoolId }, "Owner subscription enforcement rolled back for this school");
-        result.push({ schoolId: selected.schoolId, changed: false, state: "FAILED", summary: null });
+        result.push(await changeManualSchoolLock(selected.schoolId, action === "lock", context.user,
+          selected.expectedVersion, body.reason, String(req.id ?? "").slice(0, 200) || undefined));
+      } catch (error) {
+        req.log?.error({ schoolId: selected.schoolId, action }, "Owner school control rolled back for this school");
+        result.push({ schoolId: selected.schoolId, changed: false, state: "FAILED",
+          error: error instanceof AuthError ? error.message : "The outcome could not be confirmed. Refresh school status before retrying." });
       }
     }
     res.json(result);
+  } catch (error) { next(error); }
+});
+
+router.get("/subscription-enforcement/audit", async (req, res, next) => {
+  try {
+    const schoolId = positive.parse(req.query.schoolId);
+    if (!isPlatformOwner(getUserContext(req))) assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
+    const result = await pool.query(
+      `SELECT id,school_id AS "schoolId",event_type AS action,timestamp::text,
+        actor_user_id AS "actorUserId",metadata->>'previousState' AS "previousState",
+        metadata->>'newState' AS "newState",metadata->>'reason' AS reason,
+        metadata->>'requestId' AS "requestId",(metadata->>'studentId')::integer AS "studentId"
+       FROM audit_logs WHERE school_id=$1
+         AND event_type IN ('SCHOOL_LOCKED','SCHOOL_UNLOCKED','STUDENT_SUBSCRIPTION_ACCESS_CHANGED','SUBSCRIPTION_ENFORCEMENT')
+       ORDER BY timestamp DESC,id DESC LIMIT 50`, [schoolId],
+    );
+    res.json(result.rows);
   } catch (error) { next(error); }
 });
 export default router;

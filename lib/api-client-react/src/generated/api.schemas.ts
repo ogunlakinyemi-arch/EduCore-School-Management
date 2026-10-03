@@ -12483,11 +12483,92 @@ export interface LostCardInput {
   reason: string;
 }
 
+export type SchoolEnforcementSelectionSchoolsItem = {
+  /** @minimum 1 */
+  schoolId: number;
+  /** @minimum 0 */
+  expectedVersion: number;
+};
+
+export interface SchoolEnforcementSelection {
+  confirmed: true;
+  /** @maxLength 500 */
+  reason?: string;
+  /**
+     * @minItems 1
+     * @maxItems 50
+     */
+  schools: SchoolEnforcementSelectionSchoolsItem[];
+}
+
+export type SchoolEnforcementActionResultState = typeof SchoolEnforcementActionResultState[keyof typeof SchoolEnforcementActionResultState];
+
+
+export const SchoolEnforcementActionResultState = {
+  ACTIVE: 'ACTIVE',
+  LOCKED: 'LOCKED',
+  FAILED: 'FAILED',
+} as const;
+
+export interface SchoolEnforcementActionResult {
+  schoolId: number;
+  changed: boolean;
+  state: SchoolEnforcementActionResultState;
+  manualVersion?: number;
+  error?: string;
+}
+
+export interface SchoolEnforcementAudit {
+  id: number;
+  schoolId: number;
+  action: string;
+  timestamp: string;
+  /** @nullable */
+  actorUserId: number | null;
+  /** @nullable */
+  previousState: string | null;
+  /** @nullable */
+  newState: string | null;
+  /** @nullable */
+  reason: string | null;
+  /** @nullable */
+  requestId: string | null;
+  /** @nullable */
+  studentId: number | null;
+}
+
+export type SchoolSubscriptionSummarySchoolEnforcementStatus = typeof SchoolSubscriptionSummarySchoolEnforcementStatus[keyof typeof SchoolSubscriptionSummarySchoolEnforcementStatus];
+
+
+export const SchoolSubscriptionSummarySchoolEnforcementStatus = {
+  ACTIVE: 'ACTIVE',
+  LOCKED: 'LOCKED',
+} as const;
+
 export interface SchoolSubscriptionSummary {
   schoolId: number;
   schoolName: string;
   status: string;
   state: string;
+  schoolEnforcementStatus: SchoolSubscriptionSummarySchoolEnforcementStatus;
+  manualVersion: number;
+  registrationNumber?: string;
+  sessionId?: number;
+  sessionName?: string;
+  /** @nullable */
+  lockedAt?: string | null;
+  /** @nullable */
+  lockedByUserId?: number | null;
+  /** @nullable */
+  lockedByName?: string | null;
+  /** @nullable */
+  lastUnlockedAt?: string | null;
+  /** @nullable */
+  lastUnlockedByUserId?: number | null;
+  /** @nullable */
+  lastUnlockedByName?: string | null;
+  /** @nullable */
+  reason?: string | null;
   termId?: number;
   termName?: string;
   startDate?: string;
@@ -12508,6 +12589,17 @@ export interface SchoolSubscriptionSummary {
   outstandingMinor?: number;
 }
 
+/**
+ * @nullable
+ */
+export type SubscriptionAccessStatusRestrictionReason = typeof SubscriptionAccessStatusRestrictionReason[keyof typeof SubscriptionAccessStatusRestrictionReason] | null;
+
+
+export const SubscriptionAccessStatusRestrictionReason = {
+  SCHOOL_SUBSCRIPTION_LOCKED: 'SCHOOL_SUBSCRIPTION_LOCKED',
+  SUBSCRIPTION_RESTRICTED: 'SUBSCRIPTION_RESTRICTED',
+} as const;
+
 export interface SubscriptionAccessStatus {
   schoolId: number;
   /** @nullable */
@@ -12521,6 +12613,8 @@ export interface SubscriptionAccessStatus {
   enforcementDate: string | null;
   state: string;
   restricted: boolean;
+  /** @nullable */
+  restrictionReason?: SubscriptionAccessStatusRestrictionReason;
 }
 
 export type ExistingProfileInvitationRequestRole = typeof ExistingProfileInvitationRequestRole[keyof typeof ExistingProfileInvitationRequestRole];
@@ -20440,27 +20534,11 @@ export type GetSubscriptionEnforcementOverviewParams = {
 schoolId?: number;
 };
 
-export type LockSchoolSubscriptionsBodySchoolsItem = {
-  /** @minimum 1 */
-  schoolId: number;
-  /** @minimum 1 */
-  termId: number;
-};
-
-export type LockSchoolSubscriptionsBody = {
-  confirmed: true;
-  /**
-     * @minItems 1
-     * @maxItems 50
-     */
-  schools: LockSchoolSubscriptionsBodySchoolsItem[];
-};
-
-export type LockSchoolSubscriptions200Item = {
-  schoolId: number;
-  changed: boolean;
-  state: string;
-  summary?: SchoolSubscriptionSummary;
+export type GetSchoolSubscriptionAuditParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
 };
 
 export type ListSubscriptionsParams = {

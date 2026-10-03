@@ -40,45 +40,113 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required: [confirmed, schools]
-              properties:
-                confirmed: { type: boolean, const: true }
-                schools:
-                  type: array
-                  minItems: 1
-                  maxItems: 50
-                  items:
-                    type: object
-                    required: [schoolId, termId]
-                    properties:
-                      schoolId: { type: integer, minimum: 1 }
-                      termId: { type: integer, minimum: 1 }
+              $ref: '#/components/schemas/SchoolEnforcementSelection'
       responses:
         '200':
-          description: Confirmed Owner action, using the same automatic policy
+          description: Independent confirmed Owner whole-school lock
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  type: object
-                  required: [schoolId, changed, state]
-                  properties:
-                    schoolId: { type: integer }
-                    changed: { type: boolean }
-                    state: { type: string }
-                    summary: { $ref: '#/components/schemas/SchoolSubscriptionSummary' }
+                  $ref: '#/components/schemas/SchoolEnforcementActionResult'
+  /subscription-enforcement/unlock:
+    post:
+      operationId: unlockSchoolSubscriptions
+      tags: [SubscriptionEnforcement]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SchoolEnforcementSelection' }
+      responses:
+        '200':
+          description: Remove only the manual school lock, never unpaid-student or security restrictions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SchoolEnforcementActionResult' }
+  /subscription-enforcement/audit:
+    get:
+      operationId: getSchoolSubscriptionAudit
+      tags: [SubscriptionEnforcement]
+      parameters:
+        - in: query
+          name: schoolId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Recent immutable enforcement audits in the authorized school
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SchoolEnforcementAudit' }
 components:
   schemas:
+    SchoolEnforcementSelection:
+      type: object
+      additionalProperties: false
+      required: [confirmed, schools]
+      properties:
+        confirmed: { type: boolean, const: true }
+        reason: { type: string, maxLength: 500 }
+        schools:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            required: [schoolId, expectedVersion]
+            properties:
+              schoolId: { type: integer, minimum: 1 }
+              expectedVersion: { type: integer, minimum: 0 }
+    SchoolEnforcementActionResult:
+      type: object
+      required: [schoolId, changed, state]
+      properties:
+        schoolId: { type: integer }
+        changed: { type: boolean }
+        state: { type: string, enum: [ACTIVE, LOCKED, FAILED] }
+        manualVersion: { type: integer }
+        error: { type: string }
+    SchoolEnforcementAudit:
+      type: object
+      required: [id, schoolId, action, timestamp, actorUserId, previousState, newState, reason, requestId, studentId]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        action: { type: string }
+        timestamp: { type: string }
+        actorUserId: { type: [integer, 'null'] }
+        previousState: { type: [string, 'null'] }
+        newState: { type: [string, 'null'] }
+        reason: { type: [string, 'null'] }
+        requestId: { type: [string, 'null'] }
+        studentId: { type: [integer, 'null'] }
     SchoolSubscriptionSummary:
       type: object
-      required: [schoolId, schoolName, status, state]
+      required: [schoolId, schoolName, status, state, schoolEnforcementStatus, manualVersion]
       properties:
         schoolId: { type: integer }
         schoolName: { type: string }
         status: { type: string }
         state: { type: string }
+        schoolEnforcementStatus: { type: string, enum: [ACTIVE, LOCKED] }
+        manualVersion: { type: integer }
+        registrationNumber: { type: string }
+        sessionId: { type: integer }
+        sessionName: { type: string }
+        lockedAt: { type: [string, 'null'] }
+        lockedByUserId: { type: [integer, 'null'] }
+        lockedByName: { type: [string, 'null'] }
+        lastUnlockedAt: { type: [string, 'null'] }
+        lastUnlockedByUserId: { type: [integer, 'null'] }
+        lastUnlockedByName: { type: [string, 'null'] }
+        reason: { type: [string, 'null'] }
         termId: { type: integer }
         termName: { type: string }
         startDate: { type: string }
@@ -109,3 +177,4 @@ components:
         enforcementDate: { type: [string, 'null'] }
         state: { type: string }
         restricted: { type: boolean }
+        restrictionReason: { type: [string, 'null'], enum: [SCHOOL_SUBSCRIPTION_LOCKED, SUBSCRIPTION_RESTRICTED, null] }

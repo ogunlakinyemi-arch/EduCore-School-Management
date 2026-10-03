@@ -5,12 +5,20 @@ description: Business constraints for school subscription restrictions, grace, r
 
 School subscription enforcement is term-based, uses the existing automated school calendar, and allows the first seven days of each new term. Subscription restrictions are reversible and independent of permanent NFC revocation, lost-card status, and credential history.
 
-For a PARTIALLY_PAID school, keep paid students active. Restrict only unpaid students and their related parent access; do not impose whole-school, all-teacher, or reader restrictions because some students have not paid.
+Automatic enforcement is exclusively per student, even when every student in a school is unpaid. Keep paid students active and teachers/readers operational under their existing permissions.
 
-**Why:** On 2026-10-03 the user explicitly chose “Keep paid students active” after the collateral effect of whole-school restrictions was explained.
+**Why:** On 2026-10-03 the user corrected the earlier design: automatic student enforcement and manual whole-school control are two independent mechanisms.
 
-**How to apply:** Scope partial-payment enforcement and Owner bulk actions to unpaid student identities, including their cards and child-specific parent functions. A paid sibling must remain accessible, including within the same school. Do not interpret a school summary of PARTIALLY_PAID as permission to lock its teachers or readers.
+**How to apply:** Scope automatic enforcement to unpaid student identities, their cards and child-specific parent functions. A paid sibling remains accessible unless the Owner has separately locked that child's school. Never infer an automatic whole-school lock from nonpayment.
 
-**Why:** The user specified school-level restrictions after the grace period and automatic restoration following the existing verified-payment workflow, without changing prices, deleting school data, or permanently revoking cards.
+Only the Platform Owner can explicitly lock and unlock a whole school. This state persists independently across payments, automatic evaluations, and term changes. Unlock removes only the manual school restriction.
 
-**How to apply:** Preserve login, basic account access, and payment-resolution access. Restrict multi-school parents only for the relevant child's school. Use one idempotent enforcement service for scheduled and explicitly confirmed Owner bulk actions; avoid duplicate notifications/audits. Infrastructure failures must not become evidence of nonpayment. Restoration removes only subscription restrictions, never unrelated card/device restrictions. Do not introduce unlimited manual unpaid-school unlocks.
+**Why:** The user's correction explicitly requires both controls and prohibits automatic payments or term enforcement from overriding manual school locks.
+
+**How to apply:** Preserve login, account, payment-resolution and inbox access. Restrict parents by child/school. Keep manual school control separate from automatic student reconciliation, sharing existing guards, notifications and audits. Neither payment nor school unlock removes unrelated restrictions or reactivates inactive cards/devices/accounts. Unknown eligibility is not nonpayment; infrastructure errors must not silently bypass a confirmed manual lock.
+
+Family and teaching restrictions must remain separate for people holding both roles; a school restriction in one role must not become a restriction on their children at another school.
+
+**Why:** The user's child-specific policy applies to multi-role people as well as families whose children attend different schools.
+
+**How to apply:** Evaluate both operations and visible warnings in the current audience's child/school scope, not as a global user lock.

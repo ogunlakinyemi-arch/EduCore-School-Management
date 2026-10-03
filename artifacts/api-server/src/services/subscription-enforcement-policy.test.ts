@@ -8,7 +8,7 @@ describe("termly subscription policy", () => {
     expect(subscriptionPolicy(term, [student(1)], today)).toMatchObject({ inGracePeriod: true, schoolLocked: false, restrictedStudentIds: [] });
   });
   it("enforces on day eight, not day seven", () => {
-    expect(subscriptionPolicy(term, [student(1)], "2026-10-08")).toMatchObject({ inGracePeriod: false, schoolLocked: true, restrictedStudentIds: [1], status: "OVERDUE" });
+    expect(subscriptionPolicy(term, [student(1)], "2026-10-08")).toMatchObject({ inGracePeriod: false, schoolLocked: false, restrictedStudentIds: [1], status: "OVERDUE" });
   });
   it("keeps paid siblings, all teachers and readers active for partial payments", () => {
     expect(subscriptionPolicy(term, [student(1, { paid: true }), student(2)], "2026-10-08")).toMatchObject({
@@ -16,7 +16,7 @@ describe("termly subscription policy", () => {
     });
   });
   it("does not treat a pending checkout as paid", () => {
-    expect(subscriptionPolicy(term, [student(1, { pending: true })], "2026-10-08")).toMatchObject({ status: "PENDING", schoolLocked: true, restrictedStudentIds: [1] });
+    expect(subscriptionPolicy(term, [student(1, { pending: true })], "2026-10-08")).toMatchObject({ status: "PENDING", schoolLocked: false, restrictedStudentIds: [1] });
   });
   it("restores immediately after verified coverage", () => {
     expect(subscriptionPolicy(term, [student(1, { paid: true })], "2026-10-08")).toMatchObject({ state: "ACTIVE", status: "PAID", schoolLocked: false, restrictedStudentIds: [] });
@@ -43,5 +43,20 @@ describe("termly subscription policy", () => {
     const before = structuredClone(input);
     expect(subscriptionPolicy(term, input, "2026-10-08")).toEqual(subscriptionPolicy(term, input, "2026-10-08"));
     expect(input).toEqual(before);
+  });
+  it("never automatically locks a completely unpaid school's teachers or readers", () => {
+    expect(subscriptionPolicy(term, [student(1), student(2)], "2026-10-08")).toMatchObject({
+      schoolLocked: false, restrictedStudentIds: [1, 2], studentsAffected: 2, state: "SUBSCRIPTION_RESTRICTED",
+    });
+  });
+  it("does not interpret unknown verification as unpaid", () => {
+    expect(subscriptionPolicy(term, [student(1, { unknown: true }), student(2)], "2026-10-08")).toMatchObject({
+      status: "UNAVAILABLE", schoolLocked: false, restrictedStudentIds: [2],
+    });
+  });
+  it("does not let an unknown duplicate override a positively verified payment", () => {
+    expect(subscriptionPolicy(term, [student(1, { paid: true, unknown: true })], "2026-10-08")).toMatchObject({
+      status: "PAID", schoolLocked: false, restrictedStudentIds: [],
+    });
   });
 });

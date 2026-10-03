@@ -5,6 +5,7 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { SubscriptionAccessStatusRestrictionReason } from './subscriptionAccessStatusRestrictionReason';
 
 export interface SubscriptionAccessStatus {
   schoolId: number;
@@ -19,4 +20,6 @@ export interface SubscriptionAccessStatus {
   enforcementDate: string | null;
   state: string;
   restricted: boolean;
+  /** @nullable */
+  restrictionReason?: SubscriptionAccessStatusRestrictionReason;
 }

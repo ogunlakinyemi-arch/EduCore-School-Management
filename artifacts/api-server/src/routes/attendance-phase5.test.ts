@@ -51,6 +51,7 @@ const state = vi.hoisted(() => ({
 const poolMock = vi.hoisted(() => {
   const result = (rows: any[]) => ({ rows, rowCount: rows.length });
   const query = vi.fn(async (text: string, values: unknown[] = []) => {
+    if (text.includes("FROM school_subscription_manual_locks")) return result([]);
     if (text.includes("FROM device_credentials")) {
       const identifier = String(values[0]);
       const c = state.credential;
@@ -99,6 +100,7 @@ const poolMock = vi.hoisted(() => {
 
   const client = {
     query: vi.fn(async (text: string, values: unknown[] = []) => {
+      if (text.includes("FROM school_subscription_manual_locks")) return result([]);
       if (["BEGIN", "COMMIT", "ROLLBACK"].includes(text) || text.includes("pg_advisory_xact_lock")) {
         return result([]);
       }

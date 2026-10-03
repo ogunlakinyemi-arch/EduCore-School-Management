@@ -1,0 +1,728 @@
+YEMAIT EDUCORE — CORRECT SUBSCRIPTION ENFORCEMENT AND SCHOOL LOCK/UNLOCK
+
+IMPORTANT
+
+Correct the existing subscription-enforcement design according to the rules below.
+
+This is a correction/implementation task.
+
+DEVELOPMENT ONLY
+
+- Work only in the Replit Development environment.
+- Do NOT Publish.
+- Do NOT modify Production.
+- Do NOT change Production database data, schema, secrets, deployment settings, or live users.
+- Preserve all existing Yemait EduCore functionality.
+- Do not create a second subscription system.
+- Reuse the existing subscription, payment, academic-calendar, NFC, device, authentication, RBAC, notification, parent, student, teacher, and audit systems.
+
+---
+
+1. TWO DIFFERENT ENFORCEMENT MECHANISMS
+
+The system must clearly separate:
+
+A. AUTOMATIC INDIVIDUAL STUDENT SUBSCRIPTION ENFORCEMENT
+
+This is based on the existing per-student subscription/payment records.
+
+B. MANUAL WHOLE-SCHOOL LOCK/UNLOCK
+
+This is controlled directly by the Platform Owner.
+
+Do NOT combine these two mechanisms.
+
+---
+
+2. AUTOMATIC TERM ENFORCEMENT
+
+Use the existing automated academic calendar/term system.
+
+When a new academic term starts:
+
+1. Allow the existing 7-day grace period.
+2. After the grace period, check each student's verified subscription/payment status for the current term.
+3. If the student's subscription is verified/paid:
+   - Keep the student active.
+   - Keep the student's NFC card active.
+   - Keep normal student access.
+4. If the student's subscription is not verified/paid:
+   - Apply a reversible "SUBSCRIPTION_RESTRICTED" state to that student.
+   - Do NOT permanently revoke the NFC card.
+   - Do NOT mark the card as lost, cancelled, or revoked.
+
+Example:
+
+- Student A — Paid → ACTIVE
+- Student B — Paid → ACTIVE
+- Student C — Unpaid → SUBSCRIPTION_RESTRICTED
+- Student D — Paid → ACTIVE
+
+One student's unpaid subscription must NOT automatically lock the entire school.
+
+---
+
+3. WHAT STUDENT-LEVEL RESTRICTION SHOULD AFFECT
+
+For a student with:
+
+"SUBSCRIPTION_RESTRICTED"
+
+restrict subscription-dependent services including:
+
+Student
+
+- Attendance access where subscription is required
+- Student attendance participation where applicable
+- Protected student information
+- Subscription-dependent academic/results access
+- NFC attendance/access using that student's card
+- Other existing subscription-controlled functionality
+
+When the student attempts a restricted function, show a clear message such as:
+
+«Your current-term Yemait EduCore subscription has not been verified. Please complete payment or contact your school administrator.»
+
+Do not expose sensitive information unnecessarily.
+
+---
+
+4. PARENT ACCESS MUST BE CHILD-SPECIFIC
+
+Do NOT lock an entire Parent account simply because one child is unpaid.
+
+If a parent has multiple children:
+
+Example:
+
+- Child A — School A — Paid → ACTIVE
+- Child B — School B — Unpaid → SUBSCRIPTION_RESTRICTED
+
+The parent should still be able to access permitted information for Child A.
+
+Only the subscription-dependent information/functions relating to Child B should be restricted.
+
+This must work correctly for parents with:
+
+- one child
+- multiple children
+- children in different schools
+
+---
+
+5. TEACHERS MUST NOT BE AUTOMATICALLY LOCKED BECAUSE OF INDIVIDUAL STUDENT NON-PAYMENT
+
+Under normal automatic student-level enforcement:
+
+- Teachers remain active.
+- Teachers can continue normal school operations.
+- Teachers can continue lesson notes, attendance, academic work, etc., subject to their normal permissions.
+
+Do NOT lock an entire teacher account because one or more students have unpaid subscriptions.
+
+This prevents an unpaid student from incorrectly affecting students who have already paid or the school's teachers.
+
+---
+
+6. PLATFORM OWNER WHOLE-SCHOOL LOCK
+
+Add/maintain a Platform Owner section for:
+
+SCHOOL SUBSCRIPTION ENFORCEMENT
+
+The Platform Owner must be able to select a school and manually:
+
+LOCK SCHOOL
+
+and
+
+UNLOCK SCHOOL
+
+The Platform Owner must have BOTH controls.
+
+The previous design that allowed only "Lock School" is incorrect.
+
+---
+
+7. LOCK SCHOOL BEHAVIOUR
+
+When the Platform Owner explicitly locks a school:
+
+Set a school-level enforcement state such as:
+
+"LOCKED"
+
+The lock must apply to the school's subscription-dependent operations according to the existing enforcement architecture.
+
+The whole-school lock should include:
+
+- Student NFC cards
+- Teacher NFC cards where applicable
+- School-attached NFC devices/readers
+- Subscription-dependent student access
+- Subscription-dependent school operational functions
+- Teacher operational functions that are explicitly dependent on the school's active subscription
+- Parent access to subscription-dependent information for students in that locked school
+
+Do NOT delete data.
+
+Do NOT revoke cards permanently.
+
+Do NOT delete device assignments.
+
+Do NOT delete subscriptions.
+
+Do NOT delete students, teachers, parents, results, attendance, or academic records.
+
+The lock must be reversible.
+
+---
+
+8. UNLOCK SCHOOL BEHAVIOUR
+
+The Platform Owner must be able to select a locked school and click:
+
+UNLOCK SCHOOL
+
+This should immediately remove the manually applied whole-school lock.
+
+Restore the school's previously available subscription-dependent functions.
+
+Restore eligible NFC cards/devices to operational status.
+
+IMPORTANT:
+
+Unlocking the school must NOT override unrelated security/card states.
+
+For example:
+
+If a card was already:
+
+- REVOKED
+- LOST
+- DISABLED
+- REASSIGNED
+- EXPIRED
+- otherwise legitimately inactive
+
+before the school lock, unlocking the school must NOT reactivate it.
+
+Use separate state/reason information so:
+
+"School Lock"
+
+does not overwrite:
+
+"Card Revoked"
+
+or other independent security states.
+
+---
+
+9. SCHOOL LOCK MUST BE REVERSIBLE
+
+Do not use permanent "REVOKED" status for school subscription locking.
+
+Use a separate state such as:
+
+"SCHOOL_SUBSCRIPTION_LOCKED"
+
+or an equivalent existing architecture.
+
+The effective state should be calculated from all applicable restrictions.
+
+Example:
+
+Card:
+
+"ACTIVE"
+
++ School:
+
+"LOCKED"
+
+= Effective:
+
+"SUBSCRIPTION_RESTRICTED"
+
+But:
+
+Card:
+
+"REVOKED"
+
++ School:
+
+"LOCKED"
+
+= Effective:
+
+"REVOKED"
+
+After school unlock:
+
+"REVOKED" remains "REVOKED".
+
+---
+
+10. OWNER DASHBOARD
+
+Create/update the Platform Owner section so the Owner can see:
+
+School Subscription Enforcement
+
+Columns/information:
+
+- School name
+- School ID/registration number
+- Current academic session
+- Current term
+- Subscription status
+- School enforcement status
+- Locked/Unlocked
+- Lock date/time
+- Locked by
+- Last unlock date/time
+- Last unlocked by
+- Optional reason
+
+Actions:
+
+- "Lock School"
+- "Unlock School"
+
+The actions should be clearly separated.
+
+For example:
+
+ACTIVE SCHOOL:
+
+"[ Lock School ]"
+
+LOCKED SCHOOL:
+
+"[ Unlock School ]"
+
+---
+
+11. BULK SCHOOL LOCK/UNLOCK
+
+If the existing Owner interface already supports selecting multiple schools, support:
+
+- Select schools
+- Lock selected schools
+- Unlock selected schools
+
+Require confirmation before applying the action.
+
+Example confirmation:
+
+«You are about to lock 5 schools. Their subscription-dependent services, cards, and devices may become restricted. Continue?»
+
+For unlock:
+
+«You are about to unlock 5 schools. Continue?»
+
+Do not perform bulk actions accidentally.
+
+If bulk functionality does not currently exist, implement it only if it fits the existing Owner dashboard architecture without disrupting existing functionality.
+
+---
+
+12. AUDIT LOGGING
+
+Every manual school lock/unlock must create an audit record.
+
+Record at minimum:
+
+- Platform Owner/user ID
+- School ID
+- Action: "SCHOOL_LOCKED" or "SCHOOL_UNLOCKED"
+- Timestamp
+- Reason if supplied
+- Previous state
+- New state
+- Affected scope
+- Correlation/request ID where supported
+
+Audit records must be immutable through normal UI controls.
+
+Also audit automatic student subscription enforcement:
+
+- Student ID
+- School ID
+- Term/session
+- Previous subscription/access state
+- New restriction state
+- Enforcement timestamp
+- Reason/source = automatic term enforcement
+
+---
+
+13. PAYMENT RESTORATION
+
+When an unpaid student later makes a valid verified payment:
+
+Remove only the student's:
+
+"SUBSCRIPTION_RESTRICTED"
+
+state.
+
+Do not blindly reactivate a card that has another independent restriction.
+
+Example:
+
+Student subscription:
+
+"UNPAID → PAID"
+
+Student access:
+
+"SUBSCRIPTION_RESTRICTED → ACTIVE"
+
+provided there is no other restriction.
+
+If the school itself is still manually locked by the Platform Owner:
+
+the student's payment must NOT bypass the whole-school lock.
+
+Example:
+
+School = "LOCKED"
+
+Student = "PAID"
+
+Effective access must still respect:
+
+"SCHOOL_SUBSCRIPTION_LOCKED"
+
+The Owner must explicitly unlock the school.
+
+---
+
+14. AUTOMATIC ENFORCEMENT MUST NOT OVERRIDE MANUAL OWNER LOCK
+
+The automatic term enforcement process must not automatically unlock a school that the Platform Owner manually locked.
+
+Likewise, an automatic student payment restoration must not bypass a whole-school manual lock.
+
+Manual Owner lock state must remain independently controlled.
+
+---
+
+15. FAIL-SAFE BEHAVIOUR
+
+If the system cannot reliably determine subscription status because of:
+
+- database failure
+- payment verification failure
+- calendar failure
+- provider/API failure
+- temporary service failure
+
+DO NOT incorrectly lock users or schools.
+
+Fail safely and record the error for investigation.
+
+Do not treat:
+
+"unknown"
+
+as automatically equivalent to:
+
+"unpaid".
+
+---
+
+16. NOTIFICATIONS
+
+When appropriate, notify affected users using the existing notification architecture.
+
+For student-level restriction:
+
+- Parent notification where configured
+- Student notification where applicable
+- School/admin notification where appropriate
+
+For whole-school lock:
+
+- School Admin notification
+- Appropriate affected users according to existing communication rules
+
+Use the existing:
+
+- Email
+- SMS
+- Push
+- Parent Communication Centre
+- notification preferences
+
+Do not create another notification system.
+
+Respect existing notification preferences and security rules.
+
+---
+
+17. SECURITY AND TENANT ISOLATION
+
+Enforce all restrictions server-side.
+
+Do not rely only on frontend hiding.
+
+Every affected API endpoint must verify:
+
+1. authenticated user
+2. role
+3. school/tenant
+4. current subscription restriction
+5. school-level lock where applicable
+6. existing card/device state
+7. existing permissions
+
+A user must never bypass a school lock by manually calling an API.
+
+A student/parent from School A must never access School B's subscription or lock state.
+
+Platform Owner is the only role allowed to manually lock/unlock schools unless an existing explicitly authorized Owner-level permission already exists.
+
+Do not grant this ability to School Admin, Teacher, Parent, Student, Partner, or other ordinary roles.
+
+---
+
+18. DATABASE DESIGN
+
+Before changing the database:
+
+Inspect the existing subscription and school/card/device status models.
+
+Reuse existing structures where possible.
+
+If a new field/state is necessary, make the smallest additive migration possible.
+
+Prefer a separate school-level enforcement state rather than corrupting existing subscription or card states.
+
+Possible conceptual structure:
+
+School
+
+"subscription_enforcement_status"
+
+Values:
+
+- "ACTIVE"
+- "LOCKED"
+
+Student
+
+Existing subscription/payment state remains the source of truth.
+
+Effective access can derive:
+
+"Student Subscription Status + School Enforcement Status + Other Security States"
+
+Do not duplicate payment records.
+
+Do not create a second billing ledger.
+
+Do not create duplicate card records.
+
+---
+
+19. IMPORTANT STATE SEPARATION
+
+The implementation must distinguish:
+
+Billing state
+
+Examples:
+
+"PAID"
+"UNPAID"
+"PENDING"
+"FAILED"
+
+Student access state
+
+Examples:
+
+"ACTIVE"
+"SUBSCRIPTION_RESTRICTED"
+
+School enforcement state
+
+Examples:
+
+"ACTIVE"
+"LOCKED"
+
+NFC card security state
+
+Examples:
+
+"ACTIVE"
+"REVOKED"
+"LOST"
+"REASSIGNED"
+etc.
+
+These must not overwrite one another.
+
+---
+
+20. TESTING
+
+Add comprehensive automated tests.
+
+At minimum test:
+
+Student-level enforcement
+
+1. Paid student remains active.
+2. Unpaid student becomes restricted after grace period.
+3. Automatic enforcement does not lock the whole school.
+4. Paying one student restores that student's subscription restriction.
+5. One unpaid student does not affect another paid student.
+
+Parent
+
+6. Parent with one paid child remains active.
+7. Parent with one unpaid child gets child-specific restriction.
+8. Parent with multiple children sees paid child's permitted information.
+9. Parent cannot use restrictions on one child to access another child's protected data.
+10. Parent with children in different schools is handled correctly.
+
+Teacher
+
+11. Teacher remains active when only individual students are unpaid.
+12. Teacher cannot bypass a manually locked school where teacher functionality is subscription-dependent.
+
+School lock
+
+13. Owner can lock a school.
+14. Locked school shows "LOCKED".
+15. Owner can unlock a locked school.
+16. Unlocked school shows "ACTIVE".
+17. Unlock restores eligible subscription-dependent functionality.
+18. Unlock does not reactivate independently revoked cards.
+19. School lock affects the intended NFC cards/devices.
+20. School lock does not delete data.
+21. School lock does not delete payment records.
+22. School lock does not delete academic records.
+
+Authorization
+
+23. School Admin cannot manually lock/unlock schools.
+24. Teacher cannot manually lock/unlock schools.
+25. Parent cannot manually lock/unlock schools.
+26. Student cannot manually lock/unlock schools.
+27. Partner cannot manually lock/unlock schools.
+28. Platform Owner can lock/unlock authorized schools.
+
+Audit
+
+29. Lock action creates an audit record.
+30. Unlock action creates an audit record.
+31. Automatic student restriction creates an audit record.
+32. Payment restoration creates the correct audit trail where applicable.
+
+Fail-safe
+
+33. Unknown payment status does not automatically cause an incorrect lock.
+34. Payment/provider/database errors do not incorrectly unlock a manually locked school.
+35. Automatic term enforcement does not override manual Owner lock.
+
+Tenant isolation
+
+36. School A cannot affect School B.
+37. School A users cannot read School B's lock state.
+38. Platform Owner actions remain properly authorized.
+
+---
+
+21. UI TESTING
+
+Test the Platform Owner interface:
+
+ACTIVE SCHOOL
+
+Display:
+
+"ACTIVE"
+
+Action:
+
+"Lock School"
+
+LOCKED SCHOOL
+
+Display:
+
+"LOCKED"
+
+Actions:
+
+"Unlock School"
+
+Verify:
+
+- confirmation dialogs
+- success messages
+- error handling
+- responsive layout
+- mobile layout
+- audit visibility
+- correct school selection
+- no accidental cross-school actions
+
+---
+
+22. DO NOT BREAK EXISTING FUNCTIONALITY
+
+Before changing anything:
+
+Inspect the current implementation.
+
+Do not rebuild the subscription system from scratch.
+
+Do not replace the existing:
+
+- payment ledger
+- academic calendar
+- NFC system
+- device system
+- parent access system
+- notification system
+- authentication
+- RBAC
+- audit system
+
+Integrate with the existing architecture.
+
+---
+
+23. REQUIRED FINAL REPORT
+
+After implementation, provide a concise report containing:
+
+1. What was corrected.
+2. Files changed.
+3. Database migrations created, if any.
+4. Automatic student-level enforcement behavior.
+5. Manual Owner Lock School behavior.
+6. Manual Owner Unlock School behavior.
+7. Card/device state handling.
+8. Parent child-specific restriction behavior.
+9. Tests added.
+10. Number of tests passed/failed/skipped.
+11. Typecheck result.
+12. Frontend verification result.
+13. Backend verification result.
+14. Database verification result.
+15. Any remaining limitations.
+
+Again:
+
+DO NOT PUBLISH.
+DO NOT TOUCH PRODUCTION.
+DO NOT change Production database/schema/data/secrets/deployment settings.

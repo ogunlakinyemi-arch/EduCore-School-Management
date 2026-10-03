@@ -3391,6 +3391,10 @@ paths:
     $ref: './subscription-enforcement.yaml#/paths/~1subscription-enforcement~1me'
   /subscription-enforcement/lock:
     $ref: './subscription-enforcement.yaml#/paths/~1subscription-enforcement~1lock'
+  /subscription-enforcement/unlock:
+    $ref: './subscription-enforcement.yaml#/paths/~1subscription-enforcement~1unlock'
+  /subscription-enforcement/audit:
+    $ref: './subscription-enforcement.yaml#/paths/~1subscription-enforcement~1audit'
   /subscriptions:
     get:
       operationId: listSubscriptions

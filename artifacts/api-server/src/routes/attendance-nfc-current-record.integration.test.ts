@@ -2,7 +2,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pool } from "@workspace/db";
 import { currentNfcStudentRecordQuery } from "./attendance";
 
-describe("NFC current student record selector against PostgreSQL", () => {
+// Opt-in: ordinary test runs must not open the application's Development DB.
+// The existing server identity check remains mandatory when explicitly enabled.
+describe.skipIf(process.env.RUN_NFC_CURRENT_RECORD_POSTGRES !== "1")("NFC current student record selector against PostgreSQL", () => {
   beforeAll(async () => {
     const serverCheck = await pool.query(
       `SELECT current_database() AS database_name, inet_server_addr() AS tcp_address,

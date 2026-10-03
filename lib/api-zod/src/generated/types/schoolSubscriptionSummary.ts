@@ -5,12 +5,32 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { SchoolSubscriptionSummarySchoolEnforcementStatus } from './schoolSubscriptionSummarySchoolEnforcementStatus';
 
 export interface SchoolSubscriptionSummary {
   schoolId: number;
   schoolName: string;
   status: string;
   state: string;
+  schoolEnforcementStatus: SchoolSubscriptionSummarySchoolEnforcementStatus;
+  manualVersion: number;
+  registrationNumber?: string;
+  sessionId?: number;
+  sessionName?: string;
+  /** @nullable */
+  lockedAt?: string | null;
+  /** @nullable */
+  lockedByUserId?: number | null;
+  /** @nullable */
+  lockedByName?: string | null;
+  /** @nullable */
+  lastUnlockedAt?: string | null;
+  /** @nullable */
+  lastUnlockedByUserId?: number | null;
+  /** @nullable */
+  lastUnlockedByName?: string | null;
+  /** @nullable */
+  reason?: string | null;
   termId?: number;
   termName?: string;
   startDate?: string;

@@ -5,16 +5,17 @@ import { STUDENT_SUBSCRIPTION_GROSS_MINOR } from "../lib/student-subscription-bi
 import { queueCommunicationNotification, type CommunicationQueryClient } from "./communication-service";
 import { subscriptionPolicy, type SubscriptionStudent } from "./subscription-enforcement-policy";
 import { familyChildSchoolScope } from "../lib/family-child-school-scope";
+import { assertManualSchoolUnlocked, readManualSchoolState, readSubscriptionScopeCounts } from "./school-subscription-lock";
 
-export type EnforcementSource = "AUTOMATIC_TERM_ENFORCEMENT" | "OWNER_MANUAL_LOCK" | "SUBSCRIPTION_PAYMENT_RESTORATION";
+export type EnforcementSource = "AUTOMATIC_TERM_ENFORCEMENT" | "SUBSCRIPTION_PAYMENT_RESTORATION";
 export type EnforcementActor = { id: number; clerkUserId: string; email: string };
 export type EnforcementSnapshot = Awaited<ReturnType<typeof readSchoolSubscription>>;
 
 export async function readSchoolSubscription(db: CommunicationQueryClient, schoolId: number) {
   const calendar = await db.query<{
-    schoolName: string; termId: number; termName: string; startDate: string; endDate: string; today: string;
+    schoolName: string; sessionId: number; sessionName: string; termId: number; termName: string; startDate: string; endDate: string; today: string;
   }>(
-    `SELECT sc.name AS "schoolName",t.id AS "termId",t.name AS "termName",
+    `SELECT sc.name AS "schoolName",ses.id AS "sessionId",ses.name AS "sessionName",t.id AS "termId",t.name AS "termName",
             t.start_date::text AS "startDate",t.end_date::text AS "endDate",
             (NOW() AT TIME ZONE 'Africa/Lagos')::date::text AS today
        FROM schools sc JOIN academic_terms t ON t.school_id=sc.id
@@ -48,6 +49,12 @@ export async function readSchoolSubscription(db: CommunicationQueryClient, schoo
          SELECT 1 FROM student_subscription_payments p WHERE p.school_id=st.school_id
            AND p.student_id=st.id AND p.academic_term_id=$3 AND p.status IN ('PENDING','RECONCILIATION_REQUIRED')
        ) AS pending,
+       EXISTS (
+         SELECT 1 FROM subscriptions s WHERE s.school_id=st.school_id AND s.student_id=st.id
+           AND s.term=$2 AND s.expires_at::date=$4::date+1
+           AND (LOWER(s.verification_status) NOT IN ('verified','pending','unverified','rejected','failed')
+             OR LOWER(s.status) NOT IN ('active','pending','waived','cancelled','expired','inactive','failed'))
+       ) AS unknown,
        COALESCE((SELECT round(s.amount*100)::integer FROM subscriptions s
          WHERE s.school_id=st.school_id AND s.student_id=st.id AND s.term=$2
            AND s.expires_at::date=$4::date+1 ORDER BY s.id DESC LIMIT 1),$5::integer) AS "amountMinor"
@@ -55,28 +62,30 @@ export async function readSchoolSubscription(db: CommunicationQueryClient, schoo
     [schoolId, term.termName, term.termId, term.endDate, STUDENT_SUBSCRIPTION_GROSS_MINOR],
   );
   const policy = subscriptionPolicy(term, students.rows, term.today);
+  if (!policy.inGracePeriod && students.rows.some(s => s.unknown)) {
+    const known = await db.query<{ ids: number[] }>(
+      "SELECT restricted_student_ids AS ids FROM school_subscription_enforcement WHERE school_id=$1 AND academic_term_id=$2",
+      [schoolId, term.termId],
+    );
+    const retained = students.rows.filter(s => s.unknown && !s.paid && !s.waived && known.rows[0]?.ids.includes(s.studentId)).map(s => s.studentId);
+    policy.restrictedStudentIds = [...new Set([...policy.restrictedStudentIds, ...retained])].sort((a, b) => a - b);
+    policy.studentsAffected = policy.restrictedStudentIds.length;
+  }
   const ids = policy.restrictedStudentIds;
-  const counts = await db.query<{ cardsLocked: number; teacherCardsLocked: number; devicesLocked: number; teachersAffected: number; parentsAffected: number }>(
-    `SELECT
-       (SELECT count(*)::integer FROM nfc_cards c WHERE c.school_id=$1 AND c.student_id=ANY($2::integer[]) AND LOWER(c.status)='active') AS "cardsLocked",
-       CASE WHEN $3 THEN (SELECT count(*)::integer FROM employee_nfc_card_bindings b JOIN nfc_cards c ON c.id=b.nfc_card_id AND c.school_id=b.school_id
-          WHERE b.school_id=$1 AND b.status='ACTIVE' AND LOWER(c.status)='active') ELSE 0 END AS "teacherCardsLocked",
-       CASE WHEN $3 THEN (SELECT count(*)::integer FROM platform_devices d WHERE d.school_id=$1 AND UPPER(d.status)='ACTIVE') ELSE 0 END AS "devicesLocked",
-       CASE WHEN $3 THEN (SELECT count(DISTINCT r.user_id)::integer FROM school_memberships r WHERE r.school_id=$1 AND r.status='ACTIVE' AND r.role='TEACHER') ELSE 0 END AS "teachersAffected",
-       (SELECT count(DISTINCT p.user_id)::integer FROM parents p JOIN parent_student_relationships rel ON rel.parent_id=p.id
-          JOIN students st ON st.id=rel.student_id
-        WHERE st.school_id=$1 AND p.status='ACTIVE' AND rel.status='ACTIVE' AND st.id=ANY($2::integer[]) AND ${familyChildSchoolScope()}) AS "parentsAffected"`,
-    [schoolId, ids, policy.schoolLocked],
-  );
+  const counts = await readSubscriptionScopeCounts(db, schoolId, ids, false);
   const amountDueMinor = students.rows.filter(s => !s.waived).reduce((n, s) => n + Number(s.amountMinor), 0);
   const amountPaidMinor = students.rows.filter(s => s.paid).reduce((n, s) => n + Number(s.amountMinor), 0);
   return {
-    schoolId, ...term, ...policy, ...counts.rows[0],
+    schoolId, ...term, ...policy, ...counts,
     amountDueMinor, amountPaidMinor, outstandingMinor: amountDueMinor - amountPaidMinor,
   };
 }
 
 export async function assertSubscriptionAccess(schoolId: number, studentId?: number | null, db: CommunicationQueryClient = pool) {
+  // A verified payment or unavailable calendar never bypasses a manual lock.
+  await assertManualSchoolUnlocked(db, schoolId);
+  // Normal school/teacher/reader operations are NOT auto-locked by students.
+  if (studentId == null) return;
   let snapshot: EnforcementSnapshot;
   try { snapshot = await readSchoolSubscription(db, schoolId); }
   catch (error) {
@@ -94,8 +103,7 @@ export async function assertSubscriptionAccess(schoolId: number, studentId?: num
             AND (NOW() AT TIME ZONE 'Africa/Lagos')::date BETWEEN t.start_date AND t.end_date`,
         [schoolId],
       );
-      if (known.rows.length === 1 && (studentId == null
-        ? known.rows[0].schoolLocked : known.rows[0].restrictedStudentIds.includes(studentId))) {
+      if (known.rows.length === 1 && known.rows[0].restrictedStudentIds.includes(studentId)) {
         throw new AuthError(403, "Subscription is required to continue using this feature. Please contact your School Administrator.", "SUBSCRIPTION_REQUIRED");
       }
     } catch (fallbackError) {
@@ -104,12 +112,31 @@ export async function assertSubscriptionAccess(schoolId: number, studentId?: num
     }
     return;
   }
-  if (snapshot && (studentId == null ? snapshot.schoolLocked : snapshot.restrictedStudentIds.includes(studentId))) {
+  if (snapshot && snapshot.restrictedStudentIds.includes(studentId)) {
     throw new AuthError(403, "Subscription is required to continue using this feature. Please contact your School Administrator.", "SUBSCRIPTION_REQUIRED");
   }
 }
 
-/** One serialized mechanism for automatic evaluation, confirmed Owner actions, and verified restoration. */
+/** Financial/student status and manual school status stay visibly independent. */
+export async function readSchoolEnforcementSummary(db: CommunicationQueryClient, schoolId: number) {
+  const school = await db.query<{ schoolName: string; registrationNumber: string }>(
+    `SELECT name AS "schoolName",code AS "registrationNumber" FROM schools WHERE id=$1`, [schoolId],
+  );
+  if (!school.rows[0]) throw new AuthError(404, "School not found");
+  const manual = await readManualSchoolState(db, schoolId);
+  const snapshot = await readSchoolSubscription(db, schoolId);
+  let summary = snapshot
+    ? (({ restrictedStudentIds: _ids, today: _today, ...rest }) => rest)(snapshot)
+    : { schoolId, state: "UNAVAILABLE", status: "UNAVAILABLE" };
+  if (manual.schoolLocked) {
+    const students = await db.query<{ id: number }>("SELECT id FROM students WHERE school_id=$1 AND LOWER(status)='active'", [schoolId]);
+    summary = { ...summary, ...await readSubscriptionScopeCounts(db, schoolId, students.rows.map(s => s.id), true),
+      studentsAffected: students.rows.length } as typeof summary;
+  }
+  return { ...summary, ...school.rows[0], ...manual };
+}
+
+/** Student-only automatic evaluation and verified restoration; manual school control never writes here. */
 export async function reconcileSchoolSubscription(
   schoolId: number, source: EnforcementSource, actor?: EnforcementActor, expectedTermId?: number,
 ) {
@@ -155,30 +182,49 @@ export async function reconcileSchoolSubscription(
           JSON.stringify({ source: actionSource, termId: snapshot.termId, reason: snapshot.status,
             version, restoredStudentIds: restored, newlyRestrictedStudentIds: newlyLocked, summary: snapshot })],
       );
+      for (const studentId of [...new Set([...restored, ...newlyLocked])]) {
+        const restricted = snapshot.restrictedStudentIds.includes(studentId);
+        await client.query(
+          `INSERT INTO audit_logs("user",role,actor_user_id,clerk_user_id,school_id,action,module,record_id,severity,event_type,result,metadata)
+           VALUES($1,$2,$3,$4,$5,'Student subscription access changed','Subscriptions',$6,'info','STUDENT_SUBSCRIPTION_ACCESS_CHANGED','SUCCESS',$7::jsonb)`,
+          [actor?.email ?? "Subscription scheduler", actor ? "PLATFORM_OWNER" : "SYSTEM", actor?.id ?? null,
+            actor?.clerkUserId ?? null, schoolId, studentId, JSON.stringify({
+              studentId, schoolId, termId: snapshot.termId, sessionId: snapshot.sessionId,
+              previousState: restricted ? "ACTIVE" : "SUBSCRIPTION_RESTRICTED",
+              newState: restricted ? "SUBSCRIPTION_RESTRICTED" : "ACTIVE",
+              reason: snapshot.status, source: actionSource,
+            })],
+        );
+      }
       const affected = [...new Set([...restored, ...newlyLocked])];
+      const manual = await readManualSchoolState(client, schoolId);
       const recipients = await client.query<{ userId: number; studentId: number | null }>(
         `SELECT DISTINCT p.user_id AS "userId",st.id AS "studentId" FROM parents p
           JOIN parent_student_relationships rel ON rel.parent_id=p.id AND rel.status='ACTIVE'
-          JOIN students st ON st.id=rel.student_id
+          JOIN students st ON st.id=rel.student_id AND LOWER(st.status)='active'
           JOIN app_users u ON u.id=p.user_id AND u.status='ACTIVE'
          WHERE st.school_id=$1 AND p.status='ACTIVE' AND st.id=ANY($2::integer[]) AND ${familyChildSchoolScope()}
          UNION SELECT st.user_id,st.id FROM students st JOIN app_users u ON u.id=st.user_id AND u.status='ACTIVE'
-           WHERE st.school_id=$1 AND st.id=ANY($2::integer[])
-         UNION SELECT r.user_id,NULL::integer FROM school_memberships r JOIN app_users u ON u.id=r.user_id AND u.status='ACTIVE'
-           WHERE r.school_id=$1 AND r.role='TEACHER' AND r.status='ACTIVE' AND $3::boolean`,
-        [schoolId, affected, Boolean(before?.schoolLocked) !== snapshot.schoolLocked],
+            WHERE st.school_id=$1 AND st.id=ANY($2::integer[]) AND LOWER(st.status)='active'
+          UNION SELECT r.user_id,NULL::integer FROM school_memberships r JOIN app_users u ON u.id=r.user_id AND u.status='ACTIVE'
+            WHERE r.school_id=$1 AND r.role='SCHOOL_ADMIN' AND r.status='ACTIVE'`,
+        [schoolId, affected],
       );
       for (const recipient of recipients.rows) {
-        const restricted = recipient.studentId == null ? snapshot.schoolLocked
-          : snapshot.restrictedStudentIds.includes(recipient.studentId);
+        const restricted = recipient.studentId != null && snapshot.restrictedStudentIds.includes(recipient.studentId);
         await queueCommunicationNotification(client, {
           recipientUserId: recipient.userId, schoolId, subjectStudentId: recipient.studentId,
           category: "ACCOUNT",
           eventKey: `subscription-enforcement:${schoolId}:${snapshot.termId}:${version}:${recipient.userId}:${recipient.studentId ?? "teacher"}`,
-          subject: restricted ? "Subscription required" : "Subscription access restored",
-          body: restricted
+          subject: recipient.studentId == null ? "Student subscription coverage updated"
+            : restricted ? "Subscription required" : "Student subscription verified",
+          body: recipient.studentId == null
+            ? "Current-term student subscription coverage has changed. Review the school's subscription overview. Teacher and reader access is not automatically restricted by individual student nonpayment."
+            : restricted
             ? "Some EduCore services are currently restricted because the termly subscription has not been completed. Please contact your School Administrator."
-            : "Your termly subscription access is now available. Other account, card, or device restrictions remain unchanged.",
+            : manual.schoolLocked
+              ? "This student's termly subscription is now verified. The Platform Owner's school lock still applies, together with any other account, card or device restrictions."
+              : "This student's termly subscription restriction is removed. Other account, card or device restrictions remain unchanged.",
           link: "/", channels: ["IN_APP", "PUSH", "SMS", "EMAIL"],
         });
       }
