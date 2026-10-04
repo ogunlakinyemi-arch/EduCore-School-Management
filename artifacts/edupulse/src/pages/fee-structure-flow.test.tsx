@@ -8,7 +8,8 @@ import { FinancePage } from './finance';
 
 const state=vi.hoisted(()=>({
   categories: [] as FeeCategory[], structures: [] as FeeStructure[], role:'SCHOOL_ADMIN',
-  loading:'', error:'', create:vi.fn(), createCategory:vi.fn(),
+  students: [] as {id:number;schoolId:number;className:string;section:string;firstName:string;lastName:string;admissionNo:string}[],
+  loading:'', error:'', create:vi.fn(), createCategory:vi.fn(),assign:vi.fn(),
 }));
 const sessions=[{id:358,schoolId:1393,name:'2026/2027',startDate:'2026-09-14',endDate:'2026-12-18',status:'ACTIVE'}];
 const terms=[{id:20,sessionId:358,name:'FIRST'},{id:21,sessionId:358,name:'SECOND'}];
@@ -26,13 +27,13 @@ vi.mock('@workspace/api-client-react',async original=>{
     useGetSchoolFinanceSummary:()=>result('summary',{}),useGetFinanceSettings:()=>result('settings',{}),
     useListFeeCategories:()=>result('categories',state.categories),
     useListFeeStructures:()=>result('structures',state.structures),
-    useListFeeInvoices:()=>result('invoices',[]),useListStudents:()=>result('students',[]),
+    useListFeeInvoices:()=>result('invoices',[]),useListStudents:()=>result('students',state.students),
     useListAcademicSessions:()=>result('sessions',sessions),
     useListAcademicTerms:(id:number)=>result('terms',terms.filter(t=>t.sessionId===id)),
     useListClasses:()=>result('classes',classes),
     useCreateFeeStructure:()=>({isPending:false,mutateAsync:state.create}),
     useCreateFeeCategory:()=>({isPending:false,mutateAsync:state.createCategory}),
-    useUpdateFeeCategory:idle,usePublishFeeStructure:idle,useAssignFeeStructure:idle,
+    useUpdateFeeCategory:idle,usePublishFeeStructure:idle,useAssignFeeStructure:()=>({isPending:false,mutateAsync:state.assign}),
     useUpdateFinanceSettings:idle,useRequestFeeAdjustment:idle,
   };
 });
@@ -59,10 +60,43 @@ const period=async()=>{await change('select-structure-session','358');await chan
 const submit=async()=>{await act(async()=>host.querySelector('[role=dialog] form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));};
 beforeEach(()=>{
   Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});vi.clearAllMocks();
-  state.categories=[];state.structures=[];state.role='SCHOOL_ADMIN';state.loading='';state.error='';
+  state.categories=[];state.structures=[];state.students=[];state.role='SCHOOL_ADMIN';state.loading='';state.error='';
   state.create.mockResolvedValue(draft);state.createCategory.mockResolvedValue(tuition);
   host=document.createElement('div');document.body.append(host);root=createRoot(host);
   qc=new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}});
+});
+describe('published structure invoice assignment',()=>{
+  const pupil={id:721,schoolId:1393,className:'Primary 1',section:'A',firstName:'Existing',lastName:'Pupil',admissionNo:'ADM-NOT-A-STUDENT-ID'};
+  const openAssignment=async()=>{
+    state.structures=[{...draft,status:'PUBLISHED'}];
+    await render();await click('tab-finance-structures');await click('button-assign-structure-91');
+  };
+  it('explains the missing eligible class/section instead of offering an unrelated pupil',async()=>{
+    state.students=[pupil];await openAssignment();
+    expect(host.textContent).toContain('No students are enrolled in SS 1 / Science');
+    expect((id('select-invoice-student') as HTMLSelectElement).options).toHaveLength(1);
+    expect((id('button-issue-invoice') as HTMLButtonElement).disabled).toBe(true);
+    await submit();expect(state.assign).not.toHaveBeenCalled();
+  });
+  it('sends the canonical numeric pupil ID, not the admission number, for an eligible pupil',async()=>{
+    state.students=[{...pupil,className:'SS 1',section:'Science'}];await openAssignment();
+    await change('select-invoice-student','721');
+    await change('input-invoice-issue-date','2026-10-04');await change('input-invoice-due-date','2026-10-12');
+    await submit();expect(state.assign).toHaveBeenCalledWith({params:{schoolId:1393},
+      data:{structureId:91,studentId:721,issueDate:'2026-10-04',dueDate:'2026-10-12'}});
+    expect(host.textContent).toContain('Invoice issued to student');
+  });
+  it('blocks issuance when class data fails to load',async()=>{
+    state.students=[{...pupil,className:'SS 1',section:'Science'}];state.error='classes';await openAssignment();
+    expect(host.textContent).toContain('Unable to load eligible students');
+    expect((id('button-issue-invoice') as HTMLButtonElement).disabled).toBe(true);
+    await submit();expect(state.assign).not.toHaveBeenCalled();
+  });
+  it('retains the eligibility explanation after a new page mount',async()=>{
+    state.students=[pupil];await openAssignment();
+    await act(async()=>root.render(null));await openAssignment();
+    expect(host.textContent).toContain('No students are enrolled in SS 1 / Science');
+  });
 });
 afterEach(async()=>{await act(async()=>root.unmount());qc.clear();host.remove();});
 describe('School Admin New Structure flow',()=>{

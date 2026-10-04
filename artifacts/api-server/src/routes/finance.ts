@@ -673,13 +673,15 @@ router.post("/school/finance/assignments", async (req, res): Promise<void> => {
     );
     if (!structure.rows[0]) throw new AuthError(404, "Published fee structure not found");
     const student = await client.query(
-      `SELECT st.id,st.first_name,st.last_name,st.admission_no,st.class_name,st.section
-       FROM students st WHERE st.id=$1 AND st.school_id=$2 AND EXISTS (
+      `SELECT st.id,st.first_name,st.last_name,st.admission_no,st.class_name,st.section,
+       EXISTS (
          SELECT 1 FROM school_classes sc WHERE sc.id=$3 AND sc.school_id=st.school_id
-           AND sc.name=st.class_name AND ($4::text IS NULL OR st.section=$4))`,
+           AND sc.name=st.class_name AND ($4::text IS NULL OR st.section=$4)) AS "eligibleForStructure"
+       FROM students st WHERE st.id=$1 AND st.school_id=$2`,
       [body.studentId, schoolId, structure.rows[0].school_class_id, structure.rows[0].section],
     );
     if (!student.rows[0]) throw new AuthError(404, "Student not found");
+    if (student.rows[0].eligibleForStructure !== true) throw new AuthError(409, "Student is not enrolled in this fee structure's class and section");
     const lines = await client.query(
       `SELECT * FROM fee_structure_lines l WHERE structure_id=$1 AND school_id=$2
        AND NOT EXISTS(SELECT 1 FROM fee_categories c WHERE c.id=l.category_id AND c.school_id=l.school_id AND c.transport_only) ORDER BY id`,

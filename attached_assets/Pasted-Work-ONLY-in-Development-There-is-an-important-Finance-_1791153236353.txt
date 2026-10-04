@@ -1,0 +1,338 @@
+Work ONLY in Development.
+
+There is an important Finance visibility problem:
+
+A School Admin can successfully create a school fee structure, but the created fee is NOT appearing on:
+
+1. The affected Student's dashboard.
+2. The affected Parent's dashboard for that child.
+3. The fee/outstanding-fees view for the child's class where the fee should apply.
+
+Example:
+
+School Admin creates:
+
+- Academic Session: 2026/2027
+- Term: First Term
+- Class: SS2 B
+- Fee: Tuition
+- Amount: ₦8,000
+
+The fee structure saves successfully, but students/parents in the selected class cannot see the fee.
+
+IMPORTANT:
+
+- Development only.
+- Do NOT modify Production.
+- Do NOT publish.
+- Do NOT approve migrations.
+- Do NOT reset, reseed, truncate or delete data.
+- Do NOT fabricate students, parents, invoices or payments.
+- Do NOT modify existing payment records.
+- Do NOT weaken Finance authorization or school isolation.
+- Do NOT modify unrelated modules.
+- Find the actual root cause.
+
+1. Trace the complete fee lifecycle
+
+Trace:
+
+School Admin creates Fee Structure
+→ Session
+→ Term
+→ Class
+→ Section if applicable
+→ Fee Category
+→ Fee Structure
+→ Student eligibility
+→ Invoice/Charge assignment
+→ Student Finance dashboard
+→ Parent Finance dashboard.
+
+Determine exactly where the fee disappears.
+
+Do not assume the problem is only frontend display.
+
+2. Verify the actual fee record
+
+Using READ-ONLY checks, locate the fee structure created by the School Admin.
+
+Confirm:
+
+- school ID
+- academic session ID
+- academic term ID
+- class ID
+- section ID if applicable
+- fee category
+- amount
+- status
+- publication state
+- effective/active state.
+
+Determine whether it is merely a DRAFT structure or whether the system considers it published/active.
+
+IMPORTANT:
+
+If the current business design requires a fee to be published before students/parents can see it, verify whether the School Admin actually performed the required Publish/Activate action.
+
+Do not silently expose an unpublished fee if the existing finance workflow intentionally requires publication.
+
+3. Check student eligibility
+
+Find an existing student who belongs to the selected class.
+
+Verify:
+
+School
+→ Student
+→ Current academic session
+→ Current term
+→ Class
+→ Section.
+
+Confirm that the student's academic placement matches the fee structure.
+
+For example:
+
+Fee:
+2026/2027 → First Term → SS2 B → ₦8,000
+
+Student must actually be enrolled in:
+2026/2027 → First Term → SS2 B.
+
+If the student is in a different class/session/term, explain why the fee is not eligible.
+
+Do not change the student's enrollment just to make the test pass.
+
+4. Check invoice/charge generation
+
+Determine whether creating a Fee Structure automatically creates student charges/invoices or whether there is a separate:
+
+- Assign Fees
+- Generate Invoices
+- Publish Fees
+- Apply to Students
+- Activate Structure
+
+workflow.
+
+If the existing system is designed to automatically assign eligible fees, verify that this process actually happens.
+
+If it is supposed to create invoices/charges and does not, trace and fix that process.
+
+Do NOT create duplicate invoices.
+
+5. Student dashboard
+
+Using a genuine authenticated Student account whose enrollment matches the fee:
+
+Open:
+
+Student Dashboard → Finance/Fees
+
+Verify whether the fee appears.
+
+It should show at minimum:
+
+- Fee name
+- Academic session
+- Term
+- Amount
+- Outstanding amount
+- Status.
+
+If the backend returns the fee but the UI does not display it, fix the frontend.
+
+If the backend returns no fee, trace the finance query and eligibility logic.
+
+6. Parent dashboard
+
+Using a genuine authenticated Parent account linked to the same student:
+
+Open:
+
+Parent Dashboard → Child → Finance/Fees.
+
+The same eligible fee should appear for that child.
+
+Verify that the Parent sees only fees belonging to their linked child/children.
+
+Do NOT expose another student's fees.
+
+For multiple children, verify that the fee appears only under the child whose class/session/term makes them eligible.
+
+7. Class-level visibility
+
+If the fee structure is created for a class, verify that every eligible student in that class receives the correct fee/charge according to the existing finance design.
+
+Example:
+
+SS2 B → First Term → Tuition → ₦8,000
+
+Eligible SS2 B students should receive the fee.
+
+Students in JSS1 A should NOT receive the SS2 B fee.
+
+If the fee is section-specific, only the matching section should receive it.
+
+8. Check publication/status logic
+
+Inspect the existing Fee Structure status flow.
+
+Determine whether:
+
+DRAFT → PUBLISHED/ACTIVE
+
+is required before Student/Parent visibility.
+
+Do not bypass this business rule.
+
+If the School Admin already published/activated the fee and it is still invisible, fix the visibility query.
+
+If the School Admin only saved a DRAFT and the system correctly hides drafts, clearly report that and verify the proper Publish workflow instead.
+
+9. Check session/term consistency
+
+Ensure the dashboard queries use the same central academic-period references as Finance.
+
+Do not mix:
+
+2026/2027 First Term
+
+with:
+
+2027/2028 First Term
+
+or the student's current class from a different session.
+
+The fee query must be based on the student's valid academic enrollment and the fee's session/term.
+
+10. Payment safeguards
+
+Do NOT change payment functionality while fixing visibility.
+
+Existing:
+
+- paid status
+- partial payments
+- bank-transfer claims
+- receipts
+- Flutterwave integration
+- cash payments
+- refunds
+
+must remain unchanged.
+
+The goal is simply to make legitimate outstanding fees appear correctly.
+
+11. Genuine end-to-end browser verification
+
+Use genuine authenticated accounts.
+
+School Admin
+
+Create or use an existing valid fee:
+
+2026/2027
+First Term
+SS2 B
+Tuition
+₦8,000
+
+Complete whatever existing Publish/Activate/Assign workflow is required.
+
+Student
+
+Log in as an existing student enrolled in SS2 B.
+
+Verify the ₦8,000 fee appears.
+
+Parent
+
+Log in as the parent linked to that student.
+
+Verify the same ₦8,000 fee appears under the correct child.
+
+Wrong class
+
+Verify a student in another class does NOT see the SS2 B fee.
+
+Refresh
+
+Refresh Student and Parent dashboards and confirm the fee remains visible.
+
+12. Focused tests
+
+Add/update only focused tests for:
+
+- Fee Structure → eligible student
+- Fee Structure → invoice/charge assignment
+- Student fee visibility
+- Parent child-specific fee visibility
+- class filtering
+- section filtering
+- session/term filtering
+- draft/published visibility
+- paid fee handling
+- cross-school isolation.
+
+Do not create a massive unrelated test suite.
+
+13. Final report
+
+Return:
+
+Root cause
+
+Exactly why the School Admin-created fee was not appearing.
+
+Fee lifecycle
+
+Report whether the fee was:
+
+- Created
+- Published/Activated
+- Assigned
+- Invoiced/Charged
+- Visible to Student
+- Visible to Parent.
+
+Browser verification
+
+Test| Result
+School Admin creates fee| PASS/FAIL
+Fee published/activated| PASS/FAIL/N/A
+Eligible Student sees fee| PASS/FAIL
+Parent sees fee for child| PASS/FAIL
+Wrong-class student excluded| PASS/FAIL
+Refresh persistence| PASS/FAIL
+Genuine authenticated browser test| PASS/FAIL
+
+Tests
+
+- Frontend focused tests:
+- Backend focused tests:
+- PostgreSQL checks:
+- Frontend typecheck:
+- Backend typecheck:
+
+Preservation
+
+Confirm:
+
+- Production untouched.
+- Nothing published.
+- No migration approved.
+- No reset/reseed/truncate/delete.
+- No fabricated business records.
+- Existing invoices/payments preserved.
+- No unrelated modules changed.
+
+CRITICAL:
+
+Do not claim this is fixed merely because the Fee Structure exists.
+
+The required acceptance is:
+
+School Admin creates/activates fee → eligible Student sees fee → Parent sees same fee under correct child → wrong-class student does not see it → refresh preserves visibility.

@@ -22,6 +22,7 @@ import { CashPaymentAction,type CashReceipt } from '@/components/cash-payment-ac
 import { ParentOnlineMethods } from './finance-online';
 import { ParentFeeSelection } from './fee-selection';
 import { SchoolDocumentHeader, SchoolDocumentPrintButton, useSchoolDocumentBranding } from '@/components/school-document';
+import { eligibleFeeAssignmentStudents } from './fee-assignment-eligibility';
 
 const naira = (minor: number) => {
   const cents = BigInt(minor);
@@ -199,7 +200,7 @@ export function FinancePage() {
   const settings = useGetFinanceSettings(params, { query: { enabled: !!schoolId, queryKey: getGetFinanceSettingsQueryKey(params) } });
   const sessions = useListAcademicSessions(params, { query: { enabled: !!schoolId && dialog === 'structure', queryKey: getListAcademicSessionsQueryKey(params) } });
   const terms = useListAcademicTerms(Number(sessionId), params, { query: { enabled: !!schoolId && !!sessionId && dialog === 'structure', queryKey: getListAcademicTermsQueryKey(Number(sessionId), params) } });
-  const classes = useListClasses(params, { query: { enabled: !!schoolId && dialog === 'structure', queryKey: getListClassesQueryKey(params) } });
+  const classes = useListClasses(params, { query: { enabled: !!schoolId && (dialog === 'structure' || dialog === 'assignment'), queryKey: getListClassesQueryKey(params) } });
   const students = useListStudents(params, { query: { enabled: !!schoolId && dialog === 'assignment', queryKey: getListStudentsQueryKey(params) } });
   const createCategory = useCreateFeeCategory();
   const updateCategory = useUpdateFeeCategory();
@@ -209,6 +210,12 @@ export function FinancePage() {
   const updateSettings = useUpdateFinanceSettings();
   const requestAdjustment = useRequestFeeAdjustment();
   const busy = [createCategory, updateCategory, createStructure, publishStructure, assignStructure, updateSettings, requestAdjustment].some(m => m.isPending);
+  const assignmentClass = classes.data?.find(c => c.id === selectedStructure?.classId && c.schoolId === schoolId);
+  const assignmentStudents = selectedStructure
+    ? eligibleFeeAssignmentStudents(students.data ?? [], classes.data ?? [], selectedStructure, schoolId)
+    : [];
+  const assignmentLoading = students.isLoading || classes.isLoading;
+  const assignmentError = students.isError || classes.isError;
   const refresh = () => {
     qc.invalidateQueries({ queryKey: getGetSchoolFinanceSummaryQueryKey(params) });
     qc.invalidateQueries({ queryKey: getListFeeCategoriesQueryKey(params) });
@@ -268,7 +275,11 @@ export function FinancePage() {
   };
   const assign = async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedStructure) return;
+    if (!selectedStructure || busy) return;
+    if (assignmentLoading || assignmentError) { setFailure('Unable to load eligible students. Retry before issuing an invoice.'); return; }
+    if (!assignmentStudents.some(s => s.id === Number(studentId))) {
+      setFailure('Select a student enrolled in this fee structure’s class and section.'); return;
+    }
     if (dueDate < issueDate) { setFailure('Due date must be on or after issue date.'); return; }
     try { await assignStructure.mutateAsync({ params, data: { structureId: selectedStructure.id, studentId: Number(studentId), issueDate, dueDate } }); done('Invoice issued to student.'); }
     catch (err) { fail(err); }
@@ -373,7 +384,21 @@ export function FinancePage() {
         <Button type="submit" disabled={busy || !canEditSettings || sessions.isLoading || terms.isLoading || classes.isLoading || categories.isLoading || sessions.isError || terms.isError || classes.isError || categories.isError || !sessionId || !termId || !classId || !categories.data?.some(c=>c.status==='ACTIVE')}>Save draft structure</Button>
       </form>
     </Modal>}
-    {dialog === 'assignment' && selectedStructure && <Modal title="Issue student invoice" eyebrow={`Structure #${selectedStructure.id}`} onClose={() => setDialog(null)}><form onSubmit={assign} className="space-y-4"><p className={note}>This creates an individual invoice from the published fee schedule. Check the student and dates before issuing.</p><Field label="Student"><select required value={studentId} onChange={e => setStudentId(e.target.value)} className={entry} data-testid="select-invoice-student"><option value="">Select student</option>{students.data?.map(s => <option key={s.id} value={s.id}>{s.firstName} {s.lastName} · {s.admissionNo}</option>)}</select></Field><div className="grid gap-3 sm:grid-cols-2"><Field label="Issue date"><input required type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)} className={entry} data-testid="input-invoice-issue-date" /></Field><Field label="Due date"><input required type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className={entry} data-testid="input-invoice-due-date" /></Field></div>{failure && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{failure}</p>}<Button type="submit" disabled={busy || !students.data?.length}>Issue invoice</Button></form></Modal>}
+    {dialog === 'assignment' && selectedStructure && <Modal viewport title="Issue student invoice" eyebrow={`Structure #${selectedStructure.id}`} onClose={() => setDialog(null)}>
+      <form onSubmit={assign} className="space-y-4">
+        <p className={note}>This creates an individual invoice from the published fee schedule. Only students in {assignmentClass?.name ?? `class #${selectedStructure.classId}`}{selectedStructure.section ? ` / ${selectedStructure.section}` : ' / any section'} are eligible.</p>
+        {assignmentLoading && <p role="status">Loading eligible students...</p>}
+        {assignmentError && <p role="alert">Unable to load eligible students. <Button variant="quiet" onClick={()=>{ void students.refetch(); void classes.refetch(); }}>Try again</Button></p>}
+        {!assignmentLoading && !assignmentError && !assignmentStudents.length && <p role="status" data-testid="status-no-eligible-invoice-students">
+          {assignmentClass ? `No students are enrolled in ${assignmentClass.name}${selectedStructure.section ? ` / ${selectedStructure.section}` : ''} for this fee structure. Choose a published fee structure matching the student’s class and section.`
+            : 'The fee structure’s class is unavailable in this school. Reload the class data before issuing an invoice.'}
+        </p>}
+        <Field label="Student"><select required disabled={assignmentLoading || assignmentError || !assignmentStudents.length} value={studentId} onChange={e=>setStudentId(e.target.value)} className={entry} data-testid="select-invoice-student"><option value="">Select eligible student</option>{assignmentStudents.map(s=><option key={s.id} value={s.id}>{s.firstName} {s.lastName} · {s.admissionNo}</option>)}</select></Field>
+        <div className="grid gap-3 sm:grid-cols-2"><Field label="Issue date"><input required type="date" value={issueDate} onChange={e=>setIssueDate(e.target.value)} className={entry} data-testid="input-invoice-issue-date"/></Field><Field label="Due date"><input required type="date" value={dueDate} onChange={e=>setDueDate(e.target.value)} className={entry} data-testid="input-invoice-due-date"/></Field></div>
+        {failure && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{failure}</p>}
+        <Button type="submit" disabled={busy || assignmentLoading || assignmentError || !assignmentStudents.some(s=>s.id===Number(studentId))} testId="button-issue-invoice">Issue invoice</Button>
+      </form>
+    </Modal>}
      {dialog === 'adjustment' && selectedInvoice && canRequestAdjustment && <Modal title="Request fee adjustment" eyebrow={selectedInvoice.invoiceNumber} onClose={() => setDialog(null)}><form onSubmit={adjust} className="space-y-4"><p className={note}>A request is not an approved adjustment. Invoice totals remain unchanged until approval. Current outstanding balance: {naira(selectedInvoice.outstandingMinor)}.</p><Field label="Adjustment type"><select value={adjustmentKind} onChange={e => { const kind = e.target.value as typeof adjustmentKind; setAdjustmentKind(kind); if (kind !== 'DISCOUNT') setDiscountMode('FIXED'); setAdjustmentAmount(''); }} className={entry} data-testid="select-adjustment-kind"><option value="DISCOUNT">Discount</option><option value="SCHOLARSHIP">Scholarship</option><option value="WAIVER">Waiver</option></select></Field>{adjustmentKind === 'DISCOUNT' && <Field label="Discount calculation"><select value={discountMode} onChange={e => { setDiscountMode(e.target.value as typeof discountMode); setAdjustmentAmount(''); }} className={entry} data-testid="select-adjustment-mode"><option value="FIXED">Fixed amount</option><option value="PERCENTAGE">Percentage</option></select></Field>}<Field label={discountMode === 'PERCENTAGE' && adjustmentKind === 'DISCOUNT' ? 'Discount percentage of original fee subtotal' : 'Amount (₦)'}><input required min="0.01" max={discountMode === 'PERCENTAGE' && adjustmentKind === 'DISCOUNT' ? '100' : minorInput(selectedInvoice.outstandingMinor)} step="0.01" type="number" value={adjustmentAmount} onChange={e => setAdjustmentAmount(e.target.value)} className={entry} data-testid="input-adjustment-amount" /></Field>{(() => { const isPercentage = discountMode === 'PERCENTAGE' && adjustmentKind === 'DISCOUNT'; const basisPoints = isPercentage ? percentageBasisPoints(adjustmentAmount) : null; const impact = isPercentage ? (basisPoints === null ? null : calculatePercentMinor(selectedInvoice.subtotalMinor, basisPoints)) : toMinor(adjustmentAmount); const valid = impact !== null && Number.isSafeInteger(impact) && impact > 0 && impact <= selectedInvoice.outstandingMinor; return <div className="rounded-xl bg-[hsl(var(--secondary))] p-4 text-sm" data-testid="status-adjustment-impact"><div className="font-semibold">{valid ? `Estimated reduction: ${naira(impact as number)}` : isPercentage && impact !== null && impact > selectedInvoice.outstandingMinor ? 'Percentage discount exceeds the current outstanding balance and cannot be requested.' : 'Enter a valid adjustment that does not exceed the balance.'}</div>{valid && <div className={`mt-1 ${note}`}>{isPercentage ? `Applied to original fee subtotal ${naira(selectedInvoice.subtotalMinor)}; ` : ''}Balance after approval: {naira(selectedInvoice.outstandingMinor - (impact as number))}{basisPoints !== null ? ` · ${formatPercentage(basisPoints)} requested` : ' · Fixed request'}</div>}</div>; })()}<Field label="Reason"><textarea required minLength={3} maxLength={500} value={adjustmentReason} onChange={e => setAdjustmentReason(e.target.value)} className={entry} data-testid="input-adjustment-reason" /></Field>{failure && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{failure}</p>}<Button type="submit" disabled={busy || !canRequestAdjustment}>Submit request</Button></form></Modal>}
   </div>;
 }
