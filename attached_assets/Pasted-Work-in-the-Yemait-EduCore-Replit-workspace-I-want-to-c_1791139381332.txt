@@ -1,0 +1,77 @@
+Work in the Yemait EduCore Replit workspace.
+
+I want to check whether the previous Production Publish/schema-diff issue has been fixed by Replit.
+
+IMPORTANT:
+
+- READ-ONLY investigation only.
+- Do NOT click Publish.
+- Do NOT approve any migration.
+- Do NOT execute SQL against Production.
+- Do NOT modify Development or Production schema/data.
+- Do NOT create migrations.
+- Do NOT reset, reseed, truncate, delete, or alter anything.
+- Do NOT change deployment settings.
+- Do NOT change application code.
+- Do NOT use any workaround.
+- This is only a diagnostic check.
+
+Check the previous Publish problem
+
+Previously, Replit's generated Publish migration plan omitted required composite unique indexes while adding foreign keys that depended on them.
+
+The two known missing prerequisites were:
+
+1. "subscriptions_id_school_student_uq"
+   
+   - Columns: "(id, school_id, student_id)"
+   - Required by:
+     "student_subscription_payments_subscription_owner_fk"
+
+2. "school_partner_attributions_id_partner_uq"
+   
+   - Columns: "(id, partner_profile_id)"
+   - Required by:
+     "student_subscription_allocations_attribution_partner_fk"
+
+Verify Development
+
+Confirm whether both indexes currently exist in Development and are valid.
+
+Confirm the corresponding foreign keys also exist and are valid.
+
+Verify Production
+
+Using READ-ONLY catalog/schema inspection only, determine whether those two composite unique indexes already exist in Production.
+
+Also determine whether the dependent foreign keys exist or are still absent.
+
+Verify the Publish/schema-diff generator
+
+Without publishing or approving anything, generate or inspect the CURRENT Publish/schema-diff preview if Replit allows this safely.
+
+Determine:
+
+- Does the current generated migration plan include creation of "subscriptions_id_school_student_uq" before the dependent foreign key?
+- Does it include creation of "school_partner_attributions_id_partner_uq" before the dependent foreign key?
+- Does it still attempt to create the dependent foreign keys without their required unique indexes?
+- Is the previous 257/259-statement problem still present?
+- Has the schema-diff generator changed since the previous investigation?
+
+If generating the preview itself would make any database change, stop and report that instead.
+
+Final report
+
+Give me a simple result:
+
+PUBLISH ISSUE STATUS: FIXED / STILL BROKEN / CANNOT VERIFY
+
+Then explain:
+
+1. Whether the two missing indexes exist in Development.
+2. Whether they exist in Production.
+3. Whether the current Publish preview includes them.
+4. Whether their dependent foreign keys are ordered correctly.
+5. Whether it is currently safe to proceed to the Publish review stage.
+
+Do NOT publish anything even if everything appears fixed.
