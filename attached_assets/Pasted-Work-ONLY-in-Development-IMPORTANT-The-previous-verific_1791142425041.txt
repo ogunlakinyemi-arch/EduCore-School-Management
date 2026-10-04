@@ -1,0 +1,256 @@
+Work ONLY in Development.
+
+IMPORTANT: The previous verification report claimed that the Subject and Teacher dropdowns were fixed, but the actual School Admin user experience is still broken.
+
+When I log in as School Admin and open:
+
+Timetable → Add Timetable Entry
+
+the following still happens:
+
+- Subject dropdown does not provide selectable subjects.
+- Teacher dropdown does not provide selectable teachers.
+- Therefore I cannot create a timetable entry.
+
+Do NOT assume the previous fix worked.
+
+Do NOT simply add more tests or claim success from automated tests.
+
+I need you to reproduce the problem in the actual School Admin UI and identify why the dropdowns are empty/unusable.
+
+1. Reproduce the exact problem first
+
+Use a genuine authenticated School Admin browser session.
+
+Open:
+
+Timetable → Add Timetable Entry
+
+Select the available:
+
+- Session
+- Term
+- Class
+- Section
+
+Then open the Subject dropdown.
+
+Record:
+
+- whether the Subject API request is made
+- exact endpoint
+- request parameters
+- HTTP status
+- response body/shape
+- number of subjects returned
+- whether the frontend receives the subjects
+- whether the dropdown renders them.
+
+Then do the same for Teacher.
+
+Do NOT assume the API is correct merely because automated tests pass.
+
+2. Identify the actual data used by this School Admin
+
+Find the exact school belonging to the authenticated School Admin.
+
+Then inspect READ-ONLY:
+
+School
+→ Session
+→ Term
+→ Class
+→ Section
+→ Subject/Class assignment
+→ Teacher assignment.
+
+Use a class/section that genuinely has at least one subject and teacher assignment.
+
+If the currently selected class genuinely has no subject assignments, do NOT fabricate data.
+
+Instead, determine why the School Admin cannot select a class/section that has valid subject assignments.
+
+3. Subject dropdown
+
+Trace the actual request from the browser.
+
+Check for:
+
+- wrong school ID
+- wrong session ID
+- wrong term ID
+- wrong class ID
+- wrong section value
+- wrong API endpoint
+- incorrect query parameters
+- incorrect response field
+- "subjectId" vs "id"
+- "name" vs "subjectName"
+- string/number mismatch
+- React Query cache/query key
+- stale state
+- disabled state
+- frontend filtering removing valid subjects.
+
+IMPORTANT:
+
+If the API returns valid subjects but the dropdown is empty, fix the frontend rendering/filtering.
+
+If the API returns zero subjects, determine why the backend query is returning zero.
+
+Do not blindly change the backend until the actual request/response is known.
+
+4. Teacher dropdown
+
+Only after a valid Subject is selected should Teacher eligibility be calculated.
+
+Trace the actual browser request and response.
+
+Check:
+
+- teacher endpoint
+- school ID
+- session ID
+- term ID
+- class ID
+- section
+- subject ID
+- employee/teacher ID
+- assignment relationship
+- active employee status
+- actual employee response field names.
+
+Confirm that the frontend uses the actual API response fields.
+
+Do not repeat the previous mistake of filtering on a field that the API does not return.
+
+5. Check the dropdown component itself
+
+Inspect whether the dropdown is actually disabled because of frontend state.
+
+Check:
+
+- "disabled" conditions
+- loading state
+- empty-state logic
+- selected-value state
+- query loading state
+- query error state
+- whether an empty array is being treated as a permanent disabled state
+- whether the dropdown is being reset immediately after the API response.
+
+The UI must clearly distinguish:
+
+Loading:
+"Loading subjects..."
+
+No subjects:
+"No subjects are assigned to this class."
+
+API error:
+"Unable to load subjects. Try again."
+
+Valid data:
+show selectable subjects.
+
+Same requirement for Teacher.
+
+6. Do NOT use a hard-coded fallback
+
+Do NOT make the dropdown show arbitrary teachers or subjects just to make it look functional.
+
+Subjects must come from the school's legitimate subject/class assignment data.
+
+Teachers must come from legitimate teacher assignment data.
+
+School isolation and assignment authorization must remain enforced.
+
+7. Test with an existing valid record
+
+Find one existing Development class/section that already has:
+
+- a valid subject assignment
+- an eligible teacher.
+
+Use that exact existing data.
+
+Then test:
+
+1. Login as School Admin.
+2. Timetable.
+3. Add Entry.
+4. Select Session.
+5. Select Term.
+6. Select Class.
+7. Select Section.
+8. Open Subject dropdown.
+9. Select an existing valid subject.
+10. Open Teacher dropdown.
+11. Select the existing eligible teacher.
+12. Enter a valid timetable time.
+13. Save.
+14. Refresh.
+15. Confirm the entry remains.
+
+8. Important verification rule
+
+Do NOT report:
+
+"Fixed and verified"
+
+unless the actual browser interaction confirms that:
+
+Subject dropdown opens → Subject can be selected → Teacher dropdown opens → Teacher can be selected → Save succeeds → Refresh shows the saved entry.
+
+Automated tests alone are insufficient.
+
+If the browser testing environment disconnects, report:
+
+"Browser verification unavailable"
+
+and do not claim the issue is fixed.
+
+9. Focused tests
+
+After identifying the root cause, add only focused tests for:
+
+- Subject API response
+- Subject dropdown rendering
+- Teacher API response
+- Teacher dropdown rendering
+- assignment eligibility
+- dependent selection clearing
+- valid Save
+- invalid assignment rejection
+- cross-school rejection.
+
+10. Final report
+
+Return:
+
+TIMETABLE STATUS: FIXED AND VERIFIED / STILL BROKEN / BROWSER VERIFICATION UNAVAILABLE
+
+Then provide:
+
+1. Exact root cause of the Subject dropdown problem.
+2. Exact root cause of the Teacher dropdown problem.
+3. Exact files changed.
+4. Browser API endpoint/status/response findings.
+5. Subject dropdown browser result.
+6. Teacher dropdown browser result.
+7. Save result.
+8. Refresh result.
+9. Focused frontend test count.
+10. Focused backend test count.
+11. PostgreSQL check count.
+12. Typecheck result.
+13. Confirmation that Production was untouched.
+14. Confirmation that no existing data was fabricated, deleted or reset.
+
+Do not make unrelated changes.
+
+Do not claim success based only on automated tests.
+
+The final acceptance requirement is the actual School Admin user experience:
+
+Select Class → Select Section → Select Subject → Select Teacher → Save → Refresh → Saved timetable remains.
