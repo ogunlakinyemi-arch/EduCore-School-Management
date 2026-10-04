@@ -5,6 +5,73 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+export interface StudentCardReplacementRequest {
+  /** @minimum 1 */
+  cardId: number;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export interface CardReplacementIssuance {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  uid: string;
+}
+
+export interface CardReplacementVerification {
+  /** @pattern ^[0-9]+$ */
+  providerTransactionId: string;
+}
+
+export type CardReplacementStatus = typeof CardReplacementStatus[keyof typeof CardReplacementStatus];
+
+
+export const CardReplacementStatus = {
+  REQUESTED: 'REQUESTED',
+  ISSUED: 'ISSUED',
+} as const;
+
+export type CardReplacementPaymentStatus = typeof CardReplacementPaymentStatus[keyof typeof CardReplacementPaymentStatus];
+
+
+export const CardReplacementPaymentStatus = {
+  UNPAID: 'UNPAID',
+  PAID: 'PAID',
+} as const;
+
+export interface CardReplacement {
+  id: number;
+  schoolId: number;
+  studentId: number;
+  studentName: string;
+  oldCardId: number;
+  invoiceId: number;
+  status: CardReplacementStatus;
+  paymentStatus: CardReplacementPaymentStatus;
+  amountMinor: 200000;
+  /** @nullable */
+  newCardId: number | null;
+  createdAt: string;
+}
+
+export interface ReplacementEligibleCard {
+  id: number;
+  schoolId: number;
+  studentId: number;
+  studentName: string;
+  status: string;
+}
+
+export interface CardReplacementDirectory {
+  requests: CardReplacement[];
+  cards: ReplacementEligibleCard[];
+}
+
 export type SecurityAccessActorRole = typeof SecurityAccessActorRole[keyof typeof SecurityAccessActorRole] | null;
 
 
@@ -12833,6 +12900,73 @@ export interface SchoolCurriculumTopicsResponse {
   curriculumVersion: CurriculumVersion;
 }
 
+export interface StudentCardReplacementRequest4b96100 {
+  /** @minimum 1 */
+  cardId: number;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export interface CardReplacementIssuance4b96100 {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  uid: string;
+}
+
+export interface CardReplacementVerification4b96100 {
+  /** @pattern ^[0-9]+$ */
+  providerTransactionId: string;
+}
+
+export type CardReplacement4b96100Status = typeof CardReplacement4b96100Status[keyof typeof CardReplacement4b96100Status];
+
+
+export const CardReplacement4b96100Status = {
+  REQUESTED: 'REQUESTED',
+  ISSUED: 'ISSUED',
+} as const;
+
+export type CardReplacement4b96100PaymentStatus = typeof CardReplacement4b96100PaymentStatus[keyof typeof CardReplacement4b96100PaymentStatus];
+
+
+export const CardReplacement4b96100PaymentStatus = {
+  UNPAID: 'UNPAID',
+  PAID: 'PAID',
+} as const;
+
+export interface CardReplacement4b96100 {
+  id: number;
+  schoolId: number;
+  studentId: number;
+  studentName: string;
+  oldCardId: number;
+  invoiceId: number;
+  status: CardReplacement4b96100Status;
+  paymentStatus: CardReplacement4b96100PaymentStatus;
+  amountMinor: 200000;
+  /** @nullable */
+  newCardId: number | null;
+  createdAt: string;
+}
+
+export interface ReplacementEligibleCard4b96100 {
+  id: number;
+  schoolId: number;
+  studentId: number;
+  studentName: string;
+  status: string;
+}
+
+export interface CardReplacementDirectory4b96100 {
+  requests: CardReplacement4b96100[];
+  cards: ReplacementEligibleCard4b96100[];
+}
+
 export type SecurityAccess4b96100 = SecurityAccess;
 
 export type EligibleSecurityDevice4b96100 = EligibleSecurityDevice;
@@ -19605,6 +19739,13 @@ export const StatusFilterParameter = {
 
 export type SearchParameter = string;
 
+export type ListCardReplacementsParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+};
+
 export type GetLibraryPermissionsParams = {
 /**
  * @minimum 1
@@ -19987,6 +20128,19 @@ export type FinalizePromotionBatchParams = {
  * @minimum 1
  */
 schoolId: number;
+};
+
+export type GetOfficialCardPreviewParams = {
+/**
+ * @minimum 1
+ * @maximum 2147483647
+ */
+schoolId: number;
+};
+
+export type GetOfficialCardPreview200 = {
+  frontImage: string;
+  backImage: string;
 };
 
 export type DownloadPrintableNfcCardParams = {

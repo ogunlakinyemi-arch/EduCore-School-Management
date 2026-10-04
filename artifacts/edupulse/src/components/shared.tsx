@@ -6,6 +6,7 @@ import { FeePaymentNotifications } from './fee-payment-notifications';
 import { CommunicationInboxBadge } from '@/pages/communication-inbox';
 import { PwaInstall } from '@/components/pwa-install';
 import { SubscriptionAccessBanner } from '@/components/subscription-access-banner';
+import { usePhase9List } from '@/hooks/use-phase9-api';
 import { 
   Activity, ArrowLeft, ArrowUpRight, BadgeCheck, BarChart3, Bell, BookOpen, Building2, Check, ChevronDown, 
   CircleAlert, CircleDollarSign, CreditCard, FileClock, GraduationCap, LayoutDashboard, Library, Menu, 
@@ -90,6 +91,7 @@ const nav: NavItem[] = [
   { href: '/subscriptions', label: 'Subscriptions', icon: WalletCards, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/subscription-enforcement', label: 'Term Enforcement', icon: ShieldCheck, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/cards', label: 'NFC Cards', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'STAFF'] },
+  { href: '/card-replacements', label: 'Card Replacements', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'PARENT', 'STUDENT'] },
   { href: '/employee-nfc', label: 'Employee NFC', icon: CreditCard, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
   { href: '/my-employee-nfc', label: 'My Employee E-ID', icon: CreditCard, roles: ['TEACHER', 'STAFF'] },
   { href: '/my-nfc-subscription', label: 'My NFC Subscription', icon: WalletCards, roles: ['TEACHER', 'STAFF'] },
@@ -102,7 +104,7 @@ const nav: NavItem[] = [
 ];
 const ownerNavPaths = new Set([
   '/', '/schools', '/students', '/company-employees', '/users', '/partners',
-  '/devices', '/subscriptions', '/subscription-enforcement', '/cards', '/audit', '/reporting', '/activation', '/activation/history',
+  '/devices', '/subscriptions', '/subscription-enforcement', '/cards', '/card-replacements', '/audit', '/reporting', '/activation', '/activation/history',
   '/finance-workspace', '/employee-nfc', '/transport', '/security',
   '/curriculum-management',
 ]);
@@ -115,8 +117,6 @@ export function Shell({ children }: { children: ReactNode }) {
   const contextQuery = useGetAuthorizedContext();
   const context = contextQuery.data;
   
-  if (contextQuery.isLoading) return <div className="min-h-[100dvh] bg-[hsl(var(--background))]" />;
-
   const roles = context?.roles?.filter(r => r.status === 'ACTIVE').map(r => r.role as string) || [];
   const isActivationOfficer = roles.includes('DEVICE_ACTIVATION_OFFICER');
   const isCompanyAccountant = roles.includes('COMPANY_ACCOUNTANT');
@@ -125,10 +125,14 @@ export function Shell({ children }: { children: ReactNode }) {
   const studentRole = context?.roles?.some(r => r.role === 'STUDENT' && r.status === 'ACTIVE') === true;
   if (isPlatformOwner && !roles.includes('PLATFORM_OWNER')) roles.push('PLATFORM_OWNER');
 
+  const teacherOnly = roles.includes('TEACHER') && !roles.some(r => ['SCHOOL_ADMIN', 'STAFF', 'STUDENT'].includes(r));
+  const libraryPerms = usePhase9List<{ canManageLoans: boolean; canManageCatalogue: boolean; canAssignStaff: boolean }>('library/permissions', schoolId, {}, teacherOnly && !isPlatformOwner);
+  const librarianDuty = libraryPerms.data?.canManageLoans === true || libraryPerms.data?.canManageCatalogue === true || libraryPerms.data?.canAssignStaff === true;
   const visibleNav = nav.filter(item => {
     if (isActivationOfficer) return item.roles?.includes('DEVICE_ACTIVATION_OFFICER') === true;
     if (isCompanyAccountant) return item.roles?.includes('COMPANY_ACCOUNTANT') === true;
     if (isPlatformOwner) return ownerNavPaths.has(item.href);
+    if (item.href === '/library' && teacherOnly && !librarianDuty) return false;
     return !item.roles || item.roles.some(role => roles.includes(role));
   });
   const sections = buildNavSections(visibleNav.map(i => i.href), navMode(roles, isActivationOfficer || isCompanyAccountant || isPlatformOwner));
@@ -141,6 +145,8 @@ export function Shell({ children }: { children: ReactNode }) {
     { status: 'all' },
     { query: { enabled: isPlatformOwner, queryKey: getListOwnerSchoolDirectoryQueryKey({ status: 'all' }) } },
   );
+
+  if (contextQuery.isLoading) return <div className="min-h-[100dvh] bg-[hsl(var(--background))]" />;
   
   let schoolName = 'Platform Network';
   if (schoolId) {

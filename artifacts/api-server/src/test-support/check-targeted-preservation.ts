@@ -7,7 +7,7 @@ const c = await pool.connect();
 try {
   await c.query("BEGIN READ ONLY");
   const identity = (await c.query("SELECT current_database() AS name,pg_postmaster_start_time() AS started")).rows[0];
-  if (identity.name !== "heliumdb" || new Date(identity.started).toISOString() !== "2026-10-04T02:29:28.053Z") {
+  if (identity.name !== "heliumdb" || new Date(identity.started).toISOString() !== "2026-10-04T07:06:39.585Z") {
     throw new Error("Not the verified Development target");
   }
   const tables = ["schools", "students", "parents", "employees", "school_memberships",

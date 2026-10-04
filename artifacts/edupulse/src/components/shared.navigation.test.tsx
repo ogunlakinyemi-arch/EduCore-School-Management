@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
     ],
   } as any,
   ownerDirectoryCalls: [] as any[],
+  librarian: false,
 }));
 
 vi.mock('@clerk/react', () => ({
@@ -21,6 +22,10 @@ vi.mock('@clerk/react', () => ({
 }));
 vi.mock('./fee-payment-notifications', () => ({ FeePaymentNotifications: () => null }));
 vi.mock('@/pages/communication-inbox', () => ({ CommunicationInboxBadge: () => null }));
+vi.mock('@/components/subscription-access-banner', () => ({ SubscriptionAccessBanner: () => null }));
+vi.mock('@/hooks/use-phase9-api', () => ({
+  usePhase9List: () => ({ data: { canManageLoans: state.librarian, canManageCatalogue: state.librarian, canAssignStaff: false } }),
+}));
 vi.mock('@workspace/api-client-react', () => ({
   useGetAuthorizedContext: () => ({ data: state.context, isLoading: false }),
   useGetCurrentUserSchools: () => ({ data: [] }),
@@ -56,6 +61,7 @@ describe('Platform Owner navigation', () => {
       ],
     };
     state.ownerDirectoryCalls = [];
+    state.librarian = false;
   });
 
   it('keeps platform links and hides school-operation links even for a mixed-role Owner', () => {
@@ -85,6 +91,24 @@ describe('Platform Owner navigation', () => {
 
     expect(html).not.toContain('Owner school context');
     expect(html).not.toContain('Suspended School');
+  });
+
+  it('hides Library for a Teacher without librarian duty', () => {
+    state.context = { isPlatformOwner: false, user: { name: 'Teacher' },
+      roles: [{role:'TEACHER',schoolId:12,status:'ACTIVE'}] };
+    const html=renderToStaticMarkup(<Shell><div>Teacher content</div></Shell>);
+    expect(html).not.toContain('data-testid="button-nav-section-library"');
+    expect(html).toContain('data-testid="button-nav-section-assessments"');
+  });
+
+  it('adds Library to the same Teacher account with librarian duty', () => {
+    state.librarian = true;
+    state.context = { isPlatformOwner: false, user: { name: 'Teacher' },
+      roles: [{role:'TEACHER',schoolId:12,status:'ACTIVE'}] };
+    const html=renderToStaticMarkup(<Shell><div>Teacher content</div></Shell>);
+    expect(html).toContain('data-testid="button-nav-section-library"');
+    expect(html).toContain('data-testid="button-nav-section-assessments"');
+    expect(html).not.toContain('href="/schools"');
   });
 });
 

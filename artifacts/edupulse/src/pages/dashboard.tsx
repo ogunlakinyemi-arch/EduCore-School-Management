@@ -372,8 +372,8 @@ function SchoolDashboard({ schoolId, canOpenFinance, showTeacherWork = false }: 
       
       {showTeacherWork && <TeacherAssignedWork schoolId={schoolId} />}
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-        <div className="panel p-6 md:p-8">
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <div className="panel min-w-0 p-6 md:p-8">
           <div className="eyebrow mb-2">Institutional snapshot</div>
           <h2 className="display-font text-2xl font-bold mb-6">Staff & Structure</h2>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -406,7 +406,7 @@ function SchoolDashboard({ schoolId, canOpenFinance, showTeacherWork = false }: 
           </div>
         </div>
         
-        <div className="panel p-6 md:p-8">
+        <div className="panel min-w-0 p-6 md:p-8">
           <div className="mb-6 flex items-start justify-between">
             <div>
               <div className="eyebrow">School activity</div>

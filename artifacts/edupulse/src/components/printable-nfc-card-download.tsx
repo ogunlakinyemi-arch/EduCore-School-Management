@@ -35,7 +35,7 @@ type Props = {
   cardId: number | null | undefined;
   schoolId: number;
   ownerAuthorized: boolean;
-  cardType: 'STUDENT' | 'TEACHER';
+  cardType: 'STUDENT' | 'TEACHER' | 'STAFF';
   cardStatus: string;
 };
 

@@ -140,3 +140,17 @@ mtime_ms = 1791077048770
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/196ac429-d8fe-451e-b019-96b32ca1bb2f/e13b0177-e5f7-4c2f-9fef-b62efaa33ec6"
 storage_version_token = "1791077049410649"
 content_type = "text/html"
+
+[[outputs]]
+id = "Fz9apt9vlegvgkcbGOehC"
+uri = "file://reports/edupulse-development-verification.html"
+type = "html"
+title = "Development verification report"
+description = "Results, exact changed files, migration, test counts, safety checks and remaining limitations."
+logical_id = "ffceee57-a249-4ab4-83e4-b8661d3ed3c8"
+content_hash = "sha256:52f934b0b52a9f42f2b8ddecd5da4698cdae800637b3df9e21b4fbf7a240ac11"
+size = 12315
+mtime_ms = 1791101317658
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/ffceee57-a249-4ab4-83e4-b8661d3ed3c8/5bde23d6-cb4a-4b46-b36d-f4a80e39812b"
+storage_version_token = "1791101318283989"
+content_type = "text/html"

@@ -4,8 +4,10 @@ import { CreditCard, Plus, ShieldCheck } from 'lucide-react';
 import { 
   useGetAuthorizedContext, useListCards, useListStudents, useListEmployeeNfcCards, useRegisterCard, useUpdateCardStatus, getListCardsQueryKey
 } from '@workspace/api-client-react';
+import { Link } from 'wouter';
 import { OwnerCardLink } from '@/components/owner-card-link';
 import { PrintableNfcCardDownload } from '@/components/printable-nfc-card-download';
+import { OfficialCardPreview } from '@/components/official-card-preview';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Modal, Field, TenantPicker, useTenant, cx 
 } from '@/components/shared';
@@ -25,7 +27,7 @@ function ReportLostModal({ card, onClose, onSubmit }: { card: any; onClose: () =
   };
   return <Modal title="Report card lost or stolen" eyebrow="Card security" onClose={onClose}>
     <form onSubmit={submit} className="space-y-4">
-      <p className="text-sm">Card <strong className="font-mono">{card.uid}</strong> ({card.employeeName ?? card.studentName ?? 'Unassigned'}) will stop working immediately. History is kept and the platform Owner is notified. Replacement remains Owner-controlled; the ₦2,000 payment workflow is not available from this dialog.</p>
+      <p className="text-sm">Card <strong className="font-mono">{card.uid}</strong> ({card.employeeName ?? card.studentName ?? 'Unassigned'}) will stop working immediately. History is kept and the platform Owner is notified. For Student cards, open Card Replacements to request the separate ₦2,000 replacement. Only the Owner can issue a new UID after verified payment.</p>
       <Field label="Report as"><select value={kind} onChange={e => setKind(e.target.value as 'Lost' | 'Stolen')} data-testid="select-lost-kind"><option>Lost</option><option>Stolen</option></select></Field>
       <p className="text-xs text-[hsl(var(--muted-foreground))]">The system records both as a lost card; your choice is kept in the reason.</p>
       <Field label="What happened (required)"><textarea required minLength={3} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} data-testid="input-lost-reason" /></Field>
@@ -95,6 +97,7 @@ export function CardsPage() {
       />
       
       {canProvision && <OwnerCardLink />}
+      <Link href="/card-replacements" className="mb-5 inline-block text-sm font-bold text-[hsl(var(--primary))] underline" data-testid="link-card-replacements">Card replacements</Link>
       {!schoolId ? (
         <EmptyState icon={CreditCard} title="Select a school context" description="You must select a school to manage its hardware fleet." />
       ) : query.isLoading ? (
@@ -129,12 +132,14 @@ export function CardsPage() {
                       cardStatus={card.status}
                     />
                   )}
-                  {canProvision && employeeCard?.personType === 'TEACHER' && (
+                  {(card.studentId || card.employeeId || employeeCard?.employeeId) && ['active','locked'].includes(card.status.toLowerCase()) &&
+                    <OfficialCardPreview cardId={card.id} schoolId={schoolId}/>}
+                  {canProvision && employeeCard && ['TEACHER','STAFF'].includes(employeeCard.personType ?? '') && (
                     <PrintableNfcCardDownload
                       cardId={card.id}
                       schoolId={schoolId}
                       ownerAuthorized={canProvision}
-                      cardType="TEACHER"
+                      cardType={employeeCard.personType === 'STAFF' ? 'STAFF' : 'TEACHER'}
                       cardStatus={employeeCard.status}
                     />
                   )}

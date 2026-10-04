@@ -13,6 +13,7 @@ import {
 } from "../lib/nfc-printable-snapshot";
 import { loadPrintablePhoto, loadPrintableSchoolLogo } from "../lib/nfc-printable-images";
 import { buildNfcPrintablePdf } from "../lib/nfc-printable-pdf";
+import { rasterOfficialCard } from "../lib/nfc-card-preview";
 
 const router = Router();
 
@@ -44,6 +45,41 @@ function printableError(error: unknown, res: Response, next: NextFunction) {
   return next(error);
 }
 
+async function renderCurrentCard(cardId: number, schoolId: number) {
+  const result = await pool.query(printableCardSnapshotSql, [cardId, schoolId]);
+  const snapshot = result.rows[0] as PrintableSnapshot | undefined;
+  if (!snapshot) throw new AuthError(404, "NFC card not found in this school");
+  const identity = resolvePrintableIdentity(snapshot);
+  const personId = identity.personType === "Student" ? Number(snapshot.studentId) : Number(snapshot.employeeId);
+  const [schoolLogo,personPhoto] = await Promise.all([
+    loadPrintableSchoolLogo(schoolId,snapshot.schoolLogo),
+    loadPrintablePhoto(schoolId,personId,identity.photoPath,identity.personType === "Student" ? "student" : "employee"),
+  ]);
+  return buildNfcPrintablePdf({cardId,schoolName:snapshot.schoolName,
+    schoolRegistrationNumber:snapshot.schoolRegistrationNumber,schoolAddress:snapshot.schoolAddress,
+    schoolCity:snapshot.schoolCity,schoolState:snapshot.schoolState,schoolPhone:snapshot.schoolPhone,
+    schoolEmail:snapshot.schoolEmail,personType:identity.personType,personName:identity.personName,
+    permanentNumber:identity.permanentNumber,schoolLogo,personPhoto});
+}
+
+router.get("/cards/:cardId/preview",requireAuthentication(),async(req,res,next)=>{
+  try {
+    const cardId=positiveInteger(req.params.cardId,"cardId");
+    const schoolId=positiveInteger(req.query.schoolId,"schoolId");
+    const context=getUserContext(req);
+    const owner=context.roles.some(r=>r.role==="PLATFORM_OWNER" && r.schoolId===null && r.status==="ACTIVE");
+    const admin=context.roles.some(r=>r.role==="SCHOOL_ADMIN" && r.schoolId===schoolId && r.status==="ACTIVE");
+    if(!owner && !admin) throw new AuthError(403,"Only the Platform Owner or this school's Admin may view official card previews");
+    const pdf=await renderCurrentCard(cardId,schoolId);
+    res.setHeader("Cache-Control","private, no-store");
+    res.json(await rasterOfficialCard(pdf));
+  } catch(error) {
+    if(error instanceof AuthError || error instanceof PrintableUnsupportedIdentityError) return printableError(error,res,next);
+    req.log?.error({err:error},"Official card preview failed");
+    return res.status(503).json({error:"Official card preview is unavailable; please retry"});
+  }
+});
+
 router.get(
   "/cards/:cardId/printable",
   requireAuthentication(),
@@ -53,40 +89,7 @@ router.get(
       const schoolId = positiveInteger(req.query.schoolId, "schoolId");
       assertPlatformOwner(req);
 
-      const result = await pool.query(printableCardSnapshotSql, [cardId, schoolId]);
-      const snapshot = result.rows[0] as PrintableSnapshot | undefined;
-      if (!snapshot) throw new AuthError(404, "NFC card not found in this school");
-
-      const identity = resolvePrintableIdentity(snapshot);
-      const schoolIdFromSnapshot = Number(snapshot.schoolId);
-      const personId = identity.personType === "Student"
-        ? Number(snapshot.studentId)
-        : Number(snapshot.employeeId);
-      const [schoolLogo, personPhoto] = await Promise.all([
-        loadPrintableSchoolLogo(schoolIdFromSnapshot, snapshot.schoolLogo),
-        loadPrintablePhoto(
-          schoolIdFromSnapshot,
-          personId,
-          identity.photoPath,
-          identity.personType === "Student" ? "student" : "employee",
-        ),
-      ]);
-
-      const pdf = await buildNfcPrintablePdf({
-        cardId: Number(snapshot.cardId),
-        schoolName: snapshot.schoolName,
-        schoolRegistrationNumber: snapshot.schoolRegistrationNumber,
-        schoolAddress: snapshot.schoolAddress,
-        schoolCity: snapshot.schoolCity,
-        schoolState: snapshot.schoolState,
-        schoolPhone: snapshot.schoolPhone,
-        schoolEmail: snapshot.schoolEmail,
-        personType: identity.personType,
-        personName: identity.personName,
-        permanentNumber: identity.permanentNumber,
-        schoolLogo,
-        personPhoto,
-      });
+      const pdf = await renderCurrentCard(cardId,schoolId);
       res.status(200);
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename="NFC-id-${cardId}.pdf"`);

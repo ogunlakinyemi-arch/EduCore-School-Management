@@ -8,6 +8,122 @@
 import * as zod from 'zod';
 
 
+
+
+
+export const ListCardReplacementsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional()
+})
+
+export const ListCardReplacementsResponse = zod.object({
+  "requests": zod.array(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "oldCardId": zod.number().int(),
+  "invoiceId": zod.number().int(),
+  "status": zod.enum(['REQUESTED', 'ISSUED']),
+  "paymentStatus": zod.enum(['UNPAID', 'PAID']),
+  "amountMinor": zod.literal(200000),
+  "newCardId": zod.number().int().nullable(),
+  "createdAt": zod.string()
+})),
+  "cards": zod.array(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "status": zod.string()
+}))
+})
+
+
+
+export const requestCardReplacementBodyReasonMin = 3;
+export const requestCardReplacementBodyReasonMax = 500;
+
+
+
+export const RequestCardReplacementBody = zod.object({
+  "cardId": zod.number().int().min(1),
+  "reason": zod.string().min(requestCardReplacementBodyReasonMin).max(requestCardReplacementBodyReasonMax)
+})
+
+export const RequestCardReplacementResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "oldCardId": zod.number().int(),
+  "invoiceId": zod.number().int(),
+  "status": zod.enum(['REQUESTED', 'ISSUED']),
+  "paymentStatus": zod.enum(['UNPAID', 'PAID']),
+  "amountMinor": zod.literal(200000),
+  "newCardId": zod.number().int().nullable(),
+  "createdAt": zod.string()
+})
+
+
+
+
+
+export const IssueCardReplacementParams = zod.object({
+  "requestId": zod.coerce.number().int().min(1)
+})
+
+export const issueCardReplacementBodyUidMax = 160;
+
+
+
+export const IssueCardReplacementBody = zod.object({
+  "uid": zod.string().min(1).max(issueCardReplacementBodyUidMax)
+})
+
+export const IssueCardReplacementResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "oldCardId": zod.number().int(),
+  "invoiceId": zod.number().int(),
+  "status": zod.enum(['REQUESTED', 'ISSUED']),
+  "paymentStatus": zod.enum(['UNPAID', 'PAID']),
+  "amountMinor": zod.literal(200000),
+  "newCardId": zod.number().int().nullable(),
+  "createdAt": zod.string()
+})
+
+
+
+
+
+export const VerifyCardReplacementPaymentParams = zod.object({
+  "requestId": zod.coerce.number().int().min(1)
+})
+
+export const verifyCardReplacementPaymentBodyProviderTransactionIdRegExp = new RegExp('^[0-9]+$');
+
+
+export const VerifyCardReplacementPaymentBody = zod.object({
+  "providerTransactionId": zod.string().regex(verifyCardReplacementPaymentBodyProviderTransactionIdRegExp)
+})
+
+export const VerifyCardReplacementPaymentResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "oldCardId": zod.number().int(),
+  "invoiceId": zod.number().int(),
+  "status": zod.enum(['REQUESTED', 'ISSUED']),
+  "paymentStatus": zod.enum(['UNPAID', 'PAID']),
+  "amountMinor": zod.literal(200000),
+  "newCardId": zod.number().int().nullable(),
+  "createdAt": zod.string()
+})
+
+
 export const GetOwnAttendancePeriodsResponse = zod.object({
   "sessions": zod.array(zod.object({
   "id": zod.number().int(),
@@ -5194,8 +5310,34 @@ export const FinalizePromotionBatchResponse = zod.object({
 
 
 /**
- * Read-only download for the existing active Platform Owner card-management permission. Requires the card's school to match schoolId and an eligible current assignment. Teachers may print after assignment, before the separate NFC activation step. Printing never creates or changes a person, card, UID or assignment. Student cards contain permanent identification only, not class, section, session or term.
- * @summary Download the existing assigned Teacher or Student NFC card as a front-and-back CR80 PDF
+ * Owner or the current School Admin only. No PDF, download, print or card-lifecycle permission is granted.
+ * @summary Read-only raster preview of an existing official card
+ */
+export const getOfficialCardPreviewPathCardIdMax = 2147483647;
+
+
+
+export const GetOfficialCardPreviewParams = zod.object({
+  "cardId": zod.coerce.number().int().min(1).max(getOfficialCardPreviewPathCardIdMax)
+})
+
+export const getOfficialCardPreviewQuerySchoolIdMax = 2147483647;
+
+
+
+export const GetOfficialCardPreviewQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).max(getOfficialCardPreviewQuerySchoolIdMax)
+})
+
+export const GetOfficialCardPreviewResponse = zod.object({
+  "frontImage": zod.string(),
+  "backImage": zod.string()
+})
+
+
+/**
+ * Read-only download for the existing active Platform Owner card-management permission. Requires the card's school to match schoolId and an eligible current assignment. Teachers and Staff may print after assignment, before the separate NFC activation step. Printing never creates or changes a person, card, UID or assignment. Student cards contain permanent identification only, not class, section, session or term.
+ * @summary Download the existing assigned Teacher, Staff or Student NFC card as a front-and-back CR80 PDF
  */
 export const downloadPrintableNfcCardPathCardIdMax = 2147483647;
 

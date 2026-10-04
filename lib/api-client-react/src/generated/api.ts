@@ -117,7 +117,11 @@ import type {
   CardHistoryEntry,
   CardInput,
   CardReassignmentInput,
+  CardReplacement,
+  CardReplacementDirectory,
   CardReplacementInput,
+  CardReplacementIssuance,
+  CardReplacementVerification,
   CardStatusInput,
   CareError,
   CareGrant,
@@ -283,6 +287,8 @@ import type {
   GetMyAcademicTimetableParams,
   GetMyStaffNfcPartnerCommissionsParams,
   GetMyStaffNfcSubscriptionsParams,
+  GetOfficialCardPreview200,
+  GetOfficialCardPreviewParams,
   GetOwnAttendanceParams,
   GetParentChildAttendanceParams,
   GetParentCommunicationThreadParams,
@@ -341,6 +347,7 @@ import type {
   ListAdmissionApplicationsParams,
   ListAttendanceDiscrepanciesParams,
   ListAuditLogsParams,
+  ListCardReplacementsParams,
   ListCardsParams,
   ListChildAcademicAssignmentsParams,
   ListChildAcademicReportCardsParams,
@@ -648,6 +655,7 @@ import type {
   StaffNfcWebhookAck,
   StatusInput,
   Student,
+  StudentCardReplacementRequest,
   StudentClassAssignment,
   StudentClassAssignmentInput,
   StudentIdentificationPolicy,
@@ -766,6 +774,332 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getListCardReplacementsUrl = (params?: ListCardReplacementsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/card-replacements?${stringifiedParams}` : `/api/card-replacements`
+}
+
+export const listCardReplacements = async (params?: ListCardReplacementsParams, options?: Parameters<typeof customFetch>[1]): Promise<CardReplacementDirectory> => {
+
+  return customFetch<CardReplacementDirectory>(getListCardReplacementsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCardReplacementsQueryKey = (params?: ListCardReplacementsParams,) => {
+    return [
+    `/api/card-replacements`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCardReplacementsQueryOptions = <TData = Awaited<ReturnType<typeof listCardReplacements>>, TError = ErrorType<unknown>>(params?: ListCardReplacementsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCardReplacements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCardReplacementsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCardReplacements>>> = ({ signal }) => listCardReplacements(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCardReplacements>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCardReplacementsQueryResult = NonNullable<Awaited<ReturnType<typeof listCardReplacements>>>
+export type ListCardReplacementsQueryError = ErrorType<unknown>
+
+
+
+export function useListCardReplacements<TData = Awaited<ReturnType<typeof listCardReplacements>>, TError = ErrorType<unknown>>(
+ params?: ListCardReplacementsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCardReplacements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCardReplacementsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRequestCardReplacementUrl = () => {
+
+
+
+
+  return `/api/card-replacements`
+}
+
+export const requestCardReplacement = async (studentCardReplacementRequest: StudentCardReplacementRequest, options?: Parameters<typeof customFetch>[1]): Promise<CardReplacement> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CardReplacement>(getRequestCardReplacementUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(studentCardReplacementRequest)
+  }
+);}
+
+
+
+
+
+export const getRequestCardReplacementMutationKey = () => ['requestCardReplacement'] as const;
+
+export const getRequestCardReplacementMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestCardReplacement>>, TError,RequestCardReplacementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestCardReplacement>>, TError,RequestCardReplacementMutationVariables, TContext> => {
+
+const mutationKey = getRequestCardReplacementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestCardReplacement>>, RequestCardReplacementMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestCardReplacement(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestCardReplacementMutationResult = NonNullable<Awaited<ReturnType<typeof requestCardReplacement>>>
+    export type RequestCardReplacementMutationBody = BodyType<StudentCardReplacementRequest>
+    export type RequestCardReplacementMutationError = ErrorType<unknown>
+    export type RequestCardReplacementMutationVariables = {data: BodyType<StudentCardReplacementRequest>}
+
+    export const useRequestCardReplacement = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestCardReplacement>>, TError,RequestCardReplacementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestCardReplacement>>,
+        TError,
+        RequestCardReplacementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestCardReplacementMutationOptions(options));
+    }
+
+export const getIssueCardReplacementUrl = (requestId: number,) => {
+
+
+
+
+  return `/api/card-replacements/${requestId}/issue`
+}
+
+export const issueCardReplacement = async (requestId: number,
+    cardReplacementIssuance: CardReplacementIssuance, options?: Parameters<typeof customFetch>[1]): Promise<CardReplacement> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CardReplacement>(getIssueCardReplacementUrl(requestId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(cardReplacementIssuance)
+  }
+);}
+
+
+
+
+
+export const getIssueCardReplacementMutationKey = () => ['issueCardReplacement'] as const;
+
+export const getIssueCardReplacementMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof issueCardReplacement>>, TError,IssueCardReplacementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof issueCardReplacement>>, TError,IssueCardReplacementMutationVariables, TContext> => {
+
+const mutationKey = getIssueCardReplacementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof issueCardReplacement>>, IssueCardReplacementMutationVariables> = (props) => {
+          const {requestId,data} = props ?? {};
+
+          return  issueCardReplacement(requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IssueCardReplacementMutationResult = NonNullable<Awaited<ReturnType<typeof issueCardReplacement>>>
+    export type IssueCardReplacementMutationBody = BodyType<CardReplacementIssuance>
+    export type IssueCardReplacementMutationError = ErrorType<unknown>
+    export type IssueCardReplacementMutationVariables = {requestId: number;data: BodyType<CardReplacementIssuance>}
+
+    export const useIssueCardReplacement = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof issueCardReplacement>>, TError,IssueCardReplacementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof issueCardReplacement>>,
+        TError,
+        IssueCardReplacementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getIssueCardReplacementMutationOptions(options));
+    }
+
+export const getVerifyCardReplacementPaymentUrl = (requestId: number,) => {
+
+
+
+
+  return `/api/card-replacements/${requestId}/verify`
+}
+
+export const verifyCardReplacementPayment = async (requestId: number,
+    cardReplacementVerification: CardReplacementVerification, options?: Parameters<typeof customFetch>[1]): Promise<CardReplacement> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CardReplacement>(getVerifyCardReplacementPaymentUrl(requestId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(cardReplacementVerification)
+  }
+);}
+
+
+
+
+
+export const getVerifyCardReplacementPaymentMutationKey = () => ['verifyCardReplacementPayment'] as const;
+
+export const getVerifyCardReplacementPaymentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyCardReplacementPayment>>, TError,VerifyCardReplacementPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyCardReplacementPayment>>, TError,VerifyCardReplacementPaymentMutationVariables, TContext> => {
+
+const mutationKey = getVerifyCardReplacementPaymentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyCardReplacementPayment>>, VerifyCardReplacementPaymentMutationVariables> = (props) => {
+          const {requestId,data} = props ?? {};
+
+          return  verifyCardReplacementPayment(requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyCardReplacementPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof verifyCardReplacementPayment>>>
+    export type VerifyCardReplacementPaymentMutationBody = BodyType<CardReplacementVerification>
+    export type VerifyCardReplacementPaymentMutationError = ErrorType<unknown>
+    export type VerifyCardReplacementPaymentMutationVariables = {requestId: number;data: BodyType<CardReplacementVerification>}
+
+    export const useVerifyCardReplacementPayment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyCardReplacementPayment>>, TError,VerifyCardReplacementPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyCardReplacementPayment>>,
+        TError,
+        VerifyCardReplacementPaymentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getVerifyCardReplacementPaymentMutationOptions(options));
+    }
 
 export const getGetOwnAttendancePeriodsUrl = () => {
 
@@ -10070,6 +10404,96 @@ export const useFinalizePromotionBatch = <TError = ErrorType<void>,
       return useMutation(getFinalizePromotionBatchMutationOptions(options));
     }
 
+export const getGetOfficialCardPreviewUrl = (cardId: number,
+    params: GetOfficialCardPreviewParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/cards/${cardId}/preview?${stringifiedParams}` : `/api/cards/${cardId}/preview`
+}
+
+/**
+ * Owner or the current School Admin only. No PDF, download, print or card-lifecycle permission is granted.
+ * @summary Read-only raster preview of an existing official card
+ */
+export const getOfficialCardPreview = async (cardId: number,
+    params: GetOfficialCardPreviewParams, options?: Parameters<typeof customFetch>[1]): Promise<GetOfficialCardPreview200> => {
+
+  return customFetch<GetOfficialCardPreview200>(getGetOfficialCardPreviewUrl(cardId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOfficialCardPreviewQueryKey = (cardId: number,
+    params?: GetOfficialCardPreviewParams,) => {
+    return [
+    `/api/cards/${cardId}/preview`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetOfficialCardPreviewQueryOptions = <TData = Awaited<ReturnType<typeof getOfficialCardPreview>>, TError = ErrorType<void>>(cardId: number,
+    params: GetOfficialCardPreviewParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOfficialCardPreview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOfficialCardPreviewQueryKey(cardId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOfficialCardPreview>>> = ({ signal }) => getOfficialCardPreview(cardId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: cardId !== null && cardId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOfficialCardPreview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOfficialCardPreviewQueryResult = NonNullable<Awaited<ReturnType<typeof getOfficialCardPreview>>>
+export type GetOfficialCardPreviewQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read-only raster preview of an existing official card
+ */
+
+export function useGetOfficialCardPreview<TData = Awaited<ReturnType<typeof getOfficialCardPreview>>, TError = ErrorType<void>>(
+ cardId: number,
+    params: GetOfficialCardPreviewParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOfficialCardPreview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOfficialCardPreviewQueryOptions(cardId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getDownloadPrintableNfcCardUrl = (cardId: number,
     params: DownloadPrintableNfcCardParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -10087,8 +10511,8 @@ export const getDownloadPrintableNfcCardUrl = (cardId: number,
 }
 
 /**
- * Read-only download for the existing active Platform Owner card-management permission. Requires the card's school to match schoolId and an eligible current assignment. Teachers may print after assignment, before the separate NFC activation step. Printing never creates or changes a person, card, UID or assignment. Student cards contain permanent identification only, not class, section, session or term.
- * @summary Download the existing assigned Teacher or Student NFC card as a front-and-back CR80 PDF
+ * Read-only download for the existing active Platform Owner card-management permission. Requires the card's school to match schoolId and an eligible current assignment. Teachers and Staff may print after assignment, before the separate NFC activation step. Printing never creates or changes a person, card, UID or assignment. Student cards contain permanent identification only, not class, section, session or term.
+ * @summary Download the existing assigned Teacher, Staff or Student NFC card as a front-and-back CR80 PDF
  */
 export const downloadPrintableNfcCard = async (cardId: number,
     params: DownloadPrintableNfcCardParams, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
@@ -10138,7 +10562,7 @@ export type DownloadPrintableNfcCardQueryError = ErrorType<void>
 
 
 /**
- * @summary Download the existing assigned Teacher or Student NFC card as a front-and-back CR80 PDF
+ * @summary Download the existing assigned Teacher, Staff or Student NFC card as a front-and-back CR80 PDF
  */
 
 export function useDownloadPrintableNfcCard<TData = Awaited<ReturnType<typeof downloadPrintableNfcCard>>, TError = ErrorType<void>>(

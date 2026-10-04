@@ -117,7 +117,7 @@ export function OwnerCardLink({ onDone }: { onDone?: () => void }) {
       )}
       {msg && <p role="status" className="text-sm font-semibold text-emerald-600" data-testid="link-success">{msg}</p>}
       {err && <p role="alert" className="text-sm font-semibold text-[hsl(var(--destructive))]" data-testid="link-error">{err}</p>}
-      {printedAssignment && (type === 'STUDENT' || type === 'TEACHER') && (
+      {printedAssignment && (
         <div className="space-y-1" data-testid="assigned-card-print">
           <PrintableNfcCardDownload
             cardId={printedAssignment.cardId}

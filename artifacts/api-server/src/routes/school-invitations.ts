@@ -1158,8 +1158,8 @@ async function createPartnerSchoolWithAdministrator(input: {
     schoolId = Number(created.rows[0]?.id);
     if (!schoolId) throw new AuthError(503, "School could not be created");
     await client.query(
-      `UPDATE audit_logs SET school_id=$1,
-         metadata=COALESCE(metadata,'{}'::jsonb) || jsonb_build_object('schoolId',$1,'attemptStatus','DISPATCHING')
+      `UPDATE audit_logs SET school_id=$1::integer,
+         metadata=COALESCE(metadata,'{}'::jsonb) || jsonb_build_object('schoolId',$1::integer,'attemptStatus','DISPATCHING')
        WHERE id=$2`,
       [schoolId, attemptAuditId],
     );

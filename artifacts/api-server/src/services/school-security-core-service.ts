@@ -1369,6 +1369,7 @@ export async function markSecurityCardLost(
   schoolId: number,
   cardId: number,
   reason: string,
+  expectedStudentId?: number,
 ) {
   const context = getUserContext(req);
   const client = await pool.connect();
@@ -1381,6 +1382,12 @@ export async function markSecurityCardLost(
     );
     const card = result.rows[0];
     if (!card) throw new AuthError(404, "NFC card not found in this school");
+    if (expectedStudentId !== undefined && Number(card.studentId) !== expectedStudentId) {
+      throw new AuthError(409, "Card identity changed; refresh before reporting it");
+    }
+    if (["replaced","expired"].includes(String(card.status).toLowerCase())) {
+      throw new AuthError(409, "This card is already permanently revoked");
+    }
     if (String(card.status).toLowerCase() === "lost") {
       await client.query("COMMIT");
       return { cardId, schoolId, status: "LOST" as const };

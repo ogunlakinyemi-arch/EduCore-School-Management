@@ -1,0 +1,467 @@
+YEMAIT EDUCORE — FINAL DEVELOPMENT COMPLETION AND VERIFICATION
+
+IMPORTANT:
+Work ONLY in the Development environment.
+
+DO NOT:
+
+- Publish or deploy to Production.
+- Access, modify, migrate, reset, reseed, delete, or truncate Production data.
+- Reset/reseed/delete existing working Development data.
+- Rebuild the entire application.
+- Rerun the previous 53-issue correction request.
+- Replace working modules unnecessarily.
+- Create a new parallel system where an existing module already works.
+
+The latest Development report confirms that Student → Bus linking is now fixed and verified. Preserve that completed work.
+
+Current Development status:
+
+- Student → Bus linking: FIXED AND VERIFIED.
+- 19 routed/database tests passed.
+- 154 focused backend tests passed, 1 skipped.
+- 36 focused frontend tests passed.
+- Signed-in browser checks passed for transport persistence, family views, child switching, reassignment, Driver isolation, capacity/tenant/stop rejection, librarian grant/revoke and card loss.
+- Student/Parent attendance filters completed.
+- Published-source syllabus preview/edit/save completed with provenance.
+- Librarian grant/revoke completed.
+- Operations staff selection completed.
+- Standard asset categories completed.
+- Lost/stolen card reporting completed with immediate revocation, preserved history, linked-parent notification and Owner inbox notification.
+- Driver restricted navigation/portal completed.
+- Migration 0051 must remain intact.
+- No new database migration was required by the latest work.
+- No Production changes have been made.
+
+DO NOT BREAK ANY OF THE ABOVE.
+
+==================================================
+PRIORITY 1 — ₦2,000 LOST/STOLEN CARD REPLACEMENT WORKFLOW
+
+Complete the remaining replacement-card workflow using the EXISTING NFC/card, finance/payment, notification, audit and Owner-management systems.
+
+Required workflow:
+
+1. Student/Parent/School reports a Student NFC card as Lost/Stolen.
+2. Existing card is immediately revoked/disabled.
+3. Existing card history remains permanently preserved.
+4. Linked parent notification remains preserved.
+5. Owner inbox notification remains preserved.
+6. Replacement fee is exactly ₦2,000.
+7. Replacement fee must be separate from normal school fees and separate from the student's regular NFC subscription.
+8. Use the existing payment architecture.
+9. Do not create a second payment system.
+10. Use the existing configured payment provider architecture, currently intended for Flutterwave where payment integration is available.
+11. If live payment credentials are unavailable in Development, implement and test the complete workflow using the existing development/test payment abstraction. Do NOT invent or store fake production credentials.
+12. Payment status must be persisted.
+13. Do not allow the replacement card to be issued as paid unless the payment is actually recorded as successful according to the existing payment architecture.
+14. Owner must be able to see replacement requests and payment status.
+15. Only the Platform Owner can issue/assign the replacement NFC card.
+16. Owner selects the new physical NFC UID/card.
+17. New UID becomes linked to the same student/school identity.
+18. Old UID remains permanently revoked and must NEVER become active again through replacement.
+19. New UID must not already belong to another person or school.
+20. Preserve complete old-card and new-card history.
+21. Replacement must not create duplicate student identities.
+22. Replacement must not alter admission number, Student ID, class, parent relationship, academic data, attendance history or subscription history.
+23. Parent/student views must show the replacement status appropriately.
+24. Audit every important action:
+
+- lost/stolen report
+- old-card revocation
+- replacement request
+- payment
+- payment confirmation
+- Owner issuance
+- new UID assignment
+- old/new card relationship
+
+25. Enforce school/tenant isolation.
+
+IMPORTANT:
+Do not simply add a visual "Replace Card" button. Trace the complete workflow:
+Frontend → API → OpenAPI/generated client → backend validation → service → database → payment state → Owner action → NFC assignment → read queries → UI.
+
+Test:
+
+- unpaid replacement
+- successful replacement payment
+- duplicate payment/retry
+- old UID cannot be reused
+- new UID already assigned
+- cross-school UID
+- wrong student
+- unauthorized School Admin
+- unauthorized Teacher
+- unauthorized Parent
+- authorized Owner
+- replacement after previously revoked/lost card
+- refresh persistence
+- audit history
+
+==================================================
+PRIORITY 2 — OWNER/PARTNER INVITATION END-TO-END VERIFICATION
+
+Complete and verify the existing invitation/authentication flow without rebuilding Clerk authentication.
+
+Required:
+
+Platform Owner:
+
+1. Owner creates/adds school.
+2. School Code is generated automatically.
+3. School Code is unique and permanent.
+4. Owner does not manually enter/edit School Code.
+5. Owner enters School Admin name and email only.
+6. Owner does NOT create or enter a password.
+7. System sends secure invitation.
+8. Recipient receives invitation.
+9. Recipient opens invitation.
+10. Recipient creates their own password.
+11. Recipient activates account.
+12. Recipient signs in.
+13. Correct School Admin role and school tenant are loaded.
+14. Refresh preserves session.
+15. Logout works.
+16. Resend invitation must not create duplicate school/account.
+17. Existing school/code must be reused.
+
+Partner:
+
+1. Partner creates/invites a school through the existing Partner flow.
+2. School Code is automatically generated.
+3. Partner does not create the School Admin password.
+4. Invitation is sent.
+5. Recipient creates their own password.
+6. Recipient activates account.
+7. Recipient enters the correct School Admin portal.
+8. Tenant isolation is enforced.
+9. Partner does not gain unauthorized access to complete school data.
+10. Resending invitation does not duplicate school/account.
+
+Use genuine Development browser sessions where possible.
+
+Do not claim invitation verification is complete merely because API tests pass.
+
+If an actual email provider is unavailable:
+
+- Clearly separate API/contract verification from real inbox delivery.
+- Do not fabricate successful email receipt.
+- Use the existing Development/test invitation mechanism where appropriate.
+
+==================================================
+PRIORITY 3 — OFFICIAL ID CARD VISUAL AND PRINT VERIFICATION
+
+Do NOT rebuild the ID-card system.
+
+Use the existing official ID-card generation system.
+
+Verify with a genuine authorized Platform Owner Development session.
+
+Student card:
+
+- CR80 landscape.
+- Front and back.
+- School logo.
+- School name.
+- Student passport photo.
+- Full student name.
+- Permanent admission/registration number.
+- School registration number where applicable.
+- NFC/card reference where applicable.
+- Secure QR where already supported.
+- Yemait EduCore/company/security information.
+- No class, section, session, term or other changing academic information on the permanent physical student card.
+
+Teacher/Staff card:
+
+- Correct school logo.
+- School name.
+- Passport photo.
+- Full name.
+- Permanent employee number.
+- Correct role/type.
+- NFC/card reference where applicable.
+- Existing security information.
+
+Branding:
+School → Uploaded Logo → Appropriate Primary Brand Colour → ID Card Theme.
+
+Use ONE suitable dominant colour derived from the school's logo.
+Do not randomly choose colours.
+Do not combine unrelated logo colours.
+If no usable logo exists, use the existing consistent safe default.
+
+Verify:
+
+- long student names
+- long employee names
+- long admission numbers
+- missing photo
+- missing logo
+- different school logos
+- different school brand colours
+- QR/card reference
+- front/back alignment
+- margins
+- no clipping
+- no overlap
+- no distorted images
+- no broken images
+- correct CR80 proportions
+- PDF output
+- print output/preview
+
+Multi-school test:
+School A must never receive School B's:
+
+- logo
+- name
+- colour
+- student photo
+- card data
+- card reference
+
+Permissions:
+
+- Platform Owner: generate/download/print/issue/reprint.
+- School Admin: VIEW-ONLY preview.
+- School Admin must NOT generate/download/print/issue/assign/reassign/activate/replace.
+- Teacher must NOT view Student ID cards.
+- Teacher must NOT generate/download/print official Student ID cards.
+- Parent/Student cannot generate/download/print official cards.
+
+If physical printer hardware is unavailable, clearly state that physical printing was not hardware-tested. Do not claim physical print verification was completed.
+
+==================================================
+PRIORITY 4 — FINAL DASHBOARD CONTENT VERIFICATION
+
+Do not rebuild dashboards.
+
+Preserve the existing navigation and permissions.
+
+Verify that each role can easily access its existing functions without a jam-packed dashboard.
+
+Platform Owner:
+
+- Dashboard
+- Schools
+- Students/people oversight
+- Employees/staff
+- Partners
+- Finance
+- NFC/security
+- Notifications/inbox
+- Reports
+- Settings
+
+School Admin:
+
+- Dashboard
+- Students & Parents
+- Employees & Staff
+- Classes & Subjects
+- Academics
+- Attendance
+- Assessments & Results
+- Finance
+- Communication
+- Transport
+- Library
+- Operations
+- School Security/NFC
+- Admissions
+- Reports
+- Settings
+
+Teacher:
+
+- Overview
+- My Classes
+- My Subjects
+- Assignments
+- Assessments/Marking
+- Results
+- Timetable
+- Attendance where authorized
+- Duty
+- Communication
+- Library only if Librarian
+- Payslips
+- Profile
+
+Accountant:
+
+- Dashboard
+- Finance
+- Fees
+- Payments
+- Invoices
+- Receipts
+- Payroll where authorized
+- Financial Reports
+- Relevant Communication
+- Profile
+
+Parent:
+
+- Dashboard
+- My Children
+- Attendance
+- Results
+- Assignments
+- Timetable
+- Fees & Payments
+- Communication
+- Transport
+- School Information
+- Profile
+
+Student:
+
+- Dashboard
+- Profile
+- Attendance
+- Assignments
+- Assessments
+- Results
+- Timetable
+- Transport
+- Communication
+- Relevant Fees/Payments
+
+Driver:
+
+- Dashboard
+- Profile
+- My Bus
+- My Route
+- Assigned Students/Riders
+- Journey
+- Transport Notices
+
+Partner:
+
+- Dashboard
+- My Schools
+- School Registration
+- Referrals
+- Commissions
+- Partner Profile
+
+Verify:
+
+- Desktop navigation.
+- Mobile navigation.
+- Responsive layout.
+- Permission-aware navigation.
+- No unauthorized module appears.
+- Existing functions remain accessible.
+- Teacher + Librarian uses one account with Library added.
+- Driver sees transport only.
+- Accountant does not see unrelated academic administration.
+- Parent sees only linked children.
+- Student sees only own data.
+
+==================================================
+DATABASE AND DATA SAFETY
+
+Before changing anything:
+
+- Inspect the existing schema and relationships.
+- Reuse existing tables and services wherever possible.
+- Do not duplicate existing tables.
+- Do not create duplicate identity/card/payment systems.
+- Do not alter existing working data unnecessarily.
+
+Preserve:
+
+- migration 0051
+- existing NFC history
+- existing student records
+- existing parent relationships
+- existing transport assignments
+- existing finance records
+- existing attendance
+- existing academic records
+- existing Clerk identities
+- existing audit history
+
+If a migration is genuinely required:
+
+1. Explain why.
+2. Make it additive and minimal.
+3. Apply only in Development.
+4. Test migration replay.
+5. Verify existing rows remain intact.
+6. Do not touch Production.
+
+==================================================
+VERIFICATION REQUIREMENTS
+
+Run focused tests for every change.
+
+Run:
+
+- backend tests
+- frontend tests
+- PostgreSQL/database checks
+- OpenAPI contract/generation checks
+- backend typecheck
+- frontend typecheck
+- build
+- relevant authenticated browser tests
+
+Do not report only unit tests.
+
+For workflows requiring a genuine signed-in user, test the actual browser journey where possible.
+
+Do not claim:
+
+- real email delivery unless an actual inbox received it
+- real payment unless a real/test payment confirmation exists
+- physical printing unless physical output was actually tested
+- genuine Owner browser verification unless a genuine Owner session was used
+
+==================================================
+FINAL REPORT
+
+At the end, provide a concise report containing:
+
+1. Completed item.
+2. Root cause of each remaining issue.
+3. Exact fix applied.
+4. Files changed.
+5. Database tables changed.
+6. Migration number, if any.
+7. Backend test count.
+8. Frontend test count.
+9. PostgreSQL test count.
+10. Typecheck result.
+11. Build result.
+12. Browser verification result.
+13. Genuine Owner/Partner verification result.
+14. Payment verification result.
+15. Email/invitation verification result.
+16. ID-card visual/print verification result.
+17. Dashboard verification result.
+18. Any remaining limitations.
+19. Confirmation that Production was NOT modified.
+20. Confirmation that no existing working data was reset, deleted, truncated or reseeded.
+
+IMPORTANT FINAL RULE:
+
+Do not stop after fixing only the replacement-card workflow.
+
+Complete the four priorities in order:
+
+1. ₦2,000 replacement-card/new-UID workflow.
+2. Owner/Partner invitation verification.
+3. Owner ID-card visual/print verification.
+4. Dashboard verification.
+
+Preserve all previously completed functionality, especially the verified Student → Bus linking.
+
+Do not Publish.
+Do not modify Production.
+Do not reset/reseed/delete existing data.

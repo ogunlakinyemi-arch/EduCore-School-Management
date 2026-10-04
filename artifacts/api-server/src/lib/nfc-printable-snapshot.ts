@@ -97,8 +97,9 @@ export function resolvePrintableIdentity(snapshot: PrintableSnapshot) {
       !snapshot.employeeBindingStatus) {
     throw new AuthError(409, "The NFC card has no single current person assignment");
   }
-  if (snapshot.employeeType.trim().toUpperCase() !== "TEACHER") {
-    throw new PrintableUnsupportedIdentityError("Printable NFC cards support Teachers and Students only");
+  const employeeType = snapshot.employeeType.trim().toUpperCase();
+  if (!["TEACHER","STAFF"].includes(employeeType)) {
+    throw new PrintableUnsupportedIdentityError("Printable NFC cards support Teachers, Staff and Students only");
   }
   const bindingStatus = snapshot.employeeBindingStatus.toUpperCase();
   const cardStatus = snapshot.cardStatus.toLowerCase();
@@ -109,10 +110,10 @@ export function resolvePrintableIdentity(snapshot: PrintableSnapshot) {
     throw new AuthError(409, "Only an active, currently assigned NFC card can be printed");
   }
   if (!snapshot.employeeName || !snapshot.employeeNo) {
-    throw new AuthError(409, "The current Teacher assignment is missing required identity data");
+    throw new AuthError(409, "The current employee assignment is missing required identity data");
   }
   return {
-    personType: "Teacher" as const,
+    personType: (employeeType === "TEACHER" ? "Teacher" : "Staff") as "Teacher" | "Staff",
     personName: snapshot.employeeName,
     permanentNumber: snapshot.employeeNo,
     photoPath: snapshot.employeePhoto,

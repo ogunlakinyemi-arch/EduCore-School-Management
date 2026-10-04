@@ -330,6 +330,13 @@
       "when": 1791072000000,
       "tag": "0051_parent_profile_preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1791097200000,
+      "tag": "0052_student_nfc_replacement_requests",
+      "breakpoints": true
     }
   ]
 }

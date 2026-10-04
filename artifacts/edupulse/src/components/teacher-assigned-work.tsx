@@ -13,8 +13,8 @@ export function TeacherAssignedWork({ schoolId }: { schoolId: number }) {
   const subjects = [...new Set(rows.map(r => r.subjectName).filter((x): x is string => !!x))];
   return (
     <section className="panel mt-8 p-6 md:p-8" aria-label="My assigned classes and subjects" data-testid="teacher-assigned-work">
-      <div className="mb-5 flex items-start justify-between">
-        <div><div className="eyebrow">Your teaching</div><h2 className="display-font mt-2 text-2xl font-bold">Assigned classes and subjects</h2></div>
+      <div className="mb-5 flex flex-col items-start justify-between gap-3 sm:flex-row">
+        <div className="min-w-0"><div className="eyebrow">Your teaching</div><h2 className="display-font mt-2 text-2xl font-bold">Assigned classes and subjects</h2></div>
         <Link href="/teacher-assignments" className="text-sm font-bold text-[hsl(var(--primary))] hover:underline" data-testid="link-my-assignments">All assignments</Link>
       </div>
       {q.isLoading ? <div className="h-16 animate-pulse rounded-xl bg-[hsl(var(--muted))]" />

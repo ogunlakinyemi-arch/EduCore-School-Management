@@ -34,6 +34,74 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /card-replacements:
+    get:
+      operationId: listCardReplacements
+      tags: [cards]
+      parameters:
+        - in: query
+          name: schoolId
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Owner, school-admin or own/linked-child replacement records
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardReplacementDirectory' }
+    post:
+      operationId: requestCardReplacement
+      tags: [cards]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StudentCardReplacementRequest' }
+      responses:
+        '200':
+          description: Persisted replacement request and separate NGN 2000 invoice
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardReplacement' }
+  /card-replacements/{requestId}/issue:
+    post:
+      operationId: issueCardReplacement
+      tags: [cards]
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CardReplacementIssuance' }
+      responses:
+        '200':
+          description: Owner-issued prepared UID; verified invoice payment required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardReplacement' }
+  /card-replacements/{requestId}/verify:
+    post:
+      operationId: verifyCardReplacementPayment
+      tags: [cards]
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CardReplacementVerification' }
+      responses:
+        '200':
+          description: Independently verified using existing Flutterwave adapter and settlement
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardReplacement' }
   /student/attendance-periods:
     get:
       operationId: getOwnAttendancePeriods
@@ -275,15 +343,46 @@ paths:
     $ref: "./promotion-expansion.yaml#/paths/~1school~1academics~1promotions~1batches~1{batchId}~1students~1{studentId}"
   /school/academics/promotions/batches/{batchId}/finalize:
     $ref: "./promotion-expansion.yaml#/paths/~1school~1academics~1promotions~1batches~1{batchId}~1finalize"
+  /cards/{cardId}/preview:
+    get:
+      operationId: getOfficialCardPreview
+      summary: Read-only raster preview of an existing official card
+      description: Owner or the current School Admin only. No PDF, download, print or card-lifecycle permission is granted.
+      parameters:
+        - in: path
+          name: cardId
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 2147483647 }
+        - in: query
+          name: schoolId
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 2147483647 }
+      responses:
+        "200":
+          description: Front and back PNG data images from the existing official renderer
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [frontImage, backImage]
+                properties:
+                  frontImage: { type: string }
+                  backImage: { type: string }
+        "403":
+          description: Role or school does not permit preview
+        "404":
+          description: No current card identity in this school
+        "409":
+          description: Card is unassigned or revoked
   /cards/{cardId}/printable:
     get:
       operationId: downloadPrintableNfcCard
       tags: [cards]
-      summary: Download the existing assigned Teacher or Student NFC card as a front-and-back CR80 PDF
+      summary: Download the existing assigned Teacher, Staff or Student NFC card as a front-and-back CR80 PDF
       description: >
         Read-only download for the existing active Platform Owner card-management permission.
         Requires the card's school to match schoolId and an eligible current assignment.
-        Teachers may print after assignment, before the separate NFC activation step.
+        Teachers and Staff may print after assignment, before the separate NFC activation step.
         Printing never creates or changes a person, card, UID or assignment. Student cards
         contain permanent identification only, not class, section, session or term.
       parameters:
@@ -5459,6 +5558,56 @@ components:
       required: true
       schema: { type: integer, minimum: 1 }
   schemas:
+    StudentCardReplacementRequest:
+      type: object
+      required: [cardId, reason]
+      properties:
+        cardId: { type: integer, minimum: 1 }
+        reason: { type: string, minLength: 3, maxLength: 500 }
+    CardReplacementIssuance:
+      type: object
+      required: [uid]
+      properties:
+        uid: { type: string, minLength: 1, maxLength: 160 }
+    CardReplacementVerification:
+      type: object
+      required: [providerTransactionId]
+      properties:
+        providerTransactionId: { type: string, pattern: '^[0-9]+$' }
+    CardReplacement:
+      type: object
+      required: [id, schoolId, studentId, studentName, oldCardId, invoiceId, status, paymentStatus, amountMinor, newCardId, createdAt]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        studentId: { type: integer }
+        studentName: { type: string }
+        oldCardId: { type: integer }
+        invoiceId: { type: integer }
+        status: { type: string, enum: [REQUESTED, ISSUED] }
+        paymentStatus: { type: string, enum: [UNPAID, PAID] }
+        amountMinor: { type: integer, const: 200000 }
+        newCardId: { type: [integer, 'null'] }
+        createdAt: { type: string }
+    ReplacementEligibleCard:
+      type: object
+      required: [id, schoolId, studentId, studentName, status]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        studentId: { type: integer }
+        studentName: { type: string }
+        status: { type: string }
+    CardReplacementDirectory:
+      type: object
+      required: [requests, cards]
+      properties:
+        requests:
+          type: array
+          items: { $ref: '#/components/schemas/CardReplacement' }
+        cards:
+          type: array
+          items: { $ref: '#/components/schemas/ReplacementEligibleCard' }
     SecurityAccess:
       $ref: "./school-security-core.yaml#/components/schemas/SecurityAccess"
     EligibleSecurityDevice:

@@ -43,6 +43,7 @@ import { PeopleImportsPage } from '@/pages/people-imports';
 import { SubscriptionsPage } from '@/pages/subscriptions';
 import { SubscriptionEnforcementPage } from '@/pages/subscription-enforcement';
 import { CardsPage } from '@/pages/cards';
+import { CardReplacementsPage } from '@/pages/card-replacements';
 import { SchoolBrandingPage } from '@/pages/school-branding';
 import { AcademicCalendarPage } from '@/pages/academic-calendar';
 import { TeacherAssignmentsPage } from '@/pages/teacher-assignments';
@@ -225,6 +226,7 @@ function ProtectedRoutes() {
   if (isOnlyParent) {
     return <TenantProvider><Switch>
       <Route path="/my-care"><Shell><FamilyCarePage /></Shell></Route>
+      <Route path="/card-replacements"><Shell><CardReplacementsPage /></Shell></Route>
       <Route path="/my-transport"><Shell><FamilyTransportPage /></Shell></Route>
       <Route path="/academic-calendar"><Shell><AcademicCalendarPage /></Shell></Route>
       <Route path="/parent/communication"><ParentPortal /></Route>
@@ -373,6 +375,9 @@ function ProtectedRoutes() {
           </Route>
           <Route path="/cards">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'STAFF']} ownerCanView><CardsPage /></RoleGuard>
+          </Route>
+          <Route path="/card-replacements">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'PARENT', 'STUDENT']} ownerCanView><CardReplacementsPage /></RoleGuard>
           </Route>
           <Route path="/activation">
             <RoleGuard allowedRoles={['DEVICE_ACTIVATION_OFFICER']} ownerCanView><EidActivationPage /></RoleGuard>

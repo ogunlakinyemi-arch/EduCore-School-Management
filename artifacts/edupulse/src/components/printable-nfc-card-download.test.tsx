@@ -116,4 +116,13 @@ describe('PrintableNfcCardDownload', () => {
     expect(useRegisterCard).not.toHaveBeenCalled();
     expect(useAssignEmployeeNfcCard).not.toHaveBeenCalled();
   });
+
+  it('downloads Staff through the same read-only official-card endpoint', async () => {
+    downloadPrintableNfcCard.mockResolvedValue(new Blob(['%PDF-staff'], { type: 'application/pdf' }));
+    await renderDownload({cardId:89,schoolId:9,ownerAuthorized:true,cardType:'STAFF',cardStatus:'LOCKED'});
+    await act(async()=>host.querySelector('button')?.click());
+    expect(downloadPrintableNfcCard).toHaveBeenCalledWith(89,{schoolId:9},{responseType:'blob'});
+    expect(useRegisterCard).not.toHaveBeenCalled();
+    expect(useAssignEmployeeNfcCard).not.toHaveBeenCalled();
+  });
 });

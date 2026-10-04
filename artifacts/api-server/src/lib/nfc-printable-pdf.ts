@@ -3,11 +3,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import type { PrintableImage } from "./nfc-printable-images";
+import { printableCardBrand } from "./nfc-card-brand";
 
 const PAGE_WIDTH = 85.6 * 72 / 25.4;
 const PAGE_HEIGHT = 53.98 * 72 / 25.4;
 const INK = "0.06 0.16 0.27";
-const TEAL = "0.00 0.54 0.53";
 const WHITE = "1 1 1";
 const FONT_URL = new URL("../assets/fonts/DejaVuSans.ttf", import.meta.url);
 
@@ -146,7 +146,7 @@ export type PrintableCardPdfData = {
   schoolState: string | null;
   schoolPhone: string | null;
   schoolEmail: string | null;
-  personType: "Student" | "Teacher";
+  personType: "Student" | "Teacher" | "Staff";
   personName: string;
   permanentNumber: string;
   schoolLogo?: PrintableImage | null;
@@ -216,6 +216,7 @@ function frontContent(
   images: ImageObject[],
   font: EmbeddedFont,
   used: Map<number, { cid: number; codePoint: number; glyphId: number }>,
+  TEAL: string,
 ) {
   const label = (value: string, x: number, y: number, size: number, color = INK) =>
     text(value, x, y, size, color, font, used);
@@ -254,6 +255,7 @@ function backContent(
   data: PrintableCardPdfData,
   font: EmbeddedFont,
   used: Map<number, { cid: number; codePoint: number; glyphId: number }>,
+  TEAL: string,
 ) {
   const label = (value: string, x: number, y: number, size: number, color = INK) =>
     text(value, x, y, size, color, font, used);
@@ -291,6 +293,7 @@ function binaryImageObject(image: PrintableImage) {
 /** Two vector-print pages at exact landscape CR80 dimensions; no PDF metadata. */
 export async function buildNfcPrintablePdf(data: PrintableCardPdfData): Promise<Buffer> {
   const font = await loadEmbeddedFont();
+  const brand = await printableCardBrand(data.schoolLogo);
   const usedCharacters = new Map<number, { cid: number; codePoint: number; glyphId: number }>();
   const images: ImageObject[] = [];
   if (data.schoolLogo) images.push({ name: "SchoolLogo", image: data.schoolLogo, objectId: 0 });
@@ -300,8 +303,8 @@ export async function buildNfcPrintablePdf(data: PrintableCardPdfData): Promise<
   const frontResources = images.length
     ? ` /XObject << ${images.map((image) => `/${image.name} ${image.objectId} 0 R`).join(" ")} >>`
     : "";
-  const front = frontContent(data, images, font, usedCharacters);
-  const back = backContent(data, font, usedCharacters);
+  const front = frontContent(data, images, font, usedCharacters, brand);
+  const back = backContent(data, font, usedCharacters, brand);
   const backContentId = 7 + images.length;
   const fontFileId = backContentId + 1;
   const fontDescriptorId = fontFileId + 1;

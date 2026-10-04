@@ -36,3 +36,4 @@ export * from "./student-care-expansion";
 export * from "./promotion-expansion";
 export * from "./school-security-core";
 export * from "./school-security-operations";
+export * from "./student-nfc-replacement";

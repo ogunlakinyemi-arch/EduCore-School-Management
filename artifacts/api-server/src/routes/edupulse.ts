@@ -72,7 +72,7 @@ const cardStatuses = new Set([
   "active", "inactive", "lost", "blocked", "replaced", "expired", "suspended",
   "locked", "unassigned",
 ]);
-const terminalCardStatuses = new Set(["replaced", "expired"]);
+const terminalCardStatuses = new Set(["replaced", "expired", "lost"]);
 
 const schoolFields = `
   s.id, s.code, s.name, s.city, s.state, s.registration_number AS "registrationNumber",
@@ -1501,6 +1501,8 @@ router.post("/cards", async (req, res) => {
       throw new AuthError(409, "NFC card UID is already registered");
     }
     if (studentId) {
+      const lost = await client.query(`SELECT id FROM nfc_cards WHERE student_id=$1 AND school_id=$2 AND status='lost' LIMIT 1`, [studentId,schoolId]);
+      if (lost.rows[0]) throw new AuthError(409, "Use the paid replacement request to issue a new card for a lost UID");
       const student = await client.query(`SELECT id FROM students WHERE id = $1 AND school_id = $2`, [studentId, schoolId]);
       if (!student.rows[0]) {
         await client.query("ROLLBACK");
@@ -1686,6 +1688,9 @@ router.patch("/cards/:cardId/reassign", async (req, res) => {
     if (duplicate.rows[0]) {
       throw new AuthError(409, "Student already has an active NFC card");
     }
+    const lost = await client.query(`SELECT id FROM nfc_cards WHERE student_id=$1 AND school_id=$2 AND status='lost' LIMIT 1`,
+      [studentId,card.rows[0].schoolId]);
+    if (lost.rows[0]) throw new AuthError(409, "Use the paid replacement request to assign the new physical UID");
 
     const updated = await client.query(
       `UPDATE nfc_cards SET student_id = $1

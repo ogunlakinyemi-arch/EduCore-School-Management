@@ -19,6 +19,8 @@ import { NotificationSettings } from '@/pages/notification-settings';
 import { Loans } from '@/pages/library';
 import { ReportingPage } from '@/pages/reporting';
 import { cx } from 'class-variance-authority';
+import { CardReplacementsPage } from './card-replacements';
+import { Shell } from '@/components/shared';
 
 function Loading() {
   return <div className="mx-auto max-w-6xl space-y-5 p-5 md:p-8"><div className="skeleton h-11 w-64 rounded-xl" /><div className="grid gap-4 md:grid-cols-2"><div className="skeleton h-52 rounded-[18px]" /><div className="skeleton h-52 rounded-[18px]" /></div></div>;
@@ -46,6 +48,7 @@ function PortalHeader() {
         <Link href="/my-transport" data-testid="link-parent-transport" className="whitespace-nowrap hover:underline">My transport</Link>
         <Link href="/academic-calendar" data-testid="link-parent-academic-calendar" className="whitespace-nowrap hover:underline">Academic calendar</Link>
         <Link href="/parent/timetable" data-testid="link-parent-timetable" className="whitespace-nowrap hover:underline">Timetables</Link>
+        <Link href="/card-replacements" data-testid="link-parent-card-replacements" className="whitespace-nowrap hover:underline">Card replacements</Link>
       </nav>
     </header>
   );
@@ -119,6 +122,7 @@ function ChildProfile({ studentId }: { studentId: number }) {
       
       <div className="space-y-8">
         <Link href={`/parent/fees/${studentId}`} className="panel flex items-center gap-4 p-5 transition-colors hover:bg-[hsl(var(--secondary))]" data-testid={`link-child-fees-${studentId}`}><span className="grid h-11 w-11 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><ReceiptText size={21} /></span><span className="flex-1"><strong className="block">Fees & payments</strong><span className="text-xs text-[hsl(var(--muted-foreground))]">Invoices, balances and bank transfer submissions</span></span><ChevronRight size={17} /></Link>
+        <Link href="/card-replacements" className="panel flex items-center gap-4 p-5 transition-colors hover:bg-[hsl(var(--secondary))]" data-testid={`link-child-card-replacements-${studentId}`}><span className="grid h-11 w-11 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><ShieldCheck size={21} /></span><span className="flex-1"><strong className="block">Card replacement</strong><span className="text-xs text-[hsl(var(--muted-foreground))]">Request and pay for a lost NFC card replacement</span></span><ChevronRight size={17} /></Link>
         <Link href={`/parent/library/${studentId}`} className="panel flex items-center gap-4 p-5 transition-colors hover:bg-[hsl(var(--secondary))]" data-testid={`link-child-library-${studentId}`}><span className="grid h-11 w-11 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><BookOpen size={21} /></span><span className="flex-1"><strong className="block">Library loans</strong><span className="text-xs text-[hsl(var(--muted-foreground))]">Books, due dates and borrowing history</span></span><ChevronRight size={17} /></Link>
         <div className="panel overflow-hidden shadow-sm">
           <ChildAttendance key={studentId} studentId={studentId} schoolId={child.schoolId} />
@@ -408,5 +412,5 @@ function ChildLibraryRoute() {
 }
 
 export default function ParentPortal() {
-  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><div className="mx-auto max-w-6xl px-5 pt-5 md:px-8"><SubscriptionAccessBanner audience="parent" /></div><Switch><Route path="/" component={ParentDashboard} /><Route path="/parent" component={ParentDashboard} /><Route path="/parent/" component={ParentDashboard} /><Route path="/parent/dashboard" component={ParentDashboard} /><Route path="/parent/timetable" component={ParentTimetables} /><Route path="/timetable" component={ParentTimetables} /><Route path="/parent/timetable/:studentId" component={ChildTimetableRoute} /><Route path="/reporting"><main className="mx-auto max-w-6xl p-5 md:p-8"><ReportingPage audience="parent" /></main></Route><Route path="/parent/communication"><ParentCommunicationCentre /></Route><Route path="/inbox"><CommunicationInbox standalone /></Route><Route path="/notification-settings"><NotificationSettings standalone /></Route><Route path="/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route path="/parent/library/:studentId" component={ChildLibraryRoute} /><Route component={NotFound} /></Switch></div>;
+  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><div className="mx-auto max-w-6xl px-5 pt-5 md:px-8"><SubscriptionAccessBanner audience="parent" /></div><Switch><Route path="/" component={ParentDashboard} /><Route path="/parent" component={ParentDashboard} /><Route path="/parent/" component={ParentDashboard} /><Route path="/parent/dashboard" component={ParentDashboard} /><Route path="/parent/timetable" component={ParentTimetables} /><Route path="/timetable" component={ParentTimetables} /><Route path="/parent/timetable/:studentId" component={ChildTimetableRoute} /><Route path="/reporting"><main className="mx-auto max-w-6xl p-5 md:p-8"><ReportingPage audience="parent" /></main></Route><Route path="/parent/communication"><ParentCommunicationCentre /></Route><Route path="/inbox"><CommunicationInbox standalone /></Route><Route path="/notification-settings"><NotificationSettings standalone /></Route><Route path="/card-replacements"><Shell><CardReplacementsPage /></Shell></Route><Route path="/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route path="/parent/library/:studentId" component={ChildLibraryRoute} /><Route component={NotFound} /></Switch></div>;
 }

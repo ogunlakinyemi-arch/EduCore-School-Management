@@ -38,6 +38,9 @@ vi.mock("../lib/nfc-printable-images", () => ({
 
 import printableRouter from "./nfc-printable";
 import { buildNfcPrintablePdfSample } from "../lib/nfc-printable-pdf";
+vi.mock("../lib/nfc-card-preview", () => ({
+  rasterOfficialCard: async () => ({frontImage:"data:image/png;base64,Zm9udA==",backImage:"data:image/png;base64,YmFjaw=="}),
+}));
 
 function unicodeMapped(pdf: string, value: string) {
   return Array.from(new Set(Array.from(value))).every((character) => {
@@ -226,20 +229,44 @@ describe("GET /cards/:cardId/printable", () => {
     expect((await fetch(`${baseUrl}/cards/41/printable?schoolId=9`)).status).toBe(409);
   });
 
-  it("rejects active non-Teacher employee bindings with 422", async () => {
+  it("rejects unsupported Driver employee bindings with 422", async () => {
     state.snapshot = {
       ...studentCard(),
       studentId: null,
       studentStatus: null,
       employeeBindingCount: 1,
       employeeId: 202,
-      employeeType: "STAFF",
+      employeeType: "DRIVER",
       employeeStatus: "ACTIVE",
-      employeeName: "Unsupported Staff",
+      employeeName: "Unsupported Driver",
       employeeNo: "EMP-202",
       employeeBindingStatus: "ACTIVE",
     };
     expect((await fetch(`${baseUrl}/cards/41/printable?schoolId=9`)).status).toBe(422);
+  });
+
+  it("prints an eligible Staff assignment with its permanent employee identity", async () => {
+    state.snapshot = { ...studentCard(),studentId:null,studentStatus:null,
+      employeeBindingCount:1,employeeId:202,employeeType:"STAFF",employeeStatus:"ACTIVE",
+      employeeName:"QA Operations Staff",employeeNo:"EMP-202",employeeBindingStatus:"ACTIVE" };
+    const response=await fetch(`${baseUrl}/cards/41/printable?schoolId=9`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/pdf");
+    expect(unicodeMapped(await response.text(),"QA Operations Staff")).toBe(true);
+  });
+
+  it("allows only scoped School Admin raster viewing, not printable PDF", async () => {
+    state.roles=[{role:"SCHOOL_ADMIN",schoolId:9,status:"ACTIVE"}];
+    const preview=await fetch(`${baseUrl}/cards/41/preview?schoolId=9`);
+    expect(preview.status).toBe(200);
+    expect((await preview.json() as {frontImage:string}).frontImage).toMatch(/^data:image\/png/);
+    expect((await fetch(`${baseUrl}/cards/41/printable?schoolId=9`)).status).toBe(403);
+    expect((await fetch(`${baseUrl}/cards/41/preview?schoolId=10`)).status).toBe(403);
+  });
+
+  it.each(["TEACHER","PARENT","STUDENT"])("denies %s official-card preview",async role=>{
+    state.roles=[{role,schoolId:9,status:"ACTIVE"}];
+    expect((await fetch(`${baseUrl}/cards/41/preview?schoolId=9`)).status).toBe(403);
   });
 
   it.each([

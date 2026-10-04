@@ -95,8 +95,15 @@ function PortalHeader() {
           <UserButton />
         </div>
       </div>
-      {isSetup && <nav aria-label="Partner navigation" className="mx-auto flex max-w-6xl items-center gap-5 overflow-x-auto border-t border-[hsl(var(--border)/.6)] px-5 py-2 text-xs font-bold text-[hsl(var(--primary))] md:hidden">
+      {isSetup && <nav aria-label="Partner navigation" className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-3 border-t border-[hsl(var(--border)/.6)] px-5 py-3 text-xs font-bold text-[hsl(var(--primary))] md:hidden">
+        <Link href="/partner" data-testid="link-partner-dashboard-mobile" className="hover:underline">Dashboard</Link>
+        <Link href="/partner/schools" data-testid="link-partner-schools-mobile" className="hover:underline">Schools</Link>
+        {isOwner && <Link href="/partner/staff" data-testid="link-partner-staff-mobile" className="hover:underline">Staff</Link>}
+        {canViewFinance && <Link href="/partner/commissions" data-testid="link-partner-commissions-mobile" className="hover:underline">Commissions</Link>}
+        {canViewFinance && <Link href="/partner/payouts" data-testid="link-partner-payouts-mobile" className="hover:underline">Payouts</Link>}
         <Link href="/partner/staff-nfc" data-testid="link-partner-staff-nfc-mobile" className="whitespace-nowrap hover:underline">Staff NFC Commissions</Link>
+        {isOwner && <Link href="/partner/profile" data-testid="link-partner-settings-mobile" className="hover:underline">Settings</Link>}
+        <Link href="/notification-settings" data-testid="link-partner-preferences-mobile" className="hover:underline">Preferences</Link>
       </nav>}
     </header>
   );
