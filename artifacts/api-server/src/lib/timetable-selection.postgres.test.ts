@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pool } from "@workspace/db";
 import { timetableSelectionDiagnosticsSql } from "./timetable-selection-error";
+import { timetableSelectionSql } from "./timetable-selection-sql";
 
 // Opt-in, read-only Development evidence. Never creates or cleans up fixtures.
 const enabled = process.env.TIMETABLE_QA_READONLY === "1";
@@ -11,7 +12,7 @@ describe.skipIf(!enabled)("timetable native Development assignment predicates", 
   const selected: unknown[] = [1496,386,27,580,11,205,"B"];
   const foreign: Record<string, number> = {};
   const source=readFileSync(new URL("../routes/academic-timetable.ts",import.meta.url),"utf8");
-  const predicates=[...source.matchAll(/const valid = await client\.query\(\s*`([^`]+)`/g)].map(match=>match[1]);
+   const predicates=[...source.matchAll(/const valid = await client\.query\(\s*timetableSelectionSql/g)].map(()=>timetableSelectionSql);
   beforeAll(async()=>{
     client=await pool.connect();
     await client.query("BEGIN READ ONLY");
@@ -28,7 +29,7 @@ describe.skipIf(!enabled)("timetable native Development assignment predicates", 
     if(client){await client.query("ROLLBACK");client.release();}
     await pool.end();
   });
-  it("executes both unchanged create and edit predicates for the valid QA selection",async()=>{
+  it("executes both create and edit predicates for the valid QA selection",async()=>{
     expect(predicates).toHaveLength(2);
     for(const sql of predicates)expect((await client.query(sql,selected)).rowCount).toBe(1);
     const diagnostics=(await client.query(timetableSelectionDiagnosticsSql,selected)).rows[0];

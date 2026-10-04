@@ -1,6 +1,7 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { pool } from "@workspace/db";
 import { timetableSelectionError } from "../lib/timetable-selection-error";
+import { timetableSelectionSql } from "../lib/timetable-selection-sql";
 import {
   assertRoles,
   assertSchoolAccess,
@@ -254,33 +255,7 @@ router.post("/academic/timetable", asyncRoute(async (req, res) => {
     await client.query("BEGIN");
     await client.query(`SELECT pg_advisory_xact_lock($1::int, $2::int)`, [values.schoolId, weekdays.indexOf(values.day) + 1]);
     const valid = await client.query(
-      `SELECT c.id
-         FROM school_classes c
-         JOIN academic_sessions ac ON ac.id=$2 AND ac.school_id=c.school_id
-         LEFT JOIN academic_terms t ON t.id=$3 AND t.school_id=c.school_id AND t.academic_session_id=ac.id
-         JOIN subjects sub ON sub.id=$5 AND sub.school_id=c.school_id
-         JOIN employees e ON e.id=$6 AND e.school_id=c.school_id
-        WHERE c.id=$4 AND c.school_id=$1
-        AND t.id IS NOT NULL
-          AND EXISTS (
-            SELECT 1 FROM class_subjects cs
-             WHERE cs.school_id=c.school_id AND cs.school_class_id=c.id
-               AND cs.subject_id=sub.id AND cs.academic_session_id=ac.id
-               AND (cs.academic_term_id IS NULL OR cs.academic_term_id IS NOT DISTINCT FROM $3)
-               AND (cs.section IS NULL OR cs.section='' OR cs.section=$7)
-               AND (cs.employee_id IS NULL OR cs.employee_id=e.id)
-               AND UPPER(cs.status)='ACTIVE'
-          )
-          AND EXISTS (
-            SELECT 1 FROM teacher_class_assignments ta
-             WHERE ta.school_id=c.school_id AND ta.employee_id=e.id
-               AND ta.school_class_id=c.id AND ta.academic_session_id=ac.id
-               AND (ta.section='' OR ta.section=$7)
-               AND (ta.assignment_type<>'SUBJECT_TEACHER' OR ta.subject_id=sub.id)
-               AND ta.status='ACTIVE'
-               AND ta.start_date <= COALESCE(ac.end_date, CURRENT_DATE)
-               AND (ta.end_date IS NULL OR ta.end_date >= ac.start_date)
-          )`,
+      timetableSelectionSql,
       [values.schoolId, values.sessionId, values.termId, values.classId, values.subjectId, values.teacherId, values.section],
     );
     if (!valid.rows[0]) throw await timetableSelectionError(client, values);
@@ -324,22 +299,7 @@ router.patch("/academic/timetable/:entryId", asyncRoute(async (req, res) => {
     const values = parseValues({ ...req.body, schoolId }, previous);
     await client.query(`SELECT pg_advisory_xact_lock($1::int, $2::int)`, [values.schoolId, weekdays.indexOf(values.day) + 1]);
     const valid = await client.query(
-      `SELECT c.id FROM school_classes c
-        JOIN academic_sessions ac ON ac.id=$2 AND ac.school_id=c.school_id
-        LEFT JOIN academic_terms t ON t.id=$3 AND t.school_id=c.school_id AND t.academic_session_id=ac.id
-        JOIN subjects sub ON sub.id=$5 AND sub.school_id=c.school_id
-        JOIN employees e ON e.id=$6 AND e.school_id=c.school_id
-       WHERE c.id=$4 AND c.school_id=$1 AND t.id IS NOT NULL
-         AND EXISTS (SELECT 1 FROM class_subjects cs WHERE cs.school_id=c.school_id AND cs.school_class_id=c.id
-           AND cs.subject_id=sub.id AND cs.academic_session_id=ac.id
-           AND (cs.academic_term_id IS NULL OR cs.academic_term_id IS NOT DISTINCT FROM $3)
-           AND (cs.section IS NULL OR cs.section='' OR cs.section=$7)
-           AND (cs.employee_id IS NULL OR cs.employee_id=e.id) AND UPPER(cs.status)='ACTIVE')
-         AND EXISTS (SELECT 1 FROM teacher_class_assignments ta WHERE ta.school_id=c.school_id
-           AND ta.employee_id=e.id AND ta.school_class_id=c.id AND ta.academic_session_id=ac.id
-           AND (ta.section='' OR ta.section=$7) AND (ta.assignment_type<>'SUBJECT_TEACHER' OR ta.subject_id=sub.id)
-           AND ta.status='ACTIVE' AND ta.start_date <= COALESCE(ac.end_date,CURRENT_DATE)
-           AND (ta.end_date IS NULL OR ta.end_date >= ac.start_date))`,
+      timetableSelectionSql,
       [values.schoolId, values.sessionId, values.termId, values.classId, values.subjectId, values.teacherId, values.section],
     );
     if (!valid.rows[0]) throw await timetableSelectionError(client, values);

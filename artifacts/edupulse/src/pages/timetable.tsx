@@ -34,6 +34,11 @@ function useAcademicContext(schoolId: number, sessionId: number | null = 0, term
   const teachers = useListEmployees(params, { query: { ...freshChoices, enabled: !!schoolId, queryKey: getListEmployeesQueryKey(params) } });
 
   return { activeSession, activeTerm, sessions: sessions.data ?? [], terms: activeSession ? terms.data ?? [] : [], error: sessions.error || terms.error || classes.error || subjects.error || teachers.error, classes: classes.data ?? [], subjects: subjects.data ?? [], teachers: teachers.data ?? [], isLoading: sessions.isLoading || terms.isLoading || classes.isLoading || subjects.isLoading || teachers.isLoading,
+    coreLoading: sessions.isLoading || terms.isLoading || classes.isLoading,
+    coreError: sessions.error || terms.error || classes.error,
+    subjectLoading: !!subjects.isFetching, subjectError: subjects.error,
+    teacherLoading: !!teachers.isFetching, teacherError: teachers.error,
+    refetchSubjects: () => subjects.refetch(), refetchTeachers: () => teachers.refetch(),
     refetch: () => Promise.all([sessions.refetch(), classes.refetch(), subjects.refetch(), teachers.refetch(), ...(activeSession ? [terms.refetch()] : [])]),
   };
 }
@@ -95,7 +100,7 @@ function initialTimetableFilter(schoolId: number, name: 'sessionId' | 'termId' |
 export function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; canEdit: boolean }) {
   const [sessionId,setSessionId] = useState<number | null>(() => initialTimetableFilter(schoolId, 'sessionId') ?? 0);
   const [termId,setTermId] = useState<number | null>(() => initialTimetableFilter(schoolId, 'termId') ?? 0);
-  const { activeSession, activeTerm, sessions, terms, error, classes, subjects, teachers, isLoading } = useAcademicContext(schoolId,sessionId,termId);
+  const { activeSession, activeTerm, sessions, terms, coreError: error, classes, subjects, teachers, coreLoading: isLoading } = useAcademicContext(schoolId,sessionId,termId);
   const assignmentParams = { schoolId, sessionId: activeSession?.id };
   const subjectAssignments = useListClassSubjectAssignments(assignmentParams, { query: {
     ...freshChoices, enabled: canEdit && !!activeSession, queryKey: getListClassSubjectAssignmentsQueryKey(assignmentParams),
@@ -130,8 +135,10 @@ export function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; c
     }
   }, [schoolId, activeSession?.id, activeTerm?.id, classId, isLoading]);
 
-  if (isLoading || (canEdit && (subjectAssignments.isLoading || teacherAssignments.isLoading))) return <SkeletonPage />;
-  if (error || (canEdit && (subjectAssignments.error || teacherAssignments.error))) return <ErrorState retry={() => qc.invalidateQueries()} message="Timetable choices could not be loaded. Retry before saving." />;
+  // Shared choice-query failures must not unmount the editor: it owns the
+  // per-dropdown loading/error/Retry states and blocks saving until recovered.
+  if (isLoading) return <SkeletonPage />;
+  if (error) return <ErrorState retry={() => qc.invalidateQueries()} message="Timetable choices could not be loaded. Retry before saving." />;
 
   const entries = query.data ?? [];
 
@@ -223,8 +230,8 @@ export function TimetableEditor({ schoolId, initialSessionId, initialTermId, ini
   const teacherAssignments = useListTeacherClassAssignments(params, { query: {
     ...freshChoices, enabled: !!context.activeSession, queryKey: getListTeacherClassAssignmentsQueryKey(params),
   } });
-  if (context.isLoading || subjectAssignments.isLoading || teacherAssignments.isLoading) return <SkeletonPage />;
-  if (context.error || subjectAssignments.error || teacherAssignments.error) {
+  if (context.coreLoading) return <SkeletonPage />;
+  if (context.coreError) {
     return <ErrorState message="Timetable choices could not be loaded. Retry before saving."
       retry={() => { void context.refetch(); if (context.activeSession) { void subjectAssignments.refetch(); void teacherAssignments.refetch(); } }} />;
   }
@@ -232,6 +239,12 @@ export function TimetableEditor({ schoolId, initialSessionId, initialTermId, ini
     schoolId={schoolId} sessionId={context.activeSession?.id} termId={context.activeTerm?.id} session={context.activeSession}
     classes={context.classes} subjects={context.subjects} teachers={context.teachers}
     subjectAssignments={subjectAssignments.data ?? []} teacherAssignments={teacherAssignments.data ?? []}
+    subjectLoading={context.subjectLoading || subjectAssignments.isFetching || teacherAssignments.isFetching}
+    subjectError={context.subjectError || subjectAssignments.error || teacherAssignments.error}
+    teacherLoading={context.teacherLoading || subjectAssignments.isFetching || teacherAssignments.isFetching}
+    teacherError={context.teacherError || subjectAssignments.error || teacherAssignments.error}
+    onRetrySubjects={() => { void context.refetchSubjects(); void subjectAssignments.refetch(); void teacherAssignments.refetch(); }}
+    onRetryTeachers={() => { void context.refetchTeachers(); void subjectAssignments.refetch(); void teacherAssignments.refetch(); }}
     initial={periodChanged && initial ? { ...initial, classId: '', subjectId: '', teacherId: '', section: '' } : initial}
     defaultClassId={periodChanged ? undefined : defaultClassId}
     sessions={context.sessions} terms={context.terms}
@@ -240,7 +253,7 @@ export function TimetableEditor({ schoolId, initialSessionId, initialTermId, ini
     onDone={onDone} onCancel={onCancel} />;
 }
 
-export function TimetableEntryForm({ schoolId, sessionId, termId, session, classes, subjects, teachers, subjectAssignments = [], teacherAssignments = [], initial, defaultClassId, sessions, terms, onSessionChange, onTermChange, onDone, onCancel }: any) {
+export function TimetableEntryForm({ schoolId, sessionId, termId, session, classes, subjects, teachers, subjectAssignments = [], teacherAssignments = [], subjectLoading = false, subjectError, teacherLoading = false, teacherError, onRetrySubjects, onRetryTeachers, initial, defaultClassId, sessions, terms, onSessionChange, onTermChange, onDone, onCancel }: any) {
   const create = useCreateAcademicTimetableEntry();
   const update = useUpdateAcademicTimetableEntry();
   const [failure,setFailure] = useState('');
@@ -256,22 +269,25 @@ export function TimetableEntryForm({ schoolId, sessionId, termId, session, class
   const [sectionChosen, setSectionChosen] = useState(!!(initial?.classId || defaultClassId));
   const section = classes.find((c: any) => c.id === Number(form.classId))?.section ?? '';
   const selection = { schoolId, sessionId, termId, classId: Number(form.classId), section, subjectId: Number(form.subjectId) };
-  const assignedSubjects = sessionId && termId && sectionChosen ? matchingTimetableSubjects(subjectAssignments, selection) : [];
+  const assignedSubjects = sessionId && termId && sectionChosen ? matchingTimetableSubjects(subjectAssignments, selection, teacherAssignments, session) : [];
   const eligibleSubjects = subjects.filter((subject: any) => subject.schoolId === schoolId && assignedSubjects.some(a => a.subjectId === subject.id));
-  const eligibleTeachers = sectionChosen && termId ? matchingTimetableTeachers(teachers, subjectAssignments, teacherAssignments, session, selection) : [];
   const subjectValid = eligibleSubjects.some((subject: any) => subject.id === Number(form.subjectId));
+  const eligibleTeachers = sectionChosen && termId && subjectValid ? matchingTimetableTeachers(teachers, subjectAssignments, teacherAssignments, session, selection) : [];
   const teacherValid = eligibleTeachers.some(teacher => teacher.id === Number(form.teacherId));
   // Assignment changes/refetches must not leave an old option selected.
   useEffect(() => {
-    if ((form.subjectId && !subjectValid) || (form.teacherId && !teacherValid)) {
+    if (subjectLoading || subjectError) return;
+    if ((form.subjectId && !subjectValid) || (!teacherLoading && !teacherError && form.teacherId && !teacherValid)) {
       setForm(previous => ({ ...previous, subjectId: subjectValid ? previous.subjectId : '', teacherId: '' }));
     }
-  }, [subjectValid, teacherValid, form.subjectId, form.teacherId]);
+  }, [subjectValid, teacherValid, form.subjectId, form.teacherId, subjectLoading, subjectError, teacherLoading, teacherError]);
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
     if (create.isPending || update.isPending) return;
     setFailure('');
+    if (subjectLoading || teacherLoading) return setFailure('Wait for subjects and teachers to finish loading.');
+    if (subjectError || teacherError) return setFailure('Unable to load timetable choices. Try again before saving.');
     if (!sessionId || !termId) return setFailure('Select a valid session and term before saving.');
     if (form.startTime >= form.endTime) return setFailure('End time must be later than start time.');
     if (!subjectValid) return setFailure('Select a subject assigned to this class/section in the selected session and term.');
@@ -347,21 +363,26 @@ export function TimetableEntryForm({ schoolId, sessionId, termId, session, class
           .map((c: any) => <option key={c.id} value={c.section || '__none__'}>{c.section || 'No section'}</option>)}
       </select><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Choose an existing section of this class. No class or assignment is created.</p></Field>
       <Field label="Subject">
-        <select required aria-label="Timetable subject" value={form.subjectId} onChange={e => setForm({...form, subjectId: e.target.value, teacherId: ''})} className="w-full" disabled={!eligibleSubjects.length}>
-          <option value="">Select subject...</option>
+        <select required aria-label="Timetable subject" value={form.subjectId} onChange={e => setForm({...form, subjectId: e.target.value, teacherId: ''})} className="w-full" disabled={subjectLoading || !!subjectError || !eligibleSubjects.length}>
+          <option value="">{subjectLoading ? 'Loading subjects...' : subjectError ? 'Unable to load subjects. Try again.' : 'Select subject...'}</option>
           {eligibleSubjects.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
-        {!eligibleSubjects.length && <p role="status" className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{!form.classId || !sectionChosen
+        {subjectError ? <p role="alert" className="mt-1 text-xs text-[hsl(var(--destructive))]">Unable to load subjects. Try again. <button type="button" className="underline" onClick={onRetrySubjects}>Try again</button></p>
+          : subjectLoading ? <p role="status">Loading subjects...</p>
+          : !eligibleSubjects.length && <p role="status" className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{!form.classId || !sectionChosen
           ? 'Select a class and section to see its assigned subjects.'
-          : 'No active subject is assigned to this class/section for the selected session and term.'}</p>}
+          : 'No subjects are assigned to this class.'}</p>}
       </Field>
       <Field label="Teacher">
-        <select required aria-label="Timetable teacher" value={form.teacherId} onChange={e => setForm({...form, teacherId: e.target.value})} className="w-full" disabled={!eligibleTeachers.length} aria-describedby="timetable-teacher-help">
-          <option value="">{eligibleTeachers.length ? 'Select teacher' : 'No eligible teachers available'}</option>
+        <select required aria-label="Timetable teacher" value={form.teacherId} onChange={e => setForm({...form, teacherId: e.target.value})} className="w-full" disabled={teacherLoading || !!teacherError || !eligibleTeachers.length} aria-describedby="timetable-teacher-help">
+          <option value="">{subjectValid && teacherLoading ? 'Loading teachers...' : subjectValid && teacherError ? 'Unable to load teachers. Try again.' : eligibleTeachers.length ? 'Select teacher' : 'No eligible teachers available'}</option>
           {eligibleTeachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.firstName} {teacher.lastName}</option>)}
         </select>
         <p id="timetable-teacher-help" role={eligibleTeachers.length ? undefined : 'status'} className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-          {eligibleTeachers.length
+          {!subjectValid ? 'Select an assigned subject to see its eligible teachers.'
+            : teacherError ? <>Unable to load teachers. Try again. <button type="button" className="underline" onClick={onRetryTeachers}>Try again</button></>
+            : teacherLoading ? 'Loading teachers...'
+            : eligibleTeachers.length
             ? 'Only teachers assigned to this class/section and subject in the selected session are available. Assignments are checked again when saving.'
             : !form.subjectId ? 'Select an assigned subject to see its eligible teachers.' : 'No teacher is assigned to this subject/class.'}
         </p>
@@ -371,7 +392,7 @@ export function TimetableEntryForm({ schoolId, sessionId, termId, session, class
       </Field>
       <div className="flex justify-end gap-3 pt-4 border-t border-[hsl(var(--border))]">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button type="submit" disabled={pending || !subjectValid || !teacherValid}>{pending ? 'Saving...' : 'Save'}</Button>
+        <Button type="submit" disabled={pending || subjectLoading || teacherLoading || !!subjectError || !!teacherError || !subjectValid || !teacherValid}>{pending ? 'Saving...' : 'Save'}</Button>
       </div>
       {failure && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{failure}</p>}
     </form>

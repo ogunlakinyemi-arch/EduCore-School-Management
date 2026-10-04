@@ -4,11 +4,12 @@ import { createRoot, type Root } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AcademicSession, ClassSubjectAssignment, Employee, Subject, TeacherClassAssignment } from '@workspace/api-client-react';
-import { ManageTimetableView, TimetableEditor } from './timetable';
+import { ManageTimetableView, TimetableEditor, TimetableEntryForm } from './timetable';
 
 const state = vi.hoisted(() => ({
   create: vi.fn(), update: vi.fn(), requests: [] as Array<{ endpoint: string; params: any; options: any }>,
   subjects: [] as Subject[], classSubjects: [] as ClassSubjectAssignment[], assignments: [] as TeacherClassAssignment[],
+  subjectError: undefined as Error | undefined,
 }));
 const sessions = [
   { id: 2, schoolId: 1, name: '2026/2027', startDate: '2026-09-01', endDate: '2027-07-31', isCurrent: true, status: 'ACTIVE' },
@@ -31,7 +32,7 @@ vi.mock('@workspace/api-client-react', () => {
     useListAcademicSessions: (p: any, o: any) => result('sessions', sessions, p, o),
     useListAcademicTerms: (id: number, p: any, o: any) => result('terms', terms.filter(t => t.sessionId === id), { ...p, sessionId: id }, o),
     useListClasses: (p: any, o: any) => result('classes', classes, p, o),
-    useListSubjects: (p: any, o: any) => result('subjects', state.subjects, p, o),
+    useListSubjects: (p: any, o: any) => ({...result('subjects', state.subjects, p, o),error:state.subjectError}),
     useListEmployees: (p: any, o: any) => result('employees', teachers, p, o),
     useListClassSubjectAssignments: (p: any, o: any) => result('classSubjects', state.classSubjects.filter(a => a.schoolId === p.schoolId && a.sessionId === p.sessionId), p, o),
     useListTeacherClassAssignments: (p: any, o: any) => result('assignments', state.assignments.filter(a => a.schoolId === p.schoolId && a.sessionId === p.sessionId), p, o),
@@ -57,7 +58,7 @@ let qc: QueryClient;
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   window.history.replaceState(null, '', '/timetable');
-  vi.clearAllMocks(); state.requests = [];
+  vi.clearAllMocks(); state.requests = []; state.subjectError=undefined;
   classes[1].section = 'C';
   state.create.mockResolvedValue({ id: 71 });
   state.update.mockResolvedValue({ id: 71 });
@@ -110,7 +111,7 @@ describe('timetable period → class → section → subject → teacher', () =>
     expect(select('subject').value).toBe(''); expect(select('teacher').value).toBe('');
     await change('class', '4'); await change('section', 'B');
     expect(select('subject').disabled).toBe(true);
-    expect(host.textContent).toContain('No active subject is assigned');
+    expect(host.textContent).toContain('No subjects are assigned to this class.');
     await submit(); expect(state.create).not.toHaveBeenCalled();
   });
   it('requires a fresh section after class changes', async () => {
@@ -162,7 +163,7 @@ describe('timetable period → class → section → subject → teacher', () =>
   });
   it('clears removed subjects and revoked assignments on a refetch', async () => {
     await renderEditor(); await change('subject', '5'); await change('teacher', '6');
-    state.classSubjects = []; await renderEditor();
+    state.classSubjects = []; state.assignments = []; await renderEditor();
     expect(select('subject').value).toBe(''); expect(select('teacher').value).toBe('');
     await submit(); expect(state.create).not.toHaveBeenCalled();
   });
@@ -215,5 +216,52 @@ describe('timetable period → class → section → subject → teacher', () =>
     expect(host.querySelector<HTMLSelectElement>('[data-testid=select-timetable-session]')?.value).toBe('2');
     expect(host.querySelector<HTMLSelectElement>('[data-testid=select-timetable-term]')?.value).toBe('3');
     expect(host.querySelector<HTMLSelectElement>('[data-testid=select-timetable-filter-class]')?.value).toBe('');
+  });
+  it('renders and saves existing staffing subjects even when the enrollment API response is an empty array', async () => {
+    state.classSubjects=[];
+    await renderEditor(); expect([...select('subject').options].map(o=>o.value)).toEqual(['','5']);
+    await change('subject','5'); expect([...select('teacher').options].map(o=>o.value)).toEqual(['','6']);
+    await change('teacher','6'); await submit(); expect(state.create).toHaveBeenCalledOnce();
+    expect(state.requests.find(r=>r.endpoint==='classSubjects')?.params).toEqual({schoolId:1,sessionId:2});
+  });
+  it('does not render unrelated catalogue subjects for a class-teacher-only staffing response', async () => {
+    state.classSubjects=[]; state.assignments=[{...state.assignments[0],assignmentType:'CLASS_TEACHER',subjectId:null}];
+    await renderEditor(); expect(select('subject').disabled).toBe(true);
+    expect(host.textContent).toContain('No subjects are assigned to this class.'); await submit(); expect(state.create).not.toHaveBeenCalled();
+  });
+  it.each([
+    ['subject', 'subjectLoading', true, 'Loading subjects...'],
+    ['subject', 'subjectError', new Error('offline'), 'Unable to load subjects. Try again.'],
+    ['teacher', 'teacherLoading', true, 'Loading teachers...'],
+    ['teacher', 'teacherError', new Error('offline'), 'Unable to load teachers. Try again.'],
+  ])('distinguishes %s %s from an empty list and retains loaded selections', async (field, flag, value, message) => {
+    await act(async()=>root.render(<TimetableEntryForm schoolId={1} sessionId={2} termId={3} session={sessions[0]}
+      classes={classes} subjects={state.subjects} teachers={teachers} subjectAssignments={state.classSubjects}
+      teacherAssignments={state.assignments} initial={{id:71,classId:4,subjectId:5,teacherId:6}}
+      onDone={vi.fn()} onCancel={vi.fn()} {...{[flag as string]:value}} />));
+    expect(select(field as string).disabled).toBe(true); expect(host.textContent).toContain(message as string);
+    expect(select('subject').value).toBe('5'); expect(select('teacher').value).toBe('6');
+    await submit(); expect(state.update).not.toHaveBeenCalled();
+  });
+  it('retries an errored subject request rather than treating it as permanently empty', async () => {
+    const retry=vi.fn();
+    await act(async()=>root.render(<TimetableEntryForm schoolId={1} sessionId={2} termId={3} session={sessions[0]}
+      classes={classes} subjects={[]} teachers={teachers} subjectAssignments={[]} teacherAssignments={[]}
+      defaultClassId={4} subjectError={new Error('offline')} onRetrySubjects={retry} onDone={vi.fn()} onCancel={vi.fn()}/>));
+    const button=[...host.querySelectorAll('button')].find(b=>b.textContent==='Try again')!;
+    await act(async()=>button.click()); expect(retry).toHaveBeenCalledOnce();
+  });
+  it('keeps the real editor mounted when its shared subject query errors and recovers', async () => {
+    const view=()=> <QueryClientProvider client={qc}><ManageTimetableView schoolId={1} canEdit/></QueryClientProvider>;
+    await act(async()=>root.render(view()));
+    await act(async()=>host.querySelector<HTMLButtonElement>('[data-testid=button-add-timetable-entry]')!.click());
+    await change('class','4'); await change('section','B'); await change('subject','5'); await change('teacher','6');
+    state.subjectError=new Error('network offline'); await act(async()=>root.render(view()));
+    expect(host.querySelector('[role=dialog]')).not.toBeNull();
+    expect(host.textContent).toContain('Unable to load subjects. Try again.');
+    expect(select('subject').disabled).toBe(true); expect(select('subject').value).toBe('5');
+    await submit(); expect(state.create).not.toHaveBeenCalled();
+    state.subjectError=undefined; await act(async()=>root.render(view()));
+    expect(select('subject').disabled).toBe(false); expect(select('teacher').value).toBe('6');
   });
 });

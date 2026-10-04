@@ -29,7 +29,7 @@ const db = vi.hoisted(() => {
     if (sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK") return result();
     if (sql.includes("pg_advisory_xact_lock")) return result();
     if (sql.includes("AS class_valid")) return result([Object.fromEntries([
-      "class_valid","session_valid","term_valid","subject_valid","teacher_valid","subject_assignment_valid","teacher_assignment_valid",
+      "class_valid","session_valid","term_valid","subject_valid","teacher_valid","teacher_active","subject_assignment_valid","teacher_assignment_valid",
     ].map(key=>[key,key !== (state.failedSelection || "teacher_assignment_valid")]))]);
     if (sql.includes("FROM school_classes c")) return result(state.valid ? [{ id: 4 }] : []);
     if (sql.includes("FROM academic_timetable_entries") && sql.includes("teacher_conflict")) {
@@ -176,6 +176,7 @@ describe("academic timetable API", () => {
     ["teacher_valid","Selected teacher is not available"],["session_valid","Selected session"],
     ["term_valid","Selected term"],["subject_assignment_valid","Selected subject is not assigned"],
     ["teacher_assignment_valid","Selected teacher is not assigned"],
+    ["teacher_active","Selected employee is not an active teacher"],
   ])("rejects %s with a school-scoped explanation and no write",async(key,message)=>{
     state.valid=false;state.failedSelection=key;
     const response=await request("/academic/timetable","SCHOOL_ADMIN",{method:"POST",body:JSON.stringify(validBody)});
