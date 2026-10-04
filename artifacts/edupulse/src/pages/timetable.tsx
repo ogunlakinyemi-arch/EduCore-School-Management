@@ -4,7 +4,7 @@ import { PageHeading, Button, SkeletonPage, ErrorState, EmptyState, Modal, Field
 import { 
   useListAcademicTimetable, useCreateAcademicTimetableEntry, useUpdateAcademicTimetableEntry, getListAcademicTimetableQueryKey,
   useGetMyAcademicTimetable, getGetMyAcademicTimetableQueryKey,
-  useListAcademicSessions, useListAcademicTerms, useListClasses, useListSubjects, useListEmployees
+  useListAcademicSessions, useListAcademicTerms, useListClasses, useListSubjects, useListEmployees, type Employee
 } from '@workspace/api-client-react';
 import { Plus, Pencil, Calendar, Clock, MapPin } from 'lucide-react';
 import { useGetAuthorizedContext } from '@workspace/api-client-react';
@@ -163,6 +163,10 @@ function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; canEdit:
 export function TimetableEntryForm({ schoolId, sessionId, termId, classes, subjects, teachers, initial, defaultClassId, onDone, onCancel }: any) {
   const create = useCreateAcademicTimetableEntry();
   const update = useUpdateAcademicTimetableEntry();
+  // /employees returns Employee.type, not the transport-specific employeeType.
+  const eligibleTeachers = (teachers as Employee[]).filter(
+    teacher => teacher.schoolId === schoolId && teacher.type === 'TEACHER' && teacher.status === 'ACTIVE',
+  );
   const [failure,setFailure] = useState('');
   const [form, setForm] = useState({
     classId: initial?.classId || defaultClassId || '',
@@ -180,6 +184,9 @@ export function TimetableEntryForm({ schoolId, sessionId, termId, classes, subje
     setFailure('');
     if (!sessionId || !termId) return setFailure('Select a valid session and term before saving.');
     if (form.startTime >= form.endTime) return setFailure('End time must be later than start time.');
+    if (!eligibleTeachers.some(teacher => teacher.id === Number(form.teacherId))) {
+      return setFailure('Select an active teacher belonging to this school.');
+    }
     const data = {
       ...form,
       classId: Number(form.classId),
@@ -234,10 +241,15 @@ export function TimetableEntryForm({ schoolId, sessionId, termId, classes, subje
         </select>
       </Field>
       <Field label="Teacher">
-        <select required value={form.teacherId} onChange={e => setForm({...form, teacherId: e.target.value})} className="w-full">
-          <option value="">Select teacher</option>
-          {teachers.filter((t:any)=>String(t.employeeType).toUpperCase()==='TEACHER' && String(t.status).toUpperCase()==='ACTIVE').map((t: any) => <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>)}
+        <select required value={form.teacherId} onChange={e => setForm({...form, teacherId: e.target.value})} className="w-full" disabled={!eligibleTeachers.length} aria-describedby="timetable-teacher-help">
+          <option value="">{eligibleTeachers.length ? 'Select teacher' : 'No eligible teachers available'}</option>
+          {eligibleTeachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.firstName} {teacher.lastName}</option>)}
         </select>
+        <p id="timetable-teacher-help" role={eligibleTeachers.length ? undefined : 'status'} className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+          {eligibleTeachers.length
+            ? 'Choose a teacher assigned to this class/section and subject in the selected session. Assignment eligibility is checked when saving.'
+            : 'No active teacher is available in this school. Check the teacher records and class/subject assignments.'}
+        </p>
       </Field>
       <Field label="Room (Optional)">
         <input value={form.room} onChange={e => setForm({...form, room: e.target.value})} placeholder="e.g. Rm 102" className="w-full" />

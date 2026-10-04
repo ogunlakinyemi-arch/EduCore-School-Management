@@ -2,6 +2,7 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Employee } from '@workspace/api-client-react';
 import { academicSaveError } from '@/components/academic-save-error';
 import { TimetableEntryForm } from './timetable';
 import { SessionForm } from './academics';
@@ -32,8 +33,8 @@ const base = {
   schoolId:1,sessionId:2,termId:3,
   classes:[{id:4,name:'SS2',section:'B'}],
   subjects:[{id:5,name:'Maths'}],
-  teachers:[{id:6,firstName:'Test',lastName:'Teacher',employeeType:'Teacher',status:'Active'},
-    {id:7,firstName:'Test',lastName:'Driver',employeeType:'DRIVER',status:'ACTIVE'}],
+  teachers:[{id:6,schoolId:1,employeeId:'T-006',firstName:'Test',lastName:'Teacher',type:'TEACHER',status:'ACTIVE'},
+    {id:7,schoolId:1,employeeId:'D-007',firstName:'Test',lastName:'Driver',type:'DRIVER',status:'ACTIVE'}] satisfies Employee[],
   initial:{id:8,classId:4,subjectId:5,teacherId:6,weekday:'MONDAY',startTime:'08:00',endTime:'09:00'},
   onDone:vi.fn(),onCancel:vi.fn(),
 };
@@ -72,9 +73,29 @@ describe('timetable save form',()=>{
     await act(async()=>root.render(<TimetableEntryForm {...base} initial={{...base.initial,startTime:'10:00'}}/>));await submit();
     expect(mocks.update).not.toHaveBeenCalled();expect(host.textContent).toContain('End time must be later');
   });
-  it('offers active teachers, not drivers, including legacy mixed-case types',async()=>{
+  it('renders teachers from the real employee API type field, not drivers',async()=>{
     await act(async()=>root.render(<TimetableEntryForm {...base}/>));
     expect(host.textContent).toContain('Test Teacher');expect(host.textContent).not.toContain('Test Driver');
+  });
+  it('does not render another school teacher or inactive teachers',async()=>{
+    const teachers=[...base.teachers,
+      {...base.teachers[0],id:9,schoolId:99,firstName:'Other',lastName:'School'},
+      {...base.teachers[0],id:10,status:'INACTIVE',firstName:'Inactive',lastName:'Teacher'}];
+    await act(async()=>root.render(<TimetableEntryForm {...base} teachers={teachers}/>));
+    expect(host.textContent).toContain('Test Teacher');
+    expect(host.textContent).not.toContain('Other School');expect(host.textContent).not.toContain('Inactive Teacher');
+  });
+  it('explains an empty eligible list instead of silently showing no options',async()=>{
+    await act(async()=>root.render(<TimetableEntryForm {...base} teachers={[]}/>));
+    const select=host.querySelectorAll('select')[4];
+    expect(select.disabled).toBe(true);expect(select.textContent).toContain('No eligible teachers available');
+    expect(host.textContent).toContain('No active teacher is available in this school');
+  });
+  it('never submits a teacher ID from another school',async()=>{
+    await act(async()=>root.render(<TimetableEntryForm {...base} teachers={[{...base.teachers[0],schoolId:99}]}/>));
+    await submit();
+    expect(mocks.update).not.toHaveBeenCalled();expect(mocks.create).not.toHaveBeenCalled();
+    expect(host.querySelector('[role=alert]')?.textContent).toContain('belonging to this school');
   });
 });
 describe('reuse an existing academic year',()=>{

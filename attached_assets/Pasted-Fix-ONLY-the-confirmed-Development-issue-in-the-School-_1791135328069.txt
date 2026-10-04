@@ -1,0 +1,112 @@
+Fix ONLY the confirmed Development issue in the School Admin Timetable workflow:
+
+Confirmed issue
+
+School Admin opens:
+
+School Admin → Timetable → Add Timetable Entry
+
+After filling the required timetable fields, the Teacher dropdown is available, but when the School Admin opens/selects the Teacher dropdown, the available teacher list does not appear.
+
+Requirements
+
+Trace the existing flow:
+
+School → Academic Session → Term → Class → Section → Subject → Teacher
+
+Determine why the Teacher dropdown is not loading/displaying the eligible teachers.
+
+Check the complete frontend → API → database flow:
+
+1. Confirm the selected school is correctly identified.
+2. Confirm the selected academic session and term are correctly handled.
+3. Confirm class/section selection does not incorrectly filter out valid teachers.
+4. Confirm subject selection does not incorrectly filter out valid teachers.
+5. Confirm the teacher API/query returns teachers belonging to the current school.
+6. Confirm the frontend correctly receives and maps the teacher response.
+7. Confirm the dropdown renders the returned teacher names correctly.
+8. Confirm School Admin can select a teacher.
+9. Confirm the selected teacher ID is correctly submitted when saving the timetable entry.
+
+Important
+
+Do NOT:
+
+- Rebuild the timetable module.
+- Remove teacher/class/subject authorization rules.
+- Show teachers from another school.
+- Make the teacher field accept arbitrary text.
+- Remove existing school/tenant isolation.
+- Remove existing timetable collision rules.
+- Modify Production.
+- Publish.
+- Create unnecessary migrations or new tables.
+- Change unrelated Finance, Transport, Results or Academic Calendar functionality.
+
+Use the existing teacher/employee data and existing timetable API/database structure.
+
+Required behaviour
+
+For a valid School Admin timetable entry:
+
+Class → Section → Subject → Teacher
+
+When the Teacher dropdown is opened, it should display the eligible teachers for that school.
+
+Example:
+
+- Teacher A — Mathematics
+- Teacher B — English
+- Teacher C — Basic Science
+
+Only teachers valid for the current school should be shown.
+
+If the existing system intentionally filters teachers by subject assignment, preserve that rule. If no eligible teacher exists, show a clear message such as:
+
+“No eligible teacher is assigned to this subject/class.”
+
+Do not make the dropdown appear empty without explanation.
+
+Acceptance test
+
+Use the existing Development QA school.
+
+1. Sign in as genuine School Admin.
+2. Open Timetable.
+3. Click Add Timetable Entry.
+4. Select Academic Session.
+5. Select Term.
+6. Select Class.
+7. Select Section.
+8. Select Subject.
+9. Open Teacher dropdown.
+10. Confirm eligible teachers appear.
+11. Select a teacher.
+12. Save the timetable entry.
+13. Confirm it saves successfully.
+14. Refresh the page.
+15. Confirm the saved timetable entry still shows the correct teacher.
+16. Confirm another school's teachers are not visible.
+
+If the browser-testing service becomes unavailable again, do not claim browser acceptance. Report the exact API/query/frontend evidence instead.
+
+Verification
+
+Run only focused tests related to:
+
+- Teacher loading for timetable
+- Teacher dropdown rendering
+- School/tenant isolation
+- Teacher selection
+- Timetable save with selected teacher
+
+Do not run the full platform test suite.
+
+Final report must state:
+
+- Root cause.
+- Exact files changed.
+- Focused test count.
+- Whether genuine School Admin browser verification passed.
+- Whether timetable save with selected teacher passed.
+- Confirmation that no Production data/code was changed.
