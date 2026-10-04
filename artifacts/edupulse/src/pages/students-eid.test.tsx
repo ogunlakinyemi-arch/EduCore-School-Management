@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   getSchool: vi.fn(),
   listCards: vi.fn(),
   invalidateQueries: vi.fn(),
+  role: 'PLATFORM_OWNER',
 }));
 
 vi.mock('@workspace/api-client-react', () => ({
@@ -17,6 +18,10 @@ vi.mock('@workspace/api-client-react', () => ({
     isError: false,
   }),
   useGetSchool: () => ({ data: null }),
+  useGetAuthorizedContext: () => ({ data: {
+    isPlatformOwner: mocks.role === 'PLATFORM_OWNER',
+    roles: [{ role: mocks.role, schoolId: mocks.role === 'PLATFORM_OWNER' ? null : 3, status: 'ACTIVE' }],
+  } }),
   useCreateStudent: () => ({ mutate: vi.fn(), isPending: false }),
   useUpdateStudent: () => ({ mutate: vi.fn(), isPending: false }),
   getListStudentsQueryKey: () => ['students'],
@@ -86,6 +91,22 @@ const settle = async () => {
 };
 
 describe('Student Directory e-ID freshness', () => {
+  it('allows same-school Admin preview without an official print action', async () => {
+    mocks.role = 'SCHOOL_ADMIN';
+    await openEId();
+    expect(host.textContent).toContain('Current Student');
+    expect(host.textContent).not.toContain('Print / Save as PDF');
+    expect(window.print).not.toHaveBeenCalled();
+  });
+
+  it('does not offer Student ID card preview to a Teacher', async () => {
+    mocks.role = 'TEACHER';
+    await act(async () => root.render(<StudentsPage />));
+    expect(host.textContent).toContain('Stale Directory');
+    expect(host.textContent).not.toContain('e-ID card');
+    expect(mocks.listCards).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     host = document.createElement('div');
     document.body.appendChild(host);
@@ -94,6 +115,7 @@ describe('Student Directory e-ID freshness', () => {
     mocks.getSchool.mockReset();
     mocks.listCards.mockReset();
     mocks.invalidateQueries.mockReset();
+    mocks.role = 'PLATFORM_OWNER';
     mocks.getStudent.mockResolvedValue(student());
     mocks.getSchool.mockResolvedValue({ id: 3, name: 'Current School', logoUrl: '/school-logo.png' });
     mocks.listCards.mockResolvedValue([

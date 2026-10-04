@@ -29,7 +29,10 @@ export interface Employee {
   email?: string | null;
   /** @nullable */
   address?: string | null;
-  /** @nullable */
+  /**
+     * Managed storage reference or absolute image URL
+     * @nullable
+     */
   photoUrl?: string | null;
   /** @nullable */
   gender?: EmployeeGender;

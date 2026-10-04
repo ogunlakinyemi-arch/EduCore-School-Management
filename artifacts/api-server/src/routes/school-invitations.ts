@@ -1,4 +1,5 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { generateSchoolCode } from "../lib/generated-person-codes";
 import { clerkClient } from "@clerk/express";
 import { pool } from "@workspace/db";
 import { AuthError, type Role, type UserContext } from "../middlewares/auth";
@@ -29,6 +30,8 @@ type InviteeInput = {
   role: InvitationRole;
   personId?: number | null;
   studentId?: number | null;
+  /** Derived from the selected persisted profile, never accepted from the API body. */
+  invitationEmployeeNo?: string | null;
 };
 
 function normalizeEmail(email: string) {
@@ -327,12 +330,15 @@ async function ensureInviteProfile(client: any, input: InviteeInput, employeeNo:
         throw new AuthError(409, `The existing employee profile is not a ${expectedType.toLowerCase()}`);
       }
       if (employee.rows[0].status === "PENDING") {
+        if (employee.rows[0].employeeNo !== employeeNo) {
+          throw new AuthError(409, "The employee number is permanent; select the existing profile and use its invitation recovery workflow");
+        }
         const { firstName: employeeFirstName, lastName } = splitName(input.fullName);
         await client.query(
-          `UPDATE employees SET employee_no=$1,first_name=$2,last_name=$3,
-             phone=$4,updated_at=NOW()
-           WHERE id=$5`,
-          [employeeNo, employeeFirstName, lastName, input.phone, employee.rows[0].id],
+          `UPDATE employees SET first_name=$1,last_name=$2,
+             phone=$3,updated_at=NOW()
+           WHERE id=$4`,
+          [employeeFirstName, lastName, input.phone, employee.rows[0].id],
         );
       } else if (employee.rows[0].status !== "ACTIVE") {
         throw new AuthError(409, "The existing employee profile is inactive");
@@ -508,7 +514,7 @@ async function provisionExistingAccount(
     if (!membership.rows[0]) {
       throw new AuthError(409, "This school membership changed during the invitation request; review its current status");
     }
-    const employeeNo = `ACT-${randomUUID().replaceAll("-", "").slice(0, 16)}`;
+    const employeeNo = input.invitationEmployeeNo || `ACT-${randomUUID().replaceAll("-", "").slice(0, 16)}`;
     await ensureActivatedProfile(client, input, user.id, employeeNo);
     await auditInvitation(
       client,
@@ -584,7 +590,7 @@ async function resolveExistingInvitee(input: InviteeInput): Promise<InviteeInput
   } else {
     result = await pool.query(
       `SELECT id AS "personId",concat_ws(' ',first_name,middle_name,last_name) AS "fullName",
-              email,phone,employment_status AS status,user_id AS "userId",employee_type AS "type"
+              email,phone,employment_status AS status,user_id AS "userId",employee_type AS "type",employee_no AS "employeeNo"
          FROM employees WHERE id=$1 AND school_id=$2 AND employee_type=$3`,
       [input.personId, input.schoolId, input.role],
     );
@@ -619,6 +625,8 @@ async function resolveExistingInvitee(input: InviteeInput): Promise<InviteeInput
     fullName,
     phone,
     studentId: input.role === "STUDENT" ? Number(profile.personId) : null,
+    invitationEmployeeNo: typeof profile.employeeNo === "string" && /^INV-[A-F0-9]{16}$/.test(profile.employeeNo)
+      ? profile.employeeNo : null,
   };
 }
 
@@ -689,7 +697,7 @@ export async function createSchoolInvitation(input: InviteeInput, actor: UserCon
   }
 
   const claimId = randomUUID();
-  const employeeNo = `INV-${claimId.replaceAll("-", "").slice(0, 16).toUpperCase()}`;
+  const employeeNo = input.invitationEmployeeNo || `INV-${claimId.replaceAll("-", "").slice(0, 16).toUpperCase()}`;
   const metadata = {
     [METADATA_KEY]: {
       version: 1,
@@ -802,8 +810,7 @@ export async function createSchoolWithAdministrator(input: {
   partnerId?: number;
 }, actor: UserContext) {
   const school = {
-    code: input.school.code?.trim().toUpperCase() ??
-      (input.partnerId ? `P${randomUUID().replaceAll("-", "").slice(0, 9).toUpperCase()}` : ""),
+    code: input.school.code?.trim().toUpperCase() || generateSchoolCode(input.school.name),
     name: input.school.name.trim(),
     city: input.school.city.trim(),
     state: input.school.state.trim(),
@@ -836,9 +843,6 @@ export async function createSchoolWithAdministrator(input: {
       administrator: { fullName, email, phone: administratorPhone },
       partnerId: input.partnerId,
     }, actor);
-  }
-  if (!input.school.code || !input.school.code.trim()) {
-    throw new AuthError(400, "A school code is required");
   }
   if (!["active", "inactive", "suspended"].includes(school.requestedStatus)) {
     throw new AuthError(400, "Invalid school status");

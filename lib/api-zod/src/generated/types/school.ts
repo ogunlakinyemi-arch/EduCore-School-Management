@@ -27,7 +27,10 @@ export interface School {
   email?: string | null;
   /** @nullable */
   website?: string | null;
-  /** @nullable */
+  /**
+     * Managed storage reference or absolute image URL
+     * @nullable
+     */
   logoUrl?: string | null;
   /** @nullable */
   schoolType?: string | null;

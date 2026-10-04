@@ -5700,7 +5700,7 @@ components:
         phone: { type: ["string", "null"] }
         email: { type: ["string", "null"], format: email }
         website: { type: ["string", "null"], format: uri }
-        logoUrl: { type: ["string", "null"], format: uri }
+        logoUrl: { type: ["string", "null"], format: uri-reference, description: Managed storage reference or absolute image URL }
         schoolType: { type: ["string", "null"] }
         administrators:
           type: array
@@ -5721,7 +5721,7 @@ components:
       properties:
         school:
           type: object
-          required: [code, name, city, state]
+          required: [name, city, state]
           properties:
             code: { type: string, minLength: 1, maxLength: 10 }
             name: { type: string, minLength: 2 }
@@ -5792,7 +5792,7 @@ components:
             deliveryNote: { type: string }
     SchoolInput:
       type: object
-      required: [name, city, state, code]
+      required: [name, city, state]
       properties:
         code: { type: string, minLength: 1 }
         name: { type: string, minLength: 2 }
@@ -5804,7 +5804,7 @@ components:
         phone: { type: string }
         email: { type: string, format: email }
         website: { type: string, format: uri }
-        logoUrl: { type: string, format: uri }
+        logoUrl: { type: string, format: uri-reference }
         schoolType: { type: string }
         status:
           type: string
@@ -5822,7 +5822,7 @@ components:
         phone: { type: string }
         email: { type: string, format: email }
         website: { type: string, format: uri }
-        logoUrl: { type: string, format: uri }
+        logoUrl: { type: string, format: uri-reference }
         schoolType: { type: string }
         status:
           type: string
@@ -5845,7 +5845,7 @@ components:
         lastName: { type: string }
         middleName: { type: ["string", "null"] }
         dateOfBirth: { type: ["string", "null"], format: date }
-        passportUrl: { type: ["string", "null"], format: uri }
+        passportUrl: { type: ["string", "null"], format: uri-reference, description: The existing managed photo reference or an absolute image URL }
         admissionDate: { type: ["string", "null"], format: date }
         admissionStatus: { type: ["string", "null"], enum: [pending, admitted, rejected] }
         address: { type: ["string", "null"] }
@@ -5885,7 +5885,7 @@ components:
         lastName: { type: string, minLength: 2 }
         middleName: { type: string }
         dateOfBirth: { type: string, format: date }
-        passportUrl: { type: string, format: uri }
+        passportUrl: { type: string, format: uri-reference }
         admissionDate: { type: string, format: date }
         admissionStatus: { type: string, enum: [pending, admitted, rejected] }
         address: { type: string }
@@ -5909,7 +5909,7 @@ components:
         section: { type: string }
         middleName: { type: string }
         dateOfBirth: { type: string, format: date }
-        passportUrl: { type: string, format: uri }
+        passportUrl: { type: string, format: uri-reference }
         admissionStatus: { type: string, enum: [pending, admitted, rejected] }
         address: { type: string }
         previousSchool: { type: string }
@@ -6353,6 +6353,7 @@ components:
     ParentUpdate:
       type: object
       properties:
+        relationshipType: { type: string, enum: [Father, Mother, Guardian, Grandparent, Other], description: Default for new child links; does not change existing relationships }
         name: { type: string, minLength: 2 }
         email: { type: string, format: email }
         phone: { type: string, minLength: 7 }
@@ -6362,10 +6363,10 @@ components:
         emergencyContactPhone: { type: string }
     EmployeeStatus:
       type: string
-      enum: [ACTIVE, INACTIVE, SUSPENDED, RESIGNED, TERMINATED]
+      enum: [PENDING, ACTIVE, INACTIVE, SUSPENDED, RESIGNED, TERMINATED]
     EmployeeType:
       type: string
-      enum: [TEACHER, STAFF]
+      enum: [TEACHER, ACCOUNTANT, CLEANER, ASSISTANT, DRIVER, STAFF]
     Employee:
       type: object
       required: [id, schoolId, employeeId, firstName, lastName, type, status]
@@ -6381,7 +6382,7 @@ components:
         phone: { type: ["string", "null"] }
         email: { type: ["string", "null"], format: email }
         address: { type: ["string", "null"] }
-        photoUrl: { type: ["string", "null"], format: uri }
+        photoUrl: { type: ["string", "null"], format: uri-reference, description: Managed storage reference or absolute image URL }
         gender: { type: ["string", "null"], enum: [female, male, other, null] }
         status: { $ref: "#/components/schemas/EmployeeStatus" }
         dateEmployed: { type: ["string", "null"], format: date }
@@ -6390,9 +6391,9 @@ components:
         userId: { type: ["integer", "null"] }
     EmployeeInput:
       type: object
-      required: [employeeId, firstName, lastName, type]
+      required: [firstName, lastName, type]
       properties:
-        employeeId: { type: string, minLength: 1 }
+        employeeId: { type: string, description: Legacy input ignored on creation; the server generates a permanent number }
         firstName: { type: string, minLength: 2 }
         middleName: { type: string }
         lastName: { type: string, minLength: 2 }
@@ -6400,7 +6401,7 @@ components:
         phone: { type: string }
         email: { type: string, format: email }
         address: { type: string }
-        photoUrl: { type: string, format: uri }
+        photoUrl: { type: string, format: uri-reference }
         gender: { type: string, enum: [female, male, other] }
         dateEmployed: { type: string, format: date }
         department: { type: string }
@@ -6415,7 +6416,7 @@ components:
         phone: { type: string }
         email: { type: string, format: email }
         address: { type: string }
-        photoUrl: { type: string, format: uri }
+        photoUrl: { type: string, format: uri-reference }
         gender: { type: string, enum: [female, male, other] }
         dateEmployed: { type: string, format: date }
         department: { type: string }
@@ -6521,7 +6522,7 @@ components:
         status: { $ref: "#/components/schemas/SubjectStatus" }
     SubjectInput:
       type: object
-      required: [name, code]
+      required: [name]
       properties:
         name: { type: string, minLength: 1 }
         code: { type: string, minLength: 1 }

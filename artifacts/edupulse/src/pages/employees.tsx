@@ -139,7 +139,6 @@ function EmployeeForm({ schoolId, initial, onDone, onCancel }: { schoolId: numbe
   const update = useUpdateEmployee(); 
   
   const [form, setForm] = useState({ 
-    employeeId: initial?.employeeId ?? '', 
     firstName: initial?.firstName ?? '', 
     lastName: initial?.lastName ?? '', 
     type: initial?.type ?? 'TEACHER', 
@@ -153,9 +152,9 @@ function EmployeeForm({ schoolId, initial, onDone, onCancel }: { schoolId: numbe
   const save = (e: FormEvent) => { 
     e.preventDefault(); 
     if (initial) {
-      update.mutate({ employeeId: initial.id, params: { schoolId }, data: form as any }, { onSuccess: onDone }); 
+      update.mutate({ employeeId: initial.id, params: { schoolId }, data: { ...form, email: form.email || undefined } }, { onSuccess: onDone });
     } else {
-      create.mutate({ params: { schoolId }, data: form as any }, { onSuccess: onDone }); 
+      create.mutate({ params: { schoolId }, data: { ...form, type: form.type as 'TEACHER' | 'STAFF' | 'ACCOUNTANT' | 'CLEANER' | 'ASSISTANT' | 'DRIVER', email: form.email || undefined } }, { onSuccess: onDone });
     }
   };
   
@@ -165,12 +164,16 @@ function EmployeeForm({ schoolId, initial, onDone, onCancel }: { schoolId: numbe
     <form onSubmit={save} className="space-y-5">
       {!initial && (
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Employee ID">
-            <input required minLength={2} value={form.employeeId} onChange={e => setForm({ ...form, employeeId: e.target.value })} placeholder="e.g. EMP-1042" className="font-mono" />
+          <Field label="Employee number">
+            <p className="py-3 text-sm">Generated automatically and permanent.</p>
           </Field>
           <Field label="Employee Type">
             <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
               <option value="TEACHER">Teacher</option>
+              <option value="ACCOUNTANT">Accountant</option>
+              <option value="CLEANER">Cleaner</option>
+              <option value="ASSISTANT">Assistant</option>
+              <option value="DRIVER">Driver</option>
               <option value="STAFF">General Staff</option>
             </select>
           </Field>

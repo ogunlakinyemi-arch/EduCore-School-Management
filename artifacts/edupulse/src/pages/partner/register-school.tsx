@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { schoolCodePreview } from '@/lib/school-code';
 import { useLocation } from 'wouter';
 import { useValidatePartnerReferral, useOnboardSchoolThroughPartnerReferral } from '@workspace/api-client-react';
 import { useForm } from 'react-hook-form';
@@ -36,6 +37,7 @@ export default function RegisterSchool() {
   const [validatedPartner, setValidatedPartner] = useState<{ code: string } | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState('');
+  const [codeSuffix] = useState(() => crypto.randomUUID().replaceAll('-', '').slice(0, 6));
   const [success, setSuccess] = useState<{ administratorEmail: string; deliveryStatus: string } | null>(null);
 
   const form = useForm<z.infer<typeof onboardSchema>>({
@@ -221,10 +223,10 @@ export default function RegisterSchool() {
                 </div>
                 <div className="grid gap-5 md:grid-cols-2">
                   <Field label="School Name" error={form.formState.errors.school?.name?.message}>
-                    <input {...form.register('school.name')} placeholder="e.g. Excellence Academy" />
+                    <input {...form.register('school.name', { onChange: event => form.setValue('school.code', schoolCodePreview(event.target.value, codeSuffix), { shouldValidate: true }) })} placeholder="e.g. Excellence Academy" />
                   </Field>
                   <Field label="School Code (Short)" error={form.formState.errors.school?.code?.message}>
-                    <input {...form.register('school.code')} placeholder="e.g. EXC" className="uppercase" />
+                    <input {...form.register('school.code')} readOnly placeholder="Generated from the school name" className="uppercase" />
                   </Field>
                 </div>
                 

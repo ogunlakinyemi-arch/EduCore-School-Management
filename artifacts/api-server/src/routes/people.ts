@@ -26,6 +26,7 @@ import {
   UpdateParentResponse,
 } from "@workspace/api-zod";
 import { pool } from "@workspace/db";
+import { generateEmployeeNumber } from "../lib/generated-person-codes";
 import {
   AuthError,
   assertRoles,
@@ -48,7 +49,7 @@ const employeeSelect = `
   e.id, e.school_id AS "schoolId", e.employee_no AS "employeeId",
   e.first_name AS "firstName", e.middle_name AS "middleName", e.last_name AS "lastName",
   e.employee_type AS "type", e.phone, e.email, e.address, e.photo AS "photoUrl",
-  e.gender, e.employment_status AS "status", e.date_employed AS "dateEmployed",
+   e.gender, e.employment_status AS "status", e.date_employed::text AS "dateEmployed",
   e.department, e.qualification, e.user_id AS "userId",
   (SELECT CASE WHEN au.clerk_user_id IS NULL THEN 'PENDING' ELSE au.status END
      FROM app_users au WHERE au.id=e.user_id) AS "accountStatus"`;
@@ -56,7 +57,7 @@ const employeeReturning = `
   id, school_id AS "schoolId", employee_no AS "employeeId",
   first_name AS "firstName", middle_name AS "middleName", last_name AS "lastName",
   employee_type AS "type", phone, email, address, photo AS "photoUrl",
-  gender, employment_status AS "status", date_employed AS "dateEmployed",
+   gender, employment_status AS "status", date_employed::text AS "dateEmployed",
   department, qualification, user_id AS "userId"`;
 
 function isManager(req: Request, schoolId: number) {
@@ -126,7 +127,7 @@ router.post("/employees", asyncRoute(async (req, res) => {
        address, photo, gender, employee_type, date_employed, department, qualification)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
      RETURNING ${employeeReturning}`,
-    [query.schoolId, body.userId ?? null, body.employeeId, body.firstName, body.middleName ?? null,
+    [query.schoolId, body.userId ?? null, generateEmployeeNumber(query.schoolId), body.firstName, body.middleName ?? null,
       body.lastName, body.phone ?? null, body.email ?? null, body.address ?? null, body.photoUrl ?? null,
       body.gender ?? null, body.type, body.dateEmployed ?? null, body.department ?? null, body.qualification ?? null],
   );
@@ -188,8 +189,8 @@ router.patch("/employees/:employeeId/status", asyncRoute(async (req, res) => {
 async function parent(req: Request, id: number, schoolId: number) {
   const result = await pool.query(
     `SELECT p.id, p.school_id AS "schoolId", p.name, p.email, p.phone, p.address, p.status,
-       au.clerk_user_id AS "clerkUserId", NULL::text AS "relationshipType",
-       NULL::text AS "emergencyContactName", NULL::text AS "emergencyContactPhone",
+       au.clerk_user_id AS "clerkUserId", p.default_relationship_type AS "relationshipType",
+       p.emergency_contact_name AS "emergencyContactName", p.emergency_contact_phone AS "emergencyContactPhone",
        COUNT(psr.id)::int AS "childrenCount",
        COUNT(psr.id) FILTER (WHERE psr.status = 'ACTIVE')::int AS "activeChildren"
      FROM parents p LEFT JOIN app_users au ON au.id = p.user_id
@@ -218,10 +219,14 @@ router.patch("/parents/:parentId", asyncRoute(async (req, res) => {
   await pool.query(
     `UPDATE parents SET name = COALESCE($1, name), email = COALESCE($2, email),
        phone = COALESCE($3, phone), address = COALESCE($4, address),
-       status = COALESCE($5, status), updated_at = NOW()
+       status = COALESCE($5, status),
+       default_relationship_type = COALESCE($8, default_relationship_type),
+       emergency_contact_name = COALESCE($9, emergency_contact_name),
+       emergency_contact_phone = COALESCE($10, emergency_contact_phone), updated_at = NOW()
      WHERE id = $6 AND school_id = $7`,
     [body.name ?? null, body.email ?? null, body.phone ?? null, body.address ?? null,
-      body.status ?? null, params.parentId, query.schoolId],
+       body.status ?? null, params.parentId, query.schoolId, body.relationshipType ?? null,
+       body.emergencyContactName ?? null, body.emergencyContactPhone ?? null],
   );
   const updated = await parent(req, params.parentId, query.schoolId);
   await audit(req, query.schoolId, "Updated parent", "PARENT_UPDATED", params.parentId);

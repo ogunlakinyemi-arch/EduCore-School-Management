@@ -323,6 +323,13 @@
       "when": 1791000000000,
       "tag": "0050_independent_owner_school_lock",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1791072000000,
+      "tag": "0051_parent_profile_preferences",
+      "breakpoints": true
     }
   ]
 }

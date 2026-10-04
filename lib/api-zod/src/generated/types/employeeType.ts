@@ -11,5 +11,9 @@ export type EmployeeType = typeof EmployeeType[keyof typeof EmployeeType];
 
 export const EmployeeType = {
   TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  CLEANER: 'CLEANER',
+  ASSISTANT: 'ASSISTANT',
+  DRIVER: 'DRIVER',
   STAFF: 'STAFF',
 } as const;

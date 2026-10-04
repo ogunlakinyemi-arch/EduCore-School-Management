@@ -9,8 +9,8 @@ import type { EmployeeInputGender } from './employeeInputGender';
 import type { EmployeeType } from './employeeType';
 
 export interface EmployeeInput {
-  /** @minLength 1 */
-  employeeId: string;
+  /** Legacy input ignored on creation; the server generates a permanent number */
+  employeeId?: string;
   /** @minLength 2 */
   firstName: string;
   middleName?: string;

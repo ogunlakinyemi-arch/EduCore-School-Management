@@ -16,6 +16,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => ({
 vi.mock('@workspace/api-client-react', async (importOriginal) => ({
   ...await importOriginal<typeof import('@workspace/api-client-react')>(),
   useGetSchool: () => ({ data: null }),
+  useGetAuthorizedContext: () => ({ data: { isPlatformOwner: false, roles: [] } }),
   useListStudents: (params: Parameters<typeof getListStudentsUrl>[0], options: { query: { enabled: boolean } }) => {
     state.requests.push({ params, enabled: options.query.enabled });
     return { data: [], isLoading: false, isError: state.errorStatus !== null, error: state.errorStatus === null ? null : { status: state.errorStatus } };

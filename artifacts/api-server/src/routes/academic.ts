@@ -11,6 +11,7 @@ import {
   ListTeacherClassAssignmentsQueryParams, AssignTeacherClassQueryParams, AssignTeacherClassBody,
 } from "@workspace/api-zod";
 import { pool } from "@workspace/db";
+import { generateSubjectCode } from "../lib/generated-person-codes";
 import {
   AuthError,
   assertSchoolAccess,
@@ -150,9 +151,19 @@ router.post("/students/:studentId/class-assignments",wrap(async(req,res)=>{
 }));
 
 router.get("/subjects",wrap(async(req,res)=>{const q=ListSubjectsQueryParams.parse(req.query);school(req,q.schoolId,viewRoles);const r=await pool.query(`SELECT id,school_id AS "schoolId",name,code,description,status FROM subjects WHERE school_id=$1 AND ($2::text IS NULL OR status=$2) AND ($3::text IS NULL OR name ILIKE $3 OR code ILIKE $3) ORDER BY name`,[q.schoolId,q.status??null,q.search?`%${q.search}%`:null]);res.json(r.rows)}));
-router.post("/subjects",wrap(async(req,res)=>{const q=CreateSubjectQueryParams.parse(req.query),b=CreateSubjectBody.parse(req.body);school(req,q.schoolId,writeRoles,true);const r=await pool.query(`INSERT INTO subjects(school_id,name,code,description,status) VALUES($1,$2,$3,$4,$5) RETURNING id,school_id AS "schoolId",name,code,description,status`,[q.schoolId,b.name,b.code,b.description??null,b.status??"ACTIVE"]);await audit(req,q.schoolId,"Created subject",r.rows[0].id);res.status(201).json(r.rows[0])}));
+router.post("/subjects",wrap(async(req,res)=>{const q=CreateSubjectQueryParams.parse(req.query),b=CreateSubjectBody.parse(req.body);school(req,q.schoolId,writeRoles,true);const r=await pool.query(`INSERT INTO subjects(school_id,name,code,description,status) VALUES($1,$2,$3,$4,$5) RETURNING id,school_id AS "schoolId",name,code,description,status`,[q.schoolId,b.name,generateSubjectCode(b.name),b.description??null,b.status??"ACTIVE"]);await audit(req,q.schoolId,"Created subject",r.rows[0].id);res.status(201).json(r.rows[0])}));
 router.get("/subjects/:subjectId",wrap(async(req,res)=>{const p=GetSubjectParams.parse(req.params),q=GetSubjectQueryParams.parse(req.query);school(req,q.schoolId,viewRoles);const r=await pool.query(`SELECT id,school_id AS "schoolId",name,code,description,status FROM subjects WHERE id=$1 AND school_id=$2`,[p.subjectId,q.schoolId]);if(!r.rows[0])throw new AuthError(404,"Subject not found");res.json(r.rows[0])}));
-router.patch("/subjects/:subjectId",wrap(async(req,res)=>{const p=UpdateSubjectParams.parse(req.params),q=UpdateSubjectQueryParams.parse(req.query),b=UpdateSubjectBody.parse(req.body);school(req,q.schoolId,writeRoles,true);const r=await pool.query(`UPDATE subjects SET name=COALESCE($1,name),code=COALESCE($2,code),description=COALESCE($3,description),status=COALESCE($4,status),updated_at=NOW() WHERE id=$5 AND school_id=$6 RETURNING id,school_id AS "schoolId",name,code,description,status`,[b.name??null,b.code??null,b.description??null,b.status??null,p.subjectId,q.schoolId]);if(!r.rows[0])throw new AuthError(404,"Subject not found");await audit(req,q.schoolId,"Updated subject",p.subjectId);res.json(r.rows[0])}));
+router.patch("/subjects/:subjectId",wrap(async(req,res)=>{
+  const p=UpdateSubjectParams.parse(req.params),q=UpdateSubjectQueryParams.parse(req.query),b=UpdateSubjectBody.parse(req.body);
+  school(req,q.schoolId,writeRoles,true);
+  if(b.code !== undefined) {
+    const current=await pool.query("SELECT code FROM subjects WHERE id=$1 AND school_id=$2",[p.subjectId,q.schoolId]);
+    if(!current.rows[0]) throw new AuthError(404,"Subject not found");
+    if(b.code !== current.rows[0].code) throw new AuthError(409,"Subject codes are permanent");
+  }
+  const r=await pool.query(`UPDATE subjects SET name=COALESCE($1,name),description=COALESCE($2,description),status=COALESCE($3,status),updated_at=NOW() WHERE id=$4 AND school_id=$5 RETURNING id,school_id AS "schoolId",name,code,description,status`,[b.name??null,b.description??null,b.status??null,p.subjectId,q.schoolId]);
+  if(!r.rows[0])throw new AuthError(404,"Subject not found");await audit(req,q.schoolId,"Updated subject",p.subjectId);res.json(r.rows[0]);
+}));
 
 router.get("/class-subject-assignments",wrap(async(req,res)=>{
   const q=ListClassSubjectAssignmentsQueryParams.parse(req.query); school(req,q.schoolId,viewRoles);

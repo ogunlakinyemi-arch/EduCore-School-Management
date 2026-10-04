@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
+import { schoolCodePreview } from '@/lib/school-code';
 import { useLocation, useParams, Link } from 'wouter';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
@@ -331,6 +332,7 @@ function SchoolForm({ initial, onDone, onCancel }: { initial?: any; onDone: () =
     state: initial?.state ?? '', 
     status: initial?.status ?? ''
   });
+  const [codeSuffix] = useState(() => crypto.randomUUID().replaceAll('-', '').slice(0, 6));
   
   const pending = update.isPending || inviting;
   
@@ -371,11 +373,11 @@ function SchoolForm({ initial, onDone, onCancel }: { initial?: any; onDone: () =
     <form onSubmit={save} className="space-y-5">
       {!initial && (
         <Field label="School Code (Unique identifier)">
-          <input required minLength={2} maxLength={10} value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="e.g. CGA" data-testid="input-school-code" className="font-mono uppercase" />
+          <input readOnly value={form.code} placeholder="Generated from the school name" data-testid="input-school-code" className="font-mono uppercase" />
         </Field>
       )}
       <Field label="School name">
-        <input required minLength={2} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Cedar Grove Academy" data-testid="input-school-name" />
+        <input required minLength={2} value={form.name} onChange={e => setForm({ ...form, name: e.target.value, ...(!initial ? { code: schoolCodePreview(e.target.value, codeSuffix) } : {}) })} placeholder="e.g. Cedar Grove Academy" data-testid="input-school-name" />
       </Field>
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="City">

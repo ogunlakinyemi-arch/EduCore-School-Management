@@ -3404,8 +3404,8 @@ router.get("/platform/finance/company-payroll/report", run(async (req, res) => {
 const MY_PAYSLIPS_SELECT = `
  SELECT s.id,s.scope,s.school_id,s.period_month,s.employee_name_snapshot,
    s.employee_role_snapshot,s.base_salary_minor,s.allowance_minor,s.bonus_minor,
-   s.deduction_minor,s.adjustment_minor,s.adjustment_reason,s.net_salary_minor,
-   s.currency,s.created_at,i.account_last4,t.provider_reference,
+   s.deduction_minor,s.adjustment_minor,i.adjustment_reason,s.net_salary_minor,
+   s.currency,s.issued_at AS created_at,i.account_last4,t.provider_reference,
    t.provider_transaction_id,school.name AS school_name
  FROM payroll_payslips s
  JOIN payroll_items i ON i.id=s.payroll_item_id AND i.period_id=s.period_id

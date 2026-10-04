@@ -12,7 +12,7 @@ export type SchoolWithAdministratorInput4b96100School = {
      * @minLength 1
      * @maxLength 10
      */
-  code: string;
+  code?: string;
   /** @minLength 2 */
   name: string;
   /** @minLength 1 */

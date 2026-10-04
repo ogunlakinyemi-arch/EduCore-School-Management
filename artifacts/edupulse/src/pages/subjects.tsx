@@ -117,7 +117,7 @@ function SubjectForm({ schoolId, initial, onDone, onCancel }: { schoolId: number
     if (initial) {
       update.mutate({ subjectId: initial.id, params: { schoolId }, data: form as any }, { onSuccess: onDone }); 
     } else {
-      create.mutate({ params: { schoolId }, data: form as any }, { onSuccess: onDone }); 
+      create.mutate({ params: { schoolId }, data: { name: form.name, description: form.description, status: form.status } }, { onSuccess: onDone });
     }
   };
   
@@ -130,7 +130,7 @@ function SubjectForm({ schoolId, initial, onDone, onCancel }: { schoolId: number
           <input required minLength={2} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Mathematics" />
         </Field>
         <Field label="Subject Code">
-          <input required minLength={2} maxLength={6} value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="e.g. MTH" className="font-mono uppercase" />
+          <input readOnly value={form.code} placeholder="Generated on save" className="font-mono uppercase" />
         </Field>
       </div>
       

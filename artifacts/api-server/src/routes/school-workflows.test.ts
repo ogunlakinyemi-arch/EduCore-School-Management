@@ -342,6 +342,8 @@ describe("school workflow APIs", () => {
     expect(response.status).toBe(200);
     const calendarQuery = state.queries.find(({ sql }) => sql.includes("WITH calendar AS"));
     expect(calendarQuery?.sql).toContain("audience && $7::text[]");
+    expect(calendarQuery?.sql).toContain('COALESCE(c."endDate",c."startDate")::date >= $4::date');
+    expect(calendarQuery?.sql).toContain('COALESCE(c."endDate",c."startDate")::date <= $5::date');
     expect(calendarQuery?.values).toEqual([1, null, 11, null, null, false, ["PARENT"]]);
   });
 

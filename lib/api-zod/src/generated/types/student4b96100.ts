@@ -28,7 +28,10 @@ export interface Student4b96100 {
   middleName?: string | null;
   /** @nullable */
   dateOfBirth?: Date | null;
-  /** @nullable */
+  /**
+     * The existing managed photo reference or an absolute image URL
+     * @nullable
+     */
   passportUrl?: string | null;
   /** @nullable */
   admissionDate?: Date | null;

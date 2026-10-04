@@ -781,8 +781,8 @@ async function listCalendarRows(
       WHERE c."schoolId"=$1
         AND ($2::integer IS NULL OR c."sessionId"=$2)
         AND ($3::integer IS NULL OR c."termId"=$3)
-        AND ($4::date IS NULL OR COALESCE(c."endDate",c."startDate") >= $4)
-        AND ($5::date IS NULL OR COALESCE(c."endDate",c."startDate") <= $5)
+        AND ($4::date IS NULL OR COALESCE(c."endDate",c."startDate")::date >= $4::date)
+        AND ($5::date IS NULL OR COALESCE(c."endDate",c."startDate")::date <= $5::date)
         AND ($6::boolean OR (c.status='ACTIVE' AND c.audience && $7::text[]))
       ORDER BY c."startDate",c.id`,
     [
@@ -1770,8 +1770,8 @@ router.get("/schools/:schoolId/duty-roster", run(async (req, res) => {
   if (to) push((placeholder) => `d.start_date <= ${placeholder}::date`, to);
   if (status !== "all") push((placeholder) => `d.status=${placeholder}`, status);
   const result = await pool.query(
-    `SELECT * FROM (${dutySelect()}) duties
-      WHERE "schoolId"=$1${filters.length ? ` AND ${filters.join(" AND ")}` : ""}
+    `SELECT * FROM (${dutySelect()}
+      WHERE d.school_id=$1${filters.length ? ` AND ${filters.join(" AND ")}` : ""}) duties
       ORDER BY "startDate", "employeeName", id`,
     parameters,
   );

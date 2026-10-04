@@ -136,7 +136,7 @@ function ParentChildrenForm({ schoolId, parent, onDone, onCancel }: {
     { query: { enabled: !!schoolId, queryKey: getListStudentsQueryKey({ schoolId, status: 'ACTIVE' }) } },
   );
   const [selected, setSelected] = useState<number[]>([]);
-  const [relationshipType, setRelationshipType] = useState('Guardian');
+  const [relationshipType, setRelationshipType] = useState(parent.relationshipType ?? 'Guardian');
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
 
@@ -207,17 +207,18 @@ function ParentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number;
     name: initial?.name ?? '', 
     email: initial?.email ?? '', 
     phone: initial?.phone ?? '', 
-    relationshipType: initial?.relationshipType ?? 'Mother', 
+    relationshipType: initial ? (initial.relationshipType ?? '') : 'Mother',
     address: initial?.address ?? '',
     status: initial?.status ?? 'ACTIVE'
   });
   
   const save = (e: FormEvent) => { 
     e.preventDefault(); 
+    const data = { ...form, relationshipType: form.relationshipType || undefined };
     if (initial) {
-      update.mutate({ parentId: initial.id, params: { schoolId }, data: form as any }, { onSuccess: onDone }); 
+      update.mutate({ parentId: initial.id, params: { schoolId }, data: data as any }, { onSuccess: onDone });
     } else {
-      create.mutate({ params: { schoolId }, data: form as any }, { onSuccess: onDone }); 
+      create.mutate({ params: { schoolId }, data: data as any }, { onSuccess: onDone });
     }
   };
   
@@ -237,8 +238,9 @@ function ParentForm({ schoolId, initial, onDone, onCancel }: { schoolId: number;
         </Field>
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Relationship Type">
+        <Field label="Default Relationship for New Child Links">
           <select value={form.relationshipType} onChange={e => setForm({ ...form, relationshipType: e.target.value })}>
+            <option value="">Choose when linking a child</option>
             <option value="Mother">Mother</option>
             <option value="Father">Father</option>
             <option value="Guardian">Guardian</option>

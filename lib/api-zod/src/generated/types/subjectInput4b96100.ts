@@ -11,7 +11,7 @@ export interface SubjectInput4b96100 {
   /** @minLength 1 */
   name: string;
   /** @minLength 1 */
-  code: string;
+  code?: string;
   description?: string;
   status?: SubjectStatus4b96100;
 }

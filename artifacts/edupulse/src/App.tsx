@@ -323,6 +323,15 @@ function ProtectedRoutes() {
           <Route path="/communications">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT']}><CommunicationsPage /></RoleGuard>
           </Route>
+          <Route path="/communication">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT']}><CommunicationsPage /></RoleGuard>
+          </Route>
+          <Route path="/communication-center">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT']}><CommunicationsPage /></RoleGuard>
+          </Route>
+          <Route path="/communication-centre">
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT']}><CommunicationsPage /></RoleGuard>
+          </Route>
           <Route path="/inbox"><CommunicationInbox /></Route>
           <Route path="/notification-settings"><NotificationSettings /></Route>
           <Route path="/classes">

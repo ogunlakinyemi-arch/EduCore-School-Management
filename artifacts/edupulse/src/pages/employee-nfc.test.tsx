@@ -10,9 +10,9 @@ describe('employee NFC identity and roles', () => {
     expect(src).toContain('Not a student card');
   });
 
-  it('gives School Admin card control and resolution, Owner read-only attendance', () => {
+  it('gives School Admin preview and discrepancy resolution, Owner official card control', () => {
     const ctx = { isPlatformOwner: false, roles: [{ schoolId: 4, role: 'SCHOOL_ADMIN', status: 'ACTIVE' }] };
-    expect(employeeNfcAccess(ctx, 4)).toMatchObject({ canView: true, canManageCards: true, canResolve: true, readOnlyAttendance: false });
+    expect(employeeNfcAccess(ctx, 4)).toMatchObject({ canView: true, canManageCards: false, canResolve: true, readOnlyAttendance: false });
     expect(employeeNfcAccess(ctx, 5).canView).toBe(false);
     expect(employeeNfcAccess({ isPlatformOwner: true, roles: [] }, 4)).toMatchObject({ canManageCards: true, canResolve: false, readOnlyAttendance: true });
   });

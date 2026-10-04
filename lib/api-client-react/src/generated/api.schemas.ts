@@ -1325,7 +1325,10 @@ export interface School {
   email?: string | null;
   /** @nullable */
   website?: string | null;
-  /** @nullable */
+  /**
+     * Managed storage reference or absolute image URL
+     * @nullable
+     */
   logoUrl?: string | null;
   /** @nullable */
   schoolType?: string | null;
@@ -1423,7 +1426,7 @@ export type SchoolWithAdministratorInputSchool = {
      * @minLength 1
      * @maxLength 10
      */
-  code: string;
+  code?: string;
   /** @minLength 2 */
   name: string;
   /** @minLength 1 */
@@ -1584,7 +1587,7 @@ export const SchoolInputStatus = {
 
 export interface SchoolInput {
   /** @minLength 1 */
-  code: string;
+  code?: string;
   /** @minLength 2 */
   name: string;
   /** @minLength 2 */
@@ -1713,7 +1716,10 @@ export interface Student {
   middleName?: string | null;
   /** @nullable */
   dateOfBirth?: string | null;
-  /** @nullable */
+  /**
+     * The existing managed photo reference or an absolute image URL
+     * @nullable
+     */
   passportUrl?: string | null;
   /** @nullable */
   admissionDate?: string | null;
@@ -2684,6 +2690,20 @@ export interface ParentInput {
   emergencyContactPhone?: string;
 }
 
+/**
+ * Default for new child links; does not change existing relationships
+ */
+export type ParentUpdateRelationshipType = typeof ParentUpdateRelationshipType[keyof typeof ParentUpdateRelationshipType];
+
+
+export const ParentUpdateRelationshipType = {
+  Father: 'Father',
+  Mother: 'Mother',
+  Guardian: 'Guardian',
+  Grandparent: 'Grandparent',
+  Other: 'Other',
+} as const;
+
 export type ParentUpdateStatus = typeof ParentUpdateStatus[keyof typeof ParentUpdateStatus];
 
 
@@ -2693,6 +2713,8 @@ export const ParentUpdateStatus = {
 } as const;
 
 export interface ParentUpdate {
+  /** Default for new child links; does not change existing relationships */
+  relationshipType?: ParentUpdateRelationshipType;
   /** @minLength 2 */
   name?: string;
   email?: string;
@@ -2708,6 +2730,7 @@ export type EmployeeStatus = typeof EmployeeStatus[keyof typeof EmployeeStatus];
 
 
 export const EmployeeStatus = {
+  PENDING: 'PENDING',
   ACTIVE: 'ACTIVE',
   INACTIVE: 'INACTIVE',
   SUSPENDED: 'SUSPENDED',
@@ -2720,6 +2743,10 @@ export type EmployeeType = typeof EmployeeType[keyof typeof EmployeeType];
 
 export const EmployeeType = {
   TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  CLEANER: 'CLEANER',
+  ASSISTANT: 'ASSISTANT',
+  DRIVER: 'DRIVER',
   STAFF: 'STAFF',
 } as const;
 
@@ -2755,7 +2782,10 @@ export interface Employee {
   email?: string | null;
   /** @nullable */
   address?: string | null;
-  /** @nullable */
+  /**
+     * Managed storage reference or absolute image URL
+     * @nullable
+     */
   photoUrl?: string | null;
   /** @nullable */
   gender?: EmployeeGender;
@@ -2780,8 +2810,8 @@ export const EmployeeInputGender = {
 } as const;
 
 export interface EmployeeInput {
-  /** @minLength 1 */
-  employeeId: string;
+  /** Legacy input ignored on creation; the server generates a permanent number */
+  employeeId?: string;
   /** @minLength 2 */
   firstName: string;
   middleName?: string;
@@ -2974,7 +3004,7 @@ export interface SubjectInput {
   /** @minLength 1 */
   name: string;
   /** @minLength 1 */
-  code: string;
+  code?: string;
   description?: string;
   status?: SubjectStatus;
 }
@@ -13166,7 +13196,10 @@ export interface School4b96100 {
   email?: string | null;
   /** @nullable */
   website?: string | null;
-  /** @nullable */
+  /**
+     * Managed storage reference or absolute image URL
+     * @nullable
+     */
   logoUrl?: string | null;
   /** @nullable */
   schoolType?: string | null;
@@ -13264,7 +13297,7 @@ export type SchoolWithAdministratorInput4b96100School = {
      * @minLength 1
      * @maxLength 10
      */
-  code: string;
+  code?: string;
   /** @minLength 2 */
   name: string;
   /** @minLength 1 */
@@ -13425,7 +13458,7 @@ export const SchoolInput4b96100Status = {
 
 export interface SchoolInput4b96100 {
   /** @minLength 1 */
-  code: string;
+  code?: string;
   /** @minLength 2 */
   name: string;
   /** @minLength 2 */
@@ -13554,7 +13587,10 @@ export interface Student4b96100 {
   middleName?: string | null;
   /** @nullable */
   dateOfBirth?: string | null;
-  /** @nullable */
+  /**
+     * The existing managed photo reference or an absolute image URL
+     * @nullable
+     */
   passportUrl?: string | null;
   /** @nullable */
   admissionDate?: string | null;
@@ -14525,6 +14561,20 @@ export interface ParentInput4b96100 {
   emergencyContactPhone?: string;
 }
 
+/**
+ * Default for new child links; does not change existing relationships
+ */
+export type ParentUpdate4b96100RelationshipType = typeof ParentUpdate4b96100RelationshipType[keyof typeof ParentUpdate4b96100RelationshipType];
+
+
+export const ParentUpdate4b96100RelationshipType = {
+  Father: 'Father',
+  Mother: 'Mother',
+  Guardian: 'Guardian',
+  Grandparent: 'Grandparent',
+  Other: 'Other',
+} as const;
+
 export type ParentUpdate4b96100Status = typeof ParentUpdate4b96100Status[keyof typeof ParentUpdate4b96100Status];
 
 
@@ -14534,6 +14584,8 @@ export const ParentUpdate4b96100Status = {
 } as const;
 
 export interface ParentUpdate4b96100 {
+  /** Default for new child links; does not change existing relationships */
+  relationshipType?: ParentUpdate4b96100RelationshipType;
   /** @minLength 2 */
   name?: string;
   email?: string;
@@ -14549,6 +14601,7 @@ export type EmployeeStatus4b96100 = typeof EmployeeStatus4b96100[keyof typeof Em
 
 
 export const EmployeeStatus4b96100 = {
+  PENDING: 'PENDING',
   ACTIVE: 'ACTIVE',
   INACTIVE: 'INACTIVE',
   SUSPENDED: 'SUSPENDED',
@@ -14561,6 +14614,10 @@ export type EmployeeType4b96100 = typeof EmployeeType4b96100[keyof typeof Employ
 
 export const EmployeeType4b96100 = {
   TEACHER: 'TEACHER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  CLEANER: 'CLEANER',
+  ASSISTANT: 'ASSISTANT',
+  DRIVER: 'DRIVER',
   STAFF: 'STAFF',
 } as const;
 
@@ -14596,7 +14653,10 @@ export interface Employee4b96100 {
   email?: string | null;
   /** @nullable */
   address?: string | null;
-  /** @nullable */
+  /**
+     * Managed storage reference or absolute image URL
+     * @nullable
+     */
   photoUrl?: string | null;
   /** @nullable */
   gender?: Employee4b96100Gender;
@@ -14621,8 +14681,8 @@ export const EmployeeInput4b96100Gender = {
 } as const;
 
 export interface EmployeeInput4b96100 {
-  /** @minLength 1 */
-  employeeId: string;
+  /** Legacy input ignored on creation; the server generates a permanent number */
+  employeeId?: string;
   /** @minLength 2 */
   firstName: string;
   middleName?: string;
@@ -14815,7 +14875,7 @@ export interface SubjectInput4b96100 {
   /** @minLength 1 */
   name: string;
   /** @minLength 1 */
-  code: string;
+  code?: string;
   description?: string;
   status?: SubjectStatus4b96100;
 }

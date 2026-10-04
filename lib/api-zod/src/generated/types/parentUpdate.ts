@@ -5,9 +5,12 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { ParentUpdateRelationshipType } from './parentUpdateRelationshipType';
 import type { ParentUpdateStatus } from './parentUpdateStatus';
 
 export interface ParentUpdate {
+  /** Default for new child links; does not change existing relationships */
+  relationshipType?: ParentUpdateRelationshipType;
   /** @minLength 2 */
   name?: string;
   email?: string;

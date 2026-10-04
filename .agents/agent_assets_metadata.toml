@@ -126,3 +126,17 @@ mtime_ms = 1790989708794
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/bddf4f38-f733-4ade-8022-f0880685b713/ad18992c-597e-4976-b357-a32645c3fa10"
 storage_version_token = "1790989714270831"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "vW35bfALfWAj8KvOfEFwy"
+uri = "file://.local/reports/educore-master-fix-status.html"
+type = "html"
+title = "EduCore: 53-issue correction status"
+description = "Partial Development delivery: all issue statuses, confirmed causes, migration, changed files and exact verification results."
+logical_id = "196ac429-d8fe-451e-b019-96b32ca1bb2f"
+content_hash = "sha256:4421f05556bd6a0df2039a96bc7ece04c0ad7796925f809103d5a6257b9ac7e2"
+size = 19904
+mtime_ms = 1791077048770
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/196ac429-d8fe-451e-b019-96b32ca1bb2f/e13b0177-e5f7-4c2f-9fef-b62efaa33ec6"
+storage_version_token = "1791077049410649"
+content_type = "text/html"

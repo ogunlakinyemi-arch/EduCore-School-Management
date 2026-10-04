@@ -76,10 +76,7 @@ function assertEmployeeNfcRead(req: Request, schoolId: number) {
 function assertEmployeeNfcMutation(req: Request, schoolId: number) {
   const context = currentSchoolContext(req);
   if (isPlatformOwner(context)) return context;
-  if (hasRole(context, "SCHOOL_ADMIN", schoolId)) {
-    return assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN"]);
-  }
-  throw new AuthError(404, "School not found or employee NFC management is not available");
+  throw new AuthError(403, "Official employee NFC card controls require Platform Owner permission");
 }
 
 function assertSchoolAdminDiscrepancyWrite(req: Request, schoolId: number) {

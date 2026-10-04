@@ -7231,7 +7231,7 @@ export const createSchoolWithAdministratorBodyAdministratorEmailMax = 254;
 
 export const CreateSchoolWithAdministratorBody = zod.object({
   "school": zod.object({
-  "code": zod.string().min(1).max(createSchoolWithAdministratorBodySchoolCodeMax),
+  "code": zod.string().min(1).max(createSchoolWithAdministratorBodySchoolCodeMax).optional(),
   "name": zod.string().min(createSchoolWithAdministratorBodySchoolNameMin),
   "city": zod.string().min(1),
   "state": zod.string().min(1),
@@ -9276,7 +9276,7 @@ export const GetSchoolDashboardResponse = zod.object({
   "phone": zod.string().nullish(),
   "email": zod.string().email().nullish(),
   "website": zod.string().url().nullish(),
-  "logoUrl": zod.string().url().nullish(),
+  "logoUrl": zod.string().nullish().describe('Managed storage reference or absolute image URL'),
   "schoolType": zod.string().nullish(),
   "administrators": zod.array(zod.object({
   "id": zod.number().int(),
@@ -9363,7 +9363,7 @@ export const ListSchoolsResponseItem = zod.object({
   "phone": zod.string().nullish(),
   "email": zod.string().email().nullish(),
   "website": zod.string().url().nullish(),
-  "logoUrl": zod.string().url().nullish(),
+  "logoUrl": zod.string().nullish().describe('Managed storage reference or absolute image URL'),
   "schoolType": zod.string().nullish(),
   "administrators": zod.array(zod.object({
   "id": zod.number().int(),
@@ -9400,7 +9400,7 @@ export const createSchoolBodyStateMin = 2;
 
 
 export const CreateSchoolBody = zod.object({
-  "code": zod.string().min(1),
+  "code": zod.string().min(1).optional(),
   "name": zod.string().min(createSchoolBodyNameMin),
   "city": zod.string().min(createSchoolBodyCityMin),
   "state": zod.string().min(createSchoolBodyStateMin),
@@ -9410,7 +9410,7 @@ export const CreateSchoolBody = zod.object({
   "phone": zod.string().optional(),
   "email": zod.string().email().optional(),
   "website": zod.string().url().optional(),
-  "logoUrl": zod.string().url().optional(),
+  "logoUrl": zod.string().optional(),
   "schoolType": zod.string().optional(),
   "status": zod.enum(['active', 'suspended', 'inactive']).optional()
 })
@@ -9427,7 +9427,7 @@ export const CreateSchoolResponse = zod.object({
   "phone": zod.string().nullish(),
   "email": zod.string().email().nullish(),
   "website": zod.string().url().nullish(),
-  "logoUrl": zod.string().url().nullish(),
+  "logoUrl": zod.string().nullish().describe('Managed storage reference or absolute image URL'),
   "schoolType": zod.string().nullish(),
   "administrators": zod.array(zod.object({
   "id": zod.number().int(),
@@ -9472,7 +9472,7 @@ export const GetSchoolResponse = zod.object({
   "phone": zod.string().nullish(),
   "email": zod.string().email().nullish(),
   "website": zod.string().url().nullish(),
-  "logoUrl": zod.string().url().nullish(),
+  "logoUrl": zod.string().nullish().describe('Managed storage reference or absolute image URL'),
   "schoolType": zod.string().nullish(),
   "administrators": zod.array(zod.object({
   "id": zod.number().int(),
@@ -9525,7 +9525,7 @@ export const UpdateSchoolBody = zod.object({
   "phone": zod.string().optional(),
   "email": zod.string().email().optional(),
   "website": zod.string().url().optional(),
-  "logoUrl": zod.string().url().optional(),
+  "logoUrl": zod.string().optional(),
   "schoolType": zod.string().optional(),
   "status": zod.enum(['active', 'suspended', 'inactive']).optional()
 })
@@ -9542,7 +9542,7 @@ export const UpdateSchoolResponse = zod.object({
   "phone": zod.string().nullish(),
   "email": zod.string().email().nullish(),
   "website": zod.string().url().nullish(),
-  "logoUrl": zod.string().url().nullish(),
+  "logoUrl": zod.string().nullish().describe('Managed storage reference or absolute image URL'),
   "schoolType": zod.string().nullish(),
   "administrators": zod.array(zod.object({
   "id": zod.number().int(),
@@ -9591,7 +9591,7 @@ export const UpdateSchoolStatusResponse = zod.object({
   "phone": zod.string().nullish(),
   "email": zod.string().email().nullish(),
   "website": zod.string().url().nullish(),
-  "logoUrl": zod.string().url().nullish(),
+  "logoUrl": zod.string().nullish().describe('Managed storage reference or absolute image URL'),
   "schoolType": zod.string().nullish(),
   "administrators": zod.array(zod.object({
   "id": zod.number().int(),
@@ -9637,7 +9637,7 @@ export const ListStudentsResponseItem = zod.object({
   "lastName": zod.string(),
   "middleName": zod.string().nullish(),
   "dateOfBirth": zod.coerce.date().nullish(),
-  "passportUrl": zod.string().url().nullish(),
+  "passportUrl": zod.string().nullish().describe('The existing managed photo reference or an absolute image URL'),
   "admissionDate": zod.coerce.date().nullish(),
   "admissionStatus": zod.enum(['pending', 'admitted', 'rejected']).nullish(),
   "address": zod.string().nullish(),
@@ -9688,7 +9688,7 @@ export const CreateStudentBody = zod.object({
   "lastName": zod.string().min(createStudentBodyLastNameMin),
   "middleName": zod.string().optional(),
   "dateOfBirth": zod.coerce.date().optional(),
-  "passportUrl": zod.string().url().optional(),
+  "passportUrl": zod.string().optional(),
   "admissionDate": zod.coerce.date().optional(),
   "admissionStatus": zod.enum(['pending', 'admitted', 'rejected']).optional(),
   "address": zod.string().optional(),
@@ -9713,7 +9713,7 @@ export const CreateStudentResponse = zod.object({
   "lastName": zod.string(),
   "middleName": zod.string().nullish(),
   "dateOfBirth": zod.coerce.date().nullish(),
-  "passportUrl": zod.string().url().nullish(),
+  "passportUrl": zod.string().nullish().describe('The existing managed photo reference or an absolute image URL'),
   "admissionDate": zod.coerce.date().nullish(),
   "admissionStatus": zod.enum(['pending', 'admitted', 'rejected']).nullish(),
   "address": zod.string().nullish(),
@@ -9765,7 +9765,7 @@ export const GetStudentResponse = zod.object({
   "lastName": zod.string(),
   "middleName": zod.string().nullish(),
   "dateOfBirth": zod.coerce.date().nullish(),
-  "passportUrl": zod.string().url().nullish(),
+  "passportUrl": zod.string().nullish().describe('The existing managed photo reference or an absolute image URL'),
   "admissionDate": zod.coerce.date().nullish(),
   "admissionStatus": zod.enum(['pending', 'admitted', 'rejected']).nullish(),
   "address": zod.string().nullish(),
@@ -9820,7 +9820,7 @@ export const UpdateStudentBody = zod.object({
   "section": zod.string().optional(),
   "middleName": zod.string().optional(),
   "dateOfBirth": zod.coerce.date().optional(),
-  "passportUrl": zod.string().url().optional(),
+  "passportUrl": zod.string().optional(),
   "admissionStatus": zod.enum(['pending', 'admitted', 'rejected']).optional(),
   "address": zod.string().optional(),
   "previousSchool": zod.string().optional(),
@@ -9840,7 +9840,7 @@ export const UpdateStudentResponse = zod.object({
   "lastName": zod.string(),
   "middleName": zod.string().nullish(),
   "dateOfBirth": zod.coerce.date().nullish(),
-  "passportUrl": zod.string().url().nullish(),
+  "passportUrl": zod.string().nullish().describe('The existing managed photo reference or an absolute image URL'),
   "admissionDate": zod.coerce.date().nullish(),
   "admissionStatus": zod.enum(['pending', 'admitted', 'rejected']).nullish(),
   "address": zod.string().nullish(),
@@ -9896,7 +9896,7 @@ export const UpdateStudentStatusResponse = zod.object({
   "lastName": zod.string(),
   "middleName": zod.string().nullish(),
   "dateOfBirth": zod.coerce.date().nullish(),
-  "passportUrl": zod.string().url().nullish(),
+  "passportUrl": zod.string().nullish().describe('The existing managed photo reference or an absolute image URL'),
   "admissionDate": zod.coerce.date().nullish(),
   "admissionStatus": zod.enum(['pending', 'admitted', 'rejected']).nullish(),
   "address": zod.string().nullish(),
@@ -10222,6 +10222,7 @@ export const updateParentBodyPhoneMin = 7;
 
 
 export const UpdateParentBody = zod.object({
+  "relationshipType": zod.enum(['Father', 'Mother', 'Guardian', 'Grandparent', 'Other']).optional().describe('Default for new child links; does not change existing relationships'),
   "name": zod.string().min(updateParentBodyNameMin).optional(),
   "email": zod.string().email().optional(),
   "phone": zod.string().min(updateParentBodyPhoneMin).optional(),
@@ -10259,8 +10260,8 @@ export const ListEmployeesQueryParams = zod.object({
   "search": zod.coerce.string().optional(),
   "employeeId": zod.coerce.string().optional(),
   "department": zod.coerce.string().optional(),
-  "role": zod.enum(['TEACHER', 'STAFF']).optional(),
-  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']).optional()
+  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'CLEANER', 'ASSISTANT', 'DRIVER', 'STAFF']).optional(),
+  "status": zod.enum(['PENDING', 'ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']).optional()
 })
 
 export const ListEmployeesResponseItem = zod.object({
@@ -10271,13 +10272,13 @@ export const ListEmployeesResponseItem = zod.object({
   "firstName": zod.string(),
   "middleName": zod.string().nullish(),
   "lastName": zod.string(),
-  "type": zod.enum(['TEACHER', 'STAFF']),
+  "type": zod.enum(['TEACHER', 'ACCOUNTANT', 'CLEANER', 'ASSISTANT', 'DRIVER', 'STAFF']),
   "phone": zod.string().nullish(),
   "email": zod.string().email().nullish(),
   "address": zod.string().nullish(),
-  "photoUrl": zod.string().url().nullish(),
+  "photoUrl": zod.string().nullish().describe('Managed storage reference or absolute image URL'),
   "gender": zod.union([zod.literal('female'),zod.literal('male'),zod.literal('other'),zod.literal(null)]).nullish(),
-  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']),
+  "status": zod.enum(['PENDING', 'ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']),
   "dateEmployed": zod.coerce.date().nullish(),
   "department": zod.string().nullish(),
   "qualification": zod.string().nullish(),
@@ -10296,7 +10297,6 @@ export const CreateEmployeeQueryParams = zod.object({
   "schoolId": zod.coerce.number().int().min(1)
 })
 
-
 export const createEmployeeBodyFirstNameMin = 2;
 
 export const createEmployeeBodyLastNameMin = 2;
@@ -10305,15 +10305,15 @@ export const createEmployeeBodyLastNameMin = 2;
 
 
 export const CreateEmployeeBody = zod.object({
-  "employeeId": zod.string().min(1),
+  "employeeId": zod.string().optional().describe('Legacy input ignored on creation; the server generates a permanent number'),
   "firstName": zod.string().min(createEmployeeBodyFirstNameMin),
   "middleName": zod.string().optional(),
   "lastName": zod.string().min(createEmployeeBodyLastNameMin),
-  "type": zod.enum(['TEACHER', 'STAFF']),
+  "type": zod.enum(['TEACHER', 'ACCOUNTANT', 'CLEANER', 'ASSISTANT', 'DRIVER', 'STAFF']),
   "phone": zod.string().optional(),
   "email": zod.string().email().optional(),
   "address": zod.string().optional(),
-  "photoUrl": zod.string().url().optional(),
+  "photoUrl": zod.string().optional(),
   "gender": zod.enum(['female', 'male', 'other']).optional(),
   "dateEmployed": zod.coerce.date().optional(),
   "department": zod.string().optional(),
@@ -10329,13 +10329,13 @@ export const CreateEmployeeResponse = zod.object({
   "firstName": zod.string(),
   "middleName": zod.string().nullish(),
   "lastName": zod.string(),
-  "type": zod.enum(['TEACHER', 'STAFF']),
+  "type": zod.enum(['TEACHER', 'ACCOUNTANT', 'CLEANER', 'ASSISTANT', 'DRIVER', 'STAFF']),
   "phone": zod.string().nullish(),
   "email": zod.string().email().nullish(),
   "address": zod.string().nullish(),
-  "photoUrl": zod.string().url().nullish(),
+  "photoUrl": zod.string().nullish().describe('Managed storage reference or absolute image URL'),
   "gender": zod.union([zod.literal('female'),zod.literal('male'),zod.literal('other'),zod.literal(null)]).nullish(),
-  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']),
+  "status": zod.enum(['PENDING', 'ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']),
   "dateEmployed": zod.coerce.date().nullish(),
   "department": zod.string().nullish(),
   "qualification": zod.string().nullish(),
@@ -10368,13 +10368,13 @@ export const GetEmployeeResponse = zod.object({
   "firstName": zod.string(),
   "middleName": zod.string().nullish(),
   "lastName": zod.string(),
-  "type": zod.enum(['TEACHER', 'STAFF']),
+  "type": zod.enum(['TEACHER', 'ACCOUNTANT', 'CLEANER', 'ASSISTANT', 'DRIVER', 'STAFF']),
   "phone": zod.string().nullish(),
   "email": zod.string().email().nullish(),
   "address": zod.string().nullish(),
-  "photoUrl": zod.string().url().nullish(),
+  "photoUrl": zod.string().nullish().describe('Managed storage reference or absolute image URL'),
   "gender": zod.union([zod.literal('female'),zod.literal('male'),zod.literal('other'),zod.literal(null)]).nullish(),
-  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']),
+  "status": zod.enum(['PENDING', 'ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']),
   "dateEmployed": zod.coerce.date().nullish(),
   "department": zod.string().nullish(),
   "qualification": zod.string().nullish(),
@@ -10413,7 +10413,7 @@ export const UpdateEmployeeBody = zod.object({
   "phone": zod.string().optional(),
   "email": zod.string().email().optional(),
   "address": zod.string().optional(),
-  "photoUrl": zod.string().url().optional(),
+  "photoUrl": zod.string().optional(),
   "gender": zod.enum(['female', 'male', 'other']).optional(),
   "dateEmployed": zod.coerce.date().optional(),
   "department": zod.string().optional(),
@@ -10429,13 +10429,13 @@ export const UpdateEmployeeResponse = zod.object({
   "firstName": zod.string(),
   "middleName": zod.string().nullish(),
   "lastName": zod.string(),
-  "type": zod.enum(['TEACHER', 'STAFF']),
+  "type": zod.enum(['TEACHER', 'ACCOUNTANT', 'CLEANER', 'ASSISTANT', 'DRIVER', 'STAFF']),
   "phone": zod.string().nullish(),
   "email": zod.string().email().nullish(),
   "address": zod.string().nullish(),
-  "photoUrl": zod.string().url().nullish(),
+  "photoUrl": zod.string().nullish().describe('Managed storage reference or absolute image URL'),
   "gender": zod.union([zod.literal('female'),zod.literal('male'),zod.literal('other'),zod.literal(null)]).nullish(),
-  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']),
+  "status": zod.enum(['PENDING', 'ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']),
   "dateEmployed": zod.coerce.date().nullish(),
   "department": zod.string().nullish(),
   "qualification": zod.string().nullish(),
@@ -10461,7 +10461,7 @@ export const UpdateEmployeeStatusQueryParams = zod.object({
 })
 
 export const UpdateEmployeeStatusBody = zod.object({
-  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED'])
+  "status": zod.enum(['PENDING', 'ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED'])
 })
 
 export const UpdateEmployeeStatusResponse = zod.object({
@@ -10472,13 +10472,13 @@ export const UpdateEmployeeStatusResponse = zod.object({
   "firstName": zod.string(),
   "middleName": zod.string().nullish(),
   "lastName": zod.string(),
-  "type": zod.enum(['TEACHER', 'STAFF']),
+  "type": zod.enum(['TEACHER', 'ACCOUNTANT', 'CLEANER', 'ASSISTANT', 'DRIVER', 'STAFF']),
   "phone": zod.string().nullish(),
   "email": zod.string().email().nullish(),
   "address": zod.string().nullish(),
-  "photoUrl": zod.string().url().nullish(),
+  "photoUrl": zod.string().nullish().describe('Managed storage reference or absolute image URL'),
   "gender": zod.union([zod.literal('female'),zod.literal('male'),zod.literal('other'),zod.literal(null)]).nullish(),
-  "status": zod.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']),
+  "status": zod.enum(['PENDING', 'ACTIVE', 'INACTIVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']),
   "dateEmployed": zod.coerce.date().nullish(),
   "department": zod.string().nullish(),
   "qualification": zod.string().nullish(),
@@ -10769,7 +10769,7 @@ export const CreateSubjectQueryParams = zod.object({
 
 export const CreateSubjectBody = zod.object({
   "name": zod.string().min(1),
-  "code": zod.string().min(1),
+  "code": zod.string().min(1).optional(),
   "description": zod.string().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']).optional()
 })
@@ -11003,7 +11003,7 @@ export const GetStudentSelfProfileResponse = zod.object({
   "lastName": zod.string(),
   "middleName": zod.string().nullish(),
   "dateOfBirth": zod.coerce.date().nullish(),
-  "passportUrl": zod.string().url().nullish(),
+  "passportUrl": zod.string().nullish().describe('The existing managed photo reference or an absolute image URL'),
   "admissionDate": zod.coerce.date().nullish(),
   "admissionStatus": zod.enum(['pending', 'admitted', 'rejected']).nullish(),
   "address": zod.string().nullish(),
@@ -12701,7 +12701,7 @@ export const onboardSchoolThroughPartnerReferralBodyAdministratorFullNameMin = 2
 export const OnboardSchoolThroughPartnerReferralBody = zod.object({
   "referralToken": zod.string().min(onboardSchoolThroughPartnerReferralBodyReferralTokenMin),
   "school": zod.object({
-  "code": zod.string().min(1),
+  "code": zod.string().min(1).optional(),
   "name": zod.string().min(onboardSchoolThroughPartnerReferralBodySchoolNameMin),
   "city": zod.string().min(onboardSchoolThroughPartnerReferralBodySchoolCityMin),
   "state": zod.string().min(onboardSchoolThroughPartnerReferralBodySchoolStateMin),
@@ -12711,7 +12711,7 @@ export const OnboardSchoolThroughPartnerReferralBody = zod.object({
   "phone": zod.string().optional(),
   "email": zod.string().email().optional(),
   "website": zod.string().url().optional(),
-  "logoUrl": zod.string().url().optional(),
+  "logoUrl": zod.string().optional(),
   "schoolType": zod.string().optional(),
   "status": zod.enum(['active', 'suspended', 'inactive']).optional()
 }),

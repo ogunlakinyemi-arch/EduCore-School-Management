@@ -18,8 +18,7 @@ export function CardsPage() {
   const isRestrictedEmployee = roles.some(role =>
     ['DEVICE_ACTIVATION_OFFICER', 'COMPANY_ACCOUNTANT'].includes(String(role.role)));
   const canProvision = authorized.data?.isPlatformOwner === true && !isRestrictedEmployee;
-  const canManageCards = canProvision || (!authorized.data?.isPlatformOwner &&
-    roles.some(role => role.role === 'SCHOOL_ADMIN' && role.schoolId === schoolId));
+  const canManageCards = canProvision;
   const [modal, setModal] = useState<any>(null); 
   const qc = useQueryClient();
   

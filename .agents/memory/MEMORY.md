@@ -37,3 +37,4 @@
 - [Notification verification safety](notification-verification-safety.md) — credentials do not authorize live sends; Development fixtures and mocks cannot establish physical delivery.
 - [Development session retention](development-session-retention.md) — trace session termination before diagnosing transport; account switching must not end newly completed sign-ins.
 - [Termly school enforcement policy](termly-school-enforcement-policy.md) — seven-day term grace, reversible independent locks, verified restoration, and child-school isolation.
+- [Parent relationship semantics](parent-relationship-semantics.md) — save profile defaults without replacing authoritative relationships for existing linked children.

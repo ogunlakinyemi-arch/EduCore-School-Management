@@ -9,7 +9,7 @@ import type { SchoolInput4b96100Status } from './schoolInput4b96100Status';
 
 export interface SchoolInput4b96100 {
   /** @minLength 1 */
-  code: string;
+  code?: string;
   /** @minLength 2 */
   name: string;
   /** @minLength 2 */

@@ -9,7 +9,7 @@ import {
 import { 
   useListStudents, useCreateStudent, useUpdateStudent, 
   getListStudentsQueryKey, useGetSchool, getGetSchoolQueryKey,
-  getStudent, getSchool, listCards
+  getStudent, getSchool, listCards, useGetAuthorizedContext
 } from '@workspace/api-client-react';
 import { 
   PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, 
@@ -18,7 +18,10 @@ import {
 import { StudentPhotoField } from '@/components/student-photo-field';
 
 export function StudentsPage() {
+  const authorized = useGetAuthorizedContext();
   const { schoolId, setSchoolId } = useTenant();
+  const canPreviewCards = authorized.data?.isPlatformOwner === true ||
+    authorized.data?.roles.some(role => role.role === 'SCHOOL_ADMIN' && role.status === 'ACTIVE' && role.schoolId === schoolId);
   const [search, setSearch] = useState(''); 
   const [status, setStatus] = useState<'ACTIVE' | 'INACTIVE' | 'GRADUATED' | 'TRANSFERRED'>('ACTIVE');
   const [modal, setModal] = useState<any>(null); 
@@ -131,7 +134,7 @@ export function StudentsPage() {
                   <div className="mt-1"><StatusPill value={student.subscriptionStatus} /></div>
                 </div>
                 <div className="flex items-center justify-end gap-1">
-                  <Button variant="quiet" onClick={() => setIdCardStudent(student)} testId={`button-student-id-card-${student.id}`}>e-ID card</Button>
+                  {canPreviewCards && <Button variant="quiet" onClick={() => setIdCardStudent(student)} testId={`button-student-id-card-${student.id}`}>e-ID card</Button>}
                   {canManageSchool && <Button variant="quiet" onClick={() => setModal(student)} testId={`button-edit-student-${student.id}`}>
                     <Pencil size={15} />Edit
                   </Button>}
@@ -152,7 +155,7 @@ export function StudentsPage() {
               <StudentForm schoolId={schoolId} initial={modal.create ? undefined : modal} onDone={done} onCancel={() => setModal(null)} />
             </Modal>
           )}
-          {idCardStudent && (
+          {canPreviewCards && idCardStudent && (
             <Modal title="Student e-ID card" eyebrow="Printable student identification" onClose={() => setIdCardStudent(null)}>
               <StudentEIdCard studentId={idCardStudent.id} schoolId={schoolId} onClose={() => setIdCardStudent(null)} />
             </Modal>
@@ -200,6 +203,8 @@ async function waitForImage(image: HTMLImageElement | null): Promise<void> {
 }
 
 function StudentEIdCard({ studentId, schoolId, onClose }: { studentId: number; schoolId: number; onClose: () => void }) {
+  const authorized = useGetAuthorizedContext();
+  const canPrint = authorized.data?.isPlatformOwner === true;
   const [snapshot, setSnapshot] = useState<EIdSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [printing, setPrinting] = useState(false);
@@ -248,6 +253,7 @@ function StudentEIdCard({ studentId, schoolId, onClose }: { studentId: number; s
   }, [studentId, schoolId]);
 
   const printLatest = async () => {
+    if (!canPrint) return;
     setPrinting(true);
     try {
       const freshSnapshot = await refresh();
@@ -289,7 +295,7 @@ function StudentEIdCard({ studentId, schoolId, onClose }: { studentId: number; s
       )}
       <div className="student-eid-actions mt-5 flex justify-end gap-3">
         <Button variant="outline" onClick={onClose}>Close</Button>
-        <Button onClick={printLatest} disabled={loading || printing || !snapshot}>{printing ? 'Preparing…' : 'Print / Save as PDF'}</Button>
+        {canPrint && <Button onClick={printLatest} disabled={loading || printing || !snapshot}>{printing ? 'Preparing…' : 'Print / Save as PDF'}</Button>}
       </div>
     </>
   );

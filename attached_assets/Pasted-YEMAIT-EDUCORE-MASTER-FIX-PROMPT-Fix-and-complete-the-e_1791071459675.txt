@@ -1,0 +1,1539 @@
+YEMAIT EDUCORE — MASTER FIX PROMPT
+
+Fix and complete the existing Yemait EduCore application based on Issues 1–53 below.
+
+IMPORTANT IMPLEMENTATION RULES
+
+- Development environment only.
+- Do NOT publish or deploy to Production.
+- Do NOT modify the Production database.
+- Do NOT reset, wipe, recreate, reseed or replace the database.
+- Do NOT delete existing working data.
+- Do NOT rebuild working modules unnecessarily.
+- First inspect the existing implementation and identify the actual root cause.
+- Use the smallest targeted fix possible.
+- Reuse existing routes, APIs, database tables, schemas, services, React components, hooks, authentication, RBAC, generated clients and existing workflows.
+- If multiple issues have the same root cause, fix the shared root cause once.
+- Do not create duplicate pages, accounts, relationships, APIs, tables or systems.
+- Preserve all existing working functionality.
+- Preserve tenant isolation, audit logs, authentication and permissions.
+- Use additive database migrations only where genuinely required.
+- Do not introduce Paystack. Existing payment integration should use Flutterwave.
+- Do not invent official Nigerian curriculum content.
+- Do not create a second authentication system.
+- Do not change working NFC, finance, subscription or academic architecture unnecessarily.
+
+==================================================
+ROLE AND PERMISSION PRINCIPLE
+
+Keep the existing role structure:
+
+- Platform Owner
+- Partner
+- School Admin
+- Teacher
+- Accountant
+- Parent
+- Student
+- Driver
+- Librarian permission
+- Other authorized School Staff
+
+Platform Owner manages the platform, schools, partners, official NFC/e-ID issuance and platform-level oversight.
+
+School Admin manages normal school operations.
+
+Do NOT turn Platform Owner into a School Admin.
+
+Do NOT give Teachers, Parents, Students, Drivers or Partners unauthorized school functions.
+
+Backend authorization must remain enforced even if a navigation item is hidden.
+
+==================================================
+ISSUE 1 — PARTNER SCHOOL INVITATION HTTP 500
+
+Partner → My Schools → Invite/Register School.
+
+Fix the HTTP 500.
+
+When a Partner registers a school:
+
+- Create the school correctly.
+- Create the school invitation correctly.
+- Show the school in Partner → My Schools.
+- Prevent duplicate schools.
+- Prevent duplicate invitations.
+- Retrying an invitation must not create another school.
+- Preserve Partner ownership/referral attribution.
+
+==================================================
+ISSUE 2 — SCHOOL ADMIN CLASS CREATION
+
+School Admin → Classes → Add Class must work.
+
+Required class structure:
+
+Preparatory:
+
+- Prep 1
+- Prep 2
+
+Kindergarten:
+
+- KG 1
+- KG 2
+
+Nursery:
+
+- Nursery 1
+- Nursery 2
+
+Primary:
+
+- Primary 1
+- Primary 2
+- Primary 3
+- Primary 4
+- Primary 5
+- Primary 6
+
+Junior Secondary:
+
+- JSS 1
+- JSS 2
+- JSS 3
+
+Senior Secondary:
+
+- SS 1
+- SS 2
+- SS 3
+
+SS requires stream:
+
+- Science
+- Commercial
+- Art
+
+JSS does not require a stream.
+
+Preserve existing Teacher → Class Assignment → Subject Assignment functionality.
+
+==================================================
+ISSUE 3 — AUTOMATIC EMPLOYEE NUMBER
+
+Employee number must:
+
+- Generate automatically.
+- Be unique.
+- Be permanent.
+- Not be manually entered.
+- Not change when role/class/session/promotion/transfer changes.
+- Appear anywhere Employee ID is displayed or printed.
+
+Do not create duplicate employee numbers.
+
+==================================================
+ISSUE 4 — TEACHER DUTY ROSTER FILTERS
+
+Fix:
+
+- Current
+- Upcoming
+- History
+- All
+- Active
+- Inactive
+
+Assignments must appear under the correct filter.
+
+Do not create duplicate duty records.
+
+==================================================
+ISSUE 5 — SUBJECT CODE AND SYLLABUS
+
+Subject Code:
+
+- Automatically generated.
+- Unique.
+- Based appropriately on the subject name.
+- No manual code entry.
+- Permanent once created unless existing system rules require otherwise.
+
+Syllabus Overview:
+
+- Subject-specific.
+- Use the existing Curriculum Library.
+- Use applicable Nigerian curriculum information already stored in the system.
+- Do not invent or falsely label AI-generated content as official curriculum.
+- Allow School Admin to review/edit before saving.
+
+==================================================
+ISSUE 6 — TEACHER, CLASS TEACHER AND SUBJECT TEACHER ASSIGNMENTS
+
+School Admin assigns teachers.
+
+Class Teacher:
+
+- Assigned to a class.
+- Can be reassigned.
+- Can communicate with students/parents of allocated class.
+- Can create take-home assignments for allocated class.
+
+Subject Teacher:
+
+- Assigned to class + subject.
+- Can teach multiple classes/subjects.
+- Creates assignments only for allocated class/subject.
+
+One teacher can be both:
+
+- Class Teacher
+- Subject Teacher
+
+Do NOT create duplicate accounts.
+
+Primary:
+
+- Class Teacher may teach multiple/all subjects.
+
+Secondary:
+
+- Class Teacher + Subject Teacher model.
+
+IMPORTANT:
+
+- Admin creates/schedules assessments and examinations.
+- Teachers mark/enter scores.
+- Teachers do not create the official assessment/examination structure unless existing authorized functionality explicitly allows it.
+
+Teacher-created assignments publish directly.
+
+Notify relevant students/parents and Admin using the existing notification system.
+
+==================================================
+ISSUE 7 — EVENTS HTTP 500
+
+Fix Events creation/listing/display.
+
+Existing events must remain intact.
+
+If creation succeeds but listing fails, fix the loading/query/response problem rather than rebuilding Events.
+
+==================================================
+ISSUE 8 — AI ACADEMIC CALENDAR HTTP 500
+
+Fix AI calendar generation.
+
+Required:
+
+- Generate.
+- Preview.
+- Edit.
+- Save.
+- Prevent duplicates.
+- Prevent accidental overwrite.
+- Show useful error messages.
+
+Preserve existing academic calendar records.
+
+==================================================
+ISSUE 9 — PARENT RELATIONSHIP
+
+When a relationship is selected, save and display the exact relationship.
+
+Example:
+
+- Mother must remain Mother.
+- Father must remain Father.
+- Guardian must remain Guardian.
+
+Do not convert valid selected relationships to Guardian.
+
+==================================================
+ISSUE 10 — SETTLEMENT ACCOUNT BANK
+
+Settlement account:
+
+- Bank selected from dropdown.
+- Bank code automatically populated.
+- Account number entered manually.
+- Preserve existing account verification.
+- Do not require manual bank code.
+
+==================================================
+ISSUE 11 — TRANSPORT DRIVER AND DRIVER PORTAL
+
+Driver selection must use existing Employee records where Employee Type = Driver.
+
+Employee Types:
+
+- Teacher
+- Accountant
+- Cleaner
+- Assistant
+- Driver
+- General Staff
+
+Employee Type categorizes the employee; it must not automatically grant unrelated permissions.
+
+Driver Portal:
+
+- Driver creates own password through secure invitation/authentication.
+- Admin never sees driver password.
+- Driver sees own profile.
+- Assigned bus/vehicle.
+- Route.
+- Stops.
+- Assigned students/riders.
+- Journey information.
+- Pickup/dropoff information.
+- Transport notices/status.
+
+Where already supported:
+
+- Start Journey
+- Student Picked Up
+- Student Dropped Off
+- Arrived at Stop
+- End Journey
+
+Driver must NOT access:
+
+- Academic records.
+- School finance.
+- Unrelated students.
+- Parent financial information.
+- Administrative functions outside transport.
+
+Platform Owner may have read-only transport oversight.
+
+Never expose passwords.
+
+==================================================
+ISSUE 12 — STUDENT/RIDER TRANSPORT REGISTRATION
+
+Student must be selected from existing Students.
+
+Do NOT manually type/create student identities.
+
+Automatically display existing linked parent(s).
+
+Prevent duplicate transport registration.
+
+==================================================
+ISSUE 13 — COMMUNICATION RECIPIENTS
+
+Use structured recipient selection.
+
+Students:
+
+- Specific class
+- Multiple classes
+- All students
+
+Parents:
+
+- Specific class
+- Multiple classes
+- All relevant parents
+
+Specific student:
+Class → Student → Linked Parent(s)
+
+Teachers:
+
+- All
+- Specific
+- Multiple
+
+Use existing relationships.
+
+Do not create duplicate parent/student relationships.
+
+==================================================
+ISSUE 14 — SCHOOL ADMIN COMMUNICATION CENTER 404
+
+Fix:
+School Admin → Inbox/Communication → Communication Center.
+
+Must work:
+
+- From navigation.
+- On direct route.
+- After refresh.
+- After login/session initialization.
+
+Reuse the existing communication system.
+
+==================================================
+ISSUE 15 — LIBRARY
+
+Existing Teacher or General Staff can be assigned Librarian permission.
+
+Teacher + Librarian:
+
+- Same account.
+- Same login.
+- No duplicate account.
+
+Removing Librarian permission must not remove Teacher.
+
+Book fields:
+
+- Title
+- Author
+- Publisher
+- ISBN
+- Edition
+- Year
+- Quantity
+- Shelf/location
+- Cover where supported
+
+Author = manual.
+
+Publisher = manual with optional suggestions.
+
+Category = standardized dropdown + Add New Category.
+
+==================================================
+ISSUE 16 — ASSET CATEGORIES
+
+Provide standard categories:
+
+- Furniture
+- Classroom Equipment
+- ICT & Computers
+- Printers & Scanners
+- Networking Equipment
+- Laboratory Equipment
+- Library Equipment
+- Sports Equipment
+- Musical Equipment
+- Audio/Visual Equipment
+- Security Equipment
+- CCTV & Surveillance
+- Access Control & NFC Devices
+- School Transport/Vehicles
+- Kitchen & Catering Equipment
+- Electrical Equipment
+- Generator & Power Equipment
+- Air Conditioning & Ventilation
+- Cleaning Equipment
+- Office Equipment
+- Medical/First Aid Equipment
+- Playground Equipment
+- Building & Facility Equipment
+- Teaching Aids
+- School Uniforms & Protective Equipment
+- Other
+
+Allow each school to add custom categories.
+
+==================================================
+ISSUE 17 — OPERATIONS TASK ASSIGNMENT
+
+Use:
+
+Staff Type → Staff Member
+
+Types:
+
+- Teacher
+- Accountant
+- Driver
+- Cleaner
+- Assistant
+- General Staff
+- Librarian
+- Other
+
+Use existing employee records.
+
+Allow multiple staff assignments where appropriate.
+
+Correctly display assigned tasks in the relevant portal.
+
+==================================================
+ISSUE 18 — IDENTITY & ACCESS
+
+Every employee must automatically appear in Identity & Access.
+
+Show:
+
+- Name
+- Employee number
+- Employee type
+- Contact
+- Portal/role
+- Invitation status
+- Account status
+- Last login where available
+- Invite/Resend Invite
+
+Employee creation must not require password creation.
+
+Use the existing authentication system.
+
+==================================================
+ISSUE 19 — NFC ASSIGNMENT, PAYMENT REMINDER AND LOST CARD
+
+Official NFC card assignment/activation/reassignment remains Platform Owner controlled.
+
+School Admin may have authorized read-only visibility.
+
+School Admin can view:
+
+- Person
+- Employee/admission ID
+- Card reference
+- Card status
+- Assignment date
+- Payment status
+
+Payment statuses:
+
+- Paid
+- Pending
+- Unpaid
+- Overdue
+
+Allow appropriate payment reminders.
+
+Prevent duplicate reminders.
+
+Lost/Stolen:
+
+- School Admin can report.
+- Card becomes unusable.
+- Notify Platform Owner.
+- Replacement fee = ₦2,000.
+- Platform Owner handles replacement.
+- New card has new UID.
+- Old card remains in history.
+- Do not destroy historical records.
+
+==================================================
+ISSUE 20 — TEACHER ACADEMIC CALENDAR HTTP 500
+
+Fix Teacher Academic Calendar.
+
+Teacher sees only applicable:
+
+- School
+- Session
+- Term
+- Calendar events
+
+==================================================
+ISSUE 21 — TEACHER DUTY HTTP 500
+
+Fix Teacher Duty page.
+
+Reuse existing duty data and correct filters.
+
+==================================================
+ISSUE 22 — ASSESSMENT WORKFLOW
+
+School Admin creates/schedules assessments.
+
+Fields:
+
+- Assessment title
+- Type
+- Class
+- Subject
+- Session
+- Term
+- Date
+- Time where applicable
+
+Teachers see only assessments applicable to their allocated class/subject.
+
+Teacher:
+
+- Selects existing students automatically.
+- Enters scores.
+- Marks students.
+- Submits.
+
+Admin:
+
+- Reviews.
+- Approves.
+- Publishes.
+
+Do not manually create duplicate students.
+
+==================================================
+ISSUE 23 — TERM RESULT COMPILATION
+
+Teacher's term result view should consolidate:
+
+- Tests
+- Assessments
+- Graded Assignments
+- Other approved graded activities
+- Examination
+
+Teacher reviews and submits.
+
+No manual student entry.
+
+==================================================
+ISSUE 24 — EXAMINATION WORKFLOW
+
+Admin creates:
+
+- Examination name
+- Session
+- Term
+- Classes
+- Subjects
+- Timetable
+
+Teachers see only relevant examinations based on their allocation.
+
+Teacher enters scores against existing students.
+
+==================================================
+ISSUE 25 — UNIFIED TERM RESULT APPROVAL
+
+Use one unified result workflow:
+
+Tests + Assessments + Graded Assignments + Examination + Other approved activities
+
+Teacher → Submit → Admin Review → Approve → Publish.
+
+Student sees own published result.
+
+Parent sees linked child's published result.
+
+Do not create separate duplicate result systems.
+
+==================================================
+ISSUE 26 — CLASS RESULT PUBLICATION
+
+Published results must be restricted.
+
+Student:
+
+- Own result only.
+
+Parent:
+
+- Linked child/children only.
+
+Parent with multiple children can switch between children.
+
+No cross-student visibility.
+
+==================================================
+ISSUE 27 — PRIMARY RESULT WORKFLOW
+
+Primary Class Teacher can handle multiple/all subjects.
+
+Do not force Secondary Subject Teacher structure onto Primary.
+
+Students automatically come from the assigned class.
+
+Teacher submits.
+
+Admin reviews/approves/publishes.
+
+==================================================
+ISSUE 28 — EXAM TIMETABLE BY SECTION
+
+Primary:
+
+- Primary classes only.
+
+Mixed schools:
+
+- Keep Primary and Secondary properly separated.
+
+Secondary:
+
+- JSS
+- SS
+- Streams
+- Subjects
+
+Use existing class/section/stream relationships.
+
+==================================================
+ISSUE 29 — EXAM COLLISION PREVENTION
+
+Before saving an exam timetable, detect:
+
+- Same class/time conflict.
+- Same teacher/time conflict.
+- Supervision conflict.
+- Resource conflict where supported.
+- Cross-section conflict.
+
+Show clear conflict message.
+
+Do not silently create conflicting schedules.
+
+==================================================
+ISSUE 30 — TEACHER PAYSLIPS HTTP 500
+
+Fix Teacher Payslips.
+
+Teacher sees only own authorized payslips.
+
+Do not rebuild payroll.
+
+==================================================
+ISSUE 31 — TEACHER COMMUNICATION CENTER HTTP 500
+
+Fix Teacher Communication Center.
+
+Reuse existing communication architecture.
+
+==================================================
+ISSUE 32 — TEACHER → PARENT COMMUNICATION
+
+Authorization chain:
+
+Teacher → Allocated Class → Students → Linked Parent(s)
+
+Teacher must not search the entire school parent database.
+
+Class Teacher and Subject Teacher must respect their allocations.
+
+Use existing Parent inbox/notification system.
+
+==================================================
+ISSUE 33 — STUDENT ACADEMIC CALENDAR HTTP 500
+
+Fix Student Academic Calendar.
+
+Student sees only own:
+
+- School
+- Session
+- Class
+- Applicable calendar
+
+Read-only.
+
+==================================================
+ISSUE 34 — STUDENT TIMETABLE
+
+Fix Student Timetable.
+
+Resolve:
+
+Student → Current Class/Section → Timetable
+
+Display:
+
+- Subject
+- Teacher
+- Day/date
+- Time
+- Period
+- Location where available
+
+Own class only.
+
+==================================================
+ISSUE 35 — STUDENT TRANSPORT HTTP 500
+
+Fix Student Transport.
+
+Student sees:
+
+- Assigned bus/vehicle
+- Registration
+- Driver
+- Route
+- Stops
+- Pickup/dropoff
+- Times
+- Transport notices/status
+
+Own transport only.
+
+==================================================
+ISSUE 36 — STUDENT/PARENT ATTENDANCE
+
+Student:
+
+- Own attendance only.
+- Read-only.
+
+Parent:
+
+- Linked child attendance only.
+- Multiple children supported.
+- Read-only.
+
+Filters where supported:
+
+- Today
+- Week
+- Month
+- Custom range
+- Term
+- Session
+
+Reuse existing attendance/NFC/security data.
+
+==================================================
+ISSUE 37 — PARENT INITIAL LOGIN 404
+
+After invitation/password creation/login:
+
+Parent → Parent Dashboard
+
+No 404.
+
+Fix route/session initialization only.
+
+Do not create a new Parent authentication system.
+
+==================================================
+ISSUE 38 — PARENT TRANSPORT HTTP 500
+
+Parent sees transport information for linked children only.
+
+Support multiple children.
+
+No unrelated school transport data.
+
+==================================================
+ISSUE 39 — PARENT TIMETABLE 404
+
+Resolve:
+
+Parent → Linked Student → Current Class → Timetable
+
+Multiple children supported.
+
+No manual student selection outside linked children.
+
+==================================================
+ISSUE 40 — PARENT ATTENDANCE FILTERS
+
+Support:
+
+- Today
+- This Week
+- This Month
+- Custom Date Range
+- Term
+- Academic Session
+
+Parent can switch between linked children.
+
+Read-only.
+
+==================================================
+ISSUE 41 — SCHOOL ADMIN FEES
+
+Admin creates/publishes fees.
+
+Examples:
+
+- School Fees
+- Textbook
+- Result
+- Stationery
+- Accessories
+- Examination
+- Other
+
+Fields:
+
+- Name
+- Type
+- Description
+- Amount
+- Scope
+- Session
+- Term
+- Due date
+- Draft/Published
+
+Publishing notifies applicable parents/students.
+
+Student = view-only.
+
+Parent = payment.
+
+==================================================
+ISSUE 42 — PARENT FEE PAYMENT
+
+Parent sees applicable fees per child.
+
+Allow:
+
+- Pay one
+- Pay multiple
+- Pay all
+
+Use existing Flutterwave payment architecture.
+
+Do NOT introduce Paystack.
+
+Update:
+
+- Payment status
+- Finance records
+- Receipts
+- Student fee status
+
+==================================================
+ISSUE 43 — NFC SUBSCRIPTION PAYMENT
+
+NFC subscription remains separate from normal school fees.
+
+Authorized payment views:
+
+- Parent → linked child.
+- Student → own subscription where permitted.
+- Teacher/Staff → own subscription where applicable.
+- School Admin → authorized school-level management.
+
+Notifications before and after grace period.
+
+After grace:
+
+- Restrict only unpaid student/child-specific subscription-protected functionality.
+- Do NOT lock the entire school because one student is unpaid.
+
+Preserve independent Platform Owner:
+
+- Lock School
+- Unlock School
+
+Manual Owner school lock must remain independent from automatic subscription enforcement.
+
+==================================================
+ISSUE 44 — PARENT CLASS TEACHER AND TRANSPORT CONTACT
+
+Parent sees linked child's:
+
+Class:
+
+- Current class
+- Class Teacher
+- Approved phone/contact information
+
+Transport:
+
+- Driver name
+- Driver phone
+- Employee number where appropriate
+- Bus/vehicle
+- Registration
+- Route
+- Stops
+- Pickup/dropoff
+- Times
+- Instructions
+- Status where available
+
+Read-only.
+
+Use existing relationships.
+
+==================================================
+ISSUE 45 — SCHOOL ADMIN STUDENT PROFILE
+
+Students → View/Preview Profile must show the complete authorized profile in one place.
+
+Include existing fields such as:
+
+- Full name
+- Admission/registration number
+- Student ID
+- DOB
+- Gender
+- Passport
+- Height
+- Blood group/genotype where already stored
+- Current class
+- Section/stream
+- Session
+- Term
+- Parent/guardian information
+- Parent phone/email
+- Home address
+- Student email
+- Emergency contact
+- Medical/welfare information where authorized
+- Transport
+- NFC status/reference
+- Admission information
+- Other existing profile fields
+
+Use existing records.
+
+Do not create duplicate student-profile systems.
+
+==================================================
+ISSUE 46 — STUDENT PASSPORT PHOTO
+
+School Admin can upload/replace the Student passport photo.
+
+Use the same stored photo for:
+
+- Admin Student Profile
+- Student Portal Profile
+- Parent linked-child profile
+- ID-card preview
+- Official ID card generated by Platform Owner
+
+No duplicate photo records/uploads.
+
+If missing:
+
+- Show a proper placeholder.
+
+==================================================
+ISSUE 47 — PARENT PROFILE UPDATES
+
+Parents may update permitted information:
+
+- Address
+- Parent/guardian phone
+- Parent/guardian email
+- Emergency contact
+- Emergency phone
+- Other appropriate contact information
+
+Parents must NOT change:
+
+- Child legal name
+- Admission number
+- Registration number
+- Student ID
+- School identity
+- Class/section
+- Academic session
+- Results
+- Attendance
+- NFC identity/card
+- Other protected school-controlled identity fields
+
+Audit updates.
+
+Notify School Admin.
+
+Only linked children.
+
+==================================================
+ISSUE 48 — ID CARD ACCESS PERMISSIONS
+
+Official Student/Teacher/Staff ID-card control is Platform Owner-only.
+
+Platform Owner:
+
+- Generate
+- Download
+- Print
+- Issue
+- Reprint
+- Assign/reassign official cards where applicable
+
+School Admin:
+
+- VIEW/PREVIEW ONLY.
+- Cannot generate.
+- Cannot download.
+- Cannot print.
+- Cannot issue.
+- Cannot assign.
+- Cannot reassign.
+- Cannot activate.
+- Cannot replace.
+
+Teacher:
+
+- MUST NOT view Student ID cards.
+- MUST NOT generate/download/print Student ID cards.
+- Retains authorized academic/result access.
+
+Parent:
+
+- Cannot generate/download/print official ID cards.
+
+Student:
+
+- Cannot generate/download/print official ID cards.
+
+==================================================
+ISSUE 49 — ID CARD FORMAT
+
+Review existing Student/Teacher/Staff card generation and correct layout without creating another system.
+
+Requirements:
+
+- CR80 size: 85.60 × 53.98 mm.
+- Front/back where supported.
+- Correct school logo.
+- Correct school name.
+- Correct person photo.
+- Student admission/registration number.
+- Employee number for employees.
+- Correct role/type.
+- NFC/card reference where applicable.
+- QR/security information where already supported.
+- No clipping.
+- No overlap.
+- No distortion.
+- No broken images.
+- Correct margins.
+- Correct alignment.
+- Long names supported.
+- Long IDs supported.
+- Print-safe layout.
+
+==================================================
+ISSUE 50 — AUTOMATIC SCHOOL BRANDING
+
+Do NOT allow random ID-card colours.
+
+Use:
+
+School → Uploaded Logo → Appropriate Primary Brand Colour → ID Card Theme
+
+Derive one suitable dominant/primary colour from the school's logo.
+
+Examples:
+
+- Blue logo → blue accents.
+- Green logo → green accents.
+- Burgundy logo → burgundy accents.
+
+Do not combine unrelated logo colours unnecessarily.
+
+Use the colour in appropriate existing card accents.
+
+If the logo changes:
+
+- Future previews/generation use the new branding.
+- Historical issued cards do not automatically change unless reissued.
+
+If no usable logo:
+
+- Use one consistent safe default colour.
+
+==================================================
+ISSUE 51 — MULTI-SCHOOL ID CARD ISOLATION
+
+School A must never receive:
+
+- School B logo.
+- School B colour.
+- School B name.
+- School B information.
+
+School-specific branding must be derived from that school's own record.
+
+Test at least two schools.
+
+==================================================
+ISSUE 52 — DASHBOARD AND NAVIGATION USABILITY
+
+Do NOT remove functions.
+
+Do NOT put every function on the dashboard.
+
+Reorganize navigation using existing functionality.
+
+Dashboard should contain:
+
+- Important summary information.
+- Alerts.
+- Pending actions.
+- Recent activity.
+- Quick actions.
+- Important notices.
+
+Other functions should remain accessible through organized navigation.
+
+SCHOOL ADMIN:
+
+- Dashboard
+- Students & Parents
+- Employees & Staff
+- Classes & Subjects
+- Academics
+- Attendance
+- Assessments & Results
+- Finance
+- Communication
+- Transport
+- Library
+- Operations
+- School Security/NFC
+- Admissions
+- Reports
+- Settings
+
+TEACHER:
+
+- Dashboard
+- My Classes
+- My Subjects
+- Assignments
+- Assessments/Marking
+- Results
+- Timetable
+- Attendance where authorized
+- Duty
+- Communication
+- Library if Librarian
+- Payslips
+- Profile
+
+PARENT:
+
+- Dashboard
+- My Children
+- Attendance
+- Results
+- Assignments
+- Timetable
+- Fees & Payments
+- Communication
+- Transport
+- School Information
+- Profile
+
+ACCOUNTANT:
+
+- Dashboard
+- Finance
+- Fees
+- Payments
+- Invoices
+- Receipts
+- Payroll where authorized
+- Financial Reports
+- Relevant Communication
+- Profile
+
+STUDENT:
+
+- Dashboard
+- My Profile
+- Attendance
+- Assignments
+- Assessments
+- Results
+- Timetable
+- Transport
+- Communication
+- Fees/Payments where permitted
+
+DRIVER:
+
+- Dashboard
+- My Profile
+- My Bus
+- My Route
+- Assigned Students
+- Journey
+- Transport Notices
+
+PARTNER:
+
+- Dashboard
+- My Schools
+- School Registration
+- Referrals
+- Commissions
+- Partner Profile
+
+Use:
+
+- Expandable sections where useful.
+- Clear labels.
+- Simple icons.
+- Search/filtering inside large modules.
+- Responsive desktop/tablet/mobile navigation.
+
+Teacher + Librarian:
+
+- Same account.
+- Add Library navigation.
+- Do not create duplicate account.
+
+Navigation visibility must follow RBAC.
+
+Simplify navigation without changing permissions or removing authorized functions.
+
+==================================================
+ISSUE 53 — AUTOMATIC SCHOOL CODE AND SCHOOL ADMIN PASSWORD
+
+This applies to both:
+
+- Platform Owner → School Registration
+- Partner → School Registration/Invitation
+
+SCHOOL CODE
+
+Once the School Name is entered:
+
+- Automatically generate the School Code.
+- Do not require manual School Code entry.
+- School Code must be unique across Yemait EduCore.
+- Similar school names must still generate unique codes.
+- School Code must be permanent after school creation.
+- Partner and School Admin must not manually edit the School Code.
+- Platform Owner should not need to manually type the code.
+- Display the generated code before final submission where appropriate.
+- If invitation/creation is retried, reuse the existing school/code instead of creating a duplicate.
+- Preserve existing School Code format if one already exists.
+
+SCHOOL ADMIN PASSWORD
+
+The Platform Owner and Partner must NOT create or enter the School Admin password.
+
+Correct flow:
+
+Platform Owner/Partner:
+School Name → Automatic School Code → School Admin Name → School Admin Email → Create/Send School Invitation
+
+System:
+→ Creates school
+→ Generates unique permanent School Code
+→ Creates secure invitation
+→ Sends invitation to designated School Admin
+
+School Admin:
+→ Opens secure invitation
+→ Creates own password
+→ Activates account
+→ Logs in
+
+Do NOT:
+
+- Create default password.
+- Create shared password.
+- Display password to Owner.
+- Display password to Partner.
+- Store password in school records.
+- Create duplicate School Admin account during invitation retry.
+
+Use the existing Clerk authentication/invitation system.
+
+If the invitation is resent:
+
+- Do not create duplicate school.
+- Do not create duplicate School Admin.
+- Do not generate a different permanent School Code.
+
+Preserve authentication, audit logs and tenant isolation.
+
+==================================================
+SHARED ROOT-CAUSE INVESTIGATION
+
+Before making changes, group issues by common cause.
+
+Repeated HTTP 500 pages should be investigated together, especially:
+
+- Events
+- Academic Calendar
+- Duty
+- Payslips
+- Communication
+- Transport
+- Other affected portals
+
+Check:
+
+- API routes.
+- Database queries.
+- Authentication/session context.
+- Tenant filtering.
+- Response schemas.
+- Zod validation.
+- React Query hooks.
+- OpenAPI contracts.
+- Generated clients.
+- Missing/null data.
+- Role-specific authorization.
+
+Fix the shared cause where possible rather than adding individual hacks.
+
+Repeated 404 problems should be investigated together:
+
+- Parent login/dashboard.
+- Parent timetable.
+- Communication Center.
+- Other portal routes.
+
+Check:
+
+- Route definitions.
+- Navigation.
+- Direct URL handling.
+- Session initialization.
+- Parent → child resolution.
+- Student → class resolution.
+
+==================================================
+DATA RELATIONSHIP PRINCIPLE
+
+Always use existing relationships.
+
+Teacher:
+Teacher → Allocated Class/Subject → Students → Linked Parents
+
+Parent:
+Parent → Linked Child → Current Class → Teacher/Timetable/Attendance/Results/Fees/Transport
+
+Student:
+Student → Own School/Class/Section → Own Academic/Attendance/Transport data
+
+Do not manually recreate identities.
+
+==================================================
+SECURITY AND TENANT ISOLATION
+
+Preserve and verify:
+
+- Authentication.
+- RBAC.
+- Tenant isolation.
+- School-level data isolation.
+- Parent-child relationships.
+- Teacher allocations.
+- Finance permissions.
+- NFC permissions.
+- Subscription enforcement.
+- Owner Lock/Unlock.
+- Audit logs.
+
+Never expose:
+
+- Another school's students.
+- Another school's parents.
+- Another school's financial data.
+- Another school's NFC records.
+- Passwords.
+- Authentication tokens.
+- Unauthorized ID cards.
+
+==================================================
+DATABASE SAFETY
+
+- No reset.
+- No wipe.
+- No reseed.
+- No destructive migration.
+- No deletion of existing production-like Development records.
+- Preserve existing tables.
+- Preserve existing relationships.
+- Preserve NFC history.
+- Preserve finance.
+- Preserve attendance.
+- Preserve results.
+- Preserve audit logs.
+
+Only create additive migrations where absolutely required.
+
+==================================================
+TESTING REQUIREMENTS
+
+After fixes, run focused tests and regression tests.
+
+Test:
+
+- Platform Owner
+- Partner
+- School Admin
+- Teacher
+- Accountant
+- Parent
+- Student
+- Driver
+- Librarian
+
+Verify:
+
+- Authentication.
+- Authorization.
+- Tenant isolation.
+- Navigation.
+- API responses.
+- Database integrity.
+- Existing working modules.
+
+Specifically verify:
+
+1. Partner school registration.
+2. Owner school registration.
+3. Automatic School Code generation.
+4. School Code uniqueness.
+5. School Code permanence.
+6. School Admin invitation.
+7. School Admin creates own password.
+8. Resend invitation does not create duplicate school/account/code.
+9. Class creation.
+10. Employee number generation.
+11. Teacher allocations.
+12. Primary and Secondary workflows.
+13. Assessments.
+14. Results.
+15. Examination timetable.
+16. Parent-child relationships.
+17. Attendance.
+18. Transport.
+19. Finance.
+20. Flutterwave payment architecture.
+21. NFC subscription enforcement.
+22. Owner Lock/Unlock.
+23. NFC assignment permissions.
+24. ID-card permissions.
+25. Student photo propagation.
+26. School-specific card branding.
+27. Multi-school branding isolation.
+28. Communication permissions.
+29. Library permissions.
+30. Dashboard/navigation permissions.
+
+Run:
+
+- Backend tests.
+- Frontend tests.
+- PostgreSQL/integration tests where applicable.
+- Shared typecheck.
+- Backend typecheck.
+- Frontend typecheck.
+- Build checks where practical.
+
+==================================================
+FINAL REPORT
+
+When finished, provide a concise report containing:
+
+- Issues fixed.
+- Issues not fixed, if any.
+- Root causes discovered.
+- Files changed.
+- Database migrations created/applied.
+- Tests passed/failed/skipped.
+- Typechecks.
+- Build status.
+- Any remaining limitation.
+
+Do NOT publish.
+
+Do NOT modify Production.
+
+Do NOT reset the database.
+
+Do NOT remove working functionality.
+
+Do NOT create duplicate systems.
+
+Make only the necessary targeted corrections and preserve the existing Yemait EduCore architecture, data, permissions and working features.

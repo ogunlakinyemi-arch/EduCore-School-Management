@@ -197,7 +197,7 @@ describe("NFC card reassignment", () => {
     )).toBe(true);
   });
 
-  it.each(["PLATFORM_OWNER", "SCHOOL_ADMIN"] as const)(
+  it.each(["PLATFORM_OWNER"] as const)(
     "allows authorized %s reassignment while preserving the card's school",
     async (role) => {
       state.role = role;
@@ -219,10 +219,10 @@ describe("NFC card reassignment", () => {
     },
   );
 
-  it("rejects unauthorized roles", async () => {
-    state.role = "TEACHER";
+  it.each(["SCHOOL_ADMIN", "STAFF", "TEACHER"] as const)("rejects non-owner %s reassignment", async (role) => {
+    state.role = role;
     const response = await reassign(11);
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(403);
     expect(state.queries.some(({ sql }) => sql.includes("UPDATE nfc_cards SET student_id"))).toBe(false);
   });
 

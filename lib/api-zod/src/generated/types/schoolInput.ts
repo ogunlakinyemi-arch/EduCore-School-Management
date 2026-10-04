@@ -9,7 +9,7 @@ import type { SchoolInputStatus } from './schoolInputStatus';
 
 export interface SchoolInput {
   /** @minLength 1 */
-  code: string;
+  code?: string;
   /** @minLength 2 */
   name: string;
   /** @minLength 2 */

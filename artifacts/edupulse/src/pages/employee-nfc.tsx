@@ -32,7 +32,7 @@ export function employeeNfcAccess(context: CtxLike, schoolId: number) {
   return {
     isOwner: owner,
     canView: owner || admin,
-    canManageCards: owner || admin,
+    canManageCards: owner,
     canResolve: admin,
     readOnlyAttendance: owner,
   };

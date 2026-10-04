@@ -1,6 +1,7 @@
 import { useLocation, Link } from 'wouter';
 import { useState, type ReactNode, type FormEvent, createContext, useContext, useEffect, useRef } from 'react';
 import { useAuth, UserButton } from '@clerk/react';
+import { buildNavSections, isNavActive, navMode } from './navigation-model';
 import { FeePaymentNotifications } from './fee-payment-notifications';
 import { CommunicationInboxBadge } from '@/pages/communication-inbox';
 import { PwaInstall } from '@/components/pwa-install';
@@ -108,6 +109,7 @@ const ownerNavPaths = new Set([
 export function Shell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const [open, setOpen] = useState(false);
+  const [openSections, setOpenSections] = useState<string[]>([]);
   const { schoolId } = useTenant();
   const contextQuery = useGetAuthorizedContext();
   const context = contextQuery.data;
@@ -128,6 +130,7 @@ export function Shell({ children }: { children: ReactNode }) {
     if (isPlatformOwner) return ownerNavPaths.has(item.href);
     return !item.roles || item.roles.some(role => roles.includes(role));
   });
+  const sections = buildNavSections(visibleNav.map(i => i.href), navMode(roles, isActivationOfficer || isCompanyAccountant || isPlatformOwner));
   const name = context?.user?.name ?? 'Yemait EduCore user';
   const roleDisplay = isActivationOfficer ? 'Device Activation Officer' : isCompanyAccountant ? 'Company Accountant' : isPlatformOwner ? 'Platform Owner' : (roles[0]?.replaceAll('_', ' ') ?? 'User').toLowerCase();
   const initials = name.split(' ').slice(0, 2).map(part => part[0]).join('').toUpperCase();
@@ -158,19 +161,44 @@ export function Shell({ children }: { children: ReactNode }) {
           <button onClick={() => setOpen(false)} className="text-[hsl(var(--sidebar-foreground))] md:hidden" aria-label="Close navigation" data-testid="button-close-navigation"><X size={18} /></button>
         </div>
         <div className="mb-3 px-2 text-[11px] font-bold uppercase tracking-[.15em] text-[hsl(var(--sidebar-foreground)/.5)]">Workspace</div>
-        <nav className="space-y-1 overflow-y-auto scrollbar-thin">
-          {visibleNav.map(item => {
-            const Icon = item.icon; 
-            const itemLabel = item.href === '/curriculum' && roles.includes('TEACHER') && !roles.includes('SCHOOL_ADMIN') ? 'My Curriculum' : item.label;
-            const active = item.href === '/' ? location === '/' : item.href === '/activation' ? location === '/activation' : location.startsWith(item.href);
+        <nav className="min-h-0 space-y-1 overflow-y-auto scrollbar-thin" aria-label="Main navigation">
+          {(() => {
+            const renderLink = (item: NavItem, nested = false) => {
+              const Icon = item.icon;
+              const itemLabel = item.href === '/curriculum' && roles.includes('TEACHER') && !roles.includes('SCHOOL_ADMIN') ? 'My Curriculum' : item.label;
+              const active = isNavActive(item.href, location);
+              return (
+                <Link key={item.href} href={item.href} onClick={() => setOpen(false)} aria-current={active ? 'page' : undefined} className={cx('group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[hsl(var(--sidebar-foreground)/.7)] outline-none hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-foreground))] focus-visible:ring-2 focus-visible:ring-[hsl(var(--sidebar-ring))]', nested && 'py-2 pl-4', active && 'bg-[hsl(var(--sidebar-primary))] font-bold text-[hsl(var(--sidebar-primary-foreground))] hover:bg-[hsl(var(--sidebar-primary))]')} data-testid={`link-nav-${item.label.toLowerCase().replaceAll(' ', '-')}`}>
+                  <Icon size={18} strokeWidth={active ? 2.4 : 1.8} />
+                  <span>{itemLabel}</span>
+                  {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-current" />}
+                </Link>
+              );
+            };
+            if (sections.length === 0) return visibleNav.map(item => renderLink(item));
+            const byHref = new Map(visibleNav.map(item => [item.href, item]));
+            const dash = byHref.get('/');
             return (
-              <Link key={item.href} href={item.href} onClick={() => setOpen(false)} className={cx('group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[hsl(var(--sidebar-foreground)/.7)] hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-foreground))]', active && 'bg-[hsl(var(--sidebar-primary))] font-bold text-[hsl(var(--sidebar-primary-foreground))] hover:bg-[hsl(var(--sidebar-primary))]')} data-testid={`link-nav-${item.label.toLowerCase().replaceAll(' ', '-')}`}>
-                <Icon size={18} strokeWidth={active ? 2.4 : 1.8} />
-                <span>{itemLabel}</span>
-                {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-current" />}
-              </Link>
+              <>
+                {dash && renderLink(dash)}
+                {sections.map(section => {
+                  const items = section.hrefs.map(h => byHref.get(h)).filter((i): i is NavItem => !!i);
+                  const hasActive = items.some(i => isNavActive(i.href, location));
+                  const expanded = hasActive || openSections.includes(section.id);
+                  const panelId = `nav-section-${section.id}`;
+                  return (
+                    <div key={section.id}>
+                      <button type="button" aria-expanded={expanded} aria-controls={panelId} onClick={() => setOpenSections(prev => prev.includes(section.id) ? prev.filter(x => x !== section.id) : [...prev, section.id])} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[11px] font-bold uppercase tracking-[.12em] text-[hsl(var(--sidebar-foreground)/.6)] outline-none hover:bg-[hsl(var(--sidebar-accent)/.6)] hover:text-[hsl(var(--sidebar-foreground))] focus-visible:ring-2 focus-visible:ring-[hsl(var(--sidebar-ring))]" data-testid={`button-nav-section-${section.id}`}>
+                        <span className="flex-1">{section.label}</span>
+                        <ChevronDown size={14} className={cx('transition-transform duration-200', expanded && 'rotate-180')} />
+                      </button>
+                      {expanded && <div id={panelId} className="ml-2 space-y-0.5 border-l border-[hsl(var(--sidebar-border))] pl-1.5 fade-up">{items.map(i => renderLink(i, true))}</div>}
+                    </div>
+                  );
+                })}
+              </>
             );
-          })}
+          })()}
         </nav>
         <div className="mt-auto pt-5">
           <div className="rounded-2xl border border-[hsl(var(--sidebar-border))] bg-[hsl(var(--sidebar-accent)/.4)] p-4">

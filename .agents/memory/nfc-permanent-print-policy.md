@@ -10,6 +10,12 @@ Printing and reprinting are read-only: no new identity or assignment, activation
 
 **How to apply:** Keep all academic fields out of printable data contracts. Validate current identity and lifecycle on each download; retain existing permissions and tenant scope. Treat optional QR verification as unsupported unless an existing credential-free safe mechanism is confirmed.
 
+Official Student, Teacher and Staff card generation, download, print, issue, reprint, assignment, reassignment, activation and replacement are Platform Owner-only. School Admin access is preview-only. Teachers must not preview Student ID cards.
+
+**Why:** The master correction requirements explicitly separate official card control from normal school operations; older School Admin lifecycle permissions must not be retained.
+
+**How to apply:** Enforce the boundary on the backend as well as every card action in the UI. Do not broaden Owner permissions into ordinary school operations.
+
 Teacher UI status can be an effective payment-blocked status, rather than the stored assignment stage. Offer a download for the payment-blocked assigned card and let the read-only backend validate its underlying lifecycle; never require activation just to print.
 
 **Why:** A real Owner assignment returned an effective locked status while the stored assignment was still awaiting activation. Gating print controls only on the stored-stage names hid all print actions.

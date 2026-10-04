@@ -45,6 +45,7 @@ function PortalHeader() {
         <Link href="/parent/communication" data-testid="link-parent-communication" className="whitespace-nowrap hover:underline">Communication centre</Link>
         <Link href="/my-transport" data-testid="link-parent-transport" className="whitespace-nowrap hover:underline">My transport</Link>
         <Link href="/academic-calendar" data-testid="link-parent-academic-calendar" className="whitespace-nowrap hover:underline">Academic calendar</Link>
+        <Link href="/parent/timetable" data-testid="link-parent-timetable" className="whitespace-nowrap hover:underline">Timetables</Link>
       </nav>
     </header>
   );
@@ -368,6 +369,24 @@ function ChildRoute() {
   return <ChildProfile studentId={id} />;
 }
 
+function ParentTimetables() {
+  const children = useGetParentChildren();
+  if (children.isLoading) return <Loading />;
+  if (children.isError || !children.data) return <NotFound />;
+  return <main className="mx-auto max-w-6xl p-5 md:p-8"><h1 className="display-font mb-5 text-3xl font-bold">My children’s timetables</h1>
+    {children.data.length ? children.data.map(child => <Link key={child.id} href={`/parent/timetable/${child.id}`} className="mb-3 block rounded-xl border border-[hsl(var(--border))] p-4">{child.firstName} {child.lastName} — {child.schoolName}</Link>) : <p>No linked children.</p>}
+  </main>;
+}
+
+function ChildTimetableRoute() {
+  const studentId = Number(window.location.pathname.split('/').pop());
+  const child = useGetParentChild(studentId);
+  if (!Number.isInteger(studentId) || studentId < 1) return <NotFound />;
+  if (child.isLoading) return <Loading />;
+  if (child.isError || !child.data) return <NotFound />;
+  return <main className="mx-auto max-w-6xl p-5 md:p-8"><Link href="/parent/timetable" className="mb-4 inline-block text-sm">Back to my children</Link><h1 className="display-font mb-5 text-3xl font-bold">{child.data.firstName}’s timetable</h1><ChildTimetable studentId={studentId} schoolId={child.data.schoolId} /></main>;
+}
+
 function ChildFeesRoute() {
   const id = Number(window.location.pathname.split('/').pop());
   if (!Number.isInteger(id) || id < 1) return <NotFound />;
@@ -384,5 +403,5 @@ function ChildLibraryRoute() {
 }
 
 export default function ParentPortal() {
-  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><div className="mx-auto max-w-6xl px-5 pt-5 md:px-8"><SubscriptionAccessBanner audience="parent" /></div><Switch><Route path="/" component={ParentDashboard} /><Route path="/reporting"><main className="mx-auto max-w-6xl p-5 md:p-8"><ReportingPage audience="parent" /></main></Route><Route path="/parent/communication"><ParentCommunicationCentre /></Route><Route path="/inbox"><CommunicationInbox standalone /></Route><Route path="/notification-settings"><NotificationSettings standalone /></Route><Route path="/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route path="/parent/library/:studentId" component={ChildLibraryRoute} /><Route component={NotFound} /></Switch></div>;
+  return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><div className="mx-auto max-w-6xl px-5 pt-5 md:px-8"><SubscriptionAccessBanner audience="parent" /></div><Switch><Route path="/" component={ParentDashboard} /><Route path="/parent" component={ParentDashboard} /><Route path="/parent/" component={ParentDashboard} /><Route path="/parent/dashboard" component={ParentDashboard} /><Route path="/parent/timetable" component={ParentTimetables} /><Route path="/timetable" component={ParentTimetables} /><Route path="/parent/timetable/:studentId" component={ChildTimetableRoute} /><Route path="/reporting"><main className="mx-auto max-w-6xl p-5 md:p-8"><ReportingPage audience="parent" /></main></Route><Route path="/parent/communication"><ParentCommunicationCentre /></Route><Route path="/inbox"><CommunicationInbox standalone /></Route><Route path="/notification-settings"><NotificationSettings standalone /></Route><Route path="/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route path="/parent/library/:studentId" component={ChildLibraryRoute} /><Route component={NotFound} /></Switch></div>;
 }
