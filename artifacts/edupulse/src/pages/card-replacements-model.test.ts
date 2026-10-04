@@ -5,7 +5,7 @@ describe('card replacements', () => {
   it('prices at 2,000 naira', () => { expect(REPLACEMENT_FEE_MINOR).toBe(200000); expect(formatNairaMinor(200000)).toBe('₦2,000.00'); });
   it('permissions', () => {
     expect(replacementPermissions(owner)).toMatchObject({ canIssue: true, canRequest: false, canPay: false });
-    expect(replacementPermissions(admin)).toMatchObject({ canIssue: false, canRequest: true, canPay: false });
+    expect(replacementPermissions(admin)).toMatchObject({ canIssue: false, canRequest: true, canPay: true });
     expect(replacementPermissions(parent)).toMatchObject({ canPay: true, canIssue: false });
     expect(replacementPermissions({ owner: false, roles: ['TEACHER'] }).canView).toBe(false);
   });

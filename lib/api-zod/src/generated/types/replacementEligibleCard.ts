@@ -5,11 +5,16 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { ReplacementEligibleCardCardholderType } from './replacementEligibleCardCardholderType';
 
 export interface ReplacementEligibleCard {
   id: number;
   schoolId: number;
-  studentId: number;
+  /** @nullable */
+  studentId: number | null;
+  /** @nullable */
+  employeeId?: number | null;
+  cardholderType?: ReplacementEligibleCardCardholderType;
   studentName: string;
   status: string;
 }

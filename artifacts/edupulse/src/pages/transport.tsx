@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Bus, CircleDollarSign, GaugeCircle, History, Inbox, MapPinned, Pencil, Plus, Route as RouteIcon, ShieldAlert, UserRoundCog, UsersRound } from 'lucide-react';
 import {
-  useGetAuthorizedContext, useListTransportBuses, useCreateTransportBus, useUpdateTransportBus, useSearchTransportDrivers,
+  useGetAuthorizedContext, useListClasses, useListTransportBuses, useCreateTransportBus, useUpdateTransportBus, useSearchTransportDrivers,
   useListTransportRoutes, useCreateTransportRoute, useUpdateTransportRoute, useAddTransportStop, useUpdateTransportStop,
   useSearchTransportStudents, useListTransportAssignments, useCreateTransportAssignment, useUpdateTransportAssignment,
   useGetTransportAssignmentHistory, useListTransportRequests, useReviewTransportRequest, useGetPlatformTransportOverview,
@@ -459,8 +459,11 @@ function AssignForm({ schoolId, routes, onClose }: { schoolId: number; routes: T
   const invalidate = useInvalidateTransport();
   const create = useCreateTransportAssignment();
   const [search, setSearch] = useState('');
+  const [classId,setClassId] = useState('');
+  const [section,setSection] = useState('');
+  const classes = useListClasses({schoolId});
   const dq = useDebounced(search);
-  const students = useSearchTransportStudents({ schoolId, limit: 20, ...(dq ? { search: dq } : {}) }, { query: { queryKey: ['/api/transport/students', { schoolId, search: dq }], staleTime: TRANSPORT_STALE_MS } });
+  const students = useSearchTransportStudents({ schoolId, limit: 50, classId:Number(classId), ...(section ? {section} : {}), ...(dq ? { search: dq } : {}) }, { query: { enabled:!!classId, queryKey: ['/api/transport/students', { schoolId, classId, section, search: dq }], staleTime: TRANSPORT_STALE_MS } });
   const options = students.data ?? [];
   const [studentId, setStudentId] = useState<number | null>(null);
   const chosen = (students.data ?? []).find(s => s.studentId === studentId);
@@ -479,6 +482,10 @@ function AssignForm({ schoolId, routes, onClose }: { schoolId: number; routes: T
   return (
     <Modal title="Assign student to transport" eyebrow="Riders" onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
+        <Field label="Class"><select required className={inputCls} value={classId} onChange={e=>{setClassId(e.target.value);setStudentId(null);setSection('');}} data-testid="select-assign-class">
+          <option value="">Select class</option>{(classes.data??[]).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+        </select></Field>
+        <Field label="Section (optional)"><input className={inputCls} value={section} onChange={e=>{setSection(e.target.value);setStudentId(null);}} /></Field>
         <Field label="Search existing students"><input className={inputCls} placeholder="Name or admission number" value={search} onChange={e => setSearch(e.target.value)} data-testid="input-student-search" /></Field>
         <div className="max-h-48 space-y-1.5 overflow-auto" data-testid="student-results">
           {students.isLoading && <div className="skeleton h-12 rounded-xl" />}

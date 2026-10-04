@@ -15,6 +15,10 @@ export interface AcademicReportCardInput4b96100 {
   sessionId: number;
   /** @minimum 1 */
   termId: number;
+  /** @minimum 1 */
+  classId?: number;
+  /** @maxLength 80 */
+  section?: string;
   /**
      * @maxLength 500
      * @nullable

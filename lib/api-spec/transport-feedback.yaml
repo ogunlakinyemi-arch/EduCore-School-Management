@@ -373,6 +373,12 @@ paths:
       parameters:
         - $ref: "#/components/parameters/SchoolIdQuery"
         - $ref: "#/components/parameters/TransportSearchQuery"
+        - name: classId
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: section
+          in: query
+          schema: { type: string, maxLength: 80 }
         - name: limit
           in: query
           schema:

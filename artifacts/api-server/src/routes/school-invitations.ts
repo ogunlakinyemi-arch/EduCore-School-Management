@@ -1494,15 +1494,23 @@ async function createPartnerSchoolWithAdministrator(input: {
 
 export type ClerkSchoolInvitationStatus = "pending" | "accepted" | "revoked" | "expired";
 
+export async function listClerkInvitationsForStatus(status: ClerkSchoolInvitationStatus, query?: string) {
+  const invitations: any[] = [];
+  for (let offset=0; offset<10000; offset+=100) {
+    const response = await clerkClient.invitations.getInvitationList({ status, limit:100, offset, ...(query ? {query} : {}) });
+    invitations.push(...response.data);
+    if (response.data.length<100 || (Number.isFinite(response.totalCount) && invitations.length>=response.totalCount)) return invitations;
+  }
+  throw new AuthError(503,"Invitation lookup exceeded its safe page limit; no invitation was sent");
+}
+
 export async function getClerkSchoolInvitation(invitationId: string) {
   const statuses: ClerkSchoolInvitationStatus[] = ["pending", "accepted", "revoked", "expired"];
   try {
     for (const status of statuses) {
-      const response = await clerkClient.invitations.getInvitationList({
-        query: invitationId,
-        status,
-      });
-      const invitation = response.data.find((item) => item.id === invitationId);
+      // Clerk's query filters recipient email, not an invitation ID. Search complete status pages.
+      const invitations = await listClerkInvitationsForStatus(status);
+      const invitation = invitations.find((item) => item.id === invitationId);
       if (invitation) return invitation;
     }
   } catch {
@@ -2374,11 +2382,8 @@ async function findProviderInvitationForAttempt(attempt: DurableReplacementAttem
   const statuses: ClerkSchoolInvitationStatus[] = ["pending", "accepted", "revoked", "expired"];
   const found = new Map<string, any>();
   for (const status of statuses) {
-    const response = await clerkClient.invitations.getInvitationList({
-      query: metadata.invitedEmail,
-      status,
-    });
-    for (const invitation of response.data) {
+    const invitations = await listClerkInvitationsForStatus(status,metadata.invitedEmail);
+    for (const invitation of invitations) {
       const marker = (invitation.publicMetadata as Record<string, any> | undefined)?.[METADATA_KEY];
       if (
         marker?.replacementAttemptId === metadata.attemptId &&

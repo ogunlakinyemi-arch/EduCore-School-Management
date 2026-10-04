@@ -25,7 +25,7 @@ const parseNairaMinor = (value: string): number | null => {
   return minor > 0n && minor <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(minor) : null;
 };
 
-export function ParentOnlineMethods({ invoice, studentId }: { invoice: FeeInvoice; studentId: number }) {
+export function ParentOnlineMethods({ invoice, studentId }: { invoice: FeeInvoice; studentId: number | null }) {
   const qc = useQueryClient();
   const methods = useGetParentFeeInvoicePaymentMethods(invoice.id, { query: { enabled: invoice.outstandingMinor > 0 && invoice.studentId === studentId, queryKey: getGetParentFeeInvoicePaymentMethodsQueryKey(invoice.id), refetchOnMount: 'always', refetchOnWindowFocus: true } });
   const policy = useGetParentFeeInvoiceCheckoutPolicy(invoice.id, { query: { enabled: invoice.outstandingMinor > 0 && invoice.studentId === studentId, queryKey: getGetParentFeeInvoiceCheckoutPolicyQueryKey(invoice.id), refetchOnMount: 'always', refetchOnWindowFocus: true } });
@@ -55,6 +55,7 @@ export function ParentOnlineMethods({ invoice, studentId }: { invoice: FeeInvoic
     handled.current = attempt.key;
     const start = async () => {
       try {
+        if(studentId==null) throw new Error('This payment action requires an authorized child invoice.');
         const [latestMethods, latestInvoices, latestPolicy] = await Promise.all([methods.refetch(), invoices.refetch(), policy.refetch()]);
         const latest = latestInvoices.data?.find(item => item.id === invoice.id && item.studentId === studentId && item.schoolId === invoice.schoolId);
         const latestHistory = await history.refetch();

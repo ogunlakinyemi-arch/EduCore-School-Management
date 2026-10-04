@@ -27,6 +27,7 @@ export interface AcademicReportCard {
   /** @nullable */
   publishedAt: Date | null;
   hasUnpublishedResults?: boolean;
+  isApproved?: boolean;
   resultState: AcademicReportCardResultState;
   lines: AcademicReportCardLine[];
 }

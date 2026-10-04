@@ -15,4 +15,5 @@ export interface FeeCategoryInput {
   /** @maxLength 500 */
   description?: string;
   compulsory?: boolean;
+  transportOnly?: boolean;
 }

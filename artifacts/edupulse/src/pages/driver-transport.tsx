@@ -28,6 +28,7 @@ export default function DriverTransportPage() {
   return (
     <div className="mx-auto max-w-5xl" data-testid="driver-transport">
       <PageHeading eyebrow="Driver" title="Driver transport" description="Your active routes and the students who ride them. Contact details and fees are not shown here." />
+      <nav aria-label="Driver sections" className="mb-5 flex flex-wrap gap-4 text-sm font-semibold text-[hsl(var(--primary))]"><a href="#driver-profile">My profile</a><a href="#driver-journeys">My vehicle and journeys</a><a href="#driver-instructions">Instructions</a></nav>
       {schools.length > 1 && (
         <div className="mb-6 flex flex-wrap gap-2" role="tablist" aria-label="Choose school">
           {schools.map(id => <button key={id} role="tab" aria-selected={id === schoolId} onClick={() => setPick(id)} data-testid={`select-driver-school-${id}`} className={`rounded-xl border px-4 py-2 text-sm font-bold ${id === schoolId ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary)/.08)]' : 'border-[hsl(var(--border))]'}`}>School {id}</button>)}
@@ -35,10 +36,12 @@ export default function DriverTransportPage() {
       )}
       {q.isLoading ? <ListSkeleton rows={3} /> : q.isError || !d ? <ErrorState retry={() => q.refetch()} message={q.error instanceof Error ? q.error.message : undefined} /> : (
         <div className="space-y-6">
-          <section className="panel p-5" data-testid="driver-profile">
+          <section id="driver-profile" className="panel p-5" data-testid="driver-profile">
             <div className="display-font text-lg font-bold">{d.employee.name}</div>
             <div className="text-xs text-[hsl(var(--muted-foreground))]">{d.employee.employeeNo} - {d.employee.schoolName}{d.employee.phone ? ` - ${d.employee.phone}` : ''}</div>
           </section>
+          <div id="driver-journeys" />
+          <section id="driver-instructions" className="panel p-5"><h2 className="font-bold">Journey instructions</h2><p className="mt-2 text-sm">Follow the assigned route times and each rider's listed pickup and drop-off stops below. Ask the School Admin about route or rider changes. This account does not collect fees or change student enrollment.</p></section>
           {!d.routes.length ? <div className="panel"><EmptyState icon={Bus} title="No active routes" description="You have no active route assigned. The school administrator assigns routes." /></div> : d.routes.map(r => {
             const riders = d.assignments.filter(a => a.routeId === r.id);
             return (

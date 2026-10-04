@@ -17,6 +17,8 @@ export interface FeeStructure {
   /** @nullable */
   section?: string | null;
   version: number;
+  assignedCount?: number;
+  eligibleCount?: number;
   status: FeeStructureStatus;
   lines: FeeStructureLine[];
 }

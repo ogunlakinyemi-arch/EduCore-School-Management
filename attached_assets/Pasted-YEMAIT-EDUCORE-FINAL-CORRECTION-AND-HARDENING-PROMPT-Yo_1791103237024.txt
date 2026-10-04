@@ -1,0 +1,1246 @@
+YEMAIT EDUCORE — FINAL CORRECTION AND HARDENING PROMPT
+
+You are working on the existing Yemait EduCore School Management System in Replit.
+
+This is a targeted correction and hardening task. Do not rebuild the application, do not replace existing working modules, do not reset/reseed/delete existing data, and do not publish to Production.
+
+The objective is to permanently fix the newly discovered software/functionality issues, complete the required School Fees/Payment workflow, and verify everything end-to-end in Development.
+
+---
+
+1. STUDENT RESULT GENERATION — SCHOOL ADMIN
+
+Problem
+
+School Admin can reach the result-generation workflow, but clicking Generate does not reliably generate the student's result.
+
+Required fix
+
+Trace the complete workflow:
+
+School Admin → Results → Select Session → Term → Class/Section → Student → Generate
+
+Verify and fix:
+
+1. Frontend Generate action.
+2. Request payload.
+3. API route.
+4. Validation.
+5. Database queries.
+6. Assessment/result aggregation.
+7. Grading rules.
+8. Subject/result calculation.
+9. Total/average/grade calculation.
+10. Result compilation.
+11. Result status.
+12. Approval workflow.
+13. Publication workflow.
+14. Student visibility.
+15. Parent visibility.
+16. Existing report-card/PDF generation if already implemented.
+
+Do not merely make the button display success.
+
+The generated result must actually persist and remain available after page refresh.
+
+Preserve
+
+Draft → Generated/Compiled → Review/Approval → Published
+
+Do not automatically publish results when Generate succeeds.
+
+Prevent:
+
+- duplicate results
+- duplicate subject rows
+- wrong term/session
+- wrong student/class
+- cross-school results
+- modification of approved/published results
+
+Use the existing grading rules.
+
+---
+
+2. SCHOOL ADMIN → DIRECTLY ASSIGN STUDENTS TO BUS
+
+Problem
+
+Parents should not have to submit a bus request before School Admin can assign a student.
+
+Parents may simply call the school.
+
+Required workflow
+
+School Admin → Transport Management → Assign Students
+
+Step 1 — Class
+
+Show a dropdown containing the school's actual classes.
+
+Step 2 — Student
+
+After selecting the class, show only students belonging to that class/section.
+
+Step 3 — Bus
+
+Allow selection of an existing active school bus/vehicle.
+
+Display where available:
+
+- Vehicle name
+- Registration number
+- Vehicle type
+- Capacity
+- Route
+- Current assigned student count
+- Available capacity
+
+Step 4 — Route/Stop
+
+Allow selection of the appropriate existing route/stop.
+
+Step 5 — Assignment
+
+Persist the student-to-bus assignment.
+
+It must survive:
+
+- refresh
+- logout/login
+- reopening Transport Management
+- Parent portal loading
+
+Reassignment
+
+Do not create duplicate active assignments.
+
+Use the existing assignment/history architecture.
+
+Capacity
+
+Do not exceed configured capacity unless an existing authorized override is deliberately used and audited.
+
+Parent Request MUST remain
+
+Do not remove:
+
+Parent → Request School Bus
+
+Both workflows must coexist:
+
+Parent requests → School Admin reviews/assigns
+
+and
+
+School Admin directly assigns → Parent sees assignment
+
+---
+
+3. PARENT TRANSPORT INFORMATION
+
+When a School Admin assigns a student directly to a bus, the Parent must see the child's relevant transport information.
+
+Display where available:
+
+- Bus/vehicle name
+- Registration number
+- Vehicle type
+- Route
+- Pickup stop
+- Drop-off stop
+- Pickup time
+- Drop-off time
+- Driver name
+- Driver phone
+- Driver employee number where appropriate
+- Transport status
+- Relevant instructions
+
+Maintain strict school/tenant isolation.
+
+---
+
+4. SCHOOL FEES AND STUDENT PAYMENT MANAGEMENT
+
+NEW REQUIRED FEATURE
+
+Implement a complete School Fees/Charges Management and Payment workflow using the existing Finance architecture.
+
+Do not create a separate disconnected finance system.
+
+The workflow must support different fees for different classes and different terms.
+
+---
+
+4.1 SCHOOL ADMIN — CREATE A FEE
+
+School Admin should have:
+
+Finance → Fees/Charges → Create Fee
+
+The form must contain at minimum:
+
+Fee Name / Description
+
+Examples:
+
+- School Fees
+- Books
+- Textbooks
+- Uniform
+- Examination Fee
+- Transport Fee
+- PTA Fee
+- Excursion
+- Computer Fee
+- Laboratory Fee
+- Other approved school charge
+
+Do not hard-code these categories. Allow the School Admin to select an existing category or create an appropriate fee category according to the existing Finance permission model.
+
+Amount
+
+Enter the amount.
+
+Term
+
+Show a dropdown of existing academic terms.
+
+The School Admin must explicitly select which term the fee belongs to.
+
+Example:
+
+- 2026/2027 — First Term
+- 2026/2027 — Second Term
+- 2026/2027 — Third Term
+
+Do not attach a fee to the wrong term.
+
+Class
+
+Show a dropdown of classes belonging to the school.
+
+The fee must be assignable to a specific class.
+
+This is important because different classes may pay different amounts.
+
+Example:
+
+JSS1 School Fees = ₦100,000
+
+JSS2 School Fees = ₦110,000
+
+SS1 School Fees = ₦130,000
+
+These must be independent fee records.
+
+Do not assume one amount applies to the whole school.
+
+---
+
+5. PUBLISHING A FEE
+
+After entering:
+
+- Fee name
+- Amount
+- Term
+- Class
+- Other required information
+
+School Admin should be able to:
+
+Save Draft
+
+or
+
+Publish Fee
+
+Only published fees should become visible to the affected students and parents.
+
+Before publishing, validate:
+
+- valid school
+- valid academic term
+- valid class
+- valid amount
+- no accidental duplicate charge
+- correct student population
+
+Do not automatically create fees for students belonging to other classes.
+
+---
+
+6. FEE ASSIGNMENT TO STUDENTS
+
+When a fee is published for a class:
+
+Every active student in that class should receive/view the fee.
+
+The system must correctly associate the fee with the student's current school/class for the selected term.
+
+Do not expose it to:
+
+- students in another class
+- students in another school
+- inactive/unrelated students
+- parents without an authorized relationship
+
+If a student changes class later, do not incorrectly rewrite historical financial records.
+
+Use the existing finance/student billing architecture wherever possible.
+
+---
+
+7. STUDENT DASHBOARD — FEES
+
+Students should be able to see their applicable published fees on their dashboard.
+
+Student access is VIEW ONLY.
+
+Students must NOT be able to:
+
+- create fees
+- edit fees
+- delete fees
+- mark fees paid
+- initiate unauthorized financial changes
+- alter amounts
+
+Student should see, where appropriate:
+
+- Fee name
+- Description
+- Amount
+- Term
+- Payment status
+- Due date if configured
+- School payment instructions where applicable
+
+Example:
+
+2026/2027 First Term
+
+Fee| Amount| Status
+School Fees| ₦100,000| Unpaid
+Books| ₦20,000| Paid
+Examination Fee| ₦5,000| Unpaid
+
+---
+
+8. PARENT DASHBOARD — FEES
+
+Parents should see the applicable fees for each linked child.
+
+Parent must see only fees belonging to their authorized child.
+
+Example:
+
+Child: Student A
+
+2026/2027 First Term
+
+- School Fees — ₦100,000
+- Books — ₦20,000
+- Transport — ₦30,000
+
+Parent should see payment status.
+
+---
+
+9. PARENT ONLINE PAYMENT
+
+Parents should be able to pay directly from the Parent Portal.
+
+For each child, provide:
+
+Option A — Pay selected fee
+
+Parent selects one fee.
+
+Example:
+
+Books — ₦20,000 → Pay
+
+Option B — Pay multiple/all outstanding fees
+
+Parent can select multiple listed unpaid fees or:
+
+Select All → Pay All
+
+The system must calculate the exact selected amount.
+
+Example:
+
+School Fees ₦100,000
+Books ₦20,000
+Exam Fee ₦5,000
+
+Pay All = ₦125,000
+
+Do not include already-paid fees in the payment total.
+
+Prevent duplicate payment attempts for fees already marked as successfully paid.
+
+---
+
+10. PAYMENT RECORD
+
+Every online payment must have a proper payment record containing, where applicable:
+
+- payment reference
+- student
+- parent/payer
+- school
+- fee
+- term
+- amount
+- provider
+- payment status
+- created time
+- confirmation time
+- transaction/reference ID
+
+Use the existing Finance/payment architecture.
+
+Do not create fake successful payments.
+
+---
+
+11. CASH PAYMENT TO SCHOOL
+
+Parents may also pay the school physically by cash or another offline method.
+
+School Admin should be able to mark an applicable fee as paid.
+
+Required workflow:
+
+School Admin → Finance → Student Fees/Payments → Select Student → Select Fee → Mark Paid
+
+The School Admin should be able to select:
+
+- Class
+- Student
+- Fee
+- Amount
+- Payment method
+
+For example:
+
+Payment Method: Cash
+
+After confirmation:
+
+- fee status becomes Paid
+- payment record is created
+- payment method is recorded as Cash
+- date/time is recorded
+- staff/user who recorded it is recorded
+- audit log is created
+
+Do not allow School Admin to silently alter an already confirmed payment.
+
+If correction/reversal is required, use the existing finance adjustment/refund/reversal workflow.
+
+---
+
+12. SCHOOL ADMIN PAYMENT NOTIFICATION
+
+When a Parent successfully completes an online payment, School Admin should receive a notification.
+
+The notification should contain enough information to identify:
+
+- student
+- class
+- parent/payer
+- fee(s)
+- amount
+- payment reference
+- payment status
+- time
+
+Example:
+
+Payment Received
+
+Student: John Doe
+Class: JSS1 A
+Fee: School Fees
+Amount: ₦100,000
+Status: Paid
+Reference: XXXXX
+
+Use the existing notification architecture.
+
+Do not create duplicate notification systems.
+
+---
+
+13. TRANSPORT FEE AUTOMATION
+
+This is a critical requirement.
+
+If a student is actively using a school bus, the applicable School Bus/Transport Fee must automatically appear on that student's and parent's dashboard.
+
+Student using school bus
+
+If the student has an active school transport/bus assignment:
+
+Student → applicable Transport Fee automatically added
+
+Parent → applicable Transport Fee automatically added
+
+The transport fee should be associated with the correct:
+
+- student
+- school
+- class
+- academic session
+- term
+- active transport assignment
+
+Student NOT using school bus
+
+If the student does not have an active school bus assignment:
+
+DO NOT add the school bus transport fee.
+
+The student and parent should see only the fees applicable to:
+
+- their class
+- their term
+- their student's actual services/charges
+
+A student who does not use the school bus must not see or owe a bus fee merely because a transport fee exists for other students.
+
+---
+
+14. TRANSPORT FEE RULE
+
+Do not simply attach a transport fee to every student in the class.
+
+The correct logic is:
+
+Class fees → applicable to class
+
+plus
+
+Transport fee → applicable only when student has active school-bus assignment
+
+Therefore:
+
+Student A
+
+Class: JSS1
+Bus: YES
+
+Fees:
+
+- School Fees
+- Books
+- Examination Fee
+- Transport Fee
+
+Student B
+
+Class: JSS1
+Bus: NO
+
+Fees:
+
+- School Fees
+- Books
+- Examination Fee
+
+No Transport Fee.
+
+---
+
+15. TRANSPORT ASSIGNMENT / FEE SYNCHRONIZATION
+
+When School Admin assigns a student to a bus:
+
+The applicable transport fee should become visible according to the school's configured transport-fee rules.
+
+When a student is removed from the active school-bus assignment:
+
+Do not automatically erase historical paid financial records.
+
+Instead:
+
+- prevent future inappropriate transport billing
+- preserve historical payment records
+- update current outstanding applicability safely
+
+If a transport fee was already paid, preserve that payment.
+
+If an unpaid future transport charge should no longer apply, handle it through the existing billing adjustment mechanism rather than deleting historical finance data.
+
+---
+
+16. DIFFERENT FEES FOR DIFFERENT CLASSES
+
+School Admin must be able to create multiple fee records for the same fee category but different classes.
+
+Example:
+
+First Term
+
+Primary 1 School Fees = ₦80,000
+
+Primary 2 School Fees = ₦85,000
+
+JSS1 School Fees = ₦100,000
+
+JSS2 School Fees = ₦110,000
+
+SS1 School Fees = ₦130,000
+
+Each record must remain independent.
+
+Do not overwrite one class's amount when another class is edited.
+
+---
+
+17. DIFFERENT FEES WITHIN THE SAME CLASS
+
+A class may have multiple fees.
+
+Example:
+
+JSS1:
+
+- School Fees — ₦100,000
+- Books — ₦20,000
+- Examination Fee — ₦5,000
+- PTA Fee — ₦10,000
+- Transport — applicable only to students using school bus
+
+All should appear separately.
+
+Parents may pay:
+
+- one
+- several
+- all outstanding applicable fees
+
+---
+
+18. FEE STATUS
+
+Use clear statuses such as:
+
+- Draft
+- Published
+- Unpaid
+- Partially Paid, if supported by existing finance architecture
+- Paid
+- Payment Pending
+- Payment Failed
+- Cancelled/Voided where appropriate
+
+Do not confuse:
+
+Payment initiated
+
+with:
+
+Payment confirmed
+
+---
+
+19. PARTIAL PAYMENT
+
+If the existing Finance architecture supports partial payments, preserve and integrate that capability.
+
+If it does not, do not invent an unsafe partial-payment system simply to satisfy this prompt.
+
+The key requirement is that the system must never falsely mark an unpaid balance as fully paid.
+
+---
+
+20. FLUTTERWAVE INTEGRATION BOUNDARY
+
+The user intends to use Flutterwave, not Paystack.
+
+Do not introduce Paystack.
+
+Reuse the existing payment provider architecture.
+
+Flutterwave live/sandbox confirmation has not yet been physically verified.
+
+Therefore:
+
+- keep Flutterwave integration ready
+- do not fake successful callbacks
+- do not mark real payments successful without verified confirmation
+- use safe Development test/mock mechanisms for software verification
+
+Report actual Flutterwave end-to-end testing as:
+
+EXTERNAL INTEGRATION BLOCKED/UNVERIFIED
+
+until actual provider confirmation is available.
+
+---
+
+21. CARD REPLACEMENT — SCHOOL ADMIN WORKFLOW
+
+Problem
+
+School Admin needs an easier workflow for reporting a lost/damaged student, teacher or staff card.
+
+Use the existing ₦2,000 replacement infrastructure.
+
+Do not create a second unrelated card-payment system.
+
+Required workflow
+
+School Admin → Card Replacement → Request New Card
+
+Cardholder Type:
+
+- Student
+- Teacher
+- Staff
+
+Student
+
+Show:
+
+Class dropdown → Student dropdown
+
+Only students belonging to the selected school/class.
+
+Display:
+
+- Student name
+- Admission/registration number
+- Existing card reference
+- Existing NFC status
+- Existing card status
+
+Then:
+
+Request Replacement Card
+
+Teacher
+
+Show the appropriate school-scoped Teacher/Employee dropdown.
+
+Staff
+
+Show the appropriate school-scoped Staff/Employee dropdown.
+
+---
+
+22. CARD REPLACEMENT PAYMENT
+
+Display:
+
+Replacement Card Fee: ₦2,000
+
+Provide the payment action from the same workflow.
+
+Use existing Finance/payment architecture.
+
+Required states may include:
+
+- Payment Required
+- Payment Pending
+- Payment Successful
+- Payment Failed
+- Replacement Pending
+- Replacement Issued
+
+Clicking Pay must NOT mark the request as paid.
+
+Only verified payment confirmation can do that.
+
+---
+
+23. CARD REPLACEMENT → OWNER ISSUANCE
+
+After verified payment:
+
+1. Owner sees replacement request.
+2. Owner issues new NFC UID/card.
+3. Old UID remains permanently revoked.
+4. Card history is preserved.
+5. Audit log records replacement.
+6. New card is associated with the correct school/person.
+
+School Admin must not bypass Owner-only official card issuance.
+
+---
+
+24. OFFICIAL CARD PERMISSIONS
+
+Platform Owner
+
+Can:
+
+- generate
+- download
+- print
+- issue
+- reissue
+- replace
+- assign official cards
+
+School Admin
+
+Can:
+
+- view preview
+- request replacement
+- pay replacement
+- view status
+
+Cannot:
+
+- generate official card
+- download official card
+- print official card
+- issue official card
+- assign NFC UID
+- activate official card
+
+Teacher
+
+Must NOT access Student official ID cards.
+
+Parent/Student
+
+Can view authorized profile information but cannot generate/download/print official cards.
+
+---
+
+25. ID CARD DATA AND BRANDING
+
+Preserve the corrected card design.
+
+Student cards must not print:
+
+- current class
+- section
+- session
+- term
+- academic year
+
+Use:
+
+NFC UID → Person → School
+
+School-specific branding must follow:
+
+School Logo → dominant appropriate logo colour → Card Theme
+
+No random colours.
+
+No cross-school branding/data leakage.
+
+---
+
+26. INVITATION WORKFLOW
+
+Harden everything possible in Development:
+
+- invitation creation
+- recipient
+- role
+- school
+- token/ticket
+- expiration
+- acceptance route
+- duplicate acceptance
+- already-used invitation
+- unauthorized acceptance
+- cross-school protection
+- password setup handoff
+- post-acceptance account state
+
+Actual email delivery/provider behaviour remains external if unavailable.
+
+Do not fake delivery.
+
+Do not blind-resend after gateway errors.
+
+---
+
+27. DRIVER PORTAL / TRANSPORT FUNCTIONALITY
+
+Audit the existing Driver functionality.
+
+If genuinely missing, provide appropriate access to:
+
+- Driver Profile
+- Assigned Vehicle
+- Assigned Route/Journey
+- Transport Notices/Instructions
+
+Do not duplicate existing functionality.
+
+Driver must only see authorized transport information.
+
+---
+
+28. DASHBOARD HARDENING
+
+School Admin
+
+Where applicable show:
+
+- pending bus requests
+- bus assignments
+- card replacement requests
+- payment-required replacement requests
+- fee/payment activity
+- result status
+- timetable status
+- important notifications
+
+Parent
+
+Show:
+
+- each child's applicable fees
+- payment status
+- Pay selected
+- Select All / Pay All
+- transport assignment
+- bus/vehicle
+- driver information
+- payment confirmation/status
+- relevant result status
+
+Student
+
+Show:
+
+- applicable fees
+- amount
+- term
+- payment status
+- transport fee only if actively using school bus
+- view-only financial information
+
+Platform Owner
+
+Show appropriate:
+
+- card replacement/payment requests
+- replacement requests awaiting issuance
+- payment/finance alerts
+- relevant school activity
+
+Do not add meaningless dashboard widgets.
+
+---
+
+29. SECURITY / TENANT ISOLATION
+
+Every affected API route must enforce server-side authorization.
+
+Test:
+
+- School A accessing School B students
+- School A accessing School B fees
+- School A accessing School B payments
+- School A accessing School B buses
+- School A accessing School B employees
+- Parent accessing another parent's child
+- Student accessing another student's fees
+- Teacher accessing student official cards
+- Driver accessing another driver's assignment
+- School Admin attempting Owner-only card issuance
+
+Frontend filtering alone is NOT sufficient.
+
+---
+
+30. DATABASE SAFETY
+
+Do not:
+
+- delete production data
+- reset database
+- truncate
+- reseed unnecessarily
+- delete historical payments
+- delete historical transport assignments
+- delete card history
+- overwrite approved results
+
+Inspect the existing schema before creating migrations.
+
+Reuse existing Finance, transport, notification, audit and card tables where possible.
+
+Add only required schema changes.
+
+Keep migrations additive and safe.
+
+Do not modify Production.
+
+Do not attempt to bypass the current Replit Publish/schema-diff generator problem.
+
+---
+
+31. EXTERNAL INTEGRATION BOUNDARY
+
+The following remain explicitly blocked/unverified until actual integration is available:
+
+NFC
+
+Physical:
+
+NFC Card → PN532/reader → ESP32/device → EduCore API
+
+Flutterwave
+
+Real/sandbox payment confirmation.
+
+Email
+
+Actual recipient inbox delivery.
+
+Physical card printing
+
+Actual PVC printer output.
+
+Employee NFC
+
+Physical Teacher/Staff NFC binding and hardware verification.
+
+Do not report these as software bugs if the software side has already been verified.
+
+---
+
+32. REQUIRED DEVELOPMENT TESTING
+
+Results
+
+Test:
+
+- Generate
+- persistence after refresh
+- calculations
+- approval
+- publication
+- Student visibility
+- Parent visibility
+- wrong-school denial
+
+Transport
+
+Test:
+
+- Parent request
+- School Admin direct assignment
+- class filtering
+- student filtering
+- bus filtering
+- capacity
+- reassignment
+- duplicate prevention
+- Parent visibility
+- Driver visibility
+
+Fees
+
+Test:
+
+- create fee
+- draft
+- publish
+- term selection
+- class selection
+- different amounts by class
+- multiple fees for same class
+- Student dashboard
+- Parent dashboard
+- Pay one
+- Pay multiple
+- Pay All
+- duplicate-payment prevention
+- cash payment
+- payment status
+- School Admin notification
+- transport-fee automation
+- removal from bus
+- preservation of historical payment
+- cross-school denial
+
+Card replacement
+
+Test:
+
+- Student
+- Teacher
+- Staff
+- class filtering
+- student filtering
+- ₦2,000 fee
+- payment gate
+- Owner issuance
+- old UID revocation
+- history
+- audit
+
+Permissions
+
+Test:
+
+- Owner
+- School Admin
+- Teacher
+- Student
+- Parent
+- Partner
+- Driver
+
+---
+
+33. TEST QUALITY
+
+Do not rely only on mocks.
+
+Where practical run:
+
+- backend tests
+- frontend tests
+- native PostgreSQL tests
+- authenticated Development browser tests
+- API authorization tests
+- typechecks
+- builds
+- migration replay
+- migration rollback where supported
+
+Verify real persistence after refresh.
+
+---
+
+34. FINAL ACCEPTANCE CRITERIA
+
+An issue is NOT fixed merely because:
+
+- a button exists
+- a page opens
+- a toast says Success
+- a mock returns 200
+- a payment button opens
+- a database row was inserted without verifying the complete workflow
+
+The workflow must work through:
+
+Frontend → API → Validation → Authorization → Database → Business Rules → Response → Correct UI
+
+For fees specifically:
+
+School Admin creates → selects fee type → selects term → selects class → publishes → applicable students receive fee → Student sees fee → Parent sees fee → Parent selects one/multiple/all → payment is processed/verified → School Admin is notified → payment status updates correctly.
+
+For transport:
+
+School Admin assigns → student receives transport applicability → transport fee appears only where applicable → Parent sees transport information and fee.
+
+---
+
+35. FINAL REPORT REQUIRED
+
+At the end provide:
+
+A. FIXED SOFTWARE BUGS
+
+List every software bug fixed.
+
+B. FUNCTIONALITY GAPS ADDED
+
+List genuinely missing features implemented.
+
+C. SCHOOL FEES/PAYMENT VERIFICATION
+
+Report:
+
+- fee creation
+- term assignment
+- class assignment
+- publication
+- Student visibility
+- Parent visibility
+- single payment
+- multiple payment
+- Pay All
+- cash marking
+- notifications
+- transport-fee automation
+- different class pricing
+
+D. EXTERNAL INTEGRATION BLOCKED
+
+Clearly list:
+
+- Flutterwave
+- email/invitation delivery
+- physical NFC device
+- physical printing
+- employee NFC hardware
+
+E. TEST RESULTS
+
+Give exact counts for:
+
+- backend tests
+- frontend tests
+- PostgreSQL tests
+- authenticated browser tests
+- typechecks
+- builds
+- migration tests
+
+F. DATA PRESERVATION
+
+Confirm:
+
+- Production not modified
+- no reset/truncate
+- no existing data deleted
+- existing Student→Bus assignments preserved
+- existing card history preserved
+- existing result/academic records preserved
+- existing finance records preserved
+- existing payment records preserved
+
+G. REMAINING SOFTWARE ISSUES
+
+Only list genuine software/functionality issues.
+
+Do not classify external integration blockers as software bugs.
+
+---
+
+EXECUTION RULES
+
+1. Work in Development only.
+2. Do not publish.
+3. Do not modify Production.
+4. Do not reset or reseed.
+5. Do not rebuild working modules.
+6. Reuse existing APIs, schemas, services and permission architecture.
+7. Do not create duplicate Finance, Transport, Card or Payment systems.
+8. Fix root causes.
+9. Add regression tests.
+10. Verify actual persistence.
+11. Verify server-side authorization.
+12. Keep external-integration items explicitly blocked until actual integration is available.
+13. Do not change the current Replit Publish/schema-diff generator workaround while Replit Support investigates it.
+14. Do not stop after fixing the UI.
+15. Trace every affected workflow end-to-end.
+16. Preserve all existing working functionality.
+
+Start by auditing the existing implementation and identify the exact root cause of each issue.
+
+Then implement the smallest safe correction that permanently resolves each software issue.
+
+Do not declare completion until the acceptance criteria have been tested.

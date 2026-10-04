@@ -14,5 +14,6 @@ export interface FeeCategory4b96100 {
   /** @nullable */
   description: string | null;
   compulsory: boolean;
+  transportOnly?: boolean;
   status: FeeCategory4b96100Status;
 }

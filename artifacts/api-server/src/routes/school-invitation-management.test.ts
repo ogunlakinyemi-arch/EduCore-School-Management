@@ -312,7 +312,14 @@ beforeEach(() => {
     return { rows: [] };
   });
   state.connect.mockResolvedValue({ query: state.clientQuery, release: state.release });
-  state.getInvitationList.mockImplementation(async ({ query, status }: { query: string; status: string }) => {
+  state.getInvitationList.mockImplementation(async ({ query, status,offset=0,limit=100 }: { query?: string; status: string;offset?:number;limit?:number }) => {
+    if(!query) {
+      const records=state.ownerRecords.filter(item=>(item.metadata.invitationId==="inv_accepted_unlinked"?"accepted":"pending")===status)
+        .map(item=>({id:item.metadata.invitationId,status,publicMetadata:{edupulseSchoolInvitation:{claimId:item.metadata.claimId,schoolId:3,role:"SCHOOL_ADMIN",firstName:"Old",lastName:"Admin"}}}));
+      const all=new Map(records.map(i=>[i.id,i]));
+      for(const i of state.providerInvitations.values()) all.set(i.id,i);
+      const data=[...all.values()].filter(i=>i.status===status);return {data:data.slice(offset,offset+limit),totalCount:data.length};
+    }
     const provider = [...state.providerInvitations.values()].find((item) =>
       item.id === query || item.emailAddress === query
     );
@@ -511,9 +518,9 @@ describe("Platform Owner school invitation management", () => {
       status: "expired",
     });
     state.getInvitationList.mockImplementation(async ({ query, status }: { query: string; status: string }) => ({
-      data: status === "expired" && query === "inv_pending"
+      data: status === "expired" && (!query || query === "inv_pending")
         ? [{
-            id: query,
+            id: "inv_pending",
             status: "expired",
             publicMetadata: {
               edupulseSchoolInvitation: {
@@ -552,7 +559,7 @@ describe("Platform Owner school invitation management", () => {
     expect(state.createInvitation.mock.calls[0][0].emailAddress).not.toBe("inv_a@example.test");
     expect(state.createInvitation.mock.calls[0][0].emailAddress).not.toBe("inv_c@example.test");
     expect(state.getInvitationList.mock.calls.every(([query]) =>
-      (query as { query: string }).query === "inv_pending"
+      (query as { query?: string }).query === undefined
     )).toBe(true);
     expect(state.query.mock.calls.filter(([sql]) =>
       String(sql).includes("event_type='SCHOOL_ADMIN_INVITED'")
@@ -638,8 +645,8 @@ describe("Platform Owner school invitation management", () => {
 
   it("does not resend a Clerk invitation that is already accepted", async () => {
     state.getInvitationList.mockImplementation(async ({ query, status }: { query: string; status: string }) => ({
-      data: query === "inv_pending" && status === "accepted"
-        ? [{ id: query, status: "accepted", publicMetadata: {} }]
+      data: (!query || query === "inv_pending") && status === "accepted"
+        ? [{ id: "inv_pending", status: "accepted", publicMetadata: {} }]
         : [],
     }));
 

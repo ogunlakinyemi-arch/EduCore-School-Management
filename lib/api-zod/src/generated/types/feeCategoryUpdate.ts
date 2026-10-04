@@ -19,5 +19,6 @@ export interface FeeCategoryUpdate {
      */
   description?: string | null;
   compulsory?: boolean;
+  transportOnly?: boolean;
   status?: FeeCategoryUpdateStatus;
 }

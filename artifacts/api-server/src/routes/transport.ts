@@ -1156,7 +1156,7 @@ async function ensureTransportFinanceCategory(client: DbClient, schoolId: number
  * no-op, so a calendar transition retry or invoice-page reload cannot bill the
  * family twice. No provider or payment claim is made here.
  */
-async function ensureTransportInvoiceForTerm(
+export async function ensureTransportInvoiceForTerm(
   client: DbClient,
   values: {
     assignmentId: number;
@@ -1214,6 +1214,27 @@ async function ensureTransportInvoiceForTerm(
   const assignment = assignmentResult.rows[0];
   if (!assignment) {
     throw new AuthError(404, "The active school transport assignment or requested academic term does not exist");
+  }
+  const classFees = await client.query(`SELECT l.category_id,l.amount_minor FROM fee_structures fs
+    JOIN fee_structure_lines l ON l.structure_id=fs.id AND l.school_id=fs.school_id
+    JOIN fee_categories c ON c.id=l.category_id AND c.school_id=l.school_id AND c.transport_only
+    WHERE fs.school_id=$1 AND fs.academic_term_id=$2 AND fs.status='PUBLISHED'
+      AND EXISTS(SELECT 1 FROM student_class_assignments a WHERE a.school_id=fs.school_id AND a.student_id=$3
+        AND a.academic_session_id=fs.academic_session_id AND a.academic_term_id=fs.academic_term_id
+        AND a.school_class_id=fs.school_class_id AND a.status IN ('ACTIVE','INACTIVE')
+        AND (fs.section IS NULL OR fs.section=a.section))
+    ORDER BY fs.id DESC LIMIT 2`,[values.schoolId,values.academicTermId,assignment.studentId]);
+  if (classFees.rows.length>1) throw new AuthError(409,"More than one class transport fee applies; resolve the duplicate schedule");
+  if(classFees.rows[0]) {
+    await upsertTransportFeePlan(client,{
+      schoolId:values.schoolId,assignmentId:values.assignmentId,academicSessionId:Number(assignment.academicSessionId),
+      academicTermId:values.academicTermId,feeCategoryId:Number(classFees.rows[0].category_id),
+      amountMinor:Number(classFees.rows[0].amount_minor),dueDate:String(assignment.dueDate),actorUserId:values.actorUserId,
+    });
+    feePlan=await client.query(`SELECT id,academic_session_id AS "academicSessionId",academic_term_id AS "academicTermId",
+      fee_category_id AS "feeCategoryId",amount_minor AS "amountMinor",due_date::text AS "dueDate",fee_invoice_id AS "feeInvoiceId",status
+      FROM transport_fee_invoices WHERE school_id=$1 AND assignment_id=$2 AND academic_term_id=$3 FOR UPDATE`,
+      [values.schoolId,values.assignmentId,values.academicTermId]);
   }
   if (!feePlan.rows[0]) {
     await upsertTransportFeePlan(client, {
@@ -1774,6 +1795,9 @@ router.get("/transport/students", run(async (req, res) => {
   const schoolId = querySchoolId(req);
   authorizeSchoolRead(req, schoolId);
   const search = typeof req.query.search === "string" ? req.query.search.trim().slice(0, 100) : "";
+  const classId = req.query.classId == null ? null : requireRecordId(req.query.classId, "classId");
+  const section = typeof req.query.section === "string" ? req.query.section.trim().slice(0,80) : null;
+  if (classId && !(await pool.query(`SELECT 1 FROM school_classes WHERE id=$1 AND school_id=$2`,[classId,schoolId])).rows.length) throw new AuthError(404,"Class not found");
   const rawLimit = req.query.limit === undefined ? 20 : requireRecordId(req.query.limit, "limit");
   if (rawLimit > 50) throw new AuthError(400, "limit cannot exceed 50 student directory results");
   const result = await pool.query(
@@ -1810,6 +1834,8 @@ router.get("/transport/students", run(async (req, res) => {
          )) AS assignment
        ) assignment_row ON TRUE
       WHERE st.school_id=$1 AND UPPER(st.status)='ACTIVE'
+        AND ($4::int IS NULL OR EXISTS(SELECT 1 FROM school_classes c WHERE c.id=$4 AND c.school_id=st.school_id AND c.name=st.class_name))
+        AND ($5::text IS NULL OR st.section=$5)
         AND ($2::text='' OR
              st.admission_no ILIKE '%' || $2 || '%' OR
              st.first_name ILIKE '%' || $2 || '%' OR
@@ -1818,7 +1844,7 @@ router.get("/transport/students", run(async (req, res) => {
              st.section ILIKE '%' || $2 || '%')
       ORDER BY st.first_name,st.last_name,st.admission_no
       LIMIT $3`,
-    [schoolId, search, rawLimit],
+    [schoolId, search, rawLimit, classId, section || null],
   );
   res.json(result.rows.map((row) => ({
     studentId: Number(row.studentId),
@@ -1972,7 +1998,7 @@ router.post("/transport/assignments", run(async (req, res) => {
       [schoolId, studentId, routeId, pickupStopId, dropoffStopId, status, effectiveDate, reason, context.user.id],
     );
     const assignmentId = Number(assignmentResult.rows[0].id);
-    if (feePlanTerm && (feePlanAmountMinor > 0 || hasRequestedFeePlan)) {
+    if (feePlanTerm) {
       await upsertTransportFeePlan(client, {
         schoolId,
         assignmentId,

@@ -337,6 +337,20 @@
       "when": 1791097200000,
       "tag": "0052_student_nfc_replacement_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1791104400000,
+      "tag": "0053_class_transport_fee_applicability",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1791104401000,
+      "tag": "0054_employee_card_replacement_finance",
+      "breakpoints": true
     }
   ]
 }

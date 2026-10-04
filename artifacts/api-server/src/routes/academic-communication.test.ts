@@ -92,6 +92,10 @@ const poolMock = vi.hoisted(() => {
     if (sql.includes("FROM academic_grading_rules")) {
       return result([{ min_score: "80", max_score: "100", grade: "A", grade_point: "4", remark: "Excellent" }]);
     }
+    if(sql.includes("pg_advisory_xact_lock")) return result();
+    if(sql.includes("FROM academic_report_cards")&&sql.includes("academic_session_id=$3")) return result([]);
+    if(sql.includes("FROM audit_logs")&&sql.includes("Approved academic report card")) return result([{id:1}]);
+    if(sql.includes("AND grade IS NOT NULL AND grade_point IS NOT NULL AND remark IS NOT NULL")) return result([{count:1}]);
     if (sql.includes("INSERT INTO academic_results")) {
       return result([{ id: 55, schoolId: 1, assessmentId: 21, studentId: 13, score: "18", maxScore: "20", grade: "A", status: "DRAFT" }]);
     }

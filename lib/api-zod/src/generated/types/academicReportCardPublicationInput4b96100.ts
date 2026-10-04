@@ -5,8 +5,10 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { AcademicReportCardPublicationInput4b96100Decision } from './academicReportCardPublicationInput4b96100Decision';
 
 export interface AcademicReportCardPublicationInput4b96100 {
   /** @minimum 1 */
   schoolId: number;
+  decision?: AcademicReportCardPublicationInput4b96100Decision;
 }

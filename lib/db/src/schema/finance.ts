@@ -15,7 +15,7 @@ import {
   unique,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { academicSessions, academicTerms, appUsers, schools, schoolClasses, students } from "./edupulse";
+import { academicSessions, academicTerms, appUsers, employees, schools, schoolClasses, students } from "./edupulse";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -47,6 +47,7 @@ export const feeCategories = pgTable("fee_categories", {
   name: text("name").notNull(),
   description: text("description"),
   compulsory: boolean("compulsory").notNull().default(false),
+  transportOnly: boolean("transport_only").notNull().default(false),
   status: text("status").notNull().default("ACTIVE"),
   createdBy: integer("created_by").notNull().references(() => appUsers.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -103,7 +104,8 @@ export const feeStructureLines = pgTable("fee_structure_lines", {
 export const feeInvoices = pgTable("fee_invoices", {
   id: serial("id").primaryKey(),
   schoolId: integer("school_id").notNull().references(() => schools.id),
-  studentId: integer("student_id").notNull(),
+  studentId: integer("student_id"),
+  employeeId: integer("employee_id"),
   parentId: integer("parent_id"),
   structureId: integer("structure_id"),
   academicSessionId: integer("academic_session_id").notNull(),
@@ -129,6 +131,8 @@ export const feeInvoices = pgTable("fee_invoices", {
   unique("fee_invoices_id_school_unique").on(t.id, t.schoolId),
   unique("fee_invoices_school_number_unique").on(t.schoolId, t.invoiceNumber),
   foreignKey({ columns: [t.studentId, t.schoolId], foreignColumns: [students.id, students.schoolId], name: "fee_invoices_student_school_fk" }),
+  foreignKey({columns:[t.employeeId,t.schoolId],foreignColumns:[employees.id,employees.schoolId],name:"fee_invoices_employee_school_fk"}),
+  check("fee_invoices_person_check",sql`(${t.studentId} IS NULL)<>(${t.employeeId} IS NULL)`),
   foreignKey({ columns: [t.structureId, t.schoolId], foreignColumns: [feeStructures.id, feeStructures.schoolId], name: "fee_invoices_structure_school_fk" }),
   foreignKey({ columns: [t.academicSessionId, t.schoolId], foreignColumns: [academicSessions.id, academicSessions.schoolId], name: "fee_invoices_session_school_fk" }),
   foreignKey({ columns: [t.academicTermId, t.schoolId], foreignColumns: [academicTerms.id, academicTerms.schoolId], name: "fee_invoices_term_school_fk" }),
@@ -194,7 +198,8 @@ export const feePayments = pgTable("fee_payments", {
   id: serial("id").primaryKey(),
   schoolId: integer("school_id").notNull().references(() => schools.id),
   invoiceId: integer("invoice_id").notNull(),
-  studentId: integer("student_id").notNull(),
+  studentId: integer("student_id"),
+  employeeId: integer("employee_id"),
   parentId: integer("parent_id"),
   reference: text("reference").notNull(),
   idempotencyKey: text("idempotency_key").notNull(),
@@ -233,6 +238,8 @@ export const feePayments = pgTable("fee_payments", {
       AND NULLIF(BTRIM(${t.verificationEvidenceRef}), '') IS NOT NULL`),
   foreignKey({ columns: [t.invoiceId, t.schoolId], foreignColumns: [feeInvoices.id, feeInvoices.schoolId], name: "fee_payments_invoice_school_fk" }),
   foreignKey({ columns: [t.studentId, t.schoolId], foreignColumns: [students.id, students.schoolId], name: "fee_payments_student_school_fk" }),
+  foreignKey({columns:[t.employeeId,t.schoolId],foreignColumns:[employees.id,employees.schoolId],name:"fee_payments_employee_school_fk"}),
+  check("fee_payments_person_check",sql`(${t.studentId} IS NULL)<>(${t.employeeId} IS NULL)`),
   check("fee_payments_amount_currency_check", sql`${t.amountMinor} > 0 AND ${t.currency} ~ '^[A-Z]{3}$'`),
   check("fee_payments_method_check", sql`${t.method} IN ('BANK_TRANSFER','REMITA','FLUTTERWAVE','PAYSTACK')`),
   check("fee_payments_status_check", sql`${t.status} IN ('PENDING','PROCESSING','VERIFIED','FAILED','REJECTED','CANCELLED','REVERSED','REFUNDED')`),

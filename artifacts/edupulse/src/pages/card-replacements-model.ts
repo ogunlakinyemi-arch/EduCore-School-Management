@@ -6,7 +6,7 @@ export function replacementPermissions({ owner, roles }: ReplacementActor) {
   return {
     canView: owner || ['SCHOOL_ADMIN', 'PARENT', 'STUDENT'].some(has),
     canRequest: ['SCHOOL_ADMIN', 'PARENT', 'STUDENT'].some(has),
-    canPay: has('PARENT'),
+    canPay: has('PARENT') || has('SCHOOL_ADMIN'),
     canIssue: owner,
   };
 }

@@ -5,12 +5,17 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { FeeInvoiceFeeItemsItem } from './feeInvoiceFeeItemsItem';
 import type { FeeInvoiceStatus } from './feeInvoiceStatus';
 
 export interface FeeInvoice {
   id: number;
   schoolId: number;
-  studentId: number;
+  /** @nullable */
+  studentId: number | null;
+  /** @nullable */
+  employeeId?: number | null;
+  feeItems?: FeeInvoiceFeeItemsItem[];
   invoiceNumber: string;
   studentName: string;
   sessionId: number;

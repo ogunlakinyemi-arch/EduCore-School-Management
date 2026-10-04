@@ -276,7 +276,7 @@ export function FamilyPaymentHistory({ audience, studentId, invoices = [] }: { a
       const schoolInvoices = statementInvoices.filter(invoice => invoice.schoolId === schoolId);
       const schoolPayments = payments.filter(payment => payment.schoolId === schoolId);
       const statementStudentId = studentId ?? schoolInvoices[0]?.studentId ?? schoolPayments[0]?.studentId;
-      if (statementStudentId === undefined) return null;
+      if (statementStudentId == null) return null;
       return <div key={schoolId} className="border-t border-[hsl(var(--border))] p-5">
         <StudentStatementPrintDocument schoolId={schoolId} studentId={statementStudentId} invoices={schoolInvoices} payments={schoolPayments} />
       </div>;

@@ -401,7 +401,15 @@ beforeEach(() => {
     return { rows: [] };
   });
   state.connect.mockResolvedValue({ query: state.clientQuery, release: state.release });
-  state.getInvitationList.mockImplementation(async ({ query, status }: { query: string; status: string }) => {
+  state.getInvitationList.mockImplementation(async ({ query, status,offset=0,limit=100 }: { query?: string; status: string;offset?:number;limit?:number }) => {
+    if(!query) {
+      const records=[...state.records.entries()].filter(([id])=>state.statuses.get(id)===status)
+        .map(([id,invitation])=>({id,status,publicMetadata:invitation.publicMetadata}));
+      const all=new Map(records.map(i=>[i.id,i]));
+      for(const i of state.providerInvitations.values()) all.set(i.id,i);
+      const data=[...all.values()].filter(i=>i.status===status);
+      return {data:data.slice(offset,offset+limit),totalCount:data.length};
+    }
     const providerMatch = [...state.providerInvitations.values()].filter((item) =>
       (item.id === query || item.emailAddress === query) && item.status === status
     );

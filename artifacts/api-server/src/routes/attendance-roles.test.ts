@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
 const poolMock = vi.hoisted(() => {
   const result = (rows: any[] = []) => ({ rows, rowCount: rows.length });
   const query = vi.fn(async (sql: string, values: any[] = []) => {
+    if(sql.includes("FROM student_nfc_replacement_requests")) return result([]);
     if (sql.includes("FROM school_subscription_manual_locks")) return result([]);
     if (sql.includes("FROM students WHERE id=$1 AND school_id=$2")) {
       return result(([{ id: 11, school_id: 1 }, { id: 12, school_id: 1 }, { id: 22, school_id: 2 }]).filter(x => x.id === Number(values[0]) && x.school_id === Number(values[1])));
@@ -62,6 +63,7 @@ const poolMock = vi.hoisted(() => {
   });
   const client = {
     query: vi.fn(async (sql: string, values: any[] = []) => {
+      if(sql.includes("FROM student_nfc_replacement_requests")) return result([]);
       if (sql.includes("FROM school_subscription_manual_locks")) return result([]);
       if (["BEGIN", "COMMIT", "ROLLBACK"].includes(sql)) return result();
       if (sql.startsWith("WITH missing AS")) return result();
@@ -272,12 +274,11 @@ describe("Phase 5 attendance route role matrix", () => {
     expect((await call("/students/11/identification-methods?schoolId=2", "SCHOOL_ADMIN")).status).toBe(404);
   });
 
-  it("allows Platform Owner NFC replacement without changing card school binding", async () => {
+  it("blocks unpaid legacy replacement rather than bypassing the replacement request", async () => {
     const response = await call("/cards/71/replace", "PLATFORM_OWNER", "POST", { uid: "replacement-card" });
-    expect(response.status).toBe(201);
+    expect(response.status,await response.clone().text()).toBe(409);
     const registration = poolMock.client.query.mock.calls.find(([sql]) => sql.includes("INSERT INTO nfc_cards"));
-    expect(registration?.[1]?.[0]).toBe(1);
-    expect(registration?.[1]?.[2]).toBe(11);
+    expect(registration).toBeUndefined();
   });
 
   it("denies Platform Owner school attendance and biometric-setting mutations while preserving school-admin access", async () => {

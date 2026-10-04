@@ -1,12 +1,13 @@
 import { sql } from "drizzle-orm";
 import { pgTable, serial, integer, text, timestamp, unique, foreignKey, check, index } from "drizzle-orm/pg-core";
-import { appUsers, schools, students, nfcCards } from "./edupulse";
+import { appUsers, employees, schools, students, nfcCards } from "./edupulse";
 import { feeInvoices } from "./finance";
 
 export const studentNfcReplacementRequests = pgTable("student_nfc_replacement_requests", {
   id: serial("id").primaryKey(),
   schoolId: integer("school_id").notNull().references(() => schools.id),
-  studentId: integer("student_id").notNull(),
+  studentId: integer("student_id"),
+  employeeId: integer("employee_id"),
   oldCardId: integer("old_card_id").notNull(),
   invoiceId: integer("invoice_id").notNull(),
   requestedBy: integer("requested_by").notNull().references(() => appUsers.id),
@@ -21,6 +22,8 @@ export const studentNfcReplacementRequests = pgTable("student_nfc_replacement_re
   unique("student_nfc_replacement_requests_invoice_id_key").on(t.invoiceId),
   unique("student_nfc_replacement_requests_new_card_id_key").on(t.newCardId),
   foreignKey({ columns: [t.studentId, t.schoolId], foreignColumns: [students.id, students.schoolId] }),
+  foreignKey({ columns: [t.employeeId,t.schoolId],foreignColumns:[employees.id,employees.schoolId],name:"replacement_employee_school_fk" }),
+  check("replacement_person_check",sql`(${t.studentId} IS NULL)<>(${t.employeeId} IS NULL)`),
   foreignKey({ columns: [t.oldCardId, t.schoolId], foreignColumns: [nfcCards.id, nfcCards.schoolId] }),
   foreignKey({ columns: [t.newCardId, t.schoolId], foreignColumns: [nfcCards.id, nfcCards.schoolId] }),
   foreignKey({ columns: [t.invoiceId, t.schoolId], foreignColumns: [feeInvoices.id, feeInvoices.schoolId] }),

@@ -188,7 +188,7 @@ const resultReturning = `id,school_id AS "schoolId",assessment_id AS "assessment
   student_class_assignment_id AS "studentClassAssignmentId",teacher_employee_id AS "teacherId",
   academic_session_id AS "sessionId",academic_term_id AS "termId",school_class_id AS "classId",
   section_snapshot AS section,subject_id AS "subjectId",score,max_score AS "maxScore",
-  grade,grade_point AS "gradePoint",remark,status,published_at AS "publishedAt"`;
+  grade,grade_point AS "gradePoint",remark,status,review_status AS "reviewStatus",published_at AS "publishedAt"`;
 const cardSelect = `rc.id,rc.school_id AS "schoolId",rc.student_id AS "studentId",
   rc.academic_session_id AS "sessionId",rc.academic_term_id AS "termId",
   (SELECT name FROM academic_sessions WHERE id=rc.academic_session_id AND school_id=rc.school_id) AS "sessionName",
@@ -196,6 +196,7 @@ const cardSelect = `rc.id,rc.school_id AS "schoolId",rc.student_id AS "studentId
   rc.student_class_assignment_id AS "studentClassAssignmentId",rc.school_class_id AS "classId",
   rc.class_name_snapshot AS "className",rc.section_snapshot AS section,rc.status,
   rc.teacher_remark AS "teacherRemark",rc.school_remark AS "schoolRemark",rc.published_by AS "publishedBy",
+  EXISTS(SELECT 1 FROM audit_logs al WHERE al.school_id=rc.school_id AND al.record_id=rc.id AND al.action='Approved academic report card') AS "isApproved",
   CASE WHEN rc.status='PUBLISHED' THEN rc.published_at ELSE NULL END AS "publishedAt"`;
 const cardReturning = `id,school_id AS "schoolId",student_id AS "studentId",
   academic_session_id AS "sessionId",academic_term_id AS "termId",
@@ -367,6 +368,12 @@ router.post("/academic/results", run(async (req, res) => {
     const a = assessment.rows[0];
     if (!a) throw new AuthError(404, "Assessment not found");
     if (!["OPEN", "CLOSED"].includes(a.status)) throw new AuthError(409, "Assessment is not available for result entry");
+    await client.query("SELECT pg_advisory_xact_lock($1::int,$2::int)",[schoolId,studentId]);
+    const frozen=await client.query(`SELECT 1 FROM academic_report_cards rc WHERE rc.school_id=$1 AND rc.student_id=$2
+      AND rc.academic_session_id=$3 AND rc.academic_term_id=$4 AND (rc.status='PUBLISHED' OR EXISTS(
+        SELECT 1 FROM audit_logs al WHERE al.school_id=rc.school_id AND al.record_id=rc.id AND al.action='Approved academic report card')) LIMIT 1`,
+      [schoolId,studentId,a.academic_session_id,a.academic_term_id]);
+    if(frozen.rows.length) throw new AuthError(409,"Approved or published report periods cannot accept new scores");
     if (score > Number(a.max_score)) throw new AuthError(400, "Score cannot exceed the assessment maximum score");
     const assignment = await client.query(
       `SELECT sca.id,sca.section FROM student_class_assignments sca
@@ -440,11 +447,14 @@ router.patch("/academic/results/:resultId", run(async (req, res) => {
   let updated;
   try {
     await client.query("BEGIN");
+    await client.query(`SELECT pg_advisory_xact_lock(school_id,student_id) FROM academic_results WHERE id=$1 AND school_id=$2`,[resultId,schoolId]);
     const existing = await client.query(`SELECT * FROM academic_results WHERE id=$1 AND school_id=$2 FOR UPDATE`, [resultId, schoolId]);
     const current = existing.rows[0];
     if (!current) throw new AuthError(404, "Result not found");
     const admin = hasRole(req, managerRoles, schoolId);
-    if (current.status === "PUBLISHED" && !admin) throw new AuthError(403, "Only a School Admin or Platform Owner may correct a published result");
+    if (current.status === "PUBLISHED" || current.review_status === "APPROVED") {
+      throw new AuthError(409, "Approved or published results are immutable");
+    }
     if (!admin && !["DRAFT"].includes(current.status)) {
       throw new AuthError(409, "Submitted results cannot be edited until the School Admin returns them for correction");
     }
@@ -572,10 +582,11 @@ router.post("/academic/results/:resultId/review", run(async (req, res) => {
   try {
     await client.query("BEGIN");
     const current = await client.query(
-      `SELECT id,status FROM academic_results WHERE id=$1 AND school_id=$2 FOR UPDATE`,
+      `SELECT id,status,review_status FROM academic_results WHERE id=$1 AND school_id=$2 FOR UPDATE`,
       [resultId, schoolId],
     );
     if (!current.rows[0]) throw new AuthError(404, "Result not found");
+    if(current.rows[0].review_status==="APPROVED") throw new AuthError(409,"Approved results are frozen");
     if (current.rows[0].status !== "SUBMITTED") throw new AuthError(409, "Only submitted results can be reviewed");
     reviewed = await client.query(
       `UPDATE academic_results
@@ -752,6 +763,8 @@ router.post("/academic/report-cards", run(async (req, res) => {
   let unpublishedCount = 0;
   try {
     await client.query("BEGIN");
+    await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, [`report-card:${schoolId}:${studentId}:${sessionId}:${termId}`]);
+    await client.query("SELECT pg_advisory_xact_lock($1::int,$2::int)",[schoolId,studentId]);
     const assignment = await client.query(
       `SELECT sca.id,sca.school_class_id,sca.section,c.name AS class_name
         FROM student_class_assignments sca JOIN school_classes c ON c.id=sca.school_class_id AND c.school_id=sca.school_id
@@ -763,7 +776,24 @@ router.post("/academic/report-cards", run(async (req, res) => {
     );
     const assignmentRow = assignment.rows[0];
     if (!assignmentRow) throw new AuthError(404, "Student academic assignment not found");
-    created = await client.query(
+    if ((body.classId != null && id(body.classId, "classId") !== Number(assignmentRow.school_class_id)) ||
+        (body.section != null && String(body.section) !== String(assignmentRow.section))) {
+      throw new AuthError(404, "Student does not belong to the selected class/section for this period");
+    }
+    const existing = await client.query(`SELECT ${cardReturning} FROM academic_report_cards
+      WHERE school_id=$1 AND student_id=$2 AND academic_session_id=$3 AND academic_term_id=$4 FOR UPDATE`,
+      [schoolId,studentId,sessionId,termId]);
+    if (existing.rows[0]?.status === "PUBLISHED" || existing.rows[0]?.status === "ARCHIVED") {
+      throw new AuthError(409, "Published or archived report cards cannot be regenerated");
+    }
+    const approved = existing.rows[0] && await client.query(`SELECT 1 FROM audit_logs WHERE school_id=$1 AND record_id=$2 AND action='Approved academic report card'`, [schoolId,existing.rows[0].id]);
+    if (approved?.rows.length) throw new AuthError(409, "Approved report cards cannot be regenerated");
+    const available = await client.query(`SELECT count(*)::int AS count FROM academic_results WHERE school_id=$1 AND student_id=$2
+      AND academic_session_id=$3 AND academic_term_id=$4 AND student_class_assignment_id=$5 AND status<>'ARCHIVED'
+      AND grade IS NOT NULL AND grade_point IS NOT NULL AND remark IS NOT NULL`,
+      [schoolId,studentId,sessionId,termId,assignmentRow.id]);
+    if (!Number(available.rows[0]?.count)) throw new AuthError(409, "No calculated assessment scores exist for this student and period. Enter marks and configure grading rules first.");
+    created = existing.rows.length ? existing : await client.query(
       `INSERT INTO academic_report_cards(school_id,student_id,academic_session_id,academic_term_id,student_class_assignment_id,
         school_class_id,class_name_snapshot,section_snapshot,status,teacher_remark,school_remark,published_by,published_at)
        VALUES($1,$2,$3,$4,$5,$6,$7,$8,'DRAFT',$9,$10,NULL,NULL)
@@ -777,8 +807,10 @@ router.post("/academic/report-cards", run(async (req, res) => {
         FROM academic_results r JOIN subjects s ON s.id=r.subject_id AND s.school_id=r.school_id
         JOIN academic_assessments a ON a.id=r.assessment_id AND a.school_id=r.school_id
        WHERE r.school_id=$2 AND r.student_id=$3 AND r.academic_session_id=$4 AND r.academic_term_id=$5
-         AND r.status='PUBLISHED' AND r.student_class_assignment_id=$6
-         AND r.grade IS NOT NULL AND r.grade_point IS NOT NULL AND r.remark IS NOT NULL`,
+         AND r.status<>'ARCHIVED' AND r.student_class_assignment_id=$6
+         AND r.grade IS NOT NULL AND r.grade_point IS NOT NULL AND r.remark IS NOT NULL
+       ON CONFLICT (report_card_id,result_id) DO UPDATE SET score=EXCLUDED.score,max_score=EXCLUDED.max_score,
+         grade=EXCLUDED.grade,grade_point=EXCLUDED.grade_point,remark=EXCLUDED.remark`,
       [created.rows[0].id,schoolId,studentId,sessionId,termId,assignmentRow.id],
     );
     const lines = await client.query(
@@ -819,10 +851,39 @@ router.post("/academic/report-cards/:id/publish", run(async (req, res) => {
   let card;
   try {
     await client.query("BEGIN");
+    await client.query(`SELECT pg_advisory_xact_lock(school_id,student_id) FROM academic_report_cards WHERE id=$1 AND school_id=$2`,[cardId,schoolId]);
     const selected = await client.query(`SELECT id,student_id,academic_session_id,academic_term_id,student_class_assignment_id,status FROM academic_report_cards WHERE id=$1 AND school_id=$2 FOR UPDATE`, [cardId,schoolId]);
     const current = selected.rows[0];
     if (!current) throw new AuthError(404, "Report card not found");
     if (current.status !== "DRAFT") throw new AuthError(409, "Only draft report cards may be published");
+    if (body.decision != null && !["APPROVE", "PUBLISH"].includes(String(body.decision))) throw new AuthError(400, "Invalid report card decision");
+    if (body.decision === "APPROVE") {
+      const missing = await client.query(`SELECT 1 FROM academic_results r WHERE r.school_id=$1 AND r.student_id=$2
+        AND r.academic_session_id=$3 AND r.academic_term_id=$4 AND r.student_class_assignment_id=$5
+        AND r.status<>'ARCHIVED' AND NOT EXISTS(SELECT 1 FROM academic_report_card_lines l
+          WHERE l.school_id=r.school_id AND l.report_card_id=$6 AND l.result_id=r.id) LIMIT 1`,
+        [schoolId,current.student_id,current.academic_session_id,current.academic_term_id,current.student_class_assignment_id,cardId]);
+      if(missing.rows.length) throw new AuthError(409,"Compile every assessment score before approving this report card");
+      const unreviewed = await client.query(`SELECT 1 FROM academic_report_card_lines l
+        JOIN academic_results r ON r.id=l.result_id AND r.school_id=l.school_id
+        WHERE l.report_card_id=$1 AND l.school_id=$2 AND
+          (r.status='ARCHIVED' OR (r.status<>'PUBLISHED' AND r.review_status<>'APPROVED')
+           OR r.score<>l.score OR r.max_score<>l.max_score OR r.grade IS DISTINCT FROM l.grade) LIMIT 1`, [cardId,schoolId]);
+      const lineCount = await client.query(`SELECT count(*)::int AS count FROM academic_report_card_lines WHERE report_card_id=$1 AND school_id=$2`, [cardId,schoolId]);
+      if (unreviewed.rows.length || !Number(lineCount.rows[0]?.count)) throw new AuthError(409, "Review and approve every compiled assessment score before approving the report card");
+      await audit(req, schoolId, "Approved academic report card", cardId, client);
+      card = await client.query(`SELECT ${cardReturning} FROM academic_report_cards WHERE id=$1 AND school_id=$2`, [cardId,schoolId]);
+      await client.query("COMMIT");
+      const lines = await pool.query(`SELECT id,subject_id AS "subjectId",subject_name_snapshot AS "subjectName",assessment_name_snapshot AS "assessmentName",score,max_score AS "maxScore",grade,grade_point AS "gradePoint",remark FROM academic_report_card_lines WHERE report_card_id=$1 AND school_id=$2`, [cardId,schoolId]);
+      res.json({ ...card.rows[0], isApproved:true, lines:lines.rows, resultState:"COMPLETE" });
+      return;
+    }
+    const approval = await client.query(`SELECT 1 FROM audit_logs WHERE school_id=$1 AND record_id=$2 AND action='Approved academic report card'`, [schoolId,cardId]);
+    if (!approval.rows.length) throw new AuthError(409, "Approve the compiled report card before publishing");
+    await client.query(`UPDATE academic_results SET status='PUBLISHED',published_by=$1,published_at=NOW(),updated_at=NOW()
+      WHERE school_id=$2 AND student_id=$3 AND academic_session_id=$4 AND academic_term_id=$5
+        AND student_class_assignment_id=$6 AND status='SUBMITTED' AND review_status='APPROVED'`,
+      [context.user.id,schoolId,current.student_id,current.academic_session_id,current.academic_term_id,current.student_class_assignment_id]);
     await client.query(
       `INSERT INTO academic_report_card_lines(school_id,report_card_id,result_id,subject_id,subject_name_snapshot,
         assessment_name_snapshot,score,max_score,grade,grade_point,remark)

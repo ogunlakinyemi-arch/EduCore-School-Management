@@ -19,20 +19,25 @@ export const ListCardReplacementsResponse = zod.object({
   "requests": zod.array(zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
-  "studentId": zod.number().int(),
+  "studentId": zod.number().int().nullable(),
+  "employeeId": zod.number().int().nullish(),
+  "cardholderType": zod.enum(['STUDENT', 'TEACHER', 'STAFF']).optional(),
   "studentName": zod.string(),
   "oldCardId": zod.number().int(),
   "invoiceId": zod.number().int(),
   "status": zod.enum(['REQUESTED', 'ISSUED']),
   "paymentStatus": zod.enum(['UNPAID', 'PAID']),
   "amountMinor": zod.literal(200000),
+  "outstandingMinor": zod.number().int().optional(),
   "newCardId": zod.number().int().nullable(),
   "createdAt": zod.string()
 })),
   "cards": zod.array(zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
-  "studentId": zod.number().int(),
+  "studentId": zod.number().int().nullable(),
+  "employeeId": zod.number().int().nullish(),
+  "cardholderType": zod.enum(['STUDENT', 'TEACHER', 'STAFF']).optional(),
   "studentName": zod.string(),
   "status": zod.string()
 }))
@@ -53,13 +58,16 @@ export const RequestCardReplacementBody = zod.object({
 export const RequestCardReplacementResponse = zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
-  "studentId": zod.number().int(),
+  "studentId": zod.number().int().nullable(),
+  "employeeId": zod.number().int().nullish(),
+  "cardholderType": zod.enum(['STUDENT', 'TEACHER', 'STAFF']).optional(),
   "studentName": zod.string(),
   "oldCardId": zod.number().int(),
   "invoiceId": zod.number().int(),
   "status": zod.enum(['REQUESTED', 'ISSUED']),
   "paymentStatus": zod.enum(['UNPAID', 'PAID']),
   "amountMinor": zod.literal(200000),
+  "outstandingMinor": zod.number().int().optional(),
   "newCardId": zod.number().int().nullable(),
   "createdAt": zod.string()
 })
@@ -83,13 +91,16 @@ export const IssueCardReplacementBody = zod.object({
 export const IssueCardReplacementResponse = zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
-  "studentId": zod.number().int(),
+  "studentId": zod.number().int().nullable(),
+  "employeeId": zod.number().int().nullish(),
+  "cardholderType": zod.enum(['STUDENT', 'TEACHER', 'STAFF']).optional(),
   "studentName": zod.string(),
   "oldCardId": zod.number().int(),
   "invoiceId": zod.number().int(),
   "status": zod.enum(['REQUESTED', 'ISSUED']),
   "paymentStatus": zod.enum(['UNPAID', 'PAID']),
   "amountMinor": zod.literal(200000),
+  "outstandingMinor": zod.number().int().optional(),
   "newCardId": zod.number().int().nullable(),
   "createdAt": zod.string()
 })
@@ -112,13 +123,16 @@ export const VerifyCardReplacementPaymentBody = zod.object({
 export const VerifyCardReplacementPaymentResponse = zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
-  "studentId": zod.number().int(),
+  "studentId": zod.number().int().nullable(),
+  "employeeId": zod.number().int().nullish(),
+  "cardholderType": zod.enum(['STUDENT', 'TEACHER', 'STAFF']).optional(),
   "studentName": zod.string(),
   "oldCardId": zod.number().int(),
   "invoiceId": zod.number().int(),
   "status": zod.enum(['REQUESTED', 'ISSUED']),
   "paymentStatus": zod.enum(['UNPAID', 'PAID']),
   "amountMinor": zod.literal(200000),
+  "outstandingMinor": zod.number().int().optional(),
   "newCardId": zod.number().int().nullable(),
   "createdAt": zod.string()
 })
@@ -6044,6 +6058,7 @@ export const ListFeeCategoriesResponseItem = zod.object({
   "name": zod.string(),
   "description": zod.string().nullable(),
   "compulsory": zod.boolean(),
+  "transportOnly": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 })
 export const ListFeeCategoriesResponse = zod.array(ListFeeCategoriesResponseItem)
@@ -6068,7 +6083,8 @@ export const createFeeCategoryBodyDescriptionMax = 500;
 export const CreateFeeCategoryBody = zod.object({
   "name": zod.string().min(1).max(createFeeCategoryBodyNameMax),
   "description": zod.string().max(createFeeCategoryBodyDescriptionMax).optional(),
-  "compulsory": zod.boolean().optional()
+  "compulsory": zod.boolean().optional(),
+  "transportOnly": zod.boolean().optional()
 })
 
 export const CreateFeeCategoryResponse = zod.object({
@@ -6077,6 +6093,7 @@ export const CreateFeeCategoryResponse = zod.object({
   "name": zod.string(),
   "description": zod.string().nullable(),
   "compulsory": zod.boolean(),
+  "transportOnly": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 })
 
@@ -6108,6 +6125,7 @@ export const UpdateFeeCategoryBody = zod.object({
   "name": zod.string().min(1).max(updateFeeCategoryBodyNameMax).optional(),
   "description": zod.string().max(updateFeeCategoryBodyDescriptionMax).nullish(),
   "compulsory": zod.boolean().optional(),
+  "transportOnly": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE']).optional()
 })
 
@@ -6117,6 +6135,7 @@ export const UpdateFeeCategoryResponse = zod.object({
   "name": zod.string(),
   "description": zod.string().nullable(),
   "compulsory": zod.boolean(),
+  "transportOnly": zod.boolean().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 })
 
@@ -6139,6 +6158,8 @@ export const ListFeeStructuresResponseItem = zod.object({
   "classId": zod.number().int(),
   "section": zod.string().nullish(),
   "version": zod.number().int(),
+  "assignedCount": zod.number().int().optional(),
+  "eligibleCount": zod.number().int().optional(),
   "status": zod.enum(['DRAFT', 'PUBLISHED', 'INACTIVE']),
   "lines": zod.array(zod.object({
   "categoryId": zod.number().int(),
@@ -6192,6 +6213,8 @@ export const CreateFeeStructureResponse = zod.object({
   "classId": zod.number().int(),
   "section": zod.string().nullish(),
   "version": zod.number().int(),
+  "assignedCount": zod.number().int().optional(),
+  "eligibleCount": zod.number().int().optional(),
   "status": zod.enum(['DRAFT', 'PUBLISHED', 'INACTIVE']),
   "lines": zod.array(zod.object({
   "categoryId": zod.number().int(),
@@ -6227,6 +6250,8 @@ export const PublishFeeStructureResponse = zod.object({
   "classId": zod.number().int(),
   "section": zod.string().nullish(),
   "version": zod.number().int(),
+  "assignedCount": zod.number().int().optional(),
+  "eligibleCount": zod.number().int().optional(),
   "status": zod.enum(['DRAFT', 'PUBLISHED', 'INACTIVE']),
   "lines": zod.array(zod.object({
   "categoryId": zod.number().int(),
@@ -6261,7 +6286,12 @@ export const AssignFeeStructureBody = zod.object({
 export const AssignFeeStructureResponse = zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
-  "studentId": zod.number().int(),
+  "studentId": zod.number().int().nullable(),
+  "employeeId": zod.number().int().nullish(),
+  "feeItems": zod.array(zod.object({
+  "name": zod.string(),
+  "amountMinor": zod.number().int()
+})).optional(),
   "invoiceNumber": zod.string(),
   "studentName": zod.string(),
   "sessionId": zod.number().int(),
@@ -6585,7 +6615,12 @@ export const ListFeeInvoicesQueryParams = zod.object({
 export const ListFeeInvoicesResponseItem = zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
-  "studentId": zod.number().int(),
+  "studentId": zod.number().int().nullable(),
+  "employeeId": zod.number().int().nullish(),
+  "feeItems": zod.array(zod.object({
+  "name": zod.string(),
+  "amountMinor": zod.number().int()
+})).optional(),
   "invoiceNumber": zod.string(),
   "studentName": zod.string(),
   "sessionId": zod.number().int(),
@@ -6608,7 +6643,12 @@ export const ListFeeInvoicesResponse = zod.array(ListFeeInvoicesResponseItem)
 export const ListParentFeeInvoicesResponseItem = zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
-  "studentId": zod.number().int(),
+  "studentId": zod.number().int().nullable(),
+  "employeeId": zod.number().int().nullish(),
+  "feeItems": zod.array(zod.object({
+  "name": zod.string(),
+  "amountMinor": zod.number().int()
+})).optional(),
   "invoiceNumber": zod.string(),
   "studentName": zod.string(),
   "sessionId": zod.number().int(),
@@ -6631,7 +6671,12 @@ export const ListParentFeeInvoicesResponse = zod.array(ListParentFeeInvoicesResp
 export const ListStudentFeeInvoicesResponseItem = zod.object({
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
-  "studentId": zod.number().int(),
+  "studentId": zod.number().int().nullable(),
+  "employeeId": zod.number().int().nullish(),
+  "feeItems": zod.array(zod.object({
+  "name": zod.string(),
+  "amountMinor": zod.number().int()
+})).optional(),
   "invoiceNumber": zod.string(),
   "studentName": zod.string(),
   "sessionId": zod.number().int(),
@@ -6668,7 +6713,8 @@ export const ListSchoolFinancePaymentsResponseItem = zod.object({
   "schoolId": zod.number().int(),
   "invoiceId": zod.number().int(),
   "invoiceNumber": zod.string(),
-  "studentId": zod.number().int(),
+  "studentId": zod.number().int().nullable(),
+  "employeeId": zod.number().int().nullish(),
   "studentName": zod.string(),
   "schoolName": zod.string(),
   "reference": zod.string(),
@@ -6712,7 +6758,8 @@ export const GetSchoolFinancePaymentResponse = zod.object({
   "schoolId": zod.number().int(),
   "invoiceId": zod.number().int(),
   "invoiceNumber": zod.string(),
-  "studentId": zod.number().int(),
+  "studentId": zod.number().int().nullable(),
+  "employeeId": zod.number().int().nullish(),
   "studentName": zod.string(),
   "schoolName": zod.string(),
   "reference": zod.string(),
@@ -6741,7 +6788,8 @@ export const ListParentFeePaymentsResponseItem = zod.object({
   "schoolId": zod.number().int(),
   "invoiceId": zod.number().int(),
   "invoiceNumber": zod.string(),
-  "studentId": zod.number().int(),
+  "studentId": zod.number().int().nullable(),
+  "employeeId": zod.number().int().nullish(),
   "studentName": zod.string(),
   "schoolName": zod.string(),
   "reference": zod.string(),
@@ -6771,7 +6819,8 @@ export const ListStudentFeePaymentsResponseItem = zod.object({
   "schoolId": zod.number().int(),
   "invoiceId": zod.number().int(),
   "invoiceNumber": zod.string(),
-  "studentId": zod.number().int(),
+  "studentId": zod.number().int().nullable(),
+  "employeeId": zod.number().int().nullish(),
   "studentName": zod.string(),
   "schoolName": zod.string(),
   "reference": zod.string(),
@@ -13956,6 +14005,7 @@ export const ListAcademicReportCardsResponseItem = zod.object({
   "schoolRemark": zod.string(),
   "publishedAt": zod.coerce.date().nullable(),
   "hasUnpublishedResults": zod.boolean().optional(),
+  "isApproved": zod.boolean().optional(),
   "resultState": zod.enum(['SOME_RESULTS_UNPUBLISHED', 'INCOMPLETE_RESULTS', 'COMPLETE', 'NO_PUBLISHED_RESULTS']),
   "lines": zod.array(zod.object({
   "id": zod.number().int(),
@@ -13979,6 +14029,9 @@ export const ListAcademicReportCardsResponse = zod.array(ListAcademicReportCards
 
 
 
+
+export const createAcademicReportCardBodySectionMax = 80;
+
 export const createAcademicReportCardBodyTeacherRemarkMax = 500;
 
 export const createAcademicReportCardBodySchoolRemarkMax = 500;
@@ -13990,6 +14043,8 @@ export const CreateAcademicReportCardBody = zod.object({
   "studentId": zod.number().int().min(1),
   "sessionId": zod.number().int().min(1),
   "termId": zod.number().int().min(1),
+  "classId": zod.number().int().min(1).optional(),
+  "section": zod.string().max(createAcademicReportCardBodySectionMax).optional(),
   "teacherRemark": zod.string().max(createAcademicReportCardBodyTeacherRemarkMax).nullish(),
   "schoolRemark": zod.string().max(createAcademicReportCardBodySchoolRemarkMax).nullish()
 })
@@ -14011,6 +14066,7 @@ export const CreateAcademicReportCardResponse = zod.object({
   "schoolRemark": zod.string(),
   "publishedAt": zod.coerce.date().nullable(),
   "hasUnpublishedResults": zod.boolean().optional(),
+  "isApproved": zod.boolean().optional(),
   "resultState": zod.enum(['SOME_RESULTS_UNPUBLISHED', 'INCOMPLETE_RESULTS', 'COMPLETE', 'NO_PUBLISHED_RESULTS']),
   "lines": zod.array(zod.object({
   "id": zod.number().int(),
@@ -14040,7 +14096,8 @@ export const PublishAcademicReportCardParams = zod.object({
 
 
 export const PublishAcademicReportCardBody = zod.object({
-  "schoolId": zod.number().int().min(1)
+  "schoolId": zod.number().int().min(1),
+  "decision": zod.enum(['APPROVE', 'PUBLISH']).optional()
 })
 
 export const PublishAcademicReportCardResponse = zod.object({
@@ -14060,6 +14117,7 @@ export const PublishAcademicReportCardResponse = zod.object({
   "schoolRemark": zod.string(),
   "publishedAt": zod.coerce.date().nullable(),
   "hasUnpublishedResults": zod.boolean().optional(),
+  "isApproved": zod.boolean().optional(),
   "resultState": zod.enum(['SOME_RESULTS_UNPUBLISHED', 'INCOMPLETE_RESULTS', 'COMPLETE', 'NO_PUBLISHED_RESULTS']),
   "lines": zod.array(zod.object({
   "id": zod.number().int(),
@@ -14102,6 +14160,7 @@ export const ListMyAcademicReportCardsResponseItem = zod.object({
   "schoolRemark": zod.string(),
   "publishedAt": zod.coerce.date().nullable(),
   "hasUnpublishedResults": zod.boolean().optional(),
+  "isApproved": zod.boolean().optional(),
   "resultState": zod.enum(['SOME_RESULTS_UNPUBLISHED', 'INCOMPLETE_RESULTS', 'COMPLETE', 'NO_PUBLISHED_RESULTS']),
   "lines": zod.array(zod.object({
   "id": zod.number().int(),
@@ -14152,6 +14211,7 @@ export const ListChildAcademicReportCardsResponseItem = zod.object({
   "schoolRemark": zod.string(),
   "publishedAt": zod.coerce.date().nullable(),
   "hasUnpublishedResults": zod.boolean().optional(),
+  "isApproved": zod.boolean().optional(),
   "resultState": zod.enum(['SOME_RESULTS_UNPUBLISHED', 'INCOMPLETE_RESULTS', 'COMPLETE', 'NO_PUBLISHED_RESULTS']),
   "lines": zod.array(zod.object({
   "id": zod.number().int(),
@@ -21018,6 +21078,9 @@ export const GetTransportRouteHistoryResponse = zod.array(GetTransportRouteHisto
 
 export const searchTransportStudentsQuerySearchMax = 100;
 
+
+export const searchTransportStudentsQuerySectionMax = 80;
+
 export const searchTransportStudentsQueryLimitDefault = 20;
 export const searchTransportStudentsQueryLimitMax = 50;
 
@@ -21026,6 +21089,8 @@ export const searchTransportStudentsQueryLimitMax = 50;
 export const SearchTransportStudentsQueryParams = zod.object({
   "schoolId": zod.coerce.number().int().min(1).describe('The requested school must be authorized server-side. Owner visibility never grants operational writes and mixed-role Owners cannot perform school mutations.'),
   "search": zod.coerce.string().min(1).max(searchTransportStudentsQuerySearchMax).optional(),
+  "classId": zod.coerce.number().int().min(1).optional(),
+  "section": zod.coerce.string().max(searchTransportStudentsQuerySectionMax).optional(),
   "limit": zod.coerce.number().int().min(1).max(searchTransportStudentsQueryLimitMax).default(searchTransportStudentsQueryLimitDefault)
 })
 

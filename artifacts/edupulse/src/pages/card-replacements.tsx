@@ -33,7 +33,7 @@ function RequestRow({ req, actor, perms, schoolId }: { req: any; actor: any; per
   const pay = async () => {
     setErr(''); setMsg('');
     try {
-      const r: any = await checkout.mutateAsync({ invoiceId: req.invoiceId, provider: 'FLUTTERWAVE', data: { amountMinor: REPLACEMENT_FEE_MINOR } } as any);
+      const r: any = await checkout.mutateAsync({ invoiceId: req.invoiceId, provider: 'FLUTTERWAVE', data: { amountMinor: req.outstandingMinor??REPLACEMENT_FEE_MINOR } } as any);
       const url = new URL(r.checkoutUrl);
       if (url.protocol !== 'https:') throw new Error('The provider did not return a secure checkout address.');
       window.location.assign(url.href);
@@ -60,15 +60,15 @@ function RequestRow({ req, actor, perms, schoolId }: { req: any; actor: any; per
     <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]" data-testid={`text-replacement-state-${req.id}`}>{replacementStatusLabel(req)}</p>
     {req.paymentStatus === 'UNPAID' && perms.canPay && <div className="mt-3 space-y-3">
       <div className="flex flex-wrap gap-2">
-        <Button onClick={pay} disabled={checkout.isPending} testId={`button-pay-replacement-${req.id}`}><CreditCard size={15} />{checkout.isPending ? 'Opening checkout...' : `Pay ${formatNairaMinor(REPLACEMENT_FEE_MINOR)} with Flutterwave`}</Button>
-        <Link href={`/parent/fees/${req.studentId}`} className="inline-flex items-center text-xs font-bold text-[hsl(var(--primary))] underline" data-testid={`link-replacement-fees-${req.id}`}>Open fees page</Link>
+        <Button onClick={pay} disabled={checkout.isPending} testId={`button-pay-replacement-${req.id}`}><CreditCard size={15} />{checkout.isPending ? 'Opening checkout...' : `Pay balance ${formatNairaMinor(req.outstandingMinor??REPLACEMENT_FEE_MINOR)} with Flutterwave`}</Button>
+        <Link href={actor.roles.includes('SCHOOL_ADMIN') ? '/finance' : `/parent/fees/${req.studentId}`} className="inline-flex items-center text-xs font-bold text-[hsl(var(--primary))] underline" data-testid={`link-replacement-fees-${req.id}`}>{actor.roles.includes('SCHOOL_ADMIN')?'Open school finance / record verified cash':'Open fees page'}</Link>
       </div>
       <div className="flex flex-wrap items-end gap-2">
         <Field label="Provider transaction ID (after checkout)"><input value={txn} onChange={e => setTxn(e.target.value)} data-testid={`input-transaction-${req.id}`} /></Field>
         <Button variant="outline" onClick={doVerify} disabled={!txn.trim() || verify.isPending} testId={`button-verify-replacement-${req.id}`}>{verify.isPending ? 'Verifying...' : 'Verify payment'}</Button>
       </div>
     </div>}
-    {req.paymentStatus === 'UNPAID' && !perms.canPay && <p className="mt-2 text-xs font-semibold" data-testid={`text-unpaid-gate-${req.id}`}>Issuance is blocked until the parent pays and the payment is verified.</p>}
+    {req.paymentStatus === 'UNPAID' && !perms.canPay && <p className="mt-2 text-xs font-semibold" data-testid={`text-unpaid-gate-${req.id}`}>Issuance is blocked until the School Admin or authorized parent pays and the payment is verified.</p>}
     {canIssueRequest(req, actor) && <div className="mt-3 flex flex-wrap items-end gap-2">
       <Field label="Prepared unassigned card">
         <select value={uid} onChange={e => setUid(e.target.value)} data-testid={`select-new-card-${req.id}`}>
@@ -110,7 +110,7 @@ export function CardReplacementsPage() {
       {perms.canRequest && <div className="panel mb-6 p-5">
         <h2 className="display-font text-lg font-bold">Request a replacement</h2>
         <div className="mt-3 grid gap-3 md:grid-cols-[1fr_2fr_auto] md:items-end">
-          <Field label="Card"><select value={cardId} onChange={e => setCardId(e.target.value)} data-testid="select-replacement-card"><option value="">{cards.length ? 'Select a card' : 'No eligible cards'}</option>{cards.map(c => <option key={c.id} value={c.id}>{c.studentName} · {c.status}</option>)}</select></Field>
+          <Field label="Card"><select value={cardId} onChange={e => setCardId(e.target.value)} data-testid="select-replacement-card"><option value="">{cards.length ? 'Select a card' : 'No eligible cards'}</option>{cards.map(c => <option key={c.id} value={c.id}>{c.cardholderType??'STUDENT'} · {c.studentName} · {c.status}</option>)}</select></Field>
           <Field label="Reason"><input value={reason} maxLength={500} onChange={e => setReason(e.target.value)} data-testid="input-replacement-reason" /></Field>
           <Button onClick={submit} disabled={!cardId || reason.trim().length < 3 || request.isPending} testId="button-request-replacement">{request.isPending ? 'Requesting...' : `Request (${formatNairaMinor(REPLACEMENT_FEE_MINOR)})`}</Button>
         </div>

@@ -5580,13 +5580,16 @@ components:
       properties:
         id: { type: integer }
         schoolId: { type: integer }
-        studentId: { type: integer }
+        studentId: { type: [integer, 'null'] }
+        employeeId: { type: [integer, 'null'] }
+        cardholderType: { type: string, enum: [STUDENT, TEACHER, STAFF] }
         studentName: { type: string }
         oldCardId: { type: integer }
         invoiceId: { type: integer }
         status: { type: string, enum: [REQUESTED, ISSUED] }
         paymentStatus: { type: string, enum: [UNPAID, PAID] }
         amountMinor: { type: integer, const: 200000 }
+        outstandingMinor: { type: integer }
         newCardId: { type: [integer, 'null'] }
         createdAt: { type: string }
     ReplacementEligibleCard:
@@ -5595,7 +5598,9 @@ components:
       properties:
         id: { type: integer }
         schoolId: { type: integer }
-        studentId: { type: integer }
+        studentId: { type: [integer, 'null'] }
+        employeeId: { type: [integer, 'null'] }
+        cardholderType: { type: string, enum: [STUDENT, TEACHER, STAFF] }
         studentName: { type: string }
         status: { type: string }
     CardReplacementDirectory:
@@ -8160,6 +8165,7 @@ components:
         schoolRemark: { type: string }
         publishedAt: { type: ["string", "null"], format: date-time }
         hasUnpublishedResults: { type: boolean }
+        isApproved: { type: boolean }
         resultState: { type: string, enum: [SOME_RESULTS_UNPUBLISHED, INCOMPLETE_RESULTS, COMPLETE, NO_PUBLISHED_RESULTS] }
         lines:
           type: array
@@ -8172,6 +8178,8 @@ components:
         studentId: { type: integer, minimum: 1 }
         sessionId: { type: integer, minimum: 1 }
         termId: { type: integer, minimum: 1 }
+        classId: { type: integer, minimum: 1 }
+        section: { type: string, maxLength: 80 }
         teacherRemark: { type: ["string", "null"], maxLength: 500 }
         schoolRemark: { type: ["string", "null"], maxLength: 500 }
     AcademicReportCardPublicationInput:
@@ -8179,6 +8187,7 @@ components:
       required: [schoolId]
       properties:
         schoolId: { type: integer, minimum: 1 }
+        decision: { type: string, enum: [APPROVE, PUBLISH] }
     AcademicTimetableEntry:
       type: object
       required: [id, schoolId, sessionId, termId, classId, section, subjectId, teacherId, weekday, startTime, endTime, room, status, createdAt, updatedAt]
@@ -8242,6 +8251,7 @@ components:
         name: { type: string }
         description: { type: ["string", "null"] }
         compulsory: { type: boolean }
+        transportOnly: { type: boolean }
         status: { type: string, enum: [ACTIVE, INACTIVE] }
     FeeCategoryInput:
       type: object
@@ -8250,6 +8260,7 @@ components:
         name: { type: string, minLength: 1, maxLength: 100 }
         description: { type: string, maxLength: 500 }
         compulsory: { type: boolean }
+        transportOnly: { type: boolean }
     FeeCategoryUpdate:
       type: object
       minProperties: 1
@@ -8257,6 +8268,7 @@ components:
         name: { type: string, minLength: 1, maxLength: 100 }
         description: { type: ["string", "null"], maxLength: 500 }
         compulsory: { type: boolean }
+        transportOnly: { type: boolean }
         status: { type: string, enum: [ACTIVE, INACTIVE] }
     FeeStructureLineInput:
       type: object
@@ -8288,6 +8300,8 @@ components:
         classId: { type: integer }
         section: { type: ["string", "null"] }
         version: { type: integer }
+        assignedCount: { type: integer }
+        eligibleCount: { type: integer }
         status: { type: string, enum: [DRAFT, PUBLISHED, INACTIVE] }
         lines: { type: array, items: { $ref: "#/components/schemas/FeeStructureLine" } }
     FeeStructureLine:
@@ -8312,7 +8326,16 @@ components:
       properties:
         id: { type: integer }
         schoolId: { type: integer }
-        studentId: { type: integer }
+        studentId: { type: [integer, 'null'] }
+        employeeId: { type: [integer, 'null'] }
+        feeItems:
+          type: array
+          items:
+            type: object
+            required: [name, amountMinor]
+            properties:
+              name: { type: string }
+              amountMinor: { type: integer }
         invoiceNumber: { type: string }
         studentName: { type: string }
         sessionId: { type: integer }
@@ -8359,7 +8382,8 @@ components:
         schoolId: { type: integer }
         invoiceId: { type: integer }
         invoiceNumber: { type: string }
-        studentId: { type: integer }
+        studentId: { type: [integer, 'null'] }
+        employeeId: { type: [integer, 'null'] }
         studentName: { type: string }
         schoolName: { type: string }
         reference: { type: string }

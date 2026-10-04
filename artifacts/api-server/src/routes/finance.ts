@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { assignPublishedClassFees } from "../services/fee-publication";
 import { Router, type IRouter, type Request } from "express";
 import {
   ApproveFeeAdjustmentParams,
@@ -128,7 +129,9 @@ router.use(requireAuthentication());
 const schoolRoles = ["SCHOOL_ADMIN", "ACCOUNTANT"] as const;
 const number = (value: unknown) => Number(value);
 const invoiceShape = `
-  i.id, i.school_id AS "schoolId", i.student_id AS "studentId", i.invoice_number AS "invoiceNumber",
+  i.id, i.school_id AS "schoolId", i.student_id AS "studentId",i.employee_id AS "employeeId", i.invoice_number AS "invoiceNumber",
+  (SELECT COALESCE(jsonb_agg(jsonb_build_object('name',l.category_name_snapshot,'amountMinor',l.amount_minor) ORDER BY l.id),'[]'::jsonb)
+    FROM fee_invoice_lines l WHERE l.invoice_id=i.id AND l.school_id=i.school_id) AS "feeItems",
   i.student_name_snapshot AS "studentName", i.academic_session_id AS "sessionId",
   i.academic_term_id AS "termId", i.currency, i.subtotal_minor AS "subtotalMinor",
   i.discount_minor AS "discountMinor", i.waiver_minor AS "waiverMinor", i.total_minor AS "totalMinor",
@@ -486,7 +489,7 @@ router.get("/school/finance/categories", async (req, res): Promise<void> => {
   try {
     const schoolId = schoolIdFromQuery(req, ListFeeCategoriesQueryParams);
     const result = await pool.query(
-      `SELECT id,school_id AS "schoolId",name,description,compulsory,status FROM fee_categories WHERE school_id=$1 ORDER BY name`,
+      `SELECT id,school_id AS "schoolId",name,description,compulsory,transport_only AS "transportOnly",status FROM fee_categories WHERE school_id=$1 ORDER BY name`,
       [schoolId],
     );
     res.json(ListFeeCategoriesResponse.parse(result.rows));
@@ -501,10 +504,10 @@ router.post("/school/finance/categories", async (req, res): Promise<void> => {
     const context = getUserContext(req);
     await client.query("BEGIN");
     const result = await client.query(
-      `INSERT INTO fee_categories (school_id,name,description,compulsory,created_by)
-       VALUES ($1,$2,$3,$4,$5)
-       RETURNING id,school_id AS "schoolId",name,description,compulsory,status`,
-      [schoolId, body.name, body.description ?? null, body.compulsory ?? false, context.user.id],
+      `INSERT INTO fee_categories (school_id,name,description,compulsory,created_by,transport_only)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       RETURNING id,school_id AS "schoolId",name,description,compulsory,transport_only AS "transportOnly",status`,
+      [schoolId, body.name, body.description ?? null, body.compulsory ?? false, context.user.id,body.transportOnly??false],
     );
     await audit(req, client, schoolId, "created", "fee category", result.rows[0].id);
     await client.query("COMMIT");
@@ -530,6 +533,7 @@ router.patch("/school/finance/categories/:categoryId", async (req, res): Promise
     if (body.name !== undefined) add("name", body.name);
     if (body.description !== undefined) add("description", body.description);
     if (body.compulsory !== undefined) add("compulsory", body.compulsory);
+    if (body.transportOnly !== undefined) add("transport_only", body.transportOnly);
     if (body.status !== undefined) add("status", body.status);
     if (fields.length === 0) throw new AuthError(400, "At least one category field is required");
     fields.push("updated_at=NOW()");
@@ -567,6 +571,12 @@ router.post("/school/finance/structures", async (req, res): Promise<void> => {
     const body = parsed(CreateFeeStructureBody, req.body);
     const context = getUserContext(req);
     await client.query("BEGIN");
+    const validPeriod = await client.query(`SELECT 1 FROM academic_terms t JOIN school_classes c ON c.school_id=t.school_id
+      WHERE t.school_id=$1 AND t.id=$2 AND t.academic_session_id=$3 AND c.id=$4`,
+      [schoolId,body.termId,body.sessionId,body.classId]);
+    if (!validPeriod.rows.length) throw new AuthError(404,"Term, session or class does not belong to this school");
+    if (new Set(body.lines.map(l=>l.categoryId)).size!==body.lines.length) throw new AuthError(400,"Do not duplicate a category in one fee schedule");
+    if (body.lines.reduce((v,l)=>v+BigInt(l.amountMinor),0n)>2147483647n) throw new AuthError(400,"Fee total exceeds the ledger limit");
     const versionResult = await client.query(
       `SELECT COALESCE(MAX(version),0)+1 AS version FROM fee_structures
        WHERE school_id=$1 AND academic_session_id=$2 AND academic_term_id=$3 AND school_class_id=$4
@@ -596,6 +606,8 @@ router.post("/school/finance/structures/:structureId/publish", async (req, res):
     const schoolId = schoolIdForMutation(req, PublishFeeStructureQueryParams, ["SCHOOL_ADMIN"]);
     const context = getUserContext(req);
     await client.query("BEGIN");
+    await client.query(`SELECT pg_advisory_xact_lock(hashtextextended('fee-publication:'||school_id||':'||academic_session_id||':'||academic_term_id||':'||school_class_id,0))
+      FROM fee_structures WHERE id=$1 AND school_id=$2`,[structureId,schoolId]);
     const current = await client.query(
       `SELECT id,status FROM fee_structures WHERE id=$1 AND school_id=$2 FOR UPDATE`,
       [structureId, schoolId],
@@ -603,11 +615,22 @@ router.post("/school/finance/structures/:structureId/publish", async (req, res):
     if (!current.rows[0]) throw new AuthError(404, "Fee structure not found");
     if (current.rows[0].status === "PUBLISHED") {
       const response = await getStructure(client, schoolId, structureId);
+      Object.assign(response,await assignPublishedClassFees(client,req,schoolId,structureId,context.user.id,createInvoiceForStudent));
       await client.query("COMMIT");
       res.json(PublishFeeStructureResponse.parse(response));
       return;
     }
     if (current.rows[0].status !== "DRAFT") throw new AuthError(409, "Only a draft fee structure can be published");
+    const conflict = await client.query(`SELECT 1 FROM fee_structures candidate
+      JOIN fee_structure_lines cl ON cl.structure_id=candidate.id AND cl.school_id=candidate.school_id
+      JOIN fee_structures prior ON prior.school_id=candidate.school_id AND prior.academic_session_id=candidate.academic_session_id
+        AND prior.academic_term_id=candidate.academic_term_id AND prior.school_class_id=candidate.school_class_id
+        AND prior.status='PUBLISHED' AND prior.id<>candidate.id
+        AND (prior.section IS NULL OR candidate.section IS NULL OR prior.section=candidate.section)
+      JOIN fee_structure_lines pl ON pl.structure_id=prior.id AND pl.school_id=prior.school_id
+        AND pl.category_id=cl.category_id AND lower(btrim(pl.description_snapshot))=lower(btrim(cl.description_snapshot))
+      WHERE candidate.id=$1 AND candidate.school_id=$2 LIMIT 1`,[structureId,schoolId]);
+    if (conflict.rows.length) throw new AuthError(409,"This class/term already has the same published charge");
     const result = await client.query(
       `UPDATE fee_structures SET status='PUBLISHED',published_by=$1,published_at=NOW()
        WHERE id=$2 AND school_id=$3 AND status='DRAFT' RETURNING id`,
@@ -616,6 +639,7 @@ router.post("/school/finance/structures/:structureId/publish", async (req, res):
     if (!result.rows[0]) throw new AuthError(409, "Structure publication did not complete");
     await audit(req, client, schoolId, "published", "fee structure", structureId);
     const response = await getStructure(client, schoolId, structureId);
+    Object.assign(response,await assignPublishedClassFees(client,req,schoolId,structureId,context.user.id,createInvoiceForStudent));
     await client.query("COMMIT");
     res.json(PublishFeeStructureResponse.parse(response));
   } catch (error) {
@@ -655,7 +679,8 @@ router.post("/school/finance/assignments", async (req, res): Promise<void> => {
     );
     if (!student.rows[0]) throw new AuthError(404, "Student not found");
     const lines = await client.query(
-      `SELECT * FROM fee_structure_lines WHERE structure_id=$1 AND school_id=$2 ORDER BY id`,
+      `SELECT * FROM fee_structure_lines l WHERE structure_id=$1 AND school_id=$2
+       AND NOT EXISTS(SELECT 1 FROM fee_categories c WHERE c.id=l.category_id AND c.school_id=l.school_id AND c.transport_only) ORDER BY id`,
       [body.structureId, schoolId],
     );
     if (!lines.rows.length) throw new AuthError(409, "Published fee structure has no fee lines");
@@ -714,7 +739,8 @@ router.post("/school/finance/bulk-assignments", async (req, res): Promise<void> 
       [schoolId],
     );
     const lines = await client.query(
-      `SELECT * FROM fee_structure_lines WHERE structure_id=$1 AND school_id=$2 ORDER BY id`,
+      `SELECT * FROM fee_structure_lines l WHERE structure_id=$1 AND school_id=$2
+       AND NOT EXISTS(SELECT 1 FROM fee_categories c WHERE c.id=l.category_id AND c.school_id=l.school_id AND c.transport_only) ORDER BY id`,
       [body.structureId, schoolId],
     );
     if (!lines.rows.length) throw new AuthError(409, "Published fee structure has no fee lines");
@@ -2444,11 +2470,13 @@ router.post("/parent/fees/invoices/:invoiceId/providers/:provider/initialize", a
       throw new AuthError(503, "Remita payments are disabled until its official integration contract and sandbox are verified");
     }
     provider = requestedProvider;
-    assertRoles(req, ["PARENT"]);
+    assertRoles(req, ["PARENT","SCHOOL_ADMIN"]);
     const headers = parsed(InitializeFeeProviderPaymentHeader, { "Idempotency-Key": req.get("Idempotency-Key") });
     const body = parsed(InitializeFeeProviderPaymentBody, req.body ?? {});
     const idempotencyHeader = headers["Idempotency-Key"];
     const context = getUserContext(req);
+    if(context.roles.some(r=>r.role==="PLATFORM_OWNER")) throw new AuthError(403,"The platform Owner issues cards but does not pay school invoices");
+    const adminSchools=context.roles.filter(r=>r.role==="SCHOOL_ADMIN"&&r.schoolId!=null).map(r=>r.schoolId);
     email = context.user.email;
     returnUrl = configuredCheckoutReturnUrl() ?? "";
     if (!returnUrl) throw new AuthError(503, "Online payment return URL is not configured");
@@ -2462,15 +2490,27 @@ router.post("/parent/fees/invoices/:invoiceId/providers/:provider/initialize", a
 
     const storedIdempotencyKey = `ONLINE:${provider}:${context.user.id}:${idempotencyHeader}`;
     await client.query("BEGIN");
-    const invoiceResult = await client.query(
+    let invoiceResult = await client.query(
       `SELECT i.*,p.id AS parent_id FROM fee_invoices i
        JOIN parents p ON p.school_id=i.school_id AND p.user_id=$2 AND p.status='ACTIVE'
        JOIN parent_student_relationships r ON r.parent_id=p.id AND r.student_id=i.student_id AND r.status='ACTIVE'
-       WHERE i.id=$1 FOR UPDATE OF i`,
-      [invoiceId, context.user.id],
+       JOIN school_memberships m ON m.user_id=p.user_id AND m.school_id=p.school_id AND m.role='PARENT' AND m.status='ACTIVE'
+       WHERE i.id=$1 FOR UPDATE OF i`,[invoiceId,context.user.id],
     );
+    if(!invoiceResult.rows.length && adminSchools.length) invoiceResult=await client.query(
+      `SELECT i.*,NULL::int AS parent_id FROM fee_invoices i
+       WHERE i.id=$1 AND i.school_id=ANY($2::int[]) AND EXISTS(
+         SELECT 1 FROM student_nfc_replacement_requests replacement WHERE replacement.invoice_id=i.id AND replacement.school_id=i.school_id)
+       FOR UPDATE OF i`,[invoiceId,adminSchools]);
     const invoice = invoiceResult.rows[0];
     if (!invoice) throw new AuthError(404, "Invoice not found");
+    if(invoice.parent_id==null) {
+      const trusted=new URL(returnUrl);
+      const familySegment=trusted.pathname.indexOf("/parent/");
+      const base=familySegment>=0?trusted.pathname.slice(0,familySegment):trusted.pathname.slice(0,trusted.pathname.lastIndexOf("/"));
+      trusted.pathname=base+"/card-replacements";trusted.search="";trusted.hash="";
+      returnUrl=trusted.toString();
+    }
     schoolId = invoice.school_id;
     const invoiceSchoolId: number = invoice.school_id;
     const settingsResult = await client.query(

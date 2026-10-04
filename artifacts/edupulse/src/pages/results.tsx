@@ -6,7 +6,7 @@ import {
   useListAcademicResults, useCreateAcademicResult, useUpdateAcademicResult, usePublishAcademicAssessmentResults, getListAcademicResultsQueryKey,
   useListAcademicReportCards, useCreateAcademicReportCard, usePublishAcademicReportCard, getListAcademicReportCardsQueryKey,
   useListAcademicGradingRules, useCreateAcademicGradingRule, useUpdateAcademicGradingRule, getListAcademicGradingRulesQueryKey,
-  useListAcademicSessions, useListAcademicTerms, useListClasses, useListSubjects, useListStudents, useGetAuthorizedContext
+  useListAcademicSessions, useListAcademicTerms, getListAcademicTermsQueryKey, useListClasses, useListSubjects, useListStudents, useGetAuthorizedContext
 } from '@workspace/api-client-react';
 import { Plus, BarChart3, Save, CheckCircle2, Search, Pencil } from 'lucide-react';
 import { SchoolDocumentHeader, SchoolDocumentPrintButton, useSchoolDocumentBranding } from '@/components/school-document';
@@ -413,6 +413,13 @@ export function AdminResultReviewRow({ result, schoolId, disabled, onReviewed }:
 function ReportCardsView({ schoolId }: { schoolId: number }) {
   const { activeSession, activeTerm, sessions, terms, classes, isLoading } = useAcademicContext(schoolId);
   const [classId, setClassId] = useState<number | ''>('');
+  const [selectedSession, setSelectedSession] = useState<number | ''>('');
+  const [selectedTerm, setSelectedTerm] = useState<number | ''>('');
+  const [section, setSection] = useState('');
+  const sessionId = selectedSession || activeSession?.id;
+  const selectedTerms = useListAcademicTerms(sessionId as number, { schoolId }, { query: { enabled: !!sessionId,queryKey:getListAcademicTermsQueryKey(sessionId as number,{schoolId}) } });
+  const termId = selectedTerm || (sessionId === activeSession?.id ? activeTerm?.id : undefined);
+  const periodReady = !!sessionId && !!termId && selectedTerms.data?.some(t => t.id === termId);
   
   const query = useListAcademicReportCards(
     { schoolId }, 
@@ -427,10 +434,11 @@ function ReportCardsView({ schoolId }: { schoolId: number }) {
   if (isLoading) return <SkeletonPage />;
 
   const cards = query.data ?? [];
-  const students = studentsQuery.data ?? [];
+  const students = (studentsQuery.data ?? []).filter((s: any) => !section || s.section === section);
 
   const handleGenerate = (studentId: number) => {
-    createCard.mutate({ data: { schoolId, studentId, sessionId: activeSession?.id as number, termId: activeTerm?.id as number } }, {
+    if (!periodReady || !classId) return;
+    createCard.mutate({ data: { schoolId, studentId, sessionId: sessionId as number, termId: termId as number, classId: Number(classId), ...(section ? { section } : {}) } }, {
       onSuccess: () => qc.invalidateQueries({ queryKey: getListAcademicReportCardsQueryKey() })
     });
   };
@@ -445,7 +453,13 @@ function ReportCardsView({ schoolId }: { schoolId: number }) {
 
   return (
     <div className="space-y-6">
-      <div className="panel p-5 flex items-center gap-4 bg-[hsl(var(--card))] border border-[hsl(var(--border))]">
+      <div className="panel p-5 flex flex-wrap items-center gap-4 bg-[hsl(var(--card))] border border-[hsl(var(--border))]">
+        <Field label="Session"><select aria-label="Report card session" value={sessionId || ''} onChange={e => { setSelectedSession(Number(e.target.value)); setSelectedTerm(''); }}>
+          <option value="">Choose session</option>{sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select></Field>
+        <Field label="Term"><select aria-label="Report card term" value={termId || ''} onChange={e => setSelectedTerm(Number(e.target.value))}>
+          <option value="">Choose term</option>{(selectedTerms.data ?? []).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select></Field>
         <div className="w-full max-w-sm">
           <Field label="Select Class">
             <select value={classId} onChange={e => setClassId(e.target.value ? Number(e.target.value) : '')} className="w-full">
@@ -454,7 +468,9 @@ function ReportCardsView({ schoolId }: { schoolId: number }) {
             </select>
           </Field>
         </div>
+        <Field label="Section (optional)"><input aria-label="Report card section" value={section} onChange={e => setSection(e.target.value)} /></Field>
       </div>
+      {(createCard.isError || publishCard.isError) && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{((createCard.error || publishCard.error) as Error)?.message || 'Result operation failed.'}</p>}
 
       {classId ? (
         <div className="panel overflow-hidden">
@@ -467,7 +483,7 @@ function ReportCardsView({ schoolId }: { schoolId: number }) {
           ) : students.length > 0 ? (
              <div className="divide-y divide-[hsl(var(--border)/.6)]">
                {students.map((student: any) => {
-                 const card = cards.find((c: any) => c.studentId === student.id && c.sessionId === activeSession?.id && c.termId === activeTerm?.id && c.classId === classId);
+                 const card = cards.find((c: any) => c.studentId === student.id && c.sessionId === sessionId && c.termId === termId && c.classId === classId);
                  return (
                     <div key={student.id} className="p-5 hover:bg-[hsl(var(--muted)/.2)]">
                       <div className="flex items-center gap-4">
@@ -478,19 +494,22 @@ function ReportCardsView({ schoolId }: { schoolId: number }) {
                         {card ? (
                           <>
                             <div className="flex-1 text-xs space-y-1">
-                              <div>{card.lines.length} published assessment {card.lines.length === 1 ? 'score' : 'scores'} recorded</div>
+                              <div>{card.lines.length} compiled assessment {card.lines.length === 1 ? 'score' : 'scores'} recorded</div>
                               <div className="font-bold text-[hsl(var(--primary))]">{card.resultState.replaceAll('_', ' ')}</div>
                             </div>
                             <div className="w-32"><StatusPill value={card.status} /></div>
                             <div className="w-32 flex justify-end">
+                              {card.status === 'DRAFT' && !card.isApproved && <Button variant="outline" className="h-8 text-xs py-0" disabled={publishCard.isPending}
+                                onClick={() => publishCard.mutate({ cardId:card.id,data:{schoolId,decision:'APPROVE'} },{ onSuccess:()=>qc.invalidateQueries({queryKey:getListAcademicReportCardsQueryKey()}) })}>Approve</Button>}
+                              {card.status === 'DRAFT' && !card.isApproved && <Button variant="quiet" className="h-8 text-xs py-0" disabled={createCard.isPending || !periodReady} onClick={()=>handleGenerate(student.id)}>Refresh draft</Button>}
                               {card.status !== 'PUBLISHED' && (
-                                <Button variant="outline" className="h-8 text-xs py-0" onClick={() => handlePublish(card.id)} disabled={publishCard.isPending}>Publish</Button>
+                                <Button variant="outline" className="h-8 text-xs py-0" onClick={() => handlePublish(card.id)} disabled={publishCard.isPending || !card.isApproved}>Publish</Button>
                               )}
                             </div>
                           </>
                         ) : (
                           <div className="flex-1 flex justify-end">
-                            <Button variant="outline" className="h-8 text-xs py-0" onClick={() => handleGenerate(student.id)} disabled={createCard.isPending}>Generate Card</Button>
+                            <Button variant="outline" className="h-8 text-xs py-0" onClick={() => handleGenerate(student.id)} disabled={createCard.isPending || !periodReady}>Generate Card</Button>
                           </div>
                         )}
                       </div>

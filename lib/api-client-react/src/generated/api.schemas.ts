@@ -28,6 +28,15 @@ export interface CardReplacementVerification {
   providerTransactionId: string;
 }
 
+export type CardReplacementCardholderType = typeof CardReplacementCardholderType[keyof typeof CardReplacementCardholderType];
+
+
+export const CardReplacementCardholderType = {
+  STUDENT: 'STUDENT',
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+} as const;
+
 export type CardReplacementStatus = typeof CardReplacementStatus[keyof typeof CardReplacementStatus];
 
 
@@ -47,22 +56,40 @@ export const CardReplacementPaymentStatus = {
 export interface CardReplacement {
   id: number;
   schoolId: number;
-  studentId: number;
+  /** @nullable */
+  studentId: number | null;
+  /** @nullable */
+  employeeId?: number | null;
+  cardholderType?: CardReplacementCardholderType;
   studentName: string;
   oldCardId: number;
   invoiceId: number;
   status: CardReplacementStatus;
   paymentStatus: CardReplacementPaymentStatus;
   amountMinor: 200000;
+  outstandingMinor?: number;
   /** @nullable */
   newCardId: number | null;
   createdAt: string;
 }
 
+export type ReplacementEligibleCardCardholderType = typeof ReplacementEligibleCardCardholderType[keyof typeof ReplacementEligibleCardCardholderType];
+
+
+export const ReplacementEligibleCardCardholderType = {
+  STUDENT: 'STUDENT',
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+} as const;
+
 export interface ReplacementEligibleCard {
   id: number;
   schoolId: number;
-  studentId: number;
+  /** @nullable */
+  studentId: number | null;
+  /** @nullable */
+  employeeId?: number | null;
+  cardholderType?: ReplacementEligibleCardCardholderType;
   studentName: string;
   status: string;
 }
@@ -5526,6 +5553,7 @@ export interface AcademicReportCard {
   /** @nullable */
   publishedAt: string | null;
   hasUnpublishedResults?: boolean;
+  isApproved?: boolean;
   resultState: AcademicReportCardResultState;
   lines: AcademicReportCardLine[];
 }
@@ -5539,6 +5567,10 @@ export interface AcademicReportCardInput {
   sessionId: number;
   /** @minimum 1 */
   termId: number;
+  /** @minimum 1 */
+  classId?: number;
+  /** @maxLength 80 */
+  section?: string;
   /**
      * @maxLength 500
      * @nullable
@@ -5551,9 +5583,18 @@ export interface AcademicReportCardInput {
   schoolRemark?: string | null;
 }
 
+export type AcademicReportCardPublicationInputDecision = typeof AcademicReportCardPublicationInputDecision[keyof typeof AcademicReportCardPublicationInputDecision];
+
+
+export const AcademicReportCardPublicationInputDecision = {
+  APPROVE: 'APPROVE',
+  PUBLISH: 'PUBLISH',
+} as const;
+
 export interface AcademicReportCardPublicationInput {
   /** @minimum 1 */
   schoolId: number;
+  decision?: AcademicReportCardPublicationInputDecision;
 }
 
 export interface AcademicTimetableEntry {
@@ -5645,6 +5686,7 @@ export interface FeeCategory {
   /** @nullable */
   description: string | null;
   compulsory: boolean;
+  transportOnly?: boolean;
   status: FeeCategoryStatus;
 }
 
@@ -5657,6 +5699,7 @@ export interface FeeCategoryInput {
   /** @maxLength 500 */
   description?: string;
   compulsory?: boolean;
+  transportOnly?: boolean;
 }
 
 export type FeeCategoryUpdateStatus = typeof FeeCategoryUpdateStatus[keyof typeof FeeCategoryUpdateStatus];
@@ -5679,6 +5722,7 @@ export interface FeeCategoryUpdate {
      */
   description?: string | null;
   compulsory?: boolean;
+  transportOnly?: boolean;
   status?: FeeCategoryUpdateStatus;
 }
 
@@ -5732,6 +5776,8 @@ export interface FeeStructure {
   /** @nullable */
   section?: string | null;
   version: number;
+  assignedCount?: number;
+  eligibleCount?: number;
   status: FeeStructureStatus;
   lines: FeeStructureLine[];
 }
@@ -5744,6 +5790,11 @@ export interface FeeAssignmentInput {
   issueDate: string;
   dueDate: string;
 }
+
+export type FeeInvoiceFeeItemsItem = {
+  name: string;
+  amountMinor: number;
+};
 
 export type FeeInvoiceStatus = typeof FeeInvoiceStatus[keyof typeof FeeInvoiceStatus];
 
@@ -5760,7 +5811,11 @@ export const FeeInvoiceStatus = {
 export interface FeeInvoice {
   id: number;
   schoolId: number;
-  studentId: number;
+  /** @nullable */
+  studentId: number | null;
+  /** @nullable */
+  employeeId?: number | null;
+  feeItems?: FeeInvoiceFeeItemsItem[];
   invoiceNumber: string;
   studentName: string;
   sessionId: number;
@@ -5851,7 +5906,10 @@ export interface FeePaymentHistory {
   schoolId: number;
   invoiceId: number;
   invoiceNumber: string;
-  studentId: number;
+  /** @nullable */
+  studentId: number | null;
+  /** @nullable */
+  employeeId?: number | null;
   studentName: string;
   schoolName: string;
   reference: string;
@@ -12923,6 +12981,15 @@ export interface CardReplacementVerification4b96100 {
   providerTransactionId: string;
 }
 
+export type CardReplacement4b96100CardholderType = typeof CardReplacement4b96100CardholderType[keyof typeof CardReplacement4b96100CardholderType];
+
+
+export const CardReplacement4b96100CardholderType = {
+  STUDENT: 'STUDENT',
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+} as const;
+
 export type CardReplacement4b96100Status = typeof CardReplacement4b96100Status[keyof typeof CardReplacement4b96100Status];
 
 
@@ -12942,22 +13009,40 @@ export const CardReplacement4b96100PaymentStatus = {
 export interface CardReplacement4b96100 {
   id: number;
   schoolId: number;
-  studentId: number;
+  /** @nullable */
+  studentId: number | null;
+  /** @nullable */
+  employeeId?: number | null;
+  cardholderType?: CardReplacement4b96100CardholderType;
   studentName: string;
   oldCardId: number;
   invoiceId: number;
   status: CardReplacement4b96100Status;
   paymentStatus: CardReplacement4b96100PaymentStatus;
   amountMinor: 200000;
+  outstandingMinor?: number;
   /** @nullable */
   newCardId: number | null;
   createdAt: string;
 }
 
+export type ReplacementEligibleCard4b96100CardholderType = typeof ReplacementEligibleCard4b96100CardholderType[keyof typeof ReplacementEligibleCard4b96100CardholderType];
+
+
+export const ReplacementEligibleCard4b96100CardholderType = {
+  STUDENT: 'STUDENT',
+  TEACHER: 'TEACHER',
+  STAFF: 'STAFF',
+} as const;
+
 export interface ReplacementEligibleCard4b96100 {
   id: number;
   schoolId: number;
-  studentId: number;
+  /** @nullable */
+  studentId: number | null;
+  /** @nullable */
+  employeeId?: number | null;
+  cardholderType?: ReplacementEligibleCard4b96100CardholderType;
   studentName: string;
   status: string;
 }
@@ -17550,6 +17635,7 @@ export interface AcademicReportCard4b96100 {
   /** @nullable */
   publishedAt: string | null;
   hasUnpublishedResults?: boolean;
+  isApproved?: boolean;
   resultState: AcademicReportCard4b96100ResultState;
   lines: AcademicReportCardLine4b96100[];
 }
@@ -17563,6 +17649,10 @@ export interface AcademicReportCardInput4b96100 {
   sessionId: number;
   /** @minimum 1 */
   termId: number;
+  /** @minimum 1 */
+  classId?: number;
+  /** @maxLength 80 */
+  section?: string;
   /**
      * @maxLength 500
      * @nullable
@@ -17575,9 +17665,18 @@ export interface AcademicReportCardInput4b96100 {
   schoolRemark?: string | null;
 }
 
+export type AcademicReportCardPublicationInput4b96100Decision = typeof AcademicReportCardPublicationInput4b96100Decision[keyof typeof AcademicReportCardPublicationInput4b96100Decision];
+
+
+export const AcademicReportCardPublicationInput4b96100Decision = {
+  APPROVE: 'APPROVE',
+  PUBLISH: 'PUBLISH',
+} as const;
+
 export interface AcademicReportCardPublicationInput4b96100 {
   /** @minimum 1 */
   schoolId: number;
+  decision?: AcademicReportCardPublicationInput4b96100Decision;
 }
 
 export interface AcademicTimetableEntry4b96100 {
@@ -17669,6 +17768,7 @@ export interface FeeCategory4b96100 {
   /** @nullable */
   description: string | null;
   compulsory: boolean;
+  transportOnly?: boolean;
   status: FeeCategory4b96100Status;
 }
 
@@ -17681,6 +17781,7 @@ export interface FeeCategoryInput4b96100 {
   /** @maxLength 500 */
   description?: string;
   compulsory?: boolean;
+  transportOnly?: boolean;
 }
 
 export type FeeCategoryUpdate4b96100Status = typeof FeeCategoryUpdate4b96100Status[keyof typeof FeeCategoryUpdate4b96100Status];
@@ -17703,6 +17804,7 @@ export interface FeeCategoryUpdate4b96100 {
      */
   description?: string | null;
   compulsory?: boolean;
+  transportOnly?: boolean;
   status?: FeeCategoryUpdate4b96100Status;
 }
 
@@ -17756,6 +17858,8 @@ export interface FeeStructure4b96100 {
   /** @nullable */
   section?: string | null;
   version: number;
+  assignedCount?: number;
+  eligibleCount?: number;
   status: FeeStructure4b96100Status;
   lines: FeeStructureLine4b96100[];
 }
@@ -17768,6 +17872,11 @@ export interface FeeAssignmentInput4b96100 {
   issueDate: string;
   dueDate: string;
 }
+
+export type FeeInvoice4b96100FeeItemsItem = {
+  name: string;
+  amountMinor: number;
+};
 
 export type FeeInvoice4b96100Status = typeof FeeInvoice4b96100Status[keyof typeof FeeInvoice4b96100Status];
 
@@ -17784,7 +17893,11 @@ export const FeeInvoice4b96100Status = {
 export interface FeeInvoice4b96100 {
   id: number;
   schoolId: number;
-  studentId: number;
+  /** @nullable */
+  studentId: number | null;
+  /** @nullable */
+  employeeId?: number | null;
+  feeItems?: FeeInvoice4b96100FeeItemsItem[];
   invoiceNumber: string;
   studentName: string;
   sessionId: number;
@@ -17875,7 +17988,10 @@ export interface FeePaymentHistory4b96100 {
   schoolId: number;
   invoiceId: number;
   invoiceNumber: string;
-  studentId: number;
+  /** @nullable */
+  studentId: number | null;
+  /** @nullable */
+  employeeId?: number | null;
   studentName: string;
   schoolName: string;
   reference: string;
@@ -22206,6 +22322,14 @@ schoolId: number;
  * @maxLength 100
  */
 search?: string;
+/**
+ * @minimum 1
+ */
+classId?: number;
+/**
+ * @maxLength 80
+ */
+section?: string;
 /**
  * @minimum 1
  * @maximum 50

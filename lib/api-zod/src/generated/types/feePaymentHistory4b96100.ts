@@ -13,7 +13,10 @@ export interface FeePaymentHistory4b96100 {
   schoolId: number;
   invoiceId: number;
   invoiceNumber: string;
-  studentId: number;
+  /** @nullable */
+  studentId: number | null;
+  /** @nullable */
+  employeeId?: number | null;
   studentName: string;
   schoolName: string;
   reference: string;

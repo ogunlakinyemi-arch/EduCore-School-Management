@@ -24,6 +24,10 @@ const poolMock = vi.hoisted(() => {
   const result = (rows: any[] = []) => ({ rows, rowCount: rows.length });
   const respond = async (sql: string, values: any[] = []) => {
     state.queries.push({ sql, values });
+    if(sql.includes("pg_advisory_xact_lock")) return result();
+    if(sql.includes("FROM academic_report_cards")&&sql.includes("academic_session_id=$3")) return result([]);
+    if(sql.includes("FROM audit_logs")&&sql.includes("Approved academic report card")) return result([{id:1}]);
+    if(sql.includes("AND grade IS NOT NULL AND grade_point IS NOT NULL AND remark IS NOT NULL")) return result([{count:1}]);
     if (["BEGIN", "COMMIT", "ROLLBACK"].includes(sql)) {
       state.transactions.push(sql);
       return result();
@@ -310,7 +314,7 @@ describe("academic result and report-card operations", () => {
     expect((await response.json() as { reviewComment: string }).reviewComment).toBe("Please verify the total.");
   });
 
-  it("builds report-card lines only from published results and snapshots context", async () => {
+  it("compiles calculated results as draft snapshots without publishing", async () => {
     const response = await post("/academic/report-cards", {
       schoolId: 1, studentId: 13, sessionId: 3, termId: 4,
       teacherRemark: "Steady progress", schoolRemark: "Promoted",
@@ -324,7 +328,7 @@ describe("academic result and report-card operations", () => {
     const draftInsert = state.queries.find(({ sql }) => sql.includes("INSERT INTO academic_report_cards"));
     expect(draftInsert?.sql).toContain("'DRAFT',$9,$10,NULL,NULL");
     const snapshotQuery = state.queries.find(({ sql }) => sql.includes("INSERT INTO academic_report_card_lines"));
-    expect(snapshotQuery?.sql).toContain("r.status='PUBLISHED'");
+    expect(snapshotQuery?.sql).toContain("r.status<>'ARCHIVED'");
     expect(snapshotQuery?.sql).toContain("r.student_class_assignment_id=$6");
     expect(state.auditCount).toBe(1);
   });
