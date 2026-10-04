@@ -31,8 +31,11 @@ beforeEach(()=>{
 afterEach(async()=>{await act(async()=>root.unmount());host.remove();});
 const base = {
   schoolId:1,sessionId:2,termId:3,
+  session:{id:2,schoolId:1,startDate:'2026-09-01',endDate:'2027-07-31'},
   classes:[{id:4,name:'SS2',section:'B'}],
-  subjects:[{id:5,name:'Maths'}],
+  subjects:[{id:5,schoolId:1,name:'Maths'}],
+  subjectAssignments:[{id:20,schoolId:1,sessionId:2,termId:3,classId:4,section:'B',subjectId:5,teacherId:6,status:'ACTIVE'}],
+  teacherAssignments:[{id:21,schoolId:1,sessionId:2,classId:4,section:'B',subjectId:5,teacherId:6,assignmentType:'SUBJECT_TEACHER',status:'ACTIVE',startDate:'2026-09-01',endDate:null}],
   teachers:[{id:6,schoolId:1,employeeId:'T-006',firstName:'Test',lastName:'Teacher',type:'TEACHER',status:'ACTIVE'},
     {id:7,schoolId:1,employeeId:'D-007',firstName:'Test',lastName:'Driver',type:'DRIVER',status:'ACTIVE'}] satisfies Employee[],
   initial:{id:8,classId:4,subjectId:5,teacherId:6,weekday:'MONDAY',startTime:'08:00',endTime:'09:00'},
@@ -89,13 +92,47 @@ describe('timetable save form',()=>{
     await act(async()=>root.render(<TimetableEntryForm {...base} teachers={[]}/>));
     const select=host.querySelectorAll('select')[4];
     expect(select.disabled).toBe(true);expect(select.textContent).toContain('No eligible teachers available');
-    expect(host.textContent).toContain('No active teacher is available in this school');
+    expect(host.textContent).toContain('No eligible teacher is assigned to this subject/class');
   });
   it('never submits a teacher ID from another school',async()=>{
     await act(async()=>root.render(<TimetableEntryForm {...base} teachers={[{...base.teachers[0],schoolId:99}]}/>));
     await submit();
     expect(mocks.update).not.toHaveBeenCalled();expect(mocks.create).not.toHaveBeenCalled();
-    expect(host.querySelector('[role=alert]')?.textContent).toContain('belonging to this school');
+    expect(host.querySelector('[role=alert]')?.textContent).toContain('not assigned to this subject/class');
+  });
+  it('does not offer an active same-school English teacher for Maths',async()=>{
+    const english={...base.teachers[0],id:11,firstName:'English',lastName:'Teacher'};
+    await act(async()=>root.render(<TimetableEntryForm {...base} teachers={[...base.teachers,english]} teacherAssignments={[
+      ...base.teacherAssignments,{...base.teacherAssignments[0],id:22,teacherId:11,subjectId:12},
+    ]}/>));
+    expect([...host.querySelectorAll('select')[4].options].map(o=>o.value)).toEqual(['','6']);
+    expect(host.textContent).not.toContain('English Teacher');
+  });
+  it('clears a stale teacher when the subject changes and submits only the new assignment',async()=>{
+    const english={...base.teachers[0],id:11,firstName:'English',lastName:'Teacher'};
+    await act(async()=>root.render(<TimetableEntryForm {...base}
+      teachers={[...base.teachers,english]} subjects={[...base.subjects,{id:12,schoolId:1,name:'English'}]}
+      subjectAssignments={[...base.subjectAssignments,{...base.subjectAssignments[0],id:22,subjectId:12,teacherId:11}]}
+      teacherAssignments={[...base.teacherAssignments,{...base.teacherAssignments[0],id:23,subjectId:12,teacherId:11}]}/>));
+    const selects=host.querySelectorAll('select');
+    await act(async()=>{selects[3].value='12';selects[3].dispatchEvent(new Event('change',{bubbles:true}));});
+    expect(selects[4].value).toBe('');
+    await submit();expect(mocks.update).not.toHaveBeenCalled();
+    await act(async()=>{selects[4].value='11';selects[4].dispatchEvent(new Event('change',{bubbles:true}));});
+    await submit();expect(mocks.update).toHaveBeenCalledWith({entryId:8,data:expect.objectContaining({subjectId:12,teacherId:11})});
+  });
+  it('clears subject and teacher when class/section changes',async()=>{
+    await act(async()=>root.render(<TimetableEntryForm {...base} classes={[...base.classes,{id:14,name:'SS2',section:'C'}]}/>));
+    const selects=host.querySelectorAll('select');
+    await act(async()=>{selects[0].value='14';selects[0].dispatchEvent(new Event('change',{bubbles:true}));});
+    expect(selects[2].value).toBe('C');expect(selects[3].value).toBe('');expect(selects[4].value).toBe('');
+    await submit();expect(mocks.update).not.toHaveBeenCalled();
+  });
+  it('clears a teacher whose assignment is revoked while the form is open',async()=>{
+    await act(async()=>root.render(<TimetableEntryForm {...base}/>));
+    await act(async()=>root.render(<TimetableEntryForm {...base} teacherAssignments={[]}/>));
+    expect(host.querySelectorAll('select')[4].value).toBe('');
+    await submit();expect(mocks.update).not.toHaveBeenCalled();
   });
 });
 describe('reuse an existing academic year',()=>{

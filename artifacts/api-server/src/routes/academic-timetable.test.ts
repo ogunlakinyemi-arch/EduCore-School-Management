@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({
   calls: [] as Array<{ sql: string; values: unknown[] }>,
   conflict: "" as "" | "teacher" | "class" | "room",
   valid: true,
+  failedSelection: "" as string,
   studentRoleSchools: [1] as number[],
   studentProfiles: [{ studentId: 10, schoolId: 1, status: "ACTIVE" }] as Array<{
     studentId: number; schoolId: number; status: string;
@@ -27,6 +28,9 @@ const db = vi.hoisted(() => {
     state.calls.push({ sql, values });
     if (sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK") return result();
     if (sql.includes("pg_advisory_xact_lock")) return result();
+    if (sql.includes("AS class_valid")) return result([Object.fromEntries([
+      "class_valid","session_valid","term_valid","subject_valid","teacher_valid","subject_assignment_valid","teacher_assignment_valid",
+    ].map(key=>[key,key !== (state.failedSelection || "teacher_assignment_valid")]))]);
     if (sql.includes("FROM school_classes c")) return result(state.valid ? [{ id: 4 }] : []);
     if (sql.includes("FROM academic_timetable_entries") && sql.includes("teacher_conflict")) {
       if (!state.conflict) return result();
@@ -138,6 +142,7 @@ beforeEach(() => {
   state.calls.length = 0;
   state.conflict = "";
   state.valid = true;
+  state.failedSelection = "";
   state.studentRoleSchools = [1];
   state.studentProfiles = [{ studentId: 10, schoolId: 1, status: "ACTIVE" }];
   state.studentAssignments = [{
@@ -166,6 +171,18 @@ async function request(path: string, role = "SCHOOL_ADMIN", options: RequestInit
 }
 
 describe("academic timetable API", () => {
+  it.each([
+    ["class_valid","Selected class/section"],["subject_valid","Selected subject is not available"],
+    ["teacher_valid","Selected teacher is not available"],["session_valid","Selected session"],
+    ["term_valid","Selected term"],["subject_assignment_valid","Selected subject is not assigned"],
+    ["teacher_assignment_valid","Selected teacher is not assigned"],
+  ])("rejects %s with a school-scoped explanation and no write",async(key,message)=>{
+    state.valid=false;state.failedSelection=key;
+    const response=await request("/academic/timetable","SCHOOL_ADMIN",{method:"POST",body:JSON.stringify(validBody)});
+    expect(response.status).toBe(404);expect((await response.json() as {error:string}).error).toContain(message);
+    expect(state.calls.some(({sql})=>sql.includes("INSERT INTO academic_timetable_entries"))).toBe(false);
+    expect(state.calls.some(({sql})=>sql==="ROLLBACK")).toBe(true);
+  });
   it("creates only a valid school/session/term/class/section/subject/teacher assignment and audits the write", async () => {
     const response = await request("/academic/timetable", "SCHOOL_ADMIN", {
       method: "POST", body: JSON.stringify(validBody),

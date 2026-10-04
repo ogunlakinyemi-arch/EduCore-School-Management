@@ -1,5 +1,6 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { pool } from "@workspace/db";
+import { timetableSelectionError } from "../lib/timetable-selection-error";
 import {
   assertRoles,
   assertSchoolAccess,
@@ -282,7 +283,7 @@ router.post("/academic/timetable", asyncRoute(async (req, res) => {
           )`,
       [values.schoolId, values.sessionId, values.termId, values.classId, values.subjectId, values.teacherId, values.section],
     );
-    if (!valid.rows[0]) throw new AuthError(404, "Class, subject, teacher, session, term, or assignment not found in school");
+    if (!valid.rows[0]) throw await timetableSelectionError(client, values);
     if (values.status === "ACTIVE") await rejectConflicts(client, values);
     result = await client.query(
       `INSERT INTO academic_timetable_entries
@@ -341,7 +342,7 @@ router.patch("/academic/timetable/:entryId", asyncRoute(async (req, res) => {
            AND (ta.end_date IS NULL OR ta.end_date >= ac.start_date))`,
       [values.schoolId, values.sessionId, values.termId, values.classId, values.subjectId, values.teacherId, values.section],
     );
-    if (!valid.rows[0]) throw new AuthError(404, "Class, subject, teacher, session, term, or assignment not found in school");
+    if (!valid.rows[0]) throw await timetableSelectionError(client, values);
     if (values.status === "ACTIVE") await rejectConflicts(client, values, entryId);
     updated = await client.query(
       `UPDATE academic_timetable_entries SET academic_session_id=$1, academic_term_id=$2,
