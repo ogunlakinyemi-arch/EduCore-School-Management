@@ -13,11 +13,11 @@ import { Button, EmptyState, ErrorState, Field, Metric, Modal, PageHeading, Stat
 import { HistoryList, InvoiceList, ListSkeleton, Notice, RequestRow, Tabs, AssignmentSummary, inputCls } from '@/components/transport-parts';
 import { FeePlanModal, PolicyPanel, RouteStaffModal } from '@/components/transport-extras';
 import {
-  TRANSPORT_POLL_MS, TRANSPORT_STALE_MS, activeDrivers, assignmentTone, capacityState, errorMessage, formatNaira,
-  ownerTotals, selectableStudents, stopsFor, transportAudience, validateEffective,
+  TRANSPORT_POLL_MS, TRANSPORT_STALE_MS, activeDrivers, busChoice, routeBlock, routesForBus, type PickerRoute, assignmentTone, capacityState, errorMessage, formatNaira,
+  ownerTotals, stopsFor, transportAudience, validateEffective,
 } from '@/components/transport-logic';
 
-const fresh = { staleTime: TRANSPORT_STALE_MS, refetchInterval: TRANSPORT_POLL_MS, refetchOnWindowFocus: true } as const;
+const fresh = { staleTime: TRANSPORT_STALE_MS, refetchInterval: TRANSPORT_POLL_MS, refetchOnWindowFocus: true, refetchOnMount: 'always' } as const;
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'] as const;
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -407,23 +407,50 @@ function AssignmentsTab({ schoolId, q, routes }: { schoolId: number; q: Q<Transp
   );
 }
 
-function RoutePicker({ routes, routeId, setRouteId, pickup, setPickup, dropoff, setDropoff }: { routes: TransportRoute[]; routeId: string; setRouteId: (v: string) => void; pickup: string; setPickup: (v: string) => void; dropoff: string; setDropoff: (v: string) => void }) {
-  const route = routes.find(r => String(r.id) === routeId);
-  const full = route ? route.reservedPassengerCount >= route.busCapacity : false;
+function RoutePicker({ schoolId, routes, routeId, setRouteId, pickup, setPickup, dropoff, setDropoff, currentReservedBusId }: { schoolId: number; routes: TransportRoute[]; routeId: string; setRouteId: (v: string) => void; pickup: string; setPickup: (v: string) => void; dropoff: string; setDropoff: (v: string) => void; currentReservedBusId?: number }) {
+  const all = routes as PickerRoute[];
+  const route = all.find(r => String(r.id) === routeId);
+  const [busId, setBusId] = useState(route ? String(route.busId) : '');
+  useEffect(() => {
+    if (route) setBusId(String(route.busId));
+  }, [route?.busId]);
+  const applicableCount = (rs: PickerRoute[], id: number) => routesForBus(rs, String(id)).length;
+  const busesQ = useListTransportBuses({ schoolId }, { query: { ...fresh, queryKey: ['/api/transport/buses', { schoolId }] } });
+  const buses = busesQ.data ?? [];
+  const bus = buses.find(b => String(b.id) === busId);
+  const noRoutes = !!bus && !applicableCount(all, bus.id);
+  const applicable = routesForBus(all, busId);
+  const block = routeBlock(route, currentReservedBusId);
   return (
     <>
-      <Field label="Route and bus">
-        <select className={inputCls} value={routeId} onChange={e => { setRouteId(e.target.value); setPickup(''); setDropoff(''); }} data-testid="select-assign-route">
-          <option value="">Select a route</option>
-          {routes.filter(r => r.status !== 'INACTIVE').map(r => <option key={r.id} value={r.id}>{r.name} - {r.busName} ({r.reservedPassengerCount}/{r.busCapacity})</option>)}
+      <Field label="Bus">
+        <select className={inputCls} value={busId} onChange={e => { setBusId(e.target.value); setRouteId(''); setPickup(''); setDropoff(''); }} data-testid="select-assign-bus">
+          <option value="">Select a bus</option>
+          {buses.map(b => { const c = busChoice(b, all, b.id, currentReservedBusId); return <option key={b.id} value={b.id} disabled={c.disabled}>{b.name} ({b.registrationNumber}) - {b.passengerCount}/{b.capacity}{c.note ? ` - ${c.note}` : ''}</option>; })}
         </select>
       </Field>
-      {full && <Notice tone="error" testId="route-full-warning">This bus is full. Assignments to it will be refused until a seat is freed or capacity is raised.</Notice>}
+      {busesQ.isError && <Notice tone="error">{errorMessage(busesQ.error)}</Notice>}
+      {!busesQ.isLoading && !buses.length && <Notice>No buses exist yet. Add one under Buses.</Notice>}
+      {noRoutes && <Notice testId="bus-no-routes">This bus has no active route. Create a route for it under the Routes tab first; assignments always go through an existing route.</Notice>}
+      <Field label="Route">
+        <select className={inputCls} value={routeId} disabled={!bus} onChange={e => { setRouteId(e.target.value); setPickup(''); setDropoff(''); }} data-testid="select-assign-route">
+          <option value="">{bus ? 'Select a route' : 'Choose a bus first'}</option>
+          {applicable.map(r => <option key={r.id} value={r.id} disabled={!!routeBlock(r, currentReservedBusId)}>{r.name} - {r.departureTime} to {r.arrivalTime}{routeBlock(r, currentReservedBusId) ? ` (${routeBlock(r, currentReservedBusId)})` : ''}</option>)}
+        </select>
+      </Field>
+      {route && (
+        <div className="rounded-xl border border-[hsl(var(--border))] p-3 text-xs text-[hsl(var(--muted-foreground))]" data-testid="route-details">
+          <div><b>Driver:</b> {route.driverName}{route.driverEmployeeNo ? ` (${route.driverEmployeeNo})` : ''}{route.driverPhone ? ` - ${route.driverPhone}` : ''}</div>
+          <div><b>Schedule:</b> {route.departureTime} to {route.arrivalTime}, {route.weekdays.map(d => d.slice(0, 3)).join(', ')}</div>
+          <div><b>Bus:</b> {route.busName} - {route.registrationNumber} - {route.reservedPassengerCount} of {route.busCapacity} seats reserved</div>
+        </div>
+      )}
+      {block && <Notice tone="error" testId="route-full-warning">{block} New riders cannot be assigned to this route.</Notice>}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Pickup stop"><select className={inputCls} value={pickup} onChange={e => setPickup(e.target.value)} disabled={!route} data-testid="select-assign-pickup"><option value="">Select</option>{stopsFor(route, 'PICKUP').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
-        <Field label="Drop-off stop"><select className={inputCls} value={dropoff} onChange={e => setDropoff(e.target.value)} disabled={!route} data-testid="select-assign-dropoff"><option value="">Select</option>{stopsFor(route, 'DROPOFF').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
+        <Field label="Pickup stop"><select className={inputCls} value={pickup} onChange={e => setPickup(e.target.value)} disabled={!route || !!block} data-testid="select-assign-pickup"><option value="">Select</option>{stopsFor(route, 'PICKUP').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
+        <Field label="Drop-off stop"><select className={inputCls} value={dropoff} onChange={e => setDropoff(e.target.value)} disabled={!route || !!block} data-testid="select-assign-dropoff"><option value="">Select</option>{stopsFor(route, 'DROPOFF').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
       </div>
-      {route && (!stopsFor(route, 'PICKUP').length || !stopsFor(route, 'DROPOFF').length) && <Notice>This route needs active pickup and drop-off stops. Add them under Routes.</Notice>}
+      {route && !block && (!stopsFor(route, 'PICKUP').length || !stopsFor(route, 'DROPOFF').length) && <Notice>This route needs active pickup and drop-off stops. Add them under Routes.</Notice>}
     </>
   );
 }
@@ -434,7 +461,7 @@ function AssignForm({ schoolId, routes, onClose }: { schoolId: number; routes: T
   const [search, setSearch] = useState('');
   const dq = useDebounced(search);
   const students = useSearchTransportStudents({ schoolId, limit: 20, ...(dq ? { search: dq } : {}) }, { query: { queryKey: ['/api/transport/students', { schoolId, search: dq }], staleTime: TRANSPORT_STALE_MS } });
-  const options = selectableStudents(students.data);
+  const options = students.data ?? [];
   const [studentId, setStudentId] = useState<number | null>(null);
   const chosen = (students.data ?? []).find(s => s.studentId === studentId);
   const [routeId, setRouteId] = useState(''); const [pickup, setPickup] = useState(''); const [dropoff, setDropoff] = useState('');
@@ -443,6 +470,7 @@ function AssignForm({ schoolId, routes, onClose }: { schoolId: number; routes: T
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!studentId) return setErr('Select an existing student from the search results.');
+    if (routeBlock((routes as PickerRoute[]).find(r => String(r.id) === routeId))) return setErr('Choose a route that is active and has free seats.');
     if (!routeId || !pickup || !dropoff) return setErr('Choose a route, a pickup stop and a drop-off stop.');
     const v = validateEffective(eff, reason); if (v) return setErr(v);
     setErr(null);
@@ -457,19 +485,20 @@ function AssignForm({ schoolId, routes, onClose }: { schoolId: number; routes: T
           {students.isError && <Notice tone="error">{errorMessage(students.error)}</Notice>}
           {!students.isLoading && !students.isError && !options.length && <p className="py-3 text-center text-sm text-[hsl(var(--muted-foreground))]">No assignable students match. Students must already exist in the school records.</p>}
           {options.map(s => (
-            <button type="button" key={s.studentId} onClick={() => setStudentId(s.studentId)} aria-pressed={studentId === s.studentId} data-testid={`student-option-${s.studentId}`}
-              className={cx('w-full rounded-xl border p-3 text-left text-sm', studentId === s.studentId ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary)/.08)]' : 'border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/.5)]')}>
+            <button type="button" key={s.studentId} disabled={!!s.activeAssignment} onClick={() => setStudentId(s.studentId)} aria-pressed={studentId === s.studentId} data-testid={`student-option-${s.studentId}`}
+              className={cx('w-full rounded-xl border p-3 text-left text-sm disabled:cursor-not-allowed disabled:opacity-60', studentId === s.studentId ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary)/.08)]' : 'border-[hsl(var(--border))] hover:bg-[hsl(var(--muted)/.5)]')}>
               <div className="font-bold">{s.studentName}</div>
               <div className="text-xs text-[hsl(var(--muted-foreground))]">{s.admissionNo} - {s.className} {s.section}{s.guardians.length ? ` - ${s.guardians.map(g => g.name).join(', ')}` : ' - no guardian on record'}</div>
+              {s.activeAssignment && <div className="mt-1 text-xs font-bold text-[hsl(var(--destructive))]" data-testid={`student-assigned-${s.studentId}`}>Already rides {s.activeAssignment.routeName} on {s.activeAssignment.busName}. Update it from the Riders tab.</div>}
             </button>
           ))}
         </div>
         {chosen && <Notice>Selected: {chosen.studentName}. Class and guardians come from the student record.</Notice>}
-        <RoutePicker routes={routes} routeId={routeId} setRouteId={setRouteId} pickup={pickup} setPickup={setPickup} dropoff={dropoff} setDropoff={setDropoff} />
+        <RoutePicker schoolId={schoolId} routes={routes} routeId={routeId} setRouteId={setRouteId} pickup={pickup} setPickup={setPickup} dropoff={dropoff} setDropoff={setDropoff} />
         <Field label="Effective date"><input type="date" className={inputCls} value={eff} onChange={e => setEff(e.target.value)} /></Field>
         <Field label="Reason"><textarea rows={2} className={inputCls} value={reason} onChange={e => setReason(e.target.value)} placeholder="For example: parent requested school bus from term start" data-testid="input-assign-reason" /></Field>
         {err && <Notice tone="error" testId="assign-form-error">{err}</Notice>}
-        <div className="flex justify-end gap-2"><Button variant="quiet" onClick={onClose}>Cancel</Button><Button type="submit" disabled={create.isPending} testId="button-save-assignment">{create.isPending ? 'Assigning...' : 'Assign student'}</Button></div>
+        <div className="flex justify-end gap-2"><Button variant="quiet" onClick={onClose}>Cancel</Button><Button type="submit" disabled={create.isPending || !studentId || !routeId || !pickup || !dropoff || !!routeBlock(routes.find(r => String(r.id) === routeId))} testId="button-save-assignment">{create.isPending ? 'Assigning...' : 'Assign student'}</Button></div>
       </form>
     </Modal>
   );
@@ -493,9 +522,13 @@ function ManageAssignment({ schoolId, a, routes, onClose }: { schoolId: number; 
   const [err, setErr] = useState<string | null>(null);
   const pickAction = (k: ActionKey) => { setAction(k); setErr(null); setPickup(''); setDropoff(''); setRouteId(k === 'CHANGE_STOPS' ? String(a.routeId) : ''); };
   const needsRoute = action === 'CHANGE_ROUTE' || action === 'CHANGE_STOPS';
+  const currentReservedBusId = a.status === 'ACTIVE' || a.status === 'SUSPENDED' ? a.busId : undefined;
+  const selectedRoute = routes.find(r => r.id === Number(needsRoute ? routeId : a.routeId));
+  const block = needsRoute || action === 'ACTIVATE' ? routeBlock(selectedRoute, currentReservedBusId) : null;
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const v = validateEffective(eff, reason); if (v) return setErr(v);
+    if (block) return setErr(block);
     const body: TransportAssignmentUpdate = { action, effectiveDate: eff, reason: reason.trim() };
     if (needsRoute) {
       if (!routeId || !pickup || !dropoff) return setErr('Choose the route and both stops.');
@@ -509,11 +542,12 @@ function ManageAssignment({ schoolId, a, routes, onClose }: { schoolId: number; 
       <form onSubmit={submit} className="space-y-4">
         <div className="text-xs text-[hsl(var(--muted-foreground))]">Now: {a.status.toLowerCase()} on {a.routeName} ({a.busName})</div>
         <Field label="Action"><select className={inputCls} value={action} onChange={e => pickAction(e.target.value as ActionKey)} data-testid="select-assignment-action">{options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}</select></Field>
-        {needsRoute && <RoutePicker routes={routes} routeId={routeId} setRouteId={setRouteId} pickup={pickup} setPickup={setPickup} dropoff={dropoff} setDropoff={setDropoff} />}
+        {needsRoute && <RoutePicker schoolId={schoolId} routes={routes} routeId={routeId} setRouteId={setRouteId} pickup={pickup} setPickup={setPickup} dropoff={dropoff} setDropoff={setDropoff} currentReservedBusId={currentReservedBusId} />}
+        {!needsRoute && block && <Notice tone="error">{block}</Notice>}
         <Field label="Effective date"><input type="date" className={inputCls} value={eff} onChange={e => setEff(e.target.value)} data-testid="input-action-date" /></Field>
         <Field label="Reason"><textarea rows={2} className={inputCls} value={reason} onChange={e => setReason(e.target.value)} data-testid="input-action-reason" /></Field>
         {err && <Notice tone="error" testId="manage-form-error">{err}</Notice>}
-        <div className="flex justify-end gap-2"><Button variant="quiet" onClick={onClose}>Cancel</Button><Button type="submit" variant={action === 'DEACTIVATE' || action === 'SUSPEND' ? 'danger' : 'primary'} disabled={update.isPending} testId="button-confirm-action">{update.isPending ? 'Saving...' : 'Confirm change'}</Button></div>
+        <div className="flex justify-end gap-2"><Button variant="quiet" onClick={onClose}>Cancel</Button><Button type="submit" variant={action === 'DEACTIVATE' || action === 'SUSPEND' ? 'danger' : 'primary'} disabled={update.isPending || !!block || (needsRoute && (!routeId || !pickup || !dropoff))} testId="button-confirm-action">{update.isPending ? 'Saving...' : 'Confirm change'}</Button></div>
       </form>
     </Modal>
   );

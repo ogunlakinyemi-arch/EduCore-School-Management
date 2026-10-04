@@ -11,6 +11,29 @@ import {
 } from '@/components/shared';
 
 // Phase 3 NFC Cards Page
+import { phase9Request } from '@/hooks/use-phase9-api';
+
+function ReportLostModal({ card, onClose, onSubmit }: { card: any; onClose: () => void; onSubmit: (reason: string) => Promise<void> }) {
+  const [reason, setReason] = useState('');
+  const [kind, setKind] = useState<'Lost' | 'Stolen'>('Lost');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault(); setBusy(true); setError('');
+    try { await onSubmit(`${kind}: ${reason.trim()}`); onClose(); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'The report could not be submitted.'); setBusy(false); }
+  };
+  return <Modal title="Report card lost or stolen" eyebrow="Card security" onClose={onClose}>
+    <form onSubmit={submit} className="space-y-4">
+      <p className="text-sm">Card <strong className="font-mono">{card.uid}</strong> ({card.employeeName ?? card.studentName ?? 'Unassigned'}) will stop working immediately. History is kept and the platform Owner is notified. Replacement remains Owner-controlled; the ₦2,000 payment workflow is not available from this dialog.</p>
+      <Field label="Report as"><select value={kind} onChange={e => setKind(e.target.value as 'Lost' | 'Stolen')} data-testid="select-lost-kind"><option>Lost</option><option>Stolen</option></select></Field>
+      <p className="text-xs text-[hsl(var(--muted-foreground))]">The system records both as a lost card; your choice is kept in the reason.</p>
+      <Field label="What happened (required)"><textarea required minLength={3} maxLength={500} value={reason} onChange={e => setReason(e.target.value)} data-testid="input-lost-reason" /></Field>
+      {error && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{error}</p>}
+      <div className="flex justify-end gap-3"><Button variant="outline" onClick={onClose} type="button">Cancel</Button><Button type="submit" disabled={busy || reason.trim().length < 3}>{busy ? 'Reporting...' : 'Report card lost'}</Button></div>
+    </form></Modal>;
+}
+
 export function CardsPage() {
   const { schoolId, setSchoolId } = useTenant();
   const authorized = useGetAuthorizedContext();
@@ -19,6 +42,7 @@ export function CardsPage() {
     ['DEVICE_ACTIVATION_OFFICER', 'COMPANY_ACCOUNTANT'].includes(String(role.role)));
   const canProvision = authorized.data?.isPlatformOwner === true && !isRestrictedEmployee;
   const canManageCards = canProvision;
+  const isSchoolAdmin = !authorized.data?.isPlatformOwner && roles.some(role => role.role === 'SCHOOL_ADMIN' && role.schoolId === schoolId);
   const [modal, setModal] = useState<any>(null); 
   const qc = useQueryClient();
   
@@ -47,8 +71,13 @@ export function CardsPage() {
     qc.invalidateQueries({ queryKey: getListCardsQueryKey() }); 
   };
   
+  const reportLost = async (reason: string) => {
+    await phase9Request(`/schools/${schoolId}/security/cards/${modal.lost.id}/lost`, 'POST', { reason });
+    await qc.invalidateQueries({ queryKey: getListCardsQueryKey({ schoolId }) });
+  };
   return (
     <div className="fade-up">
+      {modal?.lost && <ReportLostModal card={modal.lost} onClose={() => setModal(null)} onSubmit={reportLost} />}
       <PageHeading 
         eyebrow="Security / NFC Cards" 
         title="NFC Card Management"
@@ -109,6 +138,7 @@ export function CardsPage() {
                       cardStatus={employeeCard.status}
                     />
                   )}
+                  {isSchoolAdmin && ['active', 'locked', 'inactive', 'suspended', 'blocked'].includes(String(card.status).toLowerCase()) && <Button variant="outline" onClick={() => setModal({ lost: card })} testId={`button-report-lost-${card.id}`}>Report lost / stolen</Button>}
                   {canManageCards && !card.employeeId && <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setModal({ reassign: card })} disabled={studentsQuery.isLoading || !students.length}>
                     Reassign

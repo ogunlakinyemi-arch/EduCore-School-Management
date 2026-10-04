@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Link, Route, Switch } from 'wouter';
 import { BookOpen, ChevronRight, GraduationCap, ShieldCheck, UserRound, UsersRound, Zap, LogIn, LogOut, Calendar, Clock, ReceiptText, FileSpreadsheet } from 'lucide-react';
 import { 
-  useGetParentChild, useGetParentChildren, useGetParentProfile, useGetParentChildAttendance,
+  useGetParentChild, useGetParentChildren, useGetParentProfile, useGetParentChildAttendance, getGetParentChildAttendanceQueryKey,
   useListChildAcademicAssignments, useListChildAcademicResults, useListChildAcademicReportCards, useGetChildAcademicTimetable,
   getListChildAcademicAssignmentsQueryKey, getListChildAcademicResultsQueryKey,
   getListChildAcademicReportCardsQueryKey, getGetChildAcademicTimetableQueryKey
@@ -51,6 +51,7 @@ function PortalHeader() {
   );
 }
 
+import { AttendanceRangeControls, rangeFor, type Range } from '@/components/attendance-range';
 export function ParentDashboard() {
   const profile = useGetParentProfile();
   const children = useGetParentChildren();
@@ -120,7 +121,7 @@ function ChildProfile({ studentId }: { studentId: number }) {
         <Link href={`/parent/fees/${studentId}`} className="panel flex items-center gap-4 p-5 transition-colors hover:bg-[hsl(var(--secondary))]" data-testid={`link-child-fees-${studentId}`}><span className="grid h-11 w-11 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><ReceiptText size={21} /></span><span className="flex-1"><strong className="block">Fees & payments</strong><span className="text-xs text-[hsl(var(--muted-foreground))]">Invoices, balances and bank transfer submissions</span></span><ChevronRight size={17} /></Link>
         <Link href={`/parent/library/${studentId}`} className="panel flex items-center gap-4 p-5 transition-colors hover:bg-[hsl(var(--secondary))]" data-testid={`link-child-library-${studentId}`}><span className="grid h-11 w-11 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><BookOpen size={21} /></span><span className="flex-1"><strong className="block">Library loans</strong><span className="text-xs text-[hsl(var(--muted-foreground))]">Books, due dates and borrowing history</span></span><ChevronRight size={17} /></Link>
         <div className="panel overflow-hidden shadow-sm">
-          <ChildAttendance studentId={studentId} />
+          <ChildAttendance key={studentId} studentId={studentId} schoolId={child.schoolId} />
         </div>
         <div className="panel overflow-hidden shadow-sm">
           <ChildAcademics studentId={studentId} schoolId={child.schoolId} />
@@ -130,18 +131,22 @@ function ChildProfile({ studentId }: { studentId: number }) {
   );
 }
 
-function ChildAttendance({ studentId }: { studentId: number }) {
-  const query = useGetParentChildAttendance(studentId);
+function ChildAttendance({ studentId, schoolId }: { studentId: number; schoolId?: number }) {
+  const [range, setRange] = useState<Range | null>(() => rangeFor('week', new Date()));
+  const query = useGetParentChildAttendance(studentId, range ?? undefined, { query: { queryKey: getGetParentChildAttendanceQueryKey(studentId, range ?? undefined) } });
+  const controls = <AttendanceRangeControls periodsPath={`/parent/children/${studentId}/attendance-periods`} onChange={r => setRange(r)} />;
+  if (!range) return <div>{controls}<div className="p-6 text-center text-sm text-[hsl(var(--muted-foreground))]">Choose a complete period to see attendance.</div></div>;
 
-  if (query.isLoading) return <div className="p-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading attendance records...</div>;
-  if (query.isError) return <div className="p-10 text-center text-sm font-bold text-[hsl(var(--destructive))] bg-[hsl(var(--destructive)/.05)]">Failed to load attendance.</div>;
-  if (!query.data || query.data.length === 0) return <div className="p-10 text-center text-sm text-[hsl(var(--muted-foreground))] bg-[hsl(var(--muted)/.2)]">No attendance records found.</div>;
+  if (query.isLoading) return <div>{controls}<div className="p-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading attendance records...</div></div>;
+  if (query.isError) return <div>{controls}<div className="p-10 text-center text-sm font-bold text-[hsl(var(--destructive))] bg-[hsl(var(--destructive)/.05)]">Failed to load attendance. <button className="underline" onClick={() => query.refetch()}>Retry</button></div></div>;
+  if (!query.data || query.data.length === 0) return <div>{controls}<div className="p-10 text-center text-sm text-[hsl(var(--muted-foreground))] bg-[hsl(var(--muted)/.2)]">No attendance records in this period.</div></div>;
 
   return (
     <div className="border-t border-[hsl(var(--border))]">
       <div className="bg-[hsl(var(--muted)/.3)] p-5 md:p-6 border-b border-[hsl(var(--border))]">
-        <h3 className="font-bold text-lg">Recent Attendance</h3>
+        <h3 className="font-bold text-lg">Attendance</h3>
       </div>
+      {controls}
       <div className="divide-y divide-[hsl(var(--border)/.7)]">
         {query.data.map((event: any) => (
            <AttendanceRow key={event.id} event={event} />

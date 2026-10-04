@@ -15,6 +15,12 @@ Use a centralized, versioned curriculum library with authoritative source refere
 
 **How to apply:** Keep official content and school-specific additions distinguishable, retain source and verification metadata, and label any optional generated lesson content as an AI draft requiring teacher review.
 
+Drivers use restricted school memberships and an own-assigned-transport view, not the broad ordinary STAFF access policy. Librarian duties are supplemental permissions on the same existing Teacher/Staff account, not a new login or core role.
+
+**Why:** The targeted completion requirements require assigned-driver isolation and Teacher + Librarian functionality without duplicate accounts or replacement systems.
+
+**How to apply:** Check the driver's live school/employee binding before returning routes and riders; do not return grades or financial data. Grant/revoke librarian duties using existing school employee accounts and live library permissions.
+
 Preserve curriculum versions associated with historical records and retain each lesson note's original curriculum version. Creating a lesson note must not mark a topic completed; progress requires a separate appropriate approval or teaching-progress action. Lesson-note drafts and review discussions are private to the authorized teacher/admin workflow, not parent/student views.
 
 **Why:** The owner requires reliable academic history and distinguishes preparation, review, and actual teaching progress.

@@ -51,6 +51,7 @@ import { AdmissionsPage, PublicAdmissionPortalPage } from '@/pages/admissions';
 import { StudentCarePage, BehaviourPage, FamilyCarePage } from '@/pages/student-care';
 import { PromotionPage } from '@/pages/promotion';
 import TransportPage from '@/pages/transport';
+import DriverTransportPage from '@/pages/driver-transport';
 import FamilyTransportPage from '@/pages/family-transport';
 import { EmployeeNfcPage, MyEmployeeNfcPage } from '@/pages/employee-nfc';
 import { MyStaffNfcSubscriptionPage, StaffNfcFinancePage, StaffNfcBillingRulesPage, PartnerStaffNfcCommissionsPage } from '@/pages/staff-nfc-billing';
@@ -213,6 +214,14 @@ function ProtectedRoutes() {
     );
   }
 
+  const isOnlyDriver = !context.isPlatformOwner && roles.includes('DRIVER' as never) && (roles.length === 1 || requestedPortal === 'DRIVER');
+  if (isOnlyDriver) {
+    return <TenantProvider><Shell><Switch>
+      <Route path="/driver-transport"><DriverTransportPage /></Route>
+      <Route><Redirect to="/driver-transport" /></Route>
+    </Switch></Shell></TenantProvider>;
+  }
+
   if (isOnlyParent) {
     return <TenantProvider><Switch>
       <Route path="/my-care"><Shell><FamilyCarePage /></Shell></Route>
@@ -250,6 +259,7 @@ function ProtectedRoutes() {
           <Route path="/curriculum"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']}><SchoolCurriculumPage /></RoleGuard></Route>
           <Route path="/lesson-notes"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']}><LessonNotesPage /></RoleGuard></Route>
           <Route path="/transport"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><TransportPage /></RoleGuard></Route>
+          <Route path="/driver-transport"><RoleGuard allowedRoles={['DRIVER']}><DriverTransportPage /></RoleGuard></Route>
           <Route path="/my-transport"><RoleGuard allowedRoles={['PARENT', 'STUDENT']}><FamilyTransportPage /></RoleGuard></Route>
           <Route path="/employee-nfc"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><EmployeeNfcPage /></RoleGuard></Route>
           <Route path="/my-employee-nfc"><RoleGuard allowedRoles={['TEACHER', 'STAFF']}><MyEmployeeNfcPage /></RoleGuard></Route>

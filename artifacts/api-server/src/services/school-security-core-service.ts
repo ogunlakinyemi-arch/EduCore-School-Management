@@ -1421,6 +1421,16 @@ export async function markSecurityCardLost(
       cardUidSha256: createHash("sha256").update(String(card.uid).toUpperCase()).digest("hex"),
       reason,
     });
+    // Use the existing platform inbox, not school communications (which
+    // intentionally exclude platform owners). The card lock serializes retries.
+    await client.query(
+      `INSERT INTO platform_notifications(recipient_user_id,title,message,severity)
+       SELECT DISTINCT u.id,'NFC card reported lost / stolen',$1,'warning'
+         FROM school_memberships sm JOIN app_users u ON u.id=sm.user_id
+        WHERE sm.school_id IS NULL AND sm.role='PLATFORM_OWNER'
+          AND sm.status='ACTIVE' AND UPPER(u.status)='ACTIVE'`,
+      [`School ${schoolId} reported NFC card reference ${cardId}: ${reason}. Review the existing card history before arranging a replacement with a new UID.`],
+    );
     if (card.studentId != null) {
       await emitDomainParentEvent(client, {
         schoolId,

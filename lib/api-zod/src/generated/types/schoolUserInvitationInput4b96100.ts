@@ -12,7 +12,7 @@ export type SchoolUserInvitationInput4b96100 = ({
   /** @minimum 1 */
   studentId: number;
 } | {
-  role?: 'TEACHER' | 'ACCOUNTANT' | 'STAFF' | 'PARENT';
+  role?: 'TEACHER' | 'ACCOUNTANT' | 'STAFF' | 'DRIVER' | 'PARENT';
 }) & {
   /**
      * Existing same-school profile; identity is resolved by the server

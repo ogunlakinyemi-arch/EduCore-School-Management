@@ -1951,6 +1951,7 @@ export const RoleAssignmentRole = {
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
   PARTNER: 'PARTNER',
   DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
 } as const;
@@ -1993,6 +1994,7 @@ export const SchoolUserInvitationInputRole = {
   TEACHER: 'TEACHER',
   ACCOUNTANT: 'ACCOUNTANT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
 } as const;
@@ -2002,7 +2004,7 @@ export type SchoolUserInvitationInput = ({
   /** @minimum 1 */
   studentId: number;
 } | {
-  role?: 'TEACHER' | 'ACCOUNTANT' | 'STAFF' | 'PARENT';
+  role?: 'TEACHER' | 'ACCOUNTANT' | 'STAFF' | 'DRIVER' | 'PARENT';
 }) & {
   /**
      * Existing same-school profile; identity is resolved by the server
@@ -2042,6 +2044,7 @@ export const SchoolAdministratorResultRole = {
   TEACHER: 'TEACHER',
   ACCOUNTANT: 'ACCOUNTANT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
 } as const;
@@ -2177,6 +2180,7 @@ export const SchoolUserInvitationRole = {
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
 } as const;
 
 export type SchoolUserInvitationStatus = typeof SchoolUserInvitationStatus[keyof typeof SchoolUserInvitationStatus];
@@ -2246,6 +2250,7 @@ export const SchoolUserInvitationReplacementRole = {
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
 } as const;
 
 export interface SchoolUserInvitationReplacement {
@@ -2281,6 +2286,7 @@ export const SchoolInvitationRecoveryRole = {
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
 } as const;
 
 /**
@@ -2645,6 +2651,7 @@ export const SchoolMembershipInputRole = {
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
 } as const;
 
 export interface SchoolMembershipInput {
@@ -2665,6 +2672,131 @@ export const PlatformMembershipInputRole = {
 export interface PlatformMembershipInput {
   email: string;
   role: PlatformMembershipInputRole;
+}
+
+export interface FamilyAcademicPeriod {
+  id: number;
+  name: string;
+  startDate: string;
+  endDate: string;
+}
+
+export type FamilyAttendancePeriodsTermsItem = FamilyAcademicPeriod & {
+  academicSessionId: number;
+};
+
+export interface FamilyAttendancePeriods {
+  sessions: FamilyAcademicPeriod[];
+  terms: FamilyAttendancePeriodsTermsItem[];
+}
+
+export interface LibraryStaffDuty {
+  id: number;
+  schoolId: number;
+  userId: number;
+  isActive: boolean;
+  canManageCatalogue: boolean;
+  employeeId: number;
+  employeeNo: string;
+  employeeType: string;
+  name: string;
+  employmentStatus: string;
+  accountStatus: string;
+}
+
+export type DriverTransportViewEmployee = {
+  employeeId: number;
+  employeeNo: string;
+  name: string;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  photo?: string | null;
+  schoolId: number;
+  schoolName: string;
+};
+
+export type TransportStopInputStopType = typeof TransportStopInputStopType[keyof typeof TransportStopInputStopType];
+
+
+export const TransportStopInputStopType = {
+  PICKUP: 'PICKUP',
+  DROPOFF: 'DROPOFF',
+  BOTH: 'BOTH',
+} as const;
+
+export interface TransportStopInput {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name: string;
+  stopType: TransportStopInputStopType;
+  /** @minimum 1 */
+  sequence: number;
+  /** @maxLength 500 */
+  notes?: string | null;
+  isActive?: boolean;
+}
+
+export type TransportStop = TransportStopInput & {
+  id: number;
+  routeId: number;
+  schoolId: number;
+} & Required<Pick<TransportStopInput & {
+  id: number;
+  routeId: number;
+  schoolId: number;
+}, 'isActive'>>;
+
+export interface DriverTransportRoute {
+  id: number;
+  schoolId: number;
+  name: string;
+  busId: number;
+  busName: string;
+  registrationNumber: string;
+  busCapacity: number;
+  status: string;
+  weekdays: string[];
+  departureTime: string;
+  arrivalTime: string;
+  driverEmployeeId: number;
+  driverName: string;
+  stops: TransportStop[];
+}
+
+export type DriverTransportRiderStatus = typeof DriverTransportRiderStatus[keyof typeof DriverTransportRiderStatus];
+
+
+export const DriverTransportRiderStatus = {
+  ACTIVE: 'ACTIVE',
+} as const;
+
+export interface DriverTransportRider {
+  id: number;
+  studentId: number;
+  studentName: string;
+  admissionNo: string;
+  className: string;
+  section: string;
+  routeId: number;
+  routeName: string;
+  busId: number;
+  busName: string;
+  registrationNumber: string;
+  pickupName: string;
+  dropoffName: string;
+  departureTime: string;
+  arrivalTime: string;
+  status: DriverTransportRiderStatus;
+  effectiveDate: string;
+}
+
+export interface DriverTransportView {
+  employee: DriverTransportViewEmployee;
+  routes: DriverTransportRoute[];
+  assignments: DriverTransportRider[];
 }
 
 export type ParentInputRelationshipType = typeof ParentInputRelationshipType[keyof typeof ParentInputRelationshipType];
@@ -9380,39 +9512,6 @@ export interface TransportError {
   code: string;
 }
 
-export type TransportStopInputStopType = typeof TransportStopInputStopType[keyof typeof TransportStopInputStopType];
-
-
-export const TransportStopInputStopType = {
-  PICKUP: 'PICKUP',
-  DROPOFF: 'DROPOFF',
-  BOTH: 'BOTH',
-} as const;
-
-export interface TransportStopInput {
-  /**
-     * @minLength 2
-     * @maxLength 120
-     */
-  name: string;
-  stopType: TransportStopInputStopType;
-  /** @minimum 1 */
-  sequence: number;
-  /** @maxLength 500 */
-  notes?: string | null;
-  isActive?: boolean;
-}
-
-export type TransportStop = TransportStopInput & {
-  id: number;
-  routeId: number;
-  schoolId: number;
-} & Required<Pick<TransportStopInput & {
-  id: number;
-  routeId: number;
-  schoolId: number;
-}, 'isActive'>>;
-
 export type TransportBusInputStatus = typeof TransportBusInputStatus[keyof typeof TransportBusInputStatus];
 
 
@@ -9587,7 +9686,23 @@ export interface TransportRouteUpdate {
   status?: TransportRouteUpdateStatus;
 }
 
-export type TransportRoute = TransportRouteInput & {
+export type TransportRouteBusStatus = typeof TransportRouteBusStatus[keyof typeof TransportRouteBusStatus];
+
+
+export const TransportRouteBusStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  MAINTENANCE: 'MAINTENANCE',
+} as const;
+
+export type TransportRoute = TransportRouteInput & ({
+  busStatus?: TransportRouteBusStatus;
+  /** @nullable */
+  busMake?: string | null;
+  driverEmployeeNo?: string;
+  /** @nullable */
+  driverPhone?: string | null;
+  driverEmploymentStatus?: string;
   id: number;
   schoolId: number;
   busName: string;
@@ -9600,7 +9715,7 @@ export type TransportRoute = TransportRouteInput & {
   stops: TransportStop[];
   createdAt: string;
   updatedAt: string;
-};
+});
 
 export interface TransportGuardian {
   name: string;
@@ -9858,6 +9973,8 @@ export interface TransportAssignment {
   routeName: string;
   driverEmployeeId: number;
   driverName: string;
+  /** @nullable */
+  driverPhone?: string | null;
   pickup: TransportStop;
   dropoff: TransportStop;
   schedule: TransportSchedule;
@@ -9928,6 +10045,8 @@ export interface TransportSelfAssignment {
   busCapacity: number;
   routeName: string;
   driverName: string;
+  /** @nullable */
+  driverPhone?: string | null;
   pickup: TransportStop;
   dropoff: TransportStop;
   schedule: TransportSchedule;
@@ -13822,6 +13941,7 @@ export const RoleAssignment4b96100Role = {
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
   PARTNER: 'PARTNER',
   DEVICE_ACTIVATION_OFFICER: 'DEVICE_ACTIVATION_OFFICER',
 } as const;
@@ -13864,6 +13984,7 @@ export const SchoolUserInvitationInput4b96100Role = {
   TEACHER: 'TEACHER',
   ACCOUNTANT: 'ACCOUNTANT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
 } as const;
@@ -13873,7 +13994,7 @@ export type SchoolUserInvitationInput4b96100 = ({
   /** @minimum 1 */
   studentId: number;
 } | {
-  role?: 'TEACHER' | 'ACCOUNTANT' | 'STAFF' | 'PARENT';
+  role?: 'TEACHER' | 'ACCOUNTANT' | 'STAFF' | 'DRIVER' | 'PARENT';
 }) & {
   /**
      * Existing same-school profile; identity is resolved by the server
@@ -13913,6 +14034,7 @@ export const SchoolAdministratorResult4b96100Role = {
   TEACHER: 'TEACHER',
   ACCOUNTANT: 'ACCOUNTANT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
 } as const;
@@ -14048,6 +14170,7 @@ export const SchoolUserInvitation4b96100Role = {
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
 } as const;
 
 export type SchoolUserInvitation4b96100Status = typeof SchoolUserInvitation4b96100Status[keyof typeof SchoolUserInvitation4b96100Status];
@@ -14117,6 +14240,7 @@ export const SchoolUserInvitationReplacement4b96100Role = {
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
 } as const;
 
 export interface SchoolUserInvitationReplacement4b96100 {
@@ -14152,6 +14276,7 @@ export const SchoolInvitationRecovery4b96100Role = {
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
 } as const;
 
 /**
@@ -14516,6 +14641,7 @@ export const SchoolMembershipInput4b96100Role = {
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
 } as const;
 
 export interface SchoolMembershipInput4b96100 {
@@ -14536,6 +14662,98 @@ export const PlatformMembershipInput4b96100Role = {
 export interface PlatformMembershipInput4b96100 {
   email: string;
   role: PlatformMembershipInput4b96100Role;
+}
+
+export interface FamilyAcademicPeriod4b96100 {
+  id: number;
+  name: string;
+  startDate: string;
+  endDate: string;
+}
+
+export type FamilyAttendancePeriods4b96100TermsItem = FamilyAcademicPeriod4b96100 & {
+  academicSessionId: number;
+};
+
+export interface FamilyAttendancePeriods4b96100 {
+  sessions: FamilyAcademicPeriod4b96100[];
+  terms: FamilyAttendancePeriods4b96100TermsItem[];
+}
+
+export interface LibraryStaffDuty4b96100 {
+  id: number;
+  schoolId: number;
+  userId: number;
+  isActive: boolean;
+  canManageCatalogue: boolean;
+  employeeId: number;
+  employeeNo: string;
+  employeeType: string;
+  name: string;
+  employmentStatus: string;
+  accountStatus: string;
+}
+
+export type DriverTransportView4b96100Employee = {
+  employeeId: number;
+  employeeNo: string;
+  name: string;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  photo?: string | null;
+  schoolId: number;
+  schoolName: string;
+};
+
+export interface DriverTransportRoute4b96100 {
+  id: number;
+  schoolId: number;
+  name: string;
+  busId: number;
+  busName: string;
+  registrationNumber: string;
+  busCapacity: number;
+  status: string;
+  weekdays: string[];
+  departureTime: string;
+  arrivalTime: string;
+  driverEmployeeId: number;
+  driverName: string;
+  stops: TransportStop[];
+}
+
+export type DriverTransportRider4b96100Status = typeof DriverTransportRider4b96100Status[keyof typeof DriverTransportRider4b96100Status];
+
+
+export const DriverTransportRider4b96100Status = {
+  ACTIVE: 'ACTIVE',
+} as const;
+
+export interface DriverTransportRider4b96100 {
+  id: number;
+  studentId: number;
+  studentName: string;
+  admissionNo: string;
+  className: string;
+  section: string;
+  routeId: number;
+  routeName: string;
+  busId: number;
+  busName: string;
+  registrationNumber: string;
+  pickupName: string;
+  dropoffName: string;
+  departureTime: string;
+  arrivalTime: string;
+  status: DriverTransportRider4b96100Status;
+  effectiveDate: string;
+}
+
+export interface DriverTransportView4b96100 {
+  employee: DriverTransportView4b96100Employee;
+  routes: DriverTransportRoute4b96100[];
+  assignments: DriverTransportRider4b96100[];
 }
 
 export type ParentInput4b96100RelationshipType = typeof ParentInput4b96100RelationshipType[keyof typeof ParentInput4b96100RelationshipType];
@@ -19386,6 +19604,33 @@ export const StatusFilterParameter = {
 } as const;
 
 export type SearchParameter = string;
+
+export type GetLibraryPermissionsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type GetLibraryPermissions200 = {
+  canManageLoans: boolean;
+  canManageCatalogue: boolean;
+  canAssignStaff: boolean;
+};
+
+export type ListLibraryStaffParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type GetDriverTransportParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+};
 
 export type GetSchoolSecurityDashboardParams = {
 from?: string;

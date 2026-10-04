@@ -11,6 +11,7 @@ export const ROLES = [
   "PARENT",
   "STUDENT",
   "STAFF",
+  "DRIVER",
   "PARTNER",
 ] as const;
 
@@ -253,7 +254,7 @@ export function assertRoles(req: Request, roles: Role[]) {
 export function assertSchoolAccess(
   req: Request,
   schoolId: number,
-  roles: Role[] = [...ROLES],
+  roles: Role[] = ROLES.filter((role) => role !== "DRIVER"),
 ) {
   const context = getUserContext(req);
   if (isPlatformOwner(context)) return context;

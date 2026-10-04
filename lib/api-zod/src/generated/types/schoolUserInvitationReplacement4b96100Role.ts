@@ -15,4 +15,5 @@ export const SchoolUserInvitationReplacement4b96100Role = {
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
 } as const;

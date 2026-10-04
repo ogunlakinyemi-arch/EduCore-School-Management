@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useGetAuthorizedContext, useGetStudentSelfProfile, getGetStudentSelfProfileQueryKey } from '@workspace/api-client-react';
+import { useGetAuthorizedContext, useListEmployees, useGetStudentSelfProfile, getGetStudentSelfProfileQueryKey } from '@workspace/api-client-react';
 import { BookOpen, LibraryBig, BookCopy, Clock3, History, Settings2, ChartNoAxesColumn, RotateCcw, CornerDownLeft, Search, ChevronRight, BookmarkPlus, Tag, UserRoundPlus } from 'lucide-react';
 import { AddButton, RecordDialog, StatusLine, WorkspaceIntro, WorkspaceList, WorkspaceTabs, phase9Input, phase9Label, type FormField } from '@/components/phase9-workspace';
 import { toPayload, useLibraryAction, usePhase9List } from '@/hooks/use-phase9-api';
@@ -37,10 +37,10 @@ export function LibraryPage({ initialArea = 'catalogue' }: { initialArea?: 'cata
   const context = useGetAuthorizedContext().data;
   const roles = context?.roles?.filter(role => role.schoolId === schoolId && role.status === 'ACTIVE').map(role => role.role) ?? [];
   const admin = !context?.isPlatformOwner && roles.includes('SCHOOL_ADMIN');
-  // The report is manager-only on the server. An assigned librarian can use the
-  // circulation workspace without receiving School Admin catalogue controls.
-  const managerAccess = usePhase9List<Report>('library/reports', schoolId, {}, !admin && !context?.isPlatformOwner && roles.some(role => role === 'TEACHER' || role === 'STAFF'));
-  const manager = admin || managerAccess.isSuccess;
+  // Server-reported permissions: loan management and catalogue management are distinct.
+  const perms = usePhase9List<{ canManageLoans: boolean; canManageCatalogue: boolean; canAssignStaff: boolean }>('library/permissions', schoolId, {}, !context?.isPlatformOwner && roles.some(role => role === 'SCHOOL_ADMIN' || role === 'TEACHER' || role === 'STAFF'));
+  const manager = admin || perms.data?.canManageLoans === true;
+  const catalogueAdmin = admin || perms.data?.canManageCatalogue === true;
   const [area, setArea] = useState<Area>(initialArea);
   if (!schoolId) return <><PageHeading eyebrow="School / Learning resources" title="Library." description="A living catalogue of what your school can read and borrow." action={<TenantPicker />} /><EmptyState icon={LibraryBig} title="Choose a school" description="Select an authorized school to open its library." /></>;
   if (context?.isPlatformOwner || !roles.some(role => ['SCHOOL_ADMIN', 'TEACHER', 'STAFF', 'STUDENT'].includes(role))) return <div className="panel p-8" role="alert">Library access is not available for your role at this school.</div>;
@@ -55,7 +55,7 @@ export function LibraryPage({ initialArea = 'catalogue' }: { initialArea?: 'cata
       <BookOpen size={180} strokeWidth={.6} className="pointer-events-none absolute -bottom-14 right-3 rotate-[-14deg] opacity-10" />
     </div>
     <WorkspaceTabs items={tabs} active={area} onChange={id => setArea(id as Area)} />
-    {area === 'catalogue' ? <Catalogue key={schoolId} schoolId={schoolId} admin={admin} userId={context?.user?.id ?? 0} role={roles.includes('STUDENT') ? 'STUDENT' : roles.includes('TEACHER') ? 'TEACHER' : roles.includes('STAFF') ? 'STAFF' : null} /> :
+    {area === 'catalogue' ? <Catalogue key={schoolId} schoolId={schoolId} admin={catalogueAdmin} userId={context?.user?.id ?? 0} role={roles.includes('STUDENT') ? 'STUDENT' : roles.includes('TEACHER') ? 'TEACHER' : roles.includes('STAFF') ? 'STAFF' : null} /> :
       area === 'loans' ? <Loans key={`${schoolId}-${area}`} schoolId={schoolId} admin={manager} currentUserId={context?.user?.id ?? 0} /> :
       area === 'overdue' && manager ? <Loans key={`${schoolId}-${area}`} schoolId={schoolId} admin currentUserId={context?.user?.id ?? 0} overdue /> :
       area === 'directory' && admin ? <Directory schoolId={schoolId} /> :
@@ -197,15 +197,36 @@ function LibrarySettings({ schoolId }: { schoolId: number }) {
   const query = usePhase9List<Settings>('library/settings', schoolId);
   const action = useLibraryAction(schoolId);
   const [editing, setEditing] = useState(false);
-  const [assigning, setAssigning] = useState(false);
-  const [revokeId, setRevokeId] = useState('');
   const [failure, setFailure] = useState('');
   if (query.isLoading) return <SkeletonPage />;
   if (query.isError || !query.data) return <ErrorState retry={() => void query.refetch()} />;
   const settings = query.data;
   return <section className="panel max-w-4xl p-6 md:p-8"><Settings2 size={24} className="text-[hsl(var(--primary))]" /><div className="eyebrow mt-5">School-specific policy</div><h2 className="display-font mt-2 text-2xl font-bold">Borrowing rules</h2><p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Set loan periods and limits by reader type. Finance remains responsible for all payments; fines are not enabled here.</p><div className="mt-6 grid gap-3 sm:grid-cols-3">{(['Student', 'Teacher', 'Staff'] as const).map(type => <div key={type} className="rounded-xl bg-[hsl(var(--secondary)/.5)] p-4"><div className="eyebrow">{type} loans</div><strong className="mt-2 block">{settings[`${type.toLowerCase()}BorrowingEnabled`] ? 'Enabled' : 'Disabled'}</strong><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Up to {settings[`maxBooksPer${type}`]} books · {settings[`${type.toLowerCase()}LoanDays`]} days</p></div>)}</div><div className="mt-5 flex items-center justify-between border-t border-[hsl(var(--border))] pt-5"><p className="text-sm">Maximum {settings.maxRenewals} renewal{settings.maxRenewals === 1 ? '' : 's'} per loan</p><Button onClick={() => setEditing(true)}>Adjust rules</Button></div>
     {editing && <RecordDialog title="Borrowing rules" fields={settingsFields} values={settings} onClose={() => setEditing(false)} pending={action.isPending} error={failure} onSave={async values => { try { await action.mutateAsync({ path: 'settings', method: 'PATCH', data: toPayload(values, settingsFields.filter(field => field.type === 'number').map(field => field.key)) }); setEditing(false); setFailure(''); } catch (cause) { setFailure(cause instanceof Error ? cause.message : 'Could not save rules.'); } }} />}
-    <div className="mt-8 border-t border-[hsl(var(--border))] pt-6"><div className="flex items-start gap-3"><UserRoundPlus size={20} className="text-[hsl(var(--primary))]" /><div><h3 className="font-bold">Library staff authorization</h3><p className="mt-1 text-xs leading-5 text-[hsl(var(--muted-foreground))]">Assign an active school teacher or staff member to help run loans. Catalogue management is an additional permission.</p></div></div><div className="mt-5 flex flex-wrap gap-2"><Button variant="outline" onClick={() => setAssigning(true)}>Assign library staff</Button><input aria-label="User ID to revoke" data-testid="input-revoke-library-staff" type="number" min={1} className={`${phase9Input} max-w-44`} value={revokeId} onChange={event => setRevokeId(event.target.value)} placeholder="User ID to revoke" /><Button variant="danger" disabled={!Number(revokeId) || action.isPending} onClick={async () => { if (!window.confirm(`Revoke library access for user #${revokeId}?`)) return; try { await action.mutateAsync({ path: `staff/${revokeId}`, method: 'DELETE' }); setRevokeId(''); setFailure(''); } catch (cause) { setFailure(cause instanceof Error ? cause.message : 'Could not revoke access.'); } }}>Revoke access</Button></div>{failure && !editing && <p role="alert" className="mt-3 text-xs text-[hsl(var(--destructive))]">{failure}</p>}</div>
-    {assigning && <RecordDialog title="Assign library staff" fields={[{ key: 'userId', label: 'School staff user ID', type: 'number', required: true, min: 1 }, { key: 'canManageCatalogue', label: 'Allow catalogue management', type: 'checkbox' }]} values={{ canManageCatalogue: false }} onClose={() => setAssigning(false)} pending={action.isPending} error={failure} onSave={async values => { try { await action.mutateAsync({ path: 'staff', data: toPayload(values, ['userId']) }); setAssigning(false); setFailure(''); } catch (cause) { setFailure(cause instanceof Error ? cause.message : 'Could not assign staff.'); } }} />}
+    <LibraryStaffPanel schoolId={schoolId} />
   </section>;
+}
+type LibraryStaffRow = { id?: number; userId: number; isActive?: boolean; name?: string; employeeNo?: string | null; employeeType?: string; canManageCatalogue?: boolean };
+function LibraryStaffPanel({ schoolId }: { schoolId: number }) {
+  const staff = usePhase9List<LibraryStaffRow[]>('library/staff', schoolId);
+  const employees = useListEmployees({ schoolId, status: 'ACTIVE' }, { query: { enabled: !!schoolId, queryKey: ['library-employees', schoolId] } });
+  const action = useLibraryAction(schoolId);
+  const [assigning, setAssigning] = useState(false);
+  const [failure, setFailure] = useState('');
+  const active = (staff.data ?? []).filter(row => row.isActive !== false);
+  const assigned = new Set(active.map(row => row.userId));
+  const eligible = (employees.data ?? []).filter(e => !!e.userId && ['TEACHER', 'STAFF', 'ASSISTANT'].includes(e.type) && !assigned.has(e.userId as number));
+  const label = (row: LibraryStaffRow) => row.name || `User #${row.userId}`;
+  const revoke = async (row: LibraryStaffRow) => {
+    if (!window.confirm(`Revoke library access for ${label(row)}? Their account and school role stay unchanged.`)) return;
+    try { await action.mutateAsync({ path: `staff/${row.userId}`, method: 'DELETE' }); setFailure(''); void staff.refetch(); }
+    catch (cause) { setFailure(cause instanceof Error ? cause.message : 'Could not revoke access.'); }
+  };
+  return <div className="mt-8 border-t border-[hsl(var(--border))] pt-6" data-testid="library-staff-panel">
+    <div className="flex items-start gap-3"><UserRoundPlus size={20} className="text-[hsl(var(--primary))]" /><div className="flex-1"><h3 className="font-bold">Librarians</h3><p className="mt-1 text-xs leading-5 text-[hsl(var(--muted-foreground))]">Assign existing employees who have a login. A teacher keeps the same account and gains library actions. Several librarians are allowed.</p></div><Button variant="outline" onClick={() => { setAssigning(true); setFailure(''); }}>Assign librarian</Button></div>
+    {staff.isLoading ? <div className="mt-4 h-10 animate-pulse rounded-lg bg-[hsl(var(--muted))]" /> : staff.isError ? <div className="mt-4 text-sm">Librarian list could not be loaded. <Button variant="quiet" onClick={() => void staff.refetch()}>Retry</Button></div> : !active.length ? <p className="mt-4 text-sm text-[hsl(var(--muted-foreground))]">No librarians assigned yet.</p> :
+      <div className="mt-4 divide-y divide-[hsl(var(--border))]">{active.map(row => <div key={row.userId} className="flex flex-wrap items-center gap-3 py-3 text-sm"><strong className="flex-1">{label(row)}</strong><span className="text-xs text-[hsl(var(--muted-foreground))]">{[row.employeeType && phase9Label(row.employeeType), row.employeeNo].filter(Boolean).join(' · ')}{row.canManageCatalogue ? ' · manages catalogue' : ''}</span><Button variant="danger" disabled={action.isPending} onClick={() => void revoke(row)} testId={`button-revoke-librarian-${row.userId}`}>Revoke</Button></div>)}</div>}
+    {failure && !assigning && <p role="alert" className="mt-3 text-xs text-[hsl(var(--destructive))]">{failure}</p>}
+    {assigning && <RecordDialog title="Assign librarian" fields={[{ key: 'userId', label: 'Employee', type: 'select', required: true, options: eligible.map(e => ({ value: String(e.userId), label: `${e.firstName} ${e.lastName} (${e.type.toLowerCase()})` })) }, { key: 'canManageCatalogue', label: 'Allow catalogue management', type: 'checkbox' }]} values={{ canManageCatalogue: false }} onClose={() => setAssigning(false)} pending={action.isPending} error={failure} onSave={async values => { try { await action.mutateAsync({ path: 'staff', data: toPayload(values, ['userId']) }); setAssigning(false); setFailure(''); void staff.refetch(); } catch (cause) { setFailure(cause instanceof Error ? cause.message : 'Could not assign librarian.'); } }} />}
+  </div>;
 }

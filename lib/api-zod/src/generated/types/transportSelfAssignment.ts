@@ -22,6 +22,8 @@ export interface TransportSelfAssignment {
   busCapacity: number;
   routeName: string;
   driverName: string;
+  /** @nullable */
+  driverPhone?: string | null;
   pickup: TransportStop;
   dropoff: TransportStop;
   schedule: TransportSchedule;

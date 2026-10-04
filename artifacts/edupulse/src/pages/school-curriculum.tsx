@@ -1,14 +1,16 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState, type FormEvent } from 'react';
 import { BookMarked, ChevronDown, Plus, Sparkles } from 'lucide-react';
 import {
   useListSchoolCurriculumMappings, useListSchoolCurriculumCatalog, getListSchoolCurriculumCatalogQueryKey, useListSchoolCurriculumTopics,
-  useAssignSchoolCurriculum, useAddSchoolCurriculumTopic, useRecordCurriculumProgress,
+  useUpdateSubject, useAssignSchoolCurriculum, useAddSchoolCurriculumTopic, useRecordCurriculumProgress,
   getListSchoolCurriculumMappingsQueryKey, getListSchoolCurriculumTopicsQueryKey,
   type SchoolCurriculumMapping, type CurriculumProgress,
 } from '@workspace/api-client-react';
 import { PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Field, TenantPicker, cx, date } from '@/components/shared';
 import { Notice, errMsg, FRESH, useSchoolRole } from '@/components/school-ops-kit';
 import { useCurriculumContext, useInvalidateSchool } from '@/hooks/use-curriculum-context';
+import { buildSyllabusOverview } from '@/lib/syllabus-overview';
 import { assignmentCovers, label, splitLines, suggestVersions } from '@/lib/curriculum-kit';
 
 const STATUSES = ['PLANNED', 'IN_PROGRESS', 'COMPLETED', 'DEFERRED'] as const;
@@ -22,7 +24,7 @@ function SessionTermPicker({ ctx }: { ctx: ReturnType<typeof useCurriculumContex
   );
 }
 
-function MappingCard({ schoolId, mapping, title, classLevel, subjectId, classLevelHint }: { schoolId: number; mapping: SchoolCurriculumMapping; title: string; classLevel: string; subjectId: number; classLevelHint: string }) {
+function MappingCard({ schoolId, mapping, title, classLevel, subjectId, classLevelHint, subject }: { subject?: { id: number; name: string; description?: string | null }; schoolId: number; mapping: SchoolCurriculumMapping; title: string; classLevel: string; subjectId: number; classLevelHint: string }) {
   const [open, setOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [progress, setProgress] = useState<Record<number, CurriculumProgress>>({});
@@ -81,6 +83,7 @@ function MappingCard({ schoolId, mapping, title, classLevel, subjectId, classLev
               })}
             </ul>
           )}
+          {subject && <SyllabusOverview schoolId={schoolId} subject={subject} topics={topics} version={v} versionId={mapping.versionId} />}
           {record.error && <div className="mt-3"><Notice tone="error">{errMsg(record.error)}</Notice></div>}
           <div className="mt-5 border-t border-[hsl(var(--border))] pt-4">
             {!addOpen ? <Button variant="quiet" onClick={() => setAddOpen(true)} testId={`button-add-school-topic-${mapping.id}`}><Plus size={14} />Add school-specific topic</Button> : (
@@ -172,7 +175,7 @@ export function SchoolCurriculumPage() {
         <div className="panel"><EmptyState icon={BookMarked} title="No curriculum assigned" description={adminView ? 'Assign a published version to a class and subject above.' : 'None of your classes and subjects has a curriculum for this term yet. Your School Admin assigns it.'} /></div>
       ) : (
         <div className="space-y-4" data-testid="list-mappings">
-          {mappings.map(m => { const n = nameOf(m); return <MappingCard key={m.id} schoolId={schoolId} mapping={m} title={n.title} classLevel={n.className} classLevelHint={n.className} subjectId={m.subjectId} />; })}
+          {mappings.map(m => { const n = nameOf(m); return <MappingCard key={m.id} subject={adminView ? ctx.subjects.find(x => x.id === m.subjectId) : undefined} schoolId={schoolId} mapping={m} title={n.title} classLevel={n.className} classLevelHint={n.className} subjectId={m.subjectId} />; })}
         </div>
       )}
     </div>
@@ -180,3 +183,28 @@ export function SchoolCurriculumPage() {
 }
 
 export default SchoolCurriculumPage;
+
+function SyllabusOverview({ schoolId, subject, topics, version, versionId }: { schoolId: number; subject: { id: number; name: string; description?: string | null }; topics: Parameters<typeof buildSyllabusOverview>[0]; version: Parameters<typeof buildSyllabusOverview>[1]; versionId: number }) {
+  const preview = buildSyllabusOverview(topics, version, versionId);
+  const [text, setText] = useState<string | null>(null);
+  const update = useUpdateSubject();
+  const invalidate = useInvalidateSchool(schoolId);
+  const qc = useQueryClient();
+  const footnote = preview.includes('\n\nSource:') ? preview.slice(preview.lastIndexOf('\n\nSource:') + 2) : '';
+  const shown = text ?? subject.description ?? '';
+  const missingFootnote = text !== null && !!footnote && !text.includes(footnote.split(' (version')[0]);
+  return (
+    <div className="mt-5 border-t border-[hsl(var(--border))] pt-4" data-testid={`syllabus-overview-${subject.id}`}>
+      <h4 className="font-bold">Subject syllabus overview</h4>
+      <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Built only from the published source topics above. Review and edit it before saving to {subject.name}. The saved text is the school's reviewed overview, not the official document.</p>
+      <textarea className="mt-3 min-h-[140px] w-full" aria-label="Syllabus overview" value={shown} onChange={e => setText(e.target.value)} data-testid={`input-syllabus-${subject.id}`} />
+      <div className="mt-2 flex flex-wrap gap-2">
+        <Button variant="outline" disabled={!preview} onClick={() => setText(preview)} testId={`button-draft-syllabus-${subject.id}`}>{preview ? 'Draft from source topics' : 'No source topics to draft from'}</Button>
+        <Button disabled={update.isPending || text === null || !text.trim() || missingFootnote} onClick={() => update.mutate({ subjectId: subject.id, data: { description: text!.trim() }, params: { schoolId } }, { onSuccess: () => { setText(null); invalidate(); void qc.invalidateQueries({ queryKey: ['subjects', schoolId] }); } })} testId={`button-save-syllabus-${subject.id}`}>{update.isPending ? 'Saving...' : 'Save overview'}</Button>
+      </div>
+      {missingFootnote && <p className="mt-2 text-xs text-[hsl(var(--destructive))]" role="alert">Keep the source line at the end so the overview stays tied to its published source.</p>}
+      {update.error && <div className="mt-2"><Notice tone="error">{errMsg(update.error)}</Notice></div>}
+      {update.isSuccess && text === null && <p className="mt-2 text-xs">Saved to the subject.</p>}
+    </div>
+  );
+}

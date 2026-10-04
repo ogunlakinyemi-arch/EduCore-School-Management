@@ -151,6 +151,7 @@ export function AuthScreen({ mode }: { mode: 'sign-in' | 'sign-up' }) {
                 <option value="COMPANY_ACCOUNTANT">Company Accountant</option>
                 <option value="DEVICE_ACTIVATION_OFFICER">Device Activation Officer</option>
                 <option value="STAFF">Staff</option>
+                <option value="DRIVER">Driver</option>
                 <option value="PARENT">Parent</option>
                 <option value="STUDENT">Student</option>
                 <option value="PARTNER">Partner / Partner Administrator / Staff</option>

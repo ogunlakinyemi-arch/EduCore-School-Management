@@ -13,6 +13,7 @@ export const INVITABLE_SCHOOL_ROLES = [
   "TEACHER",
   "ACCOUNTANT",
   "STAFF",
+  "DRIVER",
   "PARENT",
   "STUDENT",
 ] as const satisfies readonly Role[];
@@ -298,7 +299,7 @@ async function ensureInviteProfile(client: any, input: InviteeInput, employeeNo:
     if (student.rows[0].userId) throw new AuthError(409, "This student profile is already linked to an account");
   }
 
-  if (input.role === "TEACHER" || input.role === "ACCOUNTANT" || input.role === "STAFF") {
+  if (input.role === "TEACHER" || input.role === "ACCOUNTANT" || input.role === "STAFF" || input.role === "DRIVER") {
     const employee = input.personId
       ? await client.query(
         `SELECT id,user_id AS "userId",employee_type AS "type",
@@ -430,7 +431,7 @@ async function ensureActivatedProfile(
     }
   }
 
-  if (input.role === "TEACHER" || input.role === "ACCOUNTANT" || input.role === "STAFF") {
+  if (input.role === "TEACHER" || input.role === "ACCOUNTANT" || input.role === "STAFF" || input.role === "DRIVER") {
     const employee = await client.query(
       `SELECT id,user_id AS "userId",employee_type AS "type",employment_status AS status,employee_no AS "employeeNo"
        FROM employees
@@ -707,7 +708,7 @@ export async function createSchoolInvitation(input: InviteeInput, actor: UserCon
       role: input.role,
       ...splitName(fullName),
       studentId: input.role === "STUDENT" ? input.studentId : null,
-      employeeNo: input.role === "TEACHER" || input.role === "ACCOUNTANT" || input.role === "STAFF" ? employeeNo : null,
+      employeeNo: input.role === "TEACHER" || input.role === "ACCOUNTANT" || input.role === "STAFF" || input.role === "DRIVER" ? employeeNo : null,
     },
   };
 
@@ -1770,7 +1771,7 @@ async function reserveReplacementAttempt(input: {
       }
     }
 
-    if (input.role === "TEACHER" || input.role === "ACCOUNTANT" || input.role === "STAFF") {
+    if (input.role === "TEACHER" || input.role === "ACCOUNTANT" || input.role === "STAFF" || input.role === "DRIVER") {
       const employee = await client.query(
         `SELECT id,user_id AS "userId",employee_type AS type FROM employees
          WHERE school_id=$1 AND lower(email)=lower($2) ORDER BY id FOR UPDATE`,
@@ -1803,7 +1804,7 @@ async function reserveReplacementAttempt(input: {
       firstName,
       lastName,
       studentId: input.role === "STUDENT" ? input.marker.studentId : null,
-      employeeNo: input.role === "TEACHER" || input.role === "ACCOUNTANT" || input.role === "STAFF" ? input.marker.employeeNo : null,
+      employeeNo: input.role === "TEACHER" || input.role === "ACCOUNTANT" || input.role === "STAFF" || input.role === "DRIVER" ? input.marker.employeeNo : null,
       replacementAttemptId: input.attemptId,
     };
     const attemptMetadata = {
@@ -2180,7 +2181,7 @@ async function markReplacementAttemptDispatching(
         await client.query(`UPDATE parents SET email=$1 WHERE id=$2`, [metadata.invitedEmail, parent.rows[0].id]);
       }
     }
-    if (metadata.role === "TEACHER" || metadata.role === "ACCOUNTANT" || metadata.role === "STAFF") {
+    if (metadata.role === "TEACHER" || metadata.role === "ACCOUNTANT" || metadata.role === "STAFF" || metadata.role === "DRIVER") {
       const employee = await client.query(
         `SELECT id,user_id AS "userId",employee_type AS type FROM employees
          WHERE school_id=$1 AND lower(email)=lower($2) ORDER BY id FOR UPDATE`,
@@ -2555,6 +2556,7 @@ const MANAGEABLE_SCHOOL_INVITATION_ROLES = [
   "PARENT",
   "STUDENT",
   "STAFF",
+  "DRIVER",
 ] as const satisfies readonly InvitationRole[];
 
 type ManageableSchoolInvitationRole = (typeof MANAGEABLE_SCHOOL_INVITATION_ROLES)[number];
@@ -2816,14 +2818,14 @@ async function replaceSchoolUserInvitationUnderGuard(input: {
     .join(" ") || oldEmail;
   const studentId = role === "STUDENT" ? marker.studentId : null;
   const employeeNo =
-    (role === "TEACHER" || role === "ACCOUNTANT" || role === "STAFF") &&
+    (role === "TEACHER" || role === "ACCOUNTANT" || role === "STAFF" || role === "DRIVER") &&
     typeof marker.employeeNo === "string" &&
     /^INV-[A-F0-9]{16}$/.test(marker.employeeNo)
       ? marker.employeeNo
       : null;
   if (
     (role === "STUDENT" && (!Number.isInteger(studentId) || Number(studentId) < 1)) ||
-    ((role === "TEACHER" || role === "STAFF") &&
+    ((role === "TEACHER" || role === "STAFF" || role === "DRIVER") &&
       (typeof employeeNo !== "string" || !/^INV-[A-F0-9]{16}$/.test(employeeNo)))
   ) {
     throw new AuthError(409, "Role-specific activation details are missing; this invitation cannot be safely replaced");
@@ -2882,7 +2884,7 @@ export function acceptedInvitationFromMetadata(metadata: unknown, email: string)
     throw new AuthError(403, "This invitation does not match the authenticated account");
   }
   if (
-    (invite.role === "TEACHER" || invite.role === "STAFF") &&
+    (invite.role === "TEACHER" || invite.role === "STAFF" || invite.role === "DRIVER") &&
     (typeof invite.employeeNo !== "string" || !/^INV-[A-F0-9]{16}$/.test(invite.employeeNo))
   ) {
     throw new AuthError(403, "This invitation is incomplete");

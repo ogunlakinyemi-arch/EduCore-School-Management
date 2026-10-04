@@ -34,6 +34,87 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /student/attendance-periods:
+    get:
+      operationId: getOwnAttendancePeriods
+      tags: [attendance]
+      responses:
+        "200":
+          description: Academic periods from the authenticated student's school
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamilyAttendancePeriods" }
+  /parent/children/{studentId}/attendance-periods:
+    get:
+      operationId: getChildAttendancePeriods
+      tags: [attendance]
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Academic periods from this active linked child's school
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamilyAttendancePeriods" }
+        "404": { description: Not an authorized linked child }
+  /library/permissions:
+    get:
+      operationId: getLibraryPermissions
+      tags: [library]
+      parameters:
+        - in: query
+          name: schoolId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Current account's live school-library capabilities
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [canManageLoans, canManageCatalogue, canAssignStaff]
+                properties:
+                  canManageLoans: { type: boolean }
+                  canManageCatalogue: { type: boolean }
+                  canAssignStaff: { type: boolean }
+  /library/staff:
+    get:
+      operationId: listLibraryStaff
+      tags: [library]
+      parameters:
+        - in: query
+          name: schoolId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Admin sees school duties; other viewers see only their own duties
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LibraryStaffDuty" }
+  /driver/transport:
+    get:
+      operationId: getDriverTransport
+      tags: [transport]
+      summary: Read the active driver's own routes and assigned riders
+      parameters:
+        - in: query
+          name: schoolId
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Own-school driver transport without grades or financial data
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DriverTransportView" }
+        "403": { description: Active Driver role required }
+        "404": { description: Active bound driver employee not found }
   /schools/{schoolId}/security/access:
     $ref: "./school-security-core.yaml#/paths/~1schools~1{schoolId}~1security~1access"
   /schools/{schoolId}/security/eligible-devices:
@@ -5974,7 +6055,7 @@ components:
         id: { type: integer }
         role:
           type: string
-          enum: [PLATFORM_OWNER, SCHOOL_ADMIN, TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF, PARTNER, DEVICE_ACTIVATION_OFFICER]
+          enum: [PLATFORM_OWNER, SCHOOL_ADMIN, TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF, DRIVER, PARTNER, DEVICE_ACTIVATION_OFFICER]
         schoolId: { type: ["integer", "null"] }
         status:
           type: string
@@ -5998,7 +6079,7 @@ components:
                 studentId: { type: integer, minimum: 1 }
             - type: object
               properties:
-                role: { type: string, enum: [TEACHER, ACCOUNTANT, STAFF, PARENT] }
+                role: { type: string, enum: [TEACHER, ACCOUNTANT, STAFF, DRIVER, PARENT] }
               not:
                 required: [studentId]
       properties:
@@ -6007,7 +6088,7 @@ components:
         fullName: { type: string, minLength: 2, maxLength: 120 }
         email: { type: string, format: email, maxLength: 254 }
         phone: { type: string, minLength: 8, maxLength: 25 }
-        role: { type: string, enum: [TEACHER, ACCOUNTANT, STAFF, PARENT, STUDENT] }
+        role: { type: string, enum: [TEACHER, ACCOUNTANT, STAFF, DRIVER, PARENT, STUDENT] }
     SchoolAdministratorResult:
       type: object
       required: [status, email, schoolId, role]
@@ -6015,7 +6096,7 @@ components:
         status: { type: string, enum: [DISPATCH_REQUESTED, ACTIVE] }
         email: { type: string, format: email }
         schoolId: { type: integer }
-        role: { type: string, enum: [SCHOOL_ADMIN, TEACHER, ACCOUNTANT, STAFF, PARENT, STUDENT] }
+        role: { type: string, enum: [SCHOOL_ADMIN, TEACHER, ACCOUNTANT, STAFF, DRIVER, PARENT, STUDENT] }
         invitationId: { type: string }
         expiresAt: { type: string, format: date-time }
         dispatchStatus: { type: string, enum: [REQUEST_ACCEPTED] }
@@ -6088,7 +6169,7 @@ components:
         email: { type: string, format: email }
         fullName: { type: ["string", "null"] }
         schoolId: { type: integer }
-        role: { type: string, enum: [TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF] }
+        role: { type: string, enum: [TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF, DRIVER] }
         status: { type: string, enum: [PENDING, EXPIRED, RECOVERY_REQUIRED] }
         clerkStatus: { type: ["string", "null"], enum: [pending, expired, null] }
         isCurrent: { type: boolean, const: true }
@@ -6105,7 +6186,7 @@ components:
         previousInviteRevoked: { type: boolean }
         email: { type: string, format: email }
         schoolId: { type: integer }
-        role: { type: string, enum: [TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF] }
+        role: { type: string, enum: [TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF, DRIVER] }
         dispatchStatus: { type: string, const: REQUEST_ACCEPTED }
         deliveryStatus: { type: string, const: UNVERIFIED }
         expiresAt: { type: ["string", "null"], format: date-time }
@@ -6118,7 +6199,7 @@ components:
         attemptId: { type: string }
         invitationId: { type: ["string", "null"] }
         email: { type: string, format: email }
-        role: { type: string, enum: [SCHOOL_ADMIN, TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF] }
+        role: { type: string, enum: [SCHOOL_ADMIN, TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF, DRIVER] }
         clerkStatus: { type: ["string", "null"], enum: [pending, accepted, expired, revoked, null] }
         previousInviteRevoked: { type: boolean }
         recoveryState: { type: string, enum: [PREPARED, REVOCATION_REJECTED, REVOCATION_UNKNOWN, DISPATCHING, DISPATCH_REJECTED, OUTCOME_UNKNOWN, MULTIPLE_MATCHES, COMPLETED] }
@@ -6330,7 +6411,7 @@ components:
         schoolId: { type: integer, minimum: 1 }
         role:
           type: string
-          enum: [TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF]
+          enum: [TEACHER, ACCOUNTANT, PARENT, STUDENT, STAFF, DRIVER]
     PlatformMembershipInput:
       type: object
       required: [email, role]
@@ -6339,6 +6420,105 @@ components:
         role:
           type: string
           enum: [PLATFORM_OWNER]
+    FamilyAttendancePeriods:
+      type: object
+      required: [sessions, terms]
+      properties:
+        sessions:
+          type: array
+          items: { $ref: "#/components/schemas/FamilyAcademicPeriod" }
+        terms:
+          type: array
+          items:
+            allOf:
+              - { $ref: "#/components/schemas/FamilyAcademicPeriod" }
+              - type: object
+                required: [academicSessionId]
+                properties:
+                  academicSessionId: { type: integer }
+    FamilyAcademicPeriod:
+      type: object
+      required: [id, name, startDate, endDate]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+    LibraryStaffDuty:
+      type: object
+      required: [id, schoolId, userId, isActive, canManageCatalogue, employeeId, employeeNo, employeeType, name, employmentStatus, accountStatus]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        userId: { type: integer }
+        isActive: { type: boolean }
+        canManageCatalogue: { type: boolean }
+        employeeId: { type: integer }
+        employeeNo: { type: string }
+        employeeType: { type: string }
+        name: { type: string }
+        employmentStatus: { type: string }
+        accountStatus: { type: string }
+    DriverTransportView:
+      type: object
+      required: [employee, routes, assignments]
+      properties:
+        employee:
+          type: object
+          required: [employeeId, employeeNo, name, schoolId, schoolName]
+          properties:
+            employeeId: { type: integer }
+            employeeNo: { type: string }
+            name: { type: string }
+            phone: { type: ["string", "null"] }
+            photo: { type: ["string", "null"], format: uri-reference }
+            schoolId: { type: integer }
+            schoolName: { type: string }
+        routes:
+          type: array
+          items: { $ref: "#/components/schemas/DriverTransportRoute" }
+        assignments:
+          type: array
+          items: { $ref: "#/components/schemas/DriverTransportRider" }
+    DriverTransportRoute:
+      type: object
+      required: [id, schoolId, name, busId, busName, registrationNumber, busCapacity, status, weekdays, departureTime, arrivalTime, driverEmployeeId, driverName, stops]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        name: { type: string }
+        busId: { type: integer }
+        busName: { type: string }
+        registrationNumber: { type: string }
+        busCapacity: { type: integer }
+        status: { type: string }
+        weekdays: { type: array, items: { type: string } }
+        departureTime: { type: string }
+        arrivalTime: { type: string }
+        driverEmployeeId: { type: integer }
+        driverName: { type: string }
+        stops: { type: array, items: { $ref: "#/components/schemas/TransportStop" } }
+    DriverTransportRider:
+      type: object
+      required: [id, studentId, studentName, admissionNo, className, section, routeId, routeName, busId, busName, registrationNumber, pickupName, dropoffName, departureTime, arrivalTime, status, effectiveDate]
+      properties:
+        id: { type: integer }
+        studentId: { type: integer }
+        studentName: { type: string }
+        admissionNo: { type: string }
+        className: { type: string }
+        section: { type: string }
+        routeId: { type: integer }
+        routeName: { type: string }
+        busId: { type: integer }
+        busName: { type: string }
+        registrationNumber: { type: string }
+        pickupName: { type: string }
+        dropoffName: { type: string }
+        departureTime: { type: string }
+        arrivalTime: { type: string }
+        status: { type: string, enum: [ACTIVE] }
+        effectiveDate: { type: string, format: date }
     ParentInput:
       type: object
       required: [name, email, phone]

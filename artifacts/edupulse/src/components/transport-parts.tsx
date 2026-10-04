@@ -73,7 +73,7 @@ export function AssignmentSummary({ a }: { a: Pick<TransportAssignment, 'busName
         <div className="eyebrow flex items-center gap-1.5"><Bus size={13} />Bus and route</div>
         <div className="mt-2 font-bold">{a.busName} <span className="font-medium text-[hsl(var(--muted-foreground))]">({a.registrationNumber})</span></div>
         <div className="text-sm">{a.routeName}</div>
-        <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Driver: {a.driverName}</div>
+        <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Driver: {a.driverName}{(a as { driverPhone?: string | null }).driverPhone ? ` - ${(a as { driverPhone?: string | null }).driverPhone}` : ''}</div>
       </div>
       <div className="rounded-2xl bg-[hsl(var(--secondary))] p-4">
         <div className="eyebrow flex items-center gap-1.5"><MapPin size={13} />Stops and times</div>

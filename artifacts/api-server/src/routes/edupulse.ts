@@ -501,7 +501,7 @@ router.get("/school-users/activation-candidates", async (req, res) => {
     const role = String(req.query.role ?? "").toUpperCase();
     const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
     if (!Number.isSafeInteger(schoolId) || schoolId < 1) throw new AuthError(400, "A valid school is required");
-    if (!["SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "STAFF", "PARENT", "STUDENT"].includes(role)) {
+    if (!["SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "STAFF", "DRIVER", "PARENT", "STUDENT"].includes(role)) {
       throw new AuthError(400, "Choose a supported school role");
     }
     assertSchoolAccess(req, schoolId, ["SCHOOL_ADMIN"]);

@@ -39,7 +39,7 @@ export function IconLogo({ compact = false }: { compact?: boolean }) {
   );
 }
 
-type AppRole = 'PLATFORM_OWNER' | 'SCHOOL_ADMIN' | 'TEACHER' | 'ACCOUNTANT' | 'PARENT' | 'STUDENT' | 'STAFF' | 'PARTNER' | 'DEVICE_ACTIVATION_OFFICER' | 'COMPANY_ACCOUNTANT';
+type AppRole = 'PLATFORM_OWNER' | 'SCHOOL_ADMIN' | 'TEACHER' | 'ACCOUNTANT' | 'PARENT' | 'STUDENT' | 'STAFF' | 'PARTNER' | 'DEVICE_ACTIVATION_OFFICER' | 'COMPANY_ACCOUNTANT' | 'DRIVER';
 type NavItem = { href: string; label: string; icon: typeof Activity; roles?: AppRole[] };
 
 const nav: NavItem[] = [
@@ -72,6 +72,7 @@ const nav: NavItem[] = [
   { href: '/finance-workspace', label: 'Finance Workflows', icon: CircleDollarSign, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'ACCOUNTANT'] },
   { href: '/my-payslips', label: 'My Payslips', icon: ReceiptText, roles: ['TEACHER', 'STAFF'] },
   { href: '/transport', label: 'School Transport', icon: Smartphone, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN'] },
+  { href: '/driver-transport', label: 'Driver Transport', icon: Smartphone, roles: ['DRIVER'] },
   { href: '/my-transport', label: 'My Transport', icon: Smartphone, roles: ['PARENT', 'STUDENT'] },
   { href: '/reporting', label: 'Reporting', icon: FileSpreadsheet, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STUDENT'] },
   { href: '/security', label: 'School Security', icon: ShieldCheck, roles: ['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'STAFF', 'TEACHER'] },

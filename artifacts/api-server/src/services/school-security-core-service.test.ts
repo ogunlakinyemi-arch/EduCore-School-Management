@@ -440,10 +440,14 @@ describe("student card-loss parent event", () => {
     }));
     const audit = calls.find(({ sql }) => sql.includes("INSERT INTO audit_logs"));
     expect(audit?.values).not.toContain("PRIVATE-UID");
+    const ownerNotice = calls.find(({ sql }) => sql.includes("INSERT INTO platform_notifications"));
+    expect(ownerNotice?.sql).toContain("sm.role='PLATFORM_OWNER'");
+    expect(ownerNotice?.values?.join(" ")).not.toContain("PRIVATE-UID");
 
     cardStatus = "lost";
     await expect(markSecurityCardLost(cardRequest, 22, 61, "Reported missing"))
       .resolves.toMatchObject({ status: "LOST" });
     expect(emitDomainParentEvent).toHaveBeenCalledTimes(1);
+    expect(calls.filter(({ sql }) => sql.includes("INSERT INTO platform_notifications"))).toHaveLength(1);
   });
 });

@@ -171,7 +171,7 @@ const schoolInvitationSchema = z.object({
   fullName: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
   phone: z.string().optional(),
-  role: z.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STAFF', 'PARENT', 'STUDENT']),
+  role: z.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STAFF', 'DRIVER', 'PARENT', 'STUDENT']),
 });
 
 async function postAuthInvitation(path: string, data: Record<string, unknown>) {
@@ -464,6 +464,7 @@ function SchoolInvitationForm({
             <option value="TEACHER">Teacher</option>
             <option value="ACCOUNTANT">Accountant</option>
             <option value="STAFF">Staff</option>
+            <option value="DRIVER">Driver</option>
             <option value="PARENT">Parent</option>
             <option value="STUDENT">Student</option>
           </select>

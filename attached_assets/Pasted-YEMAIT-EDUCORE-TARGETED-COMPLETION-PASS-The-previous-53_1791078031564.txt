@@ -1,0 +1,557 @@
+YEMAIT EDUCORE — TARGETED COMPLETION PASS
+
+The previous 53-issue correction pass was partially completed and verified.
+
+DO NOT rerun or rebuild all 53 issues.
+
+Several issues have already been corrected and verified. Preserve those changes and focus only on the outstanding items below, with special priority on the broken Student → Bus/Transport linking.
+
+IMPORTANT:
+
+- Development only.
+- Do NOT publish.
+- Do NOT access or modify Production.
+- Do NOT reset, reseed, wipe or recreate the database.
+- Do NOT delete existing working data.
+- Do NOT rebuild working modules.
+- Inspect the existing implementation and fix the actual root cause.
+- Use minimal targeted changes.
+- Reuse existing database tables, relationships, APIs, services, schemas, components and authentication.
+- Do not create duplicate transport/student systems.
+- Preserve tenant isolation, RBAC, audit logs and existing working functionality.
+- Use additive migration only if genuinely necessary.
+
+==================================================
+
+1. CRITICAL — STUDENT → BUS/TRANSPORT LINKING
+   ==================================================
+
+The current Student/Rider → Bus linking is still NOT functioning correctly.
+
+Fix the existing Transport Management workflow.
+
+The required relationship is:
+
+School
+→ Bus/Vehicle
+→ Route
+→ Stops
+→ Driver
+→ Student/Rider Assignment
+
+A School Admin must be able to select an EXISTING student and assign that student/rider to an existing bus/vehicle and applicable route.
+
+IMPORTANT:
+
+- Do NOT manually create another student record.
+- Do NOT manually type a student identity.
+- Do NOT create a duplicate parent/student relationship.
+- Use the existing Student record.
+- Use the existing school/tenant relationship.
+- Do not allow a student from another school to appear.
+- Do not allow the same student to be accidentally assigned twice to the same active transport arrangement.
+
+STUDENT SELECTION
+
+When School Admin opens:
+Transport → Student/Rider Registration/Assignment
+
+The Student dropdown/list must load existing students belonging to the current school.
+
+Display useful information such as:
+
+- Student name
+- Admission/registration number
+- Current class
+- Section/stream where applicable
+- Linked parent where already available
+
+Selecting a student must use the student's existing database ID.
+
+Do NOT use student name as the primary relationship key.
+
+==================================================
+2. BUS SELECTION
+
+The Bus/Vehicle dropdown must load existing vehicles belonging to the current school.
+
+Display:
+
+- Vehicle/bus name or identifier
+- Registration number
+- Vehicle type
+- Capacity
+- Active/inactive status
+- Assigned driver where available
+
+Only active/eligible buses should be selectable for a new active assignment.
+
+Do not show another school's vehicles.
+
+==================================================
+3. DRIVER LINKING
+
+The driver must come from existing Employee records where:
+
+Employee Type = Driver
+
+Do NOT create a new driver record during student transport assignment.
+
+Display:
+
+- Driver name
+- Employee number
+- Phone where authorized
+
+Preserve the existing Driver Portal relationship.
+
+==================================================
+4. ROUTE AND STOP LINKING
+
+After selecting the bus, allow the Admin to select the applicable existing route.
+
+Then allow:
+
+- Pickup stop
+- Dropoff stop
+- Pickup time
+- Dropoff time
+
+Only stops belonging to the selected route should appear.
+
+Do not allow a stop from another route.
+
+==================================================
+5. SAVE THE ACTUAL RELATIONSHIP
+
+When the Admin saves:
+
+Student
+
++ Bus/Vehicle
++ Route
++ Stop(s)
++ Driver
++ Pickup/Dropoff details
+
+must be persisted using the existing relational database structure.
+
+Do not only update frontend state.
+
+After saving:
+
+- Refresh the page.
+- The assignment must still exist.
+- It must appear in the Student transport view.
+- It must appear in the Parent transport view for that student's linked parent.
+- It must appear in the Driver Portal for the assigned driver.
+- It must appear in School Admin transport management.
+
+If the existing schema already has the necessary relationship, fix the API/service/query instead of creating another table.
+
+==================================================
+6. STUDENT TRANSPORT VIEW
+
+Student → Transport must display the student's actual assigned transport.
+
+Show where available:
+
+- Bus/vehicle
+- Registration number
+- Driver
+- Driver contact
+- Route
+- Pickup stop
+- Dropoff stop
+- Pickup time
+- Dropoff time
+- Transport status
+- Relevant notices
+
+Read-only for Student.
+
+Do not show unrelated students.
+
+==================================================
+7. PARENT TRANSPORT VIEW
+
+Parent → Transport must resolve:
+
+Parent
+→ Linked Child
+→ Student Transport Assignment
+
+For multiple children, allow the parent to switch between linked children.
+
+Each child must show only that child's actual transport assignment.
+
+Show:
+
+- Bus
+- Registration
+- Driver
+- Driver phone where authorized
+- Route
+- Pickup stop
+- Dropoff stop
+- Pickup/dropoff times
+- Status/notices
+
+Do not show another child's transport information.
+
+==================================================
+8. DRIVER PORTAL
+
+Driver → My Bus / My Route / Assigned Students must resolve:
+
+Driver
+→ Assigned Vehicle
+→ Route
+→ Assigned Students/Riders
+
+The driver should see only students assigned to their active transport assignment.
+
+If a student is linked to Bus A and Driver A, that student must appear for Driver A.
+
+If the student is moved to another bus/route/driver, the old active assignment must no longer appear as active for the previous driver.
+
+Do not expose unrelated students.
+
+==================================================
+9. CAPACITY VALIDATION
+
+If the existing vehicle has a capacity field:
+
+- Count active student/rider assignments.
+- Prevent assigning beyond capacity.
+- Show a clear error before saving.
+
+Do not silently exceed capacity.
+
+If no capacity exists in the current system, do not invent a complex new capacity system unless required by the existing transport design.
+
+==================================================
+10. DUPLICATE ASSIGNMENT PROTECTION
+
+Prevent duplicate active assignments for the same student where the business rules require one active transport assignment.
+
+If the student already has an active assignment:
+
+- Show the existing assignment.
+- Allow Admin to update/reassign it where authorized.
+- Do not create another duplicate active record.
+
+Historical assignments should remain available where the existing system supports transport history.
+
+==================================================
+11. TENANT ISOLATION
+
+This is critical.
+
+Student, Bus, Driver, Route and Stop must all belong to the same school/tenant before the assignment can be saved.
+
+Reject cross-school combinations at the backend.
+
+Do not rely only on frontend filtering.
+
+Test:
+School A student + School B bus = DENIED.
+
+School A student + School A bus = ALLOWED.
+
+==================================================
+12. TRANSPORT API/QUERY INVESTIGATION
+
+Before changing the database, trace the entire existing workflow:
+
+Frontend form
+→ React Query/API
+→ OpenAPI/generated client where applicable
+→ Backend route
+→ Validation
+→ Service
+→ Database insert/update
+→ Database relationship
+→ Read/query endpoint
+→ Frontend display
+
+Find exactly where the link is being lost.
+
+Check especially for:
+
+- Wrong student ID field.
+- Wrong vehicle/bus ID field.
+- Wrong route ID.
+- Wrong foreign key.
+- School/tenant filter incorrectly removing the record.
+- Request schema mismatch.
+- Response schema mismatch.
+- React Query cache not invalidated.
+- Save request succeeding but read query returning no record.
+- Incorrect relationship joins.
+- Null/optional fields causing the assignment to disappear.
+- Driver/vehicle assignment mismatch.
+- Frontend using names instead of IDs.
+- Incorrect current-school/session filter.
+
+Fix the actual root cause.
+
+==================================================
+13. REMAINING OUTSTANDING ITEMS
+
+After fixing Student → Bus linking, complete only the remaining items from the previous status report:
+
+A. DRIVER PORTAL / INVITATION MAPPING
+
+- Correct Driver invitation/account mapping.
+- Driver creates own password.
+- Correct Driver role.
+- Correct Employee → Driver Portal relationship.
+- Assigned vehicle/route/students visible.
+- No unrelated access.
+
+B. CURRICULUM-BACKED SYLLABUS
+
+- Connect Subject → existing Curriculum Library.
+- Generate/retrieve applicable syllabus overview.
+- School Admin can review/edit before saving.
+- Do not invent official Nigerian curriculum.
+- Preserve existing Curriculum Library.
+
+C. ATTENDANCE FILTERS
+Complete Student/Parent filters:
+
+- Today
+- Week
+- Month
+- Custom date range
+- Term
+- Academic session
+
+Parent must be able to switch between linked children.
+
+Read-only.
+
+D. LIBRARY
+Complete outstanding:
+
+- Librarian assignment using existing employee.
+- Teacher + Librarian same account.
+- Category dropdown.
+- Add New Category.
+- Author/publisher handling.
+- Preserve existing book data.
+
+E. OPERATIONS
+Complete:
+
+- Staff Type → Staff Member.
+- Existing employee records.
+- Multiple staff where appropriate.
+- Correct portal visibility.
+
+F. ASSET CATEGORIES
+Complete standard categories and school-specific custom categories without destroying existing categories.
+
+G. SCHOOL ADMIN LOST/STOLEN NFC CARD REPORTING
+Complete:
+
+- Report Lost/Stolen.
+- Card immediately becomes unusable.
+- Notify Platform Owner.
+- ₦2,000 replacement workflow.
+- Owner handles replacement.
+- New UID for replacement.
+- Preserve old card history.
+
+H. DASHBOARDS
+Complete the outstanding dashboard/navigation work.
+
+Do NOT remove functions.
+
+Make dashboards readable and simple.
+
+Keep role-based navigation for:
+
+- School Admin
+- Teacher
+- Parent
+- Student
+- Accountant
+- Driver
+- Partner
+
+Existing authorized functions must remain accessible.
+
+I. ID CARD LAYOUT VERIFICATION
+Complete outstanding card-layout corrections/verification:
+
+- CR80 dimensions.
+- Front/back.
+- Correct school logo.
+- Correct person photo.
+- Correct name.
+- Correct admission/employee ID.
+- Correct role.
+- Correct NFC/card reference where applicable.
+- No clipping.
+- No overlap.
+- No distortion.
+- Long names/IDs supported.
+
+J. AUTOMATIC SCHOOL BRANDING
+Complete verification of:
+
+School
+→ Uploaded Logo
+→ Appropriate Primary Brand Colour
+→ ID Card Theme
+
+Use one suitable primary colour from the school's logo.
+
+No random colours.
+
+No cross-school branding.
+
+K. OWNER/PARTNER SCHOOL INVITATION
+Verify:
+
+- School name entered.
+- School Code automatically generated.
+- School Code unique and permanent.
+- Owner/Partner does not manually enter the code.
+- Owner/Partner does not manually create the School Admin password.
+- Secure invitation is sent.
+- School Admin creates their own password.
+- Resending invitation does not create duplicate school/account/code.
+
+Reuse existing Clerk authentication/invitation system.
+
+==================================================
+14. DO NOT REDO COMPLETED WORK
+
+The previous correction pass already verified substantial work, including:
+
+- Class creation.
+- Automatic employee code.
+- Automatic subject code.
+- Automatic school code.
+- Parent relationship correction.
+- Calendar/duty/payslip SQL corrections.
+- Parent dashboard/timetable route aliases.
+- Bank dropdown/bank code.
+- Managed photo validation.
+- Owner-only official-card controls.
+- Grouped Admin/Teacher navigation.
+
+Do not unnecessarily modify these areas.
+
+Only touch them if the current outstanding issue proves that a regression exists.
+
+==================================================
+15. DATABASE SAFETY
+
+The previous run applied:
+
+0051_parent_profile_preferences.sql
+
+in Development only.
+
+Preserve this migration and its data.
+
+Do not create another migration unless the existing schema genuinely lacks a required relationship.
+
+If a migration is required:
+
+- Make it additive.
+- Explain why it is necessary.
+- Do not delete existing data.
+- Do not recreate existing tables.
+
+==================================================
+16. TESTING
+
+The previous run achieved:
+
+Backend:
+1,317 passed
+0 failed
+76 skipped
+
+Frontend:
+352 passed
+0 failed
+
+PostgreSQL:
+9 query-plan checks passed
+1 temporary-table persistence check passed
+
+Typechecks:
+Shared/backend/frontend passed.
+
+Do not invalidate these results unnecessarily.
+
+After the targeted fixes, run focused regression tests.
+
+CRITICAL TESTS:
+
+1. Create/select existing student.
+2. Select existing bus.
+3. Select eligible driver.
+4. Select route.
+5. Select route stop.
+6. Save assignment.
+7. Refresh page.
+8. Assignment remains.
+9. Student sees transport.
+10. Parent sees linked child's transport.
+11. Driver sees assigned student.
+12. School Admin sees assignment.
+13. Reassign student to another bus.
+14. Old driver no longer sees student as active.
+15. New driver sees student.
+16. Prevent duplicate active assignment.
+17. Prevent cross-school student/bus assignment.
+18. Prevent invalid route/stop combination.
+19. Capacity validation where supported.
+20. Test multiple children for Parent.
+21. Test inactive/revoked bus/driver where applicable.
+22. Test lost/replaced NFC card workflow.
+23. Test Owner/Partner school invitation.
+24. Test School Admin creates own password.
+25. Test ID-card permissions.
+26. Test school-specific card branding.
+
+Run:
+
+- Focused backend tests.
+- Focused frontend tests.
+- PostgreSQL checks where applicable.
+- Typechecks.
+- Build checks.
+
+==================================================
+17. FINAL REPORT
+
+Return a concise report containing:
+
+- Student → Bus linking root cause.
+- Exact fix applied.
+- Remaining outstanding items completed.
+- Issues still incomplete, if any.
+- Files changed.
+- Database migrations changed/created.
+- Tests passed/failed/skipped.
+- Typecheck status.
+- Build status.
+- Confirmation that nothing was published.
+- Confirmation that Production was not accessed or modified.
+- Confirmation that no existing working data was reset, deleted or reseeded.
+
+Do not claim genuine Owner, Partner, payment or invitation verification unless it was actually performed.
+
+MOST IMPORTANT:
+
+Fix the existing Student → Bus/Vehicle/Rider relationship first and verify it end-to-end through School Admin → Student → Bus → Route → Driver → Student Portal → Parent Portal → Driver Portal.
+
+Do not merely make the button appear to work. Confirm that the relationship is actually persisted in the Development database and can be retrieved after refresh.

@@ -117,3 +117,47 @@ export function buildFeePlanRequest(schoolId: number, assignmentId: number, f: {
     },
   } as const;
 }
+
+/* ---- Driver role and bus-first route selection ---- */
+export type RouteExtras = { busStatus?: string | null; driverEmploymentStatus?: string | null; driverEmployeeNo?: string | null; driverPhone?: string | null; busMake?: string | null };
+export type PickerRoute = TransportRoute & RouteExtras;
+
+/** Returns a reason the route cannot take new riders, or null when eligible. */
+export function routeBlock(r: PickerRoute | undefined, currentReservedBusId?: number): string | null {
+  if (!r) return null;
+  if (r.status === 'INACTIVE') return 'This route is inactive.';
+  if (r.busStatus && r.busStatus !== 'ACTIVE') return 'This bus is not active.';
+  if (r.driverEmploymentStatus && r.driverEmploymentStatus !== 'ACTIVE') return 'The route driver is not currently employed.';
+  const others = r.reservedPassengerCount - (r.busId === currentReservedBusId ? 1 : 0);
+  if (others >= r.busCapacity) return 'This bus is full.';
+  return null;
+}
+
+export function busesFromRoutes(routes: PickerRoute[]) {
+  const m = new Map<number, PickerRoute>();
+  routes.forEach(r => { if (!m.has(r.busId)) m.set(r.busId, r); });
+  return [...m.values()];
+}
+
+export function routesForBus(routes: PickerRoute[], busId: string) {
+  return routes.filter(r => String(r.busId) === busId && r.status !== 'INACTIVE');
+}
+
+export function driverAudience(context: ContextLike): boolean {
+  if (!context || context.isPlatformOwner) return false;
+  return active(context.roles, 'DRIVER');
+}
+
+export function driverSchools(context: ContextLike): number[] {
+  if (!context || context.isPlatformOwner) return [];
+  return [...new Set((context.roles ?? []).filter(r => r.role === 'DRIVER' && r.status === 'ACTIVE' && r.schoolId).map(r => r.schoolId as number))];
+}
+
+/** Every existing bus is listed; only ACTIVE ones are selectable. */
+export function busChoice(bus: Pick<TransportBus, 'status' | 'capacity' | 'passengerCount'> & { reservedPassengerCount?: number }, routes: Array<{ busId: number; status?: string | null }> & unknown[], busId: number, currentReservedBusId?: number) {
+  const status = bus.status ?? 'ACTIVE';
+  const full = (bus.reservedPassengerCount ?? bus.passengerCount) - (busId === currentReservedBusId ? 1 : 0) >= bus.capacity;
+  const disabled = status !== 'ACTIVE' || full;
+  const activeRoutes = (routes as Array<{ busId: number; status?: string | null }>).filter(r => r.busId === busId && r.status !== 'INACTIVE').length;
+  return { disabled, activeRoutes, note: status !== 'ACTIVE' ? `Not available (${status.toLowerCase()})` : full ? 'Full - no available seats' : activeRoutes ? '' : 'no active route' };
+}

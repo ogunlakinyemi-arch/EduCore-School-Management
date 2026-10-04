@@ -27,6 +27,12 @@ When additive migrations introduce immutable security/history tables, explicitly
 
 **How to apply:** Recognize only reviewed trigger definitions, retain scoped deletion and original-data checks, and compare original columns when additive defaults change whole-row JSON fingerprints.
 
+Inspect the live catalog before extending QA fixtures; never infer student or employee columns from frontend display fields.
+
+**Why:** Fixture SQL failed repeatedly because student enrollment/class history is separate from student profiles and registration lengths differ between entities. Provider creations survive a rolled-back SQL transaction.
+
+**How to apply:** Read the actual columns and constraints first, persist each accepted provider identity before further work, and reconcile positively owned orphaned identities instead of creating duplicate accounts.
+
 Derive family-test ownership from the actual active relationship graph, not numbered fixture identities or a presumed ordering of children.
 
 **Why:** A reusable fixture's guardian assignments differed from the initial test description. Successful reads under two different parents did not establish paid-sibling access under one parent.

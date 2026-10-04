@@ -1238,6 +1238,11 @@ components:
         - type: object
           required: [id, schoolId, busName, registrationNumber, busCapacity, passengerCount, driverName, reservedPassengerCount, isOverCapacity, stops, createdAt, updatedAt]
           properties:
+            busStatus: { type: string, enum: [ACTIVE, INACTIVE, MAINTENANCE] }
+            busMake: { type: ["string", "null"] }
+            driverEmployeeNo: { type: string }
+            driverPhone: { type: ["string", "null"] }
+            driverEmploymentStatus: { type: string }
             id:
               type: integer
             schoolId:
@@ -1475,6 +1480,8 @@ components:
           type: integer
         driverName:
           type: string
+        driverPhone:
+          type: ["string", "null"]
         pickup:
           $ref: "#/components/schemas/TransportStop"
         dropoff:
@@ -1676,6 +1683,8 @@ components:
           type: string
         driverName:
           type: string
+        driverPhone:
+          type: ["string", "null"]
         pickup:
           $ref: "#/components/schemas/TransportStop"
         dropoff:

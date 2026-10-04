@@ -29,6 +29,8 @@ export interface TransportAssignment {
   routeName: string;
   driverEmployeeId: number;
   driverName: string;
+  /** @nullable */
+  driverPhone?: string | null;
   pickup: TransportStop;
   dropoff: TransportStop;
   schedule: TransportSchedule;

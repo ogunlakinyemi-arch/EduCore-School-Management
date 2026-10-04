@@ -119,8 +119,12 @@ async function isLibraryStaff(req: Request, schoolId: number, catalogue = false)
   const result = await pool.query(
     `SELECT 1
        FROM library_staff ls
+       JOIN employees e ON e.school_id=ls.school_id AND e.user_id=ls.user_id
+         AND UPPER(e.employment_status)='ACTIVE'
        JOIN school_memberships sm ON sm.school_id=ls.school_id AND sm.user_id=ls.user_id
          AND sm.status='ACTIVE' AND sm.role IN ('STAFF','TEACHER')
+         AND ((sm.role='TEACHER' AND UPPER(e.employee_type)='TEACHER')
+           OR (sm.role='STAFF' AND UPPER(e.employee_type)<>'TEACHER'))
       WHERE ls.school_id=$1 AND ls.user_id=$2 AND ls.is_active=true
         AND ($3::boolean=false OR ls.can_manage_catalogue=true)
       LIMIT 1`,
@@ -597,6 +601,36 @@ router.patch("/library/copies/:copyId/status", asyncRoute(async (req, res) => {
     return { id: copyId, schoolId, bookId: Number(current.bookId), previousStatus: current.status, status };
   });
   res.json(result);
+}));
+
+router.get("/library/permissions", asyncRoute(async (req, res) => {
+  const schoolId = schoolIdFrom(req.query.schoolId);
+  await requireSchoolViewer(req, schoolId);
+  res.json({
+    canManageLoans: await isLibraryStaff(req, schoolId),
+    canManageCatalogue: await isLibraryStaff(req, schoolId, true),
+    canAssignStaff: schoolRole(req, schoolId).includes("SCHOOL_ADMIN"),
+  });
+}));
+
+router.get("/library/staff", asyncRoute(async (req, res) => {
+  const schoolId = schoolIdFrom(req.query.schoolId);
+  await requireSchoolViewer(req, schoolId);
+  const admin = schoolRole(req, schoolId).includes("SCHOOL_ADMIN");
+  const result = await pool.query(
+    `SELECT ls.id,ls.school_id AS "schoolId",ls.user_id AS "userId",ls.is_active AS "isActive",
+            ls.can_manage_catalogue AS "canManageCatalogue",e.id AS "employeeId",
+            e.employee_no AS "employeeNo",e.employee_type AS "employeeType",
+            concat_ws(' ',e.first_name,e.middle_name,e.last_name) AS name,
+            e.employment_status AS "employmentStatus",au.status AS "accountStatus"
+       FROM library_staff ls
+       JOIN employees e ON e.school_id=ls.school_id AND e.user_id=ls.user_id
+       JOIN app_users au ON au.id=ls.user_id
+      WHERE ls.school_id=$1 AND ($2::boolean OR ls.user_id=$3)
+      ORDER BY e.last_name,e.first_name,e.id`,
+    [schoolId, admin, getUserContext(req).user.id],
+  );
+  res.json(result.rows);
 }));
 
 router.post("/library/staff", asyncRoute(async (req, res) => {

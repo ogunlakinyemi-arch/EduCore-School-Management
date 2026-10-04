@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Boxes, Building2, ClipboardList, Wrench, Plus, Pencil, BarChart3, Settings2, Tag, Package, History } from 'lucide-react';
-import { useGetAuthorizedContext } from '@workspace/api-client-react';
+import { useGetAuthorizedContext, useListEmployees } from '@workspace/api-client-react';
 import { AddButton, RecordDialog, StatusLine, WorkspaceList, WorkspaceTabs, phase9Label, type FormField } from '@/components/phase9-workspace';
 import { usePhase9List, usePhase9Save, toPayload, type Phase9Record } from '@/hooks/use-phase9-api';
-import { operationRecordPayload, staffNextStatuses, adminNextStatuses } from './operations-contract';
+import { operationRecordPayload, staffNextStatuses, adminNextStatuses, assigneeOptions, missingStandardCategories } from './operations-contract';
+const STAFF_TYPES = [{ value: 'TEACHER', label: 'Teacher' }, { value: 'STAFF', label: 'Non-teaching staff' }, { value: 'CLEANER', label: 'Cleaner' }, { value: 'ASSISTANT', label: 'Assistant' }, { value: 'ACCOUNTANT', label: 'Accountant' }, { value: 'DRIVER', label: 'Driver' }];
 import { Button, EmptyState, ErrorState, Metric, Modal, PageHeading, SkeletonPage, TenantPicker, date, time, useTenant } from '@/components/shared';
 
 type Area = 'assets' | 'maintenance' | 'facilities' | 'tasks' | 'categories' | 'reports' | 'settings';
@@ -23,14 +24,14 @@ const fieldSets: Record<'assets' | 'maintenance' | 'facilities' | 'tasks' | 'cat
     { key: 'name', label: 'Asset name', required: true }, { key: 'assetCode', label: 'Asset code' }, { key: 'description', label: 'Description', type: 'textarea' },
     { key: 'quantity', label: 'Quantity', type: 'number', min: 0 }, { key: 'unit', label: 'Unit' }, { key: 'location', label: 'Location' },
     select('condition', 'Condition', conditions), select('status', 'Status', statuses.assets),
-    { key: 'assignedToUserId', label: 'Assigned user ID', type: 'number', min: 1 },
+    { key: 'staffType', label: 'Staff type', type: 'select', options: STAFF_TYPES }, { key: 'assignedToUserId', label: 'Staff member', type: 'select' },
     { key: 'acquiredOn', label: 'Acquired on', type: 'date' }, { key: 'notes', label: 'Notes', type: 'textarea' },
   ],
   maintenance: [
     { key: 'title', label: 'Request title', required: true }, { key: 'description', label: 'What needs attention?', type: 'textarea', required: true },
     { key: 'location', label: 'Location' }, { key: 'assetId', label: 'Related asset ID', type: 'number', min: 1 },
     select('priority', 'Priority', priority), select('status', 'Status', statuses.maintenance),
-    { key: 'assignedToUserId', label: 'Assigned user ID', type: 'number', min: 1 }, { key: 'dueOn', label: 'Due on', type: 'date' },
+    { key: 'staffType', label: 'Staff type', type: 'select', options: STAFF_TYPES }, { key: 'assignedToUserId', label: 'Staff member', type: 'select' }, { key: 'dueOn', label: 'Due on', type: 'date' },
     { key: 'notes', label: 'Notes', type: 'textarea' },
   ],
   facilities: [
@@ -40,7 +41,7 @@ const fieldSets: Record<'assets' | 'maintenance' | 'facilities' | 'tasks' | 'cat
   ],
   tasks: [
     { key: 'title', label: 'Task title', required: true }, { key: 'description', label: 'Description', type: 'textarea' },
-    { key: 'assignedToUserId', label: 'Assigned user ID', type: 'number', min: 1 }, select('priority', 'Priority', priority),
+    { key: 'staffType', label: 'Staff type', type: 'select', options: STAFF_TYPES }, { key: 'assignedToUserId', label: 'Staff member', type: 'select' }, select('priority', 'Priority', priority),
     select('status', 'Status', statuses.tasks), { key: 'dueOn', label: 'Due on', type: 'date' }, { key: 'notes', label: 'Notes', type: 'textarea' },
   ],
   categories: [
@@ -94,7 +95,8 @@ function OperationsRecords({ schoolId, area, admin, currentUserId }: { schoolId:
   const query = usePhase9List<Row[]>(path, schoolId, area === 'assets' ? { ...(status ? { status } : {}), ...(search ? { search } : {}) } : area === 'maintenance' && status ? { status } : {});
   const save = usePhase9Save(path, schoolId);
   const rows = query.data?.filter(row => area === 'assets' || (!status || row.status === status) && (!search || `${row.name ?? row.title ?? ''} ${row.location ?? ''}`.toLowerCase().includes(search.toLowerCase())));
-  const fields = fieldSets[area].filter(field => (editing !== 'new' || !['status', 'isActive'].includes(field.key)) && (admin || !['status', 'assignedToUserId'].includes(field.key)) && !(area === 'categories' && editing !== 'new' && field.key === 'categoryType'));
+  const staff = useListEmployees({ schoolId, status: 'ACTIVE' }, { query: { enabled: admin && !!schoolId && (area === 'assets' || area === 'maintenance' || area === 'tasks'), queryKey: ['ops-staff', schoolId] } });
+  const fields = fieldSets[area].map(f => f.key === 'assignedToUserId' ? { ...f, optionsFor: (form: Record<string, string | number | boolean | null>) => assigneeOptions(staff.data, String(form.staffType ?? '')) } : f).filter(field => (editing !== 'new' || !['status', 'isActive'].includes(field.key)) && (admin || !['status', 'assignedToUserId'].includes(field.key)) && !(area === 'categories' && editing !== 'new' && field.key === 'categoryType'));
   if (admin && area !== 'categories' && area !== 'facilities') fields.splice(1, 0, { key: 'categoryId', label: 'Category', type: 'select', options: (categories.data ?? []).filter(item => item.isActive && item.categoryType === (area === 'assets' ? 'ASSET' : area === 'maintenance' ? 'MAINTENANCE' : 'TASK')).map(item => ({ value: String(item.id), label: item.name })) });
   if (editing && editing !== 'new' && (area === 'maintenance' || area === 'tasks') && editing.status) {
     const statusField = fields.find(field => field.key === 'status');
@@ -116,7 +118,14 @@ function OperationsRecords({ schoolId, area, admin, currentUserId }: { schoolId:
   };
   const canCreate = admin || area === 'maintenance';
   const title = area === 'maintenance' ? 'Maintenance requests' : area === 'assets' ? 'Assets & inventory' : phase9Label(area);
+  const missing = area === 'categories' && admin ? missingStandardCategories(query.data as never) : [];
+  const addStandard = async () => {
+    setFailure('');
+    try { for (const name of missing) await save.mutateAsync({ method: 'POST', data: { categoryType: 'ASSET', name } }); }
+    catch (cause) { setFailure(cause instanceof Error ? cause.message : 'Could not add the standard categories.'); }
+  };
   return <>
+    {area === 'categories' && admin && !query.isLoading && missing.length > 0 && <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[hsl(var(--border))] p-4 text-sm" data-testid="standard-categories"><span>{missing.length} standard asset categories are not in this school yet. Existing categories are not changed.</span><Button variant="outline" disabled={save.isPending} onClick={() => void addStandard()} testId="button-add-standard-categories">{save.isPending ? 'Adding...' : 'Add standard asset categories'}</Button></div>}
     {failure && !editing && <div role="alert" className="mb-4 rounded-xl border border-[hsl(var(--destructive)/.2)] bg-[hsl(var(--destructive)/.08)] px-4 py-3 text-sm text-[hsl(var(--destructive))]">{failure}</div>}
     <WorkspaceList index={`operations-${area}`} title={title} empty={area === 'maintenance' ? 'Report a facility or equipment issue to begin tracking it.' : 'Add the first record to establish your school ledger.'}
       rows={rows} loading={query.isLoading} error={query.isError} retry={() => void query.refetch()}

@@ -15,4 +15,5 @@ export const SchoolUserInvitationRole = {
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
 } as const;

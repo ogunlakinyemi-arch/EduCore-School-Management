@@ -5,10 +5,18 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { TransportRouteBusStatus } from './transportRouteBusStatus';
 import type { TransportRouteInput } from './transportRouteInput';
 import type { TransportStop } from './transportStop';
 
-export type TransportRoute = TransportRouteInput & {
+export type TransportRoute = TransportRouteInput & ({
+  busStatus?: TransportRouteBusStatus;
+  /** @nullable */
+  busMake?: string | null;
+  driverEmployeeNo?: string;
+  /** @nullable */
+  driverPhone?: string | null;
+  driverEmploymentStatus?: string;
   id: number;
   schoolId: number;
   busName: string;
@@ -21,4 +29,4 @@ export type TransportRoute = TransportRouteInput & {
   stops: TransportStop[];
   createdAt: Date;
   updatedAt: Date;
-};
+});

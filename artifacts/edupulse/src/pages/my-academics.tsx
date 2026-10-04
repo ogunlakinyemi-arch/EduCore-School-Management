@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { PageHeading, StatusPill, SkeletonPage, ErrorState, EmptyState, TenantPicker, useTenant, cx, date } from '@/components/shared';
 import { 
-  useListMyAcademicAssignments, useListMyAcademicResults, useListMyAcademicReportCards, useGetMyAcademicTimetable
+  useListMyAcademicAssignments, useListMyAcademicResults, useListMyAcademicReportCards, useGetMyAcademicTimetable, useGetOwnAttendance
 } from '@workspace/api-client-react';
 import { BookOpen, GraduationCap, Calendar, BarChart3, Clock, CheckCircle2 } from 'lucide-react';
+import { AttendanceRangeControls, rangeFor, type Range } from '@/components/attendance-range';
 import { SchoolDocumentHeader, SchoolDocumentPrintButton, useSchoolDocumentBranding } from '@/components/school-document';
 
 export function MyAcademicsPage() {
   const { schoolId } = useTenant();
-  const [tab, setTab] = useState<'assignments' | 'results' | 'cards' | 'timetable'>('assignments');
+  const [tab, setTab] = useState<'assignments' | 'results' | 'cards' | 'timetable' | 'attendance'>('assignments');
   
   return (
     <div className="fade-up">
@@ -23,7 +24,7 @@ export function MyAcademicsPage() {
       ) : (
         <>
           <div className="mb-6 flex gap-2 border-b border-[hsl(var(--border))] overflow-x-auto">
-            {[{id: 'assignments', label: 'Assignments'}, {id: 'results', label: 'Results'}, {id: 'cards', label: 'Report Cards'}, {id: 'timetable', label: 'Timetable'}].map(t => (
+            {[{id: 'assignments', label: 'Assignments'}, {id: 'results', label: 'Results'}, {id: 'cards', label: 'Report Cards'}, {id: 'timetable', label: 'Timetable'}, {id: 'attendance', label: 'Attendance'}].map(t => (
               <button 
                 key={t.id} 
                 onClick={() => setTab(t.id as any)} 
@@ -36,9 +37,25 @@ export function MyAcademicsPage() {
           {tab === 'assignments' && <MyAssignmentsView schoolId={schoolId} />}
           {tab === 'results' && <MyResultsView schoolId={schoolId} />}
           {tab === 'cards' && <MyReportCardsView schoolId={schoolId} />}
+          {tab === 'attendance' && <MyAttendanceView />}
           {tab === 'timetable' && <MyTimetableView schoolId={schoolId} />}
         </>
       )}
+    </div>
+  );
+}
+
+function MyAttendanceView() {
+  const [range, setRange] = useState<Range | null>(() => rangeFor('week', new Date()));
+  const q = useGetOwnAttendance(range ?? undefined, { query: { queryKey: ['my-attendance', range], enabled: !!range } });
+  return (
+    <div className="panel overflow-hidden" data-testid="my-attendance">
+      <AttendanceRangeControls periodsPath="/student/attendance-periods" onChange={r => setRange(r)} />
+      {!range ? <p className="p-6 text-center text-sm text-[hsl(var(--muted-foreground))]">Choose a complete period.</p>
+        : q.isLoading ? <p className="p-6 text-center text-sm">Loading attendance...</p>
+        : q.isError ? <ErrorState retry={() => q.refetch()} message="Attendance could not be loaded." />
+        : !(q.data as unknown[] | undefined)?.length ? <p className="p-6 text-center text-sm text-[hsl(var(--muted-foreground))]">No attendance records in this period.</p>
+        : <div className="divide-y divide-[hsl(var(--border)/.7)]">{(q.data as Array<{ id: number; date: string; eventType: string; status: string }>).map(e => <div key={e.id} className="flex items-center justify-between p-4 text-sm"><span className="font-bold">{date(e.date)} - {e.eventType.replaceAll('_', ' ').toLowerCase()}</span><StatusPill value={e.status} /></div>)}</div>}
     </div>
   );
 }

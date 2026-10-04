@@ -13,6 +13,7 @@ export const SchoolUserInvitationInput4b96100Role = {
   TEACHER: 'TEACHER',
   ACCOUNTANT: 'ACCOUNTANT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
 } as const;

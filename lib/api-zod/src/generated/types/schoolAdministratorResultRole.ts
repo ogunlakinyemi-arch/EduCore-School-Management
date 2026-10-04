@@ -14,6 +14,7 @@ export const SchoolAdministratorResultRole = {
   TEACHER: 'TEACHER',
   ACCOUNTANT: 'ACCOUNTANT',
   STAFF: 'STAFF',
+  DRIVER: 'DRIVER',
   PARENT: 'PARENT',
   STUDENT: 'STUDENT',
 } as const;

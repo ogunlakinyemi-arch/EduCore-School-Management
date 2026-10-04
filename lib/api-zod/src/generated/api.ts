@@ -8,6 +8,162 @@
 import * as zod from 'zod';
 
 
+export const GetOwnAttendancePeriodsResponse = zod.object({
+  "sessions": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date()
+})),
+  "terms": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date()
+}).and(zod.object({
+  "academicSessionId": zod.number().int()
+})))
+})
+
+
+
+
+
+export const GetChildAttendancePeriodsParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const GetChildAttendancePeriodsResponse = zod.object({
+  "sessions": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date()
+})),
+  "terms": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date()
+}).and(zod.object({
+  "academicSessionId": zod.number().int()
+})))
+})
+
+
+
+
+
+export const GetLibraryPermissionsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const GetLibraryPermissionsResponse = zod.object({
+  "canManageLoans": zod.boolean(),
+  "canManageCatalogue": zod.boolean(),
+  "canAssignStaff": zod.boolean()
+})
+
+
+
+
+
+export const ListLibraryStaffQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ListLibraryStaffResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "userId": zod.number().int(),
+  "isActive": zod.boolean(),
+  "canManageCatalogue": zod.boolean(),
+  "employeeId": zod.number().int(),
+  "employeeNo": zod.string(),
+  "employeeType": zod.string(),
+  "name": zod.string(),
+  "employmentStatus": zod.string(),
+  "accountStatus": zod.string()
+})
+export const ListLibraryStaffResponse = zod.array(ListLibraryStaffResponseItem)
+
+
+/**
+ * @summary Read the active driver's own routes and assigned riders
+ */
+
+
+
+export const GetDriverTransportQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional()
+})
+
+export const getDriverTransportResponseRoutesItemStopsItemOneNameMin = 2;
+export const getDriverTransportResponseRoutesItemStopsItemOneNameMax = 120;
+
+
+export const getDriverTransportResponseRoutesItemStopsItemOneNotesMax = 500;
+
+export const getDriverTransportResponseRoutesItemStopsItemOneIsActiveDefault = true;
+
+export const GetDriverTransportResponse = zod.object({
+  "employee": zod.object({
+  "employeeId": zod.number().int(),
+  "employeeNo": zod.string(),
+  "name": zod.string(),
+  "phone": zod.string().nullish(),
+  "photo": zod.string().nullish(),
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string()
+}),
+  "routes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "name": zod.string(),
+  "busId": zod.number().int(),
+  "busName": zod.string(),
+  "registrationNumber": zod.string(),
+  "busCapacity": zod.number().int(),
+  "status": zod.string(),
+  "weekdays": zod.array(zod.string()),
+  "departureTime": zod.string(),
+  "arrivalTime": zod.string(),
+  "driverEmployeeId": zod.number().int(),
+  "driverName": zod.string(),
+  "stops": zod.array(zod.object({
+  "name": zod.string().min(getDriverTransportResponseRoutesItemStopsItemOneNameMin).max(getDriverTransportResponseRoutesItemStopsItemOneNameMax),
+  "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
+  "sequence": zod.number().int().min(1),
+  "notes": zod.string().max(getDriverTransportResponseRoutesItemStopsItemOneNotesMax).nullish(),
+  "isActive": zod.boolean().default(getDriverTransportResponseRoutesItemStopsItemOneIsActiveDefault)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "routeId": zod.number().int(),
+  "schoolId": zod.number().int()
+})))
+})),
+  "assignments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "routeId": zod.number().int(),
+  "routeName": zod.string(),
+  "busId": zod.number().int(),
+  "busName": zod.string(),
+  "registrationNumber": zod.string(),
+  "pickupName": zod.string(),
+  "dropoffName": zod.string(),
+  "departureTime": zod.string(),
+  "arrivalTime": zod.string(),
+  "status": zod.enum(['ACTIVE']),
+  "effectiveDate": zod.coerce.date()
+}))
+})
+
+
 /**
  * School Admins receive all permissions, Platform Owners receive read-only oversight, and staff receive only explicit current school grants.
  * @summary Return the current actor’s live effective security permissions
@@ -6862,7 +7018,7 @@ export const GetCurrentUserResponse = zod.object({
   "name": zod.string(),
   "roles": zod.array(zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'DRIVER', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 }))
@@ -6874,7 +7030,7 @@ export const GetCurrentUserResponse = zod.object({
  */
 export const GetCurrentUserRolesResponseItem = zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'DRIVER', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 })
@@ -6910,7 +7066,7 @@ export const GetAuthorizedContextResponse = zod.object({
   "isPlatformOwner": zod.boolean(),
   "roles": zod.array(zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'DRIVER', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 }))
@@ -7189,7 +7345,7 @@ export const ListUsersResponseItem = zod.object({
   "createdAt": zod.string().optional(),
   "memberships": zod.array(zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'DRIVER', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 }))
@@ -7207,7 +7363,7 @@ export const CreatePlatformMembershipBody = zod.object({
 
 export const CreatePlatformMembershipResponse = zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'DRIVER', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 })
@@ -7301,21 +7457,21 @@ export const InviteSchoolUserBody = zod.union([zod.object({
   "role": zod.literal("STUDENT").optional(),
   "studentId": zod.number().int().min(1)
 }),zod.object({
-  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'STAFF', 'PARENT']).optional()
+  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'STAFF', 'DRIVER', 'PARENT']).optional()
 })]).and(zod.object({
   "personId": zod.number().int().min(1).describe('Existing same-school profile; identity is resolved by the server'),
   "schoolId": zod.number().int().min(1),
   "fullName": zod.string().min(inviteSchoolUserBodyTwoFullNameMin).max(inviteSchoolUserBodyTwoFullNameMax).optional(),
   "email": zod.string().email().max(inviteSchoolUserBodyTwoEmailMax).optional(),
   "phone": zod.string().min(inviteSchoolUserBodyTwoPhoneMin).max(inviteSchoolUserBodyTwoPhoneMax).optional(),
-  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'STAFF', 'PARENT', 'STUDENT'])
+  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'STAFF', 'DRIVER', 'PARENT', 'STUDENT'])
 }))
 
 export const InviteSchoolUserResponse = zod.object({
   "status": zod.enum(['DISPATCH_REQUESTED', 'ACTIVE']),
   "email": zod.string().email(),
   "schoolId": zod.number().int(),
-  "role": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STAFF', 'PARENT', 'STUDENT']),
+  "role": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STAFF', 'DRIVER', 'PARENT', 'STUDENT']),
   "invitationId": zod.string().optional(),
   "expiresAt": zod.coerce.date().optional(),
   "dispatchStatus": zod.enum(['REQUEST_ACCEPTED']).optional(),
@@ -7323,7 +7479,7 @@ export const InviteSchoolUserResponse = zod.object({
   "deliveryNote": zod.string().optional(),
   "membership": zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'DRIVER', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 }).optional()
@@ -7365,12 +7521,12 @@ export const ListSchoolUsersResponse = zod.array(ListSchoolUsersResponseItem)
 export const CreateSchoolMembershipBody = zod.object({
   "userId": zod.number().int().min(1),
   "schoolId": zod.number().int().min(1),
-  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF'])
+  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'DRIVER'])
 })
 
 export const CreateSchoolMembershipResponse = zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'DRIVER', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 })
@@ -7406,7 +7562,7 @@ export const CreateSchoolAdministratorResponse = zod.object({
   "status": zod.enum(['DISPATCH_REQUESTED', 'ACTIVE']),
   "email": zod.string().email(),
   "schoolId": zod.number().int(),
-  "role": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STAFF', 'PARENT', 'STUDENT']),
+  "role": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'STAFF', 'DRIVER', 'PARENT', 'STUDENT']),
   "invitationId": zod.string().optional(),
   "expiresAt": zod.coerce.date().optional(),
   "dispatchStatus": zod.enum(['REQUEST_ACCEPTED']).optional(),
@@ -7414,7 +7570,7 @@ export const CreateSchoolAdministratorResponse = zod.object({
   "deliveryNote": zod.string().optional(),
   "membership": zod.object({
   "id": zod.number().int(),
-  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
+  "role": zod.enum(['PLATFORM_OWNER', 'SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'DRIVER', 'PARTNER', 'DEVICE_ACTIVATION_OFFICER']),
   "schoolId": zod.number().int().nullish(),
   "status": zod.enum(['ACTIVE', 'INACTIVE'])
 }).optional()
@@ -7547,7 +7703,7 @@ export const ListSchoolUserInvitationsResponse = zod.object({
   "email": zod.string().email(),
   "fullName": zod.string().nullable(),
   "schoolId": zod.number().int(),
-  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'DRIVER']),
   "status": zod.enum(['PENDING', 'EXPIRED', 'RECOVERY_REQUIRED']),
   "clerkStatus": zod.union([zod.literal('pending'),zod.literal('expired'),zod.literal(null)]).nullable(),
   "isCurrent": zod.literal(true),
@@ -7588,7 +7744,7 @@ export const EditSchoolUserInvitationResponse = zod.object({
   "previousInviteRevoked": zod.boolean(),
   "email": zod.string().email(),
   "schoolId": zod.number().int(),
-  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'DRIVER']),
   "dispatchStatus": zod.literal("REQUEST_ACCEPTED"),
   "deliveryStatus": zod.literal("UNVERIFIED"),
   "expiresAt": zod.coerce.date().nullable(),
@@ -7618,7 +7774,7 @@ export const ResendSchoolUserInvitationResponse = zod.object({
   "previousInviteRevoked": zod.boolean(),
   "email": zod.string().email(),
   "schoolId": zod.number().int(),
-  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'DRIVER']),
   "dispatchStatus": zod.literal("REQUEST_ACCEPTED"),
   "deliveryStatus": zod.literal("UNVERIFIED"),
   "expiresAt": zod.coerce.date().nullable(),
@@ -7646,7 +7802,7 @@ export const ReconcileSchoolAdministratorInvitationResponse = zod.union([zod.obj
   "attemptId": zod.string(),
   "invitationId": zod.string().nullable(),
   "email": zod.string().email(),
-  "role": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "role": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'DRIVER']),
   "clerkStatus": zod.union([zod.literal('pending'),zod.literal('accepted'),zod.literal('expired'),zod.literal('revoked'),zod.literal(null)]).nullish(),
   "previousInviteRevoked": zod.boolean().optional(),
   "recoveryState": zod.enum(['PREPARED', 'REVOCATION_REJECTED', 'REVOCATION_UNKNOWN', 'DISPATCHING', 'DISPATCH_REJECTED', 'OUTCOME_UNKNOWN', 'MULTIPLE_MATCHES', 'COMPLETED'])
@@ -7669,7 +7825,7 @@ export const ReconcileSchoolAdministratorInvitationResponse = zod.union([zod.obj
   "previousInviteRevoked": zod.boolean(),
   "email": zod.string().email(),
   "schoolId": zod.number().int(),
-  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'DRIVER']),
   "dispatchStatus": zod.literal("REQUEST_ACCEPTED"),
   "deliveryStatus": zod.literal("UNVERIFIED"),
   "expiresAt": zod.coerce.date().nullable(),
@@ -7697,7 +7853,7 @@ export const ReconcileSchoolUserInvitationResponse = zod.union([zod.object({
   "attemptId": zod.string(),
   "invitationId": zod.string().nullable(),
   "email": zod.string().email(),
-  "role": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "role": zod.enum(['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'DRIVER']),
   "clerkStatus": zod.union([zod.literal('pending'),zod.literal('accepted'),zod.literal('expired'),zod.literal('revoked'),zod.literal(null)]).nullish(),
   "previousInviteRevoked": zod.boolean().optional(),
   "recoveryState": zod.enum(['PREPARED', 'REVOCATION_REJECTED', 'REVOCATION_UNKNOWN', 'DISPATCHING', 'DISPATCH_REJECTED', 'OUTCOME_UNKNOWN', 'MULTIPLE_MATCHES', 'COMPLETED'])
@@ -7720,7 +7876,7 @@ export const ReconcileSchoolUserInvitationResponse = zod.union([zod.object({
   "previousInviteRevoked": zod.boolean(),
   "email": zod.string().email(),
   "schoolId": zod.number().int(),
-  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF']),
+  "role": zod.enum(['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'DRIVER']),
   "dispatchStatus": zod.literal("REQUEST_ACCEPTED"),
   "deliveryStatus": zod.literal("UNVERIFIED"),
   "expiresAt": zod.coerce.date().nullable(),
@@ -20185,6 +20341,11 @@ export const ListTransportRoutesResponseItem = zod.object({
   "isActive": zod.boolean().default(listTransportRoutesResponseOneStopsItemIsActiveDefault)
 })).min(listTransportRoutesResponseOneStopsMin)
 }).and(zod.object({
+  "busStatus": zod.enum(['ACTIVE', 'INACTIVE', 'MAINTENANCE']).optional(),
+  "busMake": zod.string().nullish(),
+  "driverEmployeeNo": zod.string().optional(),
+  "driverPhone": zod.string().nullish(),
+  "driverEmploymentStatus": zod.string().optional(),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "busName": zod.string(),
@@ -20299,6 +20460,11 @@ export const CreateTransportRouteResponse = zod.object({
   "isActive": zod.boolean().default(createTransportRouteResponseOneStopsItemIsActiveDefault)
 })).min(createTransportRouteResponseOneStopsMin)
 }).and(zod.object({
+  "busStatus": zod.enum(['ACTIVE', 'INACTIVE', 'MAINTENANCE']).optional(),
+  "busMake": zod.string().nullish(),
+  "driverEmployeeNo": zod.string().optional(),
+  "driverPhone": zod.string().nullish(),
+  "driverEmploymentStatus": zod.string().optional(),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "busName": zod.string(),
@@ -20402,6 +20568,11 @@ export const UpdateTransportRouteResponse = zod.object({
   "isActive": zod.boolean().default(updateTransportRouteResponseOneStopsItemIsActiveDefault)
 })).min(updateTransportRouteResponseOneStopsMin)
 }).and(zod.object({
+  "busStatus": zod.enum(['ACTIVE', 'INACTIVE', 'MAINTENANCE']).optional(),
+  "busMake": zod.string().nullish(),
+  "driverEmployeeNo": zod.string().optional(),
+  "driverPhone": zod.string().nullish(),
+  "driverEmploymentStatus": zod.string().optional(),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "busName": zod.string(),
@@ -20790,6 +20961,7 @@ export const ListTransportAssignmentsResponseItem = zod.object({
   "routeName": zod.string(),
   "driverEmployeeId": zod.number().int(),
   "driverName": zod.string(),
+  "driverPhone": zod.string().nullish(),
   "pickup": zod.object({
   "name": zod.string().min(listTransportAssignmentsResponsePickupOneNameMin).max(listTransportAssignmentsResponsePickupOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
@@ -20946,6 +21118,7 @@ export const CreateTransportAssignmentResponse = zod.object({
   "routeName": zod.string(),
   "driverEmployeeId": zod.number().int(),
   "driverName": zod.string(),
+  "driverPhone": zod.string().nullish(),
   "pickup": zod.object({
   "name": zod.string().min(createTransportAssignmentResponsePickupOneNameMin).max(createTransportAssignmentResponsePickupOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
@@ -21079,6 +21252,7 @@ export const GetTransportAssignmentResponse = zod.object({
   "routeName": zod.string(),
   "driverEmployeeId": zod.number().int(),
   "driverName": zod.string(),
+  "driverPhone": zod.string().nullish(),
   "pickup": zod.object({
   "name": zod.string().min(getTransportAssignmentResponsePickupOneNameMin).max(getTransportAssignmentResponsePickupOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
@@ -21233,6 +21407,7 @@ export const UpdateTransportAssignmentResponse = zod.object({
   "routeName": zod.string(),
   "driverEmployeeId": zod.number().int(),
   "driverName": zod.string(),
+  "driverPhone": zod.string().nullish(),
   "pickup": zod.object({
   "name": zod.string().min(updateTransportAssignmentResponsePickupOneNameMin).max(updateTransportAssignmentResponsePickupOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
@@ -21389,6 +21564,7 @@ export const UpsertTransportAssignmentFeePlanResponse = zod.object({
   "routeName": zod.string(),
   "driverEmployeeId": zod.number().int(),
   "driverName": zod.string(),
+  "driverPhone": zod.string().nullish(),
   "pickup": zod.object({
   "name": zod.string().min(upsertTransportAssignmentFeePlanResponsePickupOneNameMin).max(upsertTransportAssignmentFeePlanResponsePickupOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
@@ -21537,6 +21713,7 @@ export const CancelTransportAssignmentFeePlanResponse = zod.object({
   "routeName": zod.string(),
   "driverEmployeeId": zod.number().int(),
   "driverName": zod.string(),
+  "driverPhone": zod.string().nullish(),
   "pickup": zod.object({
   "name": zod.string().min(cancelTransportAssignmentFeePlanResponsePickupOneNameMin).max(cancelTransportAssignmentFeePlanResponsePickupOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
@@ -21848,6 +22025,7 @@ export const GetChildTransportResponse = zod.object({
   "busCapacity": zod.number().int(),
   "routeName": zod.string(),
   "driverName": zod.string(),
+  "driverPhone": zod.string().nullish(),
   "pickup": zod.object({
   "name": zod.string().min(getChildTransportResponseAssignmentOnePickupOneNameMin).max(getChildTransportResponseAssignmentOnePickupOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),
@@ -22143,6 +22321,7 @@ export const GetOwnStudentTransportResponse = zod.object({
   "busCapacity": zod.number().int(),
   "routeName": zod.string(),
   "driverName": zod.string(),
+  "driverPhone": zod.string().nullish(),
   "pickup": zod.object({
   "name": zod.string().min(getOwnStudentTransportResponseAssignmentOnePickupOneNameMin).max(getOwnStudentTransportResponseAssignmentOnePickupOneNameMax),
   "stopType": zod.enum(['PICKUP', 'DROPOFF', 'BOTH']),

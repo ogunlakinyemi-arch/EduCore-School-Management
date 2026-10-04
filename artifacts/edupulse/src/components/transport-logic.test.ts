@@ -66,3 +66,50 @@ describe('capacity, errors and validation', () => {
     expect(t).toMatchObject({ buses: 3, capacity: 80, passengers: 45, revenue: 150, drivers: 3 });
   });
 });
+
+import { routeBlock, busesFromRoutes, routesForBus, driverAudience, driverSchools } from './transport-logic';
+describe('driver and bus-first routing', () => {
+  const r = (o: object) => ({ id: 1, busId: 2, status: 'ACTIVE', busCapacity: 10, reservedPassengerCount: 3, ...o }) as never;
+  it('blocks full, inactive-bus and unemployed-driver routes', () => {
+    expect(routeBlock(r({}))).toBeNull();
+    expect(routeBlock(r({ reservedPassengerCount: 10 }))).toMatch(/full/);
+    expect(routeBlock(r({ busStatus: 'MAINTENANCE' }))).toMatch(/bus/);
+    expect(routeBlock(r({ driverEmploymentStatus: 'TERMINATED' }))).toMatch(/driver/);
+  });
+  it('credits only the existing rider on their current reserved bus', () => {
+    const full = r({ busId: 2, reservedPassengerCount: 10 });
+    expect(routeBlock(full, 2)).toBeNull();
+    expect(routeBlock(full, 9)).toMatch(/full/);
+    expect(routeBlock(r({ busId: 2, reservedPassengerCount: 11 }), 2)).toMatch(/full/);
+  });
+  it('groups routes by bus', () => {
+    const rs = [r({ id: 1, busId: 2 }), r({ id: 2, busId: 2 }), r({ id: 3, busId: 5 })];
+    expect(busesFromRoutes(rs)).toHaveLength(2);
+    expect(routesForBus(rs, '2')).toHaveLength(2);
+  });
+  it('driver audience excludes owner', () => {
+    const roles = [{ role: 'DRIVER', status: 'ACTIVE', schoolId: 4 }];
+    expect(driverAudience({ roles })).toBe(true);
+    expect(driverAudience({ isPlatformOwner: true, roles })).toBe(false);
+    expect(driverSchools({ roles })).toEqual([4]);
+  });
+});
+
+import { busChoice } from './transport-logic';
+describe('bus picker choices', () => {
+  const bus = (status: string) => ({ status, capacity: 10, passengerCount: 1 }) as never;
+  it('lists a bus with no routes but explains it', () => {
+    const c = busChoice(bus('ACTIVE'), [], 7);
+    expect(c.disabled).toBe(false); expect(c.activeRoutes).toBe(0); expect(c.note).toMatch(/no active route/);
+  });
+  it('disables maintenance buses and counts routes', () => {
+    expect(busChoice(bus('MAINTENANCE'), [], 7).disabled).toBe(true);
+    expect(busChoice(bus('ACTIVE'), [{ busId: 7, status: 'ACTIVE' }, { busId: 7, status: 'INACTIVE' }], 7).activeRoutes).toBe(1);
+  });
+  it('disables a full target bus but permits an already-reserved rider to keep their seat', () => {
+    const full = { status: 'ACTIVE', capacity: 1, passengerCount: 1, reservedPassengerCount: 1 };
+    expect(busChoice(full, [], 7).disabled).toBe(true);
+    expect(busChoice(full, [], 7, 7).disabled).toBe(false);
+    expect(busChoice(full, [], 7, 8).disabled).toBe(true);
+  });
+});

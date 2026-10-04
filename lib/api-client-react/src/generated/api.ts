@@ -211,6 +211,7 @@ import type {
   DeviceSuspensionInput,
   DiscrepancyResolutionInput,
   DownloadPrintableNfcCardParams,
+  DriverTransportView,
   EligibleSecurityDevice,
   Employee,
   EmployeeInput,
@@ -228,6 +229,7 @@ import type {
   ExistingActivationCandidate,
   ExpectedVersion,
   FamilyAttendanceEvent,
+  FamilyAttendancePeriods,
   FeeAdjustment,
   FeeAdjustmentInput,
   FeeAssignmentInput,
@@ -271,10 +273,13 @@ import type {
   GetCommunicationPreferencesParams,
   GetCommunicationPushConfiguration200,
   GetCompanyPayrollReportParams,
+  GetDriverTransportParams,
   GetEmployeeParams,
   GetFeePaymentReceiptParams,
   GetFinanceSettingsParams,
   GetLessonNoteMonitoringParams,
+  GetLibraryPermissions200,
+  GetLibraryPermissionsParams,
   GetMyAcademicTimetableParams,
   GetMyStaffNfcPartnerCommissionsParams,
   GetMyStaffNfcSubscriptionsParams,
@@ -321,6 +326,7 @@ import type {
   LessonNoteReviewInput,
   LessonNoteTransitionInput,
   LessonNoteUpdate,
+  LibraryStaffDuty,
   LinkExistingParentChildrenParams,
   ListAcademicAssessmentTypesParams,
   ListAcademicAssessmentsParams,
@@ -357,6 +363,7 @@ import type {
   ListFeeProviderReconciliationEventsParams,
   ListFeeStructuresParams,
   ListLessonNotesParams,
+  ListLibraryStaffParams,
   ListMyAcademicAssignmentsParams,
   ListMyAcademicReportCardsParams,
   ListMyAcademicResultsParams,
@@ -759,6 +766,388 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetOwnAttendancePeriodsUrl = () => {
+
+
+
+
+  return `/api/student/attendance-periods`
+}
+
+export const getOwnAttendancePeriods = async ( options?: Parameters<typeof customFetch>[1]): Promise<FamilyAttendancePeriods> => {
+
+  return customFetch<FamilyAttendancePeriods>(getGetOwnAttendancePeriodsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOwnAttendancePeriodsQueryKey = () => {
+    return [
+    `/api/student/attendance-periods`
+    ] as const;
+    }
+
+
+export const getGetOwnAttendancePeriodsQueryOptions = <TData = Awaited<ReturnType<typeof getOwnAttendancePeriods>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnAttendancePeriods>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOwnAttendancePeriodsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnAttendancePeriods>>> = ({ signal }) => getOwnAttendancePeriods({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOwnAttendancePeriods>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOwnAttendancePeriodsQueryResult = NonNullable<Awaited<ReturnType<typeof getOwnAttendancePeriods>>>
+export type GetOwnAttendancePeriodsQueryError = ErrorType<unknown>
+
+
+
+export function useGetOwnAttendancePeriods<TData = Awaited<ReturnType<typeof getOwnAttendancePeriods>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOwnAttendancePeriods>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOwnAttendancePeriodsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetChildAttendancePeriodsUrl = (studentId: number,) => {
+
+
+
+
+  return `/api/parent/children/${studentId}/attendance-periods`
+}
+
+export const getChildAttendancePeriods = async (studentId: number, options?: Parameters<typeof customFetch>[1]): Promise<FamilyAttendancePeriods> => {
+
+  return customFetch<FamilyAttendancePeriods>(getGetChildAttendancePeriodsUrl(studentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChildAttendancePeriodsQueryKey = (studentId: number,) => {
+    return [
+    `/api/parent/children/${studentId}/attendance-periods`
+    ] as const;
+    }
+
+
+export const getGetChildAttendancePeriodsQueryOptions = <TData = Awaited<ReturnType<typeof getChildAttendancePeriods>>, TError = ErrorType<void>>(studentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChildAttendancePeriods>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChildAttendancePeriodsQueryKey(studentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChildAttendancePeriods>>> = ({ signal }) => getChildAttendancePeriods(studentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: studentId !== null && studentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChildAttendancePeriods>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChildAttendancePeriodsQueryResult = NonNullable<Awaited<ReturnType<typeof getChildAttendancePeriods>>>
+export type GetChildAttendancePeriodsQueryError = ErrorType<void>
+
+
+
+export function useGetChildAttendancePeriods<TData = Awaited<ReturnType<typeof getChildAttendancePeriods>>, TError = ErrorType<void>>(
+ studentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChildAttendancePeriods>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChildAttendancePeriodsQueryOptions(studentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetLibraryPermissionsUrl = (params: GetLibraryPermissionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/library/permissions?${stringifiedParams}` : `/api/library/permissions`
+}
+
+export const getLibraryPermissions = async (params: GetLibraryPermissionsParams, options?: Parameters<typeof customFetch>[1]): Promise<GetLibraryPermissions200> => {
+
+  return customFetch<GetLibraryPermissions200>(getGetLibraryPermissionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLibraryPermissionsQueryKey = (params?: GetLibraryPermissionsParams,) => {
+    return [
+    `/api/library/permissions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetLibraryPermissionsQueryOptions = <TData = Awaited<ReturnType<typeof getLibraryPermissions>>, TError = ErrorType<unknown>>(params: GetLibraryPermissionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLibraryPermissions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLibraryPermissionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLibraryPermissions>>> = ({ signal }) => getLibraryPermissions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLibraryPermissions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLibraryPermissionsQueryResult = NonNullable<Awaited<ReturnType<typeof getLibraryPermissions>>>
+export type GetLibraryPermissionsQueryError = ErrorType<unknown>
+
+
+
+export function useGetLibraryPermissions<TData = Awaited<ReturnType<typeof getLibraryPermissions>>, TError = ErrorType<unknown>>(
+ params: GetLibraryPermissionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLibraryPermissions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLibraryPermissionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListLibraryStaffUrl = (params: ListLibraryStaffParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/library/staff?${stringifiedParams}` : `/api/library/staff`
+}
+
+export const listLibraryStaff = async (params: ListLibraryStaffParams, options?: Parameters<typeof customFetch>[1]): Promise<LibraryStaffDuty[]> => {
+
+  return customFetch<LibraryStaffDuty[]>(getListLibraryStaffUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListLibraryStaffQueryKey = (params?: ListLibraryStaffParams,) => {
+    return [
+    `/api/library/staff`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListLibraryStaffQueryOptions = <TData = Awaited<ReturnType<typeof listLibraryStaff>>, TError = ErrorType<unknown>>(params: ListLibraryStaffParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLibraryStaff>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListLibraryStaffQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLibraryStaff>>> = ({ signal }) => listLibraryStaff(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listLibraryStaff>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListLibraryStaffQueryResult = NonNullable<Awaited<ReturnType<typeof listLibraryStaff>>>
+export type ListLibraryStaffQueryError = ErrorType<unknown>
+
+
+
+export function useListLibraryStaff<TData = Awaited<ReturnType<typeof listLibraryStaff>>, TError = ErrorType<unknown>>(
+ params: ListLibraryStaffParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLibraryStaff>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListLibraryStaffQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetDriverTransportUrl = (params?: GetDriverTransportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/driver/transport?${stringifiedParams}` : `/api/driver/transport`
+}
+
+/**
+ * @summary Read the active driver's own routes and assigned riders
+ */
+export const getDriverTransport = async (params?: GetDriverTransportParams, options?: Parameters<typeof customFetch>[1]): Promise<DriverTransportView> => {
+
+  return customFetch<DriverTransportView>(getGetDriverTransportUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDriverTransportQueryKey = (params?: GetDriverTransportParams,) => {
+    return [
+    `/api/driver/transport`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetDriverTransportQueryOptions = <TData = Awaited<ReturnType<typeof getDriverTransport>>, TError = ErrorType<void>>(params?: GetDriverTransportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDriverTransport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDriverTransportQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDriverTransport>>> = ({ signal }) => getDriverTransport(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDriverTransport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDriverTransportQueryResult = NonNullable<Awaited<ReturnType<typeof getDriverTransport>>>
+export type GetDriverTransportQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read the active driver's own routes and assigned riders
+ */
+
+export function useGetDriverTransport<TData = Awaited<ReturnType<typeof getDriverTransport>>, TError = ErrorType<void>>(
+ params?: GetDriverTransportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDriverTransport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDriverTransportQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetSchoolSecurityAccessUrl = (schoolId: number,) => {
 

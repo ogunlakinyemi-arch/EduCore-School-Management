@@ -700,7 +700,7 @@ router.post(
     }
     const created = await createSchoolInvitation(
       { schoolId, fullName, email, phone: phone || null, role: role as
-        "TEACHER" | "ACCOUNTANT" | "STAFF" | "PARENT" | "STUDENT",
+        "TEACHER" | "ACCOUNTANT" | "STAFF" | "DRIVER" | "PARENT" | "STUDENT",
         personId, studentId: role === "STUDENT" ? personId : null },
       getUserContext(req),
     );
@@ -714,7 +714,7 @@ router.post(
     const schoolId = Number(req.body?.schoolId);
     const userId = Number(req.body?.userId);
     const role = parseRole(req.body?.role);
-    if (!["TEACHER", "ACCOUNTANT", "STAFF", "PARENT", "STUDENT"].includes(role)) {
+    if (!["TEACHER", "ACCOUNTANT", "STAFF", "DRIVER", "PARENT", "STUDENT"].includes(role)) {
       throw new AuthError(403, "This role cannot be assigned by a School Administrator");
     }
     assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN"]);
@@ -818,7 +818,7 @@ router.patch(
   asyncRoute(async (req, res) => {
     const membershipId = Number(req.params.membershipId);
     const role = parseRole(req.body?.role);
-    if (!["TEACHER", "ACCOUNTANT", "STAFF", "PARENT", "STUDENT"].includes(role)) {
+    if (!["TEACHER", "ACCOUNTANT", "STAFF", "DRIVER", "PARENT", "STUDENT"].includes(role)) {
       throw new AuthError(403, "This role cannot be assigned by a School Administrator");
     }
     const existing = await pool.query(

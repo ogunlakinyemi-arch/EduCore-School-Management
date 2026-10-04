@@ -553,8 +553,10 @@ const routeRowSql = `
          r.departure_time AS "departureTime", r.arrival_time AS "arrivalTime",
          r.fare_minor AS "fareMinor", r.currency, r.status,
          b.name AS "busName", b.registration_number AS "registrationNumber",
-         b.capacity AS "busCapacity",
+         b.capacity AS "busCapacity", b.status AS "busStatus", b.make AS "busMake",
          e.first_name || ' ' || e.last_name AS "driverName",
+         e.employee_no AS "driverEmployeeNo", e.phone AS "driverPhone",
+         e.employment_status AS "driverEmploymentStatus",
          (SELECT count(DISTINCT a.student_id)::int
             FROM transport_routes passenger_route
             JOIN transport_student_assignments a
@@ -601,11 +603,16 @@ function mapRouteShape(row: JsonRecord) {
     busName: row.busName,
     registrationNumber: row.registrationNumber,
     busCapacity,
+    busStatus: row.busStatus,
+    busMake: row.busMake,
     passengerCount: Number(row.passengerCount ?? 0),
     reservedPassengerCount: passengers,
     isOverCapacity: passengers > busCapacity,
     driverEmployeeId: Number(row.driverEmployeeId),
     driverName: row.driverName,
+    driverEmployeeNo: row.driverEmployeeNo,
+    driverPhone: row.driverPhone,
+    driverEmploymentStatus: row.driverEmploymentStatus,
     weekdays: row.weekdays,
     departureTime: row.departureTime,
     arrivalTime: row.arrivalTime,
@@ -1471,6 +1478,7 @@ const transportAssignmentSelect = `
          b.capacity AS "busCapacity",
          r.driver_employee_id AS "driverEmployeeId",
          driver.first_name || ' ' || driver.last_name AS "driverName",
+         driver.phone AS "driverPhone",
          pickup.id AS "pickupId",pickup.name AS "pickupName",
          pickup.stop_type AS "pickupType",pickup.sequence AS "pickupSequence",
          pickup.notes AS "pickupNotes",pickup.is_active AS "pickupIsActive",
@@ -1713,6 +1721,7 @@ async function assignmentShape(
     routeName: String(row.routeName),
     driverEmployeeId: Number(row.driverEmployeeId),
     driverName: String(row.driverName),
+    driverPhone: row.driverPhone,
     pickup: stop(row.pickupId,row.pickupName,row.pickupType,row.pickupSequence,
       row.pickupNotes,row.pickupIsActive,row.pickupCreatedAt,row.pickupUpdatedAt),
     dropoff: stop(row.dropoffId,row.dropoffName,row.dropoffType,row.dropoffSequence,
@@ -1907,6 +1916,7 @@ router.post("/transport/assignments", run(async (req, res) => {
     const route = selectedRoute.rows[0];
     if (!route) throw new AuthError(404, "Transport route not found in this school");
     if (route.routeStatus !== "ACTIVE") throw new AuthError(409, "An inactive route cannot receive student assignments");
+    await requireSchoolDriver(client, schoolId, Number(route.driverEmployeeId), { lock: true });
     await assertStopPairUsesBusSchedule(client, schoolId, routeId, Number(route.busId), effectiveDate);
     const { pickup } = await validateRouteStopPair(client, schoolId, routeId, pickupStopId, dropoffStopId);
     if (!pickup) throw new AuthError(404, "Pickup stop not found");
@@ -2399,6 +2409,7 @@ router.patch("/transport/assignments/:assignmentId", run(async (req, res) => {
     const route = routeResult.rows[0];
     if (!route) throw new AuthError(404, "Transport route not found in this school");
     if (route.routeStatus !== "ACTIVE") throw new AuthError(409, "An inactive route cannot receive an active transport assignment");
+    await requireSchoolDriver(client, schoolId, Number(route.driverEmployeeId), { lock: true });
     const pickupStopId = body.pickupStopId === undefined
       ? Number(currentRaw.pickupId)
       : requireRecordId(body.pickupStopId, "pickupStopId");
@@ -2526,12 +2537,15 @@ async function familyStudent(
     throw new AuthError(403, "A Platform Owner cannot obtain a child's transport data through a secondary school role");
   }
   assertRoles(req, [familyRole]);
+  const authorizedSchoolIds = context.roles
+    .filter(role => role.role === familyRole && role.status === "ACTIVE" && role.schoolId !== null)
+    .map(role => role.schoolId as number);
   if (familyRole === "STUDENT") {
     const result = await pool.query(
       `SELECT st.id AS "studentId",st.school_id AS "schoolId"
          FROM students st
-        WHERE st.user_id=$1 AND UPPER(st.status)='ACTIVE'`,
-      [context.user.id],
+        WHERE st.user_id=$1 AND UPPER(st.status)='ACTIVE' AND st.school_id=ANY($2::int[])`,
+      [context.user.id, authorizedSchoolIds],
     );
     const row = result.rows[0];
     if (!row || (requestedStudentId !== undefined && Number(row.studentId) !== requestedStudentId)) {
@@ -2548,9 +2562,9 @@ async function familyStudent(
        JOIN students st ON st.id=relationship.student_id
        JOIN schools school ON school.id=st.school_id AND school.id=parent.school_id
       WHERE parent.user_id=$1 AND UPPER(parent.status)='ACTIVE'
-        AND UPPER(st.status)='ACTIVE' AND st.id=$2
+         AND UPPER(st.status)='ACTIVE' AND st.id=$2 AND st.school_id=ANY($3::int[])
       LIMIT 1`,
-    [context.user.id, requestedStudentId],
+    [context.user.id, requestedStudentId, authorizedSchoolIds],
   );
   const row = result.rows[0];
   if (!row) throw new AuthError(404, "Student is not an active child of this parent account");
@@ -2571,11 +2585,11 @@ async function studentTransportHistory(
             h.student_id AS "studentId",h.event_type AS "eventType",
             h.effective_date::text AS "effectiveDate",h.reason,
             h.actor_user_id AS "actorUserId",h.actor_role AS "actorRole",
-            COALESCE(NULLIF(TRIM(COALESCE(user.first_name,'') || ' ' || COALESCE(user.last_name,'')),''),
-                     user.email,'School action') AS "actorName",
+             COALESCE(NULLIF(TRIM(COALESCE(actor.first_name,'') || ' ' || COALESCE(actor.last_name,'')),''),
+                      actor.email,'School action') AS "actorName",
             h.before_state AS "before",h.after_state AS "after",h.created_at AS "createdAt"
        FROM transport_history h
-       LEFT JOIN app_users user ON user.id=h.actor_user_id
+        LEFT JOIN app_users actor ON actor.id=h.actor_user_id
       WHERE h.school_id=$1 AND h.student_id=$2
       ORDER BY h.created_at DESC,h.id DESC
       LIMIT 300`,
@@ -2661,6 +2675,7 @@ async function studentTransportView(schoolId: number, studentId: number) {
       busCapacity: assignment.busCapacity,
       routeName: assignment.routeName,
       driverName: assignment.driverName,
+      driverPhone: assignment.driverPhone,
       pickup: assignment.pickup,
       dropoff: assignment.dropoff,
       schedule: assignment.schedule,
@@ -2688,9 +2703,98 @@ router.get("/parent/children/:studentId/transport", run(async (req, res) => {
   res.json(await studentTransportView(target.schoolId, target.studentId));
 }));
 
+async function familyAttendancePeriods(schoolId: number) {
+  const sessions = await pool.query(
+    `SELECT id,name,start_date::text AS "startDate",end_date::text AS "endDate"
+       FROM academic_sessions WHERE school_id=$1 ORDER BY start_date DESC,id DESC`, [schoolId],
+  );
+  const terms = await pool.query(
+    `SELECT t.id,t.academic_session_id AS "academicSessionId",t.name,
+            t.start_date::text AS "startDate",t.end_date::text AS "endDate"
+       FROM academic_terms t JOIN academic_sessions s ON s.id=t.academic_session_id AND s.school_id=t.school_id
+      WHERE t.school_id=$1 ORDER BY t.start_date DESC,t.id DESC`, [schoolId],
+  );
+  return { sessions: sessions.rows, terms: terms.rows };
+}
+router.get("/student/attendance-periods", run(async (req, res) => {
+  const student = await familyStudent(req, "STUDENT");
+  res.json(await familyAttendancePeriods(student.schoolId));
+}));
+router.get("/parent/children/:studentId/attendance-periods", run(async (req, res) => {
+  const student = await familyStudent(req, "PARENT", requestId(req.params.studentId, "studentId"));
+  res.json(await familyAttendancePeriods(student.schoolId));
+}));
+
 router.get("/student/transport", run(async (req, res) => {
   const target = await familyStudent(req, "STUDENT");
   res.json(await studentTransportView(target.schoolId, target.studentId));
+}));
+
+// Resolve the driver through their existing employee/account binding, never a
+// caller-supplied employee ID. Driver membership does not grant school-wide reads.
+router.get("/driver/transport", run(async (req, res) => {
+  const context = getUserContext(req);
+  if (isPlatformOwner(context)) throw new AuthError(403, "Use the read-only Owner overview");
+  assertRoles(req, ["DRIVER"]);
+  const schoolIds = context.roles
+    .filter((role) => role.role === "DRIVER" && role.status === "ACTIVE" && role.schoolId !== null)
+    .map((role) => role.schoolId as number);
+  const schoolId = req.query.schoolId === undefined
+    ? schoolIds.length === 1 ? schoolIds[0] : null
+    : querySchoolId(req);
+  if (!schoolId || !schoolIds.includes(schoolId)) throw new AuthError(403, "Select an authorized driver school");
+  const employees = await pool.query(
+    `SELECT e.id AS "employeeId",e.employee_no AS "employeeNo",
+            concat_ws(' ',e.first_name,e.middle_name,e.last_name) AS name,e.phone,e.photo,
+            e.school_id AS "schoolId",s.name AS "schoolName"
+       FROM employees e JOIN schools s ON s.id=e.school_id
+      WHERE e.user_id=$1 AND e.school_id=$2 AND UPPER(e.employee_type)='DRIVER'
+        AND UPPER(e.employment_status)='ACTIVE'`,
+    [context.user.id, schoolId],
+  );
+  if (employees.rows.length !== 1) throw new AuthError(404, "Active driver employee profile not found");
+  const employee = employees.rows[0];
+  const routes = await pool.query(
+    `${routeRowSql}
+     WHERE r.school_id=$1 AND r.driver_employee_id=$2 AND r.status='ACTIVE'
+       AND b.status='ACTIVE' AND UPPER(e.employment_status)='ACTIVE'
+     ORDER BY r.name,r.id`,
+    [schoolId, employee.employeeId],
+  );
+  const riders = await pool.query(
+    `SELECT a.id,st.id AS "studentId",concat_ws(' ',st.first_name,st.middle_name,st.last_name) AS "studentName",
+            st.admission_no AS "admissionNo",st.class_name AS "className",st.section,
+            r.id AS "routeId",r.name AS "routeName",b.id AS "busId",b.name AS "busName",
+            b.registration_number AS "registrationNumber",pickup.name AS "pickupName",
+            dropoff.name AS "dropoffName",r.departure_time AS "departureTime",
+            r.arrival_time AS "arrivalTime",a.status,a.effective_date::text AS "effectiveDate"
+       FROM transport_student_assignments a
+       JOIN students st ON st.id=a.student_id AND st.school_id=a.school_id
+       JOIN transport_routes r ON r.id=a.route_id AND r.school_id=a.school_id
+       JOIN transport_buses b ON b.id=r.bus_id AND b.school_id=r.school_id
+       JOIN transport_route_stops pickup ON pickup.id=a.pickup_stop_id
+         AND pickup.route_id=a.route_id AND pickup.school_id=a.school_id
+       JOIN transport_route_stops dropoff ON dropoff.id=a.dropoff_stop_id
+         AND dropoff.route_id=a.route_id AND dropoff.school_id=a.school_id
+      WHERE a.school_id=$1 AND r.driver_employee_id=$2 AND r.status='ACTIVE'
+        AND b.status='ACTIVE' AND a.status='ACTIVE' AND UPPER(st.status)='ACTIVE'
+        AND a.effective_date<=CURRENT_DATE AND (a.end_date IS NULL OR a.end_date>=CURRENT_DATE)
+      ORDER BY r.name,pickup.sequence,st.last_name,st.first_name,st.id`,
+    [schoolId, employee.employeeId],
+  );
+  // The driver receives route-operation fields, never the general route DTO's
+  // price/currency or any student's invoices and account balances.
+  const driverRoutes = routes.rows.map(row => {
+    const r = mapRouteShape(row);
+    return {
+      id: r.id, schoolId: r.schoolId, name: r.name, busId: r.busId,
+      busName: r.busName, registrationNumber: r.registrationNumber,
+      busCapacity: r.busCapacity, status: r.status, weekdays: r.weekdays,
+      departureTime: r.departureTime, arrivalTime: r.arrivalTime,
+      driverEmployeeId: r.driverEmployeeId, driverName: r.driverName, stops: r.stops,
+    };
+  });
+  res.json({ employee, routes: driverRoutes, assignments: riders.rows });
 }));
 
 router.get("/parent/children/:studentId/transport/history", run(async (req, res) => {
