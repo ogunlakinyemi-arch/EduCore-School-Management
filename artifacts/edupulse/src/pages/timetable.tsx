@@ -5,6 +5,7 @@ import {
   useListAcademicTimetable, useCreateAcademicTimetableEntry, useUpdateAcademicTimetableEntry, getListAcademicTimetableQueryKey,
   useGetMyAcademicTimetable, getGetMyAcademicTimetableQueryKey,
   useListAcademicSessions, useListAcademicTerms, useListClasses, useListSubjects, useListEmployees,
+  getListAcademicSessionsQueryKey, getListAcademicTermsQueryKey, getListClassesQueryKey, getListSubjectsQueryKey, getListEmployeesQueryKey,
   useListClassSubjectAssignments, useListTeacherClassAssignments,
   getListClassSubjectAssignmentsQueryKey, getListTeacherClassAssignmentsQueryKey
 } from '@workspace/api-client-react';
@@ -13,16 +14,28 @@ import { useGetAuthorizedContext } from '@workspace/api-client-react';
 import { academicSaveError } from '@/components/academic-save-error';
 import { matchingTimetableSubjects, matchingTimetableTeachers } from './timetable-eligibility';
 
-function useAcademicContext(schoolId: number, sessionId = 0, termId = 0) {
-  const sessions = useListAcademicSessions({ schoolId }, { query: { enabled: !!schoolId, queryKey: ['sessions', schoolId] } });
-  const activeSession = sessions.data?.find(s => s.id === sessionId) || sessions.data?.find((s: any) => s.isCurrent) || sessions.data?.[0];
-  const terms = useListAcademicTerms(activeSession?.id as number, { schoolId }, { query: { enabled: !!(schoolId && activeSession?.id), queryKey: ['terms', activeSession?.id, schoolId] } });
-  const activeTerm = terms.data?.find(t => t.id === termId) || terms.data?.find((t: any) => t.isCurrent) || terms.data?.[0];
-  const classes = useListClasses({ schoolId }, { query: { enabled: !!schoolId, queryKey: ['classes', schoolId] } });
-  const subjects = useListSubjects({ schoolId }, { query: { enabled: !!schoolId, queryKey: ['subjects', schoolId] } });
-  const teachers = useListEmployees({ schoolId }, { query: { enabled: !!schoolId, queryKey: ['teachers', schoolId] } });
+const freshChoices = { staleTime: 0, refetchOnMount: 'always' as const, refetchOnWindowFocus: true };
 
-  return { activeSession, activeTerm, sessions: sessions.data ?? [], terms: terms.data ?? [], error: sessions.error || terms.error || classes.error || subjects.error || teachers.error, classes: classes.data ?? [], subjects: subjects.data ?? [], teachers: teachers.data ?? [], isLoading: sessions.isLoading || terms.isLoading || classes.isLoading || subjects.isLoading || teachers.isLoading };
+function useAcademicContext(schoolId: number, sessionId: number | null = 0, termId: number | null = 0) {
+  const params = { schoolId };
+  const sessions = useListAcademicSessions(params, { query: { ...freshChoices, enabled: !!schoolId, queryKey: getListAcademicSessionsQueryKey(params) } });
+  // 0 selects the initial default; null is an explicit clear and must not fall
+  // back to a current/first record from a different selection.
+  const activeSession = sessionId === null ? undefined : sessionId
+    ? sessions.data?.find(s => s.id === sessionId)
+    : sessions.data?.find(s => s.isCurrent) || sessions.data?.[0];
+  const sessionKey = activeSession?.id ?? 0;
+  const terms = useListAcademicTerms(sessionKey, params, { query: { ...freshChoices, enabled: !!(schoolId && sessionKey), queryKey: getListAcademicTermsQueryKey(sessionKey, params) } });
+  const activeTerm = !activeSession || termId === null ? undefined : termId
+    ? terms.data?.find(t => t.id === termId)
+    : terms.data?.find(t => t.isCurrent) || terms.data?.[0];
+  const classes = useListClasses(params, { query: { ...freshChoices, enabled: !!schoolId, queryKey: getListClassesQueryKey(params) } });
+  const subjects = useListSubjects(params, { query: { ...freshChoices, enabled: !!schoolId, queryKey: getListSubjectsQueryKey(params) } });
+  const teachers = useListEmployees(params, { query: { ...freshChoices, enabled: !!schoolId, queryKey: getListEmployeesQueryKey(params) } });
+
+  return { activeSession, activeTerm, sessions: sessions.data ?? [], terms: activeSession ? terms.data ?? [] : [], error: sessions.error || terms.error || classes.error || subjects.error || teachers.error, classes: classes.data ?? [], subjects: subjects.data ?? [], teachers: teachers.data ?? [], isLoading: sessions.isLoading || terms.isLoading || classes.isLoading || subjects.isLoading || teachers.isLoading,
+    refetch: () => Promise.all([sessions.refetch(), classes.refetch(), subjects.refetch(), teachers.refetch(), ...(activeSession ? [terms.refetch()] : [])]),
+  };
 }
 
 export function TimetablePage() {
@@ -70,18 +83,27 @@ export function TimetablePage() {
 
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 
-function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; canEdit: boolean }) {
-  const [sessionId,setSessionId] = useState(0);
-  const [termId,setTermId] = useState(0);
+function initialTimetableFilter(schoolId: number, name: 'sessionId' | 'termId' | 'classId') {
+  const search = new URLSearchParams(window.location.search);
+  if (search.get('schoolId') !== String(schoolId)) return undefined;
+  const raw = search.get(name);
+  if (!raw || !/^\d+$/.test(raw)) return undefined;
+  const value = Number(raw);
+  return Number.isSafeInteger(value) && value > 0 ? value : undefined;
+}
+
+export function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; canEdit: boolean }) {
+  const [sessionId,setSessionId] = useState<number | null>(() => initialTimetableFilter(schoolId, 'sessionId') ?? 0);
+  const [termId,setTermId] = useState<number | null>(() => initialTimetableFilter(schoolId, 'termId') ?? 0);
   const { activeSession, activeTerm, sessions, terms, error, classes, subjects, teachers, isLoading } = useAcademicContext(schoolId,sessionId,termId);
   const assignmentParams = { schoolId, sessionId: activeSession?.id };
   const subjectAssignments = useListClassSubjectAssignments(assignmentParams, { query: {
-    enabled: canEdit && !!activeSession, queryKey: getListClassSubjectAssignmentsQueryKey(assignmentParams),
+    ...freshChoices, enabled: canEdit && !!activeSession, queryKey: getListClassSubjectAssignmentsQueryKey(assignmentParams),
   } });
   const teacherAssignments = useListTeacherClassAssignments(assignmentParams, { query: {
-    enabled: canEdit && !!activeSession, queryKey: getListTeacherClassAssignmentsQueryKey(assignmentParams),
+    ...freshChoices, enabled: canEdit && !!activeSession, queryKey: getListTeacherClassAssignmentsQueryKey(assignmentParams),
   } });
-  const [classId, setClassId] = useState<number | ''>('');
+  const [classId, setClassId] = useState<number | ''>(() => initialTimetableFilter(schoolId, 'classId') ?? '');
   
   const query = useListAcademicTimetable(
     { schoolId, sessionId: activeSession?.id, termId: activeTerm?.id, classId: classId || undefined }, 
@@ -91,6 +113,23 @@ function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; canEdit:
   const [modal, setModal] = useState<any>(null);
   const qc = useQueryClient();
 
+  // Keep the saved view visible after reload without changing the tenant picker
+  // or treating URL IDs as authorization. Catalogs and every API remain scoped
+  // to the currently authorized school.
+  useEffect(() => {
+    if (isLoading) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('schoolId', String(schoolId));
+    for (const [name, value] of [['sessionId', activeSession?.id], ['termId', activeTerm?.id], ['classId', classId]] as const) {
+      if (value) url.searchParams.set(name, String(value));
+      else url.searchParams.delete(name);
+    }
+    const next = `${url.pathname}${url.search}${url.hash}`;
+    if (next !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+      window.history.replaceState(window.history.state, '', next);
+    }
+  }, [schoolId, activeSession?.id, activeTerm?.id, classId, isLoading]);
+
   if (isLoading || (canEdit && (subjectAssignments.isLoading || teacherAssignments.isLoading))) return <SkeletonPage />;
   if (error || (canEdit && (subjectAssignments.error || teacherAssignments.error))) return <ErrorState retry={() => qc.invalidateQueries()} message="Timetable choices could not be loaded. Retry before saving." />;
 
@@ -99,25 +138,27 @@ function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; canEdit:
   return (
     <div className="space-y-6">
       <div className="panel p-5 flex flex-wrap items-center gap-4 bg-[hsl(var(--card))] border border-[hsl(var(--border))]">
-        <Field label="Academic Session"><select value={activeSession?.id ?? ''} onChange={e=>{setSessionId(Number(e.target.value));setTermId(0);setModal(null);}} data-testid="select-timetable-session">
+        <Field label="Academic Session"><select value={activeSession?.id ?? ''} onChange={e=>{setSessionId(e.target.value ? Number(e.target.value) : null);setTermId(null);setClassId('');setModal(null);}} data-testid="select-timetable-session">
+          <option value="">Select session...</option>
           {!sessions.length && <option value="">No sessions configured</option>}
           {sessions.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
         </select></Field>
-        <Field label="Term"><select value={activeTerm?.id ?? ''} onChange={e=>{setTermId(Number(e.target.value));setModal(null);}} data-testid="select-timetable-term">
+        <Field label="Term"><select value={activeTerm?.id ?? ''} disabled={!activeSession} onChange={e=>{setTermId(e.target.value ? Number(e.target.value) : null);setClassId('');setModal(null);}} data-testid="select-timetable-term">
+          <option value="">Select term...</option>
           {!terms.length && <option value="">No terms configured</option>}
           {terms.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
         </select></Field>
         <div className="w-full max-w-sm">
           <Field label="Filter by Class">
-            <select value={classId} onChange={e => { setClassId(e.target.value ? Number(e.target.value) : ''); setModal(null); }} className="w-full">
+            <select value={classId} disabled={!activeTerm} onChange={e => { setClassId(e.target.value ? Number(e.target.value) : ''); setModal(null); }} className="w-full" data-testid="select-timetable-filter-class">
               <option value="">Choose a class...</option>
               {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name} {c.section}</option>)}
             </select>
           </Field>
         </div>
-        {classId && canEdit && (
+        {canEdit && (
           <div className="ml-auto mt-4">
-             <Button disabled={!activeSession || !activeTerm} onClick={() => setModal({ create: true, classId: Number(classId) })}><Plus size={16}/> Add Entry</Button>
+             <Button disabled={!sessions.length} onClick={() => setModal({ create: true, classId: classId || undefined })} testId="button-add-timetable-entry"><Plus size={16}/> Add Timetable Entry</Button>
           </div>
         )}
       </div>
@@ -139,8 +180,8 @@ function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; canEdit:
                       <div className="flex items-center gap-2 text-xs font-medium text-[hsl(var(--primary))] mb-1.5">
                         <Clock size={12} /> {item.startTime} — {item.endTime}
                       </div>
-                      <div className="font-bold">{subjects.find((s: any) => s.id === item.subjectId)?.name || 'Subject'}</div>
-                      <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Teacher: {teachers.find((t: any) => t.id === item.teacherId)?.firstName} {teachers.find((t: any) => t.id === item.teacherId)?.lastName}</div>
+                      <div className="font-bold">{item.subjectName || subjects.find((s: any) => s.id === item.subjectId)?.name || 'Subject'}</div>
+                      <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Teacher: {item.teacherFirstName || teachers.find((t: any) => t.id === item.teacherId)?.firstName} {item.teacherLastName || teachers.find((t: any) => t.id === item.teacherId)?.lastName}</div>
                       {item.room && <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5 flex items-center gap-1"><MapPin size={10} /> Room {item.room}</div>}
                     </div>
                   ))}
@@ -157,13 +198,11 @@ function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; canEdit:
 
       {canEdit && modal && (
         <Modal title={modal.create ? "Add Timetable Entry" : "Edit Timetable Entry"} onClose={() => setModal(null)}>
-          <TimetableEntryForm 
-            key={`${schoolId}:${activeSession?.id}:${activeTerm?.id}`}
-            schoolId={schoolId} sessionId={activeSession?.id} termId={activeTerm?.id} session={activeSession}
-            subjectAssignments={subjectAssignments.data ?? []} teacherAssignments={teacherAssignments.data ?? []}
-            classes={classes} subjects={subjects} teachers={teachers} initial={modal.create ? null : modal}
+          <TimetableEditor
+            schoolId={schoolId} initialSessionId={activeSession?.id} initialTermId={activeTerm?.id}
+            initial={modal.create ? null : modal}
             defaultClassId={modal.classId}
-            onDone={() => { setModal(null); qc.invalidateQueries({ queryKey: getListAcademicTimetableQueryKey() }); qc.invalidateQueries({queryKey:getGetMyAcademicTimetableQueryKey()}); }}
+            onDone={(saved: any) => { setSessionId(saved.sessionId); setTermId(saved.termId); setClassId(saved.classId); setModal(null); qc.invalidateQueries({ queryKey: getListAcademicTimetableQueryKey() }); qc.invalidateQueries({queryKey:getGetMyAcademicTimetableQueryKey()}); }}
             onCancel={() => setModal(null)}
           />
         </Modal>
@@ -172,7 +211,36 @@ function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; canEdit:
   );
 }
 
-export function TimetableEntryForm({ schoolId, sessionId, termId, session, classes, subjects, teachers, subjectAssignments = [], teacherAssignments = [], initial, defaultClassId, onDone, onCancel }: any) {
+export function TimetableEditor({ schoolId, initialSessionId, initialTermId, initial, defaultClassId, onDone, onCancel }: any) {
+  const [sessionId, setSessionId] = useState<number | null>(initial?.sessionId ?? initialSessionId ?? 0);
+  const [termId, setTermId] = useState<number | null>(initial?.termId ?? initialTermId ?? 0);
+  const [periodChanged, setPeriodChanged] = useState(false);
+  const context = useAcademicContext(schoolId, sessionId, termId);
+  const params = { schoolId, sessionId: context.activeSession?.id };
+  const subjectAssignments = useListClassSubjectAssignments(params, { query: {
+    ...freshChoices, enabled: !!context.activeSession, queryKey: getListClassSubjectAssignmentsQueryKey(params),
+  } });
+  const teacherAssignments = useListTeacherClassAssignments(params, { query: {
+    ...freshChoices, enabled: !!context.activeSession, queryKey: getListTeacherClassAssignmentsQueryKey(params),
+  } });
+  if (context.isLoading || subjectAssignments.isLoading || teacherAssignments.isLoading) return <SkeletonPage />;
+  if (context.error || subjectAssignments.error || teacherAssignments.error) {
+    return <ErrorState message="Timetable choices could not be loaded. Retry before saving."
+      retry={() => { void context.refetch(); if (context.activeSession) { void subjectAssignments.refetch(); void teacherAssignments.refetch(); } }} />;
+  }
+  return <TimetableEntryForm key={`${schoolId}:${context.activeSession?.id ?? ''}:${context.activeTerm?.id ?? ''}:${periodChanged}`}
+    schoolId={schoolId} sessionId={context.activeSession?.id} termId={context.activeTerm?.id} session={context.activeSession}
+    classes={context.classes} subjects={context.subjects} teachers={context.teachers}
+    subjectAssignments={subjectAssignments.data ?? []} teacherAssignments={teacherAssignments.data ?? []}
+    initial={periodChanged && initial ? { ...initial, classId: '', subjectId: '', teacherId: '', section: '' } : initial}
+    defaultClassId={periodChanged ? undefined : defaultClassId}
+    sessions={context.sessions} terms={context.terms}
+    onSessionChange={(value: number | null) => { setSessionId(value); setTermId(null); setPeriodChanged(true); }}
+    onTermChange={(value: number | null) => { setTermId(value); setPeriodChanged(true); }}
+    onDone={onDone} onCancel={onCancel} />;
+}
+
+export function TimetableEntryForm({ schoolId, sessionId, termId, session, classes, subjects, teachers, subjectAssignments = [], teacherAssignments = [], initial, defaultClassId, sessions, terms, onSessionChange, onTermChange, onDone, onCancel }: any) {
   const create = useCreateAcademicTimetableEntry();
   const update = useUpdateAcademicTimetableEntry();
   const [failure,setFailure] = useState('');
@@ -185,11 +253,12 @@ export function TimetableEntryForm({ schoolId, sessionId, termId, session, class
     endTime: initial?.endTime || '09:00',
     room: initial?.room || ''
   });
+  const [sectionChosen, setSectionChosen] = useState(!!(initial?.classId || defaultClassId));
   const section = classes.find((c: any) => c.id === Number(form.classId))?.section ?? '';
   const selection = { schoolId, sessionId, termId, classId: Number(form.classId), section, subjectId: Number(form.subjectId) };
-  const assignedSubjects = matchingTimetableSubjects(subjectAssignments, selection);
+  const assignedSubjects = sessionId && termId && sectionChosen ? matchingTimetableSubjects(subjectAssignments, selection) : [];
   const eligibleSubjects = subjects.filter((subject: any) => subject.schoolId === schoolId && assignedSubjects.some(a => a.subjectId === subject.id));
-  const eligibleTeachers = matchingTimetableTeachers(teachers, subjectAssignments, teacherAssignments, session, selection);
+  const eligibleTeachers = sectionChosen && termId ? matchingTimetableTeachers(teachers, subjectAssignments, teacherAssignments, session, selection) : [];
   const subjectValid = eligibleSubjects.some((subject: any) => subject.id === Number(form.subjectId));
   const teacherValid = eligibleTeachers.some(teacher => teacher.id === Number(form.teacherId));
   // Assignment changes/refetches must not leave an old option selected.
@@ -222,7 +291,7 @@ export function TimetableEntryForm({ schoolId, sessionId, termId, session, class
     try {
       if (initial) await update.mutateAsync({ entryId: initial.id, data });
       else await create.mutateAsync({ data });
-      onDone();
+      onDone(data);
     } catch (error) {
       setFailure(academicSaveError(error, 'Could not save the timetable. Check the selected period and teacher assignment, then retry.'));
     }
@@ -232,9 +301,21 @@ export function TimetableEntryForm({ schoolId, sessionId, termId, session, class
 
   return (
     <form onSubmit={save} className="space-y-4">
+      {sessions && <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Session"><select aria-label="Timetable session" value={sessionId ?? ''} required
+          onChange={e => onSessionChange(e.target.value ? Number(e.target.value) : null)}>
+          <option value="">Select session...</option>
+          {sessions.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select></Field>
+        <Field label="Term"><select aria-label="Timetable term" value={termId ?? ''} required disabled={!sessionId}
+          onChange={e => onTermChange(e.target.value ? Number(e.target.value) : null)}>
+          <option value="">Select term...</option>
+          {terms.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select></Field>
+      </div>}
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Class">
-          <select required value={form.classId} onChange={e => setForm({...form, classId: e.target.value, subjectId: '', teacherId: ''})} className="w-full">
+          <select required aria-label="Timetable class" disabled={!sessionId || !termId} value={form.classId} onChange={e => { setSectionChosen(false); setForm({...form, classId: e.target.value, subjectId: '', teacherId: ''}); }} className="w-full">
             <option value="">Select class...</option>
             {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name} {c.section}</option>)}
           </select>
@@ -253,25 +334,36 @@ export function TimetableEntryForm({ schoolId, sessionId, termId, session, class
           <input type="time" required value={form.endTime} onChange={e => setForm({...form, endTime: e.target.value})} className="w-full" />
         </Field>
       </div>
-      <Field label="Section"><select value={classes.find((c:any)=>c.id===Number(form.classId))?.section ?? ''} disabled aria-label="Timetable section">
-        <option value={classes.find((c:any)=>c.id===Number(form.classId))?.section ?? ''}>{classes.find((c:any)=>c.id===Number(form.classId))?.section || 'No section'}</option>
-      </select><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Section belongs to the selected class. Choose the matching class/section above.</p></Field>
+      <Field label="Section"><select value={sectionChosen ? section || '__none__' : '__choose__'} required disabled={!form.classId || !termId} aria-label="Timetable section"
+        onChange={e => {
+          const current = classes.find((c: any) => c.id === Number(form.classId));
+          const selectedSection = e.target.value === '__none__' ? '' : e.target.value;
+          const next = classes.find((c: any) => c.name === current?.name && (c.section ?? '') === selectedSection);
+          setSectionChosen(!!next);
+          setForm(previous => ({ ...previous, classId: next?.id ?? previous.classId, subjectId: '', teacherId: '' }));
+        }}>
+        <option value="__choose__" disabled>Select section...</option>
+        {classes.filter((c: any) => c.name === classes.find((row: any) => row.id === Number(form.classId))?.name)
+          .map((c: any) => <option key={c.id} value={c.section || '__none__'}>{c.section || 'No section'}</option>)}
+      </select><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Choose an existing section of this class. No class or assignment is created.</p></Field>
       <Field label="Subject">
-        <select required value={form.subjectId} onChange={e => setForm({...form, subjectId: e.target.value, teacherId: ''})} className="w-full" disabled={!eligibleSubjects.length}>
+        <select required aria-label="Timetable subject" value={form.subjectId} onChange={e => setForm({...form, subjectId: e.target.value, teacherId: ''})} className="w-full" disabled={!eligibleSubjects.length}>
           <option value="">Select subject...</option>
           {eligibleSubjects.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
-        {!eligibleSubjects.length && <p role="status" className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">No active subject is assigned to this class/section for the selected session and term.</p>}
+        {!eligibleSubjects.length && <p role="status" className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{!form.classId || !sectionChosen
+          ? 'Select a class and section to see its assigned subjects.'
+          : 'No active subject is assigned to this class/section for the selected session and term.'}</p>}
       </Field>
       <Field label="Teacher">
-        <select required value={form.teacherId} onChange={e => setForm({...form, teacherId: e.target.value})} className="w-full" disabled={!eligibleTeachers.length} aria-describedby="timetable-teacher-help">
+        <select required aria-label="Timetable teacher" value={form.teacherId} onChange={e => setForm({...form, teacherId: e.target.value})} className="w-full" disabled={!eligibleTeachers.length} aria-describedby="timetable-teacher-help">
           <option value="">{eligibleTeachers.length ? 'Select teacher' : 'No eligible teachers available'}</option>
           {eligibleTeachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.firstName} {teacher.lastName}</option>)}
         </select>
         <p id="timetable-teacher-help" role={eligibleTeachers.length ? undefined : 'status'} className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
           {eligibleTeachers.length
             ? 'Only teachers assigned to this class/section and subject in the selected session are available. Assignments are checked again when saving.'
-            : !form.subjectId ? 'Select an assigned subject to see its eligible teachers.' : 'No eligible teacher is assigned to this subject/class in the selected session and term.'}
+            : !form.subjectId ? 'Select an assigned subject to see its eligible teachers.' : 'No teacher is assigned to this subject/class.'}
         </p>
       </Field>
       <Field label="Room (Optional)">

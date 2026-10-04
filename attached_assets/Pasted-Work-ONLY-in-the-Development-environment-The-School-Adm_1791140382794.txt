@@ -1,0 +1,360 @@
+Work ONLY in the Development environment.
+
+The School Admin Timetable module is still not working correctly.
+
+CURRENT PROBLEMS:
+
+1. School Admin cannot select a Subject in the timetable form.
+2. School Admin cannot select a Teacher.
+3. Because Subject/Teacher selection fails, School Admin cannot successfully create a timetable entry.
+4. Previous fixes claimed the Teacher dropdown was fixed, but the issue is still occurring in the actual School Admin workflow.
+
+I want this fixed properly and completely, not patched symptom-by-symptom.
+
+IMPORTANT SAFETY RULES:
+
+- Development only.
+- Do NOT modify Production.
+- Do NOT publish.
+- Do NOT approve migrations.
+- Do NOT reset, reseed, truncate or delete existing data.
+- Do NOT weaken school/tenant isolation.
+- Do NOT bypass teacher assignment validation.
+- Do NOT remove subject/class/teacher authorization rules.
+- Do NOT create fake teachers, subjects or assignments just to make the dropdown appear.
+- Do NOT make unrelated changes to Finance, Transport, Results, Attendance, NFC, Communications or other modules.
+- Reuse the existing timetable architecture.
+- Find and fix the actual root cause.
+- Preserve all existing valid timetable records.
+
+1. TRACE THE COMPLETE TIMETABLE DATA FLOW
+
+Do not assume the previous fix is correct.
+
+Trace the complete flow:
+
+School Admin
+→ Timetable page
+→ Session selection
+→ Term selection
+→ Class selection
+→ Section selection
+→ Subject selection
+→ Teacher selection
+→ teacher/class/subject assignment
+→ timetable Save API
+→ database
+→ timetable display
+→ refresh/reload.
+
+Identify exactly where the data disappears or becomes invalid.
+
+Check both frontend and backend.
+
+2. FIX SUBJECT DROPDOWN FIRST
+
+The Subject dropdown must display subjects that the selected School Admin is actually allowed to schedule.
+
+After selecting:
+
+Session
+
++ Term
++ Class
++ Section
+
+the Subject dropdown must query the correct existing school subject/teaching-assignment records.
+
+Verify:
+
+- Subject API endpoint.
+- Request parameters.
+- schoolId.
+- sessionId.
+- termId.
+- classId.
+- section.
+- subject ID.
+- subject name/code.
+- response shape.
+- frontend field names.
+- filtering logic.
+- React state updates.
+- React Query query keys/cache.
+- stale data after changing Class/Section/Session/Term.
+
+Do not filter subjects using the wrong field.
+
+Do not use curriculum-library subject IDs when the timetable requires the school's actual subject record unless the existing architecture explicitly uses them.
+
+The dropdown must show real subjects already configured for that school/class/section.
+
+3. FIX TEACHER DROPDOWN
+
+After a valid Subject is selected, the Teacher dropdown must show teachers who are actually assigned to teach that selected subject/class/section.
+
+Verify the existing teacher assignment records.
+
+Use the actual employee response field names.
+
+Do not assume "employeeType" if the API actually returns "type".
+
+Do not assume "assignmentId" is submitted if the existing API derives assignment eligibility.
+
+The valid relationship should be:
+
+School
+→ Session
+→ Term
+→ Class
+→ Section
+→ Subject
+→ Eligible Teacher
+
+Only teachers satisfying that relationship should appear.
+
+If no eligible teacher exists, display:
+
+"No teacher is assigned to this subject/class."
+
+Do not display an empty dropdown with no explanation.
+
+4. FIX DEPENDENT DROPDOWN STATE
+
+Correctly clear dependent selections.
+
+When Session changes:
+
+- clear Term
+- clear Class
+- clear Section
+- clear Subject
+- clear Teacher
+
+When Term changes:
+
+- clear Class
+- clear Section
+- clear Subject
+- clear Teacher
+
+When Class changes:
+
+- clear Section
+- clear Subject
+- clear Teacher
+
+When Section changes:
+
+- clear Subject
+- clear Teacher
+
+When Subject changes:
+
+- clear Teacher.
+
+Do not allow stale IDs from a previous selection to remain in the Save payload.
+
+Ensure React state, query cache and displayed selections remain synchronized.
+
+5. CHECK THE ACTUAL SCHOOL DATA
+
+Use read-only Development database/API inspection.
+
+Identify one real School Admin school that has:
+
+- at least one active academic session
+- at least one active term
+- at least one class
+- at least one section
+- at least one subject assigned/enrolled for that class/section
+- at least one teacher assigned to that subject/class/section.
+
+Trace those exact records through the UI.
+
+Do not create test records unless absolutely necessary.
+
+If the existing QA school contains inconsistent records, identify that clearly rather than changing the data.
+
+6. FRONTEND/BACKEND CONTRACT CHECK
+
+Compare the exact frontend request and backend response.
+
+Check for:
+
+- "id" vs "subjectId"
+- "employeeId" vs "teacherId"
+- "type" vs "employeeType"
+- "classId" vs class/section representation
+- "sessionId" vs "academicSessionId"
+- "termId" vs "academicTermId"
+- string vs number IDs
+- missing schoolId
+- incorrect query parameters
+- incorrect React Query keys
+- stale cached responses
+- response nesting differences
+- API route mismatch
+- OpenAPI/generated client mismatch
+- Zod schema mismatch.
+
+If the API returns the correct subjects/teachers but the UI does not display them, fix the frontend.
+
+If the UI sends the wrong parameters, fix the frontend contract.
+
+If the backend returns incorrect data, fix the backend query.
+
+Do not change both sides unnecessarily.
+
+7. SAVE VALIDATION
+
+Once Subject and Teacher selection works, verify Save.
+
+A valid timetable entry must contain:
+
+- school
+- academic session
+- academic term
+- class
+- section
+- subject
+- eligible teacher
+- day
+- start time
+- end time
+- optional location where supported.
+
+The backend must continue verifying:
+
+- school ownership
+- session ownership
+- term ownership
+- class ownership
+- subject ownership
+- teacher ownership
+- teacher assignment eligibility
+- timetable collision rules.
+
+Do NOT bypass these checks.
+
+If validation fails, return the specific reason.
+
+Do not show the generic:
+
+"Class, subject, teacher, session, term, or assignment not found in school"
+
+when the actual problem is a specific invalid relationship.
+
+8. GENUINE SCHOOL ADMIN TEST
+
+Do not rely only on mocked tests.
+
+Perform a genuine signed-in School Admin browser test.
+
+Test exactly:
+
+1. Login as School Admin.
+2. Open Timetable.
+3. Click Add Timetable Entry.
+4. Select Session.
+5. Select Term.
+6. Select Class.
+7. Select Section.
+8. Open Subject dropdown.
+9. Confirm subjects are visible.
+10. Select a valid subject.
+11. Open Teacher dropdown.
+12. Confirm eligible teachers are visible.
+13. Select the correct teacher.
+14. Enter Tuesday 10:00–11:00.
+15. Click Save.
+16. Confirm successful creation.
+17. Refresh the page.
+18. Confirm the timetable entry remains.
+19. Confirm the correct subject and teacher are displayed.
+
+Also test an invalid teacher/subject combination and confirm that the backend rejects it.
+
+9. DO NOT CLAIM FIXED WITHOUT BROWSER VERIFICATION
+
+This is important.
+
+Do not report the issue as fixed merely because unit/API tests pass.
+
+The final report must clearly separate:
+
+- automated tests
+- database checks
+- genuine School Admin browser test.
+
+If the browser testing service fails or disconnects, say so and do not claim the complete fix is verified.
+
+10. FOCUSED TESTS ONLY
+
+Create/update only focused tests for the timetable workflow.
+
+Test:
+
+- subject list for valid school/class/section
+- teacher list for valid subject/class/section
+- teacher assignment eligibility
+- stale-selection clearing
+- same-school validation
+- cross-school rejection
+- invalid teacher/subject rejection
+- valid timetable creation
+- timetable persistence after reload
+- collision protection.
+
+Do not run or create a huge unrelated test suite.
+
+11. FINAL REPORT
+
+Return:
+
+Root cause
+
+Exactly why Subject and Teacher dropdowns were not working.
+
+Correction
+
+Exactly what was changed.
+
+Files changed
+
+List every changed file.
+
+Verification
+
+- Subject dropdown: PASS/FAIL
+- Teacher dropdown: PASS/FAIL
+- Valid teacher assignment: PASS/FAIL
+- Timetable Save: PASS/FAIL
+- Save → Refresh persistence: PASS/FAIL
+- Invalid assignment rejection: PASS/FAIL
+- School isolation: PASS/FAIL
+- Frontend focused tests: exact count
+- Backend focused tests: exact count
+- PostgreSQL checks: exact count
+- Frontend typecheck: PASS/FAIL
+- Backend typecheck: PASS/FAIL
+- Genuine School Admin browser test: PASS/FAIL
+
+Preservation
+
+Confirm:
+
+- Production untouched.
+- No publishing.
+- No migration approval.
+- No reset/reseed/truncate/delete.
+- Existing timetable records preserved.
+- No unrelated modules modified.
+
+Do not stop after fixing only the Teacher dropdown.
+
+The acceptance requirement is:
+
+School Admin must be able to select a valid Subject → select an eligible Teacher → Save the timetable → refresh → see the saved timetable entry.
+
+Do not claim this is fixed until that complete workflow passes.

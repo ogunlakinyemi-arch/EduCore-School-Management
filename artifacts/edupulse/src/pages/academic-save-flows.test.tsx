@@ -92,7 +92,7 @@ describe('timetable save form',()=>{
     await act(async()=>root.render(<TimetableEntryForm {...base} teachers={[]}/>));
     const select=host.querySelectorAll('select')[4];
     expect(select.disabled).toBe(true);expect(select.textContent).toContain('No eligible teachers available');
-    expect(host.textContent).toContain('No eligible teacher is assigned to this subject/class');
+    expect(host.textContent).toContain('No teacher is assigned to this subject/class.');
   });
   it('never submits a teacher ID from another school',async()=>{
     await act(async()=>root.render(<TimetableEntryForm {...base} teachers={[{...base.teachers[0],schoolId:99}]}/>));
@@ -125,7 +125,7 @@ describe('timetable save form',()=>{
     await act(async()=>root.render(<TimetableEntryForm {...base} classes={[...base.classes,{id:14,name:'SS2',section:'C'}]}/>));
     const selects=host.querySelectorAll('select');
     await act(async()=>{selects[0].value='14';selects[0].dispatchEvent(new Event('change',{bubbles:true}));});
-    expect(selects[2].value).toBe('C');expect(selects[3].value).toBe('');expect(selects[4].value).toBe('');
+    expect(selects[2].value).toBe('__choose__');expect(selects[3].value).toBe('');expect(selects[4].value).toBe('');
     await submit();expect(mocks.update).not.toHaveBeenCalled();
   });
   it('clears a teacher whose assignment is revoked while the form is open',async()=>{

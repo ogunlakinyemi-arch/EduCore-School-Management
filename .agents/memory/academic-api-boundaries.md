@@ -26,3 +26,9 @@ Test valid entity IDs in an invalid relationship, not only missing or foreign-sc
 **Why:** Genuine timetable diagnosis found all selected entities belonged to the school, but the offered employee taught a different subject. Entity-only dropdown filtering produced requests that correctly failed the backend's combination validation.
 
 **How to apply:** Derive instructional choices from the complete existing assignment predicate and retain server-side revalidation. Include both class-subject ownership and teacher-class authorization, wildcard scopes and session-overlap dates; do not narrow legitimate class-teacher authorization to subject-teacher records only.
+
+Do not claim the School Admin timetable workflow is completely fixed without a genuine signed-in Subject → eligible Teacher → Save → refresh browser pass. Preserve existing timetable entries and use existing academic assignments; report browser failures separately from passing automated and read-only database checks.
+
+**Why:** The user reported that earlier dropdown fixes were claimed complete while the actual School Admin journey still failed.
+
+**How to apply:** Treat the full signed-in timetable journey as the acceptance boundary, not an isolated Teacher dropdown or a mocked API pass. Database persistence alone is insufficient if reload loses the selected view and hides the saved entry. If an existing entry occupies the requested test slot, retain it and find an existing eligible, authorized context with a free slot rather than deleting or altering it.
