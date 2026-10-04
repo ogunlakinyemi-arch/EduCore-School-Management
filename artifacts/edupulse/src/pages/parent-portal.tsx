@@ -7,7 +7,8 @@ import {
   useGetParentChild, useGetParentChildren, useGetParentProfile, useGetParentChildAttendance, getGetParentChildAttendanceQueryKey,
   useListChildAcademicAssignments, useListChildAcademicResults, useListChildAcademicReportCards, useGetChildAcademicTimetable,
   getListChildAcademicAssignmentsQueryKey, getListChildAcademicResultsQueryKey,
-  getListChildAcademicReportCardsQueryKey, getGetChildAcademicTimetableQueryKey
+  getListChildAcademicReportCardsQueryKey, getGetChildAcademicTimetableQueryKey,
+  useGetChildAcademicContext, getGetChildAcademicContextQueryKey
 } from '@workspace/api-client-react';
 import NotFound from './not-found';
 import { SubscriptionAccessBanner } from '@/components/subscription-access-banner';
@@ -103,6 +104,7 @@ function ChildProfile({ studentId }: { studentId: number }) {
   return (
     <div className="mx-auto max-w-4xl p-5 md:p-8">
       <Link href="/" className="text-xs font-bold text-[hsl(var(--primary))] flex items-center gap-1 mb-6"><ChevronRight size={14} className="rotate-180" /> Back to linked children</Link>
+      <ChildClassTeacher key={child.id} studentId={child.id} schoolId={child.schoolId} />
       <div className="panel overflow-hidden mb-8 shadow-xl">
         <div className="bg-[hsl(var(--sidebar))] p-7 text-[hsl(var(--sidebar-foreground))] relative overflow-hidden">
           <div className="absolute -right-10 -bottom-10 opacity-5 pointer-events-none">
@@ -333,7 +335,21 @@ function ChildReportCards({ studentId, schoolId }: { studentId: number; schoolId
   );
 }
 
-const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
+const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+
+function ChildClassTeacher({studentId,schoolId}:{studentId:number;schoolId:number}) {
+  const params={schoolId};
+  const query=useGetChildAcademicContext(studentId,params,{query:{
+    queryKey:getGetChildAcademicContextQueryKey(studentId,params),retry:false,
+  }});
+  return <section className="panel mb-5 p-5" data-testid="section-child-class-teacher">
+    <h2 className="font-bold">Class Teacher</h2>
+    {query.isLoading?<p role="status">Loading class teacher...</p>
+      :query.isError?<ChildAcademicFailure error={query.error} retry={()=>void query.refetch()}/>
+        :<>{query.data?.enrollment && <p className="mt-2 text-sm">{query.data.enrollment.className} / {query.data.enrollment.section} · {query.data.enrollment.sessionName} · {query.data.enrollment.termName}</p>}
+          <p className="mt-2 text-sm" data-testid="text-child-class-teacher">{query.data?.classTeacher?.name??'No class teacher has been assigned yet.'}</p></>}
+  </section>;
+}
 
 function ChildTimetable({ studentId, schoolId }: { studentId: number; schoolId: number }) {
   const query = useGetChildAcademicTimetable(studentId, { schoolId }, { query: { queryKey: getGetChildAcademicTimetableQueryKey(studentId, { schoolId }), retry: false } });
@@ -341,10 +357,10 @@ function ChildTimetable({ studentId, schoolId }: { studentId: number; schoolId: 
   if (query.isError) return <ChildAcademicFailure error={query.error} retry={() => void query.refetch()} />;
   const entries = query.data ?? [];
   
-  if (!entries.length) return <div className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))] border border-dashed border-[hsl(var(--border))] rounded-xl">No class timetable available.</div>;
+  if (!entries.length) return <><ChildClassTeacher studentId={studentId} schoolId={schoolId}/><div className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))] border border-dashed border-[hsl(var(--border))] rounded-xl">No timetable has been published for this child yet.</div></>;
   
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <><ChildClassTeacher studentId={studentId} schoolId={schoolId}/><div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {DAYS.map(day => {
         const dayEntries = entries.filter((e: any) => e.weekday === day).sort((a: any, b: any) => a.startTime.localeCompare(b.startTime));
         if (!dayEntries.length) return null;
@@ -359,13 +375,15 @@ function ChildTimetable({ studentId, schoolId }: { studentId: number; schoolId: 
                      <span>{item.subjectName}</span>
                      {item.room && <span>Rm {item.room}</span>}
                    </div>
+                    <div className="mt-1 text-xs">{item.teacherFirstName} {item.teacherLastName}</div>
+                    <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">{item.className} / {item.section}</div>
                  </div>
                ))}
              </div>
           </div>
         );
       })}
-    </div>
+    </div></>
   );
 }
 

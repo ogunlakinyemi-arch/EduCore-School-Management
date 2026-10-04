@@ -14569,6 +14569,42 @@ export const GetMyAcademicTimetableResponse = zod.array(GetMyAcademicTimetableRe
 
 
 /**
+ * @summary Get the linked child's current academic placement and authorized class teacher
+ */
+
+
+
+export const GetChildAcademicContextParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const GetChildAcademicContextQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional()
+})
+
+export const GetChildAcademicContextResponse = zod.object({
+  "studentId": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "enrollment": zod.object({
+  "sessionId": zod.number().int(),
+  "sessionName": zod.string(),
+  "termId": zod.number().int(),
+  "termName": zod.string(),
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string()
+}).nullable(),
+  "classTeacher": zod.object({
+  "employeeId": zod.number().int(),
+  "name": zod.string()
+}).nullable()
+})
+
+
+/**
  * @summary Get a linked child's class timetable
  */
 

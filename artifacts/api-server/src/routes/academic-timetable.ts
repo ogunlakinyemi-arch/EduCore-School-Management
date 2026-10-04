@@ -2,6 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from "express"
 import { pool } from "@workspace/db";
 import { timetableSelectionError } from "../lib/timetable-selection-error";
 import { timetableSelectionSql } from "../lib/timetable-selection-sql";
+import { parentChildAcademicContext } from "../services/parent-child-academic-context";
 import {
   assertRoles,
   assertSchoolAccess,
@@ -408,30 +409,23 @@ router.get("/academic/parents/children/:studentId/timetable", asyncRoute(async (
   assertRoles(req, ["PARENT"]);
   const studentId = pathId(req.params.studentId, "Student");
   const context = getUserContext(req);
-  const result = await pool.query(
-    `SELECT st.id AS "studentId", st.school_id AS "schoolId",
-       a.academic_session_id AS "sessionId", a.academic_term_id AS "termId",
-       a.school_class_id AS "classId", a.section
-       FROM parents p
-       JOIN parent_student_relationships psr ON psr.parent_id=p.id AND UPPER(psr.status)='ACTIVE'
-       JOIN students st ON st.id=psr.student_id AND st.school_id=p.school_id
-       JOIN student_class_assignments a ON a.student_id=st.id AND a.school_id=st.school_id
-       JOIN school_classes c ON c.id=a.school_class_id AND c.school_id=a.school_id
-       JOIN academic_sessions ac ON ac.id=a.academic_session_id AND ac.school_id=a.school_id
-      WHERE p.user_id=$1 AND UPPER(p.status)='ACTIVE' AND psr.student_id=$2
-        AND a.is_current=true AND a.status='ACTIVE' AND ac.is_current=true AND ac.status='ACTIVE'
-      ORDER BY a.start_date DESC LIMIT 1`,
-    [context.user.id, studentId],
-  );
-  const assignment = result.rows[0];
-  if (!assignment) throw new AuthError(404, "Student not found");
-  if (req.query.schoolId !== undefined && id(req.query.schoolId, "schoolId") !== Number(assignment.schoolId)) {
+  const child=await parentChildAcademicContext(context.user.id,studentId,
+    req.query.schoolId===undefined?undefined:id(req.query.schoolId,"schoolId")??undefined);
+  const assignment=child.enrollment;
+  if(!assignment) { res.json([]); return; }
+  if (req.query.schoolId !== undefined && id(req.query.schoolId, "schoolId") !== Number(child.schoolId)) {
     throw new AuthError(404, "Timetable not found");
   }
-  await timetableRows(req, res, Number(assignment.schoolId), [
+  await timetableRows(req, res, Number(child.schoolId), [
     "te.school_id=$1", "te.academic_session_id=$2", "te.school_class_id=$3",
     "COALESCE(te.section,'')=$4", "te.academic_term_id=$5", "te.status='ACTIVE'",
-  ], [assignment.schoolId, assignment.sessionId, assignment.classId, assignment.section ?? "", assignment.termId]);
+  ], [child.schoolId, assignment.sessionId, assignment.classId, assignment.section ?? "", assignment.termId]);
+}));
+
+router.get("/academic/parents/children/:studentId/context", asyncRoute(async(req,res)=>{
+  assertRoles(req,["PARENT"]);
+  res.json(await parentChildAcademicContext(getUserContext(req).user.id,pathId(req.params.studentId,"Student"),
+    req.query.schoolId===undefined?undefined:id(req.query.schoolId,"schoolId")??undefined));
 }));
 
 export default router;

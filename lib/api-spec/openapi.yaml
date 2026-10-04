@@ -4866,6 +4866,44 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/AcademicTimetableEntry" } }
+  /academic/parents/children/{studentId}/context:
+    get:
+      operationId: getChildAcademicContext
+      tags: [academics]
+      summary: Get the linked child's current academic placement and authorized class teacher
+      parameters:
+        - $ref: "#/components/parameters/StudentIdPath"
+        - { name: schoolId, in: query, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Current linked-child context; missing placement or teacher is null, not a missing child
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [studentId, schoolId, enrollment, classTeacher]
+                properties:
+                  studentId: { type: integer }
+                  schoolId: { type: integer }
+                  enrollment:
+                    type: object
+                    nullable: true
+                    required: [sessionId, sessionName, termId, termName, classId, className, section]
+                    properties:
+                      sessionId: { type: integer }
+                      sessionName: { type: string }
+                      termId: { type: integer }
+                      termName: { type: string }
+                      classId: { type: integer }
+                      className: { type: string }
+                      section: { type: string }
+                  classTeacher:
+                    type: object
+                    nullable: true
+                    required: [employeeId, name]
+                    properties:
+                      employeeId: { type: integer }
+                      name: { type: string }
   /academic/parents/children/{studentId}/timetable:
     get:
       operationId: getChildAcademicTimetable

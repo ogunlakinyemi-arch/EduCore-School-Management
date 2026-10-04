@@ -45,6 +45,8 @@ const db = vi.hoisted(() => {
     if (sql.includes("INSERT INTO audit_logs")) return result();
     if (sql.includes("FROM employees WHERE user_id")) return result([{ id: 6 }]);
     if (sql.includes("FROM academic_timetable_entries te")) return result([{ ...state.entry }]);
+    if(sql.includes("LEFT JOIN student_class_assignments a")) return result(state.studentAssignments);
+    if(sql.includes("FROM teacher_class_assignments t")) return result([]);
     if (sql.includes("FROM students st") && sql.includes("UPPER(st.status)='ACTIVE'")) {
       return result(state.studentProfiles.filter((profile) =>
         profile.status === "ACTIVE" &&

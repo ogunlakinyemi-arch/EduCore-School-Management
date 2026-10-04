@@ -21616,6 +21616,35 @@ termId?: number;
 weekday?: Weekday;
 };
 
+export type GetChildAcademicContextParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+};
+
+export type GetChildAcademicContext200Enrollment = {
+  sessionId: number;
+  sessionName: string;
+  termId: number;
+  termName: string;
+  classId: number;
+  className: string;
+  section: string;
+} | null;
+
+export type GetChildAcademicContext200ClassTeacher = {
+  employeeId: number;
+  name: string;
+} | null;
+
+export type GetChildAcademicContext200 = {
+  studentId: number;
+  schoolId: number;
+  enrollment: GetChildAcademicContext200Enrollment;
+  classTeacher: GetChildAcademicContext200ClassTeacher;
+};
+
 export type GetChildAcademicTimetableParams = {
 /**
  * @minimum 1

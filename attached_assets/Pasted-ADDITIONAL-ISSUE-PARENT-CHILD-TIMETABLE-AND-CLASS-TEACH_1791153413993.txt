@@ -1,0 +1,210 @@
+ADDITIONAL ISSUE — PARENT CHILD TIMETABLE AND CLASS TEACHER
+
+The Parent dashboard currently has two related problems:
+
+1. Parent cannot view the child's timetable
+   
+   - Parent → Child → Timetable displays:
+     "HTTP 404 Not Found: Student not found"
+   - A Retry button is shown, but retrying does not resolve the issue.
+   - The timetable must load using the selected/linked child from the authenticated Parent account.
+   - Do not require the Parent to manually enter a Student ID.
+   - Do not use the Parent's own user ID as the Student ID.
+   - Do not use admission number where the API expects the internal student ID.
+
+2. Parent cannot view the child's Class Teacher
+   
+   - Parent dashboard should display the child's current Class Teacher.
+   - The Class Teacher must be resolved from the child's current school, academic session, class and section.
+   - Only the teacher assigned to that child's current class/section should be displayed.
+   - Do not expose teachers from another school, class, section or historical enrollment.
+
+REQUIRED ROOT-CAUSE INVESTIGATION
+
+Do not simply change the frontend error message.
+
+Trace the complete Parent → Child → Student → Class/Section → Timetable/Class Teacher flow.
+
+For the affected Parent account, use the genuine Development data and determine:
+
+- Which child is selected.
+- The child's actual internal student ID.
+- The child's school ID.
+- Current academic session.
+- Current academic term.
+- Current class.
+- Current section.
+- Parent-child relationship record.
+- Current Class Teacher assignment.
+- Timetable records for that student's class/section.
+- Exact API endpoint called by the Parent timetable page.
+- HTTP method.
+- URL/query parameters.
+- Request body if applicable.
+- Exact student identifier sent by the frontend.
+- Exact student identifier expected by the backend.
+- Backend Student lookup query.
+- School/tenant filtering.
+- Session/term filtering.
+- Whether the API incorrectly expects a different student identifier.
+- Whether the Parent dashboard is using stale/incorrect child state.
+
+Check whether the same Student record can successfully be resolved through the existing Student/School Admin/Student dashboard APIs.
+
+PARENT TIMETABLE REQUIREMENTS
+
+Fix the actual root cause so that:
+
+Parent Login → Select Child → Timetable
+
+loads the child's timetable for the child's current class/section.
+
+The timetable must show, where available:
+
+- Day
+- Time
+- Subject
+- Teacher
+- Class/section context
+
+Use the existing timetable records and existing teacher/class assignments.
+
+Do not create duplicate timetable records.
+
+Do not create fake timetable data just to make the screen display.
+
+Do not weaken authorization.
+
+The Parent must only see the selected linked child's timetable.
+
+If the family has multiple children, switching between children must load the correct timetable for each child.
+
+If a child has no timetable yet, show a clear empty state such as:
+
+“No timetable has been published for this child yet.”
+
+Do NOT show:
+
+“Student not found”
+
+when the student actually exists.
+
+CLASS TEACHER REQUIREMENTS
+
+Add/repair the Parent dashboard's Class Teacher section.
+
+For the selected child, resolve:
+
+Student → Current Enrollment → Class → Section → Current Class Teacher
+
+Display, where available:
+
+- Class Teacher name
+- Teacher photo if already available through the authorized profile data
+- Subject/role if already supported
+- Authorized contact information only if the existing Parent communication policy permits it
+
+Do not expose private teacher information.
+
+If no Class Teacher is assigned, show:
+
+“No class teacher has been assigned yet.”
+
+Do not return HTTP 404 for a valid student who simply has no Class Teacher.
+
+MULTI-CHILD AND TENANT ISOLATION
+
+Test a Parent with at least two linked children where possible.
+
+Verify:
+
+- Child A → Child A timetable
+- Child A → Child A class teacher
+- Child B → Child B timetable
+- Child B → Child B class teacher
+- Switching children updates both sections correctly.
+- A Parent cannot request another student's timetable by changing a student ID manually.
+- A Parent cannot access another school's student, timetable or teacher.
+- Historical class/session records must not incorrectly replace the child's current enrollment.
+
+GENUINE BROWSER ACCEPTANCE TEST
+
+Use a real authenticated Development Parent account.
+
+Perform:
+
+1. Sign in as Parent.
+2. Open Parent dashboard.
+3. Select a linked child.
+4. Open Timetable.
+5. Confirm the timetable loads without HTTP 404.
+6. Confirm the timetable belongs to the selected child.
+7. Refresh the page.
+8. Confirm the timetable still loads.
+9. Switch to another linked child if available.
+10. Confirm the second child's timetable is displayed.
+11. Open the Class Teacher section.
+12. Confirm the correct current Class Teacher is displayed.
+13. Refresh and confirm the Class Teacher remains available.
+14. Attempt an unauthorized student ID and confirm access is rejected safely.
+
+TESTING
+
+Add focused tests for:
+
+- Parent child resolution
+- Parent → Student lookup
+- Parent timetable endpoint
+- Student ID mapping
+- Current enrollment resolution
+- Class/section timetable filtering
+- Session/term filtering
+- Parent child switching
+- Class Teacher resolution
+- Multi-child Parent accounts
+- Cross-school isolation
+- Unauthorized student access
+- Empty timetable state
+- No Class Teacher state
+- Refresh/persistence
+
+Do not rewrite unrelated timetable functionality that is already working for School Admin or Teacher.
+
+Do not modify the existing timetable creation, teacher assignment or conflict-detection rules unless the investigation proves the Parent read path depends on a genuine backend defect there.
+
+PRESERVATION REQUIREMENTS
+
+Development only.
+
+Do NOT:
+
+- publish
+- modify Production
+- reset the database
+- reseed the database
+- truncate tables
+- delete existing business records
+- fabricate production-like records
+- bypass authentication
+- weaken tenant isolation
+- change fee/payment functionality
+
+Preserve all existing Parent, Student, timetable, teacher assignment and academic records.
+
+FINAL REPORT
+
+Report:
+
+1. Exact root cause of the Parent timetable 404.
+2. Exact API endpoint and incorrect/correct identifier.
+3. Backend/frontend correction made.
+4. How Class Teacher is now resolved.
+5. Genuine browser test results.
+6. Multi-child test results.
+7. Cross-school/authorization results.
+8. Focused test counts.
+9. Typecheck results.
+10. Confirmation that existing data was preserved.
+11. Confirmation that Production was untouched.
+
+Do not report the issue as fixed unless the genuine authenticated Parent browser journey has actually passed.

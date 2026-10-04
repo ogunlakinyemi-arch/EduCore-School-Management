@@ -274,6 +274,8 @@ import type {
   GetAcademicResultCompilationParams,
   GetAdmissionApplicationParams,
   GetAdmissionPortalSettingsParams,
+  GetChildAcademicContext200,
+  GetChildAcademicContextParams,
   GetChildAcademicTimetableParams,
   GetClassAttendanceParams,
   GetCommunicationPreferencesParams,
@@ -32816,6 +32818,95 @@ export function useGetMyAcademicTimetable<TData = Awaited<ReturnType<typeof getM
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetMyAcademicTimetableQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetChildAcademicContextUrl = (studentId: number,
+    params?: GetChildAcademicContextParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/academic/parents/children/${studentId}/context?${stringifiedParams}` : `/api/academic/parents/children/${studentId}/context`
+}
+
+/**
+ * @summary Get the linked child's current academic placement and authorized class teacher
+ */
+export const getChildAcademicContext = async (studentId: number,
+    params?: GetChildAcademicContextParams, options?: Parameters<typeof customFetch>[1]): Promise<GetChildAcademicContext200> => {
+
+  return customFetch<GetChildAcademicContext200>(getGetChildAcademicContextUrl(studentId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChildAcademicContextQueryKey = (studentId: number,
+    params?: GetChildAcademicContextParams,) => {
+    return [
+    `/api/academic/parents/children/${studentId}/context`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetChildAcademicContextQueryOptions = <TData = Awaited<ReturnType<typeof getChildAcademicContext>>, TError = ErrorType<unknown>>(studentId: number,
+    params?: GetChildAcademicContextParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChildAcademicContext>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChildAcademicContextQueryKey(studentId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChildAcademicContext>>> = ({ signal }) => getChildAcademicContext(studentId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: studentId !== null && studentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChildAcademicContext>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChildAcademicContextQueryResult = NonNullable<Awaited<ReturnType<typeof getChildAcademicContext>>>
+export type GetChildAcademicContextQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the linked child's current academic placement and authorized class teacher
+ */
+
+export function useGetChildAcademicContext<TData = Awaited<ReturnType<typeof getChildAcademicContext>>, TError = ErrorType<unknown>>(
+ studentId: number,
+    params?: GetChildAcademicContextParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChildAcademicContext>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChildAcademicContextQueryOptions(studentId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
