@@ -204,7 +204,7 @@ export function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; c
       )}
 
       {canEdit && modal && (
-        <Modal title={modal.create ? "Add Timetable Entry" : "Edit Timetable Entry"} onClose={() => setModal(null)}>
+        <Modal viewport title={modal.create ? "Add Timetable Entry" : "Edit Timetable Entry"} onClose={() => setModal(null)}>
           <TimetableEditor
             schoolId={schoolId} initialSessionId={activeSession?.id} initialTermId={activeTerm?.id}
             initial={modal.create ? null : modal}

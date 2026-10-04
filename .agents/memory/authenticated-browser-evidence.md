@@ -14,3 +14,9 @@ For approved passwordless Development fixtures, valid Clerk sign-in tickets can 
 **Why:** A browser pass stopped role-specific checks after retaining only Admin access, despite the controlled verified fixture identities already existing. Fresh fixture tickets resolved the missing credentials without new users, role changes, fabricated JWTs, or Owner impersonation.
 
 **How to apply:** Verify Development tenant, fixture ownership metadata, and verified email before issuing tickets. Keep ticket values only in private temporary files, never source, reports, logs, or memory. Use normal Clerk sign-in/setActive, and limit this mechanism to approved fixture identities unless the user explicitly authorizes a temporary sign-in to a specific existing Development account. For that exception, confirm the actual active school membership, verified email and approved role; do not add memberships, change roles or substitute identity claims.
+
+An authenticated form's existence or a visibility assertion does not prove that its controls are reachable in the actual scrolled mobile portal.
+
+**Why:** Repeated timetable acceptance reports covered data eligibility but missed a remaining dialog-positioning risk. A genuine Finance reproduction then found a creation form in the DOM with its required selectors above the viewport. Automated selection and API success alone could miss this user-visible failure.
+
+**How to apply:** Open reported-broken forms through normal navigation and unforced clicks, including the page's actual scroll position. Inspect viewport bounds when a dialog appears unresponsive; distinguish normal scrolling inside a dialog from forcing offscreen controls. Complete the genuine role-specific Save → HTTP success → full refresh workflow before reporting it verified.

@@ -1,0 +1,318 @@
+Work ONLY in Development.
+
+The actual School Admin portal still has two important problems:
+
+ISSUE 1 — Fee Structure "New Structure" is not responsive
+
+School Admin → Finance/Fees → Fee Structures
+
+When I click New Structure, the button does not respond/open the creation form.
+
+ISSUE 2 — Timetable still cannot be created
+
+School Admin → Timetable → Add Timetable Entry
+
+The timetable creation workflow is still not usable in the actual School Admin portal, even though previous Development reports claimed it was fixed.
+
+I need you to reproduce both issues using a genuine authenticated School Admin browser session and fix the actual root causes.
+
+IMPORTANT:
+
+- Development only.
+- Do NOT modify Production.
+- Do NOT publish.
+- Do NOT approve migrations.
+- Do NOT reset, reseed, truncate or delete existing data.
+- Do NOT fabricate subjects, teachers, assignments, fee structures or timetable records just to make tests pass.
+- Do NOT weaken school isolation or authorization.
+- Do NOT modify unrelated modules.
+- Do NOT rely only on automated tests.
+- The final acceptance MUST include a genuine School Admin browser test.
+
+PART A — FIX FEE STRUCTURE "NEW STRUCTURE"
+
+1. Reproduce
+
+Using a genuine School Admin session:
+
+1. Login.
+2. Open Finance/Fees.
+3. Open Fee Structures.
+4. Click New Structure.
+5. Observe exactly what happens.
+
+Determine whether:
+
+- the button has no click handler,
+- navigation fails,
+- a modal/drawer fails to open,
+- JavaScript throws an error,
+- required data loading fails,
+- the button is incorrectly disabled,
+- permissions incorrectly block the action,
+- the form opens but is hidden behind another UI element,
+- an API request fails,
+- or the route is incorrect.
+
+Inspect browser console/network information where available.
+
+Do not guess.
+
+2. Trace the complete flow
+
+Trace:
+
+New Structure button
+→ click handler
+→ route/modal/drawer
+→ required session/term/class data
+→ fee structure form
+→ validation
+→ API
+→ database.
+
+Fix the actual broken link in this chain.
+
+3. Fee Structure acceptance test
+
+After fixing, a genuine School Admin must be able to:
+
+1. Open Fee Structures.
+2. Click New Structure.
+3. Creation form visibly opens.
+4. Select Academic Session.
+5. Select Term.
+6. Select Class.
+7. Select Section where applicable.
+8. Enter fee name/category.
+9. Enter amount.
+10. Save.
+11. See successful confirmation.
+12. See the new structure in the list.
+13. Refresh the page.
+14. Confirm it remains.
+
+Use a valid test example such as:
+
+2026/2027
+First Term
+SS2 B
+Tuition
+₦8,000
+
+Do not modify existing financial records unnecessarily.
+
+If the school has no valid class/term configuration, identify the missing prerequisite instead of fabricating data.
+
+PART B — FIX TIMETABLE CREATION
+
+The previous reports have repeatedly claimed that Timetable is fixed, but the actual School Admin portal is still not allowing timetable creation.
+
+Therefore, reproduce the exact problem from the real School Admin UI.
+
+1. Start from a genuine School Admin session
+
+Open:
+
+Timetable → Add Timetable Entry
+
+Do not rely on previous QA sessions.
+
+2. Test each selection
+
+Verify individually:
+
+- Session dropdown
+- Term dropdown
+- Class dropdown
+- Section dropdown
+- Subject dropdown
+- Teacher dropdown
+- Day
+- Start time
+- End time
+- Save button.
+
+For each dropdown determine:
+
+- Is it clickable?
+- Does it show options?
+- Does the API request fire?
+- What HTTP status is returned?
+- What data is returned?
+- Does the UI render the returned data?
+- Is the control disabled incorrectly?
+
+3. Use an actually valid assignment
+
+Find an existing Development class/section with a legitimate:
+
+School
+→ Session
+→ Term
+→ Class
+→ Section
+→ Subject
+→ Teacher assignment.
+
+Do NOT fabricate a new assignment merely to make the test pass.
+
+Then test:
+
+Subject → eligible Teacher → Save.
+
+4. Trace the actual browser API
+
+For the Subject request record:
+
+- endpoint
+- parameters
+- HTTP status
+- response count
+- response fields.
+
+For Teacher request record:
+
+- endpoint
+- parameters
+- HTTP status
+- response count
+- response fields.
+
+Compare those actual responses with what the React components expect.
+
+Check for:
+
+- wrong property names
+- wrong IDs
+- stale React state
+- incorrect query keys
+- disabled controls
+- filtering valid records out
+- school/session/term mismatch
+- class/section mismatch
+- assignment mismatch.
+
+5. Save test
+
+Once selections work:
+
+1. Select valid Session.
+2. Select valid Term.
+3. Select valid Class.
+4. Select valid Section.
+5. Select valid Subject.
+6. Select eligible Teacher.
+7. Enter valid time.
+8. Click Save.
+9. Confirm HTTP 201/success.
+10. Refresh.
+11. Confirm the entry remains.
+
+Do not claim the timetable is fixed if only the dropdown tests pass.
+
+PART C — IMPORTANT: DO NOT HIDE ERRORS
+
+If something fails, the UI must show a useful message.
+
+Examples:
+
+- "Unable to load subjects. Try again."
+- "No subjects are assigned to this class."
+- "No teacher is assigned to this subject/class."
+- "Unable to load fee structure form."
+- "Unable to save fee structure."
+
+Do not silently ignore failed requests.
+
+Do not leave buttons appearing clickable when their required data has failed to load.
+
+PART D — FOCUSED TESTS
+
+Create/update only focused tests for these two issues.
+
+Fee Structure:
+
+- New Structure click
+- form rendering
+- required data loading
+- valid creation
+- invalid creation
+- persistence after refresh
+- School Admin authorization
+
+Timetable:
+
+- selection rendering
+- Subject loading
+- Teacher loading
+- assignment eligibility
+- valid Save
+- invalid assignment rejection
+- collision protection
+- persistence after refresh
+- School Admin authorization
+- school isolation
+
+Do not run a massive unrelated test suite.
+
+PART E — FINAL REPORT
+
+Return exactly:
+
+FEE STRUCTURE
+
+- New Structure button: PASS/FAIL
+- Creation form: PASS/FAIL
+- Session/Term/Class selection: PASS/FAIL
+- Save: PASS/FAIL
+- Refresh persistence: PASS/FAIL
+- Genuine School Admin browser test: PASS/FAIL
+- Exact root cause:
+- Exact files changed:
+
+TIMETABLE
+
+- Session: PASS/FAIL
+- Term: PASS/FAIL
+- Class: PASS/FAIL
+- Section: PASS/FAIL
+- Subject dropdown: PASS/FAIL
+- Teacher dropdown: PASS/FAIL
+- Save: PASS/FAIL
+- Refresh persistence: PASS/FAIL
+- Genuine School Admin browser test: PASS/FAIL
+- Exact root cause:
+- Exact files changed:
+
+TESTS
+
+- Frontend focused tests:
+- Backend focused tests:
+- PostgreSQL checks:
+- Frontend typecheck:
+- Backend typecheck:
+
+PRESERVATION
+
+Confirm:
+
+- Production untouched.
+- Nothing published.
+- No migration approved.
+- No reset/reseed/truncate/delete.
+- No fabricated business records.
+- Existing fee and timetable records preserved.
+- No unrelated modules changed.
+
+CRITICAL:
+
+Do not report "FIXED AND VERIFIED" unless the actual authenticated School Admin browser can perform both workflows successfully.
+
+The final required workflows are:
+
+School Admin → Fee Structures → New Structure → Create → Save → Refresh
+
+and
+
+School Admin → Timetable → Add Entry → Session → Term → Class → Section → Subject → Teacher → Save → Refresh
