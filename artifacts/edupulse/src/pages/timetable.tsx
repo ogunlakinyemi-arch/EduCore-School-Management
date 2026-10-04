@@ -8,17 +8,18 @@ import {
 } from '@workspace/api-client-react';
 import { Plus, Pencil, Calendar, Clock, MapPin } from 'lucide-react';
 import { useGetAuthorizedContext } from '@workspace/api-client-react';
+import { academicSaveError } from '@/components/academic-save-error';
 
-function useAcademicContext(schoolId: number) {
+function useAcademicContext(schoolId: number, sessionId = 0, termId = 0) {
   const sessions = useListAcademicSessions({ schoolId }, { query: { enabled: !!schoolId, queryKey: ['sessions', schoolId] } });
-  const activeSession = sessions.data?.find((s: any) => s.isCurrent) || sessions.data?.[0];
+  const activeSession = sessions.data?.find(s => s.id === sessionId) || sessions.data?.find((s: any) => s.isCurrent) || sessions.data?.[0];
   const terms = useListAcademicTerms(activeSession?.id as number, { schoolId }, { query: { enabled: !!(schoolId && activeSession?.id), queryKey: ['terms', activeSession?.id, schoolId] } });
-  const activeTerm = terms.data?.find((t: any) => t.isCurrent) || terms.data?.[0];
+  const activeTerm = terms.data?.find(t => t.id === termId) || terms.data?.find((t: any) => t.isCurrent) || terms.data?.[0];
   const classes = useListClasses({ schoolId }, { query: { enabled: !!schoolId, queryKey: ['classes', schoolId] } });
   const subjects = useListSubjects({ schoolId }, { query: { enabled: !!schoolId, queryKey: ['subjects', schoolId] } });
   const teachers = useListEmployees({ schoolId }, { query: { enabled: !!schoolId, queryKey: ['teachers', schoolId] } });
 
-  return { activeSession, activeTerm, classes: classes.data ?? [], subjects: subjects.data ?? [], teachers: teachers.data ?? [], isLoading: sessions.isLoading || terms.isLoading || classes.isLoading || subjects.isLoading || teachers.isLoading };
+  return { activeSession, activeTerm, sessions: sessions.data ?? [], terms: terms.data ?? [], error: sessions.error || terms.error || classes.error || subjects.error || teachers.error, classes: classes.data ?? [], subjects: subjects.data ?? [], teachers: teachers.data ?? [], isLoading: sessions.isLoading || terms.isLoading || classes.isLoading || subjects.isLoading || teachers.isLoading };
 }
 
 export function TimetablePage() {
@@ -56,7 +57,7 @@ export function TimetablePage() {
                <button onClick={() => setTab('mine')} className={cx("px-4 py-2.5 text-sm font-bold border-b-2 transition-colors", activeTab === 'mine' ? "border-[hsl(var(--primary))] text-[hsl(var(--foreground))]" : "border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>My Schedule</button>
             </div>
           )}
-          {activeTab === 'manage' && canViewSchoolSchedule && <ManageTimetableView schoolId={schoolId} canEdit={canManage} />}
+          {activeTab === 'manage' && canViewSchoolSchedule && <ManageTimetableView key={schoolId} schoolId={schoolId} canEdit={canManage} />}
            {activeTab === 'mine' && isTeacherOrStudent && <MyScheduleView schoolId={schoolId} isStudent={isStudent} />}
         </>
       )}
@@ -67,7 +68,9 @@ export function TimetablePage() {
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 
 function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; canEdit: boolean }) {
-  const { activeSession, activeTerm, classes, subjects, teachers, isLoading } = useAcademicContext(schoolId);
+  const [sessionId,setSessionId] = useState(0);
+  const [termId,setTermId] = useState(0);
+  const { activeSession, activeTerm, sessions, terms, error, classes, subjects, teachers, isLoading } = useAcademicContext(schoolId,sessionId,termId);
   const [classId, setClassId] = useState<number | ''>('');
   
   const query = useListAcademicTimetable(
@@ -79,30 +82,39 @@ function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; canEdit:
   const qc = useQueryClient();
 
   if (isLoading) return <SkeletonPage />;
+  if (error) return <ErrorState retry={() => qc.invalidateQueries()} message="Timetable choices could not be loaded. Retry before saving." />;
 
   const entries = query.data ?? [];
 
   return (
     <div className="space-y-6">
-      <div className="panel p-5 flex items-center gap-4 bg-[hsl(var(--card))] border border-[hsl(var(--border))]">
+      <div className="panel p-5 flex flex-wrap items-center gap-4 bg-[hsl(var(--card))] border border-[hsl(var(--border))]">
+        <Field label="Academic Session"><select value={activeSession?.id ?? ''} onChange={e=>{setSessionId(Number(e.target.value));setTermId(0);setModal(null);}} data-testid="select-timetable-session">
+          {!sessions.length && <option value="">No sessions configured</option>}
+          {sessions.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+        </select></Field>
+        <Field label="Term"><select value={activeTerm?.id ?? ''} onChange={e=>{setTermId(Number(e.target.value));setModal(null);}} data-testid="select-timetable-term">
+          {!terms.length && <option value="">No terms configured</option>}
+          {terms.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+        </select></Field>
         <div className="w-full max-w-sm">
           <Field label="Filter by Class">
             <select value={classId} onChange={e => setClassId(e.target.value ? Number(e.target.value) : '')} className="w-full">
               <option value="">Choose a class...</option>
-              {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name} {c.section}</option>)}
             </select>
           </Field>
         </div>
         {classId && canEdit && (
           <div className="ml-auto mt-4">
-             <Button onClick={() => setModal({ create: true, classId: Number(classId) })}><Plus size={16}/> Add Entry</Button>
+             <Button disabled={!activeSession || !activeTerm} onClick={() => setModal({ create: true, classId: Number(classId) })}><Plus size={16}/> Add Entry</Button>
           </div>
         )}
       </div>
 
       {classId ? query.isLoading ? (
         <div className="p-8 text-center text-[hsl(var(--muted-foreground))]">Loading timetable...</div>
-      ) : entries.length > 0 ? (
+      ) : query.isError ? <ErrorState retry={() => query.refetch()} message="The timetable could not be loaded." /> : entries.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {DAYS.map(day => {
             const dayEntries = entries.filter((e: any) => e.weekday === day).sort((a: any, b: any) => a.startTime.localeCompare(b.startTime));
@@ -113,7 +125,7 @@ function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; canEdit:
                 <div className="divide-y divide-[hsl(var(--border)/.5)]">
                   {dayEntries.map((item: any) => (
                     <div key={item.id} className="p-4 group hover:bg-[hsl(var(--muted)/.15)] relative">
-                      {canEdit && <button onClick={() => setModal(item)} className="absolute top-4 right-4 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 bg-[hsl(var(--card))] border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-all"><Pencil size={12} /></button>}
+                      {canEdit && <button aria-label="Edit timetable entry" onClick={() => setModal(item)} className="absolute top-4 right-4 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 focus:opacity-100 bg-[hsl(var(--card))] border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-all"><Pencil size={12} /></button>}
                       <div className="flex items-center gap-2 text-xs font-medium text-[hsl(var(--primary))] mb-1.5">
                         <Clock size={12} /> {item.startTime} — {item.endTime}
                       </div>
@@ -139,7 +151,7 @@ function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; canEdit:
             schoolId={schoolId} sessionId={activeSession?.id} termId={activeTerm?.id}
             classes={classes} subjects={subjects} teachers={teachers} initial={modal.create ? null : modal}
             defaultClassId={modal.classId}
-            onDone={() => { setModal(null); qc.invalidateQueries({ queryKey: getListAcademicTimetableQueryKey() }); }}
+            onDone={() => { setModal(null); qc.invalidateQueries({ queryKey: getListAcademicTimetableQueryKey() }); qc.invalidateQueries({queryKey:getGetMyAcademicTimetableQueryKey()}); }}
             onCancel={() => setModal(null)}
           />
         </Modal>
@@ -148,9 +160,10 @@ function ManageTimetableView({ schoolId, canEdit }: { schoolId: number; canEdit:
   );
 }
 
-function TimetableEntryForm({ schoolId, sessionId, termId, classes, subjects, teachers, initial, defaultClassId, onDone, onCancel }: any) {
+export function TimetableEntryForm({ schoolId, sessionId, termId, classes, subjects, teachers, initial, defaultClassId, onDone, onCancel }: any) {
   const create = useCreateAcademicTimetableEntry();
   const update = useUpdateAcademicTimetableEntry();
+  const [failure,setFailure] = useState('');
   const [form, setForm] = useState({
     classId: initial?.classId || defaultClassId || '',
     subjectId: initial?.subjectId || '',
@@ -161,8 +174,12 @@ function TimetableEntryForm({ schoolId, sessionId, termId, classes, subjects, te
     room: initial?.room || ''
   });
 
-  const save = (e: FormEvent) => {
+  const save = async (e: FormEvent) => {
     e.preventDefault();
+    if (create.isPending || update.isPending) return;
+    setFailure('');
+    if (!sessionId || !termId) return setFailure('Select a valid session and term before saving.');
+    if (form.startTime >= form.endTime) return setFailure('End time must be later than start time.');
     const data = {
       ...form,
       classId: Number(form.classId),
@@ -173,10 +190,12 @@ function TimetableEntryForm({ schoolId, sessionId, termId, classes, subjects, te
       termId: Number(termId),
       section: classes.find((c: any) => c.id === Number(form.classId))?.section ?? '',
     };
-    if (initial) {
-      update.mutate({ entryId: initial.id, data }, { onSuccess: onDone });
-    } else {
-      create.mutate({ data }, { onSuccess: onDone });
+    try {
+      if (initial) await update.mutateAsync({ entryId: initial.id, data });
+      else await create.mutateAsync({ data });
+      onDone();
+    } catch (error) {
+      setFailure(academicSaveError(error, 'Could not save the timetable. Check the selected period and teacher assignment, then retry.'));
     }
   };
 
@@ -188,7 +207,7 @@ function TimetableEntryForm({ schoolId, sessionId, termId, classes, subjects, te
         <Field label="Class">
           <select required value={form.classId} onChange={e => setForm({...form, classId: e.target.value})} className="w-full">
             <option value="">Select class...</option>
-            {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name} {c.section}</option>)}
           </select>
         </Field>
         <Field label="Day of Week">
@@ -205,6 +224,9 @@ function TimetableEntryForm({ schoolId, sessionId, termId, classes, subjects, te
           <input type="time" required value={form.endTime} onChange={e => setForm({...form, endTime: e.target.value})} className="w-full" />
         </Field>
       </div>
+      <Field label="Section"><select value={classes.find((c:any)=>c.id===Number(form.classId))?.section ?? ''} disabled aria-label="Timetable section">
+        <option value={classes.find((c:any)=>c.id===Number(form.classId))?.section ?? ''}>{classes.find((c:any)=>c.id===Number(form.classId))?.section || 'No section'}</option>
+      </select><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Section belongs to the selected class. Choose the matching class/section above.</p></Field>
       <Field label="Subject">
         <select required value={form.subjectId} onChange={e => setForm({...form, subjectId: e.target.value})} className="w-full">
           <option value="">Select subject...</option>
@@ -214,7 +236,7 @@ function TimetableEntryForm({ schoolId, sessionId, termId, classes, subjects, te
       <Field label="Teacher">
         <select required value={form.teacherId} onChange={e => setForm({...form, teacherId: e.target.value})} className="w-full">
           <option value="">Select teacher</option>
-          {teachers.map((t: any) => <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>)}
+          {teachers.filter((t:any)=>String(t.employeeType).toUpperCase()==='TEACHER' && String(t.status).toUpperCase()==='ACTIVE').map((t: any) => <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>)}
         </select>
       </Field>
       <Field label="Room (Optional)">
@@ -224,6 +246,7 @@ function TimetableEntryForm({ schoolId, sessionId, termId, classes, subjects, te
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="submit" disabled={pending}>{pending ? 'Saving...' : 'Save'}</Button>
       </div>
+      {failure && <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{failure}</p>}
     </form>
   );
 }

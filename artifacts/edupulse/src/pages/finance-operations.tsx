@@ -219,6 +219,7 @@ function VerifiedReceipt({ payment, onClose }: { payment: FeePaymentHistory; onC
               {['REFUNDED', 'REVERSED'].includes(payment.status) && <p className="mt-3 text-xs font-semibold">This status reflects an internal ledger record, not confirmation that a provider-issued payout occurred.</p>}
             </div>
             <SchoolDocumentPrintButton
+              preview
               label="Print receipt"
               testId={`button-print-receipt-${payment.id}`}
               className="mt-5"
@@ -233,9 +234,12 @@ function VerifiedReceipt({ payment, onClose }: { payment: FeePaymentHistory; onC
                   <div className="school-document-field"><dt>Invoice number</dt><dd>{snapshotValue('invoiceNumber') ?? payment.invoiceNumber}</dd></div>
                   <div className="school-document-field"><dt>Student</dt><dd>{snapshotValue('studentName') ?? payment.studentName}</dd></div>
                   {snapshotValue('admissionNo') !== null && <div className="school-document-field"><dt>Admission number</dt><dd>{snapshotValue('admissionNo')}</dd></div>}
-                  {snapshotValue('className') !== null && <div className="school-document-field"><dt>Class</dt><dd>{snapshotValue('className')}</dd></div>}
+                  {snapshotValue('className') !== null && <div className="school-document-field"><dt>Class / section</dt><dd>{snapshotValue('className')} {snapshotValue('section')}</dd></div>}
                   <div className="school-document-field"><dt>Session / term</dt><dd>{snapshotValue('sessionId') ?? '—'} / {snapshotValue('termId') ?? '—'}</dd></div>
-                  {snapshotValue('payerName') !== null && <div className="school-document-field"><dt>Payer</dt><dd>{snapshotValue('payerName')}</dd></div>}
+                  {(snapshotValue('payerName')??snapshotValue('parentName')??snapshotValue('receivedFrom'))!==null && <div className="school-document-field"><dt>Received from</dt><dd>{snapshotValue('payerName')??snapshotValue('parentName')??snapshotValue('receivedFrom')}</dd></div>}
+                  <div className="school-document-field"><dt>Payment date</dt><dd>{(snapshotValue('paidAt')??snapshotValue('verifiedAt')??payment.verifiedAt) ? new Date((snapshotValue('paidAt')??snapshotValue('verifiedAt')??payment.verifiedAt)!).toLocaleDateString('en-NG') : '—'}</dd></div>
+                  {snapshotValue('actorUserId')!==null&&<div className="school-document-field"><dt>Recorded by (user ID)</dt><dd>{snapshotValue('actorUserId')}</dd></div>}
+                  {snapshotValue('evidenceReference')!==null&&<div className="school-document-field"><dt>Cash reference</dt><dd>{snapshotValue('evidenceReference')}</dd></div>}
                   <div className="school-document-field"><dt>Payment reference</dt><dd>{snapshotValue('paymentReference') ?? payment.reference}</dd></div>
                   <div className="school-document-field"><dt>Payment method</dt><dd>{snapshotValue('method') ?? payment.method}</dd></div>
                   <div className="school-document-field"><dt>Receipt status</dt><dd>{snapshotValue('status') ?? 'VERIFIED'}</dd></div>

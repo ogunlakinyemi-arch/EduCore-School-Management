@@ -632,8 +632,8 @@ router.get("/academic/assessments", asyncRoute(async (req, res) => {
       [schoolId, context.user.id],
     );
     if (!teacher.rows[0]) throw new AuthError(403, "An active teacher profile in this school is required");
-    values.push(context.user.id);
-    where.push(`a.created_by=$${values.length}`);
+    values.push(Number(teacher.rows[0].id));
+    where.push(`a.teacher_employee_id=$${values.length}`);
   }
   const result = await pool.query(
     `SELECT ${assessmentColumns} FROM academic_assessments a

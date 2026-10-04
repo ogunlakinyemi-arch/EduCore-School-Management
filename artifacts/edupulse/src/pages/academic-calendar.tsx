@@ -8,6 +8,7 @@ import {
 } from '@workspace/api-client-react';
 import { PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Modal, Field, TenantPicker } from '@/components/shared';
 import { FRESH, Notice, errMsg, fmtDay, isValidRange, useSchoolRole } from '@/components/school-ops-kit';
+import { TermsManager, invalidatePeriodQueries } from '@/pages/academics';
 import { CalendarGenerator } from '@/components/calendar-generator';
 
 type Category = CreateSchoolCalendarEventBody['category'];
@@ -49,6 +50,7 @@ export function AcademicCalendarPage() {
   const finish = (msg: string) => {
     setModal(null); setDone(msg);
     qc.invalidateQueries({ queryKey: getListSchoolAcademicCalendarQueryKey(schoolId) });
+    invalidatePeriodQueries(qc);
   };
 
   const create = useCreateSchoolCalendarEvent();
@@ -80,6 +82,7 @@ export function AcademicCalendarPage() {
               </select>
             </div>
           )}
+          {canManage && <div className="mb-6"><TermsManager schoolId={schoolId} sessions={sessions} sessionId={activeSession || undefined} onPick={setSessionId} canManage={canManage} /></div>}
           {grouped.length === 0 ? (
             <div className="panel"><EmptyState icon={CalendarDays} title="Nothing scheduled" description="No calendar entries exist for this session yet."
               action={canManage && activeSession ? <Button onClick={() => setModal('generate')}><Wand2 size={15} />Generate calendar</Button> : undefined} /></div>

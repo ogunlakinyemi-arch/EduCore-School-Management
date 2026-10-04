@@ -220,7 +220,8 @@ describe('mixed-role Platform Owner school-operation pages', () => {
 
     expect(html).toContain('Report Cards');
     expect(html).toContain('Grading Rules');
-    expect(html).toContain('Publish Approved (0)');
+    expect(html).not.toContain('Publish Approved (0)');
+    expect(html).toContain('published through consolidated report cards');
     expect(html).toMatch(/placeholder="Score"(?![^>]*disabled)/);
   });
 

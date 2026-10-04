@@ -24,6 +24,10 @@ const poolMock = vi.hoisted(() => {
   const result = (rows: any[] = []) => ({ rows, rowCount: rows.length });
   const respond = async (sql: string, values: any[] = []) => {
     state.queries.push({ sql, values });
+    if(sql.includes("FROM academic_terms t JOIN academic_sessions s")) return result([{id:4}]);
+    if(sql.includes("WITH chosen AS")) return result([{id:13,firstName:"QA",lastName:"Student",admissionNo:"QA-13",classId:5,className:"JSS2",section:"Blue",studentClassAssignmentId:12}]);
+    if(sql.includes("SELECT DISTINCT ON (cs.subject_id)")) return result([{subjectId:7,subjectName:"Mathematics",teacherName:"QA Teacher"}]);
+    if(sql.includes("concat_ws")&&sql.includes("FROM academic_results r")) return result([{id:55,subjectId:7,score:18,maxScore:20,grade:"A",status:state.resultStatus,reviewStatus:state.reviewStatus,teacherName:"QA Teacher"}]);
     if(sql.includes("pg_advisory_xact_lock")) return result();
     if(sql.includes("FROM academic_report_cards")&&sql.includes("academic_session_id=$3")) return result([]);
     if(sql.includes("FROM audit_logs")&&sql.includes("Approved academic report card")) return result([{id:1}]);
@@ -264,23 +268,19 @@ describe("academic result and report-card operations", () => {
     expect(poolMock.connect).not.toHaveBeenCalled();
   });
 
-  it("publishes results atomically and writes an audit record", async () => {
+  it("blocks direct assessment publication even after subject approval", async () => {
     state.resultStatus = "SUBMITTED";
     state.reviewStatus = "APPROVED";
     const response = await post("/academic/assessments/21/publish-results", { schoolId: 1 });
-    expect(response.status).toBe(200);
-    expect(state.published).toBe(true);
-    expect(state.transactions).toEqual(["BEGIN", "COMMIT"]);
-    expect(state.auditCount).toBe(1);
-    expect((await response.json() as { publishedCount: number }).publishedCount).toBe(1);
-    expect(state.queries.find(({ sql }) => sql.includes("UPDATE academic_results SET status='PUBLISHED'"))?.sql)
-      .toContain("review_status='APPROVED'");
+    expect(response.status).toBe(409);
+    expect(state.published).toBe(false);
+    expect(state.transactions).toEqual([]);
+    expect(state.queries).toEqual([]);
   });
 
   it("requires teacher submission and School Admin approval before a result is publishable", async () => {
     const earlyPublish = await post("/academic/assessments/21/publish-results", { schoolId: 1 });
-    expect(earlyPublish.status).toBe(200);
-    expect((await earlyPublish.json() as { publishedCount: number }).publishedCount).toBe(0);
+    expect(earlyPublish.status).toBe(409);
     expect(state.published).toBe(false);
 
     const submitted = await post("/academic/results/55/submit", { schoolId: 1 }, "TEACHER");
@@ -294,8 +294,8 @@ describe("academic result and report-card operations", () => {
     expect(state.reviewStatus).toBe("APPROVED");
 
     const published = await post("/academic/assessments/21/publish-results", { schoolId: 1 });
-    expect(published.status).toBe(200);
-    expect(state.published).toBe(true);
+    expect(published.status).toBe(409);
+    expect(state.published).toBe(false);
     expect(state.transactions).toContain("COMMIT");
   });
 
@@ -334,6 +334,8 @@ describe("academic result and report-card operations", () => {
   });
 
   it("sets report-card publisher and timestamp only when publishing", async () => {
+    state.resultStatus="SUBMITTED";
+    state.reviewStatus="APPROVED";
     const response = await post("/academic/report-cards/80/publish", { schoolId: 1 });
     expect(response.status).toBe(200);
     const body = await response.json();

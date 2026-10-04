@@ -12,4 +12,9 @@ export interface FeeProviderCheckoutInitializeInput4b96100 {
      * @maximum 9007199254740991
      */
   amountMinor?: number;
+  /**
+     * @minItems 1
+     * @items.minimum 1
+     */
+  lineIds?: number[];
 }

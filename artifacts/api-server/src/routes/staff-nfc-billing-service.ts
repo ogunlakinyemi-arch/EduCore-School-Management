@@ -316,7 +316,7 @@ export async function generateStaffNfcTermSubscriptions(
        currency, status, due_date, created_by
      )
      SELECT $1, e.id, $2, $3, $4, $5, $6, $7, $8,
-            CASE WHEN e.partner_profile_id IS NULL THEN $9 ELSE $10 END,
+             CASE WHEN e.partner_profile_id IS NULL THEN $9::integer ELSE $10::integer END,
             CASE WHEN e.partner_profile_id IS NULL THEN 0 ELSE $11 END,
             e.partner_profile_id, e.attribution_id, $12, 'UNPAID', $13, $14
        FROM jsonb_to_recordset($15::jsonb) AS e(
@@ -355,10 +355,10 @@ export async function generateStaffNfcTermSubscriptions(
        )
        VALUES (
          COALESCE((SELECT COALESCE(NULLIF(trim(first_name || ' ' || last_name),''),email)
-                     FROM app_users WHERE id=$3),'Staff billing service'),
-         $2,$3,(SELECT clerk_user_id FROM app_users WHERE id=$3),$4,
-         'Generated staff NFC term subscriptions','Staff NFC Billing',$5,
-         'info','STAFF_NFC_TERM_SUBSCRIPTIONS_GENERATED','SUCCESS',$6::jsonb
+                      FROM app_users WHERE id=$2),'Staff billing service'),
+          $1,$2,(SELECT clerk_user_id FROM app_users WHERE id=$2),$3,
+          'Generated staff NFC term subscriptions','Staff NFC Billing',$4,
+          'info','STAFF_NFC_TERM_SUBSCRIPTIONS_GENERATED','SUCCESS',$5::jsonb
        )`,
       [
         createdBy ? "SCHOOL_ADMIN" : "STAFF_NFC_SYSTEM",

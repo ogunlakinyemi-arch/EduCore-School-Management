@@ -25,13 +25,14 @@ const parseNairaMinor = (value: string): number | null => {
   return minor > 0n && minor <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(minor) : null;
 };
 
-export function ParentOnlineMethods({ invoice, studentId }: { invoice: FeeInvoice; studentId: number | null }) {
+export function ParentOnlineMethods({ invoice, studentId, lineIds, selectedAmountMinor }: { invoice: FeeInvoice; studentId: number | null; lineIds?: number[]; selectedAmountMinor?: number }) {
   const qc = useQueryClient();
   const methods = useGetParentFeeInvoicePaymentMethods(invoice.id, { query: { enabled: invoice.outstandingMinor > 0 && invoice.studentId === studentId, queryKey: getGetParentFeeInvoicePaymentMethodsQueryKey(invoice.id), refetchOnMount: 'always', refetchOnWindowFocus: true } });
   const policy = useGetParentFeeInvoiceCheckoutPolicy(invoice.id, { query: { enabled: invoice.outstandingMinor > 0 && invoice.studentId === studentId, queryKey: getGetParentFeeInvoiceCheckoutPolicyQueryKey(invoice.id), refetchOnMount: 'always', refetchOnWindowFocus: true } });
+  const hasLines = !!lineIds?.length && Number.isSafeInteger(selectedAmountMinor) && (selectedAmountMinor ?? 0) > 0;
   const [amountInput, setAmountInput] = useState('');
   const [amountEdited, setAmountEdited] = useState(false);
-  const [attempt, setAttempt] = useState<{ key: string; provider: Provider; amountMinor: number; partial: boolean } | null>(null);
+  const [attempt, setAttempt] = useState<{ key: string; provider: Provider; amountMinor: number; partial: boolean; lineIds?: number[] } | null>(null);
   const handled = useRef('');
   const [failure, setFailure] = useState('');
   const checkout = useInitializeFeeProviderPayment({ request: { headers: attempt ? { 'Idempotency-Key': attempt.key } : {} } });
@@ -41,14 +42,14 @@ export function ParentOnlineMethods({ invoice, studentId }: { invoice: FeeInvoic
   const available = (methods.data ?? []).filter((value): value is Provider => value === 'PAYSTACK' || value === 'FLUTTERWAVE');
   const authorizedPolicy = policy.data?.invoiceId === invoice.id && policy.data.schoolId === invoice.schoolId;
   const outstanding = authorizedPolicy ? (policy.data?.outstandingMinor ?? invoice.outstandingMinor) : invoice.outstandingMinor;
-  const displayedAmount = amountEdited ? amountInput : minorToInput(outstanding);
+  const displayedAmount = hasLines ? minorToInput(selectedAmountMinor as number) : amountEdited ? amountInput : minorToInput(outstanding);
   const enteredMinor = parseNairaMinor(displayedAmount);
   const validAmount = authorizedPolicy && Number.isSafeInteger(outstanding) && outstanding > 0 &&
-    enteredMinor !== null && enteredMinor <= outstanding && (policy.data?.partialPaymentsEnabled || enteredMinor === outstanding);
+    enteredMinor !== null && enteredMinor <= outstanding && (hasLines || policy.data?.partialPaymentsEnabled || enteredMinor === outstanding);
   const begin = (provider: Provider) => {
     if (!validAmount || enteredMinor === null) { setFailure('Enter an amount greater than ₦0.00 and no more than the outstanding balance, with at most two decimal places.'); return; }
     setFailure('');
-    setAttempt({ key: crypto.randomUUID(), provider, amountMinor: enteredMinor, partial: enteredMinor < outstanding });
+    setAttempt({ key: crypto.randomUUID(), provider, amountMinor: enteredMinor, partial: enteredMinor < outstanding, ...(hasLines ? { lineIds: [...(lineIds as number[])] } : {}) });
   };
   useEffect(() => {
     if (!attempt || handled.current === attempt.key) return;
@@ -63,9 +64,9 @@ export function ParentOnlineMethods({ invoice, studentId }: { invoice: FeeInvoic
         if (latestHistory.data?.some(item => item.invoiceId === invoice.id && item.studentId === studentId && (item.status === 'PENDING' || item.status === 'PROCESSING') && (item.method === 'PAYSTACK' || item.method === 'FLUTTERWAVE'))) throw new Error('An online payment is already processing for this invoice. Check its status before attempting another.');
         if (latestMethods.isError || !latestMethods.data?.includes(attempt.provider) || !latest || latest.outstandingMinor < 1) throw new Error('This payment method or invoice is no longer payable. Nothing was charged.');
         if (latestPolicy.isError || latestPolicy.data?.invoiceId !== latest.id || latestPolicy.data.schoolId !== latest.schoolId || !Number.isSafeInteger(latestPolicy.data.outstandingMinor) || latestPolicy.data.outstandingMinor !== latest.outstandingMinor) throw new Error('Checkout policy or outstanding balance changed. Refresh the invoice before paying.');
-        const requestedMinor = attempt.partial ? attempt.amountMinor : latestPolicy.data.outstandingMinor;
-        if (!Number.isSafeInteger(requestedMinor) || requestedMinor < 1 || requestedMinor > latestPolicy.data.outstandingMinor || (attempt.partial && !latestPolicy.data.partialPaymentsEnabled)) throw new Error('This payment amount is no longer permitted. No checkout was started.');
-        const result = await checkout.mutateAsync({ invoiceId: latest.id, provider: attempt.provider, ...(attempt.partial ? { data: { amountMinor: requestedMinor } } : {}) });
+        const requestedMinor = attempt.lineIds || attempt.partial ? attempt.amountMinor : latestPolicy.data.outstandingMinor;
+        if (!Number.isSafeInteger(requestedMinor) || requestedMinor < 1 || requestedMinor > latestPolicy.data.outstandingMinor || (attempt.partial && !attempt.lineIds && !latestPolicy.data.partialPaymentsEnabled)) throw new Error('This payment amount is no longer permitted. No checkout was started.');
+        const result = await checkout.mutateAsync({ invoiceId: latest.id, provider: attempt.provider, ...(attempt.lineIds ? { data: { amountMinor: requestedMinor, lineIds: attempt.lineIds } } : attempt.partial ? { data: { amountMinor: requestedMinor } } : {}) });
         if ('outcome' in result) throw new Error(result.error || 'Checkout is processing. Check payment history before trying again.');
         if (result.invoiceId !== invoice.id || result.provider !== attempt.provider || result.status !== 'PENDING' || result.amountMinor !== requestedMinor) throw new Error('Checkout details did not match the current invoice. Please contact the school.');
         const url = new URL(result.checkoutUrl);
@@ -86,8 +87,8 @@ export function ParentOnlineMethods({ invoice, studentId }: { invoice: FeeInvoic
   if (policy.isError || !authorizedPolicy) return <div className="mt-4 text-xs text-[hsl(var(--destructive))]">Checkout policy unavailable. <button onClick={() => policy.refetch()} className="underline">Retry</button></div>;
   return <div className="mt-4 border-t border-[hsl(var(--border))] pt-4">
     <div className="mb-3 rounded-xl bg-amber-500/5 p-3 text-xs leading-5 text-[hsl(var(--muted-foreground))]"><strong className="text-[hsl(var(--foreground))]">Provider test mode.</strong> {available.map(provider => provider === 'PAYSTACK' ? 'Paystack' : 'Flutterwave').join(' and ')} checkout uses test configuration; it is not a live school collection. Outstanding balance {money(outstanding)}.</div>
-    {policy.data?.partialPaymentsEnabled ? <label className="mb-3 block max-w-xs"><span className="mb-1.5 block text-xs font-bold">Pay now (₦) · full amount selected by default</span><span className="flex items-center rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3.5 focus-within:border-[hsl(var(--primary))]"><span className="mr-2 text-sm font-bold">₦</span><input type="text" inputMode="decimal" aria-label="Online payment amount in naira" value={displayedAmount} onChange={event => { setAmountInput(event.target.value); setAmountEdited(true); setFailure(''); }} disabled={!!attempt} className="w-full bg-transparent py-2.5 text-sm font-semibold tabular-nums outline-none" data-testid={`input-online-amount-${invoice.id}`} /></span><span className="mt-1 block text-xs text-[hsl(var(--muted-foreground))]">You may pay part of the balance. Enter up to two decimal places; maximum {money(outstanding)}.</span></label> : <div className="mb-3 text-sm font-semibold">Full payment {money(outstanding)} <span className="text-xs font-normal text-[hsl(var(--muted-foreground))]">· partial payments unavailable</span></div>}
-    {policy.data?.partialPaymentsEnabled && amountEdited && !validAmount && <p role="alert" className="mb-3 text-xs text-[hsl(var(--destructive))]">Enter a positive amount no greater than {money(outstanding)}, with at most two decimal places.</p>}
+    {hasLines ? <div className="mb-3 text-sm font-semibold" data-testid={`text-selected-lines-amount-${invoice.id}`}>Selected fee lines {money(selectedAmountMinor as number)} <span className="text-xs font-normal text-[hsl(var(--muted-foreground))]">· each chosen line is paid in full; amount is fixed</span></div> : policy.data?.partialPaymentsEnabled ? <label className="mb-3 block max-w-xs"><span className="mb-1.5 block text-xs font-bold">Pay now (₦) · full amount selected by default</span><span className="flex items-center rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3.5 focus-within:border-[hsl(var(--primary))]"><span className="mr-2 text-sm font-bold">₦</span><input type="text" inputMode="decimal" aria-label="Online payment amount in naira" value={displayedAmount} onChange={event => { setAmountInput(event.target.value); setAmountEdited(true); setFailure(''); }} disabled={!!attempt} className="w-full bg-transparent py-2.5 text-sm font-semibold tabular-nums outline-none" data-testid={`input-online-amount-${invoice.id}`} /></span><span className="mt-1 block text-xs text-[hsl(var(--muted-foreground))]">You may pay part of the balance. Enter up to two decimal places; maximum {money(outstanding)}.</span></label> : <div className="mb-3 text-sm font-semibold">Full payment {money(outstanding)} <span className="text-xs font-normal text-[hsl(var(--muted-foreground))]">· partial payments unavailable</span></div>}
+    {!hasLines && policy.data?.partialPaymentsEnabled && amountEdited && !validAmount && <p role="alert" className="mb-3 text-xs text-[hsl(var(--destructive))]">Enter a positive amount no greater than {money(outstanding)}, with at most two decimal places.</p>}
     <div className="flex flex-wrap gap-2">{available.map(provider => <Button key={provider} variant="outline" disabled={!!attempt || history.isLoading || history.isError || unresolved || !validAmount} onClick={() => begin(provider)} testId={`button-pay-${provider.toLowerCase()}-${invoice.id}`}><CreditCard size={15} />{attempt?.provider === provider ? 'Opening checkout…' : `Pay ${validAmount && enteredMinor !== outstanding ? 'part now' : 'now'} with ${provider === 'PAYSTACK' ? 'Paystack' : 'Flutterwave'}`}</Button>)}</div>
     {unresolved && <p role="status" className="mt-2 text-xs font-medium text-[hsl(var(--muted-foreground))]">An online payment is processing for this invoice. Wait for confirmation before trying again.</p>}
     {history.isError && <button className="mt-2 text-xs text-[hsl(var(--destructive))] underline" onClick={() => history.refetch()}>Payment history unavailable · retry</button>}

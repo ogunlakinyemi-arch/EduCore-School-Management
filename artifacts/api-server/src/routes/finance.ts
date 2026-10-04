@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { assignPublishedClassFees } from "../services/fee-publication";
+import { feeLineBalances, selectedFeeAmount } from "../services/fee-line-balances";
 import { Router, type IRouter, type Request } from "express";
 import {
+  RecordSchoolCashPaymentBody,
   ApproveFeeAdjustmentParams,
   ApproveFeeAdjustmentResponse,
   ApproveFeeAdjustmentQueryParams,
@@ -1071,7 +1073,7 @@ router.post("/parent/fees/invoices/:invoiceId/bank-transfer", async (req, res): 
     if (!invoice.rows[0]) throw new AuthError(404, "Invoice not found");
     const existing = await client.query(
       `SELECT ${paymentShape},parent_id AS "parentId",transfer_reference AS "transferReference",transfer_bank AS bank
-        ,transfer_date AS "transferDate",proof_url AS "proofUrl",submitted_by AS "submittedBy"
+        ,transfer_date AS "transferDate",proof_url AS "proofUrl",submitted_by AS "submittedBy",selected_line_ids AS "selectedLineIds"
         FROM fee_payments WHERE school_id=$1 AND idempotency_key=$2`,
       [invoice.rows[0].school_id, storedIdempotencyKey],
     );
@@ -1083,7 +1085,9 @@ router.post("/parent/fees/invoices/:invoiceId/bank-transfer", async (req, res): 
           || existing.rows[0].transferReference !== transferReference
           || existing.rows[0].bank !== bank
           || dateOnly(existing.rows[0].transferDate) !== transferDate
-          || existing.rows[0].proofUrl !== (body.proofUrl ?? null)) {
+          || existing.rows[0].proofUrl !== (body.proofUrl ?? null)
+          || JSON.stringify([...(existing.rows[0].selectedLineIds ?? [])].sort((a,b)=>a-b))
+             !== JSON.stringify([...(body.lineIds ?? [])].sort((a,b)=>a-b))) {
         throw new AuthError(409, "Idempotency key was already used for a different transfer");
       }
       await client.query("COMMIT");
@@ -1103,7 +1107,9 @@ router.post("/parent/fees/invoices/:invoiceId/bank-transfer", async (req, res): 
       throw new AuthError(409, "Manual bank transfers are not enabled or configured for this school");
     }
     const partialPaymentsEnabled = settings.rows[0]?.partialPaymentsEnabled ?? false;
-    if (!partialPaymentsEnabled && body.amountMinor !== invoice.rows[0].outstanding_minor) {
+    const selectedAmount = await selectedFeeAmount(client,invoice.rows[0],body.lineIds);
+    if(selectedAmount!==null&&selectedAmount!==body.amountMinor) throw new AuthError(400,"Amount must match the selected unpaid fees");
+    if (selectedAmount===null && !partialPaymentsEnabled && body.amountMinor !== invoice.rows[0].outstanding_minor) {
       throw new AuthError(400, "Partial payments are disabled by this school's finance settings");
     }
     const parent = await client.query(`SELECT id FROM parents WHERE user_id=$1 AND school_id=$2`, [context.user.id, invoice.rows[0].school_id]);
@@ -1111,12 +1117,12 @@ router.post("/parent/fees/invoices/:invoiceId/bank-transfer", async (req, res): 
     const reference = `EDC-PAY-${randomUUID().replaceAll("-", "").slice(0, 20).toUpperCase()}`;
     const inserted = await client.query(
       `INSERT INTO fee_payments (school_id,invoice_id,student_id,parent_id,reference,idempotency_key,amount_minor,
-       method,transfer_bank,transfer_reference,transfer_date,proof_url,submitted_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'BANK_TRANSFER',$8,$9,$10,$11,$12)
+        method,transfer_bank,transfer_reference,transfer_date,proof_url,submitted_by,selected_line_ids)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,'BANK_TRANSFER',$8,$9,$10,$11,$12,$13)
        RETURNING ${paymentShape}`,
       [invoice.rows[0].school_id, invoiceId, invoice.rows[0].student_id, parent.rows[0].id, reference,
           storedIdempotencyKey, body.amountMinor, bank, transferReference,
-         transferDate, body.proofUrl ?? null, context.user.id],
+          transferDate, body.proofUrl ?? null, context.user.id,body.lineIds??null],
     );
     await audit(req, client, invoice.rows[0].school_id, "submitted manual bank transfer", "payment", inserted.rows[0].id);
     await enqueueFinancePaymentNotificationsSafely(
@@ -1188,6 +1194,8 @@ router.post("/school/finance/payments/:paymentId/verify", async (req, res): Prom
     );
     if (duplicateEvidence.rows[0]) throw new AuthError(409, "This verification evidence reference was already used");
     payableAmount(payment.rows[0].amount_minor, invoice.rows[0].outstanding_minor);
+    const selectedAmount=await selectedFeeAmount(client,invoice.rows[0],payment.rows[0].selected_line_ids);
+    if(selectedAmount!==null&&selectedAmount!==payment.rows[0].amount_minor) throw new AuthError(409,"Selected fee balances changed; review this transfer before verification");
     const updated = await client.query(
       `UPDATE fee_payments SET status='VERIFIED',verified_by=$1,verified_at=NOW(),
          verification_evidence_ref=$2,reviewer_notes=$3,verification_metadata=$4
@@ -2449,6 +2457,88 @@ async function releaseVerifiedFailedCheckout(
   }
 }
 
+router.get("/parent/fees/invoices/:invoiceId/lines",async(req,res):Promise<void>=>{
+  try {
+    assertRoles(req,["PARENT"]);
+    const invoiceId=Number(req.params.invoiceId);
+    if(!Number.isSafeInteger(invoiceId)||invoiceId<1) throw new AuthError(400,"Invalid invoice");
+    const invoice=await pool.query(`SELECT i.* FROM fee_invoices i JOIN parents p
+      ON p.school_id=i.school_id AND p.user_id=$2 AND p.status='ACTIVE'
+      JOIN parent_student_relationships r ON r.parent_id=p.id AND r.student_id=i.student_id AND r.status='ACTIVE'
+      JOIN school_memberships m ON m.user_id=p.user_id AND m.school_id=p.school_id AND m.role='PARENT' AND m.status='ACTIVE'
+      WHERE i.id=$1`,[invoiceId,getUserContext(req).user.id]);
+    if(!invoice.rows.length) throw new AuthError(404,"Invoice not found");
+    res.json(await feeLineBalances(pool,invoice.rows[0]));
+  } catch(error){fail(res,error);}
+});
+
+router.post("/school/finance/invoices/:invoiceId/cash-payments",async(req,res):Promise<void>=>{
+  const client=await pool.connect();
+  try {
+    const schoolId=schoolIdForMutation(req,ListFeeInvoicesQueryParams,["SCHOOL_ADMIN"]);
+    const invoiceId=Number(req.params.invoiceId);
+    const body=parsed(RecordSchoolCashPaymentBody,req.body ?? {});
+    const key=req.get("Idempotency-Key");
+    if(!Number.isSafeInteger(invoiceId)||invoiceId<1||typeof key!=="string"||!key.trim()||key.length>100) throw new AuthError(400,"A valid invoice and idempotency key are required");
+    if(typeof body.evidenceReference!=="string"||body.evidenceReference.trim().length<3||
+      typeof body.notes!=="string"||body.notes.trim().length<3||typeof body.receivedFrom!=="string"||body.receivedFrom.trim().length<3) {
+      throw new AuthError(400,"Received-from name, cash evidence reference and notes are required");
+    }
+    const context=getUserContext(req);
+    const storedKey=`CASH:${context.user.id}:${key}`;
+    await client.query("BEGIN");
+    const invoice=(await client.query("SELECT * FROM fee_invoices WHERE id=$1 AND school_id=$2 FOR UPDATE",[invoiceId,schoolId])).rows[0];
+    if(!invoice) throw new AuthError(404,"Invoice not found");
+    const previous=await client.query("SELECT p.*,r.receipt_number FROM fee_payments p JOIN fee_receipts r ON r.payment_id=p.id AND r.school_id=p.school_id WHERE p.school_id=$1 AND p.idempotency_key=$2",[schoolId,storedKey]);
+    if(previous.rows[0]) {
+      const p=previous.rows[0];
+      if(p.status!=="VERIFIED") throw new AuthError(409,"This cash record was reversed or refunded; review its existing receipt");
+      if(p.invoice_id!==invoiceId||p.amount_minor!==body.amountMinor||p.verification_evidence_ref!==body.evidenceReference.trim()||
+        p.reviewer_notes!==body.notes.trim()||p.verification_metadata?.receivedFrom!==body.receivedFrom.trim()||
+        JSON.stringify([...(p.selected_line_ids??[])].sort((a,b)=>a-b))!==JSON.stringify([...(body.lineIds??[])].sort((a,b)=>a-b))) throw new AuthError(409,"Cash idempotency key already records different evidence");
+      await client.query("COMMIT");res.json({...mapPayment(p),receiptNumber:p.receipt_number});return;
+    }
+    if(["PAID","CANCELLED","WAIVED"].includes(invoice.status)) throw new AuthError(409,"Invoice is not payable");
+    const reserved=await client.query("SELECT 1 FROM fee_provider_checkout_sessions WHERE invoice_id=$1 AND school_id=$2 AND state IN ('INITIALIZING','READY','FAILED')",[invoiceId,schoolId]);
+    if(reserved.rows.length) throw new AuthError(409,"Reconcile the invoice's online checkout before recording cash");
+    const amount=payableAmount(body.amountMinor,invoice.outstanding_minor);
+    const lineAmount=await selectedFeeAmount(client,invoice,body.lineIds);
+    if(lineAmount!==null && lineAmount!==amount) throw new AuthError(400,"Selected fee total does not match cash received");
+    const settings=await client.query("SELECT partial_payments_enabled FROM fee_school_settings WHERE school_id=$1",[schoolId]);
+    if(amount<invoice.outstanding_minor && lineAmount===null && !settings.rows[0]?.partial_payments_enabled) throw new AuthError(400,"Partial payments are disabled");
+    const duplicate=await client.query("SELECT 1 FROM fee_payments WHERE school_id=$1 AND method='CASH' AND lower(btrim(verification_evidence_ref))=lower(btrim($2))",[schoolId,body.evidenceReference]);
+    if(duplicate.rows.length) throw new AuthError(409,"This cash evidence has already been recorded");
+    const metadata={source:"CASH_RECEIVED",receivedFrom:body.receivedFrom.trim(),evidenceReference:body.evidenceReference.trim(),notes:body.notes.trim(),actorUserId:context.user.id};
+    const payment=(await client.query(`INSERT INTO fee_payments(school_id,invoice_id,student_id,employee_id,parent_id,reference,idempotency_key,
+      amount_minor,currency,method,provider,status,submitted_by,verified_by,verified_at,verification_evidence_ref,reviewer_notes,verification_metadata,selected_line_ids)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'CASH','CASH','VERIFIED',$10,$10,NOW(),$11,$12,$13::jsonb,$14) RETURNING *`,
+      [schoolId,invoiceId,invoice.student_id,invoice.employee_id,invoice.parent_id,`CASH-${randomUUID()}`,storedKey,amount,invoice.currency,
+        context.user.id,body.evidenceReference.trim(),body.notes.trim(),JSON.stringify(metadata),body.lineIds ?? null])).rows[0];
+    const nextPaid=invoice.paid_minor+amount;
+    await client.query("UPDATE fee_invoices SET paid_minor=$1,outstanding_minor=total_minor-$1,status=$2 WHERE id=$3 AND school_id=$4",
+      [nextPaid,invoiceStatus(nextPaid,invoice.total_minor),invoiceId,schoolId]);
+    const branding=(await client.query(`SELECT s.name,s.logo,l.id AS logo_version_id FROM schools s
+      LEFT JOIN school_branding_logos l ON l.school_id=s.id AND l.is_current=true WHERE s.id=$1`,[schoolId])).rows[0];
+    const receiptNumber=`RCP-${schoolId}-${String(payment.id).padStart(8,"0")}`;
+    const snapshot={invoiceId,schoolId,schoolName:branding?.name,
+      schoolLogo:branding?.logo_version_id ? canonicalSchoolLogoVersionUrl(schoolId,Number(branding.logo_version_id)) : branding?.logo,
+      schoolLogoVersionId:branding?.logo_version_id ?? null,invoiceNumber:invoice.invoice_number,
+      studentName:invoice.student_name_snapshot,studentId:invoice.student_id,employeeId:invoice.employee_id,
+      admissionNo:invoice.admission_no_snapshot,className:invoice.class_name_snapshot,section:invoice.section_snapshot,
+      parentName:metadata.receivedFrom,amountMinor:amount,currency:invoice.currency,method:"CASH",reference:payment.reference,
+      receiptNumber,sessionId:invoice.academic_session_id,termId:invoice.academic_term_id,
+      paidAt:new Date(payment.verified_at).toISOString(),verifiedAt:new Date(payment.verified_at).toISOString(),
+      outstandingMinor:invoice.total_minor-nextPaid,...metadata};
+    await client.query("INSERT INTO fee_receipts(school_id,payment_id,invoice_id,receipt_number,snapshot) VALUES($1,$2,$3,$4,$5::jsonb)",
+      [schoolId,payment.id,invoiceId,receiptNumber,JSON.stringify(snapshot)]);
+    await enqueueFinancePaymentNotificationsSafely(client,payment.id,schoolId,"PAYMENT_VERIFIED");
+    await audit(req,client,schoolId,"recorded cash received","payment",payment.id,{amountMinor:amount,invoiceId,receiptNumber,...metadata});
+    await client.query("COMMIT");
+    res.status(201).json({...mapPayment(payment),receiptNumber});
+  } catch(error){await client.query("ROLLBACK").catch(()=>undefined);fail(res,error);}
+  finally{client.release();}
+});
+
 router.post("/parent/fees/invoices/:invoiceId/providers/:provider/initialize", async (req, res): Promise<void> => {
   const client = await pool.connect();
   let paymentId: number | null = null;
@@ -2527,9 +2617,11 @@ router.post("/parent/fees/invoices/:invoiceId/providers/:provider/initialize", a
       throw new AuthError(409, "Invoice is not payable");
     }
     const outstandingMinor = Number(invoice.outstanding_minor);
-    amountMinor = payableAmount(body.amountMinor ?? outstandingMinor, outstandingMinor);
+    const lineAmount = await selectedFeeAmount(client,invoice,body.lineIds);
+    if(lineAmount!==null && body.amountMinor!==undefined && body.amountMinor!==lineAmount) throw new AuthError(400,"Selected fee total does not match the requested amount");
+    amountMinor = payableAmount(lineAmount ?? body.amountMinor ?? outstandingMinor, outstandingMinor);
     const partialPaymentsEnabled = settingsResult.rows[0]?.partialPaymentsEnabled ?? false;
-    if (amountMinor < outstandingMinor && !partialPaymentsEnabled) {
+    if (amountMinor < outstandingMinor && lineAmount===null && !partialPaymentsEnabled) {
       throw new AuthError(400, "Partial payments are disabled by this school's finance settings");
     }
     currency = String(invoice.currency).toUpperCase();
@@ -2539,7 +2631,7 @@ router.post("/parent/fees/invoices/:invoiceId/providers/:provider/initialize", a
     claimToken = randomUUID();
     const existing = await client.query(
       `SELECT p.id,p.invoice_id,p.student_id,p.parent_id,p.reference,p.amount_minor,p.currency,p.provider,p.status,
-          s.state AS session_state,s.checkout_url AS "checkoutUrl",s.claim_expires_at AS "claimExpiresAt"
+           s.state AS session_state,s.checkout_url AS "checkoutUrl",s.claim_expires_at AS "claimExpiresAt",p.selected_line_ids
        FROM fee_payments p JOIN fee_provider_checkout_sessions s ON s.payment_id=p.id AND s.school_id=p.school_id
        WHERE p.school_id=$1 AND s.idempotency_key=$2 FOR UPDATE OF p,s`,
       [invoiceSchoolId, storedIdempotencyKey],
@@ -2547,7 +2639,8 @@ router.post("/parent/fees/invoices/:invoiceId/providers/:provider/initialize", a
     if (existing.rows[0]) {
       const row = existing.rows[0];
       if (row.invoice_id !== invoiceId || row.student_id !== invoice.student_id || row.parent_id !== invoice.parent_id
-          || row.provider !== provider || row.amount_minor !== amountMinor || row.currency !== currency) {
+          || row.provider !== provider || row.amount_minor !== amountMinor || row.currency !== currency
+          || JSON.stringify([...(row.selected_line_ids??[])].sort((a,b)=>a-b))!==JSON.stringify([...(body.lineIds??[])].sort((a,b)=>a-b))) {
         throw new AuthError(409, "Idempotency key was already used for a different checkout");
       }
       if (row.status !== "PENDING" && row.status !== "PROCESSING" && row.status !== "FAILED") {
@@ -2605,10 +2698,10 @@ router.post("/parent/fees/invoices/:invoiceId/providers/:provider/initialize", a
       reference = adapter.generateReference();
       const inserted = await client.query(
         `INSERT INTO fee_payments (school_id,invoice_id,student_id,parent_id,reference,idempotency_key,
-           amount_minor,currency,method,provider,status,submitted_by,provider_metadata)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9,'PENDING',$10,'{}'::jsonb) RETURNING id`,
+            amount_minor,currency,method,provider,status,submitted_by,provider_metadata,selected_line_ids)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9,'PENDING',$10,'{}'::jsonb,$11) RETURNING id`,
         [schoolId, invoiceId, invoice.student_id, invoice.parent_id, reference, storedIdempotencyKey,
-          amountMinor, currency, provider, context.user.id],
+           amountMinor, currency, provider, context.user.id,body.lineIds ?? null],
       );
       paymentId = inserted.rows[0].id;
       await client.query(

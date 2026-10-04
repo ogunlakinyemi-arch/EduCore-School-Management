@@ -221,6 +221,7 @@ export const feePayments = pgTable("fee_payments", {
   verificationMetadata: jsonb("verification_metadata"),
   rejectionReason: text("rejection_reason"),
   providerMetadata: jsonb("provider_metadata"),
+  selectedLineIds: integer("selected_line_ids").array(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   unique("fee_payments_id_school_unique").on(t.id, t.schoolId),
@@ -241,7 +242,11 @@ export const feePayments = pgTable("fee_payments", {
   foreignKey({columns:[t.employeeId,t.schoolId],foreignColumns:[employees.id,employees.schoolId],name:"fee_payments_employee_school_fk"}),
   check("fee_payments_person_check",sql`(${t.studentId} IS NULL)<>(${t.employeeId} IS NULL)`),
   check("fee_payments_amount_currency_check", sql`${t.amountMinor} > 0 AND ${t.currency} ~ '^[A-Z]{3}$'`),
-  check("fee_payments_method_check", sql`${t.method} IN ('BANK_TRANSFER','REMITA','FLUTTERWAVE','PAYSTACK')`),
+  check("fee_payments_method_with_cash_check", sql`${t.method} IN ('BANK_TRANSFER','REMITA','FLUTTERWAVE','PAYSTACK','CASH')`),
+  uniqueIndex("fee_payments_cash_evidence_unique").on(t.schoolId,sql`lower(btrim(${t.verificationEvidenceRef}))`).where(sql`${t.method}='CASH'`),
+  check("fee_payments_cash_evidence_check",sql`${t.method}<>'CASH' OR
+    (${t.verifiedBy} IS NOT NULL AND ${t.verifiedAt} IS NOT NULL AND length(btrim(${t.verificationEvidenceRef}))>=3
+     AND length(btrim(${t.reviewerNotes}))>=3 AND ${t.verificationMetadata} IS NOT NULL)`),
   check("fee_payments_status_check", sql`${t.status} IN ('PENDING','PROCESSING','VERIFIED','FAILED','REJECTED','CANCELLED','REVERSED','REFUNDED')`),
   check(
     "fee_payments_verified_evidence_check",
@@ -269,6 +274,21 @@ export const feePayments = pgTable("fee_payments", {
     sql`${t.status} <> 'REJECTED' OR NULLIF(BTRIM(${t.rejectionReason}), '') IS NOT NULL`,
   ),
   index("fee_payments_school_status_idx").on(t.schoolId, t.status, t.createdAt),
+]);
+
+export const feePaymentLineAllocations = pgTable("fee_payment_line_allocations", {
+  id: serial("id").primaryKey(),
+  schoolId: integer("school_id").notNull(),
+  invoiceId: integer("invoice_id").notNull(),
+  paymentId: integer("payment_id").notNull(),
+  lineId: integer("line_id").notNull(),
+  amountMinor: integer("amount_minor").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, t => [
+  unique("fee_payment_line_allocations_payment_id_line_id_key").on(t.paymentId,t.lineId),
+  check("fee_payment_line_allocations_amount_minor_check",sql`${t.amountMinor}>0`),
+  foreignKey({columns:[t.paymentId,t.invoiceId,t.schoolId],foreignColumns:[feePayments.id,feePayments.invoiceId,feePayments.schoolId],name:"fee_payment_line_allocations_payment_id_invoice_id_school_id_fkey"}),
+  foreignKey({columns:[t.lineId,t.schoolId],foreignColumns:[feeInvoiceLines.id,feeInvoiceLines.schoolId],name:"fee_payment_line_allocations_line_id_school_id_fkey"}),
 ]);
 
 export const feeReceipts = pgTable("fee_receipts", {

@@ -22,19 +22,21 @@ import {
 } from "../middlewares/auth";
 import { ensureCurrentStaffNfcTermSubscriptions } from "./staff-nfc-billing-service";
 import { refreshConfiguredTermCalendarEvents } from "../lib/academicCalendarProjection";
+import { validateAcademicPeriod,parseCalendarBody } from "../lib/academic-period-validation";
 
 const router: IRouter = Router();
 router.use(requireAuthentication());
 const writeRoles = ["SCHOOL_ADMIN"] as const;
 const viewRoles = ["SCHOOL_ADMIN", "PLATFORM_OWNER", "TEACHER"] as const;
 
-function audit(req: Request, schoolId: number, action: string, recordId: number) {
+function audit(req: Request, schoolId: number, action: string, recordId: number, client: any = pool) {
   const c = getUserContext(req);
   const actor = [c.user.firstName, c.user.lastName].filter(Boolean).join(" ") || c.user.email;
   const role = c.roles.find((r) => r.schoolId === schoolId || r.schoolId === null)?.role ?? "AUTHENTICATED";
-  return pool.query(`INSERT INTO audit_logs ("user", role, actor_user_id, clerk_user_id, school_id, action, module, record_id, severity, event_type, result)
-    VALUES ($1,$2,$3,$4,$5,$6,'Academics',$7,'info','APPLICATION_EVENT','SUCCESS')`,
-    [actor, role, c.user.id, c.user.clerkUserId, schoolId, action, recordId]);
+  return client.query(`INSERT INTO audit_logs ("user", role, actor_user_id, clerk_user_id, school_id, action, module, record_id, severity, event_type, result,metadata)
+    VALUES ($1,$2,$3,$4,$5,$6,'Academics',$7,'info','APPLICATION_EVENT','SUCCESS',$8::jsonb)`,
+    [actor, role, c.user.id, c.user.clerkUserId, schoolId, action, recordId,
+      JSON.stringify({allowOverlap:req.body?.allowOverlap === true,overlapReason:req.body?.overlapReason ?? null})]);
 }
 function school(req: Request, raw: unknown, roles: readonly string[], operational = false) {
   const id = Number(raw);
@@ -45,10 +47,13 @@ function school(req: Request, raw: unknown, roles: readonly string[], operationa
 }
 function wrap(fn: (req: Request, res: any) => Promise<void>) {
   return (req: Request, res: any, next: NextFunction) =>
-    fn(req, res).catch((error) => handleAuthError(error, req, res, next));
+    fn(req, res).catch((error) => {
+      if(error?.code==="23505") return res.status(409).json({error:"An academic record with these details already exists.",code:"RECORD_ALREADY_EXISTS"});
+      return handleAuthError(error, req, res, next);
+    });
 }
-const sessionSelect = `id, school_id AS "schoolId", name, start_date AS "startDate", end_date AS "endDate", status, is_current AS "isCurrent"`;
-const termSelect = `id, academic_session_id AS "sessionId", name, start_date AS "startDate", end_date AS "endDate", status, is_current AS "isCurrent"`;
+const sessionSelect = `id, school_id AS "schoolId", name, start_date AS "startDate", end_date AS "endDate", status, is_current AS "isCurrent",created_by AS "createdBy",created_at AS "createdAt"`;
+const termSelect = `id, academic_session_id AS "sessionId", name, start_date AS "startDate", end_date AS "endDate", status, is_current AS "isCurrent",created_by AS "createdBy",created_at AS "createdAt"`;
 
 function currentFlag(req: Request): boolean {
   if (req.body?.isCurrent !== undefined && typeof req.body.isCurrent !== "boolean") {
@@ -63,47 +68,55 @@ router.get("/academic-sessions", wrap(async (req, res) => {
   res.json(r.rows);
 }));
 router.post("/academic-sessions", wrap(async (req, res) => {
-  const q = CreateAcademicSessionQueryParams.parse(req.query); const b = CreateAcademicSessionBody.parse(req.body); school(req, q.schoolId, writeRoles, true);
+  const q = CreateAcademicSessionQueryParams.parse(req.query); const b = parseCalendarBody(CreateAcademicSessionBody,req.body); school(req, q.schoolId, writeRoles, true);
   const isCurrent = currentFlag(req);
   const client = await pool.connect();
   let r;
   try {
     await client.query("BEGIN");
+    await validateAcademicPeriod(client, q.schoolId, b);
     if (isCurrent) await client.query(`UPDATE academic_sessions SET is_current=false, updated_at=NOW() WHERE school_id=$1 AND is_current=true`, [q.schoolId]);
-    r = await client.query(`INSERT INTO academic_sessions (school_id,name,start_date,end_date,status,is_current) VALUES ($1,$2,$3,$4,$5,$6) RETURNING ${sessionSelect}`, [q.schoolId,b.name,b.startDate,b.endDate,b.status ?? "ACTIVE",isCurrent]);
+    r = await client.query(`INSERT INTO academic_sessions (school_id,name,start_date,end_date,status,is_current,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING ${sessionSelect}`, [q.schoolId,b.name.trim(),b.startDate,b.endDate,b.status ?? "ACTIVE",isCurrent,getUserContext(req).user.id]);
     await ensureCurrentStaffNfcTermSubscriptions(client, q.schoolId, getUserContext(req).user.id);
+    await audit(req,q.schoolId,"Created academic session",r.rows[0].id,client);
     await client.query("COMMIT");
   } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
-  await audit(req,q.schoolId,"Created academic session",r.rows[0].id); res.status(201).json(r.rows[0]);
+  res.status(201).json(r.rows[0]);
 }));
 router.patch("/academic-sessions/:sessionId", wrap(async (req, res) => {
-  const p = UpdateAcademicSessionParams.parse(req.params), q = UpdateAcademicSessionQueryParams.parse(req.query), b = UpdateAcademicSessionBody.parse(req.body); school(req,q.schoolId,writeRoles,true);
+  const p = UpdateAcademicSessionParams.parse(req.params), q = UpdateAcademicSessionQueryParams.parse(req.query), b = parseCalendarBody(UpdateAcademicSessionBody,req.body); school(req,q.schoolId,writeRoles,true);
   const wantsCurrent = req.body?.isCurrent !== undefined;
   const isCurrent = currentFlag(req);
   const client = await pool.connect();
   let r;
   try {
     await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`academic-calendar:${q.schoolId}`]);
+    const target = await client.query("SELECT id,start_date::text,end_date::text,status,is_current FROM academic_sessions WHERE id=$1 AND school_id=$2 FOR UPDATE", [p.sessionId,q.schoolId]);
+    if (!target.rows[0]) throw new AuthError(404,"Academic session not found");
+    await validateAcademicPeriod(client,q.schoolId,b,target.rows[0]);
     if (isCurrent) await client.query(`UPDATE academic_sessions SET is_current=false, updated_at=NOW() WHERE school_id=$1 AND id<>$2 AND is_current=true`, [q.schoolId,p.sessionId]);
     r = await client.query(`UPDATE academic_sessions SET name=COALESCE($1,name),start_date=COALESCE($2,start_date),end_date=COALESCE($3,end_date),status=COALESCE($4,status),is_current=CASE WHEN $5 THEN $6 ELSE is_current END,updated_at=NOW() WHERE id=$7 AND school_id=$8 RETURNING ${sessionSelect}`, [b.name??null,b.startDate??null,b.endDate??null,wantsCurrent ? b.status ?? null : b.status ?? null,wantsCurrent,isCurrent,p.sessionId,q.schoolId]);
     await ensureCurrentStaffNfcTermSubscriptions(client, q.schoolId, getUserContext(req).user.id);
+    await audit(req,q.schoolId,"Updated academic session",p.sessionId,client);
     await client.query("COMMIT");
   } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
-  if (!r.rows[0]) throw new AuthError(404,"Academic session not found"); await audit(req,q.schoolId,"Updated academic session",p.sessionId); res.json(r.rows[0]);
+  res.json(r.rows[0]);
 }));
 router.get("/academic-sessions/:sessionId/terms", wrap(async (req,res) => {
   const p=ListAcademicTermsParams.parse(req.params), q=ListAcademicTermsQueryParams.parse(req.query); school(req,q.schoolId,viewRoles);
   const r=await pool.query(`SELECT ${termSelect} FROM academic_terms WHERE academic_session_id=$1 AND school_id=$2 ORDER BY start_date`,[p.sessionId,q.schoolId]); res.json(r.rows);
 }));
 router.post("/academic-sessions/:sessionId/terms", wrap(async (req,res) => {
-  const p=CreateAcademicTermParams.parse(req.params), q=CreateAcademicTermQueryParams.parse(req.query), b=CreateAcademicTermBody.parse(req.body); school(req,q.schoolId,writeRoles,true);
+  const p=CreateAcademicTermParams.parse(req.params), q=CreateAcademicTermQueryParams.parse(req.query), b=parseCalendarBody(CreateAcademicTermBody,req.body); school(req,q.schoolId,writeRoles,true);
   const isCurrent = currentFlag(req);
   const exists=await pool.query(`SELECT id FROM academic_sessions WHERE id=$1 AND school_id=$2`,[p.sessionId,q.schoolId]); if(!exists.rows[0]) throw new AuthError(404,"Academic session not found");
   const client = await pool.connect(); let r;
   try {
     await client.query("BEGIN");
+    await validateAcademicPeriod(client,q.schoolId,b,{},p.sessionId);
     if (isCurrent) await client.query(`UPDATE academic_terms SET is_current=false, updated_at=NOW() WHERE school_id=$1 AND academic_session_id=$2 AND is_current=true`,[q.schoolId,p.sessionId]);
-    r=await client.query(`INSERT INTO academic_terms (school_id,academic_session_id,name,start_date,end_date,status,is_current) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING ${termSelect}`,[q.schoolId,p.sessionId,b.name,b.startDate,b.endDate,b.status??"ACTIVE",isCurrent]);
+    r=await client.query(`INSERT INTO academic_terms (school_id,academic_session_id,name,start_date,end_date,status,is_current,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING ${termSelect}`,[q.schoolId,p.sessionId,b.name,b.startDate,b.endDate,b.status??"ACTIVE",isCurrent,getUserContext(req).user.id]);
     await ensureCurrentStaffNfcTermSubscriptions(client, q.schoolId, getUserContext(req).user.id);
     await refreshConfiguredTermCalendarEvents(client, {
       schoolId: q.schoolId,
@@ -111,18 +124,21 @@ router.post("/academic-sessions/:sessionId/terms", wrap(async (req,res) => {
       termId: Number(r.rows[0].id),
       actorUserId: getUserContext(req).user.id,
     });
+    await audit(req,q.schoolId,"Created academic term",r.rows[0].id,client);
     await client.query("COMMIT");
   } catch(error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
-  await audit(req,q.schoolId,"Created academic term",r.rows[0].id); res.status(201).json(r.rows[0]);
+  res.status(201).json(r.rows[0]);
 }));
 router.patch("/academic-terms/:termId", wrap(async(req,res)=>{
-  const p=UpdateAcademicTermParams.parse(req.params),q=UpdateAcademicTermQueryParams.parse(req.query),b=UpdateAcademicTermBody.parse(req.body);school(req,q.schoolId,writeRoles,true);
+  const p=UpdateAcademicTermParams.parse(req.params),q=UpdateAcademicTermQueryParams.parse(req.query),b=parseCalendarBody(UpdateAcademicTermBody,req.body);school(req,q.schoolId,writeRoles,true);
   const wantsCurrent=req.body?.isCurrent !== undefined; const isCurrent=currentFlag(req);
   const client=await pool.connect(); let r;
   try {
     await client.query("BEGIN");
-    const target=await client.query(`SELECT academic_session_id FROM academic_terms WHERE id=$1 AND school_id=$2 FOR UPDATE`,[p.termId,q.schoolId]);
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`academic-calendar:${q.schoolId}`]);
+    const target=await client.query(`SELECT id,academic_session_id,start_date::text,end_date::text,status,is_current FROM academic_terms WHERE id=$1 AND school_id=$2 FOR UPDATE`,[p.termId,q.schoolId]);
     if(!target.rows[0]) throw new AuthError(404,"Academic term not found");
+    await validateAcademicPeriod(client,q.schoolId,b,target.rows[0],target.rows[0].academic_session_id);
     if(isCurrent) await client.query(`UPDATE academic_terms SET is_current=false,updated_at=NOW() WHERE school_id=$1 AND academic_session_id=$2 AND id<>$3 AND is_current=true`,[q.schoolId,target.rows[0].academic_session_id,p.termId]);
     r=await client.query(`UPDATE academic_terms SET name=COALESCE($1,name),start_date=COALESCE($2,start_date),end_date=COALESCE($3,end_date),status=COALESCE($4,status),is_current=CASE WHEN $5 THEN $6 ELSE is_current END,updated_at=NOW() WHERE id=$7 AND school_id=$8 RETURNING ${termSelect}`,[b.name??null,b.startDate??null,b.endDate??null,b.status??null,wantsCurrent,isCurrent,p.termId,q.schoolId]);
     await ensureCurrentStaffNfcTermSubscriptions(client, q.schoolId, getUserContext(req).user.id);
@@ -132,9 +148,10 @@ router.patch("/academic-terms/:termId", wrap(async(req,res)=>{
       termId: Number(r.rows[0].id),
       actorUserId: getUserContext(req).user.id,
     });
+    await audit(req,q.schoolId,"Updated academic term",p.termId,client);
     await client.query("COMMIT");
   } catch(error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
-  if(!r.rows[0])throw new AuthError(404,"Academic term not found");await audit(req,q.schoolId,"Updated academic term",p.termId);res.json(r.rows[0]);
+  res.json(r.rows[0]);
 }));
 
 router.get("/students/:studentId/class-assignments",wrap(async(req,res)=>{

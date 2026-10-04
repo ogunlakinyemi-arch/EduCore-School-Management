@@ -15,4 +15,7 @@ export interface AcademicSession4b96100 {
   endDate: Date;
   status: AcademicSession4b96100Status;
   isCurrent?: boolean;
+  /** @nullable */
+  createdBy?: number | null;
+  createdAt?: Date;
 }

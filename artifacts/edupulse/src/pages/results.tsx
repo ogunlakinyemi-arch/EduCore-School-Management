@@ -3,12 +3,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Modal, Field, TenantPicker, useTenant, cx, date } from '@/components/shared';
 import { 
   useListAcademicAssessments, getListAcademicAssessmentsQueryKey,
-  useListAcademicResults, useCreateAcademicResult, useUpdateAcademicResult, usePublishAcademicAssessmentResults, getListAcademicResultsQueryKey,
+  useListAcademicResults, useCreateAcademicResult, useUpdateAcademicResult, getListAcademicResultsQueryKey,
   useListAcademicReportCards, useCreateAcademicReportCard, usePublishAcademicReportCard, getListAcademicReportCardsQueryKey,
   useListAcademicGradingRules, useCreateAcademicGradingRule, useUpdateAcademicGradingRule, getListAcademicGradingRulesQueryKey,
   useListAcademicSessions, useListAcademicTerms, getListAcademicTermsQueryKey, useListClasses, useListSubjects, useListStudents, useGetAuthorizedContext
 } from '@workspace/api-client-react';
 import { Plus, BarChart3, Save, CheckCircle2, Search, Pencil } from 'lucide-react';
+import { ResultCompilation, usePeriodStudents } from '@/components/result-compilation';
 import { SchoolDocumentHeader, SchoolDocumentPrintButton, useSchoolDocumentBranding } from '@/components/school-document';
 
 type AcademicResultReviewItem = {
@@ -39,7 +40,7 @@ function useAcademicContext(schoolId: number) {
 
 export function ResultsPage() {
   const { schoolId } = useTenant();
-  const [tab, setTab] = useState<'results' | 'cards' | 'rules'>('results');
+  const [tab, setTab] = useState<'results' | 'compilation' | 'cards' | 'rules'>('results');
   const context = useGetAuthorizedContext().data;
   const isPlatformOwner = context?.isPlatformOwner === true;
   const canManage = !isPlatformOwner && !!context?.roles?.some(
@@ -59,7 +60,7 @@ export function ResultsPage() {
       ) : (
         <>
           <div className="mb-6 flex gap-2 border-b border-[hsl(var(--border))]">
-             {[{id: 'results', label: isPlatformOwner ? 'Results' : 'Result Entry'}, ...(canManage ? [{id: 'cards', label: 'Report Cards'}, {id: 'rules', label: 'Grading Rules'}] : [])].map(t => (
+             {[{id: 'results', label: isPlatformOwner ? 'Results' : 'Result Entry'}, ...(canManage ? [{id: 'compilation', label: 'Result Compilation'}, {id: 'cards', label: 'Report Cards'}, {id: 'rules', label: 'Grading Rules'}] : [])].map(t => (
               <button 
                 key={t.id} 
                 onClick={() => setTab(t.id as any)} 
@@ -70,6 +71,7 @@ export function ResultsPage() {
             ))}
           </div>
            {tab === 'results' && <ResultEntryView schoolId={schoolId} canManage={canManage} isPlatformOwner={isPlatformOwner} />}
+           {canManage && tab === 'compilation' && <ResultCompilation schoolId={schoolId} canManage={canManage} />}
            {canManage && tab === 'cards' && <ReportCardsView schoolId={schoolId} />}
            {canManage && tab === 'rules' && <GradingRulesView schoolId={schoolId} />}
         </>
@@ -106,7 +108,6 @@ function ResultEntryView({ schoolId, canManage, isPlatformOwner }: { schoolId: n
   });
 
   const qc = useQueryClient();
-  const publish = usePublishAcademicAssessmentResults();
 
   if (isLoading || assessmentsQuery.isLoading) return <SkeletonPage />;
 
@@ -115,18 +116,6 @@ function ResultEntryView({ schoolId, canManage, isPlatformOwner }: { schoolId: n
   const results = resultsQuery.data ?? [];
   const reviewResults: AcademicResultReviewItem[] = (reviewQuery.data ?? []) as AcademicResultReviewItem[];
   const approvedCount = reviewResults.filter(result => result.status === 'SUBMITTED' && result.reviewStatus === 'APPROVED').length;
-
-  const handlePublish = () => {
-    if (!assessmentId) return;
-    if (confirm("Are you sure you want to publish these results? Parents and students will be able to see them.")) {
-      publish.mutate({ assessmentId: assessmentId as number, data: { schoolId } }, {
-        onSuccess: () => {
-          qc.invalidateQueries({ queryKey: getListAcademicAssessmentsQueryKey() });
-          qc.invalidateQueries({ queryKey: getListAcademicResultsQueryKey() });
-        }
-      });
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -146,14 +135,9 @@ function ResultEntryView({ schoolId, canManage, isPlatformOwner }: { schoolId: n
              <div className="text-sm">
                 <span className="text-[hsl(var(--muted-foreground))]">Status:</span> <StatusPill value={selectedAssessment.status} />
              </div>
-              {canManage && selectedAssessment.status !== 'PUBLISHED' && (
-                <Button onClick={handlePublish} disabled={publish.isPending || approvedCount === 0}><CheckCircle2 size={16}/> Publish Approved ({approvedCount})</Button>
-             )}
+              {canManage && selectedAssessment.status !== 'PUBLISHED' && <p className="max-w-xs text-xs text-[hsl(var(--muted-foreground))]" data-testid="text-publish-instruction">{approvedCount} approved. Publish through consolidated report cards in the Report Cards tab.</p>}
           </div>
         )}
-        {publish.isError && <p role="alert" className="basis-full text-sm text-[hsl(var(--destructive))]">
-          Could not publish approved results: {(publish.error as Error).message}
-        </p>}
       </div>
 
       {assessmentId && selectedAssessment ? (
@@ -196,7 +180,7 @@ function ResultEntryView({ schoolId, canManage, isPlatformOwner }: { schoolId: n
           {canManage && <div className="border-t border-[hsl(var(--border))]">
             <div className="p-5 bg-[hsl(var(--muted)/.2)]">
               <h4 className="font-bold">School Admin review</h4>
-              <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Only approved submitted results can be published. Returned comments stay in the private review workflow.</p>
+              <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Approved results are published through consolidated report cards. Returned comments stay in the private review workflow.</p>
             </div>
             {reviewQuery.isLoading ? <p role="status" className="p-5 text-sm">Loading results for review…</p> : reviewQuery.isError ? (
               <p role="alert" className="p-5 text-sm text-[hsl(var(--destructive))]">Review queue unavailable: {(reviewQuery.error as Error).message}</p>
@@ -425,7 +409,7 @@ function ReportCardsView({ schoolId }: { schoolId: number }) {
     { schoolId }, 
     { query: { enabled: !!schoolId, queryKey: getListAcademicReportCardsQueryKey({ schoolId }) } }
   );
-  const studentsQuery = useListStudents({ schoolId, classId: classId || undefined }, { query: { enabled: !!(schoolId && classId), queryKey: ['students', schoolId, classId] } });
+  const studentsQuery = usePeriodStudents({ schoolId, sessionId: sessionId as number, termId: termId as number, classId: classId ? Number(classId) : undefined, section: section || undefined }, periodReady);
 
   const qc = useQueryClient();
   const createCard = useCreateAcademicReportCard();
@@ -434,7 +418,7 @@ function ReportCardsView({ schoolId }: { schoolId: number }) {
   if (isLoading) return <SkeletonPage />;
 
   const cards = query.data ?? [];
-  const students = (studentsQuery.data ?? []).filter((s: any) => !section || s.section === section);
+  const students = (studentsQuery.data ?? []) as any[];
 
   const handleGenerate = (studentId: number) => {
     if (!periodReady || !classId) return;
@@ -478,7 +462,7 @@ function ReportCardsView({ schoolId }: { schoolId: number }) {
              <h3 className="font-bold">Report Cards</h3>
              <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">For {classes.find((c: any) => c.id === classId)?.name}</p>
           </div>
-          {query.isLoading || studentsQuery.isLoading ? (
+          {studentsQuery.isError ? <p role="alert" className="p-5 text-sm text-[hsl(var(--destructive))]">Could not load students for this period: {(studentsQuery.error as Error).message} <button className="underline" onClick={() => studentsQuery.refetch()}>Retry</button></p> : query.isLoading || studentsQuery.isLoading ? (
              <div className="p-8 text-center text-[hsl(var(--muted-foreground))]">Loading...</div>
           ) : students.length > 0 ? (
              <div className="divide-y divide-[hsl(var(--border)/.6)]">

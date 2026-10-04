@@ -16,4 +16,7 @@ export interface AcademicTerm {
   endDate: Date;
   status: AcademicTermStatus;
   isCurrent?: boolean;
+  /** @nullable */
+  createdBy?: number | null;
+  createdAt?: Date;
 }

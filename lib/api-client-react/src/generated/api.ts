@@ -270,6 +270,8 @@ import type {
   GenerateCurrentTermTransportInvoicesParams,
   GenerateSchoolCalendarBody,
   GenerateStaffNfcTermSubscriptionsParams,
+  GetAcademicResultCompilation200,
+  GetAcademicResultCompilationParams,
   GetAdmissionApplicationParams,
   GetAdmissionPortalSettingsParams,
   GetChildAcademicTimetableParams,
@@ -338,6 +340,8 @@ import type {
   ListAcademicAssessmentsParams,
   ListAcademicAssignmentsParams,
   ListAcademicGradingRulesParams,
+  ListAcademicPeriodStudents200Item,
+  ListAcademicPeriodStudentsParams,
   ListAcademicReportCardsParams,
   ListAcademicResultReviewsParams,
   ListAcademicResultsParams,
@@ -382,6 +386,7 @@ import type {
   ListParentChildLinksParams,
   ListParentCommunicationChildren200,
   ListParentCommunicationChildrenParams,
+  ListParentInvoiceFeeLines200,
   ListParentMessageThreadsParams,
   ListParentPickupRequestsParams,
   ListParentStudentRelationshipsParams,
@@ -555,6 +560,8 @@ import type {
   ReconcileFeeProviderCheckoutParams,
   ReconcileStaffNfcPaymentParams,
   RecordRevision,
+  RecordSchoolCashPaymentBody,
+  RecordSchoolCashPaymentParams,
   ReferralValidation,
   ReferralValidationInput,
   RegisterCardParams,
@@ -23994,6 +24001,325 @@ export const useCreateClass = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateClassMutationOptions(options));
+    }
+
+export const getListAcademicPeriodStudentsUrl = (params: ListAcademicPeriodStudentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/academic/period-students?${stringifiedParams}` : `/api/academic/period-students`
+}
+
+export const listAcademicPeriodStudents = async (params: ListAcademicPeriodStudentsParams, options?: Parameters<typeof customFetch>[1]): Promise<ListAcademicPeriodStudents200Item[]> => {
+
+  return customFetch<ListAcademicPeriodStudents200Item[]>(getListAcademicPeriodStudentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAcademicPeriodStudentsQueryKey = (params?: ListAcademicPeriodStudentsParams,) => {
+    return [
+    `/api/academic/period-students`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAcademicPeriodStudentsQueryOptions = <TData = Awaited<ReturnType<typeof listAcademicPeriodStudents>>, TError = ErrorType<unknown>>(params: ListAcademicPeriodStudentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAcademicPeriodStudents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAcademicPeriodStudentsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAcademicPeriodStudents>>> = ({ signal }) => listAcademicPeriodStudents(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAcademicPeriodStudents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAcademicPeriodStudentsQueryResult = NonNullable<Awaited<ReturnType<typeof listAcademicPeriodStudents>>>
+export type ListAcademicPeriodStudentsQueryError = ErrorType<unknown>
+
+
+
+export function useListAcademicPeriodStudents<TData = Awaited<ReturnType<typeof listAcademicPeriodStudents>>, TError = ErrorType<unknown>>(
+ params: ListAcademicPeriodStudentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAcademicPeriodStudents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAcademicPeriodStudentsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAcademicResultCompilationUrl = (params: GetAcademicResultCompilationParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/academic/result-compilation?${stringifiedParams}` : `/api/academic/result-compilation`
+}
+
+export const getAcademicResultCompilation = async (params: GetAcademicResultCompilationParams, options?: Parameters<typeof customFetch>[1]): Promise<GetAcademicResultCompilation200> => {
+
+  return customFetch<GetAcademicResultCompilation200>(getGetAcademicResultCompilationUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAcademicResultCompilationQueryKey = (params?: GetAcademicResultCompilationParams,) => {
+    return [
+    `/api/academic/result-compilation`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAcademicResultCompilationQueryOptions = <TData = Awaited<ReturnType<typeof getAcademicResultCompilation>>, TError = ErrorType<unknown>>(params: GetAcademicResultCompilationParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAcademicResultCompilation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAcademicResultCompilationQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAcademicResultCompilation>>> = ({ signal }) => getAcademicResultCompilation(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAcademicResultCompilation>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAcademicResultCompilationQueryResult = NonNullable<Awaited<ReturnType<typeof getAcademicResultCompilation>>>
+export type GetAcademicResultCompilationQueryError = ErrorType<unknown>
+
+
+
+export function useGetAcademicResultCompilation<TData = Awaited<ReturnType<typeof getAcademicResultCompilation>>, TError = ErrorType<unknown>>(
+ params: GetAcademicResultCompilationParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAcademicResultCompilation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAcademicResultCompilationQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListParentInvoiceFeeLinesUrl = (invoiceId: number,) => {
+
+
+
+
+  return `/api/parent/fees/invoices/${invoiceId}/lines`
+}
+
+export const listParentInvoiceFeeLines = async (invoiceId: number, options?: Parameters<typeof customFetch>[1]): Promise<ListParentInvoiceFeeLines200> => {
+
+  return customFetch<ListParentInvoiceFeeLines200>(getListParentInvoiceFeeLinesUrl(invoiceId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListParentInvoiceFeeLinesQueryKey = (invoiceId: number,) => {
+    return [
+    `/api/parent/fees/invoices/${invoiceId}/lines`
+    ] as const;
+    }
+
+
+export const getListParentInvoiceFeeLinesQueryOptions = <TData = Awaited<ReturnType<typeof listParentInvoiceFeeLines>>, TError = ErrorType<unknown>>(invoiceId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listParentInvoiceFeeLines>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListParentInvoiceFeeLinesQueryKey(invoiceId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listParentInvoiceFeeLines>>> = ({ signal }) => listParentInvoiceFeeLines(invoiceId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: invoiceId !== null && invoiceId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listParentInvoiceFeeLines>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListParentInvoiceFeeLinesQueryResult = NonNullable<Awaited<ReturnType<typeof listParentInvoiceFeeLines>>>
+export type ListParentInvoiceFeeLinesQueryError = ErrorType<unknown>
+
+
+
+export function useListParentInvoiceFeeLines<TData = Awaited<ReturnType<typeof listParentInvoiceFeeLines>>, TError = ErrorType<unknown>>(
+ invoiceId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listParentInvoiceFeeLines>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListParentInvoiceFeeLinesQueryOptions(invoiceId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRecordSchoolCashPaymentUrl = (invoiceId: number,
+    params: RecordSchoolCashPaymentParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/school/finance/invoices/${invoiceId}/cash-payments?${stringifiedParams}` : `/api/school/finance/invoices/${invoiceId}/cash-payments`
+}
+
+export const recordSchoolCashPayment = async (invoiceId: number,
+    recordSchoolCashPaymentBody: RecordSchoolCashPaymentBody,
+    params: RecordSchoolCashPaymentParams, options?: Parameters<typeof customFetch>[1]): Promise<FeePaymentVerificationResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FeePaymentVerificationResult>(getRecordSchoolCashPaymentUrl(invoiceId,params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(recordSchoolCashPaymentBody)
+  }
+);}
+
+
+
+
+
+export const getRecordSchoolCashPaymentMutationKey = () => ['recordSchoolCashPayment'] as const;
+
+export const getRecordSchoolCashPaymentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordSchoolCashPayment>>, TError,RecordSchoolCashPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordSchoolCashPayment>>, TError,RecordSchoolCashPaymentMutationVariables, TContext> => {
+
+const mutationKey = getRecordSchoolCashPaymentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordSchoolCashPayment>>, RecordSchoolCashPaymentMutationVariables> = (props) => {
+          const {invoiceId,data,params} = props ?? {};
+
+          return  recordSchoolCashPayment(invoiceId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordSchoolCashPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof recordSchoolCashPayment>>>
+    export type RecordSchoolCashPaymentMutationBody = BodyType<RecordSchoolCashPaymentBody>
+    export type RecordSchoolCashPaymentMutationError = ErrorType<unknown>
+    export type RecordSchoolCashPaymentMutationVariables = {invoiceId: number;data: BodyType<RecordSchoolCashPaymentBody>;params: RecordSchoolCashPaymentParams}
+
+    export const useRecordSchoolCashPayment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordSchoolCashPayment>>, TError,RecordSchoolCashPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordSchoolCashPayment>>,
+        TError,
+        RecordSchoolCashPaymentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecordSchoolCashPaymentMutationOptions(options));
     }
 
 export const getListAcademicSessionsUrl = (params: ListAcademicSessionsParams,) => {

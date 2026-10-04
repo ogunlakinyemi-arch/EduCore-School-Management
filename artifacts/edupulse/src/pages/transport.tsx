@@ -375,7 +375,7 @@ function AssignmentsTab({ schoolId, q, routes }: { schoolId: number; q: Q<Transp
         <select aria-label="Filter riders" className={cx(inputCls, '!w-auto')} value={filter} onChange={e => setFilter(e.target.value as typeof filter)}>
           <option value="all">All riders</option><option value="ACTIVE">Active</option><option value="SUSPENDED">Suspended</option><option value="DEACTIVATED">Deactivated</option>
         </select>
-        <Button onClick={() => setCreating(true)} disabled={!routes.length} title={routes.length ? undefined : 'Create a route first'} testId="button-assign-student"><Plus size={16} />Assign student</Button>
+        <Button onClick={() => setCreating(true)} testId="button-assign-student"><Plus size={16} />Assign student</Button>
       </div>
       <Frame q={q} empty={<EmptyState icon={UsersRound} title="No riders assigned" description="Search existing students and assign them to a route with pickup and drop-off stops." />}>
         {() => rows.length ? (
@@ -483,7 +483,7 @@ function AssignForm({ schoolId, routes, onClose }: { schoolId: number; routes: T
     <Modal title="Assign student to transport" eyebrow="Riders" onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
         <Field label="Class"><select required className={inputCls} value={classId} onChange={e=>{setClassId(e.target.value);setStudentId(null);setSection('');}} data-testid="select-assign-class">
-          <option value="">Select class</option>{(classes.data??[]).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+          <option value="">Select class</option>{(classes.data??[]).map(c=><option key={c.id} value={c.id}>{c.name} {c.section}</option>)}
         </select></Field>
         <Field label="Section (optional)"><input className={inputCls} value={section} onChange={e=>{setSection(e.target.value);setStudentId(null);}} /></Field>
         <Field label="Search existing students"><input className={inputCls} placeholder="Name or admission number" value={search} onChange={e => setSearch(e.target.value)} data-testid="input-student-search" /></Field>
@@ -504,6 +504,7 @@ function AssignForm({ schoolId, routes, onClose }: { schoolId: number; routes: T
         <RoutePicker schoolId={schoolId} routes={routes} routeId={routeId} setRouteId={setRouteId} pickup={pickup} setPickup={setPickup} dropoff={dropoff} setDropoff={setDropoff} />
         <Field label="Effective date"><input type="date" className={inputCls} value={eff} onChange={e => setEff(e.target.value)} /></Field>
         <Field label="Reason"><textarea rows={2} className={inputCls} value={reason} onChange={e => setReason(e.target.value)} placeholder="For example: parent requested school bus from term start" data-testid="input-assign-reason" /></Field>
+        {!studentId || !routeId || !pickup || !dropoff ? <Notice testId="assignment-requirements">To enable Assign, select a class and student, then an eligible bus and route with active pickup and drop-off stops. Configure missing buses/routes/stops first; no Parent request is needed.</Notice> : null}
         {err && <Notice tone="error" testId="assign-form-error">{err}</Notice>}
         <div className="flex justify-end gap-2"><Button variant="quiet" onClick={onClose}>Cancel</Button><Button type="submit" disabled={create.isPending || !studentId || !routeId || !pickup || !dropoff || !!routeBlock(routes.find(r => String(r.id) === routeId))} testId="button-save-assignment">{create.isPending ? 'Assigning...' : 'Assign student'}</Button></div>
       </form>

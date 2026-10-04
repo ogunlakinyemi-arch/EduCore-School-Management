@@ -14,4 +14,10 @@ export interface AcademicTermUpdate {
   endDate?: Date;
   status?: AcademicTermUpdateStatus;
   isCurrent?: boolean;
+  allowOverlap?: boolean;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  overlapReason?: string | null;
 }

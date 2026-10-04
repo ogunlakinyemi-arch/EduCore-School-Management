@@ -1,0 +1,1149 @@
+YEMAIT EDUCORE — FINAL ACADEMIC CALENDAR, RESULT COMPILATION, FEES AND SOFTWARE HARDENING
+
+Work only in Development.
+
+Do not publish to Production.
+
+Do not reset, reseed, truncate, delete or rewrite existing data.
+
+Do not rebuild already-working modules.
+
+The objective is to permanently resolve the remaining software gaps and add the required Academic Session/Term management and multi-subject result compilation workflow.
+
+---
+
+1. SCHOOL ADMIN — ACADEMIC SESSION AND TERM MANAGEMENT
+
+New required functionality
+
+School Admin must be able to create and manage the school's academic sessions and their terms.
+
+The system must NOT assume that every school uses the same term dates.
+
+The school should be able to configure its own academic calendar.
+
+---
+
+2. ACADEMIC SESSION
+
+School Admin should have:
+
+School Admin → Academic Calendar → Academic Sessions
+
+The School Admin should be able to create a session such as:
+
+2026/2027
+
+The session should contain:
+
+- Session name
+- Start date
+- End date
+- Status
+- Created by
+- Created date
+
+Example:
+
+2026/2027
+
+Start:
+
+September 2026
+
+End:
+
+July 2027
+
+The exact dates should be configurable.
+
+---
+
+3. TERMS WITHIN AN ACADEMIC SESSION
+
+Each academic session must contain its own terms.
+
+For example:
+
+2026/2027
+
+First Term
+
+Start:
+
+September 2026
+
+End:
+
+December 2026
+
+Second Term
+
+Start:
+
+January 2027
+
+End:
+
+April 2027
+
+Third Term
+
+Start:
+
+April/May 2027
+
+End:
+
+July 2027
+
+The School Admin must be able to choose the exact dates.
+
+Do not hard-code the dates.
+
+---
+
+4. NEXT ACADEMIC SESSION
+
+After 2026/2027:
+
+2027/2028
+
+First Term may start:
+
+September 2027
+
+The system must treat this as a completely separate academic session.
+
+Do not allow:
+
+2027/2028 First Term
+
+to accidentally share the same term record as:
+
+2026/2027 First Term.
+
+Every term must belong to exactly one academic session.
+
+---
+
+5. TERM CREATION WORKFLOW
+
+School Admin:
+
+Academic Calendar → Add Session
+
+Then:
+
+2026/2027
+
+After creating the session:
+
+Add Term
+
+Select:
+
+- First Term
+- Second Term
+- Third Term
+
+Enter:
+
+- Start date
+- End date
+
+Then save.
+
+---
+
+6. TERM VALIDATION
+
+The system must validate academic periods.
+
+Prevent:
+
+- duplicate terms inside the same session
+- two First Terms in one session
+- invalid start/end dates
+- end date before start date
+- overlapping terms unless explicitly permitted
+- a term belonging to multiple sessions
+- fees being assigned to a nonexistent term
+- results being submitted to a nonexistent term
+
+If a school intentionally needs overlapping dates, require an explicit authorized confirmation rather than silently accepting the overlap.
+
+---
+
+7. SESSION/TERM STATUS
+
+Use appropriate statuses such as:
+
+- Draft
+- Active
+- Closed
+
+If the existing system already has equivalent statuses, reuse them.
+
+Only an active/valid academic period should be available for normal current academic operations.
+
+Historical periods must remain accessible for:
+
+- results
+- report cards
+- attendance
+- fees
+- payments
+- academic records
+- audits
+
+Do not delete historical sessions or terms merely because they have ended.
+
+---
+
+8. ACADEMIC PERIOD USED ACROSS THE PLATFORM
+
+The selected academic session and term must become the authoritative academic-period reference for all relevant modules.
+
+Where applicable, use the configured School Academic Calendar for:
+
+- Assessments
+- Assignments
+- Results
+- Report Cards
+- Attendance
+- Fees
+- Payments
+- Transport fees
+- Timetable
+- Examinations
+- Academic promotion
+- Lesson notes
+- Curriculum progress
+- Academic reports
+
+Do not allow different modules to invent their own unrelated session/term identifiers.
+
+---
+
+9. RESULT COMPILATION — MULTIPLE SUBJECT TEACHERS
+
+Critical requirement
+
+The system must correctly compile results submitted by different subject teachers into one consolidated student result.
+
+Example:
+
+A student is in:
+
+JSS1 A
+
+Academic session:
+
+2026/2027
+
+Term:
+
+First Term
+
+The student has several subjects.
+
+Mathematics Teacher
+
+Mathematics teacher submits:
+
+Mathematics — 78
+
+English Teacher
+
+English teacher submits:
+
+English — 82
+
+Basic Science Teacher
+
+Basic Science teacher submits:
+
+Basic Science — 75
+
+Other subject teachers submit their respective subjects.
+
+The system must NOT create separate unrelated results for each teacher.
+
+It must compile all valid subject results into one student's term result.
+
+---
+
+10. RESULT IDENTITY
+
+Every subject result must be uniquely associated with:
+
+School + Student + Academic Session + Term + Class/Section + Subject
+
+This is critical.
+
+For example:
+
+School A + Student 001 + 2026/2027 + First Term + JSS1 A + Mathematics
+
+is one subject result.
+
+And:
+
+School A + Student 001 + 2026/2027 + First Term + JSS1 A + English
+
+is another subject result.
+
+Both belong to the same consolidated student result.
+
+---
+
+11. SUBJECT TEACHER SUBMISSION
+
+Each subject teacher should only submit results for the subjects/classes they are authorized to teach.
+
+Example:
+
+Mathematics Teacher:
+
+JSS1 A Mathematics
+
+can submit Mathematics results.
+
+They should NOT be able to submit:
+
+JSS1 A English
+
+unless they are also authorized to teach English.
+
+---
+
+12. SUBJECT RESULT STATUS
+
+Each subject submission should have an appropriate status.
+
+For example:
+
+- Draft
+- Submitted
+- Returned
+- Resubmitted
+- Approved
+
+Reuse the existing result workflow/status model if already implemented.
+
+Do not create a duplicate status system unnecessarily.
+
+---
+
+13. TEACHER SUBMITS MATHEMATICS
+
+Example:
+
+Mathematics teacher completes all required students.
+
+Then:
+
+Submit Mathematics Results
+
+The system stores Mathematics results for:
+
+2026/2027 → First Term → JSS1 A → Mathematics
+
+The teacher's submission should not publish the student's overall result.
+
+It only submits the Mathematics component.
+
+---
+
+14. ENGLISH TEACHER SUBMITS ENGLISH
+
+English teacher later submits:
+
+2026/2027 → First Term → JSS1 A → English
+
+The system adds English to the same student's consolidated result context.
+
+Do NOT replace Mathematics.
+
+Do NOT create another independent overall result.
+
+---
+
+15. CONSOLIDATED RESULT
+
+For Student A:
+
+Subject| Score| Grade
+Mathematics| 78| B
+English| 82| A
+Basic Science| 75| B
+Social Studies| 80| A
+
+The School Admin should be able to see one consolidated result.
+
+The result should contain all valid subject results belonging to:
+
+- same school
+- same student
+- same session
+- same term
+- same class/section
+
+---
+
+16. SCHOOL ADMIN RESULT REVIEW
+
+School Admin should have:
+
+Results → Result Compilation/Review
+
+Select:
+
+- Academic Session
+- Term
+- Class
+- Section
+
+Then the system should show students in that class.
+
+For each student, School Admin should see the consolidated result.
+
+Example:
+
+Student: John Doe
+
+2026/2027
+First Term
+JSS1 A
+
+Subject| Teacher| Score| Grade| Status
+Mathematics| Teacher A| 78| B| Submitted
+English| Teacher B| 82| A| Submitted
+Basic Science| Teacher C| 75| B| Submitted
+
+---
+
+17. MISSING SUBJECTS
+
+The system must distinguish between:
+
+Teacher has not submitted
+
+and:
+
+Student has no subject
+
+These are NOT the same.
+
+If Mathematics teacher has not submitted Mathematics:
+
+Show:
+
+Mathematics — Awaiting Teacher Submission
+
+Do NOT automatically insert:
+
+- 0
+- F
+- blank score treated as zero
+
+unless the existing school's grading policy explicitly says so.
+
+---
+
+18. RESULT COMPLETENESS
+
+Before School Admin publishes the overall class/student results, the system should be able to determine whether all expected subjects have been submitted.
+
+Expected subjects should be derived from the student's:
+
+- class
+- section
+- subject enrollment/curriculum
+- assigned subjects
+
+Not merely from whichever teachers happened to submit results.
+
+Example:
+
+Expected:
+
+1. Mathematics
+2. English
+3. Basic Science
+4. Social Studies
+5. Computer Studies
+
+Submitted:
+
+1. Mathematics
+2. English
+3. Basic Science
+
+The system should show:
+
+2 subjects awaiting submission
+
+and identify them.
+
+---
+
+19. SCHOOL ADMIN REVIEW OPTIONS
+
+School Admin should be able to:
+
+- review submitted subject results
+- identify missing subjects
+- return a subject result for correction
+- approve subject results where the existing permission model permits
+- compile the consolidated result
+- publish only when required conditions are satisfied
+
+Do not allow the School Admin to accidentally alter teacher-owned raw scores unless the existing workflow explicitly grants that authority.
+
+---
+
+20. RESULT RETURN / CORRECTION
+
+If School Admin returns Mathematics results:
+
+Mathematics should become:
+
+Returned
+
+The Mathematics teacher can correct/resubmit Mathematics.
+
+English and other approved subject results must remain unchanged.
+
+Do not reset the entire student's result.
+
+---
+
+21. CONSOLIDATED RESULT CALCULATION
+
+After subject results are available, calculate the student's overall result using the school's configured grading rules.
+
+Possible values may include:
+
+- Total
+- Average
+- Grade
+- Position/ranking if the existing school configuration supports it
+- Teacher comments
+- Principal/Head Teacher comments
+- Attendance information if already integrated
+
+Do not invent grading rules.
+
+Use the existing configured grading system.
+
+---
+
+22. IMPORTANT — SUBJECT RESULTS AND OVERALL RESULT ARE DIFFERENT
+
+The system must maintain a clear distinction between:
+
+Subject Result
+
+Mathematics = 78
+
+and:
+
+Consolidated Term Result
+
+Student's complete result containing all subjects and calculated overall performance.
+
+A subject teacher submitting Mathematics must never accidentally publish the student's overall term result.
+
+---
+
+23. RESULT PUBLICATION
+
+Only the authorized School Admin workflow should publish the consolidated result.
+
+The intended workflow is:
+
+Subject Teacher → Submit Subject Result
+
+↓
+
+Other Subject Teachers → Submit Their Subjects
+
+↓
+
+System → Compile Student's Subject Results
+
+↓
+
+School Admin → Review Consolidated Result
+
+↓
+
+School Admin → Approve
+
+↓
+
+School Admin → Publish
+
+↓
+
+Student/Parent → View Published Result
+
+Do not allow a single subject teacher to bypass this workflow.
+
+---
+
+24. RESULT LOCKING
+
+After final approval/publication:
+
+Prevent unauthorized changes to:
+
+- submitted subject results
+- approved results
+- published results
+
+Use the existing locking mechanism already implemented.
+
+If a correction is genuinely required after publication, use an authorized return/reopen workflow and maintain an audit trail.
+
+---
+
+25. HISTORICAL CLASS RESULT GENERATION
+
+When generating a historical result, use:
+
+Student → Historical Academic Session → Historical Term → Historical Class/Section
+
+not the student's current class.
+
+Example:
+
+Current:
+
+SS2 A
+
+Historical:
+
+JSS3 B — 2025/2026 Third Term
+
+The historical report must display:
+
+JSS3 B
+
+without changing the student's current:
+
+SS2 A
+
+---
+
+26. RESULT DATA INTEGRITY
+
+Prevent duplicate subject results for the same:
+
+School + Student + Session + Term + Class/Section + Subject
+
+If a teacher resubmits a returned result, update the correct submission/version rather than creating an unrelated duplicate.
+
+Maintain history/audit where supported.
+
+---
+
+27. FEES MUST USE THE SAME ACADEMIC CALENDAR
+
+The School Admin fee workflow from the previous correction must now use the centrally configured Academic Session/Term.
+
+Workflow:
+
+Finance → Create Fee → Select Session → Select Term → Select Class → Amount → Publish
+
+Do not allow a fee to reference a manually typed or invalid term.
+
+---
+
+28. TRANSPORT FEES MUST USE THE SAME TERM
+
+Transport fee applicability must also use the school's configured academic period.
+
+For example:
+
+2026/2027 First Term Transport Fee
+
+must not accidentally appear as:
+
+2027/2028 First Term
+
+---
+
+29. ACADEMIC CALENDAR AND AUTOMATIC TRANSITION
+
+Do not automatically create the next session unless the existing system explicitly supports safe automation.
+
+However, the system must support:
+
+2026/2027 → 2027/2028
+
+without data contamination.
+
+When 2027/2028 is created:
+
+- its terms are separate
+- its fees are separate
+- its results are separate
+- its attendance is separate
+- its academic records are separate
+
+Historical records remain available.
+
+---
+
+30. SCHOOL ADMIN ACADEMIC CALENDAR UI
+
+Provide a simple management interface:
+
+Academic Sessions
+
+Session| Start| End| Status
+2026/2027| Sep 2026| Jul 2027| Active
+2027/2028| Sep 2027| Jul 2028| Draft/Upcoming
+
+Selecting a session shows its terms:
+
+2026/2027
+
+- First Term — Sep 2026 to Dec 2026
+- Second Term — Jan 2027 to Apr 2027
+- Third Term — Apr/May 2027 to Jul 2027
+
+The exact dates must be those configured by the School Admin.
+
+---
+
+31. PREVENT ACADEMIC PERIOD MIXING
+
+Every relevant query must include the appropriate academic-period scope.
+
+Never allow:
+
+2026/2027 First Term
+
+results to appear in:
+
+2027/2028 First Term.
+
+Never allow:
+
+2026/2027 First Term fees
+
+to appear as:
+
+2027/2028 First Term fees.
+
+Never allow historical results to use current class membership.
+
+---
+
+32. EXISTING THREE REMAINING SOFTWARE GAPS
+
+Continue fixing the previously identified:
+
+Gap 1
+
+Individual fee selection inside bundled invoices.
+
+Gap 2
+
+Dedicated auditable cash-payment recording.
+
+Gap 3
+
+Historical-class student selection during past-term report generation.
+
+Do not mark them complete until actually tested.
+
+---
+
+33. FEE ACCEPTANCE TESTING
+
+Verify:
+
+- School Admin creates session
+- School Admin creates term
+- Fee references valid session/term
+- Fee references correct class
+- Published fee reaches correct students
+- Student sees fee
+- Parent sees fee
+- Parent selects one fee line
+- Parent selects several fee lines
+- Parent selects all outstanding fee lines
+- Already-paid lines are excluded
+- Cash payment works
+- Cash payment is audited
+- Different classes can have different amounts
+- Transport fee applies only to bus users
+- Historical finance remains intact
+
+---
+
+34. RESULT ACCEPTANCE TESTING
+
+Create a controlled Development scenario.
+
+Example:
+
+Session:
+
+2026/2027
+
+Term:
+
+First Term
+
+Class:
+
+JSS1 A
+
+Students:
+
+At least two controlled QA students.
+
+Subjects:
+
+- Mathematics
+- English
+- Basic Science
+- Social Studies
+
+Assign different authorized teachers.
+
+Test 1 — Mathematics
+
+Mathematics teacher submits Mathematics.
+
+Verify Mathematics is stored.
+
+Test 2 — English
+
+English teacher submits English.
+
+Verify English is added without replacing Mathematics.
+
+Test 3 — Other subjects
+
+Other teachers submit their subjects.
+
+Verify all subjects belong to the same consolidated student result.
+
+Test 4 — School Admin
+
+School Admin opens:
+
+Results → 2026/2027 → First Term → JSS1 A
+
+Verify one consolidated result per student.
+
+Test 5 — Missing subject
+
+Do not submit one subject.
+
+Verify the system clearly identifies the missing subject.
+
+Do not treat it as zero.
+
+Test 6 — Approval
+
+School Admin reviews the consolidated result.
+
+Test 7 — Publication
+
+School Admin publishes.
+
+Test 8 — Student
+
+Student sees the published result.
+
+Test 9 — Parent
+
+Parent sees the published child's result.
+
+Test 10 — Return
+
+Return one subject.
+
+Verify only that subject becomes available for correction.
+
+Test 11 — Resubmission
+
+Teacher resubmits corrected subject.
+
+Verify consolidated result updates correctly.
+
+Test 12 — Historical class
+
+Generate a previous-term result where the student belonged to a different historical class.
+
+Verify historical class appears and current class remains unchanged.
+
+---
+
+35. DATABASE AND AUTHORIZATION TESTING
+
+Verify server-side isolation for:
+
+- school
+- student
+- class
+- section
+- subject
+- teacher
+- session
+- term
+- fees
+- payments
+- results
+
+A teacher must not submit results for:
+
+- another school
+- another unauthorized class
+- another unauthorized subject
+- another academic period
+
+A School Admin must not accidentally review another school's records.
+
+---
+
+36. EXTERNAL INTEGRATION BOUNDARY
+
+Continue treating these as external integration blockers:
+
+- Flutterwave
+- Email delivery
+- SMS delivery
+- Physical NFC hardware
+- Physical card printing
+- Teacher/Staff NFC hardware
+
+Do not claim these are verified unless actual integration tests have been performed.
+
+---
+
+37. DATABASE SAFETY
+
+Do not:
+
+- reset
+- truncate
+- reseed
+- delete existing data
+- rewrite historical results
+- rewrite current class enrollment
+- delete historical finance
+- delete historical payments
+- delete transport history
+- delete card history
+
+Use additive migrations only when required.
+
+Do not modify Production.
+
+Do not bypass the current Replit Publish/schema-diff generator issue.
+
+---
+
+38. REQUIRED TESTING
+
+Run:
+
+- Backend tests
+- Frontend tests
+- Native PostgreSQL tests
+- Authenticated Development browser tests
+- Authorization tests
+- Typechecks
+- Builds
+- Migration rollback
+- Migration double replay
+
+Give exact test counts.
+
+Do not count mocked tests as complete browser acceptance where genuine Development testing is possible.
+
+---
+
+39. FINAL ACCEPTANCE STANDARD
+
+The system must support this complete academic workflow:
+
+School Admin creates 2026/2027 session
+
+↓
+
+School Admin creates First/Second/Third Terms with dates
+
+↓
+
+School Admin creates classes/subjects
+
+↓
+
+Subject teachers receive their assigned subjects
+
+↓
+
+Mathematics teacher submits Mathematics
+
+↓
+
+English teacher submits English
+
+↓
+
+Other subject teachers submit their subjects
+
+↓
+
+System compiles all subject results for each student
+
+↓
+
+School Admin reviews one consolidated student result
+
+↓
+
+Missing subjects are clearly identified
+
+↓
+
+School Admin approves
+
+↓
+
+School Admin publishes
+
+↓
+
+Student sees published result
+
+↓
+
+Parent sees published child's result
+
+The same centrally configured academic session/term must also control:
+
+Fees + Payments + Transport Fees + Results + Academic Records
+
+---
+
+40. FINAL REPORT
+
+At completion provide:
+
+A. ACADEMIC CALENDAR
+
+Report:
+
+- session creation
+- term creation
+- date validation
+- historical session support
+- session isolation
+
+B. RESULT COMPILATION
+
+Report:
+
+- multi-teacher submission
+- subject-level storage
+- consolidated result generation
+- missing-subject detection
+- return/resubmission
+- approval
+- publication
+- Student visibility
+- Parent visibility
+- historical class handling
+
+C. FEES
+
+Report:
+
+- session/term assignment
+- class-specific fees
+- individual fee selection
+- Pay All
+- cash payment
+- transport-fee automation
+- different class pricing
+
+D. TEST RESULTS
+
+Give exact counts for:
+
+- backend
+- frontend
+- PostgreSQL
+- authenticated browser
+- authorization
+- typechecks
+- builds
+- migrations
+
+E. DATA PRESERVATION
+
+Confirm:
+
+- Production untouched
+- no reset
+- no truncation
+- no existing data deletion
+- historical academic records preserved
+- finance preserved
+- payment records preserved
+- transport records preserved
+- card history preserved
+
+F. EXTERNAL INTEGRATION BLOCKERS
+
+Clearly list:
+
+- Flutterwave
+- Email
+- SMS
+- Physical NFC
+- Physical printing
+- Employee NFC
+
+G. REMAINING SOFTWARE ISSUES
+
+Only list genuine software/functionality issues that remain.
+
+Do not classify unavailable external integrations as software bugs.
+
+---
+
+FINAL EXECUTION INSTRUCTION
+
+Start by auditing the existing academic-session, term, result, subject-teacher, fee and historical-enrollment implementation.
+
+Do not blindly create duplicate tables or workflows.
+
+Reuse the existing architecture wherever possible.
+
+Fix the root cause.
+
+The final implementation must maintain one authoritative academic session/term structure and one authoritative consolidated result model.
+
+Most importantly:
+
+A subject teacher submits a SUBJECT RESULT.
+
+The system compiles SUBJECT RESULTS into a CONSOLIDATED STUDENT TERM RESULT.
+
+School Admin reviews and publishes the CONSOLIDATED RESULT.
+
+Do not allow individual subject submission to bypass the consolidated review/publication process.
+
+Do not declare completion until the complete workflow has been genuinely tested in Development.

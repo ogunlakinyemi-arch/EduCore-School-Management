@@ -1,0 +1,161 @@
+Perform a READ-ONLY status audit of the current Yemait EduCore Development environment.
+
+IMPORTANT:
+
+- Do NOT modify code.
+- Do NOT create or alter database migrations.
+- Do NOT reset, reseed, truncate or delete any data.
+- Do NOT publish or deploy anything.
+- Do NOT fix any issue.
+- Do NOT generate implementation code.
+- Do NOT run unnecessary large test suites that consume significant credits.
+- This is only an audit to tell us what is already fixed and what remains.
+
+Compare the current Development implementation against the major workflows and corrections we have previously worked on.
+
+1. School Management
+
+Check whether these are currently implemented:
+
+- Platform Owner can create a school.
+- School Admin account/invitation workflow exists.
+- Automatic school code generation.
+- School Admin can access the correct School Admin dashboard.
+- School-specific data is isolated correctly.
+
+2. Academic Calendar
+
+Check:
+
+- School Admin can create academic sessions.
+- School Admin can create First, Second and Third Terms.
+- Terms have configurable start/end dates.
+- Different sessions such as 2026/2027 and 2027/2028 are supported.
+- Historical sessions/terms remain accessible.
+- Invalid/reversed dates and duplicate terms are rejected.
+
+3. Timetable
+
+Check whether:
+
+- School Admin can create timetable entries.
+- The Save action actually persists the timetable entry.
+- Saved entries remain after refresh.
+- Timetable data is associated with the correct school/session/term/class/section/subject/teacher.
+
+Do NOT make any correction if it is still broken. Just report the problem.
+
+4. Transport
+
+Check whether:
+
+- School Admin can open Transport Management.
+- School Admin can assign students directly to a bus.
+- Workflow supports Class → Student → Bus.
+- Student can be assigned without waiting for a Parent bus request.
+- Parent bus-request workflow still exists.
+- Driver profile/journey/instruction information exists.
+- Assigned student and driver data persist after refresh.
+
+Do NOT test physical GPS/tracking hardware.
+
+5. Results
+
+Check:
+
+- Subject teachers can submit their own subject results.
+- Mathematics and English submissions combine into one student consolidated result.
+- One teacher's submission does not overwrite another subject.
+- Missing subjects are identified rather than converted to zero/F.
+- School Admin can review, approve and publish the consolidated result.
+- Student and Parent can view the published result.
+- Historical class information is used for historical reports.
+
+6. Fees and Payments
+
+Check:
+
+- Fees can be configured by session, term, class and section.
+- Different classes can have different fees.
+- Parent can select outstanding fee lines where supported.
+- Pay All excludes already-paid items.
+- School Admin cash-payment workflow exists.
+- Cash payment creates the appropriate receipt and audit record.
+- Transport fees follow the configured class/term rules.
+
+Do not perform real payment transactions.
+
+7. ID Cards / NFC
+
+Check only the software-side functionality:
+
+- Owner-only official Student/Teacher/Staff card generation.
+- School Admin preview-only access.
+- Teacher cannot generate Student cards.
+- ₦2,000 replacement request/payment workflow exists.
+- Old card/UID can be permanently revoked after authorized replacement.
+
+Do NOT claim physical NFC hardware integration is working.
+Do NOT test physical NFC devices.
+
+8. Other Previously Requested School Admin Functions
+
+Check whether these are currently visible and functional in the Development application:
+
+- Communications
+- Library/Librarian
+- Operations/Tasks
+- Employee management
+- Attendance
+- Student management
+- Parent management
+- Teacher management
+- School branding/logo
+- Dashboard/navigation
+- School-specific permissions
+
+9. Important distinction
+
+For every item, classify it as exactly one of:
+
+A — FIXED AND VERIFIED
+The current Development implementation contains the functionality and available evidence confirms it works.
+
+B — IMPLEMENTED BUT NOT VERIFIED
+The functionality appears to exist, but there is insufficient current evidence to confirm it works end-to-end.
+
+C — NOT IMPLEMENTED / STILL BROKEN
+The functionality is missing or a reproducible software problem remains.
+
+D — EXTERNAL INTEGRATION BLOCKED
+The software side may exist, but proper verification requires an external integration such as Flutterwave, email/SMS delivery, physical NFC hardware or physical card printing.
+
+10. Final report
+
+Give me a concise table:
+
+Area| Status| What is currently working| What remains
+
+Then provide:
+
+CONFIRMED FIXED
+
+- List only items genuinely confirmed in the current Development environment.
+
+REMAINING SOFTWARE ISSUES
+
+- List only actual software/functionality issues.
+- Include the exact page/workflow where each issue occurs.
+
+EXTERNAL INTEGRATION BLOCKERS
+
+- List items that cannot yet be genuinely verified.
+
+NOT VERIFIED
+
+- List functionality that appears implemented but lacks sufficient verification.
+
+CREDIT-SAVING RECOMMENDATION
+Tell us whether we should make any new correction prompt now, or whether we should stop and preserve credits for later.
+
+Do not fix anything. This is strictly a read-only audit.

@@ -12,6 +12,7 @@ import {
   type CommunicationQueryClient,
 } from "../services/communication-service";
 import { logger } from "../lib/logger";
+import { periodStudents, compileStudent, assertCompilationReady, type PeriodContext } from "../services/result-compilation";
 
 const router = Router();
 router.use(requireAuthentication());
@@ -36,6 +37,10 @@ function requiredString(value: unknown, label: string, max = 500): string {
     throw new AuthError(400, `${label} is required`);
   }
   return value.trim();
+}
+function optionalResultRemark(value: unknown): string | null {
+  if(value==null || (typeof value==="string"&&value.length<=500&&!value.trim())) return null;
+  return requiredString(value,"remark",500);
 }
 function scoreValue(value: unknown, label: string): number {
   if ((typeof value !== "number" && typeof value !== "string") ||
@@ -210,6 +215,20 @@ function reportResultState(lineCount: number, unpublishedCount: number, incomple
   return lineCount > 0 ? "COMPLETE" : "NO_PUBLISHED_RESULTS";
 }
 
+function compilationScope(req: Request): PeriodContext {
+  return {schoolId:authorizeSchool(req,req.query.schoolId,managerRoles),sessionId:id(req.query.sessionId,"sessionId"),
+    termId:id(req.query.termId,"termId"),classId:req.query.classId ? id(req.query.classId,"classId") : undefined,
+    section:typeof req.query.section==="string" ? req.query.section : undefined};
+}
+router.get("/academic/period-students",run(async(req,res)=>{
+  res.json(await periodStudents(pool,compilationScope(req)));
+}));
+router.get("/academic/result-compilation",run(async(req,res)=>{
+  const scope=compilationScope(req);
+  const students=await periodStudents(pool,scope);
+  res.json({...scope,students:await Promise.all(students.map((student: any)=>compileStudent(pool,scope,student)))});
+}));
+
 // School grading rules. Scores are matched against the percentage (score / maxScore * 100).
 router.get("/academic/grading-rules", run(async (req, res) => {
   const schoolId = authorizeSchool(req, req.query.schoolId, allSchoolRoles);
@@ -346,7 +365,7 @@ router.post("/academic/results", run(async (req, res) => {
   const assessmentId = id(body.assessmentId, "assessmentId");
   const studentId = id(body.studentId, "studentId");
   const score = scoreValue(body.score, "score");
-  const remark = body.remark == null ? null : requiredString(body.remark, "remark", 500);
+  const remark = optionalResultRemark(body.remark);
   const actor = getUserContext(req);
   const client = await pool.connect();
   let created;
@@ -486,7 +505,7 @@ router.patch("/academic/results/:resultId", run(async (req, res) => {
     const scoreChanged = score !== Number(current.score);
     const remark = body.remark === undefined
       ? scoreChanged ? null : current.remark
-      : body.remark === null ? null : requiredString(body.remark, "remark", 500);
+      : optionalResultRemark(body.remark);
     let grade = { grade: current.grade, gradePoint: current.grade_point, remark: current.remark };
     if (current.status !== "PUBLISHED" || scoreChanged) {
       const rules = await client.query(`SELECT min_score,max_score,grade,grade_point,remark FROM academic_grading_rules WHERE school_id=$1 AND status='ACTIVE' ORDER BY min_score`, [schoolId]);
@@ -614,6 +633,9 @@ router.post("/academic/results/:resultId/review", run(async (req, res) => {
 }));
 
 router.post("/academic/assessments/:assessmentId/publish-results", run(async (req, res) => {
+  authorizeSchool(req,bodyObject(req.body).schoolId,managerRoles);
+  throw new AuthError(409,"Publish the approved consolidated report card instead of individual assessment results");
+  /* Legacy publication retained below for reference; no new request may bypass compilation.
   const body = bodyObject(req.body);
   const schoolId = authorizeSchool(req, body.schoolId, managerRoles);
   assertSchoolOperationalAccess(req, schoolId, managerRoles as any);
@@ -647,7 +669,7 @@ router.post("/academic/assessments/:assessmentId/publish-results", run(async (re
       body: "New academic results are available in your Yemait EduCore account.",
     });
   }
-  res.json({ assessmentId, publishedCount: result!.rows.length, results: result!.rows });
+  res.json({ assessmentId, publishedCount: result!.rows.length, results: result!.rows }); */
 }));
 
 async function resolveSelfStudent(req: Request, schoolId: number): Promise<number> {
@@ -769,9 +791,9 @@ router.post("/academic/report-cards", run(async (req, res) => {
       `SELECT sca.id,sca.school_class_id,sca.section,c.name AS class_name
         FROM student_class_assignments sca JOIN school_classes c ON c.id=sca.school_class_id AND c.school_id=sca.school_id
         JOIN academic_sessions s ON s.id=sca.academic_session_id AND s.school_id=sca.school_id
-        JOIN academic_terms t ON t.id=sca.academic_term_id AND t.school_id=sca.school_id AND t.academic_session_id=s.id
-       WHERE sca.school_id=$1 AND sca.student_id=$2 AND sca.academic_session_id=$3 AND sca.academic_term_id=$4
-         AND sca.status IN ('ACTIVE','INACTIVE') ORDER BY sca.id DESC LIMIT 1`,
+        JOIN academic_terms t ON t.id=$4 AND t.school_id=sca.school_id AND t.academic_session_id=s.id
+       WHERE sca.school_id=$1 AND sca.student_id=$2 AND sca.academic_session_id=$3 AND (sca.academic_term_id=$4 OR sca.academic_term_id IS NULL)
+         AND sca.status IN ('ACTIVE','INACTIVE') ORDER BY (sca.academic_term_id=$4) DESC NULLS LAST,sca.id DESC LIMIT 1`,
       [schoolId,studentId,sessionId,termId],
     );
     const assignmentRow = assignment.rows[0];
@@ -858,6 +880,8 @@ router.post("/academic/report-cards/:id/publish", run(async (req, res) => {
     if (current.status !== "DRAFT") throw new AuthError(409, "Only draft report cards may be published");
     if (body.decision != null && !["APPROVE", "PUBLISH"].includes(String(body.decision))) throw new AuthError(400, "Invalid report card decision");
     if (body.decision === "APPROVE") {
+      await assertCompilationReady(client,{schoolId,studentId:Number(current.student_id),
+        sessionId:Number(current.academic_session_id),termId:Number(current.academic_term_id)});
       const missing = await client.query(`SELECT 1 FROM academic_results r WHERE r.school_id=$1 AND r.student_id=$2
         AND r.academic_session_id=$3 AND r.academic_term_id=$4 AND r.student_class_assignment_id=$5
         AND r.status<>'ARCHIVED' AND NOT EXISTS(SELECT 1 FROM academic_report_card_lines l
@@ -880,6 +904,8 @@ router.post("/academic/report-cards/:id/publish", run(async (req, res) => {
     }
     const approval = await client.query(`SELECT 1 FROM audit_logs WHERE school_id=$1 AND record_id=$2 AND action='Approved academic report card'`, [schoolId,cardId]);
     if (!approval.rows.length) throw new AuthError(409, "Approve the compiled report card before publishing");
+    await assertCompilationReady(client,{schoolId,studentId:Number(current.student_id),
+      sessionId:Number(current.academic_session_id),termId:Number(current.academic_term_id)});
     await client.query(`UPDATE academic_results SET status='PUBLISHED',published_by=$1,published_at=NOW(),updated_at=NOW()
       WHERE school_id=$2 AND student_id=$3 AND academic_session_id=$4 AND academic_term_id=$5
         AND student_class_assignment_id=$6 AND status='SUBMITTED' AND review_status='APPROVED'`,

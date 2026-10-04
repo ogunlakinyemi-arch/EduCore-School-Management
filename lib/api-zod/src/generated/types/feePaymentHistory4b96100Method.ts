@@ -14,4 +14,5 @@ export const FeePaymentHistory4b96100Method = {
   REMITA: 'REMITA',
   FLUTTERWAVE: 'FLUTTERWAVE',
   PAYSTACK: 'PAYSTACK',
+  CASH: 'CASH',
 } as const;

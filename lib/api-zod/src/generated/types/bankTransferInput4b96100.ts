@@ -10,6 +10,12 @@ export interface BankTransferInput4b96100 {
   /** @minimum 1 */
   amountMinor: number;
   /**
+     * @minItems 1
+     * @maxItems 1000
+     * @items.minimum 1
+     */
+  lineIds?: number[];
+  /**
      * @minLength 2
      * @maxLength 100
      */

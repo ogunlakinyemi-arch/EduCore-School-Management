@@ -1,0 +1,102 @@
+// @vitest-environment jsdom
+import { act } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { academicSaveError } from '@/components/academic-save-error';
+import { TimetableEntryForm } from './timetable';
+import { SessionForm } from './academics';
+
+const mocks = vi.hoisted(() => ({
+  create: vi.fn(), update: vi.fn(), session: vi.fn(), editSession: vi.fn(),
+}));
+vi.mock('@workspace/api-client-react', () => ({
+  useCreateAcademicTimetableEntry: () => ({mutateAsync:mocks.create,isPending:false}),
+  useUpdateAcademicTimetableEntry: () => ({mutateAsync:mocks.update,isPending:false}),
+  useCreateAcademicSession: () => ({mutate:mocks.session,isPending:false}),
+  useUpdateAcademicSession: () => ({mutate:mocks.editSession,isPending:false}),
+}));
+vi.mock('@/components/shared', () => ({
+  Field: ({label,children}:any) => <label>{label}{children}</label>,
+  Button: ({children,variant,testId,...props}:any) => <button type="button" data-testid={testId} {...props}>{children}</button>,
+}));
+vi.mock('@/components/school-ops-kit', () => ({Notice:({children}:any)=><div>{children}</div>}));
+let host:HTMLDivElement;
+let root:Root;
+beforeEach(()=>{
+  vi.clearAllMocks();
+  host=document.createElement('div');document.body.append(host);root=createRoot(host);
+  mocks.create.mockResolvedValue({id:1});mocks.update.mockResolvedValue({id:1});
+});
+afterEach(async()=>{await act(async()=>root.unmount());host.remove();});
+const base = {
+  schoolId:1,sessionId:2,termId:3,
+  classes:[{id:4,name:'SS2',section:'B'}],
+  subjects:[{id:5,name:'Maths'}],
+  teachers:[{id:6,firstName:'Test',lastName:'Teacher',employeeType:'Teacher',status:'Active'},
+    {id:7,firstName:'Test',lastName:'Driver',employeeType:'DRIVER',status:'ACTIVE'}],
+  initial:{id:8,classId:4,subjectId:5,teacherId:6,weekday:'MONDAY',startTime:'08:00',endTime:'09:00'},
+  onDone:vi.fn(),onCancel:vi.fn(),
+};
+async function submit(){
+  await act(async()=>{host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));});
+}
+describe('timetable save form',()=>{
+  it('creates using the selected period, numeric IDs and class section',async()=>{
+    await act(async()=>root.render(<TimetableEntryForm {...base} initial={null} defaultClassId={4}/>));
+    const selects=host.querySelectorAll('select');
+    await act(async()=>{
+      for(const [select,value] of [[selects[3],'5'],[selects[4],'6']] as const){
+        select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));
+      }
+    });
+    await submit();
+    expect(mocks.create).toHaveBeenCalledWith({data:expect.objectContaining({schoolId:1,sessionId:2,termId:3,classId:4,section:'B',subjectId:5,teacherId:6})});
+    expect(base.onDone).toHaveBeenCalledOnce();
+  });
+  it('edits the existing ID rather than creating a duplicate',async()=>{
+    await act(async()=>root.render(<TimetableEntryForm {...base}/>));await submit();
+    expect(mocks.update).toHaveBeenCalledWith({entryId:8,data:expect.objectContaining({classId:4,section:'B'})});
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+  it('keeps the form open and displays backend conflicts',async()=>{
+    mocks.update.mockRejectedValue({data:{error:{message:'Timetable teacher conflict'}}});
+    await act(async()=>root.render(<TimetableEntryForm {...base}/>));await submit();
+    expect(host.querySelector('[role=alert]')?.textContent).toBe('Timetable teacher conflict');
+    expect(base.onDone).not.toHaveBeenCalled();
+  });
+  it('rejects a missing term before calling the API',async()=>{
+    await act(async()=>root.render(<TimetableEntryForm {...base} termId={undefined}/>));await submit();
+    expect(mocks.update).not.toHaveBeenCalled();expect(host.textContent).toContain('Select a valid session and term');
+  });
+  it('rejects reversed times before calling the API',async()=>{
+    await act(async()=>root.render(<TimetableEntryForm {...base} initial={{...base.initial,startTime:'10:00'}}/>));await submit();
+    expect(mocks.update).not.toHaveBeenCalled();expect(host.textContent).toContain('End time must be later');
+  });
+  it('offers active teachers, not drivers, including legacy mixed-case types',async()=>{
+    await act(async()=>root.render(<TimetableEntryForm {...base}/>));
+    expect(host.textContent).toContain('Test Teacher');expect(host.textContent).not.toContain('Test Driver');
+  });
+});
+describe('reuse an existing academic year',()=>{
+  it('routes the same year to its terms without a duplicate session POST',async()=>{
+    const useExisting=vi.fn();
+    await act(async()=>root.render(<SessionForm schoolId={1} existingSessions={[{id:2,name:'2026/2027'}]} onUseExisting={useExisting} onDone={vi.fn()} onCancel={vi.fn()}/>));
+    const input=host.querySelector('input')!;
+    await act(async()=>{
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,'2026/2027');
+      input.dispatchEvent(new Event('input',{bubbles:true}));
+    });
+    const reuse=host.querySelector<HTMLButtonElement>('[data-testid=button-use-existing-session]');
+    expect(reuse).not.toBeNull();
+    await act(async()=>reuse!.click());
+    expect(useExisting).toHaveBeenCalledWith(2);expect(mocks.session).not.toHaveBeenCalled();expect(mocks.editSession).not.toHaveBeenCalled();
+  });
+});
+describe('academic API error contracts',()=>{
+  it.each([
+    [{data:{error:'Timetable class and section conflict'}},'Timetable class and section conflict'],
+    [{data:{error:{message:'An academic record with these details already exists.'}}},'An academic record with these details already exists.'],
+    [{data:{message:'Term does not belong to this session'}},'Term does not belong to this session'],
+    [null,'Could not save this academic record.'],
+  ])('renders a safe useful message for %j',(error,message)=>expect(academicSaveError(error)).toBe(message));
+});

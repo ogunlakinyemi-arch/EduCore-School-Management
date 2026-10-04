@@ -40,6 +40,12 @@ const poolMock = vi.hoisted(() => {
       sql.includes("INSERT INTO academic_assignments") ? "INSERT_ASSIGNMENT" : "QUERY",
     );
     if (["BEGIN", "COMMIT", "ROLLBACK"].includes(sql)) return result();
+    if(sql.includes("pg_advisory_xact_lock")) return result();
+    if(sql.includes("FROM academic_terms t JOIN academic_sessions s")) return result([{id:4}]);
+    if(sql.includes("WITH chosen AS")) return result([{id:13,firstName:"QA",lastName:"Student",classId:5,className:"JSS2",section:"Blue",studentClassAssignmentId:12}]);
+    if(sql.includes("SELECT DISTINCT ON (cs.subject_id)")) return result([{subjectId:7,subjectName:"Mathematics"}]);
+    if(sql.includes("concat_ws")&&sql.includes("FROM academic_results r")) return result([{id:55,subjectId:7,score:18,maxScore:20,grade:"A",status:"SUBMITTED",reviewStatus:"APPROVED"}]);
+    if(sql.includes("FROM academic_grading_rules")) return result([{min_score:0,max_score:100,grade:"A",grade_point:4,remark:"Excellent"}]);
     if (sql.includes("INSERT INTO audit_logs")) return result();
     if (sql.includes("SELECT roster.recipient_user_id AS \"userId\"")) {
       return result([
@@ -297,26 +303,12 @@ describe("academic publication notifications", () => {
     expect(communicationMock.queue).not.toHaveBeenCalled();
   });
 
-  it("queues result-publication notices for the student and active linked parents", async () => {
+  it("does not notify or publish through the disabled assessment publication bypass", async () => {
     const response = await post("/academic/assessments/21/publish-results", { schoolId: 1 });
 
-    expect(response.status, await response.clone().text()).toBe(200);
-    expect((await response.json() as { publishedCount: number }).publishedCount).toBe(1);
-    expect(communicationMock.queue).toHaveBeenCalledTimes(2);
-    const calls = communicationMock.queue.mock.calls as unknown as Array<[any, any]>;
-    expect(calls.map(([, input]) => input.recipientUserId)).toEqual([13, 44]);
-    expect(calls[0][1]).toMatchObject({
-      schoolId: 1, subjectStudentId: 13, subjectClassId: 5,
-      category: "ACADEMIC", eventKey: "assessment-results-published:21:13",
-      subject: "Academic results available", link: "/my-academics", channels: ["IN_APP"],
-    });
-    expect(calls[1][1].link).toBe("/");
-    const recipientQuery = state.queries.find(({ sql }) => sql.includes("SELECT linked.user_id AS"));
-    expect(recipientQuery?.values).toEqual([13, 1]);
-    expect(recipientQuery?.sql).toContain("JOIN parent_student_relationships");
-    expect(recipientQuery?.sql).toContain("st.school_id=p.school_id");
-    expect(state.timeline[0]).toBe("BEGIN");
-    expect(state.timeline.indexOf("COMMIT")).toBeLessThan(state.timeline.indexOf("QUEUE_NOTIFICATION"));
+    expect(response.status, await response.clone().text()).toBe(409);
+    expect(communicationMock.queue).not.toHaveBeenCalled();
+    expect(state.queries).toHaveLength(0);
   });
 
   it("queues report-card availability notices after publication commits", async () => {

@@ -3305,6 +3305,88 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SchoolClass"
+  /academic/period-students:
+    get:
+      operationId: listAcademicPeriodStudents
+      tags: [Academic]
+      parameters:
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: sessionId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: termId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: classId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: section, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Authoritative enrollment for the requested academic period, including historical assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object, additionalProperties: true }
+  /academic/result-compilation:
+    get:
+      operationId: getAcademicResultCompilation
+      tags: [Academic]
+      parameters:
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: sessionId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: termId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: classId, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: section, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Curriculum-derived subjects with missing submissions explicitly represented, consolidated by student
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /parent/fees/invoices/{invoiceId}/lines:
+    get:
+      operationId: listParentInvoiceFeeLines
+      tags: [Finance]
+      parameters:
+        - { name: invoiceId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Authorized invoice line balances and explicit legacy allocation limitations
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+  /school/finance/invoices/{invoiceId}/cash-payments:
+    post:
+      operationId: recordSchoolCashPayment
+      tags: [Finance]
+      parameters:
+        - { name: invoiceId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amountMinor, evidenceReference, receivedFrom, notes]
+              properties:
+                amountMinor: { type: integer, minimum: 1 }
+                evidenceReference: { type: string, minLength: 3, maxLength: 200 }
+                receivedFrom: { type: string, minLength: 3, maxLength: 200 }
+                notes: { type: string, minLength: 3, maxLength: 1000 }
+                lineIds:
+                  type: array
+                  minItems: 1
+                  uniqueItems: true
+                  items: { type: integer, minimum: 1 }
+      responses:
+        "201":
+          description: Verified cash payment, auditable evidence and immutable receipt
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeePaymentVerificationResult" }
+        "200":
+          description: Previously recorded idempotent cash receipt
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeePaymentVerificationResult" }
   /academic-sessions:
     get:
       operationId: listAcademicSessions
@@ -6772,6 +6854,8 @@ components:
         endDate: { type: string, format: date }
         status: { type: string, enum: [ACTIVE, INACTIVE, COMPLETED] }
         isCurrent: { type: boolean }
+        createdBy: { type: [integer, 'null'] }
+        createdAt: { type: string, format: date-time }
     AcademicSessionInput:
       type: object
       required: [name, startDate, endDate]
@@ -6800,6 +6884,8 @@ components:
         endDate: { type: string, format: date }
         status: { type: string, enum: [ACTIVE, INACTIVE, COMPLETED] }
         isCurrent: { type: boolean }
+        createdBy: { type: [integer, 'null'] }
+        createdAt: { type: string, format: date-time }
     AcademicTermInput:
       type: object
       required: [name, startDate, endDate]
@@ -6809,6 +6895,8 @@ components:
         endDate: { type: string, format: date }
         status: { type: string, enum: [ACTIVE, INACTIVE, COMPLETED] }
         isCurrent: { type: boolean }
+        allowOverlap: { type: boolean, default: false }
+        overlapReason: { type: [string, 'null'], maxLength: 500 }
     AcademicTermUpdate:
       type: object
       properties:
@@ -6817,6 +6905,8 @@ components:
         endDate: { type: string, format: date }
         status: { type: string, enum: [ACTIVE, INACTIVE, COMPLETED] }
         isCurrent: { type: boolean }
+        allowOverlap: { type: boolean, default: false }
+        overlapReason: { type: [string, 'null'], maxLength: 500 }
     StudentClassAssignment:
       type: object
       required: [id, studentId, schoolId, sessionId, classId, section, status]
@@ -8389,7 +8479,7 @@ components:
         reference: { type: string }
         amountMinor: { type: integer }
         currency: { type: string }
-        method: { type: string, enum: [BANK_TRANSFER, REMITA, FLUTTERWAVE, PAYSTACK] }
+        method: { type: string, enum: [BANK_TRANSFER, REMITA, FLUTTERWAVE, PAYSTACK, CASH] }
         status: { type: string, enum: [PENDING, PROCESSING, VERIFIED, FAILED, REJECTED, CANCELLED, REVERSED, REFUNDED] }
         transferBank: { type: ["string", "null"] }
         transferReference: { type: ["string", "null"] }
@@ -8420,6 +8510,11 @@ components:
       required: [amountMinor, bank, transferReference, transferDate]
       properties:
         amountMinor: { type: integer, minimum: 1 }
+        lineIds:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items: { type: integer, minimum: 1 }
         bank: { type: string, minLength: 2, maxLength: 100 }
         transferReference: { type: string, minLength: 2, maxLength: 150 }
         transferDate: { type: string, format: date }
@@ -8724,6 +8819,11 @@ components:
       additionalProperties: false
       properties:
         amountMinor: { type: integer, minimum: 1, maximum: 9007199254740991 }
+        lineIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
     ParentFeeInvoiceCheckoutPolicy:
       type: object
       required: [invoiceId, schoolId, outstandingMinor, partialPaymentsEnabled]

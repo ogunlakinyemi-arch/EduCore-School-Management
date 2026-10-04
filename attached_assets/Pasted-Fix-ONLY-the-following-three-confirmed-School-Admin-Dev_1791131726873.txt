@@ -1,0 +1,374 @@
+Fix ONLY the following three confirmed School Admin Development issues in the current Yemait EduCore application:
+
+1. Timetable Save
+2. Student-to-Bus Assignment
+3. School Admin Fee Creation
+
+IMPORTANT:
+
+- Work in DEVELOPMENT only.
+- Do NOT publish or deploy to Production.
+- Do NOT modify Production.
+- Do NOT reset, reseed, truncate or delete existing data.
+- Do NOT create unnecessary new tables or duplicate existing workflows.
+- Reuse the existing architecture, APIs, database tables, validation and permissions wherever possible.
+- Do NOT work on the previously deferred issues: scripts typecheck errors, individual fee-line selection limitation, or Parent legacy result labels.
+- Do NOT attempt physical NFC, Flutterwave, SMS, email, physical printing or GPS integration.
+- Do not change already-verified Result Compilation, Academic Calendar or existing Finance payment workflows except where necessary to restore fee creation.
+- Before changing code, trace the actual frontend → API → validation → database path and identify the root cause of each issue.
+
+==================================================
+A. TIMETABLE — SCHOOL ADMIN SAVE FAILURE
+
+CURRENT PROBLEM:
+
+School Admin can enter timetable information, but the timetable entry does not successfully save/persist.
+
+The existing timetable functionality already has:
+
+- Create/update/list endpoints.
+- School/session/term/class/section/subject/teacher validation.
+- Existing timetable conflict rules.
+
+Do NOT rebuild the timetable module.
+
+TRACE:
+
+School Admin
+→ Timetable Management
+→ Add/Edit Timetable Entry
+→ form state
+→ validation
+→ API request
+→ backend route/service
+→ database write
+→ response
+→ frontend state refresh.
+
+Determine exactly where the failure occurs.
+
+Fix the root cause.
+
+Requirements:
+
+- School Admin must be able to select the appropriate:
+  - Academic Session
+  - Term
+  - Class
+  - Section
+  - Subject
+  - Teacher
+  - Day
+  - Start time
+  - End time
+  - Any existing required timetable fields.
+- Save must persist the entry in the existing database structure.
+- After successful Save, the entry must immediately appear in the timetable.
+- Refreshing the browser must still show the saved entry.
+- Editing an existing entry must persist.
+- Existing timetable conflict/collision rules must remain active.
+- Invalid entries must be rejected safely.
+- If the API rejects the request, the School Admin UI must display a useful error instead of appearing to do nothing.
+- Do not weaken authorization or tenant isolation to make Save work.
+
+Acceptance test:
+
+Create one controlled Development timetable entry for a QA school/class.
+
+Verify:
+
+1. Entry can be created.
+2. Save succeeds.
+3. Entry appears immediately.
+4. Refresh page.
+5. Entry remains.
+6. Edit the entry.
+7. Save again.
+8. Refresh.
+9. Edited values remain.
+10. Existing conflict prevention still works.
+11. Wrong-school access remains denied.
+
+==================================================
+B. TRANSPORT — SCHOOL ADMIN STUDENT → BUS ASSIGNMENT
+
+CURRENT PROBLEM:
+
+School Admin can reach the student-to-bus assignment workflow, but after making the required selections the Assign button does not become selectable/active.
+
+Required workflow:
+
+School Admin
+→ Transport Management
+→ Assign Students
+→ Select Class
+→ Select Student
+→ Select Bus
+→ Assign.
+
+A Parent must NOT be required to request a bus before School Admin can make a direct assignment.
+
+The Parent "Request for School Bus" workflow must remain available separately.
+
+TRACE:
+
+Class selection
+→ student list filtering
+→ bus selection
+→ selected IDs/state
+→ validation
+→ Assign button enabled/disabled state
+→ API request
+→ backend authorization
+→ database assignment
+→ UI refresh.
+
+Determine why the Assign button remains disabled or why the selected values are not recognized as valid.
+
+Fix the actual root cause.
+
+Requirements:
+
+- Class dropdown must load valid classes/sections.
+- Selecting a class must filter the appropriate students.
+- Student dropdown must allow selecting a valid student.
+- Bus dropdown must allow selecting an available/eligible bus.
+- Once all required selections are valid, the Assign button must become enabled.
+- Clicking Assign must persist the student-to-bus assignment.
+- Existing transport eligibility rules must remain.
+- Existing driver/vehicle relationships must remain intact.
+- Existing route and pickup/drop-off requirements must be respected where they are already required by the current model.
+- Do not require a Parent request.
+- Do not remove Parent bus-request functionality.
+- Prevent duplicate assignments.
+- Prevent cross-school assignments.
+- Do not weaken authorization.
+
+Acceptance test:
+
+Use a controlled Development QA school with:
+
+- One valid class/section.
+- At least one valid student.
+- One valid bus.
+- Valid transport configuration required by the existing workflow.
+
+Verify:
+
+1. Select Class.
+2. Student dropdown updates.
+3. Select Student.
+4. Select Bus.
+5. Assign button becomes enabled.
+6. Click Assign.
+7. Assignment succeeds.
+8. Refresh the page.
+9. Assignment remains.
+10. Student appears under the correct bus.
+11. Parent can see the child's transport information through the existing Parent workflow.
+12. Parent bus-request workflow still exists.
+13. Wrong-school assignment remains blocked.
+
+If the current database requires a route or pickup/drop-off configuration before assignment, do not bypass that rule. Clearly identify it in the final report and verify the UI explains what is missing.
+
+==================================================
+C. SCHOOL ADMIN — SCHOOL FEE CREATION FAILURE
+
+CURRENT PROBLEM:
+
+School Admin cannot successfully create/save a school fee.
+
+The existing fee system already supports:
+
+- Academic Session
+- Term
+- Class
+- Section
+- Fee categories/types
+- Different class pricing
+- Fee publication
+- Parent fee visibility
+- Payment workflows
+- Cash payment
+- Receipts
+- Audit records
+- Transport fee rules.
+
+Do NOT rebuild the finance module.
+
+TRACE:
+
+School Admin
+→ Finance/Fees
+→ Create Fee
+→ form state
+→ session/term/class/section selection
+→ amount/category validation
+→ API request
+→ backend validation
+→ database write
+→ response
+→ fee list refresh.
+
+Find the actual failure.
+
+Fix only the fee creation/save workflow.
+
+Requirements:
+
+School Admin must be able to create a fee using the existing architecture.
+
+Example controlled Development data:
+
+Academic Session:
+2026/2027
+
+Term:
+First Term
+
+Class:
+SS2
+
+Section:
+B
+
+Fee:
+School Fees / Tuition or an existing appropriate fee category
+
+Amount:
+₦8,000
+
+Use whatever fee-category structure already exists rather than creating a duplicate category.
+
+After Save:
+
+- Fee must persist in the database.
+- Fee must appear in the School Admin fee list after refresh.
+- Fee must reference the correct:
+  - School
+  - Academic Session
+  - Term
+  - Class
+  - Section where applicable.
+- Fee must not accidentally appear for another school.
+- Existing fee publication rules must remain.
+- Do not automatically mark the fee as paid.
+- Do not alter existing payment records.
+- Do not rewrite historical financial records.
+
+Also verify a second class can have a different configured fee, for example:
+
+JSS1 A → ₦3,500
+
+The purpose is to ensure class/section-specific pricing continues to work.
+
+IMPORTANT:
+
+Do not change the already-verified Parent payment, Pay All, cash-payment, receipt or audit workflows unless the fee creation bug directly prevents them from functioning.
+
+==================================================
+D. SHARED SECURITY AND DATA REQUIREMENTS
+
+For all three fixes:
+
+- Preserve school/tenant isolation.
+- Preserve role permissions.
+- School Admin may manage only their own school.
+- Do not expose another school's timetable, students, buses or fees.
+- Preserve existing audit logging.
+- Preserve existing database constraints.
+- Do not remove validation simply to make the UI accept the request.
+- Do not create duplicate records when retrying Save.
+- Existing data must remain unchanged except for the controlled QA records required for verification.
+- Clearly identify any temporary QA records created.
+
+==================================================
+E. CREDIT-SAVING VERIFICATION
+
+Do NOT run the entire platform test suite.
+
+Run only focused tests covering:
+
+TIMETABLE:
+
+- Create
+- Save
+- Reload
+- Update
+- Reload
+- Validation/conflict
+
+TRANSPORT:
+
+- Class → Student → Bus selection
+- Assign button state
+- Assignment
+- Reload
+- Parent visibility
+- Duplicate/cross-school denial
+
+FEES:
+
+- Create
+- Save
+- Reload
+- Session/term/class/section association
+- Different class pricing
+- School isolation
+
+Run targeted typechecks only for affected packages/files where practical.
+
+Do not spend credits on unrelated test suites.
+
+==================================================
+F. FINAL REPORT
+
+After making the fixes, report:
+
+1. Root Cause
+
+For each of the three issues, state exactly what was wrong.
+
+2. Changes Made
+
+List only the files/modules/workflows actually changed.
+
+3. Verification
+
+Give exact focused test counts.
+
+Use this format:
+
+- Timetable: X passed / X failed
+- Transport: X passed / X failed
+- Fees: X passed / X failed
+- Typechecks: result
+- Build: result, if run
+
+4. Browser Verification
+
+State whether the genuine signed-in School Admin Development session successfully verified:
+
+- Timetable Save → reload
+- Student → Bus assignment → reload
+- Fee creation → reload
+
+Do not claim browser verification if it was only mocked or API-tested.
+
+5. Data Preservation
+
+Confirm:
+
+- No Production changes.
+- No publish.
+- No reset/reseed/truncate.
+- Existing records preserved.
+- QA records identified.
+
+6. Remaining Issues
+
+List only issues discovered during this targeted task.
+
+Do NOT start another broad correction cycle.
+
+STOP after these three issues are addressed and verified.

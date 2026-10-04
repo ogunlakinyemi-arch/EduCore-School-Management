@@ -6011,8 +6011,11 @@ export const initializeFeeProviderPaymentBodyAmountMinorMax = 9007199254740991;
 
 
 
+
+
 export const InitializeFeeProviderPaymentBody = zod.object({
-  "amountMinor": zod.number().int().min(1).max(initializeFeeProviderPaymentBodyAmountMinorMax).optional()
+  "amountMinor": zod.number().int().min(1).max(initializeFeeProviderPaymentBodyAmountMinorMax).optional(),
+  "lineIds": zod.array(zod.number().int().min(1)).min(1).optional()
 })
 
 export const initializeFeeProviderPaymentResponseCurrencyRegExp = new RegExp('^[A-Z]{3}$');
@@ -6720,7 +6723,7 @@ export const ListSchoolFinancePaymentsResponseItem = zod.object({
   "reference": zod.string(),
   "amountMinor": zod.number().int(),
   "currency": zod.string(),
-  "method": zod.enum(['BANK_TRANSFER', 'REMITA', 'FLUTTERWAVE', 'PAYSTACK']),
+  "method": zod.enum(['BANK_TRANSFER', 'REMITA', 'FLUTTERWAVE', 'PAYSTACK', 'CASH']),
   "status": zod.enum(['PENDING', 'PROCESSING', 'VERIFIED', 'FAILED', 'REJECTED', 'CANCELLED', 'REVERSED', 'REFUNDED']),
   "transferBank": zod.string().nullable(),
   "transferReference": zod.string().nullable(),
@@ -6765,7 +6768,7 @@ export const GetSchoolFinancePaymentResponse = zod.object({
   "reference": zod.string(),
   "amountMinor": zod.number().int(),
   "currency": zod.string(),
-  "method": zod.enum(['BANK_TRANSFER', 'REMITA', 'FLUTTERWAVE', 'PAYSTACK']),
+  "method": zod.enum(['BANK_TRANSFER', 'REMITA', 'FLUTTERWAVE', 'PAYSTACK', 'CASH']),
   "status": zod.enum(['PENDING', 'PROCESSING', 'VERIFIED', 'FAILED', 'REJECTED', 'CANCELLED', 'REVERSED', 'REFUNDED']),
   "transferBank": zod.string().nullable(),
   "transferReference": zod.string().nullable(),
@@ -6795,7 +6798,7 @@ export const ListParentFeePaymentsResponseItem = zod.object({
   "reference": zod.string(),
   "amountMinor": zod.number().int(),
   "currency": zod.string(),
-  "method": zod.enum(['BANK_TRANSFER', 'REMITA', 'FLUTTERWAVE', 'PAYSTACK']),
+  "method": zod.enum(['BANK_TRANSFER', 'REMITA', 'FLUTTERWAVE', 'PAYSTACK', 'CASH']),
   "status": zod.enum(['PENDING', 'PROCESSING', 'VERIFIED', 'FAILED', 'REJECTED', 'CANCELLED', 'REVERSED', 'REFUNDED']),
   "transferBank": zod.string().nullable(),
   "transferReference": zod.string().nullable(),
@@ -6826,7 +6829,7 @@ export const ListStudentFeePaymentsResponseItem = zod.object({
   "reference": zod.string(),
   "amountMinor": zod.number().int(),
   "currency": zod.string(),
-  "method": zod.enum(['BANK_TRANSFER', 'REMITA', 'FLUTTERWAVE', 'PAYSTACK']),
+  "method": zod.enum(['BANK_TRANSFER', 'REMITA', 'FLUTTERWAVE', 'PAYSTACK', 'CASH']),
   "status": zod.enum(['PENDING', 'PROCESSING', 'VERIFIED', 'FAILED', 'REJECTED', 'CANCELLED', 'REVERSED', 'REFUNDED']),
   "transferBank": zod.string().nullable(),
   "transferReference": zod.string().nullable(),
@@ -6862,6 +6865,9 @@ export const SubmitManualBankTransferHeader = zod.object({
 })
 
 
+
+export const submitManualBankTransferBodyLineIdsMax = 1000;
+
 export const submitManualBankTransferBodyBankMin = 2;
 export const submitManualBankTransferBodyBankMax = 100;
 
@@ -6874,6 +6880,7 @@ export const submitManualBankTransferBodyProofUrlMax = 1000;
 
 export const SubmitManualBankTransferBody = zod.object({
   "amountMinor": zod.number().int().min(1),
+  "lineIds": zod.array(zod.number().int().min(1)).min(1).max(submitManualBankTransferBodyLineIdsMax).optional(),
   "bank": zod.string().min(submitManualBankTransferBodyBankMin).max(submitManualBankTransferBodyBankMax),
   "transferReference": zod.string().min(submitManualBankTransferBodyTransferReferenceMin).max(submitManualBankTransferBodyTransferReferenceMax),
   "transferDate": zod.coerce.date(),
@@ -9664,7 +9671,9 @@ export const GetSchoolDashboardResponse = zod.object({
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date(),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']),
-  "isCurrent": zod.boolean().optional()
+  "isCurrent": zod.boolean().optional(),
+  "createdBy": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date().optional()
 }).optional(),
   "currentTerm": zod.object({
   "id": zod.number().int(),
@@ -9673,7 +9682,9 @@ export const GetSchoolDashboardResponse = zod.object({
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date(),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']),
-  "isCurrent": zod.boolean().optional()
+  "isCurrent": zod.boolean().optional(),
+  "createdBy": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date().optional()
 }).optional(),
   "subscriptionStatus": zod.string().nullish(),
   "recentActivity": zod.array(zod.object({
@@ -10888,6 +10899,111 @@ export const CreateClassResponse = zod.object({
 })
 
 
+
+
+
+
+
+
+export const ListAcademicPeriodStudentsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "sessionId": zod.coerce.number().int().min(1),
+  "termId": zod.coerce.number().int().min(1),
+  "classId": zod.coerce.number().int().min(1).optional(),
+  "section": zod.coerce.string().optional()
+})
+
+export const ListAcademicPeriodStudentsResponseItem = zod.record(zod.string(), zod.unknown())
+export const ListAcademicPeriodStudentsResponse = zod.array(ListAcademicPeriodStudentsResponseItem)
+
+
+
+
+
+
+
+
+export const GetAcademicResultCompilationQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "sessionId": zod.coerce.number().int().min(1),
+  "termId": zod.coerce.number().int().min(1),
+  "classId": zod.coerce.number().int().min(1).optional(),
+  "section": zod.coerce.string().optional()
+})
+
+export const GetAcademicResultCompilationResponse = zod.record(zod.string(), zod.unknown())
+
+
+
+
+
+export const ListParentInvoiceFeeLinesParams = zod.object({
+  "invoiceId": zod.coerce.number().int().min(1)
+})
+
+export const ListParentInvoiceFeeLinesResponse = zod.record(zod.string(), zod.unknown())
+
+
+
+
+
+export const RecordSchoolCashPaymentParams = zod.object({
+  "invoiceId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const RecordSchoolCashPaymentQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const recordSchoolCashPaymentHeaderIdempotencyKeyMax = 100;
+
+
+
+export const RecordSchoolCashPaymentHeader = zod.object({
+  "Idempotency-Key": zod.string().min(1).max(recordSchoolCashPaymentHeaderIdempotencyKeyMax)
+})
+
+
+export const recordSchoolCashPaymentBodyEvidenceReferenceMin = 3;
+export const recordSchoolCashPaymentBodyEvidenceReferenceMax = 200;
+
+export const recordSchoolCashPaymentBodyReceivedFromMin = 3;
+export const recordSchoolCashPaymentBodyReceivedFromMax = 200;
+
+export const recordSchoolCashPaymentBodyNotesMin = 3;
+export const recordSchoolCashPaymentBodyNotesMax = 1000;
+
+
+
+
+
+export const RecordSchoolCashPaymentBody = zod.object({
+  "amountMinor": zod.number().int().min(1),
+  "evidenceReference": zod.string().min(recordSchoolCashPaymentBodyEvidenceReferenceMin).max(recordSchoolCashPaymentBodyEvidenceReferenceMax),
+  "receivedFrom": zod.string().min(recordSchoolCashPaymentBodyReceivedFromMin).max(recordSchoolCashPaymentBodyReceivedFromMax),
+  "notes": zod.string().min(recordSchoolCashPaymentBodyNotesMin).max(recordSchoolCashPaymentBodyNotesMax),
+  "lineIds": zod.array(zod.number().int().min(1)).min(1).optional()
+})
+
+
+
+
+export const RecordSchoolCashPaymentResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "invoiceId": zod.number().int(),
+  "reference": zod.string(),
+  "amountMinor": zod.number().int(),
+  "currency": zod.string(),
+  "method": zod.string(),
+  "status": zod.enum(['VERIFIED']),
+  "receiptNumber": zod.string().min(1)
+})
+
+
 /**
  * @summary List academic sessions
  */
@@ -10906,7 +11022,9 @@ export const ListAcademicSessionsResponseItem = zod.object({
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date(),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']),
-  "isCurrent": zod.boolean().optional()
+  "isCurrent": zod.boolean().optional(),
+  "createdBy": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date().optional()
 })
 export const ListAcademicSessionsResponse = zod.array(ListAcademicSessionsResponseItem)
 
@@ -10936,7 +11054,9 @@ export const CreateAcademicSessionResponse = zod.object({
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date(),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']),
-  "isCurrent": zod.boolean().optional()
+  "isCurrent": zod.boolean().optional(),
+  "createdBy": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date().optional()
 })
 
 
@@ -10964,7 +11084,9 @@ export const ListAcademicTermsResponseItem = zod.object({
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date(),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']),
-  "isCurrent": zod.boolean().optional()
+  "isCurrent": zod.boolean().optional(),
+  "createdBy": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date().optional()
 })
 export const ListAcademicTermsResponse = zod.array(ListAcademicTermsResponseItem)
 
@@ -10986,12 +11108,19 @@ export const CreateAcademicTermQueryParams = zod.object({
   "schoolId": zod.coerce.number().int().min(1)
 })
 
+export const createAcademicTermBodyAllowOverlapDefault = false;
+export const createAcademicTermBodyOverlapReasonMax = 500;
+
+
+
 export const CreateAcademicTermBody = zod.object({
   "name": zod.enum(['FIRST', 'SECOND', 'THIRD']),
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date(),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']).optional(),
-  "isCurrent": zod.boolean().optional()
+  "isCurrent": zod.boolean().optional(),
+  "allowOverlap": zod.boolean().default(createAcademicTermBodyAllowOverlapDefault),
+  "overlapReason": zod.string().max(createAcademicTermBodyOverlapReasonMax).nullish()
 })
 
 export const CreateAcademicTermResponse = zod.object({
@@ -11001,7 +11130,9 @@ export const CreateAcademicTermResponse = zod.object({
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date(),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']),
-  "isCurrent": zod.boolean().optional()
+  "isCurrent": zod.boolean().optional(),
+  "createdBy": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date().optional()
 })
 
 
@@ -11037,7 +11168,9 @@ export const UpdateAcademicSessionResponse = zod.object({
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date(),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']),
-  "isCurrent": zod.boolean().optional()
+  "isCurrent": zod.boolean().optional(),
+  "createdBy": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date().optional()
 })
 
 
@@ -11058,12 +11191,19 @@ export const UpdateAcademicTermQueryParams = zod.object({
   "schoolId": zod.coerce.number().int().min(1)
 })
 
+export const updateAcademicTermBodyAllowOverlapDefault = false;
+export const updateAcademicTermBodyOverlapReasonMax = 500;
+
+
+
 export const UpdateAcademicTermBody = zod.object({
   "name": zod.enum(['FIRST', 'SECOND', 'THIRD']).optional(),
   "startDate": zod.coerce.date().optional(),
   "endDate": zod.coerce.date().optional(),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']).optional(),
-  "isCurrent": zod.boolean().optional()
+  "isCurrent": zod.boolean().optional(),
+  "allowOverlap": zod.boolean().default(updateAcademicTermBodyAllowOverlapDefault),
+  "overlapReason": zod.string().max(updateAcademicTermBodyOverlapReasonMax).nullish()
 })
 
 export const UpdateAcademicTermResponse = zod.object({
@@ -11073,7 +11213,9 @@ export const UpdateAcademicTermResponse = zod.object({
   "startDate": zod.coerce.date(),
   "endDate": zod.coerce.date(),
   "status": zod.enum(['ACTIVE', 'INACTIVE', 'COMPLETED']),
-  "isCurrent": zod.boolean().optional()
+  "isCurrent": zod.boolean().optional(),
+  "createdBy": zod.number().int().nullish(),
+  "createdAt": zod.coerce.date().optional()
 })
 
 

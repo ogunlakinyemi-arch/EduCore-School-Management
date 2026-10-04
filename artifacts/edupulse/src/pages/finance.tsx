@@ -18,6 +18,7 @@ import type { FeeCategory, FeeInvoice, FeeStructure, FeePayment, FinanceSettings
 import { Button, EmptyState, ErrorState, Field, Modal, PageHeading, SkeletonPage, StatusPill, TenantPicker, useTenant } from '@/components/shared';
 import { FamilyPaymentHistory, PendingAdjustments, SchoolPaymentQueue } from './finance-operations';
 import { BulkAssignment, FinanceReports, RefundDesk } from './finance-phase7';
+import { CashPaymentAction,type CashReceipt } from '@/components/cash-payment-action';
 import { ParentOnlineMethods } from './finance-online';
 import { ParentFeeSelection } from './fee-selection';
 import { SchoolDocumentHeader, SchoolDocumentPrintButton, useSchoolDocumentBranding } from '@/components/school-document';
@@ -148,14 +149,14 @@ function DocumentField({ label, value }: { label: string; value: string | number
   return <div className="school-document-field"><dt>{label}</dt><dd>{value}</dd></div>;
 }
 
-function InvoiceList({ invoices, onAdjust }: { invoices: FeeInvoice[]; onAdjust?: (invoice: FeeInvoice) => void }) {
+function InvoiceList({ invoices, onAdjust, cash }: { invoices: FeeInvoice[]; onAdjust?: (invoice: FeeInvoice) => void; cash?: { schoolId: number; onDone: (receipt:CashReceipt) => void } }) {
   if (!invoices.length) return <EmptyState icon={ReceiptText} title="No invoices yet" description="Assigned fee structures will appear here as individual student invoices." />;
   return <div className="divide-y divide-[hsl(var(--border))]">
     {invoices.map(invoice => <div key={invoice.id} className="grid gap-4 px-5 py-5 hover:bg-[hsl(var(--muted)/.2)] md:grid-cols-[minmax(0,1.6fr)_1fr_1fr_auto] md:items-center md:px-6" data-testid={`row-invoice-${invoice.id}`}>
       <div><div className="font-bold">{invoice.studentName}</div><div className="mt-1 font-mono text-[11px] text-[hsl(var(--muted-foreground))]">{invoice.invoiceNumber} · Student #{invoice.studentId}</div></div>
       <div><div className="text-xs text-[hsl(var(--muted-foreground))]">Billed / verified paid</div><div className="mt-1 text-sm font-bold tabular-nums">{naira(invoice.totalMinor)} <span className="text-[hsl(var(--muted-foreground))]">/ {naira(invoice.paidMinor)}</span></div></div>
       <div><div className="text-xs text-[hsl(var(--muted-foreground))]">Outstanding</div><div className="mt-1 text-sm font-extrabold tabular-nums">{naira(invoice.outstandingMinor)}</div></div>
-      <div className="flex flex-wrap items-center gap-3"><StatusPill value={invoice.status} /><InvoicePrintDocument invoice={invoice} />{onAdjust && invoice.outstandingMinor > 0 && <Button variant="quiet" onClick={() => onAdjust(invoice)} testId={`button-adjust-${invoice.id}`}>Adjust</Button>}</div>
+      <div className="flex flex-wrap items-center gap-3"><StatusPill value={invoice.status} /><InvoicePrintDocument invoice={invoice} />{cash && <CashPaymentAction invoice={invoice} schoolId={cash.schoolId} onDone={cash.onDone} />}{onAdjust && invoice.outstandingMinor > 0 && <Button variant="quiet" onClick={() => onAdjust(invoice)} testId={`button-adjust-${invoice.id}`}>Adjust</Button>}</div>
     </div>)}
   </div>;
 }
@@ -301,7 +302,7 @@ export function FinancePage() {
        {tab === 'refunds' && <RefundDesk key={schoolId} schoolId={schoolId} canApprove={canEditSettings} canRequest={canRequestAdjustment} onChanged={message => { setFeedback(message); setFailure(''); refresh(); }} />}
       {tab === 'reports' && <FinanceReports key={schoolId} schoolId={schoolId} />}
       {tab === 'bulk' && <BulkAssignment key={schoolId} schoolId={schoolId} structures={structures.data ?? []} onChanged={message => { setFeedback(message); setFailure(''); refresh(); }} />}
-      {tab === 'invoices' && <section className="panel mt-6 overflow-hidden"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-[hsl(var(--border))] p-5 md:p-6"><div><div className="eyebrow">Account ledger</div><h2 className="display-font mt-1 text-xl font-bold">{invoices.data?.length ?? 0} invoices</h2></div></div><InvoiceList invoices={invoices.data ?? []} onAdjust={canRequestAdjustment ? invoice => { setSelectedInvoice(invoice); setAdjustmentAmount(''); setDiscountMode('FIXED'); setAdjustmentReason(''); setFailure(''); setDialog('adjustment'); } : undefined} /></section>}
+      {tab === 'invoices' && <section className="panel mt-6 overflow-hidden"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-[hsl(var(--border))] p-5 md:p-6"><div><div className="eyebrow">Account ledger</div><h2 className="display-font mt-1 text-xl font-bold">{invoices.data?.length ?? 0} invoices</h2></div></div><InvoiceList invoices={invoices.data ?? []} cash={canEditSettings ? { schoolId, onDone: receipt=>{setFeedback(`Cash payment #${receipt.id} verified. Receipt ${receipt.receiptNumber}.`);setFailure('');refresh();} } : undefined} onAdjust={canRequestAdjustment ? invoice => { setSelectedInvoice(invoice); setAdjustmentAmount(''); setDiscountMode('FIXED'); setAdjustmentReason(''); setFailure(''); setDialog('adjustment'); } : undefined} /></section>}
       {tab === 'categories' && <section className="panel mt-6 overflow-hidden"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-[hsl(var(--border))] p-5 md:p-6"><div><div className="eyebrow">Fee catalogue</div><h2 className="display-font mt-1 text-xl font-bold">Categories</h2></div><Button onClick={() => openCategory()} testId="button-create-fee-category"><Plus size={16} />New category</Button></div>{!categories.data?.length ? <EmptyState icon={Layers3} title="Start with a category" description="Name the charges your school collects before building a term fee structure." action={<Button onClick={() => openCategory()}>Create category</Button>} /> : <div className="divide-y divide-[hsl(var(--border))]">{categories.data.map(category => <div key={category.id} className="flex flex-wrap items-center gap-4 px-5 py-4 md:px-6"><div className="min-w-0 flex-1"><div className="font-bold">{category.name}</div><div className={note}>{category.description || 'No description'} · {category.compulsory ? 'Compulsory' : 'Optional'}</div></div><StatusPill value={category.status} /><Button variant="quiet" onClick={() => openCategory(category)} testId={`button-edit-category-${category.id}`}>Edit</Button><Button variant="quiet" disabled={busy} onClick={async () => { try { await updateCategory.mutateAsync({ categoryId: category.id, params, data: { status: category.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE' } }); done('Category status updated.'); } catch (err) { fail(err); } }} testId={`button-toggle-category-${category.id}`}>{category.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</Button></div>)}</div>}</section>}
       {tab === 'structures' && <section className="panel mt-6 overflow-hidden"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-[hsl(var(--border))] p-5 md:p-6"><div><div className="eyebrow">Versioned schedules</div><h2 className="display-font mt-1 text-xl font-bold">Fee structures</h2></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setTab('bulk')}>Bulk assignment</Button><Button disabled={!categories.data?.some(c => c.status === 'ACTIVE')} onClick={() => { setLines([{ categoryId: '', amount: '', description: '' }]); setSessionId(''); setTermId(''); setClassId(''); setFailure(''); setDialog('structure'); }} testId="button-create-structure"><Plus size={16} />New structure</Button></div></div>{!structures.data?.length ? <EmptyState icon={BookOpen} title="No fee structures" description="Build a draft schedule for a session, term and class. Publish it when the amounts are final." /> : <div className="divide-y divide-[hsl(var(--border))]">{structures.data.map(structure => <div key={structure.id} className="flex flex-col gap-4 px-5 py-5 md:flex-row md:items-center md:px-6"><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="font-bold">Structure #{structure.id} · v{structure.version}</span><StatusPill value={structure.status} /></div><div className={`mt-1 ${note}`}>Session #{structure.sessionId} · Term #{structure.termId} · Class #{structure.classId}{structure.section ? ` · ${structure.section}` : ''}</div><div className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">{structure.lines.map(line => `${line.categoryName}: ${naira(line.amountMinor)}`).join(' · ')}</div></div><div className="text-lg font-extrabold tabular-nums">{naira(structure.lines.reduce((sum, line) => sum + line.amountMinor, 0))}</div><div className="flex gap-2">{structure.status === 'DRAFT' && <Button variant="outline" disabled={busy} onClick={async () => { if (!window.confirm('Publish this structure? Published fees can be assigned to students.')) return; try { await publishStructure.mutateAsync({ structureId: structure.id, params }); done('Structure published.'); } catch (err) { fail(err); } }} testId={`button-publish-structure-${structure.id}`}>Publish</Button>}{structure.status === 'PUBLISHED' && <Button onClick={() => { setSelectedStructure(structure); setStudentId(''); setDueDate(''); setFailure(''); setDialog('assignment'); }} testId={`button-assign-structure-${structure.id}`}>Issue invoice</Button>}</div></div>)}</div>}</section>}
       {tab === 'controls' && <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_1.15fr]">
@@ -333,6 +334,7 @@ export function ParentFeesPage({ studentId }: { studentId: number }) {
   const child = useGetParentChild(studentId);
   const query = useListParentFeeInvoices();
   const [invoice, setInvoice] = useState<FeeInvoice | null>(null);
+  const [selectedBankLineIds,setSelectedBankLineIds]=useState<number[]|undefined>();
   const [payment, setPayment] = useState<FeePayment | null>(null);
   const [bank, setBank] = useState('');
   const [reference, setReference] = useState('');
@@ -344,7 +346,7 @@ export function ParentFeesPage({ studentId }: { studentId: number }) {
   // during render from the exact normalized payload, not after mutateAsync is called.
   // Failed retries reuse it; a changed submission gets its own key.
   const submissionFingerprint = invoice ? JSON.stringify([
-    invoice.id, toMinor(amount), bank.trim(), reference.trim(), transferDate, proofUrl.trim(),
+    invoice.id, toMinor(amount), bank.trim(), reference.trim(), transferDate, proofUrl.trim(),selectedBankLineIds?.slice().sort((a,b)=>a-b)??null,
   ]) : '';
   let submissionKey = submissionFingerprint ? submissionKeys.current.get(submissionFingerprint) : undefined;
   if (submissionFingerprint && !submissionKey) {
@@ -376,7 +378,7 @@ export function ParentFeesPage({ studentId }: { studentId: number }) {
         setFailure('This school is no longer accepting transfers for this invoice. No payment was submitted.');
         return;
       }
-      const result = await submit.mutateAsync({ invoiceId: invoice.id, data: { amountMinor, bank: bank.trim(), transferReference: reference.trim(), transferDate, ...(proofUrl.trim() ? { proofUrl: proofUrl.trim() } : {}) } });
+      const result = await submit.mutateAsync({ invoiceId: invoice.id, data: { amountMinor, bank: bank.trim(), transferReference: reference.trim(), transferDate, ...(selectedBankLineIds?.length?{lineIds:selectedBankLineIds}:{}), ...(proofUrl.trim() ? { proofUrl: proofUrl.trim() } : {}) } });
       setPayment(result); setInvoice(null); setFailure('');
       submissionKeys.current.delete(submissionFingerprint);
       qc.invalidateQueries({ queryKey: getListParentFeeInvoicesQueryKey() });
@@ -393,10 +395,13 @@ export function ParentFeesPage({ studentId }: { studentId: number }) {
         <FinanceCard dark label="Still due" amount={naira(invoices.reduce((sum, item) => sum + item.outstandingMinor, 0))} detail="Excludes transfers awaiting verification" />
         <FinanceCard label="Verified paid" amount={naira(invoices.reduce((sum, item) => sum + item.paidMinor, 0))} detail="Confirmed by the school" />
       </div>
-      <ParentFeeSelection studentId={studentId} invoices={invoices} />
+      <ParentFeeSelection studentId={studentId} invoices={invoices} onBankTransfer={(item,ids,selectedAmount)=>{
+        setInvoice(item);setSelectedBankLineIds(ids);setAmount(minorInput(selectedAmount));setFailure('');
+        setBank('');setReference('');setProofUrl('');setTransferDate(new Date().toISOString().slice(0,10));
+      }} />
       <section className="panel mt-6 overflow-hidden">
         <div className="border-b border-[hsl(var(--border))] p-5 md:p-6"><div className="eyebrow">Child #{studentId}</div><h2 className="display-font mt-1 text-xl font-bold">Invoices</h2></div>
-        <FamilyInvoiceRows invoices={invoices} payment={payment} onTransfer={item => { setInvoice(item); setAmount(minorInput(item.outstandingMinor)); setFailure(''); }} />
+        <FamilyInvoiceRows invoices={invoices} payment={payment} onTransfer={item => { setInvoice(item);setSelectedBankLineIds(undefined);setBank('');setReference('');setProofUrl('');setTransferDate(new Date().toISOString().slice(0,10)); setAmount(minorInput(item.outstandingMinor)); setFailure(''); }} />
       </section>
         <FamilyPaymentHistory audience="parent" studentId={studentId} invoices={invoices} />
       <div className={`mt-4 flex items-start gap-2 ${note}`}><ShieldCheck size={16} className="shrink-0" />Only invoices belonging to linked children are available. Your school will verify transfers against its bank records before they affect the balance or produce a receipt.</div>
@@ -409,7 +414,8 @@ export function ParentFeesPage({ studentId }: { studentId: number }) {
         : details?.available === true && <form onSubmit={send} className="space-y-4">
         <div className="rounded-xl border border-[hsl(var(--primary)/.2)] bg-[hsl(var(--secondary))] p-5" data-testid="approved-invoice-bank-details"><div className="flex items-center gap-2 text-[hsl(var(--primary))]"><ShieldCheck size={18} /><span className="text-xs font-extrabold uppercase tracking-widest">School-approved bank account</span></div><div className="mt-4 grid gap-3 sm:grid-cols-2"><div><div className="eyebrow">Bank</div><div className="mt-1 font-bold">{details.bankName}</div></div><div><div className="eyebrow">Account holder</div><div className="mt-1 font-bold">{details.accountName}</div></div><div className="sm:col-span-2"><div className="eyebrow">Account number</div><div className="mt-1 font-mono text-xl font-bold tracking-wider" data-testid="text-approved-account-number">{details.accountNumber}</div></div></div></div>
         <div className={note}><strong>{naira(invoice.outstandingMinor)}</strong> outstanding. This form records a transfer already made to the approved account above; it does not initiate payment. Submission remains pending until school verification.</div>
-        <Field label="Amount transferred (₦)"><input required type="number" step="0.01" min="0.01" max={minorInput(invoice.outstandingMinor)} value={amount} onChange={e => setAmount(e.target.value)} className={entry} data-testid="input-transfer-amount" /></Field>
+        {selectedBankLineIds?.length&&<p className={note} data-testid="text-transfer-selected-fees">This transfer covers {selectedBankLineIds.length} selected fee {selectedBankLineIds.length===1?'line':'lines'}. Change the fee selection to change the amount.</p>}
+        <Field label="Amount transferred (₦)"><input required readOnly={!!selectedBankLineIds?.length} type="number" step="0.01" min="0.01" max={minorInput(invoice.outstandingMinor)} value={amount} onChange={e => setAmount(e.target.value)} className={entry} data-testid="input-transfer-amount" /></Field>
         <Field label="Sending bank"><input required minLength={2} maxLength={100} value={bank} onChange={e => setBank(e.target.value)} className={entry} data-testid="input-transfer-bank" /></Field>
         <Field label="Bank transfer reference"><input required minLength={2} maxLength={150} value={reference} onChange={e => setReference(e.target.value)} className={entry} data-testid="input-transfer-reference" /></Field>
         <Field label="Transfer date"><input required type="date" max={new Date().toISOString().slice(0, 10)} value={transferDate} onChange={e => setTransferDate(e.target.value)} className={entry} data-testid="input-transfer-date" /></Field>

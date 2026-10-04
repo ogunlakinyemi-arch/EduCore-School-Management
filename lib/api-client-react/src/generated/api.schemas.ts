@@ -1453,6 +1453,9 @@ export interface AcademicSession {
   endDate: string;
   status: AcademicSessionStatus;
   isCurrent?: boolean;
+  /** @nullable */
+  createdBy?: number | null;
+  createdAt?: string;
 }
 
 export type AcademicTermName = typeof AcademicTermName[keyof typeof AcademicTermName];
@@ -1481,6 +1484,9 @@ export interface AcademicTerm {
   endDate: string;
   status: AcademicTermStatus;
   isCurrent?: boolean;
+  /** @nullable */
+  createdBy?: number | null;
+  createdAt?: string;
 }
 
 export interface SchoolDashboard {
@@ -3145,6 +3151,12 @@ export interface AcademicTermInput {
   endDate: string;
   status?: AcademicTermInputStatus;
   isCurrent?: boolean;
+  allowOverlap?: boolean;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  overlapReason?: string | null;
 }
 
 export type AcademicTermUpdateName = typeof AcademicTermUpdateName[keyof typeof AcademicTermUpdateName];
@@ -3171,6 +3183,12 @@ export interface AcademicTermUpdate {
   endDate?: string;
   status?: AcademicTermUpdateStatus;
   isCurrent?: boolean;
+  allowOverlap?: boolean;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  overlapReason?: string | null;
 }
 
 export type StudentClassAssignmentStatus = typeof StudentClassAssignmentStatus[keyof typeof StudentClassAssignmentStatus];
@@ -5885,6 +5903,7 @@ export const FeePaymentHistoryMethod = {
   REMITA: 'REMITA',
   FLUTTERWAVE: 'FLUTTERWAVE',
   PAYSTACK: 'PAYSTACK',
+  CASH: 'CASH',
 } as const;
 
 export type FeePaymentHistoryStatus = typeof FeePaymentHistoryStatus[keyof typeof FeePaymentHistoryStatus];
@@ -5954,6 +5973,12 @@ export interface FeeReceipt {
 export interface BankTransferInput {
   /** @minimum 1 */
   amountMinor: number;
+  /**
+     * @minItems 1
+     * @maxItems 1000
+     * @items.minimum 1
+     */
+  lineIds?: number[];
   /**
      * @minLength 2
      * @maxLength 100
@@ -6552,6 +6577,11 @@ export interface FeeProviderCheckoutInitializeInput {
      * @maximum 9007199254740991
      */
   amountMinor?: number;
+  /**
+     * @minItems 1
+     * @items.minimum 1
+     */
+  lineIds?: number[];
 }
 
 export interface ParentFeeInvoiceCheckoutPolicy {
@@ -13568,6 +13598,9 @@ export interface AcademicSession4b96100 {
   endDate: string;
   status: AcademicSession4b96100Status;
   isCurrent?: boolean;
+  /** @nullable */
+  createdBy?: number | null;
+  createdAt?: string;
 }
 
 export type AcademicTerm4b96100Name = typeof AcademicTerm4b96100Name[keyof typeof AcademicTerm4b96100Name];
@@ -13596,6 +13629,9 @@ export interface AcademicTerm4b96100 {
   endDate: string;
   status: AcademicTerm4b96100Status;
   isCurrent?: boolean;
+  /** @nullable */
+  createdBy?: number | null;
+  createdAt?: string;
 }
 
 export interface SchoolDashboard4b96100 {
@@ -15227,6 +15263,12 @@ export interface AcademicTermInput4b96100 {
   endDate: string;
   status?: AcademicTermInput4b96100Status;
   isCurrent?: boolean;
+  allowOverlap?: boolean;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  overlapReason?: string | null;
 }
 
 export type AcademicTermUpdate4b96100Name = typeof AcademicTermUpdate4b96100Name[keyof typeof AcademicTermUpdate4b96100Name];
@@ -15253,6 +15295,12 @@ export interface AcademicTermUpdate4b96100 {
   endDate?: string;
   status?: AcademicTermUpdate4b96100Status;
   isCurrent?: boolean;
+  allowOverlap?: boolean;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  overlapReason?: string | null;
 }
 
 export type StudentClassAssignment4b96100Status = typeof StudentClassAssignment4b96100Status[keyof typeof StudentClassAssignment4b96100Status];
@@ -17967,6 +18015,7 @@ export const FeePaymentHistory4b96100Method = {
   REMITA: 'REMITA',
   FLUTTERWAVE: 'FLUTTERWAVE',
   PAYSTACK: 'PAYSTACK',
+  CASH: 'CASH',
 } as const;
 
 export type FeePaymentHistory4b96100Status = typeof FeePaymentHistory4b96100Status[keyof typeof FeePaymentHistory4b96100Status];
@@ -18036,6 +18085,12 @@ export interface FeeReceipt4b96100 {
 export interface BankTransferInput4b96100 {
   /** @minimum 1 */
   amountMinor: number;
+  /**
+     * @minItems 1
+     * @maxItems 1000
+     * @items.minimum 1
+     */
+  lineIds?: number[];
   /**
      * @minLength 2
      * @maxLength 100
@@ -18634,6 +18689,11 @@ export interface FeeProviderCheckoutInitializeInput4b96100 {
      * @maximum 9007199254740991
      */
   amountMinor?: number;
+  /**
+     * @minItems 1
+     * @items.minimum 1
+     */
+  lineIds?: number[];
 }
 
 export interface ParentFeeInvoiceCheckoutPolicy4b96100 {
@@ -20978,6 +21038,84 @@ export type CreateClassParams = {
  * @minimum 1
  */
 schoolId: SchoolIdParameter;
+};
+
+export type ListAcademicPeriodStudentsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * @minimum 1
+ */
+sessionId: number;
+/**
+ * @minimum 1
+ */
+termId: number;
+/**
+ * @minimum 1
+ */
+classId?: number;
+section?: string;
+};
+
+export type ListAcademicPeriodStudents200Item = { [key: string]: unknown };
+
+export type GetAcademicResultCompilationParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * @minimum 1
+ */
+sessionId: number;
+/**
+ * @minimum 1
+ */
+termId: number;
+/**
+ * @minimum 1
+ */
+classId?: number;
+section?: string;
+};
+
+export type GetAcademicResultCompilation200 = { [key: string]: unknown };
+
+export type ListParentInvoiceFeeLines200 = { [key: string]: unknown };
+
+export type RecordSchoolCashPaymentParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+};
+
+export type RecordSchoolCashPaymentBody = {
+  /** @minimum 1 */
+  amountMinor: number;
+  /**
+     * @minLength 3
+     * @maxLength 200
+     */
+  evidenceReference: string;
+  /**
+     * @minLength 3
+     * @maxLength 200
+     */
+  receivedFrom: string;
+  /**
+     * @minLength 3
+     * @maxLength 1000
+     */
+  notes: string;
+  /**
+     * @minItems 1
+     * @items.minimum 1
+     */
+  lineIds?: number[];
 };
 
 export type ListAcademicSessionsParams = {

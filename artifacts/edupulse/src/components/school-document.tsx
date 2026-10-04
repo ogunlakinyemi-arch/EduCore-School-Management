@@ -58,6 +58,7 @@ export function SchoolDocumentPrintButton({
   unavailableMessage,
   testId,
   className = '',
+  preview = false,
 }: {
   children: ReactNode;
   label?: string;
@@ -65,6 +66,7 @@ export function SchoolDocumentPrintButton({
   unavailableMessage?: string;
   testId?: string;
   className?: string;
+  preview?: boolean;
 }) {
   const sourceRef = useRef<HTMLDivElement>(null);
   const [printing, setPrinting] = useState(false);
@@ -134,7 +136,7 @@ export function SchoolDocumentPrintButton({
       {(failure || (disabled && unavailableMessage)) && (
         <p role="alert" className="school-document-error no-print">{failure || unavailableMessage}</p>
       )}
-      <div ref={sourceRef} className="school-document-source" aria-hidden="true">
+      <div ref={sourceRef} className="school-document-source" style={preview ? {display:'block',marginTop:'1rem'} : undefined} aria-hidden={preview ? undefined : true} data-testid={preview ? 'school-document-preview' : undefined}>
         {children}
       </div>
     </>

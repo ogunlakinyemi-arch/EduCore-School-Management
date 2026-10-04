@@ -14,4 +14,10 @@ export interface AcademicTermInput4b96100 {
   endDate: Date;
   status?: AcademicTermInput4b96100Status;
   isCurrent?: boolean;
+  allowOverlap?: boolean;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  overlapReason?: string | null;
 }

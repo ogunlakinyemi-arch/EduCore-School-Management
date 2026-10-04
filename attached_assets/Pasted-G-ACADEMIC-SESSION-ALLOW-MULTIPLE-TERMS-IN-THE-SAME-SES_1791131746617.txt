@@ -1,0 +1,128 @@
+G. ACADEMIC SESSION — ALLOW MULTIPLE TERMS IN THE SAME SESSION
+
+CURRENT PROBLEM:
+
+School Admin can create an academic session/term such as:
+
+- Academic Session: 2026/2027
+- Term: First Term
+
+But when the School Admin tries to create:
+
+- Academic Session: 2026/2027
+- Term: Second Term
+
+the system treats the repeated 2026/2027 session as a duplicate and displays an error.
+
+This is incorrect.
+
+The same academic session MUST support multiple different terms.
+
+Required behaviour
+
+For example, School Admin must be able to create:
+
+2026/2027
+
+- First Term — September 2026 to December 2026
+- Second Term — January 2027 to April 2027
+- Third Term — April/May 2027 to July 2027
+
+Then the School Admin must also be able to create:
+
+2027/2028
+
+- First Term — September 2027 to December 2027
+- Second Term — January 2028 to April 2028
+- Third Term — April/May 2028 to July 2028
+
+The system must distinguish:
+
+Academic Session + Term
+
+rather than treating the Academic Session alone as the unique record.
+
+Uniqueness rule
+
+The correct uniqueness should be:
+
+School + Academic Session + Term
+
+Therefore:
+
+- 2026/2027 + First Term → allowed
+- 2026/2027 + Second Term → allowed
+- 2026/2027 + Third Term → allowed
+- 2027/2028 + First Term → allowed
+
+But:
+
+- 2026/2027 + First Term created twice → reject
+- 2026/2027 + Second Term created twice → reject
+
+Important
+
+Do NOT remove duplicate protection.
+
+Instead, correct the duplicate check so it detects a duplicate term within the same academic session, not merely a repeated academic-session name/year.
+
+The same session must be referenced by all its terms.
+
+Example:
+
+Academic Session
+2026/2027
+│
+├── First Term
+├── Second Term
+└── Third Term
+
+The database and API should maintain this relationship correctly.
+
+Date validation
+
+Continue enforcing:
+
+- Start date must be before end date.
+- Duplicate terms within the same session are rejected.
+- Invalid/reversed dates are rejected.
+- Term overlap should remain rejected unless the existing system explicitly allows authorized overlap with a reason.
+- A term must belong to exactly one academic session.
+- Historical sessions and terms must remain accessible.
+- Existing 2026/2027 First Term data must not be deleted or recreated unnecessarily.
+
+Acceptance test
+
+In the genuine School Admin Development session:
+
+1. Create/verify 2026/2027 First Term.
+2. Create 2026/2027 Second Term.
+3. Confirm Second Term saves successfully despite the repeated 2026/2027 session.
+4. Create 2026/2027 Third Term.
+5. Confirm all three terms appear under the same 2026/2027 session.
+6. Attempt to create another 2026/2027 First Term.
+7. Confirm the duplicate is correctly rejected.
+8. Create 2027/2028 First Term.
+9. Confirm it is treated as a separate academic session.
+10. Refresh the page and confirm all saved terms remain.
+
+Verify that Results, Fees, Attendance, Timetable and other academic-period-dependent modules continue referencing the correct Session + Term rather than only the session.
+
+Do not rebuild the Academic Calendar module. Fix only the uniqueness/validation logic causing the repeated-session error.
+
+Final report addition
+
+Include this separately:
+
+Academic Calendar Term Creation
+
+- Same session multiple terms: PASS/FAIL
+- Duplicate same session + same term: PASS/FAIL
+- New session + term: PASS/FAIL
+- Persistence after refresh: PASS/FAIL
+- Root cause: [exact cause]
+- Files/modules changed: [list]
+
+Do not run the full platform test suite.
+Do not publish.
+Do not modify Production.
