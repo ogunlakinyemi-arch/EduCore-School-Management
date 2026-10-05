@@ -126,7 +126,77 @@ async function request(
   });
 }
 
+describe("contract-first employee payslip reads", () => {
+  it("serves an empty list at the generated client's endpoint", async () => {
+    const response = await request("/me/payroll/payslips", { "x-test-role": "TEACHER" });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual([]);
+    expect(db.queries).toHaveLength(1);
+    expect(db.queries[0].values).toEqual([99, "finance@example.test", null, null]);
+  });
+
+  it("ignores caller-supplied identities and binds month filters to the authenticated employee", async () => {
+    const response = await request(
+      "/me/payroll/payslips?employeeId=123&userId=456&schoolId=8&fromMonth=2026-01&toMonth=2026-10",
+      { "x-test-role": "TEACHER" },
+    );
+    expect(response.status).toBe(200);
+    expect(db.queries[0].values).toEqual([99, "finance@example.test", "2026-01", "2026-10"]);
+  });
+
+  it("masks another employee's detail at the documented endpoint", async () => {
+    const response = await request("/me/payroll/payslips/123", { "x-test-role": "TEACHER" });
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({ error: { message: "Payslip not found for this authenticated employee" } });
+    expect(db.queries[0].values).toEqual([123, 99, "finance@example.test"]);
+  });
+
+  it("rejects invalid or reversed month ranges before querying payroll", async () => {
+    for (const query of ["fromMonth=2026-13", "fromMonth=2026-10&toMonth=2026-01"]) {
+      const response = await request(`/me/payroll/payslips?${query}`, { "x-test-role": "TEACHER" });
+      expect(response.status).toBe(400);
+    }
+    expect(db.queries).toHaveLength(0);
+  });
+
+  it("retains the original self-service path as a compatibility alias", async () => {
+    const response = await request("/payroll/my/payslips", { "x-test-role": "TEACHER" });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual([]);
+  });
+
+  it("returns the frozen own-payslip response and records a read-only audit", async () => {
+    db.query.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      db.queries.push({ sql, values });
+      return { rows: [{
+        id: 7, scope: "SCHOOL", school_id: 7, period_month: "2026-10",
+        employee_name_snapshot: "Own Teacher", employee_role_snapshot: "TEACHER",
+        school_name: "Own school", base_salary_minor: 100000, allowance_minor: 1000,
+        bonus_minor: 2000, deduction_minor: 500, adjustment_minor: -100,
+        adjustment_reason: "Own adjustment", net_salary_minor: 102400, currency: "NGN",
+        account_last4: "1234", provider_reference: "own-reference", provider_transaction_id: "7",
+        created_at: new Date("2026-10-01T00:00:00Z"),
+      }], rowCount: 1 };
+    });
+    const auditQuery = vi.fn(async (_sql: string, _values?: unknown[]) => ({ rows: [], rowCount: 0 }));
+    db.connect.mockResolvedValue({ query: auditQuery, release: vi.fn() });
+    const response = await request("/me/payroll/payslips/7", { "x-test-role": "TEACHER" });
+    expect(response.status).toBe(200);
+    const slip = await response.json();
+    expect(slip).toMatchObject({ id: 7, employeeName: "Own Teacher", netSalaryMinor: 102400, adjustmentReason: "Own adjustment" });
+    expect(JSON.stringify(slip)).not.toContain("bank_name_encrypted");
+    expect(auditQuery.mock.calls.some(call => String(call[0]).includes("INSERT INTO settlement_payroll_audit_events"))).toBe(true);
+  });
+});
+
 describe("settlement and payroll router access boundaries", () => {
+  it.each(["SCHOOL_ADMIN", "ACCOUNTANT"])("preserves %s access to same-school payroll periods", async (role) => {
+    const response = await request("/schools/7/finance/payroll/periods", { "x-test-role": role });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual([]);
+    expect(db.queries.length).toBeGreaterThan(0);
+  });
+
   it("hides school payroll periods across tenants without issuing a database query", async () => {
     const response = await request("/schools/8/finance/payroll/periods");
     expect(response.status).toBe(404);

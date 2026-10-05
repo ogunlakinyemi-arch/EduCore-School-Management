@@ -1,0 +1,88 @@
+Fix the existing Teacher Portal → Payslips page.
+
+Current problem:
+When an authenticated Teacher opens the Payslips section, the page shows:
+
+“Couldn’t load this view
+The operations feed took a wrong turn. Retry when your connection is ready.
+Retry request”
+
+Do not rebuild the payroll or Teacher Portal modules.
+
+1. Reproduce and identify the exact failure
+
+Using an existing authorized Development Teacher account:
+
+- Open Teacher Portal → Payslips.
+- Capture the exact failing frontend request.
+- Record:
+  - HTTP method
+  - endpoint
+  - query parameters
+  - HTTP status
+  - response body/error
+  - server-side exception/stack trace
+- Determine whether the failure comes from:
+  - frontend query configuration,
+  - incorrect endpoint,
+  - authentication/session handling,
+  - role authorization,
+  - school/employee mapping,
+  - payroll/payslip database query,
+  - missing data,
+  - or an incorrect “operations feed” dependency.
+
+Do not guess the root cause.
+
+2. Fix the root cause
+
+The Teacher Payslips page must:
+
+- Load successfully for an authorized Teacher.
+- Show only payslips belonging to the authenticated Teacher's employee/payroll identity.
+- Respect school/tenant isolation.
+- Correctly handle a Teacher with no payslips.
+- Return an appropriate empty state instead of an error when no payslip exists.
+- Never expose another employee's payslip.
+- Preserve existing payroll calculations, payslips, payments and historical records.
+- Preserve existing School Admin, Accountant, Company Accountant and Platform Owner payroll functionality.
+
+If the page is incorrectly depending on an Operations feed merely to load payslips, remove that unnecessary dependency and use the authoritative payslip/payroll data source.
+
+3. Verify the actual workflow
+
+Test in Development with existing authorized accounts:
+
+1. Teacher opens Payslips → HTTP 200 and page loads.
+2. Teacher with existing payslip can view the correct payslip.
+3. Teacher with no payslip receives a valid empty state.
+4. Refresh/reopen Payslips → still works.
+5. Teacher cannot access another employee's payslip by changing an ID or query parameter.
+6. School Admin/Accountant payroll views remain functional.
+7. Existing payslip records and payroll calculations remain unchanged.
+
+Run focused backend/API, frontend and database checks as appropriate, plus a genuine authenticated browser test.
+
+4. Scope restriction
+
+Development only.
+
+Do NOT:
+
+- modify Production;
+- create unnecessary accounts;
+- create unnecessary payroll records;
+- change salary calculations;
+- change payroll rules;
+- change payslip calculations;
+- modify unrelated modules;
+- alter existing historical payroll/payment data.
+
+At the end, report:
+
+- exact root cause;
+- exact fix;
+- failing endpoint before the fix;
+- endpoint/status after the fix;
+- tests performed and PASS/FAIL results;
+- confirmation that Production was untouched.

@@ -1,0 +1,152 @@
+Fix the existing Teacher Portal → Lesson Notes workflow.
+
+There are two issues:
+
+ISSUE 1 — Curriculum Topic Session dropdowns are not working
+
+During lesson-note creation, the Teacher reaches the curriculum/topic section but cannot select values from the:
+
+- Class
+- Subject
+- Session/Academic Session
+- Term, where applicable
+- Curriculum/Topic
+
+dropdown fields.
+
+The dropdowns are not opening/selecting correctly.
+
+Required investigation
+
+Using an existing authorized Development Teacher account:
+
+1. Open Teacher Portal → Lesson Notes → Create/New Lesson Note.
+2. Reproduce the problem.
+3. Inspect the actual frontend requests and browser console/network errors.
+4. Identify the exact root cause of the non-working dropdowns.
+5. Check whether the problem is caused by:
+   - incorrect API response;
+   - missing teacher authorization;
+   - incorrect school/session/term filtering;
+   - frontend state/query issue;
+   - invalid field dependency;
+   - incorrect ID mapping;
+   - disabled select state;
+   - or another specific cause.
+
+Do not guess or replace the dropdowns without identifying the cause.
+
+Correct dropdown behaviour
+
+The Teacher should only see options they are authorized to use.
+
+The selection flow should work logically:
+
+Academic Session → Term → Class/Section → Subject → Curriculum/Topic
+
+Where appropriate, each selection should filter the next available options.
+
+For example:
+
+- Session selected → show the terms belonging to that session.
+- Term selected → show the teacher's authorized classes/sections.
+- Class/Section selected → show the teacher's authorized subjects.
+- Subject selected → show the relevant curriculum/topic options.
+
+Do not allow a teacher to select another school's class, subject or curriculum.
+
+Preserve the existing Teacher → Class → Subject authorization rules.
+
+ISSUE 2 — Allow Teachers to upload Lesson Note PDF
+
+Add an optional Upload Lesson Note PDF capability to the existing lesson-note workflow.
+
+Teacher workflow:
+
+1. Select Session.
+2. Select Term.
+3. Select Class/Section.
+4. Select Subject.
+5. Select Curriculum Topic.
+6. Enter lesson-note information normally, OR upload a prepared lesson-note PDF.
+7. Preview the uploaded PDF before submission.
+8. Save as Draft or Submit for the existing review/approval workflow.
+
+PDF requirements
+
+- Accept PDF files only for this feature.
+- Validate file type and reasonable file size before upload.
+- Do not silently accept renamed non-PDF files.
+- Store the uploaded file securely.
+- Associate the PDF with:
+  - School
+  - Teacher
+  - Session
+  - Term
+  - Class/Section
+  - Subject
+  - Curriculum/Topic
+  - Lesson Note ID
+- Preserve the original uploaded PDF.
+- Allow the authorized Teacher to preview/download their own submitted lesson note where permitted.
+- School Admin should be able to preview the submitted PDF through the existing lesson-note review workflow.
+- Platform Owner access should remain read-only and subject to existing school-selection/tenant isolation rules.
+- Do not expose lesson-note files to teachers or users from another school.
+
+Draft and approval behaviour
+
+A PDF upload must follow the same existing Lesson Note lifecycle:
+
+Draft → Submitted → Returned/Revision Required → Resubmitted → Approved/Completed
+
+Do not create a separate approval system.
+
+If a lesson note is returned for revision, the Teacher should be able to upload a corrected PDF while retaining the previous version in the audit/version history.
+
+Do not silently overwrite previously submitted/approved lesson-note files.
+
+Important
+
+Do not remove the existing structured lesson-note fields.
+
+Teachers should still be able to write lesson notes directly in the system.
+
+PDF upload is an additional option, not a replacement.
+
+If the uploaded PDF contains text that can safely be extracted, the system may display basic metadata/preview, but do not automatically invent or populate curriculum data from the PDF. The Teacher must explicitly select the Session, Term, Class, Subject and Topic.
+
+Testing
+
+Development only.
+
+Use existing authorized accounts and existing school data.
+
+Test:
+
+1. Teacher can open Lesson Notes.
+2. Session dropdown opens and works.
+3. Term dropdown works after session selection.
+4. Class/Section dropdown works.
+5. Subject dropdown works.
+6. Curriculum/Topic dropdown works.
+7. Only authorized Teacher classes/subjects/topics appear.
+8. Teacher can create a normal structured lesson note.
+9. Teacher can upload a valid PDF.
+10. Invalid/non-PDF upload is rejected with a clear message.
+11. PDF preview works before submission.
+12. Draft with PDF survives page refresh.
+13. Submitted PDF remains attached to the correct lesson note.
+14. School Admin can review the submitted PDF.
+15. Returned lesson note can receive a corrected PDF.
+16. Previous PDF version remains available in history where versioning is supported.
+17. Unauthorized users cannot access another school's lesson-note PDF.
+18. Existing Lesson Note, Curriculum and Teaching Progress functionality continues to work.
+
+Run focused backend/API, frontend and database checks plus a genuine authenticated browser test.
+
+Do not modify Production.
+Do not create unnecessary accounts or school data.
+Do not change unrelated modules.
+Do not alter existing approved lesson notes.
+
+Report the exact root cause of the dropdown problem, the fix, the PDF implementation, and the test results.

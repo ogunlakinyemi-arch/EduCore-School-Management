@@ -3444,7 +3444,8 @@ function myPayslipMap(row: AnyRow) {
   };
 }
 
-router.get("/payroll/my/payslips", run(async (req, res) => {
+// Keep the original path as an alias; the generated client and OpenAPI use /me/payroll.
+router.get(["/me/payroll/payslips", "/payroll/my/payslips"], run(async (req, res) => {
   const user = getUserContext(req).user;
   const query = body(
     PayrollContract.ListMyPayrollPayslipsQueryParams,
@@ -3461,7 +3462,10 @@ router.get("/payroll/my/payslips", run(async (req, res) => {
   const rows = poolRows(await pool.query(
     `${MY_PAYSLIPS_SELECT}
      WHERE ((s.scope='SCHOOL' AND e.id IS NOT NULL AND
-         (e.user_id=$1 OR LOWER(e.email)=LOWER($2)))
+          (e.user_id=$1 OR (e.user_id IS NULL AND LOWER(e.email)=LOWER($2)))
+          AND EXISTS (SELECT 1 FROM school_memberships membership
+            WHERE membership.user_id=$1 AND membership.school_id=s.school_id
+              AND membership.status='ACTIVE'))
        OR (s.scope='YEMAIT_COMPANY' AND c.id IS NOT NULL AND LOWER(c.email)=LOWER($2)))
        AND ($3::text IS NULL OR s.period_month >= $3)
        AND ($4::text IS NULL OR s.period_month <= $4)
@@ -3496,7 +3500,7 @@ router.get("/payroll/my/payslips", run(async (req, res) => {
   );
 }));
 
-router.get("/payroll/my/payslips/:payslipId", run(async (req, res) => {
+router.get(["/me/payroll/payslips/:payslipId", "/payroll/my/payslips/:payslipId"], run(async (req, res) => {
   const user = getUserContext(req).user;
   const params = body(
     PayrollContract.GetMyPayrollPayslipParams,
@@ -3507,7 +3511,10 @@ router.get("/payroll/my/payslips/:payslipId", run(async (req, res) => {
     `${MY_PAYSLIPS_SELECT}
      WHERE s.id=$1
        AND ((s.scope='SCHOOL' AND e.id IS NOT NULL AND
-           (e.user_id=$2 OR LOWER(e.email)=LOWER($3)))
+            (e.user_id=$2 OR (e.user_id IS NULL AND LOWER(e.email)=LOWER($3)))
+            AND EXISTS (SELECT 1 FROM school_memberships membership
+              WHERE membership.user_id=$2 AND membership.school_id=s.school_id
+                AND membership.status='ACTIVE'))
          OR (s.scope='YEMAIT_COMPANY' AND c.id IS NOT NULL AND LOWER(c.email)=LOWER($3)))`,
     [params.payslipId, user.id, user.email],
   ))[0];

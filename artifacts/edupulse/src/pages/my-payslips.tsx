@@ -38,7 +38,7 @@ export function MyPayslipsPage() {
       <Button variant="outline" disabled={!rows.length} onClick={() => csvDownload('my-payslips.csv', [['Month', 'Net', 'Status', 'Reference'], ...rows.map(r => [r.periodMonth, ngn(r.netSalaryMinor), r.paymentStatus, r.transferReference ?? ''])])}>Export CSV</Button>
       <div className="ml-auto"><Freshness updatedAt={q.dataUpdatedAt} fetching={q.isFetching} onRefresh={() => q.refetch()} /></div>
     </div>
-    {q.isLoading ? <SkeletonPage /> : q.isError ? <ErrorState retry={() => q.refetch()} /> : <>
+    {q.isLoading ? <SkeletonPage /> : q.isError ? <ErrorState message="Your payslips could not be loaded. Please retry." retry={() => q.refetch()} /> : <>
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <Metric label="Latest net pay" value={latest ? ngn(latest.netSalaryMinor) : '-'} detail={latest ? monthLabel(latest.periodMonth) : 'No payslips yet'} icon={Banknote} accent />
         <Info label="Bank account on file" value={latest?.maskedAccountNumber ? <span className="font-mono">{latest.maskedAccountNumber}</span> : 'None'} />
