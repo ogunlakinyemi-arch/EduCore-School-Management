@@ -152,7 +152,7 @@ export function SessionForm({ schoolId, initial, existingSessions = [], onUseExi
 
   return (
     <form onSubmit={save} className="space-y-5">
-      <p className="text-xs text-[hsl(var(--muted-foreground))]">Create each academic year once. Add First, Second and Third Terms using that year's Manage terms panel.</p>
+      <p className="text-xs text-[hsl(var(--muted-foreground))]">Session dates cover the full academic year, not just First Term. A 2026/2027 session may start in 2026 and end in 2027. Add First, Second and Third Terms inside that full range; do not create another session for a later term.</p>
       <Field label="Session Name">
         <input required minLength={2} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. 2023/2024 Academic Session" />
       </Field>
@@ -199,7 +199,7 @@ export function TermsManager({ schoolId, sessions, sessionId, onPick, canManage 
   const q = useListAcademicTerms(sessionId as number, { schoolId }, { query: { enabled: !!(schoolId && sessionId), queryKey: getListAcademicTermsQueryKey(sessionId as number, { schoolId }) } });
   const terms: any[] = q.data ?? [];
   const session = sessions.find(s => s.id === sessionId);
-  const [sessionModal, setSessionModal] = useState(false);
+  const [sessionModal, setSessionModal] = useState<'create'|'edit'|null>(null);
   const done = () => { setModal(null); invalidatePeriodQueries(qc); };
   return (
     <div className="panel overflow-hidden" data-testid="panel-terms">
@@ -209,8 +209,10 @@ export function TermsManager({ schoolId, sessions, sessionId, onPick, canManage 
           <select aria-label="Term session" className="mt-2 max-w-xs" value={sessionId ?? ''} onChange={e => onPick(Number(e.target.value))} disabled={!sessions.length}>
             {sessions.map(s => <option key={s.id} value={s.id}>{s.name}{s.isCurrent ? ' (current)' : ''}</option>)}
           </select>
+           {session && <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]" data-testid="text-full-session-range">Full academic session: {date(session.startDate)} — {date(session.endDate)}. All term dates must fit inside this range.</p>}
         </div>
-        {canManage && <div className="flex gap-2"><Button variant="outline" onClick={() => setSessionModal(true)} testId="button-new-session"><Plus size={14} />New session</Button>
+        {canManage && <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={!session} onClick={() => setSessionModal('edit')} testId="button-edit-session-dates"><Pencil size={14} />Edit session dates</Button>
+        <Button variant="outline" onClick={() => setSessionModal('create')} testId="button-new-session"><Plus size={14} />New session</Button>
         <Button variant="outline" onClick={() => setModal({ create: true })} disabled={!sessionId}><Plus size={14} />Add term</Button></div>}
       </div>
       {!sessionId ? <div className="p-8 text-center text-sm text-[hsl(var(--muted-foreground))]">Create a session first.</div>
@@ -236,8 +238,8 @@ export function TermsManager({ schoolId, sessions, sessionId, onPick, canManage 
         </div>
       ) : <div className="p-8 text-center text-sm text-[hsl(var(--muted-foreground))]">No terms configured for this session.</div>}
       {canManage && sessionModal && (
-        <Modal title="Create Session" eyebrow="Academic Calendar" onClose={() => setSessionModal(false)}>
-          <SessionForm schoolId={schoolId} onDone={() => { setSessionModal(false); invalidatePeriodQueries(qc); }} onCancel={() => setSessionModal(false)} />
+        <Modal title={sessionModal==='edit'?'Edit Session':'Create Session'} eyebrow="Academic Calendar" onClose={() => setSessionModal(null)}>
+          <SessionForm key={`${sessionModal}:${schoolId}:${session?.id??0}`} schoolId={schoolId} initial={sessionModal==='edit'?session:undefined} existingSessions={sessions} onDone={() => { setSessionModal(null); invalidatePeriodQueries(qc); }} onCancel={() => setSessionModal(null)} />
         </Modal>
       )}
       {canManage && modal && sessionId && (

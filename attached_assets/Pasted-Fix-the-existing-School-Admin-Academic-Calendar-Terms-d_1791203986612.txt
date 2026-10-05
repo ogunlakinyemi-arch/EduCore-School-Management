@@ -1,0 +1,147 @@
+Fix the existing School Admin → Academic Calendar/Terms date validation.
+
+Current problem
+
+When School Admin tries to create Third Term under the existing 2026/2027 academic session, the system incorrectly displays:
+
+«“Term dates must fall within the session (2026-09-14 to 2026-12-18).”»
+
+The session is 2026/2027, but the system is currently treating the session's First Term date range:
+
+2026-09-14 → 2026-12-18
+
+as if it were the entire academic session.
+
+This is incorrect.
+
+Required academic-session behaviour
+
+An academic session such as 2026/2027 must be able to span two calendar years.
+
+For example:
+
+2026/2027 Session
+
+- First Term: September 2026 → December 2026
+- Second Term: January 2027 → April 2027
+- Third Term: April/May 2027 → July 2027
+
+The Third Term must therefore be allowed to have dates in 2027 while still belonging to the 2026/2027 academic session.
+
+Root-cause investigation
+
+Do not simply remove the date validation.
+
+Trace how the application currently determines:
+
+- Academic Session start date
+- Academic Session end date
+- Term start date
+- Term end date
+- Session/Term relationship
+- Date validation
+- Term overlap validation
+
+Determine whether the current session start/end dates are incorrectly being taken from the First Term.
+
+The correct model should distinguish:
+
+Academic Session date range
+
+from
+
+Individual Term date ranges.
+
+If the existing session record does not have an appropriate full-session end date, implement the smallest safe correction necessary.
+
+Required validation
+
+For a session such as 2026/2027:
+
+- Session start may be in 2026.
+- Session end may be in 2027.
+- First Term must fall within the session.
+- Second Term must fall within the session.
+- Third Term must fall within the session.
+- Terms may cross calendar years where appropriate.
+- A term must not be rejected merely because its calendar year differs from the session's starting year.
+
+Example:
+
+Session:
+2026/2027
+Start: 2026-09-14
+End: 2027-07-31
+
+Valid:
+
+First Term:
+2026-09-14 → 2026-12-18
+
+Second Term:
+2027-01-05 → 2027-04-09
+
+Third Term:
+2027-04-26 → 2027-07-31
+
+Important
+
+Do NOT assume that every session must end on December 18 simply because First Term ends on December 18.
+
+Do NOT create a new session called 2027/2028 just to accommodate Third Term.
+
+Third Term must remain under 2026/2027.
+
+Preserve the existing academic session and all existing First Term data.
+
+Validation rules
+
+Continue enforcing:
+
+- Term dates must fall within the actual academic session range.
+- A term cannot end before it starts.
+- Invalid date ranges must be rejected.
+- Duplicate Session + Term combinations must remain blocked.
+- Two terms within the same session should not overlap unless the existing system explicitly supports an intentional overlap.
+- Historical sessions/terms must remain unchanged.
+- Existing results, fees, attendance, assignments, assessments, timetables, lesson notes and other records linked to the academic period must continue to reference the correct session and term.
+
+Development acceptance test
+
+Use the existing Development academic calendar.
+
+1. Open School Admin → Academic Calendar.
+2. Open the existing 2026/2027 session.
+3. Confirm First Term remains:
+   2026-09-14 → 2026-12-18.
+4. Create Second Term with valid 2027 dates.
+5. Create Third Term with valid 2027 dates.
+6. Confirm both terms remain under 2026/2027.
+7. Confirm the system does not incorrectly compare Third Term dates against First Term dates.
+8. Confirm duplicate Third Term creation is still rejected.
+9. Confirm overlapping terms are rejected.
+10. Confirm invalid dates outside the actual session range are rejected.
+11. Reload the page and confirm all three terms persist correctly.
+12. Verify that existing academic-period references still resolve to the correct Session + Term.
+
+Run genuine authenticated browser tests and relevant backend/database tests.
+
+Scope restrictions
+
+- Development only.
+- Do not modify Production.
+- Do not create unnecessary accounts, students, parents or schools.
+- Do not alter existing historical results or financial records.
+- Do not rebuild the Academic Calendar module.
+- Make the smallest targeted correction required.
+- Do not weaken date validation; correct the session/term date model and validation logic.
+
+At completion, report:
+
+- Exact root cause.
+- Exact fix.
+- Session start/end used for 2026/2027.
+- Term dates tested.
+- PASS/FAIL results.
+- Confirmation that existing First Term data was preserved.
+- Confirmation that Production was untouched.

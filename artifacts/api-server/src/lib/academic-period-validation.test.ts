@@ -18,6 +18,20 @@ describe("school academic calendar validation",()=>{
     [{start_date:"2026-09-01",end_date:"2027-07-31",status:"ACTIVE",is_current:true}]:
     sql.includes("AND id<>")&&overlap ? [{id:4}] : []}))});
   it("rejects a term outside its session",async()=>await expect(validateAcademicPeriod(client(),1,{startDate:"2026-08-01",endDate:"2026-12-01"},{},3)).rejects.toThrow("within"));
+  it.each([["2026-09-14","2026-12-18"],["2027-01-05","2027-04-09"],["2027-04-26","2027-07-31"],["2026-12-20","2027-01-04"]])("accepts full-session containment across calendar years %s–%s",async(startDate,endDate)=>{
+    await expect(validateAcademicPeriod(client(),1,{startDate,endDate},{},3)).resolves.toBeUndefined();
+  });
+  it.each([["2026-08-31","2026-12-18"],["2027-04-26","2027-08-01"]])("keeps actual session boundaries enforced %s–%s",async(startDate,endDate)=>{
+    await expect(validateAcademicPeriod(client(),1,{startDate,endDate},{},3)).rejects.toThrow("within");
+  });
+  it("does not silently expand a misconfigured session when adding Third Term",async()=>{
+    const db={query:vi.fn(async(sql:string)=>({rows:sql.includes("FROM academic_sessions")?[{start_date:"2026-09-14",end_date:"2026-12-18",status:"ACTIVE",is_current:true}]:[]}))};
+    await expect(validateAcademicPeriod(db,1,{startDate:"2027-04-26",endDate:"2027-07-31"},{},3)).rejects.toThrow("within");
+  });
+  it("refuses to shrink a session around only its First Term when later terms exist",async()=>{
+    const db={query:vi.fn(async(sql:string)=>({rows:sql.includes("FROM academic_terms")?[{id:2}]:[]}))};
+    await expect(validateAcademicPeriod(db,1,{startDate:"2026-09-14",endDate:"2026-12-18"},{id:3})).rejects.toThrow("contain its existing terms");
+  });
   it("rejects an implicit overlap",async()=>await expect(validateAcademicPeriod(client(true),1,{startDate:"2026-09-01",endDate:"2026-12-01"},{},3)).rejects.toThrow("Explicitly"));
   it("accepts only explicitly explained overlaps",async()=>await expect(validateAcademicPeriod(client(true),1,{startDate:"2026-09-01",endDate:"2026-12-01",allowOverlap:true,overlapReason:"Intentional school arrangement"},{},3)).resolves.toBeUndefined());
   it("refuses to activate a closed period",async()=>await expect(validateAcademicPeriod(client(),1,{startDate:"2026-09-01",endDate:"2026-12-01",isCurrent:true,status:"COMPLETED"})).rejects.toThrow("active"));

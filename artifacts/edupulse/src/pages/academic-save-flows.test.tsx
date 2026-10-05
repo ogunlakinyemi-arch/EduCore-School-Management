@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Employee } from '@workspace/api-client-react';
 import { academicSaveError } from '@/components/academic-save-error';
 import { TimetableEntryForm } from './timetable';
-import { SessionForm } from './academics';
+import { SessionForm, termContainmentError } from './academics';
 
 const mocks = vi.hoisted(() => ({
   create: vi.fn(), update: vi.fn(), session: vi.fn(), editSession: vi.fn(),
@@ -157,4 +157,23 @@ describe('academic API error contracts',()=>{
     [{data:{message:'Term does not belong to this session'}},'Term does not belong to this session'],
     [null,'Could not save this academic record.'],
   ])('renders a safe useful message for %j',(error,message)=>expect(academicSaveError(error)).toBe(message));
+});
+describe('full academic session dates',()=>{
+  const session={startDate:'2026-09-14',endDate:'2027-07-31'};
+  it.each([['2026-09-14','2026-12-18'],['2027-01-05','2027-04-09'],['2027-04-26','2027-07-31']])('accepts a term within the actual full-year range %s', (startDate,endDate)=>{
+    expect(termContainmentError({startDate,endDate},session)).toBe('');
+  });
+  it('still rejects dates beyond the actual session instead of guessing a later end date',()=>{
+    expect(termContainmentError({startDate:'2027-04-26',endDate:'2027-08-01'},session)).toContain('2027-07-31');
+    expect(termContainmentError({startDate:'2027-04-26',endDate:'2027-07-31'},{startDate:'2026-09-14',endDate:'2026-12-18'})).toContain('2026-12-18');
+  });
+  it('edits the existing session ID with a cross-year end date without creating a replacement',async()=>{
+    await act(async()=>root.render(<SessionForm schoolId={1393} initial={{id:358,name:'2026/2027',startDate:'2026-09-14',endDate:'2026-12-18',status:'ACTIVE',isCurrent:true}} onDone={vi.fn()} onCancel={vi.fn()}/>));
+    const end=host.querySelectorAll<HTMLInputElement>('input[type=date]')[1];
+    const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!;
+    await act(async()=>{set.call(end,'2027-07-31');end.dispatchEvent(new Event('input',{bubbles:true}));});
+    await submit();
+    expect(mocks.editSession).toHaveBeenCalledWith({sessionId:358,params:{schoolId:1393},data:expect.objectContaining({name:'2026/2027',startDate:'2026-09-14T00:00:00.000Z',endDate:'2027-07-31T00:00:00.000Z',status:'ACTIVE',isCurrent:true})},expect.anything());
+    expect(mocks.session).not.toHaveBeenCalled();
+  });
 });

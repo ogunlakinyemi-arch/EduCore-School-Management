@@ -46,3 +46,4 @@
 - [Authorization denial evidence](authorization-denial-evidence.md) — preserve resource-masking denials; an invented 403 expectation does not make a correct 404 confidentiality failure.
 - [Lesson-note test curriculum](lesson-note-development-curriculum.md) — minimal labelled Development curriculum is authorized only for existing assigned lesson-note acceptance.
 - [Preservation bookkeeping](preservation-bookkeeping.md) — separate unchanged business data from ordinary sign-in and scheduler timestamp updates; disclose every excluded field.
+- [Calendar correction safety](calendar-correction-safety.md) — preserve valid concurrent Admin calendar edits; illustrative dates do not override the school's saved full-year range.
