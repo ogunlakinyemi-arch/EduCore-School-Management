@@ -237,6 +237,8 @@ beforeEach(() => {
   state.credential.status = "ACTIVE";
   state.credential.deviceStatus = "ACTIVE";
   state.credential.configured = true;
+  state.credential.deviceId = 100;
+  state.credential.schoolId = 10;
   state.student = { id: 501, schoolId: 10, status: "ACTIVE" };
   state.cards = [{ id: 700, uid: "CARD-A", schoolId: 10, studentId: 501, status: "ACTIVE" }];
   state.policy = "NFC_ONLY";
@@ -257,6 +259,31 @@ beforeEach(() => {
 });
 
 describe("Phase 5 device attendance behavior", () => {
+  it("accepts one unchanged Student card on two school readers and a newly linked third reader",async()=>{
+    const before=JSON.stringify(state.cards);
+    for(const deviceId of [100,101,102]) {
+      state.credential.deviceId=deviceId;
+      expect((await request(event())).status).toBe(201);
+    }
+    expect(state.events.map(e=>e.deviceId)).toEqual([100,101,102]);
+    expect(JSON.stringify(state.cards)).toBe(before);
+  });
+  it.each(["inactive","unlinked"])("rejects scans after a reader becomes %s without changing the Student card",async change=>{
+    if(change==="inactive") state.credential.deviceStatus="INACTIVE";
+    else state.credential.configured=false;
+    expect((await request(event())).status).toBe(401);
+    expect(state.events).toHaveLength(0);
+    expect(state.cards[0]!.status).toBe("ACTIVE");
+  });
+  it("rejects a School A card on a currently authenticated School B reader",async()=>{
+    state.credential.schoolId=20;
+    expect((await request(event())).status).toBe(403);
+    expect(state.events).toHaveLength(0);
+  });
+  it.each([{schoolId:20},{deviceId:999},{studentId:999}])("rejects manipulated scan identifiers %j",async identifiers=>{
+    expect((await request(event(identifiers))).status).toBe(403);
+    expect(state.events).toHaveLength(0);
+  });
   it("mounts credential-only device ingestion before the blanket Clerk auth router", () => {
     const source = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
     expect(source.indexOf("router.use(attendanceRouter);")).toBeGreaterThan(0);

@@ -1,3 +1,4 @@
+import {assertSchoolHasActiveNfcDevice} from "../lib/nfc-device-first";
 import { randomUUID } from "node:crypto";
 import {issueEmployeeReplacement} from "./employee-card-replacement";
 import type { Request } from "express";
@@ -196,6 +197,7 @@ export async function issueReplacement(req: Request, id: number, uid: string) {
       await audit(db,req,request.school_id,id,"NFC_REPLACEMENT_ISSUED",{employeeId:request.employee_id,oldCardId:request.old_card_id,invoiceId:request.invoice_id});
       const result=await readReplacement(req,id,db);await db.query("COMMIT");return result;
     }
+    await assertSchoolHasActiveNfcDevice(db,request.school_id);
     await db.query("SELECT id FROM students WHERE id=$1 AND school_id=$2 FOR UPDATE", [request.student_id,request.school_id]);
     const oldResult = await db.query("SELECT * FROM nfc_cards WHERE id=$1 AND school_id=$2 FOR UPDATE", [request.old_card_id,request.school_id]);
     const old = oldResult.rows[0];

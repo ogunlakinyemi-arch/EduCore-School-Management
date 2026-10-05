@@ -264,6 +264,49 @@ describe("GET /cards/:cardId/printable", () => {
     expect((await fetch(`${baseUrl}/cards/41/preview?schoolId=10`)).status).toBe(403);
   });
 
+  it.each(["PLATFORM_OWNER", "SCHOOL_ADMIN"])("allows %s to preview a locked current Student assignment without activating or printing it", async role => {
+    state.roles=[{role,schoolId:role==="PLATFORM_OWNER"?null:9,status:"ACTIVE"}];
+    state.snapshot={...studentCard(),cardStatus:"locked"};
+    const response=await fetch(`${baseUrl}/cards/41/preview?schoolId=9`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(await response.json()).toMatchObject({frontImage:expect.stringMatching(/^data:image\/png/),backImage:expect.stringMatching(/^data:image\/png/)});
+    expect(state.values).toEqual([41,9]);
+    expect(mockPool.query.mock.calls.every(([sql])=>/^\s*SELECT/i.test(sql))).toBe(true);
+    expect(state.snapshot.cardStatus).toBe("locked");
+    expect((await fetch(`${baseUrl}/cards/41/printable?schoolId=9`)).status).toBe(role==="PLATFORM_OWNER"?409:403);
+  });
+
+  it.each(["lost","deactivated","blocked","replaced","inactive"])("denies preview of a %s Student card", async status => {
+    state.snapshot={...studentCard(),cardStatus:status};
+    expect((await fetch(`${baseUrl}/cards/41/preview?schoolId=9`)).status).toBe(409);
+  });
+
+  it("does not preview an inactive Student even when the assigned card is locked", async () => {
+    state.snapshot={...studentCard(),studentStatus:"inactive",cardStatus:"locked"};
+    expect((await fetch(`${baseUrl}/cards/41/preview?schoolId=9`)).status).toBe(409);
+  });
+
+  it("returns a clear empty assignment reason without selecting an arbitrary identity", async () => {
+    state.snapshot={...studentCard(),studentId:null};
+    const response=await fetch(`${baseUrl}/cards/41/preview?schoolId=9`);
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({error:"No active ID card is assigned to this person.",code:"CARD_NOT_ASSIGNED"});
+  });
+
+  it("masks an Owner's cross-school card preview without weakening the scoped lookup", async () => {
+    state.snapshot=null;
+    expect((await fetch(`${baseUrl}/cards/41/preview?schoolId=10`)).status).toBe(404);
+    expect(state.values).toEqual([41,10]);
+    expect(state.sql).toContain("nc.id=$1 AND nc.school_id=$2");
+    expect(state.sql).toContain("st.school_id=nc.school_id");
+  });
+
+  it("previews with missing optional photo and school branding using the existing renderer placeholders", async () => {
+    state.snapshot={...studentCard(),cardStatus:"locked",studentPhoto:null,schoolLogo:null,schoolRegistrationNumber:null};
+    expect((await fetch(`${baseUrl}/cards/41/preview?schoolId=9`)).status).toBe(200);
+  });
+
   it.each(["TEACHER","PARENT","STUDENT"])("denies %s official-card preview",async role=>{
     state.roles=[{role,schoolId:9,status:"ACTIVE"}];
     expect((await fetch(`${baseUrl}/cards/41/preview?schoolId=9`)).status).toBe(403);

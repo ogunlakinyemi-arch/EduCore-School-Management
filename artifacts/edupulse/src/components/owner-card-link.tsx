@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import {
   useListCards, useListEmployees, useListEmployeeNfcCards, useListOwnerSchoolDirectory, useListStudents,
-  useRegisterCard, useAssignEmployeeNfcCard, getListCardsQueryKey,
+  useRegisterCard, useAssignEmployeeNfcCard, useReassignCard, useListActivationDevices, getListCardsQueryKey,
 } from '@workspace/api-client-react';
 import { Button, Field, Info, StatusPill } from '@/components/shared';
 import { PrintableNfcCardDownload } from '@/components/printable-nfc-card-download';
@@ -29,6 +29,11 @@ export function OwnerCardLink({ onDone }: { onDone?: () => void }) {
 
   const schools = useListOwnerSchoolDirectory({ status: 'all' });
   const isStudent = type === 'STUDENT';
+  const devices = useListActivationDevices(schoolId, {query:{
+    enabled:schoolId>0 && isStudent,queryKey:['owner-link-nfc-devices',schoolId],
+    staleTime:0,refetchOnMount:'always',refetchOnWindowFocus:true,refetchInterval:15000,
+  }});
+  const devicesReady = devices.isSuccess && !devices.isFetching && (devices.data?.length ?? 0)>0;
   const students = useListStudents({ schoolId, search: search || undefined }, { query: { enabled: !!schoolId && isStudent, queryKey: ['owner-link-students', schoolId, search] } });
   const employees = useListEmployees({ schoolId, search: search || undefined }, { query: { enabled: !!schoolId && !isStudent, queryKey: ['owner-link-employees', schoolId, search] } });
   const empCards = useListEmployeeNfcCards(schoolId, { limit: 200 }, { query: { enabled: !!schoolId && !isStudent, queryKey: ['owner-link-emp-cards', schoolId] } });
@@ -43,7 +48,8 @@ export function OwnerCardLink({ onDone }: { onDone?: () => void }) {
 
   const reg = useRegisterCard();
   const assign = useAssignEmployeeNfcCard();
-  const pending = reg.isPending || assign.isPending;
+  const reassign = useReassignCard();
+  const pending = reg.isPending || assign.isPending || reassign.isPending;
   const req = person ? buildLinkRequest(type, schoolId, person.id, uid) : null;
 
   const done = (response?: any) => {
@@ -65,8 +71,17 @@ export function OwnerCardLink({ onDone }: { onDone?: () => void }) {
   const submit = (e: React.FormEvent) => {
     e.preventDefault(); setMsg(''); setErr('');
     if (!req) return;
+    if (req.kind==='student' && !devicesReady) {
+      setErr("This school has no active NFC device linked. Link an NFC device to this school before assigning NFC cards.");
+      return;
+    }
     const opts = { onSuccess: done, onError: (x: unknown) => setErr(linkErrorMessage(x)) };
-    if (req.kind === 'student') reg.mutate({ params: req.params, data: req.data }, opts);
+    if (req.kind === 'student') {
+      const available=studentCardsQuery.data?.find(c=>c.uid.toUpperCase()===req.data.uid.toUpperCase() &&
+        c.studentId==null && !c.employeeId && c.status.toLowerCase()==='unassigned');
+      if(available) reassign.mutate({cardId:available.id,data:{studentId:person!.id}},opts);
+      else reg.mutate({ params: req.params, data: req.data }, opts);
+    }
     else assign.mutate({ schoolId: req.schoolId, data: req.data }, opts);
   };
 
@@ -89,6 +104,19 @@ export function OwnerCardLink({ onDone }: { onDone?: () => void }) {
           <input value={search} disabled={!schoolId} onChange={e => { setSearch(e.target.value); resetPerson(); }} data-testid="input-link-search" />
         </Field>
       </div>
+      {schoolId>0 && isStudent && <div data-testid="linked-nfc-devices">
+        <Field label="Linked NFC Devices (automatically loaded)">
+          {devices.isLoading || devices.isFetching ? <p role="status">Loading linked NFC devices…</p> :
+            devices.isError ? <p role="alert">{linkErrorMessage(devices.error)} <button type="button" onClick={()=>devices.refetch()}>Retry devices</button></p> :
+            devices.data?.length ? <div className="space-y-2">{devices.data.map(device=>
+              <input key={device.id} readOnly value={device.serialNumber} aria-label={`Linked NFC device ${device.serialNumber}`} />
+            )}</div> : <div role="status" className="space-y-2">
+              <p>This school has no active NFC device linked. Link an NFC device to this school before assigning NFC cards.</p>
+              <Link href="/devices" className="underline font-semibold">Link NFC Device</Link>
+            </div>}
+        </Field>
+        {!!devices.data?.length && <p className="text-xs">The card belongs to the school and works on all its active linked NFC devices. No separate assignment per device is needed.</p>}
+      </div>}
       {schoolId > 0 && (active.isError
         ? <p role="alert" className="text-sm text-[hsl(var(--destructive))]">{linkErrorMessage(active.error)} <button type="button" className="underline" onClick={() => active.refetch()}>Retry</button></p>
         : <Field label="3. Existing person">
@@ -128,7 +156,7 @@ export function OwnerCardLink({ onDone }: { onDone?: () => void }) {
           />
         </div>
       )}
-      <div className="flex justify-end"><Button type="submit" disabled={!req || pending} testId="button-link-card">{pending ? 'Linking…' : 'Link card'}</Button></div>
+      <div className="flex justify-end"><Button type="submit" disabled={!req || pending || (isStudent && !devicesReady)} testId="button-link-card">{pending ? 'Linking…' : 'Link card'}</Button></div>
     </form>
   );
 }

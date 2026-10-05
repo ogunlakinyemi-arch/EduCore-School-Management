@@ -1,0 +1,283 @@
+Yemait EduCore — NFC Device-First Card Assignment
+
+Implement the following change in the Development environment only.
+
+1. Device must be linked before cards can be assigned
+
+Change the Platform Owner NFC workflow so that an NFC card cannot be linked/assigned to a student unless the selected school has at least one active NFC device linked to it.
+
+The required relationship is:
+
+NFC Device → School → NFC Card → Student
+
+A school without an active NFC device must not be able to have student NFC cards assigned.
+
+When the Platform Owner selects a school during the student NFC card assignment workflow:
+
+- Automatically load the school's active NFC devices.
+- Display the linked device(s) in the Device ID field.
+- Do not require the Platform Owner to manually type a Device ID.
+- Do not allow a card assignment if the school has no active linked device.
+- Show a clear message such as:
+  "This school has no active NFC device linked. Link an NFC device to this school before assigning NFC cards."
+
+Do not allow the Platform Owner to bypass this restriction through direct API requests.
+
+2. Device ID field must be automatically populated
+
+In:
+
+Platform Owner → NFC / ID Cards → Link/Assign NFC Card
+
+After the Platform Owner selects a school:
+
+- Query the authoritative NFC device records for that school.
+- Populate the Device ID field automatically.
+- If one active device exists, show that device.
+- If multiple active devices exist, show all of them.
+- The Platform Owner should not manually enter arbitrary device IDs.
+
+Example:
+
+School: Greenfield College
+
+Linked Devices:
+
+- DEVICE-001
+- DEVICE-002
+
+Then when assigning a student's card, both devices should automatically be associated with the card's school.
+
+3. Multiple devices
+
+A school may have more than one NFC device.
+
+If:
+
+Greenfield College
+
+- Device A → linked to Greenfield College
+- Device B → linked to Greenfield College
+
+Then:
+
+Student NFC Card → Greenfield College
+
+must work on:
+
+- Device A
+- Device B
+
+The card must not need to be separately assigned to each device.
+
+The school association should determine the devices on which the card is valid.
+
+Therefore, the authorization logic should effectively be:
+
+Scanned NFC Card
+        ↓
+Identify Card
+        ↓
+Identify Student
+        ↓
+Identify Student's School
+        ↓
+Identify Scanning Device
+        ↓
+Verify Device belongs to Student's School
+        ↓
+Allow attendance/access
+
+If the scanning device belongs to another school, reject the scan.
+
+4. Do not create unnecessary duplicate card-device assignments
+
+Do not create a separate manual card assignment for every device.
+
+The database relationship should remain logically:
+
+NFC Device
+    ↓
+School
+    ↓
+NFC Card
+    ↓
+Student
+
+A card assigned to a student automatically inherits access to all active NFC devices belonging to that student's school.
+
+If the school later receives another NFC device:
+
+New Device → linked to same School
+
+then existing active student cards for that school should automatically be valid on the new device without reassigning every card.
+
+If a device is deactivated/unlinked from the school, cards belonging to that school should no longer work on that device.
+
+5. Card assignment validation
+
+Before assigning a card:
+
+1. Verify Platform Owner authorization.
+2. Verify selected school exists.
+3. Verify selected school has at least one active NFC device.
+4. Verify selected student belongs to that school.
+5. Verify NFC card is valid and available.
+6. Verify card is not already actively assigned elsewhere.
+7. Create/activate the student-card relationship.
+8. Record the school association.
+9. Record the audit event.
+
+Do not allow:
+
+- Card assigned to a school with no device.
+- Card assigned to a student from another school.
+- Device from School A authorizing a card belonging to School B.
+- Cross-school device/card access.
+- Manually supplied arbitrary Device IDs.
+- Duplicate active card assignments.
+
+6. Platform Owner interface
+
+Update the Platform Owner UI so the workflow is:
+
+Select School
+↓
+System automatically displays linked NFC devices
+↓
+Select Student
+↓
+Enter/scan NFC Card ID
+↓
+Assign Card
+
+Example:
+
+School
+[ Greenfield College ▼ ]
+
+Linked NFC Devices
+[ DEVICE-001 ]
+[ DEVICE-002 ]
+
+Student
+[ Select Student ▼ ]
+
+NFC Card
+[ Card UID / Card ID ]
+
+[ Assign Card ]
+
+If there are no devices:
+
+School
+[ Greenfield College ▼ ]
+
+NFC Devices
+No active NFC device is linked to this school.
+
+You must link an NFC device to this school
+before assigning NFC cards.
+
+[ Link NFC Device ]
+
+The Link NFC Device action should take the Platform Owner to the existing device-linking workflow. Do not create a second unrelated device-management system.
+
+7. NFC scan authorization
+
+Update the Development NFC authorization logic so every scan verifies:
+
+card.school_id === device.school_id
+
+and that:
+
+- Card is active.
+- Card is assigned to a valid student/person.
+- Device is active.
+- Device is currently linked to the same school.
+- Student/person belongs to that school.
+
+Only then should the scan be accepted.
+
+A card from School A must fail on a device belonging to School B.
+
+8. Existing NFC data
+
+Do not delete or recreate existing NFC cards, devices, students, schools, assignments, attendance records, or historical data.
+
+Before changing any existing records:
+
+- Inspect the current schema and relationships.
+- Reuse existing NFC device, school, card and student tables where possible.
+- Add only the minimum required migration/index/constraint changes.
+- Preserve existing IDs and historical records.
+- Do not duplicate existing NFC card/device tables.
+
+If existing card assignments belong to schools that currently have no device, do not silently delete them.
+
+Instead, identify them and report how they should be handled. The new rule should apply to new assignments and future activation.
+
+9. Security and tenant isolation
+
+Enforce the device-school relationship on the backend, not only in the frontend.
+
+Test that:
+
+- Platform Owner can manage devices/cards according to existing permissions.
+- School Admin cannot assign official NFC cards.
+- A device cannot be linked to two schools simultaneously while active.
+- A card cannot be actively assigned to students in different schools.
+- School A's device cannot authenticate School B's card.
+- Changing/manipulating "schoolId", "deviceId", "studentId", or "cardId" in API requests cannot bypass authorization.
+- All relevant actions remain audited.
+
+10. Required Development tests
+
+Create focused tests for:
+
+1. School with no NFC device cannot assign a card.
+2. School with one active device can assign a card.
+3. Selecting the school automatically loads its Device ID.
+4. School with two active devices displays both devices.
+5. Student card works on both devices belonging to the same school.
+6. Adding a third device to the school automatically makes existing valid cards usable on it.
+7. Deactivating/unlinking a device prevents scans on that device.
+8. School A card is rejected by School B device.
+9. Student from School A cannot receive a card under School B.
+10. Duplicate active card assignment is rejected.
+11. Invalid/manipulated Device ID is rejected server-side.
+12. Invalid/manipulated School ID is rejected server-side.
+13. Invalid/manipulated Student ID is rejected server-side.
+14. Existing historical NFC records remain unchanged.
+15. Existing attendance records remain unchanged.
+16. Page refresh preserves the correct device list.
+17. Empty-state messaging works when a school has no device.
+18. Audit records are created for device linking and card assignment.
+
+11. Important implementation constraint
+
+Do not redesign the entire NFC module.
+
+Do not create a new NFC architecture if the current architecture already supports the required relationships.
+
+Trace the existing:
+
+NFC Device → School → NFC Card → Student
+
+implementation and make the smallest safe change necessary to enforce the device-first rule.
+
+Do not modify unrelated modules.
+
+Do not touch Production.
+
+After implementation, report:
+
+- Exact root cause/current architecture discovered.
+- Tables/endpoints/components changed.
+- Database migrations created, if any.
+- How automatic Device ID loading works.
+- How multiple devices are handled.
+- How scan authorization verifies "device.school_id === card.school_id".
+- Tests executed and exact results.
+- Confirmation that existing NFC/attendance data was preserved.
+- Any remaining limitation.

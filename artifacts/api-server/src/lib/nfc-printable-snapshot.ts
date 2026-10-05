@@ -70,7 +70,10 @@ export const printableCardSnapshotSql = `
    LIMIT 1
 `;
 
-export function resolvePrintableIdentity(snapshot: PrintableSnapshot) {
+export function resolvePrintableIdentity(
+  snapshot: PrintableSnapshot,
+  mode: "printable" | "preview" = "printable",
+) {
   if (!snapshot) throw new AuthError(404, "NFC card not found in this school");
   if (snapshot.studentId !== null && snapshot.employeeBindingCount > 0) {
     throw new AuthError(409, "The NFC card has conflicting current assignments");
@@ -80,9 +83,15 @@ export function resolvePrintableIdentity(snapshot: PrintableSnapshot) {
     if (!snapshot.studentName || !snapshot.admissionNo || !snapshot.studentStatus) {
       throw new AuthError(409, "The NFC card's current student assignment is invalid");
     }
-    if (snapshot.studentStatus.toLowerCase() !== "active" ||
-        snapshot.cardStatus.toLowerCase() !== "active") {
-      throw new AuthError(409, "Only an active, currently assigned NFC card can be printed");
+    const cardStatus = snapshot.cardStatus.toLowerCase();
+    // Viewing an already assigned identity never activates or unlocks its UID.
+    // Keep the existing printable eligibility stricter than read-only preview.
+    const eligibleCard = cardStatus === "active" ||
+      (mode === "preview" && cardStatus === "locked");
+    if (snapshot.studentStatus.toLowerCase() !== "active" || !eligibleCard) {
+      throw new AuthError(409, mode === "preview"
+        ? "This student ID card has no eligible current assignment for preview."
+        : "Only an active, currently assigned NFC card can be printed");
     }
     return {
       personType: "Student" as const,
@@ -92,6 +101,9 @@ export function resolvePrintableIdentity(snapshot: PrintableSnapshot) {
     };
   }
 
+  if (snapshot.employeeBindingCount === 0 && snapshot.studentId === null) {
+    throw new AuthError(409, "No active ID card is assigned to this person.", "CARD_NOT_ASSIGNED");
+  }
   if (snapshot.employeeBindingCount !== 1 || !snapshot.employeeId ||
       !snapshot.employeeType || !snapshot.employeeStatus ||
       !snapshot.employeeBindingStatus) {

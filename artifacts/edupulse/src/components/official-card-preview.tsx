@@ -1,8 +1,20 @@
 import {useState} from 'react';
 import {useAuth} from '@clerk/react';
 import {Eye} from 'lucide-react';
-import {useGetOfficialCardPreview} from '@workspace/api-client-react';
+import {ApiError,useGetOfficialCardPreview} from '@workspace/api-client-react';
 import {Button,Modal,ErrorState} from './shared';
+
+function previewErrorMessage(error: unknown) {
+  if (error instanceof ApiError) {
+    if (error.status === 401) return "Please sign in again to view this ID card.";
+    const data = error.data as {error?: unknown} | null;
+    // This endpoint returns sanitized, specific assignment/authorization errors.
+    if ([400,403,404,409,422,503].includes(error.status) && typeof data?.error === 'string') {
+      return data.error;
+    }
+  }
+  return "The ID card preview could not be loaded. Please retry.";
+}
 
 /** Viewing does not enable the Owner-only printable-file or card-lifecycle actions. */
 export function OfficialCardPreview({cardId,schoolId}:{cardId:number;schoolId:number}) {
@@ -18,7 +30,7 @@ export function OfficialCardPreview({cardId,schoolId}:{cardId:number;schoolId:nu
     </Button>
     {open && <Modal title="Official ID card preview" eyebrow="View only · CR80 front and back" onClose={()=>setOpen(false)}>
       {query.isLoading ? <p role="status">Loading the current official card…</p> : query.isError ?
-        <ErrorState message="This card preview is unavailable or you do not have permission." retry={()=>query.refetch()}/> :
+        <ErrorState message={previewErrorMessage(query.error)} retry={()=>query.refetch()}/> :
         query.data && <div className="space-y-4">
           <figure><img src={query.data.frontImage} alt="Front of the current official identification card" className="w-full rounded-md border border-[hsl(var(--border))]" draggable={false}/><figcaption className="mt-1 text-xs">Front</figcaption></figure>
           <figure><img src={query.data.backImage} alt="Back of the current official identification card" className="w-full rounded-md border border-[hsl(var(--border))]" draggable={false}/><figcaption className="mt-1 text-xs">Back</figcaption></figure>

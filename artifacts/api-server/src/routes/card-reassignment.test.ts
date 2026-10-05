@@ -7,6 +7,8 @@ const state = vi.hoisted(() => ({
   employeeBindingId: null as number | null,
   students: new Map<number, { id: number; schoolId: number; firstName: string; lastName: string }>(),
   duplicateActiveBinding: false,
+  deviceAvailable: true,
+  schoolExists: true,
   queries: [] as Array<{ sql: string; values: unknown[] }>,
 }));
 
@@ -18,8 +20,10 @@ const poolMock = vi.hoisted(() => {
   const connect = vi.fn(async () => ({
     query: vi.fn(async (sql: string, values: unknown[] = []) => {
       state.queries.push({ sql, values });
+      if(sql.includes("SELECT id FROM schools WHERE id=$1")) return {rows:state.schoolExists?[{id:values[0]}]:[]};
+      if(sql.includes("FROM platform_devices d")) return {rows:state.deviceAvailable?[{id:501}]:[]};
       if (sql.includes('SELECT nc.id, nc.school_id AS "schoolId"')) {
-        return { rows: [{ ...state.card, employeeBindingId: state.employeeBindingId }] };
+        return { rows: Number(values[0])===state.card.id ? [{ ...state.card, employeeBindingId: state.employeeBindingId }] : [] };
       }
       if (sql.includes('SELECT nc.school_id AS "schoolId"')) {
         return { rows: [{ ...state.card, employeeBindingId: state.employeeBindingId }] };
@@ -30,6 +34,9 @@ const poolMock = vi.hoisted(() => {
       }
       if (sql.includes("SELECT id FROM nfc_cards") && sql.includes("status = 'active'")) {
         return { rows: state.duplicateActiveBinding ? [{ id: 99 }] : [] };
+      }
+      if(sql.includes("SELECT id FROM nfc_cards") && sql.includes("IN ('active','locked')")) {
+        return {rows:state.duplicateActiveBinding?[{id:99}]:[]};
       }
       if (sql.includes("INSERT INTO nfc_cards (school_id, uid, student_id, status, issued_at)")) {
         return {
@@ -46,6 +53,7 @@ const poolMock = vi.hoisted(() => {
       }
       if (sql.includes("UPDATE nfc_cards SET student_id")) {
         state.card.studentId = Number(values[0]);
+        if(state.card.status==="unassigned") state.card.status="locked";
         return { rows: [{ ...state.card }] };
       }
       return { rows: [] };
@@ -119,6 +127,8 @@ beforeEach(() => {
   state.card = { id: 31, schoolId: 1, uid: "NFC-31", studentId: 10, status: "locked", scans: 0, lastScan: null };
   state.employeeBindingId = null;
   state.duplicateActiveBinding = false;
+  state.deviceAvailable = true;
+  state.schoolExists = true;
   state.queries.length = 0;
   poolMock.query.mockClear();
   poolMock.connect.mockClear();
@@ -133,6 +143,68 @@ async function reassign(studentId: number) {
 }
 
 describe("NFC card reassignment", () => {
+  it("rejects a manipulated unknown Card ID without changing an assignment",async()=>{
+    const response=await fetch(`${baseUrl}/cards/999/reassign`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({studentId:11})});
+    expect(response.status).toBe(404);
+    expect(state.queries.some(q=>q.sql.includes("UPDATE nfc_cards"))).toBe(false);
+  });
+  it("assigns an available prepared card as locked and records its actual new status",async()=>{
+    state.card.studentId=null;
+    state.card.status="unassigned";
+    const response=await reassign(11);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({id:31,studentId:11,status:"locked"});
+    expect(state.queries.find(q=>q.sql.includes("INSERT INTO nfc_card_history"))?.values[7]).toBe("locked");
+  });
+  it("rejects new Student card assignment when the selected school has no eligible device",async()=>{
+    state.deviceAvailable=false;
+    const response=await fetch(`${baseUrl}/cards?schoolId=1`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({uid:"NEW-DEVICE-FIRST",studentId:11})});
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({code:"NFC_DEVICE_REQUIRED"});
+    expect(state.queries.some(q=>q.sql.includes("INSERT INTO nfc_cards"))).toBe(false);
+  });
+  it("rejects prepared-card reassignment without an active linked device",async()=>{
+    state.deviceAvailable=false;
+    expect((await reassign(11)).status).toBe(409);
+    expect(state.queries.some(q=>q.sql.includes("UPDATE nfc_cards SET student_id"))).toBe(false);
+  });
+  it("rejects future activation of a legacy assigned card whose school has no device",async()=>{
+    state.deviceAvailable=false;
+    const response=await fetch(`${baseUrl}/cards/31/status`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({status:"active"})});
+    expect(response.status).toBe(409);
+    expect(state.queries.some(q=>q.sql.includes("SET status = $1"))).toBe(false);
+  });
+  it.each(["deviceId","deviceIds","device_id"])("rejects manually injected %s instead of binding a card to an arbitrary device",async key=>{
+    const response=await fetch(`${baseUrl}/cards?schoolId=1`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({uid:"NEW-DEVICE-FIRST",studentId:11,[key]:999})});
+    expect(response.status).toBe(400);
+    expect(state.queries.some(q=>q.sql.includes("INSERT INTO nfc_cards"))).toBe(false);
+  });
+  it("rejects an unknown selected school before creating a card",async()=>{
+    state.schoolExists=false;
+    const response=await fetch(`${baseUrl}/cards?schoolId=999`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({uid:"NEW-DEVICE-FIRST",studentId:11})});
+    expect(response.status).toBe(404);
+  });
+  it("rejects a mismatched explicit school context for prepared-card assignment",async()=>{
+    const response=await fetch(`${baseUrl}/cards/31/reassign?schoolId=2`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({studentId:11})});
+    expect(response.status).toBe(404);
+  });
+  it("rejects duplicate current Student assignments during registration",async()=>{
+    state.duplicateActiveBinding=true;
+    const response=await fetch(`${baseUrl}/cards?schoolId=1`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({uid:"NEW-DEVICE-FIRST",studentId:11})});
+    expect(response.status).toBe(409);
+  });
+  it("requires a currently configured same-school NFC device and holds it through the assignment transaction",async()=>{
+    expect((await reassign(11)).status).toBe(200);
+    const deviceCheck=state.queries.find(q=>q.sql.includes("FROM platform_devices d"));
+    expect(deviceCheck?.values).toEqual([1]);
+    expect(deviceCheck?.sql).toContain("d.school_id=$1");
+    expect(deviceCheck?.sql).toContain("upper(d.status)='ACTIVE'");
+    expect(deviceCheck?.sql).toContain("d.configuration_status='CONFIGURED'");
+    expect(deviceCheck?.sql).toContain("IN ('NFC','HYBRID')");
+    expect(deviceCheck?.sql).toContain("b.school_id=d.school_id");
+    expect(deviceCheck?.sql).toContain("FOR SHARE OF d");
+    expect(state.queries.some(q=>q.sql.includes("INSERT INTO nfc_card_history"))).toBe(true);
+  });
   it("projects an active employee card through the backward-compatible school cards list", async () => {
     state.role = "SCHOOL_ADMIN";
     poolMock.query.mockImplementationOnce(async () => ({
@@ -211,7 +283,7 @@ describe("NFC card reassignment", () => {
       });
       expect(state.card.schoolId).toBe(1);
       expect(state.queries.filter(({ sql }) => sql.includes("INSERT INTO nfc_card_history"))[0]?.values).toEqual(
-        [1, 31, 10, "locked", "Card reassigned from student 10 to student 11", 12, 11],
+        [1, 31, 10, "locked", "Card reassigned from student 10 to student 11", 12, 11, "locked"],
       );
       expect(state.queries.some(({ sql, values }) =>
         sql.includes("INSERT INTO audit_logs") && values.includes("NFC_CARD_REASSIGNED"),

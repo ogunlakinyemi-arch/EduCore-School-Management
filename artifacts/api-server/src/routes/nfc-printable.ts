@@ -45,11 +45,11 @@ function printableError(error: unknown, res: Response, next: NextFunction) {
   return next(error);
 }
 
-async function renderCurrentCard(cardId: number, schoolId: number) {
+async function renderCurrentCard(cardId: number, schoolId: number, mode: "printable" | "preview" = "printable") {
   const result = await pool.query(printableCardSnapshotSql, [cardId, schoolId]);
   const snapshot = result.rows[0] as PrintableSnapshot | undefined;
   if (!snapshot) throw new AuthError(404, "NFC card not found in this school");
-  const identity = resolvePrintableIdentity(snapshot);
+  const identity = resolvePrintableIdentity(snapshot, mode);
   const personId = identity.personType === "Student" ? Number(snapshot.studentId) : Number(snapshot.employeeId);
   const [schoolLogo,personPhoto] = await Promise.all([
     loadPrintableSchoolLogo(schoolId,snapshot.schoolLogo),
@@ -70,7 +70,7 @@ router.get("/cards/:cardId/preview",requireAuthentication(),async(req,res,next)=
     const owner=context.roles.some(r=>r.role==="PLATFORM_OWNER" && r.schoolId===null && r.status==="ACTIVE");
     const admin=context.roles.some(r=>r.role==="SCHOOL_ADMIN" && r.schoolId===schoolId && r.status==="ACTIVE");
     if(!owner && !admin) throw new AuthError(403,"Only the Platform Owner or this school's Admin may view official card previews");
-    const pdf=await renderCurrentCard(cardId,schoolId);
+    const pdf=await renderCurrentCard(cardId,schoolId,"preview");
     res.setHeader("Cache-Control","private, no-store");
     res.json(await rasterOfficialCard(pdf));
   } catch(error) {

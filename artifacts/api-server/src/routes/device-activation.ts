@@ -1,3 +1,4 @@
+import {activeSchoolNfcDevicesSql} from "../lib/nfc-device-first";
 import { Router, type NextFunction, type Request } from "express";
 import { pool } from "@workspace/db";
 import {
@@ -318,13 +319,7 @@ router.get("/activation/schools/:schoolId/devices", run(async (req, res) => {
   const schoolId = id(req.params.schoolId, "schoolId");
   await assertActivationSchool(req, schoolId);
   const result = await pool.query(
-    `SELECT DISTINCT d.id, d.serial_number AS "serialNumber", d.name,
-       d.device_type AS "deviceType", d.status, d.location
-     FROM platform_devices d
-     JOIN device_school_bindings b ON b.device_id = d.id AND b.school_id = $1
-     WHERE d.school_id = $1 AND upper(d.device_type) IN ('NFC', 'HYBRID')
-       AND upper(d.status) = 'ACTIVE'
-     ORDER BY d.name, d.id`,
+    activeSchoolNfcDevicesSql,
     [schoolId],
   );
   res.json(result.rows);
@@ -416,7 +411,8 @@ router.post("/activation/schools/:schoolId/assign", run(async (req, res) => {
        JOIN device_school_bindings b ON b.device_id = d.id AND b.school_id = $2
        WHERE d.id = $1 AND d.school_id = $2
          AND upper(d.device_type) IN ('NFC', 'HYBRID') AND upper(d.status) = 'ACTIVE'
-       FOR UPDATE OF d`,
+         AND d.configuration_status='CONFIGURED'
+        FOR SHARE OF d`,
       [deviceId, schoolId],
     );
     if (!device.rows[0]) {

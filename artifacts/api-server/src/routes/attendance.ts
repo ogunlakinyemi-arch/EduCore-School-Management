@@ -16,6 +16,7 @@ import {
   type CommunicationQueryClient,
 } from "../services/communication-service";
 import { logger } from "../lib/logger";
+import {studentNfcCardLookupSql} from "../lib/nfc-device-first";
 import employeeNfcRouter from "./employee-nfc";
 import { assertSubscriptionAccess } from "../services/subscription-enforcement";
 
@@ -348,6 +349,10 @@ const processDeviceAttendance = run(async (req, res) => {
   const body = req.body ?? {};
   const eventType = String(body.eventType ?? "").toUpperCase();
   const method = String(body.identificationMethod ?? "NFC").toUpperCase();
+  if((body.schoolId!==undefined && Number(body.schoolId)!==device.schoolId) ||
+    (body.deviceId!==undefined && Number(body.deviceId)!==device.deviceId)) {
+    throw new AuthError(403,"School and Device IDs must match the authenticated scanning device");
+  }
   const suppliedStudentId = body.studentId == null ? null : Number(body.studentId);
   if ((body.studentId != null &&
        (!Number.isSafeInteger(suppliedStudentId) || Number(suppliedStudentId) < 1)) ||
@@ -361,9 +366,7 @@ const processDeviceAttendance = run(async (req, res) => {
   if (method === "NFC") {
     const uid = String(body.nfcUid ?? "").trim();
     const card = await pool.query(
-      `SELECT id,student_id AS "studentId" FROM nfc_cards
-        WHERE uid=$1 AND school_id=$2 AND student_id IS NOT NULL
-          AND UPPER(status)='ACTIVE'`,
+      studentNfcCardLookupSql,
       [uid, device.schoolId],
     );
     if (!card.rows[0]) throw new AuthError(403, "NFC card is invalid for this student or school");
@@ -431,10 +434,11 @@ const processDeviceAttendance = run(async (req, res) => {
      `SELECT 1 FROM platform_devices d JOIN device_credentials c ON c.device_id=d.id
        WHERE d.id=$1 AND d.school_id=$2 AND d.status='ACTIVE'
          AND d.configuration_status='CONFIGURED' AND c.id=$3
+         AND ($4::text<>'NFC' OR upper(d.device_type) IN ('NFC','HYBRID'))
          AND c.school_id=d.school_id AND c.status='ACTIVE'
          AND (c.expires_at IS NULL OR c.expires_at>NOW())
        FOR UPDATE OF d`,
-     [device.deviceId, device.schoolId, device.credentialId],
+     [device.deviceId, device.schoolId, device.credentialId,method],
    );
    if (!current.rows[0]) throw new AuthError(401, "Invalid or inactive device credential");
    await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, [lockKey]);

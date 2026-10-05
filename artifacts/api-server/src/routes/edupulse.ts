@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request, type Response as ExpressResponse } from "express";
 import { generateSchoolCode } from "../lib/generated-person-codes";
+import {assertSchoolHasActiveNfcDevice,rejectManualCardDeviceIds} from "../lib/nfc-device-first";
 import {
   CreateClassBody,
   CreateParentBody,
@@ -1487,8 +1488,13 @@ router.post("/cards", async (req, res) => {
       throw new AuthError(403, "Only the Platform Owner may provision physical NFC cards; school users can assign prepared cards");
     }
     const body = RegisterCardBody.parse(req.body);
+    rejectManualCardDeviceIds(req.body);
+    rejectManualCardDeviceIds(req.query);
     RegisterCardQueryParams.parse(req.query);
     const studentId = body.studentId ?? null;
+    if(studentId!==null && (!Number.isSafeInteger(studentId) || studentId<1)) {
+      throw new AuthError(400,"studentId must be a positive integer");
+    }
     await client.query("BEGIN");
     // UID is a physical-card identity, not a school-scoped identity. Lock
     // matching rows so two simultaneous registrations cannot claim it.
@@ -1501,14 +1507,21 @@ router.post("/cards", async (req, res) => {
       throw new AuthError(409, "NFC card UID is already registered");
     }
     if (studentId) {
+      await assertSchoolHasActiveNfcDevice(client,schoolId);
       const lost = await client.query(`SELECT id FROM nfc_cards WHERE student_id=$1 AND school_id=$2 AND status='lost' LIMIT 1`, [studentId,schoolId]);
       if (lost.rows[0]) throw new AuthError(409, "Use the paid replacement request to issue a new card for a lost UID");
-      const student = await client.query(`SELECT id FROM students WHERE id = $1 AND school_id = $2`, [studentId, schoolId]);
+      const student = await client.query(`SELECT id FROM students WHERE id = $1 AND school_id = $2 AND upper(status)='ACTIVE' FOR UPDATE`, [studentId, schoolId]);
       if (!student.rows[0]) {
         await client.query("ROLLBACK");
         res.status(404).json({ error: "Student not found in school" });
         return;
       }
+      const assigned = await client.query(
+        `SELECT id FROM nfc_cards WHERE school_id=$1 AND student_id=$2
+           AND lower(status) IN ('active','locked') LIMIT 1`,
+        [schoolId,studentId],
+      );
+      if(assigned.rows[0]) throw new AuthError(409,"Student already has a current NFC card assignment");
     }
     const status = studentId ? "locked" : "unassigned";
     const result = await client.query(`
@@ -1573,10 +1586,16 @@ router.patch("/cards/:cardId/status", async (req, res) => {
       throw new AuthError(409, "Employee-bound cards must be managed through employee NFC controls");
     }
     const previousStatus = String(card.rows[0].status).toLowerCase();
+    if(req.query.schoolId!==undefined && String(req.query.schoolId)!==String(card.rows[0].schoolId)) {
+      throw new AuthError(404,"Card not found in the selected school");
+    }
+    rejectManualCardDeviceIds(req.body);
+    rejectManualCardDeviceIds(req.query);
     if (terminalCardStatuses.has(previousStatus) && status !== previousStatus) {
       throw new AuthError(409, `A ${previousStatus} card cannot change status`);
     }
     if (status === "active" && card.rows[0].studentId !== null) {
+      await assertSchoolHasActiveNfcDevice(client,card.rows[0].schoolId);
       const student = await client.query(
         `SELECT id FROM students WHERE id = $1 AND school_id = $2 FOR UPDATE`,
         [card.rows[0].studentId, card.rows[0].schoolId],
@@ -1660,6 +1679,12 @@ router.patch("/cards/:cardId/reassign", async (req, res) => {
     if (card.rows[0].employeeBindingId != null) {
       throw new AuthError(409, "Employee-bound cards cannot be reassigned to students");
     }
+    if(req.query.schoolId!==undefined && String(req.query.schoolId)!==String(card.rows[0].schoolId)) {
+      throw new AuthError(404,"Card not found in the selected school");
+    }
+    rejectManualCardDeviceIds(req.body);
+    rejectManualCardDeviceIds(req.query);
+    await assertSchoolHasActiveNfcDevice(client,card.rows[0].schoolId);
 
     const currentStatus = String(card.rows[0].status).toLowerCase();
     if (!cardStatuses.has(currentStatus) || terminalCardStatuses.has(currentStatus)) {
@@ -1668,7 +1693,7 @@ router.patch("/cards/:cardId/reassign", async (req, res) => {
 
     const student = await client.query(
       `SELECT id, school_id AS "schoolId", first_name AS "firstName", last_name AS "lastName"
-       FROM students WHERE id = $1 AND school_id = $2 FOR UPDATE`,
+       FROM students WHERE id = $1 AND school_id = $2 AND upper(status)='ACTIVE' FOR UPDATE`,
       [studentId, card.rows[0].schoolId],
     );
     if (!student.rows[0]) {
@@ -1681,7 +1706,7 @@ router.patch("/cards/:cardId/reassign", async (req, res) => {
 
     const duplicate = await client.query(
       `SELECT id FROM nfc_cards
-       WHERE school_id = $1 AND student_id = $2 AND status = 'active' AND id <> $3
+       WHERE school_id = $1 AND student_id = $2 AND lower(status) IN ('active','locked') AND id <> $3
        FOR UPDATE`,
       [card.rows[0].schoolId, studentId, cardId],
     );
@@ -1693,7 +1718,8 @@ router.patch("/cards/:cardId/reassign", async (req, res) => {
     if (lost.rows[0]) throw new AuthError(409, "Use the paid replacement request to assign the new physical UID");
 
     const updated = await client.query(
-      `UPDATE nfc_cards SET student_id = $1
+      `UPDATE nfc_cards SET student_id = $1,
+         status=CASE WHEN lower(status)='unassigned' THEN 'locked' ELSE status END
        WHERE id = $2 AND school_id = $3
        RETURNING id, school_id AS "schoolId", uid, student_id AS "studentId",
          status, scans, last_scan AS "lastScan"`,
@@ -1707,8 +1733,8 @@ router.patch("/cards/:cardId/reassign", async (req, res) => {
     await client.query(
       `INSERT INTO nfc_card_history
        (school_id, nfc_card_id, student_id, action, previous_status, new_status, reason, actor_user_id)
-       VALUES ($1, $2, $3, 'REASSIGNED_FROM', $4, $4, $5, $6),
-              ($1, $2, $7, 'REASSIGNED_TO', $4, $4, $5, $6)`,
+       VALUES ($1, $2, $3, 'REASSIGNED_FROM', $4, $8, $5, $6),
+              ($1, $2, $7, 'REASSIGNED_TO', $4, $8, $5, $6)`,
       [
         card.rows[0].schoolId,
         cardId,
@@ -1717,6 +1743,7 @@ router.patch("/cards/:cardId/reassign", async (req, res) => {
         `Card reassigned from student ${previousStudentId ?? "unassigned"} to student ${studentId}`,
         getUserContext(req).user.id,
         studentId,
+        updated.rows[0].status,
       ],
     );
     await audit(

@@ -47,3 +47,4 @@
 - [Lesson-note test curriculum](lesson-note-development-curriculum.md) — minimal labelled Development curriculum is authorized only for existing assigned lesson-note acceptance.
 - [Preservation bookkeeping](preservation-bookkeeping.md) — separate unchanged business data from ordinary sign-in and scheduler timestamp updates; disclose every excluded field.
 - [Calendar correction safety](calendar-correction-safety.md) — preserve valid concurrent Admin calendar edits; illustrative dates do not override the school's saved full-year range.
+- [NFC device-first policy](nfc-device-first-policy.md) — require linked readers for new Student assignments/activation; inherit school access and preserve legacy records.

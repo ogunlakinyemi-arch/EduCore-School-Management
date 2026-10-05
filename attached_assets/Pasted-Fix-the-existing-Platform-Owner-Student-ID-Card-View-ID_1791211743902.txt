@@ -1,0 +1,173 @@
+Fix the existing Platform Owner → Student ID Card → View ID workflow.
+
+Current problem
+
+After the Platform Owner assigns an ID/NFC card to a student and clicks View ID, the system displays:
+
+«View only · CR80 front and back
+Official ID card preview
+Couldn’t load this view
+This card preview is unavailable or you do not have permission.
+Retry request»
+
+The card assignment itself appears to complete successfully, but the official ID card preview cannot be loaded.
+
+1. Reproduce and identify the exact root cause
+
+Using an existing authorized Development Platform Owner account:
+
+1. Select an existing school.
+2. Open the student's ID/NFC card management.
+3. Assign an available card to the student.
+4. Click View ID.
+5. Capture the exact failing request.
+
+Inspect:
+
+- frontend route/component;
+- API endpoint;
+- HTTP method;
+- request parameters;
+- school ID;
+- student ID;
+- card ID/card reference;
+- authenticated Platform Owner identity;
+- HTTP status;
+- response body;
+- server-side error;
+- authorization check;
+- student/card relationship lookup;
+- school/tenant lookup;
+- ID-card rendering/preview data query.
+
+Determine the exact root cause before changing the implementation.
+
+Do not simply bypass the permission check.
+
+2. Correct Platform Owner authorization
+
+The Platform Owner should be able to:
+
+Select School → Select Student → View assigned official ID card
+
+The Platform Owner's access must remain read-only for the preview.
+
+The preview should work for the selected school and student without incorrectly treating the Platform Owner as a School Admin, Teacher or Student.
+
+Ensure authorization correctly supports:
+
+Platform Owner → selected school → selected student → assigned card
+
+Do not weaken tenant isolation.
+
+3. Verify card assignment relationship
+
+The preview must retrieve the actual assigned card associated with the selected student.
+
+Verify:
+
+- card exists;
+- card belongs to the selected school;
+- card is assigned to the selected student;
+- assignment is active/current;
+- student belongs to the selected school;
+- student has the required profile information.
+
+Do not use a card from another school.
+
+Do not fall back to an arbitrary card if the expected assignment is missing.
+
+4. Official ID preview requirements
+
+When the card is assigned, View ID should display the existing official CR80 front-and-back design.
+
+Student ID front should use the existing approved design and include, where available:
+
+- Yemait EduCore branding/logo;
+- school logo;
+- school name;
+- student photo;
+- permanent admission/registration number;
+- school registration number;
+- card reference/identifier;
+- optional secure QR.
+
+The card must remain permanent and must NOT display:
+
+- current class;
+- section;
+- session;
+- term;
+- academic year.
+
+Back should retain the existing approved company/property wording and branding.
+
+Do not redesign the card as part of this fix.
+
+5. Handle missing information correctly
+
+If the student has no photo or another optional field is missing, the preview should use the existing approved placeholder/empty-state behaviour rather than failing completely.
+
+If the card has not actually been assigned, show a clear message such as:
+
+«No active ID card is assigned to this student.»
+
+Do not show the generic permission error when the actual problem is missing card data.
+
+6. Security
+
+Maintain the existing ID-card permissions:
+
+- Platform Owner: can generate/view/download/print official Student ID cards according to the existing approved permissions.
+- School Admin: view-only where currently specified; no unauthorized generation/download/printing.
+- Teacher: no official Student ID generation/download/printing.
+- Parent/Student: only their authorized profile/card information according to the existing rules.
+
+Do not grant additional permissions simply to make the preview work.
+
+Prevent a Platform Owner from manipulating a student ID, card ID or school ID to retrieve another school's card outside the selected-school context.
+
+7. Acceptance tests
+
+Development only.
+
+Using existing authorized accounts:
+
+1. Platform Owner selects a school.
+2. Platform Owner selects an existing student.
+3. Platform Owner assigns an available card.
+4. Assignment succeeds.
+5. Platform Owner clicks View ID.
+6. Official CR80 front-and-back preview loads successfully.
+7. Correct student information appears.
+8. Correct school branding appears.
+9. Assigned card reference is displayed correctly.
+10. Class/session/term/year are not incorrectly printed on the permanent card.
+11. Refresh/reopen preview still works.
+12. Another school's card cannot be retrieved by changing IDs.
+13. Student without an assigned card receives a clear empty state.
+14. Student with missing optional profile data does not cause the entire preview to fail.
+15. Existing card assignment, replacement and activation workflows remain functional.
+16. Existing Student/Teacher/Staff ID card permissions remain unchanged.
+
+Run focused backend/API tests, frontend tests, relevant database/security checks and a genuine authenticated browser test.
+
+Scope restrictions
+
+- Development only.
+- Do not modify Production.
+- Do not create unnecessary accounts, students, schools or cards.
+- Do not alter existing card assignments except the minimum test assignment required.
+- Do not redesign the ID card.
+- Do not change unrelated NFC or ID-card workflows.
+- Do not bypass authorization checks.
+
+At completion report:
+
+1. Exact root cause.
+2. Failing endpoint/status before the fix.
+3. Exact fix applied.
+4. Endpoint/status after the fix.
+5. Acceptance-test results.
+6. Confirmation that existing card/student/school data was preserved.
+7. Confirmation that Production was untouched.
