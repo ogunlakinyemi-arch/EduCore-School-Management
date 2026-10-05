@@ -154,3 +154,17 @@ mtime_ms = 1791101317658
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/ffceee57-a249-4ab4-83e4-b8661d3ed3c8/5bde23d6-cb4a-4b46-b36d-f4a80e39812b"
 storage_version_token = "1791101318283989"
 content_type = "text/html"
+
+[[outputs]]
+id = "o3fhTVgQl56S-PU3RojN8"
+uri = "file://outputs/mercyland-exam-acceptance/mercyland-prep1-english-corrected-60-marks.pdf"
+type = "pdf"
+title = "Approved Prep 1 English Paper — 60 Marks"
+description = "Corrected 22-question First Term paper: Grammar20, Vocabulary/Comprehension20, Written English20. This exact PDF was approved and its official print response verified in Development."
+logical_id = "19c639eb-3fd4-48bc-aca5-dace00b0b716"
+content_hash = "sha256:aa3f4aab02e47a794212c247dd5108d3698d17e0059728df8bc10a87f5376336"
+size = 30983
+mtime_ms = 1791194055702
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/19c639eb-3fd4-48bc-aca5-dace00b0b716/01388314-9322-4c4f-be82-7b534f7488bc"
+storage_version_token = "1791195913970712"
+content_type = "application/pdf"

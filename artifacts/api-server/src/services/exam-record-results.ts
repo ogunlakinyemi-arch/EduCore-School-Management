@@ -42,7 +42,7 @@ export async function sheet(req:Request,s:ExamScope,client:any=pool) {
     [...scopeValues(s),teacherId])).rows;
   const published=scores.some((r:any)=>r.status==="PUBLISHED");
   const returned=scores.some((r:any)=>r.review_status==="RETURNED");
-  return {scope:s,components,batchId:batch?.id??null,revision:batch?.revision??0,
+  return {scope:s,components:components.map(c=>({...c,assessmentId:c.assessmentId??null})),batchId:batch?.id??null,revision:batch?.revision??0,
     status:published?"LOCKED":batch?.status??(returned?"RETURNED":scores.some((r:any)=>r.status==="SUBMITTED")?"SUBMITTED":"DRAFT"),
     returnComment:batch?.return_comment??null,gradingRules:await gradingRules(client,s.schoolId),
     rows:students.map((st:any)=>({studentId:st.id,studentName:`${st.firstName} ${st.lastName}`,admissionNo:st.admissionNo,
@@ -61,7 +61,7 @@ export function validateComponents(raw:any):Component[] {
       !Number.isSafeInteger(c.typeId)||c.typeId<1||!Number.isFinite(c.maxScore)||c.maxScore<=0||c.maxScore>99999999.99||
       Math.abs(c.maxScore*100-Math.round(c.maxScore*100))>1e-6) throw new AuthError(400,"Each component needs a unique name/key, a school assessment type, and a valid maximum mark");
     keys.add(c.key);labels.add(c.label.trim().toLowerCase());
-    if(c.assessmentId!==undefined&&(!Number.isSafeInteger(c.assessmentId)||c.assessmentId<1)) throw new AuthError(400,"Invalid component assessment");
+    if(c.assessmentId!=null&&(!Number.isSafeInteger(c.assessmentId)||c.assessmentId<1)) throw new AuthError(400,"Invalid component assessment");
     return {key:c.key,label:c.label.trim(),typeId:c.typeId,maxScore:c.maxScore,...(c.assessmentId?{assessmentId:c.assessmentId}:{})};
   });
 }

@@ -30,6 +30,11 @@ describe("Exam/Record bounded entry and imports",()=>{
     expect(()=>validateComponents([{...component,typeId:0}])).toThrow();
     expect(()=>assertRevision(2,1)).toThrow();expect(()=>assertRevision(2,"2")).toThrow();
   });
+  it("accepts both omitted and null identifiers for unsaved components, without accepting invalid saved identifiers",()=>{
+    expect(validateComponents([{...component,assessmentId:null}])).toEqual([component]);
+    expect(validateComponents([component])).toEqual([component]);
+    expect(()=>validateComponents([{...component,assessmentId:0}])).toThrow();
+  });
   it("uses the configured school scale and rejects overlaps",()=>{
     expect(calculateGrade(25,50,[{minScore:0,maxScore:59,grade:"C"}]).grade).toBe("C");
     expect(()=>calculateGrade(25,50,[{minScore:0,maxScore:60},{minScore:50,maxScore:100}])).toThrow();

@@ -28,6 +28,42 @@ export function applyPasteGrid(prev: Cells, rows: { studentId: number }[], comps
   return next;
 }
 
+export function nextComponentKey(comps: { key: string }[]) {
+  let n = comps.length + 1; const keys = new Set(comps.map(c => c.key));
+  while (keys.has(`new-${n}`)) n++;
+  return `new-${n}`;
+}
+export function retainComponentCells(cells: Record<number, Record<string, string>>, comps: { key: string }[]) {
+  const keys = new Set(comps.map(c => c.key));
+  return Object.fromEntries(Object.entries(cells).map(([studentId, values]) => [
+    studentId, Object.fromEntries(Object.entries(values).filter(([key]) => keys.has(key))),
+  ]));
+}
+
+/** Inline component configuration. Persisted components (assessmentId set) are locked; unsaved ones can be edited or removed. */
+export function ComponentsPanel({ comps, types, typesLoading, onChange }: { comps: Component[]; types: { id: number; name: string; maxScore: number | null }[]; typesLoading?: boolean; onChange: (next: Component[]) => void }) {
+  const [maxText, setMaxText] = useState<Record<string, string>>({});
+  const usedKeys = useRef(new Set(comps.map(c => c.key)));
+  comps.forEach(c => usedKeys.current.add(c.key));
+  const patch = (key: string, p: Partial<Component>) => onChange(comps.map(c => c.key === key ? { ...c, ...p } : c));
+  const add = () => {
+    const key = nextComponentKey([...usedKeys.current].map(key => ({ key })));
+    usedKeys.current.add(key);
+    onChange([...comps, { key, label: '', typeId: types[0]?.id ?? null, maxScore: null, assessmentId: null }]);
+  };
+  return <section className="panel space-y-3 p-5" data-testid="panel-er-components" aria-label="Result components">
+    <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-bold">Components</h3><p className="text-xs text-[hsl(var(--muted-foreground))]">Name each column (for example CA1, CA2, Examination), choose an existing assessment type and set its maximum. Saved components are locked so scores and history are preserved.</p></div>
+      <Button variant="outline" onClick={add} disabled={typesLoading || !types.length} testId="button-er-add-component">Add component</Button></div>
+    {!typesLoading && !types.length && <p role="alert" className="text-xs font-bold text-[hsl(var(--destructive))]">No active assessment types exist for this school. Ask the School Admin to create one.</p>}
+    <ul className="space-y-2">{comps.map((c, i) => { const locked = c.assessmentId != null; const tName = types.find(t => t.id === c.typeId)?.name ?? '-'; return <li key={c.key} className="grid items-end gap-2 md:grid-cols-[1fr_12rem_7rem_auto]" data-testid={`row-er-component-${i}`}>
+      <label className="text-xs font-bold">Name<input aria-label={`Component name ${i + 1}`} data-testid={`input-er-component-name-${i}`} className="mt-1 w-full" value={c.label} disabled={locked} placeholder="CA1" onChange={e => patch(c.key, { label: e.target.value })} /></label>
+      <label className="text-xs font-bold">Type{locked ? <div className="mt-1 py-2 font-medium">{tName}</div> : <select aria-label={`Component type ${i + 1}`} data-testid={`select-er-component-type-${i}`} className="mt-1 w-full" value={c.typeId ?? ''} onChange={e => patch(c.key, { typeId: Number(e.target.value) })}>{types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select>}</label>
+      <label className="text-xs font-bold">Maximum<input aria-label={`Component maximum ${i + 1}`} data-testid={`input-er-component-max-${i}`} inputMode="decimal" className="mt-1 w-full" disabled={locked} value={locked ? (c.maxScore ?? '') : (maxText[c.key] ?? (c.maxScore ?? ''))} onChange={e => { const v = e.target.value.trim(); setMaxText(m => ({ ...m, [c.key]: v })); patch(c.key, { maxScore: v !== '' && NUM.test(v) ? Number(v) : null }); }} /></label>
+      {locked ? <span className="pb-2 text-xs text-[hsl(var(--muted-foreground))]">Saved</span> : <Button variant="quiet" onClick={() => onChange(comps.filter(x => x.key !== c.key))} testId={`button-er-remove-component-${i}`}>Remove</Button>}
+    </li>; })}</ul>
+  </section>;
+}
+
 export function SheetBanners({ status, comment }: { status: string; comment: string | null }) {
   const st = (status || '').toUpperCase();
   return <>
@@ -54,6 +90,7 @@ export function gradeFor(total: number | null, maxSum: number | null, rules: Gra
 export function SheetEditor({ scope, title, onBack }: { scope: Scope; title: string; onBack: () => void }) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['er-sheet', scope], queryFn: () => examApi.sheet(scope), staleTime: 0, gcTime: 0 });
+  const typeQ = useQuery({ queryKey: ['er-types', scope.schoolId, scope.sessionId, scope.termId], queryFn: () => examApi.context({ schoolId: scope.schoolId, sessionId: scope.sessionId, termId: scope.termId }) });
   const [comps, setComps] = useState<Component[]>([]);
   const [cells, setCells] = useState<Record<number, Record<string, string>>>({});
   const [dirty, setDirty] = useState(false);
@@ -104,13 +141,16 @@ export function SheetEditor({ scope, title, onBack }: { scope: Scope; title: str
     scope, revision: meta.revision, components: comps,
     rows: rows.map(r => ({ ...r, scores: Object.fromEntries(comps.map(c => { const v = (cells[r.studentId]?.[c.key] ?? '').trim(); return [c.key, v === '' ? null : Number(v)]; })) })),
   });
+  const compError = () => { const names = comps.map(c => c.label.trim().toLowerCase()); if (comps.some(c => !c.label.trim())) return 'Every component needs a name.'; if (new Set(names).size !== names.length) return 'Component names must be unique.'; if (comps.some(c => c.assessmentId == null && !c.typeId)) return 'Choose an assessment type for every new component.'; if (comps.some(c => c.maxScore == null || !(c.maxScore > 0))) return 'Component maximum must be above zero.'; return ''; };
   const save = async (): Promise<Sheet | null> => {
+    const ce = compError(); if (ce) { setMsg({ ok: false, text: ce }); return null; }
     if (problems.invalid) { setMsg({ ok: false, text: 'Fix the highlighted scores before saving.' }); return null; }
     setBusy(true);
     try { const s = await examApi.saveDraft(payload()); setMeta({ batchId: s.batchId, revision: s.revision, status: s.status, comment: s.returnComment }); setDirty(false); setMsg({ ok: true, text: 'Draft saved.' }); qc.invalidateQueries({ queryKey: ['er-context'] }); return s; }
     catch (e) { setMsg({ ok: false, text: errMsg(e) }); return null; } finally { setBusy(false); }
   };
   const submit = async () => {
+    const ce = compError(); if (ce) { setMsg({ ok: false, text: ce }); return; }
     if (problems.invalid || problems.empty || problems.noMax) { setMsg({ ok: false, text: 'Complete every score and maximum with valid numbers before submitting.' }); return; }
     if (!confirm('Submit this subject result? You will not be able to edit it unless it is returned.')) return;
     let batchId = meta.batchId, revision = meta.revision;
@@ -139,14 +179,14 @@ export function SheetEditor({ scope, title, onBack }: { scope: Scope; title: str
       </div>
       <SheetBanners status={meta.status} comment={meta.comment} />
       {msg && <p role={msg.ok ? 'status' : 'alert'} className={msg.ok ? 'text-sm font-bold text-[hsl(157_37%_30%)]' : 'text-sm font-bold text-[hsl(var(--destructive))]'}>{msg.text}</p>}
+      {editable && <ComponentsPanel comps={comps} types={typeQ.data?.assessmentTypes ?? []} typesLoading={typeQ.isLoading} onChange={next => { setComps(next); setCells(previous => retainComponentCells(previous, next)); setDirty(true); setMsg(null); }} />}
       <div className="panel overflow-x-auto">
         {rows.length === 0 ? <p className="p-8 text-center text-sm text-[hsl(var(--muted-foreground))]">No students are enrolled in this class and section for the selected term.</p> :
         <table className="w-full min-w-[640px] text-sm" data-testid="table-er-sheet">
           <thead className="bg-[hsl(var(--muted)/.4)] text-left text-xs uppercase tracking-wider">
             <tr><th className="p-3">Student</th>{comps.map(c => <th key={c.key} className="p-3">
               <div>{c.label}</div>
-              {fixedMax.current.has(c.key) || !editable ? <div className="font-medium normal-case text-[hsl(var(--muted-foreground))]">out of {c.maxScore ?? '-'}</div> :
-                <label className="mt-1 flex items-center gap-1 font-medium normal-case">out of <input aria-label={`Maximum for ${c.label}`} inputMode="decimal" className="h-7 w-16 px-2 text-sm" value={c.maxScore ?? ''} onChange={e => { const v = e.target.value.trim(); setComps(p => p.map(x => x.key === c.key ? { ...x, maxScore: v !== '' && NUM.test(v) ? Number(v) : null } : x)); setDirty(true); }} /></label>}
+              <div className="font-medium normal-case text-[hsl(var(--muted-foreground))]">out of {c.maxScore ?? '-'}</div>
             </th>)}<th className="p-3">Total</th><th className="p-3">Grade</th></tr>
           </thead>
           <tbody className="divide-y divide-[hsl(var(--border)/.6)]">

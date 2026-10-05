@@ -1,13 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { applyPasteGrid, cellError, parseClipboardGrid, SheetActions, SheetBanners, isEditableStatus } from '@/components/exam-record-sheet';
+import { applyPasteGrid, cellError, parseClipboardGrid, SheetActions, SheetBanners, isEditableStatus, ComponentsPanel, retainComponentCells, nextComponentKey } from '@/components/exam-record-sheet';
 import { paperCapabilities } from '@/components/exam-record-questions';
 import { PublishedReports } from '@/components/exam-record-family';
 import { resolveSurfaceRole, StudentPreviewBody } from '@/pages/exam-record';
 
 const noop = () => {};
 const wrap = (n: React.ReactNode) => renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}>{n}</QueryClientProvider>);
+
+describe('worksheet component configuration', () => {
+  const component = { key: 'ca1', label: 'CA1', typeId: 3, maxScore: 20, assessmentId: null };
+  it('keeps null or omitted assessment IDs editable and saved assessment IDs immutable', () => {
+    const markup = (assessmentId: number | null | undefined) => renderToStaticMarkup(<ComponentsPanel comps={[{ ...component, assessmentId } as any]} types={[{ id: 3, name: 'Test', maxScore: null }]} onChange={noop} />);
+    for (const id of [null, undefined]) {
+      expect(markup(id)).toContain('button-er-remove-component-0');
+      expect(markup(id)).not.toContain('>Saved</span>');
+    }
+    expect(markup(42)).not.toContain('button-er-remove-component-0');
+    expect(markup(42)).toContain('>Saved</span>');
+  });
+  it('drops removed draft-column marks without changing remaining students or columns', () => {
+    expect(retainComponentCells({ 721: { ca1: '16', discarded: '99' }, 730: { ca1: '' } }, [component]))
+      .toEqual({ 721: { ca1: '16' }, 730: { ca1: '' } });
+  });
+  it('does not recycle removed keys when the used-key history is supplied', () => {
+    expect(nextComponentKey([{ key: 'type3' }, { key: 'new-2' }, { key: 'new-3' }])).toBe('new-4');
+  });
+});
 
 describe('spreadsheet paste and validation', () => {
   const rows = [{ studentId: 1 }, { studentId: 2 }];

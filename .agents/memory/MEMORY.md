@@ -43,3 +43,4 @@
 - [Assessment provenance](assessment-provenance.md) — an administrator can create a teacher-owned assessment; instructional ownership is not audit authorship.
 - [Cold workflow restarts](cold-workflow-restarts.md) — inspect unfinished cold builds before changing valid managed ports; bounded longer deadlines can resolve startup timeouts.
 - [Temporary QA evidence](temporary-qa-evidence.md) — notebook resets can remove private tickets, browser sessions and preservation baselines; do not infer comparisons from lost files.
+- [Authorization denial evidence](authorization-denial-evidence.md) — preserve resource-masking denials; an invented 403 expectation does not make a correct 404 confidentiality failure.
