@@ -20,3 +20,15 @@ Parent communication is an event-driven, child-specific service, not merely anno
 **Why:** The user identifies parents as the ultimate service users/payors and requires proactive, reliable communication across available channels.
 
 **How to apply:** Support multiple-child selection and scoped timelines. Distinguish queued, sent, delivered and read evidence; never claim provider delivery or supported push when unavailable.
+
+Do not bypass delegated communication permission checks merely because a Teacher has academic assignments. Obtain explicit consent before adding a missing Development grant, then use the existing School Admin grant flow with only the approved permission.
+
+**Why:** Academic eligibility and the shared school-level communication permission are separate. The user approved a minimal Communication Send grant rather than changing authorization rules to make an acceptance test pass.
+
+**How to apply:** Verify the existing account and grant state first. Preserve assignment and family-link data, avoid replacing existing grants, and retain the permission audit. A test-grant approval is not authorization to grant permissions to other accounts or in Production.
+
+Preserve stored notification links when fixing recipient navigation; add an authenticated route compatible with existing links rather than rewriting notification history or bypassing message authorization.
+
+**Why:** Notifications can outlive UI changes. Navigation repairs should not disturb the message, recipient and audit evidence.
+
+**How to apply:** Reuse the existing authorized conversation view and verify Open, refresh and Back without submitting another message. Keep server-side relationship and assignment checks authoritative.

@@ -168,3 +168,17 @@ mtime_ms = 1791194055702
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/19c639eb-3fd4-48bc-aca5-dace00b0b716/01388314-9322-4c4f-be82-7b534f7488bc"
 storage_version_token = "1791195913970712"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "O_WXr7YE986mPi8bEeVlD"
+uri = "file://reports/lesson-parent-development-acceptance.html"
+type = "html"
+title = "Development acceptance report — Lesson Notes & Message Parent"
+description = "API before/after, all 25 checks, permission and message evidence, immutable PDF hashes, data-preservation results and two live-data limitations."
+logical_id = "d50fa603-6de3-4a6c-a520-6bb4ec6ed847"
+content_hash = "sha256:dd43d903df2300cdc836748335c80219c36978265f2a2f607d9f5fbc4ba39e12"
+size = 24404
+mtime_ms = 1791202893345
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/d50fa603-6de3-4a6c-a520-6bb4ec6ed847/7590927f-90ea-43dc-a43b-5d4259d79c37"
+storage_version_token = "1791202894163514"
+content_type = "text/html"

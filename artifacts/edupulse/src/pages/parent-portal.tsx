@@ -1,5 +1,6 @@
 import { UserButton } from '@clerk/react';
 import ParentCommunicationCentre from './parent-communication';
+import { ThreadLinkPage } from './parent-communication/threads';
 import { useState } from 'react';
 import { Link, Route, Switch } from 'wouter';
 import { BookOpen, ChevronRight, GraduationCap, ShieldCheck, UserRound, UsersRound, Zap, LogIn, LogOut, Calendar, Clock, ReceiptText, FileSpreadsheet } from 'lucide-react';
@@ -439,5 +440,12 @@ function ChildLibraryRoute() {
 }
 
 export default function ParentPortal() {
+  return <Switch>
+    <Route path="/communication/threads/:threadId">{params=><div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><ThreadLinkPage threadId={params.threadId} parent /></div>}</Route>
+    <Route><ParentPortalContent /></Route>
+  </Switch>;
+}
+
+function ParentPortalContent() {
   return <div className="min-h-[100dvh] bg-[hsl(var(--background))]"><PortalHeader /><div className="mx-auto max-w-6xl px-5 pt-5 md:px-8"><SubscriptionAccessBanner audience="parent" /></div><Switch><Route path="/" component={ParentDashboard} /><Route path="/parent" component={ParentDashboard} /><Route path="/parent/" component={ParentDashboard} /><Route path="/parent/dashboard" component={ParentDashboard} /><Route path="/parent/timetable" component={ParentTimetables} /><Route path="/timetable" component={ParentTimetables} /><Route path="/parent/timetable/:studentId" component={ChildTimetableRoute} /><Route path="/reporting"><main className="mx-auto max-w-6xl p-5 md:p-8"><ReportingPage audience="parent" /></main></Route><Route path="/parent/communication"><ParentCommunicationCentre /></Route><Route path="/inbox"><CommunicationInbox standalone /></Route><Route path="/notification-settings"><NotificationSettings standalone /></Route><Route path="/card-replacements"><Shell><CardReplacementsPage /></Shell></Route><Route path="/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/fees/return" component={ParentCheckoutReturn} /><Route path="/parent/children/:studentId" component={ChildRoute} /><Route path="/parent/fees/:studentId" component={ChildFeesRoute} /><Route path="/parent/library/:studentId" component={ChildLibraryRoute} /><Route component={NotFound} /></Switch></div>;
 }

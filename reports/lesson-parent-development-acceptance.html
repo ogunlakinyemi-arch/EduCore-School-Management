@@ -1,0 +1,186 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Development acceptance — Lesson Notes and Message Parent</title><style>body{font:15px/1.6 system-ui,sans-serif;color:#172337;background:#f4f6fa;margin:0}main{max-width:1080px;margin:30px auto;padding:30px;background:white;border:1px solid #dce2ea;border-radius:12px}h1{font-size:28px;line-height:1.25}h2{margin-top:30px;font-size:21px}h3{font-size:17px}header{border-bottom:3px solid #e2ad27;padding-bottom:18px}.muted{color:#586476}.summary{padding:16px;background:#eef4fb;border-radius:8px}table{width:100%;border-collapse:collapse;font-size:13px;margin:15px 0}th{text-align:left;background:#edf1f6}td,th{padding:10px;border:1px solid #dde3ea;vertical-align:top}code{font-size:12px;overflow-wrap:anywhere}pre{font:12px/1.5 monospace;white-space:pre-wrap;overflow-wrap:anywhere;padding:18px;background:#f3f5f8;border-radius:8px}.pass{color:#12683c;font-weight:700}.blocked{color:#976105;font-weight:700}.notice{padding:15px;background:#fff6df;border-left:4px solid #d7a027}.scroll{overflow-x:auto}li{margin:7px 0}@media(max-width:700px){main{margin:0;padding:18px;border-radius:0}table{min-width:620px}}@media print{body{background:white}main{border:0;margin:0;padding:0}thead{display:table-header-group}tr{break-inside:avoid}details>div{display:block}}</style><main><header><p class="muted">Yemait EduCore • Development only • 5 October 2026</p><h1>Lesson Notes and Message Parent<br>Acceptance and preservation report</h1><p>Existing authorized accounts and existing student/family data. Names, contacts, credentials and private storage URLs omitted.</p></header><p class="summary"><strong>23 of 25 live acceptance checks passed.</strong> Checks 18 and 23 are live-data blocked; native read-only query and UI regression coverage passed. The notification Open link was fixed and verified after refresh. Production was neither queried nor modified.</p><h2>1. Exact root causes</h2><ul><li><strong>Initially empty Student list:</strong> the client enabled the general student search only after more than one search character. Opening the dropdown with no search made no student-list request. The native dropdown itself worked. Searching returned student 721 and 730 from the general API; the old UI hid 730, so this is not evidence of an old visible unauthorized student option.</li><li><strong>Lesson Notes authorized options:</strong> the teaching-context query required class-subject rows that were absent for valid staffing-only Teacher assignments. It therefore returned HTTP 200 with an empty array even though the timetable-authoritative assignments existed.</li><li><strong>Communication permission:</strong> the existing Teacher lacked the separate Communication Send grant. Initial scoped reads consequently returned 404 “School security operation not found,” including the authorized student. Academic assignment is not this permission; the guard was not bypassed.</li></ul><h2>2. Exact fixes</h2><ul><li>Reuse the authoritative teaching eligibility scope for Lesson Notes; retain native selection controls and dependent Session → Term → Class/Section → Subject → Curriculum/Topic selection. Require confirmed applicable curriculum/topic context rather than guessing from PDF contents.</li><li>Load the communication-specific student endpoint immediately, with optional search. Resolve the signed-in account through its existing active Teacher employee record and current active student enrollments. Filter school, section, assignment, active/current session and student status on the server; include all qualifying assigned classes rather than all school students.</li><li>Load only existing authorized guardian relationships for the selected student. Use the existing thread, audit and notification lifecycle. The empty state is exactly “No linked parent/guardian is available for this student.”</li><li>Following explicit user approval, Admin 911 issued Development grant 4 to Teacher 912 in school 1393 through the existing authenticated grant endpoint. Its exact permission array is [COMMUNICATION_SEND]; audit 1601 records the School Admin actor. No other permission, teaching assignment or family relationship changed.</li><li>Add optional secure private PDFs, true PDF parsing, a 10 MB limit, authorized preview/download and immutable generation-pinned originals with SHA-256 hashes. Corrections create another document version; structured notes remain supported. Reuse Draft → Submitted → Returned → Resubmitted → Approved.</li><li>Keep existing weekly assignment uniqueness; duplicate new notes now return helpful 409 rather than 500. Do not mislabel that new-note conflict as an externally edited existing note.</li><li>Register the existing notification thread URL in authenticated Parent and school routing and reuse the existing authorized thread view. Stored notifications were not rewritten; server-side authorization remains intact.</li></ul><h2>3. Existing records used</h2><div class="scroll"><table><tr><th>Record</th><th>Verified identifiers/context</th></tr><tr><td>Teacher</td><td>User 912; employee 183; active Teacher membership in school 1393.</td></tr><tr><td>Teaching assignments</td><td>12: class 538/A, subject 6. 22: class 571/Science, subject 15. 21: class 573/Commercial, class-teacher assignment without a subject. These existing assignments were not changed.</td></tr><tr><td>Current academic context</td><td>Session 358; term 20.</td></tr><tr><td>Current student</td><td>Student 721; enrollment 592; class 538/A. Existing student 730 was used for the negative same-school scope check.</td></tr><tr><td>Guardian</td><td>Existing Parent user 914 linked to student 721; original relationships unchanged.</td></tr><tr><td>Review/read-only accounts</td><td>School Admin 911; Owner 309. Foreign-school negative target 1496.</td></tr><tr><td>Authorized curriculum fixture</td><td>Development-labelled version 3, mapping 1 and topic 2, confined to the approved 538/A–6–358–20 context. Retained to preserve evidence, without replacing existing curriculum.</td></tr></table></div><h2>4. API before and after</h2><p class="muted">Response bodies below are privacy-redacted summaries, not full student/profile payloads. Search-name values are omitted.</p><div class="scroll"><table><tr><th>Stage</th><th>Method and endpoint/query</th><th>Status</th><th>Observed result</th></tr><tr><td>Before, empty search</td><td>Student list</td><td>No request</td><td>Only “Select a student”; search-length gate disabled fetching.</td></tr><tr><td>Before, typed search</td><td>GET /api/students?schoolId=1393&amp;search=[REDACTED]</td><td>200</td><td>Representative response IDs [721,730]. UI option IDs [0,721]; no student selected and no baseline message sent.</td></tr><tr><td>Before, teaching context</td><td>GET /api/schools/1393/curriculum/teaching-context?sessionId=358&amp;termId=20</td><td>200</td><td>[]</td></tr><tr><td>After, teaching context</td><td>Same authorized context</td><td>200</td><td>Authorized pairs 538/A–6 and 571/Science–15; applicable confirmed mapping/topic available.</td></tr><tr><td>Before approved grant</td><td>GET /api/communication/students?schoolId=1393; guardian GET for 721</td><td>404</td><td>“School security operation not found.” This did not prove student-level denial because authorized and outside IDs failed alike.</td></tr><tr><td>After approved grant</td><td>GET /api/communication/students?schoolId=1393 (no search)</td><td>200</td><td>Student IDs [721].</td></tr><tr><td>After, guardian lookup</td><td>GET /api/communication/students/721/guardians?schoolId=1393</td><td>200</td><td>Guardian user IDs [914].</td></tr><tr><td>After, wrong student</td><td>GET /api/communication/students/730/guardians?schoolId=1393</td><td>404</td><td>Resource masked; authorized 721 lookup succeeds for the same actor.</td></tr><tr><td>After, foreign school</td><td>Student/guardian reads with schoolId=1496</td><td>404</td><td>No foreign-school roster or guardian data.</td></tr><tr><td>Single test send</td><td>POST /api/communication/threads</td><td>201</td><td>One POST; thread 3/message 5/student 721/Parent 914.</td></tr><tr><td>Notification Open repair</td><td>GET /communication/threads/3; GET /api/communication/threads/3</td><td>200 / 200</td><td>Previously missing UI route now renders and refreshes. Back returns to /parent/communication. Message count remains one.</td></tr></table></div><h2>5. All 25 acceptance results</h2><div class="scroll"><table><thead><tr><th>#</th><th>Required behavior</th><th>Live result</th><th>Evidence/limitation</th></tr></thead><tbody><tr><td>1</td><td>Teacher can select Session</td><td class="pass">PASS</td><td>Session 358 selected in the authenticated Teacher flow.</td></tr><tr><td>2</td><td>Teacher can select Term</td><td class="pass">PASS</td><td>Term 20 selected within session 358.</td></tr><tr><td>3</td><td>Teacher can select authorized Class/Section</td><td class="pass">PASS</td><td>Authorized class 538/A and 571/Science context verified.</td></tr><tr><td>4</td><td>Teacher can select authorized Subject</td><td class="pass">PASS</td><td>Authorized pairs 538/A–subject 6 and 571/Science–subject 15; no inferred subjects.</td></tr><tr><td>5</td><td>Teacher can select applicable Curriculum/Topic</td><td class="pass">PASS</td><td>Confirmed mapping 1, curriculum version 3, topic 2; clearly Development-labelled fixture.</td></tr><tr><td>6</td><td>Unauthorized classes, subjects and topics are excluded</td><td class="pass">PASS</td><td>Native scope plus live forged requests: class denied 403; wrong class/subject denied 403; foreign topic denied 404; no note inserted.</td></tr><tr><td>7</td><td>Teacher can create a structured lesson note</td><td class="pass">PASS</td><td>New structured note 1 persisted, submitted, returned, corrected and approved.</td></tr><tr><td>8</td><td>Teacher can upload a valid PDF</td><td class="pass">PASS</td><td>Valid original PDF, corrected PDF and PDF-only note 4 accepted.</td></tr><tr><td>9</td><td>Invalid/non-PDF upload is rejected</td><td class="pass">PASS</td><td>Renamed plain text rejected; server confirm 400. Oversized file rejected against 10 MB limit. Specific inline red errors verified.</td></tr><tr><td>10</td><td>PDF preview works</td><td class="pass">PASS</td><td>Preview and exact download bytes verified in the original authenticated cycle.</td></tr><tr><td>11</td><td>Draft survives refresh</td><td class="pass">PASS</td><td>Structured note and attached PDF persisted across refresh.</td></tr><tr><td>12</td><td>Submitted PDF remains linked to the correct lesson note</td><td class="pass">PASS</td><td>Documents linked to the selected school, Teacher, session, term, class/section, subject, mapping, topic and note.</td></tr><tr><td>13</td><td>School Admin can review the PDF</td><td class="pass">PASS</td><td>Admin 911 reviewed the original and corrected PDF in the existing review lifecycle.</td></tr><tr><td>14</td><td>Returned lesson note can receive a corrected PDF</td><td class="pass">PASS</td><td>Original document 1 retained; corrected document 3 became version 2.</td></tr><tr><td>15</td><td>Existing lesson-note version history remains protected</td><td class="pass">PASS</td><td>Note 1 APPROVED/revision 9 remained unchanged; direct Teacher PATCH returned 409; both PDF hashes stable.</td></tr><tr><td>16</td><td>Student dropdown opens normally</td><td class="pass">PASS</td><td>Existing native select retained; automatic request made without a search string.</td></tr><tr><td>17</td><td>Existing students assigned to the authenticated Teacher appear</td><td class="pass">PASS</td><td>No-search scoped GET returned only existing current student 721.</td></tr><tr><td>18</td><td>Students from all authorized classes/sections appear</td><td class="blocked">LIVE DATA BLOCKED</td><td>LIVE DATA BLOCKED: only student 721 currently qualifies. Read-only PostgreSQL CTE coverage passed multiple-class and wildcard cases without creating students.</td></tr><tr><td>19</td><td>Students outside Teacher authorization do not appear</td><td class="pass">PASS</td><td>Live list excluded student 730; its guardian lookup denied 404 after authorized 721 lookup succeeded. Native CTE also denied inactive, foreign-school, wrong-section, wrong-session and historical cases.</td></tr><tr><td>20</td><td>Teacher can select a student</td><td class="pass">PASS</td><td>Teacher selected existing student 721 in the browser.</td></tr><tr><td>21</td><td>Correct linked Parent/Guardian recipients load</td><td class="pass">PASS</td><td>Guardian lookup returned existing Parent user 914; recipient selection verified.</td></tr><tr><td>22</td><td>Teacher can send the message</td><td class="pass">PASS</td><td>Exactly one POST returned 201: thread 3/message 5. Parent 914 viewed the same single message.</td></tr><tr><td>23</td><td>Student with no linked Parent displays the proper empty state</td><td class="blocked">LIVE DATA BLOCKED</td><td>LIVE DATA BLOCKED: no qualifying current assigned student without a linked Parent. UI unit test verified exact empty-state text and absent Send button. No links changed.</td></tr><tr><td>24</td><td>Changing an ID/query parameter cannot bypass authorization</td><td class="pass">PASS</td><td>Same-school student 730 and foreign-school 1496 reads denied 404; authorized student 721 read succeeded 200.</td></tr><tr><td>25</td><td>Communication audit/notification records remain correct</td><td class="pass">PASS</td><td>Thread audit 1605, notification 174 and event key link message 5/student 721/Parent 914. Notification Open/refresh now work; no duplicate send.</td></tr></tbody></table></div><h3>Additional authenticated evidence</h3><ul><li>PDF-only note 4 submitted successfully with blank objectives/content/assessment; SUBMITTED/revision 3. Structured note 1 remains APPROVED/revision 9.</li><li>Owner 309 read notes 1 and 4 and downloaded note 4 PDF with HTTP 200/application/pdf. Owner review was denied 404, and note state remained unchanged. Foreign-school document access returned 404 without PDF bytes.</li><li>Forged class/subject/topic requests produced no week-3 note. Exactly one parent message exists in thread 3.</li><li>65 focused automated tests passed across completed suites: 40 backend and 25 frontend, including seven notification-link tests. Final frontend production build passed; backend managed build passed earlier. Both app services are running. Full workspace/library/backend typechecks timed out and are not certified as passing; existing unrelated frontend typechecking work was not changed.</li></ul><h3>PDF byte-integrity evidence</h3><div class="scroll"><table><tr><th>Document</th><th>SHA-256</th></tr><tr><td>Note 1, original document 1</td><td><code>af33eafd9c29cd5fa03d30fb071f572e48e90a35177e6c9a95602a9687214031</code></td></tr><tr><td>Note 1, corrected document 3</td><td><code>0a8084d36bf827ac3de07cd7f592131a0339b53e7b3d689ef44d6b420283f6bb</code></td></tr><tr><td>Note 4, PDF-only document 4 (1,722 bytes)</td><td><code>fa6237ff6e486e18ea078f60d2711a057db7bedddc523286caf4126ac16d06ea</code></td></tr></table></div><h2>6. Data preservation</h2><p>Immutable pre-test baseline covers 171 existing tables. Final comparison: <strong>originalBusinessRowsPreserved=true; changed={}</strong>. No existing accounts, schools, students, Parents, Teachers, assignments, enrollments, guardian links, curriculum contents or pre-existing approved notes were replaced, deleted or changed.</p><p><strong>Not byte-identical:</strong> five existing subscription-enforcement rows had only updated_at refreshed by the existing scheduler; no enforcement-status change. The comparison explicitly excludes app_users.updated_at and school_subscription_enforcement.updated_at. Only the latter had detected bookkeeping updates. This is not a claim that every database byte stayed unchanged.</p><p>The authorized curriculum, two new test notes, reviews/PDFs, permission grant and message/audit/notification evidence were retained. The new approved test note was not altered after approval. Appended rows across the baseline tables:</p><table><tr><th>Table</th><th>Additional rows</th></tr><tr><td>audit_logs</td><td>49</td></tr><tr><td>communication_deliveries</td><td>8</td></tr><tr><td>communication_message_threads</td><td>1</td></tr><tr><td>communication_messages</td><td>1</td></tr><tr><td>communication_notifications</td><td>6</td></tr><tr><td>curriculum_topics</td><td>1</td></tr><tr><td>curriculum_versions</td><td>1</td></tr><tr><td>lesson_note_reviews</td><td>2</td></tr><tr><td>lesson_notes</td><td>2</td></tr><tr><td>school_curriculum_assignments</td><td>1</td></tr><tr><td>security_staff_grants</td><td>1</td></tr></table><p class="muted">New document/upload tables added by the Development migration are outside the original 171-table baseline; their evidence is verified by document linkage, immutable version history and byte hashes above. Appended notifications and delivery rows include the earlier lesson-note lifecycle, not multiple parent messages.</p><h2>7. Environment and delivery boundaries</h2><p><strong>Production untouched.</strong> No Production migration, permission grant, data mutation or publishing was performed. The Development host and local database target were independently verified before writes. No accounts, students, Parents, Teachers or schools were created.</p><div class="notice"><strong>Delivery claims:</strong> Parent 914 received the in-app notification and read the thread. Notification 174 remains separately unread until its explicit notification-read action; thread-read evidence is distinct. SMS/email rows are explicitly Development simulations, with no provider IDs or sent/delivered timestamps and no external send. The existing Inbox currently labels these simulated channels “queued” while the database simulation status is SENT; this discrepancy was left unchanged, and is not evidence of physical delivery. No live SMS, email or push delivery is claimed.</div><h2>Sanitized endpoint/audit evidence</h2><p>Numeric record identifiers only. Final notificationOpenFinal supersedes the historical missing-route result.</p><pre>{
+  &quot;grant&quot;: {
+    &quot;preGrantGetStatus&quot;: 200,
+    &quot;preexistingTeacher912GrantCount&quot;: 0,
+    &quot;postStatus&quot;: 201,
+    &quot;id&quot;: 4,
+    &quot;schoolId&quot;: 1393,
+    &quot;userId&quot;: 912,
+    &quot;permissions&quot;: [
+      &quot;COMMUNICATION_SEND&quot;
+    ],
+    &quot;status&quot;: &quot;ACTIVE&quot;,
+    &quot;expiresAt&quot;: null,
+    &quot;grantedByUserId&quot;: 911,
+    &quot;audit&quot;: {
+      &quot;id&quot;: 1601,
+      &quot;actorUserId&quot;: 911,
+      &quot;actorRole&quot;: &quot;SCHOOL_ADMIN&quot;,
+      &quot;eventType&quot;: &quot;SECURITY_CONFIGURATION&quot;,
+      &quot;result&quot;: &quot;SUCCESS&quot;
+    }
+  },
+  &quot;studentList&quot;: {
+    &quot;status&quot;: 200,
+    &quot;searchPresent&quot;: false,
+    &quot;studentIds&quot;: [
+      721
+    ]
+  },
+  &quot;guardianLookup&quot;: {
+    &quot;status&quot;: 200,
+    &quot;guardianUserIds&quot;: [
+      914
+    ]
+  },
+  &quot;singleSend&quot;: {
+    &quot;postCount&quot;: 1,
+    &quot;status&quot;: 201,
+    &quot;path&quot;: &quot;/api/communication/threads&quot;,
+    &quot;threadId&quot;: 3,
+    &quot;messageId&quot;: 5,
+    &quot;studentId&quot;: 721,
+    &quot;parentUserId&quot;: 914,
+    &quot;label&quot;: &quot;Development&quot;
+  },
+  &quot;threadAudit&quot;: {
+    &quot;id&quot;: 1605,
+    &quot;actorUserId&quot;: 912,
+    &quot;actorRole&quot;: &quot;TEACHER&quot;,
+    &quot;recordId&quot;: 3,
+    &quot;eventType&quot;: &quot;PARENT_COMMUNICATION_THREAD_CREATED&quot;,
+    &quot;result&quot;: &quot;SUCCESS&quot;
+  },
+  &quot;notification&quot;: {
+    &quot;id&quot;: 174,
+    &quot;recipientUserId&quot;: 914,
+    &quot;schoolId&quot;: 1393,
+    &quot;studentId&quot;: 721,
+    &quot;eventKey&quot;: &quot;PARENT_COMMUNICATION_MESSAGE:5:721:914&quot;,
+    &quot;threadId&quot;: 3,
+    &quot;messageId&quot;: 5,
+    &quot;category&quot;: &quot;ANNOUNCEMENT&quot;,
+    &quot;link&quot;: &quot;/communication/threads/3&quot;,
+    &quot;isRead&quot;: false,
+    &quot;readAt&quot;: null
+  },
+  &quot;deliveries&quot;: [
+    {
+      &quot;id&quot;: 399,
+      &quot;channel&quot;: &quot;IN_APP&quot;,
+      &quot;status&quot;: &quot;SENT&quot;,
+      &quot;providerIdPresent&quot;: false,
+      &quot;sentAt&quot;: &quot;2026-10-05T11:57:15.451Z&quot;,
+      &quot;externalSend&quot;: false
+    },
+    {
+      &quot;id&quot;: 400,
+      &quot;channel&quot;: &quot;SMS&quot;,
+      &quot;status&quot;: &quot;SENT&quot;,
+      &quot;attempts&quot;: 1,
+      &quot;provider&quot;: &quot;development-sms&quot;,
+      &quot;providerIdPresent&quot;: false,
+      &quot;sentAt&quot;: null,
+      &quot;deliveredAt&quot;: null,
+      &quot;explicitlySimulated&quot;: true,
+      &quot;externalSend&quot;: false
+    },
+    {
+      &quot;id&quot;: 401,
+      &quot;channel&quot;: &quot;EMAIL&quot;,
+      &quot;status&quot;: &quot;SENT&quot;,
+      &quot;attempts&quot;: 1,
+      &quot;provider&quot;: &quot;development-email&quot;,
+      &quot;providerIdPresent&quot;: false,
+      &quot;sentAt&quot;: null,
+      &quot;deliveredAt&quot;: null,
+      &quot;explicitlySimulated&quot;: true,
+      &quot;externalSend&quot;: false
+    }
+  ],
+  &quot;notificationOpenFinal&quot;: {
+    &quot;status&quot;: &quot;FIXED&quot;,
+    &quot;notificationId&quot;: 174,
+    &quot;threadId&quot;: 3,
+    &quot;messageId&quot;: 5,
+    &quot;openDestination&quot;: {
+      &quot;path&quot;: &quot;/communication/threads/3&quot;,
+      &quot;rendered&quot;: true
+    },
+    &quot;sameUrlRefresh&quot;: {
+      &quot;method&quot;: &quot;GET&quot;,
+      &quot;path&quot;: &quot;/communication/threads/3&quot;,
+      &quot;status&quot;: 200,
+      &quot;apiMethod&quot;: &quot;GET&quot;,
+      &quot;apiPath&quot;: &quot;/api/communication/threads/3&quot;,
+      &quot;apiStatus&quot;: 200
+    },
+    &quot;backToThreadsPath&quot;: &quot;/parent/communication&quot;,
+    &quot;messageIdsAfterReadOnlyCheck&quot;: [
+      5
+    ],
+    &quot;messageCountAfter&quot;: 1,
+    &quot;noSendOrReplySubmitted&quot;: true
+  },
+  &quot;owner&quot;: {
+    &quot;userId&quot;: 309,
+    &quot;isPlatformOwner&quot;: true,
+    &quot;schoolId&quot;: 1393,
+    &quot;noteIdsViewed&quot;: [
+      1,
+      4
+    ],
+    &quot;note4PdfDownload&quot;: {
+      &quot;path&quot;: &quot;/api/schools/1393/lesson-notes/4/documents/4&quot;,
+      &quot;status&quot;: 200,
+      &quot;contentType&quot;: &quot;application/pdf&quot;
+    },
+    &quot;invalidReviewAttempt&quot;: {
+      &quot;path&quot;: &quot;/api/schools/1393/lesson-notes/4/review&quot;,
+      &quot;status&quot;: 404,
+      &quot;validDecisionSubmitted&quot;: false
+    },
+    &quot;foreignPdfGet&quot;: {
+      &quot;path&quot;: &quot;/api/schools/1496/lesson-notes/1/documents/1&quot;,
+      &quot;status&quot;: 404,
+      &quot;contentType&quot;: &quot;application/json; charset=utf-8&quot;
+    }
+  },
+  &quot;forgedTeacherRequests&quot;: {
+    &quot;classId999999&quot;: {
+      &quot;status&quot;: 403
+    },
+    &quot;pairClass538Subject15&quot;: {
+      &quot;status&quot;: 403
+    },
+    &quot;topicId999999&quot;: {
+      &quot;status&quot;: 404
+    },
+    &quot;week3NoteCount&quot;: 0
+  },
+  &quot;preservation&quot;: {
+    &quot;originalBusinessRowsPreserved&quot;: true,
+    &quot;originalRowsByteIdentical&quot;: false,
+    &quot;changed&quot;: {},
+    &quot;appended&quot;: {
+      &quot;audit_logs&quot;: 49,
+      &quot;communication_deliveries&quot;: 8,
+      &quot;communication_message_threads&quot;: 1,
+      &quot;communication_messages&quot;: 1,
+      &quot;communication_notifications&quot;: 6,
+      &quot;curriculum_topics&quot;: 1,
+      &quot;curriculum_versions&quot;: 1,
+      &quot;lesson_note_reviews&quot;: 2,
+      &quot;lesson_notes&quot;: 2,
+      &quot;school_curriculum_assignments&quot;: 1,
+      &quot;security_staff_grants&quot;: 1
+    },
+    &quot;bookkeepingUpdates&quot;: {
+      &quot;school_subscription_enforcement&quot;: 5
+    },
+    &quot;excludedBookkeepingFields&quot;: [
+      &quot;app_users.updated_at&quot;,
+      &quot;school_subscription_enforcement.updated_at&quot;
+    ]
+  }
+}</pre></main></html>

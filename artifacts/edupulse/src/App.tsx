@@ -18,6 +18,7 @@ import { AuthScreen } from '@/pages/auth-screen';
 import InvitationAcceptance from '@/pages/invitations/acceptance';
 import { PlatformOwnerSetup } from '@/pages/setup/platform-owner';
 import ParentPortal from '@/pages/parent-portal';
+import { ThreadLinkPage } from '@/pages/parent-communication/threads';
 import PartnerPortal from '@/pages/partner/portal';
 import PartnerManagement from '@/pages/partner/management';
 import RegisterSchool from '@/pages/partner/register-school';
@@ -336,6 +337,7 @@ function ProtectedRoutes() {
           <Route path="/communications">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT']}><CommunicationsPage /></RoleGuard>
           </Route>
+          <Route path="/communication/threads/:threadId">{params=><RoleGuard allowedRoles={['PARENT','SCHOOL_ADMIN','TEACHER','STAFF','ACCOUNTANT']}><ThreadLinkPage threadId={params.threadId} /></RoleGuard>}</Route>
           <Route path="/communication">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'ACCOUNTANT']}><CommunicationsPage /></RoleGuard>
           </Route>

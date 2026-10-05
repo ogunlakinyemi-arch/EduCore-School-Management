@@ -5,6 +5,6 @@ description: Minimal curriculum fixtures are authorized only for existing assign
 
 The user authorized a minimal, clearly labelled Development test curriculum/topic mapped only to the existing Teacher's authorized class/section and subject. Do not add accounts, schools, students, parents or teachers, overwrite curriculum, change global curriculum or Teacher assignment rules, or modify Production.
 
-**Why:** Development had no curriculum versions, topics or mappings, so a genuine topic-to-PDF-to-School-Admin acceptance cycle could not otherwise be exercised.
+**Why:** Development lacked an applicable curriculum/topic mapping for the existing Teacher's authorized context, so a genuine topic-to-PDF-to-School-Admin acceptance cycle could not otherwise be exercised. This does not imply that all curriculum tables were empty.
 
 **How to apply:** Use only the minimum curriculum records required for acceptance. Retain clearly labelled fixtures when deleting them would invalidate retained lesson-note/PDF evidence. This is not authorization for broad curriculum seeding.

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'wouter';
 import { useQueryClient } from '@tanstack/react-query';
 import { useListParentMessageThreads, getListParentMessageThreadsQueryKey, useGetParentCommunicationThread, getGetParentCommunicationThreadQueryKey, useReplyToParentCommunicationThread, useCreateParentMessageThread, useMarkParentCommunicationThreadRead, useArchiveParentCommunicationThread } from '@workspace/api-client-react';
 import type { ParentCreateCommunicationThreadCategory } from '@workspace/api-client-react';
@@ -21,6 +22,15 @@ export function Thread({ id, onBack, onChanged }: { id: number; onBack: () => vo
       <h3 className="display-font text-lg font-bold">{t.subject}</h3><p className="text-xs text-[hsl(var(--muted-foreground))]">{t.childName} · {t.schoolName}</p>
       <ol className="my-4 space-y-3" data-testid="list-thread-messages">{[...t.messages].reverse().map(m => <li key={m.id} className={cx('max-w-[85%] rounded-2xl p-3 text-sm', m.senderRole === 'PARENT' ? 'ml-auto bg-[hsl(var(--primary)/.1)]' : 'bg-[hsl(var(--secondary))]')}><div className="whitespace-pre-wrap break-words">{m.body}</div><div className="mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">{m.senderRole.toLowerCase()} · {date(m.createdAt)} {time(m.createdAt)}</div></li>)}</ol>
       {!t.archived ? <form onSubmit={e => { e.preventDefault(); void send(); }} className="space-y-2"><textarea className={`${inputClass} min-h-20`} value={body} onChange={e => setBody(e.target.value)} placeholder="Write a reply" maxLength={5000} data-testid="input-thread-reply" />{msg && <Notice tone="error">{msg}</Notice>}<Button type="submit" disabled={reply.isPending || !body.trim()} testId="button-send-reply">Send reply</Button></form> : <Notice>This thread is archived.</Notice>}</>}</div>;
+}
+
+export function ThreadLinkPage({ threadId,parent=false }: {threadId:string;parent?:boolean}) {
+  const [,navigate]=useLocation();
+  const id=Number(threadId);
+  if(!/^[1-9]\d*$/.test(threadId)||!Number.isSafeInteger(id))return <ErrorState />;
+  return <main className="mx-auto max-w-6xl p-5 md:p-8" data-testid="communication-thread-link">
+    <Thread id={id} onBack={()=>navigate(parent?'/parent/communication':'/communications')} />
+  </main>;
 }
 
 function NewThread({ children, onClose }: { children: { studentId: number; label: string }[]; onClose: () => void }) {
