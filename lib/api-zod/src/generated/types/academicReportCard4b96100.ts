@@ -5,6 +5,8 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+import type { AcademicReportCard4b96100Attendance } from './academicReportCard4b96100Attendance';
+import type { AcademicReportCard4b96100ConsolidatedSubjectsItem } from './academicReportCard4b96100ConsolidatedSubjectsItem';
 import type { AcademicReportCard4b96100ResultState } from './academicReportCard4b96100ResultState';
 import type { AcademicReportCardLine4b96100 } from './academicReportCardLine4b96100';
 import type { ReportCardStatus4b96100 } from './reportCardStatus4b96100';
@@ -30,4 +32,17 @@ export interface AcademicReportCard4b96100 {
   isApproved?: boolean;
   resultState: AcademicReportCard4b96100ResultState;
   lines: AcademicReportCardLine4b96100[];
+  /** Frozen consolidated subject data captured at Exam/Record publication */
+  consolidatedSubjects?: AcademicReportCard4b96100ConsolidatedSubjectsItem[];
+  /** @nullable */
+  total?: number | null;
+  /** @nullable */
+  average?: number | null;
+  studentName?: string;
+  admissionNo?: string;
+  /**
+     * Frozen recorded-day attendance captured at publication
+     * @nullable
+     */
+  attendance?: AcademicReportCard4b96100Attendance;
 }

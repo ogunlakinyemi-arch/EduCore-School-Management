@@ -11517,6 +11517,647 @@ export const GetStudentSelfProfileResponse = zod.object({
 })
 
 
+/**
+ * @summary Role, periods, authorized assignments, assessment types and grading rules
+ */
+export const ExamRecordGetContextQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int(),
+  "sessionId": zod.coerce.number().int().optional(),
+  "termId": zod.coerce.number().int().optional()
+})
+
+export const ExamRecordGetContextResponse = zod.object({
+  "role": zod.enum(['TEACHER', 'ADMIN', 'OWNER']),
+  "sessions": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "isCurrent": zod.boolean(),
+  "status": zod.string()
+})),
+  "terms": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "isCurrent": zod.boolean(),
+  "status": zod.string(),
+  "sessionId": zod.number().int()
+})),
+  "assignments": zod.array(zod.object({
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "subjectId": zod.number().int(),
+  "subjectName": zod.string(),
+  "teacherId": zod.number().int(),
+  "teacherName": zod.string(),
+  "status": zod.string(),
+  "batchId": zod.number().int().nullable(),
+  "revision": zod.number().int(),
+  "commentOnly": zod.boolean().optional().describe('Class-teacher duty; grants no subject access')
+})),
+  "assessmentTypes": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "code": zod.string(),
+  "maxScore": zod.number().nullable()
+})),
+  "gradingRules": zod.array(zod.object({
+  "minScore": zod.number(),
+  "maxScore": zod.number(),
+  "grade": zod.string(),
+  "gradePoint": zod.number().nullish(),
+  "remark": zod.string().nullish()
+})),
+  "sessionId": zod.number().int().nullable(),
+  "termId": zod.number().int().nullable()
+})
+
+
+export const ExamRecordGetSheetQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int(),
+  "sessionId": zod.coerce.number().int(),
+  "termId": zod.coerce.number().int(),
+  "classId": zod.coerce.number().int(),
+  "section": zod.coerce.string(),
+  "subjectId": zod.coerce.number().int()
+})
+
+export const ExamRecordGetSheetResponse = zod.object({
+  "scope": zod.object({
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string(),
+  "subjectId": zod.number().int()
+}),
+  "components": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "typeId": zod.number().int().nullable(),
+  "maxScore": zod.number().nullable(),
+  "assessmentId": zod.number().int().nullable()
+})),
+  "rows": zod.array(zod.object({
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "scores": zod.record(zod.string(), zod.number().nullable())
+})),
+  "batchId": zod.number().int().nullable(),
+  "revision": zod.number().int(),
+  "status": zod.string(),
+  "returnComment": zod.string().nullable(),
+  "gradingRules": zod.array(zod.object({
+  "minScore": zod.number(),
+  "maxScore": zod.number(),
+  "grade": zod.string(),
+  "gradePoint": zod.number().nullish(),
+  "remark": zod.string().nullish()
+}))
+})
+
+
+export const ExamRecordSaveDraftBody = zod.object({
+  "scope": zod.object({
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string(),
+  "subjectId": zod.number().int()
+}),
+  "revision": zod.number().int(),
+  "components": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "typeId": zod.number().int().nullable(),
+  "maxScore": zod.number().nullable(),
+  "assessmentId": zod.number().int().nullable()
+})),
+  "rows": zod.array(zod.object({
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "scores": zod.record(zod.string(), zod.number().nullable())
+}))
+})
+
+export const ExamRecordSaveDraftResponse = zod.object({
+  "scope": zod.object({
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string(),
+  "subjectId": zod.number().int()
+}),
+  "components": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "typeId": zod.number().int().nullable(),
+  "maxScore": zod.number().nullable(),
+  "assessmentId": zod.number().int().nullable()
+})),
+  "rows": zod.array(zod.object({
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "scores": zod.record(zod.string(), zod.number().nullable())
+})),
+  "batchId": zod.number().int().nullable(),
+  "revision": zod.number().int(),
+  "status": zod.string(),
+  "returnComment": zod.string().nullable(),
+  "gradingRules": zod.array(zod.object({
+  "minScore": zod.number(),
+  "maxScore": zod.number(),
+  "grade": zod.string(),
+  "gradePoint": zod.number().nullish(),
+  "remark": zod.string().nullish()
+}))
+})
+
+
+export const ExamRecordSubmitSheetBody = zod.object({
+  "schoolId": zod.number().int(),
+  "batchId": zod.number().int(),
+  "revision": zod.number().int()
+})
+
+export const ExamRecordSubmitSheetResponse = zod.object({
+  "status": zod.string(),
+  "revision": zod.number().int()
+})
+
+
+/**
+ * @summary XLSX template generated from the saved components
+ */
+export const ExamRecordDownloadTemplateQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int(),
+  "sessionId": zod.coerce.number().int(),
+  "termId": zod.coerce.number().int(),
+  "classId": zod.coerce.number().int(),
+  "section": zod.coerce.string(),
+  "subjectId": zod.coerce.number().int()
+})
+
+export const ExamRecordDownloadTemplateResponse = zod.unknown()
+
+
+/**
+ * @summary Validate an Excel or PDF import without writing
+ */
+export const ExamRecordImportPreviewBody = zod.object({
+  "scope": zod.object({
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string(),
+  "subjectId": zod.number().int()
+}),
+  "filename": zod.string(),
+  "dataBase64": zod.string(),
+  "components": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "typeId": zod.number().int().nullable(),
+  "maxScore": zod.number().nullable(),
+  "assessmentId": zod.number().int().nullable()
+})),
+  "revision": zod.number().int()
+})
+
+export const ExamRecordImportPreviewResponse = zod.object({
+  "rows": zod.array(zod.object({
+  "sourceRow": zod.number().int(),
+  "studentId": zod.number().int().nullable(),
+  "studentName": zod.string(),
+  "scores": zod.record(zod.string(), zod.number().nullable()),
+  "status": zod.enum(['VALID', 'INVALID']),
+  "issues": zod.array(zod.string())
+})),
+  "validCount": zod.number().int(),
+  "invalidCount": zod.number().int(),
+  "missingStudents": zod.array(zod.string()),
+  "uncertain": zod.boolean(),
+  "digest": zod.string(),
+  "message": zod.string()
+})
+
+
+export const ExamRecordImportConfirmBody = zod.object({
+  "scope": zod.object({
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string(),
+  "subjectId": zod.number().int()
+}),
+  "filename": zod.string(),
+  "dataBase64": zod.string(),
+  "components": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "typeId": zod.number().int().nullable(),
+  "maxScore": zod.number().nullable(),
+  "assessmentId": zod.number().int().nullable()
+})),
+  "revision": zod.number().int()
+}).and(zod.object({
+  "digest": zod.string()
+}))
+
+export const ExamRecordImportConfirmResponse = zod.object({
+  "scope": zod.object({
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string(),
+  "subjectId": zod.number().int()
+}),
+  "components": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "typeId": zod.number().int().nullable(),
+  "maxScore": zod.number().nullable(),
+  "assessmentId": zod.number().int().nullable()
+})),
+  "rows": zod.array(zod.object({
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "scores": zod.record(zod.string(), zod.number().nullable())
+})),
+  "batchId": zod.number().int().nullable(),
+  "revision": zod.number().int(),
+  "status": zod.string(),
+  "returnComment": zod.string().nullable(),
+  "gradingRules": zod.array(zod.object({
+  "minScore": zod.number(),
+  "maxScore": zod.number(),
+  "grade": zod.string(),
+  "gradePoint": zod.number().nullish(),
+  "remark": zod.string().nullish()
+}))
+})
+
+
+export const ExamRecordGetClassQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int(),
+  "sessionId": zod.coerce.number().int(),
+  "termId": zod.coerce.number().int(),
+  "classId": zod.coerce.number().int(),
+  "section": zod.coerce.string()
+})
+
+export const ExamRecordGetClassResponse = zod.object({
+  "subjects": zod.array(zod.object({
+  "subjectId": zod.number().int(),
+  "subjectName": zod.string(),
+  "teacherName": zod.string(),
+  "status": zod.string(),
+  "batchId": zod.number().int().nullable(),
+  "revision": zod.number().int()
+})),
+  "students": zod.array(zod.object({
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "complete": zod.boolean(),
+  "subjects": zod.array(zod.object({
+  "subjectId": zod.number().int(),
+  "subjectName": zod.string(),
+  "teacherName": zod.string(),
+  "score": zod.number().nullable(),
+  "maxScore": zod.number().nullable(),
+  "grade": zod.string().nullable(),
+  "gradePoint": zod.number().nullable(),
+  "remark": zod.string().nullish(),
+  "missing": zod.boolean(),
+  "status": zod.string(),
+  "resultIds": zod.array(zod.number().int()),
+  "components": zod.array(zod.object({
+  "label": zod.string().optional(),
+  "score": zod.number().nullish(),
+  "maxScore": zod.number().nullish()
+})).optional()
+})),
+  "missingSubjects": zod.array(zod.string()),
+  "total": zod.number().nullable(),
+  "average": zod.number().nullable(),
+  "reportCardId": zod.number().int().nullable(),
+  "status": zod.enum(['PUBLISHED', 'READY_FOR_REVIEW', 'AWAITING']),
+  "teacherRemark": zod.string().nullable(),
+  "schoolRemark": zod.string().nullable(),
+  "attendance": zod.object({
+  "present": zod.number().int().optional(),
+  "absent": zod.number().int().optional(),
+  "late": zod.number().int().optional(),
+  "total": zod.number().int().optional()
+}).nullish()
+})),
+  "submittedCount": zod.number().int(),
+  "requiredCount": zod.number().int()
+})
+
+
+/**
+ * @summary Class teacher comment area (authorized class teacher only)
+ */
+export const ExamRecordListClassCommentsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int(),
+  "sessionId": zod.coerce.number().int(),
+  "termId": zod.coerce.number().int(),
+  "classId": zod.coerce.number().int(),
+  "section": zod.coerce.string()
+})
+
+export const ExamRecordListClassCommentsResponseItem = zod.object({
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "reportCardId": zod.number().int().nullable(),
+  "teacherRemark": zod.string().nullable(),
+  "status": zod.string()
+})
+export const ExamRecordListClassCommentsResponse = zod.array(ExamRecordListClassCommentsResponseItem)
+
+
+/**
+ * @summary Class teacher comment on an unpublished draft card; never changes scores
+ */
+export const ExamRecordSaveClassCommentBody = zod.object({
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string(),
+  "studentId": zod.number().int(),
+  "teacherRemark": zod.string()
+})
+
+export const ExamRecordSaveClassCommentResponse = zod.object({
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "reportCardId": zod.number().int().nullable(),
+  "teacherRemark": zod.string().nullable(),
+  "status": zod.string()
+})
+
+
+/**
+ * @summary Admin returns a subject batch with a mandatory reason
+ */
+
+
+
+export const ExamRecordReturnSheetBody = zod.object({
+  "schoolId": zod.number().int(),
+  "batchId": zod.number().int(),
+  "revision": zod.number().int(),
+  "comment": zod.string().min(1)
+})
+
+export const ExamRecordReturnSheetResponse = zod.object({
+  "status": zod.string(),
+  "revision": zod.number().int()
+})
+
+
+export const ExamRecordPublishBody = zod.object({
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string(),
+  "studentId": zod.number().int(),
+  "schoolRemark": zod.string().optional()
+})
+
+export const ExamRecordPublishResponse = zod.object({
+  "reportCardId": zod.number().int(),
+  "status": zod.enum(['PUBLISHED'])
+})
+
+
+export const ExamRecordListPapersQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int(),
+  "sessionId": zod.coerce.number().int().optional(),
+  "termId": zod.coerce.number().int().optional(),
+  "classId": zod.union([zod.coerce.number().int(),zod.coerce.string()]).optional(),
+  "section": zod.coerce.string().optional(),
+  "subjectId": zod.coerce.number().int().optional()
+})
+
+export const ExamRecordListPapersResponseItem = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "subjectId": zod.number().int(),
+  "subjectName": zod.string(),
+  "teacherId": zod.number().int(),
+  "teacherName": zod.string(),
+  "examinationName": zod.string(),
+  "instructions": zod.string().nullish(),
+  "duration": zod.union([zod.string(),zod.number().int()]).nullish(),
+  "totalMarks": zod.number().nullish(),
+  "status": zod.string(),
+  "revision": zod.number().int(),
+  "submittedAt": zod.string().nullish(),
+  "approvedAt": zod.string().nullish()
+})
+export const ExamRecordListPapersResponse = zod.array(ExamRecordListPapersResponseItem)
+
+
+export const ExamRecordCreatePaperBody = zod.object({
+  "scope": zod.object({
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "section": zod.string(),
+  "subjectId": zod.number().int()
+}),
+  "examinationName": zod.string(),
+  "instructions": zod.string().nullish(),
+  "duration": zod.string().nullish(),
+  "totalMarks": zod.number().nullish(),
+  "filename": zod.string(),
+  "dataBase64": zod.string()
+})
+
+export const ExamRecordCreatePaperResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "subjectId": zod.number().int(),
+  "subjectName": zod.string(),
+  "teacherId": zod.number().int(),
+  "teacherName": zod.string(),
+  "examinationName": zod.string(),
+  "instructions": zod.string().nullish(),
+  "duration": zod.union([zod.string(),zod.number().int()]).nullish(),
+  "totalMarks": zod.number().nullish(),
+  "status": zod.string(),
+  "revision": zod.number().int(),
+  "submittedAt": zod.string().nullish(),
+  "approvedAt": zod.string().nullish()
+})
+
+
+export const ExamRecordGetPaperParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ExamRecordGetPaperQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int()
+})
+
+export const ExamRecordGetPaperResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "subjectId": zod.number().int(),
+  "subjectName": zod.string(),
+  "teacherId": zod.number().int(),
+  "teacherName": zod.string(),
+  "examinationName": zod.string(),
+  "instructions": zod.string().nullish(),
+  "duration": zod.union([zod.string(),zod.number().int()]).nullish(),
+  "totalMarks": zod.number().nullish(),
+  "status": zod.string(),
+  "revision": zod.number().int(),
+  "submittedAt": zod.string().nullish(),
+  "approvedAt": zod.string().nullish()
+}).and(zod.object({
+  "versions": zod.array(zod.object({
+  "id": zod.number().int(),
+  "revision": zod.number().int(),
+  "filename": zod.string(),
+  "mimeType": zod.string(),
+  "previewText": zod.string().nullable(),
+  "createdAt": zod.string()
+})),
+  "reviews": zod.array(zod.object({
+  "id": zod.number().int(),
+  "versionId": zod.number().int(),
+  "decision": zod.string(),
+  "comment": zod.string(),
+  "createdAt": zod.string(),
+  "reviewerName": zod.string()
+}))
+}))
+
+
+export const ExamRecordGetPaperDocumentParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ExamRecordGetPaperDocumentQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int(),
+  "versionId": zod.coerce.number().int().optional()
+})
+
+export const ExamRecordGetPaperDocumentResponse = zod.unknown()
+
+
+export const ExamRecordAddPaperVersionParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ExamRecordAddPaperVersionBody = zod.object({
+  "schoolId": zod.number().int(),
+  "revision": zod.number().int(),
+  "filename": zod.string(),
+  "dataBase64": zod.string()
+})
+
+export const ExamRecordAddPaperVersionResponse = zod.object({
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "subjectId": zod.number().int(),
+  "subjectName": zod.string(),
+  "teacherId": zod.number().int(),
+  "teacherName": zod.string(),
+  "examinationName": zod.string(),
+  "instructions": zod.string().nullish(),
+  "duration": zod.union([zod.string(),zod.number().int()]).nullish(),
+  "totalMarks": zod.number().nullish(),
+  "status": zod.string(),
+  "revision": zod.number().int(),
+  "submittedAt": zod.string().nullish(),
+  "approvedAt": zod.string().nullish()
+})
+
+
+export const ExamRecordSubmitPaperParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ExamRecordSubmitPaperBody = zod.object({
+  "schoolId": zod.number().int(),
+  "revision": zod.number().int()
+})
+
+export const ExamRecordSubmitPaperResponse = zod.object({
+  "status": zod.string(),
+  "revision": zod.number().int()
+})
+
+
+export const ExamRecordReviewPaperParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ExamRecordReviewPaperBody = zod.object({
+  "schoolId": zod.number().int(),
+  "revision": zod.number().int(),
+  "decision": zod.enum(['RETURN', 'APPROVE']),
+  "comment": zod.string()
+})
+
+export const ExamRecordReviewPaperResponse = zod.object({
+  "status": zod.string(),
+  "revision": zod.number().int()
+})
+
+
+/**
+ * @summary Admin-only official print of an approved paper
+ */
+export const ExamRecordPrintPaperParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ExamRecordPrintPaperQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int()
+})
+
+export const ExamRecordPrintPaperResponse = zod.unknown()
+
+
 
 
 
@@ -14159,7 +14800,31 @@ export const ListAcademicReportCardsResponseItem = zod.object({
   "grade": zod.string(),
   "gradePoint": zod.number(),
   "remark": zod.string()
-}))
+})),
+  "consolidatedSubjects": zod.array(zod.object({
+  "subjectId": zod.number().int(),
+  "subjectName": zod.string(),
+  "score": zod.number().nullable(),
+  "maxScore": zod.number().nullable(),
+  "grade": zod.string().nullable(),
+  "gradePoint": zod.number().nullish(),
+  "remark": zod.string().nullish(),
+  "components": zod.array(zod.object({
+  "label": zod.string().optional(),
+  "score": zod.number().nullish(),
+  "maxScore": zod.number().nullish()
+})).optional()
+})).optional().describe('Frozen consolidated subject data captured at Exam/Record publication'),
+  "total": zod.number().nullish(),
+  "average": zod.number().nullish(),
+  "studentName": zod.string().optional(),
+  "admissionNo": zod.string().optional(),
+  "attendance": zod.object({
+  "present": zod.number().int().optional(),
+  "late": zod.number().int().optional(),
+  "absent": zod.number().int().optional(),
+  "total": zod.number().int().optional()
+}).nullish().describe('Frozen recorded-day attendance captured at publication')
 })
 export const ListAcademicReportCardsResponse = zod.array(ListAcademicReportCardsResponseItem)
 
@@ -14220,7 +14885,31 @@ export const CreateAcademicReportCardResponse = zod.object({
   "grade": zod.string(),
   "gradePoint": zod.number(),
   "remark": zod.string()
-}))
+})),
+  "consolidatedSubjects": zod.array(zod.object({
+  "subjectId": zod.number().int(),
+  "subjectName": zod.string(),
+  "score": zod.number().nullable(),
+  "maxScore": zod.number().nullable(),
+  "grade": zod.string().nullable(),
+  "gradePoint": zod.number().nullish(),
+  "remark": zod.string().nullish(),
+  "components": zod.array(zod.object({
+  "label": zod.string().optional(),
+  "score": zod.number().nullish(),
+  "maxScore": zod.number().nullish()
+})).optional()
+})).optional().describe('Frozen consolidated subject data captured at Exam/Record publication'),
+  "total": zod.number().nullish(),
+  "average": zod.number().nullish(),
+  "studentName": zod.string().optional(),
+  "admissionNo": zod.string().optional(),
+  "attendance": zod.object({
+  "present": zod.number().int().optional(),
+  "late": zod.number().int().optional(),
+  "absent": zod.number().int().optional(),
+  "total": zod.number().int().optional()
+}).nullish().describe('Frozen recorded-day attendance captured at publication')
 })
 
 
@@ -14271,7 +14960,31 @@ export const PublishAcademicReportCardResponse = zod.object({
   "grade": zod.string(),
   "gradePoint": zod.number(),
   "remark": zod.string()
-}))
+})),
+  "consolidatedSubjects": zod.array(zod.object({
+  "subjectId": zod.number().int(),
+  "subjectName": zod.string(),
+  "score": zod.number().nullable(),
+  "maxScore": zod.number().nullable(),
+  "grade": zod.string().nullable(),
+  "gradePoint": zod.number().nullish(),
+  "remark": zod.string().nullish(),
+  "components": zod.array(zod.object({
+  "label": zod.string().optional(),
+  "score": zod.number().nullish(),
+  "maxScore": zod.number().nullish()
+})).optional()
+})).optional().describe('Frozen consolidated subject data captured at Exam/Record publication'),
+  "total": zod.number().nullish(),
+  "average": zod.number().nullish(),
+  "studentName": zod.string().optional(),
+  "admissionNo": zod.string().optional(),
+  "attendance": zod.object({
+  "present": zod.number().int().optional(),
+  "late": zod.number().int().optional(),
+  "absent": zod.number().int().optional(),
+  "total": zod.number().int().optional()
+}).nullish().describe('Frozen recorded-day attendance captured at publication')
 })
 
 
@@ -14314,7 +15027,31 @@ export const ListMyAcademicReportCardsResponseItem = zod.object({
   "grade": zod.string(),
   "gradePoint": zod.number(),
   "remark": zod.string()
-}))
+})),
+  "consolidatedSubjects": zod.array(zod.object({
+  "subjectId": zod.number().int(),
+  "subjectName": zod.string(),
+  "score": zod.number().nullable(),
+  "maxScore": zod.number().nullable(),
+  "grade": zod.string().nullable(),
+  "gradePoint": zod.number().nullish(),
+  "remark": zod.string().nullish(),
+  "components": zod.array(zod.object({
+  "label": zod.string().optional(),
+  "score": zod.number().nullish(),
+  "maxScore": zod.number().nullish()
+})).optional()
+})).optional().describe('Frozen consolidated subject data captured at Exam/Record publication'),
+  "total": zod.number().nullish(),
+  "average": zod.number().nullish(),
+  "studentName": zod.string().optional(),
+  "admissionNo": zod.string().optional(),
+  "attendance": zod.object({
+  "present": zod.number().int().optional(),
+  "late": zod.number().int().optional(),
+  "absent": zod.number().int().optional(),
+  "total": zod.number().int().optional()
+}).nullish().describe('Frozen recorded-day attendance captured at publication')
 })
 export const ListMyAcademicReportCardsResponse = zod.array(ListMyAcademicReportCardsResponseItem)
 
@@ -14365,7 +15102,31 @@ export const ListChildAcademicReportCardsResponseItem = zod.object({
   "grade": zod.string(),
   "gradePoint": zod.number(),
   "remark": zod.string()
-}))
+})),
+  "consolidatedSubjects": zod.array(zod.object({
+  "subjectId": zod.number().int(),
+  "subjectName": zod.string(),
+  "score": zod.number().nullable(),
+  "maxScore": zod.number().nullable(),
+  "grade": zod.string().nullable(),
+  "gradePoint": zod.number().nullish(),
+  "remark": zod.string().nullish(),
+  "components": zod.array(zod.object({
+  "label": zod.string().optional(),
+  "score": zod.number().nullish(),
+  "maxScore": zod.number().nullish()
+})).optional()
+})).optional().describe('Frozen consolidated subject data captured at Exam/Record publication'),
+  "total": zod.number().nullish(),
+  "average": zod.number().nullish(),
+  "studentName": zod.string().optional(),
+  "admissionNo": zod.string().optional(),
+  "attendance": zod.object({
+  "present": zod.number().int().optional(),
+  "late": zod.number().int().optional(),
+  "absent": zod.number().int().optional(),
+  "total": zod.number().int().optional()
+}).nullish().describe('Frozen recorded-day attendance captured at publication')
 })
 export const ListChildAcademicReportCardsResponse = zod.array(ListChildAcademicReportCardsResponseItem)
 

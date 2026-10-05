@@ -119,7 +119,7 @@ function rowsToObjects(rows: string[][]): ImportRow[] {
   });
 }
 
-function readZipEntries(buffer: Buffer): Map<string, Buffer> {
+export function readZipEntries(buffer: Buffer): Map<string, Buffer> {
   if (buffer.length < 22 || buffer.readUInt32LE(0) !== 0x04034b50) {
     throw new Error("The XLSX file is not a valid ZIP workbook");
   }

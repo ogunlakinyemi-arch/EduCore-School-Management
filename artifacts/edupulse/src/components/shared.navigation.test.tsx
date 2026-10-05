@@ -69,10 +69,10 @@ describe('Platform Owner navigation', () => {
       <Shell><div>Dashboard content</div></Shell>,
     );
 
-    for (const href of ['/schools', '/students', '/company-employees', '/partners', '/devices', '/cards', '/audit', '/users']) {
+    for (const href of ['/schools', '/students', '/company-employees', '/partners', '/devices', '/cards', '/audit', '/users', '/results']) {
       expect(html).toContain(`href="${href}"`);
     }
-    for (const href of ['/parents', '/employees', '/academics', '/subjects', '/classes', '/academic-work', '/results', '/timetable', '/attendance', '/finance', '/people/imports', '/my-academics', '/my-fees']) {
+    for (const href of ['/parents', '/employees', '/academics', '/subjects', '/classes', '/academic-work', '/timetable', '/attendance', '/finance', '/people/imports', '/my-academics', '/my-fees']) {
       expect(html).not.toContain(`href="${href}"`);
     }
     expect(html).toContain('aria-label="Owner school context"');

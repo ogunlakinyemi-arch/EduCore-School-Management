@@ -66,7 +66,7 @@ const nav: NavItem[] = [
   { href: '/curriculum-management', label: 'Curriculum Management', icon: BookOpen, roles: ['PLATFORM_OWNER'] },
   { href: '/curriculum', label: 'School Syllabus / Curriculum', icon: BookOpen, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
   { href: '/lesson-notes', label: 'Lesson Notes', icon: ClipboardList, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
-  { href: '/results', label: 'Results', icon: BarChart3, roles: ['SCHOOL_ADMIN', 'TEACHER'] },
+  { href: '/results', label: 'Exam/Record', icon: BarChart3, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STUDENT'] },
   { href: '/timetable', label: 'Timetable', icon: Calendar, roles: ['SCHOOL_ADMIN', 'TEACHER', 'STUDENT'] },
   { href: '/my-academics', label: 'My Academics', icon: GraduationCap, roles: ['STUDENT'] },
   { href: '/my-fees', label: 'My Fees', icon: ReceiptText, roles: ['STUDENT'] },
@@ -107,7 +107,7 @@ const ownerNavPaths = new Set([
   '/', '/schools', '/students', '/company-employees', '/users', '/partners',
   '/devices', '/subscriptions', '/subscription-enforcement', '/cards', '/card-replacements', '/audit', '/reporting', '/activation', '/activation/history',
   '/finance-workspace', '/employee-nfc', '/transport', '/security',
-  '/curriculum-management',
+  '/curriculum-management', '/results',
 ]);
 
 export function Shell({ children }: { children: ReactNode }) {

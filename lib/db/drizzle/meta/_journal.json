@@ -358,6 +358,13 @@
       "when": 1791111600000,
       "tag": "0055_academic_calendar_fee_lines_cash",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1791193200000,
+      "tag": "0056_exam_record_workflows",
+      "breakpoints": true
     }
   ]
 }

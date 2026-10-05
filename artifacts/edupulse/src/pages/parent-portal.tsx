@@ -22,6 +22,7 @@ import { ReportingPage } from '@/pages/reporting';
 import { cx } from 'class-variance-authority';
 import { CardReplacementsPage } from './card-replacements';
 import { Shell } from '@/components/shared';
+import { PublishedReports } from '@/components/exam-record-family';
 
 function Loading() {
   return <div className="mx-auto max-w-6xl space-y-5 p-5 md:p-8"><div className="skeleton h-11 w-64 rounded-xl" /><div className="grid gap-4 md:grid-cols-2"><div className="skeleton h-52 rounded-[18px]" /><div className="skeleton h-52 rounded-[18px]" /></div></div>;
@@ -202,14 +203,14 @@ function AttendanceRow({ event }: { event: any }) {
 }
 
 function ChildAcademics({ studentId, schoolId }: { studentId: number; schoolId: number }) {
-  const [tab, setTab] = useState<'assignments' | 'results' | 'cards' | 'timetable'>('assignments');
+  const [tab, setTab] = useState<'examrecord' | 'assignments' | 'results' | 'cards' | 'timetable'>('examrecord');
   
   return (
     <div>
       <div className="bg-[hsl(var(--muted)/.3)] p-5 md:p-6 border-b border-[hsl(var(--border))] flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h3 className="font-bold text-lg">Academics</h3>
         <div className="flex bg-[hsl(var(--muted))] p-1 rounded-xl overflow-x-auto w-full md:w-auto">
-          {[{id: 'assignments', label: 'Assignments'}, {id: 'results', label: 'Results'}, {id: 'cards', label: 'Report Cards'}, {id: 'timetable', label: 'Timetable'}].map(t => (
+          {[{id: 'examrecord', label: 'Exam/Record'}, {id: 'assignments', label: 'Assignments'}, {id: 'results', label: 'Results'}, {id: 'cards', label: 'Report Cards'}, {id: 'timetable', label: 'Timetable'}].map(t => (
              <button 
                key={t.id} 
                onClick={() => setTab(t.id as any)} 
@@ -221,6 +222,7 @@ function ChildAcademics({ studentId, schoolId }: { studentId: number; schoolId: 
         </div>
       </div>
       <div className="p-5 md:p-6 bg-[hsl(var(--card))]">
+        {tab === 'examrecord' && <ChildExamRecord studentId={studentId} schoolId={schoolId} />}
         {tab === 'assignments' && <ChildAssignments studentId={studentId} schoolId={schoolId} />}
         {tab === 'results' && <ChildResults studentId={studentId} schoolId={schoolId} />}
         {tab === 'cards' && <ChildReportCards studentId={studentId} schoolId={schoolId} />}
@@ -293,6 +295,13 @@ function ChildResults({ studentId, schoolId }: { studentId: number; schoolId: nu
       ))}
     </div>
   );
+}
+
+function ChildExamRecord({ studentId, schoolId }: { studentId: number; schoolId: number }) {
+  const query = useListChildAcademicReportCards(studentId, { schoolId }, { query: { queryKey: getListChildAcademicReportCardsQueryKey(studentId, { schoolId }), retry: false } });
+  if (query.isLoading) return <div className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading results...</div>;
+  if (query.isError) return <ChildAcademicFailure error={query.error} retry={() => void query.refetch()} />;
+  return <PublishedReports key={studentId} cards={(query.data ?? []) as any[]} schoolId={schoolId} />;
 }
 
 function ChildReportCards({ studentId, schoolId }: { studentId: number; schoolId: number }) {

@@ -112,6 +112,9 @@ app.use(
     ),
   })),
 );
+// Only Exam/Record accepts bounded base64 document bodies and bulk score grids.
+// Keep existing parser limits and raw payment-webhook handling unchanged elsewhere.
+app.use("/api/exam-record",express.json({limit:"8mb"}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

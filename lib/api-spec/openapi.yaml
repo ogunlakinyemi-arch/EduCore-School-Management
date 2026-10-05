@@ -3647,6 +3647,44 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Student" }
+  /exam-record/context:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1context'
+  /exam-record/sheet:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1sheet'
+  /exam-record/sheet/draft:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1sheet~1draft'
+  /exam-record/sheet/submit:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1sheet~1submit'
+  /exam-record/template:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1template'
+  /exam-record/import/preview:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1import~1preview'
+  /exam-record/import/confirm:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1import~1confirm'
+  /exam-record/class:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1class'
+  /exam-record/class-comments:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1class-comments'
+  /exam-record/class-comment:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1class-comment'
+  /exam-record/return:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1return'
+  /exam-record/publish:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1publish'
+  /exam-record/questions:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1questions'
+  /exam-record/questions/{id}:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1questions~1{id}'
+  /exam-record/questions/{id}/document:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1questions~1{id}~1document'
+  /exam-record/questions/{id}/version:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1questions~1{id}~1version'
+  /exam-record/questions/{id}/submit:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1questions~1{id}~1submit'
+  /exam-record/questions/{id}/review:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1questions~1{id}~1review'
+  /exam-record/questions/{id}/print:
+    $ref: './exam-record.yaml#/paths/~1exam-record~1questions~1{id}~1print'
   /subscription-enforcement:
     $ref: './subscription-enforcement.yaml#/paths/~1subscription-enforcement'
   /subscription-enforcement/me:
@@ -8298,6 +8336,35 @@ components:
         lines:
           type: array
           items: { $ref: "#/components/schemas/AcademicReportCardLine" }
+        consolidatedSubjects:
+          type: array
+          description: Frozen consolidated subject data captured at Exam/Record publication
+          items:
+            type: object
+            required: [subjectId, subjectName, score, maxScore, grade]
+            properties:
+              subjectId: { type: integer }
+              subjectName: { type: string }
+              score: { type: [number, "null"] }
+              maxScore: { type: [number, "null"] }
+              grade: { type: [string, "null"] }
+              gradePoint: { type: [number, "null"] }
+              remark: { type: [string, "null"] }
+              components:
+                type: array
+                items: { type: object, properties: { label: { type: string }, score: { type: [number, "null"] }, maxScore: { type: [number, "null"] } } }
+        total: { type: [number, "null"] }
+        average: { type: [number, "null"] }
+        studentName: { type: string }
+        admissionNo: { type: string }
+        attendance:
+          type: [object, "null"]
+          description: Frozen recorded-day attendance captured at publication
+          properties:
+            present: { type: integer }
+            late: { type: integer }
+            absent: { type: integer }
+            total: { type: integer }
     AcademicReportCardInput:
       type: object
       required: [schoolId, studentId, sessionId, termId]

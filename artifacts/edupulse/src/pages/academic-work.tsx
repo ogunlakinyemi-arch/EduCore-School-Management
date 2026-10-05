@@ -22,7 +22,7 @@ function useAcademicContext(schoolId: number) {
 
 export function AcademicWorkPage() {
   const { schoolId } = useTenant();
-  const { isPlatformOwner } = useSchoolAdminAccess();
+  const { isPlatformOwner, isSchoolAdmin } = useSchoolAdminAccess();
   const readOnly = isPlatformOwner;
   const [tab, setTab] = useState<'assignments' | 'assessments' | 'types'>('assignments');
   
@@ -50,7 +50,7 @@ export function AcademicWorkPage() {
             ))}
           </div>
           {tab === 'assignments' && <AssignmentsView schoolId={schoolId} readOnly={readOnly} />}
-          {tab === 'assessments' && <AssessmentsView schoolId={schoolId} readOnly={readOnly} />}
+          {tab === 'assessments' && <AssessmentsView schoolId={schoolId} readOnly={readOnly || isSchoolAdmin} />}
           {tab === 'types' && <AssessmentTypesView schoolId={schoolId} readOnly={readOnly} />}
         </>
       )}

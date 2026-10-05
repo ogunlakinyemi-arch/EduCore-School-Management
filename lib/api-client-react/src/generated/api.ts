@@ -230,6 +230,35 @@ import type {
   EmployeeStatusUpdate,
   EmployeeUpdate,
   EmptyInput,
+  ExamRecordAddVersionRequest,
+  ExamRecordBatchRequest,
+  ExamRecordClassComment,
+  ExamRecordClassCommentRequest,
+  ExamRecordClassView,
+  ExamRecordContext,
+  ExamRecordCreatePaperRequest,
+  ExamRecordDownloadTemplateParams,
+  ExamRecordDraftRequest,
+  ExamRecordGetClassParams,
+  ExamRecordGetContextParams,
+  ExamRecordGetPaperDocumentParams,
+  ExamRecordGetPaperParams,
+  ExamRecordGetSheetParams,
+  ExamRecordImportConfirmRequest,
+  ExamRecordImportPreview,
+  ExamRecordImportRequest,
+  ExamRecordListClassCommentsParams,
+  ExamRecordListPapersParams,
+  ExamRecordPaper,
+  ExamRecordPaperDetail,
+  ExamRecordPaperRevisionRequest,
+  ExamRecordPrintPaperParams,
+  ExamRecordPublishRequest,
+  ExamRecordPublishResult,
+  ExamRecordReturnRequest,
+  ExamRecordReviewRequest,
+  ExamRecordSheet,
+  ExamRecordStatusResult,
   ExistingActivationCandidate,
   ExpectedVersion,
   FamilyAttendanceEvent,
@@ -25679,6 +25708,1670 @@ export function useGetStudentSelfProfile<TData = Awaited<ReturnType<typeof getSt
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetStudentSelfProfileQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExamRecordGetContextUrl = (params: ExamRecordGetContextParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/exam-record/context?${stringifiedParams}` : `/api/exam-record/context`
+}
+
+/**
+ * @summary Role, periods, authorized assignments, assessment types and grading rules
+ */
+export const examRecordGetContext = async (params: ExamRecordGetContextParams, options?: Parameters<typeof customFetch>[1]): Promise<ExamRecordContext> => {
+
+  return customFetch<ExamRecordContext>(getExamRecordGetContextUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExamRecordGetContextQueryKey = (params?: ExamRecordGetContextParams,) => {
+    return [
+    `/api/exam-record/context`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExamRecordGetContextQueryOptions = <TData = Awaited<ReturnType<typeof examRecordGetContext>>, TError = ErrorType<unknown>>(params: ExamRecordGetContextParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof examRecordGetContext>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExamRecordGetContextQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof examRecordGetContext>>> = ({ signal }) => examRecordGetContext(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof examRecordGetContext>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExamRecordGetContextQueryResult = NonNullable<Awaited<ReturnType<typeof examRecordGetContext>>>
+export type ExamRecordGetContextQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Role, periods, authorized assignments, assessment types and grading rules
+ */
+
+export function useExamRecordGetContext<TData = Awaited<ReturnType<typeof examRecordGetContext>>, TError = ErrorType<unknown>>(
+ params: ExamRecordGetContextParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof examRecordGetContext>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExamRecordGetContextQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExamRecordGetSheetUrl = (params: ExamRecordGetSheetParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/exam-record/sheet?${stringifiedParams}` : `/api/exam-record/sheet`
+}
+
+export const examRecordGetSheet = async (params: ExamRecordGetSheetParams, options?: Parameters<typeof customFetch>[1]): Promise<ExamRecordSheet> => {
+
+  return customFetch<ExamRecordSheet>(getExamRecordGetSheetUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExamRecordGetSheetQueryKey = (params?: ExamRecordGetSheetParams,) => {
+    return [
+    `/api/exam-record/sheet`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExamRecordGetSheetQueryOptions = <TData = Awaited<ReturnType<typeof examRecordGetSheet>>, TError = ErrorType<unknown>>(params: ExamRecordGetSheetParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof examRecordGetSheet>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExamRecordGetSheetQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof examRecordGetSheet>>> = ({ signal }) => examRecordGetSheet(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof examRecordGetSheet>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExamRecordGetSheetQueryResult = NonNullable<Awaited<ReturnType<typeof examRecordGetSheet>>>
+export type ExamRecordGetSheetQueryError = ErrorType<unknown>
+
+
+
+export function useExamRecordGetSheet<TData = Awaited<ReturnType<typeof examRecordGetSheet>>, TError = ErrorType<unknown>>(
+ params: ExamRecordGetSheetParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof examRecordGetSheet>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExamRecordGetSheetQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExamRecordSaveDraftUrl = () => {
+
+
+
+
+  return `/api/exam-record/sheet/draft`
+}
+
+export const examRecordSaveDraft = async (examRecordDraftRequest: ExamRecordDraftRequest, options?: Parameters<typeof customFetch>[1]): Promise<ExamRecordSheet> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ExamRecordSheet>(getExamRecordSaveDraftUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(examRecordDraftRequest)
+  }
+);}
+
+
+
+
+
+export const getExamRecordSaveDraftMutationKey = () => ['examRecordSaveDraft'] as const;
+
+export const getExamRecordSaveDraftMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordSaveDraft>>, TError,ExamRecordSaveDraftMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof examRecordSaveDraft>>, TError,ExamRecordSaveDraftMutationVariables, TContext> => {
+
+const mutationKey = getExamRecordSaveDraftMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof examRecordSaveDraft>>, ExamRecordSaveDraftMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  examRecordSaveDraft(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExamRecordSaveDraftMutationResult = NonNullable<Awaited<ReturnType<typeof examRecordSaveDraft>>>
+    export type ExamRecordSaveDraftMutationBody = BodyType<ExamRecordDraftRequest>
+    export type ExamRecordSaveDraftMutationError = ErrorType<unknown>
+    export type ExamRecordSaveDraftMutationVariables = {data: BodyType<ExamRecordDraftRequest>}
+
+    export const useExamRecordSaveDraft = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordSaveDraft>>, TError,ExamRecordSaveDraftMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof examRecordSaveDraft>>,
+        TError,
+        ExamRecordSaveDraftMutationVariables,
+        TContext
+      > => {
+      return useMutation(getExamRecordSaveDraftMutationOptions(options));
+    }
+
+export const getExamRecordSubmitSheetUrl = () => {
+
+
+
+
+  return `/api/exam-record/sheet/submit`
+}
+
+export const examRecordSubmitSheet = async (examRecordBatchRequest: ExamRecordBatchRequest, options?: Parameters<typeof customFetch>[1]): Promise<ExamRecordStatusResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ExamRecordStatusResult>(getExamRecordSubmitSheetUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(examRecordBatchRequest)
+  }
+);}
+
+
+
+
+
+export const getExamRecordSubmitSheetMutationKey = () => ['examRecordSubmitSheet'] as const;
+
+export const getExamRecordSubmitSheetMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordSubmitSheet>>, TError,ExamRecordSubmitSheetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof examRecordSubmitSheet>>, TError,ExamRecordSubmitSheetMutationVariables, TContext> => {
+
+const mutationKey = getExamRecordSubmitSheetMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof examRecordSubmitSheet>>, ExamRecordSubmitSheetMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  examRecordSubmitSheet(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExamRecordSubmitSheetMutationResult = NonNullable<Awaited<ReturnType<typeof examRecordSubmitSheet>>>
+    export type ExamRecordSubmitSheetMutationBody = BodyType<ExamRecordBatchRequest>
+    export type ExamRecordSubmitSheetMutationError = ErrorType<unknown>
+    export type ExamRecordSubmitSheetMutationVariables = {data: BodyType<ExamRecordBatchRequest>}
+
+    export const useExamRecordSubmitSheet = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordSubmitSheet>>, TError,ExamRecordSubmitSheetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof examRecordSubmitSheet>>,
+        TError,
+        ExamRecordSubmitSheetMutationVariables,
+        TContext
+      > => {
+      return useMutation(getExamRecordSubmitSheetMutationOptions(options));
+    }
+
+export const getExamRecordDownloadTemplateUrl = (params: ExamRecordDownloadTemplateParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/exam-record/template?${stringifiedParams}` : `/api/exam-record/template`
+}
+
+/**
+ * @summary XLSX template generated from the saved components
+ */
+export const examRecordDownloadTemplate = async (params: ExamRecordDownloadTemplateParams, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getExamRecordDownloadTemplateUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExamRecordDownloadTemplateQueryKey = (params?: ExamRecordDownloadTemplateParams,) => {
+    return [
+    `/api/exam-record/template`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExamRecordDownloadTemplateQueryOptions = <TData = Awaited<ReturnType<typeof examRecordDownloadTemplate>>, TError = ErrorType<unknown>>(params: ExamRecordDownloadTemplateParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof examRecordDownloadTemplate>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExamRecordDownloadTemplateQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof examRecordDownloadTemplate>>> = ({ signal }) => examRecordDownloadTemplate(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof examRecordDownloadTemplate>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExamRecordDownloadTemplateQueryResult = NonNullable<Awaited<ReturnType<typeof examRecordDownloadTemplate>>>
+export type ExamRecordDownloadTemplateQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary XLSX template generated from the saved components
+ */
+
+export function useExamRecordDownloadTemplate<TData = Awaited<ReturnType<typeof examRecordDownloadTemplate>>, TError = ErrorType<unknown>>(
+ params: ExamRecordDownloadTemplateParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof examRecordDownloadTemplate>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExamRecordDownloadTemplateQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExamRecordImportPreviewUrl = () => {
+
+
+
+
+  return `/api/exam-record/import/preview`
+}
+
+/**
+ * @summary Validate an Excel or PDF import without writing
+ */
+export const examRecordImportPreview = async (examRecordImportRequest: ExamRecordImportRequest, options?: Parameters<typeof customFetch>[1]): Promise<ExamRecordImportPreview> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ExamRecordImportPreview>(getExamRecordImportPreviewUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(examRecordImportRequest)
+  }
+);}
+
+
+
+
+
+export const getExamRecordImportPreviewMutationKey = () => ['examRecordImportPreview'] as const;
+
+export const getExamRecordImportPreviewMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordImportPreview>>, TError,ExamRecordImportPreviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof examRecordImportPreview>>, TError,ExamRecordImportPreviewMutationVariables, TContext> => {
+
+const mutationKey = getExamRecordImportPreviewMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof examRecordImportPreview>>, ExamRecordImportPreviewMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  examRecordImportPreview(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExamRecordImportPreviewMutationResult = NonNullable<Awaited<ReturnType<typeof examRecordImportPreview>>>
+    export type ExamRecordImportPreviewMutationBody = BodyType<ExamRecordImportRequest>
+    export type ExamRecordImportPreviewMutationError = ErrorType<unknown>
+    export type ExamRecordImportPreviewMutationVariables = {data: BodyType<ExamRecordImportRequest>}
+
+    /**
+ * @summary Validate an Excel or PDF import without writing
+ */
+export const useExamRecordImportPreview = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordImportPreview>>, TError,ExamRecordImportPreviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof examRecordImportPreview>>,
+        TError,
+        ExamRecordImportPreviewMutationVariables,
+        TContext
+      > => {
+      return useMutation(getExamRecordImportPreviewMutationOptions(options));
+    }
+
+export const getExamRecordImportConfirmUrl = () => {
+
+
+
+
+  return `/api/exam-record/import/confirm`
+}
+
+export const examRecordImportConfirm = async (examRecordImportConfirmRequest: ExamRecordImportConfirmRequest, options?: Parameters<typeof customFetch>[1]): Promise<ExamRecordSheet> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ExamRecordSheet>(getExamRecordImportConfirmUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(examRecordImportConfirmRequest)
+  }
+);}
+
+
+
+
+
+export const getExamRecordImportConfirmMutationKey = () => ['examRecordImportConfirm'] as const;
+
+export const getExamRecordImportConfirmMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordImportConfirm>>, TError,ExamRecordImportConfirmMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof examRecordImportConfirm>>, TError,ExamRecordImportConfirmMutationVariables, TContext> => {
+
+const mutationKey = getExamRecordImportConfirmMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof examRecordImportConfirm>>, ExamRecordImportConfirmMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  examRecordImportConfirm(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExamRecordImportConfirmMutationResult = NonNullable<Awaited<ReturnType<typeof examRecordImportConfirm>>>
+    export type ExamRecordImportConfirmMutationBody = BodyType<ExamRecordImportConfirmRequest>
+    export type ExamRecordImportConfirmMutationError = ErrorType<unknown>
+    export type ExamRecordImportConfirmMutationVariables = {data: BodyType<ExamRecordImportConfirmRequest>}
+
+    export const useExamRecordImportConfirm = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordImportConfirm>>, TError,ExamRecordImportConfirmMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof examRecordImportConfirm>>,
+        TError,
+        ExamRecordImportConfirmMutationVariables,
+        TContext
+      > => {
+      return useMutation(getExamRecordImportConfirmMutationOptions(options));
+    }
+
+export const getExamRecordGetClassUrl = (params: ExamRecordGetClassParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/exam-record/class?${stringifiedParams}` : `/api/exam-record/class`
+}
+
+export const examRecordGetClass = async (params: ExamRecordGetClassParams, options?: Parameters<typeof customFetch>[1]): Promise<ExamRecordClassView> => {
+
+  return customFetch<ExamRecordClassView>(getExamRecordGetClassUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExamRecordGetClassQueryKey = (params?: ExamRecordGetClassParams,) => {
+    return [
+    `/api/exam-record/class`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExamRecordGetClassQueryOptions = <TData = Awaited<ReturnType<typeof examRecordGetClass>>, TError = ErrorType<unknown>>(params: ExamRecordGetClassParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof examRecordGetClass>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExamRecordGetClassQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof examRecordGetClass>>> = ({ signal }) => examRecordGetClass(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof examRecordGetClass>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExamRecordGetClassQueryResult = NonNullable<Awaited<ReturnType<typeof examRecordGetClass>>>
+export type ExamRecordGetClassQueryError = ErrorType<unknown>
+
+
+
+export function useExamRecordGetClass<TData = Awaited<ReturnType<typeof examRecordGetClass>>, TError = ErrorType<unknown>>(
+ params: ExamRecordGetClassParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof examRecordGetClass>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExamRecordGetClassQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExamRecordListClassCommentsUrl = (params: ExamRecordListClassCommentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/exam-record/class-comments?${stringifiedParams}` : `/api/exam-record/class-comments`
+}
+
+/**
+ * @summary Class teacher comment area (authorized class teacher only)
+ */
+export const examRecordListClassComments = async (params: ExamRecordListClassCommentsParams, options?: Parameters<typeof customFetch>[1]): Promise<ExamRecordClassComment[]> => {
+
+  return customFetch<ExamRecordClassComment[]>(getExamRecordListClassCommentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExamRecordListClassCommentsQueryKey = (params?: ExamRecordListClassCommentsParams,) => {
+    return [
+    `/api/exam-record/class-comments`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExamRecordListClassCommentsQueryOptions = <TData = Awaited<ReturnType<typeof examRecordListClassComments>>, TError = ErrorType<unknown>>(params: ExamRecordListClassCommentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof examRecordListClassComments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExamRecordListClassCommentsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof examRecordListClassComments>>> = ({ signal }) => examRecordListClassComments(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof examRecordListClassComments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExamRecordListClassCommentsQueryResult = NonNullable<Awaited<ReturnType<typeof examRecordListClassComments>>>
+export type ExamRecordListClassCommentsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Class teacher comment area (authorized class teacher only)
+ */
+
+export function useExamRecordListClassComments<TData = Awaited<ReturnType<typeof examRecordListClassComments>>, TError = ErrorType<unknown>>(
+ params: ExamRecordListClassCommentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof examRecordListClassComments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExamRecordListClassCommentsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExamRecordSaveClassCommentUrl = () => {
+
+
+
+
+  return `/api/exam-record/class-comment`
+}
+
+/**
+ * @summary Class teacher comment on an unpublished draft card; never changes scores
+ */
+export const examRecordSaveClassComment = async (examRecordClassCommentRequest: ExamRecordClassCommentRequest, options?: Parameters<typeof customFetch>[1]): Promise<ExamRecordClassComment> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ExamRecordClassComment>(getExamRecordSaveClassCommentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(examRecordClassCommentRequest)
+  }
+);}
+
+
+
+
+
+export const getExamRecordSaveClassCommentMutationKey = () => ['examRecordSaveClassComment'] as const;
+
+export const getExamRecordSaveClassCommentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordSaveClassComment>>, TError,ExamRecordSaveClassCommentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof examRecordSaveClassComment>>, TError,ExamRecordSaveClassCommentMutationVariables, TContext> => {
+
+const mutationKey = getExamRecordSaveClassCommentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof examRecordSaveClassComment>>, ExamRecordSaveClassCommentMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  examRecordSaveClassComment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExamRecordSaveClassCommentMutationResult = NonNullable<Awaited<ReturnType<typeof examRecordSaveClassComment>>>
+    export type ExamRecordSaveClassCommentMutationBody = BodyType<ExamRecordClassCommentRequest>
+    export type ExamRecordSaveClassCommentMutationError = ErrorType<unknown>
+    export type ExamRecordSaveClassCommentMutationVariables = {data: BodyType<ExamRecordClassCommentRequest>}
+
+    /**
+ * @summary Class teacher comment on an unpublished draft card; never changes scores
+ */
+export const useExamRecordSaveClassComment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordSaveClassComment>>, TError,ExamRecordSaveClassCommentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof examRecordSaveClassComment>>,
+        TError,
+        ExamRecordSaveClassCommentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getExamRecordSaveClassCommentMutationOptions(options));
+    }
+
+export const getExamRecordReturnSheetUrl = () => {
+
+
+
+
+  return `/api/exam-record/return`
+}
+
+/**
+ * @summary Admin returns a subject batch with a mandatory reason
+ */
+export const examRecordReturnSheet = async (examRecordReturnRequest: ExamRecordReturnRequest, options?: Parameters<typeof customFetch>[1]): Promise<ExamRecordStatusResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ExamRecordStatusResult>(getExamRecordReturnSheetUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(examRecordReturnRequest)
+  }
+);}
+
+
+
+
+
+export const getExamRecordReturnSheetMutationKey = () => ['examRecordReturnSheet'] as const;
+
+export const getExamRecordReturnSheetMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordReturnSheet>>, TError,ExamRecordReturnSheetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof examRecordReturnSheet>>, TError,ExamRecordReturnSheetMutationVariables, TContext> => {
+
+const mutationKey = getExamRecordReturnSheetMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof examRecordReturnSheet>>, ExamRecordReturnSheetMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  examRecordReturnSheet(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExamRecordReturnSheetMutationResult = NonNullable<Awaited<ReturnType<typeof examRecordReturnSheet>>>
+    export type ExamRecordReturnSheetMutationBody = BodyType<ExamRecordReturnRequest>
+    export type ExamRecordReturnSheetMutationError = ErrorType<unknown>
+    export type ExamRecordReturnSheetMutationVariables = {data: BodyType<ExamRecordReturnRequest>}
+
+    /**
+ * @summary Admin returns a subject batch with a mandatory reason
+ */
+export const useExamRecordReturnSheet = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordReturnSheet>>, TError,ExamRecordReturnSheetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof examRecordReturnSheet>>,
+        TError,
+        ExamRecordReturnSheetMutationVariables,
+        TContext
+      > => {
+      return useMutation(getExamRecordReturnSheetMutationOptions(options));
+    }
+
+export const getExamRecordPublishUrl = () => {
+
+
+
+
+  return `/api/exam-record/publish`
+}
+
+export const examRecordPublish = async (examRecordPublishRequest: ExamRecordPublishRequest, options?: Parameters<typeof customFetch>[1]): Promise<ExamRecordPublishResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ExamRecordPublishResult>(getExamRecordPublishUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(examRecordPublishRequest)
+  }
+);}
+
+
+
+
+
+export const getExamRecordPublishMutationKey = () => ['examRecordPublish'] as const;
+
+export const getExamRecordPublishMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordPublish>>, TError,ExamRecordPublishMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof examRecordPublish>>, TError,ExamRecordPublishMutationVariables, TContext> => {
+
+const mutationKey = getExamRecordPublishMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof examRecordPublish>>, ExamRecordPublishMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  examRecordPublish(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExamRecordPublishMutationResult = NonNullable<Awaited<ReturnType<typeof examRecordPublish>>>
+    export type ExamRecordPublishMutationBody = BodyType<ExamRecordPublishRequest>
+    export type ExamRecordPublishMutationError = ErrorType<unknown>
+    export type ExamRecordPublishMutationVariables = {data: BodyType<ExamRecordPublishRequest>}
+
+    export const useExamRecordPublish = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordPublish>>, TError,ExamRecordPublishMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof examRecordPublish>>,
+        TError,
+        ExamRecordPublishMutationVariables,
+        TContext
+      > => {
+      return useMutation(getExamRecordPublishMutationOptions(options));
+    }
+
+export const getExamRecordListPapersUrl = (params: ExamRecordListPapersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/exam-record/questions?${stringifiedParams}` : `/api/exam-record/questions`
+}
+
+export const examRecordListPapers = async (params: ExamRecordListPapersParams, options?: Parameters<typeof customFetch>[1]): Promise<ExamRecordPaper[]> => {
+
+  return customFetch<ExamRecordPaper[]>(getExamRecordListPapersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExamRecordListPapersQueryKey = (params?: ExamRecordListPapersParams,) => {
+    return [
+    `/api/exam-record/questions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExamRecordListPapersQueryOptions = <TData = Awaited<ReturnType<typeof examRecordListPapers>>, TError = ErrorType<unknown>>(params: ExamRecordListPapersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof examRecordListPapers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExamRecordListPapersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof examRecordListPapers>>> = ({ signal }) => examRecordListPapers(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof examRecordListPapers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExamRecordListPapersQueryResult = NonNullable<Awaited<ReturnType<typeof examRecordListPapers>>>
+export type ExamRecordListPapersQueryError = ErrorType<unknown>
+
+
+
+export function useExamRecordListPapers<TData = Awaited<ReturnType<typeof examRecordListPapers>>, TError = ErrorType<unknown>>(
+ params: ExamRecordListPapersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof examRecordListPapers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExamRecordListPapersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExamRecordCreatePaperUrl = () => {
+
+
+
+
+  return `/api/exam-record/questions`
+}
+
+export const examRecordCreatePaper = async (examRecordCreatePaperRequest: ExamRecordCreatePaperRequest, options?: Parameters<typeof customFetch>[1]): Promise<ExamRecordPaper> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ExamRecordPaper>(getExamRecordCreatePaperUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(examRecordCreatePaperRequest)
+  }
+);}
+
+
+
+
+
+export const getExamRecordCreatePaperMutationKey = () => ['examRecordCreatePaper'] as const;
+
+export const getExamRecordCreatePaperMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordCreatePaper>>, TError,ExamRecordCreatePaperMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof examRecordCreatePaper>>, TError,ExamRecordCreatePaperMutationVariables, TContext> => {
+
+const mutationKey = getExamRecordCreatePaperMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof examRecordCreatePaper>>, ExamRecordCreatePaperMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  examRecordCreatePaper(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExamRecordCreatePaperMutationResult = NonNullable<Awaited<ReturnType<typeof examRecordCreatePaper>>>
+    export type ExamRecordCreatePaperMutationBody = BodyType<ExamRecordCreatePaperRequest>
+    export type ExamRecordCreatePaperMutationError = ErrorType<unknown>
+    export type ExamRecordCreatePaperMutationVariables = {data: BodyType<ExamRecordCreatePaperRequest>}
+
+    export const useExamRecordCreatePaper = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordCreatePaper>>, TError,ExamRecordCreatePaperMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof examRecordCreatePaper>>,
+        TError,
+        ExamRecordCreatePaperMutationVariables,
+        TContext
+      > => {
+      return useMutation(getExamRecordCreatePaperMutationOptions(options));
+    }
+
+export const getExamRecordGetPaperUrl = (id: number,
+    params: ExamRecordGetPaperParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/exam-record/questions/${id}?${stringifiedParams}` : `/api/exam-record/questions/${id}`
+}
+
+export const examRecordGetPaper = async (id: number,
+    params: ExamRecordGetPaperParams, options?: Parameters<typeof customFetch>[1]): Promise<ExamRecordPaperDetail> => {
+
+  return customFetch<ExamRecordPaperDetail>(getExamRecordGetPaperUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExamRecordGetPaperQueryKey = (id: number,
+    params?: ExamRecordGetPaperParams,) => {
+    return [
+    `/api/exam-record/questions/${id}`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExamRecordGetPaperQueryOptions = <TData = Awaited<ReturnType<typeof examRecordGetPaper>>, TError = ErrorType<unknown>>(id: number,
+    params: ExamRecordGetPaperParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof examRecordGetPaper>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExamRecordGetPaperQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof examRecordGetPaper>>> = ({ signal }) => examRecordGetPaper(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof examRecordGetPaper>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExamRecordGetPaperQueryResult = NonNullable<Awaited<ReturnType<typeof examRecordGetPaper>>>
+export type ExamRecordGetPaperQueryError = ErrorType<unknown>
+
+
+
+export function useExamRecordGetPaper<TData = Awaited<ReturnType<typeof examRecordGetPaper>>, TError = ErrorType<unknown>>(
+ id: number,
+    params: ExamRecordGetPaperParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof examRecordGetPaper>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExamRecordGetPaperQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExamRecordGetPaperDocumentUrl = (id: number,
+    params: ExamRecordGetPaperDocumentParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/exam-record/questions/${id}/document?${stringifiedParams}` : `/api/exam-record/questions/${id}/document`
+}
+
+export const examRecordGetPaperDocument = async (id: number,
+    params: ExamRecordGetPaperDocumentParams, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getExamRecordGetPaperDocumentUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExamRecordGetPaperDocumentQueryKey = (id: number,
+    params?: ExamRecordGetPaperDocumentParams,) => {
+    return [
+    `/api/exam-record/questions/${id}/document`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExamRecordGetPaperDocumentQueryOptions = <TData = Awaited<ReturnType<typeof examRecordGetPaperDocument>>, TError = ErrorType<unknown>>(id: number,
+    params: ExamRecordGetPaperDocumentParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof examRecordGetPaperDocument>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExamRecordGetPaperDocumentQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof examRecordGetPaperDocument>>> = ({ signal }) => examRecordGetPaperDocument(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof examRecordGetPaperDocument>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExamRecordGetPaperDocumentQueryResult = NonNullable<Awaited<ReturnType<typeof examRecordGetPaperDocument>>>
+export type ExamRecordGetPaperDocumentQueryError = ErrorType<unknown>
+
+
+
+export function useExamRecordGetPaperDocument<TData = Awaited<ReturnType<typeof examRecordGetPaperDocument>>, TError = ErrorType<unknown>>(
+ id: number,
+    params: ExamRecordGetPaperDocumentParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof examRecordGetPaperDocument>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExamRecordGetPaperDocumentQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExamRecordAddPaperVersionUrl = (id: number,) => {
+
+
+
+
+  return `/api/exam-record/questions/${id}/version`
+}
+
+export const examRecordAddPaperVersion = async (id: number,
+    examRecordAddVersionRequest: ExamRecordAddVersionRequest, options?: Parameters<typeof customFetch>[1]): Promise<ExamRecordPaper> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ExamRecordPaper>(getExamRecordAddPaperVersionUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(examRecordAddVersionRequest)
+  }
+);}
+
+
+
+
+
+export const getExamRecordAddPaperVersionMutationKey = () => ['examRecordAddPaperVersion'] as const;
+
+export const getExamRecordAddPaperVersionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordAddPaperVersion>>, TError,ExamRecordAddPaperVersionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof examRecordAddPaperVersion>>, TError,ExamRecordAddPaperVersionMutationVariables, TContext> => {
+
+const mutationKey = getExamRecordAddPaperVersionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof examRecordAddPaperVersion>>, ExamRecordAddPaperVersionMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  examRecordAddPaperVersion(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExamRecordAddPaperVersionMutationResult = NonNullable<Awaited<ReturnType<typeof examRecordAddPaperVersion>>>
+    export type ExamRecordAddPaperVersionMutationBody = BodyType<ExamRecordAddVersionRequest>
+    export type ExamRecordAddPaperVersionMutationError = ErrorType<unknown>
+    export type ExamRecordAddPaperVersionMutationVariables = {id: number;data: BodyType<ExamRecordAddVersionRequest>}
+
+    export const useExamRecordAddPaperVersion = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordAddPaperVersion>>, TError,ExamRecordAddPaperVersionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof examRecordAddPaperVersion>>,
+        TError,
+        ExamRecordAddPaperVersionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getExamRecordAddPaperVersionMutationOptions(options));
+    }
+
+export const getExamRecordSubmitPaperUrl = (id: number,) => {
+
+
+
+
+  return `/api/exam-record/questions/${id}/submit`
+}
+
+export const examRecordSubmitPaper = async (id: number,
+    examRecordPaperRevisionRequest: ExamRecordPaperRevisionRequest, options?: Parameters<typeof customFetch>[1]): Promise<ExamRecordStatusResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ExamRecordStatusResult>(getExamRecordSubmitPaperUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(examRecordPaperRevisionRequest)
+  }
+);}
+
+
+
+
+
+export const getExamRecordSubmitPaperMutationKey = () => ['examRecordSubmitPaper'] as const;
+
+export const getExamRecordSubmitPaperMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordSubmitPaper>>, TError,ExamRecordSubmitPaperMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof examRecordSubmitPaper>>, TError,ExamRecordSubmitPaperMutationVariables, TContext> => {
+
+const mutationKey = getExamRecordSubmitPaperMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof examRecordSubmitPaper>>, ExamRecordSubmitPaperMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  examRecordSubmitPaper(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExamRecordSubmitPaperMutationResult = NonNullable<Awaited<ReturnType<typeof examRecordSubmitPaper>>>
+    export type ExamRecordSubmitPaperMutationBody = BodyType<ExamRecordPaperRevisionRequest>
+    export type ExamRecordSubmitPaperMutationError = ErrorType<unknown>
+    export type ExamRecordSubmitPaperMutationVariables = {id: number;data: BodyType<ExamRecordPaperRevisionRequest>}
+
+    export const useExamRecordSubmitPaper = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordSubmitPaper>>, TError,ExamRecordSubmitPaperMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof examRecordSubmitPaper>>,
+        TError,
+        ExamRecordSubmitPaperMutationVariables,
+        TContext
+      > => {
+      return useMutation(getExamRecordSubmitPaperMutationOptions(options));
+    }
+
+export const getExamRecordReviewPaperUrl = (id: number,) => {
+
+
+
+
+  return `/api/exam-record/questions/${id}/review`
+}
+
+export const examRecordReviewPaper = async (id: number,
+    examRecordReviewRequest: ExamRecordReviewRequest, options?: Parameters<typeof customFetch>[1]): Promise<ExamRecordStatusResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ExamRecordStatusResult>(getExamRecordReviewPaperUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(examRecordReviewRequest)
+  }
+);}
+
+
+
+
+
+export const getExamRecordReviewPaperMutationKey = () => ['examRecordReviewPaper'] as const;
+
+export const getExamRecordReviewPaperMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordReviewPaper>>, TError,ExamRecordReviewPaperMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof examRecordReviewPaper>>, TError,ExamRecordReviewPaperMutationVariables, TContext> => {
+
+const mutationKey = getExamRecordReviewPaperMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof examRecordReviewPaper>>, ExamRecordReviewPaperMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  examRecordReviewPaper(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExamRecordReviewPaperMutationResult = NonNullable<Awaited<ReturnType<typeof examRecordReviewPaper>>>
+    export type ExamRecordReviewPaperMutationBody = BodyType<ExamRecordReviewRequest>
+    export type ExamRecordReviewPaperMutationError = ErrorType<unknown>
+    export type ExamRecordReviewPaperMutationVariables = {id: number;data: BodyType<ExamRecordReviewRequest>}
+
+    export const useExamRecordReviewPaper = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof examRecordReviewPaper>>, TError,ExamRecordReviewPaperMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof examRecordReviewPaper>>,
+        TError,
+        ExamRecordReviewPaperMutationVariables,
+        TContext
+      > => {
+      return useMutation(getExamRecordReviewPaperMutationOptions(options));
+    }
+
+export const getExamRecordPrintPaperUrl = (id: number,
+    params: ExamRecordPrintPaperParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/exam-record/questions/${id}/print?${stringifiedParams}` : `/api/exam-record/questions/${id}/print`
+}
+
+/**
+ * @summary Admin-only official print of an approved paper
+ */
+export const examRecordPrintPaper = async (id: number,
+    params: ExamRecordPrintPaperParams, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getExamRecordPrintPaperUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExamRecordPrintPaperQueryKey = (id: number,
+    params?: ExamRecordPrintPaperParams,) => {
+    return [
+    `/api/exam-record/questions/${id}/print`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExamRecordPrintPaperQueryOptions = <TData = Awaited<ReturnType<typeof examRecordPrintPaper>>, TError = ErrorType<unknown>>(id: number,
+    params: ExamRecordPrintPaperParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof examRecordPrintPaper>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExamRecordPrintPaperQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof examRecordPrintPaper>>> = ({ signal }) => examRecordPrintPaper(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof examRecordPrintPaper>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExamRecordPrintPaperQueryResult = NonNullable<Awaited<ReturnType<typeof examRecordPrintPaper>>>
+export type ExamRecordPrintPaperQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Admin-only official print of an approved paper
+ */
+
+export function useExamRecordPrintPaper<TData = Awaited<ReturnType<typeof examRecordPrintPaper>>, TError = ErrorType<unknown>>(
+ id: number,
+    params: ExamRecordPrintPaperParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof examRecordPrintPaper>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExamRecordPrintPaperQueryOptions(id,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

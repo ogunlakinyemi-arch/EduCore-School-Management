@@ -647,7 +647,10 @@ router.get("/academic/assessments", asyncRoute(async (req, res) => {
 
 router.post("/academic/assessments", asyncRoute(async (req, res) => {
   const input = assessmentInput(req.body);
-  const { schoolId, context } = schoolContext(req, req.query.schoolId, [...ADMIN, "TEACHER"], true);
+  const { schoolId, context } = schoolContext(req, req.query.schoolId, ["TEACHER"], true);
+  if (context.roles.some(r=>r.status==="ACTIVE"&&r.schoolId===schoolId&&r.role==="SCHOOL_ADMIN")) {
+    throw new AuthError(403,"School Admin reviews and publishes results; assigned teachers prepare assessments");
+  }
   const section = (input.section ?? null) as string | null;
   await validateAcademicResource(schoolId, input.sessionId as number, input.termId as number, input.classId as number, input.subjectId as number, section);
   const type = await pool.query(`SELECT id FROM academic_assessment_types WHERE id=$1 AND school_id=$2 AND status='ACTIVE'`, [input.assessmentTypeId, schoolId]);
@@ -686,14 +689,19 @@ router.patch("/academic/assessments/:assessmentId", asyncRoute(async (req, res) 
   const input = assessmentInput(req.body, true);
   if (Object.keys(input).length === 0) throw new AuthError(400, "At least one assessment field is required");
   const schoolId = id(req.query.schoolId, "schoolId");
-  const { context } = schoolContext(req, schoolId, [...ADMIN, "TEACHER"], true);
+  const { context } = schoolContext(req, schoolId, ["TEACHER"], true);
   const target = await pool.query(`SELECT * FROM academic_assessments WHERE id=$1 AND school_id=$2`, [assessmentId, schoolId]);
   const current = target.rows[0];
   if (!current) throw new AuthError(404, "Assessment not found");
   const admin = context.roles.some((r) => r.status === "ACTIVE" && r.role === "SCHOOL_ADMIN" && r.schoolId === schoolId);
+  if(admin)throw new AuthError(403,"School Admin reviews assessments; only their assigned teacher may edit them");
+  const managed=await pool.query(`SELECT id FROM academic_result_batches WHERE school_id=$1 AND academic_session_id=$2
+    AND academic_term_id=$3 AND school_class_id=$4 AND section=COALESCE($5,'') AND subject_id=$6 LIMIT 1`,
+    [schoolId,current.academic_session_id,current.academic_term_id,current.school_class_id,current.section,current.subject_id]);
+  if(managed.rows.length)throw new AuthError(409,"This assessment is managed by its Exam/Record sheet; its scope and maximum marks cannot be edited here");
   if (!admin) {
     const teacherEmployeeId = await validateTeacherAssignment(schoolId, context.user.id, current.academic_session_id, current.academic_term_id, current.school_class_id, current.subject_id, current.section);
-    if (!context.roles.some((r) => r.role === "TEACHER" && r.schoolId === schoolId && r.status === "ACTIVE") || context.user.id !== current.created_by) {
+    if (!context.roles.some((r) => r.role === "TEACHER" && r.schoolId === schoolId && r.status === "ACTIVE") || teacherEmployeeId !== current.teacher_employee_id) {
       throw new AuthError(403, "You are not authorized to edit this assessment");
     }
     if (input.teacherId !== undefined && input.teacherId !== teacherEmployeeId) {

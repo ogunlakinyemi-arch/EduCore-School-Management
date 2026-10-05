@@ -34,7 +34,7 @@ import { AcademicWorkPage } from '@/pages/academic-work';
 import { CurriculumManagementPage } from '@/pages/curriculum-management';
 import { SchoolCurriculumPage } from '@/pages/school-curriculum';
 import { LessonNotesPage } from '@/pages/lesson-notes';
-import { ResultsPage } from '@/pages/results';
+import { ExamRecordPage } from '@/pages/exam-record';
 import { TimetablePage } from '@/pages/timetable';
 import { MyAcademicsPage } from '@/pages/my-academics';
 import { ClassesPage } from '@/pages/classes';
@@ -317,9 +317,9 @@ function ProtectedRoutes() {
           <Route path="/academic-work">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']} ownerCanView ownerReadOnly><AcademicWorkPage /></RoleGuard>
           </Route>
-          <Route path="/results">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']} ownerCanView ownerReadOnly><ResultsPage /></RoleGuard>
-          </Route>
+          <Route path="/results"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STUDENT']} ownerCanView ownerReadOnly><ExamRecordPage /></RoleGuard></Route>
+          <Route path="/exam-record/questions"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']} ownerCanView ownerReadOnly><ExamRecordPage initialSurface="questions" /></RoleGuard></Route>
+          <Route path="/exam-record"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STUDENT']} ownerCanView ownerReadOnly><ExamRecordPage /></RoleGuard></Route>
           <Route path="/timetable">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER', 'STUDENT']} ownerCanView ownerReadOnly><TimetablePage /></RoleGuard>
           </Route>

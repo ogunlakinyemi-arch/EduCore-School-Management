@@ -19,6 +19,7 @@
 
 export * from "./edupulse";
 export * from "./phase6";
+export * from "./exam-record";
 export * from "./finance";
 export * from "./communication";
 export * from "./library";

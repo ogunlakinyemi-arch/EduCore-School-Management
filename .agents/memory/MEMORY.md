@@ -28,7 +28,7 @@
 - [Invitation activation evidence](invitation-activation-evidence.md) — recovered invitations need positive role evidence; missing staff evidence must never imply ownership.
 - [Direct Partner registration provenance](direct-partner-registration-provenance.md) — the original registering Partner stays associated permanently; retain legacy attribution-resolution behavior.
 - [Financial verification depth](financial-verification-depth.md) — real DDL and routed settlement/refund replay checks are required; passing arithmetic tests are insufficient.
-- [Codegen check ordering](codegen-check-ordering.md) — finish API generation and shared-library builds before typechecking consuming apps; transient missing exports can be a race.
+- [Codegen constraints](codegen-check-ordering.md) — finish generation/builds before verification; expand YAML aliases in referenced OpenAPI files.
 - [EduCore extension requirements](educore-extension-requirements.md) — restricted Drivers, supplemental librarian duties, existing-user activation, curriculum provenance and historical lesson notes.
 - [Executable SQL evidence](executable-sql-evidence.md) — query mocks cannot prove matching or authorization-expression semantics; exercise fragile comparisons in PostgreSQL.
 - [Permanent NFC print policy](nfc-permanent-print-policy.md) — student cards omit changing academic data; printing never creates, activates, or unlocks an NFC assignment.

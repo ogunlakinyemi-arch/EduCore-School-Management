@@ -1,0 +1,480 @@
+openapi: 3.1.0
+info:
+  title: Exam/Record
+  version: 1.0.0
+paths:
+  /exam-record/context:
+    get:
+      operationId: examRecordGetContext
+      tags: [exam-record]
+      summary: Role, periods, authorized assignments, assessment types and grading rules
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - { name: sessionId, in: query, schema: { type: integer } }
+        - { name: termId, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: Context, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordContext" } } } }
+  /exam-record/sheet:
+    get:
+      operationId: examRecordGetSheet
+      tags: [exam-record]
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - { name: sessionId, in: query, required: true, schema: { type: integer } }
+        - { name: termId, in: query, required: true, schema: { type: integer } }
+        - { name: classId, in: query, required: true, schema: { type: integer } }
+        - { name: section, in: query, required: true, schema: { type: string } }
+        - { name: subjectId, in: query, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Sheet, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordSheet" } } } }
+  /exam-record/sheet/draft:
+    post:
+      operationId: examRecordSaveDraft
+      tags: [exam-record]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordDraftRequest" } } } }
+      responses:
+        "200": { description: Saved sheet, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordSheet" } } } }
+  /exam-record/sheet/submit:
+    post:
+      operationId: examRecordSubmitSheet
+      tags: [exam-record]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordBatchRequest" } } } }
+      responses:
+        "200": { description: Submitted, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordStatusResult" } } } }
+  /exam-record/template:
+    get:
+      operationId: examRecordDownloadTemplate
+      tags: [exam-record]
+      summary: XLSX template generated from the saved components
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - { name: sessionId, in: query, required: true, schema: { type: integer } }
+        - { name: termId, in: query, required: true, schema: { type: integer } }
+        - { name: classId, in: query, required: true, schema: { type: integer } }
+        - { name: section, in: query, required: true, schema: { type: string } }
+        - { name: subjectId, in: query, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: XLSX file, content: { application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } } } }
+  /exam-record/import/preview:
+    post:
+      operationId: examRecordImportPreview
+      tags: [exam-record]
+      summary: Validate an Excel or PDF import without writing
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordImportRequest" } } } }
+      responses:
+        "200": { description: Preview, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordImportPreview" } } } }
+  /exam-record/import/confirm:
+    post:
+      operationId: examRecordImportConfirm
+      tags: [exam-record]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordImportConfirmRequest" } } } }
+      responses:
+        "200": { description: Draft sheet, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordSheet" } } } }
+  /exam-record/class:
+    get:
+      operationId: examRecordGetClass
+      tags: [exam-record]
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - { name: sessionId, in: query, required: true, schema: { type: integer } }
+        - { name: termId, in: query, required: true, schema: { type: integer } }
+        - { name: classId, in: query, required: true, schema: { type: integer } }
+        - { name: section, in: query, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Consolidated class view, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordClassView" } } } }
+  /exam-record/class-comments:
+    get:
+      operationId: examRecordListClassComments
+      tags: [exam-record]
+      summary: Class teacher comment area (authorized class teacher only)
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - { name: sessionId, in: query, required: true, schema: { type: integer } }
+        - { name: termId, in: query, required: true, schema: { type: integer } }
+        - { name: classId, in: query, required: true, schema: { type: integer } }
+        - { name: section, in: query, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Comments, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ExamRecordClassComment" } } } } }
+  /exam-record/class-comment:
+    post:
+      operationId: examRecordSaveClassComment
+      tags: [exam-record]
+      summary: Class teacher comment on an unpublished draft card; never changes scores
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordClassCommentRequest" } } } }
+      responses:
+        "200": { description: Saved, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordClassComment" } } } }
+  /exam-record/return:
+    post:
+      operationId: examRecordReturnSheet
+      tags: [exam-record]
+      summary: Admin returns a subject batch with a mandatory reason
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordReturnRequest" } } } }
+      responses:
+        "200": { description: Returned, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordStatusResult" } } } }
+  /exam-record/publish:
+    post:
+      operationId: examRecordPublish
+      tags: [exam-record]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordPublishRequest" } } } }
+      responses:
+        "200": { description: Published, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordPublishResult" } } } }
+  /exam-record/questions:
+    get:
+      operationId: examRecordListPapers
+      tags: [exam-record]
+      parameters:
+        - $ref: "#/components/parameters/SchoolId"
+        - { name: sessionId, in: query, schema: { type: integer } }
+        - { name: termId, in: query, schema: { type: integer } }
+        - { name: classId, in: query, schema: { type: [integer, string] } }
+        - { name: section, in: query, schema: { type: string } }
+        - { name: subjectId, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: Papers, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ExamRecordPaper" } } } } }
+    post:
+      operationId: examRecordCreatePaper
+      tags: [exam-record]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordCreatePaperRequest" } } } }
+      responses:
+        "201": { description: Draft paper, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordPaper" } } } }
+  /exam-record/questions/{id}:
+    get:
+      operationId: examRecordGetPaper
+      tags: [exam-record]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200": { description: Paper detail, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordPaperDetail" } } } }
+  /exam-record/questions/{id}/document:
+    get:
+      operationId: examRecordGetPaperDocument
+      tags: [exam-record]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - $ref: "#/components/parameters/SchoolId"
+        - { name: versionId, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: Original document, content: { application/octet-stream: { schema: { type: string, format: binary } } } }
+  /exam-record/questions/{id}/version:
+    post:
+      operationId: examRecordAddPaperVersion
+      tags: [exam-record]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordAddVersionRequest" } } } }
+      responses:
+        "200": { description: Paper, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordPaper" } } } }
+  /exam-record/questions/{id}/submit:
+    post:
+      operationId: examRecordSubmitPaper
+      tags: [exam-record]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordPaperRevisionRequest" } } } }
+      responses:
+        "200": { description: Submitted, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordStatusResult" } } } }
+  /exam-record/questions/{id}/review:
+    post:
+      operationId: examRecordReviewPaper
+      tags: [exam-record]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordReviewRequest" } } } }
+      responses:
+        "200": { description: Reviewed, content: { application/json: { schema: { $ref: "#/components/schemas/ExamRecordStatusResult" } } } }
+  /exam-record/questions/{id}/print:
+    get:
+      operationId: examRecordPrintPaper
+      tags: [exam-record]
+      summary: Admin-only official print of an approved paper
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - $ref: "#/components/parameters/SchoolId"
+      responses:
+        "200": { description: Original PDF/DOCX or branded HTML, content: { application/octet-stream: { schema: { type: string, format: binary } } } }
+components:
+  parameters:
+    SchoolId: { name: schoolId, in: query, required: true, schema: { type: integer } }
+  schemas:
+    ExamRecordScope:
+      type: object
+      required: [schoolId, sessionId, termId, classId, section, subjectId]
+      properties:
+        schoolId: { type: integer }
+        sessionId: { type: integer }
+        termId: { type: integer }
+        classId: { type: integer }
+        section: { type: string }
+        subjectId: { type: integer }
+    ExamRecordAssignment:
+      type: object
+      required: [classId, className, section, subjectId, subjectName, teacherId, teacherName, status, batchId, revision]
+      properties:
+        classId: { type: integer }
+        className: { type: string }
+        section: { type: string }
+        subjectId: { type: integer }
+        subjectName: { type: string }
+        teacherId: { type: integer }
+        teacherName: { type: string }
+        status: { type: string }
+        batchId: { type: [integer, "null"] }
+        revision: { type: integer }
+        commentOnly: { type: boolean, description: Class-teacher duty; grants no subject access }
+    ExamRecordGradingRule:
+      type: object
+      required: [minScore, maxScore, grade]
+      properties:
+        minScore: { type: number }
+        maxScore: { type: number }
+        grade: { type: string }
+        gradePoint: { type: [number, "null"] }
+        remark: { type: [string, "null"] }
+    ExamRecordContext:
+      type: object
+      required: [role, sessions, terms, assignments, assessmentTypes, gradingRules, sessionId, termId]
+      properties:
+        role: { type: string, enum: [TEACHER, ADMIN, OWNER] }
+        sessions:
+          type: array
+          items: { type: object, required: [id, name, isCurrent, status], properties: { id: { type: integer }, name: { type: string }, isCurrent: { type: boolean }, status: { type: string } } }
+        terms:
+          type: array
+          items: { type: object, required: [id, name, isCurrent, status, sessionId], properties: { id: { type: integer }, name: { type: string }, isCurrent: { type: boolean }, status: { type: string }, sessionId: { type: integer } } }
+        assignments: { type: array, items: { $ref: "#/components/schemas/ExamRecordAssignment" } }
+        assessmentTypes:
+          type: array
+          items: { type: object, required: [id, name, code, maxScore], properties: { id: { type: integer }, name: { type: string }, code: { type: string }, maxScore: { type: [number, "null"] } } }
+        gradingRules: { type: array, items: { $ref: "#/components/schemas/ExamRecordGradingRule" } }
+        sessionId: { type: [integer, "null"] }
+        termId: { type: [integer, "null"] }
+    ExamRecordComponent:
+      type: object
+      required: [key, label, typeId, maxScore, assessmentId]
+      properties:
+        key: { type: string }
+        label: { type: string }
+        typeId: { type: [integer, "null"] }
+        maxScore: { type: [number, "null"] }
+        assessmentId: { type: [integer, "null"] }
+    ExamRecordSheetRow:
+      type: object
+      required: [studentId, studentName, admissionNo, scores]
+      properties:
+        studentId: { type: integer }
+        studentName: { type: string }
+        admissionNo: { type: string }
+        scores: { type: object, additionalProperties: { type: [number, "null"] } }
+    ExamRecordSheet:
+      type: object
+      required: [scope, components, rows, batchId, revision, status, returnComment, gradingRules]
+      properties:
+        scope: { $ref: "#/components/schemas/ExamRecordScope" }
+        components: { type: array, items: { $ref: "#/components/schemas/ExamRecordComponent" } }
+        rows: { type: array, items: { $ref: "#/components/schemas/ExamRecordSheetRow" } }
+        batchId: { type: [integer, "null"] }
+        revision: { type: integer }
+        status: { type: string }
+        returnComment: { type: [string, "null"] }
+        gradingRules: { type: array, items: { $ref: "#/components/schemas/ExamRecordGradingRule" } }
+    ExamRecordDraftRequest:
+      type: object
+      required: [scope, revision, components, rows]
+      properties:
+        scope: { $ref: "#/components/schemas/ExamRecordScope" }
+        revision: { type: integer }
+        components: { type: array, items: { $ref: "#/components/schemas/ExamRecordComponent" } }
+        rows: { type: array, items: { $ref: "#/components/schemas/ExamRecordSheetRow" } }
+    ExamRecordBatchRequest:
+      type: object
+      required: [schoolId, batchId, revision]
+      properties: { schoolId: { type: integer }, batchId: { type: integer }, revision: { type: integer } }
+    ExamRecordReturnRequest:
+      type: object
+      required: [schoolId, batchId, revision, comment]
+      properties: { schoolId: { type: integer }, batchId: { type: integer }, revision: { type: integer }, comment: { type: string, minLength: 1 } }
+    ExamRecordStatusResult:
+      type: object
+      required: [status, revision]
+      properties: { status: { type: string }, revision: { type: integer } }
+    ExamRecordImportRequest:
+      type: object
+      required: [scope, filename, dataBase64, components, revision]
+      properties:
+        scope: { $ref: "#/components/schemas/ExamRecordScope" }
+        filename: { type: string }
+        dataBase64: { type: string }
+        components: { type: array, items: { $ref: "#/components/schemas/ExamRecordComponent" } }
+        revision: { type: integer }
+    ExamRecordImportConfirmRequest:
+      allOf:
+        - $ref: "#/components/schemas/ExamRecordImportRequest"
+        - { type: object, required: [digest], properties: { digest: { type: string } } }
+    ExamRecordImportRow:
+      type: object
+      required: [sourceRow, studentId, studentName, scores, status, issues]
+      properties:
+        sourceRow: { type: integer }
+        studentId: { type: [integer, "null"] }
+        studentName: { type: string }
+        scores: { type: object, additionalProperties: { type: [number, "null"] } }
+        status: { type: string, enum: [VALID, INVALID] }
+        issues: { type: array, items: { type: string } }
+    ExamRecordImportPreview:
+      type: object
+      required: [rows, validCount, invalidCount, missingStudents, uncertain, digest, message]
+      properties:
+        rows: { type: array, items: { $ref: "#/components/schemas/ExamRecordImportRow" } }
+        validCount: { type: integer }
+        invalidCount: { type: integer }
+        missingStudents: { type: array, items: { type: string } }
+        uncertain: { type: boolean }
+        digest: { type: string }
+        message: { type: string }
+    ExamRecordClassSubject:
+      type: object
+      required: [subjectId, subjectName, teacherName, status, batchId, revision]
+      properties:
+        subjectId: { type: integer }
+        subjectName: { type: string }
+        teacherName: { type: string }
+        status: { type: string }
+        batchId: { type: [integer, "null"] }
+        revision: { type: integer }
+    ExamRecordStudentSubject:
+      type: object
+      required: [subjectId, subjectName, teacherName, score, maxScore, grade, gradePoint, missing, status, resultIds]
+      properties:
+        subjectId: { type: integer }
+        subjectName: { type: string }
+        teacherName: { type: string }
+        score: { type: [number, "null"] }
+        maxScore: { type: [number, "null"] }
+        grade: { type: [string, "null"] }
+        gradePoint: { type: [number, "null"] }
+        remark: { type: [string, "null"] }
+        missing: { type: boolean }
+        status: { type: string }
+        resultIds: { type: array, items: { type: integer } }
+        components: { type: array, items: { type: object, properties: { label: { type: string }, score: { type: [number, "null"] }, maxScore: { type: [number, "null"] } } } }
+    ExamRecordClassStudent:
+      type: object
+      required: [studentId, studentName, admissionNo, className, section, complete, subjects, missingSubjects, total, average, reportCardId, status, teacherRemark, schoolRemark]
+      properties:
+        studentId: { type: integer }
+        studentName: { type: string }
+        admissionNo: { type: string }
+        className: { type: string }
+        section: { type: string }
+        complete: { type: boolean }
+        subjects: { type: array, items: { $ref: "#/components/schemas/ExamRecordStudentSubject" } }
+        missingSubjects: { type: array, items: { type: string } }
+        total: { type: [number, "null"] }
+        average: { type: [number, "null"] }
+        reportCardId: { type: [integer, "null"] }
+        status: { type: string, enum: [PUBLISHED, READY_FOR_REVIEW, AWAITING] }
+        teacherRemark: { type: [string, "null"] }
+        schoolRemark: { type: [string, "null"] }
+        attendance: { type: [object, "null"], properties: { present: { type: integer }, absent: { type: integer }, late: { type: integer }, total: { type: integer } } }
+    ExamRecordClassView:
+      type: object
+      required: [subjects, students, submittedCount, requiredCount]
+      properties:
+        subjects: { type: array, items: { $ref: "#/components/schemas/ExamRecordClassSubject" } }
+        students: { type: array, items: { $ref: "#/components/schemas/ExamRecordClassStudent" } }
+        submittedCount: { type: integer }
+        requiredCount: { type: integer }
+    ExamRecordClassComment:
+      type: object
+      required: [studentId, studentName, reportCardId, teacherRemark, status]
+      properties:
+        studentId: { type: integer }
+        studentName: { type: string }
+        reportCardId: { type: [integer, "null"] }
+        teacherRemark: { type: [string, "null"] }
+        status: { type: string }
+    ExamRecordClassCommentRequest:
+      type: object
+      required: [schoolId, sessionId, termId, classId, section, studentId, teacherRemark]
+      properties:
+        schoolId: { type: integer }
+        sessionId: { type: integer }
+        termId: { type: integer }
+        classId: { type: integer }
+        section: { type: string }
+        studentId: { type: integer }
+        teacherRemark: { type: string }
+    ExamRecordPublishRequest:
+      type: object
+      required: [schoolId, sessionId, termId, classId, section, studentId]
+      properties:
+        schoolId: { type: integer }
+        sessionId: { type: integer }
+        termId: { type: integer }
+        classId: { type: integer }
+        section: { type: string }
+        studentId: { type: integer }
+        schoolRemark: { type: string }
+    ExamRecordPublishResult:
+      type: object
+      required: [reportCardId, status]
+      properties: { reportCardId: { type: integer }, status: { type: string, enum: [PUBLISHED] } }
+    ExamRecordPaper:
+      type: object
+      required: [id, schoolId, sessionId, termId, classId, className, section, subjectId, subjectName, teacherId, teacherName, examinationName, status, revision]
+      properties:
+        id: { type: integer }
+        schoolId: { type: integer }
+        sessionId: { type: integer }
+        termId: { type: integer }
+        classId: { type: integer }
+        className: { type: string }
+        section: { type: string }
+        subjectId: { type: integer }
+        subjectName: { type: string }
+        teacherId: { type: integer }
+        teacherName: { type: string }
+        examinationName: { type: string }
+        instructions: { type: [string, "null"] }
+        duration: { type: [string, integer, "null"] }
+        totalMarks: { type: [number, "null"] }
+        status: { type: string }
+        revision: { type: integer }
+        submittedAt: { type: [string, "null"] }
+        approvedAt: { type: [string, "null"] }
+    ExamRecordPaperDetail:
+      allOf:
+        - $ref: "#/components/schemas/ExamRecordPaper"
+        - type: object
+          required: [versions, reviews]
+          properties:
+            versions:
+              type: array
+              items: { type: object, required: [id, revision, filename, mimeType, previewText, createdAt], properties: { id: { type: integer }, revision: { type: integer }, filename: { type: string }, mimeType: { type: string }, previewText: { type: [string, "null"] }, createdAt: { type: string } } }
+            reviews:
+              type: array
+              items: { type: object, required: [id, versionId, decision, comment, createdAt, reviewerName], properties: { id: { type: integer }, versionId: { type: integer }, decision: { type: string }, comment: { type: string }, createdAt: { type: string }, reviewerName: { type: string } } }
+    ExamRecordCreatePaperRequest:
+      type: object
+      required: [scope, examinationName, filename, dataBase64]
+      properties:
+        scope: { $ref: "#/components/schemas/ExamRecordScope" }
+        examinationName: { type: string }
+        instructions: { type: [string, "null"] }
+        duration: { type: [string, "null"] }
+        totalMarks: { type: [number, "null"] }
+        filename: { type: string }
+        dataBase64: { type: string }
+    ExamRecordAddVersionRequest:
+      type: object
+      required: [schoolId, revision, filename, dataBase64]
+      properties: { schoolId: { type: integer }, revision: { type: integer }, filename: { type: string }, dataBase64: { type: string } }
+    ExamRecordPaperRevisionRequest:
+      type: object
+      required: [schoolId, revision]
+      properties: { schoolId: { type: integer }, revision: { type: integer } }
+    ExamRecordReviewRequest:
+      type: object
+      required: [schoolId, revision, decision, comment]
+      properties: { schoolId: { type: integer }, revision: { type: integer }, decision: { type: string, enum: [RETURN, APPROVE] }, comment: { type: string } }

@@ -24,6 +24,9 @@ const poolMock = vi.hoisted(() => {
   const result = (rows: any[] = []) => ({ rows, rowCount: rows.length });
   const respond = async (sql: string, values: any[] = []) => {
     state.queries.push({ sql, values });
+    if(sql.includes('school_class_id AS "classId",COALESCE(')) return result([]);
+    if(sql.includes("FROM academic_result_batches")) return result([]);
+    if(sql.includes("WITH days AS")) return result([{present:0,late:0,absent:0,total:0}]);
     if(sql.includes("FROM academic_terms t JOIN academic_sessions s")) return result([{id:4}]);
     if(sql.includes("WITH chosen AS")) return result([{id:13,firstName:"QA",lastName:"Student",admissionNo:"QA-13",classId:5,className:"JSS2",section:"Blue",studentClassAssignmentId:12}]);
     if(sql.includes("SELECT DISTINCT ON (cs.subject_id)")) return result([{subjectId:7,subjectName:"Mathematics",teacherName:"QA Teacher"}]);
@@ -198,7 +201,7 @@ describe("academic result and report-card operations", () => {
   });
 
   it("rejects scores above the assessment maximum before writing", async () => {
-    const response = await post("/academic/results", { schoolId: 1, assessmentId: 21, studentId: 13, score: 21 });
+    const response = await post("/academic/results", { schoolId: 1, assessmentId: 21, studentId: 13, score: 21 }, "TEACHER");
     expect(response.status).toBe(400);
     expect((await response.json() as { error: string }).error).toContain("cannot exceed");
     expect(state.queries.some(({ sql }) => sql.includes("INSERT INTO academic_results"))).toBe(false);
@@ -206,14 +209,14 @@ describe("academic result and report-card operations", () => {
 
   it("rejects duplicate student-assessment results without a second insert", async () => {
     state.resultExists = true;
-    const response = await post("/academic/results", { schoolId: 1, assessmentId: 21, studentId: 13, score: 18 });
+    const response = await post("/academic/results", { schoolId: 1, assessmentId: 21, studentId: 13, score: 18 }, "TEACHER");
     expect(response.status).toBe(409);
     expect(state.queries.filter(({ sql }) => sql.includes("INSERT INTO academic_results"))).toHaveLength(0);
     expect(state.transactions).toContain("ROLLBACK");
   });
 
   it("hides cross-school resources as not found", async () => {
-    const response = await post("/academic/results", { schoolId: 1, assessmentId: 21, studentId: 13, score: 18 }, "SCHOOL_ADMIN", 2);
+    const response = await post("/academic/results", { schoolId: 1, assessmentId: 21, studentId: 13, score: 18 }, "TEACHER", 2);
     expect(response.status).toBe(404);
     expect(state.queries).toHaveLength(0);
   });

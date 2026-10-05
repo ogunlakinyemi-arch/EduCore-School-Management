@@ -5553,6 +5553,41 @@ export const AcademicReportCardResultState = {
   NO_PUBLISHED_RESULTS: 'NO_PUBLISHED_RESULTS',
 } as const;
 
+export type AcademicReportCardConsolidatedSubjectsItemComponentsItem = {
+  label?: string;
+  /** @nullable */
+  score?: number | null;
+  /** @nullable */
+  maxScore?: number | null;
+};
+
+export type AcademicReportCardConsolidatedSubjectsItem = {
+  subjectId: number;
+  subjectName: string;
+  /** @nullable */
+  score: number | null;
+  /** @nullable */
+  maxScore: number | null;
+  /** @nullable */
+  grade: string | null;
+  /** @nullable */
+  gradePoint?: number | null;
+  /** @nullable */
+  remark?: string | null;
+  components?: AcademicReportCardConsolidatedSubjectsItemComponentsItem[];
+};
+
+/**
+ * Frozen recorded-day attendance captured at publication
+ * @nullable
+ */
+export type AcademicReportCardAttendance = {
+  present?: number;
+  late?: number;
+  absent?: number;
+  total?: number;
+} | null;
+
 export interface AcademicReportCard {
   id: number;
   schoolId: number;
@@ -5574,6 +5609,19 @@ export interface AcademicReportCard {
   isApproved?: boolean;
   resultState: AcademicReportCardResultState;
   lines: AcademicReportCardLine[];
+  /** Frozen consolidated subject data captured at Exam/Record publication */
+  consolidatedSubjects?: AcademicReportCardConsolidatedSubjectsItem[];
+  /** @nullable */
+  total?: number | null;
+  /** @nullable */
+  average?: number | null;
+  studentName?: string;
+  admissionNo?: string;
+  /**
+     * Frozen recorded-day attendance captured at publication
+     * @nullable
+     */
+  attendance?: AcademicReportCardAttendance;
 }
 
 export interface AcademicReportCardInput {
@@ -12787,6 +12835,408 @@ export interface LostCardInput {
   reason: string;
 }
 
+export interface ExamRecordScope {
+  schoolId: number;
+  sessionId: number;
+  termId: number;
+  classId: number;
+  section: string;
+  subjectId: number;
+}
+
+export interface ExamRecordAssignment {
+  classId: number;
+  className: string;
+  section: string;
+  subjectId: number;
+  subjectName: string;
+  teacherId: number;
+  teacherName: string;
+  status: string;
+  /** @nullable */
+  batchId: number | null;
+  revision: number;
+  /** Class-teacher duty; grants no subject access */
+  commentOnly?: boolean;
+}
+
+export interface ExamRecordGradingRule {
+  minScore: number;
+  maxScore: number;
+  grade: string;
+  /** @nullable */
+  gradePoint?: number | null;
+  /** @nullable */
+  remark?: string | null;
+}
+
+export type ExamRecordContextRole = typeof ExamRecordContextRole[keyof typeof ExamRecordContextRole];
+
+
+export const ExamRecordContextRole = {
+  TEACHER: 'TEACHER',
+  ADMIN: 'ADMIN',
+  OWNER: 'OWNER',
+} as const;
+
+export type ExamRecordContextSessionsItem = {
+  id: number;
+  name: string;
+  isCurrent: boolean;
+  status: string;
+};
+
+export type ExamRecordContextTermsItem = {
+  id: number;
+  name: string;
+  isCurrent: boolean;
+  status: string;
+  sessionId: number;
+};
+
+export type ExamRecordContextAssessmentTypesItem = {
+  id: number;
+  name: string;
+  code: string;
+  /** @nullable */
+  maxScore: number | null;
+};
+
+export interface ExamRecordContext {
+  role: ExamRecordContextRole;
+  sessions: ExamRecordContextSessionsItem[];
+  terms: ExamRecordContextTermsItem[];
+  assignments: ExamRecordAssignment[];
+  assessmentTypes: ExamRecordContextAssessmentTypesItem[];
+  gradingRules: ExamRecordGradingRule[];
+  /** @nullable */
+  sessionId: number | null;
+  /** @nullable */
+  termId: number | null;
+}
+
+export interface ExamRecordComponent {
+  key: string;
+  label: string;
+  /** @nullable */
+  typeId: number | null;
+  /** @nullable */
+  maxScore: number | null;
+  /** @nullable */
+  assessmentId: number | null;
+}
+
+export type ExamRecordSheetRowScores = {[key: string]: number | null};
+
+export interface ExamRecordSheetRow {
+  studentId: number;
+  studentName: string;
+  admissionNo: string;
+  scores: ExamRecordSheetRowScores;
+}
+
+export interface ExamRecordSheet {
+  scope: ExamRecordScope;
+  components: ExamRecordComponent[];
+  rows: ExamRecordSheetRow[];
+  /** @nullable */
+  batchId: number | null;
+  revision: number;
+  status: string;
+  /** @nullable */
+  returnComment: string | null;
+  gradingRules: ExamRecordGradingRule[];
+}
+
+export interface ExamRecordDraftRequest {
+  scope: ExamRecordScope;
+  revision: number;
+  components: ExamRecordComponent[];
+  rows: ExamRecordSheetRow[];
+}
+
+export interface ExamRecordBatchRequest {
+  schoolId: number;
+  batchId: number;
+  revision: number;
+}
+
+export interface ExamRecordReturnRequest {
+  schoolId: number;
+  batchId: number;
+  revision: number;
+  /** @minLength 1 */
+  comment: string;
+}
+
+export interface ExamRecordStatusResult {
+  status: string;
+  revision: number;
+}
+
+export interface ExamRecordImportRequest {
+  scope: ExamRecordScope;
+  filename: string;
+  dataBase64: string;
+  components: ExamRecordComponent[];
+  revision: number;
+}
+
+export type ExamRecordImportConfirmRequest = ExamRecordImportRequest & {
+  digest: string;
+};
+
+export type ExamRecordImportRowScores = {[key: string]: number | null};
+
+export type ExamRecordImportRowStatus = typeof ExamRecordImportRowStatus[keyof typeof ExamRecordImportRowStatus];
+
+
+export const ExamRecordImportRowStatus = {
+  VALID: 'VALID',
+  INVALID: 'INVALID',
+} as const;
+
+export interface ExamRecordImportRow {
+  sourceRow: number;
+  /** @nullable */
+  studentId: number | null;
+  studentName: string;
+  scores: ExamRecordImportRowScores;
+  status: ExamRecordImportRowStatus;
+  issues: string[];
+}
+
+export interface ExamRecordImportPreview {
+  rows: ExamRecordImportRow[];
+  validCount: number;
+  invalidCount: number;
+  missingStudents: string[];
+  uncertain: boolean;
+  digest: string;
+  message: string;
+}
+
+export interface ExamRecordClassSubject {
+  subjectId: number;
+  subjectName: string;
+  teacherName: string;
+  status: string;
+  /** @nullable */
+  batchId: number | null;
+  revision: number;
+}
+
+export type ExamRecordStudentSubjectComponentsItem = {
+  label?: string;
+  /** @nullable */
+  score?: number | null;
+  /** @nullable */
+  maxScore?: number | null;
+};
+
+export interface ExamRecordStudentSubject {
+  subjectId: number;
+  subjectName: string;
+  teacherName: string;
+  /** @nullable */
+  score: number | null;
+  /** @nullable */
+  maxScore: number | null;
+  /** @nullable */
+  grade: string | null;
+  /** @nullable */
+  gradePoint: number | null;
+  /** @nullable */
+  remark?: string | null;
+  missing: boolean;
+  status: string;
+  resultIds: number[];
+  components?: ExamRecordStudentSubjectComponentsItem[];
+}
+
+export type ExamRecordClassStudentStatus = typeof ExamRecordClassStudentStatus[keyof typeof ExamRecordClassStudentStatus];
+
+
+export const ExamRecordClassStudentStatus = {
+  PUBLISHED: 'PUBLISHED',
+  READY_FOR_REVIEW: 'READY_FOR_REVIEW',
+  AWAITING: 'AWAITING',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ExamRecordClassStudentAttendance = {
+  present?: number;
+  absent?: number;
+  late?: number;
+  total?: number;
+} | null;
+
+export interface ExamRecordClassStudent {
+  studentId: number;
+  studentName: string;
+  admissionNo: string;
+  className: string;
+  section: string;
+  complete: boolean;
+  subjects: ExamRecordStudentSubject[];
+  missingSubjects: string[];
+  /** @nullable */
+  total: number | null;
+  /** @nullable */
+  average: number | null;
+  /** @nullable */
+  reportCardId: number | null;
+  status: ExamRecordClassStudentStatus;
+  /** @nullable */
+  teacherRemark: string | null;
+  /** @nullable */
+  schoolRemark: string | null;
+  /** @nullable */
+  attendance?: ExamRecordClassStudentAttendance;
+}
+
+export interface ExamRecordClassView {
+  subjects: ExamRecordClassSubject[];
+  students: ExamRecordClassStudent[];
+  submittedCount: number;
+  requiredCount: number;
+}
+
+export interface ExamRecordClassComment {
+  studentId: number;
+  studentName: string;
+  /** @nullable */
+  reportCardId: number | null;
+  /** @nullable */
+  teacherRemark: string | null;
+  status: string;
+}
+
+export interface ExamRecordClassCommentRequest {
+  schoolId: number;
+  sessionId: number;
+  termId: number;
+  classId: number;
+  section: string;
+  studentId: number;
+  teacherRemark: string;
+}
+
+export interface ExamRecordPublishRequest {
+  schoolId: number;
+  sessionId: number;
+  termId: number;
+  classId: number;
+  section: string;
+  studentId: number;
+  schoolRemark?: string;
+}
+
+export type ExamRecordPublishResultStatus = typeof ExamRecordPublishResultStatus[keyof typeof ExamRecordPublishResultStatus];
+
+
+export const ExamRecordPublishResultStatus = {
+  PUBLISHED: 'PUBLISHED',
+} as const;
+
+export interface ExamRecordPublishResult {
+  reportCardId: number;
+  status: ExamRecordPublishResultStatus;
+}
+
+export interface ExamRecordPaper {
+  id: number;
+  schoolId: number;
+  sessionId: number;
+  termId: number;
+  classId: number;
+  className: string;
+  section: string;
+  subjectId: number;
+  subjectName: string;
+  teacherId: number;
+  teacherName: string;
+  examinationName: string;
+  /** @nullable */
+  instructions?: string | null;
+  /** @nullable */
+  duration?: string | number | null;
+  /** @nullable */
+  totalMarks?: number | null;
+  status: string;
+  revision: number;
+  /** @nullable */
+  submittedAt?: string | null;
+  /** @nullable */
+  approvedAt?: string | null;
+}
+
+export type ExamRecordPaperDetailVersionsItem = {
+  id: number;
+  revision: number;
+  filename: string;
+  mimeType: string;
+  /** @nullable */
+  previewText: string | null;
+  createdAt: string;
+};
+
+export type ExamRecordPaperDetailReviewsItem = {
+  id: number;
+  versionId: number;
+  decision: string;
+  comment: string;
+  createdAt: string;
+  reviewerName: string;
+};
+
+export type ExamRecordPaperDetail = ExamRecordPaper & {
+  versions: ExamRecordPaperDetailVersionsItem[];
+  reviews: ExamRecordPaperDetailReviewsItem[];
+};
+
+export interface ExamRecordCreatePaperRequest {
+  scope: ExamRecordScope;
+  examinationName: string;
+  /** @nullable */
+  instructions?: string | null;
+  /** @nullable */
+  duration?: string | null;
+  /** @nullable */
+  totalMarks?: number | null;
+  filename: string;
+  dataBase64: string;
+}
+
+export interface ExamRecordAddVersionRequest {
+  schoolId: number;
+  revision: number;
+  filename: string;
+  dataBase64: string;
+}
+
+export interface ExamRecordPaperRevisionRequest {
+  schoolId: number;
+  revision: number;
+}
+
+export type ExamRecordReviewRequestDecision = typeof ExamRecordReviewRequestDecision[keyof typeof ExamRecordReviewRequestDecision];
+
+
+export const ExamRecordReviewRequestDecision = {
+  RETURN: 'RETURN',
+  APPROVE: 'APPROVE',
+} as const;
+
+export interface ExamRecordReviewRequest {
+  schoolId: number;
+  revision: number;
+  decision: ExamRecordReviewRequestDecision;
+  comment: string;
+}
+
 export type SchoolEnforcementSelectionSchoolsItem = {
   /** @minimum 1 */
   schoolId: number;
@@ -17665,6 +18115,41 @@ export const AcademicReportCard4b96100ResultState = {
   NO_PUBLISHED_RESULTS: 'NO_PUBLISHED_RESULTS',
 } as const;
 
+export type AcademicReportCard4b96100ConsolidatedSubjectsItemComponentsItem = {
+  label?: string;
+  /** @nullable */
+  score?: number | null;
+  /** @nullable */
+  maxScore?: number | null;
+};
+
+export type AcademicReportCard4b96100ConsolidatedSubjectsItem = {
+  subjectId: number;
+  subjectName: string;
+  /** @nullable */
+  score: number | null;
+  /** @nullable */
+  maxScore: number | null;
+  /** @nullable */
+  grade: string | null;
+  /** @nullable */
+  gradePoint?: number | null;
+  /** @nullable */
+  remark?: string | null;
+  components?: AcademicReportCard4b96100ConsolidatedSubjectsItemComponentsItem[];
+};
+
+/**
+ * Frozen recorded-day attendance captured at publication
+ * @nullable
+ */
+export type AcademicReportCard4b96100Attendance = {
+  present?: number;
+  late?: number;
+  absent?: number;
+  total?: number;
+} | null;
+
 export interface AcademicReportCard4b96100 {
   id: number;
   schoolId: number;
@@ -17686,6 +18171,19 @@ export interface AcademicReportCard4b96100 {
   isApproved?: boolean;
   resultState: AcademicReportCard4b96100ResultState;
   lines: AcademicReportCardLine4b96100[];
+  /** Frozen consolidated subject data captured at Exam/Record publication */
+  consolidatedSubjects?: AcademicReportCard4b96100ConsolidatedSubjectsItem[];
+  /** @nullable */
+  total?: number | null;
+  /** @nullable */
+  average?: number | null;
+  studentName?: string;
+  admissionNo?: string;
+  /**
+     * Frozen recorded-day attendance captured at publication
+     * @nullable
+     */
+  attendance?: AcademicReportCard4b96100Attendance;
 }
 
 export interface AcademicReportCardInput4b96100 {
@@ -21238,6 +21736,68 @@ export type AssignTeacherClassParams = {
  * @minimum 1
  */
 schoolId: SchoolIdParameter;
+};
+
+export type ExamRecordGetContextParams = {
+schoolId: number;
+sessionId?: number;
+termId?: number;
+};
+
+export type ExamRecordGetSheetParams = {
+schoolId: number;
+sessionId: number;
+termId: number;
+classId: number;
+section: string;
+subjectId: number;
+};
+
+export type ExamRecordDownloadTemplateParams = {
+schoolId: number;
+sessionId: number;
+termId: number;
+classId: number;
+section: string;
+subjectId: number;
+};
+
+export type ExamRecordGetClassParams = {
+schoolId: number;
+sessionId: number;
+termId: number;
+classId: number;
+section: string;
+};
+
+export type ExamRecordListClassCommentsParams = {
+schoolId: number;
+sessionId: number;
+termId: number;
+classId: number;
+section: string;
+};
+
+export type ExamRecordListPapersParams = {
+schoolId: number;
+sessionId?: number;
+termId?: number;
+classId?: number | string;
+section?: string;
+subjectId?: number;
+};
+
+export type ExamRecordGetPaperParams = {
+schoolId: number;
+};
+
+export type ExamRecordGetPaperDocumentParams = {
+schoolId: number;
+versionId?: number;
+};
+
+export type ExamRecordPrintPaperParams = {
+schoolId: number;
 };
 
 export type GetSubscriptionEnforcementOverviewParams = {

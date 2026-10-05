@@ -1,5 +1,6 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { pool } from "@workspace/db";
+import { guardManagedLegacyResource, guardManagedLegacyCardCreation } from "../services/exam-record-legacy-guard";
 import { familyChildSchoolScope } from "../lib/family-child-school-scope";
 import {
   AuthError,
@@ -13,6 +14,7 @@ import {
 } from "../services/communication-service";
 import { logger } from "../lib/logger";
 import { periodStudents, compileStudent, assertCompilationReady, type PeriodContext } from "../services/result-compilation";
+import { publishedConsolidation } from "../services/exam-record-published";
 
 const router = Router();
 router.use(requireAuthentication());
@@ -195,6 +197,10 @@ const resultReturning = `id,school_id AS "schoolId",assessment_id AS "assessment
   section_snapshot AS section,subject_id AS "subjectId",score,max_score AS "maxScore",
   grade,grade_point AS "gradePoint",remark,status,review_status AS "reviewStatus",published_at AS "publishedAt"`;
 const cardSelect = `rc.id,rc.school_id AS "schoolId",rc.student_id AS "studentId",
+  (SELECT concat_ws(' ',st.first_name,st.last_name) FROM students st WHERE st.id=rc.student_id AND st.school_id=rc.school_id) AS "studentName",
+  (SELECT st.admission_no FROM students st WHERE st.id=rc.student_id AND st.school_id=rc.school_id) AS "admissionNo",
+  (SELECT s.name FROM academic_sessions s WHERE s.id=rc.academic_session_id AND s.school_id=rc.school_id) AS "sessionName",
+  (SELECT t.name FROM academic_terms t WHERE t.id=rc.academic_term_id AND t.school_id=rc.school_id) AS "termName",
   rc.academic_session_id AS "sessionId",rc.academic_term_id AS "termId",
   (SELECT name FROM academic_sessions WHERE id=rc.academic_session_id AND school_id=rc.school_id) AS "sessionName",
   (SELECT name FROM academic_terms WHERE id=rc.academic_term_id AND school_id=rc.school_id) AS "termName",
@@ -359,9 +365,9 @@ router.get("/academic/results", run(async (req, res) => {
 }));
 router.post("/academic/results", run(async (req, res) => {
   const body = bodyObject(req.body);
-  const schoolId = authorizeSchool(req, body.schoolId, ["SCHOOL_ADMIN", "TEACHER"]);
-  assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN", "TEACHER"] as any);
-  requireRole(req, ["SCHOOL_ADMIN", "TEACHER"]);
+  const schoolId = authorizeSchool(req, body.schoolId, ["TEACHER"]);
+  assertSchoolOperationalAccess(req, schoolId, ["TEACHER"] as any);
+  requireRole(req, ["TEACHER"]);
   const assessmentId = id(body.assessmentId, "assessmentId");
   const studentId = id(body.studentId, "studentId");
   const score = scoreValue(body.score, "score");
@@ -371,6 +377,7 @@ router.post("/academic/results", run(async (req, res) => {
   let created;
   try {
     await client.query("BEGIN");
+    await guardManagedLegacyResource(client,schoolId,"assessment",assessmentId);
     const assessment = await client.query(
       `SELECT a.id,a.school_id,a.academic_session_id,a.academic_term_id,a.school_class_id,a.section,
               a.subject_id,a.teacher_employee_id,a.max_score,a.assessment_date,a.status
@@ -458,14 +465,15 @@ router.post("/academic/results", run(async (req, res) => {
 }));
 router.patch("/academic/results/:resultId", run(async (req, res) => {
   const body = bodyObject(req.body);
-  const schoolId = authorizeSchool(req, body.schoolId, ["SCHOOL_ADMIN", "TEACHER"]);
-  assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN", "TEACHER"] as any);
+  const schoolId = authorizeSchool(req, body.schoolId, ["TEACHER"]);
+  assertSchoolOperationalAccess(req, schoolId, ["TEACHER"] as any);
   const resultId = id(req.params.resultId, "resultId");
   const actor = getUserContext(req);
   const client = await pool.connect();
   let updated;
   try {
     await client.query("BEGIN");
+    await guardManagedLegacyResource(client,schoolId,"result",resultId);
     await client.query(`SELECT pg_advisory_xact_lock(school_id,student_id) FROM academic_results WHERE id=$1 AND school_id=$2`,[resultId,schoolId]);
     const existing = await client.query(`SELECT * FROM academic_results WHERE id=$1 AND school_id=$2 FOR UPDATE`, [resultId, schoolId]);
     const current = existing.rows[0];
@@ -540,6 +548,7 @@ router.post("/academic/results/:resultId/submit", run(async (req, res) => {
   let submitted;
   try {
     await client.query("BEGIN");
+    await guardManagedLegacyResource(client,schoolId,"result",resultId);
     const existing = await client.query(
       `SELECT id,teacher_employee_id,status FROM academic_results WHERE id=$1 AND school_id=$2 FOR UPDATE`,
       [resultId, schoolId],
@@ -600,6 +609,7 @@ router.post("/academic/results/:resultId/review", run(async (req, res) => {
   let reviewed;
   try {
     await client.query("BEGIN");
+    await guardManagedLegacyResource(client,schoolId,"result",resultId);
     const current = await client.query(
       `SELECT id,status,review_status FROM academic_results WHERE id=$1 AND school_id=$2 FOR UPDATE`,
       [resultId, schoolId],
@@ -645,6 +655,7 @@ router.post("/academic/assessments/:assessmentId/publish-results", run(async (re
   let result;
   try {
     await client.query("BEGIN");
+    await guardManagedLegacyResource(client,schoolId,"assessment",assessmentId);
     const assessment = await client.query(`SELECT id FROM academic_assessments WHERE id=$1 AND school_id=$2 FOR UPDATE`, [assessmentId, schoolId]);
     if (!assessment.rows[0]) throw new AuthError(404, "Assessment not found");
     result = await client.query(
@@ -732,7 +743,7 @@ async function readStudentRows(req: Request, res: Response, table: "results" | "
           AND r.status='PUBLISHED' AND r.student_class_assignment_id=$5 AND NOT EXISTS
           (SELECT 1 FROM academic_report_card_lines l WHERE l.school_id=r.school_id AND l.report_card_id=$6 AND l.result_id=r.id)`,
         [schoolId,card.studentId,card.sessionId,card.termId,card.studentClassAssignmentId,card.id]);
-      return { ...card, resultState: reportResultState(lines.rows.length, Number(card.hasUnpublishedResults), Number(incomplete.rows[0].count)), lines: lines.rows };
+      return { ...card, ...await publishedConsolidation(card), resultState: reportResultState(lines.rows.length, Number(card.hasUnpublishedResults), Number(incomplete.rows[0].count)), lines: lines.rows };
     }));
     res.json(rows);
   }
@@ -765,7 +776,7 @@ router.get("/academic/report-cards", run(async (req, res) => {
         AND r.status='PUBLISHED' AND r.student_class_assignment_id=$5 AND NOT EXISTS
         (SELECT 1 FROM academic_report_card_lines l WHERE l.school_id=r.school_id AND l.report_card_id=$6 AND l.result_id=r.id)`,
       [schoolId,card.studentId,card.sessionId,card.termId,card.studentClassAssignmentId,card.id]);
-    return { ...card, resultState: reportResultState(lines.rows.length, Number(state.rows[0].count), Number(incomplete.rows[0].count)), lines: lines.rows };
+    return { ...card, ...await publishedConsolidation(card), resultState: reportResultState(lines.rows.length, Number(state.rows[0].count), Number(incomplete.rows[0].count)), lines: lines.rows };
   }));
   res.json(rows);
 }));
@@ -785,6 +796,7 @@ router.post("/academic/report-cards", run(async (req, res) => {
   let unpublishedCount = 0;
   try {
     await client.query("BEGIN");
+    await guardManagedLegacyCardCreation(client,{schoolId,studentId,sessionId,termId});
     await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, [`report-card:${schoolId}:${studentId}:${sessionId}:${termId}`]);
     await client.query("SELECT pg_advisory_xact_lock($1::int,$2::int)",[schoolId,studentId]);
     const assignment = await client.query(
@@ -873,6 +885,7 @@ router.post("/academic/report-cards/:id/publish", run(async (req, res) => {
   let card;
   try {
     await client.query("BEGIN");
+    await guardManagedLegacyResource(client,schoolId,"card",cardId);
     await client.query(`SELECT pg_advisory_xact_lock(school_id,student_id) FROM academic_report_cards WHERE id=$1 AND school_id=$2`,[cardId,schoolId]);
     const selected = await client.query(`SELECT id,student_id,academic_session_id,academic_term_id,student_class_assignment_id,status FROM academic_report_cards WHERE id=$1 AND school_id=$2 FOR UPDATE`, [cardId,schoolId]);
     const current = selected.rows[0];
