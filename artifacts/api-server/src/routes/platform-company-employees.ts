@@ -425,6 +425,11 @@ router.post("/platform/company-employees", run(async (req, res) => {
       schoolId,
     });
     clerkInvitationId = invitation.id;
+    await insertInvitationAudit(client, req, employee.id, "INTERNAL_EMPLOYEE_INVITED",
+      "Invited internal company employee", {
+        invitationId:invitation.id,claimId:invitation.claimId,role,schoolId,email,
+        expiresAt:invitation.expiresAt,
+      });
     await audit(req, client, "Created company employee", employee.id);
     commitAttempted = true;
     const resolution = await commitInvitationWithRecovery({

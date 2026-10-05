@@ -1530,6 +1530,35 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/AuthorizedSchool" }
+  /me/internal-employee-invitation/accept:
+    post:
+      operationId: acceptInternalEmployeeInvitation
+      tags: [identity]
+      summary: Confirm an identity-bound internal employee invitation and reconcile its role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                claimId: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Whether this account has a confirmed internal invitation receipt
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [handled]
+                properties:
+                  handled: { type: boolean }
+        "400":
+          description: Invalid internal invitation context
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "503":
+          description: Activation confirmation is temporarily unavailable; retry safely
   /me/authorized-context:
     get:
       operationId: getAuthorizedContext

@@ -1,6 +1,7 @@
 export type InvitationContext = {
   ticket: string | null;
   partnerToken: string | null;
+  internalEmployeeInvitation?: string;
 };
 
 const AUTH_FLOW_STORAGE_KEY = 'edupulse:invitation-auth-flow';
@@ -67,6 +68,9 @@ export function readInvitationContext(search: string): InvitationContext {
   return {
     ticket: params.get('__clerk_ticket') || null,
     partnerToken: params.get('partnerInvitation') || null,
+    ...(params.get('internalEmployeeInvitation')
+      ? {internalEmployeeInvitation:params.get('internalEmployeeInvitation')!}
+      : {}),
   };
 }
 
@@ -77,6 +81,7 @@ export function invitationReturnUrl(
   const params = new URLSearchParams();
   if (context.ticket) params.set('__clerk_ticket', context.ticket);
   if (context.partnerToken) params.set('partnerInvitation', context.partnerToken);
+  if(context.internalEmployeeInvitation) params.set('internalEmployeeInvitation',context.internalEmployeeInvitation);
   const query = params.toString();
   return `${basePath}/accept-invitation${query ? `?${query}` : ''}`;
 }

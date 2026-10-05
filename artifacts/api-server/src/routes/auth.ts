@@ -175,14 +175,16 @@ router.get(
   asyncRoute(async (req, res) => {
     const initialContext = getUserContext(req);
     if (!initialContext.roles.length) {
-      await activateAcceptedInternalEmployeeInvitation(
+      const internalActivated=await activateAcceptedInternalEmployeeInvitation(
         initialContext.user.id,
         initialContext.user.clerkUserId,
       );
-      await activateAcceptedSchoolInvitation(
-        initialContext.user.id,
-        initialContext.user.clerkUserId,
-      );
+      if(!internalActivated) {
+        await activateAcceptedSchoolInvitation(
+          initialContext.user.id,
+          initialContext.user.clerkUserId,
+        );
+      }
     }
     const roles = await pool.query(
       `SELECT id,role,school_id AS "schoolId",status

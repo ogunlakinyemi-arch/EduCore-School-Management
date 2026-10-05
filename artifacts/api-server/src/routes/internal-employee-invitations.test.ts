@@ -14,6 +14,7 @@ const state = vi.hoisted(() => ({
   clerkEmail: "person@example.test",
   clerkEmailVerified: true,
   schoolExists: true,
+  invalidated:false,
 }));
 
 const invitationCreate = vi.hoisted(() => vi.fn(async (input: any) => {
@@ -44,7 +45,10 @@ const clientQuery = vi.hoisted(() => vi.fn(async (sql: string, values: unknown[]
     };
   }
   if (sql.includes("FROM app_users") && sql.includes("FOR UPDATE")) return { rows: [state.user] };
-  if (sql.includes("FROM platform_company_employees") && sql.includes("FOR SHARE")) {
+  if(sql.includes('FROM audit_logs') && sql.includes('ORDER BY id DESC LIMIT 1')) {
+    return {rows:state.liveClaim?[state.liveClaim]:[]};
+  }
+  if (sql.includes("FROM platform_company_employees") && sql.includes("lower(email)=lower($2)")) {
     return state.employee.email === values[1]
       ? { rows: [{ id: state.employee.id }] }
       : { rows: [] };
@@ -66,6 +70,7 @@ const clientQuery = vi.hoisted(() => vi.fn(async (sql: string, values: unknown[]
 const client = vi.hoisted(() => ({ query: clientQuery, release: vi.fn() }));
 const poolQuery = vi.hoisted(() => vi.fn(async (sql: string, values: unknown[] = []) => {
   state.calls.push({ sql, values });
+  if(sql.includes("SELECT id FROM audit_logs WHERE module=")) return {rows:state.invalidated?[{id:1}]:[]};
   if (sql.includes("FROM audit_logs") && sql.includes("claimId")) {
     const liveClaim = state.liveClaim;
     return liveClaim && liveClaim.employeeId === values[0] && liveClaim.claimId === values[1]
@@ -142,6 +147,7 @@ beforeEach(() => {
   state.clerkEmail = "person@example.test";
   state.clerkEmailVerified = true;
   state.schoolExists = true;
+  state.invalidated=false;
   vi.clearAllMocks();
 });
 
@@ -149,7 +155,8 @@ function expectPublicInternalInvitationUrl(value: string) {
   const url = new URL(value);
   expect(url.origin).toBe(PUBLIC_PRODUCTION_ORIGIN);
   expect(url.pathname).toBe("/accept-invitation");
-  expect(url.search).toBe("");
+  expect(url.searchParams.get("internalEmployeeInvitation")).toMatch(/^[0-9a-f-]{36}$/i);
+  expect([...url.searchParams.keys()]).toEqual(["internalEmployeeInvitation"]);
   for (const prohibited of [
     "riker.replit.dev", ".replit.dev", "replit.com/silent-auth",
     "__replshield", "privateDevDomain=true", "__clerk_ticket",
@@ -283,11 +290,23 @@ describe("internal employee invitation and activation", () => {
   it("rejects a signed claim after the server invalidates it even when Clerk metadata remains", async () => {
     state.metadata = metadataFor("COMPANY_ACCOUNTANT", null);
     state.liveClaim = null;
+    state.invalidated=true;
     await expect(activateAcceptedInternalEmployeeInvitation(77, "clerk-person"))
       .rejects.toThrow("no longer pending or has expired");
     expect(clientQuery).not.toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO school_memberships"),
       expect.anything(),
     );
+  });
+  it.each([
+    {claimId:""}, {claimId:"not-an-invitation"}, {claimId:77},
+    {claimId:"2bf3d0d0-07db-40ae-9e57-d905c69e9545",role:"PLATFORM_OWNER"},
+    {employeeId:11}, {userId:77},
+  ])("rejects manipulated activation context without granting permissions: %j",async(body)=>{
+    const response=await fetch(`${baseUrl}/me/internal-employee-invitation/accept`,{
+      method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body),
+    });
+    expect(response.status).toBe(400);
+    expect(state.calls.some(call=>call.sql.includes("INSERT INTO school_memberships"))).toBe(false);
   });
 });

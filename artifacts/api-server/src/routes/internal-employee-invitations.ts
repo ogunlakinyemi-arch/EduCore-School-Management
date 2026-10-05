@@ -103,7 +103,7 @@ export async function createInternalEmployeeInvitation(
       expiresInDays: INVITATION_DAYS,
       ignoreExisting: input.ignoreExisting ?? false,
       notify: true,
-      redirectUrl: invitationRedirect("/accept-invitation"),
+      redirectUrl: invitationRedirect(`/accept-invitation?internalEmployeeInvitation=${encodeURIComponent(claimId)}`),
       publicMetadata,
     });
   } catch (error) {
@@ -145,18 +145,49 @@ export async function revokeInternalEmployeeInvitation(invitationId: string) {
 export async function activateAcceptedInternalEmployeeInvitation(
   userId: number,
   clerkUserId: string,
+  expectedClaimId?:string,
 ) {
   const clerkUser = await clerkClient.users.getUser(clerkUserId);
   const email = normalizeEmail(
     clerkUser.primaryEmailAddress?.emailAddress ??
       clerkUser.emailAddresses[0]?.emailAddress ?? "",
   );
+  const marker = (clerkUser.publicMetadata as Record<string, unknown> | undefined)?.[METADATA_KEY];
+  if(!marker && !expectedClaimId) return false;
   if (clerkUser.primaryEmailAddress?.verification?.status !== "verified") {
     throw new AuthError(403, "Verify the invited email address before activating internal employee access");
   }
-  const marker = (clerkUser.publicMetadata as Record<string, unknown> | undefined)?.[METADATA_KEY];
-  if (!marker || typeof marker !== "object" || !email) return false;
+  if(expectedClaimId && !/^[0-9a-f-]{36}$/i.test(expectedClaimId)) throw new AuthError(400,"Invalid internal invitation context");
+  const acceptedReceiptSql=`SELECT a.metadata->>'claimId' AS "claimId",a.metadata->>'role' AS role
+       FROM audit_logs a
+       JOIN platform_company_employees e ON e.id=a.record_id AND e.status='ACTIVE'
+       JOIN app_users u ON u.id=a.actor_user_id AND u.clerk_user_id=$2 AND u.status='ACTIVE'
+       JOIN school_memberships m ON m.user_id=u.id AND m.status='ACTIVE'
+        AND m.role::text=a.metadata->>'role'
+        AND m.school_id IS NOT DISTINCT FROM (a.metadata->>'schoolId')::integer
+      WHERE a.actor_user_id=$1 AND a.clerk_user_id=$2
+        AND a.module='Company Employees' AND a.event_type='INTERNAL_EMPLOYEE_INVITATION_ACCEPTED'
+        AND a.metadata->>'claimId'=$3
+        AND lower(e.email)=lower($4) AND lower(u.email)=lower($4)
+        AND (m.school_id IS NULL OR EXISTS(SELECT 1 FROM schools s
+          WHERE s.id=m.school_id AND upper(s.status)='ACTIVE'))
+        AND NOT EXISTS(SELECT 1 FROM audit_logs invalidation
+          WHERE invalidation.module='Company Employees' AND invalidation.record_id=a.record_id
+            AND invalidation.event_type='INTERNAL_EMPLOYEE_INVITATION_INVALIDATED'
+            AND invalidation.metadata->>'claimId'=a.metadata->>'claimId')
+        AND NOT EXISTS(SELECT 1 FROM school_memberships other
+          WHERE other.user_id=u.id AND other.status='ACTIVE'
+            AND other.role::text<>m.role::text)
+      LIMIT 1`;
+  const acceptedReceiptValues=[userId,clerkUserId,expectedClaimId ?? (marker as any)?.claimId ?? "",email];
+  const accepted = await pool.query(acceptedReceiptSql,acceptedReceiptValues);
+  if(accepted.rows[0]) return true;
+  if (!marker || typeof marker !== "object" || !email) {
+    if(expectedClaimId) throw new AuthError(403,"This invitation does not belong to this active invited account");
+    return false;
+  }
   const metadata = marker as Record<string, unknown>;
+  if(expectedClaimId && metadata.claimId!==expectedClaimId) throw new AuthError(403,"This invitation does not match the invited account");
   const employeeId = Number(metadata.employeeId);
   const schoolId = metadata.schoolId === null ? null : Number(metadata.schoolId);
   if (metadata.version !== 1 ||
@@ -179,8 +210,7 @@ export async function activateAcceptedInternalEmployeeInvitation(
 
   // Clerk metadata can persist after an invitation is revoked. Only the latest,
   // unexpired claim recorded by the server may provision access.
-  const liveClaim = await pool.query(
-    `SELECT metadata->>'claimId' AS "claimId",
+  const liveClaimSql = `SELECT metadata->>'claimId' AS "claimId",
             (metadata->>'expiresAt')::timestamptz AS "expiresAt"
      FROM audit_logs
      WHERE record_id=$1 AND module='Company Employees'
@@ -200,9 +230,18 @@ export async function activateAcceptedInternalEmployeeInvitation(
            AND newer.event_type IN ('INTERNAL_EMPLOYEE_INVITED','INTERNAL_EMPLOYEE_INVITATION_RESENT')
            AND newer.id > audit_logs.id
        )
-     ORDER BY id DESC LIMIT 1`,
+     ORDER BY id DESC LIMIT 1`;
+  let liveClaim = await pool.query(
+    liveClaimSql,
     [employeeId, metadata.claimId],
   );
+  // Initial legacy dispatches omitted the local claim. Recover only from
+  // an exact provider-accepted, signed invitation and an Owner-created profile.
+  if(!liveClaim.rows[0]) {
+    const {recoverLegacyInternalInvitation}=await import("./internal-invitation-recovery");
+    await recoverLegacyInternalInvitation({userId,clerkUserId,email,metadata,employeeId,schoolId});
+    liveClaim=await pool.query(liveClaimSql,[employeeId,metadata.claimId]);
+  }
   const claimExpiry = liveClaim.rows[0]?.expiresAt
     ? new Date(liveClaim.rows[0].expiresAt).getTime()
     : 0;
@@ -225,11 +264,19 @@ export async function activateAcceptedInternalEmployeeInvitation(
     const employee = await client.query(
       `SELECT id FROM platform_company_employees
        WHERE id=$1 AND lower(email)=lower($2) AND status='ACTIVE'
-       FOR SHARE`,
+       FOR UPDATE`,
       [employeeId, email],
     );
     if (!employee.rows[0]) {
       throw new AuthError(403, "An active company employee profile matching this invitation is required");
+    }
+    if((await client.query(acceptedReceiptSql,acceptedReceiptValues)).rows[0]) {
+      await client.query("COMMIT");
+      return true;
+    }
+    const currentClaim=await client.query(liveClaimSql,[employeeId,metadata.claimId]);
+    if(!currentClaim.rows[0] || new Date(currentClaim.rows[0].expiresAt).getTime()<=Date.now()) {
+      throw new AuthError(403,"This internal employee invitation is no longer pending or has expired");
     }
     if (schoolId !== null) {
       const school = await client.query(
@@ -306,14 +353,31 @@ export async function activateAcceptedInternalEmployeeInvitation(
     client.release();
   }
 
+  // Metadata cleanup is not part of the committed role transaction. A failed
+  // cleanup must not strand an accepted account; the identity-bound audit
+  // receipt above safely recognizes its retry.
   await clerkClient.users.updateUserMetadata(clerkUserId, {
     publicMetadata: { [METADATA_KEY]: null },
-  });
+  }).catch(()=>console.warn("Accepted internal invitation metadata cleanup is pending",{employeeId,userId}));
   return true;
 }
 
 const run = (handler: (req: Request, res: any) => Promise<void>) =>
   (req: Request, res: any, next: NextFunction) => handler(req, res).catch(next);
+
+router.post("/me/internal-employee-invitation/accept",run(async(req,res)=>{
+  if(!req.body || typeof req.body!=="object" || Array.isArray(req.body) ||
+    Object.keys(req.body).some(key=>key!=="claimId") ||
+    (req.body.claimId!==undefined && (typeof req.body.claimId!=="string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.body.claimId)))) {
+    throw new AuthError(400,"Provide only the internal invitation context");
+  }
+  const context=getUserContext(req);
+  const handled=await activateAcceptedInternalEmployeeInvitation(
+    context.user.id,context.user.clerkUserId,req.body.claimId,
+  );
+  res.json({handled});
+}));
 
 router.post("/platform/company-employees/:employeeId/invitation", run(async (req, res) => {
   assertRoles(req, ["PLATFORM_OWNER"]);

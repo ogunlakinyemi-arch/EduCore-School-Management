@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@clerk/react', () => ({
+  useUser:()=>({isLoaded:true,user:null}),
   useAuth: () => ({ isLoaded: true, isSignedIn: false }),
   SignUp: (props: Record<string, unknown>) => {
     mocks.signUpProps = props;
@@ -20,6 +21,7 @@ vi.mock('@clerk/react', () => ({
 vi.mock('@workspace/api-client-react', () => ({
   getGetAuthorizedContextQueryKey: () => ['/api/me/authorized-context'],
   useAcceptPartnerInvitation: () => ({ mutateAsync: vi.fn() }),
+  useAcceptInternalEmployeeInvitation:()=>({mutateAsync:vi.fn().mockResolvedValue({handled:false})}),
   useGetAuthorizedContext: () => ({ refetch: vi.fn() }),
 }));
 

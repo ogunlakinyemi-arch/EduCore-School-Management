@@ -18,8 +18,10 @@ const mocks = vi.hoisted(() => ({
   partnerAliasMatch: false,
   setLocation: vi.fn(),
   mutateAsync: vi.fn(),
+  internalAccept:vi.fn(),
   refetch: vi.fn(),
   signUpProps: null as null | Record<string, unknown>,
+  user:null as null|{publicMetadata?:Record<string,unknown>},
 }));
 
 vi.mock('wouter', () => ({
@@ -36,6 +38,7 @@ vi.mock('wouter', () => ({
 
 vi.mock('@clerk/react', () => ({
   useAuth: () => mocks.auth,
+  useUser:()=>({isLoaded:true,user:mocks.user}),
   SignUp: (props: Record<string, unknown>) => {
     mocks.signUpProps = props;
     return <div data-testid="clerk-sign-up">Secure account form</div>;
@@ -45,6 +48,7 @@ vi.mock('@clerk/react', () => ({
 vi.mock('@workspace/api-client-react', () => ({
   getGetAuthorizedContextQueryKey: () => ['/api/me/authorized-context'],
   useAcceptPartnerInvitation: () => ({ mutateAsync: mocks.mutateAsync }),
+  useAcceptInternalEmployeeInvitation:()=>({mutateAsync:mocks.internalAccept}),
   useGetAuthorizedContext: () => ({ refetch: mocks.refetch }),
 }));
 
@@ -72,9 +76,11 @@ describe('invitation acceptance context', () => {
     mocks.legacyToken = undefined;
     mocks.partnerAliasMatch = false;
     mocks.signUpProps = null;
+    mocks.user=null;
     window.sessionStorage.clear();
     mocks.setLocation.mockReset();
     mocks.mutateAsync.mockReset().mockResolvedValue({});
+    mocks.internalAccept.mockReset().mockResolvedValue({handled:false});
     mocks.refetch.mockReset().mockResolvedValue({
       data: { roles: [{ role: 'PARTNER', status: 'ACTIVE' }] },
     });
@@ -275,6 +281,80 @@ describe('invitation acceptance context', () => {
     await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
     expect(host.textContent).toContain('invalid, expired, or already used');
     expect(host.textContent).not.toContain('private token');
+  });
+  it.each([
+    ['SCHOOL_ADMIN','/'],['TEACHER','/'],['PARENT','/parent'],
+    ['STUDENT','/'],['PARTNER','/partner'],
+  ])('leaves the existing %s signup confirmation and navigation unchanged',async(role,destination)=>{
+    mocks.auth.isSignedIn=true;
+    setInvitationAuthFlow('existing-school-ticket','signup');
+    mocks.refetch.mockResolvedValue({data:{roles:[{role,status:'ACTIVE',schoolId:4}]}});
+    setSearch('?__clerk_ticket=existing-school-ticket');
+    await renderAcceptance();
+    expect(mocks.internalAccept).not.toHaveBeenCalled();
+    expect(host.textContent).toContain('Invitation accepted');
+    await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Continue')?.click());
+    expect(mocks.setLocation).toHaveBeenCalledWith(destination);
+  });
+  it('preserves internal claim context through signup and sign-in continuation',async()=>{
+    setSearch('?__clerk_ticket=private-ticket&internalEmployeeInvitation=private-claim');
+    await renderAcceptance();
+    expect(mocks.signUpProps?.forceRedirectUrl).toContain('internalEmployeeInvitation=private-claim');
+    expect(mocks.signUpProps?.signInUrl).toContain('internalEmployeeInvitation=private-claim');
+    expect(mocks.internalAccept).not.toHaveBeenCalled();
+    expect(host.textContent).not.toContain('private-claim');
+  });
+  it('upgrades a legacy signed invitation before metadata cleanup so reload can confirm its receipt',async()=>{
+    mocks.auth.isSignedIn=true;
+    mocks.user={publicMetadata:{edupulseInternalEmployeeInvitation:{claimId:'4d62c41b-ab5b-4f64-a9fa-ae8210bc91ad'}}};
+    setSearch('?__clerk_ticket=legacy-ticket');
+    await renderAcceptance();
+    expect(mocks.setLocation).toHaveBeenCalledWith(
+      '/accept-invitation?__clerk_ticket=legacy-ticket&internalEmployeeInvitation=4d62c41b-ab5b-4f64-a9fa-ae8210bc91ad',
+      {replace:true},
+    );
+    expect(mocks.internalAccept).not.toHaveBeenCalled();
+  });
+  it('provisions first, refreshes authoritative roles, and redirects only to the officer dashboard',async()=>{
+    mocks.auth.isSignedIn=true;
+    mocks.internalAccept.mockResolvedValue({handled:true});
+    mocks.refetch.mockResolvedValue({data:{isPlatformOwner:false,roles:[{role:'DEVICE_ACTIVATION_OFFICER',schoolId:4,status:'ACTIVE'}]}});
+    setSearch('?__clerk_ticket=private-ticket&internalEmployeeInvitation=identity-bound-claim');
+    await renderAcceptance();
+    expect(mocks.internalAccept).toHaveBeenCalledWith({data:{claimId:'identity-bound-claim'}});
+    expect(mocks.internalAccept.mock.invocationCallOrder[0]).toBeLessThan(mocks.refetch.mock.invocationCallOrder[0]);
+    expect(mocks.setLocation).toHaveBeenCalledWith('/activation',{replace:true});
+  });
+  it('does not route an internal invitation to Owner or unrelated school roles',async()=>{
+    mocks.auth.isSignedIn=true;
+    mocks.internalAccept.mockResolvedValue({handled:true});
+    mocks.refetch.mockResolvedValue({data:{isPlatformOwner:true,roles:[{role:'PLATFORM_OWNER',status:'ACTIVE'}]}});
+    setSearch('?__clerk_ticket=private-ticket&internalEmployeeInvitation=identity-bound-claim');
+    await renderAcceptance();
+    expect(mocks.setLocation).not.toHaveBeenCalled();
+    expect(host.textContent).toContain('permissions could not be refreshed');
+  });
+  it('offers safe activation retry after a transient failure without repeating partner acceptance',async()=>{
+    mocks.auth.isSignedIn=true;
+    mocks.internalAccept.mockRejectedValueOnce({status:503}).mockResolvedValueOnce({handled:true});
+    mocks.refetch.mockResolvedValue({data:{roles:[{role:'DEVICE_ACTIVATION_OFFICER',schoolId:4,status:'ACTIVE'}]}});
+    setSearch('?__clerk_ticket=private-ticket&internalEmployeeInvitation=identity-bound-claim');
+    await renderAcceptance();
+    expect(host.textContent).toContain('temporarily unavailable');
+    await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Retry activation')?.click());
+    expect(mocks.internalAccept).toHaveBeenCalledTimes(2);
+    expect(mocks.setLocation).toHaveBeenCalledWith('/activation',{replace:true});
+    expect(mocks.mutateAsync).not.toHaveBeenCalled();
+  });
+  it('does not redirect or offer a grant retry after an identity mismatch',async()=>{
+    mocks.auth.isSignedIn=true;
+    mocks.internalAccept.mockRejectedValue({status:403});
+    setSearch('?__clerk_ticket=private-ticket&internalEmployeeInvitation=identity-bound-claim');
+    await renderAcceptance();
+    expect(mocks.setLocation).not.toHaveBeenCalled();
+    expect(mocks.refetch).not.toHaveBeenCalled();
+    expect(host.textContent).toContain('belong to another account');
+    expect(host.textContent).not.toContain('Retry activation');
   });
 });
 

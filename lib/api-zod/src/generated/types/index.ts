@@ -101,6 +101,8 @@ export * from './academicTimetableEntryInput';
 export * from './academicTimetableEntryInput4b96100';
 export * from './academicTimetableEntryUpdate';
 export * from './academicTimetableEntryUpdate4b96100';
+export * from './acceptInternalEmployeeInvitation200';
+export * from './acceptInternalEmployeeInvitationBody';
 export * from './acceptPartnerInvitationParams';
 export * from './activationAssignment';
 export * from './activationAssignment4b96100';

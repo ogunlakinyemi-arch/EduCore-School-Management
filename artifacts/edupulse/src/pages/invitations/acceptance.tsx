@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { SignUp, useAuth } from '@clerk/react';
+import { SignUp, useAuth, useUser } from '@clerk/react';
 import { Link, useLocation, useRoute } from 'wouter';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import {
   getGetAuthorizedContextQueryKey,
   useAcceptPartnerInvitation,
+  useAcceptInternalEmployeeInvitation,
   useGetAuthorizedContext,
 } from '@workspace/api-client-react';
 import {
@@ -21,7 +22,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 type ViewState =
   | { kind: 'processing' }
   | { kind: 'success'; destination: string }
-  | { kind: 'error'; message: string };
+  | { kind: 'error'; message: string; retryable?: boolean };
 
 function continuationAuthUrl(path: '/sign-in' | '/sign-up', returnUrl: string) {
   const params = new URL(returnUrl, window.location.origin).searchParams;
@@ -34,19 +35,27 @@ export default function InvitationAcceptance() {
   const [partnerAliasMatch] = useRoute('/partner/accept-invitation');
   const [, setLocation] = useLocation();
   const { isLoaded, isSignedIn } = useAuth();
+  const {user,isLoaded:userLoaded}=useUser();
   const { mutateAsync } = useAcceptPartnerInvitation();
+  const {mutateAsync:acceptInternalInvitation}=useAcceptInternalEmployeeInvitation();
   const { refetch } = useGetAuthorizedContext({
     query: { queryKey: getGetAuthorizedContextQueryKey(), enabled: false },
   });
   const [view, setView] = useState<ViewState>({ kind: 'processing' });
   const startedFor = useRef<string | null>(null);
+  const [attempt,setAttempt]=useState(0);
 
   const queryContext = readInvitationContext(window.location.search);
   const partnerToken = legacyMatch
     ? legacyParams?.invitationToken || queryContext.partnerToken
     : queryContext.partnerToken;
   const ticket = queryContext.ticket;
-  const continuation = invitationReturnUrl({ ticket, partnerToken }, base);
+  const internalEmployeeInvitation=queryContext.internalEmployeeInvitation;
+  const internalMarker=(isSignedIn?user?.publicMetadata?.edupulseInternalEmployeeInvitation:undefined) as {claimId?:unknown}|undefined;
+  const internalClaim=internalEmployeeInvitation ??
+    (typeof internalMarker?.claimId==='string'?internalMarker.claimId:undefined);
+  const hasInternalContext=Boolean(internalEmployeeInvitation || internalMarker);
+  const continuation = invitationReturnUrl({ ticket, partnerToken,internalEmployeeInvitation:internalClaim }, base);
   const signInUrl = continuationAuthUrl('/sign-in', continuation);
 
   useEffect(() => {
@@ -81,10 +90,16 @@ export default function InvitationAcceptance() {
       });
       return;
     }
-    if (!isLoaded || !isSignedIn) return;
+    if (!isLoaded || !isSignedIn || !userLoaded) return;
+    // Preserve the invitation identifier on legacy links before the server
+    // clears signup metadata, so a refresh can verify the same receipt.
+    if(internalClaim && !internalEmployeeInvitation) {
+      setLocation(continuation,{replace:true});
+      return;
+    }
 
     // Keep processing idempotent across rerenders; the opaque context stays in memory only.
-    const contextKey = `${ticket}:${partnerToken ?? ''}`;
+    const contextKey = `${ticket}:${partnerToken ?? ''}:${internalEmployeeInvitation ?? ''}:${attempt}`;
     if (startedFor.current === contextKey) return;
     startedFor.current = contextKey;
     setView({ kind: 'processing' });
@@ -109,6 +124,26 @@ export default function InvitationAcceptance() {
           return;
         }
 
+        const internal=hasInternalContext
+          ? await acceptInternalInvitation({data:internalClaim?{claimId:internalClaim}:{}})
+          : {handled:false};
+        if(internal.handled) {
+          const fresh=await refetch();
+          if(fresh.error) throw fresh.error;
+          const active=fresh.data?.roles?.filter(role=>role.status==='ACTIVE') ?? [];
+          const onlyInternal=active.length>0 && active.every(role=>
+            ['DEVICE_ACTIVATION_OFFICER','COMPANY_ACCOUNTANT'].includes(role.role as string));
+          const destination=onlyInternal && !fresh.data?.isPlatformOwner
+            ? destinationForAuthorizedContext(fresh.data):null;
+          if(destination!=='/activation' && destination!=='/company-finance') {
+            setView({kind:'error',message:'Your invitation was confirmed, but active internal employee permissions could not be refreshed. Retry activation.',retryable:true});
+            return;
+          }
+          window.sessionStorage.removeItem('edupulse:selected-portal');
+          setLocation(destination,{replace:true});
+          return;
+        }
+        if(internalEmployeeInvitation) throw new Error('Internal invitation was not confirmed');
         const baselineContext = authFlow === 'signup' ? null : (await refetch()).data;
         const freshContext = (await refetch()).data;
         const destination = authFlow === 'signup'
@@ -132,11 +167,15 @@ export default function InvitationAcceptance() {
         }
         setView({ kind: 'success', destination });
       } catch (error) {
+        const status=(error as {status?:number})?.status;
         setView({
           kind: 'error',
           message: partnerToken
             ? partnerInvitationErrorMessage(error)
-            : 'We could not verify the access assigned by this invitation. It may be invalid, expired, or already accepted. Contact the invitation sender for help.',
+            : status && status>=500
+              ? 'Your account was created, but activation confirmation is temporarily unavailable. Retry activation; your employee profile and role will not be duplicated.'
+              : 'We could not verify the access assigned by this invitation. It may be invalid, expired, revoked, or belong to another account. Contact the invitation sender for help.',
+          retryable:!partnerToken && Boolean(status && status>=500),
         });
       }
     })();
@@ -145,6 +184,14 @@ export default function InvitationAcceptance() {
     isSignedIn,
     legacyMatch,
     mutateAsync,
+    acceptInternalInvitation,
+    internalEmployeeInvitation,
+    internalClaim,
+    hasInternalContext,
+    userLoaded,
+    continuation,
+    setLocation,
+    attempt,
     partnerAliasMatch,
     partnerToken,
     refetch,
@@ -216,8 +263,8 @@ export default function InvitationAcceptance() {
         error
         title="Could not accept invitation"
         message={view.message}
-        action={() => setLocation('/')}
-        actionLabel="Return home"
+        action={view.retryable?()=>setAttempt(value=>value+1):()=>setLocation('/')}
+        actionLabel={view.retryable?'Retry activation':'Return home'}
       />
     );
   }

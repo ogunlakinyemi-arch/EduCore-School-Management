@@ -160,7 +160,8 @@ function expectPublicInternalInvitationUrl(value: string) {
   const url = new URL(value);
   expect(url.origin).toBe(PUBLIC_PRODUCTION_ORIGIN);
   expect(url.pathname).toBe("/accept-invitation");
-  expect(url.search).toBe("");
+  expect(url.searchParams.get("internalEmployeeInvitation")).toMatch(/^[0-9a-f-]{36}$/i);
+  expect([...url.searchParams.keys()]).toEqual(["internalEmployeeInvitation"]);
   for (const prohibited of [
     "riker.replit.dev", ".replit.dev", "replit.com/silent-auth",
     "__replshield", "privateDevDomain=true", "__clerk_ticket",
@@ -213,6 +214,14 @@ describe("platform company employee profiles", () => {
       }),
     });
     expect(response.status).toBe(201);
+    const dispatch=state.calls.find(call=>call.sql.includes("INSERT INTO audit_logs") &&
+      call.values[5]==="INTERNAL_EMPLOYEE_INVITED");
+    expect(dispatch).toBeDefined();
+    const claim=JSON.parse(String(dispatch!.values[6]));
+    expect(claim).toMatchObject({role:"COMPANY_ACCOUNTANT",schoolId:null,email:"grace@example.test"});
+    expect(claim.claimId).toBe((createInvitation.mock.calls[0][0] as any).publicMetadata.edupulseInternalEmployeeInvitation.claimId);
+    expect(claim.invitationId).toBeDefined();
+    expect(new Date(claim.expiresAt).getTime()).toBeGreaterThan(Date.now());
     expect(await response.json()).toMatchObject({
       id: 42, fullName: "Grace Employee", email: "grace@example.test",
       role: "COMPANY_ACCOUNTANT", schoolId: null,
@@ -222,7 +231,7 @@ describe("platform company employee profiles", () => {
       emailAddress: "grace@example.test",
       ignoreExisting: false,
       notify: true,
-      redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
+      redirectUrl: expect.stringMatching(/\/accept-invitation\?internalEmployeeInvitation=[0-9a-f-]{36}$/),
       publicMetadata: expect.objectContaining({
         edupulseInternalEmployeeInvitation: expect.objectContaining({
           employeeId: 42, role: "COMPANY_ACCOUNTANT", schoolId: null,
@@ -350,7 +359,7 @@ describe("platform company employee profiles", () => {
     expect(createInvitation).toHaveBeenCalledWith(expect.objectContaining({
       emailAddress: "new@example.test",
       ignoreExisting: false,
-      redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
+      redirectUrl: expect.stringMatching(/\/accept-invitation\?internalEmployeeInvitation=[0-9a-f-]{36}$/),
       publicMetadata: expect.objectContaining({
         edupulseInternalEmployeeInvitation: expect.objectContaining({
           role: "DEVICE_ACTIVATION_OFFICER", schoolId: 4,
@@ -421,7 +430,7 @@ describe("platform company employee profiles", () => {
     expect(createInvitation).toHaveBeenCalledWith(expect.objectContaining({
       emailAddress: "b@example.test",
       ignoreExisting: true,
-      redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
+      redirectUrl: expect.stringMatching(/\/accept-invitation\?internalEmployeeInvitation=[0-9a-f-]{36}$/),
       publicMetadata: expect.objectContaining({
         edupulseInternalEmployeeInvitation: expect.objectContaining({
           employeeId: 8, role: "DEVICE_ACTIVATION_OFFICER", schoolId: 3,
@@ -503,7 +512,7 @@ describe("platform company employee profiles", () => {
     expect(createInvitation).toHaveBeenCalledWith(expect.objectContaining({
       emailAddress: "ada@example.test",
       ignoreExisting: true,
-      redirectUrl: `${PUBLIC_PRODUCTION_ORIGIN}/accept-invitation`,
+      redirectUrl: expect.stringMatching(/\/accept-invitation\?internalEmployeeInvitation=[0-9a-f-]{36}$/),
       publicMetadata: expect.objectContaining({
         edupulseInternalEmployeeInvitation: expect.objectContaining({
           role: "COMPANY_ACCOUNTANT", schoolId: null,

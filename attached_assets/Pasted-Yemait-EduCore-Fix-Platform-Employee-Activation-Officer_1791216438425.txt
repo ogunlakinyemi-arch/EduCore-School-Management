@@ -1,0 +1,242 @@
+Yemait EduCore — Fix Platform Employee Activation Officer Invitation
+
+Fix the Development-only invitation acceptance flow for the Activation Officer role.
+
+Current problem
+
+When a Platform Owner creates/sends an invitation to a Platform employee with the role:
+
+Device Activation Officer / Activation Officer
+
+the invited person:
+
+1. Opens the invitation link.
+2. Creates their password successfully.
+3. Instead of being redirected to the Activation Officer dashboard, the system displays:
+
+«Could not accept invitation
+We could not confirm a newly activated role for this invitation. It may be invalid, expired, or already used. Use the invited account or ask the sender for help.»
+
+The invitation appears to reach the password/account-creation stage, but the post-signup invitation acceptance/role confirmation fails.
+
+1. Reproduce the exact failure
+
+Use an existing authorized Development Platform Owner and create a fresh Activation Officer invitation.
+
+Do not reuse an already accepted, expired, revoked, or previously tested invitation.
+
+Trace the complete flow:
+
+Platform Owner creates invitation
+→ Invitation record created
+→ Invitation email/link generated
+→ Activation Officer opens link
+→ Invitation validated
+→ Account/password created
+→ Invitation accepted
+→ Platform employee role created/activated
+→ Activation Officer session established
+→ Activation Officer dashboard
+
+Capture the exact failure point.
+
+Inspect:
+
+- Invitation ID
+- Invitation token/ticket identifier
+- Invited email
+- Platform employee ID, if created before acceptance
+- User/account ID created during signup
+- Intended role
+- Actual role after signup
+- Invitation status before and after signup
+- Any invitation-to-user/account mapping
+- Any invitation-to-platform-employee mapping
+- API endpoint called after password creation
+- HTTP status
+- Response body
+- Server exception/stack trace
+- Authentication/session state
+- Role-provisioning response
+
+Do not guess the cause.
+
+2. Identify the root cause
+
+Determine whether the failure is caused by any of the following:
+
+- Invitation token is consumed before the application confirms role creation.
+- Invitation is marked accepted too early.
+- New account ID is not correctly linked to the invitation.
+- Platform employee record is not created.
+- Activation Officer role is not provisioned.
+- Role name/enum does not match the role expected by the acceptance endpoint.
+- Invitation acceptance endpoint is looking for the wrong user/account identifier.
+- Session is not refreshed after account creation.
+- Frontend checks the role before backend role provisioning has completed.
+- Invitation status changes before the role is available.
+- Race condition between account creation and role provisioning.
+- Existing invitation acceptance logic only handles School users and not Platform employees.
+- Activation Officer is incorrectly routed through a school invitation flow.
+- The invitation acceptance endpoint rejects a valid newly created Platform employee.
+- Clerk/authentication identity and the application's internal employee identity are not being linked correctly.
+- The post-signup verification query uses the wrong tenant/entity scope.
+
+3. Correct acceptance lifecycle
+
+The flow should be atomic and reliable:
+
+Invitation created
+        ↓
+Invitation opened
+        ↓
+Invitation validated
+        ↓
+User creates password/account
+        ↓
+Authenticated identity established
+        ↓
+Platform employee account linked to invited identity
+        ↓
+Activation Officer role provisioned
+        ↓
+Invitation marked accepted
+        ↓
+Session/role refreshed
+        ↓
+Activation Officer dashboard
+
+Do not mark the invitation as successfully accepted until the system has confirmed that the invited account has the expected Platform employee role.
+
+If any required step fails, return a recoverable error and preserve enough state for the invitation to be safely reconciled rather than incorrectly reporting that the invitation is invalid.
+
+4. Correct Activation Officer routing
+
+After successful acceptance, determine the user's actual role from the authoritative backend role/permission source.
+
+If the account has:
+
+Device Activation Officer
+
+route to the existing:
+
+Activation Officer Dashboard
+
+Do not route the user to:
+
+- Platform Owner dashboard
+- School Admin dashboard
+- Teacher dashboard
+- Generic home page
+
+Do not hard-code the redirect solely from the URL or invitation text.
+
+Use the same authoritative role-resolution mechanism used by the application's existing role-based navigation.
+
+5. Existing invited-account behavior
+
+Preserve the existing invitation security rules.
+
+The system must continue to reject:
+
+- Expired invitations
+- Revoked invitations
+- Already-used invitations
+- Invalid tokens
+- Invitations belonging to another account/email
+- Unauthorized invitation manipulation
+- Cross-tenant/platform employee access
+
+Do not weaken invitation validation simply to make the redirect work.
+
+6. Retry/recovery behavior
+
+If password creation succeeds but role provisioning fails, do not leave the account in a state where the invitation can never be completed.
+
+Implement a safe recovery path using the existing invitation architecture.
+
+The system should be able to determine:
+
+- Whether the account was created.
+- Whether the Platform employee was created.
+- Whether the Activation Officer role was created.
+- Whether the invitation was accepted.
+- Whether the invitation needs reconciliation.
+
+Do not create duplicate Platform employee records or duplicate roles during retry.
+
+If the invitation has already successfully provisioned the Activation Officer role, a retry must be idempotent and should simply establish the correct session/dashboard rather than creating another employee.
+
+7. Platform employee isolation
+
+This is a Platform employee invitation, not a school-user invitation.
+
+Verify that the Activation Officer is created under the correct company/platform employee scope and does not accidentally receive a school tenant role.
+
+The final identity should be equivalent to:
+
+User Account
+    ↓
+Platform Employee
+    ↓
+Activation Officer Role
+    ↓
+Activation Officer Permissions
+    ↓
+Activation Officer Dashboard
+
+8. Security tests
+
+Test all of the following:
+
+1. Fresh Activation Officer invitation can be accepted.
+2. Password creation succeeds.
+3. Platform employee record is created exactly once.
+4. Activation Officer role is created exactly once.
+5. Invitation changes to the correct accepted state.
+6. User is redirected to Activation Officer Dashboard.
+7. Refreshing the dashboard keeps the correct role.
+8. Signing out and signing back in keeps the correct role.
+9. Reusing the invitation is rejected.
+10. Expired invitation is rejected.
+11. Revoked invitation is rejected.
+12. Different user's account cannot accept another person's invitation.
+13. Manipulated invitation IDs/tokens are rejected.
+14. Activation Officer cannot access Platform Owner functions.
+15. Activation Officer cannot access unrelated School Admin functions.
+16. Retry after partial provisioning does not create duplicate employee/role records.
+17. Existing School Admin/Teacher/Parent/Student/Partner invitation flows remain unchanged.
+
+9. Important constraints
+
+Development only.
+
+Do not modify Production.
+
+Do not redesign the invitation system.
+
+Do not create a new authentication system.
+
+Do not bypass invitation validation.
+
+Do not simply redirect "/accept-invitation" to "/activation-officer" without fixing the underlying role-provisioning/acceptance failure.
+
+Do not modify unrelated modules.
+
+Use the existing invitation, authentication, Platform Employee and RBAC architecture wherever possible.
+
+10. Required final report
+
+After implementation, report:
+
+- Exact root cause.
+- Exact endpoint/component where the failure occurred.
+- Why password creation succeeded but role confirmation failed.
+- Database/entity records involved.
+- Changes made.
+- Any migration created.
+- Final invitation lifecycle.
+- Final Activation Officer routing logic.
+- Tests performed and exact pass/fail results.
+- Confirmation that existing invitation flows remain intact.
+- Confirmation that no Production data/code was changed.

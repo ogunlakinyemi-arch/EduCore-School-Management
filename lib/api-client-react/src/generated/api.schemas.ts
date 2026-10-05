@@ -21277,6 +21277,14 @@ export type ListPendingFeeAdjustmentsParams = {
 schoolId: SchoolIdParameter;
 };
 
+export type AcceptInternalEmployeeInvitationBody = {
+  claimId?: string;
+};
+
+export type AcceptInternalEmployeeInvitation200 = {
+  handled: boolean;
+};
+
 export type GetParentChildAttendanceParams = {
 from?: string;
 to?: string;

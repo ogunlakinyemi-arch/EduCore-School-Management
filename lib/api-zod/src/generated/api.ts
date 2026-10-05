@@ -7295,6 +7295,18 @@ export const GetCurrentUserSchoolsResponse = zod.array(GetCurrentUserSchoolsResp
 
 
 /**
+ * @summary Confirm an identity-bound internal employee invitation and reconcile its role
+ */
+export const AcceptInternalEmployeeInvitationBody = zod.object({
+  "claimId": zod.string().uuid().optional()
+})
+
+export const AcceptInternalEmployeeInvitationResponse = zod.object({
+  "handled": zod.boolean()
+})
+
+
+/**
  * @summary Get the authenticated authorization context
  */
 export const GetAuthorizedContextResponse = zod.object({
