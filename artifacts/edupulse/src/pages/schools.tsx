@@ -537,7 +537,7 @@ function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
     try {
       const result = await reconcileSchoolAdminInvitation(schoolId, invitation.invitationId);
       setActionMessage(result.status === 'RECOVERY_REQUIRED'
-        ? `Replacement ${invitation.email} remains unresolved (${result.recoveryState}); no new invitation was sent.`
+        ? 'The email provider has not confirmed the previous request. No additional email was sent.'
         : result.status === 'PENDING'
           ? `Invitation request accepted for ${result.email ?? invitation.email}; inbox delivery is unverified.`
           : `Replacement invitation was reconciled for ${invitation.email}; no new invitation was sent.`);
@@ -589,7 +589,7 @@ function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
                       {invitation.expiresAt ? ` · Expires ${date(invitation.expiresAt)}` : ''}
                     </div>
                   </div>
-                  <StatusPill value={invitation.status} />
+                  <StatusPill value={invitation.status === 'RECOVERY_REQUIRED' ? 'Email resend needs attention' : invitation.status} />
                 </div>
                 {editingInvitationId === invitation.invitationId ? (
                   <div className="flex flex-wrap items-end gap-2">
@@ -611,8 +611,8 @@ function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
                         : invitation.recoveryState === 'REVOCATION_REJECTED'
                           ? 'Clerk rejected revoking the selected invitation. No replacement was sent; retrying here rechecks and safely retries revocation.'
                           : invitation.recoveryState === 'PREPARED' || invitation.recoveryState === 'REVOCATION_UNKNOWN'
-                            ? 'No replacement notification was dispatched. Retrying first verifies the selected invitation and then safely resumes its staged send.'
-                            : `Provider outcome ${invitation.recoveryState?.toLowerCase().replaceAll('_', ' ') ?? 'unknown'}; fresh sends are blocked until reconciliation.`}
+                             ? 'No replacement email was sent. Retry to verify the invitation and safely resume the saved resend request.'
+                             : 'The email provider has not confirmed the previous request. Check its status before sending another email.'}
                     </p>
                     <Button
                       type="button"
@@ -622,7 +622,7 @@ function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
                     >
                       <RefreshCw size={14} />
                       {invitation.recoveryState === 'DISPATCH_REJECTED' || invitation.recoveryState === 'REVOCATION_REJECTED'
-                        ? 'Retry staged attempt'
+                         ? 'Retry activation email'
                         : 'Reconcile delivery'}
                     </Button>
                   </div>
@@ -634,7 +634,7 @@ function OwnerAdminInvitationForm({ schoolId }: { schoolId: number }) {
                       </Button>
                     )}
                     <Button type="button" variant="outline" onClick={() => resend(invitation)} disabled={!hasStableSchoolInvitationId(invitation.invitationId) || workingInvitationIds.has(String(invitation.invitationId))}>
-                      <RefreshCw size={14} />{workingInvitationIds.has(String(invitation.invitationId)) ? 'Resending…' : 'Resend Link'}
+                      <RefreshCw size={14} />{workingInvitationIds.has(String(invitation.invitationId)) ? 'Resending…' : 'Resend Activation Email'}
                     </Button>
                   </div>
                 ) : null}

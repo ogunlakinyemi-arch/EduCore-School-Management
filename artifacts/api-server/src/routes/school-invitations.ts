@@ -88,6 +88,17 @@ function throwClerkInvitationError(error: unknown): never {
   );
 }
 
+function clerkRejectionDetails(error: unknown, status: number) {
+  const codes = Array.isArray((error as any)?.errors)
+    ? [...new Set((error as any).errors.map((item: any) => item?.code)
+        .filter((code: unknown): code is string =>
+          typeof code === "string" && /^[a-z][a-z0-9_]{0,79}$/.test(code)))]
+    : [];
+  // Provider message/longMessage fields may contain URLs or tokens. Only expose
+  // the HTTP status and structured error codes, never the raw provider payload.
+  return { codes, description: `HTTP ${status}${codes.length ? `, ${codes.join(", ")}` : ""}` };
+}
+
 function clerkRejectionStatus(error: unknown) {
   const status = (error as { status?: number; statusCode?: number } | null)?.status ??
     (error as { statusCode?: number } | null)?.statusCode;
@@ -1936,14 +1947,14 @@ async function finalizeReplacementAttempt(input: {
     await client.query(
       `UPDATE audit_logs
        SET metadata=COALESCE(metadata,'{}'::jsonb) ||
-         jsonb_build_object('attemptStatus','COMPLETED','providerInvitationId',$1)
+         jsonb_build_object('attemptStatus','COMPLETED','providerInvitationId',$1::text)
        WHERE id=$2`,
       [input.invitationId, row.id],
     );
     await client.query(
       `UPDATE audit_logs
        SET metadata=COALESCE(metadata,'{}'::jsonb) ||
-         jsonb_build_object('attemptStatus','COMPLETED','replacementInvitationId',$1)
+         jsonb_build_object('attemptStatus','COMPLETED','replacementInvitationId',$1::text)
        WHERE school_id=$2 AND event_type='SCHOOL_INVITATION_SUPERSEDED'
          AND metadata->>'replacementAttemptId'=$3`,
       [input.invitationId, input.schoolId, input.attemptId],
@@ -2049,18 +2060,19 @@ async function revokeSelectedInvitationForAttempt(attempt: DurableReplacementAtt
   if (current.status === "revoked") return true;
   if (current.status === "expired") return false;
   const rejectionStatus = revokeRejected ? clerkRejectionStatus(revokeError) : null;
+  const rejection = rejectionStatus ? clerkRejectionDetails(revokeError, rejectionStatus) : null;
   await setReplacementAttemptState(
     metadata.schoolId,
     metadata.attemptId,
     rejectionStatus ? "REVOCATION_REJECTED" : "REVOCATION_UNKNOWN",
-    rejectionStatus ? { rejectionStatus } : {},
+    rejectionStatus ? { rejectionStatus, providerErrorCodes: rejection?.codes } : {},
   );
   throw new AuthError(
     503,
     rejectionStatus
-      ? "Clerk rejected revocation of the selected invitation. No replacement was sent; reconcile to safely retry this staged attempt."
+      ? `The email provider rejected invalidating the previous activation link (${rejection?.description}). No new email was sent. Retry to check the saved request safely.`
       : "The selected invitation revocation outcome is unknown. No replacement was sent; reconcile before retrying.",
-    "INVITATION_RECOVERY_REQUIRED",
+    rejectionStatus ? "INVITATION_PROVIDER_REJECTED" : "INVITATION_RECOVERY_REQUIRED",
   );
 }
 
@@ -2220,8 +2232,8 @@ async function markReplacementAttemptDispatching(
        SET metadata=COALESCE(metadata,'{}'::jsonb) ||
          jsonb_build_object(
            'superseded',true,
-           'supersededByClaimId',$1,
-           'supersededByAttemptId',$2,
+           'supersededByClaimId',$1::text,
+           'supersededByAttemptId',$2::text,
            'supersededByInvitationId',NULL
          )
        WHERE id=$3 AND school_id=$4`,
@@ -2311,14 +2323,17 @@ async function dispatchReplacementAttempt(
     );
   }
   let previousInviteRevoked = attempt.metadata.previousInviteRevoked === true;
+  logger.info({ schoolId, attemptId, stage: "VERIFY_SOURCE" }, "Invitation replacement progress");
   if (attempt.metadata.attemptStatus !== "DISPATCH_REJECTED") {
     previousInviteRevoked = await revokeSelectedInvitationForAttempt(attempt);
   }
+  logger.info({ schoolId, attemptId, stage: "PERSIST_DISPATCH" }, "Invitation replacement progress");
   const durableMetadata = await markReplacementAttemptDispatching(
     schoolId,
     attemptId,
     previousInviteRevoked,
   );
+  logger.info({ schoolId, attemptId, stage: "PROVIDER_DISPATCH" }, "Invitation replacement progress");
   let invitation: Awaited<ReturnType<typeof clerkClient.invitations.createInvitation>>;
   try {
     invitation = await clerkClient.invitations.createInvitation({
@@ -2332,15 +2347,17 @@ async function dispatchReplacementAttempt(
   } catch (error) {
     const rejectionStatus = clerkRejectionStatus(error);
     if (rejectionStatus) {
+      const rejection = clerkRejectionDetails(error, rejectionStatus);
       await setReplacementAttemptState(schoolId, attemptId, "DISPATCH_REJECTED", {
         rejectionStatus,
+        providerErrorCodes: rejection.codes,
         sourceRevoked: true,
         previousInviteRevoked,
       });
       throw new AuthError(
         503,
-        "Clerk definitely rejected this invitation request. The selected invitation was already revoked; reconcile to safely retry this same staged attempt.",
-        "INVITATION_RECOVERY_REQUIRED",
+        `The email provider rejected the activation email request (${rejection.description}). The previous link was invalidated. Retry to safely resume this saved request.`,
+        "INVITATION_PROVIDER_REJECTED",
       );
     }
     await setReplacementAttemptState(schoolId, attemptId, "OUTCOME_UNKNOWN", {

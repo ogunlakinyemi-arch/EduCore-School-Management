@@ -9,7 +9,7 @@ vi.mock('@/components/shared', () => ({
 
 import { SchoolUserInvitationManagement } from './school-user-invitation-management';
 
-const roles = ['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF'] as const;
+const roles = ['TEACHER', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'STAFF', 'DRIVER'] as const;
 let root: Root;
 let host: HTMLDivElement;
 
@@ -129,7 +129,7 @@ describe.each(roles)('school invitation row actions for %s', (role) => {
     const selected = rows.find(row => row.textContent?.includes(middleEmail))!;
     const otherRows = rows.filter(row => row !== selected);
     expect(rows).toHaveLength(3);
-    expect(otherRows.every(row => row.textContent?.includes('Resend Link'))).toBe(true);
+    expect(otherRows.every(row => row.textContent?.includes('Resend Activation Email'))).toBe(true);
 
     await act(async () => {
       [...selected.querySelectorAll('button')].find(button => button.textContent === 'Edit email')?.click();
@@ -148,7 +148,7 @@ describe.each(roles)('school invitation row actions for %s', (role) => {
     expect(replacementRow.textContent).toContain(`Invitation email updated to ${updatedEmail}.`);
 
     await act(async () => {
-      [...replacementRow.querySelectorAll('button')].find(button => button.textContent === 'Resend Link')?.click();
+      [...replacementRow.querySelectorAll('button')].find(button => button.textContent === 'Resend Activation Email')?.click();
     });
     expect(fetch).toHaveBeenCalledWith(`/api/schools/12/users/invitations/replacement-1-${role}/resend`, expect.objectContaining({
       method: 'POST',
@@ -218,7 +218,7 @@ describe.each(roles)('school invitation row actions for %s', (role) => {
     const recoveryRow = [...host.querySelectorAll('li')].find(row => row.textContent?.includes(email))!;
     await act(async () => {
       [...recoveryRow.querySelectorAll('button')]
-        .find(button => button.textContent === 'Retry staged attempt')?.click();
+        .find(button => button.textContent === 'Retry activation email')?.click();
     });
 
     const recoveredRow = [...host.querySelectorAll('li')].find(row => row.textContent?.includes(email))!;
@@ -232,7 +232,7 @@ describe.each(roles)('school invitation row actions for %s', (role) => {
 
     await act(async () => {
       [...recoveredRow.querySelectorAll('button')]
-        .find(button => button.textContent === 'Resend Link')?.click();
+        .find(button => button.textContent === 'Resend Activation Email')?.click();
     });
     expect(fetchMock).toHaveBeenCalledWith(
       `/api/schools/12/users/invitations/${replacementId}/resend`,

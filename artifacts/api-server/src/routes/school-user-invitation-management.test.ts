@@ -91,7 +91,7 @@ afterAll(async () => new Promise<void>((resolve, reject) =>
   server.close((error) => error ? reject(error) : resolve()),
 ));
 
-const roles = ["TEACHER", "ACCOUNTANT", "PARENT", "STUDENT", "STAFF"] as const;
+const roles = ["TEACHER", "ACCOUNTANT", "PARENT", "STUDENT", "STAFF", "DRIVER"] as const;
 const claimFor = (suffix: string) => `aaaaaaaa-aaaa-4aaa-8aaa-${suffix.padStart(12, "0")}`;
 const emailFor = (prefix: string, index: number) => `${prefix}-${index}@school.test`;
 
@@ -105,7 +105,7 @@ function record(invitationId: string, role: string, email: string, claimId: stri
     firstName: "Invitee",
     lastName: role,
     studentId: role === "STUDENT" ? 42 : null,
-    employeeNo: role === "TEACHER" || role === "STAFF" ? "INV-0123456789ABCDEF" : null,
+    employeeNo: role === "TEACHER" || role === "STAFF" || role === "DRIVER" ? "INV-0123456789ABCDEF" : null,
     ...extra,
   };
   return {
@@ -489,7 +489,7 @@ describe.each(roles)("School Admin invitation management for %s", (role) => {
       claimId: expect.any(String),
       emailProof: expect.any(String),
       ...(role === "STUDENT" ? { studentId: 42 } : {}),
-      ...(role === "TEACHER" || role === "STAFF" ? { employeeNo: "INV-0123456789ABCDEF" } : {}),
+      ...(role === "TEACHER" || role === "STAFF" || role === "DRIVER" ? { employeeNo: "INV-0123456789ABCDEF" } : {}),
     });
     expect(state.revokeInvitation).toHaveBeenCalledTimes(1);
     expect(state.revokeInvitation).toHaveBeenCalledWith(selectedId);
@@ -725,7 +725,9 @@ describe.each(roles)("School Admin invitation management for %s", (role) => {
 
     const rejected = await request(`/schools/12/users/invitations/${selectedId}/resend`, "POST", {});
     expect(rejected.status).toBe(503);
-    expect((await rejected.json() as { code?: string }).code).toBe("INVITATION_RECOVERY_REQUIRED");
+    const rejection = await rejected.json() as { code?: string; error?: string };
+    expect(rejection.code).toBe("INVITATION_PROVIDER_REJECTED");
+    expect(rejection.error).toContain("HTTP 422, form_identifier_exists");
     const attempt = [...state.attempts.values()][0];
     expect(attempt.metadata.attemptStatus).toBe("DISPATCH_REJECTED");
     expect(state.records.get(selectedId).metadata.superseded).toBe(true);
@@ -810,6 +812,15 @@ describe.each(roles)("School Admin invitation management for %s", (role) => {
     expect(state.createInvitation).toHaveBeenCalledTimes(2);
     expect(state.createInvitation.mock.calls[1][0].emailAddress).toBe(replacementEmail);
   });
+});
+
+it("forwards unexpected database exceptions instead of leaving the HTTP request hanging", async () => {
+  state.query.mockRejectedValueOnce(Object.assign(new Error("could not determine data type of parameter $1"), { code: "42P18" }));
+  const response = await fetch(`${baseUrl}/schools/12/users/invitations`, {
+    signal: AbortSignal.timeout(1500),
+  });
+  expect(response.status).toBe(500);
+  expect((await response.json() as { error: string }).error).toContain("could not determine data type");
 });
 
 describe("durable replacement transaction recovery", () => {

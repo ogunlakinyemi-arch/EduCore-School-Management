@@ -1,0 +1,163 @@
+Fix the existing Activation/Invitation → Resend Activation Email workflow.
+
+Current problem
+
+When an authorized user attempts to resend an activation email, the system shows:
+
+«RECOVERY_REQUIRED
+No replacement notification was dispatched. Retrying first verifies the selected invitation and then safely resumes its staged send.
+Reconcile delivery»
+
+The activation email is not being sent.
+
+1. Reproduce and identify the exact root cause
+
+Using an existing authorized Development account:
+
+1. Open the relevant activation/invitation management screen.
+2. Select an existing pending activation invitation.
+3. Click Resend Activation Email.
+4. Capture the complete request and response.
+
+Record:
+
+- frontend endpoint;
+- HTTP method;
+- request payload;
+- invitation ID;
+- recipient email;
+- school ID;
+- HTTP status;
+- response body;
+- server-side error/exception;
+- notification/outbox record status;
+- email-provider response, if the request reaches the provider.
+
+Determine exactly why the system returns "RECOVERY_REQUIRED".
+
+Do not guess and do not simply bypass the recovery mechanism.
+
+2. Verify the invitation before resend
+
+The resend operation must first verify that the selected invitation is still valid.
+
+Verify:
+
+- invitation exists;
+- invitation belongs to the correct school/tenant;
+- invitation is for the intended recipient;
+- invitation has the expected role;
+- invitation has not already been accepted;
+- invitation has not been revoked;
+- invitation has not expired, or apply the existing expiration/recovery rules;
+- invitation has not been replaced by another active invitation;
+- recipient email is valid;
+- the authenticated user is authorized to resend it.
+
+Do not send an email if the invitation is no longer valid.
+
+3. Correct resend/recovery behaviour
+
+If the invitation is valid and pending:
+
+Verify invitation → reconcile delivery state → create/queue replacement notification → dispatch email → record delivery result
+
+The resend must not create duplicate active invitations or corrupt the existing invitation lifecycle.
+
+If the previous notification failed or is stuck in a recoverable state, safely reconcile it and allow a replacement notification to be dispatched.
+
+If an existing valid activation token/link can safely remain valid according to the current security design, preserve it. If the security model requires a replacement token, generate a new secure token and invalidate the old one.
+
+Do not expose activation tokens in API responses, logs or UI.
+
+4. Email provider handling
+
+Trace the complete path:
+
+Resend button → API → invitation validation → notification/outbox → email adapter → provider → delivery status
+
+Determine whether the failure occurs before or after the email provider is called.
+
+If the provider is never reached, fix the application-side recovery/outbox logic.
+
+If the provider rejects the message, report the actual provider error and handle it correctly rather than returning the misleading "RECOVERY_REQUIRED" message.
+
+Do not disable email security or bypass the existing provider adapter.
+
+5. User-facing result
+
+On successful resend, show a clear confirmation such as:
+
+«Activation email resent successfully.»
+
+If delivery is queued rather than immediately dispatched, say so clearly:
+
+«Activation email queued for delivery.»
+
+If the invitation cannot be resent, show the actual reason, for example:
+
+«This invitation has already been accepted.»
+
+or
+
+«This invitation has expired. Create a new invitation to continue.»
+
+Do not display an internal state such as "RECOVERY_REQUIRED" to normal users unless it is genuinely useful.
+
+6. Preserve existing invitation security
+
+Do not weaken:
+
+- invitation authorization;
+- tenant isolation;
+- token security;
+- expiration;
+- revocation;
+- one-time acceptance;
+- audit logging;
+- rate limiting;
+- resend limits.
+
+Prevent rapid repeated clicks from creating multiple active notifications.
+
+7. Acceptance tests
+
+Development only.
+
+Using existing authorized accounts and existing invitation records, test:
+
+1. Valid pending invitation → Resend Activation Email succeeds.
+2. Email notification is actually created/queued.
+3. Email provider is reached when provider configuration is available.
+4. Successful delivery/queue status is recorded correctly.
+5. Recipient receives the correct activation link.
+6. Old/replaced notification is reconciled correctly.
+7. Repeated resend does not create duplicate active invitations.
+8. Already accepted invitation cannot be resent.
+9. Revoked invitation cannot be resent.
+10. Expired invitation follows the existing recovery/replacement flow.
+11. Wrong-school invitation cannot be resent.
+12. Unauthorized user cannot resend another school's invitation.
+13. Refresh/reopen shows the correct invitation/notification status.
+14. Audit trail records the resend attempt and result.
+
+If Development email delivery is unavailable because provider credentials/secrets are missing, do not fabricate a successful delivery. Verify the application-side queue/outbox state and clearly report the provider limitation.
+
+Scope restrictions
+
+- Development only.
+- Do not modify Production.
+- Do not create unnecessary accounts.
+- Do not change existing invitation data except the minimum state transitions required by the resend test.
+- Do not rebuild the entire notification system.
+- Do not change unrelated email, SMS or Push functionality.
+
+At completion report:
+
+- exact root cause of "RECOVERY_REQUIRED";
+- failing endpoint/request;
+- exact fix;
+- invitation/outbox state before and after;
+- provider response if applicable;
+- acceptance-test results;
+- confirmation that no Production data was changed.

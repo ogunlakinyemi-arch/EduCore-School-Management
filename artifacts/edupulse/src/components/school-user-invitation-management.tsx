@@ -135,7 +135,7 @@ export function SchoolUserInvitationManagement({ schoolId }: { schoolId: number 
         [replacementId]: {
           kind: result.status === 'RECOVERY_REQUIRED' ? 'error' : 'success',
           message: result.status === 'RECOVERY_REQUIRED'
-            ? `Provider outcome remains unresolved (${result.recoveryState}); no new invitation was sent.`
+            ? 'The email provider has not confirmed the previous request. No additional email was sent.'
             : result.status === 'PENDING'
               ? `Invitation request accepted for ${result.email ?? invitation.email}; inbox delivery is unverified.`
               : `Replacement invitation was reconciled for ${invitation.email}; no new invitation was sent.`,
@@ -212,17 +212,17 @@ export function SchoolUserInvitationManagement({ schoolId }: { schoolId: number 
                     {roleLabel(invitation.role)}
                   </span>
                 </div>
-                <div className="text-xs font-bold">{invitation.status}</div>
+                <div className="text-xs font-bold">{invitation.status === 'RECOVERY_REQUIRED' ? 'Email resend needs attention' : invitation.status}</div>
                 {invitation.status === 'RECOVERY_REQUIRED' ? (
                   <div className="space-y-2 md:justify-self-end">
                     <p className="text-xs text-[hsl(var(--muted-foreground))]">
                       {invitation.recoveryState === 'DISPATCH_REJECTED'
                         ? 'Clerk definitely rejected the staged request. The old invitation was revoked; retrying here safely reuses the same replacement attempt.'
                         : invitation.recoveryState === 'REVOCATION_REJECTED'
-                          ? 'Clerk rejected revoking the selected invitation. No replacement was sent; retrying here rechecks and safely retries revocation.'
+                          ? 'The previous activation link could not be invalidated. No new email was sent. Retry to check it safely.'
                           : invitation.recoveryState === 'PREPARED' || invitation.recoveryState === 'REVOCATION_UNKNOWN'
-                            ? 'No replacement notification was dispatched. Retrying first verifies the selected invitation and then safely resumes its staged send.'
-                            : `Provider outcome ${invitation.recoveryState?.toLowerCase().replaceAll('_', ' ') ?? 'unknown'}; fresh sends are blocked.`}
+                            ? 'No replacement email was sent. Retry to verify the invitation and safely resume the saved resend request.'
+                            : 'The email provider has not confirmed the previous request. Check its status before sending another email.'}
                     </p>
                     <Button
                       type="button"
@@ -234,7 +234,7 @@ export function SchoolUserInvitationManagement({ schoolId }: { schoolId: number 
                       {busy
                         ? 'Checking…'
                         : invitation.recoveryState === 'DISPATCH_REJECTED' || invitation.recoveryState === 'REVOCATION_REJECTED'
-                          ? 'Retry staged attempt'
+                          ? 'Retry activation email'
                           : 'Reconcile delivery'}
                     </Button>
                   </div>
@@ -244,10 +244,10 @@ export function SchoolUserInvitationManagement({ schoolId }: { schoolId: number 
                       type="button"
                       variant="outline"
                       disabled={busy}
-                      aria-label={`Resend Link for ${invitation.email}`}
+                      aria-label={`Resend Activation Email for ${invitation.email}`}
                       onClick={() => void updateInvitation(invitation, 'resend')}
                     >
-                      {busy ? 'Working…' : 'Resend Link'}
+                      {busy ? 'Working…' : 'Resend Activation Email'}
                     </Button>
                     <Button
                       type="button"

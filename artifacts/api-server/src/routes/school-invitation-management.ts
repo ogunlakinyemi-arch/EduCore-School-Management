@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request } from "express";
+import { Router, type IRouter, type Request, type NextFunction } from "express";
 import { pool } from "@workspace/db";
 import {
   AuthError,
@@ -19,8 +19,8 @@ router.use(requireAuthentication());
 
 const asyncRoute =
   (handler: (req: Request, res: any) => Promise<void>) =>
-  (req: Request, res: any) =>
-    handler(req, res).catch((error) => handleAuthError(error, req, res));
+  (req: Request, res: any, next: NextFunction) =>
+    handler(req, res).catch((error) => handleAuthError(error, req, res, next));
 
 function schoolIdFrom(value: unknown) {
   const schoolId = Number(value);
