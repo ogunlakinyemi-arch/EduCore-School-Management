@@ -1,0 +1,402 @@
+ADDITIONAL MODULE — EXAM QUESTION UPLOAD, REVIEW AND PRINTING
+
+Extend the Exam/Record workflow to also support examination-question management.
+
+The principle is:
+
+Teacher prepares/uploads exam questions → Teacher submits to School Admin → School Admin reviews → School Admin approves → Questions become ready for printing.
+
+This must be separate from the student result-entry workflow, even though both are under Exam/Record.
+
+1. TEACHER — EXAM QUESTIONS
+
+Under:
+
+Teacher Dashboard → Exam/Record → Exam Questions
+
+The teacher should see only the classes and subjects they are authorized to teach.
+
+The teacher selects:
+
+- Academic Session
+- Term
+- Class
+- Section where applicable
+- Subject
+- Examination type
+
+Then provide:
+
+Upload Questions
+
+Support:
+
+- PDF
+- Word document where supported
+- Excel where appropriate for structured question banks
+
+The teacher should also be able to create/type questions directly in the system if that functionality is already practical.
+
+2. QUESTION PAPER INFORMATION
+
+When uploading a question paper, capture:
+
+- School
+- Academic Session
+- Term
+- Class
+- Section
+- Subject
+- Examination type
+- Teacher
+- Date submitted
+- Question-paper status
+- File/document
+- Optional instructions
+- Optional examination duration
+- Optional total marks
+
+Do not allow the teacher to upload questions for another teacher's class/subject.
+
+3. TEACHER SUBMISSION
+
+After uploading, show a preview/details page.
+
+Teacher clicks:
+
+Submit to School Admin
+
+The question paper becomes:
+
+Submitted for Review
+
+The teacher should no longer be able to silently replace the submitted document.
+
+If correction is required, School Admin can return it.
+
+Status workflow:
+
+Draft → Submitted → Returned → Resubmitted → Approved → Ready for Printing
+
+4. SCHOOL ADMIN — QUESTION REVIEW
+
+School Admin opens:
+
+School Admin Dashboard → Exam/Record → Exam Questions
+
+Display:
+
+Class| Subject| Exam| Teacher| Status| Action
+SS2/B| Mathematics| First Term Exam| Teacher A| Submitted| Review
+SS2/B| English| First Term Exam| Teacher B| Approved| Print
+SS1/A| Biology| First Term Exam| Teacher C| Returned| Review
+
+School Admin should be able to:
+
+Preview Question Paper
+
+The preview should display the actual uploaded document where supported.
+
+School Admin should be able to:
+
+- Review
+- Approve
+- Return for correction
+- Add review comments
+- View submission history
+
+5. RETURN FOR CORRECTION
+
+If there is a problem, School Admin clicks:
+
+Return to Teacher
+
+The Admin must provide a reason/comment.
+
+Example:
+
+«“Question 12 is missing the options. Please correct and resubmit.”»
+
+The teacher sees:
+
+Returned — Correction Required
+
+Teacher uploads the corrected version and clicks:
+
+Resubmit
+
+The previous submission must remain in the audit history.
+
+6. APPROVAL
+
+Once the School Admin is satisfied:
+
+Approve Question Paper
+
+The status becomes:
+
+Approved / Ready for Printing
+
+Only approved question papers should be available for official printing.
+
+7. PRINTING
+
+After approval, School Admin should have:
+
+Print Question Paper
+
+The system should provide a print-friendly version.
+
+If the uploaded document is already a properly formatted question paper, preserve its formatting as much as possible.
+
+If the system generates the question paper from structured questions, generate a clean printable document containing:
+
+- School logo
+- School name
+- Examination name
+- Academic session
+- Term
+- Class
+- Section where applicable
+- Subject
+- Examination duration if supplied
+- Total marks
+- Instructions
+- Questions
+- Page numbering
+
+Do not add or modify questions without authorization.
+
+8. IMPORTANT — SCHOOL ADMIN IS THE PRINTING AUTHORITY
+
+Teachers can:
+
+- Create/upload questions
+- Submit questions
+- View their submission status
+- Correct returned questions
+- Resubmit
+
+Teachers must NOT:
+
+- Approve their own question paper
+- Mark it Ready for Printing
+- Override School Admin review
+- Access another teacher's question papers unless existing role permissions explicitly allow it
+
+School Admin is responsible for:
+
+Review → Approve → Print
+
+9. PLATFORM OWNER
+
+Platform Owner may have:
+
+Platform Owner → Exam/Record → Exam Questions
+
+But this must be read-only.
+
+Platform Owner may:
+
+- Select School
+- Select Session
+- Select Term
+- Select Class
+- Select Subject
+- Preview question papers
+- View status
+- View submission/review history
+
+Platform Owner must NOT:
+
+- Edit questions
+- Upload questions
+- Submit questions
+- Return questions
+- Approve questions
+- Print official question papers
+
+10. SECURITY
+
+Strictly enforce:
+
+School + Session + Term + Class + Section + Subject
+
+Teachers must only access question papers they are authorized to create/manage.
+
+A teacher from School A must never access School B question papers.
+
+Do not expose examination questions to Students or Parents.
+
+Students and Parents must never have access to uploaded question papers through the Exam/Record result workflow.
+
+11. QUESTION PAPER VERSIONING
+
+Maintain version history.
+
+Example:
+
+Version 1 — Submitted
+
+↓ Returned
+
+Version 2 — Resubmitted
+
+↓ Approved
+
+Version 2 — Approved / Ready for Printing
+
+The system must preserve the previous version in the audit history.
+
+Do not overwrite the history.
+
+12. EXAM QUESTION STATUS
+
+Use clear statuses:
+
+- Draft
+- Submitted
+- Returned
+- Resubmitted
+- Approved
+- Ready for Printing
+
+If appropriate, combine Approved and Ready for Printing into one final state.
+
+13. NOTIFICATION
+
+Where the existing notification system supports it:
+
+Teacher should receive a notification when:
+
+- Question paper is submitted successfully
+- School Admin returns it
+- School Admin approves it
+
+School Admin should receive a notification when:
+
+- A teacher submits an exam question paper for review
+
+Do not introduce a new notification provider just for this feature.
+
+Reuse the existing notification architecture.
+
+14. GENUINE BROWSER ACCEPTANCE TEST
+
+Use real authenticated Development accounts.
+
+Teacher
+
+1. Sign in as Teacher.
+2. Open Exam/Record.
+3. Open Exam Questions.
+4. Select an authorized class and subject.
+5. Upload a question paper.
+6. Confirm preview.
+7. Submit to School Admin.
+8. Confirm status becomes Submitted.
+
+School Admin
+
+1. Sign in as School Admin.
+2. Open Exam/Record.
+3. Open Exam Questions.
+4. Find the submitted question paper.
+5. Preview it.
+6. Return it with a comment.
+7. Confirm Teacher sees Returned status.
+8. Teacher resubmits.
+9. School Admin reviews again.
+10. Approve it.
+11. Confirm it becomes Ready for Printing.
+12. Print/preview the final question paper.
+
+Platform Owner
+
+1. Sign in as Platform Owner.
+2. Open Exam/Record.
+3. Select School.
+4. Open Exam Questions.
+5. Preview the approved question paper.
+6. Confirm no edit, submit, return, approve or print controls are available.
+
+15. TESTING
+
+Add focused tests for:
+
+- Teacher question upload
+- Teacher authorization
+- Class/subject authorization
+- Question submission
+- School Admin review
+- Return for correction
+- Teacher resubmission
+- Approval
+- Printing readiness
+- Version history
+- Audit trail
+- Platform Owner read-only access
+- Cross-school isolation
+- Student/Parent denial
+- Unauthorized teacher access
+
+Do not create a massive unrelated test suite.
+
+Run frontend/backend typechecks.
+
+16. PRESERVATION
+
+Development only.
+
+Do NOT:
+
+- Publish
+- Modify Production
+- Reset/reseed
+- Truncate
+- Delete existing records
+- Fabricate business records
+- Weaken authorization
+- Modify existing result calculations
+- Modify existing fee/payment functionality
+- Modify existing timetable functionality
+
+Reuse existing authentication, RBAC, school isolation, notification and document/file handling where possible.
+
+Do not create a duplicate Exam module if an existing implementation can be extended.
+
+FINAL END-TO-END WORKFLOW
+
+The final Exam/Record module should support two connected but separate workflows:
+
+RESULTS
+
+Teacher enters/uploads results
+↓
+Teacher submits
+↓
+Yemait EduCore calculates and compiles
+↓
+School Admin reviews
+↓
+School Admin publishes
+↓
+Student sees result
+↓
+Parent sees child's result
+
+EXAM QUESTIONS
+
+Teacher uploads/prepares questions
+↓
+Teacher submits
+↓
+School Admin reviews
+↓
+School Admin returns or approves
+↓
+Approved question paper becomes ready for printing
+↓
+School Admin prints
+
+Keep both workflows under Exam/Record, but do not mix question papers with student results.

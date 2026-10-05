@@ -1,0 +1,810 @@
+Implement a complete, simple, teacher-friendly Exam/Record and Result Management workflow for Yemait EduCore.
+
+This is a targeted redesign of the existing result/academic-record workflow. Do NOT rebuild unrelated modules. First inspect the existing result, assessment, grading, report-card, teacher-assignment, academic-session/term, Student and Parent implementations and reuse working functionality where possible.
+
+CORE PRINCIPLE
+
+The workflow must be:
+
+Teacher enters/submits results → Yemait EduCore calculates and compiles → School Admin reviews and publishes → Student and Parent see the published result on their dashboards.
+
+School Admin must NOT be responsible for creating exams, CA, tests or assessment structures.
+
+Teachers are responsible for entering the results of students they teach.
+
+The system must make result entry extremely simple.
+
+---
+
+1. NAVIGATION
+
+School Admin
+
+Add/rename the School Admin dashboard section to:
+
+Exam/Record
+
+School Admin should use this section to:
+
+- Select Academic Session
+- Select Term
+- Select Class
+- Select Section
+- View result submission status
+- Open a class
+- Preview individual student report cards
+- Review complete consolidated results
+- Publish results
+
+School Admin must NOT create:
+
+- Exams
+- Continuous Assessments
+- Tests
+- Assignments for result entry
+- Subject results
+- Student scores
+
+Teachers handle those responsibilities.
+
+Platform Owner
+
+Add:
+
+Exam/Record
+
+Platform Owner access must be strictly READ-ONLY.
+
+Platform Owner workflow:
+
+Exam/Record → Select School → Session → Term → Class → Section → Preview
+
+Platform Owner may:
+
+- View result submission status
+- View submitted/unsubmitted subjects
+- Preview student report cards
+- View published/unpublished status
+- Inspect consolidated class results
+
+Platform Owner must NOT:
+
+- Enter scores
+- Edit scores
+- Submit results
+- Approve results
+- Publish results
+- Create exams
+- Create CA/tests
+- Change grades
+- Modify report cards
+
+Do not expose Platform Owner controls that can mutate result data.
+
+---
+
+2. TEACHER RESULT WORKFLOW
+
+Make this the simplest possible workflow.
+
+Teacher opens:
+
+Teacher Dashboard → Exam/Record
+
+The system should automatically know which classes and subjects the teacher is authorized to teach from the existing teacher/class/subject assignment records.
+
+Do NOT make the teacher search through every school class and every subject.
+
+Show something like:
+
+My Results
+
+Class| Subject| Term| Status| Action
+SS2/B| Mathematics| First Term| Draft| Enter Result
+SS1/A| Mathematics| First Term| Submitted| View
+JSS3/A| Mathematics| First Term| Awaiting| Enter Result
+
+The teacher clicks:
+
+Enter Result
+
+The system opens the result-entry table.
+
+---
+
+3. RESULT ENTRY TABLE
+
+The teacher should see all students assigned to that teacher's authorized class/section/subject.
+
+Example:
+
+2026/2027 — First Term
+SS2/B — Mathematics
+
+Student| CA 1| CA 2| Exam| Total| Grade
+Student A| | | | Auto| Auto
+Student B| | | | Auto| Auto
+Student C| | | | Auto| Auto
+
+Make data entry extremely fast.
+
+Support:
+
+- Keyboard Tab navigation
+- Enter/next-cell navigation
+- Numeric-only score fields
+- Score range validation
+- Paste multiple cells from Excel
+- Save Draft
+- Continue later
+- Submit when complete
+
+The teacher should NOT manually calculate Total or Grade.
+
+The system calculates them automatically using the school's existing grading configuration.
+
+---
+
+4. DO NOT FORCE TEACHERS TO CREATE EXAMS OR CA
+
+Do NOT require this workflow:
+
+Create Exam → Create Assessment → Add Questions → Assign Assessment → Open Results → Enter Scores.
+
+That is unnecessarily complicated for this use case.
+
+Instead, the teacher should simply enter the applicable result components.
+
+For example:
+
+CA 1 + CA 2 + Exam
+
+or whatever assessment components are already configured for that school.
+
+If the school uses a different grading structure, reuse the existing grading configuration.
+
+Do not hard-code one grading scheme if the existing system already supports configurable grading.
+
+---
+
+5. EXCEL RESULT UPLOAD
+
+Teachers must have:
+
+Upload Excel
+
+Provide:
+
+Download Result Template
+
+The template should contain the students already belonging to the selected class/section and subject.
+
+Example:
+
+Student ID/Admission No| Student Name| CA 1| CA 2| Exam
+EDU001| Student A| | | 
+EDU002| Student B| | | 
+
+The teacher fills the Excel file and uploads it.
+
+After upload:
+
+NEVER immediately save the imported scores.
+
+First display:
+
+Import Preview
+
+Show:
+
+- Students matched
+- Students not found
+- Invalid scores
+- Missing scores
+- Duplicate rows
+- Students outside the teacher's authorized class/section
+- Any other validation problems
+
+Example:
+
+«42 students detected
+40 valid
+1 invalid score
+1 student not found»
+
+Allow the teacher to correct the file and retry.
+
+Only after successful validation should the teacher click:
+
+Import Results
+
+Imported results become Draft.
+
+The teacher can then review and:
+
+Save Draft or Submit Result.
+
+Do not allow an Excel upload to bypass authorization or tenant isolation.
+
+---
+
+6. PDF RESULT UPLOAD
+
+Also provide:
+
+Upload PDF
+
+PDF import must be treated as an assisted import, not blind automatic data entry.
+
+The system should:
+
+1. Extract the tabular result where possible.
+2. Match students using the safest available identity such as internal student ID or admission number.
+3. Validate the extracted scores.
+4. Show an import preview.
+5. Clearly identify uncertain/unmatched rows.
+6. Require teacher confirmation before saving.
+
+NEVER silently guess a student's score.
+
+If the PDF cannot be reliably interpreted, show a clear message and allow the teacher to use Excel or manual entry instead.
+
+---
+
+7. SUBJECT TEACHER RESTRICTIONS
+
+A subject teacher must only enter results for:
+
+- Their assigned school
+- Their assigned class/section
+- Their assigned subject
+- The selected academic session
+- The selected term
+
+For example:
+
+Mathematics Teacher → Mathematics only.
+
+They must not be able to edit:
+
+- English
+- Biology
+- Physics
+- Chemistry
+- Another teacher's class
+- Another school's students
+
+Reuse the existing teacher-class-subject assignment and tenant-isolation rules.
+
+Do not weaken authorization to make result entry easier.
+
+---
+
+8. CLASS TEACHER RESPONSIBILITIES
+
+The Class Teacher may have a class-level section for information that belongs to the class teacher rather than a subject teacher.
+
+Where already supported by the system, this can include:
+
+- General teacher comment
+- Conduct/behaviour
+- Attendance summary
+- Affective/psychomotor ratings
+- Class teacher recommendation
+- Promotion recommendation
+
+Do not make the Class Teacher responsible for entering another subject teacher's academic scores unless they are also explicitly assigned to that subject.
+
+---
+
+9. AUTOMATIC RESULT COMPILATION
+
+This is critical.
+
+Each subject teacher submits only their subject.
+
+Example:
+
+Mathematics Teacher → Mathematics submitted.
+
+English Teacher → English submitted.
+
+Biology Teacher → Biology submitted.
+
+Physics Teacher → Physics submitted.
+
+The system automatically combines the submitted subject results into the student's consolidated term record.
+
+The identity of a subject result must remain scoped by:
+
+School + Student + Academic Session + Term + Class/Section + Subject
+
+Do not overwrite one subject when another teacher submits their subject.
+
+Do not create separate overall results for each teacher.
+
+---
+
+10. RESULT SUBMISSION STATUS
+
+School Admin should be able to open:
+
+Exam/Record → Session → Term → Class → Section
+
+and immediately see the submission status.
+
+Example:
+
+SS2/B — First Term
+
+Subject| Teacher| Status
+Mathematics| Teacher A| Submitted
+English| Teacher B| Submitted
+Biology| Teacher C| Submitted
+Physics| Teacher D| Awaiting
+Chemistry| Teacher E| Submitted
+
+Also show:
+
+4 of 5 subjects submitted
+
+The system should identify the teacher responsible for any missing subject.
+
+---
+
+11. COMPLETE STUDENT RESULT
+
+Once required subject results are submitted, Yemait EduCore automatically creates the student's consolidated report.
+
+Example:
+
+Subject| CA| Exam| Total| Grade
+Mathematics| 35| 55| 90| A
+English| 32| 51| 83| A
+Biology| 30| 45| 75| B
+Physics| 28| 42| 70| B
+Chemistry| 35| 50| 85| A
+
+Automatically calculate using the existing grading rules:
+
+- Subject total
+- Grade
+- Grade point where applicable
+- Average
+- Overall performance
+- Position/ranking only where the school's existing configuration permits it
+- Other existing report-card calculations
+
+Do not allow teachers to manually calculate or alter these derived values.
+
+---
+
+12. SCHOOL ADMIN REVIEW
+
+School Admin opens:
+
+Exam/Record → Session → Term → Class → Section
+
+Then sees the students.
+
+Example:
+
+Student| Result Status| Average| Action
+Student A| Ready| 82%| Preview
+Student B| Ready| 76%| Preview
+Student C| Awaiting| —| Preview
+
+Clicking Preview opens the complete report card.
+
+School Admin should be able to inspect:
+
+- Student information
+- Class/section
+- Subjects
+- CA
+- Examination
+- Total
+- Grades
+- Average
+- Position where applicable
+- Attendance
+- Comments
+- Promotion status
+- Existing report-card information
+
+---
+
+13. PUBLISHING
+
+School Admin should be the person who publishes the completed report.
+
+Do not require School Admin to approve every individual subject separately.
+
+Subject teachers submit their subjects.
+
+The system compiles the complete report.
+
+School Admin reviews the complete report card.
+
+Then:
+
+Publish Result
+
+Before publishing, verify that required subject results are complete.
+
+If something is missing, clearly show:
+
+«Chemistry result has not been submitted by the assigned teacher.»
+
+Do not allow an incomplete report to be accidentally published.
+
+If the existing system supports an authorized administrative override, preserve that capability but make the warning explicit and audit the action.
+
+---
+
+14. STUDENT DASHBOARD
+
+Once School Admin publishes the result:
+
+Student Dashboard → Exam/Record
+
+The student should automatically see the published result for their own account.
+
+Show:
+
+- Academic Session
+- Term
+- Class
+- Subjects
+- Scores
+- Grades
+- Average
+- Position where applicable
+- Teacher/class comments
+- Report-card preview
+- Printable/downloadable report card if the existing permission model allows it
+
+Only published results should appear as official results.
+
+Draft, returned or unpublished results must remain hidden from the Student.
+
+---
+
+15. PARENT DASHBOARD
+
+Once School Admin publishes the result:
+
+Parent Dashboard → Select Child → Exam/Record
+
+The Parent should see the same published report for the selected child.
+
+For parents with multiple children:
+
+Child A → Child A result
+
+Child B → Child B result
+
+Never mix children.
+
+The Parent must not see:
+
+- Another student's result
+- Draft results
+- Unpublished results
+- Another school's results
+
+The Parent should see:
+
+- Session
+- Term
+- Class
+- Subjects
+- Scores
+- Grades
+- Average
+- Position where applicable
+- Comments
+- Report-card preview
+
+If the result has not been published, show a clear state:
+
+«This result has not been published yet.»
+
+Do not display an HTTP error.
+
+---
+
+16. RESULT STATUS MODEL
+
+Use clear states:
+
+Draft
+
+Teacher is still entering/editing.
+
+Submitted
+
+Teacher has submitted the subject result.
+
+Returned
+
+School Admin returned it for correction.
+
+Resubmitted
+
+Teacher corrected and resubmitted it.
+
+Ready for Review
+
+All required subject results are available.
+
+Published
+
+School Admin has published the student's consolidated report.
+
+Locked
+
+Published result cannot be casually changed.
+
+If a correction is required after publication, use the existing authorized reopen/return mechanism and maintain a complete audit trail.
+
+---
+
+17. SCHOOL ADMIN SHOULD NOT SEE TEACHER ENTRY CONTROLS
+
+School Admin's Exam/Record section should be focused on:
+
+Review → Preview → Publish
+
+Do not expose unnecessary:
+
+- Create Exam
+- Create CA
+- Enter Subject Score
+- Upload Teacher Result
+
+controls to School Admin.
+
+---
+
+18. PLATFORM OWNER READ-ONLY
+
+Platform Owner:
+
+Exam/Record → Select School → Session → Term → Class → Section
+
+Can preview and monitor only.
+
+Every Platform Owner result request must remain tenant-scoped to the selected school.
+
+Platform Owner must never accidentally modify results while previewing them.
+
+---
+
+19. REPORT CARD GENERATION
+
+The system should generate the existing Yemait EduCore report-card format from the consolidated result data.
+
+Do not create a separate result database if the current result model can safely support this.
+
+Reuse:
+
+- Existing student profile
+- Existing school branding
+- Existing grading configuration
+- Existing academic session/term
+- Existing attendance
+- Existing teacher comments
+- Existing report-card functionality
+
+Do not duplicate student or academic records.
+
+---
+
+20. SECURITY AND DATA INTEGRITY
+
+Preserve strict tenant isolation.
+
+A teacher from School A must never access School B results.
+
+A Parent must only access linked children.
+
+A Student must only access their own published result.
+
+School Admin must only access their school.
+
+Platform Owner can preview across schools only through the authorized school-selection workflow.
+
+Do not use admission numbers as internal database IDs where APIs expect internal IDs.
+
+Do not weaken existing authorization simply to make the UI work.
+
+---
+
+21. IMPORTANT: INSPECT EXISTING IMPLEMENTATION FIRST
+
+Before changing code:
+
+1. Inspect the existing result workflow.
+2. Identify existing result tables/models.
+3. Identify existing assessment/grading tables.
+4. Identify existing teacher assignments.
+5. Identify existing report-card generation.
+6. Identify existing Student result dashboard.
+7. Identify existing Parent result dashboard.
+8. Identify existing School Admin result review/publish workflow.
+9. Identify existing Academic Session/Term references.
+10. Identify existing authorization and tenant-isolation rules.
+
+Reuse working components wherever possible.
+
+Do not create duplicate result systems.
+
+If existing functionality already satisfies a requirement, preserve it.
+
+---
+
+22. GENUINE BROWSER ACCEPTANCE TEST
+
+Do not claim this is fixed based only on unit tests.
+
+Use genuine authenticated Development browser sessions.
+
+Teacher test
+
+1. Sign in as an authorized subject teacher.
+2. Open Exam/Record.
+3. Confirm only authorized classes/subjects appear.
+4. Enter several student results through the table.
+5. Save Draft.
+6. Refresh.
+7. Confirm scores remain.
+8. Submit.
+9. Confirm status changes to Submitted.
+
+Excel test
+
+1. Download template.
+2. Fill valid results.
+3. Upload.
+4. Confirm preview.
+5. Confirm validation.
+6. Import.
+7. Confirm Draft results.
+8. Submit.
+
+School Admin test
+
+1. Sign in as School Admin.
+2. Open Exam/Record.
+3. Select Session.
+4. Select Term.
+5. Select Class.
+6. Select Section.
+7. Confirm subject submission statuses.
+8. Open a student.
+9. Preview the complete consolidated result.
+10. Publish the result.
+
+Student test
+
+1. Sign in as the affected Student.
+2. Open Exam/Record.
+3. Confirm the published result appears.
+4. Refresh.
+5. Confirm it remains available.
+
+Parent test
+
+1. Sign in as Parent.
+2. Select the correct child.
+3. Open Exam/Record.
+4. Confirm the child's published result appears.
+5. Refresh.
+6. Switch children if the Parent has multiple children.
+7. Confirm each child sees only their own result.
+
+Platform Owner test
+
+1. Sign in as Platform Owner.
+2. Open Exam/Record.
+3. Select a school.
+4. Select Session/Term/Class/Section.
+5. Preview results.
+6. Confirm no edit/submit/publish controls exist.
+
+---
+
+23. TESTING
+
+Add focused tests for:
+
+- Teacher authorization
+- Subject/class assignment filtering
+- Result table entry
+- Score validation
+- Automatic calculation
+- Draft persistence
+- Subject submission
+- Excel import
+- Excel validation
+- PDF import validation
+- Subject-result isolation
+- Multi-teacher result compilation
+- Missing subject detection
+- Return/resubmission
+- School Admin review
+- Publishing
+- Student published-result visibility
+- Parent child-specific result visibility
+- Multi-child Parent isolation
+- Platform Owner read-only access
+- Cross-school isolation
+- Published-result locking
+- Historical session/term isolation
+
+Run relevant existing tests as well.
+
+Run frontend and backend typechecks.
+
+Only add focused tests for this feature. Do not create a massive unrelated test suite.
+
+---
+
+24. PRESERVATION REQUIREMENTS
+
+Development only.
+
+Do NOT:
+
+- Publish
+- Modify Production
+- Reset the database
+- Reseed
+- Truncate tables
+- Delete existing business data
+- Fabricate production records
+- Bypass authentication
+- Weaken authorization
+- Break existing attendance, finance, timetable or academic functionality
+
+Do not modify existing financial/payment workflows.
+
+Do not change existing timetable functionality.
+
+Do not alter existing Student/Parent data.
+
+Preserve all existing results and historical academic records.
+
+If a database migration is genuinely required, make it additive and explain exactly why before applying it.
+
+---
+
+25. FINAL REPORT
+
+Report:
+
+1. Existing result architecture discovered.
+2. What was reused.
+3. Teacher workflow implemented.
+4. Manual table-entry workflow.
+5. Excel import workflow.
+6. PDF import workflow.
+7. Subject-teacher restrictions.
+8. Automatic result compilation.
+9. School Admin Exam/Record workflow.
+10. Platform Owner read-only workflow.
+11. Student published-result workflow.
+12. Parent child-specific published-result workflow.
+13. Exact root causes of any existing problems found.
+14. Genuine browser test results.
+15. Focused test counts.
+16. Typecheck results.
+17. Database preservation results.
+18. Confirmation that Production was untouched.
+
+Most importantly, do not say the feature is complete unless the genuine end-to-end flow has been tested:
+
+Teacher enters result → Teacher submits → System compiles → School Admin previews → School Admin publishes → Student sees result → Parent sees child's result.
+
+The goal is a simple system where teachers do the academic work, Yemait EduCore does the calculations and report-card compilation, School Admin reviews/publishes, and Students/Parents simply view the published result.
