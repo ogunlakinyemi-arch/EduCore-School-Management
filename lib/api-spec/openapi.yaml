@@ -225,6 +225,32 @@ paths:
     $ref: "./parent-communication.yaml#/paths/~1communication~1parent~1threads"
   /communication/threads:
     $ref: "./parent-communication.yaml#/paths/~1communication~1threads"
+  /communication/students:
+    get:
+      operationId: listCommunicationStudents
+      tags: [Parent Communication]
+      parameters:
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: search, in: query, schema: { type: string, maxLength: 150 } }
+      responses:
+        "200":
+          description: Only active current students within the actor's communication scope.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/CommunicationStudent" } }
+  /communication/students/{studentId}/guardians:
+    get:
+      operationId: listCommunicationGuardians
+      tags: [Parent Communication]
+      parameters:
+        - { name: studentId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: schoolId, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Existing permitted active guardian relationships; empty array means no linked guardian.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/CommunicationGuardian" } }
   /communication/threads/{threadId}:
     $ref: "./parent-communication.yaml#/paths/~1communication~1threads~1{threadId}"
   /communication/threads/{threadId}/messages:
@@ -5557,6 +5583,52 @@ paths:
     $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1lesson-notes~1{noteId}"
   /schools/{schoolId}/lesson-notes/{noteId}/submit:
     $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1lesson-notes~1{noteId}~1submit"
+  /schools/{schoolId}/lesson-notes/{noteId}/pdf-uploads:
+    post:
+      operationId: requestLessonNotePdfUpload
+      tags: [Lesson Notes]
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: noteId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LessonNotePdfUploadInput" }
+      responses:
+        "201":
+          description: Private staging upload; does not replace an existing original.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LessonNotePdfUploadIntent" }
+  /schools/{schoolId}/lesson-notes/{noteId}/pdf-uploads/{uploadId}/confirm:
+    post:
+      operationId: confirmLessonNotePdfUpload
+      tags: [Lesson Notes]
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: noteId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: uploadId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Validated immutable original attached to the existing note; all earlier PDF versions retained.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LessonNote" }
+  /schools/{schoolId}/lesson-notes/{noteId}/documents/{documentId}:
+    get:
+      operationId: downloadLessonNotePdf
+      tags: [Lesson Notes]
+      parameters:
+        - { name: schoolId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: noteId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: documentId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Authenticated original PDF. Owner access is read-only and scoped to the selected school.
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
   /schools/{schoolId}/lesson-notes/{noteId}/review:
     $ref: "./curriculum-learning.yaml#/paths/~1schools~1{schoolId}~1lesson-notes~1{noteId}~1review"
   /schools/{schoolId}/lesson-notes/{noteId}/archive:
@@ -5802,6 +5874,37 @@ components:
     LessonNoteUpdate: { $ref: "./curriculum-learning.yaml#/components/schemas/LessonNoteUpdate" }
     LessonNoteTransitionInput: { $ref: "./curriculum-learning.yaml#/components/schemas/LessonNoteTransitionInput" }
     LessonNote: { $ref: "./curriculum-learning.yaml#/components/schemas/LessonNote" }
+    LessonNotePdfUploadInput:
+      type: object
+      required: [filename, byteSize, expectedRevision]
+      properties:
+        filename: { type: string, maxLength: 180 }
+        byteSize: { type: integer, minimum: 1, maximum: 10485760 }
+        expectedRevision: { type: integer, minimum: 0 }
+    LessonNotePdfUploadIntent:
+      type: object
+      required: [uploadId, uploadUrl, maxBytes]
+      properties:
+        uploadId: { type: integer }
+        uploadUrl: { type: string }
+        maxBytes: { type: integer }
+    CommunicationStudent:
+      type: object
+      required: [id, admissionNo, firstName, lastName, className]
+      properties:
+        id: { type: integer }
+        admissionNo: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        className: { type: string }
+        section: { type: ["string", "null"] }
+    CommunicationGuardian:
+      type: object
+      required: [userId, firstName, lastName]
+      properties:
+        userId: { type: integer }
+        firstName: { type: string }
+        lastName: { type: string }
     LessonNoteDetail: { $ref: "./curriculum-learning.yaml#/components/schemas/LessonNoteDetail" }
     LessonNoteReviewInput: { $ref: "./curriculum-learning.yaml#/components/schemas/LessonNoteReviewInput" }
     LessonNoteReview: { $ref: "./curriculum-learning.yaml#/components/schemas/LessonNoteReview" }

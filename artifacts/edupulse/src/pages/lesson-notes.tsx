@@ -7,10 +7,12 @@ import {
   getListLessonNotesQueryKey, getGetLessonNoteQueryKey, getGetLessonNoteMonitoringQueryKey,
   getListSchoolCurriculumMappingsQueryKey, getListSchoolCurriculumTopicsQueryKey,
   type LessonNoteInput, type LessonNoteUpdate,
+  requestLessonNotePdfUpload, confirmLessonNotePdfUpload, type LessonNoteDocument,
 } from '@workspace/api-client-react';
 import { PageHeading, Button, StatusPill, SkeletonPage, ErrorState, EmptyState, Field, TenantPicker, Metric, cx, date } from '@/components/shared';
 import { Notice, errMsg, FRESH, useSchoolRole } from '@/components/school-ops-kit';
 import { SourceDownload } from '@/components/source-download';
+import { LessonNotePdfPanel } from '@/components/lesson-note-pdf';
 import { useCurriculumContext, useInvalidateSchool } from '@/hooks/use-curriculum-context';
 import { NOTE_FIELDS, cleanContent, isConflict, isEditableStatus, isPendingReview, label, missingForSubmit } from '@/lib/curriculum-kit';
 
@@ -54,7 +56,7 @@ function History({ reviews }: { reviews?: Array<{ id: number; decision: string; 
 }
 
 /** Teacher authoring. Keyed by note id so state never leaks between notes. */
-function NoteEditor({ schoolId, ctx, noteId, onSaved }: { schoolId: number; ctx: Ctx; noteId: number | null; onSaved: (id: number) => void }) {
+export function NoteEditor({ schoolId, ctx, noteId, onSaved }: { schoolId: number; ctx: Ctx; noteId: number | null; onSaved: (id: number) => void }) {
   const invalidate = useInvalidateSchool(schoolId);
   const detail = useGetLessonNote(schoolId, noteId ?? 0, { query: { enabled: !!noteId, queryKey: getGetLessonNoteQueryKey(schoolId, noteId ?? 0), ...FRESH } });
   const create = useCreateLessonNote();
@@ -63,21 +65,27 @@ function NoteEditor({ schoolId, ctx, noteId, onSaved }: { schoolId: number; ctx:
   const archive = useArchiveLessonNote();
   const pairs = useMemo(() => {
     const seen = new Map<string, { classId: number; subjectId: number; className: string; section: string; subjectName: string }>();
-    ctx.assignments.forEach(a => { if (a.classId && a.subjectId) seen.set(`${a.classId}:${a.subjectId}`, { classId: a.classId, subjectId: a.subjectId, className: a.className ?? '', section: a.section ?? '', subjectName: a.subjectName ?? '' }); });
+    ctx.assignments.forEach(a => { if (a.classId && a.subjectId) seen.set(`${a.classId}:${a.section ?? ''}:${a.subjectId}`, { classId: a.classId, subjectId: a.subjectId, className: a.className ?? '', section: a.section ?? '', subjectName: a.subjectName ?? '' }); });
     return [...seen.values()];
   }, [ctx.assignments]);
-  const [meta, setMeta] = useState({ week: 1, date: new Date().toISOString().slice(0, 10), classId: 0, subjectId: 0, topicId: 0, mappingId: 0, versionId: 0 });
+  const [meta, setMeta] = useState({ week: 1, date: new Date().toISOString().slice(0, 10), classId: 0, section: '', subjectId: 0, topicId: 0, mappingId: 0, versionId: 0 });
+  const [pdfFile,setPdfFile]=useState<File|null>(null);
+  const [documents,setDocuments]=useState<LessonNoteDocument[]>([]);
+  const [pdfBusy,setPdfBusy]=useState(false);
+  const savedId=useRef<number|null>(noteId);
   const [content, setContent] = useState<Record<string, string>>({});
   const [revision, setRevision] = useState(0);
   const [status, setStatus] = useState('DRAFT');
   const [conflict, setConflict] = useState(false);
   const [msg, setMsg] = useState('');
+  const [messageError,setMessageError]=useState(false);
   const init = useRef<number | null | 'new'>(null);
   useEffect(() => {
     const n = detail.data;
     if (noteId && n && init.current !== noteId) {
       init.current = noteId;
-      setMeta({ week: n.week, date: n.date.slice(0, 10), classId: n.classId, subjectId: n.subjectId, topicId: n.topicId ?? 0, mappingId: n.curriculumMappingId ?? 0, versionId: n.curriculumVersionId ?? 0 });
+      setMeta({ week: n.week, date: n.date.slice(0, 10), classId: n.classId, section: n.section ?? '', subjectId: n.subjectId, topicId: n.topicId ?? 0, mappingId: n.curriculumMappingId ?? 0, versionId: n.curriculumVersionId ?? 0 });
+      setDocuments(n.documents ?? []);
       setContent(strContent(n.content)); setRevision(n.revision); setStatus(n.status);
     }
   }, [detail.data, noteId]);
@@ -95,27 +103,41 @@ function NoteEditor({ schoolId, ctx, noteId, onSaved }: { schoolId: number; ctx:
   const set = (k: string, v: string) => setContent(c => ({ ...c, [k]: v }));
   const base = (): LessonNoteInput => ({
     sessionId: ctx.sessionId, termId: ctx.termId, classId: meta.classId, subjectId: meta.subjectId,
-    section: pairs.find(p => p.classId === meta.classId)?.section || null, week: meta.week, date: meta.date,
+    section: meta.section || null, week: meta.week, date: meta.date,
     curriculumMappingId: meta.topicId ? meta.mappingId || mapping?.id || null : null, curriculumVersionId: meta.topicId ? meta.versionId || mapping?.versionId || null : null,
     topicId: meta.topicId || null, content: cleanContent(content),
   });
   const updatePayload = (): LessonNoteUpdate => ({ ...base(), expectedRevision: revision });
-  const fail = (e: unknown) => { if (isConflict(e)) setConflict(true); setMsg(''); };
-  const saveThen = (after?: (rev: number, id: number) => void) => {
-    setMsg(''); setConflict(false);
-    const ok = (n: { id: number; revision: number; status: string }) => { setRevision(n.revision); setStatus(n.status); invalidate(); if (after) after(n.revision, n.id); else { setMsg('Draft saved.'); onSaved(n.id); } };
-    if (noteId) update.mutate({ schoolId, noteId, data: updatePayload() }, { onSuccess: ok, onError: fail });
-    else create.mutate({ schoolId, data: base() }, { onSuccess: ok, onError: fail });
+  const fail = (e: unknown) => { if (isConflict(e)&&savedId.current) setConflict(true); setMessageError(true);setMsg(e instanceof Error ? e.message : errMsg(e)); };
+  const saveThen = async (after?: (rev: number, id: number) => void) => {
+    setMsg('');setMessageError(false); setConflict(false);
+    setPdfBusy(true);
+    try {
+      let n=savedId.current ? await update.mutateAsync({schoolId,noteId:savedId.current,data:updatePayload()}) : await create.mutateAsync({schoolId,data:base()});
+      savedId.current=n.id;setRevision(n.revision);
+      if(pdfFile){
+        const intent=await requestLessonNotePdfUpload(schoolId,n.id,{filename:pdfFile.name,byteSize:pdfFile.size,expectedRevision:n.revision});
+        const uploaded=await fetch(intent.uploadUrl,{method:'PUT',headers:{'Content-Type':'application/pdf'},body:pdfFile});
+        if(!uploaded.ok)throw Error('PDF upload failed. Your draft is saved; try again.');
+        n=await confirmLessonNotePdfUpload(schoolId,n.id,intent.uploadId);
+        setDocuments(n.documents??[]);setPdfFile(null);
+      }
+      setRevision(n.revision);setStatus(n.status);invalidate();
+      if(after)after(n.revision,n.id);else{setMsg('Draft saved.');onSaved(n.id);}
+    }catch(e){fail(e);}finally{setPdfBusy(false);}
   };
   const doSubmit = () => {
-    const miss = missingForSubmit(content);
-    if (miss.length) { setMsg(`Complete before submitting: ${miss.join(', ')}.`); return; }
+    if(pdfFile && !meta.topicId){setMessageError(true);setMsg('Select a curriculum topic before uploading a PDF.');return;}
+    const miss = pdfFile || documents.length ? [] : missingForSubmit(content);
+    if (miss.length) { setMessageError(true);setMsg(`Complete before submitting: ${miss.join(', ')}.`); return; }
     saveThen((rev, id) => submit.mutate({ schoolId, noteId: id, data: { expectedRevision: rev } }, { onSuccess: n => { setRevision(n.revision); setStatus(n.status); setMsg('Submitted to your School Admin for private review.'); invalidate(); onSaved(n.id); }, onError: fail }));
   };
-  const reload = async () => { const r = await detail.refetch(); if (r.data) { setContent(strContent(r.data.content)); setRevision(r.data.revision); setStatus(r.data.status); setConflict(false); } };
-  const busy = create.isPending || update.isPending || submit.isPending || archive.isPending;
+  const reload = async () => { const r = await detail.refetch(); if (r.data) { setContent(strContent(r.data.content)); setRevision(r.data.revision); setStatus(r.data.status); setDocuments(r.data.documents??[]); setConflict(false); } };
+  const busy = pdfBusy || create.isPending || update.isPending || submit.isPending || archive.isPending;
   const error = create.error ?? update.error ?? submit.error ?? archive.error;
-  const canSave = hasPair && ctx.sessionId > 0 && ctx.termId > 0 && !busy;
+  const canSave = hasPair && ctx.sessionId > 0 && ctx.termId > 0 && !busy && (!pdfFile || !!meta.topicId);
+  const classOptions=[...new Map(pairs.map(p=>[`${p.classId}:${p.section}`,p])).values()];
+  const subjectOptions=pairs.filter(p=>p.classId===meta.classId&&p.section===meta.section);
   const topics = tq.data?.topics ?? [];
   return (
     <section className="panel p-6 md:p-8" data-testid="panel-note-editor">
@@ -127,19 +149,24 @@ function NoteEditor({ schoolId, ctx, noteId, onSaved }: { schoolId: number; ctx:
       {status === 'RETURNED' && detail.data?.latestReviewComment && <div className="mt-4"><Notice tone="error"><span data-testid="text-return-comment">Returned: {detail.data.latestReviewComment}</span></Notice></div>}
       {noteId && detail.data?.curriculumVersion && <div className="mt-4" data-testid="text-pinned-version"><Notice tone="info">Pinned curriculum version: {detail.data.curriculumVersion.title} / {detail.data.curriculumVersion.sourceOrganization}{detail.data.curriculumVersion.sourceVersion ? ` ${detail.data.curriculumVersion.sourceVersion}` : ''}. It does not change when the school's current mapping changes.</Notice></div>}
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Field label="Class and subject"><select className="w-full" disabled={!!noteId} value={`${meta.classId}:${meta.subjectId}`} onChange={e => { const [c, s] = e.target.value.split(':').map(Number); setMeta({ ...meta, classId: c, subjectId: s, topicId: 0, mappingId: 0, versionId: 0 }); }} data-testid="select-note-class">
-          <option value="0:0">Select assignment</option>{pairs.map(p => <option key={`${p.classId}:${p.subjectId}`} value={`${p.classId}:${p.subjectId}`}>{p.className} {p.section} / {p.subjectName}</option>)}
+        <Field label="Class / Section"><select className="w-full" disabled={!!savedId.current||busy} value={`${meta.classId}:${meta.section}`} onChange={e => { const [c,...section]=e.target.value.split(':'); setMeta({ ...meta, classId:Number(c),section:section.join(':'), subjectId:0,topicId: 0, mappingId: 0, versionId: 0 }); }} data-testid="select-note-class">
+          <option value="0:">Select assigned class / section</option>{classOptions.map(p => <option key={`${p.classId}:${p.section}`} value={`${p.classId}:${p.section}`}>{p.className} / {p.section||'No section'}</option>)}
         </select></Field>
+        <Field label="Subject"><select className="w-full" disabled={!!savedId.current||!meta.classId||busy} value={meta.subjectId} onChange={e=>setMeta({...meta,subjectId:Number(e.target.value),topicId:0,mappingId:0,versionId:0})} data-testid="select-note-subject"><option value={0}>Select assigned subject</option>{subjectOptions.map(p=><option key={p.subjectId} value={p.subjectId}>{p.subjectName}</option>)}</select></Field>
         <Field label="Week"><input type="number" min={1} max={60} className="w-full" disabled={readOnly} value={meta.week} onChange={e => setMeta({ ...meta, week: Number(e.target.value) })} data-testid="input-note-week" /></Field>
         <Field label="Lesson date"><input type="date" className="w-full" disabled={readOnly} value={meta.date} onChange={e => setMeta({ ...meta, date: e.target.value })} data-testid="input-note-date" /></Field>
         <Field label="Curriculum topic">
-          <select className="w-full" disabled={readOnly || !mapping} value={meta.topicId} onChange={e => { const id = Number(e.target.value); const t = topics.find(x => x.id === id); setMeta({ ...meta, topicId: id, mappingId: mapping?.id ?? 0, versionId: mapping?.versionId ?? 0 }); if (t && !content.topic) set('topic', t.title); }} data-testid="select-note-topic">
+          <select className="w-full" disabled={readOnly || busy || documents.length>0 || !mapping} value={meta.topicId} onChange={e => { const id = Number(e.target.value); const t = topics.find(x => x.id === id); setMeta({ ...meta, topicId: id, mappingId: mapping?.id ?? 0, versionId: mapping?.versionId ?? 0 }); if (t && !content.topic) set('topic', t.title); }} data-testid="select-note-topic">
             <option value={0}>{mapping ? 'Not linked' : hasPair ? 'No curriculum assigned' : 'Pick class and subject'}</option>
             {topics.map(t => <option key={t.id} value={t.id}>{t.title}{t.sourceKind === 'SCHOOL_SPECIFIC' ? ' (school-specific)' : ''}</option>)}
           </select>
         </Field>
       </div>
       <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">Teacher is set from your account. Saving a lesson note never changes curriculum coverage; record coverage from Curriculum.</p>
+      {mq.isError&&<Notice tone="error">{errMsg(mq.error)}</Notice>}
+      {tq.isError&&<Notice tone="error">{errMsg(tq.error)}</Notice>}
+      {hasPair&&!mq.isLoading&&!mapping&&!mq.isError&&<Notice tone="info">No curriculum is mapped to this class, subject, session and term. Ask your School Admin to confirm a curriculum mapping. Structured notes remain available.</Notice>}
+      <LessonNotePdfPanel schoolId={schoolId} noteId={savedId.current} documents={documents} file={pdfFile} onFile={setPdfFile} readOnly={readOnly} disabled={busy||!meta.topicId}/>
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         {readOnly ? <div className="md:col-span-2"><NoteReadOnly content={content} /></div> : NOTE_FIELDS.map(f => (
           <div key={f.key} className={f.long ? 'md:col-span-2' : ''}>
@@ -154,7 +181,7 @@ function NoteEditor({ schoolId, ctx, noteId, onSaved }: { schoolId: number; ctx:
           <div className="mt-2"><Button variant="outline" onClick={reload} testId="button-reload-latest">Reload latest</Button></div></Notice></div>
       )}
       {error && !conflict && <div className="mt-4"><Notice tone="error">{errMsg(error)}</Notice></div>}
-      {msg && <div className="mt-4"><Notice tone={msg.startsWith('Complete') ? 'error' : 'success'}><span data-testid="text-note-message">{msg}</span></Notice></div>}
+      {msg && <div className="mt-4"><Notice tone={messageError ? 'error' : 'success'}><span data-testid="text-note-message">{msg}</span></Notice></div>}
       {!readOnly && (
         <div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-[hsl(var(--border))] pt-4">
           <Button variant="outline" disabled={!canSave} onClick={() => saveThen()} testId="button-save-note">{update.isPending || create.isPending ? 'Saving' : 'Save draft'}</Button>
@@ -170,6 +197,7 @@ function TeacherView({ schoolId }: { schoolId: number }) {
   const ctx = useCurriculumContext(schoolId, { admin: false, teacher: true });
   const [week, setWeek] = useState(0);
   const [sel, setSel] = useState<number | null | undefined>(undefined);
+  useEffect(()=>setSel(undefined),[ctx.sessionId,ctx.termId]);
   const params = { sessionId: ctx.sessionId, termId: ctx.termId, ...(week ? { week } : {}) };
   const q = useListLessonNotes(schoolId, params, { query: { enabled: ctx.sessionId > 0 && ctx.termId > 0, queryKey: getListLessonNotesQueryKey(schoolId, params), ...FRESH } });
   if (ctx.loading) return <SkeletonPage />;
@@ -247,6 +275,7 @@ function ReviewPanel({ schoolId, noteId, names }: { schoolId: number; noteId: nu
         <StatusPill value={pill(n.status)} />
       </div>
       {n.curriculumVersion && <div className="mt-4 text-sm" data-testid="text-review-version">Curriculum version: <span className="font-bold">{n.curriculumVersion.title}</span> / {n.curriculumVersion.sourceOrganization}{n.curriculumVersion.sourceVersion ? ` ${n.curriculumVersion.sourceVersion}` : ''}</div>}
+      <LessonNotePdfPanel schoolId={schoolId} noteId={noteId} documents={n.documents} readOnly />
       <div className="mt-6"><NoteReadOnly content={strContent(n.content)} /></div>
       <History reviews={n.reviews} />
       {stale && <div className="mt-4" role="alert"><Notice tone="error">The teacher changed this note while you were reviewing. Your comment is kept; the latest version is loading. Review it again before deciding.</Notice></div>}
@@ -341,16 +370,40 @@ function AdminView({ schoolId }: { schoolId: number }) {
   );
 }
 
+function OwnerNote({schoolId,noteId}:{schoolId:number;noteId:number}) {
+  const q=useGetLessonNote(schoolId,noteId,{query:{queryKey:getGetLessonNoteQueryKey(schoolId,noteId),...FRESH}});
+  if(q.isLoading)return <SkeletonPage/>;
+  if(q.isError||!q.data)return <ErrorState retry={()=>void q.refetch()}/>;
+  const n=q.data;
+  return <div className="panel p-6" data-testid="panel-owner-note">
+    <Notice tone="info">Read-only access for the selected school. Owners cannot edit, upload, submit or review.</Notice>
+    <h2 className="mt-4 text-xl font-bold">{String(n.content?.topic??`Lesson note #${n.id}`)}</h2>
+    <p className="my-3 text-sm">Session #{n.sessionId} · Term #{n.termId} · Class #{n.classId} / {n.section} · Subject #{n.subjectId} · Teacher #{n.teacherId}</p>
+    <StatusPill value={pill(n.status)}/><LessonNotePdfPanel schoolId={schoolId} noteId={noteId} documents={n.documents} readOnly/>
+    <NoteReadOnly content={strContent(n.content)}/><History reviews={n.reviews}/>
+  </div>;
+}
+function OwnerNotes({schoolId}:{schoolId:number}) {
+  const [selected,setSelected]=useState(0);
+  const q=useListLessonNotes(schoolId,undefined,{query:{queryKey:getListLessonNotesQueryKey(schoolId),...FRESH}});
+  if(q.isLoading)return <SkeletonPage/>;
+  if(q.isError)return <ErrorState retry={()=>void q.refetch()}/>;
+  return <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
+    <div className="panel p-4"><h2 className="mb-3 font-bold">Selected school's lesson notes</h2>
+      {!q.data?.length?<p>No lesson notes in this school.</p>:q.data.map(n=><button className="block w-full rounded-lg p-3 text-left hover:bg-[hsl(var(--muted))]" key={n.id} onClick={()=>setSelected(n.id)} data-testid={`button-owner-note-${n.id}`}>Week {n.week} · {String(n.content?.topic??`Note #${n.id}`)} · {n.status}</button>)}
+    </div>{selected?<OwnerNote key={selected} schoolId={schoolId} noteId={selected}/>:<Notice tone="info">Select a note to preview its content and PDF history. Access is read-only.</Notice>}
+  </div>;
+}
 export function LessonNotesPage() {
   const role = useSchoolRole();
   if (role.loading) return <SkeletonPage />;
   const adminView = role.isAdmin && !role.isPlatformOwner;
   const teacherView = !adminView && role.isTeacher && !role.isPlatformOwner;
-  const desc = role.isPlatformOwner ? 'Lesson notes are private to each school and are not available to the Platform Owner.' : teacherView ? 'Prepare one structured note per class and subject each week. Only you and your School Admin can read it.' : 'Monitor weekly submissions from teaching assignments and review notes privately.';
+  const desc = role.isPlatformOwner ? 'Read-only lesson-note and PDF access for the explicitly selected school.' : teacherView ? 'Prepare a structured note or upload a prepared PDF for private School Admin review.' : 'Monitor weekly submissions from teaching assignments and review notes privately.';
   return (
     <div className="fade-up">
       <PageHeading eyebrow="Teaching" title="Lesson notes." description={desc} action={role.isPlatformOwner ? <TenantPicker /> : undefined} />
-      {role.isPlatformOwner ? <EmptyState icon={Lock} title="Private to schools" description="The Platform Owner manages the central curriculum library, not school lesson notes." />
+      {role.isPlatformOwner ? role.schoolId ? <OwnerNotes key={role.schoolId} schoolId={role.schoolId}/> : <EmptyState icon={Lock} title="Choose a school" description="Select a school for read-only lesson-note access." />
         : !role.schoolId || (!adminView && !teacherView) ? <EmptyState icon={Lock} title="Not available" description="Lesson notes are available to Teachers and School Admins of the selected school." />
         : adminView ? <AdminView key={`a-${role.schoolId}`} schoolId={role.schoolId} /> : <TeacherView key={`t-${role.schoolId}`} schoolId={role.schoolId} />}
     </div>

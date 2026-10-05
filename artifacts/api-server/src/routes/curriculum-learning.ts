@@ -6,9 +6,13 @@ import {
   AuthError,
   getUserContext,
   requireAuthentication,
+  assertSchoolAccess,
 } from "../middlewares/auth";
 import { parseImportFile } from "./people-import-service";
 import { queueCommunicationNotification } from "../services/communication-service";
+import { lessonTeachingScope } from "../services/lesson-teaching-scope";
+import { lessonPdfPaths, signLessonPdfUpload, validateLessonPdfMetadata, finalizeLessonPdf,
+  lessonDocumentContext, lessonDocumentColumns, lessonPdfFile } from "../services/lesson-note-pdf";
 import {
   assertCurriculumVersionMutable,
   assertLessonNoteSubmittable,
@@ -153,6 +157,9 @@ const noteReturning = `id,school_id AS "schoolId",academic_session_id AS "sessio
   submitted_at AS "submittedAt",approved_at AS "approvedAt",created_at AS "createdAt",updated_at AS "updatedAt"`;
 
 async function addPinnedVersion(note: Record<string, any>,client: any = pool) {
+  const documents = await client.query(`SELECT ${lessonDocumentColumns} FROM lesson_note_documents
+    WHERE lesson_note_id=$1 AND school_id=$2 AND status='READY' ORDER BY id DESC`, [note.id,note.schoolId]);
+  note = { ...note, documents: documents.rows };
   if (!note.curriculumVersionId) return { ...note,curriculumVersion: null };
   const result = await client.query(`SELECT ${versionColumns} FROM curriculum_versions WHERE id=$1`,[note.curriculumVersionId]);
   if (!result.rows[0]) return { ...note,curriculumVersion: null };
@@ -637,11 +644,8 @@ async function validateAcademicContext(
        JOIN academic_sessions s ON s.id=$2 AND s.school_id=c.school_id
        JOIN academic_terms t ON t.id=$3 AND t.school_id=c.school_id AND t.academic_session_id=s.id
        JOIN subjects sub ON sub.id=$5 AND sub.school_id=c.school_id
-       JOIN class_subjects cs ON cs.school_id=c.school_id AND cs.school_class_id=c.id
-         AND cs.subject_id=sub.id AND cs.academic_session_id=s.id
-         AND cs.academic_term_id IS NOT DISTINCT FROM t.id AND cs.status='ACTIVE'
-         AND ($6::text IS NULL OR cs.section IS NULL OR cs.section IS NOT DISTINCT FROM $6)
-     WHERE c.id=$4 AND c.school_id=$1`,
+      WHERE c.id=$4 AND c.school_id=$1
+        AND ${lessonTeachingScope(["$1","$2","$3","$4","$5","NULL","COALESCE($6,c.section,'')"],false)}`,
      [school,session,term,classId,subjectId,section],
   );
   if (!result.rows[0]) throw new AuthError(404, "Academic class, subject, session, or term is not configured for this school");
@@ -651,17 +655,13 @@ async function validateTeacherAssignment(
   school: number, userId: number, session: number, term: number, classId: number, subjectId: number, section: string | null,
 ) {
   const result = await pool.query(
-    `SELECT e.id FROM employees e
-      JOIN teacher_class_assignments tca ON tca.employee_id=e.id AND tca.school_id=e.school_id
-        AND tca.academic_session_id=$3 AND tca.school_class_id=$5
-        AND tca.section=COALESCE($7,'') AND tca.status='ACTIVE'
-        AND (tca.subject_id IS NULL OR tca.subject_id=$6)
-      JOIN class_subjects cs ON cs.school_id=e.school_id AND cs.school_class_id=$5
-        AND cs.subject_id=$6 AND cs.academic_session_id=$3
-        AND cs.academic_term_id IS NOT DISTINCT FROM $4
-        AND (cs.section IS NULL OR cs.section IS NOT DISTINCT FROM $7) AND cs.status='ACTIVE'
-        AND (cs.employee_id IS NULL OR cs.employee_id=e.id)
-     WHERE e.school_id=$1 AND e.user_id=$2 AND e.employment_status='ACTIVE' AND e.employee_type='TEACHER'`,
+     `SELECT e.id FROM employees e
+       JOIN school_classes c ON c.id=$5 AND c.school_id=e.school_id
+       JOIN academic_sessions ac ON ac.id=$3 AND ac.school_id=e.school_id
+       JOIN academic_terms term ON term.id=$4 AND term.school_id=e.school_id AND term.academic_session_id=ac.id
+       JOIN subjects sub ON sub.id=$6 AND sub.school_id=e.school_id
+      WHERE e.school_id=$1 AND e.user_id=$2 AND e.employment_status='ACTIVE' AND e.employee_type='TEACHER'
+        AND ${lessonTeachingScope(["$1","$3","$4","$5","$6","e.id","COALESCE($7,c.section,'')"])}`,
     [school,userId,session,term,classId,subjectId,section],
   );
   if (!result.rows[0]) throw new AuthError(403, "Teacher is not assigned to this class, subject, session, and section");
@@ -675,23 +675,17 @@ router.get("/schools/:schoolId/curriculum/teaching-context", run(async (req,res)
   const sessionId = asyncId(req.query.sessionId,"sessionId");
   const termId = asyncId(req.query.termId,"termId");
   const result = await pool.query(
-    `SELECT DISTINCT c.id AS "classId",c.name AS "className",NULLIF(tca.section,'') AS section,
+     `SELECT DISTINCT c.id AS "classId",c.name AS "className",NULLIF(c.section,'') AS section,
        s.id AS "subjectId",s.name AS "subjectName",s.code AS "subjectCode",
-       tca.academic_session_id AS "sessionId",cs.academic_term_id AS "termId"
+        a.id AS "sessionId",term.id AS "termId"
       FROM employees e
-      JOIN teacher_class_assignments tca ON tca.employee_id=e.id AND tca.school_id=e.school_id
-        AND tca.academic_session_id=$3 AND tca.status='ACTIVE'
-      JOIN school_classes c ON c.id=tca.school_class_id AND c.school_id=tca.school_id
-      JOIN academic_sessions a ON a.id=tca.academic_session_id AND a.school_id=tca.school_id
-      JOIN academic_terms term ON term.id=$4 AND term.school_id=tca.school_id
+       JOIN school_classes c ON c.school_id=e.school_id
+       JOIN academic_sessions a ON a.id=$3 AND a.school_id=e.school_id
+       JOIN academic_terms term ON term.id=$4 AND term.school_id=e.school_id
         AND term.academic_session_id=a.id
-      JOIN class_subjects cs ON cs.school_id=tca.school_id AND cs.school_class_id=tca.school_class_id
-        AND cs.academic_session_id=tca.academic_session_id AND cs.academic_term_id=term.id AND cs.status='ACTIVE'
-        AND (tca.subject_id IS NULL OR tca.subject_id=cs.subject_id)
-        AND (cs.section IS NULL OR cs.section IS NOT DISTINCT FROM NULLIF(tca.section,''))
-        AND (cs.employee_id IS NULL OR cs.employee_id=e.id)
-      JOIN subjects s ON s.id=cs.subject_id AND s.school_id=cs.school_id
+       JOIN subjects s ON s.school_id=e.school_id
      WHERE e.school_id=$1 AND e.user_id=$2 AND e.employee_type='TEACHER' AND e.employment_status='ACTIVE'
+        AND ${lessonTeachingScope(["$1","$3","$4","c.id","s.id","e.id","COALESCE(c.section,'')"])}
      ORDER BY "className",section,"subjectName"`,
     [school,userId,sessionId,termId],
   );
@@ -723,14 +717,9 @@ router.get("/schools/:schoolId/curriculum", run(async (req, res) => {
            ORDER BY CASE WHEN ci.confirmed_version_id=v.id THEN 0 ELSE 1 END,ci.id DESC LIMIT 1)) AS "curriculumVersion"
       FROM school_curriculum_assignments m JOIN curriculum_versions v ON v.id=m.curriculum_version_id
       WHERE m.school_id=$1 AND ($3::boolean OR EXISTS(
-        SELECT 1 FROM employees e JOIN teacher_class_assignments tca ON tca.employee_id=e.id AND tca.school_id=e.school_id
-          JOIN class_subjects cs ON cs.school_id=e.school_id AND cs.school_class_id=m.school_class_id AND cs.subject_id=m.subject_id
-            AND cs.academic_session_id=m.academic_session_id AND cs.academic_term_id=m.academic_term_id AND cs.status='ACTIVE'
-            AND (cs.employee_id IS NULL OR cs.employee_id=e.id)
+         SELECT 1 FROM employees e JOIN school_classes c ON c.id=m.school_class_id AND c.school_id=m.school_id
         WHERE e.user_id=$2 AND e.school_id=m.school_id AND e.employee_type='TEACHER' AND e.employment_status='ACTIVE'
-          AND tca.academic_session_id=m.academic_session_id AND tca.school_class_id=m.school_class_id
-          AND tca.section=COALESCE((SELECT section FROM school_classes WHERE id=m.school_class_id AND school_id=m.school_id),'')
-          AND tca.status='ACTIVE' AND (tca.subject_id IS NULL OR tca.subject_id=m.subject_id)
+           AND ${lessonTeachingScope(["m.school_id","m.academic_session_id","m.academic_term_id","m.school_class_id","m.subject_id","e.id","COALESCE(c.section,'')"])}
       ) OR EXISTS(SELECT 1 FROM lesson_notes hn JOIN employees he ON he.id=hn.teacher_employee_id
         WHERE hn.curriculum_mapping_id=m.id AND hn.school_id=m.school_id AND he.user_id=$2))
         AND ($3::boolean OR m.status='ACTIVE' OR EXISTS(
@@ -760,14 +749,8 @@ router.get("/schools/:schoolId/curriculum/:mappingId/topics", run(async (req,res
   if (!admin) {
     const teacherAssignment = await pool.query(
       `SELECT e.id FROM employees e
-        JOIN teacher_class_assignments tca ON tca.employee_id=e.id AND tca.school_id=e.school_id
-          AND tca.academic_session_id=$3 AND tca.school_class_id=$4 AND tca.section=COALESCE($5,'')
-          AND tca.status='ACTIVE' AND (tca.subject_id IS NULL OR tca.subject_id=$6)
-        JOIN class_subjects cs ON cs.school_id=e.school_id AND cs.school_class_id=$4 AND cs.subject_id=$6
-          AND cs.academic_session_id=$3 AND cs.academic_term_id IS NOT DISTINCT FROM $7
-          AND (cs.section IS NULL OR cs.section IS NOT DISTINCT FROM $5) AND cs.status='ACTIVE'
-          AND (cs.employee_id IS NULL OR cs.employee_id=e.id)
        WHERE e.user_id=$1 AND e.school_id=$2 AND e.employee_type='TEACHER' AND e.employment_status='ACTIVE' AND $9='ACTIVE'
+         AND ${lessonTeachingScope(["$2","$3","$7","$4","$6","e.id","COALESCE($5,'')"])}
        UNION ALL
        SELECT e.id FROM lesson_notes hn JOIN employees e ON e.id=hn.teacher_employee_id
         WHERE hn.curriculum_mapping_id=$8 AND hn.school_id=$2 AND e.user_id=$1
@@ -967,15 +950,17 @@ router.post("/schools/:schoolId/curriculum/:mappingId/progress", run(async (req,
   res.status(201).json(result.rows[0]);
 }));
 
-async function ensureNoteContext(school: number, input: Record<string, any>, userId: number, teacherId?: number) {
+async function ensureNoteContext(school: number, input: Record<string, any>, userId: number, teacherId?: number, pinned?: Record<string,any>) {
+  const samePinned = !!pinned && JSON.stringify(lessonDocumentContext({...input,schoolId:school,teacherId:pinned.teacherId})) ===
+    JSON.stringify(lessonDocumentContext(pinned));
   const academic = await validateAcademicContext(school,input.sessionId,input.termId,input.classId,input.subjectId,input.section ?? null);
   if (input.subTopicId != null && input.topicId == null) throw new AuthError(400,"subTopicId requires its selected topicId");
   if (input.curriculumMappingId != null) {
     const mapping = await pool.query(
       `SELECT id,curriculum_version_id FROM school_curriculum_assignments
         WHERE id=$1 AND school_id=$2 AND school_class_id=$3 AND subject_id=$4
-          AND academic_session_id=$5 AND academic_term_id=$6 AND status='ACTIVE'`,
-      [input.curriculumMappingId,school,input.classId,input.subjectId,input.sessionId,input.termId],
+           AND academic_session_id=$5 AND academic_term_id=$6 AND (status='ACTIVE' OR $7::boolean)`,
+       [input.curriculumMappingId,school,input.classId,input.subjectId,input.sessionId,input.termId,samePinned],
     );
     if (!mapping.rows[0]) throw new AuthError(404,"Curriculum mapping not found for lesson context");
     if (input.curriculumVersionId != null && input.curriculumVersionId !== Number(mapping.rows[0].curriculum_version_id)) {
@@ -983,6 +968,7 @@ async function ensureNoteContext(school: number, input: Record<string, any>, use
     }
     input.curriculumVersionId = Number(mapping.rows[0].curriculum_version_id);
   } else if (input.curriculumVersionId != null) {
+    if (!samePinned) throw new AuthError(404,"Select the school's confirmed curriculum mapping for this lesson context");
     const version = await pool.query(`SELECT id,status FROM curriculum_versions WHERE id=$1`,[input.curriculumVersionId]);
     if (!version.rows[0] || !["PUBLISHED","ARCHIVED"].includes(version.rows[0].status)) throw new AuthError(404,"Curriculum version not found");
   }
@@ -1037,17 +1023,28 @@ router.post("/schools/:schoolId/lesson-notes", run(async (req,res) => {
     [school,input.sessionId,input.termId,input.classId,input.subjectId,teacherId,input.section ?? null,input.week,input.date,
       input.curriculumMappingId ?? null,input.curriculumVersionId ?? null,input.topicId ?? null,input.subTopicId ?? null,
       JSON.stringify(input.content ?? {}),context.user.id],
-  );
+  ).catch((error:{code?:string;constraint?:string})=>{
+    if(error.code==="23505"&&error.constraint==="lesson_notes_week_assignment_unique")
+      throw new AuthError(409,"A lesson note already exists for this teaching assignment and week. Open the existing note or choose a different week.");
+    throw error;
+  });
   await audit(req,school,"Created lesson-note draft",Number(result.rows[0].id));
   res.status(201).json(await addPinnedVersion(result.rows[0]));
 }));
 
+function requireNoteRead(req: Request, school: number) {
+  if (noteOwnerReader(req)) assertSchoolAccess(req,school,["PLATFORM_OWNER"]);
+  else requireTeacherOrAdmin(req,school);
+}
+function noteOwnerReader(req: Request) {
+  return getUserContext(req).roles.some(r => r.role === "PLATFORM_OWNER" && r.schoolId === null && r.status === "ACTIVE");
+}
 router.get("/schools/:schoolId/lesson-notes", run(async (req,res) => {
   const school = schoolId(req);
-  requireTeacherOrAdmin(req,school);
+   requireNoteRead(req,school);
   const context = getUserContext(req);
   const admin = context.roles.some((role) => role.role === "SCHOOL_ADMIN" && role.schoolId === school && role.status === "ACTIVE");
-  const values: unknown[] = [school,context.user.id,admin];
+   const values: unknown[] = [school,context.user.id,admin || noteOwnerReader(req)];
   const where = [
     `n.school_id=$1`,
     `($3::boolean OR EXISTS(SELECT 1 FROM employees own WHERE own.id=n.teacher_employee_id AND own.user_id=$2))`,
@@ -1082,7 +1079,7 @@ async function getPrivateNote(req: Request, school: number, noteId: number, lock
   );
   const note = found.rows[0];
   if (!note) throw new AuthError(404,"Lesson note not found");
-  if (!admin && Number(note.teacherUserId) !== context.user.id) throw new AuthError(404,"Lesson note not found");
+   if (!admin && !noteOwnerReader(req) && Number(note.teacherUserId) !== context.user.id) throw new AuthError(404,"Lesson note not found");
   return { note, admin };
 }
 router.get("/schools/:schoolId/lesson-notes/monitoring", run(async (req,res) => {
@@ -1106,7 +1103,7 @@ router.get("/schools/:schoolId/lesson-notes/monitoring", run(async (req,res) => 
 
 router.get("/schools/:schoolId/lesson-notes/:noteId", run(async (req,res) => {
   const school = schoolId(req);
-  requireTeacherOrAdmin(req,school);
+   requireNoteRead(req,school);
   const { note } = await getPrivateNote(req,school,requestParam(req,"noteId"));
   const reviews = await pool.query(
     `SELECT id,lesson_note_id AS "noteId",decision,comment,reviewer_user_id AS "reviewerUserId",note_revision AS "noteRevision",created_at AS "createdAt"
@@ -1147,7 +1144,12 @@ router.patch("/schools/:schoolId/lesson-notes/:noteId", run(async (req,res) => {
       subTopicId:input.subTopicId === undefined ? note.subTopicId : input.subTopicId,
       content:input.content === undefined ? note.content : input.content,
     };
-    await ensureNoteContext(school,merged,getUserContext(req).user.id);
+    await ensureNoteContext(school,merged,getUserContext(req).user.id,undefined,note);
+     const attached = await client.query(`SELECT id FROM lesson_note_documents
+       WHERE lesson_note_id=$1 AND school_id=$2 AND status='READY' LIMIT 1`,[noteId,school]);
+     if (attached.rows.length && JSON.stringify(lessonDocumentContext({ ...merged,schoolId:school,teacherId:note.teacherId })) !==
+         JSON.stringify(lessonDocumentContext(note)))
+       throw new AuthError(409,"A PDF is already linked to this academic context. Create a separate note to change its class, subject, period or topic.");
     updated = await client.query(
       `UPDATE lesson_notes SET academic_session_id=$1,academic_term_id=$2,school_class_id=$3,subject_id=$4,section=$5,
          week=$6,lesson_date=$7,curriculum_mapping_id=$8,curriculum_version_id=$9,topic_id=$10,sub_topic_id=$11,
@@ -1182,7 +1184,11 @@ async function transitionNote(req: Request, school: number, noteId: number, acti
       throw new AuthError(403,"A School Admin cannot review their own lesson note");
     }
     if ((effectiveAction === "SUBMIT" || effectiveAction === "RESUBMIT") && !admin) {
-      try { assertLessonNoteSubmittable(note.content ?? {}); } catch (error) { throw new AuthError(400,(error as Error).message); }
+       const pdf = await client.query(`SELECT id FROM lesson_note_documents
+         WHERE lesson_note_id=$1 AND school_id=$2 AND status='READY' LIMIT 1`,[noteId,school]);
+       if (!pdf.rows.length) {
+         try { assertLessonNoteSubmittable(note.content ?? {}); } catch (error) { throw new AuthError(400,(error as Error).message); }
+       } else if (!note.topicId || !note.curriculumMappingId) throw new AuthError(400,"PDF lesson notes require a selected curriculum topic");
     }
     let nextStatus: LessonNoteStatus;
     try { nextStatus = transitionLessonNote(note.status as LessonNoteStatus,effectiveAction); }
@@ -1235,6 +1241,78 @@ router.post("/schools/:schoolId/lesson-notes/:noteId/submit", run(async (req,res
   const updated = await transitionNote(req,school,requestParam(req,"noteId"),"SUBMIT",body.expectedRevision,null);
   res.json(updated);
 }));
+
+router.post("/schools/:schoolId/lesson-notes/:noteId/pdf-uploads", run(async (req,res) => {
+  const school = schoolId(req), noteId = requestParam(req,"noteId");
+  requireSchoolTeacher(req,school);
+  const body = bodyObject(req.body);
+  const file = validateLessonPdfMetadata(body.filename,body.byteSize);
+  const client = await pool.connect();
+  let document: any, uploadUrl: string;
+  try {
+    await client.query("BEGIN");
+    const { note,admin } = await getPrivateNote(req,school,noteId,true,client);
+    if (admin || noteOwnerReader(req) || !["DRAFT","RETURNED"].includes(note.status)) throw new AuthError(409,"Only the owning Teacher can upload to a draft or returned note");
+    if (body.expectedRevision !== note.revision) throw new AuthError(409,"The lesson note changed; reload before uploading");
+    if (!note.topicId || !note.curriculumMappingId) throw new AuthError(400,"Select and save the curriculum topic before uploading a PDF");
+    await validateTeacherAssignment(school,getUserContext(req).user.id,note.sessionId,note.termId,note.classId,note.subjectId,note.section);
+    const paths = lessonPdfPaths(school,noteId);
+    uploadUrl = await signLessonPdfUpload(paths.stagingPath);
+    document = (await client.query(`INSERT INTO lesson_note_documents
+      (school_id,lesson_note_id,note_revision,filename,byte_size,staging_path,object_path,context,uploaded_by,expires_at)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,now()+interval '3 minutes') RETURNING id`,
+      [school,noteId,note.revision,file.filename,file.size,paths.stagingPath,paths.objectPath,
+        JSON.stringify(lessonDocumentContext(note)),getUserContext(req).user.id])).rows[0];
+    await client.query("COMMIT");
+  } catch (error) { await client.query("ROLLBACK"); throw error; }
+  finally { client.release(); }
+  res.status(201).json({ uploadId:document.id,uploadUrl:uploadUrl!,maxBytes:10485760 });
+}));
+router.post("/schools/:schoolId/lesson-notes/:noteId/pdf-uploads/:uploadId/confirm", run(async (req,res) => {
+  const school = schoolId(req),noteId = requestParam(req,"noteId"),uploadId = requestParam(req,"uploadId");
+  requireSchoolTeacher(req,school);
+  const client = await pool.connect();
+  let noteResponse: any;
+  try {
+    await client.query("BEGIN");
+    const { note,admin } = await getPrivateNote(req,school,noteId,true,client);
+    if (admin || noteOwnerReader(req)) throw new AuthError(403,"Only the owning Teacher can confirm a PDF");
+    const document = (await client.query(`SELECT * FROM lesson_note_documents
+      WHERE id=$1 AND lesson_note_id=$2 AND school_id=$3 AND uploaded_by=$4 FOR UPDATE`,
+      [uploadId,noteId,school,getUserContext(req).user.id])).rows[0];
+    if (!document) throw new AuthError(404,"Lesson-note upload not found");
+    if (document.status === "READY") { noteResponse = note; }
+    else {
+      if (!["DRAFT","RETURNED"].includes(note.status) || Number(document.note_revision)!==Number(note.revision) ||
+          new Date(document.expires_at).getTime()<Date.now()) throw new AuthError(409,"This upload expired or the note changed; start a new upload");
+      await validateTeacherAssignment(school,getUserContext(req).user.id,note.sessionId,note.termId,note.classId,note.subjectId,note.section);
+      const sha = await finalizeLessonPdf(document.staging_path,document.object_path,document.byte_size);
+      await client.query(`UPDATE lesson_note_documents SET status='READY',sha256=$1,ready_at=now(),
+        note_revision=$2 WHERE id=$3`,[sha,Number(note.revision)+1,uploadId]);
+      noteResponse = (await client.query(`UPDATE lesson_notes SET revision=revision+1,updated_at=now()
+        WHERE id=$1 AND school_id=$2 RETURNING ${noteReturning}`,[noteId,school])).rows[0];
+      await audit(req,school,"Attached validated lesson-note PDF version",noteId,client);
+    }
+    await client.query("COMMIT");
+  } catch (error) { await client.query("ROLLBACK"); throw error; }
+  finally { client.release(); }
+  const { teacherUserId:_private,...result } = noteResponse;
+  res.json(await addPinnedVersion(result));
+}));
+router.get("/schools/:schoolId/lesson-notes/:noteId/documents/:documentId", run(async (req,res) => {
+  const school = schoolId(req),noteId = requestParam(req,"noteId"),documentId = requestParam(req,"documentId");
+  requireNoteRead(req,school);
+  await getPrivateNote(req,school,noteId);
+  const document = (await pool.query(`SELECT filename,object_path,sha256 FROM lesson_note_documents
+    WHERE id=$1 AND school_id=$2 AND lesson_note_id=$3 AND status='READY'`,[documentId,school,noteId])).rows[0];
+  if (!document) throw new AuthError(404,"Lesson-note PDF not found");
+  const [bytes] = await lessonPdfFile(document.object_path).download();
+  res.setHeader("Content-Type","application/pdf");
+  res.setHeader("Cache-Control","private, no-store");
+  res.setHeader("X-Content-Type-Options","nosniff");
+  res.setHeader("Content-Disposition",`inline; filename="lesson-note-${documentId}.pdf"; filename*=UTF-8''${encodeURIComponent(document.filename)}`);
+  res.send(bytes);
+}));
 router.post("/schools/:schoolId/lesson-notes/:noteId/review", run(async (req,res) => {
   const school = schoolId(req);
   requireSchoolAdmin(req,school);
@@ -1258,17 +1336,14 @@ router.post("/schools/:schoolId/lesson-notes/:noteId/archive", run(async (req,re
 async function monitoringRows(school: number, session: number, term: number, week: number) {
   return pool.query(
     `WITH expected AS (
-       SELECT DISTINCT e.id AS teacher_id,e.first_name,e.last_name,cs.school_class_id AS class_id,cs.subject_id,
-          cs.section,cs.academic_session_id,cs.academic_term_id
-       FROM class_subjects cs
-       JOIN teacher_class_assignments tca ON tca.school_id=cs.school_id AND tca.school_class_id=cs.school_class_id
-         AND tca.academic_session_id=cs.academic_session_id AND tca.status='ACTIVE'
-         AND (tca.subject_id IS NULL OR tca.subject_id=cs.subject_id)
-         AND (tca.section=COALESCE(cs.section,'') OR tca.section='')
-       JOIN employees e ON e.id=tca.employee_id AND e.school_id=tca.school_id
-         AND e.employee_type='TEACHER' AND e.employment_status='ACTIVE'
-       WHERE cs.school_id=$1 AND cs.academic_session_id=$2 AND cs.academic_term_id=$3 AND cs.status='ACTIVE'
-         AND (cs.employee_id IS NULL OR cs.employee_id=e.id)
+       SELECT DISTINCT e.id AS teacher_id,e.first_name,e.last_name,c.id AS class_id,s.id AS subject_id,
+          NULLIF(c.section,'') AS section,ac.id AS academic_session_id,t.id AS academic_term_id
+       FROM employees e JOIN school_classes c ON c.school_id=e.school_id
+       JOIN subjects s ON s.school_id=e.school_id
+       JOIN academic_sessions ac ON ac.id=$2 AND ac.school_id=e.school_id
+       JOIN academic_terms t ON t.id=$3 AND t.academic_session_id=ac.id AND t.school_id=e.school_id
+       WHERE e.school_id=$1 AND e.employee_type='TEACHER' AND e.employment_status='ACTIVE'
+         AND ${lessonTeachingScope(["$1","$2","$3","c.id","s.id","e.id","COALESCE(c.section,'')"])}
      )
      SELECT x.teacher_id AS "teacherId",concat_ws(' ',x.first_name,x.last_name) AS "teacherName",
        x.class_id AS "classId",x.subject_id AS "subjectId",x.academic_session_id AS "sessionId",

@@ -739,6 +739,9 @@ components:
       type: object
       required: [id, schoolId, sessionId, termId, classId, subjectId, teacherId, week, date, status, revision, createdAt, updatedAt]
       properties:
+        documents:
+          type: array
+          items: { $ref: "#/components/schemas/LessonNoteDocument" }
         id: { type: integer }
         schoolId: { type: integer }
         sessionId: { type: integer }
@@ -765,6 +768,16 @@ components:
         approvedAt: { type: ["string", "null"], format: date-time }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    LessonNoteDocument:
+      type: object
+      required: [id, filename, byteSize, noteRevision, createdAt, sha256]
+      properties:
+        id: { type: integer }
+        filename: { type: string }
+        byteSize: { type: integer }
+        noteRevision: { type: integer }
+        createdAt: { type: string, format: date-time }
+        sha256: { type: string }
     LessonNoteDetail:
       allOf:
         - $ref: "#/components/schemas/LessonNote"

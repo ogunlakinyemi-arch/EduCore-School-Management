@@ -44,3 +44,5 @@
 - [Cold workflow restarts](cold-workflow-restarts.md) — inspect unfinished cold builds before changing valid managed ports; bounded longer deadlines can resolve startup timeouts.
 - [Temporary QA evidence](temporary-qa-evidence.md) — notebook resets can remove private tickets, browser sessions and preservation baselines; do not infer comparisons from lost files.
 - [Authorization denial evidence](authorization-denial-evidence.md) — preserve resource-masking denials; an invented 403 expectation does not make a correct 404 confidentiality failure.
+- [Lesson-note test curriculum](lesson-note-development-curriculum.md) — minimal labelled Development curriculum is authorized only for existing assigned lesson-note acceptance.
+- [Preservation bookkeeping](preservation-bookkeeping.md) — separate unchanged business data from ordinary sign-in and scheduler timestamp updates; disclose every excluded field.

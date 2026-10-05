@@ -1206,6 +1206,49 @@ export const CreateSchoolParentMessageThreadResponse = zod.object({
 })
 
 
+
+export const listCommunicationStudentsQuerySearchMax = 150;
+
+
+
+export const ListCommunicationStudentsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "search": zod.coerce.string().max(listCommunicationStudentsQuerySearchMax).optional()
+})
+
+export const ListCommunicationStudentsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "admissionNo": zod.string(),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "className": zod.string(),
+  "section": zod.string().nullish()
+})
+export const ListCommunicationStudentsResponse = zod.array(ListCommunicationStudentsResponseItem)
+
+
+
+
+
+export const ListCommunicationGuardiansParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const ListCommunicationGuardiansQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const ListCommunicationGuardiansResponseItem = zod.object({
+  "userId": zod.number().int(),
+  "firstName": zod.string(),
+  "lastName": zod.string()
+})
+export const ListCommunicationGuardiansResponse = zod.array(ListCommunicationGuardiansResponseItem)
+
+
 /**
  * @summary Read an authorized message thread and paginated messages
  */
@@ -24731,6 +24774,14 @@ export const ListLessonNotesQueryParams = zod.object({
 })
 
 export const ListLessonNotesResponseItem = zod.object({
+  "documents": zod.array(zod.object({
+  "id": zod.number().int(),
+  "filename": zod.string(),
+  "byteSize": zod.number().int(),
+  "noteRevision": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "sha256": zod.string()
+})).optional(),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "sessionId": zod.number().int(),
@@ -24818,6 +24869,14 @@ export const CreateLessonNoteBody = zod.object({
 })
 
 export const CreateLessonNoteResponse = zod.object({
+  "documents": zod.array(zod.object({
+  "id": zod.number().int(),
+  "filename": zod.string(),
+  "byteSize": zod.number().int(),
+  "noteRevision": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "sha256": zod.string()
+})).optional(),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "sessionId": zod.number().int(),
@@ -24874,6 +24933,14 @@ export const GetLessonNoteParams = zod.object({
 })
 
 export const GetLessonNoteResponse = zod.object({
+  "documents": zod.array(zod.object({
+  "id": zod.number().int(),
+  "filename": zod.string(),
+  "byteSize": zod.number().int(),
+  "noteRevision": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "sha256": zod.string()
+})).optional(),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "sessionId": zod.number().int(),
@@ -24971,6 +25038,14 @@ export const UpdateLessonNoteBody = zod.object({
 })
 
 export const UpdateLessonNoteResponse = zod.object({
+  "documents": zod.array(zod.object({
+  "id": zod.number().int(),
+  "filename": zod.string(),
+  "byteSize": zod.number().int(),
+  "noteRevision": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "sha256": zod.string()
+})).optional(),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "sessionId": zod.number().int(),
@@ -25035,6 +25110,14 @@ export const SubmitLessonNoteBody = zod.object({
 })
 
 export const SubmitLessonNoteResponse = zod.object({
+  "documents": zod.array(zod.object({
+  "id": zod.number().int(),
+  "filename": zod.string(),
+  "byteSize": zod.number().int(),
+  "noteRevision": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "sha256": zod.string()
+})).optional(),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "sessionId": zod.number().int(),
@@ -25085,6 +25168,116 @@ export const SubmitLessonNoteResponse = zod.object({
 
 
 
+export const RequestLessonNotePdfUploadParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "noteId": zod.coerce.number().int().min(1)
+})
+
+export const requestLessonNotePdfUploadBodyFilenameMax = 180;
+
+export const requestLessonNotePdfUploadBodyByteSizeMax = 10485760;
+
+export const requestLessonNotePdfUploadBodyExpectedRevisionMin = 0;
+
+
+
+export const RequestLessonNotePdfUploadBody = zod.object({
+  "filename": zod.string().max(requestLessonNotePdfUploadBodyFilenameMax),
+  "byteSize": zod.number().int().min(1).max(requestLessonNotePdfUploadBodyByteSizeMax),
+  "expectedRevision": zod.number().int().min(requestLessonNotePdfUploadBodyExpectedRevisionMin)
+})
+
+export const RequestLessonNotePdfUploadResponse = zod.object({
+  "uploadId": zod.number().int(),
+  "uploadUrl": zod.string(),
+  "maxBytes": zod.number().int()
+})
+
+
+
+
+
+
+
+export const ConfirmLessonNotePdfUploadParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "noteId": zod.coerce.number().int().min(1),
+  "uploadId": zod.coerce.number().int().min(1)
+})
+
+export const ConfirmLessonNotePdfUploadResponse = zod.object({
+  "documents": zod.array(zod.object({
+  "id": zod.number().int(),
+  "filename": zod.string(),
+  "byteSize": zod.number().int(),
+  "noteRevision": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "sha256": zod.string()
+})).optional(),
+  "id": zod.number().int(),
+  "schoolId": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "termId": zod.number().int(),
+  "classId": zod.number().int(),
+  "subjectId": zod.number().int(),
+  "teacherId": zod.number().int(),
+  "section": zod.string().nullish(),
+  "week": zod.number().int(),
+  "date": zod.coerce.date(),
+  "curriculumMappingId": zod.number().int().nullish(),
+  "curriculumVersionId": zod.number().int().nullish(),
+  "curriculumVersion": zod.union([zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "educationLevel": zod.string(),
+  "classLevels": zod.array(zod.string()),
+  "subjectCodes": zod.array(zod.string()),
+  "sourceKind": zod.string(),
+  "sourceOrganization": zod.string(),
+  "sourceReference": zod.string(),
+  "sourceVersion": zod.string().nullish(),
+  "effectiveDate": zod.coerce.date().nullish(),
+  "verifiedDate": zod.coerce.date().nullish(),
+  "description": zod.string().nullish(),
+  "status": zod.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  "derivedFromVersionId": zod.number().int().nullish(),
+  "sourceDocumentPath": zod.string().nullish().describe('Private object path'),
+  "sourceImportId": zod.number().int().nullish().describe('Source document import reference'),
+  "createdAt": zod.coerce.date(),
+  "publishedAt": zod.coerce.date().nullish(),
+  "archivedAt": zod.coerce.date().nullish()
+}),zod.null()]).optional(),
+  "topicId": zod.number().int().nullish(),
+  "subTopicId": zod.number().int().nullish(),
+  "content": zod.record(zod.string(), zod.unknown()).optional(),
+  "status": zod.enum(['DRAFT', 'SUBMITTED', 'RETURNED', 'RESUBMITTED', 'APPROVED', 'ARCHIVED']),
+  "revision": zod.number().int(),
+  "latestReviewComment": zod.string().nullish(),
+  "submittedAt": zod.coerce.date().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+
+
+
+
+
+export const DownloadLessonNotePdfParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1),
+  "noteId": zod.coerce.number().int().min(1),
+  "documentId": zod.coerce.number().int().min(1)
+})
+
+export const DownloadLessonNotePdfResponse = zod.unknown()
+
+
+
+
+
+
 export const ReviewLessonNoteParams = zod.object({
   "schoolId": zod.coerce.number().int().min(1),
   "noteId": zod.coerce.number().int().min(1)
@@ -25103,6 +25296,14 @@ export const ReviewLessonNoteBody = zod.object({
 })
 
 export const ReviewLessonNoteResponse = zod.object({
+  "documents": zod.array(zod.object({
+  "id": zod.number().int(),
+  "filename": zod.string(),
+  "byteSize": zod.number().int(),
+  "noteRevision": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "sha256": zod.string()
+})).optional(),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "sessionId": zod.number().int(),
@@ -25176,6 +25377,14 @@ export const ArchiveLessonNoteBody = zod.object({
 })
 
 export const ArchiveLessonNoteResponse = zod.object({
+  "documents": zod.array(zod.object({
+  "id": zod.number().int(),
+  "filename": zod.string(),
+  "byteSize": zod.number().int(),
+  "noteRevision": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "sha256": zod.string()
+})).optional(),
   "id": zod.number().int(),
   "schoolId": zod.number().int(),
   "sessionId": zod.number().int(),

@@ -122,7 +122,7 @@ async function requireCommunicationStaffAccess(
   return role;
 }
 
-function currentTeacherAssignmentSql(studentIdExpr: string, schoolIdExpr: string, userIdExpr: string) {
+export function currentTeacherAssignmentSql(studentIdExpr: string, schoolIdExpr: string, userIdExpr: string) {
   return `EXISTS (
     SELECT 1
     FROM students assigned_student
@@ -130,10 +130,13 @@ function currentTeacherAssignmentSql(studentIdExpr: string, schoolIdExpr: string
       AND sca.school_id=assigned_student.school_id
       AND sca.status='ACTIVE' AND sca.is_current=true
     JOIN teacher_class_assignments tca ON tca.school_id=sca.school_id
-      AND tca.school_class_id=sca.school_class_id AND tca.section=sca.section
+      AND tca.school_class_id=sca.school_class_id AND (tca.section='' OR tca.section=sca.section)
+      AND tca.academic_session_id=sca.academic_session_id
       AND tca.status='ACTIVE'
     JOIN academic_sessions current_session ON current_session.id=tca.academic_session_id
       AND current_session.school_id=tca.school_id AND current_session.is_current=true
+      AND tca.start_date<=COALESCE(current_session.end_date,CURRENT_DATE)
+      AND (tca.end_date IS NULL OR tca.end_date>=current_session.start_date)
     JOIN employees teacher ON teacher.id=tca.employee_id AND teacher.school_id=tca.school_id
       AND teacher.user_id=${userIdExpr} AND UPPER(teacher.employment_status)='ACTIVE'
       AND UPPER(teacher.employee_type)='TEACHER'
@@ -505,6 +508,42 @@ router.post("/communication/threads", asyncRoute(async (req, res) => {
     actorSide: "SCHOOL",
   });
   res.status(response.idempotent ? 200 : 201).json(response);
+}));
+
+router.get("/communication/students", asyncRoute(async (req,res) => {
+  const school = positiveId(String(req.query.schoolId ?? ""),"School");
+  const role = existingStaffRole(req,school);
+  if (!["SCHOOL_ADMIN","TEACHER"].includes(role)) throw new AuthError(404,"Resource not found");
+  if (role === "SCHOOL_ADMIN") assertSchoolOperationalAccess(req,school,["SCHOOL_ADMIN"]);
+  else {
+    if (!securityPermissionCheck) throw new AuthError(503,"Communication permissions unavailable");
+    await securityPermissionCheck(req,school,"COMMUNICATION_SEND",{ownerReadOnly:false});
+  }
+  const search = typeof req.query.search === "string" ? req.query.search.trim().slice(0,150) : "";
+  const result = await pool.query(`SELECT st.id,st.admission_no AS "admissionNo",
+    st.first_name AS "firstName",st.last_name AS "lastName",c.name AS "className",sca.section
+    FROM students st JOIN student_class_assignments sca ON sca.student_id=st.id AND sca.school_id=st.school_id
+      AND sca.status='ACTIVE' AND sca.is_current=true
+    JOIN academic_sessions ac ON ac.id=sca.academic_session_id AND ac.school_id=sca.school_id AND ac.is_current=true
+    JOIN school_classes c ON c.id=sca.school_class_id AND c.school_id=sca.school_id
+    WHERE st.school_id=$1 AND LOWER(st.status)='active'
+      AND ($3::boolean OR ${currentTeacherAssignmentSql("st.id","st.school_id","$2")})
+      AND ($4='' OR concat_ws(' ',st.first_name,st.last_name,st.admission_no) ILIKE '%' || $4 || '%')
+    ORDER BY st.last_name,st.first_name,st.id`,[school,getUserContext(req).user.id,role==="SCHOOL_ADMIN",search]);
+  res.json(result.rows);
+}));
+router.get("/communication/students/:studentId/guardians", asyncRoute(async (req,res) => {
+  const school = positiveId(String(req.query.schoolId ?? ""),"School"),student = positiveId(String(req.params.studentId),"Student");
+  await requireCommunicationStaffAccess(req,school,student,"GENERAL");
+  const found = await pool.query(`SELECT id FROM students WHERE id=$1 AND school_id=$2 AND LOWER(status)='active'`,[student,school]);
+  if (!found.rows.length) throw new AuthError(404,"Student not found");
+  const parents = await pool.query(`SELECT DISTINCT u.id AS "userId",u.first_name AS "firstName",u.last_name AS "lastName"
+    FROM parent_student_relationships rel JOIN parents p ON p.id=rel.parent_id AND p.status='ACTIVE'
+    JOIN students st ON st.id=rel.student_id AND st.school_id=$2 AND LOWER(st.status)='active'
+    JOIN app_users u ON u.id=p.user_id AND u.status='ACTIVE'
+    WHERE rel.student_id=$1 AND rel.status='ACTIVE' AND ${familyChildSchoolScope()}
+    ORDER BY u.id`,[student,school]);
+  res.json(parents.rows);
 }));
 
 async function listThreads(

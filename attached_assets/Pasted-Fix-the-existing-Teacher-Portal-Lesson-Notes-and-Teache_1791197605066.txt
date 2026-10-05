@@ -1,0 +1,216 @@
+Fix the existing Teacher Portal → Lesson Notes and Teacher Portal → Communication → Message Parent workflows.
+
+Do not rebuild unrelated modules.
+
+ISSUE 1 — Lesson Note curriculum/topic selection
+
+During lesson-note creation, the Teacher can open the dropdown fields, but the curriculum/topic selection workflow needs to be verified because the Teacher may not be receiving the expected authorized options.
+
+The required selection flow is:
+
+Academic Session → Term → Class/Section → Subject → Curriculum/Topic
+
+Investigate the actual data returned for the authenticated Teacher.
+
+The Teacher should only see:
+
+- Classes/sections assigned to the Teacher.
+- Subjects assigned to the Teacher.
+- Curriculum/topics applicable to the selected class and subject.
+- The correct active session and term.
+
+Do not guess or hard-code values.
+
+If the dropdown component itself is functioning, do not replace it. Fix the underlying data/authorization query that supplies its options.
+
+---
+
+ISSUE 2 — Upload Lesson Note PDF
+
+Add an optional Upload Lesson Note PDF capability to the existing lesson-note workflow.
+
+Teacher workflow:
+
+1. Select Academic Session.
+2. Select Term.
+3. Select Class/Section.
+4. Select Subject.
+5. Select Curriculum Topic.
+6. Either write the lesson note normally OR upload a prepared lesson-note PDF.
+7. Preview the PDF.
+8. Save as Draft or Submit using the existing lesson-note workflow.
+
+PDF requirements
+
+- Accept PDF files only.
+- Validate the actual file type.
+- Apply a reasonable file-size limit.
+- Store the PDF securely.
+- Associate it with the correct school, teacher, session, term, class/section, subject, curriculum/topic and lesson-note ID.
+- Maintain school/tenant isolation.
+- School Admin can review the uploaded PDF through the existing lesson-note review workflow.
+- Do not automatically guess Session, Term, Class, Subject or Curriculum Topic from the PDF.
+
+PDF upload is an additional option. Teachers must still be able to write structured lesson notes directly in the system.
+
+Use the existing lifecycle:
+
+Draft → Submitted → Returned/Revision Required → Resubmitted → Approved/Completed
+
+Do not create a separate approval workflow.
+
+---
+
+ISSUE 3 — Teacher Portal → Communication → Message Parent
+
+The Student dropdown is functioning correctly, but no students are appearing in the list.
+
+This is a data/authorization/query problem, not a dropdown UI problem.
+
+Required behaviour
+
+When an authenticated Teacher opens:
+
+Teacher Portal → Communication → Message Parent
+
+the Student field should display the students that the Teacher is authorized to communicate about.
+
+At minimum, the list should contain the existing students assigned to that Teacher.
+
+Investigate the actual root cause
+
+Using an existing authorized Development Teacher account:
+
+1. Open Communication → Message Parent.
+2. Open the Student dropdown.
+3. Confirm that the dropdown component opens correctly.
+4. Inspect the API request responsible for loading the student list.
+5. Record:
+   - endpoint;
+   - HTTP method;
+   - query parameters;
+   - HTTP status;
+   - response body;
+   - authenticated Teacher ID;
+   - school ID;
+   - classes/sections assigned to the Teacher;
+   - subjects assigned to the Teacher where relevant.
+6. Determine why the query returns no students.
+
+Check specifically for:
+
+- Teacher-to-class/section assignment mapping.
+- Teacher-to-subject assignment mapping.
+- Student enrollment/current class mapping.
+- School/tenant filtering.
+- Current academic session/term filtering.
+- Student active/enrollment status.
+- Employee/Teacher ID versus user/account ID mismatch.
+- Incorrect use of historical enrollment records.
+- Incorrect join between Teacher assignments and student enrollment.
+- Overly restrictive authorization conditions.
+- Incorrect school ID/session/term being passed to the endpoint.
+
+Do not simply return all students from the school.
+
+Correct student list
+
+The list should be based on the Teacher's actual authorized scope.
+
+For example:
+
+Teacher → Assigned Class/Section → Current Students → Linked Parent/Guardian
+
+If the Teacher is assigned to multiple classes/sections, students from all authorized classes/sections should be available.
+
+If the Teacher is assigned to a specific subject but not designated as the class teacher, include the students in the class/section where that Teacher is authorized to teach that subject, according to the existing Teacher assignment rules.
+
+Do not invent new assignment rules if the application already has an authoritative Teacher assignment model.
+
+Parent recipient
+
+After selecting a student:
+
+Student → Existing Parent/Guardian Relationship → Authorized Recipient(s)
+
+Load the student's existing linked parent/guardian recipient(s).
+
+If there are multiple authorized parents/guardians, show only recipients permitted by the existing communication rules.
+
+If no parent/guardian is linked:
+
+«No linked parent/guardian is available for this student.»
+
+Do not show a misleading "Student not found" error.
+
+Security
+
+The Teacher must not be able to access students outside their authorized scope by changing an ID, query parameter or URL.
+
+Maintain:
+
+- school/tenant isolation;
+- Teacher authorization;
+- existing parent-student relationships;
+- communication audit logging;
+- existing notification behaviour.
+
+Do not expose unnecessary private parent information.
+
+---
+
+Acceptance testing
+
+Development only, using existing authorized accounts and existing data.
+
+Lesson Notes
+
+1. Teacher can select Session.
+2. Teacher can select Term.
+3. Teacher can select authorized Class/Section.
+4. Teacher can select authorized Subject.
+5. Teacher can select applicable Curriculum/Topic.
+6. Unauthorized classes/subjects/topics are excluded.
+7. Teacher can create a structured lesson note.
+8. Teacher can upload a valid PDF.
+9. Invalid/non-PDF upload is rejected.
+10. PDF preview works.
+11. Draft survives refresh.
+12. Submitted PDF remains linked to the correct lesson note.
+13. School Admin can review the PDF.
+14. Returned lesson note can receive a corrected PDF.
+15. Existing lesson-note version history remains protected.
+
+Message Parent
+
+16. Student dropdown opens normally.
+17. Existing students assigned to the authenticated Teacher appear.
+18. If the Teacher has multiple authorized classes/sections, students from all authorized classes appear.
+19. Students outside the Teacher's authorization do not appear.
+20. Teacher can select a student.
+21. Correct linked parent/guardian recipient(s) load.
+22. Teacher can send the message.
+23. Student with no linked parent displays a proper empty state.
+24. Changing a student ID/query parameter cannot bypass authorization.
+25. Communication audit/notification records remain correct.
+
+Important scope restrictions
+
+- Development only.
+- Do not modify Production.
+- Do not create unnecessary accounts, students, parents or schools.
+- Do not change existing Teacher assignments or parent-student relationships unless required to correct a proven Development test-data issue.
+- Do not alter existing approved lesson notes.
+- Do not rebuild the dropdown UI if it is already functioning.
+- Fix the underlying data retrieval/authorization issue.
+- Do not change unrelated modules.
+
+At completion, report:
+
+1. Exact root cause of the empty student list.
+2. Exact fix applied.
+3. Teacher assignment and student records used to verify the fix.
+4. API response before and after the fix.
+5. Acceptance-test results.
+6. Confirmation that existing data was preserved.
+7. Confirmation that Production was untouched.

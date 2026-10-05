@@ -138,6 +138,7 @@ import type {
   CommunicationAnnouncementPreviewInput,
   CommunicationChannelAvailability,
   CommunicationDelivery,
+  CommunicationGuardian,
   CommunicationNotification,
   CommunicationNotificationInbox,
   CommunicationNotificationReadAllInput,
@@ -147,6 +148,7 @@ import type {
   CommunicationPreferences,
   CommunicationPushDevice,
   CommunicationPushDeviceInput,
+  CommunicationStudent,
   CommunicationTemplate,
   CommunicationTemplateInput,
   CommunicationTemplateUpdate,
@@ -360,6 +362,8 @@ import type {
   LessonNoteDetail,
   LessonNoteInput,
   LessonNoteMonitoringRow,
+  LessonNotePdfUploadInput,
+  LessonNotePdfUploadIntent,
   LessonNoteReminderInput,
   LessonNoteReminderResult,
   LessonNoteReviewInput,
@@ -390,8 +394,10 @@ import type {
   ListClassSubjectAssignmentsParams,
   ListClassesParams,
   ListCommunicationAnnouncementsParams,
+  ListCommunicationGuardiansParams,
   ListCommunicationNotificationsParams,
   ListCommunicationPushDevicesParams,
+  ListCommunicationStudentsParams,
   ListCommunicationTemplatesParams,
   ListCompanyPayrollEmployeesParams,
   ListCompanyPayrollPeriodsParams,
@@ -3784,6 +3790,167 @@ export const useCreateSchoolParentMessageThread = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getCreateSchoolParentMessageThreadMutationOptions(options));
     }
+
+export const getListCommunicationStudentsUrl = (params: ListCommunicationStudentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/communication/students?${stringifiedParams}` : `/api/communication/students`
+}
+
+export const listCommunicationStudents = async (params: ListCommunicationStudentsParams, options?: Parameters<typeof customFetch>[1]): Promise<CommunicationStudent[]> => {
+
+  return customFetch<CommunicationStudent[]>(getListCommunicationStudentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCommunicationStudentsQueryKey = (params?: ListCommunicationStudentsParams,) => {
+    return [
+    `/api/communication/students`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCommunicationStudentsQueryOptions = <TData = Awaited<ReturnType<typeof listCommunicationStudents>>, TError = ErrorType<unknown>>(params: ListCommunicationStudentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCommunicationStudents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCommunicationStudentsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCommunicationStudents>>> = ({ signal }) => listCommunicationStudents(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCommunicationStudents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCommunicationStudentsQueryResult = NonNullable<Awaited<ReturnType<typeof listCommunicationStudents>>>
+export type ListCommunicationStudentsQueryError = ErrorType<unknown>
+
+
+
+export function useListCommunicationStudents<TData = Awaited<ReturnType<typeof listCommunicationStudents>>, TError = ErrorType<unknown>>(
+ params: ListCommunicationStudentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCommunicationStudents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCommunicationStudentsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListCommunicationGuardiansUrl = (studentId: number,
+    params: ListCommunicationGuardiansParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/communication/students/${studentId}/guardians?${stringifiedParams}` : `/api/communication/students/${studentId}/guardians`
+}
+
+export const listCommunicationGuardians = async (studentId: number,
+    params: ListCommunicationGuardiansParams, options?: Parameters<typeof customFetch>[1]): Promise<CommunicationGuardian[]> => {
+
+  return customFetch<CommunicationGuardian[]>(getListCommunicationGuardiansUrl(studentId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCommunicationGuardiansQueryKey = (studentId: number,
+    params?: ListCommunicationGuardiansParams,) => {
+    return [
+    `/api/communication/students/${studentId}/guardians`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCommunicationGuardiansQueryOptions = <TData = Awaited<ReturnType<typeof listCommunicationGuardians>>, TError = ErrorType<unknown>>(studentId: number,
+    params: ListCommunicationGuardiansParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCommunicationGuardians>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCommunicationGuardiansQueryKey(studentId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCommunicationGuardians>>> = ({ signal }) => listCommunicationGuardians(studentId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: studentId !== null && studentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCommunicationGuardians>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCommunicationGuardiansQueryResult = NonNullable<Awaited<ReturnType<typeof listCommunicationGuardians>>>
+export type ListCommunicationGuardiansQueryError = ErrorType<unknown>
+
+
+
+export function useListCommunicationGuardians<TData = Awaited<ReturnType<typeof listCommunicationGuardians>>, TError = ErrorType<unknown>>(
+ studentId: number,
+    params: ListCommunicationGuardiansParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCommunicationGuardians>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCommunicationGuardiansQueryOptions(studentId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetParentCommunicationThreadUrl = (threadId: number,
     params?: GetParentCommunicationThreadParams,) => {
@@ -48412,6 +48579,244 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getSubmitLessonNoteMutationOptions(options));
     }
+
+export const getRequestLessonNotePdfUploadUrl = (schoolId: number,
+    noteId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/lesson-notes/${noteId}/pdf-uploads`
+}
+
+export const requestLessonNotePdfUpload = async (schoolId: number,
+    noteId: number,
+    lessonNotePdfUploadInput: LessonNotePdfUploadInput, options?: Parameters<typeof customFetch>[1]): Promise<LessonNotePdfUploadIntent> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LessonNotePdfUploadIntent>(getRequestLessonNotePdfUploadUrl(schoolId,noteId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(lessonNotePdfUploadInput)
+  }
+);}
+
+
+
+
+
+export const getRequestLessonNotePdfUploadMutationKey = () => ['requestLessonNotePdfUpload'] as const;
+
+export const getRequestLessonNotePdfUploadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestLessonNotePdfUpload>>, TError,RequestLessonNotePdfUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestLessonNotePdfUpload>>, TError,RequestLessonNotePdfUploadMutationVariables, TContext> => {
+
+const mutationKey = getRequestLessonNotePdfUploadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestLessonNotePdfUpload>>, RequestLessonNotePdfUploadMutationVariables> = (props) => {
+          const {schoolId,noteId,data} = props ?? {};
+
+          return  requestLessonNotePdfUpload(schoolId,noteId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestLessonNotePdfUploadMutationResult = NonNullable<Awaited<ReturnType<typeof requestLessonNotePdfUpload>>>
+    export type RequestLessonNotePdfUploadMutationBody = BodyType<LessonNotePdfUploadInput>
+    export type RequestLessonNotePdfUploadMutationError = ErrorType<unknown>
+    export type RequestLessonNotePdfUploadMutationVariables = {schoolId: number;noteId: number;data: BodyType<LessonNotePdfUploadInput>}
+
+    export const useRequestLessonNotePdfUpload = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestLessonNotePdfUpload>>, TError,RequestLessonNotePdfUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestLessonNotePdfUpload>>,
+        TError,
+        RequestLessonNotePdfUploadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestLessonNotePdfUploadMutationOptions(options));
+    }
+
+export const getConfirmLessonNotePdfUploadUrl = (schoolId: number,
+    noteId: number,
+    uploadId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/lesson-notes/${noteId}/pdf-uploads/${uploadId}/confirm`
+}
+
+export const confirmLessonNotePdfUpload = async (schoolId: number,
+    noteId: number,
+    uploadId: number, options?: Parameters<typeof customFetch>[1]): Promise<LessonNote> => {
+
+  return customFetch<LessonNote>(getConfirmLessonNotePdfUploadUrl(schoolId,noteId,uploadId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getConfirmLessonNotePdfUploadMutationKey = () => ['confirmLessonNotePdfUpload'] as const;
+
+export const getConfirmLessonNotePdfUploadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmLessonNotePdfUpload>>, TError,ConfirmLessonNotePdfUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmLessonNotePdfUpload>>, TError,ConfirmLessonNotePdfUploadMutationVariables, TContext> => {
+
+const mutationKey = getConfirmLessonNotePdfUploadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmLessonNotePdfUpload>>, ConfirmLessonNotePdfUploadMutationVariables> = (props) => {
+          const {schoolId,noteId,uploadId} = props ?? {};
+
+          return  confirmLessonNotePdfUpload(schoolId,noteId,uploadId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmLessonNotePdfUploadMutationResult = NonNullable<Awaited<ReturnType<typeof confirmLessonNotePdfUpload>>>
+
+    export type ConfirmLessonNotePdfUploadMutationError = ErrorType<unknown>
+    export type ConfirmLessonNotePdfUploadMutationVariables = {schoolId: number;noteId: number;uploadId: number}
+
+    export const useConfirmLessonNotePdfUpload = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmLessonNotePdfUpload>>, TError,ConfirmLessonNotePdfUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmLessonNotePdfUpload>>,
+        TError,
+        ConfirmLessonNotePdfUploadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfirmLessonNotePdfUploadMutationOptions(options));
+    }
+
+export const getDownloadLessonNotePdfUrl = (schoolId: number,
+    noteId: number,
+    documentId: number,) => {
+
+
+
+
+  return `/api/schools/${schoolId}/lesson-notes/${noteId}/documents/${documentId}`
+}
+
+export const downloadLessonNotePdf = async (schoolId: number,
+    noteId: number,
+    documentId: number, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getDownloadLessonNotePdfUrl(schoolId,noteId,documentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDownloadLessonNotePdfQueryKey = (schoolId: number,
+    noteId: number,
+    documentId: number,) => {
+    return [
+    `/api/schools/${schoolId}/lesson-notes/${noteId}/documents/${documentId}`
+    ] as const;
+    }
+
+
+export const getDownloadLessonNotePdfQueryOptions = <TData = Awaited<ReturnType<typeof downloadLessonNotePdf>>, TError = ErrorType<unknown>>(schoolId: number,
+    noteId: number,
+    documentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadLessonNotePdf>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDownloadLessonNotePdfQueryKey(schoolId,noteId,documentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof downloadLessonNotePdf>>> = ({ signal }) => downloadLessonNotePdf(schoolId,noteId,documentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined && noteId !== null && noteId !== undefined && documentId !== null && documentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof downloadLessonNotePdf>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type DownloadLessonNotePdfQueryResult = NonNullable<Awaited<ReturnType<typeof downloadLessonNotePdf>>>
+export type DownloadLessonNotePdfQueryError = ErrorType<unknown>
+
+
+
+export function useDownloadLessonNotePdf<TData = Awaited<ReturnType<typeof downloadLessonNotePdf>>, TError = ErrorType<unknown>>(
+ schoolId: number,
+    noteId: number,
+    documentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadLessonNotePdf>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getDownloadLessonNotePdfQueryOptions(schoolId,noteId,documentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getReviewLessonNoteUrl = (schoolId: number,
     noteId: number,) => {

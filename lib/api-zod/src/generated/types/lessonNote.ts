@@ -7,9 +7,11 @@
  */
 import type { CurriculumVersion } from './curriculumVersion';
 import type { LessonNoteContent } from './lessonNoteContent';
+import type { LessonNoteDocument } from './lessonNoteDocument';
 import type { LessonNoteStatus } from './lessonNoteStatus';
 
 export interface LessonNote {
+  documents?: LessonNoteDocument[];
   id: number;
   schoolId: number;
   sessionId: number;

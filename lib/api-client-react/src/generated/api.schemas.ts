@@ -885,7 +885,17 @@ export const LessonNoteStatus = {
   ARCHIVED: 'ARCHIVED',
 } as const;
 
+export interface LessonNoteDocument {
+  id: number;
+  filename: string;
+  byteSize: number;
+  noteRevision: number;
+  createdAt: string;
+  sha256: string;
+}
+
 export interface LessonNote {
+  documents?: LessonNoteDocument[];
   id: number;
   schoolId: number;
   sessionId: number;
@@ -917,6 +927,40 @@ export interface LessonNote {
   approvedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface LessonNotePdfUploadInput {
+  /** @maxLength 180 */
+  filename: string;
+  /**
+     * @minimum 1
+     * @maximum 10485760
+     */
+  byteSize: number;
+  /** @minimum 0 */
+  expectedRevision: number;
+}
+
+export interface LessonNotePdfUploadIntent {
+  uploadId: number;
+  uploadUrl: string;
+  maxBytes: number;
+}
+
+export interface CommunicationStudent {
+  id: number;
+  admissionNo: string;
+  firstName: string;
+  lastName: string;
+  className: string;
+  /** @nullable */
+  section?: string | null;
+}
+
+export interface CommunicationGuardian {
+  userId: number;
+  firstName: string;
+  lastName: string;
 }
 
 export type LessonNoteReviewDecision = typeof LessonNoteReviewDecision[keyof typeof LessonNoteReviewDecision];
@@ -13586,6 +13630,40 @@ export type LessonNoteTransitionInput4b96100 = LessonNoteTransitionInput;
 
 export type LessonNote4b96100 = LessonNote;
 
+export interface LessonNotePdfUploadInput4b96100 {
+  /** @maxLength 180 */
+  filename: string;
+  /**
+     * @minimum 1
+     * @maximum 10485760
+     */
+  byteSize: number;
+  /** @minimum 0 */
+  expectedRevision: number;
+}
+
+export interface LessonNotePdfUploadIntent4b96100 {
+  uploadId: number;
+  uploadUrl: string;
+  maxBytes: number;
+}
+
+export interface CommunicationStudent4b96100 {
+  id: number;
+  admissionNo: string;
+  firstName: string;
+  lastName: string;
+  className: string;
+  /** @nullable */
+  section?: string | null;
+}
+
+export interface CommunicationGuardian4b96100 {
+  userId: number;
+  firstName: string;
+  lastName: string;
+}
+
 export type LessonNoteDetail4b96100 = LessonNoteDetail;
 
 export type LessonNoteReviewInput4b96100 = LessonNoteReviewInput;
@@ -20563,6 +20641,24 @@ beforeId?: number;
  * @maximum 50
  */
 limit?: number;
+};
+
+export type ListCommunicationStudentsParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
+/**
+ * @maxLength 150
+ */
+search?: string;
+};
+
+export type ListCommunicationGuardiansParams = {
+/**
+ * @minimum 1
+ */
+schoolId: number;
 };
 
 export type GetParentCommunicationThreadParams = {

@@ -259,7 +259,8 @@ function ProtectedRoutes() {
           <Route path="/teacher-duty"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']}><TeacherDutyPage /></RoleGuard></Route>
           <Route path="/curriculum-management"><RoleGuard isPlatformOwnerOnly><CurriculumManagementPage /></RoleGuard></Route>
           <Route path="/curriculum"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']}><SchoolCurriculumPage /></RoleGuard></Route>
-          <Route path="/lesson-notes"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']}><LessonNotesPage /></RoleGuard></Route>
+          <Route path="/lesson-notes"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']} ownerCanView><LessonNotesPage /></RoleGuard></Route>
+          <Route path="/academics/lesson-notes"><RoleGuard allowedRoles={['SCHOOL_ADMIN', 'TEACHER']} ownerCanView><LessonNotesPage /></RoleGuard></Route>
           <Route path="/transport"><RoleGuard allowedRoles={['SCHOOL_ADMIN']} ownerCanView><TransportPage /></RoleGuard></Route>
           <Route path="/driver-transport"><RoleGuard allowedRoles={['DRIVER']}><DriverTransportPage /></RoleGuard></Route>
           <Route path="/my-transport"><RoleGuard allowedRoles={['PARENT', 'STUDENT']}><FamilyTransportPage /></RoleGuard></Route>

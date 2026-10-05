@@ -34,6 +34,11 @@ vi.mock("../middlewares/auth", () => {
       roles: state.roles,
     }),
     requireAuthentication: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+    assertSchoolAccess: (_req: unknown, schoolId: number, roles: string[]) => {
+      if (roles.includes("PLATFORM_OWNER") && state.roles.some(r=>r.role==="PLATFORM_OWNER"&&r.schoolId===null&&r.status==="ACTIVE")) return;
+      if (!state.roles.some(r=>r.status==="ACTIVE"&&r.schoolId===schoolId&&roles.includes(r.role)))
+        throw new MockAuthError(404,"Resource not found");
+    },
     assertSchoolOperationalAccess: (_req: unknown, schoolId: number, roles: string[]) => {
       if (state.roles.some(role => role.role === "PLATFORM_OWNER" && role.schoolId === null && role.status === "ACTIVE")) {
         throw new MockAuthError(404, "Resource not found", "CROSS_TENANT_ACCESS_ATTEMPT");
@@ -76,7 +81,7 @@ beforeEach(() => {
   state.queries.length = 0;
   state.query.mockReset().mockImplementation(async (sql: string) => {
     if (sql.includes("INSERT INTO audit_logs")) return { rows: [] };
-    if (sql.includes("FROM employees e") && sql.includes("teacher_class_assignments")) return { rows: [{ id: 9 }] };
+    if (!sql.includes("WITH expected AS") && sql.includes("FROM employees e") && sql.includes("teacher_class_assignments")) return { rows: [{ id: 9 }] };
     if (sql.includes("FROM school_classes c")) return { rows: [{ id: 10, class_name: "JSS2", subject_code: "MTH", subject_name: "Mathematics" }] };
     if (sql.includes("INSERT INTO lesson_notes")) return { rows: [{
       id: 51, schoolId: 4, sessionId: 1, termId: 2, classId: 10, subjectId: 11,
@@ -162,6 +167,20 @@ describe("curriculum and lesson note routes", () => {
     });
     expect(response.status).toBe(201);
     expect(state.queries.some(call => call.sql.includes("INSERT INTO curriculum_progress"))).toBe(false);
+  });
+
+  it("reports a duplicate weekly note as a conflict without changing the existing note",async()=>{
+    state.query.mockImplementation(async(sql:string)=>{
+      if(sql.includes("INSERT INTO lesson_notes"))throw Object.assign(Error("duplicate"),{code:"23505",constraint:"lesson_notes_week_assignment_unique"});
+      if(sql.includes("FROM employees e"))return{rows:[{id:9}]};
+      if(sql.includes("FROM school_classes c"))return{rows:[{id:10}]};
+      return{rows:[]};
+    });
+    const response=await fetch(`${baseUrl}/api/schools/4/lesson-notes`,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({sessionId:1,termId:2,classId:10,subjectId:11,section:"Blue",week:3,date:"2026-03-03",content:{}})});
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toContain("choose a different week");
+    expect(state.queries.some(q=>q.sql.includes("UPDATE lesson_notes"))).toBe(false);
   });
 
   it("derives missing weekly lesson notes from expected assignments", async () => {
@@ -250,6 +269,23 @@ describe("curriculum and lesson note routes", () => {
     expect(state.queries).toHaveLength(0);
   });
 
+  it("denies inactive teacher membership before reading PDF metadata", async () => {
+    state.roles=[{role:"TEACHER",schoolId:4,status:"INACTIVE"}];
+    const response=await fetch(`${baseUrl}/api/schools/4/lesson-notes/51`);
+    expect(response.status).toBe(404);
+    expect(state.queries).toHaveLength(0);
+  });
+
+  it("cannot use a global version ID to bypass the school's confirmed mapping",async()=>{
+    const response=await fetch(`${baseUrl}/api/schools/4/lesson-notes`,{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({sessionId:1,termId:2,classId:10,subjectId:11,section:"Blue",week:3,
+        date:"2026-03-03",curriculumVersionId:8,topicId:61,content:{topic:"Forged unconfirmed version"}}),
+    });
+    expect(response.status).toBe(404);
+    expect(state.queries.some(q=>q.sql.includes("INSERT INTO lesson_notes"))).toBe(false);
+  });
+
   it("returns persisted coverage separately from topics and retains the mapping version", async () => {
     state.query.mockImplementation(async (sql: string) => {
       if (sql.includes("SELECT m.*,c.section")) {
@@ -312,6 +348,7 @@ describe("curriculum and lesson note routes", () => {
         return { rows: [{ id: 10, class_name: "JSS 2", subject_code: "MAT", subject_name: "Mathematics" }] };
       }
       if (sql.includes("SELECT id,status FROM curriculum_versions")) return { rows: [{ id: 8, status: "PUBLISHED" }] };
+      if (sql.includes("SELECT id,curriculum_version_id FROM school_curriculum_assignments")) return { rows: [{id:30,curriculum_version_id:8}] };
       if (sql.includes("SELECT id,parent_topic_id FROM curriculum_topics t")) return { rows: [{ id: 61, parent_topic_id: null }] };
       if (sql.includes("INSERT INTO lesson_notes")) return { rows: [{
         id: 51, schoolId: 4, sessionId: 1, termId: 2, classId: 10, subjectId: 11,
@@ -324,11 +361,11 @@ describe("curriculum and lesson note routes", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         sessionId: 1, termId: 2, classId: 10, subjectId: 11, section: "Blue", week: 3,
-        date: "2026-03-03", curriculumVersionId: 8, topicId: 61, content: { topic: "Fractions" },
+        date: "2026-03-03", curriculumMappingId:30, curriculumVersionId: 8, topicId: 61, content: { topic: "Fractions" },
       }),
     });
     expect(response.status).toBe(201);
-    const assignmentQuery = state.queries.find(call => call.sql.includes("JOIN teacher_class_assignments"));
+    const assignmentQuery = state.queries.find(call => call.sql.includes("FROM employees e") && call.sql.includes("ta.employee_id"));
     expect(assignmentQuery?.values).toEqual([4, 41, 1, 2, 10, 11, "Blue"]);
     const topicQuery = state.queries.find(call => call.sql.includes("SELECT id,parent_topic_id FROM curriculum_topics t"));
     expect(topicQuery?.sql).toContain("regexp_replace(lower(t.class_level)");
@@ -424,7 +461,7 @@ describe("curriculum and lesson note routes", () => {
 
   it("returns a subject authorized by an active class-only teacher assignment", async () => {
     state.query.mockImplementation(async (sql: string) => {
-      if (sql.includes("FROM employees e") && sql.includes("JOIN teacher_class_assignments tca")) {
+      if (sql.includes("FROM employees e") && sql.includes("ta.employee_id")) {
         return { rows: [{
           classId: 10, className: "JSS2", section: null, subjectId: 11, subjectName: "Mathematics",
           subjectCode: "MTH", sessionId: 1, termId: 2,
@@ -438,10 +475,10 @@ describe("curriculum and lesson note routes", () => {
       classId: 10, className: "JSS2", section: null, subjectId: 11, subjectName: "Mathematics",
       subjectCode: "MTH", sessionId: 1, termId: 2,
     }]);
-    const query = state.queries.find(call => call.sql.includes("JOIN teacher_class_assignments tca"));
+    const query = state.queries.find(call => call.sql.includes("FROM employees e") && call.sql.includes("ta.employee_id"));
     expect(query?.values).toEqual([4, 41, 1, 2]);
-    expect(query?.sql).toContain("(tca.subject_id IS NULL OR tca.subject_id=cs.subject_id)");
-    expect(query?.sql).toContain("(cs.employee_id IS NULL OR cs.employee_id=e.id)");
+    expect(query?.sql).toContain("ta.assignment_type<>'SUBJECT_TEACHER' OR ta.subject_id=(s.id)");
+    expect(query?.sql).toContain("cs.employee_id IS NULL OR cs.employee_id=(e.id)");
   });
 
   it("does not expose an unrelated subject to a teacher with a different subject-specific assignment", async () => {
@@ -449,11 +486,11 @@ describe("curriculum and lesson note routes", () => {
     const response = await fetch(`${baseUrl}/api/schools/4/curriculum/teaching-context?sessionId=1&termId=2`);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual([]);
-    const query = state.queries.find(call => call.sql.includes("JOIN teacher_class_assignments tca"));
-    expect(query?.sql).toContain("(tca.subject_id IS NULL OR tca.subject_id=cs.subject_id)");
+    const query = state.queries.find(call => call.sql.includes("FROM employees e") && call.sql.includes("ta.employee_id"));
+    expect(query?.sql).toContain("ta.assignment_type<>'SUBJECT_TEACHER' OR ta.subject_id=(s.id)");
     expect(query?.sql).toContain("e.school_id=$1 AND e.user_id=$2");
-    expect(query?.sql).toContain("tca.academic_session_id=$3");
-    expect(query?.sql).toContain("cs.academic_term_id=term.id");
+    expect(query?.sql).toContain("ta.academic_session_id=($3)");
+    expect(query?.sql).toContain("cs.academic_term_id=($4)");
   });
 
   it("does not allow teaching-context access across schools", async () => {
