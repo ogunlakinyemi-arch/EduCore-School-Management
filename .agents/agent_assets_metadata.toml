@@ -322,3 +322,31 @@ mtime_ms = 1791319432601
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/b38e1abd-5dec-4ed4-889d-d62b06178d9a/1784090b-0181-47bc-afec-b489a77609c5"
 storage_version_token = "1791319442850756"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "CGpg53mtu-KDs2GkRVzm4"
+uri = "file://reports/educore-stage2c/report.html"
+type = "html"
+title = "Stage 2C — Complete A–K provenance report"
+description = "Read-only review of all eight FK tuples, including the full 13-column matrix, exact SQL evidence, journal/ledger associations and safety findings."
+logical_id = "cc88892c-6f79-4af3-bf9c-d927006f9e20"
+content_hash = "sha256:4e473e7400962543cf620ea8283c80e1d6ec800124a16b26512ee22c5474627f"
+size = 47362
+mtime_ms = 1791321484946
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/cc88892c-6f79-4af3-bf9c-d927006f9e20/d1a7545b-1be5-4592-8516-a782f7aab8b4"
+storage_version_token = "1791321506074133"
+content_type = "text/html"
+
+[[outputs]]
+id = "sxGyT7x6A2_m95vBGzUQa"
+uri = "file://reports/educore-stage2c/provenance-matrix.csv"
+type = "table"
+title = "Stage 2C — Eight-FK provenance matrix"
+description = "Downloadable 13-column matrix: 2 VERIFIED, 3 DIFFERENT-NAME VERIFIED and 3 UNVERIFIED."
+logical_id = "ef6be197-4505-4a7e-96f3-4cd513c6c6a6"
+content_hash = "sha256:c63a363095f37ba3434cb4d8b4466e6b37deb31e7936530e30da55ad2cec2ee1"
+size = 11008
+mtime_ms = 1791321484942
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/ef6be197-4505-4a7e-96f3-4cd513c6c6a6/a995c410-3f7d-4572-9351-138beb5f1fa2"
+storage_version_token = "1791321506703884"
+content_type = "text/csv"

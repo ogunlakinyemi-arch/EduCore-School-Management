@@ -1,0 +1,3265 @@
+{
+  "stage": "2C",
+  "scope": "Read-only repository/artifact investigation; no database connection, SQL execution, migrations, new objects or code edits.",
+  "classifications": {
+    "DIFFERENT-NAME VERIFIED": 3,
+    "VERIFIED": 2,
+    "UNVERIFIED": 3
+  },
+  "records": [
+    {
+      "number": 1,
+      "name": "academic_sessions_created_by_app_users_id_fk",
+      "child": "public.academic_sessions",
+      "childColumns": [
+        "created_by"
+      ],
+      "parent": "public.app_users",
+      "parentColumns": [
+        "id"
+      ],
+      "physicalName": "academic_sessions_created_by_app_users_id_fk",
+      "support": {
+        "name": "app_users_pkey",
+        "kind": "primary",
+        "columns": [
+          "id"
+        ],
+        "physicalName": "app_users_pkey",
+        "table": "public.app_users"
+      },
+      "supportNode": "key:public.app_users:app_users_pkey",
+      "foreignKeyNode": "fk:public.academic_sessions:academic_sessions_created_by_app_users_id_fk",
+      "alternativeSupports": [],
+      "classification": "DIFFERENT-NAME VERIFIED",
+      "historicalName": "academic_sessions_created_by_fkey",
+      "fk": {
+        "file": "lib/db/drizzle/0055_academic_calendar_fee_lines_cash.sql",
+        "statement": 1,
+        "lineStart": 1,
+        "lineEnd": 2,
+        "sql": "-- Additive metadata only: historical creators remain unknown rather than guessed.\nALTER TABLE academic_sessions ADD COLUMN IF NOT EXISTS created_by integer REFERENCES app_users(id);",
+        "excerpt": "-- Additive metadata only: historical creators remain unknown rather than guessed.\nALTER TABLE academic_sessions ADD COLUMN IF NOT EXISTS created_by integer REFERENCES app_users(id);",
+        "association": {
+          "file": "0055_academic_calendar_fee_lines_cash.sql",
+          "journal": {
+            "idx": 50,
+            "tag": "0055_academic_calendar_fee_lines_cash",
+            "when": 1791111600000
+          },
+          "capturedLedgerHashMatches": [
+            {
+              "id": "23",
+              "hash": "11584c9bf1cd346e67ff07a07ce2c47de87cece48facd94b69ceb0e072d395e4",
+              "created_at": "1791111600000"
+            }
+          ],
+          "capturedLedgerTimestampMatches": [
+            {
+              "id": "23",
+              "hash": "11584c9bf1cd346e67ff07a07ce2c47de87cece48facd94b69ceb0e072d395e4",
+              "created_at": "1791111600000"
+            }
+          ],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      },
+      "key": [
+        {
+          "file": "lib/db/drizzle/0000_brainy_moon_knight.sql",
+          "statement": 1,
+          "lineStart": 1,
+          "lineEnd": 11,
+          "sql": "CREATE TABLE \"app_users\" (\n\t\"id\" serial PRIMARY KEY NOT NULL,\n\t\"clerk_user_id\" text NOT NULL,\n\t\"email\" text NOT NULL,\n\t\"first_name\" text,\n\t\"last_name\" text,\n\t\"phone\" text,\n\t\"status\" text DEFAULT 'ACTIVE' NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);",
+          "excerpt": "CREATE TABLE \"app_users\" (\n\t\"id\" serial PRIMARY KEY NOT NULL,\n\t\"clerk_user_id\" text NOT NULL,\n\t\"email\" text NOT NULL,\n\t\"first_name\" text,\n\t\"last_name\" text,\n\t\"phone\" text,\n\t\"status\" text DEFAULT 'ACTIVE' NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);",
+          "association": {
+            "file": "0000_brainy_moon_knight.sql",
+            "journal": {
+              "idx": 0,
+              "tag": "0000_brainy_moon_knight",
+              "when": 1790124624275
+            },
+            "capturedLedgerHashMatches": [
+              {
+                "id": "1",
+                "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+                "created_at": "1790124624275"
+              }
+            ],
+            "capturedLedgerTimestampMatches": [
+              {
+                "id": "1",
+                "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+                "created_at": "1790124624275"
+              }
+            ],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        }
+      ],
+      "source": "lib/db/src/schema/edupulse.ts:607–626, especially 617; parent 21–24",
+      "notes": "ADD COLUMN IF NOT EXISTS created_by integer REFERENCES app_users(id) creates the exact nullable single-column relationship with an automatic PostgreSQL _fkey name. Tuple, NO ACTION, MATCH SIMPLE and immediate enforcement agree. The condition does not repair a previously present column.",
+      "childEvidence": {
+        "file": "lib/db/drizzle/0001_phase3_meta.sql",
+        "statement": 1,
+        "lineStart": 1,
+        "lineEnd": 11,
+        "sql": "CREATE TABLE \"academic_sessions\" (\n\t\"id\" serial PRIMARY KEY NOT NULL,\n\t\"school_id\" integer NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"start_date\" date NOT NULL,\n\t\"end_date\" date NOT NULL,\n\t\"status\" text DEFAULT 'PLANNED' NOT NULL,\n\t\"is_current\" boolean DEFAULT false NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);",
+        "excerpt": "CREATE TABLE \"academic_sessions\" (\n\t\"id\" serial PRIMARY KEY NOT NULL,\n\t\"school_id\" integer NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"start_date\" date NOT NULL,\n\t\"end_date\" date NOT NULL,\n\t\"status\" text DEFAULT 'PLANNED' NOT NULL,\n\t\"is_current\" boolean DEFAULT false NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);",
+        "association": {
+          "file": "0001_phase3_meta.sql",
+          "journal": {
+            "idx": 1,
+            "tag": "0001_phase3_meta",
+            "when": 1790129202026
+          },
+          "capturedLedgerHashMatches": [],
+          "capturedLedgerTimestampMatches": [
+            {
+              "id": "2",
+              "hash": "f198518b395d52dc374249d73780eb28acf1c4f404c1cdb70ec27663049671c9",
+              "created_at": "1790129202026"
+            }
+          ],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      },
+      "confidence": "HIGH",
+      "sourceNameLiteral": false,
+      "migrationNameLiteral": false,
+      "migrationNameHits": [],
+      "migrationSearch": [
+        {
+          "file": "0001_phase3_meta.sql",
+          "matchingLines": [
+            {
+              "line": 1,
+              "text": "CREATE TABLE \"academic_sessions\" ("
+            },
+            {
+              "line": 130,
+              "text": "CREATE UNIQUE INDEX \"academic_sessions_id_school_unique\" ON \"academic_sessions\" USING btree (\"id\",\"school_id\");--> statement-breakpoint"
+            },
+            {
+              "line": 136,
+              "text": "ALTER TABLE \"academic_sessions\" ADD CONSTRAINT \"academic_sessions_school_id_schools_id_fk\" FOREIGN KEY (\"school_id\") REFERENCES \"public\".\"schools\"(\"id\") ON DELETE no action ON UPDATE no action;--> statement-breakpoint"
+            },
+            {
+              "line": 138,
+              "text": "ALTER TABLE \"academic_terms\" ADD CONSTRAINT \"academic_terms_academic_session_id_academic_sessions_id_fk\" FOREIGN KEY (\"academic_session_id\") REFERENCES \"public\".\"academic_sessions\"(\"id\") ON DELETE no action ON UPDATE no action;--> statement-breakpoint"
+            },
+            {
+              "line": 139,
+              "text": "ALTER TABLE \"academic_terms\" ADD CONSTRAINT \"academic_terms_session_school_fk\" FOREIGN KEY (\"academic_session_id\",\"school_id\") REFERENCES \"public\".\"academic_sessions\"(\"id\",\"school_id\") ON DELETE no action ON UPDATE no action;--> statement-breakpoint"
+            },
+            {
+              "line": 143,
+              "text": "ALTER TABLE \"class_subjects\" ADD CONSTRAINT \"class_subjects_academic_session_id_academic_sessions_id_fk\" FOREIGN KEY (\"academic_session_id\") REFERENCES \"public\".\"academic_sessions\"(\"id\") ON DELETE no action ON UPDATE no action;--> statement-breakpoint"
+            },
+            {
+              "line": 148,
+              "text": "ALTER TABLE \"class_subjects\" ADD CONSTRAINT \"class_subjects_session_school_fk\" FOREIGN KEY (\"academic_session_id\",\"school_id\") REFERENCES \"public\".\"academic_sessions\"(\"id\",\"school_id\") ON DELETE no action ON UPDATE no action;--> statement-breakpoint"
+            },
+            {
+              "line": 155,
+              "text": "ALTER TABLE \"student_class_assignments\" ADD CONSTRAINT \"student_class_assignments_academic_session_id_academic_sessions_id_fk\" FOREIGN KEY (\"academic_session_id\") REFERENCES \"public\".\"academic_sessions\"(\"id\") ON DELETE no action ON UPDATE no action;--> statement-breakpoint"
+            },
+            {
+              "line": 159,
+              "text": "ALTER TABLE \"student_class_assignments\" ADD CONSTRAINT \"student_class_assignments_session_school_fk\" FOREIGN KEY (\"academic_session_id\",\"school_id\") REFERENCES \"public\".\"academic_sessions\"(\"id\",\"school_id\") ON DELETE no action ON UPDATE no action;--> statement-breakpoint"
+            },
+            {
+              "line": 165,
+              "text": "ALTER TABLE \"teacher_class_assignments\" ADD CONSTRAINT \"teacher_class_assignments_academic_session_id_academic_sessions_id_fk\" FOREIGN KEY (\"academic_session_id\") REFERENCES \"public\".\"academic_sessions\"(\"id\") ON DELETE no action ON UPDATE no action;--> statement-breakpoint"
+            },
+            {
+              "line": 169,
+              "text": "ALTER TABLE \"teacher_class_assignments\" ADD CONSTRAINT \"teacher_class_assignments_session_school_fk\" FOREIGN KEY (\"academic_session_id\",\"school_id\") REFERENCES \"public\".\"academic_sessions\"(\"id\",\"school_id\") ON DELETE no action ON UPDATE no action;--> statement-breakpoint"
+            },
+            {
+              "line": 172,
+              "text": "CREATE UNIQUE INDEX \"academic_sessions_school_name_unique\" ON \"academic_sessions\" USING btree (\"school_id\",\"name\");--> statement-breakpoint"
+            },
+            {
+              "line": 173,
+              "text": "CREATE INDEX \"academic_sessions_school_status_idx\" ON \"academic_sessions\" USING btree (\"school_id\",\"status\");--> statement-breakpoint"
+            },
+            {
+              "line": 189,
+              "text": "INSERT INTO \"academic_sessions\" (\"school_id\", \"name\", \"start_date\", \"end_date\", \"status\", \"is_current\")"
+            },
+            {
+              "line": 202,
+              "text": "JOIN \"academic_sessions\" s ON s.\"school_id\" = st.\"school_id\" AND s.\"name\" = 'LEGACY'"
+            }
+          ]
+        },
+        {
+          "file": "0002_overjoyed_sue_storm.sql",
+          "matchingLines": [
+            {
+              "line": 181,
+              "text": "ALTER TABLE \"commission_ledger\" ADD CONSTRAINT \"commission_ledger_academic_session_id_academic_sessions_id_fk\" FOREIGN KEY (\"academic_session_id\") REFERENCES \"public\".\"academic_sessions\"(\"id\") ON DELETE no action ON UPDATE no action;--> statement-breakpoint"
+            },
+            {
+              "line": 192,
+              "text": "ALTER TABLE \"partner_payouts\" ADD CONSTRAINT \"partner_payouts_academic_session_id_academic_sessions_id_fk\" FOREIGN KEY (\"academic_session_id\") REFERENCES \"public\".\"academic_sessions\"(\"id\") ON DELETE no action ON UPDATE no action;--> statement-breakpoint"
+            }
+          ]
+        },
+        {
+          "file": "0004_platform_operations.sql",
+          "matchingLines": [
+            {
+              "line": 1,
+              "text": "CREATE UNIQUE INDEX IF NOT EXISTS \"academic_sessions_id_school_unique\" ON \"academic_sessions\" (\"id\",\"school_id\");--> statement-breakpoint"
+            }
+          ]
+        },
+        {
+          "file": "0005_tenant_reference_keys.sql",
+          "matchingLines": [
+            {
+              "line": 3,
+              "text": "ALTER TABLE \"academic_sessions\""
+            },
+            {
+              "line": 4,
+              "text": "  ADD CONSTRAINT \"academic_sessions_id_school_tenant_key\" UNIQUE(\"id\",\"school_id\");--> statement-breakpoint"
+            }
+          ]
+        },
+        {
+          "file": "0009_phase5_attendance.sql",
+          "matchingLines": [
+            {
+              "line": 122,
+              "text": "  \"academic_session_id\" integer REFERENCES \"academic_sessions\"(\"id\"),"
+            },
+            {
+              "line": 135,
+              "text": "  CONSTRAINT \"attendance_events_session_school_fk\" FOREIGN KEY (\"academic_session_id\",\"school_id\") REFERENCES \"academic_sessions\"(\"id\",\"school_id\"),"
+            }
+          ]
+        },
+        {
+          "file": "0012_phase6_academic_operations.sql",
+          "matchingLines": [
+            {
+              "line": 22,
+              "text": "    REFERENCES \"academic_sessions\"(\"id\", \"school_id\"),"
+            },
+            {
+              "line": 78,
+              "text": "    REFERENCES \"academic_sessions\"(\"id\", \"school_id\"),"
+            },
+            {
+              "line": 160,
+              "text": "    REFERENCES \"academic_sessions\"(\"id\", \"school_id\"),"
+            },
+            {
+              "line": 206,
+              "text": "    REFERENCES \"academic_sessions\"(\"id\", \"school_id\"),"
+            },
+            {
+              "line": 276,
+              "text": "    REFERENCES \"academic_sessions\"(\"id\", \"school_id\"),"
+            }
+          ]
+        },
+        {
+          "file": "0013_phase7_finance.sql",
+          "matchingLines": [
+            {
+              "line": 39,
+              "text": "  CONSTRAINT \"fee_structures_session_school_fk\" FOREIGN KEY (\"academic_session_id\", \"school_id\") REFERENCES \"academic_sessions\"(\"id\", \"school_id\"),"
+            },
+            {
+              "line": 92,
+              "text": "  CONSTRAINT \"fee_invoices_session_school_fk\" FOREIGN KEY (\"academic_session_id\", \"school_id\") REFERENCES \"academic_sessions\"(\"id\", \"school_id\"),"
+            }
+          ]
+        },
+        {
+          "file": "0031_staff_nfc_billing.sql",
+          "matchingLines": [
+            {
+              "line": 81,
+              "text": "    REFERENCES academic_sessions(id, school_id) ON DELETE RESTRICT,"
+            }
+          ]
+        },
+        {
+          "file": "0033_school_workflows.sql",
+          "matchingLines": [
+            {
+              "line": 42,
+              "text": "  REFERENCES \"public\".\"academic_sessions\"(\"id\", \"school_id\")"
+            },
+            {
+              "line": 144,
+              "text": "  REFERENCES \"public\".\"academic_sessions\"(\"id\", \"school_id\")"
+            }
+          ]
+        },
+        {
+          "file": "0034_school_transport.sql",
+          "matchingLines": [
+            {
+              "line": 205,
+              "text": "    FOREIGN KEY(academic_session_id, school_id) REFERENCES academic_sessions(id, school_id) ON DELETE RESTRICT,"
+            }
+          ]
+        },
+        {
+          "file": "0036_student_subscription_allocations.sql",
+          "matchingLines": [
+            {
+              "line": 43,
+              "text": "    REFERENCES academic_sessions(id, school_id) ON DELETE RESTRICT,"
+            },
+            {
+              "line": 128,
+              "text": "    REFERENCES academic_sessions(id, school_id) ON DELETE RESTRICT,"
+            }
+          ]
+        },
+        {
+          "file": "0039_curriculum_learning.sql",
+          "matchingLines": [
+            {
+              "line": 44,
+              "text": "  CONSTRAINT school_curriculum_assignments_session_school_fk FOREIGN KEY (academic_session_id, school_id) REFERENCES academic_sessions(id, school_id),"
+            },
+            {
+              "line": 137,
+              "text": "  CONSTRAINT lesson_notes_session_school_fk FOREIGN KEY (academic_session_id, school_id) REFERENCES academic_sessions(id, school_id),"
+            }
+          ]
+        },
+        {
+          "file": "0042_admissions_expansion.sql",
+          "matchingLines": [
+            {
+              "line": 37,
+              "text": "    REFERENCES public.academic_sessions(id, school_id) ON DELETE RESTRICT,"
+            },
+            {
+              "line": 161,
+              "text": "    REFERENCES public.academic_sessions(id, school_id) ON DELETE RESTRICT,"
+            }
+          ]
+        },
+        {
+          "file": "0044_promotion_expansion.sql",
+          "matchingLines": [
+            {
+              "line": 31,
+              "text": "    FOREIGN KEY (source_session_id, school_id) REFERENCES academic_sessions(id, school_id),"
+            },
+            {
+              "line": 33,
+              "text": "    FOREIGN KEY (target_session_id, school_id) REFERENCES academic_sessions(id, school_id)"
+            },
+            {
+              "line": 77,
+              "text": "    FOREIGN KEY (source_session_id, school_id) REFERENCES academic_sessions(id, school_id),"
+            }
+          ]
+        },
+        {
+          "file": "0055_academic_calendar_fee_lines_cash.sql",
+          "matchingLines": [
+            {
+              "line": 2,
+              "text": "ALTER TABLE academic_sessions ADD COLUMN IF NOT EXISTS created_by integer REFERENCES app_users(id);"
+            }
+          ]
+        },
+        {
+          "file": "0056_exam_record_workflows.sql",
+          "matchingLines": [
+            {
+              "line": 14,
+              "text": " CONSTRAINT academic_result_batches_session_fk FOREIGN KEY(academic_session_id,school_id) REFERENCES academic_sessions(id,school_id),"
+            },
+            {
+              "line": 35,
+              "text": " CONSTRAINT exam_question_papers_session_fk FOREIGN KEY(academic_session_id,school_id) REFERENCES academic_sessions(id,school_id),"
+            }
+          ]
+        },
+        {
+          "file": "0058_student_subscription_terms.sql",
+          "matchingLines": [
+            {
+              "line": 14,
+              "text": "  FOREIGN KEY (academic_session_id,school_id) REFERENCES academic_sessions(id,school_id),"
+            }
+          ]
+        }
+      ],
+      "currentSourceFK": {
+        "name": "academic_sessions_created_by_app_users_id_fk",
+        "type": "f",
+        "table": "academic_sessions",
+        "schema": "public",
+        "validated": true,
+        "definition": "FOREIGN KEY (created_by) REFERENCES app_users(id)",
+        "support_index": "app_users_pkey",
+        "referenced_table": "app_users"
+      },
+      "historicalExactTupleFK": {
+        "name": "academic_sessions_created_by_fkey",
+        "type": "f",
+        "table": "academic_sessions",
+        "schema": "public",
+        "validated": true,
+        "definition": "FOREIGN KEY (created_by) REFERENCES app_users(id)",
+        "support_index": "app_users_pkey",
+        "referenced_table": "app_users"
+      },
+      "historicalRelatedFKs": [
+        {
+          "name": "academic_sessions_created_by_fkey",
+          "type": "f",
+          "table": "academic_sessions",
+          "schema": "public",
+          "validated": true,
+          "definition": "FOREIGN KEY (created_by) REFERENCES app_users(id)",
+          "support_index": "app_users_pkey",
+          "referenced_table": "app_users"
+        }
+      ],
+      "historicalSelectedKey": {
+        "name": "app_users_pkey",
+        "type": "p",
+        "table": "app_users",
+        "schema": "public",
+        "validated": true,
+        "definition": "PRIMARY KEY (id)",
+        "support_index": "app_users_pkey",
+        "referenced_table": "-"
+      },
+      "historicalActualSupportingIndex": "app_users_pkey",
+      "currentActualSupportingIndex": "app_users_pkey",
+      "parentKeyBeforeFK": true,
+      "currentSourceMatch": "Same exact tuple/actions; different generated FK name",
+      "historicalOrder": "lib/db/drizzle/0000_brainy_moon_knight.sql before lib/db/drizzle/0055_academic_calendar_fee_lines_cash.sql; child lib/db/drizzle/0001_phase3_meta.sql before/at FK; dependency-safe",
+      "exportOrder": "Current exporter places parent/table and selected existing key before this FK. It orders objects, unlike chronological migration replay; PK/UNIQUE clauses stay inline.",
+      "fkAssociation": {
+        "file": "0055_academic_calendar_fee_lines_cash.sql",
+        "journal": {
+          "idx": 50,
+          "tag": "0055_academic_calendar_fee_lines_cash",
+          "when": 1791111600000
+        },
+        "capturedLedgerHashMatches": [
+          {
+            "id": "23",
+            "hash": "11584c9bf1cd346e67ff07a07ce2c47de87cece48facd94b69ceb0e072d395e4",
+            "created_at": "1791111600000"
+          }
+        ],
+        "capturedLedgerTimestampMatches": [
+          {
+            "id": "23",
+            "hash": "11584c9bf1cd346e67ff07a07ce2c47de87cece48facd94b69ceb0e072d395e4",
+            "created_at": "1791111600000"
+          }
+        ],
+        "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+        "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+      },
+      "keyAssociations": [
+        {
+          "file": "0000_brainy_moon_knight.sql",
+          "journal": {
+            "idx": 0,
+            "tag": "0000_brainy_moon_knight",
+            "when": 1790124624275
+          },
+          "capturedLedgerHashMatches": [
+            {
+              "id": "1",
+              "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+              "created_at": "1790124624275"
+            }
+          ],
+          "capturedLedgerTimestampMatches": [
+            {
+              "id": "1",
+              "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+              "created_at": "1790124624275"
+            }
+          ],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "name": "academic_terms_created_by_app_users_id_fk",
+      "child": "public.academic_terms",
+      "childColumns": [
+        "created_by"
+      ],
+      "parent": "public.app_users",
+      "parentColumns": [
+        "id"
+      ],
+      "physicalName": "academic_terms_created_by_app_users_id_fk",
+      "support": {
+        "name": "app_users_pkey",
+        "kind": "primary",
+        "columns": [
+          "id"
+        ],
+        "physicalName": "app_users_pkey",
+        "table": "public.app_users"
+      },
+      "supportNode": "key:public.app_users:app_users_pkey",
+      "foreignKeyNode": "fk:public.academic_terms:academic_terms_created_by_app_users_id_fk",
+      "alternativeSupports": [],
+      "classification": "DIFFERENT-NAME VERIFIED",
+      "historicalName": "academic_terms_created_by_fkey",
+      "fk": {
+        "file": "lib/db/drizzle/0055_academic_calendar_fee_lines_cash.sql",
+        "statement": 2,
+        "lineStart": 3,
+        "lineEnd": 3,
+        "sql": "ALTER TABLE academic_terms ADD COLUMN IF NOT EXISTS created_by integer REFERENCES app_users(id);",
+        "excerpt": "ALTER TABLE academic_terms ADD COLUMN IF NOT EXISTS created_by integer REFERENCES app_users(id);",
+        "association": {
+          "file": "0055_academic_calendar_fee_lines_cash.sql",
+          "journal": {
+            "idx": 50,
+            "tag": "0055_academic_calendar_fee_lines_cash",
+            "when": 1791111600000
+          },
+          "capturedLedgerHashMatches": [
+            {
+              "id": "23",
+              "hash": "11584c9bf1cd346e67ff07a07ce2c47de87cece48facd94b69ceb0e072d395e4",
+              "created_at": "1791111600000"
+            }
+          ],
+          "capturedLedgerTimestampMatches": [
+            {
+              "id": "23",
+              "hash": "11584c9bf1cd346e67ff07a07ce2c47de87cece48facd94b69ceb0e072d395e4",
+              "created_at": "1791111600000"
+            }
+          ],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      },
+      "key": [
+        {
+          "file": "lib/db/drizzle/0000_brainy_moon_knight.sql",
+          "statement": 1,
+          "lineStart": 1,
+          "lineEnd": 11,
+          "sql": "CREATE TABLE \"app_users\" (\n\t\"id\" serial PRIMARY KEY NOT NULL,\n\t\"clerk_user_id\" text NOT NULL,\n\t\"email\" text NOT NULL,\n\t\"first_name\" text,\n\t\"last_name\" text,\n\t\"phone\" text,\n\t\"status\" text DEFAULT 'ACTIVE' NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);",
+          "excerpt": "CREATE TABLE \"app_users\" (\n\t\"id\" serial PRIMARY KEY NOT NULL,\n\t\"clerk_user_id\" text NOT NULL,\n\t\"email\" text NOT NULL,\n\t\"first_name\" text,\n\t\"last_name\" text,\n\t\"phone\" text,\n\t\"status\" text DEFAULT 'ACTIVE' NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);",
+          "association": {
+            "file": "0000_brainy_moon_knight.sql",
+            "journal": {
+              "idx": 0,
+              "tag": "0000_brainy_moon_knight",
+              "when": 1790124624275
+            },
+            "capturedLedgerHashMatches": [
+              {
+                "id": "1",
+                "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+                "created_at": "1790124624275"
+              }
+            ],
+            "capturedLedgerTimestampMatches": [
+              {
+                "id": "1",
+                "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+                "created_at": "1790124624275"
+              }
+            ],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        }
+      ],
+      "source": "lib/db/src/schema/edupulse.ts:629–655, especially 640; parent 21–24",
+      "notes": "Same ADD COLUMN REFERENCES case as academic_sessions. Exact tuple/actions agree; only the generated constraint name differs.",
+      "childEvidence": {
+        "file": "lib/db/drizzle/0001_phase3_meta.sql",
+        "statement": 2,
+        "lineStart": 13,
+        "lineEnd": 24,
+        "sql": "--> statement-breakpoint\nCREATE TABLE \"academic_terms\" (\n\t\"id\" serial PRIMARY KEY NOT NULL,\n\t\"school_id\" integer NOT NULL,\n\t\"academic_session_id\" integer NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"start_date\" date NOT NULL,\n\t\"end_date\" date NOT NULL,\n\t\"status\" text DEFAULT 'PLANNED' NOT NULL,\n\t\"is_current\" boolean DEFAULT false NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);",
+        "excerpt": "CREATE TABLE \"academic_terms\" (\n\t\"id\" serial PRIMARY KEY NOT NULL,\n\t\"school_id\" integer NOT NULL,\n\t\"academic_session_id\" integer NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"start_date\" date NOT NULL,\n\t\"end_date\" date NOT NULL,\n\t\"status\" text DEFAULT 'PLANNED' NOT NULL,\n\t\"is_current\" boolean DEFAULT false NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);",
+        "association": {
+          "file": "0001_phase3_meta.sql",
+          "journal": {
+            "idx": 1,
+            "tag": "0001_phase3_meta",
+            "when": 1790129202026
+          },
+          "capturedLedgerHashMatches": [],
+          "capturedLedgerTimestampMatches": [
+            {
+              "id": "2",
+              "hash": "f198518b395d52dc374249d73780eb28acf1c4f404c1cdb70ec27663049671c9",
+              "created_at": "1790129202026"
+            }
+          ],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      },
+      "confidence": "HIGH",
+      "sourceNameLiteral": false,
+      "migrationNameLiteral": false,
+      "migrationNameHits": [],
+      "migrationSearch": [
+        {
+          "file": "0001_phase3_meta.sql",
+          "matchingLines": [
+            {
+              "line": 13,
+              "text": "CREATE TABLE \"academic_terms\" ("
+            },
+            {
+              "line": 131,
+              "text": "CREATE UNIQUE INDEX \"academic_terms_id_school_unique\" ON \"academic_terms\" USING btree (\"id\",\"school_id\");--> statement-breakpoint"
+            },
+            {
+              "line": 137,
+              "text": "ALTER TABLE \"academic_terms\" ADD CONSTRAINT \"academic_terms_school_id_schools_id_fk\" FOREIGN KEY (\"school_id\") REFERENCES \"public\".\"schools\"(\"id\") ON DELETE no action ON UPDATE no action;--> statement-breakpoint"
+            },
+            {
+              "line": 138,
+              "text": "ALTER TABLE \"academic_terms\" ADD CONSTRAINT \"academic_terms_academic_session_id_academic_sessions_id_fk\" FOREIGN KEY (\"academic_session_id\") REFERENCES \"public\".\"academic_sessions\"(\"id\") ON DELETE no action ON UPDATE no action;--> statement-breakpoint"
+            },
+            {
+              "line": 139,
+              "text": "ALTER TABLE \"academic_terms\" ADD CONSTRAINT \"academic_terms_session_school_fk\" FOREIGN KEY (\"academic_session_id\",\"school_id\") REFERENCES \"public\".\"academic_sessions\"(\"id\",\"school_id\") ON DELETE no action ON UPDATE no action;--> statement-breakpoint"
+            },
+            {
+              "line": 144,
+              "text": "ALTER TABLE \"class_subjects\" ADD CONSTRAINT \"class_subjects_academic_term_id_academic_terms_id_fk\" FOREIGN KEY (\"academic_term_id\") REFERENCES \"public\".\"academic_terms\"(\"id\") ON DELETE no action ON UPDATE no action;--> statement-breakpoint"
+            },
+            {
+              "line": 149,
+              "text": "ALTER TABLE \"class_subjects\" ADD CONSTRAINT \"class_subjects_term_school_fk\" FOREIGN KEY (\"academic_term_id\",\"school_id\") REFERENCES \"public\".\"academic_terms\"(\"id\",\"school_id\") ON DELETE no action ON UPDATE no action;--> statement-breakpoint"
+            },
+            {
+              "line": 156,
+              "text": "ALTER TABLE \"student_class_assignments\" ADD CONSTRAINT \"student_class_assignments_academic_term_id_academic_terms_id_fk\" FOREIGN KEY (\"academic_term_id\") REFERENCES \"public\".\"academic_terms\"(\"id\") ON DELETE no action ON UPDATE no action;--> statement-breakpoint"
+            },
+            {
+              "line": 160,
+              "text": "ALTER TABLE \"student_class_assignments\" ADD CONSTRAINT \"student_class_assignments_term_school_fk\" FOREIGN KEY (\"academic_term_id\",\"school_id\") REFERENCES \"public\".\"academic_terms\"(\"id\",\"school_id\") ON DELETE no action ON UPDATE no action;--> statement-breakpoint"
+            },
+            {
+              "line": 174,
+              "text": "CREATE UNIQUE INDEX \"academic_terms_session_name_unique\" ON \"academic_terms\" USING btree (\"academic_session_id\",\"name\");--> statement-breakpoint"
+            },
+            {
+              "line": 175,
+              "text": "CREATE INDEX \"academic_terms_school_status_idx\" ON \"academic_terms\" USING btree (\"school_id\",\"status\");--> statement-breakpoint"
+            }
+          ]
+        },
+        {
+          "file": "0004_platform_operations.sql",
+          "matchingLines": [
+            {
+              "line": 2,
+              "text": "CREATE UNIQUE INDEX IF NOT EXISTS \"academic_terms_id_school_unique\" ON \"academic_terms\" (\"id\",\"school_id\");--> statement-breakpoint"
+            }
+          ]
+        },
+        {
+          "file": "0005_tenant_reference_keys.sql",
+          "matchingLines": [
+            {
+              "line": 5,
+              "text": "ALTER TABLE \"academic_terms\""
+            },
+            {
+              "line": 6,
+              "text": "  ADD CONSTRAINT \"academic_terms_id_school_tenant_key\" UNIQUE(\"id\",\"school_id\");--> statement-breakpoint"
+            }
+          ]
+        },
+        {
+          "file": "0009_phase5_attendance.sql",
+          "matchingLines": [
+            {
+              "line": 123,
+              "text": "  \"academic_term_id\" integer REFERENCES \"academic_terms\"(\"id\"),"
+            },
+            {
+              "line": 136,
+              "text": "  CONSTRAINT \"attendance_events_term_school_fk\" FOREIGN KEY (\"academic_term_id\",\"school_id\") REFERENCES \"academic_terms\"(\"id\",\"school_id\"),"
+            }
+          ]
+        },
+        {
+          "file": "0012_phase6_academic_operations.sql",
+          "matchingLines": [
+            {
+              "line": 25,
+              "text": "    REFERENCES \"academic_terms\"(\"id\", \"school_id\"),"
+            },
+            {
+              "line": 81,
+              "text": "    REFERENCES \"academic_terms\"(\"id\", \"school_id\"),"
+            },
+            {
+              "line": 163,
+              "text": "    REFERENCES \"academic_terms\"(\"id\", \"school_id\"),"
+            },
+            {
+              "line": 209,
+              "text": "    REFERENCES \"academic_terms\"(\"id\", \"school_id\"),"
+            },
+            {
+              "line": 279,
+              "text": "    REFERENCES \"academic_terms\"(\"id\", \"school_id\"),"
+            }
+          ]
+        },
+        {
+          "file": "0013_phase7_finance.sql",
+          "matchingLines": [
+            {
+              "line": 40,
+              "text": "  CONSTRAINT \"fee_structures_term_school_fk\" FOREIGN KEY (\"academic_term_id\", \"school_id\") REFERENCES \"academic_terms\"(\"id\", \"school_id\"),"
+            },
+            {
+              "line": 93,
+              "text": "  CONSTRAINT \"fee_invoices_term_school_fk\" FOREIGN KEY (\"academic_term_id\", \"school_id\") REFERENCES \"academic_terms\"(\"id\", \"school_id\"),"
+            }
+          ]
+        },
+        {
+          "file": "0031_staff_nfc_billing.sql",
+          "matchingLines": [
+            {
+              "line": 84,
+              "text": "    REFERENCES academic_terms(id, school_id) ON DELETE RESTRICT,"
+            }
+          ]
+        },
+        {
+          "file": "0033_school_workflows.sql",
+          "matchingLines": [
+            {
+              "line": 48,
+              "text": "  REFERENCES \"public\".\"academic_terms\"(\"id\", \"school_id\")"
+            }
+          ]
+        },
+        {
+          "file": "0034_school_transport.sql",
+          "matchingLines": [
+            {
+              "line": 207,
+              "text": "    FOREIGN KEY(academic_term_id, school_id) REFERENCES academic_terms(id, school_id) ON DELETE RESTRICT,"
+            }
+          ]
+        },
+        {
+          "file": "0036_student_subscription_allocations.sql",
+          "matchingLines": [
+            {
+              "line": 46,
+              "text": "    REFERENCES academic_terms(id, school_id) ON DELETE RESTRICT,"
+            },
+            {
+              "line": 131,
+              "text": "    REFERENCES academic_terms(id, school_id) ON DELETE RESTRICT,"
+            }
+          ]
+        },
+        {
+          "file": "0039_curriculum_learning.sql",
+          "matchingLines": [
+            {
+              "line": 45,
+              "text": "  CONSTRAINT school_curriculum_assignments_term_school_fk FOREIGN KEY (academic_term_id, school_id) REFERENCES academic_terms(id, school_id),"
+            },
+            {
+              "line": 138,
+              "text": "  CONSTRAINT lesson_notes_term_school_fk FOREIGN KEY (academic_term_id, school_id) REFERENCES academic_terms(id, school_id),"
+            }
+          ]
+        },
+        {
+          "file": "0042_admissions_expansion.sql",
+          "matchingLines": [
+            {
+              "line": 40,
+              "text": "    REFERENCES public.academic_terms(id, school_id) ON DELETE RESTRICT"
+            },
+            {
+              "line": 164,
+              "text": "    REFERENCES public.academic_terms(id, school_id) ON DELETE RESTRICT,"
+            }
+          ]
+        },
+        {
+          "file": "0044_promotion_expansion.sql",
+          "matchingLines": [
+            {
+              "line": 79,
+              "text": "    FOREIGN KEY (source_term_id, school_id) REFERENCES academic_terms(id, school_id),"
+            },
+            {
+              "line": 83,
+              "text": "    FOREIGN KEY (target_term_id, school_id) REFERENCES academic_terms(id, school_id),"
+            }
+          ]
+        },
+        {
+          "file": "0049_term_subscription_enforcement.sql",
+          "matchingLines": [
+            {
+              "line": 12,
+              "text": "    REFERENCES public.academic_terms(id, school_id)"
+            }
+          ]
+        },
+        {
+          "file": "0055_academic_calendar_fee_lines_cash.sql",
+          "matchingLines": [
+            {
+              "line": 3,
+              "text": "ALTER TABLE academic_terms ADD COLUMN IF NOT EXISTS created_by integer REFERENCES app_users(id);"
+            }
+          ]
+        },
+        {
+          "file": "0056_exam_record_workflows.sql",
+          "matchingLines": [
+            {
+              "line": 15,
+              "text": " CONSTRAINT academic_result_batches_term_fk FOREIGN KEY(academic_term_id,school_id) REFERENCES academic_terms(id,school_id),"
+            },
+            {
+              "line": 36,
+              "text": " CONSTRAINT exam_question_papers_term_fk FOREIGN KEY(academic_term_id,school_id) REFERENCES academic_terms(id,school_id),"
+            }
+          ]
+        },
+        {
+          "file": "0058_student_subscription_terms.sql",
+          "matchingLines": [
+            {
+              "line": 3,
+              "text": "ALTER TABLE academic_terms ADD CONSTRAINT academic_terms_nfc_session_key UNIQUE(id,school_id,academic_session_id);"
+            },
+            {
+              "line": 15,
+              "text": "  FOREIGN KEY (academic_term_id,school_id,academic_session_id) REFERENCES academic_terms(id,school_id,academic_session_id),"
+            }
+          ]
+        }
+      ],
+      "currentSourceFK": {
+        "name": "academic_terms_created_by_app_users_id_fk",
+        "type": "f",
+        "table": "academic_terms",
+        "schema": "public",
+        "validated": true,
+        "definition": "FOREIGN KEY (created_by) REFERENCES app_users(id)",
+        "support_index": "app_users_pkey",
+        "referenced_table": "app_users"
+      },
+      "historicalExactTupleFK": {
+        "name": "academic_terms_created_by_fkey",
+        "type": "f",
+        "table": "academic_terms",
+        "schema": "public",
+        "validated": true,
+        "definition": "FOREIGN KEY (created_by) REFERENCES app_users(id)",
+        "support_index": "app_users_pkey",
+        "referenced_table": "app_users"
+      },
+      "historicalRelatedFKs": [
+        {
+          "name": "academic_terms_created_by_fkey",
+          "type": "f",
+          "table": "academic_terms",
+          "schema": "public",
+          "validated": true,
+          "definition": "FOREIGN KEY (created_by) REFERENCES app_users(id)",
+          "support_index": "app_users_pkey",
+          "referenced_table": "app_users"
+        }
+      ],
+      "historicalSelectedKey": {
+        "name": "app_users_pkey",
+        "type": "p",
+        "table": "app_users",
+        "schema": "public",
+        "validated": true,
+        "definition": "PRIMARY KEY (id)",
+        "support_index": "app_users_pkey",
+        "referenced_table": "-"
+      },
+      "historicalActualSupportingIndex": "app_users_pkey",
+      "currentActualSupportingIndex": "app_users_pkey",
+      "parentKeyBeforeFK": true,
+      "currentSourceMatch": "Same exact tuple/actions; different generated FK name",
+      "historicalOrder": "lib/db/drizzle/0000_brainy_moon_knight.sql before lib/db/drizzle/0055_academic_calendar_fee_lines_cash.sql; child lib/db/drizzle/0001_phase3_meta.sql before/at FK; dependency-safe",
+      "exportOrder": "Current exporter places parent/table and selected existing key before this FK. It orders objects, unlike chronological migration replay; PK/UNIQUE clauses stay inline.",
+      "fkAssociation": {
+        "file": "0055_academic_calendar_fee_lines_cash.sql",
+        "journal": {
+          "idx": 50,
+          "tag": "0055_academic_calendar_fee_lines_cash",
+          "when": 1791111600000
+        },
+        "capturedLedgerHashMatches": [
+          {
+            "id": "23",
+            "hash": "11584c9bf1cd346e67ff07a07ce2c47de87cece48facd94b69ceb0e072d395e4",
+            "created_at": "1791111600000"
+          }
+        ],
+        "capturedLedgerTimestampMatches": [
+          {
+            "id": "23",
+            "hash": "11584c9bf1cd346e67ff07a07ce2c47de87cece48facd94b69ceb0e072d395e4",
+            "created_at": "1791111600000"
+          }
+        ],
+        "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+        "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+      },
+      "keyAssociations": [
+        {
+          "file": "0000_brainy_moon_knight.sql",
+          "journal": {
+            "idx": 0,
+            "tag": "0000_brainy_moon_knight",
+            "when": 1790124624275
+          },
+          "capturedLedgerHashMatches": [
+            {
+              "id": "1",
+              "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+              "created_at": "1790124624275"
+            }
+          ],
+          "capturedLedgerTimestampMatches": [
+            {
+              "id": "1",
+              "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+              "created_at": "1790124624275"
+            }
+          ],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "name": "communication_notifications_subject_student_school_fk",
+      "child": "public.communication_notifications",
+      "childColumns": [
+        "subject_student_id",
+        "school_id"
+      ],
+      "parent": "public.students",
+      "parentColumns": [
+        "id",
+        "school_id"
+      ],
+      "physicalName": "communication_notifications_subject_student_school_fk",
+      "support": {
+        "name": "students_id_school_tenant_key",
+        "kind": "unique_constraint",
+        "columns": [
+          "id",
+          "school_id"
+        ],
+        "physicalName": "students_id_school_tenant_key",
+        "table": "public.students"
+      },
+      "supportNode": "key:public.students:students_id_school_tenant_key",
+      "foreignKeyNode": "fk:public.communication_notifications:communication_notifications_subject_student_school_fk",
+      "alternativeSupports": [
+        {
+          "name": "students_id_school_unique",
+          "physicalName": "students_id_school_unique",
+          "kind": "unique_index"
+        }
+      ],
+      "classification": "VERIFIED",
+      "historicalName": "communication_notifications_subject_student_school_fk",
+      "fk": {
+        "file": "lib/db/drizzle/0026_communication_entitlements.sql",
+        "statement": 1,
+        "lineStart": 1,
+        "lineEnd": 13,
+        "sql": "ALTER TABLE \"communication_notifications\"\n  ADD COLUMN \"subject_student_id\" integer,\n  ADD COLUMN \"subject_class_id\" integer,\n  ADD CONSTRAINT \"communication_notifications_subject_student_school_fk\"\n    FOREIGN KEY (\"subject_student_id\",\"school_id\")\n    REFERENCES \"students\"(\"id\",\"school_id\"),\n  ADD CONSTRAINT \"communication_notifications_subject_class_school_fk\"\n    FOREIGN KEY (\"subject_class_id\",\"school_id\")\n    REFERENCES \"school_classes\"(\"id\",\"school_id\"),\n  ADD CONSTRAINT \"communication_notifications_subject_student_school_check\"\n    CHECK (\"subject_student_id\" IS NULL OR \"school_id\" IS NOT NULL),\n  ADD CONSTRAINT \"communication_notifications_subject_class_school_check\"\n    CHECK (\"subject_class_id\" IS NULL OR \"school_id\" IS NOT NULL);",
+        "excerpt": "ALTER TABLE \"communication_notifications\"\n  ADD COLUMN \"subject_student_id\" integer,\n  ADD COLUMN \"subject_class_id\" integer,\n  ADD CONSTRAINT \"communication_notifications_subject_student_school_fk\"\n    FOREIGN KEY (\"subject_student_id\",\"school_id\")\n    REFERENCES \"students\"(\"id\",\"school_id\"),\n  ADD CONSTRAINT \"communication_notifications_subject_class_school_fk\"\n    FOREIGN KEY (\"subject_class_id\",\"school_id\")\n    REFERENCES \"school_classes\"(\"id\",\"school_id\"),\n  ADD CONSTRAINT \"communication_notifications_subject_student_school_check\"\n    CHECK (\"subject_student_id\" IS NULL OR \"school_id\" IS NOT NULL),\n  ADD CONSTRAINT \"communication_notifications_subject_class_school_check\"\n    CHECK (\"subject_class_id\" IS NULL OR \"school_id\" IS NOT NULL);",
+        "association": {
+          "file": "0026_communication_entitlements.sql",
+          "journal": {
+            "idx": 26,
+            "tag": "0026_communication_entitlements",
+            "when": 1790632169536
+          },
+          "capturedLedgerHashMatches": [],
+          "capturedLedgerTimestampMatches": [],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      },
+      "key": [
+        {
+          "file": "lib/db/drizzle/0001_phase3_meta.sql",
+          "statement": 37,
+          "lineStart": 134,
+          "lineEnd": 134,
+          "sql": "--> statement-breakpoint\nCREATE UNIQUE INDEX \"students_id_school_unique\" ON \"students\" USING btree (\"id\",\"school_id\");",
+          "excerpt": "CREATE UNIQUE INDEX \"students_id_school_unique\" ON \"students\" USING btree (\"id\",\"school_id\");--> statement-breakpoint",
+          "association": {
+            "file": "0001_phase3_meta.sql",
+            "journal": {
+              "idx": 1,
+              "tag": "0001_phase3_meta",
+              "when": 1790129202026
+            },
+            "capturedLedgerHashMatches": [],
+            "capturedLedgerTimestampMatches": [
+              {
+                "id": "2",
+                "hash": "f198518b395d52dc374249d73780eb28acf1c4f404c1cdb70ec27663049671c9",
+                "created_at": "1790129202026"
+              }
+            ],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        },
+        {
+          "file": "lib/db/drizzle/0005_tenant_reference_keys.sql",
+          "statement": 4,
+          "lineStart": 7,
+          "lineEnd": 8,
+          "sql": "--> statement-breakpoint\nALTER TABLE \"students\"\n  ADD CONSTRAINT \"students_id_school_tenant_key\" UNIQUE(\"id\",\"school_id\");",
+          "excerpt": "ALTER TABLE \"students\"\n  ADD CONSTRAINT \"students_id_school_tenant_key\" UNIQUE(\"id\",\"school_id\");--> statement-breakpoint",
+          "association": {
+            "file": "0005_tenant_reference_keys.sql",
+            "journal": {
+              "idx": 5,
+              "tag": "0005_tenant_reference_keys",
+              "when": 1790164000000
+            },
+            "capturedLedgerHashMatches": [],
+            "capturedLedgerTimestampMatches": [],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        },
+        {
+          "file": "lib/db/drizzle/0007_restore_tenant_foreign_keys.sql",
+          "statement": 5,
+          "lineStart": 14,
+          "lineEnd": 19,
+          "sql": "--> statement-breakpoint\nALTER TABLE \"students\"\n  ADD CONSTRAINT \"students_id_school_tenant_key\"\n  UNIQUE USING INDEX \"students_id_school_unique\";",
+          "excerpt": "  DROP CONSTRAINT \"students_id_school_tenant_key\";--> statement-breakpoint\nALTER TABLE \"students\"\n  ADD CONSTRAINT \"students_id_school_tenant_key\"\n  UNIQUE USING INDEX \"students_id_school_unique\";--> statement-breakpoint\nCREATE UNIQUE INDEX \"students_id_school_unique\"\n  ON \"students\" (\"id\",\"school_id\");--> statement-breakpoint",
+          "association": {
+            "file": "0007_restore_tenant_foreign_keys.sql",
+            "journal": {
+              "idx": 7,
+              "tag": "0007_restore_tenant_foreign_keys",
+              "when": 1790165200000
+            },
+            "capturedLedgerHashMatches": [],
+            "capturedLedgerTimestampMatches": [],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        },
+        {
+          "file": "lib/db/drizzle/0008_align_tenant_fk_dependencies.sql",
+          "statement": 8,
+          "lineStart": 18,
+          "lineEnd": 22,
+          "sql": "--> statement-breakpoint\nALTER TABLE \"students\"\n  ADD CONSTRAINT \"students_id_school_tenant_key\"\n  UNIQUE (\"id\",\"school_id\");",
+          "excerpt": "ALTER TABLE \"students\"\n  DROP CONSTRAINT \"students_id_school_tenant_key\";--> statement-breakpoint\nALTER TABLE \"students\"\n  ADD CONSTRAINT \"students_id_school_tenant_key\"\n  UNIQUE (\"id\",\"school_id\");--> statement-breakpoint",
+          "association": {
+            "file": "0008_align_tenant_fk_dependencies.sql",
+            "journal": {
+              "idx": 8,
+              "tag": "0008_align_tenant_fk_dependencies",
+              "when": 1790166000000
+            },
+            "capturedLedgerHashMatches": [],
+            "capturedLedgerTimestampMatches": [],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        }
+      ],
+      "source": "lib/db/src/schema/communication.ts:20–58, especially 41–45; lib/db/src/schema/edupulse.ts:154–188",
+      "notes": "Exact named composite FK in a multi-action ALTER TABLE. Historical replay binds students_id_school_unique; current model binds equivalent students_id_school_tenant_key. Both enforce UNIQUE(id,school_id), both predate the FK, and both are retained. FK name, tuple, actions and enforcement match.",
+      "childEvidence": {
+        "file": "lib/db/drizzle/0025_communication.sql",
+        "statement": 1,
+        "lineStart": 1,
+        "lineEnd": 30,
+        "sql": "CREATE TABLE \"communication_notifications\" (\n  \"id\" serial PRIMARY KEY NOT NULL,\n  \"recipient_user_id\" integer NOT NULL REFERENCES \"app_users\"(\"id\"),\n  \"school_id\" integer REFERENCES \"schools\"(\"id\"),\n  \"sender_user_id\" integer REFERENCES \"app_users\"(\"id\"),\n  \"category\" text NOT NULL,\n  \"event_key\" text,\n  \"subject\" text,\n  \"body\" text NOT NULL,\n  \"link\" text,\n  \"is_read\" boolean DEFAULT false NOT NULL,\n  \"read_at\" timestamp with time zone,\n  \"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n  CONSTRAINT \"communication_notifications_id_school_recipient_unique\"\n    UNIQUE (\"id\",\"school_id\",\"recipient_user_id\"),\n  CONSTRAINT \"communication_notifications_category_check\"\n    CHECK (\"category\" IN (\n      'ATTENDANCE','ACADEMIC','ASSIGNMENT','FINANCE','PAYMENT','ANNOUNCEMENT',\n      'ACCOUNT','SYSTEM','SUBSCRIPTION','PARTNER','SECURITY'\n    )),\n  CONSTRAINT \"communication_notifications_read_check\"\n    CHECK ((\"is_read\" = false AND \"read_at\" IS NULL) OR (\"is_read\" = true AND \"read_at\" IS NOT NULL))\n);",
+        "excerpt": "CREATE TABLE \"communication_notifications\" (\n  \"id\" serial PRIMARY KEY NOT NULL,\n  \"recipient_user_id\" integer NOT NULL REFERENCES \"app_users\"(\"id\"),\n  \"school_id\" integer REFERENCES \"schools\"(\"id\"),\n  \"sender_user_id\" integer REFERENCES \"app_users\"(\"id\"),\n  \"category\" text NOT NULL,\n  \"event_key\" text,\n  \"subject\" text,\n  \"body\" text NOT NULL,\n  \"link\" text,\n  \"is_read\" boolean DEFAULT false NOT NULL,\n  \"read_at\" timestamp with time zone,\n  \"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n  CONSTRAINT \"communication_notifications_id_school_recipient_unique\"\n    UNIQUE (\"id\",\"school_id\",\"recipient_user_id\"),\n  CONSTRAINT \"communication_notifications_category_check\"\n    CHECK (\"category\" IN (\n      'ATTENDANCE','ACADEMIC','ASSIGNMENT','FINANCE','PAYMENT','ANNOUNCEMENT',\n      'ACCOUNT','SYSTEM','SUBSCRIPTION','PARTNER','SECURITY'\n    )),\n  CONSTRAINT \"communication_notifications_read_check\"\n    CHECK ((\"is_read\" = false AND \"read_at\" IS NULL) OR (\"is_read\" = true AND \"read_at\" IS NOT NULL))\n);\n\nCREATE UNIQUE INDEX \"communication_notifications_school_event_recipient_unique\"\n  ON \"communication_notifications\" (\"school_id\",\"event_key\",\"recipient_user_id\")\n  WHERE \"school_id\" IS NOT NULL AND \"event_key\" IS NOT NULL;\nCREATE UNIQUE INDEX \"communication_notifications_global_event_recipient_unique\"\n  ON \"communication_notifications\" (\"event_key\",\"recipient_user_id\")\n  WHERE \"school_id\" IS NULL AND \"event_key\" IS NOT NULL;",
+        "association": {
+          "file": "0025_communication.sql",
+          "journal": {
+            "idx": 25,
+            "tag": "0025_communication",
+            "when": 1790632168536
+          },
+          "capturedLedgerHashMatches": [],
+          "capturedLedgerTimestampMatches": [],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      },
+      "confidence": "HIGH",
+      "sourceNameLiteral": true,
+      "migrationNameLiteral": true,
+      "migrationNameHits": [
+        "0026_communication_entitlements.sql"
+      ],
+      "migrationSearch": [
+        {
+          "file": "0005_tenant_reference_keys.sql",
+          "matchingLines": [
+            {
+              "line": 8,
+              "text": "  ADD CONSTRAINT \"students_id_school_tenant_key\" UNIQUE(\"id\",\"school_id\");--> statement-breakpoint"
+            }
+          ]
+        },
+        {
+          "file": "0007_restore_tenant_foreign_keys.sql",
+          "matchingLines": [
+            {
+              "line": 14,
+              "text": "  DROP CONSTRAINT \"students_id_school_tenant_key\";--> statement-breakpoint"
+            },
+            {
+              "line": 16,
+              "text": "  ADD CONSTRAINT \"students_id_school_tenant_key\""
+            }
+          ]
+        },
+        {
+          "file": "0008_align_tenant_fk_dependencies.sql",
+          "matchingLines": [
+            {
+              "line": 19,
+              "text": "  DROP CONSTRAINT \"students_id_school_tenant_key\";--> statement-breakpoint"
+            },
+            {
+              "line": 21,
+              "text": "  ADD CONSTRAINT \"students_id_school_tenant_key\""
+            }
+          ]
+        },
+        {
+          "file": "0025_communication.sql",
+          "matchingLines": [
+            {
+              "line": 1,
+              "text": "CREATE TABLE \"communication_notifications\" ("
+            },
+            {
+              "line": 14,
+              "text": "  CONSTRAINT \"communication_notifications_id_school_recipient_unique\""
+            },
+            {
+              "line": 16,
+              "text": "  CONSTRAINT \"communication_notifications_category_check\""
+            },
+            {
+              "line": 21,
+              "text": "  CONSTRAINT \"communication_notifications_read_check\""
+            },
+            {
+              "line": 25,
+              "text": "CREATE UNIQUE INDEX \"communication_notifications_school_event_recipient_unique\""
+            },
+            {
+              "line": 26,
+              "text": "  ON \"communication_notifications\" (\"school_id\",\"event_key\",\"recipient_user_id\")"
+            },
+            {
+              "line": 28,
+              "text": "CREATE UNIQUE INDEX \"communication_notifications_global_event_recipient_unique\""
+            },
+            {
+              "line": 29,
+              "text": "  ON \"communication_notifications\" (\"event_key\",\"recipient_user_id\")"
+            },
+            {
+              "line": 31,
+              "text": "CREATE INDEX \"communication_notifications_recipient_read_idx\""
+            },
+            {
+              "line": 32,
+              "text": "  ON \"communication_notifications\" (\"recipient_user_id\",\"is_read\",\"created_at\");"
+            },
+            {
+              "line": 33,
+              "text": "CREATE INDEX \"communication_notifications_school_created_idx\""
+            },
+            {
+              "line": 34,
+              "text": "  ON \"communication_notifications\" (\"school_id\",\"created_at\");"
+            },
+            {
+              "line": 35,
+              "text": "CREATE INDEX \"communication_notifications_event_idx\""
+            },
+            {
+              "line": 36,
+              "text": "  ON \"communication_notifications\" (\"school_id\",\"category\",\"created_at\");"
+            },
+            {
+              "line": 40,
+              "text": "  \"notification_id\" integer NOT NULL REFERENCES \"communication_notifications\"(\"id\") ON DELETE CASCADE,"
+            },
+            {
+              "line": 197,
+              "text": "    REFERENCES \"communication_notifications\"(\"id\",\"school_id\",\"recipient_user_id\"),"
+            }
+          ]
+        },
+        {
+          "file": "0026_communication_entitlements.sql",
+          "matchingLines": [
+            {
+              "line": 1,
+              "text": "ALTER TABLE \"communication_notifications\""
+            },
+            {
+              "line": 4,
+              "text": "  ADD CONSTRAINT \"communication_notifications_subject_student_school_fk\""
+            },
+            {
+              "line": 7,
+              "text": "  ADD CONSTRAINT \"communication_notifications_subject_class_school_fk\""
+            },
+            {
+              "line": 10,
+              "text": "  ADD CONSTRAINT \"communication_notifications_subject_student_school_check\""
+            },
+            {
+              "line": 12,
+              "text": "  ADD CONSTRAINT \"communication_notifications_subject_class_school_check\""
+            },
+            {
+              "line": 15,
+              "text": "CREATE INDEX \"communication_notifications_subject_student_dispatch_idx\""
+            },
+            {
+              "line": 16,
+              "text": "  ON \"communication_notifications\" (\"school_id\",\"subject_student_id\",\"created_at\")"
+            },
+            {
+              "line": 18,
+              "text": "CREATE INDEX \"communication_notifications_subject_class_dispatch_idx\""
+            },
+            {
+              "line": 19,
+              "text": "  ON \"communication_notifications\" (\"school_id\",\"subject_class_id\",\"created_at\")"
+            }
+          ]
+        },
+        {
+          "file": "0043_student_care_expansion.sql",
+          "matchingLines": [
+            {
+              "line": 120,
+              "text": "  parent_notification_id integer REFERENCES communication_notifications(id) ON DELETE RESTRICT,"
+            }
+          ]
+        },
+        {
+          "file": "0047_parent_communication_extensions.sql",
+          "matchingLines": [
+            {
+              "line": 1,
+              "text": "ALTER TABLE \"communication_notifications\""
+            }
+          ]
+        }
+      ],
+      "currentSourceFK": {
+        "name": "communication_notifications_subject_student_school_fk",
+        "type": "f",
+        "table": "communication_notifications",
+        "schema": "public",
+        "validated": true,
+        "definition": "FOREIGN KEY (subject_student_id, school_id) REFERENCES students(id, school_id)",
+        "support_index": "students_id_school_tenant_key",
+        "referenced_table": "students"
+      },
+      "historicalExactTupleFK": {
+        "name": "communication_notifications_subject_student_school_fk",
+        "type": "f",
+        "table": "communication_notifications",
+        "schema": "public",
+        "validated": true,
+        "definition": "FOREIGN KEY (subject_student_id, school_id) REFERENCES students(id, school_id)",
+        "support_index": "students_id_school_unique",
+        "referenced_table": "students"
+      },
+      "historicalRelatedFKs": [
+        {
+          "name": "communication_notifications_subject_student_school_fk",
+          "type": "f",
+          "table": "communication_notifications",
+          "schema": "public",
+          "validated": true,
+          "definition": "FOREIGN KEY (subject_student_id, school_id) REFERENCES students(id, school_id)",
+          "support_index": "students_id_school_unique",
+          "referenced_table": "students"
+        }
+      ],
+      "historicalSelectedKey": {
+        "name": "students_id_school_tenant_key",
+        "type": "u",
+        "table": "students",
+        "schema": "public",
+        "validated": true,
+        "definition": "UNIQUE (id, school_id)",
+        "support_index": "students_id_school_tenant_key",
+        "referenced_table": "-"
+      },
+      "historicalActualSupportingIndex": "students_id_school_unique",
+      "currentActualSupportingIndex": "students_id_school_tenant_key",
+      "parentKeyBeforeFK": true,
+      "currentSourceMatch": "Same exact tuple/actions; same FK name",
+      "historicalOrder": "lib/db/drizzle/0001_phase3_meta.sql before lib/db/drizzle/0026_communication_entitlements.sql; child lib/db/drizzle/0025_communication.sql before/at FK; dependency-safe",
+      "exportOrder": "Current exporter places parent/table and selected existing key before this FK. It orders objects, unlike chronological migration replay; PK/UNIQUE clauses stay inline.",
+      "fkAssociation": {
+        "file": "0026_communication_entitlements.sql",
+        "journal": {
+          "idx": 26,
+          "tag": "0026_communication_entitlements",
+          "when": 1790632169536
+        },
+        "capturedLedgerHashMatches": [],
+        "capturedLedgerTimestampMatches": [],
+        "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+        "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+      },
+      "keyAssociations": [
+        {
+          "file": "0001_phase3_meta.sql",
+          "journal": {
+            "idx": 1,
+            "tag": "0001_phase3_meta",
+            "when": 1790129202026
+          },
+          "capturedLedgerHashMatches": [],
+          "capturedLedgerTimestampMatches": [
+            {
+              "id": "2",
+              "hash": "f198518b395d52dc374249d73780eb28acf1c4f404c1cdb70ec27663049671c9",
+              "created_at": "1790129202026"
+            }
+          ],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        },
+        {
+          "file": "0005_tenant_reference_keys.sql",
+          "journal": {
+            "idx": 5,
+            "tag": "0005_tenant_reference_keys",
+            "when": 1790164000000
+          },
+          "capturedLedgerHashMatches": [],
+          "capturedLedgerTimestampMatches": [],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        },
+        {
+          "file": "0007_restore_tenant_foreign_keys.sql",
+          "journal": {
+            "idx": 7,
+            "tag": "0007_restore_tenant_foreign_keys",
+            "when": 1790165200000
+          },
+          "capturedLedgerHashMatches": [],
+          "capturedLedgerTimestampMatches": [],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        },
+        {
+          "file": "0008_align_tenant_fk_dependencies.sql",
+          "journal": {
+            "idx": 8,
+            "tag": "0008_align_tenant_fk_dependencies",
+            "when": 1790166000000
+          },
+          "capturedLedgerHashMatches": [],
+          "capturedLedgerTimestampMatches": [],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      ]
+    },
+    {
+      "number": 4,
+      "name": "communication_notifications_subject_class_school_fk",
+      "child": "public.communication_notifications",
+      "childColumns": [
+        "subject_class_id",
+        "school_id"
+      ],
+      "parent": "public.school_classes",
+      "parentColumns": [
+        "id",
+        "school_id"
+      ],
+      "physicalName": "communication_notifications_subject_class_school_fk",
+      "support": {
+        "name": "school_classes_id_school_tenant_key",
+        "kind": "unique_constraint",
+        "columns": [
+          "id",
+          "school_id"
+        ],
+        "physicalName": "school_classes_id_school_tenant_key",
+        "table": "public.school_classes"
+      },
+      "supportNode": "key:public.school_classes:school_classes_id_school_tenant_key",
+      "foreignKeyNode": "fk:public.communication_notifications:communication_notifications_subject_class_school_fk",
+      "alternativeSupports": [
+        {
+          "name": "school_classes_id_school_unique",
+          "physicalName": "school_classes_id_school_unique",
+          "kind": "unique_index"
+        }
+      ],
+      "classification": "VERIFIED",
+      "historicalName": "communication_notifications_subject_class_school_fk",
+      "fk": {
+        "file": "lib/db/drizzle/0026_communication_entitlements.sql",
+        "statement": 1,
+        "lineStart": 1,
+        "lineEnd": 13,
+        "sql": "ALTER TABLE \"communication_notifications\"\n  ADD COLUMN \"subject_student_id\" integer,\n  ADD COLUMN \"subject_class_id\" integer,\n  ADD CONSTRAINT \"communication_notifications_subject_student_school_fk\"\n    FOREIGN KEY (\"subject_student_id\",\"school_id\")\n    REFERENCES \"students\"(\"id\",\"school_id\"),\n  ADD CONSTRAINT \"communication_notifications_subject_class_school_fk\"\n    FOREIGN KEY (\"subject_class_id\",\"school_id\")\n    REFERENCES \"school_classes\"(\"id\",\"school_id\"),\n  ADD CONSTRAINT \"communication_notifications_subject_student_school_check\"\n    CHECK (\"subject_student_id\" IS NULL OR \"school_id\" IS NOT NULL),\n  ADD CONSTRAINT \"communication_notifications_subject_class_school_check\"\n    CHECK (\"subject_class_id\" IS NULL OR \"school_id\" IS NOT NULL);",
+        "excerpt": "ALTER TABLE \"communication_notifications\"\n  ADD COLUMN \"subject_student_id\" integer,\n  ADD COLUMN \"subject_class_id\" integer,\n  ADD CONSTRAINT \"communication_notifications_subject_student_school_fk\"\n    FOREIGN KEY (\"subject_student_id\",\"school_id\")\n    REFERENCES \"students\"(\"id\",\"school_id\"),\n  ADD CONSTRAINT \"communication_notifications_subject_class_school_fk\"\n    FOREIGN KEY (\"subject_class_id\",\"school_id\")\n    REFERENCES \"school_classes\"(\"id\",\"school_id\"),\n  ADD CONSTRAINT \"communication_notifications_subject_student_school_check\"\n    CHECK (\"subject_student_id\" IS NULL OR \"school_id\" IS NOT NULL),\n  ADD CONSTRAINT \"communication_notifications_subject_class_school_check\"\n    CHECK (\"subject_class_id\" IS NULL OR \"school_id\" IS NOT NULL);",
+        "association": {
+          "file": "0026_communication_entitlements.sql",
+          "journal": {
+            "idx": 26,
+            "tag": "0026_communication_entitlements",
+            "when": 1790632169536
+          },
+          "capturedLedgerHashMatches": [],
+          "capturedLedgerTimestampMatches": [],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      },
+      "key": [
+        {
+          "file": "lib/db/drizzle/0001_phase3_meta.sql",
+          "statement": 36,
+          "lineStart": 133,
+          "lineEnd": 133,
+          "sql": "--> statement-breakpoint\nCREATE UNIQUE INDEX \"school_classes_id_school_unique\" ON \"school_classes\" USING btree (\"id\",\"school_id\");",
+          "excerpt": "CREATE UNIQUE INDEX \"school_classes_id_school_unique\" ON \"school_classes\" USING btree (\"id\",\"school_id\");--> statement-breakpoint",
+          "association": {
+            "file": "0001_phase3_meta.sql",
+            "journal": {
+              "idx": 1,
+              "tag": "0001_phase3_meta",
+              "when": 1790129202026
+            },
+            "capturedLedgerHashMatches": [],
+            "capturedLedgerTimestampMatches": [
+              {
+                "id": "2",
+                "hash": "f198518b395d52dc374249d73780eb28acf1c4f404c1cdb70ec27663049671c9",
+                "created_at": "1790129202026"
+              }
+            ],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        },
+        {
+          "file": "lib/db/drizzle/0005_tenant_reference_keys.sql",
+          "statement": 1,
+          "lineStart": 1,
+          "lineEnd": 2,
+          "sql": "ALTER TABLE \"school_classes\"\n  ADD CONSTRAINT \"school_classes_id_school_tenant_key\" UNIQUE(\"id\",\"school_id\");",
+          "excerpt": "ALTER TABLE \"school_classes\"\n  ADD CONSTRAINT \"school_classes_id_school_tenant_key\" UNIQUE(\"id\",\"school_id\");--> statement-breakpoint",
+          "association": {
+            "file": "0005_tenant_reference_keys.sql",
+            "journal": {
+              "idx": 5,
+              "tag": "0005_tenant_reference_keys",
+              "when": 1790164000000
+            },
+            "capturedLedgerHashMatches": [],
+            "capturedLedgerTimestampMatches": [],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        },
+        {
+          "file": "lib/db/drizzle/0007_restore_tenant_foreign_keys.sql",
+          "statement": 2,
+          "lineStart": 6,
+          "lineEnd": 12,
+          "sql": "--> statement-breakpoint\nALTER TABLE \"school_classes\"\n  ADD CONSTRAINT \"school_classes_id_school_tenant_key\"\n  UNIQUE USING INDEX \"school_classes_id_school_unique\";",
+          "excerpt": "ALTER TABLE \"school_classes\"\n  DROP CONSTRAINT \"school_classes_id_school_tenant_key\";--> statement-breakpoint\nALTER TABLE \"school_classes\"\n  ADD CONSTRAINT \"school_classes_id_school_tenant_key\"\n  UNIQUE USING INDEX \"school_classes_id_school_unique\";--> statement-breakpoint\nCREATE UNIQUE INDEX \"school_classes_id_school_unique\"\n  ON \"school_classes\" (\"id\",\"school_id\");--> statement-breakpoint",
+          "association": {
+            "file": "0007_restore_tenant_foreign_keys.sql",
+            "journal": {
+              "idx": 7,
+              "tag": "0007_restore_tenant_foreign_keys",
+              "when": 1790165200000
+            },
+            "capturedLedgerHashMatches": [],
+            "capturedLedgerTimestampMatches": [],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        },
+        {
+          "file": "lib/db/drizzle/0008_align_tenant_fk_dependencies.sql",
+          "statement": 6,
+          "lineStart": 13,
+          "lineEnd": 17,
+          "sql": "--> statement-breakpoint\nALTER TABLE \"school_classes\"\n  ADD CONSTRAINT \"school_classes_id_school_tenant_key\"\n  UNIQUE (\"id\",\"school_id\");",
+          "excerpt": "ALTER TABLE \"school_classes\"\n  DROP CONSTRAINT \"school_classes_id_school_tenant_key\";--> statement-breakpoint\nALTER TABLE \"school_classes\"\n  ADD CONSTRAINT \"school_classes_id_school_tenant_key\"\n  UNIQUE (\"id\",\"school_id\");--> statement-breakpoint",
+          "association": {
+            "file": "0008_align_tenant_fk_dependencies.sql",
+            "journal": {
+              "idx": 8,
+              "tag": "0008_align_tenant_fk_dependencies",
+              "when": 1790166000000
+            },
+            "capturedLedgerHashMatches": [],
+            "capturedLedgerTimestampMatches": [],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        }
+      ],
+      "source": "lib/db/src/schema/communication.ts:46–58; lib/db/src/schema/edupulse.ts:238–251",
+      "notes": "Exact named composite FK in the same multi-action ALTER TABLE. Historical replay uses school_classes_id_school_unique; current model uses equivalent school_classes_id_school_tenant_key. No FK semantic difference follows from equivalent supporting-index selection.",
+      "childEvidence": {
+        "file": "lib/db/drizzle/0025_communication.sql",
+        "statement": 1,
+        "lineStart": 1,
+        "lineEnd": 30,
+        "sql": "CREATE TABLE \"communication_notifications\" (\n  \"id\" serial PRIMARY KEY NOT NULL,\n  \"recipient_user_id\" integer NOT NULL REFERENCES \"app_users\"(\"id\"),\n  \"school_id\" integer REFERENCES \"schools\"(\"id\"),\n  \"sender_user_id\" integer REFERENCES \"app_users\"(\"id\"),\n  \"category\" text NOT NULL,\n  \"event_key\" text,\n  \"subject\" text,\n  \"body\" text NOT NULL,\n  \"link\" text,\n  \"is_read\" boolean DEFAULT false NOT NULL,\n  \"read_at\" timestamp with time zone,\n  \"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n  CONSTRAINT \"communication_notifications_id_school_recipient_unique\"\n    UNIQUE (\"id\",\"school_id\",\"recipient_user_id\"),\n  CONSTRAINT \"communication_notifications_category_check\"\n    CHECK (\"category\" IN (\n      'ATTENDANCE','ACADEMIC','ASSIGNMENT','FINANCE','PAYMENT','ANNOUNCEMENT',\n      'ACCOUNT','SYSTEM','SUBSCRIPTION','PARTNER','SECURITY'\n    )),\n  CONSTRAINT \"communication_notifications_read_check\"\n    CHECK ((\"is_read\" = false AND \"read_at\" IS NULL) OR (\"is_read\" = true AND \"read_at\" IS NOT NULL))\n);",
+        "excerpt": "CREATE TABLE \"communication_notifications\" (\n  \"id\" serial PRIMARY KEY NOT NULL,\n  \"recipient_user_id\" integer NOT NULL REFERENCES \"app_users\"(\"id\"),\n  \"school_id\" integer REFERENCES \"schools\"(\"id\"),\n  \"sender_user_id\" integer REFERENCES \"app_users\"(\"id\"),\n  \"category\" text NOT NULL,\n  \"event_key\" text,\n  \"subject\" text,\n  \"body\" text NOT NULL,\n  \"link\" text,\n  \"is_read\" boolean DEFAULT false NOT NULL,\n  \"read_at\" timestamp with time zone,\n  \"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n  CONSTRAINT \"communication_notifications_id_school_recipient_unique\"\n    UNIQUE (\"id\",\"school_id\",\"recipient_user_id\"),\n  CONSTRAINT \"communication_notifications_category_check\"\n    CHECK (\"category\" IN (\n      'ATTENDANCE','ACADEMIC','ASSIGNMENT','FINANCE','PAYMENT','ANNOUNCEMENT',\n      'ACCOUNT','SYSTEM','SUBSCRIPTION','PARTNER','SECURITY'\n    )),\n  CONSTRAINT \"communication_notifications_read_check\"\n    CHECK ((\"is_read\" = false AND \"read_at\" IS NULL) OR (\"is_read\" = true AND \"read_at\" IS NOT NULL))\n);\n\nCREATE UNIQUE INDEX \"communication_notifications_school_event_recipient_unique\"\n  ON \"communication_notifications\" (\"school_id\",\"event_key\",\"recipient_user_id\")\n  WHERE \"school_id\" IS NOT NULL AND \"event_key\" IS NOT NULL;\nCREATE UNIQUE INDEX \"communication_notifications_global_event_recipient_unique\"\n  ON \"communication_notifications\" (\"event_key\",\"recipient_user_id\")\n  WHERE \"school_id\" IS NULL AND \"event_key\" IS NOT NULL;",
+        "association": {
+          "file": "0025_communication.sql",
+          "journal": {
+            "idx": 25,
+            "tag": "0025_communication",
+            "when": 1790632168536
+          },
+          "capturedLedgerHashMatches": [],
+          "capturedLedgerTimestampMatches": [],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      },
+      "confidence": "HIGH",
+      "sourceNameLiteral": true,
+      "migrationNameLiteral": true,
+      "migrationNameHits": [
+        "0026_communication_entitlements.sql"
+      ],
+      "migrationSearch": [
+        {
+          "file": "0005_tenant_reference_keys.sql",
+          "matchingLines": [
+            {
+              "line": 2,
+              "text": "  ADD CONSTRAINT \"school_classes_id_school_tenant_key\" UNIQUE(\"id\",\"school_id\");--> statement-breakpoint"
+            }
+          ]
+        },
+        {
+          "file": "0007_restore_tenant_foreign_keys.sql",
+          "matchingLines": [
+            {
+              "line": 7,
+              "text": "  DROP CONSTRAINT \"school_classes_id_school_tenant_key\";--> statement-breakpoint"
+            },
+            {
+              "line": 9,
+              "text": "  ADD CONSTRAINT \"school_classes_id_school_tenant_key\""
+            }
+          ]
+        },
+        {
+          "file": "0008_align_tenant_fk_dependencies.sql",
+          "matchingLines": [
+            {
+              "line": 14,
+              "text": "  DROP CONSTRAINT \"school_classes_id_school_tenant_key\";--> statement-breakpoint"
+            },
+            {
+              "line": 16,
+              "text": "  ADD CONSTRAINT \"school_classes_id_school_tenant_key\""
+            }
+          ]
+        },
+        {
+          "file": "0025_communication.sql",
+          "matchingLines": [
+            {
+              "line": 1,
+              "text": "CREATE TABLE \"communication_notifications\" ("
+            },
+            {
+              "line": 14,
+              "text": "  CONSTRAINT \"communication_notifications_id_school_recipient_unique\""
+            },
+            {
+              "line": 16,
+              "text": "  CONSTRAINT \"communication_notifications_category_check\""
+            },
+            {
+              "line": 21,
+              "text": "  CONSTRAINT \"communication_notifications_read_check\""
+            },
+            {
+              "line": 25,
+              "text": "CREATE UNIQUE INDEX \"communication_notifications_school_event_recipient_unique\""
+            },
+            {
+              "line": 26,
+              "text": "  ON \"communication_notifications\" (\"school_id\",\"event_key\",\"recipient_user_id\")"
+            },
+            {
+              "line": 28,
+              "text": "CREATE UNIQUE INDEX \"communication_notifications_global_event_recipient_unique\""
+            },
+            {
+              "line": 29,
+              "text": "  ON \"communication_notifications\" (\"event_key\",\"recipient_user_id\")"
+            },
+            {
+              "line": 31,
+              "text": "CREATE INDEX \"communication_notifications_recipient_read_idx\""
+            },
+            {
+              "line": 32,
+              "text": "  ON \"communication_notifications\" (\"recipient_user_id\",\"is_read\",\"created_at\");"
+            },
+            {
+              "line": 33,
+              "text": "CREATE INDEX \"communication_notifications_school_created_idx\""
+            },
+            {
+              "line": 34,
+              "text": "  ON \"communication_notifications\" (\"school_id\",\"created_at\");"
+            },
+            {
+              "line": 35,
+              "text": "CREATE INDEX \"communication_notifications_event_idx\""
+            },
+            {
+              "line": 36,
+              "text": "  ON \"communication_notifications\" (\"school_id\",\"category\",\"created_at\");"
+            },
+            {
+              "line": 40,
+              "text": "  \"notification_id\" integer NOT NULL REFERENCES \"communication_notifications\"(\"id\") ON DELETE CASCADE,"
+            },
+            {
+              "line": 197,
+              "text": "    REFERENCES \"communication_notifications\"(\"id\",\"school_id\",\"recipient_user_id\"),"
+            }
+          ]
+        },
+        {
+          "file": "0026_communication_entitlements.sql",
+          "matchingLines": [
+            {
+              "line": 1,
+              "text": "ALTER TABLE \"communication_notifications\""
+            },
+            {
+              "line": 4,
+              "text": "  ADD CONSTRAINT \"communication_notifications_subject_student_school_fk\""
+            },
+            {
+              "line": 7,
+              "text": "  ADD CONSTRAINT \"communication_notifications_subject_class_school_fk\""
+            },
+            {
+              "line": 10,
+              "text": "  ADD CONSTRAINT \"communication_notifications_subject_student_school_check\""
+            },
+            {
+              "line": 12,
+              "text": "  ADD CONSTRAINT \"communication_notifications_subject_class_school_check\""
+            },
+            {
+              "line": 15,
+              "text": "CREATE INDEX \"communication_notifications_subject_student_dispatch_idx\""
+            },
+            {
+              "line": 16,
+              "text": "  ON \"communication_notifications\" (\"school_id\",\"subject_student_id\",\"created_at\")"
+            },
+            {
+              "line": 18,
+              "text": "CREATE INDEX \"communication_notifications_subject_class_dispatch_idx\""
+            },
+            {
+              "line": 19,
+              "text": "  ON \"communication_notifications\" (\"school_id\",\"subject_class_id\",\"created_at\")"
+            }
+          ]
+        },
+        {
+          "file": "0043_student_care_expansion.sql",
+          "matchingLines": [
+            {
+              "line": 120,
+              "text": "  parent_notification_id integer REFERENCES communication_notifications(id) ON DELETE RESTRICT,"
+            }
+          ]
+        },
+        {
+          "file": "0047_parent_communication_extensions.sql",
+          "matchingLines": [
+            {
+              "line": 1,
+              "text": "ALTER TABLE \"communication_notifications\""
+            }
+          ]
+        }
+      ],
+      "currentSourceFK": {
+        "name": "communication_notifications_subject_class_school_fk",
+        "type": "f",
+        "table": "communication_notifications",
+        "schema": "public",
+        "validated": true,
+        "definition": "FOREIGN KEY (subject_class_id, school_id) REFERENCES school_classes(id, school_id)",
+        "support_index": "school_classes_id_school_tenant_key",
+        "referenced_table": "school_classes"
+      },
+      "historicalExactTupleFK": {
+        "name": "communication_notifications_subject_class_school_fk",
+        "type": "f",
+        "table": "communication_notifications",
+        "schema": "public",
+        "validated": true,
+        "definition": "FOREIGN KEY (subject_class_id, school_id) REFERENCES school_classes(id, school_id)",
+        "support_index": "school_classes_id_school_unique",
+        "referenced_table": "school_classes"
+      },
+      "historicalRelatedFKs": [
+        {
+          "name": "communication_notifications_subject_class_school_fk",
+          "type": "f",
+          "table": "communication_notifications",
+          "schema": "public",
+          "validated": true,
+          "definition": "FOREIGN KEY (subject_class_id, school_id) REFERENCES school_classes(id, school_id)",
+          "support_index": "school_classes_id_school_unique",
+          "referenced_table": "school_classes"
+        }
+      ],
+      "historicalSelectedKey": {
+        "name": "school_classes_id_school_tenant_key",
+        "type": "u",
+        "table": "school_classes",
+        "schema": "public",
+        "validated": true,
+        "definition": "UNIQUE (id, school_id)",
+        "support_index": "school_classes_id_school_tenant_key",
+        "referenced_table": "-"
+      },
+      "historicalActualSupportingIndex": "school_classes_id_school_unique",
+      "currentActualSupportingIndex": "school_classes_id_school_tenant_key",
+      "parentKeyBeforeFK": true,
+      "currentSourceMatch": "Same exact tuple/actions; same FK name",
+      "historicalOrder": "lib/db/drizzle/0001_phase3_meta.sql before lib/db/drizzle/0026_communication_entitlements.sql; child lib/db/drizzle/0025_communication.sql before/at FK; dependency-safe",
+      "exportOrder": "Current exporter places parent/table and selected existing key before this FK. It orders objects, unlike chronological migration replay; PK/UNIQUE clauses stay inline.",
+      "fkAssociation": {
+        "file": "0026_communication_entitlements.sql",
+        "journal": {
+          "idx": 26,
+          "tag": "0026_communication_entitlements",
+          "when": 1790632169536
+        },
+        "capturedLedgerHashMatches": [],
+        "capturedLedgerTimestampMatches": [],
+        "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+        "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+      },
+      "keyAssociations": [
+        {
+          "file": "0001_phase3_meta.sql",
+          "journal": {
+            "idx": 1,
+            "tag": "0001_phase3_meta",
+            "when": 1790129202026
+          },
+          "capturedLedgerHashMatches": [],
+          "capturedLedgerTimestampMatches": [
+            {
+              "id": "2",
+              "hash": "f198518b395d52dc374249d73780eb28acf1c4f404c1cdb70ec27663049671c9",
+              "created_at": "1790129202026"
+            }
+          ],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        },
+        {
+          "file": "0005_tenant_reference_keys.sql",
+          "journal": {
+            "idx": 5,
+            "tag": "0005_tenant_reference_keys",
+            "when": 1790164000000
+          },
+          "capturedLedgerHashMatches": [],
+          "capturedLedgerTimestampMatches": [],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        },
+        {
+          "file": "0007_restore_tenant_foreign_keys.sql",
+          "journal": {
+            "idx": 7,
+            "tag": "0007_restore_tenant_foreign_keys",
+            "when": 1790165200000
+          },
+          "capturedLedgerHashMatches": [],
+          "capturedLedgerTimestampMatches": [],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        },
+        {
+          "file": "0008_align_tenant_fk_dependencies.sql",
+          "journal": {
+            "idx": 8,
+            "tag": "0008_align_tenant_fk_dependencies",
+            "when": 1790166000000
+          },
+          "capturedLedgerHashMatches": [],
+          "capturedLedgerTimestampMatches": [],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      ]
+    },
+    {
+      "number": 5,
+      "name": "device_assignment_history_new_school_id_schools_id_fk",
+      "child": "public.device_assignment_history",
+      "childColumns": [
+        "new_school_id"
+      ],
+      "parent": "public.schools",
+      "parentColumns": [
+        "id"
+      ],
+      "physicalName": "device_assignment_history_new_school_id_schools_id_fk",
+      "support": {
+        "name": "schools_pkey",
+        "kind": "primary",
+        "columns": [
+          "id"
+        ],
+        "physicalName": "schools_pkey",
+        "table": "public.schools"
+      },
+      "supportNode": "key:public.schools:schools_pkey",
+      "foreignKeyNode": "fk:public.device_assignment_history:device_assignment_history_new_school_id_schools_id_fk",
+      "alternativeSupports": [],
+      "classification": "DIFFERENT-NAME VERIFIED",
+      "historicalName": "device_assignment_history_new_school_id_fkey",
+      "fk": {
+        "file": "lib/db/drizzle/0010_historical_device_school_bindings.sql",
+        "statement": 1,
+        "lineStart": 1,
+        "lineEnd": 4,
+        "sql": "-- Preserve the device/school pairs needed by immutable attendance events\n-- across future device reassignment.\nALTER TABLE \"device_assignment_history\"\n  ADD COLUMN IF NOT EXISTS \"new_school_id\" integer REFERENCES \"schools\"(\"id\");",
+        "excerpt": "-- Preserve the device/school pairs needed by immutable attendance events\n-- across future device reassignment.\nALTER TABLE \"device_assignment_history\"\n  ADD COLUMN IF NOT EXISTS \"new_school_id\" integer REFERENCES \"schools\"(\"id\");",
+        "association": {
+          "file": "0010_historical_device_school_bindings.sql",
+          "journal": {
+            "idx": 10,
+            "tag": "0010_historical_device_school_bindings",
+            "when": 1790193000000
+          },
+          "capturedLedgerHashMatches": [],
+          "capturedLedgerTimestampMatches": [],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      },
+      "key": [
+        {
+          "file": "lib/db/drizzle/0000_brainy_moon_knight.sql",
+          "statement": 8,
+          "lineStart": 81,
+          "lineEnd": 89,
+          "sql": "--> statement-breakpoint\nCREATE TABLE \"schools\" (\n\t\"id\" serial PRIMARY KEY NOT NULL,\n\t\"code\" text NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"city\" text NOT NULL,\n\t\"state\" text NOT NULL,\n\t\"status\" text DEFAULT 'active' NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL\n);",
+          "excerpt": "CREATE TABLE \"schools\" (\n\t\"id\" serial PRIMARY KEY NOT NULL,\n\t\"code\" text NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"city\" text NOT NULL,\n\t\"state\" text NOT NULL,\n\t\"status\" text DEFAULT 'active' NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL\n);",
+          "association": {
+            "file": "0000_brainy_moon_knight.sql",
+            "journal": {
+              "idx": 0,
+              "tag": "0000_brainy_moon_knight",
+              "when": 1790124624275
+            },
+            "capturedLedgerHashMatches": [
+              {
+                "id": "1",
+                "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+                "created_at": "1790124624275"
+              }
+            ],
+            "capturedLedgerTimestampMatches": [
+              {
+                "id": "1",
+                "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+                "created_at": "1790124624275"
+              }
+            ],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        }
+      ],
+      "source": "lib/db/src/schema/edupulse.ts:909–927, especially 916; parent 40–43",
+      "notes": "ADD COLUMN IF NOT EXISTS new_school_id integer REFERENCES schools(id) creates the exact nullable relationship. Automatic historical _fkey versus generated Drizzle _schools_id_fk. Same tuple and default actions/enforcement.",
+      "childEvidence": {
+        "file": "lib/db/drizzle/0009_phase5_attendance.sql",
+        "statement": 23,
+        "lineStart": 41,
+        "lineEnd": 52,
+        "sql": "CREATE TABLE \"device_assignment_history\" (\n  \"id\" serial PRIMARY KEY,\n  \"school_id\" integer NOT NULL REFERENCES \"schools\"(\"id\"),\n  \"device_id\" integer NOT NULL REFERENCES \"platform_devices\"(\"id\"),\n  \"previous_school_id\" integer REFERENCES \"schools\"(\"id\"),\n  \"previous_location\" text,\n  \"location\" text,\n  \"action\" text NOT NULL,\n  \"reason\" text,\n  \"actor_user_id\" integer REFERENCES \"app_users\"(\"id\"),\n  \"created_at\" timestamptz NOT NULL DEFAULT now()\n);",
+        "excerpt": "CREATE TABLE \"device_assignment_history\" (\n  \"id\" serial PRIMARY KEY,\n  \"school_id\" integer NOT NULL REFERENCES \"schools\"(\"id\"),\n  \"device_id\" integer NOT NULL REFERENCES \"platform_devices\"(\"id\"),\n  \"previous_school_id\" integer REFERENCES \"schools\"(\"id\"),\n  \"previous_location\" text,\n  \"location\" text,\n  \"action\" text NOT NULL,\n  \"reason\" text,\n  \"actor_user_id\" integer REFERENCES \"app_users\"(\"id\"),\n  \"created_at\" timestamptz NOT NULL DEFAULT now()\n);",
+        "association": {
+          "file": "0009_phase5_attendance.sql",
+          "journal": {
+            "idx": 9,
+            "tag": "0009_phase5_attendance",
+            "when": 1790192000000
+          },
+          "capturedLedgerHashMatches": [],
+          "capturedLedgerTimestampMatches": [],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      },
+      "confidence": "HIGH",
+      "sourceNameLiteral": false,
+      "migrationNameLiteral": false,
+      "migrationNameHits": [],
+      "migrationSearch": [
+        {
+          "file": "0009_phase5_attendance.sql",
+          "matchingLines": [
+            {
+              "line": 41,
+              "text": "CREATE TABLE \"device_assignment_history\" ("
+            },
+            {
+              "line": 53,
+              "text": "CREATE INDEX \"device_assignment_history_school_idx\" ON \"device_assignment_history\" (\"school_id\",\"created_at\");"
+            },
+            {
+              "line": 54,
+              "text": "CREATE INDEX \"device_assignment_history_device_idx\" ON \"device_assignment_history\" (\"device_id\",\"created_at\");"
+            }
+          ]
+        },
+        {
+          "file": "0010_historical_device_school_bindings.sql",
+          "matchingLines": [
+            {
+              "line": 3,
+              "text": "ALTER TABLE \"device_assignment_history\""
+            },
+            {
+              "line": 22,
+              "text": "SELECT device_id, school_id FROM \"device_assignment_history\""
+            },
+            {
+              "line": 24,
+              "text": "SELECT device_id, previous_school_id FROM \"device_assignment_history\""
+            },
+            {
+              "line": 27,
+              "text": "SELECT device_id, new_school_id FROM \"device_assignment_history\""
+            }
+          ]
+        }
+      ],
+      "currentSourceFK": {
+        "name": "device_assignment_history_new_school_id_schools_id_fk",
+        "type": "f",
+        "table": "device_assignment_history",
+        "schema": "public",
+        "validated": true,
+        "definition": "FOREIGN KEY (new_school_id) REFERENCES schools(id)",
+        "support_index": "schools_pkey",
+        "referenced_table": "schools"
+      },
+      "historicalExactTupleFK": {
+        "name": "device_assignment_history_new_school_id_fkey",
+        "type": "f",
+        "table": "device_assignment_history",
+        "schema": "public",
+        "validated": true,
+        "definition": "FOREIGN KEY (new_school_id) REFERENCES schools(id)",
+        "support_index": "schools_pkey",
+        "referenced_table": "schools"
+      },
+      "historicalRelatedFKs": [
+        {
+          "name": "device_assignment_history_new_school_id_fkey",
+          "type": "f",
+          "table": "device_assignment_history",
+          "schema": "public",
+          "validated": true,
+          "definition": "FOREIGN KEY (new_school_id) REFERENCES schools(id)",
+          "support_index": "schools_pkey",
+          "referenced_table": "schools"
+        },
+        {
+          "name": "device_assignment_history_previous_school_id_fkey",
+          "type": "f",
+          "table": "device_assignment_history",
+          "schema": "public",
+          "validated": true,
+          "definition": "FOREIGN KEY (previous_school_id) REFERENCES schools(id)",
+          "support_index": "schools_pkey",
+          "referenced_table": "schools"
+        },
+        {
+          "name": "device_assignment_history_school_id_fkey",
+          "type": "f",
+          "table": "device_assignment_history",
+          "schema": "public",
+          "validated": true,
+          "definition": "FOREIGN KEY (school_id) REFERENCES schools(id)",
+          "support_index": "schools_pkey",
+          "referenced_table": "schools"
+        }
+      ],
+      "historicalSelectedKey": {
+        "name": "schools_pkey",
+        "type": "p",
+        "table": "schools",
+        "schema": "public",
+        "validated": true,
+        "definition": "PRIMARY KEY (id)",
+        "support_index": "schools_pkey",
+        "referenced_table": "-"
+      },
+      "historicalActualSupportingIndex": "schools_pkey",
+      "currentActualSupportingIndex": "schools_pkey",
+      "parentKeyBeforeFK": true,
+      "currentSourceMatch": "Same exact tuple/actions; different generated FK name",
+      "historicalOrder": "lib/db/drizzle/0000_brainy_moon_knight.sql before lib/db/drizzle/0010_historical_device_school_bindings.sql; child lib/db/drizzle/0009_phase5_attendance.sql before/at FK; dependency-safe",
+      "exportOrder": "Current exporter places parent/table and selected existing key before this FK. It orders objects, unlike chronological migration replay; PK/UNIQUE clauses stay inline.",
+      "fkAssociation": {
+        "file": "0010_historical_device_school_bindings.sql",
+        "journal": {
+          "idx": 10,
+          "tag": "0010_historical_device_school_bindings",
+          "when": 1790193000000
+        },
+        "capturedLedgerHashMatches": [],
+        "capturedLedgerTimestampMatches": [],
+        "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+        "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+      },
+      "keyAssociations": [
+        {
+          "file": "0000_brainy_moon_knight.sql",
+          "journal": {
+            "idx": 0,
+            "tag": "0000_brainy_moon_knight",
+            "when": 1790124624275
+          },
+          "capturedLedgerHashMatches": [
+            {
+              "id": "1",
+              "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+              "created_at": "1790124624275"
+            }
+          ],
+          "capturedLedgerTimestampMatches": [
+            {
+              "id": "1",
+              "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+              "created_at": "1790124624275"
+            }
+          ],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      ]
+    },
+    {
+      "number": 6,
+      "name": "platform_devices_school_class_id_school_classes_id_fk",
+      "child": "public.platform_devices",
+      "childColumns": [
+        "school_class_id"
+      ],
+      "parent": "public.school_classes",
+      "parentColumns": [
+        "id"
+      ],
+      "physicalName": "platform_devices_school_class_id_school_classes_id_fk",
+      "support": {
+        "name": "school_classes_pkey",
+        "kind": "primary",
+        "columns": [
+          "id"
+        ],
+        "physicalName": "school_classes_pkey",
+        "table": "public.school_classes"
+      },
+      "supportNode": "key:public.school_classes:school_classes_pkey",
+      "foreignKeyNode": "fk:public.platform_devices:platform_devices_school_class_id_school_classes_id_fk",
+      "alternativeSupports": [],
+      "classification": "UNVERIFIED",
+      "historicalName": null,
+      "fk": null,
+      "related": {
+        "file": "lib/db/drizzle/0009_phase5_attendance.sql",
+        "statement": 7,
+        "lineStart": 4,
+        "lineEnd": 10,
+        "sql": "ALTER TABLE \"platform_devices\" ADD CONSTRAINT \"platform_devices_class_school_fk\" FOREIGN KEY (\"school_class_id\",\"school_id\") REFERENCES \"school_classes\"(\"id\",\"school_id\") NOT VALID;",
+        "excerpt": "ALTER TABLE \"platform_devices\" ADD COLUMN IF NOT EXISTS \"school_class_id\" integer;\nALTER TABLE \"platform_devices\" ADD COLUMN IF NOT EXISTS \"configuration_status\" text NOT NULL DEFAULT 'PENDING';\nALTER TABLE \"platform_devices\" DROP CONSTRAINT IF EXISTS \"platform_devices_status_check\";\nALTER TABLE \"platform_devices\" ADD CONSTRAINT \"platform_devices_status_check\"\n  CHECK (\"status\" IN ('ACTIVE','INACTIVE','MAINTENANCE','SUSPENDED','UNASSIGNED'));\nCREATE UNIQUE INDEX IF NOT EXISTS \"platform_devices_id_school_unique\" ON \"platform_devices\" (\"id\",\"school_id\");\nALTER TABLE \"platform_devices\" ADD CONSTRAINT \"platform_devices_class_school_fk\" FOREIGN KEY (\"school_class_id\",\"school_id\") REFERENCES \"school_classes\"(\"id\",\"school_id\") NOT VALID;",
+        "association": {
+          "file": "0009_phase5_attendance.sql",
+          "journal": {
+            "idx": 9,
+            "tag": "0009_phase5_attendance",
+            "when": 1790192000000
+          },
+          "capturedLedgerHashMatches": [],
+          "capturedLedgerTimestampMatches": [],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      },
+      "key": [
+        {
+          "file": "lib/db/drizzle/0000_brainy_moon_knight.sql",
+          "statement": 6,
+          "lineStart": 62,
+          "lineEnd": 69,
+          "sql": "--> statement-breakpoint\nCREATE TABLE \"school_classes\" (\n\t\"id\" serial PRIMARY KEY NOT NULL,\n\t\"school_id\" integer NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"section\" text NOT NULL,\n\t\"class_teacher\" text,\n\t\"capacity\" integer DEFAULT 30 NOT NULL\n);",
+          "excerpt": "CREATE TABLE \"school_classes\" (\n\t\"id\" serial PRIMARY KEY NOT NULL,\n\t\"school_id\" integer NOT NULL,\n\t\"name\" text NOT NULL,\n\t\"section\" text NOT NULL,\n\t\"class_teacher\" text,\n\t\"capacity\" integer DEFAULT 30 NOT NULL\n);",
+          "association": {
+            "file": "0000_brainy_moon_knight.sql",
+            "journal": {
+              "idx": 0,
+              "tag": "0000_brainy_moon_knight",
+              "when": 1790124624275
+            },
+            "capturedLedgerHashMatches": [
+              {
+                "id": "1",
+                "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+                "created_at": "1790124624275"
+              }
+            ],
+            "capturedLedgerTimestampMatches": [
+              {
+                "id": "1",
+                "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+                "created_at": "1790124624275"
+              }
+            ],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        }
+      ],
+      "relatedKey": [
+        {
+          "file": "lib/db/drizzle/0001_phase3_meta.sql",
+          "statement": 36,
+          "lineStart": 133,
+          "lineEnd": 133,
+          "sql": "--> statement-breakpoint\nCREATE UNIQUE INDEX \"school_classes_id_school_unique\" ON \"school_classes\" USING btree (\"id\",\"school_id\");",
+          "excerpt": "CREATE UNIQUE INDEX \"school_classes_id_school_unique\" ON \"school_classes\" USING btree (\"id\",\"school_id\");--> statement-breakpoint",
+          "association": {
+            "file": "0001_phase3_meta.sql",
+            "journal": {
+              "idx": 1,
+              "tag": "0001_phase3_meta",
+              "when": 1790129202026
+            },
+            "capturedLedgerHashMatches": [],
+            "capturedLedgerTimestampMatches": [
+              {
+                "id": "2",
+                "hash": "f198518b395d52dc374249d73780eb28acf1c4f404c1cdb70ec27663049671c9",
+                "created_at": "1790129202026"
+              }
+            ],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        },
+        {
+          "file": "lib/db/drizzle/0005_tenant_reference_keys.sql",
+          "statement": 1,
+          "lineStart": 1,
+          "lineEnd": 2,
+          "sql": "ALTER TABLE \"school_classes\"\n  ADD CONSTRAINT \"school_classes_id_school_tenant_key\" UNIQUE(\"id\",\"school_id\");",
+          "excerpt": "ALTER TABLE \"school_classes\"\n  ADD CONSTRAINT \"school_classes_id_school_tenant_key\" UNIQUE(\"id\",\"school_id\");--> statement-breakpoint",
+          "association": {
+            "file": "0005_tenant_reference_keys.sql",
+            "journal": {
+              "idx": 5,
+              "tag": "0005_tenant_reference_keys",
+              "when": 1790164000000
+            },
+            "capturedLedgerHashMatches": [],
+            "capturedLedgerTimestampMatches": [],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        },
+        {
+          "file": "lib/db/drizzle/0007_restore_tenant_foreign_keys.sql",
+          "statement": 2,
+          "lineStart": 6,
+          "lineEnd": 12,
+          "sql": "--> statement-breakpoint\nALTER TABLE \"school_classes\"\n  ADD CONSTRAINT \"school_classes_id_school_tenant_key\"\n  UNIQUE USING INDEX \"school_classes_id_school_unique\";",
+          "excerpt": "ALTER TABLE \"school_classes\"\n  DROP CONSTRAINT \"school_classes_id_school_tenant_key\";--> statement-breakpoint\nALTER TABLE \"school_classes\"\n  ADD CONSTRAINT \"school_classes_id_school_tenant_key\"\n  UNIQUE USING INDEX \"school_classes_id_school_unique\";--> statement-breakpoint\nCREATE UNIQUE INDEX \"school_classes_id_school_unique\"\n  ON \"school_classes\" (\"id\",\"school_id\");--> statement-breakpoint",
+          "association": {
+            "file": "0007_restore_tenant_foreign_keys.sql",
+            "journal": {
+              "idx": 7,
+              "tag": "0007_restore_tenant_foreign_keys",
+              "when": 1790165200000
+            },
+            "capturedLedgerHashMatches": [],
+            "capturedLedgerTimestampMatches": [],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        },
+        {
+          "file": "lib/db/drizzle/0008_align_tenant_fk_dependencies.sql",
+          "statement": 6,
+          "lineStart": 13,
+          "lineEnd": 17,
+          "sql": "--> statement-breakpoint\nALTER TABLE \"school_classes\"\n  ADD CONSTRAINT \"school_classes_id_school_tenant_key\"\n  UNIQUE (\"id\",\"school_id\");",
+          "excerpt": "ALTER TABLE \"school_classes\"\n  DROP CONSTRAINT \"school_classes_id_school_tenant_key\";--> statement-breakpoint\nALTER TABLE \"school_classes\"\n  ADD CONSTRAINT \"school_classes_id_school_tenant_key\"\n  UNIQUE (\"id\",\"school_id\");--> statement-breakpoint",
+          "association": {
+            "file": "0008_align_tenant_fk_dependencies.sql",
+            "journal": {
+              "idx": 8,
+              "tag": "0008_align_tenant_fk_dependencies",
+              "when": 1790166000000
+            },
+            "capturedLedgerHashMatches": [],
+            "capturedLedgerTimestampMatches": [],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        }
+      ],
+      "source": "lib/db/src/schema/edupulse.ts:92–123, especially 99–101 and 118–122; parent 238–241",
+      "notes": "NOT VERIFIED — REASON: all 60 SQL files contain no exact single-column school_class_id → school_classes(id) declaration. Migration 0009 adds the column without REFERENCES and creates platform_devices_class_school_fk(school_class_id,school_id) → school_classes(id,school_id) NOT VALID instead. Both companions are nullable; MATCH SIMPLE can skip the historical composite check when school_id is NULL, whereas the current simple FK still checks a non-NULL class ID. This is not a rename. Current source has both the simple and composite FK; the saved history catalog leaves the composite unvalidated.",
+      "childEvidence": {
+        "file": "lib/db/drizzle/0004_platform_operations.sql",
+        "statement": 8,
+        "lineStart": 29,
+        "lineEnd": 41,
+        "sql": "--> statement-breakpoint\nCREATE TABLE IF NOT EXISTS \"platform_devices\" (\n  \"id\" serial PRIMARY KEY,\n  \"serial_number\" text NOT NULL UNIQUE,\n  \"name\" text NOT NULL,\n  \"device_type\" text NOT NULL,\n  \"school_id\" integer REFERENCES \"schools\"(\"id\"),\n  \"status\" text NOT NULL DEFAULT 'ACTIVE',\n  \"last_seen_at\" timestamp with time zone,\n  \"created_at\" timestamp with time zone NOT NULL DEFAULT now(),\n  \"updated_at\" timestamp with time zone NOT NULL DEFAULT now(),\n  CONSTRAINT \"platform_devices_type_check\" CHECK (\"device_type\" IN ('NFC','BIOMETRIC','HYBRID')),\n  CONSTRAINT \"platform_devices_status_check\" CHECK (\"status\" IN ('ACTIVE','INACTIVE','MAINTENANCE'))\n);",
+        "excerpt": "CREATE TABLE IF NOT EXISTS \"platform_devices\" (\n  \"id\" serial PRIMARY KEY,\n  \"serial_number\" text NOT NULL UNIQUE,\n  \"name\" text NOT NULL,\n  \"device_type\" text NOT NULL,\n  \"school_id\" integer REFERENCES \"schools\"(\"id\"),\n  \"status\" text NOT NULL DEFAULT 'ACTIVE',\n  \"last_seen_at\" timestamp with time zone,\n  \"created_at\" timestamp with time zone NOT NULL DEFAULT now(),\n  \"updated_at\" timestamp with time zone NOT NULL DEFAULT now(),\n  CONSTRAINT \"platform_devices_type_check\" CHECK (\"device_type\" IN ('NFC','BIOMETRIC','HYBRID')),\n  CONSTRAINT \"platform_devices_status_check\" CHECK (\"status\" IN ('ACTIVE','INACTIVE','MAINTENANCE'))\n);--> statement-breakpoint",
+        "association": {
+          "file": "0004_platform_operations.sql",
+          "journal": {
+            "idx": 4,
+            "tag": "0004_platform_operations",
+            "when": 1790161200000
+          },
+          "capturedLedgerHashMatches": [],
+          "capturedLedgerTimestampMatches": [
+            {
+              "id": "5",
+              "hash": "eda974665826aa4d5affc07f24f658122ac81502a7190313f0edcd99d24206ba",
+              "created_at": "1790161200000"
+            }
+          ],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      },
+      "confidence": "LOW",
+      "sourceNameLiteral": false,
+      "migrationNameLiteral": false,
+      "migrationNameHits": [],
+      "migrationSearch": [
+        {
+          "file": "0004_platform_operations.sql",
+          "matchingLines": [
+            {
+              "line": 29,
+              "text": "CREATE TABLE IF NOT EXISTS \"platform_devices\" ("
+            },
+            {
+              "line": 39,
+              "text": "  CONSTRAINT \"platform_devices_type_check\" CHECK (\"device_type\" IN ('NFC','BIOMETRIC','HYBRID')),"
+            },
+            {
+              "line": 40,
+              "text": "  CONSTRAINT \"platform_devices_status_check\" CHECK (\"status\" IN ('ACTIVE','INACTIVE','MAINTENANCE'))"
+            },
+            {
+              "line": 42,
+              "text": "CREATE INDEX IF NOT EXISTS \"platform_devices_school_idx\" ON \"platform_devices\" (\"school_id\",\"status\");--> statement-breakpoint"
+            }
+          ]
+        },
+        {
+          "file": "0009_phase5_attendance.sql",
+          "matchingLines": [
+            {
+              "line": 3,
+              "text": "ALTER TABLE \"platform_devices\" ADD COLUMN IF NOT EXISTS \"location\" text;"
+            },
+            {
+              "line": 4,
+              "text": "ALTER TABLE \"platform_devices\" ADD COLUMN IF NOT EXISTS \"school_class_id\" integer;"
+            },
+            {
+              "line": 5,
+              "text": "ALTER TABLE \"platform_devices\" ADD COLUMN IF NOT EXISTS \"configuration_status\" text NOT NULL DEFAULT 'PENDING';"
+            },
+            {
+              "line": 6,
+              "text": "ALTER TABLE \"platform_devices\" DROP CONSTRAINT IF EXISTS \"platform_devices_status_check\";"
+            },
+            {
+              "line": 7,
+              "text": "ALTER TABLE \"platform_devices\" ADD CONSTRAINT \"platform_devices_status_check\""
+            },
+            {
+              "line": 9,
+              "text": "CREATE UNIQUE INDEX IF NOT EXISTS \"platform_devices_id_school_unique\" ON \"platform_devices\" (\"id\",\"school_id\");"
+            },
+            {
+              "line": 10,
+              "text": "ALTER TABLE \"platform_devices\" ADD CONSTRAINT \"platform_devices_class_school_fk\" FOREIGN KEY (\"school_class_id\",\"school_id\") REFERENCES \"school_classes\"(\"id\",\"school_id\") NOT VALID;"
+            },
+            {
+              "line": 21,
+              "text": "ALTER TABLE \"nfc_cards\" ADD CONSTRAINT \"nfc_cards_last_device_school_fk\" FOREIGN KEY (\"last_device_id\",\"school_id\") REFERENCES \"platform_devices\"(\"id\",\"school_id\");"
+            },
+            {
+              "line": 29,
+              "text": "  \"device_id\" integer NOT NULL REFERENCES \"platform_devices\"(\"id\"),"
+            },
+            {
+              "line": 44,
+              "text": "  \"device_id\" integer NOT NULL REFERENCES \"platform_devices\"(\"id\"),"
+            },
+            {
+              "line": 77,
+              "text": "  \"device_id\" integer REFERENCES \"platform_devices\"(\"id\"),"
+            },
+            {
+              "line": 86,
+              "text": "  CONSTRAINT \"biometric_enrollments_device_school_fk\" FOREIGN KEY (\"device_id\",\"school_id\") REFERENCES \"platform_devices\"(\"id\",\"school_id\"),"
+            },
+            {
+              "line": 114,
+              "text": "  \"device_id\" integer REFERENCES \"platform_devices\"(\"id\"),"
+            },
+            {
+              "line": 134,
+              "text": "  CONSTRAINT \"attendance_events_device_school_fk\" FOREIGN KEY (\"device_id\",\"school_id\") REFERENCES \"platform_devices\"(\"id\",\"school_id\"),"
+            }
+          ]
+        },
+        {
+          "file": "0010_historical_device_school_bindings.sql",
+          "matchingLines": [
+            {
+              "line": 7,
+              "text": "  \"device_id\" integer NOT NULL REFERENCES \"platform_devices\"(\"id\"),"
+            },
+            {
+              "line": 30,
+              "text": "SELECT id, school_id FROM \"platform_devices\" WHERE school_id IS NOT NULL"
+            }
+          ]
+        }
+      ],
+      "currentSourceFK": {
+        "name": "platform_devices_school_class_id_school_classes_id_fk",
+        "type": "f",
+        "table": "platform_devices",
+        "schema": "public",
+        "validated": true,
+        "definition": "FOREIGN KEY (school_class_id) REFERENCES school_classes(id)",
+        "support_index": "school_classes_pkey",
+        "referenced_table": "school_classes"
+      },
+      "historicalExactTupleFK": null,
+      "historicalRelatedFKs": [
+        {
+          "name": "platform_devices_class_school_fk",
+          "type": "f",
+          "table": "platform_devices",
+          "schema": "public",
+          "validated": false,
+          "definition": "FOREIGN KEY (school_class_id, school_id) REFERENCES school_classes(id, school_id) NOT VALID",
+          "support_index": "school_classes_id_school_unique",
+          "referenced_table": "school_classes"
+        }
+      ],
+      "historicalSelectedKey": {
+        "name": "school_classes_pkey",
+        "type": "p",
+        "table": "school_classes",
+        "schema": "public",
+        "validated": true,
+        "definition": "PRIMARY KEY (id)",
+        "support_index": "school_classes_pkey",
+        "referenced_table": "-"
+      },
+      "historicalActualSupportingIndex": null,
+      "currentActualSupportingIndex": "school_classes_pkey",
+      "parentKeyBeforeFK": null,
+      "currentSourceMatch": "Exact standalone FK represented in source, but not created by the 60-file history; related composite is not an exact match.",
+      "historicalOrder": "NOT VERIFIED — REASON: exact FK migration unavailable. Related composite order is safe; its parent keys precede it.",
+      "exportOrder": "Current exporter places parent/table and selected existing key before this FK. It orders objects, unlike chronological migration replay; PK/UNIQUE clauses stay inline.",
+      "fkAssociation": {
+        "reason": "NOT VERIFIED — REASON: no exact-tuple FK migration identified."
+      },
+      "keyAssociations": [
+        {
+          "file": "0000_brainy_moon_knight.sql",
+          "journal": {
+            "idx": 0,
+            "tag": "0000_brainy_moon_knight",
+            "when": 1790124624275
+          },
+          "capturedLedgerHashMatches": [
+            {
+              "id": "1",
+              "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+              "created_at": "1790124624275"
+            }
+          ],
+          "capturedLedgerTimestampMatches": [
+            {
+              "id": "1",
+              "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+              "created_at": "1790124624275"
+            }
+          ],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      ]
+    },
+    {
+      "number": 7,
+      "name": "student_subscription_allocations_student_id_students_id_fk",
+      "child": "public.student_subscription_allocations",
+      "childColumns": [
+        "student_id"
+      ],
+      "parent": "public.students",
+      "parentColumns": [
+        "id"
+      ],
+      "physicalName": "student_subscription_allocations_student_id_students_id_fk",
+      "support": {
+        "name": "students_pkey",
+        "kind": "primary",
+        "columns": [
+          "id"
+        ],
+        "physicalName": "students_pkey",
+        "table": "public.students"
+      },
+      "supportNode": "key:public.students:students_pkey",
+      "foreignKeyNode": "fk:public.student_subscription_allocations:student_subscription_allocations_student_id_students_id_fk",
+      "alternativeSupports": [],
+      "classification": "UNVERIFIED",
+      "historicalName": null,
+      "fk": null,
+      "related": {
+        "file": "lib/db/drizzle/0036_student_subscription_allocations.sql",
+        "statement": 13,
+        "lineStart": 99,
+        "lineEnd": 151,
+        "sql": "CREATE TABLE student_subscription_allocations (\n  id serial PRIMARY KEY,\n  idempotency_key text NOT NULL,\n  entry_type text NOT NULL DEFAULT 'CREDIT',\n  recipient_type text NOT NULL,\n  recipient_id integer,\n  school_id integer NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,\n  student_id integer NOT NULL,\n  payer_user_id integer NOT NULL REFERENCES app_users(id) ON DELETE RESTRICT,\n  academic_session_id integer NOT NULL,\n  academic_term_id integer NOT NULL,\n  subscription_id integer NOT NULL,\n  payment_id integer NOT NULL,\n  attribution_id integer,\n  commission_rule_id integer REFERENCES commission_rules(id) ON DELETE RESTRICT,\n  amount_minor integer NOT NULL,\n  currency text NOT NULL DEFAULT 'NGN',\n  created_at timestamptz NOT NULL DEFAULT now(),\n  CONSTRAINT student_subscription_allocations_payment_owner_term_fk\n    FOREIGN KEY (\n      payment_id, subscription_id, school_id, student_id, academic_session_id, academic_term_id\n    )\n    REFERENCES student_subscription_payments (\n      id, subscription_id, school_id, student_id, academic_session_id, academic_term_id\n    ) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_student_school_fk\n    FOREIGN KEY (student_id, school_id) REFERENCES students(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_session_school_fk\n    FOREIGN KEY (academic_session_id, school_id)\n    REFERENCES academic_sessions(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_term_school_fk\n    FOREIGN KEY (academic_term_id, school_id)\n    REFERENCES academic_terms(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_attribution_partner_fk\n    FOREIGN KEY (attribution_id, recipient_id)\n    REFERENCES school_partner_attributions(id, partner_profile_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_recipient_ck\n    CHECK (recipient_type IN ('SCHOOL','PLATFORM','PARTNER','PLATFORM_PROVIDER_FEE')),\n  CONSTRAINT student_subscription_allocations_entry_ck CHECK (entry_type IN ('CREDIT','REVERSAL','EXPENSE')),\n  CONSTRAINT student_subscription_allocations_amount_ck CHECK (\n    amount_minor > 0 AND currency = 'NGN'\n    AND ((entry_type = 'CREDIT' AND recipient_type IN ('SCHOOL','PLATFORM','PARTNER'))\n      OR (entry_type = 'REVERSAL' AND recipient_type IN ('SCHOOL','PLATFORM','PARTNER'))\n      OR (entry_type = 'EXPENSE' AND recipient_type = 'PLATFORM_PROVIDER_FEE'))\n  ),\n  CONSTRAINT student_subscription_allocations_partner_ck CHECK (\n    (recipient_type = 'PARTNER' AND recipient_id IS NOT NULL\n      AND attribution_id IS NOT NULL AND commission_rule_id IS NOT NULL)\n    OR (recipient_type <> 'PARTNER' AND recipient_id IS NULL)\n  ),\n  CONSTRAINT student_subscription_allocations_id_payment_entry_recipient_uq\n    UNIQUE (id, payment_id, entry_type, recipient_type)\n);",
+        "excerpt": "CREATE TABLE student_subscription_allocations (\n  id serial PRIMARY KEY,\n  idempotency_key text NOT NULL,\n  entry_type text NOT NULL DEFAULT 'CREDIT',\n  recipient_type text NOT NULL,\n  recipient_id integer,\n  school_id integer NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,\n  student_id integer NOT NULL,\n  payer_user_id integer NOT NULL REFERENCES app_users(id) ON DELETE RESTRICT,\n  academic_session_id integer NOT NULL,\n  academic_term_id integer NOT NULL,\n  subscription_id integer NOT NULL,\n  payment_id integer NOT NULL,\n  attribution_id integer,\n  commission_rule_id integer REFERENCES commission_rules(id) ON DELETE RESTRICT,\n  amount_minor integer NOT NULL,\n  currency text NOT NULL DEFAULT 'NGN',\n  created_at timestamptz NOT NULL DEFAULT now(),\n  CONSTRAINT student_subscription_allocations_payment_owner_term_fk\n    FOREIGN KEY (\n      payment_id, subscription_id, school_id, student_id, academic_session_id, academic_term_id\n    )\n    REFERENCES student_subscription_payments (\n      id, subscription_id, school_id, student_id, academic_session_id, academic_term_id\n    ) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_student_school_fk\n    FOREIGN KEY (student_id, school_id) REFERENCES students(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_session_school_fk\n    FOREIGN KEY (academic_session_id, school_id)\n    REFERENCES academic_sessions(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_term_school_fk\n    FOREIGN KEY (academic_term_id, school_id)\n    REFERENCES academic_terms(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_attribution_partner_fk\n    FOREIGN KEY (attribution_id, recipient_id)\n    REFERENCES school_partner_attributions(id, partner_profile_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_recipient_ck\n    CHECK (recipient_type IN ('SCHOOL','PLATFORM','PARTNER','PLATFORM_PROVIDER_FEE')),\n  CONSTRAINT student_subscription_allocations_entry_ck CHECK (entry_type IN ('CREDIT','REVERSAL','EXPENSE')),\n  CONSTRAINT student_subscription_allocations_amount_ck CHECK (\n    amount_minor > 0 AND currency = 'NGN'\n    AND ((entry_type = 'CREDIT' AND recipient_type IN ('SCHOOL','PLATFORM','PARTNER'))\n      OR (entry_type = 'REVERSAL' AND recipient_type IN ('SCHOOL','PLATFORM','PARTNER'))\n      OR (entry_type = 'EXPENSE' AND recipient_type = 'PLATFORM_PROVIDER_FEE'))\n  ),\n  CONSTRAINT student_subscription_allocations_partner_ck CHECK (\n    (recipient_type = 'PARTNER' AND recipient_id IS NOT NULL\n      AND attribution_id IS NOT NULL AND commission_rule_id IS NOT NULL)\n    OR (recipient_type <> 'PARTNER' AND recipient_id IS NULL)\n  ),\n  CONSTRAINT student_subscription_allocations_id_payment_entry_recipient_uq\n    UNIQUE (id, payment_id, entry_type, recipient_type)\n);",
+        "association": {
+          "file": "0036_student_subscription_allocations.sql",
+          "journal": {
+            "idx": 36,
+            "tag": "0036_student_subscription_allocations",
+            "when": 1790856005000
+          },
+          "capturedLedgerHashMatches": [
+            {
+              "id": "11",
+              "hash": "db161286afabfc50b97642f47ac1c2a7329b9b0faf7f9d5113c47891acd27705",
+              "created_at": "1790856005000"
+            }
+          ],
+          "capturedLedgerTimestampMatches": [
+            {
+              "id": "11",
+              "hash": "db161286afabfc50b97642f47ac1c2a7329b9b0faf7f9d5113c47891acd27705",
+              "created_at": "1790856005000"
+            }
+          ],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      },
+      "key": [
+        {
+          "file": "lib/db/drizzle/0000_brainy_moon_knight.sql",
+          "statement": 9,
+          "lineStart": 91,
+          "lineEnd": 105,
+          "sql": "--> statement-breakpoint\nCREATE TABLE \"students\" (\n\t\"id\" serial PRIMARY KEY NOT NULL,\n\t\"school_id\" integer NOT NULL,\n\t\"user_id\" integer,\n\t\"admission_no\" text NOT NULL,\n\t\"first_name\" text NOT NULL,\n\t\"last_name\" text NOT NULL,\n\t\"gender\" text NOT NULL,\n\t\"class_name\" text NOT NULL,\n\t\"section\" text NOT NULL,\n\t\"parent_name\" text,\n\t\"parent_phone\" text,\n\t\"status\" text DEFAULT 'active' NOT NULL,\n\t\"joined_at\" timestamp with time zone DEFAULT now() NOT NULL\n);",
+          "excerpt": "CREATE TABLE \"students\" (\n\t\"id\" serial PRIMARY KEY NOT NULL,\n\t\"school_id\" integer NOT NULL,\n\t\"user_id\" integer,\n\t\"admission_no\" text NOT NULL,\n\t\"first_name\" text NOT NULL,\n\t\"last_name\" text NOT NULL,\n\t\"gender\" text NOT NULL,\n\t\"class_name\" text NOT NULL,\n\t\"section\" text NOT NULL,\n\t\"parent_name\" text,\n\t\"parent_phone\" text,\n\t\"status\" text DEFAULT 'active' NOT NULL,\n\t\"joined_at\" timestamp with time zone DEFAULT now() NOT NULL\n);",
+          "association": {
+            "file": "0000_brainy_moon_knight.sql",
+            "journal": {
+              "idx": 0,
+              "tag": "0000_brainy_moon_knight",
+              "when": 1790124624275
+            },
+            "capturedLedgerHashMatches": [
+              {
+                "id": "1",
+                "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+                "created_at": "1790124624275"
+              }
+            ],
+            "capturedLedgerTimestampMatches": [
+              {
+                "id": "1",
+                "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+                "created_at": "1790124624275"
+              }
+            ],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        }
+      ],
+      "relatedKey": [
+        {
+          "file": "lib/db/drizzle/0001_phase3_meta.sql",
+          "statement": 37,
+          "lineStart": 134,
+          "lineEnd": 134,
+          "sql": "--> statement-breakpoint\nCREATE UNIQUE INDEX \"students_id_school_unique\" ON \"students\" USING btree (\"id\",\"school_id\");",
+          "excerpt": "CREATE UNIQUE INDEX \"students_id_school_unique\" ON \"students\" USING btree (\"id\",\"school_id\");--> statement-breakpoint",
+          "association": {
+            "file": "0001_phase3_meta.sql",
+            "journal": {
+              "idx": 1,
+              "tag": "0001_phase3_meta",
+              "when": 1790129202026
+            },
+            "capturedLedgerHashMatches": [],
+            "capturedLedgerTimestampMatches": [
+              {
+                "id": "2",
+                "hash": "f198518b395d52dc374249d73780eb28acf1c4f404c1cdb70ec27663049671c9",
+                "created_at": "1790129202026"
+              }
+            ],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        },
+        {
+          "file": "lib/db/drizzle/0005_tenant_reference_keys.sql",
+          "statement": 4,
+          "lineStart": 7,
+          "lineEnd": 8,
+          "sql": "--> statement-breakpoint\nALTER TABLE \"students\"\n  ADD CONSTRAINT \"students_id_school_tenant_key\" UNIQUE(\"id\",\"school_id\");",
+          "excerpt": "ALTER TABLE \"students\"\n  ADD CONSTRAINT \"students_id_school_tenant_key\" UNIQUE(\"id\",\"school_id\");--> statement-breakpoint",
+          "association": {
+            "file": "0005_tenant_reference_keys.sql",
+            "journal": {
+              "idx": 5,
+              "tag": "0005_tenant_reference_keys",
+              "when": 1790164000000
+            },
+            "capturedLedgerHashMatches": [],
+            "capturedLedgerTimestampMatches": [],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        },
+        {
+          "file": "lib/db/drizzle/0007_restore_tenant_foreign_keys.sql",
+          "statement": 5,
+          "lineStart": 14,
+          "lineEnd": 19,
+          "sql": "--> statement-breakpoint\nALTER TABLE \"students\"\n  ADD CONSTRAINT \"students_id_school_tenant_key\"\n  UNIQUE USING INDEX \"students_id_school_unique\";",
+          "excerpt": "  DROP CONSTRAINT \"students_id_school_tenant_key\";--> statement-breakpoint\nALTER TABLE \"students\"\n  ADD CONSTRAINT \"students_id_school_tenant_key\"\n  UNIQUE USING INDEX \"students_id_school_unique\";--> statement-breakpoint\nCREATE UNIQUE INDEX \"students_id_school_unique\"\n  ON \"students\" (\"id\",\"school_id\");--> statement-breakpoint",
+          "association": {
+            "file": "0007_restore_tenant_foreign_keys.sql",
+            "journal": {
+              "idx": 7,
+              "tag": "0007_restore_tenant_foreign_keys",
+              "when": 1790165200000
+            },
+            "capturedLedgerHashMatches": [],
+            "capturedLedgerTimestampMatches": [],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        },
+        {
+          "file": "lib/db/drizzle/0008_align_tenant_fk_dependencies.sql",
+          "statement": 8,
+          "lineStart": 18,
+          "lineEnd": 22,
+          "sql": "--> statement-breakpoint\nALTER TABLE \"students\"\n  ADD CONSTRAINT \"students_id_school_tenant_key\"\n  UNIQUE (\"id\",\"school_id\");",
+          "excerpt": "ALTER TABLE \"students\"\n  DROP CONSTRAINT \"students_id_school_tenant_key\";--> statement-breakpoint\nALTER TABLE \"students\"\n  ADD CONSTRAINT \"students_id_school_tenant_key\"\n  UNIQUE (\"id\",\"school_id\");--> statement-breakpoint",
+          "association": {
+            "file": "0008_align_tenant_fk_dependencies.sql",
+            "journal": {
+              "idx": 8,
+              "tag": "0008_align_tenant_fk_dependencies",
+              "when": 1790166000000
+            },
+            "capturedLedgerHashMatches": [],
+            "capturedLedgerTimestampMatches": [],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        }
+      ],
+      "source": "lib/db/src/schema/student-subscription-billing.ts:134–198, especially 143; parent lib/db/src/schema/edupulse.ts:154–157",
+      "notes": "NOT VERIFIED — REASON: no exact single-column student_id → students(id) FK creation was found. Migration 0036 declares student_id integer NOT NULL without REFERENCES and creates student_subscription_allocations_student_school_fk(student_id,school_id) → students(id,school_id) ON DELETE RESTRICT. Both child columns are NOT NULL, so the composite establishes student existence plus tenant binding, but it is a different constraint/tuple and does not prove creation of the current single-column FK. Current source instead declares the simple FK and has no direct student_school_fk in the captured model. No equivalence of the complete application enforcement graph is assumed.",
+      "childEvidence": {
+        "file": "lib/db/drizzle/0036_student_subscription_allocations.sql",
+        "statement": 13,
+        "lineStart": 99,
+        "lineEnd": 151,
+        "sql": "CREATE TABLE student_subscription_allocations (\n  id serial PRIMARY KEY,\n  idempotency_key text NOT NULL,\n  entry_type text NOT NULL DEFAULT 'CREDIT',\n  recipient_type text NOT NULL,\n  recipient_id integer,\n  school_id integer NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,\n  student_id integer NOT NULL,\n  payer_user_id integer NOT NULL REFERENCES app_users(id) ON DELETE RESTRICT,\n  academic_session_id integer NOT NULL,\n  academic_term_id integer NOT NULL,\n  subscription_id integer NOT NULL,\n  payment_id integer NOT NULL,\n  attribution_id integer,\n  commission_rule_id integer REFERENCES commission_rules(id) ON DELETE RESTRICT,\n  amount_minor integer NOT NULL,\n  currency text NOT NULL DEFAULT 'NGN',\n  created_at timestamptz NOT NULL DEFAULT now(),\n  CONSTRAINT student_subscription_allocations_payment_owner_term_fk\n    FOREIGN KEY (\n      payment_id, subscription_id, school_id, student_id, academic_session_id, academic_term_id\n    )\n    REFERENCES student_subscription_payments (\n      id, subscription_id, school_id, student_id, academic_session_id, academic_term_id\n    ) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_student_school_fk\n    FOREIGN KEY (student_id, school_id) REFERENCES students(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_session_school_fk\n    FOREIGN KEY (academic_session_id, school_id)\n    REFERENCES academic_sessions(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_term_school_fk\n    FOREIGN KEY (academic_term_id, school_id)\n    REFERENCES academic_terms(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_attribution_partner_fk\n    FOREIGN KEY (attribution_id, recipient_id)\n    REFERENCES school_partner_attributions(id, partner_profile_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_recipient_ck\n    CHECK (recipient_type IN ('SCHOOL','PLATFORM','PARTNER','PLATFORM_PROVIDER_FEE')),\n  CONSTRAINT student_subscription_allocations_entry_ck CHECK (entry_type IN ('CREDIT','REVERSAL','EXPENSE')),\n  CONSTRAINT student_subscription_allocations_amount_ck CHECK (\n    amount_minor > 0 AND currency = 'NGN'\n    AND ((entry_type = 'CREDIT' AND recipient_type IN ('SCHOOL','PLATFORM','PARTNER'))\n      OR (entry_type = 'REVERSAL' AND recipient_type IN ('SCHOOL','PLATFORM','PARTNER'))\n      OR (entry_type = 'EXPENSE' AND recipient_type = 'PLATFORM_PROVIDER_FEE'))\n  ),\n  CONSTRAINT student_subscription_allocations_partner_ck CHECK (\n    (recipient_type = 'PARTNER' AND recipient_id IS NOT NULL\n      AND attribution_id IS NOT NULL AND commission_rule_id IS NOT NULL)\n    OR (recipient_type <> 'PARTNER' AND recipient_id IS NULL)\n  ),\n  CONSTRAINT student_subscription_allocations_id_payment_entry_recipient_uq\n    UNIQUE (id, payment_id, entry_type, recipient_type)\n);",
+        "excerpt": "CREATE TABLE student_subscription_allocations (\n  id serial PRIMARY KEY,\n  idempotency_key text NOT NULL,\n  entry_type text NOT NULL DEFAULT 'CREDIT',\n  recipient_type text NOT NULL,\n  recipient_id integer,\n  school_id integer NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,\n  student_id integer NOT NULL,\n  payer_user_id integer NOT NULL REFERENCES app_users(id) ON DELETE RESTRICT,\n  academic_session_id integer NOT NULL,\n  academic_term_id integer NOT NULL,\n  subscription_id integer NOT NULL,\n  payment_id integer NOT NULL,\n  attribution_id integer,\n  commission_rule_id integer REFERENCES commission_rules(id) ON DELETE RESTRICT,\n  amount_minor integer NOT NULL,\n  currency text NOT NULL DEFAULT 'NGN',\n  created_at timestamptz NOT NULL DEFAULT now(),\n  CONSTRAINT student_subscription_allocations_payment_owner_term_fk\n    FOREIGN KEY (\n      payment_id, subscription_id, school_id, student_id, academic_session_id, academic_term_id\n    )\n    REFERENCES student_subscription_payments (\n      id, subscription_id, school_id, student_id, academic_session_id, academic_term_id\n    ) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_student_school_fk\n    FOREIGN KEY (student_id, school_id) REFERENCES students(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_session_school_fk\n    FOREIGN KEY (academic_session_id, school_id)\n    REFERENCES academic_sessions(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_term_school_fk\n    FOREIGN KEY (academic_term_id, school_id)\n    REFERENCES academic_terms(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_attribution_partner_fk\n    FOREIGN KEY (attribution_id, recipient_id)\n    REFERENCES school_partner_attributions(id, partner_profile_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_recipient_ck\n    CHECK (recipient_type IN ('SCHOOL','PLATFORM','PARTNER','PLATFORM_PROVIDER_FEE')),\n  CONSTRAINT student_subscription_allocations_entry_ck CHECK (entry_type IN ('CREDIT','REVERSAL','EXPENSE')),\n  CONSTRAINT student_subscription_allocations_amount_ck CHECK (\n    amount_minor > 0 AND currency = 'NGN'\n    AND ((entry_type = 'CREDIT' AND recipient_type IN ('SCHOOL','PLATFORM','PARTNER'))\n      OR (entry_type = 'REVERSAL' AND recipient_type IN ('SCHOOL','PLATFORM','PARTNER'))\n      OR (entry_type = 'EXPENSE' AND recipient_type = 'PLATFORM_PROVIDER_FEE'))\n  ),\n  CONSTRAINT student_subscription_allocations_partner_ck CHECK (\n    (recipient_type = 'PARTNER' AND recipient_id IS NOT NULL\n      AND attribution_id IS NOT NULL AND commission_rule_id IS NOT NULL)\n    OR (recipient_type <> 'PARTNER' AND recipient_id IS NULL)\n  ),\n  CONSTRAINT student_subscription_allocations_id_payment_entry_recipient_uq\n    UNIQUE (id, payment_id, entry_type, recipient_type)\n);",
+        "association": {
+          "file": "0036_student_subscription_allocations.sql",
+          "journal": {
+            "idx": 36,
+            "tag": "0036_student_subscription_allocations",
+            "when": 1790856005000
+          },
+          "capturedLedgerHashMatches": [
+            {
+              "id": "11",
+              "hash": "db161286afabfc50b97642f47ac1c2a7329b9b0faf7f9d5113c47891acd27705",
+              "created_at": "1790856005000"
+            }
+          ],
+          "capturedLedgerTimestampMatches": [
+            {
+              "id": "11",
+              "hash": "db161286afabfc50b97642f47ac1c2a7329b9b0faf7f9d5113c47891acd27705",
+              "created_at": "1790856005000"
+            }
+          ],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      },
+      "confidence": "LOW",
+      "sourceNameLiteral": false,
+      "migrationNameLiteral": false,
+      "migrationNameHits": [],
+      "migrationSearch": [
+        {
+          "file": "0036_student_subscription_allocations.sql",
+          "matchingLines": [
+            {
+              "line": 99,
+              "text": "CREATE TABLE student_subscription_allocations ("
+            },
+            {
+              "line": 117,
+              "text": "  CONSTRAINT student_subscription_allocations_payment_owner_term_fk"
+            },
+            {
+              "line": 124,
+              "text": "  CONSTRAINT student_subscription_allocations_student_school_fk"
+            },
+            {
+              "line": 126,
+              "text": "  CONSTRAINT student_subscription_allocations_session_school_fk"
+            },
+            {
+              "line": 129,
+              "text": "  CONSTRAINT student_subscription_allocations_term_school_fk"
+            },
+            {
+              "line": 132,
+              "text": "  CONSTRAINT student_subscription_allocations_attribution_partner_fk"
+            },
+            {
+              "line": 135,
+              "text": "  CONSTRAINT student_subscription_allocations_recipient_ck"
+            },
+            {
+              "line": 137,
+              "text": "  CONSTRAINT student_subscription_allocations_entry_ck CHECK (entry_type IN ('CREDIT','REVERSAL','EXPENSE')),"
+            },
+            {
+              "line": 138,
+              "text": "  CONSTRAINT student_subscription_allocations_amount_ck CHECK ("
+            },
+            {
+              "line": 144,
+              "text": "  CONSTRAINT student_subscription_allocations_partner_ck CHECK ("
+            },
+            {
+              "line": 149,
+              "text": "  CONSTRAINT student_subscription_allocations_id_payment_entry_recipient_uq"
+            },
+            {
+              "line": 153,
+              "text": "CREATE UNIQUE INDEX student_subscription_allocations_idempotency_uq"
+            },
+            {
+              "line": 154,
+              "text": "  ON student_subscription_allocations (idempotency_key);"
+            },
+            {
+              "line": 155,
+              "text": "CREATE UNIQUE INDEX student_subscription_allocations_payment_credit_recipient_uq"
+            },
+            {
+              "line": 156,
+              "text": "  ON student_subscription_allocations (payment_id, recipient_type)"
+            },
+            {
+              "line": 158,
+              "text": "CREATE UNIQUE INDEX student_subscription_allocations_payment_fee_expense_uq"
+            },
+            {
+              "line": 159,
+              "text": "  ON student_subscription_allocations (payment_id)"
+            },
+            {
+              "line": 161,
+              "text": "CREATE INDEX student_subscription_allocations_school_term_idx"
+            },
+            {
+              "line": 162,
+              "text": "  ON student_subscription_allocations (school_id, academic_session_id, academic_term_id, created_at DESC);"
+            },
+            {
+              "line": 163,
+              "text": "CREATE INDEX student_subscription_allocations_partner_idx"
+            },
+            {
+              "line": 164,
+              "text": "  ON student_subscription_allocations (recipient_id, created_at DESC)"
+            },
+            {
+              "line": 167,
+              "text": "CREATE FUNCTION protect_student_subscription_allocations() RETURNS trigger"
+            },
+            {
+              "line": 173,
+              "text": "CREATE TRIGGER student_subscription_allocations_immutable"
+            },
+            {
+              "line": 174,
+              "text": "  BEFORE UPDATE OR DELETE ON student_subscription_allocations"
+            },
+            {
+              "line": 175,
+              "text": "  FOR EACH ROW EXECUTE FUNCTION protect_student_subscription_allocations();"
+            }
+          ]
+        }
+      ],
+      "currentSourceFK": {
+        "name": "student_subscription_allocations_student_id_students_id_fk",
+        "type": "f",
+        "table": "student_subscription_allocations",
+        "schema": "public",
+        "validated": true,
+        "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT",
+        "support_index": "students_pkey",
+        "referenced_table": "students"
+      },
+      "historicalExactTupleFK": null,
+      "historicalRelatedFKs": [
+        {
+          "name": "student_subscription_allocations_student_school_fk",
+          "type": "f",
+          "table": "student_subscription_allocations",
+          "schema": "public",
+          "validated": true,
+          "definition": "FOREIGN KEY (student_id, school_id) REFERENCES students(id, school_id) ON DELETE RESTRICT",
+          "support_index": "students_id_school_unique",
+          "referenced_table": "students"
+        }
+      ],
+      "historicalSelectedKey": {
+        "name": "students_pkey",
+        "type": "p",
+        "table": "students",
+        "schema": "public",
+        "validated": true,
+        "definition": "PRIMARY KEY (id)",
+        "support_index": "students_pkey",
+        "referenced_table": "-"
+      },
+      "historicalActualSupportingIndex": null,
+      "currentActualSupportingIndex": "students_pkey",
+      "parentKeyBeforeFK": null,
+      "currentSourceMatch": "Exact standalone FK represented in source, but not created by the 60-file history; related composite is not an exact match.",
+      "historicalOrder": "NOT VERIFIED — REASON: exact FK migration unavailable. Related composite order is safe; its parent keys precede it.",
+      "exportOrder": "Current exporter places parent/table and selected existing key before this FK. It orders objects, unlike chronological migration replay; PK/UNIQUE clauses stay inline.",
+      "fkAssociation": {
+        "reason": "NOT VERIFIED — REASON: no exact-tuple FK migration identified."
+      },
+      "keyAssociations": [
+        {
+          "file": "0000_brainy_moon_knight.sql",
+          "journal": {
+            "idx": 0,
+            "tag": "0000_brainy_moon_knight",
+            "when": 1790124624275
+          },
+          "capturedLedgerHashMatches": [
+            {
+              "id": "1",
+              "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+              "created_at": "1790124624275"
+            }
+          ],
+          "capturedLedgerTimestampMatches": [
+            {
+              "id": "1",
+              "hash": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+              "created_at": "1790124624275"
+            }
+          ],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      ]
+    },
+    {
+      "number": 8,
+      "name": "student_subscription_allocations_attribution_id_school_partner_attributions_id_fk",
+      "child": "public.student_subscription_allocations",
+      "childColumns": [
+        "attribution_id"
+      ],
+      "parent": "public.school_partner_attributions",
+      "parentColumns": [
+        "id"
+      ],
+      "physicalName": "student_subscription_allocations_attribution_id_school_partner_",
+      "support": {
+        "name": "school_partner_attributions_pkey",
+        "kind": "primary",
+        "columns": [
+          "id"
+        ],
+        "physicalName": "school_partner_attributions_pkey",
+        "table": "public.school_partner_attributions"
+      },
+      "supportNode": "key:public.school_partner_attributions:school_partner_attributions_pkey",
+      "foreignKeyNode": "fk:public.student_subscription_allocations:student_subscription_allocations_attribution_id_school_partner_attributions_id_fk",
+      "alternativeSupports": [],
+      "classification": "UNVERIFIED",
+      "historicalName": null,
+      "fk": null,
+      "related": {
+        "file": "lib/db/drizzle/0036_student_subscription_allocations.sql",
+        "statement": 13,
+        "lineStart": 99,
+        "lineEnd": 151,
+        "sql": "CREATE TABLE student_subscription_allocations (\n  id serial PRIMARY KEY,\n  idempotency_key text NOT NULL,\n  entry_type text NOT NULL DEFAULT 'CREDIT',\n  recipient_type text NOT NULL,\n  recipient_id integer,\n  school_id integer NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,\n  student_id integer NOT NULL,\n  payer_user_id integer NOT NULL REFERENCES app_users(id) ON DELETE RESTRICT,\n  academic_session_id integer NOT NULL,\n  academic_term_id integer NOT NULL,\n  subscription_id integer NOT NULL,\n  payment_id integer NOT NULL,\n  attribution_id integer,\n  commission_rule_id integer REFERENCES commission_rules(id) ON DELETE RESTRICT,\n  amount_minor integer NOT NULL,\n  currency text NOT NULL DEFAULT 'NGN',\n  created_at timestamptz NOT NULL DEFAULT now(),\n  CONSTRAINT student_subscription_allocations_payment_owner_term_fk\n    FOREIGN KEY (\n      payment_id, subscription_id, school_id, student_id, academic_session_id, academic_term_id\n    )\n    REFERENCES student_subscription_payments (\n      id, subscription_id, school_id, student_id, academic_session_id, academic_term_id\n    ) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_student_school_fk\n    FOREIGN KEY (student_id, school_id) REFERENCES students(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_session_school_fk\n    FOREIGN KEY (academic_session_id, school_id)\n    REFERENCES academic_sessions(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_term_school_fk\n    FOREIGN KEY (academic_term_id, school_id)\n    REFERENCES academic_terms(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_attribution_partner_fk\n    FOREIGN KEY (attribution_id, recipient_id)\n    REFERENCES school_partner_attributions(id, partner_profile_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_recipient_ck\n    CHECK (recipient_type IN ('SCHOOL','PLATFORM','PARTNER','PLATFORM_PROVIDER_FEE')),\n  CONSTRAINT student_subscription_allocations_entry_ck CHECK (entry_type IN ('CREDIT','REVERSAL','EXPENSE')),\n  CONSTRAINT student_subscription_allocations_amount_ck CHECK (\n    amount_minor > 0 AND currency = 'NGN'\n    AND ((entry_type = 'CREDIT' AND recipient_type IN ('SCHOOL','PLATFORM','PARTNER'))\n      OR (entry_type = 'REVERSAL' AND recipient_type IN ('SCHOOL','PLATFORM','PARTNER'))\n      OR (entry_type = 'EXPENSE' AND recipient_type = 'PLATFORM_PROVIDER_FEE'))\n  ),\n  CONSTRAINT student_subscription_allocations_partner_ck CHECK (\n    (recipient_type = 'PARTNER' AND recipient_id IS NOT NULL\n      AND attribution_id IS NOT NULL AND commission_rule_id IS NOT NULL)\n    OR (recipient_type <> 'PARTNER' AND recipient_id IS NULL)\n  ),\n  CONSTRAINT student_subscription_allocations_id_payment_entry_recipient_uq\n    UNIQUE (id, payment_id, entry_type, recipient_type)\n);",
+        "excerpt": "CREATE TABLE student_subscription_allocations (\n  id serial PRIMARY KEY,\n  idempotency_key text NOT NULL,\n  entry_type text NOT NULL DEFAULT 'CREDIT',\n  recipient_type text NOT NULL,\n  recipient_id integer,\n  school_id integer NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,\n  student_id integer NOT NULL,\n  payer_user_id integer NOT NULL REFERENCES app_users(id) ON DELETE RESTRICT,\n  academic_session_id integer NOT NULL,\n  academic_term_id integer NOT NULL,\n  subscription_id integer NOT NULL,\n  payment_id integer NOT NULL,\n  attribution_id integer,\n  commission_rule_id integer REFERENCES commission_rules(id) ON DELETE RESTRICT,\n  amount_minor integer NOT NULL,\n  currency text NOT NULL DEFAULT 'NGN',\n  created_at timestamptz NOT NULL DEFAULT now(),\n  CONSTRAINT student_subscription_allocations_payment_owner_term_fk\n    FOREIGN KEY (\n      payment_id, subscription_id, school_id, student_id, academic_session_id, academic_term_id\n    )\n    REFERENCES student_subscription_payments (\n      id, subscription_id, school_id, student_id, academic_session_id, academic_term_id\n    ) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_student_school_fk\n    FOREIGN KEY (student_id, school_id) REFERENCES students(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_session_school_fk\n    FOREIGN KEY (academic_session_id, school_id)\n    REFERENCES academic_sessions(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_term_school_fk\n    FOREIGN KEY (academic_term_id, school_id)\n    REFERENCES academic_terms(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_attribution_partner_fk\n    FOREIGN KEY (attribution_id, recipient_id)\n    REFERENCES school_partner_attributions(id, partner_profile_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_recipient_ck\n    CHECK (recipient_type IN ('SCHOOL','PLATFORM','PARTNER','PLATFORM_PROVIDER_FEE')),\n  CONSTRAINT student_subscription_allocations_entry_ck CHECK (entry_type IN ('CREDIT','REVERSAL','EXPENSE')),\n  CONSTRAINT student_subscription_allocations_amount_ck CHECK (\n    amount_minor > 0 AND currency = 'NGN'\n    AND ((entry_type = 'CREDIT' AND recipient_type IN ('SCHOOL','PLATFORM','PARTNER'))\n      OR (entry_type = 'REVERSAL' AND recipient_type IN ('SCHOOL','PLATFORM','PARTNER'))\n      OR (entry_type = 'EXPENSE' AND recipient_type = 'PLATFORM_PROVIDER_FEE'))\n  ),\n  CONSTRAINT student_subscription_allocations_partner_ck CHECK (\n    (recipient_type = 'PARTNER' AND recipient_id IS NOT NULL\n      AND attribution_id IS NOT NULL AND commission_rule_id IS NOT NULL)\n    OR (recipient_type <> 'PARTNER' AND recipient_id IS NULL)\n  ),\n  CONSTRAINT student_subscription_allocations_id_payment_entry_recipient_uq\n    UNIQUE (id, payment_id, entry_type, recipient_type)\n);",
+        "association": {
+          "file": "0036_student_subscription_allocations.sql",
+          "journal": {
+            "idx": 36,
+            "tag": "0036_student_subscription_allocations",
+            "when": 1790856005000
+          },
+          "capturedLedgerHashMatches": [
+            {
+              "id": "11",
+              "hash": "db161286afabfc50b97642f47ac1c2a7329b9b0faf7f9d5113c47891acd27705",
+              "created_at": "1790856005000"
+            }
+          ],
+          "capturedLedgerTimestampMatches": [
+            {
+              "id": "11",
+              "hash": "db161286afabfc50b97642f47ac1c2a7329b9b0faf7f9d5113c47891acd27705",
+              "created_at": "1790856005000"
+            }
+          ],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      },
+      "key": [
+        {
+          "file": "lib/db/drizzle/0002_overjoyed_sue_storm.sql",
+          "statement": 10,
+          "lineStart": 159,
+          "lineEnd": 171,
+          "sql": "--> statement-breakpoint\nCREATE TABLE \"school_partner_attributions\" (\n\t\"id\" serial PRIMARY KEY NOT NULL,\n\t\"school_id\" integer NOT NULL,\n\t\"partner_profile_id\" integer NOT NULL,\n\t\"referral_link_id\" integer,\n\t\"source\" text DEFAULT 'REFERRAL_LINK' NOT NULL,\n\t\"status\" text DEFAULT 'ACTIVE' NOT NULL,\n\t\"is_current\" boolean DEFAULT true NOT NULL,\n\t\"starts_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"ends_at\" timestamp with time zone,\n\t\"created_by\" integer,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL\n);",
+          "excerpt": "CREATE TABLE \"school_partner_attributions\" (\n\t\"id\" serial PRIMARY KEY NOT NULL,\n\t\"school_id\" integer NOT NULL,\n\t\"partner_profile_id\" integer NOT NULL,\n\t\"referral_link_id\" integer,\n\t\"source\" text DEFAULT 'REFERRAL_LINK' NOT NULL,\n\t\"status\" text DEFAULT 'ACTIVE' NOT NULL,\n\t\"is_current\" boolean DEFAULT true NOT NULL,\n\t\"starts_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"ends_at\" timestamp with time zone,\n\t\"created_by\" integer,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL\n);",
+          "association": {
+            "file": "0002_overjoyed_sue_storm.sql",
+            "journal": {
+              "idx": 2,
+              "tag": "0002_overjoyed_sue_storm",
+              "when": 1790145697311
+            },
+            "capturedLedgerHashMatches": [
+              {
+                "id": "3",
+                "hash": "8a3a486f871f991ab59ac982ae6be92934a8f6d4b861c8222be43eea5878c736",
+                "created_at": "1790145697311"
+              }
+            ],
+            "capturedLedgerTimestampMatches": [
+              {
+                "id": "3",
+                "hash": "8a3a486f871f991ab59ac982ae6be92934a8f6d4b861c8222be43eea5878c736",
+                "created_at": "1790145697311"
+              }
+            ],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        }
+      ],
+      "relatedKey": [
+        {
+          "file": "lib/db/drizzle/0036_student_subscription_allocations.sql",
+          "statement": 2,
+          "lineStart": 8,
+          "lineEnd": 9,
+          "sql": "CREATE UNIQUE INDEX school_partner_attributions_id_partner_uq\n  ON school_partner_attributions (id, partner_profile_id);",
+          "excerpt": "CREATE UNIQUE INDEX school_partner_attributions_id_partner_uq\n  ON school_partner_attributions (id, partner_profile_id);",
+          "association": {
+            "file": "0036_student_subscription_allocations.sql",
+            "journal": {
+              "idx": 36,
+              "tag": "0036_student_subscription_allocations",
+              "when": 1790856005000
+            },
+            "capturedLedgerHashMatches": [
+              {
+                "id": "11",
+                "hash": "db161286afabfc50b97642f47ac1c2a7329b9b0faf7f9d5113c47891acd27705",
+                "created_at": "1790856005000"
+              }
+            ],
+            "capturedLedgerTimestampMatches": [
+              {
+                "id": "11",
+                "hash": "db161286afabfc50b97642f47ac1c2a7329b9b0faf7f9d5113c47891acd27705",
+                "created_at": "1790856005000"
+              }
+            ],
+            "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+            "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+          }
+        }
+      ],
+      "source": "lib/db/src/schema/student-subscription-billing.ts:134–198, especially 149 and 194–198; parent lib/db/src/schema/edupulse.ts:375–391",
+      "notes": "NOT VERIFIED — REASON: no exact single-column attribution_id → school_partner_attributions(id) FK creation was found. Migration 0036 leaves attribution_id integer without REFERENCES and creates attribution_partner_fk(attribution_id,recipient_id) → (id,partner_profile_id) ON DELETE RESTRICT. Source retains that composite and adds the standalone FK. recipient_id can be NULL for non-PARTNER allocations; MATCH SIMPLE can skip the historical composite while source still checks a non-NULL attribution ID. The source FK logical name is longer than PostgreSQL’s limit; its unchanged physical name is separately preserved.",
+      "childEvidence": {
+        "file": "lib/db/drizzle/0036_student_subscription_allocations.sql",
+        "statement": 13,
+        "lineStart": 99,
+        "lineEnd": 151,
+        "sql": "CREATE TABLE student_subscription_allocations (\n  id serial PRIMARY KEY,\n  idempotency_key text NOT NULL,\n  entry_type text NOT NULL DEFAULT 'CREDIT',\n  recipient_type text NOT NULL,\n  recipient_id integer,\n  school_id integer NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,\n  student_id integer NOT NULL,\n  payer_user_id integer NOT NULL REFERENCES app_users(id) ON DELETE RESTRICT,\n  academic_session_id integer NOT NULL,\n  academic_term_id integer NOT NULL,\n  subscription_id integer NOT NULL,\n  payment_id integer NOT NULL,\n  attribution_id integer,\n  commission_rule_id integer REFERENCES commission_rules(id) ON DELETE RESTRICT,\n  amount_minor integer NOT NULL,\n  currency text NOT NULL DEFAULT 'NGN',\n  created_at timestamptz NOT NULL DEFAULT now(),\n  CONSTRAINT student_subscription_allocations_payment_owner_term_fk\n    FOREIGN KEY (\n      payment_id, subscription_id, school_id, student_id, academic_session_id, academic_term_id\n    )\n    REFERENCES student_subscription_payments (\n      id, subscription_id, school_id, student_id, academic_session_id, academic_term_id\n    ) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_student_school_fk\n    FOREIGN KEY (student_id, school_id) REFERENCES students(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_session_school_fk\n    FOREIGN KEY (academic_session_id, school_id)\n    REFERENCES academic_sessions(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_term_school_fk\n    FOREIGN KEY (academic_term_id, school_id)\n    REFERENCES academic_terms(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_attribution_partner_fk\n    FOREIGN KEY (attribution_id, recipient_id)\n    REFERENCES school_partner_attributions(id, partner_profile_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_recipient_ck\n    CHECK (recipient_type IN ('SCHOOL','PLATFORM','PARTNER','PLATFORM_PROVIDER_FEE')),\n  CONSTRAINT student_subscription_allocations_entry_ck CHECK (entry_type IN ('CREDIT','REVERSAL','EXPENSE')),\n  CONSTRAINT student_subscription_allocations_amount_ck CHECK (\n    amount_minor > 0 AND currency = 'NGN'\n    AND ((entry_type = 'CREDIT' AND recipient_type IN ('SCHOOL','PLATFORM','PARTNER'))\n      OR (entry_type = 'REVERSAL' AND recipient_type IN ('SCHOOL','PLATFORM','PARTNER'))\n      OR (entry_type = 'EXPENSE' AND recipient_type = 'PLATFORM_PROVIDER_FEE'))\n  ),\n  CONSTRAINT student_subscription_allocations_partner_ck CHECK (\n    (recipient_type = 'PARTNER' AND recipient_id IS NOT NULL\n      AND attribution_id IS NOT NULL AND commission_rule_id IS NOT NULL)\n    OR (recipient_type <> 'PARTNER' AND recipient_id IS NULL)\n  ),\n  CONSTRAINT student_subscription_allocations_id_payment_entry_recipient_uq\n    UNIQUE (id, payment_id, entry_type, recipient_type)\n);",
+        "excerpt": "CREATE TABLE student_subscription_allocations (\n  id serial PRIMARY KEY,\n  idempotency_key text NOT NULL,\n  entry_type text NOT NULL DEFAULT 'CREDIT',\n  recipient_type text NOT NULL,\n  recipient_id integer,\n  school_id integer NOT NULL REFERENCES schools(id) ON DELETE RESTRICT,\n  student_id integer NOT NULL,\n  payer_user_id integer NOT NULL REFERENCES app_users(id) ON DELETE RESTRICT,\n  academic_session_id integer NOT NULL,\n  academic_term_id integer NOT NULL,\n  subscription_id integer NOT NULL,\n  payment_id integer NOT NULL,\n  attribution_id integer,\n  commission_rule_id integer REFERENCES commission_rules(id) ON DELETE RESTRICT,\n  amount_minor integer NOT NULL,\n  currency text NOT NULL DEFAULT 'NGN',\n  created_at timestamptz NOT NULL DEFAULT now(),\n  CONSTRAINT student_subscription_allocations_payment_owner_term_fk\n    FOREIGN KEY (\n      payment_id, subscription_id, school_id, student_id, academic_session_id, academic_term_id\n    )\n    REFERENCES student_subscription_payments (\n      id, subscription_id, school_id, student_id, academic_session_id, academic_term_id\n    ) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_student_school_fk\n    FOREIGN KEY (student_id, school_id) REFERENCES students(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_session_school_fk\n    FOREIGN KEY (academic_session_id, school_id)\n    REFERENCES academic_sessions(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_term_school_fk\n    FOREIGN KEY (academic_term_id, school_id)\n    REFERENCES academic_terms(id, school_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_attribution_partner_fk\n    FOREIGN KEY (attribution_id, recipient_id)\n    REFERENCES school_partner_attributions(id, partner_profile_id) ON DELETE RESTRICT,\n  CONSTRAINT student_subscription_allocations_recipient_ck\n    CHECK (recipient_type IN ('SCHOOL','PLATFORM','PARTNER','PLATFORM_PROVIDER_FEE')),\n  CONSTRAINT student_subscription_allocations_entry_ck CHECK (entry_type IN ('CREDIT','REVERSAL','EXPENSE')),\n  CONSTRAINT student_subscription_allocations_amount_ck CHECK (\n    amount_minor > 0 AND currency = 'NGN'\n    AND ((entry_type = 'CREDIT' AND recipient_type IN ('SCHOOL','PLATFORM','PARTNER'))\n      OR (entry_type = 'REVERSAL' AND recipient_type IN ('SCHOOL','PLATFORM','PARTNER'))\n      OR (entry_type = 'EXPENSE' AND recipient_type = 'PLATFORM_PROVIDER_FEE'))\n  ),\n  CONSTRAINT student_subscription_allocations_partner_ck CHECK (\n    (recipient_type = 'PARTNER' AND recipient_id IS NOT NULL\n      AND attribution_id IS NOT NULL AND commission_rule_id IS NOT NULL)\n    OR (recipient_type <> 'PARTNER' AND recipient_id IS NULL)\n  ),\n  CONSTRAINT student_subscription_allocations_id_payment_entry_recipient_uq\n    UNIQUE (id, payment_id, entry_type, recipient_type)\n);",
+        "association": {
+          "file": "0036_student_subscription_allocations.sql",
+          "journal": {
+            "idx": 36,
+            "tag": "0036_student_subscription_allocations",
+            "when": 1790856005000
+          },
+          "capturedLedgerHashMatches": [
+            {
+              "id": "11",
+              "hash": "db161286afabfc50b97642f47ac1c2a7329b9b0faf7f9d5113c47891acd27705",
+              "created_at": "1790856005000"
+            }
+          ],
+          "capturedLedgerTimestampMatches": [
+            {
+              "id": "11",
+              "hash": "db161286afabfc50b97642f47ac1c2a7329b9b0faf7f9d5113c47891acd27705",
+              "created_at": "1790856005000"
+            }
+          ],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      },
+      "confidence": "LOW",
+      "sourceNameLiteral": false,
+      "migrationNameLiteral": false,
+      "migrationNameHits": [],
+      "migrationSearch": [
+        {
+          "file": "0036_student_subscription_allocations.sql",
+          "matchingLines": [
+            {
+              "line": 99,
+              "text": "CREATE TABLE student_subscription_allocations ("
+            },
+            {
+              "line": 117,
+              "text": "  CONSTRAINT student_subscription_allocations_payment_owner_term_fk"
+            },
+            {
+              "line": 124,
+              "text": "  CONSTRAINT student_subscription_allocations_student_school_fk"
+            },
+            {
+              "line": 126,
+              "text": "  CONSTRAINT student_subscription_allocations_session_school_fk"
+            },
+            {
+              "line": 129,
+              "text": "  CONSTRAINT student_subscription_allocations_term_school_fk"
+            },
+            {
+              "line": 132,
+              "text": "  CONSTRAINT student_subscription_allocations_attribution_partner_fk"
+            },
+            {
+              "line": 135,
+              "text": "  CONSTRAINT student_subscription_allocations_recipient_ck"
+            },
+            {
+              "line": 137,
+              "text": "  CONSTRAINT student_subscription_allocations_entry_ck CHECK (entry_type IN ('CREDIT','REVERSAL','EXPENSE')),"
+            },
+            {
+              "line": 138,
+              "text": "  CONSTRAINT student_subscription_allocations_amount_ck CHECK ("
+            },
+            {
+              "line": 144,
+              "text": "  CONSTRAINT student_subscription_allocations_partner_ck CHECK ("
+            },
+            {
+              "line": 149,
+              "text": "  CONSTRAINT student_subscription_allocations_id_payment_entry_recipient_uq"
+            },
+            {
+              "line": 153,
+              "text": "CREATE UNIQUE INDEX student_subscription_allocations_idempotency_uq"
+            },
+            {
+              "line": 154,
+              "text": "  ON student_subscription_allocations (idempotency_key);"
+            },
+            {
+              "line": 155,
+              "text": "CREATE UNIQUE INDEX student_subscription_allocations_payment_credit_recipient_uq"
+            },
+            {
+              "line": 156,
+              "text": "  ON student_subscription_allocations (payment_id, recipient_type)"
+            },
+            {
+              "line": 158,
+              "text": "CREATE UNIQUE INDEX student_subscription_allocations_payment_fee_expense_uq"
+            },
+            {
+              "line": 159,
+              "text": "  ON student_subscription_allocations (payment_id)"
+            },
+            {
+              "line": 161,
+              "text": "CREATE INDEX student_subscription_allocations_school_term_idx"
+            },
+            {
+              "line": 162,
+              "text": "  ON student_subscription_allocations (school_id, academic_session_id, academic_term_id, created_at DESC);"
+            },
+            {
+              "line": 163,
+              "text": "CREATE INDEX student_subscription_allocations_partner_idx"
+            },
+            {
+              "line": 164,
+              "text": "  ON student_subscription_allocations (recipient_id, created_at DESC)"
+            },
+            {
+              "line": 167,
+              "text": "CREATE FUNCTION protect_student_subscription_allocations() RETURNS trigger"
+            },
+            {
+              "line": 173,
+              "text": "CREATE TRIGGER student_subscription_allocations_immutable"
+            },
+            {
+              "line": 174,
+              "text": "  BEFORE UPDATE OR DELETE ON student_subscription_allocations"
+            },
+            {
+              "line": 175,
+              "text": "  FOR EACH ROW EXECUTE FUNCTION protect_student_subscription_allocations();"
+            }
+          ]
+        }
+      ],
+      "currentSourceFK": {
+        "name": "student_subscription_allocations_attribution_id_school_partner_",
+        "type": "f",
+        "table": "student_subscription_allocations",
+        "schema": "public",
+        "validated": true,
+        "definition": "FOREIGN KEY (attribution_id) REFERENCES school_partner_attributions(id) ON DELETE RESTRICT",
+        "support_index": "school_partner_attributions_pkey",
+        "referenced_table": "school_partner_attributions"
+      },
+      "historicalExactTupleFK": null,
+      "historicalRelatedFKs": [
+        {
+          "name": "student_subscription_allocations_attribution_partner_fk",
+          "type": "f",
+          "table": "student_subscription_allocations",
+          "schema": "public",
+          "validated": true,
+          "definition": "FOREIGN KEY (attribution_id, recipient_id) REFERENCES school_partner_attributions(id, partner_profile_id) ON DELETE RESTRICT",
+          "support_index": "school_partner_attributions_id_partner_uq",
+          "referenced_table": "school_partner_attributions"
+        }
+      ],
+      "historicalSelectedKey": {
+        "name": "school_partner_attributions_pkey",
+        "type": "p",
+        "table": "school_partner_attributions",
+        "schema": "public",
+        "validated": true,
+        "definition": "PRIMARY KEY (id)",
+        "support_index": "school_partner_attributions_pkey",
+        "referenced_table": "-"
+      },
+      "historicalActualSupportingIndex": null,
+      "currentActualSupportingIndex": "school_partner_attributions_pkey",
+      "parentKeyBeforeFK": null,
+      "currentSourceMatch": "Exact standalone FK represented in source, but not created by the 60-file history; related composite is not an exact match.",
+      "historicalOrder": "NOT VERIFIED — REASON: exact FK migration unavailable. Related composite order is safe; its parent keys precede it.",
+      "exportOrder": "Current exporter places parent/table and selected existing key before this FK. It orders objects, unlike chronological migration replay; PK/UNIQUE clauses stay inline.",
+      "fkAssociation": {
+        "reason": "NOT VERIFIED — REASON: no exact-tuple FK migration identified."
+      },
+      "keyAssociations": [
+        {
+          "file": "0002_overjoyed_sue_storm.sql",
+          "journal": {
+            "idx": 2,
+            "tag": "0002_overjoyed_sue_storm",
+            "when": 1790145697311
+          },
+          "capturedLedgerHashMatches": [
+            {
+              "id": "3",
+              "hash": "8a3a486f871f991ab59ac982ae6be92934a8f6d4b861c8222be43eea5878c736",
+              "created_at": "1790145697311"
+            }
+          ],
+          "capturedLedgerTimestampMatches": [
+            {
+              "id": "3",
+              "hash": "8a3a486f871f991ab59ac982ae6be92934a8f6d4b861c8222be43eea5878c736",
+              "created_at": "1790145697311"
+            }
+          ],
+          "statementDeployment": "NOT VERIFIED — REASON: historical deployment record unavailable.",
+          "note": "Captured local Development ledger association only; not current state, a Production record, or proof of individual statement execution."
+        }
+      ]
+    }
+  ],
+  "journalCount": 54,
+  "ledgerSnapshot": "reports/educore-stage2-evidence-2026-10-06/development-ledger-after.csv",
+  "ledgerSnapshotRows": 24,
+  "validation": {
+    "freshDatabaseUsed": false,
+    "newReplayPerformed": false,
+    "reusedDisposableEvidence": "Stage 2B independently executed 0000–0059 and current model in isolated PostgreSQL; all 60 migration hashes and all 24 current source hashes still match.",
+    "priorReplayPass": 60,
+    "priorReplayFiles": 60,
+    "modelCatalogSuccess": true,
+    "exactHistoricalTuplesFound": 5,
+    "parentKeysFound": 8,
+    "newDatabaseErrors": [],
+    "productionProvenance": "Production provenance not queried; current Production state was not used as evidence."
+  },
+  "integrity": {
+    "historicalMigrations": 60,
+    "migrationHashesUnchanged": true,
+    "journalUnchanged": true,
+    "schemaSourcesUnchanged": true,
+    "stage2BExporterFilesUnchanged": true,
+    "stage2BAuditInputsUnchanged": true,
+    "capturedLedgerFilesUnchanged": true,
+    "liveLedgerVerification": "NOT VERIFIED — REASON: shared live ledger not queried; no ledger operations performed.",
+    "migration0060Absent": true,
+    "trackedOrProtectedFilesChanged": [],
+    "baselineFiles": 3462
+  }
+}

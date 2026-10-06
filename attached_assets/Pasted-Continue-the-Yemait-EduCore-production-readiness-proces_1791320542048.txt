@@ -1,0 +1,462 @@
+Continue the Yemait EduCore production-readiness process.
+
+STAGE 2B IS COMPLETE.
+
+The Stage 2B dependency-aware exporter successfully validated:
+
+- 173 tables
+- 173 primary keys
+- 148 UNIQUE constraints
+- 678 observed indexes
+- 407 CHECK constraints
+- 659/659 foreign keys
+- 60/60 historical migrations
+- 18/18 exporter regression tests
+
+No Production/shared-database changes were made.
+
+==================================================
+OBJECTIVE
+==================================================
+
+Perform a BOUNDED, READ-ONLY PROVENANCE REVIEW of the eight foreign-key tuples that Stage 2B could not match to explicit static migration declarations.
+
+This is an investigation task only.
+
+It is NOT:
+
+- a migration task
+- a schema repair task
+- a Production reconciliation task
+- a feature-development task
+- a migration-history rewrite task
+
+The objective is to determine whether each of the eight unmatched FK tuples has reliable historical evidence showing:
+
+1. which migration originally created the supporting parent key,
+2. which migration originally created the FK,
+3. whether the current constraint name matches the historical declaration,
+4. whether the current source schema definition is consistent with that history,
+5. whether the tuple can be classified as VERIFIED, DIFFERENT-NAME VERIFIED, HISTORICALLY IMPLIED, or UNVERIFIED.
+
+==================================================
+ABSOLUTE SAFETY RULES
+==================================================
+
+DO NOT:
+
+- modify Production
+- modify any shared database
+- execute INSERT, UPDATE, DELETE, MERGE or ALTER statements
+- execute CREATE, DROP or TRUNCATE against any shared database
+- run db push
+- run drizzle-kit push
+- run drizzle-kit migrate
+- publish database changes
+- approve any Production database preview
+- create migration 0060
+- modify migration 0000–0059
+- rewrite historical migrations
+- rewrite the Drizzle journal
+- rewrite the migration ledger
+- change migration hashes
+- modify schema source files
+- modify application code
+- modify business logic
+- change constraints or indexes
+- create new database objects
+- change Production configuration
+- change Production secrets
+
+DO NOT connect to or query Production/shared databases unless the query is strictly read-only and absolutely necessary.
+
+Prefer local repository files, migration SQL, generated audit artifacts and isolated/disposable PostgreSQL.
+
+If any requested evidence would require modifying a database, STOP and report:
+
+"NOT PERFORMED — WOULD REQUIRE DATABASE MODIFICATION."
+
+==================================================
+1. IDENTIFY THE EXACT EIGHT UNMATCHED FK TUPLES
+==================================================
+
+Start from the Stage 2B provenance output.
+
+Do not guess the eight tuples.
+
+Extract the exact eight unmatched FK relationships.
+
+For each record report:
+
+- FK logical name
+- child table
+- child columns
+- parent table
+- parent columns
+- expected supporting key
+- current supporting key name
+- current FK name
+- whether the name appears in current schema source
+- whether the name appears in migration SQL
+
+Preserve exact identifiers.
+
+==================================================
+2. SEARCH ALL HISTORICAL MIGRATIONS
+==================================================
+
+Search migration files:
+
+0000 through 0059
+
+for each of the eight FK tuples.
+
+Search using multiple forms where appropriate:
+
+- exact FK constraint name
+- child table
+- parent table
+- child column names
+- parent column names
+- referenced unique constraint/index name
+- CREATE TABLE definitions
+- ALTER TABLE ... ADD CONSTRAINT
+- CREATE UNIQUE INDEX
+- UNIQUE (...)
+- REFERENCES (...)
+
+Do not modify any file.
+
+Record the exact migration filename and relevant SQL statement when evidence exists.
+
+Do not assume that absence of an exact constraint name means the relationship was never created.
+
+==================================================
+3. DISTINGUISH NAME CHANGES FROM SEMANTIC CHANGES
+==================================================
+
+For every unmatched FK determine whether:
+
+A. EXACT MATCH
+
+The exact FK name and relationship are present in historical migration SQL.
+
+B. DIFFERENT-NAME BUT VERIFIED
+
+The exact current FK name is absent, but historical SQL clearly creates the same relationship using another constraint name.
+
+C. HISTORICALLY IMPLIED
+
+The historical migrations establish the required parent key and relationship through SQL structure, but the exact FK declaration cannot be conclusively tied to a specific statement.
+
+D. UNVERIFIED
+
+The available migration/source evidence is insufficient to prove how or when the relationship was created.
+
+Do not upgrade a result merely because the current database contains the relationship.
+
+Current schema presence is evidence of current state, not proof of historical provenance.
+
+==================================================
+4. VERIFY SUPPORTING PARENT KEYS
+==================================================
+
+For each of the eight FKs, identify the supporting PRIMARY KEY or UNIQUE constraint/index.
+
+Confirm:
+
+- parent table
+- parent columns
+- key type
+- key name
+- migration that appears to create it
+- whether the key existed before the FK in the historical sequence
+
+Pay special attention to composite keys.
+
+A normal non-unique index does NOT count as FK-supporting evidence.
+
+Do not create or modify any key.
+
+==================================================
+5. CHECK MIGRATION ORDER
+==================================================
+
+For each FK determine:
+
+- migration containing parent table
+- migration containing supporting UNIQUE/PRIMARY KEY
+- migration containing FK
+- whether the historical order is dependency-safe
+- whether the current Stage 2B exporter ordering differs from historical migration ordering
+
+Important:
+
+Do not change the historical order.
+
+We are only documenting it.
+
+If historical migrations themselves are dependency-safe but the static exporter could not match them, state that clearly.
+
+==================================================
+6. CHECK CURRENT SOURCE DEFINITIONS
+==================================================
+
+Read the current schema source only.
+
+Confirm whether each of the eight relationships is currently represented.
+
+Compare:
+
+- current table definition
+- current FK definition
+- current parent key definition
+- migration evidence
+
+Do not modify source files.
+
+If current source and historical migration differ, document the exact difference.
+
+Do not repair the difference during this stage.
+
+==================================================
+7. CHECK THE DRIZZLE JOURNAL AND LEDGER
+==================================================
+
+READ ONLY.
+
+Inspect the Drizzle journal and any locally available migration/deployment ledger information only.
+
+Do not modify either.
+
+Determine whether each of the eight relationships can be associated with:
+
+- a journal entry
+- a migration file
+- a deployment record
+- a statement identifier
+
+If evidence is missing, state:
+
+"NOT VERIFIED — REASON: historical deployment record unavailable."
+
+Do not attempt to reconstruct or repair the ledger.
+
+==================================================
+8. DO NOT TREAT CURRENT PRODUCTION AS PROOF
+==================================================
+
+Do NOT use current Production state as proof of historical migration provenance.
+
+If Production is not queried, state:
+
+"Production provenance not queried; current Production state was not used as evidence."
+
+If a read-only Production query is absolutely necessary, STOP before doing it and report why it is necessary.
+
+No Production query should be performed merely for convenience.
+
+==================================================
+9. PRODUCE A PROVENANCE MATRIX
+==================================================
+
+Create a clear table containing all eight FKs.
+
+Columns:
+
+1. FK name
+2. Child table/columns
+3. Parent table/columns
+4. Supporting key
+5. FK migration evidence
+6. Supporting-key migration evidence
+7. Historical order
+8. Current source match
+9. Classification
+10. Confidence
+11. Evidence file
+12. Evidence statement/line
+13. Notes
+
+Classification must be exactly one of:
+
+- VERIFIED
+- DIFFERENT-NAME VERIFIED
+- HISTORICALLY IMPLIED
+- UNVERIFIED
+
+Confidence must be:
+
+- HIGH
+- MEDIUM
+- LOW
+
+Do not use "verified" unless the evidence actually proves the relationship.
+
+==================================================
+10. VERIFY THE EIGHT RESULTS IN DISPOSABLE POSTGRESQL
+==================================================
+
+If necessary, create a fresh disposable PostgreSQL database.
+
+Use it only for read-only validation of the existing migration history.
+
+Do not modify repository migrations.
+
+Replay:
+
+0000 → 0059
+
+in the disposable database only if needed.
+
+For each of the eight relationships verify:
+
+- the parent supporting key exists
+- the FK exists
+- the referenced columns match
+- the FK semantics match the source/migration evidence
+
+Do not use Development or Production for this validation.
+
+==================================================
+11. REGRESSION SAFETY
+==================================================
+
+Confirm:
+
+- 60 historical migration files remain unchanged.
+- Migration hashes remain unchanged.
+- Drizzle journal remains unchanged.
+- Migration ledger remains unchanged.
+- No schema source files were modified.
+- No migration 0060 exists.
+- Stage 2B exporter files remain unchanged.
+
+If any item cannot be verified, write:
+
+"NOT VERIFIED — REASON: ..."
+
+==================================================
+12. PRODUCTION SAFETY REPORT
+==================================================
+
+Confirm:
+
+- Production database was not modified.
+- Shared databases were not modified.
+- No database push occurred.
+- No migration was executed against Production.
+- No publish occurred.
+- No Production configuration changed.
+- No Production secrets changed.
+
+Do not claim something was verified if the tool cannot actually verify it.
+
+==================================================
+13. REMAINING HISTORICAL ISSUES
+==================================================
+
+Do NOT repair any of these:
+
+- Drizzle journal gaps
+- 24-entry Development ledger
+- checksum 0001
+- checksum 0004
+- Production schema reconciliation
+- Production missing functions/triggers
+- Production backfills
+- Production migration tracking
+- Production recovery
+- runtime DATABASE_URL binding
+
+Only document them if relevant.
+
+==================================================
+14. FINAL REPORT
+==================================================
+
+Return exactly these sections:
+
+### A. Scope
+
+Explain what was investigated and confirm that the work was read-only.
+
+### B. Eight Unmatched Foreign Keys
+
+List all eight exact FK tuples.
+
+### C. Provenance Matrix
+
+Provide the complete table with all requested columns.
+
+### D. Historical Evidence
+
+For each FK explain the migration evidence in concise terms.
+
+### E. Supporting-Key Evidence
+
+For each FK identify the supporting PRIMARY KEY or UNIQUE key and its historical evidence.
+
+### F. Current Source Comparison
+
+State whether current schema source agrees with the historical evidence.
+
+### G. Disposable PostgreSQL Validation
+
+Report:
+
+- whether a disposable database was used
+- migration replay result if performed
+- eight FK validation results
+- any errors
+
+### H. Source Integrity
+
+Report:
+
+- migration SQL unchanged
+- hashes unchanged
+- journal unchanged
+- ledger unchanged
+- schema source unchanged
+- migration 0060 absent
+
+### I. Production Safety
+
+Report:
+
+- Production changes: YES/NO
+- Shared database changes: YES/NO
+- Publish performed: YES/NO
+- Production configuration changes: YES/NO
+- Production secrets changed: YES/NO
+
+If something cannot be verified, explicitly write:
+
+"NOT VERIFIED — REASON: ..."
+
+### J. Remaining Blockers
+
+List only issues that remain after this read-only review.
+
+Do not include issues that this stage has conclusively resolved.
+
+### K. ONE NEXT ACTION
+
+Give exactly ONE recommended next action.
+
+Do not automatically start it.
+
+Do not perform any Production reconciliation.
+
+==================================================
+FINAL REQUIREMENT
+==================================================
+
+This Stage 2C task is complete only when all eight unmatched FK tuples have been individually classified with documented evidence, or explicitly marked UNVERIFIED with a reason.
+
+No historical migration, journal, ledger, schema source, Production database, shared database, configuration or secret may be changed.
+
+End with exactly:
+
+"STAGE 2C COMPLETE — READ-ONLY PROVENANCE REVIEW ONLY; NO PRODUCTION OR SHARED-DATABASE CHANGES WERE MADE."
