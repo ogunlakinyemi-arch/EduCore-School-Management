@@ -28,7 +28,8 @@ const poolMock = vi.hoisted(() => {
       if (sql.includes('SELECT nc.school_id AS "schoolId"')) {
         return { rows: [{ ...state.card, employeeBindingId: state.employeeBindingId }] };
       }
-      if (sql.includes("FROM students WHERE id = $1 AND school_id = $2")) {
+      if (sql.includes("FROM nfc_cards WHERE lower(uid)=lower($1)"))return{rows:String(values[0]).toLowerCase()===state.card.uid.toLowerCase()?[{...state.card}]:[]};
+      if (sql.includes("FROM students WHERE id = $1 AND school_id = $2") || sql.includes("FROM students WHERE id=$1 AND school_id=$2")) {
         const student = state.students.get(Number(values[0]));
         return { rows: student?.schoolId === Number(values[1]) ? [student] : [] };
       }
@@ -38,7 +39,7 @@ const poolMock = vi.hoisted(() => {
       if(sql.includes("SELECT id FROM nfc_cards") && sql.includes("IN ('active','locked')")) {
         return {rows:state.duplicateActiveBinding?[{id:99}]:[]};
       }
-      if (sql.includes("INSERT INTO nfc_cards (school_id, uid, student_id, status, issued_at)")) {
+      if (sql.includes("INSERT INTO nfc_cards")) {
         return {
           rows: [{
             id: 41,

@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Partner NFC Activation — Implementation and Verification</title>
+<style>
+body{margin:0;background:#f5f7fa;color:#172338;font:15px/1.65 system-ui,sans-serif}main{max-width:1100px;margin:auto;padding:40px 24px}h1,h2,h3{line-height:1.25}h1{font-size:32px}h2{margin-top:40px;border-top:1px solid #dbe1ea;padding-top:24px}p,li{max-width:100ch}header{background:#112039;color:white;padding:28px;border-radius:12px}header p{color:#dce5f4}.notice{background:#fff4ce;border-left:4px solid #d9a817;padding:16px}table{width:100%;border-collapse:collapse;background:white;margin:18px 0}td,th{padding:10px 12px;border:1px solid #dbe1ea;vertical-align:top;text-align:left}th{background:#eaf0f8}code,pre{font:12px/1.6 ui-monospace,monospace}pre{background:#eaf0f8;padding:18px;white-space:pre-wrap;overflow-wrap:anywhere}code{overflow-wrap:anywhere}.pass{color:#116344;font-weight:700}.blocked{color:#845700;font-weight:700}a{color:#164c98}@media(max-width:600px){main{padding:20px 12px}header{padding:18px}td,th{padding:7px;font-size:12px}h1{font-size:25px}}
+</style>
+<main>
+<header><h1>Partner NFC Activation Permission</h1><p>Yemait EduCore · Development only · 6 October 2026</p>
+<p>Implementation delivered with explicit verification limits. No Production access or changes, no publishing, no payment credentials or deployment configuration changed.</p></header>
+<p class="notice"><strong>Remaining acceptance limitations:</strong> the 19-step authenticated browser walkthrough is blocked because no approved Development Owner/Partner session or sign-in credentials were available. Physical NFC readers were not exercised. Native SQL and supplied authentication-context tests do not establish a real Clerk sign-in or physical scan.</p>
+<h2>Implementation</h2>
+<ul>
+<li>Added two default-off booleans within existing Partner/profile-staff tables. Referral and existing staff role permissions remain independent.</li>
+<li>Only a Platform Owner can grant or revoke Partner-wide capability. Changes are transactionally audited with the actual actor, Partner, previous value, new value and time.</li>
+<li>The primary Partner can explicitly authorize other active staff only while the Owner grant is enabled. Staff, including Partner administrators, cannot authorize themselves or others through the NFC controls. Existing generic staff-role editing rejects extra fields.</li>
+<li>Every operational endpoint derives Partner identity from the authenticated account, checks active profile/account/staff state and checks authoritative current referral scope. Writes lock authority, referral, school and eligible configured readers before assignment.</li>
+<li>Referred schools without readers remain listed with a clear unavailable reason. Students and existing card inventory are school-scoped, searchable and bounded by pagination. Manipulated authority/device/card IDs and unknown input fields are rejected.</li>
+<li>Partner assignment uses an existing available physical card in the selected school's inventory. It produces a <strong>locked, prepared</strong> card, never an automatic financial or subscription unlock. Lost-card replacement and duplicate/employee/cross-school/terminal-card protections remain enforced.</li>
+<li>Owner registration with a student, Owner prepared assignment, internal officer assignment and Partner assignment share the lifecycle service. The officer retains its existing active-card lifecycle and selected verified reader context; Partner and Owner preparation retain locked status. UID/student locking serializes duplicates; Owner prepared-row locking avoids acquiring the UID advisory lock in reverse order.</li>
+<li>Cards remain Card → Student → School. Partners neither select devices nor persist a per-reader relationship. Existing scan matching and device authorization code were not changed.</li>
+<li>The existing Owner Partner detail page contains state/control/history. Existing Partner desktop/mobile navigation contains NFC Activation only when live access allows it. Access is isolated by signed-in identity and polled every 10 seconds/on focus; the backend blocks revoked authority immediately. Operational content and selections are cleared when access disappears.</li>
+<li>No new roles, payment systems, Partner records, school records or device/card relationship systems were introduced.</li>
+</ul>
+<h2>Database changes and preservation</h2>
+<pre>ALTER TABLE partner_profiles
+  ADD COLUMN nfc_activation_enabled boolean NOT NULL DEFAULT false;
+ALTER TABLE partner_profile_users
+  ADD COLUMN nfc_activation_enabled boolean NOT NULL DEFAULT false;</pre>
+<p>Migration: <code>lib/db/drizzle/0059_partner_nfc_permission.sql</code>, recorded in the source migration journal. It was applied only to the independently identified Development database through the guarded one-off script, not an automatic startup migration. The existing Development migration-ledger drift was not repaired or rewritten.</p>
+<p><strong>Shared Development data:</strong> 13 Partner profiles and 7 staff memberships were checked after implementation; all 20 capability flags are false. No real Partner grant, staff authorization, card assignment or reader mutation was performed to manufacture test evidence.</p>
+<p><strong>Preservation: PASS.</strong> Before the schema change, the guarded script saved original columns, row high-water marks, counts and canonical JSON hashes for 44 tables in <code>.local/partner-nfc-preservation.json</code>. Verification projected those exact original columns/rows and matched all 44 hashes. The only excluded fields are the two newly added columns; no original timestamp or business field was excluded. App-user sign-in metadata and appended security audit records are not part of this 44-table comparison, so this is not a claim that every table in the database is unchanged.</p>
+<p>The ₦5,000 subscription, ₦2,000 school allocation, ₦3,000 platform bucket and existing Partner deduction/commission rules were not changed. Original payment, invoice, allocation, payroll, subscription, referral, card/history, school, student, reader/binding and device-credential records in the baseline were preserved.</p>
+<details><summary>Exact tables compared</summary><pre>commission_ledger
+commission_rules
+device_assignment_history
+device_credentials
+device_school_bindings
+fee_adjustments
+fee_categories
+fee_invoice_lines
+fee_invoice_notification_outbox
+fee_invoice_notifications
+fee_invoices
+fee_payment_line_allocations
+fee_payment_notification_outbox
+fee_payment_notifications
+fee_payments
+fee_provider_checkout_sessions
+fee_provider_webhook_events
+fee_receipts
+fee_refunds
+fee_school_settings
+fee_structure_lines
+fee_structures
+nfc_card_history
+nfc_cards
+partner_attribution_conflicts
+partner_invitations
+partner_payout_information
+partner_payouts
+partner_profile_users
+partner_profiles
+partner_referral_links
+payroll_employee_profiles
+payroll_items
+payroll_payslips
+payroll_periods
+payroll_transfers
+platform_devices
+school_partner_attributions
+schools
+student_subscription_allocations
+student_subscription_payments
+student_subscription_terms
+students
+subscriptions</pre></details>
+<h2>API operations</h2>
+<table><tr><th>Method / path under /api</th><th>Authority and behavior</th></tr>
+<tr><td>GET, PATCH /partners/{partnerId}/nfc-permission</td><td>Owner-only state/history and atomic audited grant/revoke. Body: enabled boolean.</td></tr>
+<tr><td>GET /partner/nfc/access</td><td>Authenticated live Partner/staff state; disabled permission returns disabled state for navigation.</td></tr>
+<tr><td>GET /partner/nfc/schools</td><td>Enabled Partner/staff; only authoritative referred schools, with reader availability reasons.</td></tr>
+<tr><td>GET /partner/nfc/schools/{schoolId}/students</td><td>Active referred NFC-enabled school; active eligible students, excluding current prepared/active or lost-card cases.</td></tr>
+<tr><td>GET /partner/nfc/schools/{schoolId}/cards</td><td>Available existing school inventory; excludes bound, terminal and employee-history cards.</td></tr>
+<tr><td>POST /partner/nfc/schools/{schoolId}/assign</td><td>Transactional live authorization. Only studentId and cardNumber accepted. Existing card prepared as locked.</td></tr>
+<tr><td>PATCH /partner/staff/{userId}/nfc-permission</td><td>Primary Partner authorizes other active staff, capped by Owner grant. Staff self-elevation denied.</td></tr></table>
+<p>Existing <code>GET /partner/staff</code> additionally returns <code>nfcActivationEnabled</code>. Existing generic role PATCH accepts only its documented <code>permission</code> field. Existing <code>POST /cards</code>, <code>PATCH /cards/{cardId}/reassign</code> and <code>POST /activation/schools/{schoolId}/assign</code> retain their existing caller authorization and now use the shared assignment service for the relevant student lifecycle.</p>
+<h2>Verification commands and outcomes</h2>
+<pre>pnpm --filter @workspace/api-spec run codegen
+PASS: generation plus workspace library typecheck.
+
+pnpm --filter @workspace/api-server exec tsx src/scripts/partner-nfc-development.ts baseline
+pnpm --filter @workspace/api-server exec tsx src/scripts/partner-nfc-development.ts apply
+pnpm --filter @workspace/api-server exec tsx src/scripts/partner-nfc-development.ts verify
+PASS: Development identity guard, additive migration, original 44-table comparison.
+
+pnpm --filter @workspace/api-server exec tsx src/scripts/partner-nfc-development.ts schema-snapshot
+EDUCORE_PARTNER_NFC_SCHEMA=/tmp/partner-nfc-schema.sql \
+  pnpm --filter @workspace/api-server exec vitest run \
+  src/routes/partner-nfc.postgres.test.ts \
+  src/routes/device-activation.test.ts \
+  src/routes/card-reassignment.test.ts \
+  src/routes/nfc-device-link-audit.test.ts
+PASS: 69 tests / 4 files: 20 native PostgreSQL, 22 officer, 24 card, 3 device-link audit.
+
+pnpm --filter @workspace/edupulse exec vitest run src/pages/partner/nfc-access.test.ts
+PASS: 10 tests. Pure permission/assignment guards, not rendered component tests.
+
+PORT=3000 BASE_PATH=/ pnpm --filter @workspace/edupulse run build
+PASS: Vite production build, with existing large-chunk warning.
+
+Managed API workflow restart
+PASS: API build and startup; both managed app services running.
+
+pnpm --filter @workspace/api-server run typecheck
+pnpm --filter @workspace/edupulse run typecheck
+NOT CLEAN: unrelated diagnostics listed below; no diagnostics in changed feature files.
+
+git diff --check
+PASS.
+
+Anonymous GET /api/partner/nfc/access
+PASS: HTTP 401, Authentication required.</pre>
+<p>The native suite restores only the Development <em>schema</em> into a temporary PostgreSQL cluster and inserts isolated synthetic fixtures. It tests actual SQL, transaction locks, Owner/Partner routes and migrations. Only authentication-context injection is supplied in that test module; no test headers or authentication bypass were added to the application. Temporary test clusters are stopped and removed. Native tests skip when the explicit schema-snapshot environment variable is absent; the quoted command ran them, not skipped them.</p>
+<p>Earlier broad regression attempts also selected two opt-in tests that skipped without their own environment setup; those skipped files are not included in the final 69 passing-test claim.</p>
+<h3>Unrelated typecheck diagnostics</h3>
+<ul><li><code>artifacts/api-server/src/routes/curriculum-learning.test.ts:182</code>: unknown object.</li>
+<li><code>artifacts/api-server/src/routes/parent-communication-scope.test.ts:28,37</code>: listener callback overload / unknown object.</li>
+<li><code>artifacts/edupulse/src/pages/parent-communication/threads.tsx:30</code>: missing retry property.</li>
+<li><code>artifacts/edupulse/src/pages/school-threads.tsx:16,17</code>: missing queryKey.</li></ul>
+<p>These files were not changed. No claim is made that the full project's typecheck is green. Workflow logs also contain existing stream-listener warnings outside the changed NFC routes; no feature startup error was observed.</p>
+<h2>All 38 acceptance criteria</h2>
+<p><strong>35 PASS within the stated automated/preservation evidence; 3 BLOCKED for end-to-end reader evidence.</strong> PASS means the listed check succeeded, not that authenticated browser or physical hardware acceptance occurred.</p>
+<table><tr><th>#</th><th>Criterion</th><th>Status</th><th>Evidence</th></tr>
+<tr><td>1</td><td>Owner grants permission</td><td class="pass">PASS</td><td>Native routed Owner PATCH and state.</td></tr>
+<tr><td>2</td><td>Partner receives permission</td><td class="pass">PASS</td><td>Native access enabled after grant.</td></tr>
+<tr><td>3</td><td>Owner revokes permission</td><td class="pass">PASS</td><td>Native routed revoke and history.</td></tr>
+<tr><td>4</td><td>Partner loses activation ability</td><td class="pass">PASS</td><td>Access false and assignment 403; frontend guard false.</td></tr>
+<tr><td>5</td><td>Partner cannot self-grant</td><td class="pass">PASS</td><td>Partner, Admin, officer and teacher contexts denied Owner endpoint.</td></tr>
+<tr><td>6</td><td>Referred-school access</td><td class="pass">PASS</td><td>Native authoritative school list and assignment.</td></tr>
+<tr><td>7</td><td>Non-referred school denied</td><td class="pass">PASS</td><td>Native masked 404.</td></tr>
+<tr><td>8</td><td>No permission denies activation</td><td class="pass">PASS</td><td>Native 403; live anonymous request 401.</td></tr>
+<tr><td>9</td><td>Approved scope only</td><td class="pass">PASS</td><td>Native referred assignment / other school denial.</td></tr>
+<tr><td>10</td><td>No-reader school blocked</td><td class="pass">PASS</td><td>Unavailable list reason and 409.</td></tr>
+<tr><td>11</td><td>One reader allows assignment</td><td class="pass">PASS</td><td>Native active configured NFC + authoritative binding.</td></tr>
+<tr><td>12</td><td>Multiple readers allow assignment</td><td class="pass">PASS</td><td>Native assignment audit records activeDeviceCount 2.</td></tr>
+<tr><td>13</td><td>Last-reader removal blocks</td><td class="pass">PASS</td><td>Native deactivation and configuration removal; transactional deactivation waits for locked assignment.</td></tr>
+<tr><td>14</td><td>Reader restoration restores availability</td><td class="pass">PASS</td><td>Native configuration/status restoration permits assignment.</td></tr>
+<tr><td>15</td><td>Assign existing card</td><td class="pass">PASS</td><td>Native available inventory assignment 201.</td></tr>
+<tr><td>16</td><td>Correct student and school</td><td class="pass">PASS</td><td>Actual persisted student_id/school_id/UID.</td></tr>
+<tr><td>17</td><td>Lifecycle rules enforced</td><td class="pass">PASS</td><td>Native terminal/lost/prepared checks; existing card tests include employee protections.</td></tr>
+<tr><td>18</td><td>Duplicate assignment rejected</td><td class="pass">PASS</td><td>Sequential plus concurrent same-student/same-UID tests.</td></tr>
+<tr><td>19</td><td>Cross-school card denied</td><td class="pass">PASS</td><td>Native conflict 409 without exposing unrelated data.</td></tr>
+<tr><td>20</td><td>Manipulated IDs rejected</td><td class="pass">PASS</td><td>Partner/referral/device/card/extra school fields rejected; wrong/inactive student denied.</td></tr>
+<tr><td>21</td><td>Card works on all school readers</td><td class="blocked">BLOCKED</td><td>Native shared scan predicate and same-school reader list pass. No authenticated physical device scan; Partner-prepared locked cards remain ineligible until existing lawful activation.</td></tr>
+<tr><td>22</td><td>Other-school reader declines</td><td class="blocked">BLOCKED</td><td>Native unchanged school-matching predicate rejects other school. Full real reader protocol not exercised.</td></tr>
+<tr><td>23</td><td>New reader needs no reassignment</td><td class="blocked">BLOCKED</td><td>Native second-reader lookup and unchanged persisted card pass. Physical new-reader scan unavailable.</td></tr>
+<tr><td>24</td><td>Authorized staff assignment</td><td class="pass">PASS</td><td>Native primary Partner staff grant and staff assignment.</td></tr>
+<tr><td>25</td><td>Unauthorized staff denied</td><td class="pass">PASS</td><td>Native denied before explicit staff grant.</td></tr>
+<tr><td>26</td><td>Staff self-elevation denied</td><td class="pass">PASS</td><td>Native staff/Admin/other Partner staff cannot grant.</td></tr>
+<tr><td>27</td><td>Grant audited</td><td class="pass">PASS</td><td>Native actual Owner ID, old/new state and history.</td></tr>
+<tr><td>28</td><td>Revocation audited</td><td class="pass">PASS</td><td>Native revoke history and values.</td></tr>
+<tr><td>29</td><td>Actual assignment actor audited</td><td class="pass">PASS</td><td>Native Partner and actual Partner Staff IDs/types; card history, scope and reader context.</td></tr>
+<tr><td>30</td><td>Unauthorized attempts audited</td><td class="pass">PASS</td><td>Existing Security / DENIED framework exercised; delayed writes drained before fixture resets.</td></tr>
+<tr><td>31</td><td>Owner assignment regression</td><td class="pass">PASS</td><td>Native Owner prepared assignment and student registration; 24 card regressions.</td></tr>
+<tr><td>32</td><td>Officer regression</td><td class="pass">PASS</td><td>22 existing routed officer tests; native active-mode persistence with verified caller-provided reader context.</td></tr>
+<tr><td>33</td><td>School Admin restrictions unchanged</td><td class="pass">PASS</td><td>Native Owner-route denial and existing card role tests.</td></tr>
+<tr><td>34</td><td>Reader management Owner-only</td><td class="pass">PASS</td><td>Native Partner/staff management, linking, suspend and credentials requests denied; 3 link-audit regressions.</td></tr>
+<tr><td>35</td><td>Existing relationships intact</td><td class="pass">PASS</td><td>Original card/history/student hashes match; native correct relationship with no per-reader binding.</td></tr>
+<tr><td>36</td><td>Subscription/payment records unchanged</td><td class="pass">PASS</td><td>Original financial-table hashes match. No pricing/provider/settlement changes.</td></tr>
+<tr><td>37</td><td>Referrals unchanged</td><td class="pass">PASS</td><td>Referral/attribution hashes match; native PARTNER_DIRECT provenance retained.</td></tr>
+<tr><td>38</td><td>Existing school/student/card/device preservation</td><td class="pass">PASS</td><td>Original rows/columns match for all 44 protected tables.</td></tr>
+</table>
+<h2>19-step authenticated Development walkthrough</h2>
+<p>The one bounded browser attempt found no approved retained Owner/Partner session and no supplied approved credentials. It did not create users, alter roles, use administrator sign-in tickets for unapproved identities, mutate original cards/readers or access Production. Protected routes redirected to sign-in. No CAPTCHA failure is claimed: authorized identity availability was the primary blocker.</p>
+<p>Independent app capture rendered the full sign-in form at the protected route. The tester also observed “Preparing a secure sign-in…” and a desktop snapshot/screenshot discrepancy. Those observations do not verify protected pages or diagnose an NFC feature defect. Mobile was observed at 390×844. Normal anonymous 401 and Clerk development-key warnings were recorded.</p>
+<table><tr><th>Step</th><th>Requested browser action</th><th>Result</th></tr>
+<tr><td>1</td><td>Owner opens Partner management</td><td class="blocked">BLOCKED — redirected to sign-in</td></tr>
+<tr><td>2</td><td>Owner grants Partner A permission</td><td class="blocked">BLOCKED</td></tr>
+<tr><td>3</td><td>Partner A signs in</td><td class="blocked">BLOCKED — no approved account access</td></tr>
+<tr><td>4</td><td>NFC Activation navigation visible</td><td class="blocked">BLOCKED</td></tr>
+<tr><td>5</td><td>Only referred schools visible</td><td class="blocked">BLOCKED</td></tr>
+<tr><td>6</td><td>No-reader referred school cannot activate</td><td class="blocked">BLOCKED</td></tr>
+<tr><td>7</td><td>Owner links a reader</td><td class="blocked">BLOCKED</td></tr>
+<tr><td>8</td><td>Partner refreshes</td><td class="blocked">BLOCKED</td></tr>
+<tr><td>9</td><td>School becomes eligible</td><td class="blocked">BLOCKED</td></tr>
+<tr><td>10</td><td>Partner selects school</td><td class="blocked">BLOCKED</td></tr>
+<tr><td>11</td><td>Partner selects student</td><td class="blocked">BLOCKED</td></tr>
+<tr><td>12</td><td>Partner assigns card</td><td class="blocked">BLOCKED</td></tr>
+<tr><td>13</td><td>Assignment confirmation succeeds</td><td class="blocked">BLOCKED</td></tr>
+<tr><td>14</td><td>Existing device/card authorization correct</td><td class="blocked">BLOCKED — physical end-to-end evidence unavailable</td></tr>
+<tr><td>15</td><td>Second school reader uses same valid card</td><td class="blocked">BLOCKED — physical end-to-end evidence unavailable</td></tr>
+<tr><td>16</td><td>Unrelated school access denied</td><td class="blocked">BLOCKED</td></tr>
+<tr><td>17</td><td>Owner revokes permission</td><td class="blocked">BLOCKED</td></tr>
+<tr><td>18</td><td>Partner cannot perform new activation</td><td class="blocked">BLOCKED</td></tr>
+<tr><td>19</td><td>Existing assignment remains intact</td><td class="blocked">BLOCKED</td></tr>
+</table>
+<h2>Exact files changed or added</h2>
+<h3>API and UI implementation</h3>
+<pre>artifacts/api-server/src/routes/partner-nfc.ts (new)
+artifacts/api-server/src/services/partner-nfc-access.ts (new)
+artifacts/api-server/src/services/student-card-assignment.ts (new)
+artifacts/api-server/src/scripts/partner-nfc-development.ts (new)
+artifacts/api-server/src/routes/index.ts
+artifacts/api-server/src/routes/partners.ts
+artifacts/api-server/src/routes/device-activation.ts
+artifacts/api-server/src/routes/edupulse.ts
+artifacts/edupulse/src/pages/partner/nfc-access.ts (new)
+artifacts/edupulse/src/pages/partner/nfc-activation.tsx (new)
+artifacts/edupulse/src/pages/partner/nfc-owner-control.tsx (new)
+artifacts/edupulse/src/pages/partner/portal.tsx
+artifacts/edupulse/src/pages/partner/management.tsx
+artifacts/edupulse/src/pages/partner/partner-staff.tsx</pre>
+<h3>Schema, contracts and tests</h3>
+<pre>lib/db/src/schema/edupulse.ts
+lib/db/drizzle/0059_partner_nfc_permission.sql (new)
+lib/db/drizzle/meta/_journal.json
+lib/api-spec/partner-nfc.yaml (new)
+lib/api-spec/openapi.yaml
+lib/api-spec/orval.config.ts
+artifacts/api-server/src/routes/partner-nfc.postgres.test.ts (new)
+artifacts/api-server/src/routes/device-activation.test.ts
+artifacts/api-server/src/routes/card-reassignment.test.ts
+artifacts/edupulse/src/pages/partner/nfc-access.test.ts (new)</pre>
+<h3>Regenerated files</h3>
+<pre>lib/api-client-react/src/generated/api.ts
+lib/api-client-react/src/generated/api.schemas.ts
+lib/api-zod/src/generated/api.ts
+lib/api-zod/src/generated/types/index.ts
+lib/api-zod/src/generated/types/partnerStaffMember.ts
+lib/api-zod/src/generated/types/partnerStaffMember4b96100.ts
+lib/api-zod/src/generated/types/getMyPartnerNfcCardsParams.ts (new)
+lib/api-zod/src/generated/types/getMyPartnerNfcStudentsParams.ts (new)
+lib/api-zod/src/generated/types/nfcPermissionInput.ts (new)
+lib/api-zod/src/generated/types/partnerNfcAccess.ts (new)
+lib/api-zod/src/generated/types/partnerNfcAssignment.ts (new)
+lib/api-zod/src/generated/types/partnerNfcAssignmentInput.ts (new)
+lib/api-zod/src/generated/types/partnerNfcCard.ts (new)
+lib/api-zod/src/generated/types/partnerNfcPermissionHistory.ts (new)
+lib/api-zod/src/generated/types/partnerNfcPermissionState.ts (new)
+lib/api-zod/src/generated/types/partnerNfcSchool.ts (new)
+lib/api-zod/src/generated/types/partnerNfcStudent.ts (new)
+lib/api-zod/src/generated/types/partnerStaffNfcState.ts (new)</pre>
+<h3>Preservation, project memory and report</h3>
+<pre>.local/partner-nfc-preservation.json (new, local verification baseline)
+.agents/memory/MEMORY.md
+.agents/memory/partner-nfc-activation-policy.md (policy recorded during prior planning)
+.agents/memory/asynchronous-denial-audit-evidence.md (new durable testing lesson)
+reports/partner-nfc-activation-verification.html (this report)</pre>
+<h2>Outstanding work</h2>
+<ol><li>Use explicitly approved existing Development Owner/Partner test-account access to perform the 19-step browser journey, with labelled disposable card/student/reader fixtures and reviewed cleanup/preservation guards. Do not impersonate real accounts or manufacture ownership.</li>
+<li>Obtain authenticated reader-protocol/physical same-school and cross-school evidence using an already lawfully activated valid test card. Prepared locked cards must not be unlocked just to force a scan result.</li>
+<li>Restore the unrelated curriculum/messaging typechecks in a separate scoped change.</li></ol>
+<p><strong>No claim of full acceptance:</strong> protected UI rendering, normal Clerk Owner/Partner sign-in and physical reader use remain unverified. The separate internal-officer guided-activation task was not implemented or replaced.</p>
+</main></html>

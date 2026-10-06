@@ -44,6 +44,8 @@ import { CommunicationInbox, CommunicationInboxBadge } from '@/pages/communicati
 import { NotificationSettings } from '@/pages/notification-settings';
 import { ReportingPage } from '@/pages/reporting';
 import PartnerStaff from '@/pages/partner/partner-staff';
+import PartnerNfcActivation from '@/pages/partner/nfc-activation';
+import { usePartnerNfcAccess } from '@/pages/partner/nfc-access';
 import { AddSchoolPage, AddSchoolButton, MySchoolsTable, canManagePartnerSchools } from '@/pages/partner/partner-schools';
 
 function Loading() {
@@ -63,6 +65,7 @@ function PortalHeader() {
   const [location] = useLocation();
   const profile = useGetPartnerProfile();
   const isSetup = !!profile.data;
+  const { allowed: nfcAllowed } = usePartnerNfcAccess();
   const isOwner = (profile.data as any)?.isOwner ||
     ['PARTNER_OWNER', 'PARTNER_ADMIN'].includes((profile.data as any)?.partnerRole);
   const canViewFinance = isOwner || (profile.data as any)?.partnerRole === 'PARTNER_FINANCE';
@@ -85,6 +88,7 @@ function PortalHeader() {
               {canViewFinance && <Link href="/partner/commissions" className={cx("hover:text-[hsl(var(--foreground))]", location.startsWith('/partner/commissions') && "text-[hsl(var(--primary))]")}>Commissions</Link>}
               {canViewFinance && <Link href="/partner/payouts" className={cx("hover:text-[hsl(var(--foreground))]", location.startsWith('/partner/payouts') && "text-[hsl(var(--primary))]")}>Payouts</Link>}
               <Link href="/partner/staff-nfc" title="Staff NFC Commissions" className={cx("hover:text-[hsl(var(--foreground))]", location === '/partner/staff-nfc' && "text-[hsl(var(--primary))]")} data-testid="link-partner-staff-nfc">Staff NFC</Link>
+              {nfcAllowed && <Link href="/partner/nfc-activation" className={cx("hover:text-[hsl(var(--foreground))]", location === '/partner/nfc-activation' && "text-[hsl(var(--primary))]")} data-testid="link-partner-nfc-activation">NFC Activation</Link>}
               <Link href="/reporting" className={cx("hover:text-[hsl(var(--foreground))]", location === '/reporting' && "text-[hsl(var(--primary))]")} data-testid="link-partner-reporting">Reports</Link>
               {isOwner && <Link href="/partner/profile" className={cx("hover:text-[hsl(var(--foreground))]", location === '/partner/profile' && "text-[hsl(var(--primary))]")}>Settings</Link>}
             </nav>
@@ -102,6 +106,7 @@ function PortalHeader() {
         {canViewFinance && <Link href="/partner/commissions" data-testid="link-partner-commissions-mobile" className="hover:underline">Commissions</Link>}
         {canViewFinance && <Link href="/partner/payouts" data-testid="link-partner-payouts-mobile" className="hover:underline">Payouts</Link>}
         <Link href="/partner/staff-nfc" data-testid="link-partner-staff-nfc-mobile" className="whitespace-nowrap hover:underline">Staff NFC Commissions</Link>
+        {nfcAllowed && <Link href="/partner/nfc-activation" data-testid="link-partner-nfc-activation-mobile" className="whitespace-nowrap hover:underline">NFC Activation</Link>}
         {isOwner && <Link href="/partner/profile" data-testid="link-partner-settings-mobile" className="hover:underline">Settings</Link>}
         <Link href="/notification-settings" data-testid="link-partner-preferences-mobile" className="hover:underline">Preferences</Link>
       </nav>}
@@ -517,6 +522,7 @@ export default function PartnerPortal() {
         <Route path="/partner" component={Dashboard} />
         <Route path="/partner/schools" component={MySchools} />
         <Route path="/partner/staff" component={PartnerStaff} />
+        <Route path="/partner/nfc-activation" component={PartnerNfcActivation} />
         <Route path="/partner/commissions" component={MyCommissions} />
         <Route path="/partner/payouts" component={MyPayouts} />
         <Route path="/partner/profile" component={PartnerSettings} />

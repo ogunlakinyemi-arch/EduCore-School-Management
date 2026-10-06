@@ -322,6 +322,8 @@ import type {
   GetLibraryPermissions200,
   GetLibraryPermissionsParams,
   GetMyAcademicTimetableParams,
+  GetMyPartnerNfcCardsParams,
+  GetMyPartnerNfcStudentsParams,
   GetMyStaffNfcPartnerCommissionsParams,
   GetMyStaffNfcSubscriptionsParams,
   GetOfficialCardPreview200,
@@ -484,6 +486,7 @@ import type {
   MedicalVisitInput,
   MedicalVisitPatch,
   NfcCard,
+  NfcPermissionInput,
   NotFoundResponse,
   OwnPayrollPayslip,
   OwnerSchoolDirectory,
@@ -524,6 +527,13 @@ import type {
   PartnerInvitationListItem,
   PartnerInvitationReconciliation,
   PartnerInvitationSelection,
+  PartnerNfcAccess,
+  PartnerNfcAssignment,
+  PartnerNfcAssignmentInput,
+  PartnerNfcCard,
+  PartnerNfcPermissionState,
+  PartnerNfcSchool,
+  PartnerNfcStudent,
   PartnerOnboardingResult,
   PartnerPayout,
   PartnerPayoutInformationInput,
@@ -543,6 +553,7 @@ import type {
   PartnerStaffInvitationRecoveryInput,
   PartnerStaffInvitationRevocation,
   PartnerStaffMember,
+  PartnerStaffNfcState,
   PartnerStaffPermissionResult,
   PartnerStaffPermissionUpdate,
   PartnerStatusUpdate,
@@ -822,6 +833,634 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetPartnerNfcPermissionUrl = (partnerId: number,) => {
+
+
+
+
+  return `/api/partners/${partnerId}/nfc-permission`
+}
+
+export const getPartnerNfcPermission = async (partnerId: number, options?: Parameters<typeof customFetch>[1]): Promise<PartnerNfcPermissionState> => {
+
+  return customFetch<PartnerNfcPermissionState>(getGetPartnerNfcPermissionUrl(partnerId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPartnerNfcPermissionQueryKey = (partnerId: number,) => {
+    return [
+    `/api/partners/${partnerId}/nfc-permission`
+    ] as const;
+    }
+
+
+export const getGetPartnerNfcPermissionQueryOptions = <TData = Awaited<ReturnType<typeof getPartnerNfcPermission>>, TError = ErrorType<void>>(partnerId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPartnerNfcPermission>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPartnerNfcPermissionQueryKey(partnerId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPartnerNfcPermission>>> = ({ signal }) => getPartnerNfcPermission(partnerId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: partnerId !== null && partnerId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPartnerNfcPermission>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPartnerNfcPermissionQueryResult = NonNullable<Awaited<ReturnType<typeof getPartnerNfcPermission>>>
+export type GetPartnerNfcPermissionQueryError = ErrorType<void>
+
+
+
+export function useGetPartnerNfcPermission<TData = Awaited<ReturnType<typeof getPartnerNfcPermission>>, TError = ErrorType<void>>(
+ partnerId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPartnerNfcPermission>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPartnerNfcPermissionQueryOptions(partnerId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdatePartnerNfcPermissionUrl = (partnerId: number,) => {
+
+
+
+
+  return `/api/partners/${partnerId}/nfc-permission`
+}
+
+export const updatePartnerNfcPermission = async (partnerId: number,
+    nfcPermissionInput: NfcPermissionInput, options?: Parameters<typeof customFetch>[1]): Promise<PartnerNfcPermissionState> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PartnerNfcPermissionState>(getUpdatePartnerNfcPermissionUrl(partnerId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(nfcPermissionInput)
+  }
+);}
+
+
+
+
+
+export const getUpdatePartnerNfcPermissionMutationKey = () => ['updatePartnerNfcPermission'] as const;
+
+export const getUpdatePartnerNfcPermissionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePartnerNfcPermission>>, TError,UpdatePartnerNfcPermissionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePartnerNfcPermission>>, TError,UpdatePartnerNfcPermissionMutationVariables, TContext> => {
+
+const mutationKey = getUpdatePartnerNfcPermissionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePartnerNfcPermission>>, UpdatePartnerNfcPermissionMutationVariables> = (props) => {
+          const {partnerId,data} = props ?? {};
+
+          return  updatePartnerNfcPermission(partnerId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePartnerNfcPermissionMutationResult = NonNullable<Awaited<ReturnType<typeof updatePartnerNfcPermission>>>
+    export type UpdatePartnerNfcPermissionMutationBody = BodyType<NfcPermissionInput>
+    export type UpdatePartnerNfcPermissionMutationError = ErrorType<void>
+    export type UpdatePartnerNfcPermissionMutationVariables = {partnerId: number;data: BodyType<NfcPermissionInput>}
+
+    export const useUpdatePartnerNfcPermission = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePartnerNfcPermission>>, TError,UpdatePartnerNfcPermissionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePartnerNfcPermission>>,
+        TError,
+        UpdatePartnerNfcPermissionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdatePartnerNfcPermissionMutationOptions(options));
+    }
+
+export const getGetMyPartnerNfcAccessUrl = () => {
+
+
+
+
+  return `/api/partner/nfc/access`
+}
+
+export const getMyPartnerNfcAccess = async ( options?: Parameters<typeof customFetch>[1]): Promise<PartnerNfcAccess> => {
+
+  return customFetch<PartnerNfcAccess>(getGetMyPartnerNfcAccessUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyPartnerNfcAccessQueryKey = () => {
+    return [
+    `/api/partner/nfc/access`
+    ] as const;
+    }
+
+
+export const getGetMyPartnerNfcAccessQueryOptions = <TData = Awaited<ReturnType<typeof getMyPartnerNfcAccess>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyPartnerNfcAccess>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyPartnerNfcAccessQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyPartnerNfcAccess>>> = ({ signal }) => getMyPartnerNfcAccess({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyPartnerNfcAccess>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyPartnerNfcAccessQueryResult = NonNullable<Awaited<ReturnType<typeof getMyPartnerNfcAccess>>>
+export type GetMyPartnerNfcAccessQueryError = ErrorType<void>
+
+
+
+export function useGetMyPartnerNfcAccess<TData = Awaited<ReturnType<typeof getMyPartnerNfcAccess>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyPartnerNfcAccess>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyPartnerNfcAccessQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMyPartnerNfcSchoolsUrl = () => {
+
+
+
+
+  return `/api/partner/nfc/schools`
+}
+
+export const getMyPartnerNfcSchools = async ( options?: Parameters<typeof customFetch>[1]): Promise<PartnerNfcSchool[]> => {
+
+  return customFetch<PartnerNfcSchool[]>(getGetMyPartnerNfcSchoolsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyPartnerNfcSchoolsQueryKey = () => {
+    return [
+    `/api/partner/nfc/schools`
+    ] as const;
+    }
+
+
+export const getGetMyPartnerNfcSchoolsQueryOptions = <TData = Awaited<ReturnType<typeof getMyPartnerNfcSchools>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyPartnerNfcSchools>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyPartnerNfcSchoolsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyPartnerNfcSchools>>> = ({ signal }) => getMyPartnerNfcSchools({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyPartnerNfcSchools>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyPartnerNfcSchoolsQueryResult = NonNullable<Awaited<ReturnType<typeof getMyPartnerNfcSchools>>>
+export type GetMyPartnerNfcSchoolsQueryError = ErrorType<void>
+
+
+
+export function useGetMyPartnerNfcSchools<TData = Awaited<ReturnType<typeof getMyPartnerNfcSchools>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyPartnerNfcSchools>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyPartnerNfcSchoolsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMyPartnerNfcStudentsUrl = (schoolId: number,
+    params?: GetMyPartnerNfcStudentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/partner/nfc/schools/${schoolId}/students?${stringifiedParams}` : `/api/partner/nfc/schools/${schoolId}/students`
+}
+
+export const getMyPartnerNfcStudents = async (schoolId: number,
+    params?: GetMyPartnerNfcStudentsParams, options?: Parameters<typeof customFetch>[1]): Promise<PartnerNfcStudent[]> => {
+
+  return customFetch<PartnerNfcStudent[]>(getGetMyPartnerNfcStudentsUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyPartnerNfcStudentsQueryKey = (schoolId: number,
+    params?: GetMyPartnerNfcStudentsParams,) => {
+    return [
+    `/api/partner/nfc/schools/${schoolId}/students`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMyPartnerNfcStudentsQueryOptions = <TData = Awaited<ReturnType<typeof getMyPartnerNfcStudents>>, TError = ErrorType<void>>(schoolId: number,
+    params?: GetMyPartnerNfcStudentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyPartnerNfcStudents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyPartnerNfcStudentsQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyPartnerNfcStudents>>> = ({ signal }) => getMyPartnerNfcStudents(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyPartnerNfcStudents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyPartnerNfcStudentsQueryResult = NonNullable<Awaited<ReturnType<typeof getMyPartnerNfcStudents>>>
+export type GetMyPartnerNfcStudentsQueryError = ErrorType<void>
+
+
+
+export function useGetMyPartnerNfcStudents<TData = Awaited<ReturnType<typeof getMyPartnerNfcStudents>>, TError = ErrorType<void>>(
+ schoolId: number,
+    params?: GetMyPartnerNfcStudentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyPartnerNfcStudents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyPartnerNfcStudentsQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMyPartnerNfcCardsUrl = (schoolId: number,
+    params?: GetMyPartnerNfcCardsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/partner/nfc/schools/${schoolId}/cards?${stringifiedParams}` : `/api/partner/nfc/schools/${schoolId}/cards`
+}
+
+export const getMyPartnerNfcCards = async (schoolId: number,
+    params?: GetMyPartnerNfcCardsParams, options?: Parameters<typeof customFetch>[1]): Promise<PartnerNfcCard[]> => {
+
+  return customFetch<PartnerNfcCard[]>(getGetMyPartnerNfcCardsUrl(schoolId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyPartnerNfcCardsQueryKey = (schoolId: number,
+    params?: GetMyPartnerNfcCardsParams,) => {
+    return [
+    `/api/partner/nfc/schools/${schoolId}/cards`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMyPartnerNfcCardsQueryOptions = <TData = Awaited<ReturnType<typeof getMyPartnerNfcCards>>, TError = ErrorType<void>>(schoolId: number,
+    params?: GetMyPartnerNfcCardsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyPartnerNfcCards>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyPartnerNfcCardsQueryKey(schoolId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyPartnerNfcCards>>> = ({ signal }) => getMyPartnerNfcCards(schoolId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: schoolId !== null && schoolId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyPartnerNfcCards>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyPartnerNfcCardsQueryResult = NonNullable<Awaited<ReturnType<typeof getMyPartnerNfcCards>>>
+export type GetMyPartnerNfcCardsQueryError = ErrorType<void>
+
+
+
+export function useGetMyPartnerNfcCards<TData = Awaited<ReturnType<typeof getMyPartnerNfcCards>>, TError = ErrorType<void>>(
+ schoolId: number,
+    params?: GetMyPartnerNfcCardsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyPartnerNfcCards>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyPartnerNfcCardsQueryOptions(schoolId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAssignMyPartnerNfcCardUrl = (schoolId: number,) => {
+
+
+
+
+  return `/api/partner/nfc/schools/${schoolId}/assign`
+}
+
+export const assignMyPartnerNfcCard = async (schoolId: number,
+    partnerNfcAssignmentInput: PartnerNfcAssignmentInput, options?: Parameters<typeof customFetch>[1]): Promise<PartnerNfcAssignment> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PartnerNfcAssignment>(getAssignMyPartnerNfcCardUrl(schoolId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(partnerNfcAssignmentInput)
+  }
+);}
+
+
+
+
+
+export const getAssignMyPartnerNfcCardMutationKey = () => ['assignMyPartnerNfcCard'] as const;
+
+export const getAssignMyPartnerNfcCardMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignMyPartnerNfcCard>>, TError,AssignMyPartnerNfcCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assignMyPartnerNfcCard>>, TError,AssignMyPartnerNfcCardMutationVariables, TContext> => {
+
+const mutationKey = getAssignMyPartnerNfcCardMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assignMyPartnerNfcCard>>, AssignMyPartnerNfcCardMutationVariables> = (props) => {
+          const {schoolId,data} = props ?? {};
+
+          return  assignMyPartnerNfcCard(schoolId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssignMyPartnerNfcCardMutationResult = NonNullable<Awaited<ReturnType<typeof assignMyPartnerNfcCard>>>
+    export type AssignMyPartnerNfcCardMutationBody = BodyType<PartnerNfcAssignmentInput>
+    export type AssignMyPartnerNfcCardMutationError = ErrorType<void>
+    export type AssignMyPartnerNfcCardMutationVariables = {schoolId: number;data: BodyType<PartnerNfcAssignmentInput>}
+
+    export const useAssignMyPartnerNfcCard = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignMyPartnerNfcCard>>, TError,AssignMyPartnerNfcCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assignMyPartnerNfcCard>>,
+        TError,
+        AssignMyPartnerNfcCardMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAssignMyPartnerNfcCardMutationOptions(options));
+    }
+
+export const getUpdateMyPartnerStaffNfcPermissionUrl = (userId: number,) => {
+
+
+
+
+  return `/api/partner/staff/${userId}/nfc-permission`
+}
+
+export const updateMyPartnerStaffNfcPermission = async (userId: number,
+    nfcPermissionInput: NfcPermissionInput, options?: Parameters<typeof customFetch>[1]): Promise<PartnerStaffNfcState> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PartnerStaffNfcState>(getUpdateMyPartnerStaffNfcPermissionUrl(userId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(nfcPermissionInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateMyPartnerStaffNfcPermissionMutationKey = () => ['updateMyPartnerStaffNfcPermission'] as const;
+
+export const getUpdateMyPartnerStaffNfcPermissionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyPartnerStaffNfcPermission>>, TError,UpdateMyPartnerStaffNfcPermissionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMyPartnerStaffNfcPermission>>, TError,UpdateMyPartnerStaffNfcPermissionMutationVariables, TContext> => {
+
+const mutationKey = getUpdateMyPartnerStaffNfcPermissionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMyPartnerStaffNfcPermission>>, UpdateMyPartnerStaffNfcPermissionMutationVariables> = (props) => {
+          const {userId,data} = props ?? {};
+
+          return  updateMyPartnerStaffNfcPermission(userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMyPartnerStaffNfcPermissionMutationResult = NonNullable<Awaited<ReturnType<typeof updateMyPartnerStaffNfcPermission>>>
+    export type UpdateMyPartnerStaffNfcPermissionMutationBody = BodyType<NfcPermissionInput>
+    export type UpdateMyPartnerStaffNfcPermissionMutationError = ErrorType<void>
+    export type UpdateMyPartnerStaffNfcPermissionMutationVariables = {userId: number;data: BodyType<NfcPermissionInput>}
+
+    export const useUpdateMyPartnerStaffNfcPermission = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyPartnerStaffNfcPermission>>, TError,UpdateMyPartnerStaffNfcPermissionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMyPartnerStaffNfcPermission>>,
+        TError,
+        UpdateMyPartnerStaffNfcPermissionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateMyPartnerStaffNfcPermissionMutationOptions(options));
+    }
 
 export const getGetStudentNfcObligationsUrl = (params?: GetStudentNfcObligationsParams,) => {
   const normalizedParams = new URLSearchParams();

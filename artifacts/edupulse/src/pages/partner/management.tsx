@@ -38,6 +38,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import NotFound from '@/pages/not-found';
+import { PartnerNfcOwnerControl } from '@/pages/partner/nfc-owner-control';
 
 const inviteSchema = z.object({
   email: z.string().email(),
@@ -504,7 +505,9 @@ function PartnerDetail({ id }: { id: number }) {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <PartnerNfcOwnerControl partnerId={id} />
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <PartnerSchoolsList partnerId={id} />
         <PartnerCommissionsList partnerId={id} />
       </div>

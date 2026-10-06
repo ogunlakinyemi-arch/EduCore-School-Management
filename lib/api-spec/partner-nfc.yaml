@@ -1,0 +1,221 @@
+paths:
+  /partners/{partnerId}/nfc-permission:
+    get:
+      operationId: getPartnerNfcPermission
+      tags: [platform-partners]
+      parameters:
+        - {name: partnerId, in: path, required: true, schema: {type: integer, minimum: 1}}
+      responses:
+        "200":
+          description: Owner-only state and permission audit history
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PartnerNfcPermissionState"}
+        "403": {description: Platform Owner required}
+    patch:
+      operationId: updatePartnerNfcPermission
+      tags: [platform-partners]
+      parameters:
+        - {name: partnerId, in: path, required: true, schema: {type: integer, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/NfcPermissionInput"}
+      responses:
+        "200":
+          description: Atomic audited grant or revoke
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PartnerNfcPermissionState"}
+        "403": {description: Platform Owner required}
+  /partner/nfc/access:
+    get:
+      operationId: getMyPartnerNfcAccess
+      tags: [partner]
+      responses:
+        "200":
+          description: Live authenticated Partner and staff permission state
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PartnerNfcAccess"}
+        "403": {description: Active Partner identity required}
+  /partner/nfc/schools:
+    get:
+      operationId: getMyPartnerNfcSchools
+      tags: [partner]
+      responses:
+        "200":
+          description: Authoritative referred schools with availability reasons
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/PartnerNfcSchool"}}
+        "403": {description: Partner NFC permission required}
+  /partner/nfc/schools/{schoolId}/students:
+    get:
+      operationId: getMyPartnerNfcStudents
+      tags: [partner]
+      parameters:
+        - {name: schoolId, in: path, required: true, schema: {type: integer, minimum: 1}}
+        - {name: search, in: query, schema: {type: string, maxLength: 120}}
+        - {name: className, in: query, schema: {type: string, maxLength: 120}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100}}
+        - {name: offset, in: query, schema: {type: integer, minimum: 0}}
+      responses:
+        "200":
+          description: Active eligible students within the referred NFC-enabled school
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/PartnerNfcStudent"}}
+        "403": {description: Permission required}
+        "404": {description: School outside referred scope}
+        "409": {description: No eligible active reader}
+  /partner/nfc/schools/{schoolId}/cards:
+    get:
+      operationId: getMyPartnerNfcCards
+      tags: [partner]
+      parameters:
+        - {name: schoolId, in: path, required: true, schema: {type: integer, minimum: 1}}
+        - {name: search, in: query, schema: {type: string, maxLength: 120}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100}}
+        - {name: offset, in: query, schema: {type: integer, minimum: 0}}
+      responses:
+        "200":
+          description: Available existing school card inventory; no employee or assigned cards
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/PartnerNfcCard"}}
+        "403": {description: Permission required}
+        "404": {description: School outside referred scope}
+        "409": {description: No eligible active reader}
+  /partner/nfc/schools/{schoolId}/assign:
+    post:
+      operationId: assignMyPartnerNfcCard
+      tags: [partner]
+      parameters:
+        - {name: schoolId, in: path, required: true, schema: {type: integer, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/PartnerNfcAssignmentInput"}
+      responses:
+        "201":
+          description: Existing school inventory card prepared, never financially unlocked
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PartnerNfcAssignment"}
+        "400": {description: Extra or invalid fields rejected; no device ID allowed}
+        "403": {description: Partner or staff permission missing or revoked}
+        "404": {description: School student or card outside eligible scope}
+        "409": {description: Reader or card lifecycle not eligible}
+  /partner/staff/{userId}/nfc-permission:
+    patch:
+      operationId: updateMyPartnerStaffNfcPermission
+      tags: [partner]
+      parameters:
+        - {name: userId, in: path, required: true, schema: {type: integer, minimum: 1}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/NfcPermissionInput"}
+      responses:
+        "200":
+          description: Primary Partner-authorized staff capability capped by Owner grant
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PartnerStaffNfcState"}
+        "403": {description: Staff cannot elevate self; Owner grant required}
+components:
+  schemas:
+    NfcPermissionInput:
+      type: object
+      additionalProperties: false
+      required: [enabled]
+      properties:
+        enabled: {type: boolean}
+    PartnerNfcPermissionState:
+      type: object
+      required: [partnerId, enabled, history]
+      properties:
+        partnerId: {type: integer}
+        enabled: {type: boolean}
+        history: {type: array, items: {$ref: "#/components/schemas/PartnerNfcPermissionHistory"}}
+    PartnerNfcPermissionHistory:
+      type: object
+      required: [id, actorName, action, createdAt, previousValue, newValue]
+      properties:
+        id: {type: integer}
+        actorUserId: {type: [integer, "null"]}
+        actorName: {type: string}
+        action: {type: string}
+        createdAt: {type: string, format: date-time}
+        previousValue: {type: boolean}
+        newValue: {type: boolean}
+    PartnerNfcAccess:
+      type: object
+      required: [partnerId, enabled, partnerEnabled, actorType, canManageStaff]
+      properties:
+        partnerId: {type: integer}
+        enabled: {type: boolean}
+        partnerEnabled: {type: boolean}
+        actorType: {type: string}
+        canManageStaff: {type: boolean}
+    PartnerNfcSchool:
+      type: object
+      required: [schoolId, schoolName, schoolCode, status, activeDeviceCount, eligible, unavailableReason]
+      properties:
+        schoolId: {type: integer}
+        schoolName: {type: string}
+        schoolCode: {type: string}
+        status: {type: string}
+        activeDeviceCount: {type: integer}
+        eligible: {type: boolean}
+        unavailableReason: {type: [string, "null"]}
+    PartnerNfcStudent:
+      type: object
+      required: [studentId, admissionNo, firstName, lastName, className, section]
+      properties:
+        studentId: {type: integer}
+        admissionNo: {type: string}
+        firstName: {type: string}
+        middleName: {type: [string, "null"]}
+        lastName: {type: string}
+        className: {type: string}
+        section: {type: string}
+    PartnerNfcCard:
+      type: object
+      required: [cardId, cardNumber, status]
+      properties:
+        cardId: {type: integer}
+        cardNumber: {type: string}
+        status: {type: string}
+    PartnerNfcAssignmentInput:
+      type: object
+      additionalProperties: false
+      required: [studentId, cardNumber]
+      properties:
+        studentId: {type: integer, minimum: 1}
+        cardNumber: {type: string, minLength: 4, maxLength: 100, pattern: "^[a-zA-Z0-9:_-]+$"}
+    PartnerNfcAssignment:
+      type: object
+      required: [schoolId, schoolName, studentId, studentName, admissionNo, className, section, cardId, cardNumber, status, message]
+      properties:
+        schoolId: {type: integer}
+        schoolName: {type: string}
+        studentId: {type: integer}
+        studentName: {type: string}
+        admissionNo: {type: string}
+        className: {type: string}
+        section: {type: string}
+        cardId: {type: integer}
+        cardNumber: {type: string}
+        status: {type: string}
+        message: {type: string}
+    PartnerStaffNfcState:
+      type: object
+      required: [userId, enabled]
+      properties:
+        userId: {type: integer}
+        enabled: {type: boolean}

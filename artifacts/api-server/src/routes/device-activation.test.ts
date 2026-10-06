@@ -111,12 +111,12 @@ const poolMock = vi.hoisted(() => {
             : [],
         };
       }
-      if (sql.includes("FROM students WHERE id = $1 AND school_id = $2")) {
+      if (sql.includes("FROM students WHERE id = $1 AND school_id = $2") || sql.includes("FROM students WHERE id=$1 AND school_id=$2")) {
         return { rows: state.studentAvailable && Number(values[0]) === 19 && Number(values[1]) === state.allowedSchoolId
           ? [{ id: 19, admissionNo: "ADM-19", firstName: "First", middleName: null, lastName: "Student", className: "Class 1", section: "A", photo: null }]
           : [] };
       }
-      if (sql.includes("FROM nfc_cards") && sql.includes("lower(status) = 'active'")) {
+      if (sql.includes("FROM nfc_cards") && (sql.includes("lower(status) = 'active'") || sql.includes("lower(status) IN ('active','locked')"))) {
         return { rows: state.activeCardExists ? [{ id: 99 }] : [] };
       }
       if (sql.includes("FROM nfc_cards WHERE lower(uid)")) {

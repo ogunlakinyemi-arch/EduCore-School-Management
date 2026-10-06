@@ -182,3 +182,17 @@ mtime_ms = 1791202893345
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/d50fa603-6de3-4a6c-a520-6bb4ec6ed847/7590927f-90ea-43dc-a43b-5d4259d79c37"
 storage_version_token = "1791202894163514"
 content_type = "text/html"
+
+[[outputs]]
+id = "gDjeyqmI_tIZB4HjAfVw3"
+uri = "file://reports/partner-nfc-activation-verification.html"
+type = "html"
+title = "Partner NFC implementation and verification report"
+description = "Exact files, endpoints, schema changes, 79 passing tests, 44-table preservation, all 38 criteria and 19 blocked browser steps."
+logical_id = "44842fc1-ec4e-483e-a751-de96895a3e1e"
+content_hash = "sha256:bd4cbd828b8d2f66ab1e3f472d4fd0983b383604ded560000a4f6171a89abe33"
+size = 24988
+mtime_ms = 1791283538424
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/44842fc1-ec4e-483e-a751-de96895a3e1e/7b53d5d1-3b78-4909-be9c-df8276150e91"
+storage_version_token = "1791283644333859"
+content_type = "text/html"

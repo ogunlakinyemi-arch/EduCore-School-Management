@@ -48,6 +48,7 @@ import { requireSecurityAccess } from "../services/school-security-core-service"
 import promotionExpansionRouter from "./promotion-expansion";
 import subscriptionEnforcementRouter from "./subscription-enforcement";
 import studentCardReplacementRouter from "./student-card-replacement";
+import partnerNfcRouter from "./partner-nfc";
 
 const router: IRouter = Router();
 
@@ -78,6 +79,7 @@ router.use(academicRouter);
 router.use(edupulseRouter);
 router.use(studentNfcObligationsRouter);
 router.use(partnersRouter);
+router.use(partnerNfcRouter);
 router.use(platformRouter);
 router.use(platformCompanyEmployeesRouter);
 router.use(attendanceFamilyRouter);

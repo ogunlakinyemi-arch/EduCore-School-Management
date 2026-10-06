@@ -34,6 +34,20 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /partners/{partnerId}/nfc-permission:
+    $ref: "./partner-nfc.yaml#/paths/~1partners~1{partnerId}~1nfc-permission"
+  /partner/nfc/access:
+    $ref: "./partner-nfc.yaml#/paths/~1partner~1nfc~1access"
+  /partner/nfc/schools:
+    $ref: "./partner-nfc.yaml#/paths/~1partner~1nfc~1schools"
+  /partner/nfc/schools/{schoolId}/students:
+    $ref: "./partner-nfc.yaml#/paths/~1partner~1nfc~1schools~1{schoolId}~1students"
+  /partner/nfc/schools/{schoolId}/cards:
+    $ref: "./partner-nfc.yaml#/paths/~1partner~1nfc~1schools~1{schoolId}~1cards"
+  /partner/nfc/schools/{schoolId}/assign:
+    $ref: "./partner-nfc.yaml#/paths/~1partner~1nfc~1schools~1{schoolId}~1assign"
+  /partner/staff/{userId}/nfc-permission:
+    $ref: "./partner-nfc.yaml#/paths/~1partner~1staff~1{userId}~1nfc-permission"
   /student-nfc/obligations:
     $ref: "./student-nfc.yaml#/paths/~1student-nfc~1obligations"
   /card-replacements:
@@ -7695,6 +7709,7 @@ components:
         role: { $ref: "#/components/schemas/PartnerStaffRole" }
         status: { type: string, enum: [ACTIVE, INACTIVE] }
         joinedAt: { type: string, format: date-time }
+        nfcActivationEnabled: { type: boolean }
     PartnerStaffPermissionUpdate:
       type: object
       required: [permission]

@@ -4214,6 +4214,7 @@ export interface PartnerStaffMember {
   role: PartnerStaffRole;
   status: PartnerStaffMemberStatus;
   joinedAt: string;
+  nfcActivationEnabled?: boolean;
 }
 
 export interface PartnerStaffPermissionUpdate {
@@ -12948,6 +12949,93 @@ export interface LostCardInput {
   reason: string;
 }
 
+export interface NfcPermissionInput {
+  enabled: boolean;
+}
+
+export interface PartnerNfcPermissionHistory {
+  id: number;
+  /** @nullable */
+  actorUserId?: number | null;
+  actorName: string;
+  action: string;
+  createdAt: string;
+  previousValue: boolean;
+  newValue: boolean;
+}
+
+export interface PartnerNfcPermissionState {
+  partnerId: number;
+  enabled: boolean;
+  history: PartnerNfcPermissionHistory[];
+}
+
+export interface PartnerNfcAccess {
+  partnerId: number;
+  enabled: boolean;
+  partnerEnabled: boolean;
+  actorType: string;
+  canManageStaff: boolean;
+}
+
+export interface PartnerNfcSchool {
+  schoolId: number;
+  schoolName: string;
+  schoolCode: string;
+  status: string;
+  activeDeviceCount: number;
+  eligible: boolean;
+  /** @nullable */
+  unavailableReason: string | null;
+}
+
+export interface PartnerNfcStudent {
+  studentId: number;
+  admissionNo: string;
+  firstName: string;
+  /** @nullable */
+  middleName?: string | null;
+  lastName: string;
+  className: string;
+  section: string;
+}
+
+export interface PartnerNfcCard {
+  cardId: number;
+  cardNumber: string;
+  status: string;
+}
+
+export interface PartnerNfcAssignmentInput {
+  /** @minimum 1 */
+  studentId: number;
+  /**
+     * @minLength 4
+     * @maxLength 100
+     * @pattern ^[a-zA-Z0-9:_-]+$
+     */
+  cardNumber: string;
+}
+
+export interface PartnerNfcAssignment {
+  schoolId: number;
+  schoolName: string;
+  studentId: number;
+  studentName: string;
+  admissionNo: string;
+  className: string;
+  section: string;
+  cardId: number;
+  cardNumber: string;
+  status: string;
+  message: string;
+}
+
+export interface PartnerStaffNfcState {
+  userId: number;
+  enabled: boolean;
+}
+
 export interface ExamRecordScope {
   schoolId: number;
   sessionId: number;
@@ -16816,6 +16904,7 @@ export interface PartnerStaffMember4b96100 {
   role: PartnerStaffRole4b96100;
   status: PartnerStaffMember4b96100Status;
   joinedAt: string;
+  nfcActivationEnabled?: boolean;
 }
 
 export interface PartnerStaffPermissionUpdate4b96100 {
@@ -20565,6 +20654,42 @@ export const StatusFilterParameter = {
 } as const;
 
 export type SearchParameter = string;
+
+export type GetMyPartnerNfcStudentsParams = {
+/**
+ * @maxLength 120
+ */
+search?: string;
+/**
+ * @maxLength 120
+ */
+className?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type GetMyPartnerNfcCardsParams = {
+/**
+ * @maxLength 120
+ */
+search?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
 
 export type GetStudentNfcObligationsParams = {
 /**

@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request, type Response as ExpressResponse } from "express";
 import { generateSchoolCode } from "../lib/generated-person-codes";
+import {assignAvailableStudentCard} from "../services/student-card-assignment";
 import { assertStudentNfcPaymentAccess,ensureStudentNfcSubscription } from "../lib/student-nfc-obligations";
 import {assertSchoolHasActiveNfcDevice,rejectManualCardDeviceIds} from "../lib/nfc-device-first";
 import {
@@ -1491,7 +1492,10 @@ router.post("/cards", async (req, res) => {
       if(assigned.rows[0]) throw new AuthError(409,"Student already has a current NFC card assignment");
     }
     const status = studentId ? "locked" : "unassigned";
-    const result = await client.query(`
+    const assignedStudentCard=studentId
+      ?await assignAvailableStudentCard(client,{schoolId,studentId,cardNumber:body.uid})
+      :null;
+    const result = assignedStudentCard?{rows:[assignedStudentCard.card]}:await client.query(`
       INSERT INTO nfc_cards (school_id, uid, student_id, status, issued_at)
       VALUES ($1, $2, $3, $4, NOW())
       RETURNING id, school_id AS "schoolId", uid, student_id AS "studentId", status, scans, last_scan AS "lastScan"
@@ -1684,7 +1688,10 @@ router.patch("/cards/:cardId/reassign", async (req, res) => {
       [studentId,card.rows[0].schoolId]);
     if (lost.rows[0]) throw new AuthError(409, "Use the paid replacement request to assign the new physical UID");
 
-    const updated = await client.query(
+    const preparedAssignment=card.rows[0].studentId===null&&currentStatus==="unassigned"
+      ?await assignAvailableStudentCard(client,{schoolId:card.rows[0].schoolId,studentId,cardNumber:card.rows[0].uid,allowCreate:false,preparedCardAlreadyLocked:true})
+      :null;
+    const updated = preparedAssignment?{rows:[preparedAssignment.card]}:await client.query(
       `UPDATE nfc_cards SET student_id = $1,
          status=CASE WHEN lower(status)='unassigned' THEN 'locked' ELSE status END
        WHERE id = $2 AND school_id = $3

@@ -1,4 +1,5 @@
 import {activeSchoolNfcDevicesSql} from "../lib/nfc-device-first";
+import {assignAvailableStudentCard} from "../services/student-card-assignment";
 import { Router, type NextFunction, type Request } from "express";
 import { pool } from "@workspace/db";
 import {
@@ -418,67 +419,8 @@ router.post("/activation/schools/:schoolId/assign", run(async (req, res) => {
     if (!device.rows[0]) {
       throw new AuthError(404, "An active NFC or HYBRID device linked to this school was not found");
     }
-    // Physical card UIDs are globally unique (case-insensitive here as in the
-    // registration path); the advisory lock closes concurrent activation races.
-    await client.query(`SELECT pg_advisory_xact_lock(hashtext(LOWER($1)))`, [cardNumber]);
-    const existing = await client.query(
-      `SELECT id, school_id AS "schoolId", student_id AS "studentId", status
-       FROM nfc_cards WHERE lower(uid) = lower($1) FOR UPDATE`,
-      [cardNumber],
-    );
-    if (existing.rows[0]) {
-      const existingCard = existing.rows[0];
-      if (Number(existingCard.schoolId) !== schoolId) {
-        throw new AuthError(409, "This NFC card is already registered to another school");
-      }
-      if (existingCard.studentId !== null || String(existingCard.status).toLowerCase() !== "unassigned") {
-        throw new AuthError(409, "This NFC card is already bound or is not eligible for activation");
-      }
-    }
-
-    // Locking the student row serializes concurrent activation/reassignment attempts.
-    const student = await client.query(
-      `SELECT id, admission_no AS "admissionNo", first_name AS "firstName",
-         middle_name AS "middleName", last_name AS "lastName",
-         class_name AS "className", section, photo
-       FROM students WHERE id = $1 AND school_id = $2 FOR UPDATE`,
-      [studentId, schoolId],
-    );
-    if (!student.rows[0]) throw new AuthError(404, "Student not found in this school");
-
-    const activeCard = await client.query(
-      `SELECT id FROM nfc_cards
-       WHERE school_id = $1 AND student_id = $2 AND lower(status) = 'active'
-       LIMIT 1`,
-      [schoolId, studentId],
-    );
-    if (activeCard.rows[0]) throw new AuthError(409, "Student already has an active NFC card");
-
-    let card;
-    if (existing.rows[0]) {
-      const row = existing.rows[0];
-      const activated = await client.query(
-        `UPDATE nfc_cards
-         SET student_id = $1, status = 'active', activated_at = NOW(),
-             deactivated_at = NULL, last_device_id = $2
-         WHERE id = $3 AND school_id = $4 AND student_id IS NULL AND lower(status) = 'unassigned'
-         RETURNING id, school_id AS "schoolId", uid, student_id AS "studentId",
-           status, scans, last_scan AS "lastScan", activated_at AS "activatedAt"`,
-        [studentId, deviceId, row.id, schoolId],
-      );
-      if (!activated.rows[0]) throw new AuthError(409, "This NFC card is no longer available");
-      card = activated.rows[0];
-    } else {
-      const created = await client.query(
-        `INSERT INTO nfc_cards
-           (school_id, uid, student_id, status, issued_at, activated_at, last_device_id)
-         VALUES ($1, $2, $3, 'active', NOW(), NOW(), $4)
-         RETURNING id, school_id AS "schoolId", uid, student_id AS "studentId",
-           status, scans, last_scan AS "lastScan", activated_at AS "activatedAt"`,
-        [schoolId, cardNumber, studentId, deviceId],
-      );
-      card = created.rows[0];
-    }
+    const assigned=await assignAvailableStudentCard(client,{schoolId,studentId,cardNumber,deviceId,activate:true});
+    const card=assigned.card;
     await client.query(
       `INSERT INTO nfc_card_history
        (school_id, nfc_card_id, student_id, action, previous_status, new_status, reason, actor_user_id)
@@ -487,7 +429,7 @@ router.post("/activation/schools/:schoolId/assign", run(async (req, res) => {
         schoolId,
         card.id,
         studentId,
-        existing.rows[0] ? "unassigned" : null,
+        assigned.previousStatus,
         JSON.stringify({ deviceId, deviceSerialNumber: device.rows[0].serialNumber }),
         context.user.id,
       ],
@@ -501,7 +443,7 @@ router.post("/activation/schools/:schoolId/assign", run(async (req, res) => {
     const eId = await client.query(activationEIdQuery, [schoolId, studentId]);
     if (!eId.rows[0]) throw new Error("Could not load the persisted student E-ID");
     await client.query("COMMIT");
-    res.status(201).json({ ...card, student: student.rows[0], device: device.rows[0], eId: eId.rows[0] });
+    res.status(201).json({ ...card, student: assigned.student, device: device.rows[0], eId: eId.rows[0] });
   } catch (error) {
     await client.query("ROLLBACK");
     if ((error as { code?: string })?.code === "23505") {

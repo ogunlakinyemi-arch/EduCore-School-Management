@@ -8,6 +8,192 @@
 import * as zod from 'zod';
 
 
+
+
+
+export const GetPartnerNfcPermissionParams = zod.object({
+  "partnerId": zod.coerce.number().int().min(1)
+})
+
+export const GetPartnerNfcPermissionResponse = zod.object({
+  "partnerId": zod.number().int(),
+  "enabled": zod.boolean(),
+  "history": zod.array(zod.object({
+  "id": zod.number().int(),
+  "actorUserId": zod.number().int().nullish(),
+  "actorName": zod.string(),
+  "action": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "previousValue": zod.boolean(),
+  "newValue": zod.boolean()
+}))
+})
+
+
+
+
+
+export const UpdatePartnerNfcPermissionParams = zod.object({
+  "partnerId": zod.coerce.number().int().min(1)
+})
+
+export const UpdatePartnerNfcPermissionBody = zod.object({
+  "enabled": zod.boolean()
+})
+
+export const UpdatePartnerNfcPermissionResponse = zod.object({
+  "partnerId": zod.number().int(),
+  "enabled": zod.boolean(),
+  "history": zod.array(zod.object({
+  "id": zod.number().int(),
+  "actorUserId": zod.number().int().nullish(),
+  "actorName": zod.string(),
+  "action": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "previousValue": zod.boolean(),
+  "newValue": zod.boolean()
+}))
+})
+
+
+export const GetMyPartnerNfcAccessResponse = zod.object({
+  "partnerId": zod.number().int(),
+  "enabled": zod.boolean(),
+  "partnerEnabled": zod.boolean(),
+  "actorType": zod.string(),
+  "canManageStaff": zod.boolean()
+})
+
+
+export const GetMyPartnerNfcSchoolsResponseItem = zod.object({
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "schoolCode": zod.string(),
+  "status": zod.string(),
+  "activeDeviceCount": zod.number().int(),
+  "eligible": zod.boolean(),
+  "unavailableReason": zod.string().nullable()
+})
+export const GetMyPartnerNfcSchoolsResponse = zod.array(GetMyPartnerNfcSchoolsResponseItem)
+
+
+
+
+
+export const GetMyPartnerNfcStudentsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const getMyPartnerNfcStudentsQuerySearchMax = 120;
+
+export const getMyPartnerNfcStudentsQueryClassNameMax = 120;
+
+export const getMyPartnerNfcStudentsQueryLimitMax = 100;
+
+export const getMyPartnerNfcStudentsQueryOffsetMin = 0;
+
+
+
+export const GetMyPartnerNfcStudentsQueryParams = zod.object({
+  "search": zod.coerce.string().max(getMyPartnerNfcStudentsQuerySearchMax).optional(),
+  "className": zod.coerce.string().max(getMyPartnerNfcStudentsQueryClassNameMax).optional(),
+  "limit": zod.coerce.number().int().min(1).max(getMyPartnerNfcStudentsQueryLimitMax).optional(),
+  "offset": zod.coerce.number().int().min(getMyPartnerNfcStudentsQueryOffsetMin).optional()
+})
+
+export const GetMyPartnerNfcStudentsResponseItem = zod.object({
+  "studentId": zod.number().int(),
+  "admissionNo": zod.string(),
+  "firstName": zod.string(),
+  "middleName": zod.string().nullish(),
+  "lastName": zod.string(),
+  "className": zod.string(),
+  "section": zod.string()
+})
+export const GetMyPartnerNfcStudentsResponse = zod.array(GetMyPartnerNfcStudentsResponseItem)
+
+
+
+
+
+export const GetMyPartnerNfcCardsParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+export const getMyPartnerNfcCardsQuerySearchMax = 120;
+
+export const getMyPartnerNfcCardsQueryLimitMax = 100;
+
+export const getMyPartnerNfcCardsQueryOffsetMin = 0;
+
+
+
+export const GetMyPartnerNfcCardsQueryParams = zod.object({
+  "search": zod.coerce.string().max(getMyPartnerNfcCardsQuerySearchMax).optional(),
+  "limit": zod.coerce.number().int().min(1).max(getMyPartnerNfcCardsQueryLimitMax).optional(),
+  "offset": zod.coerce.number().int().min(getMyPartnerNfcCardsQueryOffsetMin).optional()
+})
+
+export const GetMyPartnerNfcCardsResponseItem = zod.object({
+  "cardId": zod.number().int(),
+  "cardNumber": zod.string(),
+  "status": zod.string()
+})
+export const GetMyPartnerNfcCardsResponse = zod.array(GetMyPartnerNfcCardsResponseItem)
+
+
+
+
+
+export const AssignMyPartnerNfcCardParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1)
+})
+
+
+export const assignMyPartnerNfcCardBodyCardNumberMin = 4;
+export const assignMyPartnerNfcCardBodyCardNumberMax = 100;
+
+
+export const assignMyPartnerNfcCardBodyCardNumberRegExp = new RegExp('^[a-zA-Z0-9:_-]+$');
+
+
+export const AssignMyPartnerNfcCardBody = zod.object({
+  "studentId": zod.number().int().min(1),
+  "cardNumber": zod.string().min(assignMyPartnerNfcCardBodyCardNumberMin).max(assignMyPartnerNfcCardBodyCardNumberMax).regex(assignMyPartnerNfcCardBodyCardNumberRegExp)
+})
+
+export const AssignMyPartnerNfcCardResponse = zod.object({
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "cardId": zod.number().int(),
+  "cardNumber": zod.string(),
+  "status": zod.string(),
+  "message": zod.string()
+})
+
+
+
+
+
+export const UpdateMyPartnerStaffNfcPermissionParams = zod.object({
+  "userId": zod.coerce.number().int().min(1)
+})
+
+export const UpdateMyPartnerStaffNfcPermissionBody = zod.object({
+  "enabled": zod.boolean()
+})
+
+export const UpdateMyPartnerStaffNfcPermissionResponse = zod.object({
+  "userId": zod.number().int(),
+  "enabled": zod.boolean()
+})
+
+
 /**
  * @summary Read authoritative, role-scoped automatic student NFC obligations
  */
@@ -13443,7 +13629,8 @@ export const ListPartnerStaffResponseItem = zod.object({
   "fullName": zod.string(),
   "role": zod.enum(['PARTNER_STAFF', 'PARTNER_FINANCE', 'PARTNER_ADMIN']),
   "status": zod.enum(['ACTIVE', 'INACTIVE']),
-  "joinedAt": zod.coerce.date()
+  "joinedAt": zod.coerce.date(),
+  "nfcActivationEnabled": zod.boolean().optional()
 })
 export const ListPartnerStaffResponse = zod.array(ListPartnerStaffResponseItem)
 

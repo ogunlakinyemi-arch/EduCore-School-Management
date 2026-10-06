@@ -15,4 +15,5 @@ export interface PartnerStaffMember {
   role: PartnerStaffRole;
   status: PartnerStaffMemberStatus;
   joinedAt: Date;
+  nfcActivationEnabled?: boolean;
 }

@@ -2176,13 +2176,16 @@ router.get("/partner/staff", run(async (req, res) => {
   requirePartnerOwner(req, partner);
   const r = await pool.query(`SELECT pu.user_id AS "userId",u.email,
       concat_ws(' ',u.first_name,u.last_name) AS "fullName",pu.role,pu.status,
-      pu.created_at AS "joinedAt"
+      pu.created_at AS "joinedAt",pu.nfc_activation_enabled AS "nfcActivationEnabled"
     FROM partner_profile_users pu JOIN app_users u ON u.id=pu.user_id
     WHERE pu.partner_profile_id=$1 AND pu.role IN ('PARTNER_STAFF','PARTNER_FINANCE','PARTNER_ADMIN')
     ORDER BY pu.created_at DESC`, [partner.id]);
   res.json(r.rows);
 }));
 router.patch("/partner/staff/:userId/permissions", run(async (req, res) => {
+  if(!req.body||typeof req.body!=="object"||Array.isArray(req.body)||Object.keys(req.body).some(key=>key!=="permission")){
+    throw new AuthError(400,"Only the existing permission role may be changed here; NFC authorization uses its dedicated controls");
+  }
   const partner = await self(req);
   requirePartnerOwner(req, partner);
   const userId = idOf(req.params.userId, "Staff user");

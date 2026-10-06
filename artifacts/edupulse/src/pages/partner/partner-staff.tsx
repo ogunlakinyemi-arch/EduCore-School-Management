@@ -1,4 +1,5 @@
-import { useGetPartnerProfile } from '@workspace/api-client-react';
+import { useGetPartnerProfile, useUpdateMyPartnerStaffNfcPermission } from '@workspace/api-client-react';
+import {usePartnerNfcAccess} from './nfc-access';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { Check, RotateCw, Users, XCircle } from 'lucide-react';
@@ -11,6 +12,7 @@ type PartnerStaffMember = {
   fullName: string;
   role: string;
   status: string;
+  nfcActivationEnabled?: boolean;
 };
 
 export type PartnerStaffInvitation = {
@@ -260,6 +262,26 @@ function PartnerStaffInvitationList({
   );
 }
 
+function StaffNfcToggle({ member, canGrant }: { member: PartnerStaffMember; canGrant: boolean }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const update = useUpdateMyPartnerStaffNfcPermission();
+  const enabled = member.nfcActivationEnabled === true;
+  return (
+    <div className="mt-3 flex items-center justify-between gap-3 text-sm" data-testid={`row-staff-nfc-${member.userId}`}>
+      <span>NFC activation: <strong>{enabled ? 'Enabled' : 'Disabled'}</strong>{!canGrant && !enabled ? ' (partner access required)' : ''}</span>
+      <Button variant="outline" className="h-8 px-3 text-xs" disabled={update.isPending || (!enabled && !canGrant)}
+        testId={`button-staff-nfc-${member.userId}`}
+        onClick={() => update.mutate({ userId: member.userId, data: { enabled: !enabled } }, {
+          onSuccess: () => { toast({ title: enabled ? 'NFC activation revoked' : 'NFC activation granted' }); void queryClient.invalidateQueries({ queryKey: ['partner-staff'] }); },
+          onError: (e: any) => toast({ title: 'Could not update NFC access', description: e?.message, variant: 'destructive' }),
+        })}>
+        {enabled ? 'Revoke' : 'Grant'}
+      </Button>
+    </div>
+  );
+}
+
 function StaffAccessControl({ member }: { member: PartnerStaffMember }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -311,6 +333,8 @@ export default function PartnerStaff() {
   const [email, setEmail] = useState('');
   const [permission, setPermission] = useState<'STANDARD' | 'FINANCE' | 'ADMIN'>('STANDARD');
   const partnerId = profile.data?.id;
+  const {query:nfcAccess} = usePartnerNfcAccess();
+  const canGrantNfc = !nfcAccess.isError && nfcAccess.data?.canManageStaff === true && nfcAccess.data?.partnerEnabled === true;
   const isOwner = !!(profile.data as any)?.isOwner ||
     ['PARTNER_OWNER', 'PARTNER_ADMIN'].includes((profile.data as any)?.partnerRole);
   const staff = useQuery({
@@ -400,6 +424,7 @@ export default function PartnerStaff() {
                 <StatusPill value={member.status} />
               </div>
               <StaffAccessControl member={member} />
+              <StaffNfcToggle member={member} canGrant={canGrantNfc} />
             </div>
           )) : <EmptyState icon={Users} title="No staff yet" description="Send a secure invitation to add a partner staff member." />}
         </section>

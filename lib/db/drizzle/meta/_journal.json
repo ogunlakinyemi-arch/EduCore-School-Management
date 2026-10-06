@@ -372,6 +372,13 @@
       "when": 1791284400000,
       "tag": "0058_student_subscription_terms",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1791288000000,
+      "tag": "0059_partner_nfc_permission",
+      "breakpoints": true
     }
   ]
 }
