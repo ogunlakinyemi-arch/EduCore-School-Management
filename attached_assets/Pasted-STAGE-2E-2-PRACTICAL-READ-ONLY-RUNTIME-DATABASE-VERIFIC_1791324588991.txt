@@ -1,0 +1,439 @@
+STAGE 2E-2 — PRACTICAL READ-ONLY RUNTIME DATABASE VERIFICATION AND TEST-DATA AUDIT
+
+We are continuing Yemait EduCore production-readiness work.
+
+IMPORTANT CONTEXT:
+
+Previous Stage 2E and Stage 2E-1 attempted to establish the exact Replit/Neon database resource identity. Replit does not expose a safe database-resource ID or deployment-to-Neon-resource mapping.
+
+Do NOT spend more time trying to discover a hidden resource ID.
+
+We will use a practical verification method:
+
+Use the application's EXISTING runtime-managed DATABASE_URL internally, without ever printing or exposing its value, and run READ-ONLY PostgreSQL metadata/data queries through that same runtime database connection.
+
+This is acceptable because the Production database currently contains ONLY TEST SCHOOLS / TEST DATA created by me. There are no real customer schools yet.
+
+==================================================
+
+1. ABSOLUTE SAFETY
+   ==================================================
+
+THIS IS READ-ONLY.
+
+Do NOT:
+
+- run db push
+- run drizzle migrations
+- run migration files
+- create migration 0060
+- ALTER TABLE
+- CREATE TABLE
+- DROP
+- INSERT
+- UPDATE
+- DELETE
+- TRUNCATE
+- CREATE INDEX
+- DROP INDEX
+- ADD CONSTRAINT
+- DROP CONSTRAINT
+- VALIDATE CONSTRAINT
+- publish
+- redeploy
+- change deployment settings
+- change environment variables
+- change secrets
+- modify GitHub
+- modify application source
+- modify Drizzle journal
+- modify migrations
+
+Do not repair anything found during the audit.
+
+==================================================
+2. NEVER EXPOSE DATABASE_URL
+
+The runtime may use DATABASE_URL internally.
+
+NEVER print:
+
+- DATABASE_URL
+- the complete connection string
+- password
+- connection username if obtained from the secret
+- authentication parameters
+- API keys
+- tokens
+
+It is acceptable to query PostgreSQL using the existing runtime connection.
+
+The output must contain only safe database metadata and aggregate test-data counts.
+
+==================================================
+3. VERIFY THE RUNTIME DATABASE
+
+Using the existing application's database connection mechanism, run READ-ONLY PostgreSQL metadata queries.
+
+Retrieve:
+
+- current_database()
+- PostgreSQL version
+- current_user, but do not expose it if it reveals credential information
+- server address/port if safely available
+- transaction_read_only
+- public table count
+
+Also check whether these tables exist:
+
+- schools
+- students
+- school_classes
+- platform_devices
+- school_partner_attributions
+- student_subscription_allocations
+- subscriptions
+- users/app_users where applicable
+
+Do NOT treat absence of one table as proof that the wrong database is being used.
+
+==================================================
+4. VERIFY USING TEST-DATA FINGERPRINTS
+
+Because this database contains only my test data, use aggregate fingerprints to establish that the runtime connection is reaching the expected EduCore test database.
+
+DO NOT print names, emails, phone numbers, or personal information.
+
+Retrieve counts only, for example:
+
+- number of schools
+- number of students
+- number of school classes
+- number of platform devices
+- number of subscriptions
+- number of parents
+- number of NFC cards
+- number of partner attribution rows
+
+If the relevant tables exist.
+
+Compare the results with the known EduCore test-data state available to the project.
+
+Do not invent expected counts.
+
+If the counts are different from previously observed state, report the difference but do not modify anything.
+
+==================================================
+5. TARGET DECISION
+
+Use the following practical classification:
+
+RUNTIME DATABASE VERIFIED FOR AUDIT
+
+if:
+
+1. The connection is obtained through the application's existing runtime-managed database connection.
+2. PostgreSQL responds successfully.
+3. The database contains recognizable EduCore structures.
+4. The test-data fingerprint is consistent with the expected EduCore test environment.
+
+This does NOT claim that we have discovered the underlying Neon resource ID.
+
+It only establishes:
+
+EduCore runtime → actual database being used by that runtime
+
+That is sufficient for this read-only test-data audit.
+
+If the runtime connection cannot be established safely:
+
+STOP.
+
+Do not modify anything.
+
+==================================================
+6. AUDIT RELATIONSHIP #1 — PLATFORM DEVICE → SCHOOL CLASS
+
+If both required tables exist, audit:
+
+platform_devices.school_id
+platform_devices.school_class_id
+
+Historical relationship:
+
+(school_class_id, school_id)
+→
+school_classes(id, school_id)
+
+Calculate:
+
+A. Total platform_devices rows.
+
+B. Rows with:
+
+- school_id NULL
+- school_class_id NULL
+- both populated
+
+C. Orphan class references:
+school_class_id does not exist.
+
+D. Cross-school mismatches:
+
+platform_devices.school_id
+<>
+school_classes.school_id
+
+when both values exist.
+
+E. Historical composite compatibility:
+
+Determine how many rows would satisfy:
+
+(school_class_id, school_id)
+→
+school_classes(id, school_id)
+
+and how many would violate it.
+
+Do not validate or create the actual FK.
+
+Report counts only.
+
+==================================================
+7. AUDIT RELATIONSHIP #2 — ALLOCATION → STUDENT
+
+If "student_subscription_allocations" exists, audit:
+
+student_subscription_allocations.student_id
+student_subscription_allocations.school_id
+
+Historical relationship:
+
+(student_id, school_id)
+→
+students(id, school_id)
+
+with ON DELETE RESTRICT.
+
+Calculate:
+
+A. Total allocation rows.
+
+B. NULL student_id count.
+
+C. NULL school_id count.
+
+D. Missing student references.
+
+E. Cross-school student mismatches:
+
+allocation.school_id
+<>
+students.school_id
+
+F. Number of rows that would pass the historical composite FK.
+
+G. Number that would fail.
+
+H. Also report whether any allocation references a student whose CURRENT school differs from the allocation school.
+
+Do not modify anything.
+
+==================================================
+8. AUDIT RELATIONSHIP #3 — ALLOCATION → PARTNER ATTRIBUTION
+
+If "student_subscription_allocations" and "school_partner_attributions" exist, inspect the actual columns of the attribution table first.
+
+Determine whether it has:
+
+- school_id
+- partner_profile_id
+- status
+- ended_at/end date or equivalent
+
+Do not assume these columns exist.
+
+Then audit:
+
+allocation.attribution_id
+allocation.recipient_id
+allocation.school_id
+
+against:
+
+school_partner_attributions.id
+school_partner_attributions.partner_profile_id
+
+Calculate:
+
+A. Total allocation rows.
+
+B. attribution_id NULL.
+
+C. attribution_id NOT NULL.
+
+D. recipient_id NULL.
+
+E. recipient_id NOT NULL.
+
+F. Missing attribution references.
+
+G. Attribution/recipient mismatches where recipient_id is NOT NULL.
+
+H. NULL-recipient rows separately.
+
+IMPORTANT:
+
+Do NOT classify NULL recipient rows as errors automatically.
+
+Stage 2D established that NULL recipient may be legitimate for non-Partner/platform/provider-fee allocation rows.
+
+I. If attribution table contains school_id, compare:
+
+allocation.school_id
+<>
+attribution.school_id
+
+and report mismatches.
+
+J. Inspect whether a UNIQUE constraint/index exists on:
+
+school_partner_attributions(id, school_id)
+
+Do NOT create it.
+
+==================================================
+9. CURRENT CONSTRAINT METADATA
+
+Using PostgreSQL catalog/information_schema queries only, inspect relevant constraints/indexes for:
+
+- platform_devices
+- school_classes
+- student_subscription_allocations
+- students
+- school_partner_attributions
+
+Report:
+
+- PKs
+- relevant UNIQUE constraints
+- relevant FKs
+- referenced columns
+- ON DELETE actions
+- FK validation status
+
+Do not change anything.
+
+==================================================
+10. REQUIRED DECISION MATRIX
+
+Return:
+
+Relationship| Rows| Violations| Historical Rule| Data Decision
+Device → Class| ...| ...| PASS/FAIL| ...
+Allocation → Student| ...| ...| PASS/FAIL| ...
+Allocation → Attribution| ...| ...| PASS/FAIL/NOT APPLICABLE| ...
+
+Use:
+
+SAFE TO RECONCILE
+
+if the existing test data contains no violation of the historical relationship.
+
+NOT SAFE TO RECONCILE YET
+
+if actual test data contains violating rows.
+
+NEEDS REVIEW
+
+if the data passes but supporting schema/ownership questions remain.
+
+These are audit results only.
+
+They are NOT authorization to change the database.
+
+==================================================
+11. IMPORTANT: DO NOT CONFUSE DATA WITH SCHEMA
+
+Report separately:
+
+DATA COMPATIBILITY
+
+and
+
+SCHEMA COMPATIBILITY.
+
+Example:
+
+DATA:
+"0 test rows violate the historical student/school relationship."
+
+SCHEMA:
+"The supporting composite key currently exists/does not exist."
+
+Do not combine these.
+
+==================================================
+12. SAFETY REPORT
+
+At the end explicitly confirm:
+
+- Database writes: 0
+- Schema changes: 0
+- Migrations: 0
+- db push: 0
+- Publish/deployment changes: 0
+- Secrets exposed: 0
+- Environment changes: 0
+- Source changes: 0
+- Migration history changes: 0
+- Test/application records modified: 0
+
+==================================================
+13. FINAL REPORT
+
+Return:
+
+A. RUNTIME DATABASE VERIFICATION
+
+B. SAFE DATABASE FINGERPRINT
+
+C. DEVICE → CLASS AUDIT
+
+D. ALLOCATION → STUDENT AUDIT
+
+E. ALLOCATION → ATTRIBUTION AUDIT
+
+F. CURRENT CONSTRAINT / INDEX STATE
+
+G. THREE-RELATIONSHIP DECISION MATRIX
+
+H. DATA COMPATIBILITY SUMMARY
+
+I. SCHEMA COMPATIBILITY SUMMARY
+
+J. REMAINING BLOCKERS
+
+K. SAFETY CONFIRMATION
+
+L. RECOMMENDED NEXT STEP
+
+Do not automatically perform the recommended next step.
+
+==================================================
+14. STOP CONDITION
+
+If the runtime-managed DATABASE_URL cannot be used internally without exposing its secret:
+
+STOP.
+
+Do not ask me to paste DATABASE_URL.
+
+Do not ask me for passwords or credentials.
+
+Report exactly why the runtime database could not be safely queried.
+
+If the runtime database is successfully verified and the read-only audit completes, end with:
+
+STAGE 2E-2 COMPLETE — RUNTIME DATABASE VERIFIED AND PRODUCTION TEST DATA AUDITED READ-ONLY; NO PRODUCTION OR SHARED-DATABASE CHANGES WERE MADE.
