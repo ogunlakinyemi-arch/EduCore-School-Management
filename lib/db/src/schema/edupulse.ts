@@ -209,6 +209,7 @@ export const parents = pgTable(
   },
   (table) => [
     uniqueIndex("parents_user_unique").on(table.userId),
+    uniqueIndex("parents_id_school_unique").on(table.id, table.schoolId),
     index("parents_school_idx").on(table.schoolId),
   ],
 );
@@ -983,7 +984,7 @@ export const biometricEnrollments = pgTable(
       foreignColumns: [deviceSchoolBindings.deviceId, deviceSchoolBindings.schoolId],
       name: "biometric_enrollments_device_school_fk",
     }),
-    check("biometric_enrollments_subject_check", sql`(("student_id" IS NOT NULL)::int + ("employee_id" IS NOT NULL)::int = 1`),
+    check("biometric_enrollments_subject_check", sql`(("student_id" IS NOT NULL)::int + ("employee_id" IS NOT NULL)::int) = 1`),
     index("biometric_enrollments_school_status_idx").on(table.schoolId, table.status),
   ],
 );

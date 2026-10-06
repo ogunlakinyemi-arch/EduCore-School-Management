@@ -266,3 +266,31 @@ mtime_ms = 1791314628538
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/129b8b69-d404-473a-a69f-6ba397709012/8cace630-7840-49b4-9d9b-004baf551ba1"
 storage_version_token = "1791314697973963"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "3GtqPsgRr70f6yiWJBKLg"
+uri = "file://reports/educore-stage2a-source-only-corrections-2026-10-06.html"
+type = "html"
+title = "Stage 2A — Source Corrections and A–F Report"
+description = "Two migration-backed source corrections; full dependency-ordered model validation and 60/60 replay pass. Raw export execution remains RED because 17 FKs precede supporting indexes."
+logical_id = "bdb648a1-69bb-43f7-b06b-ab8a336bb778"
+content_hash = "sha256:6a377c1a94307edd6c1cbd174e8be0036c5fa5703e4634e6dab76daddf92e4cd"
+size = 17475
+mtime_ms = 1791317183453
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/bdb648a1-69bb-43f7-b06b-ab8a336bb778/8127f43d-185c-42d7-b6f9-3472ecaf5aac"
+storage_version_token = "1791317358162990"
+content_type = "text/html"
+
+[[outputs]]
+id = "AjanqXlBid_ZDv2v48Njh"
+uri = "file://reports/educore-stage2a-evidence-2026-10-06.zip"
+type = "unspecified"
+title = "Stage 2A — Isolated Validation Evidence"
+description = "Before/after metadata, exact source diff, 407 CHECK and 659 FK validation evidence, all 60 replay results, statement-multiset proof and preservation checks. No executable migration or credentials."
+logical_id = "f7b779ad-3b75-4e6c-8065-8b7257591795"
+content_hash = "sha256:9867c79378688d1ae67bc9a98d25d6c47625a2568bfd67a0f45da76075f5f1a9"
+size = 289878
+mtime_ms = 1791317328812
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/f7b779ad-3b75-4e6c-8065-8b7257591795/023ee33b-d38c-45fb-a19c-342d6b3af13d"
+storage_version_token = "1791317358763357"
+content_type = "application/octet-stream"

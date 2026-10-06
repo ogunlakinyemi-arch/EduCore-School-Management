@@ -1,0 +1,267 @@
+Continue the Yemait EduCore production-readiness process.
+
+STAGE 2 is complete.
+
+The Stage 2 audit established:
+
+- 60 SQL migrations exist: 0000–0059.
+- Clean isolated replay passes 60/60.
+- The "attendance_events_subject_check" syntax issue was corrected by adding only the missing closing parenthesis.
+- No Production/shared database changes were made.
+- Production's 91-table public schema metadata and full-row fingerprints remain unchanged.
+- Migration source-of-truth remains RED.
+- Historical journal/ledger gaps remain unresolved.
+- Migration 0004 historical payload remains NOT VERIFIED.
+- The Development "school_subscription_enforcement" table changed concurrently, but its exact changed fields are NOT VERIFIED.
+- Full schema export remains blocked by a separate biometric CHECK issue and missing composite-key declarations.
+
+This task is ONLY to perform the bounded source-only correction required to unblock isolated schema export/validation.
+
+==================================================
+ABSOLUTE SAFETY RULES
+
+DO NOT:
+
+- modify Production
+- modify any shared database
+- modify the Production database
+- run migrations against Production
+- run "db push" against Production
+- run "drizzle-kit push" against Production
+- run "drizzle-kit migrate" against Production
+- publish database changes
+- approve any Replit database preview
+- modify Production secrets
+- modify DATABASE_URL
+- modify Clerk
+- modify Flutterwave
+- build new application features
+- rewrite historical migration SQL
+- rewrite migration journal history
+- rewrite migration ledger history
+- create a reconciliation migration
+- alter Production data
+- alter Development/shared database data
+
+All validation must use an isolated temporary/local PostgreSQL database.
+
+==================================================
+
+1. IDENTIFY THE REMAINING EXPORT BLOCKERS
+   ==================================================
+
+Before changing anything, inspect the current TypeScript schema and reproduce the schema-export failure in isolation.
+
+Identify every current blocker.
+
+The Stage 2 report identified:
+
+1. A separate biometric CHECK constraint problem.
+2. Missing composite-key declarations required by dependent foreign keys.
+
+Do not assume these are the only blockers.
+
+Run the relevant schema validation/export process and record the exact PostgreSQL error(s).
+
+==================================================
+2. FIX ONLY THE MINIMUM SOURCE DEFINITIONS
+
+Fix only the schema-source definitions necessary to make the isolated schema export valid.
+
+For each change:
+
+- identify the file
+- identify the exact schema object
+- identify the existing definition
+- identify the corresponding SQL migration
+- determine the intended business logic
+- make the smallest possible source correction
+
+Do not redesign any table.
+
+Do not change business rules.
+
+Do not change column types unless the migration evidence proves that the current source definition is wrong.
+
+Do not add arbitrary constraints simply to make PostgreSQL accept the schema.
+
+==================================================
+3. BIOMETRIC CHECK CONSTRAINT
+
+Investigate the separate biometric CHECK constraint reported by Stage 2.
+
+Determine:
+
+- exact table
+- exact constraint
+- current TypeScript definition
+- corresponding migration definition
+- intended condition
+- reason PostgreSQL rejects the definition
+
+If the SQL migration contains the authoritative intended expression, make the TypeScript schema match it.
+
+Do not change the SQL migration history.
+
+Validate that the corrected expression preserves the existing business logic.
+
+==================================================
+4. COMPOSITE-KEY DECLARATIONS
+
+Investigate the missing composite-key declarations responsible for the schema export failure.
+
+The affected parent keys include:
+
+- "subscriptions(id, school_id, student_id)"
+- "parents(id, school_id)"
+- "school_partner_attributions(id, partner_profile_id)"
+- "academic_terms(id, school_id, academic_session_id)"
+
+Do NOT automatically add all four.
+
+For each one:
+
+1. Find the corresponding SQL migration.
+2. Determine whether the composite unique constraint actually exists in the intended SQL schema.
+3. Determine whether the TypeScript schema fails to declare an existing intended constraint.
+4. Determine whether the dependent FK actually requires that exact composite key.
+5. Check whether an equivalent unique constraint already exists.
+6. Confirm that adding the declaration will not create duplicate/conflicting constraints.
+7. Make only the minimum TypeScript/schema-source correction necessary.
+
+The objective is to make the TypeScript schema accurately represent the existing intended SQL schema.
+
+Do not invent new database rules.
+
+==================================================
+5. ISOLATED VALIDATION
+
+After the source corrections:
+
+A. Run TypeScript validation.
+
+B. Run the schema export/introspection process.
+
+C. Run the isolated PostgreSQL schema creation/export process.
+
+D. Run the complete clean migration replay:
+
+0000 → 0059
+
+Expected:
+
+60/60 PASS.
+
+E. Verify that the corrected schema does not introduce:
+
+- duplicate constraints
+- duplicate indexes
+- conflicting foreign keys
+- invalid CHECK constraints
+- invalid composite keys
+- PostgreSQL syntax errors
+
+==================================================
+6. COMPARE BEFORE AND AFTER
+
+Produce a concise before/after report.
+
+For each changed source definition:
+
+- file
+- object
+- before
+- after
+- reason
+- corresponding migration evidence
+
+Confirm that business logic did not change.
+
+==================================================
+7. DO NOT ATTEMPT HISTORICAL REPAIR
+
+Do NOT fix any of the following during this task:
+
+- Drizzle journal gaps
+- Development ledger gaps
+- checksum 0004
+- checksum 0001
+- migration history
+- Production schema
+- Production migration ledger
+- historical backfills
+- Production constraints
+- Production indexes
+- Production functions
+- Production triggers
+
+Those are separate tasks.
+
+Do not create migration 0060.
+
+Do not rewrite 0001 or 0004.
+
+Do not fabricate historical records.
+
+==================================================
+8. FINAL REPORT
+
+Report:
+
+A. Export Status
+
+Choose:
+
+GREEN — schema export now succeeds
+
+RED — schema export still fails
+
+B. Changes Made
+
+List every source-only change.
+
+C. Validation
+
+Report:
+
+- TypeScript validation
+- schema export
+- isolated PostgreSQL validation
+- migration replay
+- migration replay result
+
+D. Remaining Blockers
+
+List every remaining blocker.
+
+Separate:
+
+- schema/export blockers
+- migration-history blockers
+- Production-reconciliation blockers
+
+E. Production Safety
+
+Confirm whether:
+
+- Production schema changed
+- Production data changed
+- shared database changed
+- Production configuration changed
+- Production secrets changed
+
+The expected answer is NO.
+
+F. Next Recommended Action
+
+Give only ONE next action.
+
+Do not start that next action automatically.
+
+If any verification cannot be completed, write:
+
+"NOT VERIFIED — REASON: ..."
+
+End with exactly:
+
+"STAGE 2A COMPLETE — NO PRODUCTION OR SHARED-DATABASE CHANGES WERE MADE."
