@@ -1,0 +1,359 @@
+STAGE 2E-1 — READ-ONLY PRODUCTION DATABASE-BINDING VERIFICATION
+
+We are continuing the Yemait EduCore production-readiness investigation.
+
+IMPORTANT CONTEXT:
+
+Stage 2E attempted to audit the Production TEST DATA but stopped because the exact database target could not be confidently verified.
+
+The inspected read-only PostgreSQL replica reported:
+
+- Database: neondb
+- PostgreSQL: 16.15
+- Read replica: YES
+- transaction_read_only: on
+- public tables: 91
+- platform_devices: exists
+- school_classes: exists
+- students: exists
+- school_partner_attributions: exists
+- student_subscription_allocations: ABSENT
+
+The published application has a successful deployment/build, but the previous inspection could not establish a database-resource binding between the published application and this "neondb" replica.
+
+The Production database contains ONLY TEST SCHOOLS / TEST DATA created by me. There are no real customer schools yet.
+
+The purpose of this stage is ONLY to determine whether the inspected "neondb" database is actually the database resource used by the published application.
+
+==================================================
+
+1. ABSOLUTE SAFETY RULES
+   ==================================================
+
+THIS IS A READ-ONLY INVESTIGATION.
+
+DO NOT:
+
+- run db push
+- run drizzle migrations
+- run SQL migrations
+- create migration 0060
+- ALTER any database object
+- CREATE any database object
+- DROP anything
+- INSERT
+- UPDATE
+- DELETE
+- TRUNCATE
+- validate constraints
+- repair schema
+- repair data
+- publish
+- redeploy
+- restart production
+- change environment variables
+- change secrets
+- change database configuration
+- modify GitHub files
+- modify application source
+- modify migration files
+- modify Drizzle journal
+- modify the existing Stage 2 reports
+
+Do not attempt to fix the missing "student_subscription_allocations" table.
+
+Do not attempt to make the inspected database match the source schema.
+
+This stage is identification only.
+
+==================================================
+2. DO NOT EXPOSE SECRETS
+
+You may inspect configuration metadata only when necessary to establish the database binding.
+
+NEVER output:
+
+- DATABASE_URL
+- full connection strings
+- passwords
+- usernames if they are part of a secret
+- API keys
+- Clerk secrets
+- Flutterwave credentials
+- session tokens
+- cookies
+- private deployment tokens
+- secret environment-variable values
+
+If an environment variable contains a connection string, DO NOT print its value.
+
+You may report only safe non-secret metadata such as:
+
+- variable name
+- whether it exists
+- database host/domain with credentials removed, if safely obtainable
+- database name
+- non-secret resource identifier
+- deployment/environment name
+- provider/resource metadata
+- whether a binding is present
+
+If redaction cannot be guaranteed, do not output the value.
+
+==================================================
+3. FIRST INSPECT THE PUBLISHED APPLICATION'S DEPLOYMENT METADATA
+
+Use the available Replit/project/deployment inspection mechanisms.
+
+Determine whether the published application exposes any SAFE, NON-SECRET database-resource metadata.
+
+Look for things such as:
+
+- deployment environment metadata
+- database resource identifier
+- Neon project/resource identifier
+- database provider metadata
+- deployment-to-database binding metadata
+- runtime resource references
+- non-secret connection target information
+- deployment configuration references
+
+Do NOT assume that the existence of DATABASE_URL proves the target.
+
+Do NOT print the DATABASE_URL.
+
+If only a secret connection string is available and no safe binding metadata exists, report that fact and stop.
+
+==================================================
+4. INSPECT THE DATABASE CONNECTION TARGET WITHOUT REVEALING CREDENTIALS
+
+For the inspected "neondb" replica, collect safe metadata such as:
+
+- current_database()
+- PostgreSQL version
+- server address/port
+- server identity where available
+- database/provider metadata if available without credentials
+
+Do not reveal secrets.
+
+Then compare the safe metadata from the published deployment with the safe metadata from the inspected "neondb" replica.
+
+==================================================
+5. DO NOT USE TABLE COUNT ALONE
+
+A matching:
+
+- database name
+- PostgreSQL version
+- table count
+- hostname
+
+is NOT by itself sufficient to prove the binding.
+
+Use as many independent non-secret identifiers as are safely available.
+
+The objective is to establish:
+
+PUBLISHED APPLICATION
+↓
+DATABASE RESOURCE
+↓
+INSPECTED neondb REPLICA
+
+Only conclude VERIFIED if there is sufficient evidence connecting all three.
+
+==================================================
+6. IF A DATABASE RESOURCE ID IS AVAILABLE
+
+If Replit/Neon exposes a non-secret database/project/resource identifier:
+
+Report it in redacted/non-sensitive form if necessary.
+
+Compare it against the resource associated with the inspected "neondb" replica.
+
+If they match:
+
+TARGET BINDING VERIFIED.
+
+If they do not match:
+
+TARGET BINDING NOT VERIFIED.
+
+Do not make any changes.
+
+==================================================
+7. IF ONLY HOSTNAME INFORMATION IS AVAILABLE
+
+A hostname may be useful but should not automatically be treated as conclusive.
+
+If hostname/domain information is the only available evidence:
+
+- compare it carefully
+- report exactly what matches
+- report what cannot be verified
+- do NOT claim the target is verified unless the evidence is sufficiently strong
+
+If verification remains uncertain:
+
+STOP.
+
+==================================================
+8. IMPORTANT: INVESTIGATE THE MISSING TABLE ONLY AS METADATA
+
+Do NOT repair the missing table.
+
+Do NOT create it.
+
+Do NOT run migrations.
+
+Once the database binding is verified, you may perform a READ-ONLY catalog check to determine whether:
+
+"student_subscription_allocations"
+
+exists anywhere in the verified database, including non-public schemas.
+
+This is only to distinguish:
+
+A. table genuinely absent
+B. table exists in another schema
+C. table exists under another name
+D. metadata visibility issue
+
+Do not inspect application rows yet.
+
+Do not modify anything.
+
+If the database target remains unverified, do not perform this check.
+
+==================================================
+9. SOURCE-OF-TRUTH COMPARISON — METADATA ONLY
+
+If the target is verified, compare only safe structural metadata relevant to the previous finding:
+
+Expected source object:
+"student_subscription_allocations"
+
+Check whether the verified database contains the object.
+
+Do NOT attempt to synchronize it.
+
+Do NOT compare or repair the entire schema in this stage.
+
+==================================================
+10. REQUIRED SAFETY CHECK
+
+At the end, explicitly confirm:
+
+- Writes executed: 0
+- Schema changes: 0
+- Migrations executed: 0
+- db push executed: 0
+- Publish/deployment changes: 0
+- Environment/secrets modified: 0
+- GitHub/source changes: 0
+- Migration history changes: 0
+
+If any unexpected write or configuration change occurs, STOP immediately and report it.
+
+==================================================
+11. REQUIRED FINAL REPORT
+
+Return the report in this structure:
+
+A. PUBLISHED APPLICATION
+
+- deployment identified: YES/NO
+- deployment metadata available: YES/NO
+- safe database binding metadata available: YES/NO
+
+B. INSPECTED DATABASE
+
+- database name
+- PostgreSQL version
+- read-only status
+- safe server/resource metadata
+
+C. BINDING COMPARISON
+
+Evidence| Published App| Inspected neondb| Match| Confidence
+Database resource ID| ...| ...| YES/NO/UNKNOWN| ...
+Host/resource| ...| ...| YES/NO/UNKNOWN| ...
+Database name| ...| ...| YES/NO/UNKNOWN| ...
+Other safe identifier| ...| ...| YES/NO/UNKNOWN| ...
+
+Do not include secrets.
+
+D. DATABASE TARGET DECISION
+
+Use exactly one:
+
+TARGET BINDING VERIFIED
+
+or
+
+TARGET BINDING NOT VERIFIED
+
+Explain why.
+
+E. student_subscription_allocations
+
+If target is VERIFIED:
+
+- exists in public: YES/NO
+- exists in another schema: YES/NO
+- possible alternate object found: YES/NO
+- conclusion
+
+If target is NOT VERIFIED:
+
+- do not perform the catalog investigation
+- state that it remains pending
+
+F. SAFETY
+
+- writes: 0
+- schema changes: 0
+- migrations: 0
+- db push: 0
+- publish/deployment changes: 0
+- secrets changed: 0
+- source changes: 0
+- migration history changes: 0
+
+G. NEXT STEP
+
+If VERIFIED:
+
+Recommend returning to Stage 2E and performing the three-relationship READ-ONLY TEST-DATA AUDIT against this verified database.
+
+Do NOT perform that audit automatically in this stage.
+
+If NOT VERIFIED:
+
+Explain exactly what non-secret information is still required to establish the database binding.
+
+Do not ask for or request passwords, connection strings, API keys, or other secrets.
+
+==================================================
+12. CRITICAL STOP CONDITION
+
+If the database binding cannot be confidently established:
+
+STOP.
+
+Do not query application test records.
+
+Do not inspect the three relationships.
+
+Do not modify anything.
+
+End with exactly:
+
+STAGE 2E-1 BLOCKED — PUBLISHED-APPLICATION DATABASE BINDING COULD NOT BE CONFIRMED; NO PRODUCTION OR SHARED-DATABASE CHANGES WERE MADE.
+
+If the database binding is confidently established:
+
+End with exactly:
+
+STAGE 2E-1 COMPLETE — PUBLISHED-APPLICATION DATABASE BINDING VERIFIED READ-ONLY; NO PRODUCTION OR SHARED-DATABASE CHANGES WERE MADE.
