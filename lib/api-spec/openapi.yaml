@@ -34,6 +34,8 @@ tags:
   - name: communication
   - name: promotion
 paths:
+  /student-nfc/obligations:
+    $ref: "./student-nfc.yaml#/paths/~1student-nfc~1obligations"
   /card-replacements:
     get:
       operationId: listCardReplacements
@@ -5817,6 +5819,12 @@ components:
       required: true
       schema: { type: integer, minimum: 1 }
   schemas:
+    StudentNfcLedger:
+      $ref: "./student-nfc.yaml#/components/schemas/StudentNfcLedger"
+    StudentNfcObligation:
+      $ref: "./student-nfc.yaml#/components/schemas/StudentNfcObligation"
+    StudentNfcSummary:
+      $ref: "./student-nfc.yaml#/components/schemas/StudentNfcSummary"
     StudentCardReplacementRequest:
       type: object
       required: [cardId, reason]

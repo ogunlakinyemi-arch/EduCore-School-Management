@@ -365,6 +365,13 @@
       "when": 1791193200000,
       "tag": "0056_exam_record_workflows",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1791284400000,
+      "tag": "0058_student_subscription_terms",
+      "breakpoints": true
     }
   ]
 }

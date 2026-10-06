@@ -1,0 +1,487 @@
+Implement a focused Partner NFC Card Activation Permission feature in the existing Yemait EduCore platform.
+
+This is a Development-only change. Do not modify Production, production data, production secrets, payment credentials, or deployment configuration.
+
+1. Core business rule
+
+Partners should have a useful operational role beyond referring schools.
+
+A Partner may be allowed to assign/link NFC cards to students in schools that the Partner referred, but only when the Platform Owner explicitly grants that Partner NFC Card Activation permission.
+
+Simply referring a school must NOT automatically grant NFC activation permission.
+
+The existing NFC device-first rule remains mandatory:
+
+Platform Owner links NFC device to school → school becomes NFC-enabled → Platform Owner grants Partner NFC activation permission → Partner can assign NFC cards to eligible students in that referred school.
+
+A Partner must never be able to bypass the requirement that an NFC device is already linked to the school.
+
+2. Partner permissions
+
+Extend the existing Partner permission model instead of creating a separate unrelated authorization system.
+
+Partners should have at least these permissions:
+
+- Refer Schools
+- NFC Card Activation
+
+The Platform Owner must be able to independently enable or disable NFC Card Activation for each Partner.
+
+Examples:
+
+Partner A:
+
+- Refer Schools: ON
+- NFC Card Activation: ON
+
+Partner B:
+
+- Refer Schools: ON
+- NFC Card Activation: OFF
+
+Partner C:
+
+- Refer Schools: ON
+- NFC Card Activation: ON
+
+Partners cannot grant this permission to themselves or to another Partner.
+
+3. Platform Owner controls
+
+In the existing Platform Owner Partner management area, add an NFC permission control for each Partner.
+
+The Platform Owner should be able to:
+
+- Grant NFC Card Activation
+- Revoke NFC Card Activation
+- See whether NFC Card Activation is currently enabled
+- See when the permission was granted/revoked
+- See who performed the action
+
+Use the existing authenticated Platform Owner authorization and audit framework.
+
+Do not create a second Partner administration system.
+
+4. Partner dashboard
+
+When a Partner has NFC Card Activation permission, provide an NFC activation area using the existing Partner dashboard/navigation structure.
+
+The Partner should see only schools that:
+
+1. Were referred by that Partner, AND
+2. Have at least one active NFC device linked by the Platform Owner, AND
+3. The Partner currently has NFC Card Activation permission.
+
+Do not expose unrelated schools.
+
+Example:
+
+My NFC Schools
+
+Greenfield College
+
+- NFC Device Status: Active
+- Card Activation: Available
+
+Hillcrest Academy
+
+- NFC Device Status: Active
+- Card Activation: Available
+
+Mercyland School
+
+- NFC Device Status: No active device
+- Card Activation: Unavailable
+
+The Partner should still be able to see their referred school through the normal Partner school area if that already exists, but NFC activation must remain unavailable when there is no active linked device.
+
+5. School eligibility
+
+Use the existing authoritative Partner-to-school referral relationship.
+
+Do not rely on:
+
+- school name
+- manually entered school ID
+- URL parameters alone
+- client-side filtering
+- hidden frontend fields
+
+Backend authorization must independently verify:
+
+- authenticated Partner identity
+- Partner profile
+- Partner's NFC Card Activation permission
+- school referral ownership
+- school status
+- active NFC device linked to that school
+
+A Partner must receive an authorization error/empty state if any requirement fails.
+
+6. NFC device requirement
+
+Preserve the existing NFC device-first architecture.
+
+A Partner must NOT be able to:
+
+- create an NFC device
+- link a device to a school
+- unlink a device
+- change a device's school
+- activate/deactivate a device
+- create a device authorization relationship
+
+Only the existing Platform Owner NFC device management workflow should control school-device relationships.
+
+Before allowing card assignment, the backend must verify:
+
+"school has at least one active NFC device linked"
+
+If no active device exists:
+
+Do not create the card assignment.
+
+Show a clear message such as:
+
+«NFC card activation is unavailable because no active NFC device has been linked to this school by the Platform Owner.»
+
+7. Partner card assignment
+
+When all authorization requirements pass, allow the Partner to use the existing NFC card assignment workflow.
+
+The Partner should be able to:
+
+- Select an eligible referred school
+- View eligible students
+- Select a student
+- Enter/select the NFC card identifier using the existing card workflow
+- Assign the card
+- View successful assignment details
+- Reassign/replace a card only if the existing NFC card lifecycle already permits that action
+
+Do not create a separate card database or duplicate NFC card assignment system.
+
+Reuse the existing:
+
+NFC Card → Student → School
+
+relationship.
+
+8. Multiple NFC devices
+
+Do NOT make Partners select a device when assigning a card.
+
+If School A has:
+
+- Device A
+- Device B
+- Device C
+
+and the Partner assigns NFC Card 1001 to Student X:
+
+The card relationship should remain:
+
+Card 1001 → Student X → School A
+
+The card should automatically be valid on every active NFC device linked to School A.
+
+Adding another active device to School A should automatically allow existing valid school cards to work on that device.
+
+The Partner must never need to assign a card separately to each device.
+
+9. NFC authorization at scan time
+
+Preserve the existing backend device-first authorization model:
+
+NFC card scanned
+→ Device identifies itself
+→ EduCore verifies device
+→ EduCore identifies the card
+→ EduCore verifies card's school
+→ EduCore verifies student/person's school
+→ EduCore verifies card/device school match
+→ Attendance/security decision
+→ device receives approved/declined response.
+
+A card assigned by a Partner must follow exactly the same authorization rules as a card assigned by a Platform Owner or authorized internal NFC Activation Officer.
+
+Do not create a special weaker authorization path for Partners.
+
+10. Partner restrictions
+
+A Partner must NOT be able to:
+
+- assign cards to a school they did not refer
+- assign cards without NFC Card Activation permission
+- assign cards when the school has no active linked NFC device
+- link NFC devices
+- change school-device relationships
+- create/edit NFC subscription fees
+- change the ₦5,000 NFC subscription
+- change the ₦2,000 school allocation
+- change the ₦3,000 platform allocation
+- change Flutterwave configuration
+- access Platform Owner NFC management
+- access unrelated school data
+- grant/revoke permissions
+- create another Partner
+- change another Partner's referral relationships
+- bypass backend authorization by modifying IDs in requests
+
+11. Partner staff
+
+If the existing Partner Staff functionality allows Partner staff accounts, apply the same principle carefully.
+
+The Partner's NFC Card Activation permission should control whether authorized Partner staff can perform NFC activation.
+
+Partner staff must remain limited to the Partner's authorized scope.
+
+Do not allow a Partner staff member to elevate their own permission.
+
+Every Partner staff NFC action must identify the actual authenticated staff member in the audit trail.
+
+If the existing Partner Staff permission framework already has an appropriate NFC/activation permission, extend it rather than creating duplicate role infrastructure.
+
+12. Platform Owner employee NFC Activation Officers
+
+Do not remove or change the existing internal Platform Owner employee NFC Activation Officer / Device Activation Officer functionality.
+
+Keep the distinction:
+
+Internal NFC Activation Officer
+
+An authorized Platform Owner employee who can perform NFC activation within the schools assigned to that employee according to the existing employee-school scope.
+
+Partner NFC Activation
+
+An external Partner who can perform NFC card activation only for that Partner's referred schools and only after the Platform Owner grants NFC Card Activation permission.
+
+Both must ultimately use the same secure NFC card assignment service.
+
+13. Audit trail
+
+Use the existing audit framework.
+
+Record at minimum:
+
+- actor user/account ID
+- actor type: Partner / Partner Staff / Platform Employee
+- Partner ID where applicable
+- school ID
+- student ID
+- NFC card ID/reference
+- action
+- timestamp
+- previous card information where applicable
+- permission state
+- active NFC device existence/status at the time
+- success/failure where the existing audit model supports it
+
+For permission changes, record:
+
+- Platform Owner
+- Partner
+- permission granted/revoked
+- previous value
+- new value
+- timestamp
+
+Do not expose unnecessary sensitive information.
+
+14. Security and tenant isolation
+
+All Partner NFC endpoints must enforce authorization on the backend.
+
+Never rely on frontend visibility as the security boundary.
+
+Test manipulated:
+
+- partner IDs
+- school IDs
+- student IDs
+- card IDs
+- referral IDs
+- device IDs
+
+A Partner attempting to substitute another school's ID must be denied.
+
+A Partner without NFC permission must be denied even if they know the correct school/student/card IDs.
+
+A Partner with NFC permission must still be denied for a non-referred school.
+
+A Partner with NFC permission must still be denied when the referred school has no active NFC device.
+
+15. Existing NFC subscription/payment system
+
+Do NOT change the existing NFC subscription/payment implementation.
+
+NFC Card Activation permission is an operational permission and must not give Partners authority over:
+
+- NFC subscription pricing
+- NFC payment
+- Flutterwave
+- payment allocation
+- invoices
+- financial records
+
+The existing NFC subscription remains:
+
+- ₦5,000 per eligible student per term
+- ₦2,000 school allocation
+- ₦3,000 platform allocation
+- Platform Owner Flutterwave payment
+
+Partner NFC activation must not alter payment records.
+
+16. UI
+
+Use the existing Yemait EduCore design system and navigation.
+
+Do not redesign the entire Partner dashboard.
+
+Add only the necessary NFC functionality.
+
+Suggested Partner navigation:
+
+Dashboard
+My Schools
+NFC Activation — visible only when the Partner has NFC Card Activation permission
+
+If the permission is revoked, remove/hide the operational NFC activation functionality and enforce the same restriction on the backend.
+
+Do not delete historical NFC assignments when permission is revoked.
+
+Existing valid card assignments remain valid.
+
+Revoking Partner permission only prevents that Partner from performing new NFC activation actions.
+
+17. Important distinction
+
+Do NOT interpret:
+
+Partner has NFC Card Activation permission
+
+as:
+
+Partner owns or controls NFC devices.
+
+The Platform Owner remains the authority that establishes which schools are NFC-enabled by linking devices.
+
+The Partner receives only the operational ability to assign cards within the Platform Owner-authorized scope.
+
+18. Tests
+
+Add focused automated and frontend tests for:
+
+Permission
+
+1. Platform Owner grants NFC Card Activation.
+2. Partner receives permission.
+3. Platform Owner revokes permission.
+4. Partner loses activation ability.
+5. Partner cannot grant permission to themselves.
+
+School scope
+
+6. Partner can access a referred school.
+7. Partner cannot access a non-referred school for NFC activation.
+8. Partner with no NFC permission cannot activate cards.
+9. Partner with permission can activate cards only for referred schools.
+
+Device requirement
+
+10. Referred school with no active NFC device blocks activation.
+11. Referred school with one active device allows activation.
+12. Referred school with multiple active devices allows activation.
+13. Unlink/deactivate the last active device and verify new card activation is blocked.
+14. Adding an active device restores activation availability.
+
+Card assignment
+
+15. Authorized Partner can assign an existing NFC card.
+16. Card belongs to the correct student and school.
+17. Existing card assignment rules remain enforced.
+18. Duplicate card assignment is rejected.
+19. Cross-school card assignment is rejected.
+20. Manipulated student/school/card/device IDs are rejected.
+
+Multiple devices
+
+21. Card assigned to School A works against all active School A devices.
+22. Card does not work against another school's device.
+23. Adding a second School A device does not require card reassignment.
+
+Partner Staff
+
+24. Authorized Partner Staff can activate cards when allowed by the existing Partner permission model.
+25. Unauthorized Partner Staff cannot activate cards.
+26. Partner Staff cannot elevate permissions.
+
+Audit
+
+27. Partner permission grant is audited.
+28. Partner permission revocation is audited.
+29. Partner card assignment is audited with the actual actor.
+30. Unauthorized attempts are handled according to the existing audit/security framework.
+
+Regression
+
+31. Existing Platform Owner NFC assignment still works.
+32. Existing internal NFC Activation Officer workflow still works.
+33. Existing School Admin restrictions remain unchanged.
+34. Existing NFC device linking remains Platform Owner-only.
+35. Existing NFC card/student relationships remain intact.
+36. Existing NFC subscription/payment records remain unchanged.
+37. Existing Partner referral functionality remains unchanged.
+38. Existing school, student, card, and device data is preserved.
+
+19. Browser acceptance
+
+Perform an authenticated Development browser walkthrough using existing test accounts.
+
+Verify:
+
+1. Platform Owner opens Partner management.
+2. Platform Owner grants NFC Card Activation to Partner A.
+3. Partner A signs in.
+4. Partner A sees NFC Activation.
+5. Partner A sees only referred schools.
+6. A referred school without an active device cannot activate cards.
+7. Platform Owner links an NFC device to that school.
+8. Partner A refreshes.
+9. The school becomes NFC-activation eligible.
+10. Partner A selects the school.
+11. Partner A selects an eligible student.
+12. Partner A assigns an NFC card.
+13. Assignment succeeds.
+14. Existing card/device authorization remains correct.
+15. A second active device linked to the same school can use the same card without reassignment.
+16. Partner A cannot access another Partner's/non-referred school for activation.
+17. Platform Owner revokes Partner A's NFC permission.
+18. Partner A can no longer perform new NFC activation.
+19. Existing card assignments remain intact.
+
+If browser authentication is blocked by an external CAPTCHA/provider limitation, clearly report that limitation rather than claiming the browser test passed.
+
+20. Preservation requirement
+
+Before changing anything, inspect the existing Partner, Partner Staff, NFC Device, NFC Card, student, school, permission, authorization, and audit implementations.
+
+Reuse existing tables, services, APIs, permissions, and relationships wherever possible.
+
+Do not rebuild the NFC system.
+
+Do not create duplicate Partner records, school records, NFC device records, NFC card records, payment systems, or authorization systems.
+
+Do not modify Production.
+
+At the end, report:
+
+- exact files changed
+- database changes, if any
+- API/endpoints changed
+- permissions added/extended
+- tests run and results
+- browser acceptance results
+- any limitations or unresolved issues
+- confirmation that existing NFC, Partner, payment, and school data were preserved.

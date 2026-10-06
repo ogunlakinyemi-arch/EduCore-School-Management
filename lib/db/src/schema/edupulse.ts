@@ -642,6 +642,7 @@ export const academicTerms = pgTable(
     uniqueIndex("academic_terms_session_name_unique").on(table.academicSessionId, table.name),
     uniqueIndex("academic_terms_id_school_unique").on(table.id, table.schoolId),
     unique("academic_terms_id_school_tenant_key").on(table.id, table.schoolId),
+    unique("academic_terms_nfc_session_key").on(table.id,table.schoolId,table.academicSessionId),
     foreignKey({
       columns: [table.academicSessionId, table.schoolId],
       foreignColumns: [academicSessions.id, academicSessions.schoolId],

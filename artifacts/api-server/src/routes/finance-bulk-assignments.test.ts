@@ -100,6 +100,10 @@ const dbMock = vi.hoisted(() => {
 });
 
 vi.mock("@workspace/db", () => ({ pool: { connect: dbMock.connect, query: dbMock.query } }));
+vi.mock("../lib/student-nfc-obligations",async original=>{
+  const actual=await original<typeof import("../lib/student-nfc-obligations")>();
+  return {...actual,ensureStudentNfcSubscription:vi.fn(async()=>null)};
+});
 vi.mock("../middlewares/auth", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../middlewares/auth")>();
   return {

@@ -69,6 +69,7 @@ const poolMock = vi.hoisted(() => {
       query: vi.fn(async (sql: string, values: any[] = []) => {
       state.calls.push({ sql, values });
       if (sql === "BEGIN") return result();
+      if(sql.includes("SELECT 1 FROM fee_invoice_lines l WHERE")) return result();
       if (sql === "COMMIT" || sql === "ROLLBACK") {
         releaseLocks();
         return result();

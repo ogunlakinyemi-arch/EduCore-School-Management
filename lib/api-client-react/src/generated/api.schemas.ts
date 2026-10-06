@@ -5,6 +5,75 @@
  * Multi-tenant Yemait EduCore school management API
  * OpenAPI spec version: 0.1.0
  */
+export type StudentNfcObligationStatus = typeof StudentNfcObligationStatus[keyof typeof StudentNfcObligationStatus];
+
+
+export const StudentNfcObligationStatus = {
+  UNPAID: 'UNPAID',
+  PAID: 'PAID',
+  PENDING: 'PENDING',
+  FAILED: 'FAILED',
+  EXEMPT: 'EXEMPT',
+  LEGACY_REVIEW: 'LEGACY_REVIEW',
+} as const;
+
+export type StudentNfcObligationPaymentMethod = typeof StudentNfcObligationPaymentMethod[keyof typeof StudentNfcObligationPaymentMethod];
+
+
+export const StudentNfcObligationPaymentMethod = {
+  'Flutterwave_—_Platform_Owner': 'Flutterwave — Platform Owner',
+} as const;
+
+export interface StudentNfcObligation {
+  schoolId: number;
+  schoolName: string;
+  studentId: number;
+  studentName: string;
+  className: string;
+  section: string;
+  sessionId: number;
+  sessionName: string;
+  termId: number;
+  termName: string;
+  subscriptionId: number | null;
+  legacyInvoiceId: number | null;
+  status: StudentNfcObligationStatus;
+  amountMinor: number;
+  ordinaryFeesMinor: number;
+  ordinaryFeesAssigned?: boolean;
+  totalMinor: number;
+  schoolShareMinor: number;
+  platformShareMinor: number;
+  schoolAllocatedMinor: number;
+  platformAllocatedMinor: number;
+  partnerAllocatedMinor: number;
+  lastPaymentId: number | null;
+  reference: string | null;
+  paidAt: string | null;
+  paymentMethod: StudentNfcObligationPaymentMethod;
+  systemFee: boolean;
+  canPay: boolean;
+}
+
+export interface StudentNfcSummary {
+  eligible: number;
+  paid: number;
+  unpaid: number;
+  pending: number;
+  failed: number;
+  legacyReview: number;
+  exempt: number;
+  collectedMinor: number;
+  schoolAllocatedMinor: number;
+  platformAllocatedMinor: number;
+  partnerAllocatedMinor: number;
+}
+
+export interface StudentNfcLedger {
+  rows: StudentNfcObligation[];
+  summary: StudentNfcSummary;
+}
+
 export interface StudentCardReplacementRequest {
   /** @minimum 1 */
   cardId: number;
@@ -13482,6 +13551,12 @@ export interface SchoolCurriculumTopicsResponse {
   curriculumVersion: CurriculumVersion;
 }
 
+export type StudentNfcLedger4b96100 = StudentNfcLedger;
+
+export type StudentNfcObligation4b96100 = StudentNfcObligation;
+
+export type StudentNfcSummary4b96100 = StudentNfcSummary;
+
 export interface StudentCardReplacementRequest4b96100 {
   /** @minimum 1 */
   cardId: number;
@@ -20490,6 +20565,33 @@ export const StatusFilterParameter = {
 } as const;
 
 export type SearchParameter = string;
+
+export type GetStudentNfcObligationsParams = {
+/**
+ * @minimum 1
+ */
+schoolId?: number;
+/**
+ * @minimum 1
+ */
+studentId?: number;
+/**
+ * @minimum 1
+ */
+sessionId?: number;
+/**
+ * @minimum 1
+ */
+termId?: number;
+/**
+ * @maxLength 120
+ */
+className?: string;
+/**
+ * @maxLength 80
+ */
+section?: string;
+};
 
 export type ListCardReplacementsParams = {
 /**

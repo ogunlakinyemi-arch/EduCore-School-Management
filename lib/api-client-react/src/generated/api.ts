@@ -347,6 +347,7 @@ import type {
   GetSchoolTransportPolicyParams,
   GetStaffNfcReceiptParams,
   GetStudentAttendanceParams,
+  GetStudentNfcObligationsParams,
   GetStudentOwnAttendanceByIdParams,
   GetStudentParams,
   GetStudentPhotoParams,
@@ -707,6 +708,7 @@ import type {
   StudentIdentificationPolicy,
   StudentIdentificationPolicyInput,
   StudentInput,
+  StudentNfcLedger,
   StudentPhotoConfirmation,
   StudentPhotoResult,
   StudentPhotoUploadIntent,
@@ -820,6 +822,90 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetStudentNfcObligationsUrl = (params?: GetStudentNfcObligationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/student-nfc/obligations?${stringifiedParams}` : `/api/student-nfc/obligations`
+}
+
+/**
+ * @summary Read authoritative, role-scoped automatic student NFC obligations
+ */
+export const getStudentNfcObligations = async (params?: GetStudentNfcObligationsParams, options?: Parameters<typeof customFetch>[1]): Promise<StudentNfcLedger> => {
+
+  return customFetch<StudentNfcLedger>(getGetStudentNfcObligationsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStudentNfcObligationsQueryKey = (params?: GetStudentNfcObligationsParams,) => {
+    return [
+    `/api/student-nfc/obligations`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetStudentNfcObligationsQueryOptions = <TData = Awaited<ReturnType<typeof getStudentNfcObligations>>, TError = ErrorType<void>>(params?: GetStudentNfcObligationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStudentNfcObligations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStudentNfcObligationsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStudentNfcObligations>>> = ({ signal }) => getStudentNfcObligations(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStudentNfcObligations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStudentNfcObligationsQueryResult = NonNullable<Awaited<ReturnType<typeof getStudentNfcObligations>>>
+export type GetStudentNfcObligationsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read authoritative, role-scoped automatic student NFC obligations
+ */
+
+export function useGetStudentNfcObligations<TData = Awaited<ReturnType<typeof getStudentNfcObligations>>, TError = ErrorType<void>>(
+ params?: GetStudentNfcObligationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStudentNfcObligations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStudentNfcObligationsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListCardReplacementsUrl = (params?: ListCardReplacementsParams,) => {
   const normalizedParams = new URLSearchParams();

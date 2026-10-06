@@ -18,6 +18,7 @@
 //   export type Post = typeof postsTable.$inferSelect;
 
 export * from "./edupulse";
+export * from "./student-subscription-terms";
 export * from "./phase6";
 export * from "./exam-record";
 export * from "./lesson-note-documents";

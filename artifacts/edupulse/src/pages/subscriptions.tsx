@@ -17,6 +17,7 @@ import {
   TenantPicker, useTenant, money, date, useSchoolAdminAccess,
 } from '@/components/shared';
 import { Link } from 'wouter';
+import { StudentNfcObligationsPanel, StudentNfcFamilyPage } from '@/components/student-nfc-obligations';
 import { useGetAuthorizedContext } from '@workspace/api-client-react';
 import {
   checkoutEvidenceMatchesServer,
@@ -326,7 +327,7 @@ export function SubscriptionsPage() {
     { schoolId },
     {
       query: {
-        enabled: !!schoolId,
+        enabled: !!schoolId && (isPlatformOwner || canCheckout),
         queryKey: getListSubscriptionsQueryKey({ schoolId }),
         refetchOnMount: 'always',
         refetchInterval: 30_000,
@@ -639,4 +640,14 @@ export function SubscriptionsPage() {
       )}
     </div>
   );
+}
+// /subscriptions is also the Flutterwave return URL. School staff and the Owner get the legacy
+// receipt view plus the NFC ledger; families, students and teachers get only their scoped NFC ledger.
+export function SubscriptionsRoute() {
+  const context = useGetAuthorizedContext().data;
+  const {schoolId}=useTenant();
+  const staff = context?.isPlatformOwner === true || context?.roles?.some(
+    role => (role.role === 'SCHOOL_ADMIN' || role.role === 'ACCOUNTANT') && role.status === 'ACTIVE') === true;
+  if (!staff) return <StudentNfcFamilyPage />;
+  return <><SubscriptionsPage /><div className="mt-6"><StudentNfcObligationsPanel schoolId={context?.isPlatformOwner?undefined:schoolId} canSeeSplit manageReturn={false} /></div></>;
 }

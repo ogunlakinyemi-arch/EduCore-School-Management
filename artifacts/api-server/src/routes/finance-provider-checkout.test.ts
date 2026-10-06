@@ -59,6 +59,7 @@ const poolMock = vi.hoisted(() => ({
       query: async (sql: string, values: unknown[] = []) => {
         state.clientCalls.push({ sql, values });
         if (sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK") return { rows: [] };
+        if(sql.includes("SELECT 1 FROM fee_invoice_lines l WHERE")) return {rows:[]};
         if (/^(SAVEPOINT|RELEASE SAVEPOINT|ROLLBACK TO SAVEPOINT)\b/i.test(sql.trim())) return { rows: [] };
         if (sql.includes("FROM fee_invoices i") && sql.includes("JOIN parents p")) {
           return state.linked && Number(values[0]) === state.invoiceId && Number(values[1]) === state.userId

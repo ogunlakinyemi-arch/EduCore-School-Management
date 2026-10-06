@@ -1,6 +1,7 @@
 import { useGetPlatformDashboard, useGetSchoolDashboard, useGetAuthorizedContext, useGetStudentSelfProfile, useGetOwnAttendance } from '@workspace/api-client-react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'wouter';
+import { StudentNfcObligationsPanel } from '@/components/student-nfc-obligations';
 import { TeacherAssignedWork, isOwnTeacherView } from '@/components/teacher-assigned-work';
 import { Building2, GraduationCap, CircleDollarSign, Smartphone, ArrowUpRight, LogIn, LogOut, Calendar, Clock, UsersRound, Briefcase, CreditCard, FileClock, ReceiptText } from 'lucide-react';
 import { PageHeading, Metric, useTenant, SkeletonPage, ErrorState, ActivityFeed, money, Button, StatusPill } from '@/components/shared';
@@ -371,6 +372,7 @@ function SchoolDashboard({ schoolId, canOpenFinance, showTeacherWork = false }: 
       </div>
       
       {showTeacherWork && <TeacherAssignedWork schoolId={schoolId} />}
+      {showTeacherWork && <StudentNfcObligationsPanel schoolId={schoolId} teacherView compact />}
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <div className="panel min-w-0 p-6 md:p-8">

@@ -41,7 +41,7 @@ import { MyAcademicsPage } from '@/pages/my-academics';
 import { ClassesPage } from '@/pages/classes';
 import { UsersPage } from '@/pages/users';
 import { PeopleImportsPage } from '@/pages/people-imports';
-import { SubscriptionsPage } from '@/pages/subscriptions';
+import { SubscriptionsPage, SubscriptionsRoute } from '@/pages/subscriptions';
 import { SubscriptionEnforcementPage } from '@/pages/subscription-enforcement';
 import { CardsPage } from '@/pages/cards';
 import { CardReplacementsPage } from '@/pages/card-replacements';
@@ -226,6 +226,7 @@ function ProtectedRoutes() {
 
   if (isOnlyParent) {
     return <TenantProvider><Switch>
+      <Route path="/subscriptions"><Shell><SubscriptionsRoute /></Shell></Route>
       <Route path="/my-care"><Shell><FamilyCarePage /></Shell></Route>
       <Route path="/card-replacements"><Shell><CardReplacementsPage /></Shell></Route>
       <Route path="/my-transport"><Shell><FamilyTransportPage /></Shell></Route>
@@ -371,7 +372,7 @@ function ProtectedRoutes() {
             <RoleGuard isPlatformOwnerOnly><NotificationsPage /></RoleGuard>
           </Route>
           <Route path="/subscriptions">
-            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']} ownerCanView ownerReadOnly><SubscriptionsPage /></RoleGuard>
+            <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT', 'TEACHER', 'STUDENT']} ownerCanView ownerReadOnly><SubscriptionsRoute /></RoleGuard>
           </Route>
           <Route path="/subscription-enforcement">
             <RoleGuard allowedRoles={['SCHOOL_ADMIN', 'ACCOUNTANT']} ownerCanView><SubscriptionEnforcementPage /></RoleGuard>

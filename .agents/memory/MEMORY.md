@@ -48,3 +48,4 @@
 - [Preservation bookkeeping](preservation-bookkeeping.md) — separate unchanged business data from ordinary sign-in and scheduler timestamp updates; disclose every excluded field.
 - [Calendar correction safety](calendar-correction-safety.md) — preserve valid concurrent Admin calendar edits; illustrative dates do not override the school's saved full-year range.
 - [NFC device-first policy](nfc-device-first-policy.md) — require linked readers for new Student assignments/activation; inherit school access and preserve legacy records.
+- [Automatic student NFC finance](automatic-student-nfc-finance.md) — preserve legacy paid school NFC charges for Owner review without rebilling or inventing platform verification.

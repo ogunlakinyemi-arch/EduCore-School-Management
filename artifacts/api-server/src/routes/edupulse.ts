@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request, type Response as ExpressResponse } from "express";
 import { generateSchoolCode } from "../lib/generated-person-codes";
+import { assertStudentNfcPaymentAccess,ensureStudentNfcSubscription } from "../lib/student-nfc-obligations";
 import {assertSchoolHasActiveNfcDevice,rejectManualCardDeviceIds} from "../lib/nfc-device-first";
 import {
   CreateClassBody,
@@ -1080,53 +1081,12 @@ router.get("/subscriptions", async (req, res) => {
 });
 
 router.post("/subscriptions", async (req, res) => {
-  try {
-    const schoolId = tenantId(req, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
-    assertSchoolOperationalAccess(req, schoolId, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
-    const body = CreateSubscriptionBody.parse(req.body);
-    const termName = normalizeStudentSubscriptionTerm(body.term);
-    const student = await pool.query(
-      `SELECT id, status, first_name || ' ' || last_name AS name
-         FROM students WHERE id = $1 AND school_id = $2`,
-      [body.studentId, schoolId],
-    );
-    if (!student.rows[0]) return res.status(404).json({ error: "Student not found in school" });
-    if (String(student.rows[0].status).toUpperCase() !== "ACTIVE") {
-      throw new AuthError(409, "Only active students can receive a current-term subscription");
-    }
-    const currentTerm = await pool.query(
-      `SELECT t.end_date AS "endDate"
-         FROM academic_terms t
-         JOIN academic_sessions ses ON ses.id=t.academic_session_id AND ses.school_id=t.school_id
-        WHERE t.school_id=$1 AND t.name=$2
-          AND t.is_current=true AND UPPER(t.status)='ACTIVE'
-          AND ses.is_current=true AND UPPER(ses.status)='ACTIVE'
-          AND t.start_date<=CURRENT_DATE AND t.end_date>=CURRENT_DATE
-        LIMIT 1`,
-      [schoolId, termName],
-    );
-    if (!currentTerm.rows[0]) {
-      throw new AuthError(409, "Student subscriptions can only be created for the active current academic term");
-    }
-    const expiresAt = new Date(`${String(currentTerm.rows[0].endDate).slice(0, 10)}T00:00:00.000Z`);
-    expiresAt.setUTCDate(expiresAt.getUTCDate() + 1);
-    const result = await pool.query(`
-      INSERT INTO subscriptions (school_id, student_id, term, provider, expires_at)
-      VALUES ($1, $2, $3, 'FLUTTERWAVE', $4)
-      RETURNING id, school_id AS "schoolId", student_id AS "studentId", amount::float,
-        school_share::float AS "schoolShare", edupulse_share::float AS "edupulseShare",
-        status, verification_status AS "verificationStatus", provider, term, expires_at AS "expiresAt"
-    `, [schoolId, body.studentId, termName, expiresAt]);
-    const row = result.rows[0];
-    await audit(req, schoolId, "Created subscription", "Subscriptions", row.id, "info", "SUBSCRIPTION_CREATED");
-    res.status(201).json({ ...row, studentName: student.rows[0].name, expiresAt: dateString(row.expiresAt) });
-  } catch (error) {
-    fail(req, res, error);
-  }
+  res.status(403).json({error:"NFC Card Subscription is a system fee, automatically attached to eligible students. Manual creation is not permitted."});
 });
 
 router.post("/subscriptions/:subscriptionId/checkout", async (req, res) => {
   try {
+    if(req.body && Object.keys(req.body).length>0) throw new AuthError(400,"The system fixes the NFC amount, provider, receiving account and allocations");
     const subscriptionId = subscriptionPaymentId(req.params.subscriptionId, "subscriptionId");
     const idempotencyKey = req.get("Idempotency-Key") ?? "";
     if (!/^[A-Za-z0-9._:-]{8,120}$/.test(idempotencyKey)) {
@@ -1159,12 +1119,12 @@ router.post("/subscriptions/:subscriptionId/checkout", async (req, res) => {
            FROM subscriptions sub
            JOIN students st ON st.id=sub.student_id AND st.school_id=sub.school_id
           WHERE sub.id=$1
-          FOR UPDATE OF sub,st`,
+           FOR NO KEY UPDATE OF sub,st`,
         [subscriptionId],
       );
       const subscription = subscriptionResult.rows[0];
       if (!subscription) throw new AuthError(404, "Student subscription not found");
-      assertSchoolOperationalAccess(req, subscription.schoolId, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
+      await assertStudentNfcPaymentAccess(req,subscriptionId,client,subscription.schoolId);
 
       const previous = await client.query(
         `SELECT id AS "paymentId",subscription_id AS "subscriptionId",school_id AS "schoolId",
@@ -1225,6 +1185,11 @@ router.post("/subscriptions/:subscriptionId/checkout", async (req, res) => {
             "An existing payment for this student and current academic term must be completed or reconciled before checkout",
             "STUDENT_TERM_PAYMENT_ALREADY_EXISTS",
           );
+        }
+        const canonical=await ensureStudentNfcSubscription(client,Number(subscription.schoolId),
+          Number(subscription.studentId),Number(currentTerm.sessionId),Number(currentTerm.termId));
+        if(!canonical || Number(canonical.subscriptionId)!==subscriptionId) {
+          throw new AuthError(409,"This academic period already has an authoritative NFC obligation or a legacy charge requiring Owner reconciliation","STUDENT_TERM_PAYMENT_ALREADY_EXISTS");
         }
         const reference = adapter.generateReference();
         const inserted = await client.query(
@@ -1338,7 +1303,7 @@ router.post("/subscriptions/:subscriptionId/verify", async (req, res) => {
     );
     const payment = paymentResult.rows[0];
     if (!payment) throw new AuthError(404, "Persisted student subscription checkout not found");
-    assertSchoolOperationalAccess(req, payment.schoolId, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
+    await assertStudentNfcPaymentAccess(req,subscriptionId,pool,payment.schoolId);
     const viewAllAllocations = isPlatformOwner(getUserContext(req));
     if (payment.status === "PAID") {
       const result = await readStudentSubscriptionPaymentResponse(
@@ -1432,7 +1397,9 @@ router.get("/subscriptions/:subscriptionId/payments/:paymentId", async (req, res
       [subscriptionId],
     );
     if (!subscription.rows[0]) throw new AuthError(404, "Student subscription not found");
-    const context = assertSchoolAccess(req, subscription.rows[0].schoolId, ["SCHOOL_ADMIN", "ACCOUNTANT"]);
+    const context = isPlatformOwner(getUserContext(req))
+      ? assertSchoolAccess(req,subscription.rows[0].schoolId,["SCHOOL_ADMIN","ACCOUNTANT"])
+      : await assertStudentNfcPaymentAccess(req,subscriptionId,pool,subscription.rows[0].schoolId);
     res.json(await readStudentSubscriptionPaymentResponse(
       subscriptionId,
       paymentId,

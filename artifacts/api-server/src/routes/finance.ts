@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { ensureStudentNfcSubscription, ensureClassNfcSubscriptions, isSystemNfcCategory } from "../lib/student-nfc-obligations";
 import { assignPublishedClassFees } from "../services/fee-publication";
 import { feeLineBalances, selectedFeeAmount } from "../services/fee-line-balances";
 import { Router, type IRouter, type Request } from "express";
@@ -385,6 +386,9 @@ async function createStructureLines(client: any, schoolId: number, structureId: 
       [line.categoryId, schoolId],
     );
     if (!category.rows[0]) throw new AuthError(404, "Fee category not found");
+    if(isSystemNfcCategory(category.rows[0].name) || isSystemNfcCategory(line.description??"")) {
+      throw new AuthError(403,"NFC Card Subscription is a system fee and cannot be added to a school fee schedule");
+    }
     await client.query(
       `INSERT INTO fee_structure_lines (school_id,structure_id,category_id,category_name_snapshot,description_snapshot,amount_minor)
        VALUES ($1,$2,$3,$4,$5,$6)`,
@@ -418,6 +422,10 @@ async function createInvoiceForStudent(
   createdBy: number,
   bulk = false,
 ) {
+  await ensureStudentNfcSubscription(client,schoolId,student.id,structure.academic_session_id,structure.academic_term_id);
+  if(lines.some(l=>isSystemNfcCategory(l.category_name_snapshot??"") || isSystemNfcCategory(l.description_snapshot??""))) {
+    throw new AuthError(403,"Legacy school-configured NFC fees cannot be assigned again; use an ordinary-fees-only schedule. NFC is attached automatically.");
+  }
   const subtotal = lines.reduce((total: number, line: any) => total + Number(line.amount_minor), 0);
   const invoiceNumber = `EDC-${schoolId}-${Date.now()}-${randomUUID().slice(0, 8).toUpperCase()}`;
   const inserted = await client.query(
@@ -503,6 +511,7 @@ router.post("/school/finance/categories", async (req, res): Promise<void> => {
   try {
     const schoolId = schoolIdForMutation(req, CreateFeeCategoryQueryParams, ["SCHOOL_ADMIN"]);
     const body = parsed(CreateFeeCategoryBody, req.body);
+    if(isSystemNfcCategory(body.name)) throw new AuthError(403,"NFC Card Subscription is managed automatically by the system");
     const context = getUserContext(req);
     await client.query("BEGIN");
     const result = await client.query(
@@ -526,6 +535,10 @@ router.patch("/school/finance/categories/:categoryId", async (req, res): Promise
     const { categoryId } = parsed(UpdateFeeCategoryParams, req.params);
     const schoolId = schoolIdForMutation(req, UpdateFeeCategoryQueryParams, ["SCHOOL_ADMIN"]);
     const body = parsed(UpdateFeeCategoryBody, req.body);
+    const category=await client.query("SELECT name FROM fee_categories WHERE id=$1 AND school_id=$2",[categoryId,schoolId]);
+    if(isSystemNfcCategory(category.rows[0]?.name??"") || isSystemNfcCategory(body.name??"")) {
+      throw new AuthError(403,"The system NFC subscription cannot be edited or deleted by School Admin");
+    }
     const fields: string[] = [];
     const values: unknown[] = [];
     const add = (column: string, value: unknown) => {
@@ -591,6 +604,7 @@ router.post("/school/finance/structures", async (req, res): Promise<void> => {
       [schoolId, body.sessionId, body.termId, body.classId, body.section ?? null, versionResult.rows[0].version, context.user.id],
     );
     await createStructureLines(client, schoolId, created.rows[0].id, body.lines);
+    await ensureClassNfcSubscriptions(client,schoolId,body.sessionId,body.termId,body.classId,body.section??null);
     await audit(req, client, schoolId, "created", "fee structure", created.rows[0].id);
     const response = await getStructure(client, schoolId, created.rows[0].id);
     await client.query("COMMIT");
@@ -1196,7 +1210,7 @@ router.post("/school/finance/payments/:paymentId/verify", async (req, res): Prom
     );
     if (duplicateEvidence.rows[0]) throw new AuthError(409, "This verification evidence reference was already used");
     payableAmount(payment.rows[0].amount_minor, invoice.rows[0].outstanding_minor);
-    const selectedAmount=await selectedFeeAmount(client,invoice.rows[0],payment.rows[0].selected_line_ids);
+    const selectedAmount=await selectedFeeAmount(client,invoice.rows[0],payment.rows[0].selected_line_ids,true);
     if(selectedAmount!==null&&selectedAmount!==payment.rows[0].amount_minor) throw new AuthError(409,"Selected fee balances changed; review this transfer before verification");
     const updated = await client.query(
       `UPDATE fee_payments SET status='VERIFIED',verified_by=$1,verified_at=NOW(),

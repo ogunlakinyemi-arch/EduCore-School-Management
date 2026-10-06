@@ -58,6 +58,11 @@ vi.mock('@/components/shared', () => ({
   useTenant: () => ({ schoolId: state.schoolId, setSchoolId: vi.fn() }),
 }));
 
+vi.mock('@/components/student-nfc-obligations', () => ({
+  StudentNfcObligationsPanel: () => <div data-testid="mock-nfc-panel" />,
+  StudentNfcFamilyPage: () => <div data-testid="mock-nfc-family" />,
+}));
+
 vi.mock('@/components/school-document', () => ({
   SchoolDocumentHeader: ({ branding }: any) => <header data-testid="school-document-header" data-logo-url={branding.logoUrl}>{branding.name}</header>,
   SchoolDocumentPrintButton: ({ children, label, testId }: any) => <div><button data-testid={testId}>{label}</button>{children}</div>,

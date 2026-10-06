@@ -25,7 +25,7 @@ const dbMock = vi.hoisted(() => {
     if (sql.includes("FROM students st WHERE st.id=$1")) {
       return result([{
         id: 15, first_name: "Student", last_name: "One", admission_no: "A15",
-        class_name: "Year 4", section: "A",
+        class_name: "Year 4", section: "A", eligibleForStructure:true,
       }]);
     }
     if (sql.includes("FROM fee_structure_lines")) {
@@ -44,6 +44,10 @@ const dbMock = vi.hoisted(() => {
 });
 
 vi.mock("@workspace/db", () => ({ pool: { connect: dbMock.connect, query: dbMock.query } }));
+vi.mock("../lib/student-nfc-obligations",async original=>{
+  const actual=await original<typeof import("../lib/student-nfc-obligations")>();
+  return {...actual,ensureStudentNfcSubscription:vi.fn(async()=>null)};
+});
 vi.mock("../middlewares/auth", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../middlewares/auth")>();
   return {

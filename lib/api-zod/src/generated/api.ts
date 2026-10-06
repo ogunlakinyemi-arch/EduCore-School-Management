@@ -8,6 +8,75 @@
 import * as zod from 'zod';
 
 
+/**
+ * @summary Read authoritative, role-scoped automatic student NFC obligations
+ */
+
+
+
+
+export const getStudentNfcObligationsQueryClassNameMax = 120;
+
+export const getStudentNfcObligationsQuerySectionMax = 80;
+
+
+
+export const GetStudentNfcObligationsQueryParams = zod.object({
+  "schoolId": zod.coerce.number().int().min(1).optional(),
+  "studentId": zod.coerce.number().int().min(1).optional(),
+  "sessionId": zod.coerce.number().int().min(1).optional(),
+  "termId": zod.coerce.number().int().min(1).optional(),
+  "className": zod.coerce.string().max(getStudentNfcObligationsQueryClassNameMax).optional(),
+  "section": zod.coerce.string().max(getStudentNfcObligationsQuerySectionMax).optional()
+})
+
+export const GetStudentNfcObligationsResponse = zod.object({
+  "rows": zod.array(zod.object({
+  "schoolId": zod.number().int(),
+  "schoolName": zod.string(),
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "className": zod.string(),
+  "section": zod.string(),
+  "sessionId": zod.number().int(),
+  "sessionName": zod.string(),
+  "termId": zod.number().int(),
+  "termName": zod.string(),
+  "subscriptionId": zod.number().int().nullable(),
+  "legacyInvoiceId": zod.number().int().nullable(),
+  "status": zod.enum(['UNPAID', 'PAID', 'PENDING', 'FAILED', 'EXEMPT', 'LEGACY_REVIEW']),
+  "amountMinor": zod.number(),
+  "ordinaryFeesMinor": zod.number(),
+  "ordinaryFeesAssigned": zod.boolean().optional(),
+  "totalMinor": zod.number(),
+  "schoolShareMinor": zod.number(),
+  "platformShareMinor": zod.number(),
+  "schoolAllocatedMinor": zod.number(),
+  "platformAllocatedMinor": zod.number(),
+  "partnerAllocatedMinor": zod.number(),
+  "lastPaymentId": zod.number().int().nullable(),
+  "reference": zod.string().nullable(),
+  "paidAt": zod.string().nullable(),
+  "paymentMethod": zod.enum(['Flutterwave — Platform Owner']),
+  "systemFee": zod.boolean(),
+  "canPay": zod.boolean()
+})),
+  "summary": zod.object({
+  "eligible": zod.number().int(),
+  "paid": zod.number().int(),
+  "unpaid": zod.number().int(),
+  "pending": zod.number().int(),
+  "failed": zod.number().int(),
+  "legacyReview": zod.number().int(),
+  "exempt": zod.number().int(),
+  "collectedMinor": zod.number(),
+  "schoolAllocatedMinor": zod.number(),
+  "platformAllocatedMinor": zod.number(),
+  "partnerAllocatedMinor": zod.number()
+})
+})
+
+
 
 
 

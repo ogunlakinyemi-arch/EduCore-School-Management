@@ -1,0 +1,80 @@
+paths:
+  /student-nfc/obligations:
+    get:
+      operationId: getStudentNfcObligations
+      tags: [Subscriptions]
+      summary: Read authoritative, role-scoped automatic student NFC obligations
+      parameters:
+        - {name: schoolId, in: query, schema: {type: integer, minimum: 1}}
+        - {name: studentId, in: query, schema: {type: integer, minimum: 1}}
+        - {name: sessionId, in: query, schema: {type: integer, minimum: 1}}
+        - {name: termId, in: query, schema: {type: integer, minimum: 1}}
+        - {name: className, in: query, schema: {type: string, maxLength: 120}}
+        - {name: section, in: query, schema: {type: string, maxLength: 80}}
+      responses:
+        "200":
+          description: NFC ledger and scoped financial totals
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/StudentNfcLedger"}
+        "400":
+          description: Invalid filters
+        "401":
+          description: Sign-in required
+components:
+  schemas:
+    StudentNfcLedger:
+      type: object
+      required: [rows, summary]
+      properties:
+        rows:
+          type: array
+          items: {$ref: "#/components/schemas/StudentNfcObligation"}
+        summary: {$ref: "#/components/schemas/StudentNfcSummary"}
+    StudentNfcSummary:
+      type: object
+      required: [eligible, paid, unpaid, pending, failed, legacyReview, exempt, collectedMinor, schoolAllocatedMinor, platformAllocatedMinor, partnerAllocatedMinor]
+      properties:
+        eligible: {type: integer}
+        paid: {type: integer}
+        unpaid: {type: integer}
+        pending: {type: integer}
+        failed: {type: integer}
+        legacyReview: {type: integer}
+        exempt: {type: integer}
+        collectedMinor: {type: number}
+        schoolAllocatedMinor: {type: number}
+        platformAllocatedMinor: {type: number}
+        partnerAllocatedMinor: {type: number}
+    StudentNfcObligation:
+      type: object
+      required: [schoolId, schoolName, studentId, studentName, className, section, sessionId, sessionName, termId, termName, subscriptionId, legacyInvoiceId, status, amountMinor, ordinaryFeesMinor, totalMinor, schoolShareMinor, platformShareMinor, schoolAllocatedMinor, platformAllocatedMinor, partnerAllocatedMinor, lastPaymentId, reference, paidAt, paymentMethod, systemFee, canPay]
+      properties:
+        schoolId: {type: integer}
+        schoolName: {type: string}
+        studentId: {type: integer}
+        studentName: {type: string}
+        className: {type: string}
+        section: {type: string}
+        sessionId: {type: integer}
+        sessionName: {type: string}
+        termId: {type: integer}
+        termName: {type: string}
+        subscriptionId: {type: integer, nullable: true}
+        legacyInvoiceId: {type: integer, nullable: true}
+        status: {type: string, enum: [UNPAID, PAID, PENDING, FAILED, EXEMPT, LEGACY_REVIEW]}
+        amountMinor: {type: number}
+        ordinaryFeesMinor: {type: number}
+        ordinaryFeesAssigned: {type: boolean}
+        totalMinor: {type: number}
+        schoolShareMinor: {type: number}
+        platformShareMinor: {type: number}
+        schoolAllocatedMinor: {type: number}
+        platformAllocatedMinor: {type: number}
+        partnerAllocatedMinor: {type: number}
+        lastPaymentId: {type: integer, nullable: true}
+        reference: {type: string, nullable: true}
+        paidAt: {type: string, nullable: true}
+        paymentMethod: {type: string, enum: ["Flutterwave — Platform Owner"]}
+        systemFee: {type: boolean}
+        canPay: {type: boolean}
