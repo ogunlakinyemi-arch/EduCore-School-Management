@@ -49,3 +49,4 @@
 - [Calendar correction safety](calendar-correction-safety.md) — preserve valid concurrent Admin calendar edits; illustrative dates do not override the school's saved full-year range.
 - [NFC device-first policy](nfc-device-first-policy.md) — require linked readers for new Student assignments/activation; inherit school access and preserve legacy records.
 - [Automatic student NFC finance](automatic-student-nfc-finance.md) — preserve legacy paid school NFC charges for Owner review without rebilling or inventing platform verification.
+- [Partner NFC activation](partner-nfc-activation-policy.md) — Owner-approved referred-school operations only; no device control, financial authority or per-reader card setup.
