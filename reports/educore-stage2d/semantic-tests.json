@@ -1,0 +1,1513 @@
+{
+  "identity": {
+    "current_user": "stage2d",
+    "current_database": "postgres",
+    "data_directory": "/tmp/educore-stage2d-pg.UcYnWY/data",
+    "tcp_address": null,
+    "version": "PostgreSQL 16.10 on x86_64-pc-linux-gnu, compiled by clang version 19.1.7, 64-bit"
+  },
+  "scope": "Fresh Unix-socket-only PostgreSQL. Synthetic relevant-constraint projections, not complete business tables or a replay. No shared data or external/network API calls.",
+  "sourceOfDefinitions": [
+    "0009_phase5_attendance.sql:4,10",
+    "0036_student_subscription_allocations.sql:5–9,38–46,99–151",
+    "lib/db/src/schema/edupulse.ts:92–123,255–284",
+    "lib/db/src/schema/student-subscription-billing.ts:27–88,134–225"
+  ],
+  "setupSha256": "36d5926578833fee1ff3e684c8c0c6e50eedd983d0caa3496e6181bd541a0d74",
+  "count": 88,
+  "pass": true,
+  "results": [
+    {
+      "relationship": "A",
+      "variant": "historical",
+      "case": "same-school",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Existing class in the same school",
+      "sql": "INSERT INTO historical.platform_devices(school_id,school_class_id) VALUES(1,11)",
+      "error": null
+    },
+    {
+      "relationship": "A",
+      "variant": "standalone",
+      "case": "same-school",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Existing class in the same school",
+      "sql": "INSERT INTO standalone.platform_devices(school_id,school_class_id) VALUES(1,11)",
+      "error": null
+    },
+    {
+      "relationship": "A",
+      "variant": "current",
+      "case": "same-school",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Existing class in the same school",
+      "sql": "INSERT INTO current.platform_devices(school_id,school_class_id) VALUES(1,11)",
+      "error": null
+    },
+    {
+      "relationship": "A",
+      "variant": "historical",
+      "case": "cross-school",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "Only the composite binds class school to device school",
+      "sql": "INSERT INTO historical.platform_devices(school_id,school_class_id) VALUES(1,22)",
+      "error": {
+        "code": "23503",
+        "constraint": "platform_devices_class_school_fk",
+        "message": "insert or update on table \"platform_devices\" violates foreign key constraint \"platform_devices_class_school_fk\""
+      }
+    },
+    {
+      "relationship": "A",
+      "variant": "standalone",
+      "case": "cross-school",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Only the composite binds class school to device school",
+      "sql": "INSERT INTO standalone.platform_devices(school_id,school_class_id) VALUES(1,22)",
+      "error": null
+    },
+    {
+      "relationship": "A",
+      "variant": "current",
+      "case": "cross-school",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "Only the composite binds class school to device school",
+      "sql": "INSERT INTO current.platform_devices(school_id,school_class_id) VALUES(1,22)",
+      "error": {
+        "code": "23503",
+        "constraint": "platform_devices_class_school_fk",
+        "message": "insert or update on table \"platform_devices\" violates foreign key constraint \"platform_devices_class_school_fk\""
+      }
+    },
+    {
+      "relationship": "A",
+      "variant": "historical",
+      "case": "NULL class",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Optional class; NULL child FK skips referential matching",
+      "sql": "INSERT INTO historical.platform_devices(school_id,school_class_id) VALUES(1,NULL)",
+      "error": null
+    },
+    {
+      "relationship": "A",
+      "variant": "standalone",
+      "case": "NULL class",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Optional class; NULL child FK skips referential matching",
+      "sql": "INSERT INTO standalone.platform_devices(school_id,school_class_id) VALUES(1,NULL)",
+      "error": null
+    },
+    {
+      "relationship": "A",
+      "variant": "current",
+      "case": "NULL class",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Optional class; NULL child FK skips referential matching",
+      "sql": "INSERT INTO current.platform_devices(school_id,school_class_id) VALUES(1,NULL)",
+      "error": null
+    },
+    {
+      "relationship": "A",
+      "variant": "historical",
+      "case": "NULL school with existing class",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "MATCH SIMPLE skips the composite; standalone only checks existence",
+      "sql": "INSERT INTO historical.platform_devices(school_id,school_class_id) VALUES(NULL,22)",
+      "error": null
+    },
+    {
+      "relationship": "A",
+      "variant": "standalone",
+      "case": "NULL school with existing class",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "MATCH SIMPLE skips the composite; standalone only checks existence",
+      "sql": "INSERT INTO standalone.platform_devices(school_id,school_class_id) VALUES(NULL,22)",
+      "error": null
+    },
+    {
+      "relationship": "A",
+      "variant": "current",
+      "case": "NULL school with existing class",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "MATCH SIMPLE skips the composite; standalone only checks existence",
+      "sql": "INSERT INTO current.platform_devices(school_id,school_class_id) VALUES(NULL,22)",
+      "error": null
+    },
+    {
+      "relationship": "A",
+      "variant": "historical",
+      "case": "NULL school with missing class",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Standalone closes the missing-parent hole when composite is skipped",
+      "sql": "INSERT INTO historical.platform_devices(school_id,school_class_id) VALUES(NULL,999)",
+      "error": null
+    },
+    {
+      "relationship": "A",
+      "variant": "standalone",
+      "case": "NULL school with missing class",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "Standalone closes the missing-parent hole when composite is skipped",
+      "sql": "INSERT INTO standalone.platform_devices(school_id,school_class_id) VALUES(NULL,999)",
+      "error": {
+        "code": "23503",
+        "constraint": "platform_devices_school_class_id_school_classes_id_fk",
+        "message": "insert or update on table \"platform_devices\" violates foreign key constraint \"platform_devices_school_class_id_school_classes_id_fk\""
+      }
+    },
+    {
+      "relationship": "A",
+      "variant": "current",
+      "case": "NULL school with missing class",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "Standalone closes the missing-parent hole when composite is skipped",
+      "sql": "INSERT INTO current.platform_devices(school_id,school_class_id) VALUES(NULL,999)",
+      "error": {
+        "code": "23503",
+        "constraint": "platform_devices_school_class_id_school_classes_id_fk",
+        "message": "insert or update on table \"platform_devices\" violates foreign key constraint \"platform_devices_school_class_id_school_classes_id_fk\""
+      }
+    },
+    {
+      "relationship": "A",
+      "variant": "historical",
+      "case": "both NULL",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Both fields remain optional",
+      "sql": "INSERT INTO historical.platform_devices(school_id,school_class_id) VALUES(NULL,NULL)",
+      "error": null
+    },
+    {
+      "relationship": "A",
+      "variant": "standalone",
+      "case": "both NULL",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Both fields remain optional",
+      "sql": "INSERT INTO standalone.platform_devices(school_id,school_class_id) VALUES(NULL,NULL)",
+      "error": null
+    },
+    {
+      "relationship": "A",
+      "variant": "current",
+      "case": "both NULL",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Both fields remain optional",
+      "sql": "INSERT INTO current.platform_devices(school_id,school_class_id) VALUES(NULL,NULL)",
+      "error": null
+    },
+    {
+      "relationship": "A",
+      "variant": "historical",
+      "case": "missing parent with school",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "Non-NULL references must resolve",
+      "sql": "INSERT INTO historical.platform_devices(school_id,school_class_id) VALUES(1,999)",
+      "error": {
+        "code": "23503",
+        "constraint": "platform_devices_class_school_fk",
+        "message": "insert or update on table \"platform_devices\" violates foreign key constraint \"platform_devices_class_school_fk\""
+      }
+    },
+    {
+      "relationship": "A",
+      "variant": "standalone",
+      "case": "missing parent with school",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "Non-NULL references must resolve",
+      "sql": "INSERT INTO standalone.platform_devices(school_id,school_class_id) VALUES(1,999)",
+      "error": {
+        "code": "23503",
+        "constraint": "platform_devices_school_class_id_school_classes_id_fk",
+        "message": "insert or update on table \"platform_devices\" violates foreign key constraint \"platform_devices_school_class_id_school_classes_id_fk\""
+      }
+    },
+    {
+      "relationship": "A",
+      "variant": "current",
+      "case": "missing parent with school",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "Non-NULL references must resolve",
+      "sql": "INSERT INTO current.platform_devices(school_id,school_class_id) VALUES(1,999)",
+      "error": {
+        "code": "23503",
+        "constraint": "platform_devices_school_class_id_school_classes_id_fk",
+        "message": "insert or update on table \"platform_devices\" violates foreign key constraint \"platform_devices_school_class_id_school_classes_id_fk\""
+      }
+    },
+    {
+      "relationship": "A",
+      "variant": "historical",
+      "case": "valid composite parent",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Second existing id/school pair also satisfies the composite",
+      "sql": "INSERT INTO historical.platform_devices(school_id,school_class_id) VALUES(1,12)",
+      "error": null
+    },
+    {
+      "relationship": "A",
+      "variant": "standalone",
+      "case": "valid composite parent",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Second existing id/school pair also satisfies the composite",
+      "sql": "INSERT INTO standalone.platform_devices(school_id,school_class_id) VALUES(1,12)",
+      "error": null
+    },
+    {
+      "relationship": "A",
+      "variant": "current",
+      "case": "valid composite parent",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Second existing id/school pair also satisfies the composite",
+      "sql": "INSERT INTO current.platform_devices(school_id,school_class_id) VALUES(1,12)",
+      "error": null
+    },
+    {
+      "relationship": "B",
+      "variant": "historical",
+      "case": "same-school",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Same-school student exists",
+      "sql": "INSERT INTO historical.student_subscription_allocations_student(school_id,student_id) VALUES(1,11)",
+      "error": null
+    },
+    {
+      "relationship": "B",
+      "variant": "standalone",
+      "case": "same-school",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Same-school student exists",
+      "sql": "INSERT INTO standalone.student_subscription_allocations_student(school_id,student_id) VALUES(1,11)",
+      "error": null
+    },
+    {
+      "relationship": "B",
+      "variant": "current",
+      "case": "same-school",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Same-school student exists",
+      "sql": "INSERT INTO current.student_subscription_allocations_student(school_id,student_id) VALUES(1,11)",
+      "error": null
+    },
+    {
+      "relationship": "B",
+      "variant": "historical",
+      "case": "cross-school",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "Standalone student id does not bind students.school_id",
+      "sql": "INSERT INTO historical.student_subscription_allocations_student(school_id,student_id) VALUES(1,22)",
+      "error": {
+        "code": "23503",
+        "constraint": "student_subscription_allocations_student_school_fk",
+        "message": "insert or update on table \"student_subscription_allocations_student\" violates foreign key constraint \"student_subscription_allocations_student_school_fk\""
+      }
+    },
+    {
+      "relationship": "B",
+      "variant": "standalone",
+      "case": "cross-school",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Standalone student id does not bind students.school_id",
+      "sql": "INSERT INTO standalone.student_subscription_allocations_student(school_id,student_id) VALUES(1,22)",
+      "error": null
+    },
+    {
+      "relationship": "B",
+      "variant": "current",
+      "case": "cross-school",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Standalone student id does not bind students.school_id",
+      "sql": "INSERT INTO current.student_subscription_allocations_student(school_id,student_id) VALUES(1,22)",
+      "error": null
+    },
+    {
+      "relationship": "B",
+      "variant": "historical",
+      "case": "NULL student",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23502",
+      "why": "NOT NULL prevents composite NULL bypass",
+      "sql": "INSERT INTO historical.student_subscription_allocations_student(school_id,student_id) VALUES(1,NULL)",
+      "error": {
+        "code": "23502",
+        "constraint": null,
+        "message": "null value in column \"student_id\" of relation \"student_subscription_allocations_student\" violates not-null constraint"
+      }
+    },
+    {
+      "relationship": "B",
+      "variant": "standalone",
+      "case": "NULL student",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23502",
+      "why": "NOT NULL prevents composite NULL bypass",
+      "sql": "INSERT INTO standalone.student_subscription_allocations_student(school_id,student_id) VALUES(1,NULL)",
+      "error": {
+        "code": "23502",
+        "constraint": null,
+        "message": "null value in column \"student_id\" of relation \"student_subscription_allocations_student\" violates not-null constraint"
+      }
+    },
+    {
+      "relationship": "B",
+      "variant": "current",
+      "case": "NULL student",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23502",
+      "why": "NOT NULL prevents composite NULL bypass",
+      "sql": "INSERT INTO current.student_subscription_allocations_student(school_id,student_id) VALUES(1,NULL)",
+      "error": {
+        "code": "23502",
+        "constraint": null,
+        "message": "null value in column \"student_id\" of relation \"student_subscription_allocations_student\" violates not-null constraint"
+      }
+    },
+    {
+      "relationship": "B",
+      "variant": "historical",
+      "case": "NULL school",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23502",
+      "why": "School remains NOT NULL",
+      "sql": "INSERT INTO historical.student_subscription_allocations_student(school_id,student_id) VALUES(NULL,11)",
+      "error": {
+        "code": "23502",
+        "constraint": null,
+        "message": "null value in column \"school_id\" of relation \"student_subscription_allocations_student\" violates not-null constraint"
+      }
+    },
+    {
+      "relationship": "B",
+      "variant": "standalone",
+      "case": "NULL school",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23502",
+      "why": "School remains NOT NULL",
+      "sql": "INSERT INTO standalone.student_subscription_allocations_student(school_id,student_id) VALUES(NULL,11)",
+      "error": {
+        "code": "23502",
+        "constraint": null,
+        "message": "null value in column \"school_id\" of relation \"student_subscription_allocations_student\" violates not-null constraint"
+      }
+    },
+    {
+      "relationship": "B",
+      "variant": "current",
+      "case": "NULL school",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23502",
+      "why": "School remains NOT NULL",
+      "sql": "INSERT INTO current.student_subscription_allocations_student(school_id,student_id) VALUES(NULL,11)",
+      "error": {
+        "code": "23502",
+        "constraint": null,
+        "message": "null value in column \"school_id\" of relation \"student_subscription_allocations_student\" violates not-null constraint"
+      }
+    },
+    {
+      "relationship": "B",
+      "variant": "historical",
+      "case": "missing parent",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "No student matches non-NULL id",
+      "sql": "INSERT INTO historical.student_subscription_allocations_student(school_id,student_id) VALUES(1,999)",
+      "error": {
+        "code": "23503",
+        "constraint": "student_subscription_allocations_student_school_fk",
+        "message": "insert or update on table \"student_subscription_allocations_student\" violates foreign key constraint \"student_subscription_allocations_student_school_fk\""
+      }
+    },
+    {
+      "relationship": "B",
+      "variant": "standalone",
+      "case": "missing parent",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "No student matches non-NULL id",
+      "sql": "INSERT INTO standalone.student_subscription_allocations_student(school_id,student_id) VALUES(1,999)",
+      "error": {
+        "code": "23503",
+        "constraint": "student_subscription_allocations_student_id_students_id_fk",
+        "message": "insert or update on table \"student_subscription_allocations_student\" violates foreign key constraint \"student_subscription_allocations_student_id_students_id_fk\""
+      }
+    },
+    {
+      "relationship": "B",
+      "variant": "current",
+      "case": "missing parent",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "No student matches non-NULL id",
+      "sql": "INSERT INTO current.student_subscription_allocations_student(school_id,student_id) VALUES(1,999)",
+      "error": {
+        "code": "23503",
+        "constraint": "student_subscription_allocations_student_id_students_id_fk",
+        "message": "insert or update on table \"student_subscription_allocations_student\" violates foreign key constraint \"student_subscription_allocations_student_id_students_id_fk\""
+      }
+    },
+    {
+      "relationship": "B",
+      "variant": "historical",
+      "case": "valid composite parent",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Second valid student/school pair",
+      "sql": "INSERT INTO historical.student_subscription_allocations_student(school_id,student_id) VALUES(1,12)",
+      "error": null
+    },
+    {
+      "relationship": "B",
+      "variant": "standalone",
+      "case": "valid composite parent",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Second valid student/school pair",
+      "sql": "INSERT INTO standalone.student_subscription_allocations_student(school_id,student_id) VALUES(1,12)",
+      "error": null
+    },
+    {
+      "relationship": "B",
+      "variant": "current",
+      "case": "valid composite parent",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Second valid student/school pair",
+      "sql": "INSERT INTO current.student_subscription_allocations_student(school_id,student_id) VALUES(1,12)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "historical",
+      "case": "same-school PARTNER valid pair",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Attribution and partner match",
+      "sql": "INSERT INTO historical.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,100,7,'PARTNER',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "standalone",
+      "case": "same-school PARTNER valid pair",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Attribution and partner match",
+      "sql": "INSERT INTO standalone.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,100,7,'PARTNER',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "current",
+      "case": "same-school PARTNER valid pair",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Attribution and partner match",
+      "sql": "INSERT INTO current.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,100,7,'PARTNER',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "historical",
+      "case": "cross-school attribution same PARTNER",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Partner binding is not a school binding",
+      "sql": "INSERT INTO historical.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,200,7,'PARTNER',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "standalone",
+      "case": "cross-school attribution same PARTNER",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Partner binding is not a school binding",
+      "sql": "INSERT INTO standalone.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,200,7,'PARTNER',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "current",
+      "case": "cross-school attribution same PARTNER",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Partner binding is not a school binding",
+      "sql": "INSERT INTO current.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,200,7,'PARTNER',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "historical",
+      "case": "wrong PARTNER id",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "Standalone cannot protect attribution/partner association",
+      "sql": "INSERT INTO historical.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,100,8,'PARTNER',1)",
+      "error": {
+        "code": "23503",
+        "constraint": "student_subscription_allocations_attribution_partner_fk",
+        "message": "insert or update on table \"student_subscription_allocations_attribution\" violates foreign key constraint \"student_subscription_allocations_attribution_partner_fk\""
+      }
+    },
+    {
+      "relationship": "C",
+      "variant": "standalone",
+      "case": "wrong PARTNER id",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Standalone cannot protect attribution/partner association",
+      "sql": "INSERT INTO standalone.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,100,8,'PARTNER',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "current",
+      "case": "wrong PARTNER id",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "Standalone cannot protect attribution/partner association",
+      "sql": "INSERT INTO current.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,100,8,'PARTNER',1)",
+      "error": {
+        "code": "23503",
+        "constraint": "student_subscription_allocations_attribution_partner_fk",
+        "message": "insert or update on table \"student_subscription_allocations_attribution\" violates foreign key constraint \"student_subscription_allocations_attribution_partner_fk\""
+      }
+    },
+    {
+      "relationship": "C",
+      "variant": "historical",
+      "case": "non-PARTNER valid attribution / NULL recipient",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Application intentionally copies attribution metadata to non-PARTNER entries",
+      "sql": "INSERT INTO historical.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,100,NULL,'SCHOOL',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "standalone",
+      "case": "non-PARTNER valid attribution / NULL recipient",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Application intentionally copies attribution metadata to non-PARTNER entries",
+      "sql": "INSERT INTO standalone.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,100,NULL,'SCHOOL',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "current",
+      "case": "non-PARTNER valid attribution / NULL recipient",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Application intentionally copies attribution metadata to non-PARTNER entries",
+      "sql": "INSERT INTO current.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,100,NULL,'SCHOOL',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "historical",
+      "case": "non-PARTNER missing attribution / NULL recipient",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Composite is skipped; standalone enforces existence",
+      "sql": "INSERT INTO historical.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,999,NULL,'SCHOOL',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "standalone",
+      "case": "non-PARTNER missing attribution / NULL recipient",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "Composite is skipped; standalone enforces existence",
+      "sql": "INSERT INTO standalone.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,999,NULL,'SCHOOL',1)",
+      "error": {
+        "code": "23503",
+        "constraint": "student_subscription_allocations_attribution_id_school_partner_",
+        "message": "insert or update on table \"student_subscription_allocations_attribution\" violates foreign key constraint \"student_subscription_allocations_attribution_id_school_partner_\""
+      }
+    },
+    {
+      "relationship": "C",
+      "variant": "current",
+      "case": "non-PARTNER missing attribution / NULL recipient",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "Composite is skipped; standalone enforces existence",
+      "sql": "INSERT INTO current.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,999,NULL,'SCHOOL',1)",
+      "error": {
+        "code": "23503",
+        "constraint": "student_subscription_allocations_attribution_id_school_partner_",
+        "message": "insert or update on table \"student_subscription_allocations_attribution\" violates foreign key constraint \"student_subscription_allocations_attribution_id_school_partner_\""
+      }
+    },
+    {
+      "relationship": "C",
+      "variant": "historical",
+      "case": "PARTNER missing attribution",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "No non-NULL reference resolves",
+      "sql": "INSERT INTO historical.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,999,7,'PARTNER',1)",
+      "error": {
+        "code": "23503",
+        "constraint": "student_subscription_allocations_attribution_partner_fk",
+        "message": "insert or update on table \"student_subscription_allocations_attribution\" violates foreign key constraint \"student_subscription_allocations_attribution_partner_fk\""
+      }
+    },
+    {
+      "relationship": "C",
+      "variant": "standalone",
+      "case": "PARTNER missing attribution",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "No non-NULL reference resolves",
+      "sql": "INSERT INTO standalone.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,999,7,'PARTNER',1)",
+      "error": {
+        "code": "23503",
+        "constraint": "student_subscription_allocations_attribution_id_school_partner_",
+        "message": "insert or update on table \"student_subscription_allocations_attribution\" violates foreign key constraint \"student_subscription_allocations_attribution_id_school_partner_\""
+      }
+    },
+    {
+      "relationship": "C",
+      "variant": "current",
+      "case": "PARTNER missing attribution",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "No non-NULL reference resolves",
+      "sql": "INSERT INTO current.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,999,7,'PARTNER',1)",
+      "error": {
+        "code": "23503",
+        "constraint": "student_subscription_allocations_attribution_id_school_partner_",
+        "message": "insert or update on table \"student_subscription_allocations_attribution\" violates foreign key constraint \"student_subscription_allocations_attribution_id_school_partner_\""
+      }
+    },
+    {
+      "relationship": "C",
+      "variant": "historical",
+      "case": "non-PARTNER both NULL",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Unattributed allocation is valid",
+      "sql": "INSERT INTO historical.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,NULL,NULL,'PLATFORM',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "standalone",
+      "case": "non-PARTNER both NULL",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Unattributed allocation is valid",
+      "sql": "INSERT INTO standalone.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,NULL,NULL,'PLATFORM',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "current",
+      "case": "non-PARTNER both NULL",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Unattributed allocation is valid",
+      "sql": "INSERT INTO current.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,NULL,NULL,'PLATFORM',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "historical",
+      "case": "PARTNER NULL attribution",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23514",
+      "why": "Partner CHECK requires attribution; FK NULL bypass alone does not admit row",
+      "sql": "INSERT INTO historical.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,NULL,7,'PARTNER',1)",
+      "error": {
+        "code": "23514",
+        "constraint": "student_subscription_allocations_partner_ck",
+        "message": "new row for relation \"student_subscription_allocations_attribution\" violates check constraint \"student_subscription_allocations_partner_ck\""
+      }
+    },
+    {
+      "relationship": "C",
+      "variant": "standalone",
+      "case": "PARTNER NULL attribution",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23514",
+      "why": "Partner CHECK requires attribution; FK NULL bypass alone does not admit row",
+      "sql": "INSERT INTO standalone.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,NULL,7,'PARTNER',1)",
+      "error": {
+        "code": "23514",
+        "constraint": "student_subscription_allocations_partner_ck",
+        "message": "new row for relation \"student_subscription_allocations_attribution\" violates check constraint \"student_subscription_allocations_partner_ck\""
+      }
+    },
+    {
+      "relationship": "C",
+      "variant": "current",
+      "case": "PARTNER NULL attribution",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23514",
+      "why": "Partner CHECK requires attribution; FK NULL bypass alone does not admit row",
+      "sql": "INSERT INTO current.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,NULL,7,'PARTNER',1)",
+      "error": {
+        "code": "23514",
+        "constraint": "student_subscription_allocations_partner_ck",
+        "message": "new row for relation \"student_subscription_allocations_attribution\" violates check constraint \"student_subscription_allocations_partner_ck\""
+      }
+    },
+    {
+      "relationship": "C",
+      "variant": "historical",
+      "case": "PARTNER NULL recipient",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23514",
+      "why": "Partner CHECK requires recipient",
+      "sql": "INSERT INTO historical.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,100,NULL,'PARTNER',1)",
+      "error": {
+        "code": "23514",
+        "constraint": "student_subscription_allocations_partner_ck",
+        "message": "new row for relation \"student_subscription_allocations_attribution\" violates check constraint \"student_subscription_allocations_partner_ck\""
+      }
+    },
+    {
+      "relationship": "C",
+      "variant": "standalone",
+      "case": "PARTNER NULL recipient",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23514",
+      "why": "Partner CHECK requires recipient",
+      "sql": "INSERT INTO standalone.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,100,NULL,'PARTNER',1)",
+      "error": {
+        "code": "23514",
+        "constraint": "student_subscription_allocations_partner_ck",
+        "message": "new row for relation \"student_subscription_allocations_attribution\" violates check constraint \"student_subscription_allocations_partner_ck\""
+      }
+    },
+    {
+      "relationship": "C",
+      "variant": "current",
+      "case": "PARTNER NULL recipient",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23514",
+      "why": "Partner CHECK requires recipient",
+      "sql": "INSERT INTO current.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,100,NULL,'PARTNER',1)",
+      "error": {
+        "code": "23514",
+        "constraint": "student_subscription_allocations_partner_ck",
+        "message": "new row for relation \"student_subscription_allocations_attribution\" violates check constraint \"student_subscription_allocations_partner_ck\""
+      }
+    },
+    {
+      "relationship": "C",
+      "variant": "historical",
+      "case": "valid second composite parent",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Second valid attribution/partner pair",
+      "sql": "INSERT INTO historical.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(2,300,8,'PARTNER',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "standalone",
+      "case": "valid second composite parent",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Second valid attribution/partner pair",
+      "sql": "INSERT INTO standalone.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(2,300,8,'PARTNER',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "current",
+      "case": "valid second composite parent",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Second valid attribution/partner pair",
+      "sql": "INSERT INTO current.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(2,300,8,'PARTNER',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "historical",
+      "case": "cross-school non-PARTNER attribution",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Neither standalone nor skipped partner composite binds school",
+      "sql": "INSERT INTO historical.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,200,NULL,'PLATFORM',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "standalone",
+      "case": "cross-school non-PARTNER attribution",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Neither standalone nor skipped partner composite binds school",
+      "sql": "INSERT INTO standalone.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,200,NULL,'PLATFORM',1)",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "current",
+      "case": "cross-school non-PARTNER attribution",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Neither standalone nor skipped partner composite binds school",
+      "sql": "INSERT INTO current.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type,commission_rule_id) VALUES(1,200,NULL,'PLATFORM',1)",
+      "error": null
+    },
+    {
+      "relationship": "B",
+      "variant": "context_historical",
+      "case": "same-school with owner chain",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Owner chain and student school both agree",
+      "sql": "INSERT INTO context_historical.student_subscription_allocations(payment_id,subscription_id,school_id,student_id,academic_session_id,academic_term_id) VALUES(1,100,1,11,1001,101)",
+      "error": null
+    },
+    {
+      "relationship": "B",
+      "variant": "context_historical",
+      "case": "cross-school with internally matching owner chain",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "An internally matching misbound subscription/payment tuple still does not prove student belongs to school",
+      "sql": "INSERT INTO context_historical.student_subscription_allocations(payment_id,subscription_id,school_id,student_id,academic_session_id,academic_term_id) VALUES(2,200,1,22,1001,101)",
+      "error": {
+        "code": "23503",
+        "constraint": "student_subscription_allocations_student_school_fk",
+        "message": "insert or update on table \"student_subscription_allocations\" violates foreign key constraint \"student_subscription_allocations_student_school_fk\""
+      }
+    },
+    {
+      "relationship": "B",
+      "variant": "context_historical",
+      "case": "allocation disagrees with payment owner",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "Retained payment_owner_term FK rejects an inconsistent payment/child tuple",
+      "sql": "INSERT INTO context_historical.student_subscription_allocations(payment_id,subscription_id,school_id,student_id,academic_session_id,academic_term_id) VALUES(1,100,1,22,1001,101)",
+      "error": {
+        "code": "23503",
+        "constraint": "student_subscription_allocations_payment_owner_term_fk",
+        "message": "insert or update on table \"student_subscription_allocations\" violates foreign key constraint \"student_subscription_allocations_payment_owner_term_fk\""
+      }
+    },
+    {
+      "relationship": "B",
+      "variant": "context_current",
+      "case": "same-school with owner chain",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Owner chain and student school both agree",
+      "sql": "INSERT INTO context_current.student_subscription_allocations(payment_id,subscription_id,school_id,student_id,academic_session_id,academic_term_id) VALUES(1,100,1,11,1001,101)",
+      "error": null
+    },
+    {
+      "relationship": "B",
+      "variant": "context_current",
+      "case": "cross-school with internally matching owner chain",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "An internally matching misbound subscription/payment tuple still does not prove student belongs to school",
+      "sql": "INSERT INTO context_current.student_subscription_allocations(payment_id,subscription_id,school_id,student_id,academic_session_id,academic_term_id) VALUES(2,200,1,22,1001,101)",
+      "error": null
+    },
+    {
+      "relationship": "B",
+      "variant": "context_current",
+      "case": "allocation disagrees with payment owner",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "Retained payment_owner_term FK rejects an inconsistent payment/child tuple",
+      "sql": "INSERT INTO context_current.student_subscription_allocations(payment_id,subscription_id,school_id,student_id,academic_session_id,academic_term_id) VALUES(1,100,1,22,1001,101)",
+      "error": {
+        "code": "23503",
+        "constraint": "student_subscription_allocations_payment_owner_term_fk",
+        "message": "insert or update on table \"student_subscription_allocations\" violates foreign key constraint \"student_subscription_allocations_payment_owner_term_fk\""
+      }
+    },
+    {
+      "relationship": "C",
+      "variant": "historical",
+      "case": "delete attribution referenced only by non-PARTNER NULL-recipient row",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Standalone protects historical attribution metadata even when partner composite is skipped",
+      "sql": "INSERT INTO historical.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type) VALUES(1,100,NULL,'SCHOOL');DELETE FROM parents.school_partner_attributions WHERE id=100",
+      "error": null
+    },
+    {
+      "relationship": "C",
+      "variant": "standalone",
+      "case": "delete attribution referenced only by non-PARTNER NULL-recipient row",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "Standalone protects historical attribution metadata even when partner composite is skipped",
+      "sql": "INSERT INTO standalone.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type) VALUES(1,100,NULL,'SCHOOL');DELETE FROM parents.school_partner_attributions WHERE id=100",
+      "error": {
+        "code": "23503",
+        "constraint": "student_subscription_allocations_attribution_id_school_partner_",
+        "message": "update or delete on table \"school_partner_attributions\" violates foreign key constraint \"student_subscription_allocations_attribution_id_school_partner_\" on table \"student_subscription_allocations_attribution\""
+      }
+    },
+    {
+      "relationship": "C",
+      "variant": "current",
+      "case": "delete attribution referenced only by non-PARTNER NULL-recipient row",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "Standalone protects historical attribution metadata even when partner composite is skipped",
+      "sql": "INSERT INTO current.student_subscription_allocations_attribution(school_id,attribution_id,recipient_id,recipient_type) VALUES(1,100,NULL,'SCHOOL');DELETE FROM parents.school_partner_attributions WHERE id=100",
+      "error": {
+        "code": "23503",
+        "constraint": "student_subscription_allocations_attribution_id_school_partner_",
+        "message": "update or delete on table \"school_partner_attributions\" violates foreign key constraint \"student_subscription_allocations_attribution_id_school_partner_\" on table \"student_subscription_allocations_attribution\""
+      }
+    },
+    {
+      "relationship": "B",
+      "variant": "historical",
+      "case": "move referenced student to another school",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "Restoring direct tenant FK would block a future tenant change of a referenced student id",
+      "sql": "INSERT INTO historical.student_subscription_allocations_student(school_id,student_id) VALUES(1,12);UPDATE parents.students SET school_id=2 WHERE id=12",
+      "error": {
+        "code": "23503",
+        "constraint": "student_subscription_allocations_student_school_fk",
+        "message": "update or delete on table \"students\" violates foreign key constraint \"student_subscription_allocations_student_school_fk\" on table \"student_subscription_allocations_student\""
+      }
+    },
+    {
+      "relationship": "B",
+      "variant": "current",
+      "case": "move referenced student to another school",
+      "result": "PASS",
+      "expected": "PASS",
+      "expectedSqlstate": null,
+      "why": "Restoring direct tenant FK would block a future tenant change of a referenced student id",
+      "sql": "INSERT INTO current.student_subscription_allocations_student(school_id,student_id) VALUES(1,12);UPDATE parents.students SET school_id=2 WHERE id=12",
+      "error": null
+    },
+    {
+      "relationship": "A",
+      "variant": "validation_demo",
+      "case": "new cross-school write under NOT VALID",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "NOT VALID still rejects violating new writes",
+      "sql": "INSERT INTO validation_demo.platform_devices VALUES(2,1,22)",
+      "error": {
+        "code": "23503",
+        "constraint": "platform_devices_class_school_fk",
+        "message": "insert or update on table \"platform_devices\" violates foreign key constraint \"platform_devices_class_school_fk\""
+      }
+    },
+    {
+      "relationship": "A",
+      "variant": "validation_demo",
+      "case": "validate constraint containing seeded legacy mismatch",
+      "result": "REJECT",
+      "expected": "REJECT",
+      "expectedSqlstate": "23503",
+      "why": "Validation scans pre-existing mismatches; the NOT VALID flag alone does not certify them",
+      "sql": "ALTER TABLE validation_demo.platform_devices VALIDATE CONSTRAINT platform_devices_class_school_fk",
+      "error": {
+        "code": "23503",
+        "constraint": "platform_devices_class_school_fk",
+        "message": "insert or update on table \"platform_devices\" violates foreign key constraint \"platform_devices_class_school_fk\""
+      }
+    }
+  ],
+  "catalog": [
+    {
+      "schema": "context_current",
+      "child": "student_subscription_allocations",
+      "conname": "student_subscription_allocations_payment_owner_term_fk",
+      "convalidated": true,
+      "confdeltype": "a",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (payment_id, subscription_id, school_id, student_id, academic_session_id, academic_term_id) REFERENCES context_current.student_subscription_payments(id, subscription_id, school_id, student_id, academic_session_id, academic_term_id)"
+    },
+    {
+      "schema": "context_current",
+      "child": "student_subscription_allocations",
+      "conname": "student_subscription_allocations_school_id_fkey",
+      "convalidated": true,
+      "confdeltype": "r",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (school_id) REFERENCES parents.schools(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "context_current",
+      "child": "student_subscription_allocations",
+      "conname": "student_subscription_allocations_student_id_students_id_fk",
+      "convalidated": true,
+      "confdeltype": "r",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (student_id) REFERENCES parents.students(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "context_current",
+      "child": "student_subscription_payments",
+      "conname": "student_subscription_payments_subscription_owner_fk",
+      "convalidated": true,
+      "confdeltype": "a",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (subscription_id, school_id, student_id) REFERENCES context_current.subscriptions(id, school_id, student_id)"
+    },
+    {
+      "schema": "context_current",
+      "child": "subscriptions",
+      "conname": "subscriptions_school_id_fkey",
+      "convalidated": true,
+      "confdeltype": "a",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (school_id) REFERENCES parents.schools(id)"
+    },
+    {
+      "schema": "context_current",
+      "child": "subscriptions",
+      "conname": "subscriptions_student_id_fkey",
+      "convalidated": true,
+      "confdeltype": "a",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (student_id) REFERENCES parents.students(id)"
+    },
+    {
+      "schema": "context_historical",
+      "child": "student_subscription_allocations",
+      "conname": "student_subscription_allocations_payment_owner_term_fk",
+      "convalidated": true,
+      "confdeltype": "r",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (payment_id, subscription_id, school_id, student_id, academic_session_id, academic_term_id) REFERENCES context_historical.student_subscription_payments(id, subscription_id, school_id, student_id, academic_session_id, academic_term_id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "context_historical",
+      "child": "student_subscription_allocations",
+      "conname": "student_subscription_allocations_school_id_fkey",
+      "convalidated": true,
+      "confdeltype": "r",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (school_id) REFERENCES parents.schools(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "context_historical",
+      "child": "student_subscription_allocations",
+      "conname": "student_subscription_allocations_student_school_fk",
+      "convalidated": true,
+      "confdeltype": "r",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (student_id, school_id) REFERENCES parents.students(id, school_id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "context_historical",
+      "child": "student_subscription_payments",
+      "conname": "student_subscription_payments_subscription_owner_fk",
+      "convalidated": true,
+      "confdeltype": "r",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (subscription_id, school_id, student_id) REFERENCES context_historical.subscriptions(id, school_id, student_id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "context_historical",
+      "child": "subscriptions",
+      "conname": "subscriptions_school_id_fkey",
+      "convalidated": true,
+      "confdeltype": "a",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (school_id) REFERENCES parents.schools(id)"
+    },
+    {
+      "schema": "context_historical",
+      "child": "subscriptions",
+      "conname": "subscriptions_student_id_fkey",
+      "convalidated": true,
+      "confdeltype": "a",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (student_id) REFERENCES parents.students(id)"
+    },
+    {
+      "schema": "current",
+      "child": "platform_devices",
+      "conname": "platform_devices_class_school_fk",
+      "convalidated": true,
+      "confdeltype": "a",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (school_class_id, school_id) REFERENCES parents.school_classes(id, school_id)"
+    },
+    {
+      "schema": "current",
+      "child": "platform_devices",
+      "conname": "platform_devices_school_class_id_school_classes_id_fk",
+      "convalidated": true,
+      "confdeltype": "a",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (school_class_id) REFERENCES parents.school_classes(id)"
+    },
+    {
+      "schema": "current",
+      "child": "platform_devices",
+      "conname": "platform_devices_school_id_fkey",
+      "convalidated": true,
+      "confdeltype": "a",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (school_id) REFERENCES parents.schools(id)"
+    },
+    {
+      "schema": "current",
+      "child": "student_subscription_allocations_attribution",
+      "conname": "student_subscription_allocations_attribution_id_school_partner_",
+      "convalidated": true,
+      "confdeltype": "r",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (attribution_id) REFERENCES parents.school_partner_attributions(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "current",
+      "child": "student_subscription_allocations_attribution",
+      "conname": "student_subscription_allocations_attribution_partner_fk",
+      "convalidated": true,
+      "confdeltype": "a",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (attribution_id, recipient_id) REFERENCES parents.school_partner_attributions(id, partner_profile_id)"
+    },
+    {
+      "schema": "current",
+      "child": "student_subscription_allocations_attribution",
+      "conname": "student_subscription_allocations_attribution_school_id_fkey",
+      "convalidated": true,
+      "confdeltype": "r",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (school_id) REFERENCES parents.schools(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "current",
+      "child": "student_subscription_allocations_student",
+      "conname": "student_subscription_allocations_student_id_students_id_fk",
+      "convalidated": true,
+      "confdeltype": "r",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (student_id) REFERENCES parents.students(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "current",
+      "child": "student_subscription_allocations_student",
+      "conname": "student_subscription_allocations_student_school_id_fkey",
+      "convalidated": true,
+      "confdeltype": "r",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (school_id) REFERENCES parents.schools(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "historical",
+      "child": "platform_devices",
+      "conname": "platform_devices_class_school_fk",
+      "convalidated": false,
+      "confdeltype": "a",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (school_class_id, school_id) REFERENCES parents.school_classes(id, school_id) NOT VALID"
+    },
+    {
+      "schema": "historical",
+      "child": "platform_devices",
+      "conname": "platform_devices_school_id_fkey",
+      "convalidated": true,
+      "confdeltype": "a",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (school_id) REFERENCES parents.schools(id)"
+    },
+    {
+      "schema": "historical",
+      "child": "student_subscription_allocations_attribution",
+      "conname": "student_subscription_allocations_attribution_partner_fk",
+      "convalidated": true,
+      "confdeltype": "r",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (attribution_id, recipient_id) REFERENCES parents.school_partner_attributions(id, partner_profile_id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "historical",
+      "child": "student_subscription_allocations_attribution",
+      "conname": "student_subscription_allocations_attribution_school_id_fkey",
+      "convalidated": true,
+      "confdeltype": "r",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (school_id) REFERENCES parents.schools(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "historical",
+      "child": "student_subscription_allocations_student",
+      "conname": "student_subscription_allocations_student_school_fk",
+      "convalidated": true,
+      "confdeltype": "r",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (student_id, school_id) REFERENCES parents.students(id, school_id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "historical",
+      "child": "student_subscription_allocations_student",
+      "conname": "student_subscription_allocations_student_school_id_fkey",
+      "convalidated": true,
+      "confdeltype": "r",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (school_id) REFERENCES parents.schools(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "standalone",
+      "child": "platform_devices",
+      "conname": "platform_devices_school_class_id_school_classes_id_fk",
+      "convalidated": true,
+      "confdeltype": "a",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (school_class_id) REFERENCES parents.school_classes(id)"
+    },
+    {
+      "schema": "standalone",
+      "child": "platform_devices",
+      "conname": "platform_devices_school_id_fkey",
+      "convalidated": true,
+      "confdeltype": "a",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (school_id) REFERENCES parents.schools(id)"
+    },
+    {
+      "schema": "standalone",
+      "child": "student_subscription_allocations_attribution",
+      "conname": "student_subscription_allocations_attribution_id_school_partner_",
+      "convalidated": true,
+      "confdeltype": "r",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (attribution_id) REFERENCES parents.school_partner_attributions(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "standalone",
+      "child": "student_subscription_allocations_attribution",
+      "conname": "student_subscription_allocations_attribution_school_id_fkey",
+      "convalidated": true,
+      "confdeltype": "r",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (school_id) REFERENCES parents.schools(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "standalone",
+      "child": "student_subscription_allocations_student",
+      "conname": "student_subscription_allocations_student_id_students_id_fk",
+      "convalidated": true,
+      "confdeltype": "r",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (student_id) REFERENCES parents.students(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "standalone",
+      "child": "student_subscription_allocations_student",
+      "conname": "student_subscription_allocations_student_school_id_fkey",
+      "convalidated": true,
+      "confdeltype": "r",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (school_id) REFERENCES parents.schools(id) ON DELETE RESTRICT"
+    },
+    {
+      "schema": "validation_demo",
+      "child": "platform_devices",
+      "conname": "platform_devices_class_school_fk",
+      "convalidated": false,
+      "confdeltype": "a",
+      "confupdtype": "a",
+      "confmatchtype": "s",
+      "condeferrable": false,
+      "definition": "FOREIGN KEY (school_class_id, school_id) REFERENCES parents.school_classes(id, school_id) NOT VALID"
+    }
+  ],
+  "appSameSchoolJoin": {
+    "syntheticMisboundPayment": 2,
+    "selectedRows": 0,
+    "scope": "Equivalent owner/student-school JOIN predicates only; application handler was not executed."
+  },
+  "limitations": "Fixture projects relevant FKs/NOT NULL/recipient checks and payment ownership. It omits unrelated business columns, RLS, triggers and other constraints. No existence of these anomalies in real data is asserted.",
+  "setupSql": "CREATE SCHEMA parents;CREATE TABLE parents.schools(id integer PRIMARY KEY);INSERT INTO parents.schools VALUES(1),(2);CREATE TABLE parents.school_classes(id integer PRIMARY KEY,school_id integer NOT NULL REFERENCES parents.schools(id));CREATE UNIQUE INDEX school_classes_id_school_unique ON parents.school_classes(id,school_id);INSERT INTO parents.school_classes VALUES(11,1),(12,1),(22,2);CREATE TABLE parents.students(id integer PRIMARY KEY,school_id integer NOT NULL REFERENCES parents.schools(id));CREATE UNIQUE INDEX students_id_school_unique ON parents.students(id,school_id);INSERT INTO parents.students VALUES(11,1),(12,1),(22,2);CREATE TABLE parents.school_partner_attributions(id integer PRIMARY KEY,school_id integer NOT NULL REFERENCES parents.schools(id),partner_profile_id integer NOT NULL);CREATE UNIQUE INDEX school_partner_attributions_id_partner_uq ON parents.school_partner_attributions(id,partner_profile_id);INSERT INTO parents.school_partner_attributions VALUES(100,1,7),(200,2,7),(300,2,8);\nCREATE SCHEMA historical;\nCREATE TABLE historical.platform_devices(id serial PRIMARY KEY,school_id integer REFERENCES parents.schools(id),school_class_id integer);\nALTER TABLE historical.platform_devices ADD CONSTRAINT platform_devices_class_school_fk FOREIGN KEY(school_class_id,school_id) REFERENCES parents.school_classes(id,school_id) NOT VALID;\nCREATE TABLE historical.student_subscription_allocations_student(id serial PRIMARY KEY,school_id integer NOT NULL REFERENCES parents.schools(id) ON DELETE RESTRICT,student_id integer NOT NULL,CONSTRAINT student_subscription_allocations_student_school_fk FOREIGN KEY(student_id,school_id) REFERENCES parents.students(id,school_id) ON DELETE RESTRICT);\nCREATE TABLE historical.student_subscription_allocations_attribution(id serial PRIMARY KEY,school_id integer NOT NULL REFERENCES parents.schools(id) ON DELETE RESTRICT,attribution_id integer,recipient_id integer,recipient_type text NOT NULL,commission_rule_id integer,CONSTRAINT student_subscription_allocations_recipient_ck CHECK(recipient_type IN('SCHOOL','PLATFORM','PARTNER','PLATFORM_PROVIDER_FEE')),CONSTRAINT student_subscription_allocations_partner_ck CHECK((recipient_type='PARTNER' AND recipient_id IS NOT NULL AND attribution_id IS NOT NULL AND commission_rule_id IS NOT NULL) OR(recipient_type<>'PARTNER' AND recipient_id IS NULL)),CONSTRAINT student_subscription_allocations_attribution_partner_fk FOREIGN KEY(attribution_id,recipient_id) REFERENCES parents.school_partner_attributions(id,partner_profile_id) ON DELETE RESTRICT);\nCREATE SCHEMA standalone;\nCREATE TABLE standalone.platform_devices(id serial PRIMARY KEY,school_id integer REFERENCES parents.schools(id),school_class_id integer,CONSTRAINT platform_devices_school_class_id_school_classes_id_fk FOREIGN KEY(school_class_id) REFERENCES parents.school_classes(id));\nCREATE TABLE standalone.student_subscription_allocations_student(id serial PRIMARY KEY,school_id integer NOT NULL REFERENCES parents.schools(id) ON DELETE RESTRICT,student_id integer NOT NULL,CONSTRAINT student_subscription_allocations_student_id_students_id_fk FOREIGN KEY(student_id) REFERENCES parents.students(id) ON DELETE RESTRICT);\nCREATE TABLE standalone.student_subscription_allocations_attribution(id serial PRIMARY KEY,school_id integer NOT NULL REFERENCES parents.schools(id) ON DELETE RESTRICT,attribution_id integer,recipient_id integer,recipient_type text NOT NULL,commission_rule_id integer,CONSTRAINT student_subscription_allocations_recipient_ck CHECK(recipient_type IN('SCHOOL','PLATFORM','PARTNER','PLATFORM_PROVIDER_FEE')),CONSTRAINT student_subscription_allocations_partner_ck CHECK((recipient_type='PARTNER' AND recipient_id IS NOT NULL AND attribution_id IS NOT NULL AND commission_rule_id IS NOT NULL) OR(recipient_type<>'PARTNER' AND recipient_id IS NULL)),CONSTRAINT student_subscription_allocations_attribution_id_school_partner_attributions_id_fk FOREIGN KEY(attribution_id) REFERENCES parents.school_partner_attributions(id) ON DELETE RESTRICT);\nCREATE SCHEMA current;\nCREATE TABLE current.platform_devices(id serial PRIMARY KEY,school_id integer REFERENCES parents.schools(id),school_class_id integer,CONSTRAINT platform_devices_school_class_id_school_classes_id_fk FOREIGN KEY(school_class_id) REFERENCES parents.school_classes(id));\nALTER TABLE current.platform_devices ADD CONSTRAINT platform_devices_class_school_fk FOREIGN KEY(school_class_id,school_id) REFERENCES parents.school_classes(id,school_id);\nCREATE TABLE current.student_subscription_allocations_student(id serial PRIMARY KEY,school_id integer NOT NULL REFERENCES parents.schools(id) ON DELETE RESTRICT,student_id integer NOT NULL,CONSTRAINT student_subscription_allocations_student_id_students_id_fk FOREIGN KEY(student_id) REFERENCES parents.students(id) ON DELETE RESTRICT);\nCREATE TABLE current.student_subscription_allocations_attribution(id serial PRIMARY KEY,school_id integer NOT NULL REFERENCES parents.schools(id) ON DELETE RESTRICT,attribution_id integer,recipient_id integer,recipient_type text NOT NULL,commission_rule_id integer,CONSTRAINT student_subscription_allocations_recipient_ck CHECK(recipient_type IN('SCHOOL','PLATFORM','PARTNER','PLATFORM_PROVIDER_FEE')),CONSTRAINT student_subscription_allocations_partner_ck CHECK((recipient_type='PARTNER' AND recipient_id IS NOT NULL AND attribution_id IS NOT NULL AND commission_rule_id IS NOT NULL) OR(recipient_type<>'PARTNER' AND recipient_id IS NULL)),CONSTRAINT student_subscription_allocations_attribution_id_school_partner_attributions_id_fk FOREIGN KEY(attribution_id) REFERENCES parents.school_partner_attributions(id) ON DELETE RESTRICT,CONSTRAINT student_subscription_allocations_attribution_partner_fk FOREIGN KEY(attribution_id,recipient_id) REFERENCES parents.school_partner_attributions(id,partner_profile_id));\nCREATE SCHEMA context_historical;CREATE TABLE context_historical.subscriptions(id integer PRIMARY KEY,school_id integer NOT NULL REFERENCES parents.schools(id),student_id integer NOT NULL REFERENCES parents.students(id),UNIQUE(id,school_id,student_id));\nCREATE TABLE context_historical.student_subscription_payments(id integer PRIMARY KEY,subscription_id integer NOT NULL,school_id integer NOT NULL,student_id integer NOT NULL,academic_session_id integer NOT NULL,academic_term_id integer NOT NULL,CONSTRAINT student_subscription_payments_subscription_owner_fk FOREIGN KEY(subscription_id,school_id,student_id) REFERENCES context_historical.subscriptions(id,school_id,student_id) ON DELETE RESTRICT,UNIQUE(id,subscription_id,school_id,student_id,academic_session_id,academic_term_id));\nCREATE TABLE context_historical.student_subscription_allocations(id serial PRIMARY KEY,payment_id integer NOT NULL,subscription_id integer NOT NULL,school_id integer NOT NULL REFERENCES parents.schools(id) ON DELETE RESTRICT,student_id integer NOT NULL,academic_session_id integer NOT NULL,academic_term_id integer NOT NULL,CONSTRAINT student_subscription_allocations_payment_owner_term_fk FOREIGN KEY(payment_id,subscription_id,school_id,student_id,academic_session_id,academic_term_id) REFERENCES context_historical.student_subscription_payments(id,subscription_id,school_id,student_id,academic_session_id,academic_term_id) ON DELETE RESTRICT,CONSTRAINT student_subscription_allocations_student_school_fk FOREIGN KEY(student_id,school_id) REFERENCES parents.students(id,school_id) ON DELETE RESTRICT);\nINSERT INTO context_historical.subscriptions VALUES(100,1,11),(200,1,22);INSERT INTO context_historical.student_subscription_payments VALUES(1,100,1,11,1001,101),(2,200,1,22,1001,101);\nCREATE SCHEMA context_current;CREATE TABLE context_current.subscriptions(id integer PRIMARY KEY,school_id integer NOT NULL REFERENCES parents.schools(id),student_id integer NOT NULL REFERENCES parents.students(id),UNIQUE(id,school_id,student_id));\nCREATE TABLE context_current.student_subscription_payments(id integer PRIMARY KEY,subscription_id integer NOT NULL,school_id integer NOT NULL,student_id integer NOT NULL,academic_session_id integer NOT NULL,academic_term_id integer NOT NULL,CONSTRAINT student_subscription_payments_subscription_owner_fk FOREIGN KEY(subscription_id,school_id,student_id) REFERENCES context_current.subscriptions(id,school_id,student_id),UNIQUE(id,subscription_id,school_id,student_id,academic_session_id,academic_term_id));\nCREATE TABLE context_current.student_subscription_allocations(id serial PRIMARY KEY,payment_id integer NOT NULL,subscription_id integer NOT NULL,school_id integer NOT NULL REFERENCES parents.schools(id) ON DELETE RESTRICT,student_id integer NOT NULL,academic_session_id integer NOT NULL,academic_term_id integer NOT NULL,CONSTRAINT student_subscription_allocations_payment_owner_term_fk FOREIGN KEY(payment_id,subscription_id,school_id,student_id,academic_session_id,academic_term_id) REFERENCES context_current.student_subscription_payments(id,subscription_id,school_id,student_id,academic_session_id,academic_term_id),CONSTRAINT student_subscription_allocations_student_id_students_id_fk FOREIGN KEY(student_id) REFERENCES parents.students(id) ON DELETE RESTRICT);\nINSERT INTO context_current.subscriptions VALUES(100,1,11),(200,1,22);INSERT INTO context_current.student_subscription_payments VALUES(1,100,1,11,1001,101),(2,200,1,22,1001,101);\nCREATE SCHEMA validation_demo;CREATE TABLE validation_demo.platform_devices(id integer PRIMARY KEY,school_id integer,school_class_id integer);INSERT INTO validation_demo.platform_devices VALUES(1,1,22);ALTER TABLE validation_demo.platform_devices ADD CONSTRAINT platform_devices_class_school_fk FOREIGN KEY(school_class_id,school_id) REFERENCES parents.school_classes(id,school_id) NOT VALID;"
+}

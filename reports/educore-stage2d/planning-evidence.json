@@ -1,0 +1,729 @@
+{
+  "scope": "PLAN ONLY",
+  "rows": [
+    {
+      "code": "A",
+      "subject": "Device class",
+      "logicalName": "platform_devices_school_class_id_school_classes_id_fk",
+      "physicalName": "platform_devices_school_class_id_school_classes_id_fk",
+      "child": "platform_devices(school_class_id,school_id)",
+      "parent": "school_classes(id,school_id)",
+      "historical": "Composite only: platform_devices_class_school_fk; MATCH SIMPLE; NO ACTION delete/update; NOT VALID.",
+      "current": "Nullable inline school_class_id → school_classes(id), plus separate class/school composite. Both default NO ACTION delete/update. Current-model disposable catalog validates both; deployed state not queried.",
+      "timeline": "Child created: 0004_platform_operations.sql statement 8, lines 29–41; school_id nullable at line 34. Class column: 0009_phase5_attendance.sql statement 2, line 4. Parent school_classes/id PK: 0000_brainy_moon_knight.sql statement 6, lines 62–69. Parent composite UNIQUE index: 0001_phase3_meta.sql statement 36, line 133; tenant UNIQUE in 0005 lines 1–2 and lifecycle 0007/0008. Composite FK: 0009 statement 7, line 10. 0010 does not change this class relationship; no later validation, standalone addition, drop or replacement was found through 0059.",
+      "source": "lib/db/src/schema/edupulse.ts:92–123; parent :238–251",
+      "nulls": "school_id and school_class_id nullable. Any NULL skips composite matching. Standalone rejects a missing non-NULL class even with NULL school. Both allow an existing class with NULL school; neither itself requires paired unassignment.",
+      "tenant": "Composite enforces class belongs to assigned school when both fields are non-NULL. Standalone alone does not. Actual current dual design retains that protection for checked writes; NOT VALID historical FK still enforces new writes but does not certify old rows.",
+      "usage": "Owner registration omits class and allows unassigned NULL school (platform.ts:154–215). Assign checks school/class pair and writes both (255–286). Patch validates class against target school, clears class on reassignment/unassignment and revokes credentials (329–400). CLASSROOM_ENTRY compares student class to device class within school (attendance.ts:409–418). Device frontend allows nullable school (devices.tsx:153–195,220–250). Status/credential-only writes do not alter these IDs. No handler checks for a particular standalone constraint name.",
+      "intent": "BOTH MAY BE INTENTIONAL",
+      "intentReason": "Explicit dual source declarations, school-scoped assignment checks and paired clearing support tenant binding plus existence protection across nullable fields. No explicit author rationale or creation migration for the standalone was established.",
+      "direction": "Option 3: retain standalone AND class/school composite; reconcile to validated enforcement only after a scoped data audit. Preserve nullable columns and current unassignment behavior.",
+      "reason": "Keeping both preserves tenant pairing when school is supplied and class existence when the composite is skipped. Removing either would weaken a distinct protection.",
+      "confidence": "HIGH",
+      "dataAudit": "YES",
+      "applicationReview": "YES",
+      "productionChange": "YES — any needed addition/validation would be Production DDL; the actual required Production delta is NOT VERIFIED.",
+      "risk": "Legacy mismatched class/school pairs can block validation; orphan class IDs with NULL school can block a standalone addition. Dropping standalone allows orphan nullable-school class references; dropping composite allows cross-school class references. Do not silently clear/reassign existing devices to make an audit pass."
+    },
+    {
+      "code": "B",
+      "subject": "Allocation student",
+      "logicalName": "student_subscription_allocations_student_id_students_id_fk",
+      "physicalName": "student_subscription_allocations_student_id_students_id_fk",
+      "child": "student_subscription_allocations(student_id,school_id)",
+      "parent": "students(id,school_id)",
+      "historical": "Direct composite student_subscription_allocations_student_school_fk; both columns NOT NULL; ON DELETE RESTRICT; ON UPDATE NO ACTION; validated creation.",
+      "current": "Inline student_id → students(id) ON DELETE RESTRICT; ON UPDATE NO ACTION. No direct student/school composite. Retained payment_owner_term FK binds the ledger to the payment snapshot, not to students.school_id.",
+      "timeline": "Child and relevant columns: 0036_student_subscription_allocations.sql statement 13, lines 99–151, especially school_id 105/student_id 106; historical FK lines 124–125. Parent students/id PK: 0000 statement 9, lines 91–105. Parent composite UNIQUE index: 0001 statement 37, line 134; tenant UNIQUE: 0005 lines 7–8, lifecycle 0007/0008. All keys precede 0036. Only 0036 mentions this allocation table in the 60-file SQL history; no later standalone addition or composite drop/replacement was found.",
+      "source": "lib/db/src/schema/student-subscription-billing.ts:134–183; parent lib/db/src/schema/edupulse.ts:154–188; subscriptions :255–284; payments student-subscription-billing.ts:27–88",
+      "nulls": "student_id and school_id are NOT NULL in both designs, so neither can bypass its constraint through these NULL fields. Current standalone is weaker for tenancy, not for student existence.",
+      "tenant": "Historical composite directly prevents cross-school student references. Standalone does not. Payment → subscription → global student FK chain still permits an internally consistent but wrongly school-bound subscription/payment tuple. Synthetic owner-chain projection demonstrated that gap; application same-school JOIN excludes the synthetic mismatch.",
+      "usage": "NFC obligation creation first selects student within school (student-nfc-obligations.ts:75–106). Checkout copies scoped subscription school/student into payment (edupulse.ts:1197–1218). Finalization locks payment/subscription/student with matching school/student JOINs (student-subscription-billing.ts:209–234), then copies payment IDs into every allocation (517–541). No allocation update/delete writer was found in inspected production source; historical append-only trigger rejects both (0036:167–175). Reads authorize payment and filter school-visible allocations (edupulse.ts:1000–1037) or school/student totals (student-nfc-obligations.ts route:66–70). No handler branches on the standalone FK name.",
+      "intent": "HISTORICAL DESIGN APPEARS INTENTIONAL",
+      "intentReason": "Explicit direct tenant FK plus current server-side same-school student checks consistently express the student/school invariant. There is insufficient evidence to explain why the direct composite was omitted from current source; the standalone does not reproduce it.",
+      "direction": "Option 3: retain standalone and restore the direct student/school composite in a future approved alignment, preserving RESTRICT deletion and existing payment ownership constraints.",
+      "reason": "Direct tenant enforcement matches the historical invariant and current application checks. Keeping the standalone avoids an unnecessary destructive removal and preserves existing source identity linkage.",
+      "confidence": "HIGH",
+      "dataAudit": "YES",
+      "applicationReview": "YES",
+      "productionChange": "YES — restoring/alignment of a missing direct composite requires DDL; actual Production constraint presence is NOT VERIFIED.",
+      "risk": "Existing allocations with student/school mismatches would reject new validation. A future move of a referenced student to another tenant would be blocked by NO ACTION on the composite; synthetic examples demonstrated this. No such real rows or transfer workflows are asserted. Preserve append-only financial records; do not rewrite IDs or school ownership merely to satisfy a constraint."
+    },
+    {
+      "code": "C",
+      "subject": "Allocation attribution",
+      "logicalName": "student_subscription_allocations_attribution_id_school_partner_attributions_id_fk",
+      "physicalName": "student_subscription_allocations_attribution_id_school_partner_",
+      "child": "student_subscription_allocations(attribution_id,recipient_id,school_id)",
+      "parent": "school_partner_attributions(id,partner_profile_id,school_id)",
+      "historical": "Composite attribution_partner_fk(attribution_id,recipient_id) → (id,partner_profile_id); ON DELETE RESTRICT; ON UPDATE NO ACTION; MATCH SIMPLE; validated creation. Recipient CHECK requires attribution/recipient/rule for PARTNER, but permits NULL recipient and optional attribution for non-PARTNER.",
+      "current": "Inline attribution_id → school_partner_attributions(id) ON DELETE RESTRICT, plus retained attribution/partner composite with default NO ACTION delete/update. CHECK unchanged. Current-model catalog validates both. Logical standalone name exceeds PostgreSQL limit; physical name preserved separately.",
+      "timeline": "Child/recipient/attribution columns: 0036 statement 13, lines 99–151, especially recipient_id 104/attribution_id 112. Parent school_partner_attributions/id PK and NOT NULL school/partner fields: 0002_overjoyed_sue_storm.sql statement 10, lines 159–171. Parent UNIQUE(id,partner_profile_id): 0036 statement 2, lines 8–9, before child statement 13. Historical composite: 0036 lines 132–134; recipient CHECK lines 144–148. No later standalone addition or composite drop/replacement was found in 0000–0059.",
+      "source": "lib/db/src/schema/student-subscription-billing.ts:141–150,194–215; parent lib/db/src/schema/edupulse.ts:375–397",
+      "nulls": "attribution_id and recipient_id nullable; school_id NOT NULL. Composite skips matching when either member is NULL, but PARTNER CHECK prevents NULL attribution/recipient on PARTNER rows. Non-PARTNER NULL recipient is legitimate and intentionally paired with a non-NULL attribution by the writer when the school is attributed. Standalone protects existence and RESTRICT deletion of that metadata.",
+      "tenant": "Partner-pair composite checks correct recipient Partner, not school. Standalone checks existence, not school. Both accept attribution from another school with the same Partner, or a valid cross-school attribution on a non-PARTNER row. Current writer prevents this through WHERE a.school_id=payment.schoolId. A future explicit attribution/school composite would close that database gap without disallowing legitimate NULL recipients.",
+      "usage": "Calculator returns NULL recipient for SCHOOL/PLATFORM and Partner id only for PARTNER (student-subscription-billing.ts:94–125); provider-fee EXPENSE is also NULL-recipient (458–469). Finalizer selects attribution by payment school (395–404) and copies the same attribution/rule to every allocation, including those non-PARTNER rows (517–541). The existing mock test intentionally covers these row types (billing.test.ts:218–235) but is not native FK evidence. Attribution conflict resolution ends old rows and inserts new ownership rows rather than overwriting historical identity (partners.ts:1865–1890); historical metadata must remain referencable even when no longer current.",
+      "intent": "BOTH MAY BE INTENTIONAL",
+      "intentReason": "Explicit dual source declarations plus deliberate attribution metadata on non-PARTNER rows support existence protection AND Partner identity protection. The global Partner can refer multiple schools, so Partner matching is not proof of tenancy. Exact author rationale for adding standalone remains unverified.",
+      "direction": "Option 5: retain both existing FK protections and, after audit/ownership approval, add an explicit attribution/school binding for non-NULL attribution IDs. Preserve NULL recipients and ended historical attributions.",
+      "reason": "This preserves intentionally shared financial provenance and Partner matching while aligning database tenancy with the writer’s explicit school-scoped attribution selection. It requires a qualifying parent UNIQUE(id,school_id), not an ordinary index or the existing id/partner key.",
+      "confidence": "MEDIUM",
+      "dataAudit": "YES",
+      "applicationReview": "YES",
+      "productionChange": "YES — future school-binding requires supporting uniqueness and FK DDL if adopted; no change is authorized by this plan.",
+      "risk": "Valid same-school non-PARTNER rows must not be cleared or forced to have a Partner recipient. Missing attribution IDs can block standalone addition; foreign-school attribution IDs can block future school binding. Removing standalone admits orphan metadata and permits deletion when composite is skipped; removing partner composite admits wrong Partner matching. Parent school/partner reassignment can affect immutable ledger ownership; audit historical rows without treating ended attribution status as invalid."
+    }
+  ],
+  "options": {
+    "A": [
+      [
+        "Option 1 — standalone only",
+        "Existence only; cross-school pairs no longer protected. Nullable fields remain; no NULL-school orphan class. Removing composite is destructive weakening. Existing data must be audited before any reconciliation; application school validation remains essential."
+      ],
+      [
+        "Option 2 — historical composite only",
+        "Tenant pairing when both fields are non-NULL; NULL school bypasses existence and deletion protection. Removing standalone weakens integrity. Existing data audit and application lifecycle review required; preserves historical skip behavior but permits orphan metadata."
+      ],
+      [
+        "Option 3 — both; validate after audit",
+        "Retains existence and tenant protections without changing nullability. Audit missing class IDs, mismatched class/school and validation state; existing mismatches can block VALIDATE. Application error/lifecycle review required. No removal recommended."
+      ]
+    ],
+    "B": [
+      [
+        "Option 1 — current standalone only",
+        "Student exists but tenancy remains dependent on application checks. No direct tenant DDL needed if already installed; audit ownership-chain consistency and maintain school-scoped writer checks. Parent school changes remain unconstrained by this direct FK."
+      ],
+      [
+        "Option 2 — historical composite only / replace standalone",
+        "Student existence plus school binding; no NULL bypass because both fields NOT NULL. Removing standalone is unnecessary metadata/compatibility churn. Audit existing ledger/student-school pairs and parent tenant reassignment; review import/transfer/error paths."
+      ],
+      [
+        "Option 3 — keep standalone AND restore direct tenant composite",
+        "Retains existing identity FK and adds direct school enforcement using existing qualifying keys. No nullability change; mismatched legacy rows and parent school moves block validation. Data audit and application review required; immutable financial ledger must not be rewritten to fit."
+      ]
+    ],
+    "C": [
+      [
+        "Option 1 — standalone only",
+        "Protects attribution existence for non-NULL IDs and RESTRICT deletion, including NULL recipients; loses correct Partner binding and still does not bind school. Audit recipient attribution ownership; application payout checks become sole matching guard."
+      ],
+      [
+        "Option 2 — historical partner composite only",
+        "Keeps correct Partner pair for non-NULL members, but skips legitimate non-PARTNER NULL-recipient rows. Loses orphan/deletion protection for their metadata and does not bind school. Existing-data and application provenance review required; removing standalone is weakening."
+      ],
+      [
+        "Option 3 — both existing FKs",
+        "Keeps existence/deletion and Partner matching with unchanged NULL-recipient behavior, but no database school binding. Audit attribution school against ledger school and retain application selector. Aligning to already-current source may need no DDL; deployed delta unknown."
+      ],
+      [
+        "Option 5 — both PLUS explicit school binding",
+        "Keeps all current protections and adds tenant ownership for every non-NULL attribution, including non-PARTNER rows. Requires qualifying UNIQUE(id,school_id), source/application review and full existing-data audit; cross-school historic rows and parent school changes can block validation. Ended historical attributions should remain valid parents. No stricter recipient/nullability policy proposed."
+      ]
+    ]
+  },
+  "historicalCorpus": [
+    {
+      "file": "0000_brainy_moon_knight.sql",
+      "sha256": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+      "hits": []
+    },
+    {
+      "file": "0001_phase3_meta.sql",
+      "sha256": "0a329af11216e5f86f7569dad85008a115c497d4e827a2e2adfc5316f62b9244",
+      "hits": [
+        {
+          "line": 133,
+          "text": "CREATE UNIQUE INDEX \"school_classes_id_school_unique\" ON \"school_classes\" USING btree (\"id\",\"school_id\");--> statement-breakpoint"
+        },
+        {
+          "line": 134,
+          "text": "CREATE UNIQUE INDEX \"students_id_school_unique\" ON \"students\" USING btree (\"id\",\"school_id\");--> statement-breakpoint"
+        }
+      ]
+    },
+    {
+      "file": "0002_overjoyed_sue_storm.sql",
+      "sha256": "8a3a486f871f991ab59ac982ae6be92934a8f6d4b861c8222be43eea5878c736",
+      "hits": []
+    },
+    {
+      "file": "0003_phase4_integrity.sql",
+      "sha256": "9223f5d27a334bd967dfe37dcff518b3800eff1a68523f81defc8ca52ae7c575",
+      "hits": []
+    },
+    {
+      "file": "0004_platform_operations.sql",
+      "sha256": "02d011d931579f8177b2a71794a39bea78f23214da41c3606a3375ab1e3505ca",
+      "hits": [
+        {
+          "line": 4,
+          "text": "CREATE UNIQUE INDEX IF NOT EXISTS \"school_classes_id_school_unique\" ON \"school_classes\" (\"id\",\"school_id\");--> statement-breakpoint"
+        },
+        {
+          "line": 5,
+          "text": "CREATE UNIQUE INDEX IF NOT EXISTS \"students_id_school_unique\" ON \"students\" (\"id\",\"school_id\");--> statement-breakpoint"
+        },
+        {
+          "line": 29,
+          "text": "CREATE TABLE IF NOT EXISTS \"platform_devices\" ("
+        },
+        {
+          "line": 39,
+          "text": "  CONSTRAINT \"platform_devices_type_check\" CHECK (\"device_type\" IN ('NFC','BIOMETRIC','HYBRID')),"
+        },
+        {
+          "line": 40,
+          "text": "  CONSTRAINT \"platform_devices_status_check\" CHECK (\"status\" IN ('ACTIVE','INACTIVE','MAINTENANCE'))"
+        },
+        {
+          "line": 42,
+          "text": "CREATE INDEX IF NOT EXISTS \"platform_devices_school_idx\" ON \"platform_devices\" (\"school_id\",\"status\");--> statement-breakpoint"
+        }
+      ]
+    },
+    {
+      "file": "0005_tenant_reference_keys.sql",
+      "sha256": "2c39b162401de93ce6cfe26fe5a558966080124575876e4097e9bf5044b1c519",
+      "hits": [
+        {
+          "line": 2,
+          "text": "  ADD CONSTRAINT \"school_classes_id_school_tenant_key\" UNIQUE(\"id\",\"school_id\");--> statement-breakpoint"
+        },
+        {
+          "line": 8,
+          "text": "  ADD CONSTRAINT \"students_id_school_tenant_key\" UNIQUE(\"id\",\"school_id\");--> statement-breakpoint"
+        }
+      ]
+    },
+    {
+      "file": "0006_prepare_tenant_keys_publish.sql",
+      "sha256": "01239ad0d094f235d29a8a91d6e48a31fc5978f065d9e0fee0a466540f2f81ef",
+      "hits": []
+    },
+    {
+      "file": "0007_restore_tenant_foreign_keys.sql",
+      "sha256": "be779627cfc9593c61f5f2e9f53813999905e134a10f9b4a54885ef70301ade7",
+      "hits": [
+        {
+          "line": 7,
+          "text": "  DROP CONSTRAINT \"school_classes_id_school_tenant_key\";--> statement-breakpoint"
+        },
+        {
+          "line": 9,
+          "text": "  ADD CONSTRAINT \"school_classes_id_school_tenant_key\""
+        },
+        {
+          "line": 10,
+          "text": "  UNIQUE USING INDEX \"school_classes_id_school_unique\";--> statement-breakpoint"
+        },
+        {
+          "line": 11,
+          "text": "CREATE UNIQUE INDEX \"school_classes_id_school_unique\""
+        },
+        {
+          "line": 14,
+          "text": "  DROP CONSTRAINT \"students_id_school_tenant_key\";--> statement-breakpoint"
+        },
+        {
+          "line": 16,
+          "text": "  ADD CONSTRAINT \"students_id_school_tenant_key\""
+        },
+        {
+          "line": 17,
+          "text": "  UNIQUE USING INDEX \"students_id_school_unique\";--> statement-breakpoint"
+        },
+        {
+          "line": 18,
+          "text": "CREATE UNIQUE INDEX \"students_id_school_unique\""
+        }
+      ]
+    },
+    {
+      "file": "0008_align_tenant_fk_dependencies.sql",
+      "sha256": "83132c038eb08c2a45ca0a9805750217237e879469b62ca967a160b55a88694a",
+      "hits": [
+        {
+          "line": 14,
+          "text": "  DROP CONSTRAINT \"school_classes_id_school_tenant_key\";--> statement-breakpoint"
+        },
+        {
+          "line": 16,
+          "text": "  ADD CONSTRAINT \"school_classes_id_school_tenant_key\""
+        },
+        {
+          "line": 19,
+          "text": "  DROP CONSTRAINT \"students_id_school_tenant_key\";--> statement-breakpoint"
+        },
+        {
+          "line": 21,
+          "text": "  ADD CONSTRAINT \"students_id_school_tenant_key\""
+        }
+      ]
+    },
+    {
+      "file": "0009_phase5_attendance.sql",
+      "sha256": "d306734f09b1f51a56c4ae88113d2c2b3de89e3eff8f6bb20bbedaac6715fc1e",
+      "hits": [
+        {
+          "line": 3,
+          "text": "ALTER TABLE \"platform_devices\" ADD COLUMN IF NOT EXISTS \"location\" text;"
+        },
+        {
+          "line": 4,
+          "text": "ALTER TABLE \"platform_devices\" ADD COLUMN IF NOT EXISTS \"school_class_id\" integer;"
+        },
+        {
+          "line": 5,
+          "text": "ALTER TABLE \"platform_devices\" ADD COLUMN IF NOT EXISTS \"configuration_status\" text NOT NULL DEFAULT 'PENDING';"
+        },
+        {
+          "line": 6,
+          "text": "ALTER TABLE \"platform_devices\" DROP CONSTRAINT IF EXISTS \"platform_devices_status_check\";"
+        },
+        {
+          "line": 7,
+          "text": "ALTER TABLE \"platform_devices\" ADD CONSTRAINT \"platform_devices_status_check\""
+        },
+        {
+          "line": 9,
+          "text": "CREATE UNIQUE INDEX IF NOT EXISTS \"platform_devices_id_school_unique\" ON \"platform_devices\" (\"id\",\"school_id\");"
+        },
+        {
+          "line": 10,
+          "text": "ALTER TABLE \"platform_devices\" ADD CONSTRAINT \"platform_devices_class_school_fk\" FOREIGN KEY (\"school_class_id\",\"school_id\") REFERENCES \"school_classes\"(\"id\",\"school_id\") NOT VALID;"
+        },
+        {
+          "line": 21,
+          "text": "ALTER TABLE \"nfc_cards\" ADD CONSTRAINT \"nfc_cards_last_device_school_fk\" FOREIGN KEY (\"last_device_id\",\"school_id\") REFERENCES \"platform_devices\"(\"id\",\"school_id\");"
+        },
+        {
+          "line": 29,
+          "text": "  \"device_id\" integer NOT NULL REFERENCES \"platform_devices\"(\"id\"),"
+        },
+        {
+          "line": 44,
+          "text": "  \"device_id\" integer NOT NULL REFERENCES \"platform_devices\"(\"id\"),"
+        },
+        {
+          "line": 77,
+          "text": "  \"device_id\" integer REFERENCES \"platform_devices\"(\"id\"),"
+        },
+        {
+          "line": 86,
+          "text": "  CONSTRAINT \"biometric_enrollments_device_school_fk\" FOREIGN KEY (\"device_id\",\"school_id\") REFERENCES \"platform_devices\"(\"id\",\"school_id\"),"
+        },
+        {
+          "line": 114,
+          "text": "  \"device_id\" integer REFERENCES \"platform_devices\"(\"id\"),"
+        },
+        {
+          "line": 134,
+          "text": "  CONSTRAINT \"attendance_events_device_school_fk\" FOREIGN KEY (\"device_id\",\"school_id\") REFERENCES \"platform_devices\"(\"id\",\"school_id\"),"
+        }
+      ]
+    },
+    {
+      "file": "0010_historical_device_school_bindings.sql",
+      "sha256": "b694b7b224ca23979c9f156288c95908303044a264f13b5d687b4b279f0a05fe",
+      "hits": [
+        {
+          "line": 7,
+          "text": "  \"device_id\" integer NOT NULL REFERENCES \"platform_devices\"(\"id\"),"
+        },
+        {
+          "line": 30,
+          "text": "SELECT id, school_id FROM \"platform_devices\" WHERE school_id IS NOT NULL"
+        }
+      ]
+    },
+    {
+      "file": "0011_historical_device_references.sql",
+      "sha256": "8b961ad5af8609c8247942174f178cb8af2a3ab9b9b31c9b881a7bb4282118c9",
+      "hits": []
+    },
+    {
+      "file": "0012_phase6_academic_operations.sql",
+      "sha256": "2e9c588ca170fbd3a24c8b03bb5466cc603bc4fae140659d15bb8824587f7c46",
+      "hits": []
+    },
+    {
+      "file": "0013_phase7_finance.sql",
+      "sha256": "d686ff04220a346caf6a611e0fe0652a87eaa8db3fbb91595cdc7dbc09105074",
+      "hits": []
+    },
+    {
+      "file": "0014_finance_payment_integrity.sql",
+      "sha256": "a22416cbd66528978d57e9842a9836d17a263c6bccca0f4db4b7806f765a3360",
+      "hits": []
+    },
+    {
+      "file": "0015_school_bank_transfer_settings.sql",
+      "sha256": "261a4df3195bd36ecaf7597427ff883ebec7198374b7fa299a5f2a6050402182",
+      "hits": []
+    },
+    {
+      "file": "0016_finance_refunds.sql",
+      "sha256": "e4312cda8c57e7fc489562cf64c5f7005e0ce09d2e1efa7e561aa674a67c4b8f",
+      "hits": []
+    },
+    {
+      "file": "0017_fee_provider_payments.sql",
+      "sha256": "ca8a921ecc355f9fd748649dadbfe775dbd898195564c76138b3035ad53f6f0a",
+      "hits": []
+    },
+    {
+      "file": "0018_fee_payment_notifications.sql",
+      "sha256": "e9bffbf45dbd225d96935cc8b52185d181e8efe74d11c33fd44f46bbfbc8be70",
+      "hits": []
+    },
+    {
+      "file": "0019_phase7_finance_ledger_gaps.sql",
+      "sha256": "84886bbea635b7d96acdfc5ae6f62542b3e7355d3106ad93af2738c05bb147d5",
+      "hits": []
+    },
+    {
+      "file": "0020_finance_payment_notification_events.sql",
+      "sha256": "c1f8c7067ac3544e4d2c34e504519e351992aefe339b94d8da64d0c6a76a11da",
+      "hits": []
+    },
+    {
+      "file": "0021_fee_payment_notification_outbox.sql",
+      "sha256": "73cb3dd56096c6296e78bcd503eade9635bebfc20e8403d42bfb126b4cfae782",
+      "hits": []
+    },
+    {
+      "file": "0022_payment_bound_notification_events.sql",
+      "sha256": "3d5c3805a2f79e7caf569f312bbfcf8fef3a91528d06f5fc70c0db36de0e9929",
+      "hits": []
+    },
+    {
+      "file": "0023_invoice_generated_notifications.sql",
+      "sha256": "80ca309338cdf5d0c3432d2f97373588b9b5898ffdb4adfc1926400bc946fc68",
+      "hits": []
+    },
+    {
+      "file": "0024_platform_company_employees.sql",
+      "sha256": "f109415673a0674545ed975b50e7fc8337d3a9939ae99eecb81c4b262e986112",
+      "hits": []
+    },
+    {
+      "file": "0025_communication.sql",
+      "sha256": "e36a4208543a4c2b3e4739cac1449d5b15f1bb8ac53a4d569cc26a50eb815f3a",
+      "hits": []
+    },
+    {
+      "file": "0026_communication_entitlements.sql",
+      "sha256": "3a849acf174da8dc8e6f9b6203b6bbeec6a56dc0cdc12367fb7aeed6dd103ab2",
+      "hits": []
+    },
+    {
+      "file": "0027_library.sql",
+      "sha256": "a8a0f53180682650cbec0858eaaa7c964194527975dc87ed6df60261623a455a",
+      "hits": []
+    },
+    {
+      "file": "0028_school_operations.sql",
+      "sha256": "e705cc814866afd041f7e92264b3eb6c35dd931359d455cb485b3c1560916190",
+      "hits": []
+    },
+    {
+      "file": "0029_operations_history.sql",
+      "sha256": "3a0a63d2807a67ea514502083cb7f26f6c8d7a2fc0c2da6739e6b375a587ac87",
+      "hits": []
+    },
+    {
+      "file": "0030_library_loan_copy_integrity.sql",
+      "sha256": "eea163be06c078cfbf057e0ccc3669397e14562d42329bb93056c5e1a04da9d2",
+      "hits": []
+    },
+    {
+      "file": "0031_staff_nfc_billing.sql",
+      "sha256": "e3f0645715c4cfadf8554649b7c11d7ca7cdbfd2be5c57782b1af5e5e2423b7d",
+      "hits": []
+    },
+    {
+      "file": "0032_employee_nfc.sql",
+      "sha256": "ba6e6132a43485e9e04e89885e2d118804723ee7039d009f4d8ef3fc3b7ff745",
+      "hits": []
+    },
+    {
+      "file": "0033_school_workflows.sql",
+      "sha256": "ea294fea7b6e27013c7140215f7e3432e0f5f90566e474a61114494c94154056",
+      "hits": []
+    },
+    {
+      "file": "0034_school_transport.sql",
+      "sha256": "2660bf9d675ec825c321f16fb0616511a71a031de29a5d83d4026887e991b2a8",
+      "hits": []
+    },
+    {
+      "file": "0035_settlement_payroll.sql",
+      "sha256": "5e9cd1be6827df50f7cf551cca61df758e7775bc354a1ba9b74ec4d384b70557",
+      "hits": []
+    },
+    {
+      "file": "0036_student_subscription_allocations.sql",
+      "sha256": "db161286afabfc50b97642f47ac1c2a7329b9b0faf7f9d5113c47891acd27705",
+      "hits": [
+        {
+          "line": 8,
+          "text": "CREATE UNIQUE INDEX school_partner_attributions_id_partner_uq"
+        },
+        {
+          "line": 99,
+          "text": "CREATE TABLE student_subscription_allocations ("
+        },
+        {
+          "line": 117,
+          "text": "  CONSTRAINT student_subscription_allocations_payment_owner_term_fk"
+        },
+        {
+          "line": 124,
+          "text": "  CONSTRAINT student_subscription_allocations_student_school_fk"
+        },
+        {
+          "line": 126,
+          "text": "  CONSTRAINT student_subscription_allocations_session_school_fk"
+        },
+        {
+          "line": 129,
+          "text": "  CONSTRAINT student_subscription_allocations_term_school_fk"
+        },
+        {
+          "line": 132,
+          "text": "  CONSTRAINT student_subscription_allocations_attribution_partner_fk"
+        },
+        {
+          "line": 135,
+          "text": "  CONSTRAINT student_subscription_allocations_recipient_ck"
+        },
+        {
+          "line": 137,
+          "text": "  CONSTRAINT student_subscription_allocations_entry_ck CHECK (entry_type IN ('CREDIT','REVERSAL','EXPENSE')),"
+        },
+        {
+          "line": 138,
+          "text": "  CONSTRAINT student_subscription_allocations_amount_ck CHECK ("
+        },
+        {
+          "line": 144,
+          "text": "  CONSTRAINT student_subscription_allocations_partner_ck CHECK ("
+        },
+        {
+          "line": 149,
+          "text": "  CONSTRAINT student_subscription_allocations_id_payment_entry_recipient_uq"
+        },
+        {
+          "line": 153,
+          "text": "CREATE UNIQUE INDEX student_subscription_allocations_idempotency_uq"
+        },
+        {
+          "line": 154,
+          "text": "  ON student_subscription_allocations (idempotency_key);"
+        },
+        {
+          "line": 155,
+          "text": "CREATE UNIQUE INDEX student_subscription_allocations_payment_credit_recipient_uq"
+        },
+        {
+          "line": 156,
+          "text": "  ON student_subscription_allocations (payment_id, recipient_type)"
+        },
+        {
+          "line": 158,
+          "text": "CREATE UNIQUE INDEX student_subscription_allocations_payment_fee_expense_uq"
+        },
+        {
+          "line": 159,
+          "text": "  ON student_subscription_allocations (payment_id)"
+        },
+        {
+          "line": 161,
+          "text": "CREATE INDEX student_subscription_allocations_school_term_idx"
+        },
+        {
+          "line": 162,
+          "text": "  ON student_subscription_allocations (school_id, academic_session_id, academic_term_id, created_at DESC);"
+        },
+        {
+          "line": 163,
+          "text": "CREATE INDEX student_subscription_allocations_partner_idx"
+        },
+        {
+          "line": 164,
+          "text": "  ON student_subscription_allocations (recipient_id, created_at DESC)"
+        },
+        {
+          "line": 167,
+          "text": "CREATE FUNCTION protect_student_subscription_allocations() RETURNS trigger"
+        },
+        {
+          "line": 173,
+          "text": "CREATE TRIGGER student_subscription_allocations_immutable"
+        },
+        {
+          "line": 174,
+          "text": "  BEFORE UPDATE OR DELETE ON student_subscription_allocations"
+        },
+        {
+          "line": 175,
+          "text": "  FOR EACH ROW EXECUTE FUNCTION protect_student_subscription_allocations();"
+        }
+      ]
+    },
+    {
+      "file": "0037_parent_relationship_unique_constraint.sql",
+      "sha256": "dbd8d8baee11ab1f8621da0489db25f0de6052d6e35da3b680c663cde000ae47",
+      "hits": []
+    },
+    {
+      "file": "0038_staff_nfc_payment_school_constraint.sql",
+      "sha256": "c4a8445835f8243da341f95cd3ab0f75e5ac081cd64b71512df0f3c269a7582b",
+      "hits": []
+    },
+    {
+      "file": "0039_curriculum_learning.sql",
+      "sha256": "6c278cf1c268e78c13f4844363f171fe75b3e44fd9f13914376feb966cbc4269",
+      "hits": []
+    },
+    {
+      "file": "0040_existing_school_workflow_review.sql",
+      "sha256": "38211f069fb17b3e14e4613bbf48be8aed5ded9bc7f33927bde3946249f341ea",
+      "hits": []
+    },
+    {
+      "file": "0041_permanent_school_registration_numbers.sql",
+      "sha256": "b20e53b9dc04aa6a3d2d54fdc932d5ce11b4f65dce9c5dce8ac0088a92359fba",
+      "hits": []
+    },
+    {
+      "file": "0042_admissions_expansion.sql",
+      "sha256": "42bc64ed9c77c65d6cd03c30aaf1b9bb12b5e8c5f89d4f44efc848af2ea2d370",
+      "hits": []
+    },
+    {
+      "file": "0043_student_care_expansion.sql",
+      "sha256": "40aaa666331f3d31a7b53a60df41388ba1646bcf0e0c06e9f3cbcd032661f9c0",
+      "hits": []
+    },
+    {
+      "file": "0044_promotion_expansion.sql",
+      "sha256": "4c7d000a0f70c32f1eb25b9499ab7372c3f0a701946f2d538ccdee96183096c4",
+      "hits": [
+        {
+          "line": 68,
+          "text": "  CONSTRAINT promotion_batch_students_id_school_unique UNIQUE (id, school_id),"
+        }
+      ]
+    },
+    {
+      "file": "0045_school_security_core.sql",
+      "sha256": "58a6a3a7997cb76adbe02b28dcf35071b158dfc5e35b45941193c9d3d501d81d",
+      "hits": []
+    },
+    {
+      "file": "0046_school_security_operations.sql",
+      "sha256": "cc1365be6dc6bb8c90a3991f373b71f6cb59b0818f09622a78bf7554bfceb83d",
+      "hits": []
+    },
+    {
+      "file": "0047_parent_communication_extensions.sql",
+      "sha256": "2429fcfadeba4831df73aff601af6175de55fe3239df0f90f750f27f35f32eef",
+      "hits": []
+    },
+    {
+      "file": "0048_communication_external_channels.sql",
+      "sha256": "ca4379747e5858d1d26b6f439301476345e1496a5b521cd3ca933bc7fdd010df",
+      "hits": []
+    },
+    {
+      "file": "0049_term_subscription_enforcement.sql",
+      "sha256": "43755d774c2d962dcef23189cfe41c87942bc8277a653db6d96f3503284824f7",
+      "hits": []
+    },
+    {
+      "file": "0050_independent_owner_school_lock.sql",
+      "sha256": "35f1079d3027f2a254958e8ea25e95cf1ba278181a9ab289c5eae27c6a585625",
+      "hits": []
+    },
+    {
+      "file": "0051_parent_profile_preferences.sql",
+      "sha256": "868ae9d0bfb1d719fc5ae6cdfa6c1edc6172ee4fdd1e344e9f2e936be65c2e8e",
+      "hits": []
+    },
+    {
+      "file": "0052_student_nfc_replacement_requests.sql",
+      "sha256": "26313e17d636d877800901179a9ed9ba6040bcef301c42bca01359c578dac327",
+      "hits": []
+    },
+    {
+      "file": "0053_class_transport_fee_applicability.sql",
+      "sha256": "5fce74a44bc89b30aea98549a84791b91b0198c29d9fc7dcbfbb125b105087b9",
+      "hits": []
+    },
+    {
+      "file": "0054_employee_card_replacement_finance.sql",
+      "sha256": "e25eb3a38ddc495ff71486fc87c0ff560f59d1a1aeb7fd7b7b261ce55f339302",
+      "hits": []
+    },
+    {
+      "file": "0055_academic_calendar_fee_lines_cash.sql",
+      "sha256": "11584c9bf1cd346e67ff07a07ce2c47de87cece48facd94b69ceb0e072d395e4",
+      "hits": []
+    },
+    {
+      "file": "0056_exam_record_workflows.sql",
+      "sha256": "9a38f9925ef8be3bf3840481fe93029245b0efb323950d8caa442f3bf8e6ca04",
+      "hits": []
+    },
+    {
+      "file": "0057_lesson_note_documents.sql",
+      "sha256": "381d4e4f84d8c73f93e1cc96328345ff9612778575c3f468ff09f9007f7e09b9",
+      "hits": []
+    },
+    {
+      "file": "0058_student_subscription_terms.sql",
+      "sha256": "fde8d0d9844625cca527f225d18b3f8311fafecc4dd7b4bfc5316ab7b8c9870c",
+      "hits": []
+    },
+    {
+      "file": "0059_partner_nfc_permission.sql",
+      "sha256": "8d3193b772bcd0f9a4c404ca4402a6d7be30913687b6382dbfb3bfe90c26aa7e",
+      "hits": []
+    }
+  ],
+  "integrity": {
+    "baselineFiles": 3464,
+    "protectedFileDifferences": [],
+    "migrations": 60,
+    "migrationHashesUnchanged": true,
+    "journalUnchanged": true,
+    "capturedLedgerFilesUnchanged": true,
+    "liveLedger": "NOT VERIFIED — REASON: no Production/shared Development ledger query was permitted or performed.",
+    "exporterUnchanged": true,
+    "schemaSources": 24,
+    "schemaUnchanged": true,
+    "applicationSourcesUnchanged": true,
+    "migration0060Absent": true,
+    "stage2BAndStage2CArtifactsUnchanged": true
+  },
+  "tests": {
+    "count": 88,
+    "expectedAccepted": 50,
+    "expectedRejected": 38,
+    "unexpectedFailures": 0,
+    "freshDisposable": true,
+    "fullReplayPerformed": false,
+    "stopped": true
+  },
+  "production": {
+    "database": "NOT VERIFIED — REASON: not queried; no change performed.",
+    "shared": "NOT VERIFIED — REASON: not queried; no change performed.",
+    "configuration": "NOT VERIFIED — REASON: not inspected or changed.",
+    "secrets": "NOT VERIFIED — REASON: not accessed or changed.",
+    "publish": "NOT PERFORMED",
+    "migration": "NOT PERFORMED"
+  },
+  "authorRationale": "NOT VERIFIED — REASON: no explicit rationale found in inspected declarations or bounded local history; intent labels are evidence-based assessments, not recovered author statements."
+}

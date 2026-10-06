@@ -350,3 +350,45 @@ mtime_ms = 1791321484942
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/ef6be197-4505-4a7e-96f3-4cd513c6c6a6/a995c410-3f7d-4572-9351-138beb5f1fa2"
 storage_version_token = "1791321506703884"
 content_type = "text/csv"
+
+[[outputs]]
+id = "0dLthwzIogrd1tLo4Fhmn"
+uri = "file://reports/educore-stage2d/report.html"
+type = "html"
+title = "Stage 2D — Complete A–O reconciliation plan"
+description = "Historical/current design, tenant and NULL analysis, application evidence, all 88 synthetic outcomes, future options and safety findings. Plan only; no source or shared-database changes."
+logical_id = "9b47ce4b-e678-4416-b8bb-1c0de9ae7bc4"
+content_hash = "sha256:d382abe13fcdbdf74633f2f0e6465b8fc7ed14bbb516aabfe0e18dd54f0df1c2"
+size = 50050
+mtime_ms = 1791323135742
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/9b47ce4b-e678-4416-b8bb-1c0de9ae7bc4/483258de-37fa-4029-9b8d-055e67873b9f"
+storage_version_token = "1791323159976323"
+content_type = "text/html"
+
+[[outputs]]
+id = "beJIoVqQGTRpNYDpUL5vk"
+uri = "file://reports/educore-stage2d/decision-matrix.csv"
+type = "table"
+title = "Stage 2D — Three-relationship decision matrix"
+description = "Intent classification, one recommended future direction per relationship, confidence, audit requirements and compatibility risks."
+logical_id = "f7abd57e-5067-48ea-9c8e-4d9b405f3cf0"
+content_hash = "sha256:7c2d809e1bcd1b5170d60be077cba0773ec41b9b35749a6f583e2852abb334df"
+size = 10916
+mtime_ms = 1791323135742
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/f7abd57e-5067-48ea-9c8e-4d9b405f3cf0/205e09e4-75f7-417d-b519-33402026dfb5"
+storage_version_token = "1791323160543232"
+content_type = "text/csv"
+
+[[outputs]]
+id = "3Q7AxRhPouo-u9WCqQVtw"
+uri = "file://reports/educore-stage2d/semantic-tests.csv"
+type = "table"
+title = "Stage 2D — 88 disposable PostgreSQL outcomes"
+description = "50 accepted cases and 38 expected rejections across historical, standalone-only and current-source projections; all expectations matched."
+logical_id = "a9e3347a-378c-4cbc-a979-0a4434e73e2f"
+content_hash = "sha256:5075a2f411118c93c058ea9487b2496fffdfde1c379da7857dc0682ec4b8a618"
+size = 12458
+mtime_ms = 1791322633481
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/a9e3347a-378c-4cbc-a979-0a4434e73e2f/598fcd85-8c38-4efe-84de-3b4a4caf0f73"
+storage_version_token = "1791323161101082"
+content_type = "text/csv"

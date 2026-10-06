@@ -1,0 +1,564 @@
+Continue the Yemait EduCore production-readiness process.
+
+STAGE 2C IS COMPLETE.
+
+Stage 2C established:
+
+- 2 of 8 previously unmatched FKs are VERIFIED.
+- 3 of 8 are DIFFERENT-NAME VERIFIED.
+- 3 remain genuinely UNVERIFIED.
+- No historical migrations were changed.
+- No schema source was changed.
+- No journal or ledger was changed.
+- No Production/shared database was changed.
+- Stage 2B dependency-aware export remains valid.
+- 60/60 migration replay remains PASS.
+- 173 tables, 407 CHECK constraints and 659 foreign keys remain validated in disposable PostgreSQL.
+
+The three unresolved relationships are:
+
+1. platform_devices(school_class_id)
+   → school_classes(id)
+
+2. student_subscription_allocations(student_id)
+   → students(id)
+
+3. student_subscription_allocations(attribution_id)
+   → school_partner_attributions(id)
+
+==================================================
+OBJECTIVE
+==================================================
+
+Perform a BOUNDED, READ-ONLY SOURCE/MIGRATION RECONCILIATION PLAN for these three relationships.
+
+The objective is NOT to change them.
+
+The objective is to determine what the intended schema relationship is, why the current source contains standalone foreign keys where historical migrations show related composite foreign keys, and what the safest future action would be if reconciliation is eventually required.
+
+This task must produce a decision-ready analysis.
+
+==================================================
+ABSOLUTE SAFETY RULES
+==================================================
+
+DO NOT:
+
+- modify Production
+- modify any shared database
+- modify Development/shared databases
+- execute db push
+- execute drizzle-kit push
+- execute drizzle-kit migrate
+- execute migrations against Production
+- execute ALTER TABLE against any shared database
+- drop any foreign key
+- add any foreign key
+- modify any index
+- modify any constraint
+- modify any migration
+- modify the Drizzle journal
+- modify the migration ledger
+- create migration 0060
+- change migration hashes
+- modify schema source
+- modify application code
+- change business logic
+- change database configuration
+- change secrets
+- publish anything
+- approve any Production database preview
+
+This stage is READ-ONLY.
+
+Do not automatically fix anything.
+
+Do not automatically remove any current standalone FK.
+
+Do not automatically restore any historical composite FK.
+
+If a test requires changing a database, use ONLY a fresh disposable PostgreSQL database.
+
+==================================================
+1. EXACT THREE RELATIONSHIPS
+==================================================
+
+Analyze only these three:
+
+A. platform_devices.school_class_id
+   → school_classes.id
+
+B. student_subscription_allocations.student_id
+   → students.id
+
+C. student_subscription_allocations.attribution_id
+   → school_partner_attributions.id
+
+Do not broaden the investigation to unrelated FKs.
+
+==================================================
+2. RECONSTRUCT THE HISTORICAL DESIGN
+==================================================
+
+For each relationship inspect migrations 0000–0059.
+
+Determine:
+
+- when the child table was created
+- when the relevant child columns were created
+- when the parent table was created
+- when the supporting parent key was created
+- when the historical composite FK was created
+- whether the historical composite FK was VALID or NOT VALID
+- whether later migrations modify the relationship
+- whether any later migration adds a standalone FK
+- whether any later migration drops or replaces the historical relationship
+
+Search all historical SQL.
+
+Do not rely only on exact constraint names.
+
+Search by:
+
+- table names
+- column names
+- REFERENCES clauses
+- ALTER TABLE
+- ADD CONSTRAINT
+- FOREIGN KEY
+- UNIQUE
+- PRIMARY KEY
+- DROP CONSTRAINT
+- NOT VALID
+- VALIDATE CONSTRAINT
+
+==================================================
+3. RECONSTRUCT CURRENT SOURCE
+==================================================
+
+Read the current schema source.
+
+For each of the three relationships document:
+
+- current child columns
+- current parent columns
+- current FK name
+- ON DELETE behavior
+- ON UPDATE behavior if present
+- nullable/not-null status
+- whether the FK is inline or separately declared
+- whether a composite FK also exists
+- supporting parent key
+- whether the relationship is tenant-scoped
+
+Do not modify the source.
+
+==================================================
+4. COMPARE HISTORICAL AND CURRENT SEMANTICS
+==================================================
+
+For each relationship create a direct comparison.
+
+Use this structure:
+
+HISTORICAL:
+- relationship
+- enforcement
+- nullability
+- tenant/ownership binding
+- delete behavior
+- validation state
+
+CURRENT:
+- relationship
+- enforcement
+- nullability
+- tenant/ownership binding
+- delete behavior
+- validation state
+
+DIFFERENCE:
+- exact difference
+
+RISK:
+- what could break if changed
+
+Do not assume that a standalone FK is equivalent to a composite tenant-scoped FK.
+
+==================================================
+5. IMPORTANT TENANT-ISOLATION ANALYSIS
+==================================================
+
+This project is multi-school/tenant based.
+
+For each relationship determine whether the historical composite FK enforced:
+
+CHILD ID + SCHOOL/TENANT ID
+→
+PARENT ID + SCHOOL/TENANT ID
+
+If yes, explain what protection that provides.
+
+Determine whether the current standalone FK:
+
+child_id → parent_id
+
+provides the same protection.
+
+If it does NOT, explicitly state that.
+
+Pay special attention to cross-school references.
+
+Do not change anything.
+
+==================================================
+6. NULLABILITY ANALYSIS
+==================================================
+
+This is especially important for relationships #6 and #8.
+
+For each relevant column determine:
+
+- nullable or NOT NULL
+- whether a NULL value can bypass a composite FK
+- whether the standalone FK changes that behavior
+- whether the current behavior is stricter than the historical behavior
+
+For:
+
+platform_devices.school_class_id
+
+also inspect the related school/tenant column.
+
+For:
+
+student_subscription_allocations.attribution_id
+student_subscription_allocations.recipient_id
+
+specifically analyze how NULL recipient behavior affects the historical composite relationship.
+
+Do not change nullability.
+
+==================================================
+7. APPLICATION USAGE ANALYSIS
+==================================================
+
+Read the application source to determine how these columns are actually used.
+
+Search for:
+
+platform_devices.school_class_id
+
+student_subscription_allocations.student_id
+
+student_subscription_allocations.attribution_id
+
+Also search for the related school/tenant fields.
+
+Determine:
+
+- where records are inserted
+- where records are updated
+- whether the application always supplies the school/tenant ID
+- whether the application assumes the standalone FK exists
+- whether queries depend on the relationship
+- whether cross-school references are prevented by application code
+- whether there are validation checks duplicating database constraints
+
+This is source inspection only.
+
+Do not modify application code.
+
+Do not make network calls.
+
+==================================================
+8. DATA-SAFETY ANALYSIS
+==================================================
+
+Do NOT query Production.
+
+Do NOT query shared Development.
+
+Use only:
+
+- migration SQL
+- current source
+- tests
+- saved disposable PostgreSQL evidence
+- fresh disposable PostgreSQL where needed
+
+Determine what kinds of existing records would become invalid if a historical composite constraint were restored or if a standalone FK were removed.
+
+Describe possible examples.
+
+Do not claim that such records actually exist unless verified in a disposable dataset.
+
+==================================================
+9. DISPOSABLE POSTGRESQL TESTS
+==================================================
+
+Create fresh disposable PostgreSQL databases if necessary.
+
+Use them only to demonstrate constraint semantics.
+
+For each of the three relationships create minimal synthetic examples representing:
+
+1. same-school valid reference
+2. cross-school reference
+3. NULL relevant field where applicable
+4. missing parent
+5. valid composite parent
+
+Do NOT use real Production data.
+
+Demonstrate the difference between:
+
+- historical composite FK behavior
+- current standalone FK behavior
+
+For each case report:
+
+PASS/REJECT
+
+and explain why.
+
+Do not modify repository migrations or source.
+
+==================================================
+10. DETERMINE INTENT — DO NOT GUESS
+==================================================
+
+For each relationship classify the likely intended design as exactly one:
+
+A. HISTORICAL DESIGN APPEARS INTENTIONAL
+
+B. CURRENT DESIGN APPEARS INTENTIONAL
+
+C. BOTH MAY BE INTENTIONAL
+
+D. INSUFFICIENT EVIDENCE
+
+Base the classification only on evidence.
+
+Do not make assumptions from naming alone.
+
+==================================================
+11. RECONCILIATION OPTIONS
+==================================================
+
+For each of the three relationships produce possible future options.
+
+Possible options include:
+
+OPTION 1:
+Keep current standalone FK.
+
+OPTION 2:
+Restore historical composite FK.
+
+OPTION 3:
+Keep standalone FK AND historical composite FK.
+
+OPTION 4:
+Replace current standalone FK with a tenant-scoped composite FK.
+
+OPTION 5:
+Other evidence-based option.
+
+For each option explain:
+
+- security/tenant effect
+- data-integrity effect
+- NULL behavior
+- migration risk
+- compatibility risk
+- whether existing data would need validation
+- whether application code might need changes
+
+Do NOT implement any option.
+
+==================================================
+12. RECOMMEND ONE FUTURE DIRECTION PER FK
+==================================================
+
+For each of the three relationships provide:
+
+RECOMMENDED DIRECTION:
+- one option
+
+REASON:
+- evidence supporting it
+
+CONFIDENCE:
+- HIGH / MEDIUM / LOW
+
+REQUIRES DATA AUDIT:
+- YES / NO
+
+REQUIRES APPLICATION REVIEW:
+- YES / NO
+
+REQUIRES PRODUCTION CHANGE:
+- YES / NO
+
+Do not execute the recommendation.
+
+==================================================
+13. IMPORTANT: DO NOT CONFUSE PLANNING WITH RECONCILIATION
+==================================================
+
+This stage must NOT:
+
+- create a migration
+- change a constraint
+- alter Production
+- repair Development
+- repair the ledger
+- repair the journal
+- change source files
+
+The output is a PLAN ONLY.
+
+==================================================
+14. SOURCE INTEGRITY CHECK
+==================================================
+
+At the end confirm:
+
+- 60 historical migration files unchanged
+- migration hashes unchanged
+- Drizzle journal unchanged
+- migration ledger unchanged
+- Stage 2B exporter unchanged
+- current schema source unchanged
+- application source unchanged
+- migration 0060 absent
+
+If any item cannot be verified:
+
+"NOT VERIFIED — REASON: ..."
+
+==================================================
+15. PRODUCTION SAFETY CHECK
+==================================================
+
+Confirm:
+
+Production database:
+UNCHANGED / NOT VERIFIED
+
+Shared databases:
+UNCHANGED / NOT VERIFIED
+
+Production configuration:
+UNCHANGED / NOT VERIFIED
+
+Production secrets:
+UNCHANGED / NOT VERIFIED
+
+Production publish:
+NOT PERFORMED
+
+Production migration:
+NOT PERFORMED
+
+If something cannot be independently verified, say:
+
+"NOT VERIFIED — REASON: ..."
+
+==================================================
+16. FINAL REPORT
+==================================================
+
+Return exactly these sections:
+
+### A. Scope
+
+Confirm this was a read-only reconciliation-planning exercise.
+
+### B. Historical Design
+
+Explain the original migration design for all three relationships.
+
+### C. Current Design
+
+Explain the current source design for all three relationships.
+
+### D. Semantic Comparison
+
+Provide the historical vs current comparison.
+
+### E. Tenant-Isolation Analysis
+
+Explain whether each design prevents cross-school references.
+
+### F. Nullability Analysis
+
+Explain the NULL behavior for each affected relationship.
+
+### G. Application Usage
+
+Summarize how the application currently uses the relationships.
+
+### H. Disposable PostgreSQL Tests
+
+Provide the synthetic test results.
+
+### I. Intent Classification
+
+For each FK:
+
+- HISTORICAL DESIGN APPEARS INTENTIONAL
+- CURRENT DESIGN APPEARS INTENTIONAL
+- BOTH MAY BE INTENTIONAL
+- INSUFFICIENT EVIDENCE
+
+### J. Future Reconciliation Options
+
+List the possible options for each FK and their risks.
+
+### K. Recommended Direction
+
+Give ONE recommended direction for each of the three FKs.
+
+### L. Source Integrity
+
+Report all protected files/hashes/journal/ledger status.
+
+### M. Production Safety
+
+Report Production/shared database/configuration/secrets/publish/migration status.
+
+### N. Remaining Blockers
+
+List only the blockers that remain after this planning exercise.
+
+### O. ONE NEXT ACTION
+
+Give exactly ONE recommended next action.
+
+Do not automatically start it.
+
+Do not make any database changes.
+
+==================================================
+FINAL REQUIREMENT
+==================================================
+
+This Stage 2D task is complete only when all three unresolved relationships have:
+
+- historical evidence
+- current-source evidence
+- tenant-isolation analysis
+- NULLability analysis
+- application-usage analysis
+- disposable semantic testing where needed
+- intent classification
+- future reconciliation options
+- one recommended direction
+
+No Production/shared database changes are permitted.
+
+End with exactly:
+
+"STAGE 2D COMPLETE — READ-ONLY RECONCILIATION PLAN ONLY; NO PRODUCTION OR SHARED-DATABASE CHANGES WERE MADE."
