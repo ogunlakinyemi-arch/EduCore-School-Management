@@ -1,0 +1,101 @@
+[
+  {
+    "migration": "0000_brainy_moon_knight.sql",
+    "statement": 47,
+    "target": "parent_student_relationships",
+    "conflict_guard": true,
+    "update": false,
+    "delete": false,
+    "sql": "--> statement-breakpoint\nINSERT INTO \"parent_student_relationships\"\n  (\"parent_id\", \"student_id\", \"relationship_type\", \"is_primary_guardian\",\n   \"is_emergency_contact\", \"contact_priority\", \"status\")\nSELECT p.id, st.id, 'Guardian', true, true, 1, 'ACTIVE'\nFROM \"students\" st\nJOIN \"parents\" p\n  ON p.school_id = st.school_id\n AND lower(trim(p.name)) = lower(trim(st.parent_name))\n AND regexp_replace(p.phone, '\\D', '', 'g') =\n     regexp_replace(st.parent_phone, '\\D', '', 'g')\nWHERE st.parent_name IS NOT NULL\n  AND st.parent_phone IS NOT NULL\nON CONFLICT (\"parent_id\", \"student_id\") DO NOTHING;"
+  },
+  {
+    "migration": "0001_phase3_meta.sql",
+    "statement": 92,
+    "target": "academic_sessions",
+    "conflict_guard": true,
+    "update": false,
+    "delete": false,
+    "sql": "--> statement-breakpoint\nINSERT INTO \"academic_sessions\" (\"school_id\", \"name\", \"start_date\", \"end_date\", \"status\", \"is_current\")\nSELECT \"id\", 'LEGACY', CURRENT_DATE, CURRENT_DATE, 'COMPLETED', false\nFROM \"schools\"\nON CONFLICT (\"school_id\", \"name\") DO NOTHING;"
+  },
+  {
+    "migration": "0001_phase3_meta.sql",
+    "statement": 93,
+    "target": "student_class_assignments",
+    "conflict_guard": true,
+    "update": false,
+    "delete": false,
+    "sql": "--> statement-breakpoint\nINSERT INTO \"student_class_assignments\"\n  (\"school_id\", \"student_id\", \"academic_session_id\", \"school_class_id\", \"section\",\n   \"status\", \"is_current\", \"start_date\")\nSELECT st.\"school_id\", st.\"id\", s.\"id\", sc.\"id\", st.\"section\",\n       CASE WHEN upper(st.\"status\") = 'ACTIVE' THEN 'ACTIVE' ELSE upper(st.\"status\") END,\n       upper(st.\"status\") = 'ACTIVE', st.\"joined_at\"::date\nFROM \"students\" st\nJOIN \"school_classes\" sc ON sc.\"school_id\" = st.\"school_id\"\n  AND sc.\"name\" = st.\"class_name\" AND sc.\"section\" = st.\"section\"\nJOIN \"academic_sessions\" s ON s.\"school_id\" = st.\"school_id\" AND s.\"name\" = 'LEGACY'\nWHERE NOT EXISTS (\n  SELECT 1 FROM \"student_class_assignments\" a\n  WHERE a.\"student_id\" = st.\"id\" AND a.\"academic_session_id\" = s.\"id\"\n);"
+  },
+  {
+    "migration": "0003_phase4_integrity.sql",
+    "statement": 1,
+    "target": "commission_rules",
+    "conflict_guard": true,
+    "update": false,
+    "delete": false,
+    "sql": "INSERT INTO \"commission_rules\"\n  (\"name\",\"status\",\"term\",\"currency\",\"calculation_basis\",\"effective_at\",\n   \"partner_rate\",\"allocation_total\",\"partner_amount\",\"school_amount\",\"edupulse_amount\")\nSELECT\n  'Default partner referral','ACTIVE',NULL,'NGN','PER_ELIGIBLE_STUDENT_PER_TERM',NOW(),\n  100,5000,100,2000,2900\nWHERE NOT EXISTS (\n  SELECT 1 FROM \"commission_rules\"\n  WHERE \"status\"='ACTIVE' AND \"term\" IS NULL\n);"
+  },
+  {
+    "migration": "0010_historical_device_school_bindings.sql",
+    "statement": 4,
+    "target": "device_school_bindings",
+    "conflict_guard": true,
+    "update": false,
+    "delete": false,
+    "sql": "-- Keep all extant pairings before changing the event constraint. Historical\n-- records are sources of truth in addition to each device's current owner.\nINSERT INTO \"device_school_bindings\" (\"device_id\",\"school_id\")\nSELECT device_id, school_id FROM \"attendance_events\" WHERE device_id IS NOT NULL\nUNION\nSELECT device_id, school_id FROM \"device_credentials\"\nUNION\nSELECT device_id, school_id FROM \"device_assignment_history\"\nUNION\nSELECT device_id, previous_school_id FROM \"device_assignment_history\"\n  WHERE previous_school_id IS NOT NULL\nUNION\nSELECT device_id, new_school_id FROM \"device_assignment_history\"\n  WHERE new_school_id IS NOT NULL\nUNION\nSELECT id, school_id FROM \"platform_devices\" WHERE school_id IS NOT NULL\nON CONFLICT (\"device_id\",\"school_id\") DO NOTHING;"
+  },
+  {
+    "migration": "0011_historical_device_references.sql",
+    "statement": 1,
+    "target": "device_school_bindings",
+    "conflict_guard": true,
+    "update": false,
+    "delete": false,
+    "sql": "-- Device assignment may change without changing the school on a historical\n-- biometric enrollment or a card's last-seen device reference.\nINSERT INTO \"device_school_bindings\" (\"device_id\",\"school_id\")\nSELECT device_id,school_id FROM \"biometric_enrollments\" WHERE device_id IS NOT NULL\nUNION\nSELECT last_device_id,school_id FROM \"nfc_cards\" WHERE last_device_id IS NOT NULL\nON CONFLICT (\"device_id\",\"school_id\") DO NOTHING;"
+  },
+  {
+    "migration": "0014_finance_payment_integrity.sql",
+    "statement": 7,
+    "target": "fee_receipts",
+    "conflict_guard": false,
+    "update": true,
+    "delete": false,
+    "sql": "UPDATE \"fee_receipts\" r\n  SET \"invoice_id\" = p.\"invoice_id\"\n  FROM \"fee_payments\" p\n  WHERE p.\"id\" = r.\"payment_id\" AND p.\"school_id\" = r.\"school_id\";"
+  },
+  {
+    "migration": "0014_finance_payment_integrity.sql",
+    "statement": 8,
+    "target": "fee_receipts",
+    "conflict_guard": false,
+    "update": true,
+    "delete": false,
+    "sql": "UPDATE \"fee_receipts\" r\n  SET \"snapshot\" = r.\"snapshot\" || jsonb_build_object('invoiceId', r.\"invoice_id\", 'schoolId', r.\"school_id\");"
+  },
+  {
+    "migration": "0031_staff_nfc_billing.sql",
+    "statement": 3,
+    "target": "staff_nfc_billing_rules",
+    "conflict_guard": true,
+    "update": false,
+    "delete": false,
+    "sql": "-- Seed a single initial policy. This inserts a rule only: no live subscriptions\n-- are backfilled, activated, repriced, or charged during migration.\nINSERT INTO staff_nfc_billing_rules\n  (version, price_minor, school_share_minor, platform_share_minor,\n   partner_commission_minor, no_partner_platform_share_minor, currency, effective_at)\nVALUES\n  (1, 200000, 80000, 110000, 10000, 120000, 'NGN', '1970-01-01T00:00:00Z')\nON CONFLICT (product, version) DO NOTHING;"
+  },
+  {
+    "migration": "0042_admissions_expansion.sql",
+    "statement": 5,
+    "target": "admission_portal_settings",
+    "conflict_guard": true,
+    "update": false,
+    "delete": false,
+    "sql": "INSERT INTO public.admission_portal_settings (school_id, portal_key, is_open)\nSELECT s.id, public.admission_default_portal_key(s.id, s.registration_number, s.code), false\nFROM public.schools s\nON CONFLICT (school_id) DO NOTHING;"
+  },
+  {
+    "migration": "0042_admissions_expansion.sql",
+    "statement": 10,
+    "target": "admission_application_counters",
+    "conflict_guard": true,
+    "update": false,
+    "delete": false,
+    "sql": "INSERT INTO public.admission_application_counters (school_id, current_value)\nSELECT id, 0 FROM public.schools\nON CONFLICT (school_id) DO NOTHING;"
+  }
+]

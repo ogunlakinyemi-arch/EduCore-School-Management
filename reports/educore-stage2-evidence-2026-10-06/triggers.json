@@ -1,0 +1,467 @@
+[
+  {
+    "name": "device_school_bindings_append_only",
+    "table": "device_school_bindings",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER device_school_bindings_append_only BEFORE DELETE OR UPDATE ON public.device_school_bindings FOR EACH ROW EXECUTE FUNCTION prevent_device_school_binding_mutation()",
+    "migration": "0010_historical_device_school_bindings.sql",
+    "function": "prevent_device_school_binding_mutation",
+    "mutates_data": false,
+    "dependencies": [
+      "device_school_bindings",
+      "prevent_device_school_binding_mutation"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Rejects updates/deletes to device school binding audit/history records.",
+    "target_tables": [
+      "device_school_bindings"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "device_school_bindings_no_truncate",
+    "table": "device_school_bindings",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER device_school_bindings_no_truncate BEFORE TRUNCATE ON public.device_school_bindings FOR EACH STATEMENT EXECUTE FUNCTION prevent_device_school_binding_mutation()",
+    "migration": "0010_historical_device_school_bindings.sql",
+    "function": "prevent_device_school_binding_mutation",
+    "mutates_data": false,
+    "dependencies": [
+      "device_school_bindings",
+      "prevent_device_school_binding_mutation"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Rejects updates/deletes to device school binding audit/history records.",
+    "target_tables": [
+      "device_school_bindings"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "employee_replacement_gate",
+    "table": "employee_nfc_card_bindings",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE CONSTRAINT TRIGGER employee_replacement_gate AFTER INSERT OR UPDATE OF status ON public.employee_nfc_card_bindings DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION preserve_employee_replacement_gate()",
+    "migration": "0054_employee_card_replacement_finance.sql",
+    "function": "preserve_employee_replacement_gate",
+    "mutates_data": false,
+    "dependencies": [
+      "employee_nfc_card_bindings",
+      "preserve_employee_replacement_gate"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Deferred guard rejects active/assigned/locked employee replacement bindings without paid evidence and Owner issuance.",
+    "target_tables": [
+      "employee_nfc_card_bindings",
+      "nfc_cards",
+      "student_nfc_replacement_requests",
+      "fee_invoices",
+      "fee_payments",
+      "fee_receipts",
+      "fee_refunds"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "fee_payment_allocate_lines",
+    "table": "fee_payments",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER fee_payment_allocate_lines AFTER INSERT OR UPDATE ON public.fee_payments FOR EACH ROW EXECUTE FUNCTION allocate_verified_fee_lines()",
+    "migration": "0055_academic_calendar_fee_lines_cash.sql",
+    "function": "allocate_verified_fee_lines",
+    "mutates_data": true,
+    "dependencies": [
+      "fee_payments",
+      "allocate_verified_fee_lines"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Creates immutable line allocations after payment verification; rejects selected-line mutation and refuses silent historical discount/partial-payment allocation.",
+    "target_tables": [
+      "fee_invoices",
+      "fee_payment_line_allocations",
+      "fee_payments",
+      "fee_invoice_lines"
+    ],
+    "historical_backfill_required": "Existing partial/discounted payments require explicit reconciliation; function deliberately refuses silent allocation"
+  },
+  {
+    "name": "fee_payment_person_guard",
+    "table": "fee_payments",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER fee_payment_person_guard BEFORE INSERT OR UPDATE OF invoice_id, school_id, student_id, employee_id ON public.fee_payments FOR EACH ROW EXECUTE FUNCTION preserve_fee_payment_person()",
+    "migration": "0054_employee_card_replacement_finance.sql",
+    "function": "preserve_fee_payment_person",
+    "mutates_data": false,
+    "dependencies": [
+      "fee_payments",
+      "preserve_fee_payment_person"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Rejects updates/deletes to preserve fee payment person audit/history records.",
+    "target_tables": [
+      "fee_invoices",
+      "fee_payments"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "fee_payments_verification_metadata_immutable",
+    "table": "fee_payments",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER fee_payments_verification_metadata_immutable BEFORE UPDATE ON public.fee_payments FOR EACH ROW EXECUTE FUNCTION protect_fee_payment_verification_metadata()",
+    "migration": "0013_phase7_finance.sql",
+    "function": "protect_fee_payment_verification_metadata",
+    "mutates_data": false,
+    "dependencies": [
+      "fee_payments",
+      "protect_fee_payment_verification_metadata"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Protects financial payment verification metadata against unauthorized snapshot changes.",
+    "target_tables": [
+      "fee_payments"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "maintenance_request_status_history_append_only",
+    "table": "maintenance_request_status_history",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER maintenance_request_status_history_append_only BEFORE DELETE OR UPDATE ON public.maintenance_request_status_history FOR EACH ROW EXECUTE FUNCTION prevent_operations_history_mutation()",
+    "migration": "0029_operations_history.sql",
+    "function": "prevent_operations_history_mutation",
+    "mutates_data": false,
+    "dependencies": [
+      "maintenance_request_status_history",
+      "prevent_operations_history_mutation"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Rejects updates/deletes to operations history audit/history records.",
+    "target_tables": [
+      "maintenance_request_status_history",
+      "operational_task_status_history",
+      "school_asset_history"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "replacement_old_uid_guard",
+    "table": "nfc_cards",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER replacement_old_uid_guard BEFORE UPDATE OF status ON public.nfc_cards FOR EACH ROW EXECUTE FUNCTION preserve_replacement_old_uid()",
+    "migration": "0054_employee_card_replacement_finance.sql",
+    "function": "preserve_replacement_old_uid",
+    "mutates_data": false,
+    "dependencies": [
+      "nfc_cards",
+      "preserve_replacement_old_uid"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Rejects any attempted non-REVOKED status for a card recorded as a replacement old UID.",
+    "target_tables": [
+      "student_nfc_replacement_requests",
+      "nfc_cards"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "operational_task_status_history_append_only",
+    "table": "operational_task_status_history",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER operational_task_status_history_append_only BEFORE DELETE OR UPDATE ON public.operational_task_status_history FOR EACH ROW EXECUTE FUNCTION prevent_operations_history_mutation()",
+    "migration": "0029_operations_history.sql",
+    "function": "prevent_operations_history_mutation",
+    "mutates_data": false,
+    "dependencies": [
+      "operational_task_status_history",
+      "prevent_operations_history_mutation"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Rejects updates/deletes to operations history audit/history records.",
+    "target_tables": [
+      "maintenance_request_status_history",
+      "operational_task_status_history",
+      "school_asset_history"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "payroll_payslips_append_only",
+    "table": "payroll_payslips",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER payroll_payslips_append_only BEFORE DELETE OR UPDATE ON public.payroll_payslips FOR EACH ROW EXECUTE FUNCTION prevent_payroll_payslip_mutation()",
+    "migration": "0035_settlement_payroll.sql",
+    "function": "prevent_payroll_payslip_mutation",
+    "mutates_data": false,
+    "dependencies": [
+      "payroll_payslips",
+      "prevent_payroll_payslip_mutation"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Rejects updates/deletes to payroll payslip audit/history records.",
+    "target_tables": [
+      "payroll_payslips"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "promotion_history_immutable",
+    "table": "promotion_history",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER promotion_history_immutable BEFORE DELETE OR UPDATE ON public.promotion_history FOR EACH ROW EXECUTE FUNCTION prevent_promotion_history_mutation()",
+    "migration": "0044_promotion_expansion.sql",
+    "function": "prevent_promotion_history_mutation",
+    "mutates_data": false,
+    "dependencies": [
+      "promotion_history",
+      "prevent_promotion_history_mutation"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Rejects updates/deletes to promotion history audit/history records.",
+    "target_tables": [
+      "promotion_history"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "school_asset_history_append_only",
+    "table": "school_asset_history",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER school_asset_history_append_only BEFORE DELETE OR UPDATE ON public.school_asset_history FOR EACH ROW EXECUTE FUNCTION prevent_operations_history_mutation()",
+    "migration": "0029_operations_history.sql",
+    "function": "prevent_operations_history_mutation",
+    "mutates_data": false,
+    "dependencies": [
+      "school_asset_history",
+      "prevent_operations_history_mutation"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Rejects updates/deletes to operations history audit/history records.",
+    "target_tables": [
+      "maintenance_request_status_history",
+      "operational_task_status_history",
+      "school_asset_history"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "school_security_operation_history_immutable",
+    "table": "school_security_operation_history",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER school_security_operation_history_immutable BEFORE DELETE OR UPDATE ON public.school_security_operation_history FOR EACH ROW EXECUTE FUNCTION prevent_school_security_operation_history_mutation()",
+    "migration": "0046_school_security_operations.sql",
+    "function": "prevent_school_security_operation_history_mutation",
+    "mutates_data": false,
+    "dependencies": [
+      "school_security_operation_history",
+      "prevent_school_security_operation_history_mutation"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Rejects updates/deletes to school security operation history audit/history records.",
+    "target_tables": [
+      "school_security_operation_history"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "schools_admission_portal_defaults_after_insert",
+    "table": "schools",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER schools_admission_portal_defaults_after_insert AFTER INSERT ON public.schools FOR EACH ROW EXECUTE FUNCTION admission_create_school_defaults()",
+    "migration": "0042_admissions_expansion.sql",
+    "function": "admission_create_school_defaults",
+    "mutates_data": true,
+    "dependencies": [
+      "schools",
+      "admission_create_school_defaults"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Seeds closed portal settings and application counter for a newly inserted school.",
+    "target_tables": [
+      "admission_portal_settings",
+      "admission_application_counters",
+      "schools"
+    ],
+    "historical_backfill_required": "Migration 0042 seeds pre-existing schools separately"
+  },
+  {
+    "name": "security_events_immutable",
+    "table": "security_events",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER security_events_immutable BEFORE DELETE OR UPDATE ON public.security_events FOR EACH ROW EXECUTE FUNCTION prevent_security_event_mutation()",
+    "migration": "0045_school_security_core.sql",
+    "function": "prevent_security_event_mutation",
+    "mutates_data": false,
+    "dependencies": [
+      "security_events",
+      "prevent_security_event_mutation"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Rejects updates/deletes to security event audit/history records.",
+    "target_tables": [
+      "security_events"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "settlement_payroll_audit_append_only",
+    "table": "settlement_payroll_audit_events",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER settlement_payroll_audit_append_only BEFORE DELETE OR UPDATE ON public.settlement_payroll_audit_events FOR EACH ROW EXECUTE FUNCTION prevent_settlement_payroll_audit_mutation()",
+    "migration": "0035_settlement_payroll.sql",
+    "function": "prevent_settlement_payroll_audit_mutation",
+    "mutates_data": false,
+    "dependencies": [
+      "settlement_payroll_audit_events",
+      "prevent_settlement_payroll_audit_mutation"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Rejects updates/deletes to settlement payroll audit audit/history records.",
+    "target_tables": [
+      "settlement_payroll_audit_events"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "staff_nfc_allocations_immutable",
+    "table": "staff_nfc_allocations",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER staff_nfc_allocations_immutable BEFORE DELETE OR UPDATE ON public.staff_nfc_allocations FOR EACH ROW EXECUTE FUNCTION protect_staff_nfc_financial_snapshots()",
+    "migration": "0031_staff_nfc_billing.sql",
+    "function": "protect_staff_nfc_financial_snapshots",
+    "mutates_data": false,
+    "dependencies": [
+      "staff_nfc_allocations",
+      "protect_staff_nfc_financial_snapshots"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Protects staff NFC financial split/charge snapshots.",
+    "target_tables": [
+      "staff_nfc_allocations",
+      "staff_nfc_billing_rules",
+      "staff_nfc_receipts"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "staff_nfc_billing_rules_immutable",
+    "table": "staff_nfc_billing_rules",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER staff_nfc_billing_rules_immutable BEFORE DELETE OR UPDATE ON public.staff_nfc_billing_rules FOR EACH ROW EXECUTE FUNCTION protect_staff_nfc_financial_snapshots()",
+    "migration": "0031_staff_nfc_billing.sql",
+    "function": "protect_staff_nfc_financial_snapshots",
+    "mutates_data": false,
+    "dependencies": [
+      "staff_nfc_billing_rules",
+      "protect_staff_nfc_financial_snapshots"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Protects staff NFC financial split/charge snapshots.",
+    "target_tables": [
+      "staff_nfc_allocations",
+      "staff_nfc_billing_rules",
+      "staff_nfc_receipts"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "staff_nfc_receipts_immutable",
+    "table": "staff_nfc_receipts",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER staff_nfc_receipts_immutable BEFORE DELETE OR UPDATE ON public.staff_nfc_receipts FOR EACH ROW EXECUTE FUNCTION protect_staff_nfc_financial_snapshots()",
+    "migration": "0031_staff_nfc_billing.sql",
+    "function": "protect_staff_nfc_financial_snapshots",
+    "mutates_data": false,
+    "dependencies": [
+      "staff_nfc_receipts",
+      "protect_staff_nfc_financial_snapshots"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Protects staff NFC financial split/charge snapshots.",
+    "target_tables": [
+      "staff_nfc_allocations",
+      "staff_nfc_billing_rules",
+      "staff_nfc_receipts"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "staff_nfc_subscriptions_snapshot_immutable",
+    "table": "staff_nfc_subscriptions",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER staff_nfc_subscriptions_snapshot_immutable BEFORE DELETE OR UPDATE ON public.staff_nfc_subscriptions FOR EACH ROW EXECUTE FUNCTION protect_staff_nfc_subscription_snapshot()",
+    "migration": "0031_staff_nfc_billing.sql",
+    "function": "protect_staff_nfc_subscription_snapshot",
+    "mutates_data": false,
+    "dependencies": [
+      "staff_nfc_subscriptions",
+      "protect_staff_nfc_subscription_snapshot"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Protects staff subscription financial snapshots.",
+    "target_tables": [
+      "staff_nfc_subscriptions"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "student_subscription_allocations_immutable",
+    "table": "student_subscription_allocations",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER student_subscription_allocations_immutable BEFORE DELETE OR UPDATE ON public.student_subscription_allocations FOR EACH ROW EXECUTE FUNCTION protect_student_subscription_allocations()",
+    "migration": "0036_student_subscription_allocations.sql",
+    "function": "protect_student_subscription_allocations",
+    "mutates_data": false,
+    "dependencies": [
+      "student_subscription_allocations",
+      "protect_student_subscription_allocations"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Enforces append-only verified student subscription allocation history.",
+    "target_tables": [
+      "student_subscription_allocations"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  },
+  {
+    "name": "student_subscription_payment_receipt_immutable",
+    "table": "student_subscription_payments",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER student_subscription_payment_receipt_immutable BEFORE UPDATE ON public.student_subscription_payments FOR EACH ROW EXECUTE FUNCTION protect_student_subscription_receipt_snapshot()",
+    "migration": "0036_student_subscription_allocations.sql",
+    "function": "protect_student_subscription_receipt_snapshot",
+    "mutates_data": false,
+    "dependencies": [
+      "student_subscription_payments",
+      "protect_student_subscription_receipt_snapshot"
+    ],
+    "populated_safety": "Requires the final function and target table; installation does not backfill existing records. Writers must be coordinated, compatible historic states rehearsed and drop/recreate windows controlled.",
+    "purpose": "Protects student subscription checkout/receipt snapshots.",
+    "target_tables": [
+      "student_subscription_payments"
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants"
+  }
+]

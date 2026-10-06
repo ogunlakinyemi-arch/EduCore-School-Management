@@ -1,0 +1,872 @@
+85fb4694acbe426c8ee7832b1f225f6a8e96808d 2026-10-06T10:48:21Z Update API routes and regenerate client schemas
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 8614d02..567d3cd 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -372,6 +372,13 @@
+       "when": 1791284400000,
+       "tag": "0058_student_subscription_terms",
+       "breakpoints": true
++    },
++    {
++      "idx": 53,
++      "version": "7",
++      "when": 1791288000000,
++      "tag": "0059_partner_nfc_permission",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+c17d27c72c8149b62797494fc30d1c9fe9c03306 2026-10-06T10:09:47Z Refactor finance API routes and update associated test suites
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index d60195a..8614d02 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -365,6 +365,13 @@
+       "when": 1791193200000,
+       "tag": "0056_exam_record_workflows",
+       "breakpoints": true
++    },
++    {
++      "idx": 52,
++      "version": "7",
++      "when": 1791284400000,
++      "tag": "0058_student_subscription_terms",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+216a68245852f2e758bd027b70dc5418096d8008 2026-10-05T09:21:21Z Update academic results API routes and compilation logic
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 4e14475..d60195a 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -358,6 +358,13 @@
+       "when": 1791111600000,
+       "tag": "0055_academic_calendar_fee_lines_cash",
+       "breakpoints": true
++    },
++    {
++      "idx": 51,
++      "version": "7",
++      "when": 1791193200000,
++      "tag": "0056_exam_record_workflows",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+488885adb5ca37f4f9e4ae711255ab5f2c20b7d0 2026-10-04T17:14:41Z Update academic route logic and test coverage and refresh memory files
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 4c1add5..4e14475 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -351,6 +351,13 @@
+       "when": 1791104401000,
+       "tag": "0054_employee_card_replacement_finance",
+       "breakpoints": true
++    },
++    {
++      "idx": 50,
++      "version": "7",
++      "when": 1791111600000,
++      "tag": "0055_academic_calendar_fee_lines_cash",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+caababd53f1427ae5cda964f43c3f664ced3ca8a 2026-10-04T10:15:33Z Update academic routes and internal documentation
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index f3aa560..4c1add5 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -337,6 +337,20 @@
+       "when": 1791097200000,
+       "tag": "0052_student_nfc_replacement_requests",
+       "breakpoints": true
++    },
++    {
++      "idx": 48,
++      "version": "7",
++      "when": 1791104400000,
++      "tag": "0053_class_transport_fee_applicability",
++      "breakpoints": true
++    },
++    {
++      "idx": 49,
++      "version": "7",
++      "when": 1791104401000,
++      "tag": "0054_employee_card_replacement_finance",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+dcfa46d82da9978c8a64ca0d345016d360eb1161 2026-10-04T08:09:15Z Update NFC printable logic and attendance routing endpoints
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index b1b7a8f..f3aa560 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -330,6 +330,13 @@
+       "when": 1791072000000,
+       "tag": "0051_parent_profile_preferences",
+       "breakpoints": true
++    },
++    {
++      "idx": 47,
++      "version": "7",
++      "when": 1791097200000,
++      "tag": "0052_student_nfc_replacement_requests",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+3005e9d9b60f010172e326dad05027eaead13c2f 2026-10-04T01:28:04Z Update academic and NFC routes and synchronize agent memory files
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 2359dcd..b1b7a8f 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -323,6 +323,13 @@
+       "when": 1791000000000,
+       "tag": "0050_independent_owner_school_lock",
+       "breakpoints": true
++    },
++    {
++      "idx": 46,
++      "version": "7",
++      "when": 1791072000000,
++      "tag": "0051_parent_profile_preferences",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+00105d96cb3cb6befd2d52fa1bf8f4e86982def3 2026-10-03T04:01:30Z Update subscription enforcement logic and attendance test coverage
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 07c04b5..2359dcd 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -316,6 +316,13 @@
+       "when": 1790985600000,
+       "tag": "0049_term_subscription_enforcement",
+       "breakpoints": true
++    },
++    {
++      "idx": 45,
++      "version": "7",
++      "when": 1791000000000,
++      "tag": "0050_independent_owner_school_lock",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+d7f1ef093a26cb672ca073369d5f10f197bcef6f 2026-10-03T01:08:47Z Update agent metadata and implement API server security enhancements
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index f756e68..07c04b5 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -309,6 +309,13 @@
+       "when": 1790977200000,
+       "tag": "0048_communication_external_channels",
+       "breakpoints": true
++    },
++    {
++      "idx": 44,
++      "version": "7",
++      "when": 1790985600000,
++      "tag": "0049_term_subscription_enforcement",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+850600221ee091f17146dc7a64f07add5f8667a2 2026-10-02T22:30:37Z Update communication services and routes functionality
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index b13732b..f756e68 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -302,6 +302,13 @@
+       "when": 1790959805000,
+       "tag": "0047_parent_communication_extensions",
+       "breakpoints": true
++    },
++    {
++      "idx": 43,
++      "version": "7",
++      "when": 1790977200000,
++      "tag": "0048_communication_external_channels",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+95e8996de1206227fae626e0748755eccdd1a5f2 2026-10-02T18:45:22Z Refactor communication campaign routes and enhance attendance logging
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 15af31c..b13732b 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -260,6 +260,48 @@
+       "when": 1790856005000,
+       "tag": "0036_student_subscription_allocations",
+       "breakpoints": true
++    },
++    {
++      "idx": 37,
++      "version": "7",
++      "when": 1790959800000,
++      "tag": "0042_admissions_expansion",
++      "breakpoints": true
++    },
++    {
++      "idx": 38,
++      "version": "7",
++      "when": 1790959801000,
++      "tag": "0043_student_care_expansion",
++      "breakpoints": true
++    },
++    {
++      "idx": 39,
++      "version": "7",
++      "when": 1790959802000,
++      "tag": "0044_promotion_expansion",
++      "breakpoints": true
++    },
++    {
++      "idx": 40,
++      "version": "7",
++      "when": 1790959803000,
++      "tag": "0045_school_security_core",
++      "breakpoints": true
++    },
++    {
++      "idx": 41,
++      "version": "7",
++      "when": 1790959804000,
++      "tag": "0046_school_security_operations",
++      "breakpoints": true
++    },
++    {
++      "idx": 42,
++      "version": "7",
++      "when": 1790959805000,
++      "tag": "0047_parent_communication_extensions",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+8e48d56c10b9265e5450b56c50c5d55756f68400 2026-10-01T12:24:28Z Implement academic and edupulse service enhancements
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 4ca45f1..15af31c 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -253,6 +253,13 @@
+       "when": 1790856004000,
+       "tag": "0035_settlement_payroll",
+       "breakpoints": true
++    },
++    {
++      "idx": 36,
++      "version": "7",
++      "when": 1790856005000,
++      "tag": "0036_student_subscription_allocations",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+6ece4c8b90275dfe52c988b457af0ddae29ef6ee 2026-10-01T11:11:16Z Implement new fee provider logic and update related API routes
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index c6ce5e1..4ca45f1 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -218,6 +218,41 @@
+       "when": 1790632173536,
+       "tag": "0030_library_loan_copy_integrity",
+       "breakpoints": true
++    },
++    {
++      "idx": 31,
++      "version": "7",
++      "when": 1790856000000,
++      "tag": "0031_staff_nfc_billing",
++      "breakpoints": true
++    },
++    {
++      "idx": 32,
++      "version": "7",
++      "when": 1790856001000,
++      "tag": "0032_employee_nfc",
++      "breakpoints": true
++    },
++    {
++      "idx": 33,
++      "version": "7",
++      "when": 1790856002000,
++      "tag": "0033_school_workflows",
++      "breakpoints": true
++    },
++    {
++      "idx": 34,
++      "version": "7",
++      "when": 1790856003000,
++      "tag": "0034_school_transport",
++      "breakpoints": true
++    },
++    {
++      "idx": 35,
++      "version": "7",
++      "when": 1790856004000,
++      "tag": "0035_settlement_payroll",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+d78f71b553cb458e523dc3d92956438e15c93102 2026-09-29T10:32:21Z Implement library routes and portal features with associated tests and schema updates
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 19048cd..c6ce5e1 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -190,6 +190,34 @@
+       "when": 1790632169536,
+       "tag": "0026_communication_entitlements",
+       "breakpoints": true
++    },
++    {
++      "idx": 27,
++      "version": "7",
++      "when": 1790632170536,
++      "tag": "0027_library",
++      "breakpoints": true
++    },
++    {
++      "idx": 28,
++      "version": "7",
++      "when": 1790632171536,
++      "tag": "0028_school_operations",
++      "breakpoints": true
++    },
++    {
++      "idx": 29,
++      "version": "7",
++      "when": 1790632172536,
++      "tag": "0029_operations_history",
++      "breakpoints": true
++    },
++    {
++      "idx": 30,
++      "version": "7",
++      "when": 1790632173536,
++      "tag": "0030_library_loan_copy_integrity",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+e02bdfafb15592323b6e70a2d58934db72278ed0 2026-09-29T10:01:41Z Implement academic results and work endpoints in the API server
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index ad1b9f5..19048cd 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -176,6 +176,20 @@
+       "when": 1790632167536,
+       "tag": "0024_platform_company_employees",
+       "breakpoints": true
++    },
++    {
++      "idx": 25,
++      "version": "7",
++      "when": 1790632168536,
++      "tag": "0025_communication",
++      "breakpoints": true
++    },
++    {
++      "idx": 26,
++      "version": "7",
++      "when": 1790632169536,
++      "tag": "0026_communication_entitlements",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+22505857c0147888cfe7553e3425beb06089e866 2026-09-29T04:39:08Z Implement authentication middleware and update academic routes with tests
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 6ff9043..ad1b9f5 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -169,6 +169,13 @@
+       "when": 1790632166536,
+       "tag": "0023_invoice_generated_notifications",
+       "breakpoints": true
++    },
++    {
++      "idx": 24,
++      "version": "7",
++      "when": 1790632167536,
++      "tag": "0024_platform_company_employees",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+c0ad80f06d083c04f8935c027284cfad20a780c5 2026-09-29T03:10:58Z Add tests and logic for fee provider webhook handling
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index fdec6ce..6ff9043 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -155,6 +155,20 @@
+       "when": 1790632164536,
+       "tag": "0021_fee_payment_notification_outbox",
+       "breakpoints": true
++    },
++    {
++      "idx": 22,
++      "version": "7",
++      "when": 1790632165536,
++      "tag": "0022_payment_bound_notification_events",
++      "breakpoints": true
++    },
++    {
++      "idx": 23,
++      "version": "7",
++      "when": 1790632166536,
++      "tag": "0023_invoice_generated_notifications",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+d9bbcea95041833d5e5b5d46c44655e99f896d9b 2026-09-29T02:33:24Z Implement and test fee provider updates and webhook safety logic
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index d8797a4..fdec6ce 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -141,6 +141,20 @@
+       "when": 1790632162536,
+       "tag": "0019_phase7_finance_ledger_gaps",
+       "breakpoints": true
++    },
++    {
++      "idx": 20,
++      "version": "7",
++      "when": 1790632163536,
++      "tag": "0020_finance_payment_notification_events",
++      "breakpoints": true
++    },
++    {
++      "idx": 21,
++      "version": "7",
++      "when": 1790632164536,
++      "tag": "0021_fee_payment_notification_outbox",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+73ea06e40eea095330f83457401f98acf6638cd0 2026-09-29T00:07:41Z Expand fee provider integration and update finance route tests
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 0b938e4..d8797a4 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -134,6 +134,13 @@
+       "when": 1790632161536,
+       "tag": "0018_fee_payment_notifications",
+       "breakpoints": true
++    },
++    {
++      "idx": 19,
++      "version": "7",
++      "when": 1790632162536,
++      "tag": "0019_phase7_finance_ledger_gaps",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+f759d300257af04994887a633067b5e973810380 2026-09-28T23:32:40Z Implement bank transfer functionality and update environment configuration
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 4e9819f..0b938e4 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -113,6 +113,27 @@
+       "when": 1790632158536,
+       "tag": "0015_school_bank_transfer_settings",
+       "breakpoints": true
++    },
++    {
++      "idx": 16,
++      "version": "7",
++      "when": 1790632159536,
++      "tag": "0016_finance_refunds",
++      "breakpoints": true
++    },
++    {
++      "idx": 17,
++      "version": "7",
++      "when": 1790632160536,
++      "tag": "0017_fee_provider_payments",
++      "breakpoints": true
++    },
++    {
++      "idx": 18,
++      "version": "7",
++      "when": 1790632161536,
++      "tag": "0018_fee_payment_notifications",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+6093d970e553fafd7844ec28d957677d4e9e8c4f 2026-09-28T22:15:51Z Update API client schemas and portal components
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 98d3e4b..4e9819f 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -92,6 +92,27 @@
+       "when": 1790195000000,
+       "tag": "0012_phase6_academic_operations",
+       "breakpoints": true
++    },
++    {
++      "idx": 13,
++      "version": "7",
++      "when": 1790632156536,
++      "tag": "0013_phase7_finance",
++      "breakpoints": true
++    },
++    {
++      "idx": 14,
++      "version": "7",
++      "when": 1790632157536,
++      "tag": "0014_finance_payment_integrity",
++      "breakpoints": true
++    },
++    {
++      "idx": 15,
++      "version": "7",
++      "when": 1790632158536,
++      "tag": "0015_school_bank_transfer_settings",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+a9b4298548911ca0d1d676a524b561169778b5fc 2026-09-24T09:40:39Z Update parent portal and sync API schemas
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 99bbb8f..98d3e4b 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -85,6 +85,13 @@
+       "when": 1790194000000,
+       "tag": "0011_historical_device_references",
+       "breakpoints": true
++    },
++    {
++      "idx": 12,
++      "version": "7",
++      "when": 1790195000000,
++      "tag": "0012_phase6_academic_operations",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+fcc64ad3a2ae34ac383dc64e07573d71ee5dc6b7 2026-09-24T08:36:18Z Update attendance route logic and add comprehensive test coverage
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 33b7792..99bbb8f 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -71,6 +71,20 @@
+       "when": 1790192000000,
+       "tag": "0009_phase5_attendance",
+       "breakpoints": true
++    },
++    {
++      "idx": 10,
++      "version": "7",
++      "when": 1790193000000,
++      "tag": "0010_historical_device_school_bindings",
++      "breakpoints": true
++    },
++    {
++      "idx": 11,
++      "version": "7",
++      "when": 1790194000000,
++      "tag": "0011_historical_device_references",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+1ba9f070fcbfd4530d37bb10c0d54cf9eedcdad3 2026-09-23T19:50:06Z Implement EduPulse and platform route updates
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 0f32a6a..33b7792 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -64,6 +64,13 @@
+       "when": 1790166000000,
+       "tag": "0008_align_tenant_fk_dependencies",
+       "breakpoints": true
++    },
++    {
++      "idx": 9,
++      "version": "7",
++      "when": 1790192000000,
++      "tag": "0009_phase5_attendance",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+a381ff17943a69ce5555e1434bc95d94f6b5160c 2026-09-23T14:30:44Z Implement tenant foreign key dependency migration and add recovery tests
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index dec986b..0f32a6a 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -57,6 +57,13 @@
+       "when": 1790165200000,
+       "tag": "0007_restore_tenant_foreign_keys",
+       "breakpoints": true
++    },
++    {
++      "idx": 8,
++      "version": "7",
++      "when": 1790166000000,
++      "tag": "0008_align_tenant_fk_dependencies",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+54b8fc694be76a546463246632f1b848f2507179 2026-09-23T12:07:02Z Implement database schema migration for tenant foreign keys and add recovery test coverage
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 2e17948..dec986b 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -50,6 +50,13 @@
+       "when": 1790164600000,
+       "tag": "0006_prepare_tenant_keys_publish",
+       "breakpoints": true
++    },
++    {
++      "idx": 7,
++      "version": "7",
++      "when": 1790165200000,
++      "tag": "0007_restore_tenant_foreign_keys",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+1c83a8d1c4f397ffb58a118e3185ca830ca51ff4 2026-09-23T11:50:55Z Update database schema and add tenant key migration with tests
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index dba9e4a..2e17948 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -43,6 +43,13 @@
+       "when": 1790164000000,
+       "tag": "0005_tenant_reference_keys",
+       "breakpoints": true
++    },
++    {
++      "idx": 6,
++      "version": "7",
++      "when": 1790164600000,
++      "tag": "0006_prepare_tenant_keys_publish",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+8320e62d15060d54adb93bdaf1ee4eff88520355 2026-09-23T11:44:22Z Add tenant reference keys to database schema
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index ab7ee0b..dba9e4a 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -36,6 +36,13 @@
+       "when": 1790161200000,
+       "tag": "0004_platform_operations",
+       "breakpoints": true
++    },
++    {
++      "idx": 5,
++      "version": "7",
++      "when": 1790164000000,
++      "tag": "0005_tenant_reference_keys",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+2c5f018b63c330e0c89bc5083a9480c744b4822b 2026-09-23T11:00:25Z Refactor authentication logic and update application routes and components
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index a86a598..ab7ee0b 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -29,6 +29,13 @@
+       "when": 1790157200000,
+       "tag": "0003_phase4_integrity",
+       "breakpoints": true
++    },
++    {
++      "idx": 4,
++      "version": "7",
++      "when": 1790161200000,
++      "tag": "0004_platform_operations",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+f7e40cd32ab48f2c4717d6b4c6bcd5176c973d6c 2026-09-23T10:07:49Z Implement new EduPulse and partner API endpoints
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index ebaacda..a86a598 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -22,6 +22,13 @@
+       "when": 1790145697311,
+       "tag": "0002_overjoyed_sue_storm",
+       "breakpoints": true
++    },
++    {
++      "idx": 3,
++      "version": "7",
++      "when": 1790157200000,
++      "tag": "0003_phase4_integrity",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+116f14ce8c51bd393a2f9ee48811e0e2e59ecf7b 2026-09-23T06:41:40Z Add new database migration and update journal
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 76c37b2..ebaacda 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -8,7 +8,7 @@
+       "when": 1790124624275,
+       "tag": "0000_brainy_moon_knight",
+       "breakpoints": true
+-    }
++    },
+     {
+       "idx": 1,
+       "version": "7",
+@@ -16,5 +16,12 @@
+       "tag": "0001_phase3_meta",
+       "breakpoints": true
+     },
++    {
++      "idx": 2,
++      "version": "7",
++      "when": 1790145697311,
++      "tag": "0002_overjoyed_sue_storm",
++      "breakpoints": true
++    }
+   ]
+ }
+\ No newline at end of file
+e60482c72a6781ab8427fc51e484240a5fae6efd 2026-09-23T06:40:08Z Implement EduPulse API endpoints and update client schema
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 9957f52..76c37b2 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -8,13 +8,13 @@
+       "when": 1790124624275,
+       "tag": "0000_brainy_moon_knight",
+       "breakpoints": true
+-    },
++    }
+     {
+       "idx": 1,
+       "version": "7",
+       "when": 1790129202026,
+       "tag": "0001_phase3_meta",
+       "breakpoints": true
+-    }
++    },
+   ]
+ }
+\ No newline at end of file
+41e0595bc6dd64570f94b70952946c788a940bed 2026-09-23T02:10:52Z Update edupulse routes and clean up memory documentation
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+index 39bfb47..9957f52 100644
+--- a/lib/db/drizzle/meta/_journal.json
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -8,6 +8,13 @@
+       "when": 1790124624275,
+       "tag": "0000_brainy_moon_knight",
+       "breakpoints": true
++    },
++    {
++      "idx": 1,
++      "version": "7",
++      "when": 1790129202026,
++      "tag": "0001_phase3_meta",
++      "breakpoints": true
+     }
+   ]
+ }
+\ No newline at end of file
+7709c8463a8f770108e9b10b435c75552cf53129 2026-09-23T01:21:55Z Update edupulse routes and api-server dependencies
+
+diff --git a/lib/db/drizzle/meta/_journal.json b/lib/db/drizzle/meta/_journal.json
+new file mode 100644
+index 0000000..39bfb47
+--- /dev/null
++++ b/lib/db/drizzle/meta/_journal.json
+@@ -0,0 +1,13 @@
++{
++  "version": "7",
++  "dialect": "postgresql",
++  "entries": [
++    {
++      "idx": 0,
++      "version": "7",
++      "when": 1790124624275,
++      "tag": "0000_brainy_moon_knight",
++      "breakpoints": true
++    }
++  ]
++}
+\ No newline at end of file

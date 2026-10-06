@@ -1,0 +1,6 @@
+{
+  "code": "42601",
+  "message": "syntax error at or near \";\"",
+  "position": "5287",
+  "near": "timestamp with time zone DEFAULT now() NOT NULL,\n\t\"revoked_at\" timestamp with time zone,\n\t\"metadata\" jsonb,\n\tCONSTRAINT \"biometric_enrollments_subject_check\" CHECK (((\"student_id\" IS NOT NULL)::int + (\"employee_id\" IS NOT NULL)::int = 1)\n);\n\nCREATE TABLE \"class_subjects\" (\n\t\"id\" serial PRIMARY KEY N"
+}

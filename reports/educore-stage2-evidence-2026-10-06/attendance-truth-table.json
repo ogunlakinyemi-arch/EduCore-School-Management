@@ -1,0 +1,22 @@
+[
+  {
+    "s": null,
+    "e": null,
+    "accepted": false
+  },
+  {
+    "s": 1,
+    "e": null,
+    "accepted": true
+  },
+  {
+    "s": null,
+    "e": 1,
+    "accepted": true
+  },
+  {
+    "s": 1,
+    "e": 1,
+    "accepted": false
+  }
+]

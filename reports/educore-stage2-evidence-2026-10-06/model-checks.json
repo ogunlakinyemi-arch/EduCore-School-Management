@@ -1,0 +1,2448 @@
+[
+  {
+    "table": "academic_assessment_types",
+    "name": "academic_assessment_types_status_check",
+    "expression": "\"academic_assessment_types\".\"status\" IN ('ACTIVE', 'INACTIVE', 'ARCHIVED')",
+    "valid": true
+  },
+  {
+    "table": "academic_assessments",
+    "name": "academic_assessments_max_score_check",
+    "expression": "\"academic_assessments\".\"max_score\" > 0",
+    "valid": true
+  },
+  {
+    "table": "academic_assessments",
+    "name": "academic_assessments_status_check",
+    "expression": "\"academic_assessments\".\"status\" IN ('DRAFT', 'OPEN', 'CLOSED', 'PUBLISHED', 'ARCHIVED')",
+    "valid": true
+  },
+  {
+    "table": "academic_assignments",
+    "name": "academic_assignments_max_score_check",
+    "expression": "\"academic_assignments\".\"max_score\" > 0",
+    "valid": true
+  },
+  {
+    "table": "academic_assignments",
+    "name": "academic_assignments_dates_check",
+    "expression": "\"academic_assignments\".\"due_date\" >= \"academic_assignments\".\"issue_date\"",
+    "valid": true
+  },
+  {
+    "table": "academic_assignments",
+    "name": "academic_assignments_status_check",
+    "expression": "\"academic_assignments\".\"status\" IN ('DRAFT', 'PUBLISHED', 'CLOSED', 'ARCHIVED')",
+    "valid": true
+  },
+  {
+    "table": "academic_grading_rules",
+    "name": "academic_grading_rules_score_range_check",
+    "expression": "\"academic_grading_rules\".\"min_score\" >= 0 AND \"academic_grading_rules\".\"max_score\" >= \"academic_grading_rules\".\"min_score\"",
+    "valid": true
+  },
+  {
+    "table": "academic_grading_rules",
+    "name": "academic_grading_rules_status_check",
+    "expression": "\"academic_grading_rules\".\"status\" IN ('ACTIVE', 'INACTIVE', 'ARCHIVED')",
+    "valid": true
+  },
+  {
+    "table": "academic_report_card_lines",
+    "name": "academic_report_card_lines_score_check",
+    "expression": "\"academic_report_card_lines\".\"score\" >= 0 AND \"academic_report_card_lines\".\"max_score\" > 0 AND \"academic_report_card_lines\".\"score\" <= \"academic_report_card_lines\".\"max_score\"",
+    "valid": true
+  },
+  {
+    "table": "academic_report_cards",
+    "name": "academic_report_cards_status_check",
+    "expression": "\"academic_report_cards\".\"status\" IN ('DRAFT', 'PUBLISHED', 'ARCHIVED')",
+    "valid": true
+  },
+  {
+    "table": "academic_report_cards",
+    "name": "academic_report_cards_publication_check",
+    "expression": "(\"academic_report_cards\".\"status\" = 'PUBLISHED' AND \"academic_report_cards\".\"published_by\" IS NOT NULL AND \"academic_report_cards\".\"published_at\" IS NOT NULL) OR (\"academic_report_cards\".\"status\" <> 'PUBLISHED')",
+    "valid": true
+  },
+  {
+    "table": "academic_result_batches",
+    "name": "academic_result_batches_revision_check",
+    "expression": "\"academic_result_batches\".\"revision\">=0",
+    "valid": true
+  },
+  {
+    "table": "academic_result_batches",
+    "name": "academic_result_batches_status_check",
+    "expression": "\"academic_result_batches\".\"status\" IN ('DRAFT','SUBMITTED','RETURNED','RESUBMITTED','LOCKED')",
+    "valid": true
+  },
+  {
+    "table": "academic_result_batches",
+    "name": "academic_result_batches_components_check",
+    "expression": "jsonb_typeof(\"academic_result_batches\".\"components\")='array'",
+    "valid": true
+  },
+  {
+    "table": "academic_results",
+    "name": "academic_results_score_check",
+    "expression": "\"academic_results\".\"score\" >= 0 AND \"academic_results\".\"max_score\" > 0 AND \"academic_results\".\"score\" <= \"academic_results\".\"max_score\"",
+    "valid": true
+  },
+  {
+    "table": "academic_results",
+    "name": "academic_results_status_check",
+    "expression": "\"academic_results\".\"status\" IN ('DRAFT', 'SUBMITTED', 'PUBLISHED', 'ARCHIVED')",
+    "valid": true
+  },
+  {
+    "table": "academic_results",
+    "name": "academic_results_publication_check",
+    "expression": "(\"academic_results\".\"status\" = 'PUBLISHED' AND \"academic_results\".\"published_by\" IS NOT NULL AND \"academic_results\".\"published_at\" IS NOT NULL) OR (\"academic_results\".\"status\" <> 'PUBLISHED')",
+    "valid": true
+  },
+  {
+    "table": "academic_timetable_entries",
+    "name": "academic_timetable_entries_weekday_check",
+    "expression": "\"academic_timetable_entries\".\"weekday\" IN ('MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY')",
+    "valid": true
+  },
+  {
+    "table": "academic_timetable_entries",
+    "name": "academic_timetable_entries_time_check",
+    "expression": "\"academic_timetable_entries\".\"end_time\" > \"academic_timetable_entries\".\"start_time\"",
+    "valid": true
+  },
+  {
+    "table": "academic_timetable_entries",
+    "name": "academic_timetable_entries_status_check",
+    "expression": "\"academic_timetable_entries\".\"status\" IN ('ACTIVE', 'CANCELLED', 'ARCHIVED')",
+    "valid": true
+  },
+  {
+    "table": "admission_application_counters",
+    "name": "admission_application_counters_nonnegative_check",
+    "expression": "\"admission_application_counters\".\"current_value\" >= 0",
+    "valid": true
+  },
+  {
+    "table": "admission_application_documents",
+    "name": "admission_application_documents_content_type_check",
+    "expression": "\"admission_application_documents\".\"content_type\" IN ('application/pdf','image/jpeg','image/png','image/webp')",
+    "valid": true
+  },
+  {
+    "table": "admission_application_documents",
+    "name": "admission_application_documents_size_check",
+    "expression": "\"admission_application_documents\".\"byte_size\" BETWEEN 1 AND 10485760",
+    "valid": true
+  },
+  {
+    "table": "admission_application_documents",
+    "name": "admission_application_documents_object_path_check",
+    "expression": "\"admission_application_documents\".\"object_path\" ~ '^/objects/admissions/(intake/[a-z0-9][a-z0-9-]{2,79}|[1-9][0-9]*/[1-9][0-9]*)/(photo-)?[0-9a-f-]{36}$'",
+    "valid": true
+  },
+  {
+    "table": "admission_applications",
+    "name": "admission_applications_status_check",
+    "expression": "\"admission_applications\".\"status\" IN ('Draft','Submitted','UnderReview','Shortlisted','InterviewScheduled','AssessmentPending','AssessmentCompleted','Accepted','Waitlisted','Rejected','Withdrawn','Enrolled')",
+    "valid": true
+  },
+  {
+    "table": "admission_applications",
+    "name": "admission_applications_source_check",
+    "expression": "\"admission_applications\".\"source\" IN ('PUBLIC','STAFF')",
+    "valid": true
+  },
+  {
+    "table": "admission_applications",
+    "name": "admission_applications_gender_check",
+    "expression": "\"admission_applications\".\"gender\" IN ('Female','Male','Other','PreferNotToSay')",
+    "valid": true
+  },
+  {
+    "table": "admission_applications",
+    "name": "admission_applications_phone_check",
+    "expression": "\"admission_applications\".\"guardian_phone\" ~ '^\\+[1-9][0-9]{7,14}$'",
+    "valid": true
+  },
+  {
+    "table": "admission_applications",
+    "name": "admission_applications_emergency_phone_check",
+    "expression": "\"admission_applications\".\"emergency_contact_phone\" IS NULL OR \"admission_applications\".\"emergency_contact_phone\" ~ '^\\+[1-9][0-9]{7,14}$'",
+    "valid": true
+  },
+  {
+    "table": "admission_applications",
+    "name": "admission_applications_emergency_contact_pair_check",
+    "expression": "(\"admission_applications\".\"emergency_contact_name\" IS NULL) = (\"admission_applications\".\"emergency_contact_phone\" IS NULL)",
+    "valid": true
+  },
+  {
+    "table": "admission_applications",
+    "name": "admission_applications_receipt_hash_check",
+    "expression": "\"admission_applications\".\"receipt_secret_hash\" IS NULL OR \"admission_applications\".\"receipt_secret_hash\" ~ '^[0-9a-f]{64}$'",
+    "valid": true
+  },
+  {
+    "table": "admission_applications",
+    "name": "admission_applications_payload_hash_check",
+    "expression": "\"admission_applications\".\"payload_hash\" ~ '^[0-9a-f]{64}$'",
+    "valid": true
+  },
+  {
+    "table": "admission_applications",
+    "name": "admission_applications_idempotency_key_check",
+    "expression": "length(\"admission_applications\".\"idempotency_key\") BETWEEN 16 AND 128",
+    "valid": true
+  },
+  {
+    "table": "admission_applications",
+    "name": "admission_applications_photo_path_check",
+    "expression": "\"admission_applications\".\"photo_object_path\" IS NULL OR \"admission_applications\".\"photo_object_path\" ~ '^/objects/admissions/'",
+    "valid": true
+  },
+  {
+    "table": "admission_applications",
+    "name": "admission_applications_version_check",
+    "expression": "\"admission_applications\".\"version\" >= 1",
+    "valid": true
+  },
+  {
+    "table": "admission_portal_settings",
+    "name": "admission_portal_settings_slug_check",
+    "expression": "\"admission_portal_settings\".\"portal_key\" ~ '^[a-z0-9][a-z0-9-]{2,79}$'",
+    "valid": true
+  },
+  {
+    "table": "admission_portal_settings",
+    "name": "admission_portal_settings_public_phone_check",
+    "expression": "\"admission_portal_settings\".\"public_phone\" IS NULL OR \"admission_portal_settings\".\"public_phone\" ~ '^\\+[1-9][0-9]{7,14}$'",
+    "valid": true
+  },
+  {
+    "table": "admission_portal_settings",
+    "name": "admission_portal_settings_requirements_array_check",
+    "expression": "jsonb_typeof(\"admission_portal_settings\".\"requirements\") = 'array'",
+    "valid": true
+  },
+  {
+    "table": "admission_portal_settings",
+    "name": "admission_portal_settings_documents_array_check",
+    "expression": "jsonb_typeof(\"admission_portal_settings\".\"required_documents\") = 'array'",
+    "valid": true
+  },
+  {
+    "table": "admission_request_rate_limits",
+    "name": "admission_request_rate_limits_count_check",
+    "expression": "\"admission_request_rate_limits\".\"request_count\" >= 0",
+    "valid": true
+  },
+  {
+    "table": "attendance_events",
+    "name": "attendance_events_subject_check",
+    "expression": "((\"student_id\" IS NOT NULL)::int + (\"employee_id\" IS NOT NULL)::int = 1)",
+    "valid": true
+  },
+  {
+    "table": "biometric_enrollments",
+    "name": "biometric_enrollments_subject_check",
+    "expression": "((\"student_id\" IS NOT NULL)::int + (\"employee_id\" IS NOT NULL)::int = 1",
+    "valid": false,
+    "error": {
+      "code": "42601",
+      "message": "syntax error at end of input"
+    }
+  },
+  {
+    "table": "campus_presence",
+    "name": "campus_presence_person_type_check",
+    "expression": "\"campus_presence\".\"person_type\" IN ('STUDENT','STAFF')",
+    "valid": true
+  },
+  {
+    "table": "campus_presence",
+    "name": "campus_presence_state_check",
+    "expression": "\"campus_presence\".\"state\" IN ('ON_CAMPUS','OFF_CAMPUS','REQUIRES_REVIEW')",
+    "valid": true
+  },
+  {
+    "table": "campus_presence",
+    "name": "campus_presence_person_shape_check",
+    "expression": "(\"campus_presence\".\"person_type\"='STUDENT' AND \"campus_presence\".\"student_id\" IS NOT NULL AND \"campus_presence\".\"employee_id\" IS NULL) OR (\"campus_presence\".\"person_type\"='STAFF' AND \"campus_presence\".\"employee_id\" IS NOT NULL AND \"campus_presence\".\"student_id\" IS NULL)",
+    "valid": true
+  },
+  {
+    "table": "commission_ledger",
+    "name": "commission_ledger_amount_nonnegative",
+    "expression": "\"commission_ledger\".\"amount\" >= 0 AND \"commission_ledger\".\"count\" > 0",
+    "valid": true
+  },
+  {
+    "table": "commission_ledger",
+    "name": "commission_ledger_status_check",
+    "expression": "\"commission_ledger\".\"status\" IN ('PENDING','APPROVED','PAYABLE','PAID','HELD','REVERSED','CANCELLED')",
+    "valid": true
+  },
+  {
+    "table": "commission_rules",
+    "name": "commission_rules_allocation_integrity",
+    "expression": "\"commission_rules\".\"partner_amount\" >= 0 AND \"commission_rules\".\"school_amount\" >= 0 AND \"commission_rules\".\"edupulse_amount\" >= 0 AND \"commission_rules\".\"partner_amount\" + \"commission_rules\".\"school_amount\" + \"commission_rules\".\"edupulse_amount\" = \"commission_rules\".\"allocation_total\"",
+    "valid": true
+  },
+  {
+    "table": "communication_campaign_recipients",
+    "name": "communication_campaign_recipients_status_check",
+    "expression": "\"communication_campaign_recipients\".\"status\" IN (\n      'QUEUED','SENT','FAILED','SKIPPED'\n    )",
+    "valid": true
+  },
+  {
+    "table": "communication_campaigns",
+    "name": "communication_campaigns_category_check",
+    "expression": "\"communication_campaigns\".\"category\" IN (\n      'ATTENDANCE','ACADEMIC','ASSIGNMENT','FINANCE','PAYMENT','ANNOUNCEMENT',\n      'ACCOUNT','SYSTEM','SUBSCRIPTION','PARTNER','SECURITY'\n    )",
+    "valid": true
+  },
+  {
+    "table": "communication_campaigns",
+    "name": "communication_campaigns_target_type_check",
+    "expression": "\"communication_campaigns\".\"target_type\" IN (\n      'SCHOOL','PARENTS','STUDENTS','TEACHERS','STAFF','CLASS','SECTION','USERS'\n    )",
+    "valid": true
+  },
+  {
+    "table": "communication_campaigns",
+    "name": "communication_campaigns_channels_check",
+    "expression": "\n      cardinality(\"communication_campaigns\".\"channels\") > 0\n      AND \"communication_campaigns\".\"channels\" <@ ARRAY['IN_APP','SMS','EMAIL','PUSH']::text[]\n    ",
+    "valid": true
+  },
+  {
+    "table": "communication_campaigns",
+    "name": "communication_campaigns_status_check",
+    "expression": "\"communication_campaigns\".\"status\" IN (\n      'DRAFT','QUEUED','SENDING','SENT','FAILED','CANCELLED'\n    )",
+    "valid": true
+  },
+  {
+    "table": "communication_campaigns",
+    "name": "communication_campaigns_recipient_count_check",
+    "expression": "\"communication_campaigns\".\"recipient_count\" >= 0",
+    "valid": true
+  },
+  {
+    "table": "communication_campaigns",
+    "name": "communication_campaigns_target_criteria_check",
+    "expression": "jsonb_typeof(\"communication_campaigns\".\"target_criteria\") = 'object'",
+    "valid": true
+  },
+  {
+    "table": "communication_campaigns",
+    "name": "communication_campaigns_emergency_category_check",
+    "expression": "NOT \"communication_campaigns\".\"is_emergency\" OR \"communication_campaigns\".\"category\" = 'SECURITY'",
+    "valid": true
+  },
+  {
+    "table": "communication_deliveries",
+    "name": "communication_deliveries_channel_check",
+    "expression": "\"communication_deliveries\".\"channel\" IN ('IN_APP','SMS','EMAIL','PUSH')",
+    "valid": true
+  },
+  {
+    "table": "communication_deliveries",
+    "name": "communication_deliveries_status_check",
+    "expression": "\"communication_deliveries\".\"status\" IN (\n      'QUEUED','PROCESSING','SENT','DELIVERED','READ','FAILED','CANCELLED'\n    )",
+    "valid": true
+  },
+  {
+    "table": "communication_deliveries",
+    "name": "communication_deliveries_attempts_check",
+    "expression": "\"communication_deliveries\".\"attempts\" >= 0",
+    "valid": true
+  },
+  {
+    "table": "communication_deliveries",
+    "name": "communication_deliveries_delivered_status_check",
+    "expression": "\n      \"communication_deliveries\".\"delivered_at\" IS NULL OR \"communication_deliveries\".\"status\" IN ('DELIVERED','READ')\n    ",
+    "valid": true
+  },
+  {
+    "table": "communication_deliveries",
+    "name": "communication_deliveries_provider_ack_channel_check",
+    "expression": "\n      \"communication_deliveries\".\"provider_acknowledged_at\" IS NULL OR \"communication_deliveries\".\"channel\" <> 'IN_APP'\n    ",
+    "valid": true
+  },
+  {
+    "table": "communication_message_threads",
+    "name": "communication_message_threads_request_key_check",
+    "expression": "length(\"communication_message_threads\".\"request_key\") BETWEEN 8 AND 128",
+    "valid": true
+  },
+  {
+    "table": "communication_message_threads",
+    "name": "communication_message_threads_request_hash_check",
+    "expression": "length(\"communication_message_threads\".\"request_hash\") = 64",
+    "valid": true
+  },
+  {
+    "table": "communication_message_threads",
+    "name": "communication_message_threads_subject_check",
+    "expression": "length(btrim(\"communication_message_threads\".\"subject\")) BETWEEN 1 AND 200",
+    "valid": true
+  },
+  {
+    "table": "communication_message_threads",
+    "name": "communication_message_threads_category_check",
+    "expression": "\"communication_message_threads\".\"category\" IN ('GENERAL','ACADEMIC','ASSIGNMENT','FINANCE')",
+    "valid": true
+  },
+  {
+    "table": "communication_messages",
+    "name": "communication_messages_request_key_check",
+    "expression": "length(\"communication_messages\".\"request_key\") BETWEEN 8 AND 128",
+    "valid": true
+  },
+  {
+    "table": "communication_messages",
+    "name": "communication_messages_content_hash_check",
+    "expression": "length(\"communication_messages\".\"content_hash\") = 64",
+    "valid": true
+  },
+  {
+    "table": "communication_messages",
+    "name": "communication_messages_body_check",
+    "expression": "length(btrim(\"communication_messages\".\"body\")) BETWEEN 1 AND 5000",
+    "valid": true
+  },
+  {
+    "table": "communication_notifications",
+    "name": "communication_notifications_subject_student_school_check",
+    "expression": "\"communication_notifications\".\"subject_student_id\" IS NULL OR \"communication_notifications\".\"school_id\" IS NOT NULL",
+    "valid": true
+  },
+  {
+    "table": "communication_notifications",
+    "name": "communication_notifications_subject_class_school_check",
+    "expression": "\"communication_notifications\".\"subject_class_id\" IS NULL OR \"communication_notifications\".\"school_id\" IS NOT NULL",
+    "valid": true
+  },
+  {
+    "table": "communication_notifications",
+    "name": "communication_notifications_category_check",
+    "expression": "\"communication_notifications\".\"category\" IN (\n      'ATTENDANCE','ACADEMIC','ASSIGNMENT','FINANCE','PAYMENT','ANNOUNCEMENT',\n      'ACCOUNT','SYSTEM','SUBSCRIPTION','PARTNER','SECURITY'\n    )",
+    "valid": true
+  },
+  {
+    "table": "communication_notifications",
+    "name": "communication_notifications_read_check",
+    "expression": "(\"communication_notifications\".\"is_read\" = false AND \"communication_notifications\".\"read_at\" IS NULL) OR (\"communication_notifications\".\"is_read\" = true AND \"communication_notifications\".\"read_at\" IS NOT NULL)",
+    "valid": true
+  },
+  {
+    "table": "communication_preferences",
+    "name": "communication_preferences_category_check",
+    "expression": "\"communication_preferences\".\"category\" IN (\n      'ATTENDANCE','ACADEMIC','ASSIGNMENT','FINANCE','PAYMENT','ANNOUNCEMENT',\n      'ACCOUNT','SYSTEM','SUBSCRIPTION','PARTNER','SECURITY'\n    )",
+    "valid": true
+  },
+  {
+    "table": "communication_preferences",
+    "name": "communication_preferences_channel_check",
+    "expression": "\"communication_preferences\".\"channel\" IN ('IN_APP','SMS','EMAIL','PUSH')",
+    "valid": true
+  },
+  {
+    "table": "communication_push_devices",
+    "name": "communication_push_devices_provider_check",
+    "expression": "\"communication_push_devices\".\"provider\" IN ('WEB_PUSH')",
+    "valid": true
+  },
+  {
+    "table": "communication_push_devices",
+    "name": "communication_push_devices_status_check",
+    "expression": "\n      (\"communication_push_devices\".\"status\" = 'ACTIVE' AND \"communication_push_devices\".\"revoked_at\" IS NULL)\n      OR (\"communication_push_devices\".\"status\" = 'REVOKED' AND \"communication_push_devices\".\"revoked_at\" IS NOT NULL)\n    ",
+    "valid": true
+  },
+  {
+    "table": "communication_push_devices",
+    "name": "communication_push_devices_reference_check",
+    "expression": "length(btrim(\"communication_push_devices\".\"opaque_device_reference\")) BETWEEN 1 AND 256",
+    "valid": true
+  },
+  {
+    "table": "communication_templates",
+    "name": "communication_templates_category_check",
+    "expression": "\"communication_templates\".\"category\" IN (\n      'ATTENDANCE','ACADEMIC','ASSIGNMENT','FINANCE','PAYMENT','ANNOUNCEMENT',\n      'ACCOUNT','SYSTEM','SUBSCRIPTION','PARTNER','SECURITY'\n    )",
+    "valid": true
+  },
+  {
+    "table": "communication_templates",
+    "name": "communication_templates_channel_check",
+    "expression": "\"communication_templates\".\"channel\" IN ('IN_APP','SMS','EMAIL','PUSH')",
+    "valid": true
+  },
+  {
+    "table": "communication_templates",
+    "name": "communication_templates_variables_check",
+    "expression": "\n      \"communication_templates\".\"allowed_variables\" <@ ARRAY[\n        'student_name','parent_name','school_name','class_name','amount','invoice_number',\n        'payment_date','attendance_date','term_name','assignment_title'\n      ]::text[]\n    ",
+    "valid": true
+  },
+  {
+    "table": "curriculum_progress",
+    "name": "curriculum_progress_status_check",
+    "expression": "\"curriculum_progress\".\"progress_status\" IN ('PLANNED','IN_PROGRESS','COMPLETED','DEFERRED')",
+    "valid": true
+  },
+  {
+    "table": "curriculum_topics",
+    "name": "curriculum_topics_source_check",
+    "expression": "\"curriculum_topics\".\"source_kind\" IN ('OFFICIAL','SCHOOL_SPECIFIC','EDUCORE_SEQUENCE','AI_ASSISTANCE')",
+    "valid": true
+  },
+  {
+    "table": "curriculum_topics",
+    "name": "curriculum_topics_origin_check",
+    "expression": "(\"curriculum_topics\".\"curriculum_version_id\" IS NOT NULL AND \"curriculum_topics\".\"mapping_id\" IS NULL AND \"curriculum_topics\".\"school_id\" IS NULL) OR (\"curriculum_topics\".\"curriculum_version_id\" IS NULL AND \"curriculum_topics\".\"mapping_id\" IS NOT NULL AND \"curriculum_topics\".\"school_id\" IS NOT NULL AND \"curriculum_topics\".\"source_kind\" = 'SCHOOL_SPECIFIC')",
+    "valid": true
+  },
+  {
+    "table": "curriculum_versions",
+    "name": "curriculum_versions_source_kind_check",
+    "expression": "\"curriculum_versions\".\"source_kind\" IN ('OFFICIAL','SCHOOL_SPECIFIC','EDUCORE_SEQUENCE','AI_ASSISTANCE')",
+    "valid": true
+  },
+  {
+    "table": "curriculum_versions",
+    "name": "curriculum_versions_status_check",
+    "expression": "\"curriculum_versions\".\"status\" IN ('DRAFT','PUBLISHED','ARCHIVED')",
+    "valid": true
+  },
+  {
+    "table": "employee_nfc_attendance_discrepancies",
+    "name": "employee_nfc_attendance_discrepancies_status_check",
+    "expression": "\"employee_nfc_attendance_discrepancies\".\"status\" IN ('OPEN', 'RESOLVED')",
+    "valid": true
+  },
+  {
+    "table": "employee_nfc_card_bindings",
+    "name": "employee_nfc_card_bindings_status_check",
+    "expression": "\"employee_nfc_card_bindings\".\"status\" IN ('ASSIGNED', 'ACTIVE', 'LOCKED', 'DEACTIVATED', 'REPLACED')",
+    "valid": true
+  },
+  {
+    "table": "exam_question_papers",
+    "name": "exam_question_papers_revision_check",
+    "expression": "\"exam_question_papers\".\"revision\">=0",
+    "valid": true
+  },
+  {
+    "table": "exam_question_papers",
+    "name": "exam_question_papers_status_check",
+    "expression": "\"exam_question_papers\".\"status\" IN ('DRAFT','SUBMITTED','RETURNED','RESUBMITTED','APPROVED')",
+    "valid": true
+  },
+  {
+    "table": "exam_question_papers",
+    "name": "exam_question_papers_marks_check",
+    "expression": "\"exam_question_papers\".\"total_marks\" IS NULL OR \"exam_question_papers\".\"total_marks\">0",
+    "valid": true
+  },
+  {
+    "table": "exam_question_papers",
+    "name": "exam_question_papers_approval_check",
+    "expression": "\"exam_question_papers\".\"status\"<>'APPROVED' OR \"exam_question_papers\".\"approved_at\" IS NOT NULL",
+    "valid": true
+  },
+  {
+    "table": "exam_question_reviews",
+    "name": "exam_question_reviews_decision_check",
+    "expression": "\"exam_question_reviews\".\"decision\" IN ('RETURN','APPROVE')",
+    "valid": true
+  },
+  {
+    "table": "exam_question_reviews",
+    "name": "exam_question_reviews_reason_check",
+    "expression": "\"exam_question_reviews\".\"decision\"<>'RETURN' OR length(btrim(\"exam_question_reviews\".\"comment\"))>0",
+    "valid": true
+  },
+  {
+    "table": "exam_question_versions",
+    "name": "exam_question_versions_revision_check",
+    "expression": "\"exam_question_versions\".\"revision\">0",
+    "valid": true
+  },
+  {
+    "table": "exam_question_versions",
+    "name": "exam_question_versions_object_check",
+    "expression": "\"exam_question_versions\".\"object_path\" LIKE '/objects/exam-questions/%'",
+    "valid": true
+  },
+  {
+    "table": "exam_question_versions",
+    "name": "exam_question_versions_sha_check",
+    "expression": "length(\"exam_question_versions\".\"sha256\")=64",
+    "valid": true
+  },
+  {
+    "table": "fee_adjustments",
+    "name": "fee_adjustments_kind_check",
+    "expression": "\"fee_adjustments\".\"kind\" IN ('DISCOUNT','SCHOLARSHIP','WAIVER')",
+    "valid": true
+  },
+  {
+    "table": "fee_adjustments",
+    "name": "fee_adjustments_status_check",
+    "expression": "\"fee_adjustments\".\"status\" IN ('PENDING','APPROVED','REJECTED')",
+    "valid": true
+  },
+  {
+    "table": "fee_adjustments",
+    "name": "fee_adjustments_amount_check",
+    "expression": "\"fee_adjustments\".\"amount_minor\" > 0",
+    "valid": true
+  },
+  {
+    "table": "fee_adjustments",
+    "name": "fee_adjustments_percentage_check",
+    "expression": "\"fee_adjustments\".\"requested_percentage\" IS NULL OR \"fee_adjustments\".\"requested_percentage\"::numeric > 0 AND \"fee_adjustments\".\"requested_percentage\"::numeric <= 100",
+    "valid": true
+  },
+  {
+    "table": "fee_adjustments",
+    "name": "fee_adjustments_approved_amount_check",
+    "expression": "\"fee_adjustments\".\"approved_amount_minor\" IS NULL OR \"fee_adjustments\".\"approved_amount_minor\" > 0",
+    "valid": true
+  },
+  {
+    "table": "fee_adjustments",
+    "name": "fee_adjustments_balance_check",
+    "expression": "\"fee_adjustments\".\"original_balance_minor\" IS NULL OR \"fee_adjustments\".\"original_balance_minor\" >= 0",
+    "valid": true
+  },
+  {
+    "table": "fee_adjustments",
+    "name": "fee_adjustments_resulting_balance_check",
+    "expression": "\"fee_adjustments\".\"resulting_balance_minor\" IS NULL OR \"fee_adjustments\".\"resulting_balance_minor\" >= 0",
+    "valid": true
+  },
+  {
+    "table": "fee_categories",
+    "name": "fee_categories_status_check",
+    "expression": "\"fee_categories\".\"status\" IN ('ACTIVE','INACTIVE')",
+    "valid": true
+  },
+  {
+    "table": "fee_invoice_lines",
+    "name": "fee_invoice_lines_amount_check",
+    "expression": "\"fee_invoice_lines\".\"amount_minor\" >= 0",
+    "valid": true
+  },
+  {
+    "table": "fee_invoice_notification_outbox",
+    "name": "fee_invoice_notification_outbox_event_check",
+    "expression": "\"fee_invoice_notification_outbox\".\"event_type\" = 'INVOICE_GENERATED'",
+    "valid": true
+  },
+  {
+    "table": "fee_invoice_notification_outbox",
+    "name": "fee_invoice_notification_outbox_attempts_check",
+    "expression": "\"fee_invoice_notification_outbox\".\"attempts\" >= 0",
+    "valid": true
+  },
+  {
+    "table": "fee_invoice_notifications",
+    "name": "fee_invoice_notifications_role_check",
+    "expression": "\"fee_invoice_notifications\".\"recipient_role\" IN ('PARENT','STUDENT','SCHOOL_ADMIN','ACCOUNTANT')",
+    "valid": true
+  },
+  {
+    "table": "fee_invoice_notifications",
+    "name": "fee_invoice_notifications_event_check",
+    "expression": "\"fee_invoice_notifications\".\"event_type\" = 'INVOICE_GENERATED'",
+    "valid": true
+  },
+  {
+    "table": "fee_invoice_notifications",
+    "name": "fee_invoice_notifications_channel_check",
+    "expression": "\"fee_invoice_notifications\".\"channel\" = 'IN_APP'",
+    "valid": true
+  },
+  {
+    "table": "fee_invoice_notifications",
+    "name": "fee_invoice_notifications_read_check",
+    "expression": "(\"fee_invoice_notifications\".\"is_read\" = false AND \"fee_invoice_notifications\".\"read_at\" IS NULL) OR (\"fee_invoice_notifications\".\"is_read\" = true AND \"fee_invoice_notifications\".\"read_at\" IS NOT NULL)",
+    "valid": true
+  },
+  {
+    "table": "fee_invoices",
+    "name": "fee_invoices_person_check",
+    "expression": "(\"fee_invoices\".\"student_id\" IS NULL)<>(\"fee_invoices\".\"employee_id\" IS NULL)",
+    "valid": true
+  },
+  {
+    "table": "fee_invoices",
+    "name": "fee_invoices_amounts_check",
+    "expression": "\"fee_invoices\".\"subtotal_minor\" >= 0 AND \"fee_invoices\".\"discount_minor\" >= 0 AND \"fee_invoices\".\"waiver_minor\" >= 0\n      AND \"fee_invoices\".\"discount_minor\" + \"fee_invoices\".\"waiver_minor\" <= \"fee_invoices\".\"subtotal_minor\"\n      AND \"fee_invoices\".\"total_minor\" = \"fee_invoices\".\"subtotal_minor\" - \"fee_invoices\".\"discount_minor\" - \"fee_invoices\".\"waiver_minor\"\n      AND \"fee_invoices\".\"paid_minor\" >= 0 AND \"fee_invoices\".\"paid_minor\" <= \"fee_invoices\".\"total_minor\"\n      AND \"fee_invoices\".\"outstanding_minor\" = \"fee_invoices\".\"total_minor\" - \"fee_invoices\".\"paid_minor\"",
+    "valid": true
+  },
+  {
+    "table": "fee_invoices",
+    "name": "fee_invoices_status_check",
+    "expression": "\"fee_invoices\".\"status\" IN ('UNPAID','PARTIALLY_PAID','PAID','OVERDUE','WAIVED','CANCELLED')",
+    "valid": true
+  },
+  {
+    "table": "fee_payment_line_allocations",
+    "name": "fee_payment_line_allocations_amount_minor_check",
+    "expression": "\"fee_payment_line_allocations\".\"amount_minor\">0",
+    "valid": true
+  },
+  {
+    "table": "fee_payment_notification_outbox",
+    "name": "fee_payment_notification_outbox_event_check",
+    "expression": "\n    (\"fee_payment_notification_outbox\".\"event_type\" IN ('PAYMENT_VERIFIED','PAYMENT_REJECTED','PROVIDER_CHECKOUT_INITIATED',\n      'PROVIDER_CHECKOUT_PROCESSING','PROVIDER_PAYMENT_FAILED','MANUAL_TRANSFER_SUBMITTED',\n      'MANUAL_TRANSFER_APPROVED','MANUAL_TRANSFER_REJECTED') AND \"fee_payment_notification_outbox\".\"event_reference_id\"=0)\n    OR (\"fee_payment_notification_outbox\".\"event_type\" IN ('REFUND_APPROVED','REVERSAL_APPROVED') AND \"fee_payment_notification_outbox\".\"event_reference_id\">0)\n  ",
+    "valid": true
+  },
+  {
+    "table": "fee_payment_notifications",
+    "name": "fee_payment_notifications_role_check",
+    "expression": "\"fee_payment_notifications\".\"recipient_role\" IN ('PARENT','STUDENT','SCHOOL_ADMIN','ACCOUNTANT')",
+    "valid": true
+  },
+  {
+    "table": "fee_payment_notifications",
+    "name": "fee_payment_notifications_event_check",
+    "expression": "\"fee_payment_notifications\".\"event_type\" IN (\n    'PAYMENT_VERIFIED','PAYMENT_REJECTED','PROVIDER_CHECKOUT_INITIATED','PROVIDER_CHECKOUT_PROCESSING',\n    'PROVIDER_PAYMENT_FAILED','MANUAL_TRANSFER_SUBMITTED','MANUAL_TRANSFER_APPROVED',\n    'MANUAL_TRANSFER_REJECTED','REFUND_APPROVED','REVERSAL_APPROVED')",
+    "valid": true
+  },
+  {
+    "table": "fee_payment_notifications",
+    "name": "fee_payment_notifications_event_reference_check",
+    "expression": "\n    (\"fee_payment_notifications\".\"event_type\" IN ('PAYMENT_VERIFIED','PAYMENT_REJECTED','PROVIDER_CHECKOUT_INITIATED',\n      'PROVIDER_CHECKOUT_PROCESSING','PROVIDER_PAYMENT_FAILED','MANUAL_TRANSFER_SUBMITTED',\n      'MANUAL_TRANSFER_APPROVED','MANUAL_TRANSFER_REJECTED') AND \"fee_payment_notifications\".\"event_reference_id\"=0)\n    OR (\"fee_payment_notifications\".\"event_type\" IN ('REFUND_APPROVED','REVERSAL_APPROVED') AND \"fee_payment_notifications\".\"event_reference_id\">0)\n  ",
+    "valid": true
+  },
+  {
+    "table": "fee_payment_notifications",
+    "name": "fee_payment_notifications_channel_check",
+    "expression": "\"fee_payment_notifications\".\"channel\" = 'IN_APP'",
+    "valid": true
+  },
+  {
+    "table": "fee_payment_notifications",
+    "name": "fee_payment_notifications_read_check",
+    "expression": "(\"fee_payment_notifications\".\"is_read\" = false AND \"fee_payment_notifications\".\"read_at\" IS NULL) OR (\"fee_payment_notifications\".\"is_read\" = true AND \"fee_payment_notifications\".\"read_at\" IS NOT NULL)",
+    "valid": true
+  },
+  {
+    "table": "fee_payments",
+    "name": "fee_payments_person_check",
+    "expression": "(\"fee_payments\".\"student_id\" IS NULL)<>(\"fee_payments\".\"employee_id\" IS NULL)",
+    "valid": true
+  },
+  {
+    "table": "fee_payments",
+    "name": "fee_payments_amount_currency_check",
+    "expression": "\"fee_payments\".\"amount_minor\" > 0 AND \"fee_payments\".\"currency\" ~ '^[A-Z]{3}$'",
+    "valid": true
+  },
+  {
+    "table": "fee_payments",
+    "name": "fee_payments_method_with_cash_check",
+    "expression": "\"fee_payments\".\"method\" IN ('BANK_TRANSFER','REMITA','FLUTTERWAVE','PAYSTACK','CASH')",
+    "valid": true
+  },
+  {
+    "table": "fee_payments",
+    "name": "fee_payments_cash_evidence_check",
+    "expression": "\"fee_payments\".\"method\"<>'CASH' OR\n    (\"fee_payments\".\"verified_by\" IS NOT NULL AND \"fee_payments\".\"verified_at\" IS NOT NULL AND length(btrim(\"fee_payments\".\"verification_evidence_ref\"))>=3\n     AND length(btrim(\"fee_payments\".\"reviewer_notes\"))>=3 AND \"fee_payments\".\"verification_metadata\" IS NOT NULL)",
+    "valid": true
+  },
+  {
+    "table": "fee_payments",
+    "name": "fee_payments_status_check",
+    "expression": "\"fee_payments\".\"status\" IN ('PENDING','PROCESSING','VERIFIED','FAILED','REJECTED','CANCELLED','REVERSED','REFUNDED')",
+    "valid": true
+  },
+  {
+    "table": "fee_payments",
+    "name": "fee_payments_verified_evidence_check",
+    "expression": "(\"fee_payments\".\"method\" <> 'BANK_TRANSFER' OR \"fee_payments\".\"status\" <> 'VERIFIED' OR\n      (\"fee_payments\".\"verified_by\" IS NOT NULL AND \"fee_payments\".\"verified_at\" IS NOT NULL\n       AND NULLIF(BTRIM(\"fee_payments\".\"verification_evidence_ref\"), '') IS NOT NULL\n       AND NULLIF(BTRIM(\"fee_payments\".\"reviewer_notes\"), '') IS NOT NULL\n       AND \"fee_payments\".\"verification_metadata\" IS NOT NULL))",
+    "valid": true
+  },
+  {
+    "table": "fee_payments",
+    "name": "fee_payments_bank_transfer_details_check",
+    "expression": "\"fee_payments\".\"method\" <> 'BANK_TRANSFER' OR\n      (COALESCE(LENGTH(BTRIM(\"fee_payments\".\"transfer_bank\")), 0) >= 2\n       AND COALESCE(LENGTH(BTRIM(\"fee_payments\".\"transfer_reference\")), 0) >= 2\n       AND \"fee_payments\".\"transfer_date\" IS NOT NULL)",
+    "valid": true
+  },
+  {
+    "table": "fee_payments",
+    "name": "fee_payments_verification_evidence_length_check",
+    "expression": "\"fee_payments\".\"method\" <> 'BANK_TRANSFER' OR \"fee_payments\".\"status\" <> 'VERIFIED' OR\n      (LENGTH(BTRIM(\"fee_payments\".\"verification_evidence_ref\")) >= 3\n       AND LENGTH(BTRIM(\"fee_payments\".\"reviewer_notes\")) >= 3)",
+    "valid": true
+  },
+  {
+    "table": "fee_payments",
+    "name": "fee_payments_rejection_reason_check",
+    "expression": "\"fee_payments\".\"status\" <> 'REJECTED' OR NULLIF(BTRIM(\"fee_payments\".\"rejection_reason\"), '') IS NOT NULL",
+    "valid": true
+  },
+  {
+    "table": "fee_provider_checkout_sessions",
+    "name": "fee_provider_checkout_sessions_provider_check",
+    "expression": "\"fee_provider_checkout_sessions\".\"provider\" IN ('PAYSTACK','FLUTTERWAVE')",
+    "valid": true
+  },
+  {
+    "table": "fee_provider_checkout_sessions",
+    "name": "fee_provider_checkout_sessions_state_check",
+    "expression": "\"fee_provider_checkout_sessions\".\"state\" IN ('INITIALIZING','READY','FAILED','SETTLED','RELEASED')",
+    "valid": true
+  },
+  {
+    "table": "fee_provider_checkout_sessions",
+    "name": "fee_provider_checkout_sessions_attempts_check",
+    "expression": "\"fee_provider_checkout_sessions\".\"attempt_count\" > 0",
+    "valid": true
+  },
+  {
+    "table": "fee_provider_checkout_sessions",
+    "name": "fee_provider_checkout_sessions_claim_pair_check",
+    "expression": "(\"fee_provider_checkout_sessions\".\"claim_token\" IS NULL) = (\"fee_provider_checkout_sessions\".\"claim_expires_at\" IS NULL)",
+    "valid": true
+  },
+  {
+    "table": "fee_provider_checkout_sessions",
+    "name": "fee_provider_checkout_sessions_ready_url_check",
+    "expression": "\"fee_provider_checkout_sessions\".\"state\" <> 'READY' OR \"fee_provider_checkout_sessions\".\"checkout_url\" IS NOT NULL",
+    "valid": true
+  },
+  {
+    "table": "fee_provider_webhook_events",
+    "name": "fee_provider_webhook_events_provider_check",
+    "expression": "\"fee_provider_webhook_events\".\"provider\" IN ('PAYSTACK','FLUTTERWAVE')",
+    "valid": true
+  },
+  {
+    "table": "fee_provider_webhook_events",
+    "name": "fee_provider_webhook_events_status_check",
+    "expression": "\"fee_provider_webhook_events\".\"status\" IN ('RECEIVED','VERIFIED','PENDING','FAILED','RECONCILIATION_REQUIRED')",
+    "valid": true
+  },
+  {
+    "table": "fee_provider_webhook_events",
+    "name": "fee_provider_webhook_events_signature_link_check",
+    "expression": "\"fee_provider_webhook_events\".\"payment_id\" IS NULL OR (\n      \"fee_provider_webhook_events\".\"school_id\" IS NOT NULL AND (\"fee_provider_webhook_events\".\"signature_verified\" OR \"fee_provider_webhook_events\".\"verified_transaction_id\" IS NOT NULL)\n    )",
+    "valid": true
+  },
+  {
+    "table": "fee_refunds",
+    "name": "fee_refunds_amount_check",
+    "expression": "\"fee_refunds\".\"amount_minor\" > 0 AND \"fee_refunds\".\"currency\" ~ '^[A-Z]{3}$'",
+    "valid": true
+  },
+  {
+    "table": "fee_refunds",
+    "name": "fee_refunds_status_check",
+    "expression": "\"fee_refunds\".\"status\" IN ('PENDING','APPROVED','REJECTED')",
+    "valid": true
+  },
+  {
+    "table": "fee_refunds",
+    "name": "fee_refunds_transaction_type_check",
+    "expression": "\"fee_refunds\".\"transaction_type\" IN ('REFUND','REVERSAL')",
+    "valid": true
+  },
+  {
+    "table": "fee_refunds",
+    "name": "fee_refunds_approval_evidence_check",
+    "expression": "\"fee_refunds\".\"status\" <> 'APPROVED' OR (\n    \"fee_refunds\".\"approved_by\" IS NOT NULL AND \"fee_refunds\".\"approved_at\" IS NOT NULL\n    AND NULLIF(BTRIM(\"fee_refunds\".\"evidence_reference\"), '') IS NOT NULL\n    AND NULLIF(BTRIM(\"fee_refunds\".\"reviewer_notes\"), '') IS NOT NULL\n  )",
+    "valid": true
+  },
+  {
+    "table": "fee_school_settings",
+    "name": "fee_school_settings_bank_account_fields_check",
+    "expression": "\n    (\"fee_school_settings\".\"bank_name\" IS NULL OR COALESCE(LENGTH(BTRIM(\"fee_school_settings\".\"bank_name\")), 0) BETWEEN 2 AND 100)\n    AND (\"fee_school_settings\".\"bank_account_name\" IS NULL OR COALESCE(LENGTH(BTRIM(\"fee_school_settings\".\"bank_account_name\")), 0) BETWEEN 2 AND 150)\n    AND (\"fee_school_settings\".\"bank_account_number\" IS NULL OR \"fee_school_settings\".\"bank_account_number\" ~ '^[0-9]{10}$')\n    AND (NOT \"fee_school_settings\".\"bank_transfer_enabled\" OR (\n      \"fee_school_settings\".\"bank_name\" IS NOT NULL AND \"fee_school_settings\".\"bank_account_name\" IS NOT NULL AND \"fee_school_settings\".\"bank_account_number\" IS NOT NULL\n    ))\n  ",
+    "valid": true
+  },
+  {
+    "table": "fee_structure_lines",
+    "name": "fee_structure_lines_amount_check",
+    "expression": "\"fee_structure_lines\".\"amount_minor\" > 0",
+    "valid": true
+  },
+  {
+    "table": "fee_structures",
+    "name": "fee_structures_status_check",
+    "expression": "\"fee_structures\".\"status\" IN ('DRAFT','PUBLISHED','INACTIVE')",
+    "valid": true
+  },
+  {
+    "table": "lesson_note_documents",
+    "name": "lesson_document_status_check",
+    "expression": "\"lesson_note_documents\".\"status\" IN ('PENDING','READY')",
+    "valid": true
+  },
+  {
+    "table": "lesson_note_documents",
+    "name": "lesson_document_bytes_check",
+    "expression": "\"lesson_note_documents\".\"byte_size\" BETWEEN 1 AND 10485760",
+    "valid": true
+  },
+  {
+    "table": "lesson_note_reviews",
+    "name": "lesson_note_reviews_decision_check",
+    "expression": "\"lesson_note_reviews\".\"decision\" IN ('RETURN','APPROVE')",
+    "valid": true
+  },
+  {
+    "table": "lesson_note_reviews",
+    "name": "lesson_note_reviews_return_comment_check",
+    "expression": "\"lesson_note_reviews\".\"decision\" <> 'RETURN' OR length(btrim(COALESCE(\"lesson_note_reviews\".\"comment\",''))) > 0",
+    "valid": true
+  },
+  {
+    "table": "lesson_notes",
+    "name": "lesson_notes_week_check",
+    "expression": "\"lesson_notes\".\"week\" BETWEEN 1 AND 60",
+    "valid": true
+  },
+  {
+    "table": "lesson_notes",
+    "name": "lesson_notes_revision_check",
+    "expression": "\"lesson_notes\".\"revision\" >= 0",
+    "valid": true
+  },
+  {
+    "table": "lesson_notes",
+    "name": "lesson_notes_status_check",
+    "expression": "\"lesson_notes\".\"status\" IN ('DRAFT','SUBMITTED','RETURNED','RESUBMITTED','APPROVED','ARCHIVED')",
+    "valid": true
+  },
+  {
+    "table": "library_authors",
+    "name": "library_authors_name_check",
+    "expression": "length(btrim(\"library_authors\".\"name\")) BETWEEN 1 AND 200",
+    "valid": true
+  },
+  {
+    "table": "library_book_copies",
+    "name": "library_book_copies_code_check",
+    "expression": "length(btrim(\"library_book_copies\".\"copy_code\")) BETWEEN 1 AND 100",
+    "valid": true
+  },
+  {
+    "table": "library_book_copies",
+    "name": "library_book_copies_condition_check",
+    "expression": "\"library_book_copies\".\"condition\" IN ('NEW','GOOD','FAIR','POOR')",
+    "valid": true
+  },
+  {
+    "table": "library_book_copies",
+    "name": "library_book_copies_status_check",
+    "expression": "\n      \"library_book_copies\".\"status\" IN ('AVAILABLE','BORROWED','RESERVED','LOST','DAMAGED','MAINTENANCE','RETIRED')\n    ",
+    "valid": true
+  },
+  {
+    "table": "library_books",
+    "name": "library_books_title_check",
+    "expression": "length(btrim(\"library_books\".\"title\")) BETWEEN 1 AND 300",
+    "valid": true
+  },
+  {
+    "table": "library_books",
+    "name": "library_books_publication_year_check",
+    "expression": "\n      \"library_books\".\"publication_year\" IS NULL OR \"library_books\".\"publication_year\" BETWEEN 1000 AND 2200\n    ",
+    "valid": true
+  },
+  {
+    "table": "library_books",
+    "name": "library_books_status_check",
+    "expression": "\"library_books\".\"status\" IN ('ACTIVE','ARCHIVED')",
+    "valid": true
+  },
+  {
+    "table": "library_categories",
+    "name": "library_categories_name_check",
+    "expression": "length(btrim(\"library_categories\".\"name\")) BETWEEN 1 AND 100",
+    "valid": true
+  },
+  {
+    "table": "library_copy_status_history",
+    "name": "library_copy_status_history_new_status_check",
+    "expression": "\n      \"library_copy_status_history\".\"new_status\" IN ('AVAILABLE','BORROWED','RESERVED','LOST','DAMAGED','MAINTENANCE','RETIRED')\n    ",
+    "valid": true
+  },
+  {
+    "table": "library_copy_status_history",
+    "name": "library_copy_status_history_reason_check",
+    "expression": "length(btrim(\"library_copy_status_history\".\"reason\")) BETWEEN 1 AND 500",
+    "valid": true
+  },
+  {
+    "table": "library_loans",
+    "name": "library_loans_borrower_type_check",
+    "expression": "\"library_loans\".\"borrower_type\" IN ('STUDENT','TEACHER','STAFF')",
+    "valid": true
+  },
+  {
+    "table": "library_loans",
+    "name": "library_loans_status_check",
+    "expression": "\"library_loans\".\"status\" IN ('OPEN','RETURNED','LOST')",
+    "valid": true
+  },
+  {
+    "table": "library_loans",
+    "name": "library_loans_renewal_count_check",
+    "expression": "\"library_loans\".\"renewal_count\" >= 0",
+    "valid": true
+  },
+  {
+    "table": "library_loans",
+    "name": "library_loans_days_overdue_check",
+    "expression": "\n      \"library_loans\".\"days_overdue_at_return\" IS NULL OR \"library_loans\".\"days_overdue_at_return\" >= 0\n    ",
+    "valid": true
+  },
+  {
+    "table": "library_loans",
+    "name": "library_loans_borrower_student_check",
+    "expression": "\n      (\"library_loans\".\"borrower_type\" = 'STUDENT' AND \"library_loans\".\"borrower_student_id\" IS NOT NULL) OR\n      (\"library_loans\".\"borrower_type\" IN ('TEACHER','STAFF') AND \"library_loans\".\"borrower_student_id\" IS NULL)\n    ",
+    "valid": true
+  },
+  {
+    "table": "library_loans",
+    "name": "library_loans_returned_state_check",
+    "expression": "\n      (\"library_loans\".\"status\"='RETURNED' AND \"library_loans\".\"returned_at\" IS NOT NULL AND \"library_loans\".\"returned_by_user_id\" IS NOT NULL\n        AND \"library_loans\".\"returned_overdue\" IS NOT NULL AND \"library_loans\".\"days_overdue_at_return\" IS NOT NULL)\n      OR (\"library_loans\".\"status\"<>'RETURNED' AND \"library_loans\".\"returned_at\" IS NULL AND \"library_loans\".\"returned_by_user_id\" IS NULL\n        AND \"library_loans\".\"returned_overdue\" IS NULL AND \"library_loans\".\"days_overdue_at_return\" IS NULL)\n    ",
+    "valid": true
+  },
+  {
+    "table": "library_publishers",
+    "name": "library_publishers_name_check",
+    "expression": "length(btrim(\"library_publishers\".\"name\")) BETWEEN 1 AND 200",
+    "valid": true
+  },
+  {
+    "table": "library_settings",
+    "name": "library_settings_student_limit_check",
+    "expression": "\"library_settings\".\"max_books_per_student\" BETWEEN 1 AND 50",
+    "valid": true
+  },
+  {
+    "table": "library_settings",
+    "name": "library_settings_teacher_limit_check",
+    "expression": "\"library_settings\".\"max_books_per_teacher\" BETWEEN 1 AND 50",
+    "valid": true
+  },
+  {
+    "table": "library_settings",
+    "name": "library_settings_staff_limit_check",
+    "expression": "\"library_settings\".\"max_books_per_staff\" BETWEEN 1 AND 50",
+    "valid": true
+  },
+  {
+    "table": "library_settings",
+    "name": "library_settings_student_days_check",
+    "expression": "\"library_settings\".\"student_loan_days\" BETWEEN 1 AND 180",
+    "valid": true
+  },
+  {
+    "table": "library_settings",
+    "name": "library_settings_teacher_days_check",
+    "expression": "\"library_settings\".\"teacher_loan_days\" BETWEEN 1 AND 180",
+    "valid": true
+  },
+  {
+    "table": "library_settings",
+    "name": "library_settings_staff_days_check",
+    "expression": "\"library_settings\".\"staff_loan_days\" BETWEEN 1 AND 180",
+    "valid": true
+  },
+  {
+    "table": "library_settings",
+    "name": "library_settings_renewals_check",
+    "expression": "\"library_settings\".\"max_renewals\" BETWEEN 0 AND 20",
+    "valid": true
+  },
+  {
+    "table": "library_settings",
+    "name": "library_settings_fines_disabled_check",
+    "expression": "\"library_settings\".\"fines_enabled\" = false",
+    "valid": true
+  },
+  {
+    "table": "maintenance_request_status_history",
+    "name": "maintenance_request_status_history_status_check",
+    "expression": "(\"maintenance_request_status_history\".\"from_status\" IS NULL OR \"maintenance_request_status_history\".\"from_status\" IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'CANCELLED'))\n        AND \"maintenance_request_status_history\".\"to_status\" IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'CANCELLED')",
+    "valid": true
+  },
+  {
+    "table": "maintenance_requests",
+    "name": "maintenance_requests_category_type_check",
+    "expression": "\"maintenance_requests\".\"category_type\" = 'MAINTENANCE'",
+    "valid": true
+  },
+  {
+    "table": "maintenance_requests",
+    "name": "maintenance_requests_priority_check",
+    "expression": "\"maintenance_requests\".\"priority\" IN ('LOW', 'MEDIUM', 'HIGH', 'URGENT')",
+    "valid": true
+  },
+  {
+    "table": "maintenance_requests",
+    "name": "maintenance_requests_status_check",
+    "expression": "\"maintenance_requests\".\"status\" IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'CANCELLED')",
+    "valid": true
+  },
+  {
+    "table": "operational_task_status_history",
+    "name": "operational_task_status_history_status_check",
+    "expression": "(\"operational_task_status_history\".\"from_status\" IS NULL OR \"operational_task_status_history\".\"from_status\" IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'CANCELLED'))\n        AND \"operational_task_status_history\".\"to_status\" IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'CANCELLED')",
+    "valid": true
+  },
+  {
+    "table": "operational_tasks",
+    "name": "operational_tasks_category_type_check",
+    "expression": "\"operational_tasks\".\"category_type\" = 'TASK'",
+    "valid": true
+  },
+  {
+    "table": "operational_tasks",
+    "name": "operational_tasks_priority_check",
+    "expression": "\"operational_tasks\".\"priority\" IN ('LOW', 'MEDIUM', 'HIGH', 'URGENT')",
+    "valid": true
+  },
+  {
+    "table": "operational_tasks",
+    "name": "operational_tasks_status_check",
+    "expression": "\"operational_tasks\".\"status\" IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'CANCELLED')",
+    "valid": true
+  },
+  {
+    "table": "partner_payouts",
+    "name": "partner_payouts_amount_nonnegative",
+    "expression": "\"partner_payouts\".\"amount\" >= 0",
+    "valid": true
+  },
+  {
+    "table": "partner_payouts",
+    "name": "partner_payouts_status_check",
+    "expression": "\"partner_payouts\".\"status\" IN ('PENDING','PROCESSING','PAID','FAILED','REVERSED')",
+    "valid": true
+  },
+  {
+    "table": "payroll_employee_profiles",
+    "name": "payroll_employee_profiles_tenant_check",
+    "expression": "\n    (\"payroll_employee_profiles\".\"scope\"='SCHOOL' AND \"payroll_employee_profiles\".\"school_id\" IS NOT NULL AND \"payroll_employee_profiles\".\"employee_id\" IS NOT NULL AND \"payroll_employee_profiles\".\"company_employee_id\" IS NULL)\n    OR (\"payroll_employee_profiles\".\"scope\"='YEMAIT_COMPANY' AND \"payroll_employee_profiles\".\"school_id\" IS NULL AND \"payroll_employee_profiles\".\"employee_id\" IS NULL\n      AND \"payroll_employee_profiles\".\"company_employee_id\" IS NOT NULL)",
+    "valid": true
+  },
+  {
+    "table": "payroll_employee_profiles",
+    "name": "payroll_employee_profiles_salary_check",
+    "expression": "\n    \"payroll_employee_profiles\".\"monthly_salary_minor\" >= 0 AND \"payroll_employee_profiles\".\"allowance_minor\" >= 0 AND \"payroll_employee_profiles\".\"deduction_minor\" >= 0\n    AND \"payroll_employee_profiles\".\"deduction_minor\" <= \"payroll_employee_profiles\".\"monthly_salary_minor\" + \"payroll_employee_profiles\".\"allowance_minor\"",
+    "valid": true
+  },
+  {
+    "table": "payroll_employee_profiles",
+    "name": "payroll_employee_profiles_currency_check",
+    "expression": "\"payroll_employee_profiles\".\"currency\"='NGN'",
+    "valid": true
+  },
+  {
+    "table": "payroll_employee_profiles",
+    "name": "payroll_employee_profiles_account_last4_check",
+    "expression": "\"payroll_employee_profiles\".\"account_last4\" ~ '^[0-9]{4}$'",
+    "valid": true
+  },
+  {
+    "table": "payroll_employee_profiles",
+    "name": "payroll_employee_profiles_encrypted_fields_check",
+    "expression": "\n    NULLIF(BTRIM(\"payroll_employee_profiles\".\"bank_name_encrypted\"),'') IS NOT NULL\n    AND NULLIF(BTRIM(\"payroll_employee_profiles\".\"bank_code_encrypted\"),'') IS NOT NULL\n    AND NULLIF(BTRIM(\"payroll_employee_profiles\".\"account_name_encrypted\"),'') IS NOT NULL\n    AND NULLIF(BTRIM(\"payroll_employee_profiles\".\"account_number_encrypted\"),'') IS NOT NULL\n    AND NULLIF(BTRIM(\"payroll_employee_profiles\".\"encryption_key_version\"),'') IS NOT NULL",
+    "valid": true
+  },
+  {
+    "table": "payroll_items",
+    "name": "payroll_items_tenant_check",
+    "expression": "\n    (\"payroll_items\".\"scope\"='SCHOOL' AND \"payroll_items\".\"school_id\" IS NOT NULL)\n    OR (\"payroll_items\".\"scope\"='YEMAIT_COMPANY' AND \"payroll_items\".\"school_id\" IS NULL)",
+    "valid": true
+  },
+  {
+    "table": "payroll_items",
+    "name": "payroll_items_amounts_check",
+    "expression": "\n    \"payroll_items\".\"base_salary_minor\" >= 0 AND \"payroll_items\".\"allowance_minor\" >= 0 AND \"payroll_items\".\"bonus_minor\" >= 0\n    AND \"payroll_items\".\"deduction_minor\" >= 0\n    AND \"payroll_items\".\"net_salary_minor\" = \"payroll_items\".\"base_salary_minor\"+\"payroll_items\".\"allowance_minor\"+\"payroll_items\".\"bonus_minor\"\n      +\"payroll_items\".\"adjustment_minor\"-\"payroll_items\".\"deduction_minor\" AND \"payroll_items\".\"net_salary_minor\" >= 0",
+    "valid": true
+  },
+  {
+    "table": "payroll_items",
+    "name": "payroll_items_currency_check",
+    "expression": "\"payroll_items\".\"currency\"='NGN'",
+    "valid": true
+  },
+  {
+    "table": "payroll_items",
+    "name": "payroll_items_bank_snapshot_check",
+    "expression": "\n    NULLIF(BTRIM(\"payroll_items\".\"bank_name_encrypted\"),'') IS NOT NULL\n    AND NULLIF(BTRIM(\"payroll_items\".\"bank_code_encrypted\"),'') IS NOT NULL\n    AND NULLIF(BTRIM(\"payroll_items\".\"account_name_encrypted\"),'') IS NOT NULL\n    AND NULLIF(BTRIM(\"payroll_items\".\"account_number_encrypted\"),'') IS NOT NULL\n    AND \"payroll_items\".\"account_last4\" ~ '^[0-9]{4}$'\n    AND NULLIF(BTRIM(\"payroll_items\".\"encryption_key_version\"),'') IS NOT NULL",
+    "valid": true
+  },
+  {
+    "table": "payroll_items",
+    "name": "payroll_items_role_check",
+    "expression": "\"payroll_items\".\"role_snapshot\" IN ('TEACHER','STAFF','COMPANY_EMPLOYEE')",
+    "valid": true
+  },
+  {
+    "table": "payroll_items",
+    "name": "payroll_items_adjustment_audit_check",
+    "expression": "\n    (\"payroll_items\".\"adjustment_minor\"=0 AND \"payroll_items\".\"adjustment_reason\" IS NULL)\n    OR (\"payroll_items\".\"adjustment_minor\"<>0 AND NULLIF(BTRIM(\"payroll_items\".\"adjustment_reason\"),'') IS NOT NULL)",
+    "valid": true
+  },
+  {
+    "table": "payroll_payslips",
+    "name": "payroll_payslips_scope_check",
+    "expression": "\n    (\"payroll_payslips\".\"scope\"='SCHOOL' AND \"payroll_payslips\".\"school_id\" IS NOT NULL)\n    OR (\"payroll_payslips\".\"scope\"='YEMAIT_COMPANY' AND \"payroll_payslips\".\"school_id\" IS NULL)",
+    "valid": true
+  },
+  {
+    "table": "payroll_payslips",
+    "name": "payroll_payslips_currency_check",
+    "expression": "\"payroll_payslips\".\"currency\"='NGN'",
+    "valid": true
+  },
+  {
+    "table": "payroll_payslips",
+    "name": "payroll_payslips_amounts_check",
+    "expression": "\n    \"payroll_payslips\".\"base_salary_minor\" >= 0 AND \"payroll_payslips\".\"allowance_minor\" >= 0 AND \"payroll_payslips\".\"bonus_minor\" >= 0\n    AND \"payroll_payslips\".\"deduction_minor\" >= 0 AND \"payroll_payslips\".\"net_salary_minor\" > 0",
+    "valid": true
+  },
+  {
+    "table": "payroll_periods",
+    "name": "payroll_periods_tenant_check",
+    "expression": "\n    (\"payroll_periods\".\"scope\"='SCHOOL' AND \"payroll_periods\".\"school_id\" IS NOT NULL)\n    OR (\"payroll_periods\".\"scope\"='YEMAIT_COMPANY' AND \"payroll_periods\".\"school_id\" IS NULL)",
+    "valid": true
+  },
+  {
+    "table": "payroll_periods",
+    "name": "payroll_periods_month_check",
+    "expression": "\"payroll_periods\".\"period_month\" ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'",
+    "valid": true
+  },
+  {
+    "table": "payroll_periods",
+    "name": "payroll_periods_status_check",
+    "expression": "\"payroll_periods\".\"status\" IN (\n    'DRAFT','PENDING_APPROVAL','APPROVED','PROCESSING','COMPLETED','PARTIALLY_COMPLETED','FAILED','CANCELLED')",
+    "valid": true
+  },
+  {
+    "table": "payroll_periods",
+    "name": "payroll_periods_totals_check",
+    "expression": "\n    \"payroll_periods\".\"employee_count\" > 0 AND \"payroll_periods\".\"gross_salary_minor\" >= 0 AND \"payroll_periods\".\"allowance_minor\" >= 0\n    AND \"payroll_periods\".\"bonus_minor\" >= 0 AND \"payroll_periods\".\"deduction_minor\" >= 0 AND \"payroll_periods\".\"net_salary_minor\" >= 0\n    AND \"payroll_periods\".\"gross_salary_minor\" + \"payroll_periods\".\"allowance_minor\" + \"payroll_periods\".\"bonus_minor\" + \"payroll_periods\".\"adjustment_minor\" >= \"payroll_periods\".\"deduction_minor\"\n    AND \"payroll_periods\".\"net_salary_minor\" = \"payroll_periods\".\"gross_salary_minor\" + \"payroll_periods\".\"allowance_minor\" + \"payroll_periods\".\"bonus_minor\"\n      + \"payroll_periods\".\"adjustment_minor\" - \"payroll_periods\".\"deduction_minor\"",
+    "valid": true
+  },
+  {
+    "table": "payroll_periods",
+    "name": "payroll_periods_submit_state_check",
+    "expression": "\n    (\"payroll_periods\".\"status\" IN ('DRAFT','FAILED','CANCELLED') AND \"payroll_periods\".\"submitted_at\" IS NULL)\n    OR (\"payroll_periods\".\"status\" NOT IN ('DRAFT','FAILED','CANCELLED') AND \"payroll_periods\".\"submitted_at\" IS NOT NULL AND \"payroll_periods\".\"submitted_by\" IS NOT NULL)",
+    "valid": true
+  },
+  {
+    "table": "payroll_periods",
+    "name": "payroll_periods_approval_state_check",
+    "expression": "\n    (\"payroll_periods\".\"status\" NOT IN ('APPROVED','PROCESSING','COMPLETED','PARTIALLY_COMPLETED')\n       OR (\"payroll_periods\".\"approved_by\" IS NOT NULL AND \"payroll_periods\".\"approved_at\" IS NOT NULL))",
+    "valid": true
+  },
+  {
+    "table": "payroll_transfers",
+    "name": "payroll_transfers_tenant_check",
+    "expression": "\n    (\"payroll_transfers\".\"scope\"='SCHOOL' AND \"payroll_transfers\".\"school_id\" IS NOT NULL)\n    OR (\"payroll_transfers\".\"scope\"='YEMAIT_COMPANY' AND \"payroll_transfers\".\"school_id\" IS NULL)",
+    "valid": true
+  },
+  {
+    "table": "payroll_transfers",
+    "name": "payroll_transfers_provider_check",
+    "expression": "\n    (\"payroll_transfers\".\"provider\"='FLUTTERWAVE' AND \"payroll_transfers\".\"provider_mode\" IN ('TEST','LIVE'))\n    OR (\"payroll_transfers\".\"provider\"='MOCK' AND \"payroll_transfers\".\"provider_mode\"='MOCK')",
+    "valid": true
+  },
+  {
+    "table": "payroll_transfers",
+    "name": "payroll_transfers_status_check",
+    "expression": "\"payroll_transfers\".\"status\" IN (\n    'CLAIMED','PROCESSING','PENDING','MOCK_PENDING','PAID','FAILED','UNCERTAIN','RECONCILIATION_REQUIRED')",
+    "valid": true
+  },
+  {
+    "table": "payroll_transfers",
+    "name": "payroll_transfers_amount_check",
+    "expression": "\n    \"payroll_transfers\".\"amount_minor\" > 0 AND \"payroll_transfers\".\"provider_fee_minor\" >= 0 AND \"payroll_transfers\".\"settlement_amount_minor\" >= 0\n    AND \"payroll_transfers\".\"currency\"='NGN' AND \"payroll_transfers\".\"settlement_amount_minor\" <= \"payroll_transfers\".\"amount_minor\"",
+    "valid": true
+  },
+  {
+    "table": "payroll_transfers",
+    "name": "payroll_transfers_reference_check",
+    "expression": "\n    NULLIF(BTRIM(\"payroll_transfers\".\"idempotency_key_hash\"),'') IS NOT NULL\n    AND NULLIF(BTRIM(\"payroll_transfers\".\"provider_reference\"),'') IS NOT NULL AND \"payroll_transfers\".\"attempt_number\" > 0",
+    "valid": true
+  },
+  {
+    "table": "payroll_transfers",
+    "name": "payroll_transfers_paid_verification_check",
+    "expression": "\n    \"payroll_transfers\".\"status\"<>'PAID' OR (\n      \"payroll_transfers\".\"provider\"='FLUTTERWAVE' AND \"payroll_transfers\".\"provider_mode\"<>'MOCK'\n      AND \"payroll_transfers\".\"external_transfer_verified\"=true AND \"payroll_transfers\".\"verified_at\" IS NOT NULL AND \"payroll_transfers\".\"verified_by\" IS NOT NULL\n      AND \"payroll_transfers\".\"provider_transaction_id\" IS NOT NULL)",
+    "valid": true
+  },
+  {
+    "table": "payroll_transfers",
+    "name": "payroll_transfers_mock_never_paid_check",
+    "expression": "\n    \"payroll_transfers\".\"provider\"<>'MOCK' OR (\"payroll_transfers\".\"status\"='MOCK_PENDING' AND \"payroll_transfers\".\"external_transfer_verified\"=false)",
+    "valid": true
+  },
+  {
+    "table": "payroll_transfers",
+    "name": "payroll_transfers_ambiguous_no_retry_check",
+    "expression": "\n    NOT \"payroll_transfers\".\"requires_reconciliation\" OR \"payroll_transfers\".\"status\" IN ('UNCERTAIN','RECONCILIATION_REQUIRED')",
+    "valid": true
+  },
+  {
+    "table": "platform_company_employees",
+    "name": "platform_company_employees_status_check",
+    "expression": "\"platform_company_employees\".\"status\" IN ('ACTIVE','INACTIVE')",
+    "valid": true
+  },
+  {
+    "table": "platform_devices",
+    "name": "platform_devices_status_supported_check",
+    "expression": "\"platform_devices\".\"status\" IN ('ACTIVE', 'INACTIVE', 'MAINTENANCE', 'SUSPENDED', 'UNASSIGNED')",
+    "valid": true
+  },
+  {
+    "table": "promotion_batch_students",
+    "name": "promotion_batch_students_status_check",
+    "expression": "\"promotion_batch_students\".\"status\" IN ('Pending', 'Eligible', 'Promoted', 'Repeat', 'Graduated', 'Withdrawn', 'Transferred')",
+    "valid": true
+  },
+  {
+    "table": "promotion_batch_students",
+    "name": "promotion_batch_students_recommendation_check",
+    "expression": "\"promotion_batch_students\".\"recommendation\" IN ('Pending', 'Eligible')",
+    "valid": true
+  },
+  {
+    "table": "promotion_batch_students",
+    "name": "promotion_batch_students_target_required_check",
+    "expression": "((\"promotion_batch_students\".\"status\" IN ('Promoted', 'Repeat') AND \"promotion_batch_students\".\"target_term_id\" IS NOT NULL AND \"promotion_batch_students\".\"target_class_id\" IS NOT NULL AND \"promotion_batch_students\".\"target_section\" IS NOT NULL AND length(btrim(\"promotion_batch_students\".\"target_section\")) > 0) OR (\"promotion_batch_students\".\"status\" NOT IN ('Promoted', 'Repeat') AND \"promotion_batch_students\".\"target_term_id\" IS NULL AND \"promotion_batch_students\".\"target_class_id\" IS NULL AND \"promotion_batch_students\".\"target_section\" IS NULL))",
+    "valid": true
+  },
+  {
+    "table": "promotion_batch_students",
+    "name": "promotion_batch_students_review_shape_check",
+    "expression": "(\"promotion_batch_students\".\"reviewed_at\" IS NULL AND \"promotion_batch_students\".\"reviewed_by\" IS NULL) OR (\"promotion_batch_students\".\"reviewed_at\" IS NOT NULL AND \"promotion_batch_students\".\"reviewed_by\" IS NOT NULL AND \"promotion_batch_students\".\"reason\" IS NOT NULL AND length(btrim(\"promotion_batch_students\".\"reason\")) > 0)",
+    "valid": true
+  },
+  {
+    "table": "promotion_batches",
+    "name": "promotion_batches_status_check",
+    "expression": "\"promotion_batches\".\"status\" IN ('PREPARED', 'FINALIZED')",
+    "valid": true
+  },
+  {
+    "table": "promotion_batches",
+    "name": "promotion_batches_distinct_sessions_check",
+    "expression": "\"promotion_batches\".\"source_session_id\" <> \"promotion_batches\".\"target_session_id\"",
+    "valid": true
+  },
+  {
+    "table": "promotion_batches",
+    "name": "promotion_batches_finalization_shape_check",
+    "expression": "(\"promotion_batches\".\"status\" = 'PREPARED' AND \"promotion_batches\".\"finalized_by\" IS NULL AND \"promotion_batches\".\"finalized_at\" IS NULL AND \"promotion_batches\".\"finalization_actor_user_id\" IS NULL AND \"promotion_batches\".\"finalization_idempotency_key\" IS NULL) OR (\"promotion_batches\".\"status\" = 'FINALIZED' AND \"promotion_batches\".\"finalized_by\" IS NOT NULL AND \"promotion_batches\".\"finalized_at\" IS NOT NULL AND \"promotion_batches\".\"finalization_actor_user_id\" IS NOT NULL AND \"promotion_batches\".\"finalization_idempotency_key\" IS NOT NULL)",
+    "valid": true
+  },
+  {
+    "table": "promotion_history",
+    "name": "promotion_history_event_check",
+    "expression": "\"promotion_history\".\"event_type\" IN ('BATCH_PREPARED', 'STUDENT_SNAPSHOTTED', 'STUDENT_REVIEWED', 'STUDENT_FINALIZED', 'BATCH_FINALIZED', 'FINALIZATION_REJECTED')",
+    "valid": true
+  },
+  {
+    "table": "promotion_history",
+    "name": "promotion_history_result_check",
+    "expression": "\"promotion_history\".\"result\" IN ('SUCCESS', 'REJECTED')",
+    "valid": true
+  },
+  {
+    "table": "school_asset_history",
+    "name": "school_asset_history_event_type_check",
+    "expression": "\"school_asset_history\".\"event_type\" IN ('CREATED', 'QUANTITY_CHANGED', 'ASSIGNMENT_CHANGED', 'STATUS_CHANGED', 'UPDATED')",
+    "valid": true
+  },
+  {
+    "table": "school_asset_history",
+    "name": "school_asset_history_quantity_check",
+    "expression": "(\"school_asset_history\".\"quantity_before\" IS NULL OR \"school_asset_history\".\"quantity_before\" >= 0)\n        AND (\"school_asset_history\".\"quantity_after\" IS NULL OR \"school_asset_history\".\"quantity_after\" >= 0)",
+    "valid": true
+  },
+  {
+    "table": "school_asset_history",
+    "name": "school_asset_history_status_check",
+    "expression": "(\"school_asset_history\".\"status_before\" IS NULL OR \"school_asset_history\".\"status_before\" IN ('ACTIVE', 'AVAILABLE', 'ASSIGNED', 'MAINTENANCE', 'DAMAGED', 'LOST', 'RETIRED'))\n        AND (\"school_asset_history\".\"status_after\" IS NULL OR \"school_asset_history\".\"status_after\" IN ('ACTIVE', 'AVAILABLE', 'ASSIGNED', 'MAINTENANCE', 'DAMAGED', 'LOST', 'RETIRED'))",
+    "valid": true
+  },
+  {
+    "table": "school_assets",
+    "name": "school_assets_quantity_check",
+    "expression": "\"school_assets\".\"quantity\" >= 0",
+    "valid": true
+  },
+  {
+    "table": "school_assets",
+    "name": "school_assets_condition_check",
+    "expression": "\"school_assets\".\"condition\" IN ('NEW', 'GOOD', 'FAIR', 'POOR', 'DAMAGED')",
+    "valid": true
+  },
+  {
+    "table": "school_assets",
+    "name": "school_assets_category_type_check",
+    "expression": "\"school_assets\".\"category_type\" = 'ASSET'",
+    "valid": true
+  },
+  {
+    "table": "school_assets",
+    "name": "school_assets_status_check",
+    "expression": "\"school_assets\".\"status\" IN ('ACTIVE', 'AVAILABLE', 'ASSIGNED', 'MAINTENANCE', 'DAMAGED', 'LOST', 'RETIRED')",
+    "valid": true
+  },
+  {
+    "table": "school_authorized_pickup_persons",
+    "name": "school_pickup_person_name_check",
+    "expression": "length(btrim(\"school_authorized_pickup_persons\".\"full_name\")) BETWEEN 1 AND 160",
+    "valid": true
+  },
+  {
+    "table": "school_authorized_pickup_persons",
+    "name": "school_pickup_person_phone_check",
+    "expression": "length(btrim(\"school_authorized_pickup_persons\".\"phone\")) BETWEEN 3 AND 40",
+    "valid": true
+  },
+  {
+    "table": "school_authorized_pickup_persons",
+    "name": "school_pickup_person_status_check",
+    "expression": "\"school_authorized_pickup_persons\".\"status\" IN ('PENDING','APPROVED','REJECTED','REVOKED')",
+    "valid": true
+  },
+  {
+    "table": "school_authorized_pickup_persons",
+    "name": "school_pickup_person_decision_shape_check",
+    "expression": "(\"school_authorized_pickup_persons\".\"status\"='PENDING' AND \"school_authorized_pickup_persons\".\"decision_by_user_id\" IS NULL AND \"school_authorized_pickup_persons\".\"decided_at\" IS NULL) OR (\"school_authorized_pickup_persons\".\"status\"<>'PENDING' AND \"school_authorized_pickup_persons\".\"decision_by_user_id\" IS NOT NULL AND \"school_authorized_pickup_persons\".\"decided_at\" IS NOT NULL)",
+    "valid": true
+  },
+  {
+    "table": "school_authorized_pickup_persons",
+    "name": "school_pickup_person_validity_check",
+    "expression": "\"school_authorized_pickup_persons\".\"valid_from\" IS NULL OR \"school_authorized_pickup_persons\".\"valid_until\" IS NULL OR \"school_authorized_pickup_persons\".\"valid_until\">\"school_authorized_pickup_persons\".\"valid_from\"",
+    "valid": true
+  },
+  {
+    "table": "school_authorized_pickup_persons",
+    "name": "school_pickup_person_version_check",
+    "expression": "\"school_authorized_pickup_persons\".\"version\">0",
+    "valid": true
+  },
+  {
+    "table": "school_branding_logos",
+    "name": "school_branding_logos_content_type_check",
+    "expression": "\"school_branding_logos\".\"content_type\" IN ('image/jpeg','image/png','image/webp')",
+    "valid": true
+  },
+  {
+    "table": "school_branding_logos",
+    "name": "school_branding_logos_byte_size_check",
+    "expression": "\"school_branding_logos\".\"byte_size\" BETWEEN 1 AND 3145728",
+    "valid": true
+  },
+  {
+    "table": "school_calendar_events",
+    "name": "school_calendar_events_source_check",
+    "expression": "\"school_calendar_events\".\"source\" IN ('GENERATED', 'SCHOOL_EVENT')",
+    "valid": true
+  },
+  {
+    "table": "school_calendar_events",
+    "name": "school_calendar_events_category_check",
+    "expression": "\"school_calendar_events\".\"category\" IN ('RESUMPTION','MID_TERM_BREAK','HOLIDAY','EXAMINATION','RESULT_PUBLICATION','SCHOOL_EVENT','OTHER')",
+    "valid": true
+  },
+  {
+    "table": "school_calendar_events",
+    "name": "school_calendar_events_status_check",
+    "expression": "\"school_calendar_events\".\"status\" IN ('ACTIVE','INACTIVE')",
+    "valid": true
+  },
+  {
+    "table": "school_calendar_events",
+    "name": "school_calendar_events_dates_check",
+    "expression": "\"school_calendar_events\".\"end_date\" IS NULL OR \"school_calendar_events\".\"end_date\" >= \"school_calendar_events\".\"start_date\"",
+    "valid": true
+  },
+  {
+    "table": "school_calendar_events",
+    "name": "school_calendar_events_audience_check",
+    "expression": "cardinality(\"school_calendar_events\".\"audience\") > 0\n        AND \"school_calendar_events\".\"audience\" <@ ARRAY['TEACHER','STUDENT','PARENT','STAFF']::text[]",
+    "valid": true
+  },
+  {
+    "table": "school_curriculum_assignments",
+    "name": "school_curriculum_assignments_status_check",
+    "expression": "\"school_curriculum_assignments\".\"status\" IN ('ACTIVE','ARCHIVED')",
+    "valid": true
+  },
+  {
+    "table": "school_facilities",
+    "name": "school_facilities_capacity_check",
+    "expression": "\"school_facilities\".\"capacity\" IS NULL OR \"school_facilities\".\"capacity\" >= 0",
+    "valid": true
+  },
+  {
+    "table": "school_facilities",
+    "name": "school_facilities_condition_check",
+    "expression": "\"school_facilities\".\"condition\" IN ('NEW', 'GOOD', 'FAIR', 'POOR', 'DAMAGED')",
+    "valid": true
+  },
+  {
+    "table": "school_facilities",
+    "name": "school_facilities_status_check",
+    "expression": "\"school_facilities\".\"status\" IN ('ACTIVE', 'INACTIVE', 'MAINTENANCE', 'RETIRED')",
+    "valid": true
+  },
+  {
+    "table": "school_operation_categories",
+    "name": "school_operation_categories_type_check",
+    "expression": "\"school_operation_categories\".\"category_type\" IN ('ASSET', 'MAINTENANCE', 'TASK')",
+    "valid": true
+  },
+  {
+    "table": "school_operations_settings",
+    "name": "school_operations_default_maintenance_priority_check",
+    "expression": "\"school_operations_settings\".\"default_maintenance_priority\" IN ('LOW', 'MEDIUM', 'HIGH', 'URGENT')",
+    "valid": true
+  },
+  {
+    "table": "school_operations_settings",
+    "name": "school_operations_default_task_priority_check",
+    "expression": "\"school_operations_settings\".\"default_task_priority\" IN ('LOW', 'MEDIUM', 'HIGH', 'URGENT')",
+    "valid": true
+  },
+  {
+    "table": "school_pickup_requests",
+    "name": "school_pickup_requests_status_check",
+    "expression": "\"school_pickup_requests\".\"status\" IN ('PENDING','APPROVED','REJECTED','CANCELLED','REFUSED','COMPLETED')",
+    "valid": true
+  },
+  {
+    "table": "school_pickup_requests",
+    "name": "school_pickup_requests_validity_check",
+    "expression": "\"school_pickup_requests\".\"valid_until\">\"school_pickup_requests\".\"valid_from\"",
+    "valid": true
+  },
+  {
+    "table": "school_pickup_requests",
+    "name": "school_pickup_requests_completion_shape_check",
+    "expression": "(\"school_pickup_requests\".\"status\"='COMPLETED' AND \"school_pickup_requests\".\"completed_at\" IS NOT NULL AND \"school_pickup_requests\".\"completed_by_user_id\" IS NOT NULL AND \"school_pickup_requests\".\"completion_pickup_person_id\" IS NOT NULL AND \"school_pickup_requests\".\"recorded_security_event_id\" IS NOT NULL AND \"school_pickup_requests\".\"completion_idempotency_key\" IS NOT NULL) OR (\"school_pickup_requests\".\"status\"<>'COMPLETED' AND \"school_pickup_requests\".\"completed_at\" IS NULL AND \"school_pickup_requests\".\"completed_by_user_id\" IS NULL AND \"school_pickup_requests\".\"completion_pickup_person_id\" IS NULL AND \"school_pickup_requests\".\"recorded_security_event_id\" IS NULL AND \"school_pickup_requests\".\"completion_idempotency_key\" IS NULL)",
+    "valid": true
+  },
+  {
+    "table": "school_pickup_requests",
+    "name": "school_pickup_requests_version_check",
+    "expression": "\"school_pickup_requests\".\"version\">0",
+    "valid": true
+  },
+  {
+    "table": "school_security_incident_attachments",
+    "name": "school_security_incident_attachments_type_check",
+    "expression": "\"school_security_incident_attachments\".\"content_type\" IN ('application/pdf','image/jpeg','image/png','image/webp')",
+    "valid": true
+  },
+  {
+    "table": "school_security_incident_attachments",
+    "name": "school_security_incident_attachments_size_check",
+    "expression": "\"school_security_incident_attachments\".\"byte_size\" BETWEEN 1 AND 10485760",
+    "valid": true
+  },
+  {
+    "table": "school_security_incident_attachments",
+    "name": "school_security_incident_attachments_path_check",
+    "expression": "\"school_security_incident_attachments\".\"object_path\" ~ '^/objects/school-security/[1-9][0-9]*/[1-9][0-9]*/[0-9a-fA-F-]{36}$'",
+    "valid": true
+  },
+  {
+    "table": "school_security_incident_attachments",
+    "name": "school_security_incident_attachments_name_check",
+    "expression": "length(btrim(\"school_security_incident_attachments\".\"file_name\")) BETWEEN 1 AND 255",
+    "valid": true
+  },
+  {
+    "table": "school_security_incident_attachments",
+    "name": "school_security_incident_attachments_status_shape_check",
+    "expression": "(\"school_security_incident_attachments\".\"status\"='PENDING_UPLOAD' AND \"school_security_incident_attachments\".\"confirmed_at\" IS NULL) OR (\"school_security_incident_attachments\".\"status\"='CONFIRMED' AND \"school_security_incident_attachments\".\"confirmed_at\" IS NOT NULL)",
+    "valid": true
+  },
+  {
+    "table": "school_security_incidents",
+    "name": "school_security_incidents_type_check",
+    "expression": "\"school_security_incidents\".\"incident_type\" IN ('UNAUTHORIZED_ACCESS','LOST_CARD','VISITOR_ISSUE','STUDENT_RELEASE','GATE_INCIDENT','SECURITY_CONCERN','OTHER')",
+    "valid": true
+  },
+  {
+    "table": "school_security_incidents",
+    "name": "school_security_incidents_severity_check",
+    "expression": "\"school_security_incidents\".\"severity\" IN ('LOW','MODERATE','HIGH','CRITICAL')",
+    "valid": true
+  },
+  {
+    "table": "school_security_incidents",
+    "name": "school_security_incidents_status_check",
+    "expression": "\"school_security_incidents\".\"status\" IN ('OPEN','INVESTIGATING','RESOLVED')",
+    "valid": true
+  },
+  {
+    "table": "school_security_incidents",
+    "name": "school_security_incidents_involved_persons_check",
+    "expression": "jsonb_typeof(\"school_security_incidents\".\"involved_persons\")='array'",
+    "valid": true
+  },
+  {
+    "table": "school_security_incidents",
+    "name": "school_security_incidents_resolution_shape_check",
+    "expression": "\"school_security_incidents\".\"status\"<>'RESOLVED' OR (\"school_security_incidents\".\"resolution\" IS NOT NULL AND length(btrim(\"school_security_incidents\".\"resolution\"))>0)",
+    "valid": true
+  },
+  {
+    "table": "school_security_incidents",
+    "name": "school_security_incidents_version_check",
+    "expression": "\"school_security_incidents\".\"version\">0",
+    "valid": true
+  },
+  {
+    "table": "school_security_operation_history",
+    "name": "school_security_operation_history_entity_check",
+    "expression": "\"school_security_operation_history\".\"entity_type\" IN ('VISITOR','PICKUP_PERSON','PICKUP_REQUEST','INCIDENT')",
+    "valid": true
+  },
+  {
+    "table": "school_security_operation_history",
+    "name": "school_security_operation_history_result_check",
+    "expression": "\"school_security_operation_history\".\"result\" IN ('SUCCESS','REJECTED')",
+    "valid": true
+  },
+  {
+    "table": "school_security_operation_history",
+    "name": "school_security_operation_history_revision_check",
+    "expression": "\"school_security_operation_history\".\"revision\">0",
+    "valid": true
+  },
+  {
+    "table": "school_security_visitors",
+    "name": "school_security_visitors_name_check",
+    "expression": "length(btrim(\"school_security_visitors\".\"visitor_name\")) BETWEEN 1 AND 160",
+    "valid": true
+  },
+  {
+    "table": "school_security_visitors",
+    "name": "school_security_visitors_purpose_check",
+    "expression": "length(btrim(\"school_security_visitors\".\"purpose\")) BETWEEN 1 AND 1000",
+    "valid": true
+  },
+  {
+    "table": "school_security_visitors",
+    "name": "school_security_visitors_status_check",
+    "expression": "\"school_security_visitors\".\"status\" IN ('ON_SITE','CHECKED_OUT')",
+    "valid": true
+  },
+  {
+    "table": "school_security_visitors",
+    "name": "school_security_visitors_checkout_shape_check",
+    "expression": "(\"school_security_visitors\".\"status\"='ON_SITE' AND \"school_security_visitors\".\"checked_out_at\" IS NULL AND \"school_security_visitors\".\"checkout_idempotency_key\" IS NULL) OR (\"school_security_visitors\".\"status\"='CHECKED_OUT' AND \"school_security_visitors\".\"checked_out_at\" IS NOT NULL AND \"school_security_visitors\".\"checkout_idempotency_key\" IS NOT NULL)",
+    "valid": true
+  },
+  {
+    "table": "school_security_visitors",
+    "name": "school_security_visitors_version_check",
+    "expression": "\"school_security_visitors\".\"version\">0",
+    "valid": true
+  },
+  {
+    "table": "school_subscription_manual_locks",
+    "name": "school_manual_lock_version_nonnegative",
+    "expression": "\"school_subscription_manual_locks\".\"version\" >= 0",
+    "valid": true
+  },
+  {
+    "table": "security_events",
+    "name": "security_events_person_type_check",
+    "expression": "\"security_events\".\"person_type\" IN ('STUDENT','STAFF','UNKNOWN')",
+    "valid": true
+  },
+  {
+    "table": "security_events",
+    "name": "security_events_type_check",
+    "expression": "\"security_events\".\"event_type\" IN ('ENTRY','EXIT')",
+    "valid": true
+  },
+  {
+    "table": "security_events",
+    "name": "security_events_identity_result_check",
+    "expression": "\"security_events\".\"identity_result\" IN ('CONFIRMED','REJECTED')",
+    "valid": true
+  },
+  {
+    "table": "security_events",
+    "name": "security_events_reason_code_check",
+    "expression": "\"security_events\".\"reason_code\" IS NULL OR \"security_events\".\"reason_code\" IN ('UNKNOWN_CARD','WRONG_SCHOOL','LOST_CARD','REVOKED_CARD','EXPIRED_CARD','INACTIVE_CARD','NOT_ASSIGNED','INACTIVE_PERSON','NO_CURRENT_PLACEMENT','STAFF_BILLING_INELIGIBLE','READER_INACTIVE','READER_PERMISSION_DENIED','SECURITY_DISABLED','IDENTITY_MISMATCH','OTHER')",
+    "valid": true
+  },
+  {
+    "table": "security_events",
+    "name": "security_events_sync_status_check",
+    "expression": "\"security_events\".\"sync_status\" IN ('SYNCED')",
+    "valid": true
+  },
+  {
+    "table": "security_events",
+    "name": "security_events_physical_control_check",
+    "expression": "\"security_events\".\"physical_control_status\"='NOT_CONNECTED'",
+    "valid": true
+  },
+  {
+    "table": "security_events",
+    "name": "security_events_card_hash_check",
+    "expression": "\"security_events\".\"card_uid_sha256\" IS NULL OR \"security_events\".\"card_uid_sha256\" ~ '^[0-9a-f]{64}$'",
+    "valid": true
+  },
+  {
+    "table": "security_events",
+    "name": "security_events_event_key_check",
+    "expression": "length(\"security_events\".\"event_key\") BETWEEN 1 AND 256",
+    "valid": true
+  },
+  {
+    "table": "security_events",
+    "name": "security_events_person_shape_check",
+    "expression": "(\"security_events\".\"person_type\"='STUDENT' AND \"security_events\".\"student_id\" IS NOT NULL AND \"security_events\".\"employee_id\" IS NULL) OR (\"security_events\".\"person_type\"='STAFF' AND \"security_events\".\"employee_id\" IS NOT NULL AND \"security_events\".\"student_id\" IS NULL) OR (\"security_events\".\"person_type\"='UNKNOWN' AND \"security_events\".\"student_id\" IS NULL AND \"security_events\".\"employee_id\" IS NULL)",
+    "valid": true
+  },
+  {
+    "table": "security_events",
+    "name": "security_events_outcome_reason_check",
+    "expression": "(\"security_events\".\"identity_result\"='CONFIRMED' AND \"security_events\".\"reason_code\" IS NULL AND \"security_events\".\"person_type\"<>'UNKNOWN') OR (\"security_events\".\"identity_result\"='REJECTED' AND \"security_events\".\"reason_code\" IS NOT NULL)",
+    "valid": true
+  },
+  {
+    "table": "security_locations",
+    "name": "security_locations_zone_type_check",
+    "expression": "\"security_locations\".\"zone_type\" IN ('GATE','CAMPUS','BUILDING','OTHER')",
+    "valid": true
+  },
+  {
+    "table": "security_locations",
+    "name": "security_locations_status_check",
+    "expression": "\"security_locations\".\"status\" IN ('ACTIVE','INACTIVE')",
+    "valid": true
+  },
+  {
+    "table": "security_readers",
+    "name": "security_readers_status_check",
+    "expression": "\"security_readers\".\"status\" IN ('ACTIVE','INACTIVE')",
+    "valid": true
+  },
+  {
+    "table": "security_readers",
+    "name": "security_readers_permissions_check",
+    "expression": "cardinality(\"security_readers\".\"permissions\") > 0 AND \"security_readers\".\"permissions\" <@ ARRAY['ENTRY','EXIT']::text[]",
+    "valid": true
+  },
+  {
+    "table": "security_staff_grants",
+    "name": "security_staff_grants_permissions_check",
+    "expression": "cardinality(\"security_staff_grants\".\"permissions\") > 0 AND \"security_staff_grants\".\"permissions\" <@ ARRAY['READ','MANAGE_READERS','MANAGE_CARDS','REVIEW_PRESENCE','SECURITY_READ','SECURITY_MANAGE','VISITOR_MANAGE','PICKUP_APPROVE','INCIDENT_MANAGE','EMERGENCY_BROADCAST','COMMUNICATION_SEND']::text[]",
+    "valid": true
+  },
+  {
+    "table": "security_staff_grants",
+    "name": "security_staff_grants_status_check",
+    "expression": "\"security_staff_grants\".\"status\" IN ('ACTIVE','REVOKED','EXPIRED')",
+    "valid": true
+  },
+  {
+    "table": "security_staff_grants",
+    "name": "security_staff_grants_revocation_shape_check",
+    "expression": "(\"security_staff_grants\".\"status\"='ACTIVE' AND \"security_staff_grants\".\"revoked_at\" IS NULL AND \"security_staff_grants\".\"revoked_by_user_id\" IS NULL) OR (\"security_staff_grants\".\"status\" IN ('REVOKED','EXPIRED') AND \"security_staff_grants\".\"revoked_at\" IS NOT NULL)",
+    "valid": true
+  },
+  {
+    "table": "settlement_payroll_audit_events",
+    "name": "settlement_payroll_audit_scope_check",
+    "expression": "\n    (\"settlement_payroll_audit_events\".\"scope\"='SCHOOL' AND \"settlement_payroll_audit_events\".\"school_id\" IS NOT NULL)\n    OR (\"settlement_payroll_audit_events\".\"scope\"='YEMAIT_COMPANY' AND \"settlement_payroll_audit_events\".\"school_id\" IS NULL)\n    OR (\"settlement_payroll_audit_events\".\"scope\"='PLATFORM' AND \"settlement_payroll_audit_events\".\"school_id\" IS NULL)",
+    "valid": true
+  },
+  {
+    "table": "settlement_payroll_audit_events",
+    "name": "settlement_payroll_audit_amount_check",
+    "expression": "\n    (\"settlement_payroll_audit_events\".\"amount_minor\" IS NULL AND \"settlement_payroll_audit_events\".\"currency\" IS NULL)\n    OR (\"settlement_payroll_audit_events\".\"amount_minor\" IS NOT NULL AND \"settlement_payroll_audit_events\".\"amount_minor\" >= 0 AND \"settlement_payroll_audit_events\".\"currency\"='NGN')",
+    "valid": true
+  },
+  {
+    "table": "settlement_payroll_audit_events",
+    "name": "settlement_payroll_audit_record_type_check",
+    "expression": "\"settlement_payroll_audit_events\".\"record_type\" IN (\n    'SETTLEMENT_PROFILE','PAYROLL_PROFILE','PAYROLL_PERIOD','PAYROLL_ITEM','PAYROLL_TRANSFER','PAYSLIP')",
+    "valid": true
+  },
+  {
+    "table": "settlement_payroll_profiles",
+    "name": "settlement_payroll_profiles_tenant_check",
+    "expression": "\n    (\"settlement_payroll_profiles\".\"scope\"='SCHOOL' AND \"settlement_payroll_profiles\".\"school_id\" IS NOT NULL)\n    OR (\"settlement_payroll_profiles\".\"scope\"='YEMAIT_COMPANY' AND \"settlement_payroll_profiles\".\"school_id\" IS NULL)",
+    "valid": true
+  },
+  {
+    "table": "settlement_payroll_profiles",
+    "name": "settlement_payroll_profiles_currency_check",
+    "expression": "\"settlement_payroll_profiles\".\"currency\"='NGN'",
+    "valid": true
+  },
+  {
+    "table": "settlement_payroll_profiles",
+    "name": "settlement_payroll_profiles_provider_check",
+    "expression": "\"settlement_payroll_profiles\".\"provider\"='FLUTTERWAVE'",
+    "valid": true
+  },
+  {
+    "table": "settlement_payroll_profiles",
+    "name": "settlement_payroll_profiles_account_last4_check",
+    "expression": "\"settlement_payroll_profiles\".\"account_last4\" ~ '^[0-9]{4}$'",
+    "valid": true
+  },
+  {
+    "table": "settlement_payroll_profiles",
+    "name": "settlement_payroll_profiles_encrypted_fields_check",
+    "expression": "\n    NULLIF(BTRIM(\"settlement_payroll_profiles\".\"bank_name_encrypted\"),'') IS NOT NULL\n    AND NULLIF(BTRIM(\"settlement_payroll_profiles\".\"bank_code_encrypted\"),'') IS NOT NULL\n    AND NULLIF(BTRIM(\"settlement_payroll_profiles\".\"account_name_encrypted\"),'') IS NOT NULL\n    AND NULLIF(BTRIM(\"settlement_payroll_profiles\".\"account_number_encrypted\"),'') IS NOT NULL\n    AND NULLIF(BTRIM(\"settlement_payroll_profiles\".\"encryption_key_version\"),'') IS NOT NULL",
+    "valid": true
+  },
+  {
+    "table": "settlement_payroll_profiles",
+    "name": "settlement_payroll_profiles_verification_check",
+    "expression": "\n    (\"settlement_payroll_profiles\".\"verification_status\"='VERIFIED' AND \"settlement_payroll_profiles\".\"verified_at\" IS NOT NULL AND \"settlement_payroll_profiles\".\"verified_by\" IS NOT NULL)\n    OR (\"settlement_payroll_profiles\".\"verification_status\"<>'VERIFIED' AND \"settlement_payroll_profiles\".\"verified_at\" IS NULL AND \"settlement_payroll_profiles\".\"verified_by\" IS NULL)",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_allocations",
+    "name": "staff_nfc_allocations_type_ck",
+    "expression": "\"staff_nfc_allocations\".\"recipient_type\" IN ('SCHOOL','PLATFORM','PARTNER','PLATFORM_PROVIDER_FEE')",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_allocations",
+    "name": "staff_nfc_allocations_product_ck",
+    "expression": "\"staff_nfc_allocations\".\"product\" = 'TEACHER_STAFF_NFC_EID'",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_allocations",
+    "name": "staff_nfc_allocations_entry_ck",
+    "expression": "\"staff_nfc_allocations\".\"entry_type\" IN ('CREDIT','REVERSAL','EXPENSE')",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_allocations",
+    "name": "staff_nfc_allocations_amount_ck",
+    "expression": "\"staff_nfc_allocations\".\"amount_minor\" > 0 AND \"staff_nfc_allocations\".\"currency\" = 'NGN'\n        AND ((\"staff_nfc_allocations\".\"entry_type\" = 'CREDIT' AND \"staff_nfc_allocations\".\"refund_id\" IS NULL AND \"staff_nfc_allocations\".\"recipient_type\" IN ('SCHOOL','PLATFORM','PARTNER'))\n          OR (\"staff_nfc_allocations\".\"entry_type\" = 'REVERSAL' AND \"staff_nfc_allocations\".\"refund_id\" IS NOT NULL)\n          OR (\"staff_nfc_allocations\".\"entry_type\" = 'EXPENSE' AND \"staff_nfc_allocations\".\"recipient_type\" = 'PLATFORM_PROVIDER_FEE' AND \"staff_nfc_allocations\".\"refund_id\" IS NULL))",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_allocations",
+    "name": "staff_nfc_allocations_provider_fee_expense_ck",
+    "expression": "(\"staff_nfc_allocations\".\"recipient_type\" = 'PLATFORM_PROVIDER_FEE'\n          AND \"staff_nfc_allocations\".\"entry_type\" = 'EXPENSE' AND \"staff_nfc_allocations\".\"refund_id\" IS NULL)\n        OR (\"staff_nfc_allocations\".\"recipient_type\" <> 'PLATFORM_PROVIDER_FEE' AND \"staff_nfc_allocations\".\"entry_type\" IN ('CREDIT','REVERSAL'))",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_billing_rules",
+    "name": "staff_nfc_billing_rules_product_ck",
+    "expression": "\"staff_nfc_billing_rules\".\"product\" = 'TEACHER_STAFF_NFC_EID'",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_billing_rules",
+    "name": "staff_nfc_billing_rules_frequency_ck",
+    "expression": "\"staff_nfc_billing_rules\".\"billing_frequency\" = 'ACADEMIC_TERM'",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_billing_rules",
+    "name": "staff_nfc_billing_rules_currency_ck",
+    "expression": "\"staff_nfc_billing_rules\".\"currency\" = 'NGN'",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_billing_rules",
+    "name": "staff_nfc_billing_rules_status_ck",
+    "expression": "\"staff_nfc_billing_rules\".\"status\" = 'ACTIVE'",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_billing_rules",
+    "name": "staff_nfc_billing_rules_amounts_ck",
+    "expression": "\"staff_nfc_billing_rules\".\"price_minor\" > 0 AND \"staff_nfc_billing_rules\".\"school_share_minor\" >= 0\n          AND \"staff_nfc_billing_rules\".\"platform_share_minor\" >= 0 AND \"staff_nfc_billing_rules\".\"partner_commission_minor\" >= 0\n          AND \"staff_nfc_billing_rules\".\"no_partner_platform_share_minor\" >= 0\n          AND \"staff_nfc_billing_rules\".\"school_share_minor\" + \"staff_nfc_billing_rules\".\"platform_share_minor\" + \"staff_nfc_billing_rules\".\"partner_commission_minor\" = \"staff_nfc_billing_rules\".\"price_minor\"\n          AND \"staff_nfc_billing_rules\".\"school_share_minor\" + \"staff_nfc_billing_rules\".\"no_partner_platform_share_minor\" = \"staff_nfc_billing_rules\".\"price_minor\"",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_partner_commissions",
+    "name": "staff_nfc_partner_commissions_amount_ck",
+    "expression": "\"staff_nfc_partner_commissions\".\"commission_minor\" > 0 AND \"staff_nfc_partner_commissions\".\"currency\" = 'NGN'",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_partner_commissions",
+    "name": "staff_nfc_partner_commissions_recipient_ck",
+    "expression": "\"staff_nfc_partner_commissions\".\"recipient_type\" = 'PARTNER'",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_partner_commissions",
+    "name": "staff_nfc_partner_commissions_status_ck",
+    "expression": "\"staff_nfc_partner_commissions\".\"status\" IN ('PENDING','PAID','REVERSED')",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_payments",
+    "name": "staff_nfc_payments_provider_ck",
+    "expression": "\"staff_nfc_payments\".\"provider\" IN ('FLUTTERWAVE','MOCK')",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_payments",
+    "name": "staff_nfc_payments_provider_mode_ck",
+    "expression": "\"staff_nfc_payments\".\"provider_mode\" IN ('SANDBOX','DEVELOPMENT_MOCK')",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_payments",
+    "name": "staff_nfc_payments_money_ck",
+    "expression": "\"staff_nfc_payments\".\"gross_amount_minor\" > 0 AND (\"staff_nfc_payments\".\"provider_fee_minor\" IS NULL OR \"staff_nfc_payments\".\"provider_fee_minor\" >= 0)\n          AND (\"staff_nfc_payments\".\"settlement_amount_minor\" IS NULL OR \"staff_nfc_payments\".\"settlement_amount_minor\" >= 0)\n          AND \"staff_nfc_payments\".\"refunded_amount_minor\" >= 0 AND \"staff_nfc_payments\".\"refunded_amount_minor\" <= \"staff_nfc_payments\".\"gross_amount_minor\"\n          AND \"staff_nfc_payments\".\"currency\" = 'NGN'",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_payments",
+    "name": "staff_nfc_payments_status_ck",
+    "expression": "\"staff_nfc_payments\".\"status\" IN ('PENDING','PAID','FAILED','CANCELLED','REFUNDED','PARTIALLY_REFUNDED','RECONCILIATION_REQUIRED')",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_payments",
+    "name": "staff_nfc_payments_settlement_ck",
+    "expression": "\"staff_nfc_payments\".\"settlement_status\" IN ('PENDING','RECONCILED','RECONCILIATION_REQUIRED','NOT_APPLICABLE')",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_payments",
+    "name": "staff_nfc_payments_reconciliation_ck",
+    "expression": "\"staff_nfc_payments\".\"reconciliation_status\" IN ('PENDING','RECONCILED','RECONCILIATION_REQUIRED','NOT_APPLICABLE')",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_payments",
+    "name": "staff_nfc_payments_refund_ck",
+    "expression": "\"staff_nfc_payments\".\"refund_status\" IN ('NONE','PENDING','PARTIALLY_REFUNDED','REFUNDED','RECONCILIATION_REQUIRED')",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_provider_events",
+    "name": "staff_nfc_provider_events_provider_ck",
+    "expression": "\"staff_nfc_provider_events\".\"provider\" = 'FLUTTERWAVE'",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_provider_events",
+    "name": "staff_nfc_provider_events_outcome_ck",
+    "expression": "\"staff_nfc_provider_events\".\"outcome\" IN ('RECEIVED','VERIFIED','PENDING','FAILED','DUPLICATE','RECONCILIATION_REQUIRED','REFUND_PENDING','REFUNDED','PARTIAL_REFUND')",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_refunds",
+    "name": "staff_nfc_refunds_amount_ck",
+    "expression": "\"staff_nfc_refunds\".\"amount_minor\" > 0",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_refunds",
+    "name": "staff_nfc_refunds_status_ck",
+    "expression": "\"staff_nfc_refunds\".\"status\" IN ('REQUESTED','PENDING','SUCCEEDED','FAILED','RECONCILIATION_REQUIRED')",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_subscriptions",
+    "name": "staff_nfc_subscriptions_allocation_ck",
+    "expression": "\"staff_nfc_subscriptions\".\"price_minor\" > 0 AND \"staff_nfc_subscriptions\".\"school_share_minor\" >= 0\n          AND \"staff_nfc_subscriptions\".\"platform_share_minor\" >= 0 AND \"staff_nfc_subscriptions\".\"partner_share_minor\" >= 0\n          AND \"staff_nfc_subscriptions\".\"school_share_minor\" + \"staff_nfc_subscriptions\".\"platform_share_minor\" + \"staff_nfc_subscriptions\".\"partner_share_minor\" = \"staff_nfc_subscriptions\".\"price_minor\"\n          AND ((\"staff_nfc_subscriptions\".\"partner_profile_id\" IS NULL AND \"staff_nfc_subscriptions\".\"partner_share_minor\" = 0 AND \"staff_nfc_subscriptions\".\"attribution_id\" IS NULL)\n            OR (\"staff_nfc_subscriptions\".\"partner_profile_id\" IS NOT NULL AND \"staff_nfc_subscriptions\".\"attribution_id\" IS NOT NULL))",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_subscriptions",
+    "name": "staff_nfc_subscriptions_status_ck",
+    "expression": "\"staff_nfc_subscriptions\".\"status\" IN ('UNPAID','PENDING','PAID','FAILED','CANCELLED','REFUNDED','PARTIALLY_REFUNDED')",
+    "valid": true
+  },
+  {
+    "table": "staff_nfc_subscriptions",
+    "name": "staff_nfc_subscriptions_currency_ck",
+    "expression": "\"staff_nfc_subscriptions\".\"currency\" = 'NGN'",
+    "valid": true
+  },
+  {
+    "table": "student_behaviour_configurations",
+    "name": "student_behaviour_configurations_categories_array",
+    "expression": "jsonb_typeof(\"student_behaviour_configurations\".\"categories\")='array'",
+    "valid": true
+  },
+  {
+    "table": "student_behaviour_configurations",
+    "name": "student_behaviour_configurations_actions_array",
+    "expression": "jsonb_typeof(\"student_behaviour_configurations\".\"actions\")='array'",
+    "valid": true
+  },
+  {
+    "table": "student_behaviour_configurations",
+    "name": "student_behaviour_configurations_version_check",
+    "expression": "\"student_behaviour_configurations\".\"version\" > 0",
+    "valid": true
+  },
+  {
+    "table": "student_behaviour_records",
+    "name": "student_behaviour_records_category_check",
+    "expression": "\"student_behaviour_records\".\"category\" IN ('POSITIVE','CONCERN','INCIDENT','RULE_VIOLATION','RECOGNITION')",
+    "valid": true
+  },
+  {
+    "table": "student_behaviour_records",
+    "name": "student_behaviour_records_description_nonempty_check",
+    "expression": "length(btrim(\"student_behaviour_records\".\"description\")) > 0",
+    "valid": true
+  },
+  {
+    "table": "student_behaviour_records",
+    "name": "student_behaviour_records_severity_check",
+    "expression": "\"student_behaviour_records\".\"severity\" IN ('LOW','MODERATE','HIGH','CRITICAL')",
+    "valid": true
+  },
+  {
+    "table": "student_behaviour_records",
+    "name": "student_behaviour_records_status_check",
+    "expression": "\"student_behaviour_records\".\"status\" IN ('REVIEW','ACTION','PARENT_NOTIFICATION','FOLLOW_UP','RESOLVED')",
+    "valid": true
+  },
+  {
+    "table": "student_behaviour_records",
+    "name": "student_behaviour_records_parent_notification_check",
+    "expression": "\"student_behaviour_records\".\"parent_notification_status\" IN ('NOT_REQUESTED','QUEUED','PARTIAL','NOT_CONFIGURED','FAILED')",
+    "valid": true
+  },
+  {
+    "table": "student_behaviour_records",
+    "name": "student_behaviour_records_version_check",
+    "expression": "\"student_behaviour_records\".\"version\" > 0",
+    "valid": true
+  },
+  {
+    "table": "student_care_grants",
+    "name": "student_care_grants_permissions_check",
+    "expression": "\"student_care_grants\".\"permissions\" <@ ARRAY['MEDICAL_READ','MEDICAL_WRITE','WELFARE_READ','WELFARE_WRITE','SAFEGUARDING_READ','SAFEGUARDING_WRITE','BEHAVIOUR_READ','BEHAVIOUR_WRITE','BEHAVIOUR_REVIEW','BEHAVIOUR_ACTION']::text[]",
+    "valid": true
+  },
+  {
+    "table": "student_care_idempotency",
+    "name": "student_care_idempotency_request_key_check",
+    "expression": "length(\"student_care_idempotency\".\"request_key\") BETWEEN 8 AND 128",
+    "valid": true
+  },
+  {
+    "table": "student_care_idempotency",
+    "name": "student_care_idempotency_request_hash_check",
+    "expression": "length(\"student_care_idempotency\".\"request_hash\")=64",
+    "valid": true
+  },
+  {
+    "table": "student_care_idempotency",
+    "name": "student_care_idempotency_resource_type_check",
+    "expression": "\"student_care_idempotency\".\"resource_type\" IN ('MEDICAL_PROFILE','MEDICAL_VISIT','WELFARE','BEHAVIOUR')",
+    "valid": true
+  },
+  {
+    "table": "student_care_record_history",
+    "name": "student_care_history_record_type_check",
+    "expression": "\"student_care_record_history\".\"record_type\" IN ('MEDICAL_PROFILE','MEDICAL_VISIT','WELFARE','BEHAVIOUR','BEHAVIOUR_CONFIGURATION')",
+    "valid": true
+  },
+  {
+    "table": "student_medical_profiles",
+    "name": "student_medical_profiles_allergies_array",
+    "expression": "jsonb_typeof(\"student_medical_profiles\".\"allergies\")='array'",
+    "valid": true
+  },
+  {
+    "table": "student_medical_profiles",
+    "name": "student_medical_profiles_conditions_array",
+    "expression": "jsonb_typeof(\"student_medical_profiles\".\"conditions\")='array'",
+    "valid": true
+  },
+  {
+    "table": "student_medical_profiles",
+    "name": "student_medical_profiles_support_array",
+    "expression": "jsonb_typeof(\"student_medical_profiles\".\"support_needs\")='array'",
+    "valid": true
+  },
+  {
+    "table": "student_medical_profiles",
+    "name": "student_medical_profiles_medications_array",
+    "expression": "jsonb_typeof(\"student_medical_profiles\".\"medications\")='array'",
+    "valid": true
+  },
+  {
+    "table": "student_medical_profiles",
+    "name": "student_medical_profiles_providers_array",
+    "expression": "jsonb_typeof(\"student_medical_profiles\".\"provider_contacts\")='array'",
+    "valid": true
+  },
+  {
+    "table": "student_medical_profiles",
+    "name": "student_medical_profiles_contacts_array",
+    "expression": "jsonb_typeof(\"student_medical_profiles\".\"emergency_contacts\")='array'",
+    "valid": true
+  },
+  {
+    "table": "student_medical_profiles",
+    "name": "student_medical_profiles_version_positive_check",
+    "expression": "\"student_medical_profiles\".\"version\" > 0",
+    "valid": true
+  },
+  {
+    "table": "student_medical_visits",
+    "name": "student_medical_visits_version_positive_check",
+    "expression": "\"student_medical_visits\".\"version\" > 0",
+    "valid": true
+  },
+  {
+    "table": "student_nfc_replacement_requests",
+    "name": "replacement_person_check",
+    "expression": "(\"student_nfc_replacement_requests\".\"student_id\" IS NULL)<>(\"student_nfc_replacement_requests\".\"employee_id\" IS NULL)",
+    "valid": true
+  },
+  {
+    "table": "student_nfc_replacement_requests",
+    "name": "student_nfc_replacement_requests_status_check",
+    "expression": "\"student_nfc_replacement_requests\".\"status\" IN ('REQUESTED','ISSUED')",
+    "valid": true
+  },
+  {
+    "table": "student_nfc_replacement_requests",
+    "name": "student_nfc_replacement_requests_check",
+    "expression": "\"student_nfc_replacement_requests\".\"old_card_id\" IS DISTINCT FROM \"student_nfc_replacement_requests\".\"new_card_id\"",
+    "valid": true
+  },
+  {
+    "table": "student_nfc_replacement_requests",
+    "name": "student_nfc_replacement_requests_check1",
+    "expression": "(\"student_nfc_replacement_requests\".\"status\"='REQUESTED' AND \"student_nfc_replacement_requests\".\"new_card_id\" IS NULL AND \"student_nfc_replacement_requests\".\"issued_by\" IS NULL AND \"student_nfc_replacement_requests\".\"issued_at\" IS NULL) OR (\"student_nfc_replacement_requests\".\"status\"='ISSUED' AND \"student_nfc_replacement_requests\".\"new_card_id\" IS NOT NULL AND \"student_nfc_replacement_requests\".\"issued_by\" IS NOT NULL AND \"student_nfc_replacement_requests\".\"issued_at\" IS NOT NULL)",
+    "valid": true
+  },
+  {
+    "table": "student_subscription_allocations",
+    "name": "student_subscription_allocations_recipient_ck",
+    "expression": "\"student_subscription_allocations\".\"recipient_type\" IN ('SCHOOL','PLATFORM','PARTNER','PLATFORM_PROVIDER_FEE')",
+    "valid": true
+  },
+  {
+    "table": "student_subscription_allocations",
+    "name": "student_subscription_allocations_entry_ck",
+    "expression": "\"student_subscription_allocations\".\"entry_type\" IN ('CREDIT','REVERSAL','EXPENSE')",
+    "valid": true
+  },
+  {
+    "table": "student_subscription_allocations",
+    "name": "student_subscription_allocations_amount_ck",
+    "expression": "\"student_subscription_allocations\".\"amount_minor\" > 0 AND \"student_subscription_allocations\".\"currency\" = 'NGN'\n        AND ((\"student_subscription_allocations\".\"entry_type\" = 'CREDIT' AND \"student_subscription_allocations\".\"recipient_type\" IN ('SCHOOL','PLATFORM','PARTNER'))\n          OR (\"student_subscription_allocations\".\"entry_type\" = 'REVERSAL' AND \"student_subscription_allocations\".\"recipient_type\" IN ('SCHOOL','PLATFORM','PARTNER'))\n          OR (\"student_subscription_allocations\".\"entry_type\" = 'EXPENSE' AND \"student_subscription_allocations\".\"recipient_type\" = 'PLATFORM_PROVIDER_FEE'))",
+    "valid": true
+  },
+  {
+    "table": "student_subscription_allocations",
+    "name": "student_subscription_allocations_partner_ck",
+    "expression": "(\"student_subscription_allocations\".\"recipient_type\" = 'PARTNER' AND \"student_subscription_allocations\".\"recipient_id\" IS NOT NULL\n          AND \"student_subscription_allocations\".\"attribution_id\" IS NOT NULL AND \"student_subscription_allocations\".\"commission_rule_id\" IS NOT NULL)\n        OR (\"student_subscription_allocations\".\"recipient_type\" <> 'PARTNER' AND \"student_subscription_allocations\".\"recipient_id\" IS NULL)",
+    "valid": true
+  },
+  {
+    "table": "student_subscription_payments",
+    "name": "student_subscription_payments_provider_ck",
+    "expression": "\"student_subscription_payments\".\"provider\" = 'FLUTTERWAVE'",
+    "valid": true
+  },
+  {
+    "table": "student_subscription_payments",
+    "name": "student_subscription_payments_provider_mode_ck",
+    "expression": "\"student_subscription_payments\".\"provider_mode\" = 'SANDBOX'",
+    "valid": true
+  },
+  {
+    "table": "student_subscription_payments",
+    "name": "student_subscription_payments_reference_ck",
+    "expression": "\"student_subscription_payments\".\"reference\" ~ '^[A-Za-z0-9_-]{8,100}$'",
+    "valid": true
+  },
+  {
+    "table": "student_subscription_payments",
+    "name": "student_subscription_payments_gross_ck",
+    "expression": "\"student_subscription_payments\".\"gross_amount_minor\" = 500000 AND \"student_subscription_payments\".\"currency\" = 'NGN'\n        AND (\"student_subscription_payments\".\"provider_fee_minor\" IS NULL OR \"student_subscription_payments\".\"provider_fee_minor\" >= 0)\n        AND (\"student_subscription_payments\".\"settlement_amount_minor\" IS NULL\n          OR \"student_subscription_payments\".\"settlement_amount_minor\" BETWEEN 0 AND \"student_subscription_payments\".\"gross_amount_minor\")",
+    "valid": true
+  },
+  {
+    "table": "student_subscription_payments",
+    "name": "student_subscription_payments_status_ck",
+    "expression": "\"student_subscription_payments\".\"status\" IN ('PENDING','PAID','FAILED','RECONCILIATION_REQUIRED')",
+    "valid": true
+  },
+  {
+    "table": "student_subscription_payments",
+    "name": "student_subscription_payments_settlement_ck",
+    "expression": "\"student_subscription_payments\".\"settlement_status\" IN ('PENDING','RECONCILED','RECONCILIATION_REQUIRED','NOT_APPLICABLE')",
+    "valid": true
+  },
+  {
+    "table": "student_subscription_payments",
+    "name": "student_subscription_payments_reconciliation_ck",
+    "expression": "\"student_subscription_payments\".\"reconciliation_status\" IN ('PENDING','RECONCILED','RECONCILIATION_REQUIRED','NOT_APPLICABLE')",
+    "valid": true
+  },
+  {
+    "table": "student_subscription_terms",
+    "name": "student_subscription_terms_one_source",
+    "expression": "(\"student_subscription_terms\".\"subscription_id\" IS NOT NULL)::integer + (\"student_subscription_terms\".\"legacy_invoice_id\" IS NOT NULL)::integer = 1",
+    "valid": true
+  },
+  {
+    "table": "student_welfare_records",
+    "name": "student_welfare_records_category_check",
+    "expression": "\"student_welfare_records\".\"category\" IN ('WELFARE_CONCERN','COUNSELLING_REFERRAL','SAFEGUARDING','FAMILY_SUPPORT','LEARNING_SUPPORT')",
+    "valid": true
+  },
+  {
+    "table": "student_welfare_records",
+    "name": "student_welfare_records_status_check",
+    "expression": "\"student_welfare_records\".\"status\" IN ('OPEN','IN_PROGRESS','RESOLVED')",
+    "valid": true
+  },
+  {
+    "table": "student_welfare_records",
+    "name": "student_welfare_records_follow_up_check",
+    "expression": "\"student_welfare_records\".\"follow_up_status\" IN ('NOT_REQUIRED','PENDING','IN_PROGRESS','COMPLETE')",
+    "valid": true
+  },
+  {
+    "table": "student_welfare_records",
+    "name": "student_welfare_records_version_positive_check",
+    "expression": "\"student_welfare_records\".\"version\" > 0",
+    "valid": true
+  },
+  {
+    "table": "student_welfare_records",
+    "name": "student_welfare_records_safeguarding_private_check",
+    "expression": "\"student_welfare_records\".\"category\" <> 'SAFEGUARDING' OR \"student_welfare_records\".\"parent_visible\"=FALSE",
+    "valid": true
+  },
+  {
+    "table": "subscriptions",
+    "name": "subscriptions_partner_allocation_integrity",
+    "expression": "\"subscriptions\".\"partner_profile_id\" IS NULL OR (\"subscriptions\".\"partner_share\" IS NOT NULL AND \"subscriptions\".\"amount\" = \"subscriptions\".\"school_share\" + \"subscriptions\".\"edupulse_share\" + \"subscriptions\".\"partner_share\")",
+    "valid": true
+  },
+  {
+    "table": "teacher_duty_roster",
+    "name": "teacher_duty_roster_dates_check",
+    "expression": "\"teacher_duty_roster\".\"end_date\" >= \"teacher_duty_roster\".\"start_date\"",
+    "valid": true
+  },
+  {
+    "table": "teacher_duty_roster",
+    "name": "teacher_duty_roster_status_check",
+    "expression": "\"teacher_duty_roster\".\"status\" IN ('ACTIVE','INACTIVE')",
+    "valid": true
+  },
+  {
+    "table": "teacher_subject_assignments",
+    "name": "teacher_subject_assignments_dates_check",
+    "expression": "\"teacher_subject_assignments\".\"end_date\" IS NULL OR \"teacher_subject_assignments\".\"end_date\" >= \"teacher_subject_assignments\".\"start_date\"",
+    "valid": true
+  },
+  {
+    "table": "teacher_subject_assignments",
+    "name": "teacher_subject_assignments_status_check",
+    "expression": "\"teacher_subject_assignments\".\"status\" IN ('ACTIVE','INACTIVE')",
+    "valid": true
+  },
+  {
+    "table": "transport_buses",
+    "name": "transport_buses_capacity_check",
+    "expression": "\"transport_buses\".\"capacity\" BETWEEN 1 AND 250",
+    "valid": true
+  },
+  {
+    "table": "transport_buses",
+    "name": "transport_buses_status_check",
+    "expression": "\"transport_buses\".\"status\" IN ('ACTIVE', 'INACTIVE', 'MAINTENANCE')",
+    "valid": true
+  },
+  {
+    "table": "transport_fee_invoices",
+    "name": "transport_fee_invoices_amount_check",
+    "expression": "\"transport_fee_invoices\".\"amount_minor\" >= 0",
+    "valid": true
+  },
+  {
+    "table": "transport_fee_invoices",
+    "name": "transport_fee_invoices_status_check",
+    "expression": "\"transport_fee_invoices\".\"status\" IN ('PLANNED','INVOICED','CANCELLED')",
+    "valid": true
+  },
+  {
+    "table": "transport_fee_invoices",
+    "name": "transport_fee_invoices_invoice_state_check",
+    "expression": "\n      (\"transport_fee_invoices\".\"status\" = 'INVOICED' AND \"transport_fee_invoices\".\"fee_invoice_id\" IS NOT NULL AND \"transport_fee_invoices\".\"amount_minor\" > 0)\n      OR (\"transport_fee_invoices\".\"status\" IN ('PLANNED','CANCELLED') AND \"transport_fee_invoices\".\"fee_invoice_id\" IS NULL)\n    ",
+    "valid": true
+  },
+  {
+    "table": "transport_fee_invoices",
+    "name": "transport_fee_invoices_category_check",
+    "expression": "\"transport_fee_invoices\".\"amount_minor\" = 0 OR \"transport_fee_invoices\".\"fee_category_id\" IS NOT NULL",
+    "valid": true
+  },
+  {
+    "table": "transport_history",
+    "name": "transport_history_one_event_entity_check",
+    "expression": "num_nonnulls(\"transport_history\".\"assignment_id\", \"transport_history\".\"route_id\", \"transport_history\".\"bus_id\", \"transport_history\".\"request_id\", \"transport_history\".\"route_staff_id\") = 1",
+    "valid": true
+  },
+  {
+    "table": "transport_history",
+    "name": "transport_history_event_reason_check",
+    "expression": "length(btrim(\"transport_history\".\"event_type\")) BETWEEN 3 AND 80 AND length(btrim(\"transport_history\".\"reason\")) BETWEEN 3 AND 1000",
+    "valid": true
+  },
+  {
+    "table": "transport_parent_requests",
+    "name": "transport_parent_requests_type_check",
+    "expression": "\"transport_parent_requests\".\"request_type\" IN ('ACTIVATE', 'DEACTIVATE')",
+    "valid": true
+  },
+  {
+    "table": "transport_parent_requests",
+    "name": "transport_parent_requests_status_check",
+    "expression": "\"transport_parent_requests\".\"status\" IN ('PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWN')",
+    "valid": true
+  },
+  {
+    "table": "transport_parent_requests",
+    "name": "transport_parent_requests_action_check",
+    "expression": "\"transport_parent_requests\".\"school_action\" IS NULL OR \"transport_parent_requests\".\"school_action\" IN ('ACTIVATE','SUSPEND','DEACTIVATE','NO_CHANGE')",
+    "valid": true
+  },
+  {
+    "table": "transport_parent_requests",
+    "name": "transport_parent_requests_reason_check",
+    "expression": "length(btrim(\"transport_parent_requests\".\"reason\")) BETWEEN 3 AND 1000",
+    "valid": true
+  },
+  {
+    "table": "transport_parent_requests",
+    "name": "transport_parent_requests_review_check",
+    "expression": "\n      (\"transport_parent_requests\".\"status\" = 'PENDING' AND \"transport_parent_requests\".\"reviewed_by\" IS NULL AND \"transport_parent_requests\".\"reviewed_at\" IS NULL)\n      OR (\"transport_parent_requests\".\"status\" <> 'PENDING' AND \"transport_parent_requests\".\"reviewed_by\" IS NOT NULL AND \"transport_parent_requests\".\"reviewed_at\" IS NOT NULL)\n    ",
+    "valid": true
+  },
+  {
+    "table": "transport_route_staff",
+    "name": "transport_route_staff_role_check",
+    "expression": "\"transport_route_staff\".\"role\" IN ('TEACHER', 'STAFF', 'ACCOMPANIER')",
+    "valid": true
+  },
+  {
+    "table": "transport_route_stops",
+    "name": "transport_route_stops_name_check",
+    "expression": "length(btrim(\"transport_route_stops\".\"name\")) BETWEEN 2 AND 120",
+    "valid": true
+  },
+  {
+    "table": "transport_route_stops",
+    "name": "transport_route_stops_type_check",
+    "expression": "\"transport_route_stops\".\"stop_type\" IN ('PICKUP', 'DROPOFF', 'BOTH')",
+    "valid": true
+  },
+  {
+    "table": "transport_route_stops",
+    "name": "transport_route_stops_sequence_check",
+    "expression": "\"transport_route_stops\".\"sequence\" > 0",
+    "valid": true
+  },
+  {
+    "table": "transport_routes",
+    "name": "transport_routes_name_check",
+    "expression": "length(btrim(\"transport_routes\".\"name\")) BETWEEN 2 AND 120",
+    "valid": true
+  },
+  {
+    "table": "transport_routes",
+    "name": "transport_routes_weekdays_check",
+    "expression": "\n      cardinality(\"transport_routes\".\"weekdays\") BETWEEN 1 AND 7\n      AND \"transport_routes\".\"weekdays\" <@ ARRAY['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY']::text[]\n    ",
+    "valid": true
+  },
+  {
+    "table": "transport_routes",
+    "name": "transport_routes_departure_time_check",
+    "expression": "\"transport_routes\".\"departure_time\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$'",
+    "valid": true
+  },
+  {
+    "table": "transport_routes",
+    "name": "transport_routes_arrival_time_check",
+    "expression": "\"transport_routes\".\"arrival_time\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$'",
+    "valid": true
+  },
+  {
+    "table": "transport_routes",
+    "name": "transport_routes_schedule_order_check",
+    "expression": "\"transport_routes\".\"arrival_time\" > \"transport_routes\".\"departure_time\"",
+    "valid": true
+  },
+  {
+    "table": "transport_routes",
+    "name": "transport_routes_fare_currency_check",
+    "expression": "\"transport_routes\".\"fare_minor\" >= 0 AND \"transport_routes\".\"currency\" = 'NGN'",
+    "valid": true
+  },
+  {
+    "table": "transport_routes",
+    "name": "transport_routes_status_check",
+    "expression": "\"transport_routes\".\"status\" IN ('ACTIVE', 'INACTIVE')",
+    "valid": true
+  },
+  {
+    "table": "transport_school_policies",
+    "name": "transport_school_policies_payment_gate_check",
+    "expression": "NOT \"transport_school_policies\".\"suspend_when_overdue\" OR \"transport_school_policies\".\"payment_required\"",
+    "valid": true
+  },
+  {
+    "table": "transport_student_assignments",
+    "name": "transport_student_assignments_status_check",
+    "expression": "\"transport_student_assignments\".\"status\" IN ('ACTIVE', 'SUSPENDED', 'DEACTIVATED')",
+    "valid": true
+  },
+  {
+    "table": "transport_student_assignments",
+    "name": "transport_student_assignments_stops_check",
+    "expression": "\"transport_student_assignments\".\"pickup_stop_id\" <> \"transport_student_assignments\".\"dropoff_stop_id\"",
+    "valid": true
+  },
+  {
+    "table": "transport_student_assignments",
+    "name": "transport_student_assignments_dates_check",
+    "expression": "\"transport_student_assignments\".\"end_date\" IS NULL OR \"transport_student_assignments\".\"end_date\" >= \"transport_student_assignments\".\"effective_date\"",
+    "valid": true
+  },
+  {
+    "table": "transport_student_assignments",
+    "name": "transport_student_assignments_reason_check",
+    "expression": "length(btrim(\"transport_student_assignments\".\"reason\")) BETWEEN 3 AND 500",
+    "valid": true
+  }
+]

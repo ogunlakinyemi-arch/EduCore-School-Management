@@ -8,3 +8,9 @@ Report protected business-data preservation separately from byte-identical rows.
 **Why:** Ordinary authenticated acceptance and an existing subscription-enforcement refresh can touch bookkeeping timestamps even when school identities, staffing, enrollments, family links and academic content are untouched. Treating these as business mutations creates a false alarm; hiding them creates a misleading preservation claim.
 
 **How to apply:** Keep the original pre-test baseline immutable. Investigate changed columns before classifying them. List excluded bookkeeping fields and affected-row counts explicitly, alongside newly appended test, audit and notification records. Do not restore legitimate audit events or scheduler state just to produce an identical snapshot.
+
+Preserve the exact fingerprint encoding and aggregation method as well as the baseline values.
+
+**Why:** `row_to_json` and `to_jsonb` serialize the same row differently; replacing one with the other can make every populated table appear changed. Added observational catalog fields can similarly invalidate a schema digest comparison.
+
+**How to apply:** Save the fingerprint query or its complete method alongside the baseline. Match row representation, sort order, separators and catalog projections before treating a digest difference as a mutation. Without field-level before evidence, report a changed table without asserting that only timestamps changed.

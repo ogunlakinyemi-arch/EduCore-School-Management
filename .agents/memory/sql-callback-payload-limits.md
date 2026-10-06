@@ -17,3 +17,9 @@ needed, chunks must remain inert text until one isolated atomic execution;
 verify rollback and complete staging cleanup. Never use Production staging,
 automatic hooks or ledger edits to bypass this limitation, and do not claim
 execution coverage when the transport rejected the request.
+
+Large responses can also exceed the durable callback entry limit, even when the SELECT itself is valid.
+
+**Why:** A full catalog response exceeded the approximately 1 MiB per-entry limit. Retrying the same full response cannot resolve a transport-size failure.
+
+**How to apply:** Return server-side metadata digests, small projections or bounded catalog slices. Retain the original catalog's exact field set and ordering for like-for-like comparisons. Never infer database changes from a failed response serialization.

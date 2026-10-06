@@ -1,0 +1,778 @@
+[
+  {
+    "name": "admission_create_school_defaults",
+    "config": null,
+    "schema": "public",
+    "returns": "trigger",
+    "arguments": "",
+    "definition_hash": "c2da68304459cb7ec1a3944e7bede858",
+    "security_definer": false,
+    "migration": "0042_admissions_expansion.sql",
+    "statement": 6,
+    "purpose": "Seeds closed portal settings and application counter for a newly inserted school.",
+    "tables": [
+      "admission_portal_settings",
+      "admission_application_counters"
+    ],
+    "mutates_data": true,
+    "dependencies": [
+      {
+        "table": "admission_portal_settings",
+        "created_by": "0042_admissions_expansion.sql"
+      },
+      {
+        "table": "admission_application_counters",
+        "created_by": "0042_admissions_expansion.sql"
+      },
+      {
+        "table": "schools",
+        "created_by": "0000_brainy_moon_knight.sql"
+      }
+    ],
+    "historical_backfill_required": "Migration 0042 seeds pre-existing schools separately",
+    "populated_safety": "Creation alone does not scan or modify historical rows; inspect definition collision, dependencies, concurrent writers and future-write compatibility. No Production recreation executed.",
+    "target_tables": [
+      "admission_portal_settings",
+      "admission_application_counters",
+      "schools"
+    ],
+    "target_dependencies": [
+      {
+        "table": "admission_portal_settings",
+        "created_by": "0042_admissions_expansion.sql"
+      },
+      {
+        "table": "admission_application_counters",
+        "created_by": "0042_admissions_expansion.sql"
+      },
+      {
+        "table": "schools",
+        "created_by": "0000_brainy_moon_knight.sql"
+      }
+    ],
+    "called_application_functions": [
+      "admission_default_portal_key"
+    ]
+  },
+  {
+    "name": "admission_default_portal_key",
+    "config": null,
+    "schema": "public",
+    "returns": "text",
+    "arguments": "p_school_id integer, p_registration text, p_code text",
+    "definition_hash": "e1a10817354e4053488519c48fff6fb7",
+    "security_definer": false,
+    "migration": "0042_admissions_expansion.sql",
+    "statement": 4,
+    "purpose": "Derives deterministic school-scoped portal slug; immutable read-only SQL.",
+    "tables": [],
+    "mutates_data": false,
+    "dependencies": [],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants",
+    "populated_safety": "Creation alone does not scan or modify historical rows; inspect definition collision, dependencies, concurrent writers and future-write compatibility. No Production recreation executed.",
+    "target_tables": [],
+    "target_dependencies": [
+      {
+        "table": "regexp_replace",
+        "created_by": "Existing table"
+      }
+    ],
+    "called_application_functions": []
+  },
+  {
+    "name": "allocate_verified_fee_lines",
+    "config": null,
+    "schema": "public",
+    "returns": "trigger",
+    "arguments": "",
+    "definition_hash": "ad8d343d245ef64f5397ab7cea5da7d9",
+    "security_definer": false,
+    "migration": "0055_academic_calendar_fee_lines_cash.sql",
+    "statement": 9,
+    "purpose": "Creates immutable line allocations after payment verification; rejects selected-line mutation and refuses silent historical discount/partial-payment allocation.",
+    "tables": [
+      "fee_invoices",
+      "fee_payment_line_allocations",
+      "fee_payments",
+      "fee_invoice_lines"
+    ],
+    "mutates_data": true,
+    "dependencies": [
+      {
+        "table": "fee_invoices",
+        "created_by": "0013_phase7_finance.sql"
+      },
+      {
+        "table": "fee_payment_line_allocations",
+        "created_by": "0055_academic_calendar_fee_lines_cash.sql"
+      },
+      {
+        "table": "fee_payments",
+        "created_by": "0013_phase7_finance.sql"
+      },
+      {
+        "table": "fee_invoice_lines",
+        "created_by": "0013_phase7_finance.sql"
+      }
+    ],
+    "historical_backfill_required": "Existing partial/discounted payments require explicit reconciliation; function deliberately refuses silent allocation",
+    "populated_safety": "Creation alone does not scan or modify historical rows; inspect definition collision, dependencies, concurrent writers and future-write compatibility. No Production recreation executed.",
+    "target_tables": [
+      "fee_invoices",
+      "fee_payment_line_allocations",
+      "fee_payments",
+      "fee_invoice_lines"
+    ],
+    "target_dependencies": [
+      {
+        "table": "NEW",
+        "created_by": "Existing table"
+      },
+      {
+        "table": "fee_invoices",
+        "created_by": "0013_phase7_finance.sql"
+      },
+      {
+        "table": "fee_payment_line_allocations",
+        "created_by": "0055_academic_calendar_fee_lines_cash.sql"
+      },
+      {
+        "table": "fee_payments",
+        "created_by": "0013_phase7_finance.sql"
+      },
+      {
+        "table": "fee_invoice_lines",
+        "created_by": "0013_phase7_finance.sql"
+      },
+      {
+        "table": "LATERAL",
+        "created_by": "Existing table"
+      },
+      {
+        "table": "unnest",
+        "created_by": "Existing table"
+      }
+    ],
+    "called_application_functions": []
+  },
+  {
+    "name": "preserve_employee_replacement_gate",
+    "config": null,
+    "schema": "public",
+    "returns": "trigger",
+    "arguments": "",
+    "definition_hash": "8db8a3cda2413733458a388be7e5c6c2",
+    "security_definer": false,
+    "migration": "0054_employee_card_replacement_finance.sql",
+    "statement": 14,
+    "purpose": "Deferred guard rejects active/assigned/locked employee replacement bindings without paid evidence and Owner issuance.",
+    "tables": [
+      "employee_nfc_card_bindings",
+      "nfc_cards",
+      "student_nfc_replacement_requests",
+      "fee_invoices",
+      "fee_payments",
+      "fee_receipts",
+      "fee_refunds"
+    ],
+    "mutates_data": false,
+    "dependencies": [
+      {
+        "table": "employee_nfc_card_bindings",
+        "created_by": "0032_employee_nfc.sql"
+      },
+      {
+        "table": "nfc_cards",
+        "created_by": "0000_brainy_moon_knight.sql"
+      },
+      {
+        "table": "student_nfc_replacement_requests",
+        "created_by": "0052_student_nfc_replacement_requests.sql"
+      },
+      {
+        "table": "fee_invoices",
+        "created_by": "0013_phase7_finance.sql"
+      },
+      {
+        "table": "fee_payments",
+        "created_by": "0013_phase7_finance.sql"
+      },
+      {
+        "table": "fee_receipts",
+        "created_by": "0013_phase7_finance.sql"
+      },
+      {
+        "table": "fee_refunds",
+        "created_by": "0016_finance_refunds.sql"
+      }
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants",
+    "populated_safety": "Creation alone does not scan or modify historical rows; inspect definition collision, dependencies, concurrent writers and future-write compatibility. No Production recreation executed.",
+    "target_tables": [
+      "employee_nfc_card_bindings",
+      "nfc_cards",
+      "student_nfc_replacement_requests",
+      "fee_invoices",
+      "fee_payments",
+      "fee_receipts",
+      "fee_refunds"
+    ],
+    "target_dependencies": [
+      {
+        "table": "employee_nfc_card_bindings",
+        "created_by": "0032_employee_nfc.sql"
+      },
+      {
+        "table": "nfc_cards",
+        "created_by": "0000_brainy_moon_knight.sql"
+      },
+      {
+        "table": "student_nfc_replacement_requests",
+        "created_by": "0052_student_nfc_replacement_requests.sql"
+      },
+      {
+        "table": "fee_invoices",
+        "created_by": "0013_phase7_finance.sql"
+      },
+      {
+        "table": "fee_payments",
+        "created_by": "0013_phase7_finance.sql"
+      },
+      {
+        "table": "fee_receipts",
+        "created_by": "0013_phase7_finance.sql"
+      },
+      {
+        "table": "fee_refunds",
+        "created_by": "0016_finance_refunds.sql"
+      }
+    ],
+    "called_application_functions": []
+  },
+  {
+    "name": "preserve_fee_payment_person",
+    "config": null,
+    "schema": "public",
+    "returns": "trigger",
+    "arguments": "",
+    "definition_hash": "90195cebe8ed4364db90702a475fb38c",
+    "security_definer": false,
+    "migration": "0054_employee_card_replacement_finance.sql",
+    "statement": 8,
+    "purpose": "Rejects updates/deletes to preserve fee payment person audit/history records.",
+    "tables": [
+      "fee_invoices"
+    ],
+    "mutates_data": false,
+    "dependencies": [
+      {
+        "table": "fee_invoices",
+        "created_by": "0013_phase7_finance.sql"
+      },
+      {
+        "table": "fee_payments",
+        "created_by": "0013_phase7_finance.sql"
+      }
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants",
+    "populated_safety": "Creation alone does not scan or modify historical rows; inspect definition collision, dependencies, concurrent writers and future-write compatibility. No Production recreation executed.",
+    "target_tables": [
+      "fee_invoices",
+      "fee_payments"
+    ],
+    "target_dependencies": [
+      {
+        "table": "fee_invoices",
+        "created_by": "0013_phase7_finance.sql"
+      },
+      {
+        "table": "invoice_student",
+        "created_by": "Existing table"
+      },
+      {
+        "table": "invoice_employee",
+        "created_by": "Existing table"
+      },
+      {
+        "table": "fee_payments",
+        "created_by": "0013_phase7_finance.sql"
+      }
+    ],
+    "called_application_functions": []
+  },
+  {
+    "name": "preserve_replacement_old_uid",
+    "config": null,
+    "schema": "public",
+    "returns": "trigger",
+    "arguments": "",
+    "definition_hash": "d54a4941a9d37b5ecf97b6848f281a6b",
+    "security_definer": false,
+    "migration": "0054_employee_card_replacement_finance.sql",
+    "statement": 11,
+    "purpose": "Rejects any attempted non-REVOKED status for a card recorded as a replacement old UID.",
+    "tables": [
+      "student_nfc_replacement_requests"
+    ],
+    "mutates_data": false,
+    "dependencies": [
+      {
+        "table": "student_nfc_replacement_requests",
+        "created_by": "0052_student_nfc_replacement_requests.sql"
+      },
+      {
+        "table": "nfc_cards",
+        "created_by": "0000_brainy_moon_knight.sql"
+      }
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants",
+    "populated_safety": "Creation alone does not scan or modify historical rows; inspect definition collision, dependencies, concurrent writers and future-write compatibility. No Production recreation executed.",
+    "target_tables": [
+      "student_nfc_replacement_requests",
+      "nfc_cards"
+    ],
+    "target_dependencies": [
+      {
+        "table": "student_nfc_replacement_requests",
+        "created_by": "0052_student_nfc_replacement_requests.sql"
+      },
+      {
+        "table": "nfc_cards",
+        "created_by": "0000_brainy_moon_knight.sql"
+      }
+    ],
+    "called_application_functions": []
+  },
+  {
+    "name": "prevent_device_school_binding_mutation",
+    "config": null,
+    "schema": "public",
+    "returns": "trigger",
+    "arguments": "",
+    "definition_hash": "50973c75e5f45b53b6ba40190704a33b",
+    "security_definer": false,
+    "migration": "0010_historical_device_school_bindings.sql",
+    "statement": 5,
+    "purpose": "Rejects updates/deletes to device school binding audit/history records.",
+    "tables": [],
+    "mutates_data": false,
+    "dependencies": [
+      {
+        "table": "device_school_bindings",
+        "created_by": "0010_historical_device_school_bindings.sql"
+      }
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants",
+    "populated_safety": "Creation alone does not scan or modify historical rows; inspect definition collision, dependencies, concurrent writers and future-write compatibility. No Production recreation executed.",
+    "target_tables": [
+      "device_school_bindings"
+    ],
+    "target_dependencies": [
+      {
+        "table": "device_school_bindings",
+        "created_by": "0010_historical_device_school_bindings.sql"
+      }
+    ],
+    "called_application_functions": []
+  },
+  {
+    "name": "prevent_operations_history_mutation",
+    "config": null,
+    "schema": "public",
+    "returns": "trigger",
+    "arguments": "",
+    "definition_hash": "e2baad416669b4cca7b1490a24b3b470",
+    "security_definer": false,
+    "migration": "0029_operations_history.sql",
+    "statement": 7,
+    "purpose": "Rejects updates/deletes to operations history audit/history records.",
+    "tables": [],
+    "mutates_data": false,
+    "dependencies": [
+      {
+        "table": "maintenance_request_status_history",
+        "created_by": "0029_operations_history.sql"
+      },
+      {
+        "table": "operational_task_status_history",
+        "created_by": "0029_operations_history.sql"
+      },
+      {
+        "table": "school_asset_history",
+        "created_by": "0029_operations_history.sql"
+      }
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants",
+    "populated_safety": "Creation alone does not scan or modify historical rows; inspect definition collision, dependencies, concurrent writers and future-write compatibility. No Production recreation executed.",
+    "target_tables": [
+      "maintenance_request_status_history",
+      "operational_task_status_history",
+      "school_asset_history"
+    ],
+    "target_dependencies": [
+      {
+        "table": "maintenance_request_status_history",
+        "created_by": "0029_operations_history.sql"
+      },
+      {
+        "table": "operational_task_status_history",
+        "created_by": "0029_operations_history.sql"
+      },
+      {
+        "table": "school_asset_history",
+        "created_by": "0029_operations_history.sql"
+      }
+    ],
+    "called_application_functions": []
+  },
+  {
+    "name": "prevent_payroll_payslip_mutation",
+    "config": null,
+    "schema": "public",
+    "returns": "trigger",
+    "arguments": "",
+    "definition_hash": "89d22c35b7111692ea7bde332a826775",
+    "security_definer": false,
+    "migration": "0035_settlement_payroll.sql",
+    "statement": 33,
+    "purpose": "Rejects updates/deletes to payroll payslip audit/history records.",
+    "tables": [],
+    "mutates_data": false,
+    "dependencies": [
+      {
+        "table": "payroll_payslips",
+        "created_by": "0035_settlement_payroll.sql"
+      }
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants",
+    "populated_safety": "Creation alone does not scan or modify historical rows; inspect definition collision, dependencies, concurrent writers and future-write compatibility. No Production recreation executed.",
+    "target_tables": [
+      "payroll_payslips"
+    ],
+    "target_dependencies": [
+      {
+        "table": "payroll_payslips",
+        "created_by": "0035_settlement_payroll.sql"
+      }
+    ],
+    "called_application_functions": []
+  },
+  {
+    "name": "prevent_promotion_history_mutation",
+    "config": null,
+    "schema": "public",
+    "returns": "trigger",
+    "arguments": "",
+    "definition_hash": "44c9ba8436d1dcc712445803a2cd834b",
+    "security_definer": false,
+    "migration": "0044_promotion_expansion.sql",
+    "statement": 9,
+    "purpose": "Rejects updates/deletes to promotion history audit/history records.",
+    "tables": [],
+    "mutates_data": false,
+    "dependencies": [
+      {
+        "table": "promotion_history",
+        "created_by": "0044_promotion_expansion.sql"
+      }
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants",
+    "populated_safety": "Creation alone does not scan or modify historical rows; inspect definition collision, dependencies, concurrent writers and future-write compatibility. No Production recreation executed.",
+    "target_tables": [
+      "promotion_history"
+    ],
+    "target_dependencies": [
+      {
+        "table": "promotion_history",
+        "created_by": "0044_promotion_expansion.sql"
+      }
+    ],
+    "called_application_functions": []
+  },
+  {
+    "name": "prevent_school_security_operation_history_mutation",
+    "config": null,
+    "schema": "public",
+    "returns": "trigger",
+    "arguments": "",
+    "definition_hash": "7bfaec921b1ed669feed78f9abe18217",
+    "security_definer": false,
+    "migration": "0046_school_security_operations.sql",
+    "statement": 15,
+    "purpose": "Rejects updates/deletes to school security operation history audit/history records.",
+    "tables": [],
+    "mutates_data": false,
+    "dependencies": [
+      {
+        "table": "school_security_operation_history",
+        "created_by": "0046_school_security_operations.sql"
+      }
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants",
+    "populated_safety": "Creation alone does not scan or modify historical rows; inspect definition collision, dependencies, concurrent writers and future-write compatibility. No Production recreation executed.",
+    "target_tables": [
+      "school_security_operation_history"
+    ],
+    "target_dependencies": [
+      {
+        "table": "school_security_operation_history",
+        "created_by": "0046_school_security_operations.sql"
+      }
+    ],
+    "called_application_functions": []
+  },
+  {
+    "name": "prevent_security_event_mutation",
+    "config": null,
+    "schema": "public",
+    "returns": "trigger",
+    "arguments": "",
+    "definition_hash": "a17ab1188be159926498c228dbc4ddf7",
+    "security_definer": false,
+    "migration": "0045_school_security_core.sql",
+    "statement": 19,
+    "purpose": "Rejects updates/deletes to security event audit/history records.",
+    "tables": [],
+    "mutates_data": false,
+    "dependencies": [
+      {
+        "table": "security_events",
+        "created_by": "0045_school_security_core.sql"
+      }
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants",
+    "populated_safety": "Creation alone does not scan or modify historical rows; inspect definition collision, dependencies, concurrent writers and future-write compatibility. No Production recreation executed.",
+    "target_tables": [
+      "security_events"
+    ],
+    "target_dependencies": [
+      {
+        "table": "security_events",
+        "created_by": "0045_school_security_core.sql"
+      }
+    ],
+    "called_application_functions": []
+  },
+  {
+    "name": "prevent_settlement_payroll_audit_mutation",
+    "config": null,
+    "schema": "public",
+    "returns": "trigger",
+    "arguments": "",
+    "definition_hash": "1c7c680c4032a3cc1afe0b9fefc0d4e1",
+    "security_definer": false,
+    "migration": "0035_settlement_payroll.sql",
+    "statement": 31,
+    "purpose": "Rejects updates/deletes to settlement payroll audit audit/history records.",
+    "tables": [],
+    "mutates_data": false,
+    "dependencies": [
+      {
+        "table": "settlement_payroll_audit_events",
+        "created_by": "0035_settlement_payroll.sql"
+      }
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants",
+    "populated_safety": "Creation alone does not scan or modify historical rows; inspect definition collision, dependencies, concurrent writers and future-write compatibility. No Production recreation executed.",
+    "target_tables": [
+      "settlement_payroll_audit_events"
+    ],
+    "target_dependencies": [
+      {
+        "table": "settlement_payroll_audit_events",
+        "created_by": "0035_settlement_payroll.sql"
+      }
+    ],
+    "called_application_functions": []
+  },
+  {
+    "name": "protect_fee_payment_verification_metadata",
+    "config": null,
+    "schema": "public",
+    "returns": "trigger",
+    "arguments": "",
+    "definition_hash": "dd850a738e037e26ae6544ac2bf94649",
+    "security_definer": false,
+    "migration": "0013_phase7_finance.sql",
+    "statement": 16,
+    "purpose": "Protects financial payment verification metadata against unauthorized snapshot changes.",
+    "tables": [],
+    "mutates_data": false,
+    "dependencies": [
+      {
+        "table": "fee_payments",
+        "created_by": "0013_phase7_finance.sql"
+      }
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants",
+    "populated_safety": "Creation alone does not scan or modify historical rows; inspect definition collision, dependencies, concurrent writers and future-write compatibility. No Production recreation executed.",
+    "target_tables": [
+      "fee_payments"
+    ],
+    "target_dependencies": [
+      {
+        "table": "OLD",
+        "created_by": "Existing table"
+      },
+      {
+        "table": "fee_payments",
+        "created_by": "0013_phase7_finance.sql"
+      }
+    ],
+    "called_application_functions": []
+  },
+  {
+    "name": "protect_staff_nfc_financial_snapshots",
+    "config": null,
+    "schema": "public",
+    "returns": "trigger",
+    "arguments": "",
+    "definition_hash": "500218cb8f19fb13bfe166c95ae2c563",
+    "security_definer": false,
+    "migration": "0031_staff_nfc_billing.sql",
+    "statement": 29,
+    "purpose": "Protects staff NFC financial split/charge snapshots.",
+    "tables": [],
+    "mutates_data": false,
+    "dependencies": [
+      {
+        "table": "staff_nfc_allocations",
+        "created_by": "0031_staff_nfc_billing.sql"
+      },
+      {
+        "table": "staff_nfc_billing_rules",
+        "created_by": "0031_staff_nfc_billing.sql"
+      },
+      {
+        "table": "staff_nfc_receipts",
+        "created_by": "0031_staff_nfc_billing.sql"
+      }
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants",
+    "populated_safety": "Creation alone does not scan or modify historical rows; inspect definition collision, dependencies, concurrent writers and future-write compatibility. No Production recreation executed.",
+    "target_tables": [
+      "staff_nfc_allocations",
+      "staff_nfc_billing_rules",
+      "staff_nfc_receipts"
+    ],
+    "target_dependencies": [
+      {
+        "table": "staff_nfc_allocations",
+        "created_by": "0031_staff_nfc_billing.sql"
+      },
+      {
+        "table": "staff_nfc_billing_rules",
+        "created_by": "0031_staff_nfc_billing.sql"
+      },
+      {
+        "table": "staff_nfc_receipts",
+        "created_by": "0031_staff_nfc_billing.sql"
+      }
+    ],
+    "called_application_functions": []
+  },
+  {
+    "name": "protect_staff_nfc_subscription_snapshot",
+    "config": null,
+    "schema": "public",
+    "returns": "trigger",
+    "arguments": "",
+    "definition_hash": "e26c174ad65ba0ee094b7bd00fe63bf4",
+    "security_definer": false,
+    "migration": "0031_staff_nfc_billing.sql",
+    "statement": 7,
+    "purpose": "Protects staff subscription financial snapshots.",
+    "tables": [],
+    "mutates_data": false,
+    "dependencies": [
+      {
+        "table": "staff_nfc_subscriptions",
+        "created_by": "0031_staff_nfc_billing.sql"
+      }
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants",
+    "populated_safety": "Creation alone does not scan or modify historical rows; inspect definition collision, dependencies, concurrent writers and future-write compatibility. No Production recreation executed.",
+    "target_tables": [
+      "staff_nfc_subscriptions"
+    ],
+    "target_dependencies": [
+      {
+        "table": "ROW",
+        "created_by": "Existing table"
+      },
+      {
+        "table": "staff_nfc_subscriptions",
+        "created_by": "0031_staff_nfc_billing.sql"
+      }
+    ],
+    "called_application_functions": []
+  },
+  {
+    "name": "protect_student_subscription_allocations",
+    "config": null,
+    "schema": "public",
+    "returns": "trigger",
+    "arguments": "",
+    "definition_hash": "401a5ad9cd9e66eb1d90ddd18f6de111",
+    "security_definer": false,
+    "migration": "0036_student_subscription_allocations.sql",
+    "statement": 19,
+    "purpose": "Enforces append-only verified student subscription allocation history.",
+    "tables": [],
+    "mutates_data": false,
+    "dependencies": [
+      {
+        "table": "student_subscription_allocations",
+        "created_by": "0036_student_subscription_allocations.sql"
+      }
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants",
+    "populated_safety": "Creation alone does not scan or modify historical rows; inspect definition collision, dependencies, concurrent writers and future-write compatibility. No Production recreation executed.",
+    "target_tables": [
+      "student_subscription_allocations"
+    ],
+    "target_dependencies": [
+      {
+        "table": "student_subscription_allocations",
+        "created_by": "0036_student_subscription_allocations.sql"
+      }
+    ],
+    "called_application_functions": []
+  },
+  {
+    "name": "protect_student_subscription_receipt_snapshot",
+    "config": null,
+    "schema": "public",
+    "returns": "trigger",
+    "arguments": "",
+    "definition_hash": "71bcd9797db2559f3af97a20af194d57",
+    "security_definer": false,
+    "migration": "0036_student_subscription_allocations.sql",
+    "statement": 11,
+    "purpose": "Protects student subscription checkout/receipt snapshots.",
+    "tables": [],
+    "mutates_data": false,
+    "dependencies": [
+      {
+        "table": "student_subscription_payments",
+        "created_by": "0036_student_subscription_allocations.sql"
+      }
+    ],
+    "historical_backfill_required": "No automatic retrospective rewrite; validate referenced history/invariants",
+    "populated_safety": "Creation alone does not scan or modify historical rows; inspect definition collision, dependencies, concurrent writers and future-write compatibility. No Production recreation executed.",
+    "target_tables": [
+      "student_subscription_payments"
+    ],
+    "target_dependencies": [
+      {
+        "table": "OLD",
+        "created_by": "Existing table"
+      },
+      {
+        "table": "student_subscription_payments",
+        "created_by": "0036_student_subscription_allocations.sql"
+      }
+    ],
+    "called_application_functions": []
+  }
+]

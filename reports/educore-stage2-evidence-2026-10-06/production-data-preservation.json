@@ -1,0 +1,7 @@
+{
+  "tables": 91,
+  "matched": 91,
+  "changed_tables": [],
+  "excluded_fields": [],
+  "algorithm": "md5 of concatenated sorted md5(row_to_json(row)::text); physical JSON column order preserved"
+}

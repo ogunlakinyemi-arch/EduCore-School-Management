@@ -1,0 +1,647 @@
+You are working on the Yemait EduCore school management system.
+
+This is STAGE 2 of the production-readiness process.
+
+STAGE 1 HAS BEEN COMPLETED.
+
+The Stage 1 audit found:
+
+- 60 SQL migration files numbered 0000–0059.
+- Clean isolated replay of all 60 SQL migrations: PASS, 60/60.
+- Development currently contains 173 tables.
+- Production currently contains 91 public tables.
+- Production is missing 82 tables, 1,182 columns, 18 application functions and 22 application triggers.
+- Production has 808 RED constraint discrepancies and 340 missing index definitions.
+- Drizzle's journal currently lists only 54 migration files and omits 0037–0041 and 0057.
+- Development currently has only 24 Drizzle ledger entries, latest mapped to 0056.
+- Production has no Drizzle migration ledger.
+- Checksums for migrations 0001 and 0004 differ from the current GitHub SQL.
+- The TypeScript schema export currently fails with PostgreSQL error 42601 because the "attendance_events_subject_check" definition in "edupulse.ts" around line 1048 is malformed.
+- The current Production publish preview contains 611 statements.
+- The current preview has unresolved FK prerequisites involving:
+  1. "subscriptions(id, school_id, student_id)"
+  2. "parents(id, school_id)"
+  3. "school_partner_attributions(id, partner_profile_id)"
+  4. "academic_terms(id, school_id, academic_session_id)"
+- The previous "school_operation_categories" prerequisite has already been resolved.
+- The current preview also contains one CHECK-constraint drop and two DROP NOT NULL operations.
+- The current preview does not contain the required application functions, triggers or historical backfills.
+- Production contains real schools, students, users, subscriptions and NFC cards.
+- Production must NOT receive the current pending rollout.
+
+The Stage 1 conclusion was:
+
+RED — Production is unsafe/incomplete.
+
+==================================================
+PRIMARY OBJECTIVE
+
+Repair and reconcile the DATABASE MIGRATION SOURCE OF TRUTH.
+
+The objective is to establish a single, internally consistent and technically verifiable migration history before any Production reconciliation is attempted.
+
+Use the actual GitHub repository as the source of truth for the current application code:
+
+https://github.com/ogunlakinyemi-arch/EduCore-School-Management
+
+Do not guess.
+
+Do not assume the current Drizzle journal is correct.
+
+Do not assume the Production database is correct.
+
+Do not assume the Development migration ledger is correct.
+
+Determine exactly what happened.
+
+==================================================
+ABSOLUTE SAFETY RULES
+
+PRODUCTION MUST REMAIN COMPLETELY UNTOUCHED.
+
+DO NOT:
+
+- run migrations against Production
+- run "drizzle-kit push" against Production
+- run "drizzle-kit migrate" against Production
+- run "db push" against Production
+- execute SQL against Production that changes schema or data
+- approve the current Production publish preview
+- publish the current Production database changes
+- DROP Production tables
+- ALTER Production tables
+- DELETE Production records
+- UPDATE Production records
+- INSERT Production records
+- modify Production constraints
+- modify Production indexes
+- modify Production functions
+- modify Production triggers
+- modify Production secrets
+- modify Production DATABASE_URL
+- modify Clerk configuration
+- modify Flutterwave configuration
+- deploy new application functionality
+
+This stage is SOURCE-OF-TRUTH REPAIR.
+
+You may inspect Production read-only if necessary, but no write operation is permitted.
+
+==================================================
+
+1. INVENTORY ALL 60 MIGRATION FILES
+   ==================================================
+
+Inspect:
+
+lib/db/drizzle/
+
+Create an exact inventory:
+
+0000
+0001
+0002
+...
+0059
+
+For every migration identify:
+
+- filename
+- migration number
+- SQL statements
+- tables affected
+- columns affected
+- constraints affected
+- indexes affected
+- functions
+- triggers
+- backfills/data changes
+- dependencies on previous migrations
+
+Confirm that there are exactly 60 SQL migration files.
+
+Report any duplicate numbering, missing numbering, renamed files or suspicious changes.
+
+==================================================
+2. INVESTIGATE THE DRIZZLE JOURNAL
+
+Inspect the Drizzle migration journal/configuration.
+
+Determine exactly:
+
+- where the journal is located
+- why it contains only 54 entries
+- why 0037–0041 are omitted
+- why 0057 is omitted
+- whether those six migrations were intentionally excluded
+- whether they were applied through another mechanism
+- whether the journal was manually altered
+- whether migration filenames/hashes were changed
+- whether journal timestamps correspond to migration order
+- whether the journal can safely represent the current 60-file migration history
+
+DO NOT modify the journal yet.
+
+First produce a finding.
+
+==================================================
+3. INVESTIGATE THE DEVELOPMENT MIGRATION LEDGER
+
+The Stage 1 audit found:
+
+- Development has all 173 tables.
+- Development has only 24 Drizzle ledger entries.
+- Latest mapped ledger entry is 0056.
+
+Determine exactly how Development reached its current 173-table state.
+
+Find out whether the missing schema objects came from:
+
+- direct schema push
+- "drizzle-kit push"
+- SQL execution
+- migration files
+- manual database changes
+- Replit database tooling
+- scripts
+- reconciliation operations
+- another mechanism
+
+Inspect relevant package scripts, database scripts and development tooling.
+
+DO NOT modify the Development database yet.
+
+The goal is to reconstruct the history.
+
+==================================================
+4. INVESTIGATE CHECKSUM DRIFT
+
+The Stage 1 audit found checksum/hash differences for migrations:
+
+- 0001
+- 0004
+
+Determine:
+
+- the current GitHub SQL contents
+- the recorded historical checksum
+- whether the SQL file was changed after being applied
+- what the old and new SQL differences are
+- whether the change is schema-affecting
+- whether the change is data-affecting
+- whether the difference is harmless formatting
+- whether the change could cause migration replay/reconciliation problems
+
+Do not overwrite historical hashes merely to make the system appear consistent.
+
+Do not fabricate historical migration records.
+
+Report the exact reason for each checksum mismatch.
+
+==================================================
+5. DETERMINE THE CANONICAL MIGRATION HISTORY
+
+Based on all evidence, determine whether:
+
+A. The 60 SQL files are the canonical migration history.
+
+OR
+
+B. The current repository contains a mixture of historical migrations and later schema changes that need a different reconciliation strategy.
+
+Do not choose based on convenience.
+
+Use evidence from:
+
+- migration SQL
+- Drizzle journal
+- Development schema
+- Development ledger
+- Git history where available
+- package scripts
+- schema files
+- database tooling
+- migration timestamps
+- previous migration behavior
+
+Give a clear conclusion.
+
+==================================================
+6. FIX THE MALFORMED TYPESCRIPT SCHEMA DEFINITION
+
+The Stage 1 audit found PostgreSQL error 42601:
+
+"attendance_events_subject_check"
+
+The error indicates that the CHECK constraint definition around:
+
+"lib/db/src/schema/edupulse.ts:1048"
+
+is malformed and lacks a closing parenthesis.
+
+Inspect the actual code.
+
+Correct ONLY the syntax/definition problem required to make the schema valid.
+
+Do not redesign the attendance system.
+
+Do not change business logic unless the malformed syntax makes the intended logic impossible to determine.
+
+Before changing it:
+
+- identify the current expression
+- determine the intended CHECK condition from the surrounding code and migration history
+- compare it against the corresponding SQL migration
+- make the smallest safe correction
+
+After correction:
+
+- run the relevant TypeScript/schema validation
+- run PostgreSQL schema export/introspection if available
+- confirm the 42601 error is gone
+
+Record exactly what was changed.
+
+This is the only application/schema source change authorized in this stage.
+
+==================================================
+7. VALIDATE THE TYPESCRIPT SCHEMA AGAINST SQL
+
+After repairing the malformed schema definition, compare:
+
+A. TypeScript schema
+B. SQL migrations 0000–0059
+
+Identify:
+
+- tables missing from TypeScript
+- tables missing from SQL migrations
+- columns missing from either side
+- mismatched data types
+- mismatched nullable settings
+- mismatched primary keys
+- mismatched foreign keys
+- mismatched unique constraints
+- mismatched indexes
+- mismatched CHECK constraints
+
+Do not automatically change anything except the specific malformed constraint identified above.
+
+If discrepancies exist, report them.
+
+==================================================
+8. INVESTIGATE THE FIVE FK PREREQUISITES
+
+The current Production preview fails because these parent uniqueness requirements are missing:
+
+1. "subscriptions(id, school_id, student_id)"
+2. "parents(id, school_id)"
+3. "school_partner_attributions(id, partner_profile_id)"
+4. "academic_terms(id, school_id, academic_session_id)"
+
+There are five dependent statements:
+
+- 251
+- 416
+- 260
+- 281
+- 412
+
+Determine exactly which migration creates each required parent table/constraint and which migration creates each dependent FK.
+
+Determine the correct safe ordering.
+
+Important:
+
+Do not simply create arbitrary unique constraints.
+
+First inspect the schema and application logic to determine why these composite keys are required.
+
+Verify whether:
+
+- they are intended primary/unique keys
+- an equivalent constraint already exists under another name
+- the FK definition is unnecessarily strict
+- the parent key should instead reference an existing unique key
+
+The correct solution must preserve tenant isolation and data integrity.
+
+Do not modify Production.
+
+==================================================
+9. INVESTIGATE THE CURRENT PREVIEW'S DANGEROUS OPERATIONS
+
+The Stage 1 audit found:
+
+- one CHECK constraint drop
+- two DROP NOT NULL operations
+
+Locate the exact statements.
+
+For each one determine:
+
+- table
+- column/constraint
+- originating migration
+- reason
+- whether existing Production data could violate the resulting schema
+- whether the operation is necessary
+- whether it should be retained
+- whether it requires a data backfill or guard
+- whether it can safely occur before/after other migrations
+
+Do not execute these operations.
+
+==================================================
+10. INVESTIGATE FUNCTIONS AND TRIGGERS
+
+The expected schema contains:
+
+- 18 application functions
+- 22 application triggers
+
+Production currently contains:
+
+- 0 application functions
+- 0 application triggers
+
+Identify every expected function and trigger.
+
+For each:
+
+- migration that creates it
+- purpose
+- tables affected
+- whether it performs data mutation
+- whether it depends on another object
+- whether it requires historical backfill
+- whether it is safe to recreate on populated Production
+
+Do not deploy them.
+
+==================================================
+11. INVESTIGATE HISTORICAL BACKFILLS
+
+Find every migration containing:
+
+- UPDATE
+- INSERT
+- DELETE
+- backfill
+- data normalization
+- generated historical records
+- ownership reconstruction
+- NFC history reconstruction
+- subscription migration
+- finance migration
+- replacement-history migration
+
+For each identify:
+
+- expected affected records
+- whether it is idempotent
+- whether it can safely run twice
+- whether it can corrupt existing Production data
+- whether it requires preconditions
+- whether it should be converted into a guarded migration
+- whether it has already effectively happened in Development
+
+Do not execute any backfill against Production.
+
+==================================================
+12. CREATE A SAFE RECONCILIATION DESIGN
+
+Do NOT create the actual Production reconciliation migration yet.
+
+Instead create a design/report showing how reconciliation should later occur.
+
+The design should distinguish:
+
+PHASE A
+Migration-history repair
+
+PHASE B
+Parent uniqueness prerequisites
+
+PHASE C
+Tables/columns
+
+PHASE D
+Indexes/unique constraints
+
+PHASE E
+Foreign keys
+
+PHASE F
+Functions
+
+PHASE G
+Triggers
+
+PHASE H
+Historical backfills/data transformations
+
+PHASE I
+Validation
+
+PHASE J
+Production rollout
+
+For each phase identify dependencies.
+
+==================================================
+13. RUN A CLEAN REPLAY AGAIN
+
+After correcting the malformed TypeScript schema source, rerun the isolated clean migration replay if possible.
+
+Expected result:
+
+0000 → 0059
+
+must still pass.
+
+Do NOT use Production.
+
+Report:
+
+- total migrations
+- passed
+- failed
+- first failure
+- exact error
+- whether the repaired schema definition affects replay
+
+==================================================
+14. GENERATE A NEW PREVIEW ONLY
+
+If the environment allows a safe isolated database comparison, generate a fresh preview of the changes that would be needed to reconcile the Development/schema state.
+
+This must NOT be Production.
+
+Do not execute the preview.
+
+Do not approve it.
+
+Do not publish it.
+
+Specifically identify:
+
+- CREATE TABLE
+- ALTER TABLE
+- ADD COLUMN
+- indexes
+- unique constraints
+- foreign keys
+- functions
+- triggers
+- backfills
+- CHECK changes
+- NOT NULL changes
+- any DROP operations
+
+The purpose is to understand the migration plan, not execute it.
+
+==================================================
+15. DO NOT CREATE A NEW RECONCILIATION MIGRATION
+
+Do not create a migration such as:
+
+"0060_reconcile_production.sql"
+
+or any equivalent reconciliation migration.
+
+Do not generate a fake migration history.
+
+Do not modify old migration SQL simply to make checksums match.
+
+Do not rewrite the historical journal simply to make it show 60 entries.
+
+First determine what the correct historical state should be.
+
+If a migration/journal correction is required, report exactly what should be changed and why.
+
+==================================================
+16. FINAL REPORT
+
+At the end, produce the following report:
+
+A. Migration Source-of-Truth Status
+
+Choose:
+
+GREEN — canonical and internally consistent
+
+YELLOW — mostly understood but requires controlled correction
+
+RED — history is still ambiguous or unsafe
+
+B. 60-Migration Inventory
+
+Confirm:
+
+- 60 files
+- 0000–0059
+- clean replay result
+
+C. Drizzle Journal
+
+Explain:
+
+- current entry count
+- missing migrations
+- why they are missing
+- whether journal can safely be repaired
+- recommended correction
+
+D. Development Ledger
+
+Explain:
+
+- why only 24 entries exist
+- how Development reached 173 tables
+- whether schema push/direct changes bypassed migration history
+
+E. Checksum Drift
+
+For 0001 and 0004:
+
+- old checksum
+- current checksum
+- exact difference
+- risk
+- recommendation
+
+F. Schema Export
+
+Confirm whether the "attendance_events_subject_check" 42601 error is fixed.
+
+Report the exact source change.
+
+G. SQL vs TypeScript Schema
+
+List all remaining discrepancies.
+
+H. FK Prerequisites
+
+For each of the five unresolved prerequisites:
+
+- required parent key
+- parent migration
+- dependent FK migration
+- safe order
+- whether an equivalent key already exists
+
+I. Functions/Triggers
+
+List all 18 functions and 22 triggers and their migration dependencies.
+
+J. Backfills
+
+List all data-changing migrations and classify:
+
+- safe/idempotent
+- requires guard
+- requires populated-data rehearsal
+- potentially dangerous
+
+K. Production Rollout Readiness
+
+Choose:
+
+RED — do not reconcile yet
+
+YELLOW — reconciliation plan ready but requires rehearsal
+
+GREEN — ready for separately approved rollout
+
+Do NOT mark GREEN merely because the clean replay succeeds.
+
+L. Exact Next Step
+
+Give ONE recommended next step only.
+
+It must be the safest next action based on your findings.
+
+==================================================
+FINAL SAFETY REQUIREMENT
+
+Before finishing, verify:
+
+- Production schema unchanged.
+- Production data unchanged.
+- Production secrets unchanged.
+- Production configuration unchanged.
+- No Production migration executed.
+- No Production publish executed.
+- No new feature built.
+- No reconciliation migration created.
+
+End the report with exactly:
+
+"STAGE 2 COMPLETE — NO PRODUCTION CHANGES WERE MADE."
+
+If any requested inspection cannot be performed, say:
+
+"NOT VERIFIED — REASON: ..."
+
+Never guess or mark an item GREEN without evidence.

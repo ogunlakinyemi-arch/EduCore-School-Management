@@ -238,3 +238,31 @@ mtime_ms = 1791311112154
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/5d89c492-2854-462c-bc73-d40ff4fe9708/6e23d944-750b-45cb-84b5-7d0aeb7043f6"
 storage_version_token = "1791311140387410"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "maU2LU6aowyjqYMLOuf9i"
+uri = "file://reports/educore-stage2-source-of-truth-2026-10-06.html"
+type = "html"
+title = "Stage 2 — A–L Migration Source-of-Truth Report"
+description = "Complete findings, all migration/function/trigger inventories, remaining discrepancies, phased reconciliation design and safety evidence. Source-of-truth and rollout readiness remain RED."
+logical_id = "a15d7496-7025-43ec-ac6a-6291e1c9cbdd"
+content_hash = "sha256:5ee12f2e99e2d08cb1938aacba5e807ccaf045412f42d1217f0a8f1fd5e0237c"
+size = 242996
+mtime_ms = 1791314628390
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/a15d7496-7025-43ec-ac6a-6291e1c9cbdd/6b8d754f-d842-4f75-afd7-17b93f9eb36a"
+storage_version_token = "1791314697340866"
+content_type = "text/html"
+
+[[outputs]]
+id = "GQNya4Z7LNM9EVpCgdwb3"
+uri = "file://reports/educore-stage2-evidence-2026-10-06.zip"
+type = "unspecified"
+title = "Stage 2 — Audit Evidence Bundle"
+description = "60-file SQL inventory, schema discrepancy CSV, isolated diagnostic preview, replay logs, checksum history and before/after preservation evidence. No executable reconciliation migration or secret values."
+logical_id = "129b8b69-d404-473a-a69f-6ba397709012"
+content_hash = "sha256:dac4b9dc4eaf414465f8ef2ee6a093f1c3b3c96774777df3169d2eaf510df701"
+size = 273587
+mtime_ms = 1791314628538
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/129b8b69-d404-473a-a69f-6ba397709012/8cace630-7840-49b4-9d9b-004baf551ba1"
+storage_version_token = "1791314697973963"
+content_type = "application/octet-stream"

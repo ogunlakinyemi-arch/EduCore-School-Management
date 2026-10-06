@@ -1,0 +1,7 @@
+[
+  {
+    "sql": "ALTER TABLE \"admission_applications\" ADD CONSTRAINT \"admission_applications_parent_school_fk\" FOREIGN KEY (\"converted_parent_id\",\"school_id\") REFERENCES \"public\".\"parents\"(\"id\",\"school_id\") ON DELETE restrict ON UPDATE no action",
+    "code": "42830",
+    "message": "there is no unique constraint matching given keys for referenced table \"parents\""
+  }
+]

@@ -1045,7 +1045,7 @@ export const attendanceEvents = pgTable(
     foreignKey({ columns: [table.academicSessionId, table.schoolId], foreignColumns: [academicSessions.id, academicSessions.schoolId], name: "attendance_events_session_school_fk" }),
     foreignKey({ columns: [table.academicTermId, table.schoolId], foreignColumns: [academicTerms.id, academicTerms.schoolId], name: "attendance_events_term_school_fk" }),
     foreignKey({ columns: [table.schoolClassId, table.schoolId], foreignColumns: [schoolClasses.id, schoolClasses.schoolId], name: "attendance_events_class_school_fk" }),
-    check("attendance_events_subject_check", sql`(("student_id" IS NOT NULL)::int + ("employee_id" IS NOT NULL)::int = 1`),
+    check("attendance_events_subject_check", sql`(("student_id" IS NOT NULL)::int + ("employee_id" IS NOT NULL)::int = 1)`),
     index("attendance_events_school_date_idx").on(table.schoolId, table.eventDate, table.occurredAt),
     index("attendance_events_student_idx").on(table.studentId, table.occurredAt),
     index("attendance_events_employee_idx").on(table.employeeId, table.occurredAt),
