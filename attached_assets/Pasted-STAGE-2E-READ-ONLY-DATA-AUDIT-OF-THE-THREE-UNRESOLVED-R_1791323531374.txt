@@ -1,0 +1,573 @@
+STAGE 2E — READ-ONLY DATA AUDIT OF THE THREE UNRESOLVED RELATIONSHIPS
+
+We are continuing the Yemait EduCore production-readiness work.
+
+IMPORTANT CONTEXT:
+
+- The Production database currently contains ONLY test schools/test data created by me for development/testing.
+- There are NO real customer schools or real customer production records yet.
+- This task is ONLY a read-only audit of the existing Production test data.
+- Do NOT make any database changes.
+- Do NOT repair data.
+- Do NOT add/remove/alter constraints.
+- Do NOT run db push.
+- Do NOT run migrations.
+- Do NOT publish/deploy anything.
+- Do NOT create migration 0060.
+- Do NOT modify migration history, Drizzle journal, schema source files, or application code.
+- Do NOT modify the Production database in any way.
+
+The purpose is to determine whether the existing Production TEST DATA is compatible with the historical relationship rules identified in Stage 2D, before we decide what reconciliation should eventually be performed.
+
+==================================================
+
+1. TARGET VERIFICATION — MUST HAPPEN FIRST
+   ==================================================
+
+Before querying application data, verify that the database connection being used is actually the intended Yemait EduCore Production database.
+
+Use read-only metadata only.
+
+Collect safe database identity information such as:
+
+- current_database()
+- PostgreSQL server/version information
+- server address/port where safely available
+- public table count
+- relevant table existence
+- other non-secret database metadata that helps establish the target
+
+Do NOT print:
+
+- DATABASE_URL
+- passwords
+- API keys
+- Clerk secrets
+- Flutterwave secrets
+- any other credentials
+
+Do NOT assume that a database is Production merely because an environment variable says "production".
+
+The target must be reasonably confirmed using database metadata plus the known project environment.
+
+If the exact target cannot be confidently verified:
+
+STOP.
+
+Report:
+
+TARGET NOT VERIFIED — NO APPLICATION DATA WAS QUERIED.
+
+Do not continue with the audit.
+
+If the target is verified, continue.
+
+==================================================
+2. READ-ONLY SAFETY
+
+Use a read-only database session/transaction if practical.
+
+Prefer:
+
+SET TRANSACTION READ ONLY;
+
+Also use a reasonable statement timeout if supported.
+
+Do not execute:
+
+- INSERT
+- UPDATE
+- DELETE
+- ALTER TABLE
+- CREATE
+- DROP
+- TRUNCATE
+- GRANT
+- REVOKE
+- COMMENT
+- VACUUM
+- ANALYZE
+- db push
+- drizzle migrations
+- migration replay against Production
+- any schema-changing command
+
+This is an audit only.
+
+The only acceptable output is:
+
+- counts
+- constraint/index metadata
+- compatibility results
+- concise diagnostic information
+- safe test-data samples only when absolutely necessary
+
+Do NOT output student names, parent names, email addresses, phone numbers, or other unnecessary personal information.
+
+Prefer counts rather than actual IDs.
+
+==================================================
+3. RELATIONSHIP #1 — PLATFORM DEVICE → SCHOOL CLASS
+
+Audit:
+
+platform_devices.school_id
+platform_devices.school_class_id
+
+Historical design:
+
+platform_devices(school_class_id, school_id)
+→
+school_classes(id, school_id)
+
+The historical composite foreign key was created in migration 0009 and was NOT VALID.
+
+Current source also contains a standalone relationship:
+
+platform_devices.school_class_id
+→
+school_classes.id
+
+We need to determine whether the existing Production TEST DATA would satisfy the historical composite relationship.
+
+Read-only audit:
+
+A. Count:
+
+- total platform_devices
+- devices with school_id NULL
+- devices with school_class_id NULL
+- devices with both values present
+
+B. Detect orphan class references:
+
+- school_class_id points to a school_classes row that does not exist
+
+C. Detect cross-school mismatches:
+
+- platform_devices.school_class_id exists
+- school_classes.id exists
+- but platform_devices.school_id <> school_classes.school_id
+
+D. Detect:
+
+- school_class_id present while school_id is NULL
+- school_id present while school_class_id is NULL
+
+E. Determine whether each existing row would satisfy the historical composite relationship:
+
+(platform_devices.school_class_id, platform_devices.school_id)
+→
+(school_classes.id, school_classes.school_id)
+
+Remember PostgreSQL MATCH SIMPLE behavior:
+
+- if either referencing value is NULL, the composite FK does not require a parent match
+- if both are non-NULL, both values must match
+
+Report:
+
+DEVICE → CLASS
+
+- total rows
+- rows satisfying historical composite rule
+- rows that would violate historical composite rule
+- orphan class references
+- cross-school class mismatches
+- NULL-related cases
+- whether validation of the historical composite FK would currently succeed
+
+Do NOT validate or alter the actual constraint.
+Calculate compatibility using read-only queries.
+
+==================================================
+4. RELATIONSHIP #2 — STUDENT SUBSCRIPTION ALLOCATION → STUDENT
+
+Audit:
+
+student_subscription_allocations.student_id
+student_subscription_allocations.school_id
+
+Historical design:
+
+(student_id, school_id)
+→
+students(id, school_id)
+
+with:
+
+ON DELETE RESTRICT
+
+Current source also contains:
+
+student_subscription_allocations.student_id
+→
+students.id
+
+with:
+
+ON DELETE RESTRICT
+
+We need to determine whether the existing Production TEST DATA would satisfy the historical tenant-bound relationship.
+
+Read-only audit:
+
+A. Count:
+
+- total allocation rows
+- rows with student_id NULL
+- rows with school_id NULL
+
+B. Detect orphan student references:
+
+- student_id does not exist in students
+
+C. Detect cross-school mismatches:
+
+- allocation.student_id exists
+- students.school_id <> allocation.school_id
+
+D. Determine whether every existing allocation satisfies:
+
+(student_id, school_id)
+→
+students(id, school_id)
+
+E. Also check whether any student's current school differs from the allocation school.
+
+This is important because an allocation may have been created correctly but the student's current school could theoretically have changed later.
+
+Report separately:
+
+1. Allocation originally/currently matches student school
+2. Allocation student exists but school differs
+3. Student does not exist
+4. NULL violations
+5. Total rows that would prevent validation of the historical composite FK
+
+Do NOT modify student records or allocations.
+
+==================================================
+5. RELATIONSHIP #3 — ALLOCATION → PARTNER ATTRIBUTION
+
+Audit:
+
+student_subscription_allocations.attribution_id
+student_subscription_allocations.recipient_id
+student_subscription_allocations.school_id
+
+Historical design:
+
+(attribution_id, recipient_id)
+→
+school_partner_attributions(id, partner_profile_id)
+
+with:
+
+ON DELETE RESTRICT
+
+Current source contains:
+
+- standalone attribution_id → school_partner_attributions.id
+- historical-style attribution_id + recipient_id → partner_profile_id relationship
+
+This relationship is more complicated because recipient_id may legitimately be NULL for non-partner/platform/provider-fee allocation rows.
+
+Do NOT assume every attribution row must have a partner recipient.
+
+Read-only audit:
+
+A. First inspect the actual columns of:
+
+school_partner_attributions
+
+Determine whether it has:
+
+- school_id
+- partner_profile_id
+- status/end-date fields
+- any other ownership fields relevant to the relationship
+
+Do not assume school_id exists.
+
+B. Count allocation rows:
+
+- total allocations
+- attribution_id NULL
+- attribution_id NOT NULL
+- recipient_id NULL
+- recipient_id NOT NULL
+
+C. Detect orphan attribution references:
+
+- attribution_id does not exist
+
+D. Where attribution_id exists and recipient_id is NOT NULL:
+compare:
+
+allocation.recipient_id
+vs
+school_partner_attributions.partner_profile_id
+
+Identify mismatches.
+
+E. Where attribution_id exists and recipient_id IS NULL:
+report separately.
+
+Do NOT classify these as errors automatically.
+
+These may represent valid non-Partner/platform/provider-fee allocation records.
+
+F. If school_partner_attributions has school_id:
+
+compare:
+
+allocation.school_id
+vs
+attribution.school_id
+
+Report mismatches separately.
+
+If school_partner_attributions does NOT have school_id:
+
+state clearly:
+
+"Attribution table has no school_id column; school-level attribution ownership cannot be directly tested from this relationship."
+
+Do not invent a school relationship.
+
+G. Check whether a UNIQUE constraint/index already exists for:
+
+school_partner_attributions(id, school_id)
+
+Only inspect metadata.
+
+Do not create one.
+
+If it does not exist, report:
+
+"Required supporting key does not currently exist."
+
+Do not fix it.
+
+==================================================
+6. CURRENT CONSTRAINT AND INDEX AUDIT
+
+For ONLY these three relationship areas, inspect PostgreSQL metadata read-only.
+
+Check:
+
+platform_devices
+school_classes
+student_subscription_allocations
+students
+school_partner_attributions
+
+Report existing:
+
+- primary keys
+- unique constraints
+- relevant foreign keys
+- relevant indexes
+- FK validation status where available
+- ON DELETE action
+- referenced columns
+
+Pay particular attention to:
+
+platform_devices(school_class_id, school_id)
+students(id, school_id)
+school_classes(id, school_id)
+school_partner_attributions(id, partner_profile_id)
+school_partner_attributions(id, school_id), if applicable
+
+Do not change any of them.
+
+==================================================
+7. HISTORICAL-COMPATIBILITY RESULT
+
+For each of the three relationships, produce a clear decision.
+
+Use only:
+
+SAFE TO RECONCILE
+NOT SAFE TO RECONCILE YET
+NEEDS REVIEW
+
+Definitions:
+
+SAFE TO RECONCILE
+= Existing Production TEST DATA contains no violations of the historical relationship and no unresolved structural issue was found in this audit.
+
+NOT SAFE TO RECONCILE YET
+= Existing TEST DATA contains one or more rows that would violate the historical relationship.
+
+NEEDS REVIEW
+= The data itself may be valid, but supporting-key, ownership, nullability, or historical-design questions remain unresolved.
+
+Do NOT interpret "SAFE TO RECONCILE" as permission to make changes.
+
+It only means the TEST DATA passed this audit.
+
+==================================================
+8. REQUIRED DECISION MATRIX
+
+Produce a table like:
+
+Relationship| Test Rows| Violations| Key Finding| Historical Rule Passes?| Decision
+Device → Class| ...| ...| ...| YES/NO| ...
+Allocation → Student| ...| ...| ...| YES/NO| ...
+Allocation → Attribution| ...| ...| ...| YES/NO/NA| ...
+
+Then provide a short plain-English explanation for each.
+
+==================================================
+9. IMPORTANT DISTINCTION — TEST DATA VS SCHEMA
+
+Do not conclude that the schema is correct merely because the test data passes.
+
+We are checking two separate things:
+
+A. DATA COMPATIBILITY
+Does the existing Production TEST DATA satisfy the historical relationship?
+
+B. SCHEMA COMPATIBILITY
+Would the historical constraint be supported correctly by the current schema?
+
+Report these separately.
+
+For example:
+
+DATA:
+"No existing test rows violate the historical student/school relationship."
+
+SCHEMA:
+"The current schema does/does not currently contain the required composite key."
+
+Do not combine these conclusions.
+
+==================================================
+10. DO NOT REPAIR ANYTHING
+
+If violations are found:
+
+DO NOT:
+
+- delete them
+- update them
+- move them to another school
+- change student school
+- change attribution
+- change partner
+- remove allocations
+- add constraints
+- validate constraints
+- create indexes
+- modify schema
+
+Only report them.
+
+Because these are test records, we still want to preserve the current state until a deliberate reconciliation decision is made.
+
+==================================================
+11. SOURCE AND HISTORY INTEGRITY CHECK
+
+Confirm that this audit did not modify:
+
+- migrations 0000–0059
+- Drizzle migration journal
+- schema source files
+- Stage 2B exporter
+- application code
+- migration 0060
+- Production schema
+- Production data
+
+Do not rewrite or regenerate any of them.
+
+If you create a report file, it must be an audit/evidence report only.
+
+==================================================
+12. FINAL REPORT FORMAT
+
+Return the report in this exact high-level structure:
+
+A. TARGET VERIFICATION
+
+- target verified: YES/NO
+- safe database identity metadata
+- reason target is considered the intended Production test database
+
+B. SAFETY
+
+- read-only session used: YES/NO
+- writes executed: 0
+- schema changes: 0
+- migrations executed: 0
+- db push executed: 0
+- publish/deployment executed: 0
+
+C. DEVICE → CLASS AUDIT
+
+- counts
+- orphan results
+- cross-school mismatch results
+- NULL cases
+- historical composite compatibility
+- decision
+
+D. ALLOCATION → STUDENT AUDIT
+
+- counts
+- orphan results
+- cross-school mismatch results
+- NULL cases
+- historical composite compatibility
+- decision
+
+E. ALLOCATION → ATTRIBUTION AUDIT
+
+- counts
+- orphan results
+- recipient/partner matching
+- NULL recipient behavior
+- attribution school check if available
+- supporting unique-key check
+- decision
+
+F. CURRENT CONSTRAINT / INDEX STATE
+
+- relevant existing FKs
+- relevant unique keys
+- relevant indexes
+- validation status
+
+G. THREE-RELATIONSHIP DECISION MATRIX
+
+H. WHAT THE RESULTS MEAN
+Explain in simple English what is safe and what still needs review.
+
+I. REMAINING BLOCKERS
+List only the blockers that actually remain after this audit.
+
+J. NEXT RECOMMENDED STEP
+Recommend the safest next stage based on the actual audit results.
+
+Do NOT perform that next stage automatically.
+
+==================================================
+13. CRITICAL STOP CONDITION
+
+If the target cannot be confidently verified as the intended Production TEST database:
+
+STOP immediately.
+
+Do not query application records.
+
+Return:
+
+STAGE 2E BLOCKED — TARGET DATABASE COULD NOT BE CONFIRMED.
+
+If the target is verified and the audit completes successfully, end the report with exactly:
+
+STAGE 2E COMPLETE — READ-ONLY AUDIT OF PRODUCTION TEST DATA ONLY; NO PRODUCTION OR SHARED-DATABASE CHANGES WERE MADE.

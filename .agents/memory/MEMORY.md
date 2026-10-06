@@ -11,6 +11,7 @@
 - [Provider checkout claims](provider-checkout-claims.md) — an expired local initialization lease must not launch a second provider checkout; reconcile the original reference first.
 - [Orphaned workflow ports](orphaned-workflow-ports.md) — a failed managed restart may leave an older server holding the port while the preview still answers.
 - [Production database identity](production-database-identity.md) — the database name alone does not establish its hosting provider or the deployed app's connection target.
+- [Production test-data status](production-test-data-status.md) — user reported test-only Production on 2026-10-06; this does not authorize repairs or bypass target verification.
 - [Owner and school-operation separation](owner-school-operation-separation.md) — platform ownership remains read-only for ordinary school operations, even on a dual-role account.
 - [Authenticated browser evidence](authenticated-browser-evidence.md) — the owner's signed-in tab and the agent's testing browser have separate Clerk sessions; distinguish user-observed UI from agent-tested flows.
 - [Vite cartographer JSX generics](vite-cartographer-jsx-generics.md) — development metadata injection can break generic JSX elements even when typecheck and production build pass.

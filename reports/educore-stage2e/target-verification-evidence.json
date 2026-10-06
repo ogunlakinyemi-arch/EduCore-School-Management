@@ -1,0 +1,49 @@
+{
+  "stage": "2E",
+  "result": "BLOCKED",
+  "targetVerified": false,
+  "stopReason": "Production-routing callback reaches a read-only replica, but no database-resource binding links it to the published application; the required allocation table is also absent. Neither the environment label nor the database name proves exact target identity.",
+  "applicationDataQueried": false,
+  "metadataQueriesExecuted": 1,
+  "identityQuery": "SELECT current_database() AS database_name, current_user AS database_role, version() AS server_version, inet_server_addr()::text AS server_address, inet_server_port() AS server_port, pg_is_in_recovery() AS is_replica, current_setting('transaction_read_only') AS transaction_read_only, current_setting('statement_timeout') AS statement_timeout, (SELECT count(*) FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p')) AS public_table_count, to_regclass('public.platform_devices')::text AS platform_devices_table, to_regclass('public.school_classes')::text AS school_classes_table, to_regclass('public.student_subscription_allocations')::text AS allocations_table, to_regclass('public.students')::text AS students_table, to_regclass('public.school_partner_attributions')::text AS attributions_table",
+  "identityQueryResult": {
+    "exitCode": 0,
+    "exitReason": null,
+    "output": "database_name,database_role,server_version,server_address,server_port,is_replica,transaction_read_only,statement_timeout,public_table_count,platform_devices_table,school_classes_table,allocations_table,students_table,attributions_table\nneondb,neondb_owner,\"PostgreSQL 16.15 (9e87aff) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit\",169.254.254.254/32,5432,t,on,0,91,platform_devices,school_classes,,students,school_partner_attributions\n",
+    "success": true
+  },
+  "deploymentMetadata": {
+    "success": true,
+    "isDeployed": true,
+    "deploymentType": "autoscale",
+    "hasSuccessfulBuild": true,
+    "databaseResourceBindingProvided": false
+  },
+  "safety": {
+    "readOnlyObserved": true,
+    "transactionReadOnly": "on",
+    "isReplica": true,
+    "statementTimeout": "0",
+    "timeoutOverrideUsed": false,
+    "writesExecuted": 0,
+    "schemaChanges": 0,
+    "migrationsExecuted": 0,
+    "dbPushExecuted": 0,
+    "publishExecuted": 0,
+    "customTransactionStarted": false
+  },
+  "audits": {
+    "deviceClass": "NOT RUN",
+    "allocationStudent": "NOT RUN",
+    "allocationAttribution": "NOT RUN",
+    "constraintAndIndexState": "NOT RUN"
+  },
+  "sourceIntegrity": {
+    "reference": "Saved Stage 2D protected-file baseline",
+    "filesChecked": 726,
+    "differences": [],
+    "migrationFiles": 60,
+    "migration0060Present": false
+  },
+  "nextStep": "Obtain credentials-redacted evidence tying the intended Production database resource to the published application connection; then resume the authorized read-only audit. Not started."
+}
