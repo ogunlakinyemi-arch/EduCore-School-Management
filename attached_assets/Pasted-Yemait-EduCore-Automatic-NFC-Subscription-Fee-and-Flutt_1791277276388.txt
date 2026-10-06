@@ -1,0 +1,467 @@
+Yemait EduCore — Automatic NFC Subscription Fee and Flutterwave Payment
+
+Implement this change in the Development environment only.
+
+Core requirement
+
+The NFC card subscription fee must NOT be created or edited by School Admin.
+
+It is a system-controlled default subscription that already exists as part of Yemait EduCore.
+
+School Admin should not need to create an NFC fee structure manually.
+
+The existing NFC subscription amount remains:
+
+₦5,000 per student per term
+
+with the existing allocation:
+
+- ₦2,000 — School allocation
+- ₦3,000 — Platform allocation
+
+Do not change these amounts.
+
+---
+
+1. NFC subscription is automatically attached to students
+
+When a School Admin creates/assigns the normal fee structure for a class, the system should automatically include the NFC subscription as a payment obligation for eligible students in that class.
+
+Example:
+
+School Admin creates:
+
+2026/2027 → First Term → SS2/A
+
+Normal school fee:
+
+Tuition — ₦8,000
+
+The system automatically adds:
+
+NFC Card Subscription — ₦5,000
+
+Therefore each eligible student sees:
+
+SS2/A — First Term
+
+Tuition                  ₦8,000
+NFC Card Subscription    ₦5,000
+--------------------------------
+Total                    ₦13,000
+
+The NFC subscription must appear automatically without the School Admin creating a separate fee.
+
+---
+
+2. NFC subscription must not be editable by School Admin
+
+School Admin must NOT be able to:
+
+- Create the NFC subscription.
+- Delete the NFC subscription.
+- Change the NFC subscription amount.
+- Change its payment method.
+- Change its allocation.
+- Change its receiving account.
+- Create another NFC subscription for the same student/term.
+
+The system-controlled NFC subscription should be clearly identified as:
+
+NFC Card Subscription — System Fee
+
+or equivalent.
+
+Do not expose unnecessary configuration controls for it.
+
+---
+
+3. Eligibility
+
+Use the existing NFC eligibility/business rules.
+
+An NFC subscription should only be created/attached for students who are eligible for the NFC card/subscription program.
+
+Do not automatically charge students who are explicitly excluded from NFC participation according to the existing system rules.
+
+Do not create duplicate NFC subscription charges when:
+
+- A student changes section.
+- A class is edited.
+- The fee structure is updated.
+- The page is refreshed.
+- The payment dashboard is reopened.
+
+Use the existing subscription/fee ledger as the authoritative record.
+
+---
+
+4. Automatically appear on the class payment list
+
+Once the School Admin creates the normal fee structure for a class/session/term, the NFC subscription should automatically appear in the class payment records.
+
+Example:
+
+School Admin → Finance → Fees → SS2/A → First Term
+
+Student list:
+
+Student| Tuition| NFC Subscription| Total| Status
+Student A| ₦8,000| ₦5,000| ₦13,000| NFC Paid
+Student B| ₦8,000| ₦5,000| ₦13,000| NFC Unpaid
+Student C| ₦8,000| ₦5,000| ₦13,000| NFC Paid
+
+The School Admin must be able to quickly identify:
+
+- Students who have paid NFC subscription.
+- Students who have not paid NFC subscription.
+- Payment date.
+- Payment status.
+- Flutterwave transaction/reference where appropriate.
+
+---
+
+5. School Admin dashboard
+
+Add/maintain an NFC subscription view in the appropriate existing Finance/Payments dashboard.
+
+For each class:
+
+NFC Subscription
+
+- Total eligible students.
+- Paid.
+- Unpaid.
+- Pending.
+- Failed.
+- Total amount collected.
+- Amount allocated to school.
+- Amount allocated to platform.
+
+Allow the School Admin to filter:
+
+Class → Section → Session → Term
+
+and see the NFC payment status for each student.
+
+The School Admin should NOT see Platform Owner Flutterwave secret credentials.
+
+---
+
+6. Student dashboard
+
+For every eligible student, show the NFC subscription as one of their payment obligations.
+
+Example:
+
+My Payments
+
+- Tuition — ₦8,000
+- NFC Card Subscription — ₦5,000
+
+NFC status:
+
+Paid
+
+or
+
+Unpaid
+
+or
+
+Payment Pending
+
+or
+
+Payment Failed
+
+If unpaid, provide the normal payment action.
+
+---
+
+7. Parent dashboard
+
+For each linked child, show:
+
+NFC Card Subscription — ₦5,000
+
+with the correct payment status.
+
+Example:
+
+Child: Student A
+Class: SS2/A
+Term: First Term
+
+NFC Card Subscription
+₦5,000
+
+Status: UNPAID
+
+[Pay with Flutterwave]
+
+For a paid subscription:
+
+NFC Card Subscription
+₦5,000
+
+Status: PAID
+Paid: 06 October 2026
+Reference: FLW-XXXXXXXX
+
+Parents with multiple children must only see the NFC subscription belonging to their linked children.
+
+---
+
+8. NFC payment must automatically use Platform Owner Flutterwave
+
+NFC subscription payments must ALWAYS use:
+
+Platform Owner Flutterwave
+
+The school cannot use its own payment account for this subscription.
+
+The payment method should therefore automatically be:
+
+Flutterwave — Platform Owner
+
+The School Admin does not configure this.
+
+Do not allow the payment method to be changed through the frontend or a manipulated API request.
+
+Backend enforcement is required.
+
+---
+
+9. Normal school fees remain unchanged
+
+This change must NOT affect ordinary school fees.
+
+For example:
+
+Tuition
+Examination
+Uniform
+Books
+Transport
+Other school fees
+
+These continue using the school's existing payment configuration.
+
+Only:
+
+NFC Card Subscription
+
+uses Platform Owner Flutterwave.
+
+Therefore:
+
+School Fee
+     ↓
+School's payment method
+
+NFC Subscription
+     ↓
+Platform Owner Flutterwave
+
+---
+
+10. Payment allocation
+
+Keep the existing NFC subscription allocation:
+
+₦5,000 received
+
+→ ₦2,000 school allocation
+
+→ ₦3,000 platform allocation
+
+Do not interpret ₦2,000 as an amount the teacher personally pays.
+
+The Teacher Dashboard should display the applicable ₦2,000 school/teacher-side allocation using the existing finance/earnings architecture.
+
+If the current accounting model records this as a school allocation rather than individual teacher income, preserve that accounting model and display it appropriately according to the Teacher's existing permissions.
+
+---
+
+11. Platform Owner dashboard
+
+Platform Owner should have the appropriate NFC subscription payment/finance view showing:
+
+- School
+- Class
+- Section
+- Student
+- Session
+- Term
+- NFC subscription amount
+- Payment status
+- Payment date
+- Flutterwave reference
+- ₦2,000 school allocation
+- ₦3,000 platform allocation
+- Partner allocation where applicable under the existing rules
+
+Platform Owner should be able to see the overall NFC subscription payment status across schools.
+
+---
+
+12. Payment verification
+
+Continue using the existing verified-payment architecture.
+
+Do not mark an NFC subscription as paid merely because the frontend returns from Flutterwave.
+
+The system must verify the payment through the existing Flutterwave verification/webhook/reconciliation mechanism.
+
+Only a verified successful payment should change:
+
+NFC Subscription → PAID
+
+Failed, cancelled or abandoned payments must remain unpaid/failed according to the existing payment lifecycle.
+
+Duplicate callbacks/webhooks must not create duplicate payments.
+
+---
+
+13. Automatic lifecycle
+
+The intended workflow is:
+
+School Admin creates normal class fee structure
+                ↓
+System identifies eligible students
+                ↓
+System automatically creates/attaches
+NFC Subscription ₦5,000
+                ↓
+NFC subscription appears in:
+School Admin Payments
+Student Payments
+Parent Payments
+                ↓
+Parent/Student chooses Pay
+                ↓
+Platform Owner Flutterwave
+                ↓
+Flutterwave verifies payment
+                ↓
+NFC Subscription marked PAID
+                ↓
+School Admin sees student as PAID
+                ↓
+₦2,000 school allocation
+₦3,000 platform allocation
+
+---
+
+14. Important NFC/device relationship
+
+The subscription payment does not replace the NFC device/card authorization rules.
+
+Keep the existing relationship:
+
+NFC Device → School → NFC Card → Student
+
+A student may only use the NFC card according to the existing device-school authorization rules.
+
+The subscription is the financial requirement associated with the NFC program.
+
+Do not allow payment status to bypass NFC device/card authorization.
+
+---
+
+15. Avoid duplicate charges
+
+The system must guarantee one NFC subscription charge per:
+
+School + Student + Academic Session + Term
+
+for the applicable NFC subscription.
+
+Do not create another NFC subscription when:
+
+- School Admin edits ordinary fees.
+- Student changes class/section.
+- Parent opens the payment page.
+- Student opens the payment page.
+- Payment is retried.
+- Flutterwave webhook is received more than once.
+- School Admin refreshes the dashboard.
+
+Use the existing unique/ledger architecture where possible.
+
+---
+
+16. Required tests
+
+Test the complete flow:
+
+1. School Admin creates ordinary fee structure for a class.
+2. Eligible students automatically receive the NFC subscription.
+3. NFC subscription automatically appears in the class payment list.
+4. School Admin does not need to create the NFC fee.
+5. School Admin cannot edit/delete the system NFC fee.
+6. Student sees NFC subscription.
+7. Parent sees NFC subscription for linked child.
+8. NFC payment automatically uses Platform Owner Flutterwave.
+9. School's normal fees continue using the school's payment method.
+10. Successful verified Flutterwave payment changes NFC status to PAID.
+11. School Admin sees the correct student as PAID.
+12. Unpaid students remain clearly visible.
+13. Failed payment remains unpaid/failed.
+14. Duplicate Flutterwave webhook does not create duplicate payment.
+15. Retry payment does not create duplicate NFC subscription.
+16. Same student cannot receive two NFC subscriptions for the same school/session/term.
+17. ₦2,000 school allocation is recorded correctly.
+18. ₦3,000 platform allocation is recorded correctly.
+19. Teacher dashboard shows the applicable ₦2,000 allocation.
+20. Platform Owner dashboard shows the complete NFC transaction/allocation.
+21. Parent cannot see another student's NFC subscription.
+22. School Admin cannot see another school's NFC subscription.
+23. Platform Owner can see appropriate cross-school NFC payment information.
+24. Existing ordinary school fee payment remains unchanged.
+25. Existing finance/payment records remain unchanged.
+
+---
+
+17. Implementation constraints
+
+Development only.
+
+Do not create a new payment system.
+
+Do not create a new NFC fee system if the existing NFC subscription/ledger architecture already exists.
+
+Reuse the existing:
+
+- NFC subscription logic.
+- Fee/finance ledger.
+- Payment records.
+- Flutterwave integration.
+- Payment verification.
+- Allocation/settlement logic.
+- Parent payment dashboard.
+- Student payment dashboard.
+- School Admin finance dashboard.
+- Platform Owner finance dashboard.
+
+Make the smallest safe change necessary.
+
+Do not touch Production.
+
+Do not modify unrelated finance functionality.
+
+After implementation, report:
+
+- How the automatic NFC subscription is generated.
+- How eligibility is determined.
+- How duplicate subscriptions are prevented.
+- How Platform Owner Flutterwave is automatically selected.
+- How ordinary school payments remain unchanged.
+- Where NFC paid/unpaid status appears for School Admin.
+- Where it appears for Student and Parent.
+- How the ₦2,000 allocation is displayed on the Teacher Dashboard.
+- How Platform Owner sees the transaction.
+- Backend/frontend tests and exact results.
+- Confirmation that existing payment and financial records were preserved.
