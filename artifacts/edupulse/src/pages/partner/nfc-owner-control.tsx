@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/shared';
 import { useToast } from '@/hooks/use-toast';
 
-export function PartnerNfcOwnerControl({ partnerId }: { partnerId: number }) {
+export function PartnerNfcOwnerControl({ partnerId, partnerName, compact = false }: { partnerId: number; partnerName?: string; compact?: boolean }) {
   const q = useGetPartnerNfcPermission(partnerId);
   const update = useUpdatePartnerNfcPermission();
   const qc = useQueryClient();
@@ -12,17 +12,31 @@ export function PartnerNfcOwnerControl({ partnerId }: { partnerId: number }) {
     onSuccess: () => { toast({ title: enabled ? 'NFC activation granted' : 'NFC activation revoked' }); void qc.invalidateQueries({ queryKey: getGetPartnerNfcPermissionQueryKey(partnerId) }); },
     onError: (e: any) => toast({ title: 'Update failed', description: e?.message, variant: 'destructive' }),
   });
+  const control = q.data && !q.isError && (q.data.enabled
+    ? <Button variant="danger" disabled={update.isPending || q.isFetching} onClick={() => toggle(false)}
+        aria-label={`Revoke NFC Card Activation${partnerName ? ` for ${partnerName}` : ''}`}
+        testId={compact ? `button-revoke-nfc-${partnerId}` : 'button-revoke-nfc'}>Revoke<span className="sr-only"> NFC Card Activation{partnerName ? ` for ${partnerName}` : ''}</span></Button>
+    : <Button disabled={update.isPending || q.isFetching} onClick={() => toggle(true)}
+        aria-label={`Grant NFC Card Activation${partnerName ? ` to ${partnerName}` : ''}`}
+        testId={compact ? `button-grant-nfc-${partnerId}` : 'button-grant-nfc'}>Grant<span className="sr-only"> NFC Card Activation{partnerName ? ` to ${partnerName}` : ''}</span></Button>);
+  const error = <div role="alert" className="text-sm text-[hsl(var(--destructive))]">Permission could not be loaded. <button type="button" className="underline" onClick={() => void q.refetch()}>Retry</button></div>;
+  if (compact) return (
+    <section aria-label={`NFC Card Activation${partnerName ? ` for ${partnerName}` : ''}`} data-testid={`panel-partner-nfc-${partnerId}`} className="flex min-w-40 flex-col items-start gap-2">
+      <span className="text-xs font-semibold">NFC Card Activation</span>
+      {q.isLoading ? <span role="status">Loading permission…</span>
+        : q.isError || !q.data ? error
+        : <><span className="text-sm font-bold" data-testid={`text-nfc-state-${partnerId}`}>{q.data.enabled ? 'Enabled' : 'Disabled'}</span>{control}</>}
+    </section>
+  );
   return (
     <section className="panel mt-6 p-6" aria-label="NFC activation permission" data-testid="panel-partner-nfc">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div><h2 className="display-font text-xl font-bold">NFC card activation</h2>
+        <div><h2 className="display-font text-xl font-bold">NFC Card Activation</h2>
           <p className="text-sm text-[hsl(var(--muted-foreground))]">Lets this partner assign locked cards to students in referred schools.</p></div>
-        {q.data && (q.data.enabled
-          ? <Button variant="danger" disabled={update.isPending} onClick={() => toggle(false)} testId="button-revoke-nfc">Revoke</Button>
-          : <Button disabled={update.isPending} onClick={() => toggle(true)} testId="button-grant-nfc">Grant</Button>)}
+        {control}
       </div>
       {q.isLoading ? <div className="skeleton h-16 rounded-xl" />
-        : q.isError || !q.data ? <div role="alert" className="text-sm text-[hsl(var(--destructive))]">Permission could not be loaded. <button type="button" className="underline" onClick={() => void q.refetch()}>Retry</button></div>
+        : q.isError || !q.data ? error
         : <>
           <p className="mb-3 text-sm font-bold" data-testid="text-nfc-state">Current state: {q.data.enabled ? 'Enabled' : 'Disabled'}</p>
           {q.data.history.length ? <ul className="divide-y divide-[hsl(var(--border)/.6)] text-sm">{q.data.history.map(h => (

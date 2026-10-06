@@ -1,0 +1,103 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Partner NFC — Two Corrections and Verification</title>
+<style>body{margin:0;background:#f4f6fa;color:#182538;font:15px/1.65 system-ui,sans-serif}main{max-width:1050px;margin:auto;padding:32px 22px}h1,h2{line-height:1.25}h2{margin-top:32px}header{padding:24px;background:#13243e;color:white;border-radius:10px}table{border-collapse:collapse;width:100%;background:white}td,th{padding:9px;border:1px solid #d6deea;text-align:left;vertical-align:top}th{background:#e7edf6}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#e7edf6;padding:16px;font:12px/1.65 monospace}.notice{background:#fff3cd;padding:16px;border-left:4px solid #c79a14}code{font-size:13px;overflow-wrap:anywhere}@media(max-width:600px){main{padding:20px 12px}td,th{font-size:12px;padding:6px}}</style>
+<main><header><h1>Partner NFC: Two Focused Corrections</h1><p>Yemait EduCore · Development only · 6 October 2026</p></header>
+<p>Reused the implementation already present. No database/schema change, backend endpoint change, permission-rule change, new portal or authentication system. No Production access, publishing, payment-credential or deployment change.</p>
+<h2>1. Owner permission discovery</h2>
+<p>The existing permission control was mounted only in an individual Partner detail page, after its summary. The main Owner Partner Management list did not show NFC state or a clearly named NFC control. The backend and stored permission already existed; this was a discoverability gap, not a missing permission table.</p>
+<p>The existing <code>/partners</code> overview now shows <strong>NFC Card Activation</strong>, Enabled/Disabled and Grant/Revoke for each Partner, using the same control, hooks and Owner-only endpoints as the existing detail page. Its description tells the Owner where these controls are. Details retain existing actor/time/history. Query errors do not leave a cached toggle actionable. Buttons include the permission and Partner identity in their accessible text.</p>
+<p>Owner → Partner Management → find the Partner → NFC Card Activation → Grant or Revoke. View details still opens the history.</p>
+<h2>2. Initial Partner 404 diagnosis</h2>
+<p><strong>The reproduced cause is a landing-route mismatch, not an unproven context race.</strong> Ordinary sign-in's fallback and newly signed-in session gate return to <code>/</code>. After authoritative context resolves to Partner, <code>ProtectedRoutes</code> mounts the Partner portal at that URL. Its inner Switch previously registered the dashboard only at <code>/partner</code> and fell through to the real NotFound component at <code>/</code>. Clicking Dashboard changes the URL to <code>/partner</code>, explaining the reported recovery without any second authentication.</p>
+<p>The supplied screenshot already shows Partner navigation and an authenticated avatar above the NotFound component. Retained server logs also show successful context/profile responses around the reported time:</p>
+<pre>12:00:35.165 UTC  GET /api/me/authorized-context  200
+12:00:36.074 UTC  GET /api/partner/profile         304
+12:00:57.994 UTC  GET /api/partner/dashboard       304</pre>
+<p>These are actual retained API status observations, not newly fabricated sign-ins. The original authenticated client URL and full response bodies were not captured in those server logs, so the report does not claim independent observation of the user's exact original browser URL. The confirmed source/reproduction landing path is <code>/</code>. The actual reproduced error is the frontend <code>404 Page Not Found</code> fallback, not a failing Partner API HTTP 404.</p>
+<p>A regression test reproduces that fallback with the old Switch while context is ready; another mounts the real corrected <code>ProtectedRoutes</code> and portal, verifies canonical navigation to <code>/partner</code> and immediate dashboard content without clicking.</p>
+<p>The correction adds a known-root redirect <em>inside the authorized Partner portal only</em>, with the existing loading component during the transition. Role resolution has an explicit loading message. Direct Partner routes use the existing active-role guard and separate exact <code>/partner</code> and <code>/partner/*</code> patterns. Wouter parses <code>/partner*</code> as a quantifier rather than a descendant matcher; it did not cover NFC subroutes, making deep links depend on fallback role routing. Unknown Partner URLs still show their genuine 404. No global 404 redirect, arbitrary delay, public Partner route or hard-coded Partner ID was added.</p>
+<p>Profile and dashboard scope reads retain their existing loading behavior. NFC navigation remains hidden until its existing identity-scoped live permission query allows it. A revoked/error state does not gain activation access. Backend checks, referred-school scope, device prerequisites, audit, shared card lifecycle, locked preparation and subscription rules are unchanged.</p>
+<h2>Tests and service checks</h2>
+<pre>pnpm --filter @workspace/edupulse exec vitest run \
+  src/pages/partner/partner-corrections.test.tsx \
+  src/pages/partner/nfc-access.test.ts \
+  src/lib/sign-in-session-policy.test.ts
+PASS: 29 tests / 3 files. 15 new correction integration tests, 10 guards, 4 session-policy tests.
+
+EDUCORE_PARTNER_NFC_SCHEMA=/tmp/partner-nfc-schema.sql \
+  pnpm --filter @workspace/api-server exec vitest run \
+  src/routes/partner-nfc.postgres.test.ts \
+  src/routes/device-activation.test.ts \
+  src/routes/card-reassignment.test.ts \
+  src/routes/nfc-device-link-audit.test.ts
+PASS: 69 tests / 4 files. 20 actual PostgreSQL routed tests, 49 existing regressions.
+
+PORT=3000 BASE_PATH=/ pnpm --filter @workspace/edupulse run build
+PASS. Existing large-chunk warning retained.
+
+pnpm --filter @workspace/edupulse run typecheck
+Not globally clean: the same three existing messaging diagnostics; none in changed files.
+
+git diff --check
+PASS.
+
+Managed frontend restarted once after application-code changes.
+Frontend and API workflows running; frontend ready, no changed-flow startup error.</pre>
+<p>Frontend tests use mocked SDK reads/auth context and mutations in isolated jsdom; Owner mutation assertions prove the existing input contract and rerendered state, not real Clerk authentication. Fresh remounts simulate direct entry/reload of the rendered view, not a real browser refresh. PostgreSQL tests restore only schema into a disposable cluster and use synthetic fixture actors; no application auth bypass was added. Native tests ran with the schema variable supplied, not skipped.</p>
+<p>Full frontend typecheck still fails at <code>parent-communication/threads.tsx:30</code> (missing retry) and <code>school-threads.tsx:16–17</code> (missing queryKey). These unrelated files were not edited; their existing follow-up remains appropriate.</p>
+<h2>26 requested checks: evidence mapping</h2>
+<p>The following are automated/source-preservation checks, not authenticated browser passes. Each PASS is limited to its stated evidence.</p>
+<table><tr><th>#</th><th>Check</th><th>Result and evidence</th></tr>
+<tr><td>1</td><td>Owner management displays NFC permission</td><td>PASS — actual overview DOM has named controls/state for two fixture Partners.</td></tr>
+<tr><td>2</td><td>Owner grants</td><td>PASS — DOM submits existing contract; native routed Owner grant persists.</td></tr>
+<tr><td>3</td><td>Owner revokes</td><td>PASS — DOM submits revoke; native state/access reflect revoke.</td></tr>
+<tr><td>4</td><td>Grant/revoke audited</td><td>PASS — native actual actor, previous/new state and history.</td></tr>
+<tr><td>5</td><td>Partner cannot self-grant</td><td>PASS — native non-Owner contexts denied.</td></tr>
+<tr><td>6</td><td>Fresh login landing resolves dashboard</td><td>PASS in DOM — real resolved Partner branch at sign-in landing root canonicalizes and renders. Real Clerk sign-in blocked below.</td></tr>
+<tr><td>7</td><td>No initial 404</td><td>PASS in DOM — old route reproduces 404; fixed branch renders welcome content.</td></tr>
+<tr><td>8</td><td>Direct dashboard navigation</td><td>PASS in DOM — /partner and trailing-slash entry.</td></tr>
+<tr><td>9</td><td>Dashboard refresh</td><td>PASS in remounted DOM — fresh view at same URL. Real signed-in browser refresh unverified.</td></tr>
+<tr><td>10</td><td>No second click needed</td><td>PASS — corrected landing test performs no click.</td></tr>
+<tr><td>11</td><td>Pending context shows loading</td><td>PASS — role-loading message; profile-loading branch does not render 404.</td></tr>
+<tr><td>12</td><td>Unauthorized accounts denied</td><td>PASS — DOM School Admin, Teacher and inactive Partner denied; Owner-only management guard.</td></tr>
+<tr><td>13</td><td>Permission enables NFC navigation</td><td>PASS — desktop/mobile DOM links appear with live allow state.</td></tr>
+<tr><td>14</td><td>No permission denies activation</td><td>PASS — hidden DOM links; native access false and assignment denied.</td></tr>
+<tr><td>15</td><td>Only referred schools</td><td>PASS — native authoritative attribution and school scope.</td></tr>
+<tr><td>16</td><td>Non-referred school denied</td><td>PASS — native masked 404.</td></tr>
+<tr><td>17</td><td>No active reader denied</td><td>PASS — native 409 and unavailable reason.</td></tr>
+<tr><td>18</td><td>Active reader permits assignment</td><td>PASS — native configured bound reader and locked card preparation.</td></tr>
+<tr><td>19</td><td>No per-device assignment</td><td>PASS in SQL — unchanged school/card lookup, second-reader inheritance and no persisted per-reader assignment. Physical scans unverified.</td></tr>
+<tr><td>20</td><td>Cross-school manipulation denied</td><td>PASS — native strict fields, wrong student/card/referral/device inputs.</td></tr>
+<tr><td>21</td><td>Owner assignment regression</td><td>PASS — native registration/prepared assignment plus existing card regressions.</td></tr>
+<tr><td>22</td><td>Internal officer regression</td><td>PASS — 22 routed regressions plus native existing active lifecycle mode.</td></tr>
+<tr><td>23</td><td>Referrals preserved</td><td>PASS — unchanged routing/business code and original attribution/referral hashes.</td></tr>
+<tr><td>24</td><td>Subscriptions/payment implementation unchanged</td><td>PASS for code and matched original finance tables; older checkout-table drift disclosed below, not falsely reported as a matching hash.</td></tr>
+<tr><td>25</td><td>Reader linking Owner-only</td><td>PASS — native Partner/staff management/credential denials and 3 linking regressions.</td></tr>
+<tr><td>26</td><td>Existing cards preserved</td><td>PASS — original NFC card/history/student/device hashes match; no shared card mutation.</td></tr>
+</table>
+<h2>Browser acceptance</h2>
+<p class="notice"><strong>Authenticated acceptance remains BLOCKED.</strong> The one bounded browser attempt found no retained explicitly approved Development Owner/Partner session and no supplied approved credentials. No identities, memberships, permissions, cards or readers were manufactured or changed. The tester's successful bounded unauthenticated check is not a successful authenticated workflow.</p>
+<p>Observed normal document responses: <code>/</code>, <code>/partner</code>, <code>/partner/nfc-activation</code> and <code>/partners</code> returned HTTP 200 and settled on <code>/sign-in</code>; /partners briefly had a blank snapshot before auth routing settled. No settled frontend NotFound was observed. A resource returned 401, correctly separate from document status. One mobile browser capture and an independent preview screenshot show normal sign-in. No physical hardware was exercised.</p>
+<ul><li><strong>Owner steps 1–7: all BLOCKED.</strong> Sign in; management; select Partner; visible permission; enable; refresh persistence; audit.</li>
+<li><strong>Partner steps 1–12: all BLOCKED.</strong> Sign in; immediate dashboard; refresh; direct URL; load; NFC link; scope; active-reader school; no-reader restriction; eligible assignment; correct persisted student/school.</li>
+<li><strong>Revocation steps 1–4: all BLOCKED.</strong> Owner revoke; Partner refresh; actions denied; old cards intact.</li></ul>
+<p>The existing approved-account/reader acceptance follow-up already covers these gaps. No duplicate follow-up was proposed.</p>
+<h2>Preservation comparison</h2>
+<p>This correction made <strong>no shared business-data writes</strong>. Tests that mutate data run only in isolated fixtures; browser checks remained unauthenticated/read-only.</p>
+<p>The old guarded script refused the new PostgreSQL start timestamp. Its guard was not weakened or rewritten. Independent app and platform Development fingerprint reads both matched the same database/connection/start timestamp; all comparisons below were read-only.</p>
+<p>Using the original feature baseline's exact original columns and high-water marks, <strong>42 of 44 table hashes match</strong>. The remaining two differences predate this correction request (attached instruction timestamp 12:07:48 UTC):</p>
+<ul><li><code>partner_profiles</code>: original/current row count 13; latest update 12:03:48 UTC. Retained logs record an existing user's successful <code>PATCH /api/partner/profile</code> at 12:03:48, before this request. Its prior hash difference was retained, not restored.</li>
+<li><code>fee_provider_checkout_sessions</code>: old baseline count 2, current count 3; latest update 10:49:54 UTC. This table has no numeric id high-water exclusion, so an appended row changes the whole-table hash. The old hash alone cannot prove which original fields also differed. No checkout rows were edited, deleted or reconciled by this correction.</li></ul>
+<p>No claim is made that all 44 historical hashes still match. The matched tables include existing school/student/card/history, reader credentials/bindings/assignments, referral/attribution, subscription allocations/payments/terms, fees/invoices/payments/refunds, commissions and payroll records. The two pre-existing differences remain untouched. Normal unauthenticated security logging may append audit records, which are outside this baseline.</p>
+<p>The ₦5,000 student subscription, ₦2,000 school allocation, ₦3,000 platform bucket, existing Partner commissions, reader-first rules, shared card lifecycle, subscription/replacement prerequisites and Flutterwave configuration are unchanged.</p>
+<h2>Exact files changed</h2>
+<pre>artifacts/edupulse/src/App.tsx
+artifacts/edupulse/src/pages/partner/portal.tsx
+artifacts/edupulse/src/pages/partner/management.tsx
+artifacts/edupulse/src/pages/partner/nfc-owner-control.tsx
+artifacts/edupulse/src/pages/partner/partner-corrections.test.tsx (new)
+reports/partner-nfc-corrections.html (new)
+.agents/memory/MEMORY.md
+.agents/memory/wouter-path-wildcards.md (new)</pre>
+<p>User-uploaded attachments were read, not edited. No backend, generated contracts, schema, migration, payment configuration or deployment files changed. Existing grant/revoke and assignment endpoints and permissions were reused without changes.</p>
+</main></html>

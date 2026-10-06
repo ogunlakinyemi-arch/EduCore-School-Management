@@ -196,3 +196,17 @@ mtime_ms = 1791283538424
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/44842fc1-ec4e-483e-a751-de96895a3e1e/7b53d5d1-3b78-4909-be9c-df8276150e91"
 storage_version_token = "1791283644333859"
 content_type = "text/html"
+
+[[outputs]]
+id = "nD4hzXC3gZxwVKx0LTy6F"
+uri = "file://reports/partner-nfc-corrections.html"
+type = "html"
+title = "Partner NFC corrections and verification"
+description = "Root causes, exact changes, 98 passing tests, all 26 checks, blocked signed-in acceptance and transparent preservation results."
+logical_id = "e9861ce2-d3b9-493c-9e5d-b39fd82bc6d0"
+content_hash = "sha256:d11bdafd438a2660121306308b0d6da89940d7a12ee69f1680718496a170b3ec"
+size = 15209
+mtime_ms = 1791289548255
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/e9861ce2-d3b9-493c-9e5d-b39fd82bc6d0/5df569fb-5f63-4610-8733-2562b96609ac"
+storage_version_token = "1791289733861300"
+content_type = "text/html"

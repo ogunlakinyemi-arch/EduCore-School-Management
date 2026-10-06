@@ -1,0 +1,304 @@
+Fix two issues in the existing Partner NFC Card Activation implementation in Yemait EduCore.
+
+This is a Development-only correction. Do not modify Production.
+
+Do not redesign or rebuild the existing Partner, NFC Device, NFC Card, school referral, permission, or subscription systems. Reuse the implementation that was just added.
+
+ISSUE 1 — Platform Owner cannot find Partner NFC Activation permission
+
+The Platform Owner currently has no visible UI section where they can grant a Partner permission to activate/assign NFC cards for that Partner's referred schools.
+
+Required behavior
+
+In the existing Platform Owner → Partner Management area, add a clearly visible permission/control for each Partner:
+
+NFC Card Activation
+
+- Enabled
+- Disabled
+
+The Platform Owner must be able to:
+
+- Grant NFC Card Activation permission to a Partner.
+- Revoke NFC Card Activation permission.
+- See the current permission state.
+- See which Partner has NFC activation permission.
+- Use the existing audit framework to record grant/revoke actions.
+
+Do not create a separate Partner management page if an existing Partner management page already exists.
+
+The permission must be stored using the existing authorization/permission architecture created for this feature.
+
+Important
+
+Do not confuse:
+
+Partner referral relationship
+
+with:
+
+Partner NFC Card Activation permission.
+
+A Partner can refer schools without having NFC activation permission.
+
+The Platform Owner must explicitly enable NFC Card Activation.
+
+ISSUE 2 — Partner dashboard initially displays 404
+
+When an authorized Partner logs in, the dashboard initially displays:
+
+404 Page Not Found
+
+However, when the Partner clicks/navigates anywhere on the dashboard, the dashboard content then appears and works normally.
+
+This indicates that the Partner dashboard is likely being rendered or routed before the authenticated Partner role/context/navigation state has finished resolving.
+
+Diagnose the actual root cause
+
+Do not simply hide the 404 page.
+
+Trace the initial navigation after successful Partner authentication and determine:
+
+- exact URL/path immediately after login
+- route registered for that path
+- authentication/session state at first render
+- Partner role/context loading
+- Partner profile loading
+- referral/school scope loading
+- permission loading
+- route guards
+- redirect logic
+- lazy-loaded route/module behavior
+- whether the first request returns 404
+- whether the frontend incorrectly renders a global 404 before authorized context is ready
+- whether clicking another dashboard item triggers a second navigation that initializes the missing context
+
+Capture the actual request/response/error responsible for the initial 404.
+
+Fix the root cause rather than masking the 404.
+
+Expected behavior
+
+After Partner login:
+
+1. Authentication completes.
+2. Authoritative Partner identity/context is loaded.
+3. Partner permissions are loaded.
+4. Partner profile/referral scope is loaded.
+5. The Partner dashboard route is resolved.
+6. The correct Partner dashboard renders immediately.
+
+There must be no intermediate 404 page during normal authenticated Partner login.
+
+A page may show a proper loading state while the authenticated Partner context is being resolved, but it must not show the global "404 Page Not Found" simply because the role/context has not loaded yet.
+
+Refreshing the Partner dashboard directly must also work.
+
+Opening the Partner dashboard URL directly in a new browser tab must also work.
+
+Partner NFC Activation visibility
+
+Once the Platform Owner grants NFC Card Activation permission:
+
+The Partner dashboard/navigation should show:
+
+NFC Activation
+
+or an equivalent clearly named existing navigation item.
+
+If the permission is disabled/revoked:
+
+- NFC Activation must not be available for new activation actions.
+- Existing valid card assignments must remain intact.
+- Backend authorization must still deny activation even if the Partner manually enters the route.
+
+Partner school scope
+
+The Partner's NFC Activation area must show only:
+
+1. Schools referred by that Partner.
+2. Schools with at least one active NFC device linked by the Platform Owner.
+3. Schools for which the Partner has NFC Card Activation permission.
+
+Do not expose unrelated schools.
+
+If a referred school has no active NFC device, it may appear in the Partner's school list with:
+
+NFC Activation unavailable — no active NFC device linked.
+
+But the Partner must not be able to assign a card to that school.
+
+NFC device rule
+
+Preserve the existing device-first rule:
+
+Platform Owner links NFC device to school
+→ School becomes NFC-enabled
+→ Platform Owner grants Partner NFC Card Activation
+→ Partner can assign cards to eligible students in that referred school
+
+Partner cannot:
+
+- link a device
+- unlink a device
+- create a device
+- change device-school relationships
+- bypass the active-device requirement.
+
+Card assignment
+
+Once authorized, Partner should use the existing NFC card assignment workflow.
+
+The relationship remains:
+
+NFC Card → Student → School
+
+Do not require the Partner to select an NFC device.
+
+If a school has multiple active devices, one valid card assignment automatically works on all active devices belonging to that school.
+
+Security
+
+Backend authorization must independently verify:
+
+- authenticated Partner
+- Partner permission
+- Partner's referred-school relationship
+- school status
+- active NFC device
+- student belongs to the selected school
+- NFC card is valid/available
+
+Do not rely on frontend route visibility.
+
+Test manipulated:
+
+- partner IDs
+- school IDs
+- student IDs
+- card IDs
+- device IDs
+
+A Partner must not be able to activate a card for another Partner's school.
+
+Existing internal NFC Activation Officers
+
+Do not change or break the existing Platform Owner employee NFC Activation Officer/Device Activation Officer workflow.
+
+Both internal employees and Partners should ultimately use the existing secure NFC card assignment service.
+
+Tests
+
+Add focused tests for:
+
+Platform Owner
+
+1. Partner Management displays NFC Card Activation permission.
+2. Platform Owner can grant permission.
+3. Platform Owner can revoke permission.
+4. Grant/revoke is audited.
+5. Partner cannot grant permission to themselves.
+
+Partner login/routing
+
+6. Fresh Partner login lands directly on the Partner dashboard.
+7. No initial 404 is displayed.
+8. Direct navigation to Partner dashboard works.
+9. Browser refresh on Partner dashboard works.
+10. Partner dashboard works without requiring a second navigation/click.
+11. Loading Partner context displays a loading state rather than global 404.
+12. Unauthorized/non-Partner users remain correctly denied.
+
+Partner NFC
+
+13. Partner with permission sees NFC Activation.
+14. Partner without permission does not receive activation access.
+15. Partner can activate cards only for referred schools.
+16. Non-referred school is rejected.
+17. School without an active NFC device is rejected.
+18. School with an active NFC device is allowed.
+19. Multiple active devices do not require separate card assignments.
+20. Cross-school card/device manipulation is rejected.
+
+Regression
+
+21. Existing Platform Owner NFC card assignment remains functional.
+22. Existing internal NFC Activation Officer remains functional.
+23. Existing Partner referral functionality remains functional.
+24. Existing NFC subscription/payment functionality remains unchanged.
+25. Existing NFC device linking remains Platform Owner-only.
+26. Existing card assignments are preserved.
+
+Browser acceptance
+
+Use approved Development test accounts where available.
+
+Platform Owner
+
+Verify:
+
+1. Sign in as Platform Owner.
+2. Open Partner Management.
+3. Select an existing Partner.
+4. Confirm NFC Card Activation permission is visible.
+5. Enable it.
+6. Confirm the permission persists after refresh.
+7. Confirm audit entry exists.
+
+Partner
+
+Using the authorized Partner:
+
+1. Sign in.
+2. Confirm the dashboard loads immediately without 404.
+3. Refresh.
+4. Confirm it still loads without 404.
+5. Navigate directly to the dashboard URL.
+6. Confirm it loads.
+7. Confirm NFC Activation is visible.
+8. Confirm only the Partner's referred schools are available.
+9. Confirm a referred school with an active NFC device can be opened.
+10. Confirm a referred school without an active NFC device cannot activate cards.
+11. Confirm card assignment works for an eligible student.
+12. Confirm the assigned card remains associated with the correct student and school.
+
+Permission revocation
+
+1. Platform Owner revokes Partner NFC Card Activation.
+2. Partner refreshes.
+3. NFC activation actions are no longer available.
+4. Existing card assignments remain unchanged.
+
+Important verification rule
+
+If the initial Partner 404 is caused by a routing/context race, fix that exact race.
+
+Do NOT:
+
+- redirect every 404 to the dashboard
+- hide the 404 component globally
+- add arbitrary delays
+- hard-code Partner IDs
+- bypass authentication
+- bypass permission checks
+- make Partner routes public
+- duplicate the Partner dashboard
+- create a second authentication system
+
+Preservation
+
+Before changes, inspect the existing implementation and preserve all existing data and functionality.
+
+Do not modify Production.
+
+At the end report:
+
+- root cause of the missing Platform Owner permission UI
+- root cause of the initial Partner dashboard 404
+- exact files changed
+- database/schema changes, if any
+- API/endpoints changed
+- permission changes
+- tests run and results
+- browser acceptance results
+- confirmation that existing Partner, school, NFC device, NFC card, subscription and payment data were preserved.

@@ -197,7 +197,7 @@ function PartnersOverview() {
       <PageHeading 
         eyebrow="Ecosystem" 
         title="Partners & Resellers" 
-        description="Manage your network of affiliates, resellers, and consultants."
+        description="Manage your network of affiliates, resellers, and consultants. Grant or revoke each Partner's NFC Card Activation in the list below."
         action={<Button onClick={() => setShowInvite(true)}><UserPlus size={16} />Invite partner</Button>}
       />
       
@@ -309,6 +309,7 @@ function PartnersOverview() {
                         >{isRevoking ? 'Cancelling…' : 'Cancel invitation'}</Button>}
                       </>;
                     })()}
+                    <PartnerNfcOwnerControl partnerId={partner.id} partnerName={partner.fullName} compact />
                     <Link href={`/partners/${partner.id}`}>
                       <Button variant="outline" className="h-8 text-xs py-0 px-3">View details</Button>
                     </Link>

@@ -96,7 +96,7 @@ function AccessDenied() {
   );
 }
 
-function RoleGuard({
+export function RoleGuard({
   allowedRoles,
   isPlatformOwnerOnly,
   ownerCanView,
@@ -111,7 +111,7 @@ function RoleGuard({
 }) {
   const contextQuery = useGetAuthorizedContext();
   const context = contextQuery.data;
-  if (contextQuery.isLoading) return <div className="min-h-[100dvh] bg-[hsl(var(--background))]" />;
+  if (contextQuery.isLoading) return <div role="status" className="flex min-h-[100dvh] items-center justify-center">Loading your authorized portal…</div>;
   if (!context) return <AccessDenied />;
 
   const isPlatformOwner = context.isPlatformOwner || false;
@@ -141,11 +141,11 @@ function RoleGuard({
   return <>{children}</>;
 }
 
-function ProtectedRoutes() {
+export function ProtectedRoutes() {
   const contextQuery = useGetAuthorizedContext();
   const context = contextQuery.data;
 
-  if (contextQuery.isLoading) return <div className="min-h-[100dvh] bg-[hsl(var(--background))]" />;
+  if (contextQuery.isLoading) return <div role="status" className="flex min-h-[100dvh] items-center justify-center">Loading your authorized portal…</div>;
 
   if (contextQuery.isError || (!context?.isPlatformOwner && (!context?.roles || context.roles.length === 0))) {
     return (
@@ -477,7 +477,8 @@ export default function App() {
                   <Switch>
                      <Route path="/parent*"><RoleGuard allowedRoles={['PARENT']}><ParentPortal /></RoleGuard></Route>
                     <Route path="/partner/staff-nfc"><RoleGuard allowedRoles={['PARTNER']}><TenantProvider><Shell><PartnerStaffNfcCommissionsPage /></Shell></TenantProvider></RoleGuard></Route>
-                    <Route path="/partner*"><PartnerPortal /></Route>
+                    <Route path="/partner"><RoleGuard allowedRoles={['PARTNER']}><PartnerPortal /></RoleGuard></Route>
+                    <Route path="/partner/*"><RoleGuard allowedRoles={['PARTNER']}><PartnerPortal /></RoleGuard></Route>
                     <Route><ProtectedRoutes /></Route>
                   </Switch>
                 </AuthGuard>

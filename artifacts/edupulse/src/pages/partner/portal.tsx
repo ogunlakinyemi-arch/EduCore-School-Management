@@ -1,5 +1,5 @@
 import { UserButton } from '@clerk/react';
-import { Route, Switch, Link, useLocation } from 'wouter';
+import { Route, Switch, Link, Redirect, useLocation } from 'wouter';
 import { 
   useGetPartnerDashboard,
   useGetPartnerProfile,
@@ -516,6 +516,9 @@ export default function PartnerPortal() {
     <div className="min-h-[100dvh] bg-[hsl(var(--background))]">
       <PortalHeader />
       <Switch>
+        {/* Ordinary sign-in returns to /. Only the authorized Partner portal
+            canonicalizes that known landing path; unknown URLs remain 404s. */}
+        <Route path="/"><Redirect to="/partner" replace /><Loading /></Route>
         <Route path="/reporting"><main className="mx-auto max-w-6xl p-5 md:p-8"><ReportingPage audience="partner" /></main></Route>
         <Route path="/inbox"><CommunicationInbox standalone /></Route>
         <Route path="/notification-settings"><NotificationSettings standalone /></Route>
