@@ -1,0 +1,365 @@
+Continue the Yemait EduCore production-readiness process.
+
+STAGE 2A is complete.
+
+The current status is:
+
+- 60 SQL migrations exist: 0000–0059.
+- Clean isolated migration replay: 60/60 PASS.
+- TypeScript database-library validation: PASS.
+- Complete dependency-ordered schema model: PASS.
+- CHECK constraints: 407/407 valid.
+- Foreign keys: 659/659 validated.
+- New equivalent-index duplicates: 0.
+- Historical migration hashes unchanged.
+- The biometric CHECK definition was corrected with the minimum source change.
+- "parents_id_school_unique" was declared to match migration 0042.
+- The other three composite keys were already correctly declared.
+- No Production/shared database changes were made.
+
+The remaining Stage 2A blocker is:
+
+PostgreSQL error 42830 during raw Drizzle SQL export/execution because 17 foreign keys are emitted before their supporting unique indexes/constraints.
+
+The complete dependency-ordered model succeeds.
+
+==================================================
+OBJECTIVE
+
+Build a BOUNDED, DEPENDENCY-AWARE EXPORT UTILITY that generates valid schema SQL in dependency-safe order.
+
+This is an export/tooling task.
+
+It is NOT a database migration task.
+
+It is NOT a Production reconciliation task.
+
+It is NOT a feature-development task.
+
+==================================================
+ABSOLUTE SAFETY RULES
+
+DO NOT:
+
+- modify Production
+- modify any shared database
+- run the generated SQL against Production
+- run the generated SQL against Development/shared databases
+- run "db push" against Production
+- run "drizzle-kit push" against Production
+- run "drizzle-kit migrate" against Production
+- publish database changes
+- approve any Production database preview
+- create migration 0060
+- rewrite historical migrations
+- rewrite the Drizzle journal
+- rewrite the migration ledger
+- modify migration hashes
+- repair historical migration records
+- change business logic
+- build new product features
+
+All testing must use disposable/isolated PostgreSQL.
+
+==================================================
+
+1. REPRODUCE THE CURRENT FAILURE
+   ==================================================
+
+Before implementing anything, reproduce the raw export failure in disposable PostgreSQL.
+
+Confirm:
+
+- PostgreSQL error 42830
+- approximately 17 foreign keys affected
+- the supporting unique indexes/constraints are emitted after the dependent foreign keys
+
+Record the exact affected foreign keys and their supporting keys.
+
+Do not change anything yet.
+
+==================================================
+2. IDENTIFY FOREIGN-KEY DEPENDENCIES
+
+For every foreign key in the generated schema:
+
+Determine:
+
+- child table
+- child columns
+- parent table
+- parent columns
+- supporting primary key or unique constraint
+- supporting index/constraint name
+- migration that creates the parent key
+- migration that creates the FK
+
+Build an internal dependency graph.
+
+The graph must establish:
+
+PARENT TABLE
+→ SUPPORTING UNIQUE/PRIMARY KEY
+→ FOREIGN KEY
+
+Do not assume an ordinary non-unique index can satisfy a PostgreSQL FK.
+
+==================================================
+3. PRESERVE EXISTING OWNERSHIP
+
+The utility must NOT blindly create indexes for every FK.
+
+If a suitable primary key or unique constraint already exists, reuse it.
+
+If a unique index already exists and is the intended supporting object, preserve it.
+
+Do not create duplicate equivalent indexes.
+
+Do not rename existing constraints unnecessarily.
+
+Do not change constraint semantics.
+
+The objective is ordering, not redesign.
+
+==================================================
+4. DESIGN THE EXPORT ORDER
+
+The generated schema must follow dependency-safe ordering.
+
+At minimum:
+
+1. Extensions/types required by tables
+2. Parent tables
+3. Child tables
+4. Primary keys
+5. Supporting UNIQUE constraints/indexes required by foreign keys
+6. Other indexes
+7. CHECK constraints where safe
+8. Foreign keys
+9. Functions
+10. Triggers
+11. Required backfills only if they are already part of the source export process
+
+Do not introduce data-changing operations merely to solve export ordering.
+
+If the actual existing architecture requires a different order, document it and use the minimal safe ordering.
+
+==================================================
+5. BUILD THE UTILITY
+
+Create a reusable dependency-aware export utility using the project's existing tooling/language conventions.
+
+The utility should:
+
+- inspect the schema model
+- identify FK dependencies
+- identify supporting unique/primary keys
+- topologically order dependent schema objects
+- preserve existing names
+- prevent duplicate index creation
+- produce deterministic output
+- fail clearly if a foreign key has no valid supporting key
+- avoid silently inventing constraints
+
+The utility should NOT alter database state.
+
+Prefer generating SQL or an ordered schema model rather than directly executing database mutations.
+
+==================================================
+6. HANDLE CYCLES SAFELY
+
+If circular foreign-key dependencies exist:
+
+Do not invent a workaround.
+
+Identify the cycle.
+
+Use the safest PostgreSQL-supported mechanism already compatible with this project's architecture, such as deferred FK creation if appropriate.
+
+Document every cycle.
+
+Do not modify business semantics.
+
+==================================================
+7. TEST THE GENERATED SQL
+
+Create a disposable PostgreSQL database.
+
+Generate the dependency-ordered SQL.
+
+Execute it from an empty database.
+
+Expected result:
+
+- no PostgreSQL 42830 error
+- no missing supporting-key error
+- no duplicate-index error
+- no duplicate-constraint error
+- no FK creation error
+
+Then inspect:
+
+- tables
+- primary keys
+- unique constraints
+- indexes
+- foreign keys
+- CHECK constraints
+
+==================================================
+8. VALIDATE ALL EXISTING COUNTS
+
+After executing the generated schema in disposable PostgreSQL, verify:
+
+- 173 expected tables
+- 407 CHECK constraints
+- 659 foreign keys
+- expected indexes
+- expected primary keys
+- expected unique constraints
+
+Do not require the exact physical index count if PostgreSQL represents equivalent constraints differently.
+
+Instead, verify semantic equivalence.
+
+==================================================
+9. RUN THE 60-MIGRATION REPLAY
+
+Run:
+
+0000 → 0059
+
+in a separate disposable PostgreSQL database.
+
+Expected:
+
+60/60 PASS.
+
+Do not modify the migrations.
+
+The export utility must not change migration behavior.
+
+==================================================
+10. REGRESSION TEST THE SOURCE CHANGES
+
+Confirm:
+
+- biometric CHECK remains correct
+- "parents_id_school_unique" remains correct
+- the other three existing composite keys remain unchanged
+- no historical migration hash changed
+- no migration SQL changed
+
+==================================================
+11. DO NOT SOLVE HISTORICAL MIGRATION PROBLEMS
+
+The following remain OUT OF SCOPE:
+
+- Drizzle journal gaps
+- 24-entry Development ledger
+- checksum 0001
+- checksum 0004
+- Production schema reconciliation
+- Production functions/triggers
+- Production backfills
+- Production migration tracking
+- Production recovery
+- runtime database binding
+
+Do not touch them.
+
+==================================================
+12. OUTPUT THE GENERATED SQL SAFELY
+
+If the utility generates SQL, save it only as an audit artifact or disposable-test output.
+
+Do not point it at Production.
+
+Do not automatically execute it anywhere except the disposable PostgreSQL database used for validation.
+
+Clearly label generated output:
+
+DISPOSABLE / AUDIT ONLY — NOT FOR PRODUCTION EXECUTION
+
+==================================================
+13. FINAL REPORT
+
+Return:
+
+A. Previous Failure
+
+Explain the 42830 failure.
+
+B. Affected Foreign Keys
+
+List the 17 affected FKs and their supporting keys.
+
+C. Utility
+
+Identify:
+
+- file/path created or modified
+- purpose
+- how dependency ordering works
+
+D. Validation
+
+Report:
+
+- raw export before utility
+- dependency-aware export after utility
+- disposable PostgreSQL execution
+- tables
+- primary keys
+- unique constraints
+- indexes
+- CHECK constraints
+- foreign keys
+
+E. Migration Regression
+
+Report:
+
+0000–0059 = PASS/FAIL
+
+F. Source Integrity
+
+Confirm:
+
+- historical SQL unchanged
+- journal unchanged
+- ledger unchanged
+- migration hashes unchanged
+
+G. Production Safety
+
+Confirm:
+
+- Production unchanged
+- shared database unchanged
+- Production configuration unchanged
+- Production secrets unchanged
+- no publish performed
+
+If something cannot be verified, write:
+
+"NOT VERIFIED — REASON: ..."
+
+H. Remaining Blockers
+
+List only the blockers that remain after this task.
+
+I. ONE NEXT ACTION
+
+Give exactly one recommended next action.
+
+Do not automatically start it.
+
+==================================================
+FINAL REQUIREMENT
+
+This task is complete only when the dependency-aware export succeeds against disposable PostgreSQL and the 659 foreign keys validate.
+
+End with exactly:
+
+"STAGE 2B COMPLETE — NO PRODUCTION OR SHARED-DATABASE CHANGES WERE MADE."

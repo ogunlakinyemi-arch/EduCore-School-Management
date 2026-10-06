@@ -7,6 +7,8 @@
     "hello": "tsx ./src/hello.ts",
     "edupulse:e2e-fixture": "tsx ./src/edupulse-e2e-fixture.ts",
     "test:phase7-finance-ledger": "bash ./test-phase7-finance-ledger.sh",
+    "export:schema:audit": "tsx ./src/export-dependency-aware-schema.mjs",
+    "test:schema-export": "node --test ./src/schema-export/*.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

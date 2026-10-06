@@ -1,0 +1,878 @@
+{
+  "raw_error": {
+    "code": "42830",
+    "message": "there is no unique constraint matching given keys for referenced table \"subscriptions\""
+  },
+  "affected": [
+    {
+      "name": "student_subscription_terms_subscription_id_school_id_student_id_subscriptions_id_school_id_student_id_fk",
+      "child": "public.student_subscription_terms",
+      "childColumns": [
+        "subscription_id",
+        "school_id",
+        "student_id"
+      ],
+      "parent": "public.subscriptions",
+      "parentColumns": [
+        "id",
+        "school_id",
+        "student_id"
+      ],
+      "physicalName": "student_subscription_terms_subscription_id_school_id_student_id",
+      "support": {
+        "name": "subscriptions_id_school_student_uq",
+        "unique": true,
+        "columns": [
+          "id",
+          "school_id",
+          "student_id"
+        ],
+        "partial": false,
+        "expression": false,
+        "method": "btree",
+        "kind": "unique_index",
+        "physicalName": "subscriptions_id_school_student_uq",
+        "table": "public.subscriptions"
+      },
+      "supportNode": "index:public.subscriptions_id_school_student_uq",
+      "foreignKeyNode": "fk:public.student_subscription_terms:student_subscription_terms_subscription_id_school_id_student_id_subscriptions_id_school_id_student_id_fk",
+      "alternativeSupports": [],
+      "error": "42830",
+      "original_statement": "ALTER TABLE \"student_subscription_terms\" ADD CONSTRAINT \"student_subscription_terms_subscription_id_school_id_student_id_subscriptions_id_school_id_student_id_fk\" FOREIGN KEY (\"subscription_id\",\"school_id\",\"student_id\") REFERENCES \"public\".\"subscriptions\"(\"id\",\"school_id\",\"student_id\") ON DELETE no action ON UPDATE no action;",
+      "key_emitted_after_fk": true,
+      "supporting_key_migration": [
+        {
+          "migration": "0036_student_subscription_allocations.sql",
+          "statement": 1,
+          "name": "subscriptions_id_school_student_uq",
+          "ownership": "unique_index"
+        }
+      ]
+    },
+    {
+      "name": "staff_nfc_allocations_subscription_owner_term_fk",
+      "child": "public.staff_nfc_allocations",
+      "childColumns": [
+        "subscription_id",
+        "employee_id",
+        "school_id",
+        "academic_session_id",
+        "academic_term_id"
+      ],
+      "parent": "public.staff_nfc_subscriptions",
+      "parentColumns": [
+        "id",
+        "employee_id",
+        "school_id",
+        "academic_session_id",
+        "academic_term_id"
+      ],
+      "physicalName": "staff_nfc_allocations_subscription_owner_term_fk",
+      "support": {
+        "name": "staff_nfc_subscriptions_id_employee_school_term_uq",
+        "unique": true,
+        "columns": [
+          "id",
+          "employee_id",
+          "school_id",
+          "academic_session_id",
+          "academic_term_id"
+        ],
+        "partial": false,
+        "expression": false,
+        "method": "btree",
+        "kind": "unique_index",
+        "physicalName": "staff_nfc_subscriptions_id_employee_school_term_uq",
+        "table": "public.staff_nfc_subscriptions"
+      },
+      "supportNode": "index:public.staff_nfc_subscriptions_id_employee_school_term_uq",
+      "foreignKeyNode": "fk:public.staff_nfc_allocations:staff_nfc_allocations_subscription_owner_term_fk",
+      "alternativeSupports": [],
+      "error": "42830",
+      "original_statement": "ALTER TABLE \"staff_nfc_allocations\" ADD CONSTRAINT \"staff_nfc_allocations_subscription_owner_term_fk\" FOREIGN KEY (\"subscription_id\",\"employee_id\",\"school_id\",\"academic_session_id\",\"academic_term_id\") REFERENCES \"public\".\"staff_nfc_subscriptions\"(\"id\",\"employee_id\",\"school_id\",\"academic_session_id\",\"academic_term_id\") ON DELETE no action ON UPDATE no action;",
+      "key_emitted_after_fk": true,
+      "supporting_key_migration": [
+        {
+          "migration": "0031_staff_nfc_billing.sql",
+          "statement": 4,
+          "name": "staff_nfc_subscriptions_id_employee_school_term_uq",
+          "ownership": "unique_constraint"
+        }
+      ]
+    },
+    {
+      "name": "staff_nfc_allocations_payment_subscription_school_fk",
+      "child": "public.staff_nfc_allocations",
+      "childColumns": [
+        "payment_id",
+        "subscription_id",
+        "school_id"
+      ],
+      "parent": "public.staff_nfc_payments",
+      "parentColumns": [
+        "id",
+        "subscription_id",
+        "school_id"
+      ],
+      "physicalName": "staff_nfc_allocations_payment_subscription_school_fk",
+      "support": {
+        "name": "staff_nfc_payments_id_subscription_school_uq",
+        "unique": true,
+        "columns": [
+          "id",
+          "subscription_id",
+          "school_id"
+        ],
+        "partial": false,
+        "expression": false,
+        "method": "btree",
+        "kind": "unique_index",
+        "physicalName": "staff_nfc_payments_id_subscription_school_uq",
+        "table": "public.staff_nfc_payments"
+      },
+      "supportNode": "index:public.staff_nfc_payments_id_subscription_school_uq",
+      "foreignKeyNode": "fk:public.staff_nfc_allocations:staff_nfc_allocations_payment_subscription_school_fk",
+      "alternativeSupports": [],
+      "error": "42830",
+      "original_statement": "ALTER TABLE \"staff_nfc_allocations\" ADD CONSTRAINT \"staff_nfc_allocations_payment_subscription_school_fk\" FOREIGN KEY (\"payment_id\",\"subscription_id\",\"school_id\") REFERENCES \"public\".\"staff_nfc_payments\"(\"id\",\"subscription_id\",\"school_id\") ON DELETE no action ON UPDATE no action;",
+      "key_emitted_after_fk": true,
+      "supporting_key_migration": [
+        {
+          "migration": "0031_staff_nfc_billing.sql",
+          "statement": 9,
+          "name": "staff_nfc_payments_id_subscription_school_uq",
+          "ownership": "unique_constraint"
+        }
+      ]
+    },
+    {
+      "name": "staff_nfc_allocations_refund_payment_school_fk",
+      "child": "public.staff_nfc_allocations",
+      "childColumns": [
+        "refund_id",
+        "payment_id",
+        "school_id"
+      ],
+      "parent": "public.staff_nfc_refunds",
+      "parentColumns": [
+        "id",
+        "payment_id",
+        "school_id"
+      ],
+      "physicalName": "staff_nfc_allocations_refund_payment_school_fk",
+      "support": {
+        "name": "staff_nfc_refunds_id_payment_school_uq",
+        "unique": true,
+        "columns": [
+          "id",
+          "payment_id",
+          "school_id"
+        ],
+        "partial": false,
+        "expression": false,
+        "method": "btree",
+        "kind": "unique_index",
+        "physicalName": "staff_nfc_refunds_id_payment_school_uq",
+        "table": "public.staff_nfc_refunds"
+      },
+      "supportNode": "index:public.staff_nfc_refunds_id_payment_school_uq",
+      "foreignKeyNode": "fk:public.staff_nfc_allocations:staff_nfc_allocations_refund_payment_school_fk",
+      "alternativeSupports": [],
+      "error": "42830",
+      "original_statement": "ALTER TABLE \"staff_nfc_allocations\" ADD CONSTRAINT \"staff_nfc_allocations_refund_payment_school_fk\" FOREIGN KEY (\"refund_id\",\"payment_id\",\"school_id\") REFERENCES \"public\".\"staff_nfc_refunds\"(\"id\",\"payment_id\",\"school_id\") ON DELETE no action ON UPDATE no action;",
+      "key_emitted_after_fk": true,
+      "supporting_key_migration": [
+        {
+          "migration": "0031_staff_nfc_billing.sql",
+          "statement": 15,
+          "name": "staff_nfc_refunds_id_payment_school_uq",
+          "ownership": "unique_constraint"
+        }
+      ]
+    },
+    {
+      "name": "staff_nfc_allocations_rule_product_fk",
+      "child": "public.staff_nfc_allocations",
+      "childColumns": [
+        "allocation_rule_id",
+        "product"
+      ],
+      "parent": "public.staff_nfc_billing_rules",
+      "parentColumns": [
+        "id",
+        "product"
+      ],
+      "physicalName": "staff_nfc_allocations_rule_product_fk",
+      "support": {
+        "name": "staff_nfc_billing_rules_id_product_uq",
+        "unique": true,
+        "columns": [
+          "id",
+          "product"
+        ],
+        "partial": false,
+        "expression": false,
+        "method": "btree",
+        "kind": "unique_index",
+        "physicalName": "staff_nfc_billing_rules_id_product_uq",
+        "table": "public.staff_nfc_billing_rules"
+      },
+      "supportNode": "index:public.staff_nfc_billing_rules_id_product_uq",
+      "foreignKeyNode": "fk:public.staff_nfc_allocations:staff_nfc_allocations_rule_product_fk",
+      "alternativeSupports": [],
+      "error": "42830",
+      "original_statement": "ALTER TABLE \"staff_nfc_allocations\" ADD CONSTRAINT \"staff_nfc_allocations_rule_product_fk\" FOREIGN KEY (\"allocation_rule_id\",\"product\") REFERENCES \"public\".\"staff_nfc_billing_rules\"(\"id\",\"product\") ON DELETE no action ON UPDATE no action;",
+      "key_emitted_after_fk": true,
+      "supporting_key_migration": [
+        {
+          "migration": "0031_staff_nfc_billing.sql",
+          "statement": 1,
+          "name": "staff_nfc_billing_rules_id_product_uq",
+          "ownership": "unique_constraint"
+        }
+      ]
+    },
+    {
+      "name": "staff_nfc_partner_commissions_subscription_tenant_fk",
+      "child": "public.staff_nfc_partner_commissions",
+      "childColumns": [
+        "subscription_id",
+        "employee_id",
+        "school_id",
+        "academic_session_id",
+        "academic_term_id"
+      ],
+      "parent": "public.staff_nfc_subscriptions",
+      "parentColumns": [
+        "id",
+        "employee_id",
+        "school_id",
+        "academic_session_id",
+        "academic_term_id"
+      ],
+      "physicalName": "staff_nfc_partner_commissions_subscription_tenant_fk",
+      "support": {
+        "name": "staff_nfc_subscriptions_id_employee_school_term_uq",
+        "unique": true,
+        "columns": [
+          "id",
+          "employee_id",
+          "school_id",
+          "academic_session_id",
+          "academic_term_id"
+        ],
+        "partial": false,
+        "expression": false,
+        "method": "btree",
+        "kind": "unique_index",
+        "physicalName": "staff_nfc_subscriptions_id_employee_school_term_uq",
+        "table": "public.staff_nfc_subscriptions"
+      },
+      "supportNode": "index:public.staff_nfc_subscriptions_id_employee_school_term_uq",
+      "foreignKeyNode": "fk:public.staff_nfc_partner_commissions:staff_nfc_partner_commissions_subscription_tenant_fk",
+      "alternativeSupports": [],
+      "error": "42830",
+      "original_statement": "ALTER TABLE \"staff_nfc_partner_commissions\" ADD CONSTRAINT \"staff_nfc_partner_commissions_subscription_tenant_fk\" FOREIGN KEY (\"subscription_id\",\"employee_id\",\"school_id\",\"academic_session_id\",\"academic_term_id\") REFERENCES \"public\".\"staff_nfc_subscriptions\"(\"id\",\"employee_id\",\"school_id\",\"academic_session_id\",\"academic_term_id\") ON DELETE no action ON UPDATE no action;",
+      "key_emitted_after_fk": true,
+      "supporting_key_migration": [
+        {
+          "migration": "0031_staff_nfc_billing.sql",
+          "statement": 4,
+          "name": "staff_nfc_subscriptions_id_employee_school_term_uq",
+          "ownership": "unique_constraint"
+        }
+      ]
+    },
+    {
+      "name": "staff_nfc_partner_commissions_payment_tenant_fk",
+      "child": "public.staff_nfc_partner_commissions",
+      "childColumns": [
+        "payment_id",
+        "subscription_id",
+        "school_id"
+      ],
+      "parent": "public.staff_nfc_payments",
+      "parentColumns": [
+        "id",
+        "subscription_id",
+        "school_id"
+      ],
+      "physicalName": "staff_nfc_partner_commissions_payment_tenant_fk",
+      "support": {
+        "name": "staff_nfc_payments_id_subscription_school_uq",
+        "unique": true,
+        "columns": [
+          "id",
+          "subscription_id",
+          "school_id"
+        ],
+        "partial": false,
+        "expression": false,
+        "method": "btree",
+        "kind": "unique_index",
+        "physicalName": "staff_nfc_payments_id_subscription_school_uq",
+        "table": "public.staff_nfc_payments"
+      },
+      "supportNode": "index:public.staff_nfc_payments_id_subscription_school_uq",
+      "foreignKeyNode": "fk:public.staff_nfc_partner_commissions:staff_nfc_partner_commissions_payment_tenant_fk",
+      "alternativeSupports": [],
+      "error": "42830",
+      "original_statement": "ALTER TABLE \"staff_nfc_partner_commissions\" ADD CONSTRAINT \"staff_nfc_partner_commissions_payment_tenant_fk\" FOREIGN KEY (\"payment_id\",\"subscription_id\",\"school_id\") REFERENCES \"public\".\"staff_nfc_payments\"(\"id\",\"subscription_id\",\"school_id\") ON DELETE no action ON UPDATE no action;",
+      "key_emitted_after_fk": true,
+      "supporting_key_migration": [
+        {
+          "migration": "0031_staff_nfc_billing.sql",
+          "statement": 9,
+          "name": "staff_nfc_payments_id_subscription_school_uq",
+          "ownership": "unique_constraint"
+        }
+      ]
+    },
+    {
+      "name": "staff_nfc_partner_commissions_allocation_fk",
+      "child": "public.staff_nfc_partner_commissions",
+      "childColumns": [
+        "allocation_id",
+        "payment_id",
+        "recipient_type"
+      ],
+      "parent": "public.staff_nfc_allocations",
+      "parentColumns": [
+        "id",
+        "payment_id",
+        "recipient_type"
+      ],
+      "physicalName": "staff_nfc_partner_commissions_allocation_fk",
+      "support": {
+        "name": "staff_nfc_allocations_id_payment_type_uq",
+        "unique": true,
+        "columns": [
+          "id",
+          "payment_id",
+          "recipient_type"
+        ],
+        "partial": false,
+        "expression": false,
+        "method": "btree",
+        "kind": "unique_index",
+        "physicalName": "staff_nfc_allocations_id_payment_type_uq",
+        "table": "public.staff_nfc_allocations"
+      },
+      "supportNode": "index:public.staff_nfc_allocations_id_payment_type_uq",
+      "foreignKeyNode": "fk:public.staff_nfc_partner_commissions:staff_nfc_partner_commissions_allocation_fk",
+      "alternativeSupports": [],
+      "error": "42830",
+      "original_statement": "ALTER TABLE \"staff_nfc_partner_commissions\" ADD CONSTRAINT \"staff_nfc_partner_commissions_allocation_fk\" FOREIGN KEY (\"allocation_id\",\"payment_id\",\"recipient_type\") REFERENCES \"public\".\"staff_nfc_allocations\"(\"id\",\"payment_id\",\"recipient_type\") ON DELETE no action ON UPDATE no action;",
+      "key_emitted_after_fk": true,
+      "supporting_key_migration": [
+        {
+          "migration": "0031_staff_nfc_billing.sql",
+          "statement": 18,
+          "name": "staff_nfc_allocations_id_payment_type_uq",
+          "ownership": "unique_constraint"
+        }
+      ]
+    },
+    {
+      "name": "staff_nfc_payments_subscription_owner_term_fk",
+      "child": "public.staff_nfc_payments",
+      "childColumns": [
+        "subscription_id",
+        "employee_id",
+        "school_id",
+        "academic_session_id",
+        "academic_term_id"
+      ],
+      "parent": "public.staff_nfc_subscriptions",
+      "parentColumns": [
+        "id",
+        "employee_id",
+        "school_id",
+        "academic_session_id",
+        "academic_term_id"
+      ],
+      "physicalName": "staff_nfc_payments_subscription_owner_term_fk",
+      "support": {
+        "name": "staff_nfc_subscriptions_id_employee_school_term_uq",
+        "unique": true,
+        "columns": [
+          "id",
+          "employee_id",
+          "school_id",
+          "academic_session_id",
+          "academic_term_id"
+        ],
+        "partial": false,
+        "expression": false,
+        "method": "btree",
+        "kind": "unique_index",
+        "physicalName": "staff_nfc_subscriptions_id_employee_school_term_uq",
+        "table": "public.staff_nfc_subscriptions"
+      },
+      "supportNode": "index:public.staff_nfc_subscriptions_id_employee_school_term_uq",
+      "foreignKeyNode": "fk:public.staff_nfc_payments:staff_nfc_payments_subscription_owner_term_fk",
+      "alternativeSupports": [],
+      "error": "42830",
+      "original_statement": "ALTER TABLE \"staff_nfc_payments\" ADD CONSTRAINT \"staff_nfc_payments_subscription_owner_term_fk\" FOREIGN KEY (\"subscription_id\",\"employee_id\",\"school_id\",\"academic_session_id\",\"academic_term_id\") REFERENCES \"public\".\"staff_nfc_subscriptions\"(\"id\",\"employee_id\",\"school_id\",\"academic_session_id\",\"academic_term_id\") ON DELETE no action ON UPDATE no action;",
+      "key_emitted_after_fk": true,
+      "supporting_key_migration": [
+        {
+          "migration": "0031_staff_nfc_billing.sql",
+          "statement": 4,
+          "name": "staff_nfc_subscriptions_id_employee_school_term_uq",
+          "ownership": "unique_constraint"
+        }
+      ]
+    },
+    {
+      "name": "staff_nfc_receipts_payment_owner_fk",
+      "child": "public.staff_nfc_receipts",
+      "childColumns": [
+        "payment_id",
+        "subscription_id",
+        "school_id"
+      ],
+      "parent": "public.staff_nfc_payments",
+      "parentColumns": [
+        "id",
+        "subscription_id",
+        "school_id"
+      ],
+      "physicalName": "staff_nfc_receipts_payment_owner_fk",
+      "support": {
+        "name": "staff_nfc_payments_id_subscription_school_uq",
+        "unique": true,
+        "columns": [
+          "id",
+          "subscription_id",
+          "school_id"
+        ],
+        "partial": false,
+        "expression": false,
+        "method": "btree",
+        "kind": "unique_index",
+        "physicalName": "staff_nfc_payments_id_subscription_school_uq",
+        "table": "public.staff_nfc_payments"
+      },
+      "supportNode": "index:public.staff_nfc_payments_id_subscription_school_uq",
+      "foreignKeyNode": "fk:public.staff_nfc_receipts:staff_nfc_receipts_payment_owner_fk",
+      "alternativeSupports": [],
+      "error": "42830",
+      "original_statement": "ALTER TABLE \"staff_nfc_receipts\" ADD CONSTRAINT \"staff_nfc_receipts_payment_owner_fk\" FOREIGN KEY (\"payment_id\",\"subscription_id\",\"school_id\") REFERENCES \"public\".\"staff_nfc_payments\"(\"id\",\"subscription_id\",\"school_id\") ON DELETE no action ON UPDATE no action;",
+      "key_emitted_after_fk": true,
+      "supporting_key_migration": [
+        {
+          "migration": "0031_staff_nfc_billing.sql",
+          "statement": 9,
+          "name": "staff_nfc_payments_id_subscription_school_uq",
+          "ownership": "unique_constraint"
+        }
+      ]
+    },
+    {
+      "name": "staff_nfc_subscriptions_rule_version_fk",
+      "child": "public.staff_nfc_subscriptions",
+      "childColumns": [
+        "billing_rule_id",
+        "billing_rule_version"
+      ],
+      "parent": "public.staff_nfc_billing_rules",
+      "parentColumns": [
+        "id",
+        "version"
+      ],
+      "physicalName": "staff_nfc_subscriptions_rule_version_fk",
+      "support": {
+        "name": "staff_nfc_billing_rules_id_version_uq",
+        "unique": true,
+        "columns": [
+          "id",
+          "version"
+        ],
+        "partial": false,
+        "expression": false,
+        "method": "btree",
+        "kind": "unique_index",
+        "physicalName": "staff_nfc_billing_rules_id_version_uq",
+        "table": "public.staff_nfc_billing_rules"
+      },
+      "supportNode": "index:public.staff_nfc_billing_rules_id_version_uq",
+      "foreignKeyNode": "fk:public.staff_nfc_subscriptions:staff_nfc_subscriptions_rule_version_fk",
+      "alternativeSupports": [],
+      "error": "42830",
+      "original_statement": "ALTER TABLE \"staff_nfc_subscriptions\" ADD CONSTRAINT \"staff_nfc_subscriptions_rule_version_fk\" FOREIGN KEY (\"billing_rule_id\",\"billing_rule_version\") REFERENCES \"public\".\"staff_nfc_billing_rules\"(\"id\",\"version\") ON DELETE no action ON UPDATE no action;",
+      "key_emitted_after_fk": true,
+      "supporting_key_migration": [
+        {
+          "migration": "0031_staff_nfc_billing.sql",
+          "statement": 1,
+          "name": "staff_nfc_billing_rules_id_version_uq",
+          "ownership": "unique_constraint"
+        }
+      ]
+    },
+    {
+      "name": "employee_nfc_card_history_binding_school_fk",
+      "child": "public.employee_nfc_card_history",
+      "childColumns": [
+        "binding_id",
+        "school_id"
+      ],
+      "parent": "public.employee_nfc_card_bindings",
+      "parentColumns": [
+        "id",
+        "school_id"
+      ],
+      "physicalName": "employee_nfc_card_history_binding_school_fk",
+      "support": {
+        "name": "employee_nfc_card_bindings_id_school_unique",
+        "unique": true,
+        "columns": [
+          "id",
+          "school_id"
+        ],
+        "partial": false,
+        "expression": false,
+        "method": "btree",
+        "kind": "unique_index",
+        "physicalName": "employee_nfc_card_bindings_id_school_unique",
+        "table": "public.employee_nfc_card_bindings"
+      },
+      "supportNode": "index:public.employee_nfc_card_bindings_id_school_unique",
+      "foreignKeyNode": "fk:public.employee_nfc_card_history:employee_nfc_card_history_binding_school_fk",
+      "alternativeSupports": [],
+      "error": "42830",
+      "original_statement": "ALTER TABLE \"employee_nfc_card_history\" ADD CONSTRAINT \"employee_nfc_card_history_binding_school_fk\" FOREIGN KEY (\"binding_id\",\"school_id\") REFERENCES \"public\".\"employee_nfc_card_bindings\"(\"id\",\"school_id\") ON DELETE no action ON UPDATE no action;",
+      "key_emitted_after_fk": true,
+      "supporting_key_migration": [
+        {
+          "migration": "0032_employee_nfc.sql",
+          "statement": 1,
+          "name": "employee_nfc_card_bindings_id_school_id_key",
+          "ownership": "unique_constraint"
+        }
+      ]
+    },
+    {
+      "name": "employee_nfc_discrepancy_actions_discrepancy_school_fk",
+      "child": "public.employee_nfc_discrepancy_actions",
+      "childColumns": [
+        "discrepancy_id",
+        "school_id"
+      ],
+      "parent": "public.employee_nfc_attendance_discrepancies",
+      "parentColumns": [
+        "id",
+        "school_id"
+      ],
+      "physicalName": "employee_nfc_discrepancy_actions_discrepancy_school_fk",
+      "support": {
+        "name": "employee_nfc_attendance_discrepancies_id_school_unique",
+        "unique": true,
+        "columns": [
+          "id",
+          "school_id"
+        ],
+        "partial": false,
+        "expression": false,
+        "method": "btree",
+        "kind": "unique_index",
+        "physicalName": "employee_nfc_attendance_discrepancies_id_school_unique",
+        "table": "public.employee_nfc_attendance_discrepancies"
+      },
+      "supportNode": "index:public.employee_nfc_attendance_discrepancies_id_school_unique",
+      "foreignKeyNode": "fk:public.employee_nfc_discrepancy_actions:employee_nfc_discrepancy_actions_discrepancy_school_fk",
+      "alternativeSupports": [],
+      "error": "42830",
+      "original_statement": "ALTER TABLE \"employee_nfc_discrepancy_actions\" ADD CONSTRAINT \"employee_nfc_discrepancy_actions_discrepancy_school_fk\" FOREIGN KEY (\"discrepancy_id\",\"school_id\") REFERENCES \"public\".\"employee_nfc_attendance_discrepancies\"(\"id\",\"school_id\") ON DELETE no action ON UPDATE no action;",
+      "key_emitted_after_fk": true,
+      "supporting_key_migration": [
+        {
+          "migration": "0032_employee_nfc.sql",
+          "statement": 8,
+          "name": "employee_nfc_attendance_discrepancies_id_school_id_key",
+          "ownership": "unique_constraint"
+        }
+      ]
+    },
+    {
+      "name": "student_subscription_allocations_payment_owner_term_fk",
+      "child": "public.student_subscription_allocations",
+      "childColumns": [
+        "payment_id",
+        "subscription_id",
+        "school_id",
+        "student_id",
+        "academic_session_id",
+        "academic_term_id"
+      ],
+      "parent": "public.student_subscription_payments",
+      "parentColumns": [
+        "id",
+        "subscription_id",
+        "school_id",
+        "student_id",
+        "academic_session_id",
+        "academic_term_id"
+      ],
+      "physicalName": "student_subscription_allocations_payment_owner_term_fk",
+      "support": {
+        "name": "student_subscription_payments_id_owner_term_uq",
+        "unique": true,
+        "columns": [
+          "id",
+          "subscription_id",
+          "school_id",
+          "student_id",
+          "academic_session_id",
+          "academic_term_id"
+        ],
+        "partial": false,
+        "expression": false,
+        "method": "btree",
+        "kind": "unique_index",
+        "physicalName": "student_subscription_payments_id_owner_term_uq",
+        "table": "public.student_subscription_payments"
+      },
+      "supportNode": "index:public.student_subscription_payments_id_owner_term_uq",
+      "foreignKeyNode": "fk:public.student_subscription_allocations:student_subscription_allocations_payment_owner_term_fk",
+      "alternativeSupports": [],
+      "error": "42830",
+      "original_statement": "ALTER TABLE \"student_subscription_allocations\" ADD CONSTRAINT \"student_subscription_allocations_payment_owner_term_fk\" FOREIGN KEY (\"payment_id\",\"subscription_id\",\"school_id\",\"student_id\",\"academic_session_id\",\"academic_term_id\") REFERENCES \"public\".\"student_subscription_payments\"(\"id\",\"subscription_id\",\"school_id\",\"student_id\",\"academic_session_id\",\"academic_term_id\") ON DELETE no action ON UPDATE no action;",
+      "key_emitted_after_fk": true,
+      "supporting_key_migration": [
+        {
+          "migration": "0036_student_subscription_allocations.sql",
+          "statement": 3,
+          "name": "student_subscription_payments_id_owner_term_uq",
+          "ownership": "unique_constraint"
+        }
+      ]
+    },
+    {
+      "name": "student_subscription_allocations_attribution_partner_fk",
+      "child": "public.student_subscription_allocations",
+      "childColumns": [
+        "attribution_id",
+        "recipient_id"
+      ],
+      "parent": "public.school_partner_attributions",
+      "parentColumns": [
+        "id",
+        "partner_profile_id"
+      ],
+      "physicalName": "student_subscription_allocations_attribution_partner_fk",
+      "support": {
+        "name": "school_partner_attributions_id_partner_uq",
+        "unique": true,
+        "columns": [
+          "id",
+          "partner_profile_id"
+        ],
+        "partial": false,
+        "expression": false,
+        "method": "btree",
+        "kind": "unique_index",
+        "physicalName": "school_partner_attributions_id_partner_uq",
+        "table": "public.school_partner_attributions"
+      },
+      "supportNode": "index:public.school_partner_attributions_id_partner_uq",
+      "foreignKeyNode": "fk:public.student_subscription_allocations:student_subscription_allocations_attribution_partner_fk",
+      "alternativeSupports": [],
+      "error": "42830",
+      "original_statement": "ALTER TABLE \"student_subscription_allocations\" ADD CONSTRAINT \"student_subscription_allocations_attribution_partner_fk\" FOREIGN KEY (\"attribution_id\",\"recipient_id\") REFERENCES \"public\".\"school_partner_attributions\"(\"id\",\"partner_profile_id\") ON DELETE no action ON UPDATE no action;",
+      "key_emitted_after_fk": true,
+      "supporting_key_migration": [
+        {
+          "migration": "0036_student_subscription_allocations.sql",
+          "statement": 2,
+          "name": "school_partner_attributions_id_partner_uq",
+          "ownership": "unique_index"
+        }
+      ]
+    },
+    {
+      "name": "student_subscription_payments_subscription_owner_fk",
+      "child": "public.student_subscription_payments",
+      "childColumns": [
+        "subscription_id",
+        "school_id",
+        "student_id"
+      ],
+      "parent": "public.subscriptions",
+      "parentColumns": [
+        "id",
+        "school_id",
+        "student_id"
+      ],
+      "physicalName": "student_subscription_payments_subscription_owner_fk",
+      "support": {
+        "name": "subscriptions_id_school_student_uq",
+        "unique": true,
+        "columns": [
+          "id",
+          "school_id",
+          "student_id"
+        ],
+        "partial": false,
+        "expression": false,
+        "method": "btree",
+        "kind": "unique_index",
+        "physicalName": "subscriptions_id_school_student_uq",
+        "table": "public.subscriptions"
+      },
+      "supportNode": "index:public.subscriptions_id_school_student_uq",
+      "foreignKeyNode": "fk:public.student_subscription_payments:student_subscription_payments_subscription_owner_fk",
+      "alternativeSupports": [],
+      "error": "42830",
+      "original_statement": "ALTER TABLE \"student_subscription_payments\" ADD CONSTRAINT \"student_subscription_payments_subscription_owner_fk\" FOREIGN KEY (\"subscription_id\",\"school_id\",\"student_id\") REFERENCES \"public\".\"subscriptions\"(\"id\",\"school_id\",\"student_id\") ON DELETE no action ON UPDATE no action;",
+      "key_emitted_after_fk": true,
+      "supporting_key_migration": [
+        {
+          "migration": "0036_student_subscription_allocations.sql",
+          "statement": 1,
+          "name": "subscriptions_id_school_student_uq",
+          "ownership": "unique_index"
+        }
+      ]
+    },
+    {
+      "name": "admission_applications_parent_school_fk",
+      "child": "public.admission_applications",
+      "childColumns": [
+        "converted_parent_id",
+        "school_id"
+      ],
+      "parent": "public.parents",
+      "parentColumns": [
+        "id",
+        "school_id"
+      ],
+      "physicalName": "admission_applications_parent_school_fk",
+      "support": {
+        "name": "parents_id_school_unique",
+        "unique": true,
+        "columns": [
+          "id",
+          "school_id"
+        ],
+        "partial": false,
+        "expression": false,
+        "method": "btree",
+        "kind": "unique_index",
+        "physicalName": "parents_id_school_unique",
+        "table": "public.parents"
+      },
+      "supportNode": "index:public.parents_id_school_unique",
+      "foreignKeyNode": "fk:public.admission_applications:admission_applications_parent_school_fk",
+      "alternativeSupports": [],
+      "error": "42830",
+      "original_statement": "ALTER TABLE \"admission_applications\" ADD CONSTRAINT \"admission_applications_parent_school_fk\" FOREIGN KEY (\"converted_parent_id\",\"school_id\") REFERENCES \"public\".\"parents\"(\"id\",\"school_id\") ON DELETE restrict ON UPDATE no action;",
+      "key_emitted_after_fk": true,
+      "supporting_key_migration": [
+        {
+          "migration": "0042_admissions_expansion.sql",
+          "statement": 1,
+          "name": "parents_id_school_unique",
+          "ownership": "unique_index"
+        }
+      ]
+    }
+  ],
+  "post_index_retries": [
+    {
+      "statement": "ALTER TABLE \"student_subscription_terms\" ADD CONSTRAINT \"student_subscription_terms_subscription_id_school_id_student_id_subscriptions_id_school_id_student_id_fk\" FOREIGN KEY (\"subscription_id\",\"school_id\",\"student_id\") REFERENCES \"public\".\"subscriptions\"(\"id\",\"school_id\",\"student_id\") ON DELETE no action ON UPDATE no action;",
+      "result": "PASS"
+    },
+    {
+      "statement": "ALTER TABLE \"staff_nfc_allocations\" ADD CONSTRAINT \"staff_nfc_allocations_subscription_owner_term_fk\" FOREIGN KEY (\"subscription_id\",\"employee_id\",\"school_id\",\"academic_session_id\",\"academic_term_id\") REFERENCES \"public\".\"staff_nfc_subscriptions\"(\"id\",\"employee_id\",\"school_id\",\"academic_session_id\",\"academic_term_id\") ON DELETE no action ON UPDATE no action;",
+      "result": "PASS"
+    },
+    {
+      "statement": "ALTER TABLE \"staff_nfc_allocations\" ADD CONSTRAINT \"staff_nfc_allocations_payment_subscription_school_fk\" FOREIGN KEY (\"payment_id\",\"subscription_id\",\"school_id\") REFERENCES \"public\".\"staff_nfc_payments\"(\"id\",\"subscription_id\",\"school_id\") ON DELETE no action ON UPDATE no action;",
+      "result": "PASS"
+    },
+    {
+      "statement": "ALTER TABLE \"staff_nfc_allocations\" ADD CONSTRAINT \"staff_nfc_allocations_refund_payment_school_fk\" FOREIGN KEY (\"refund_id\",\"payment_id\",\"school_id\") REFERENCES \"public\".\"staff_nfc_refunds\"(\"id\",\"payment_id\",\"school_id\") ON DELETE no action ON UPDATE no action;",
+      "result": "PASS"
+    },
+    {
+      "statement": "ALTER TABLE \"staff_nfc_allocations\" ADD CONSTRAINT \"staff_nfc_allocations_rule_product_fk\" FOREIGN KEY (\"allocation_rule_id\",\"product\") REFERENCES \"public\".\"staff_nfc_billing_rules\"(\"id\",\"product\") ON DELETE no action ON UPDATE no action;",
+      "result": "PASS"
+    },
+    {
+      "statement": "ALTER TABLE \"staff_nfc_partner_commissions\" ADD CONSTRAINT \"staff_nfc_partner_commissions_subscription_tenant_fk\" FOREIGN KEY (\"subscription_id\",\"employee_id\",\"school_id\",\"academic_session_id\",\"academic_term_id\") REFERENCES \"public\".\"staff_nfc_subscriptions\"(\"id\",\"employee_id\",\"school_id\",\"academic_session_id\",\"academic_term_id\") ON DELETE no action ON UPDATE no action;",
+      "result": "PASS"
+    },
+    {
+      "statement": "ALTER TABLE \"staff_nfc_partner_commissions\" ADD CONSTRAINT \"staff_nfc_partner_commissions_payment_tenant_fk\" FOREIGN KEY (\"payment_id\",\"subscription_id\",\"school_id\") REFERENCES \"public\".\"staff_nfc_payments\"(\"id\",\"subscription_id\",\"school_id\") ON DELETE no action ON UPDATE no action;",
+      "result": "PASS"
+    },
+    {
+      "statement": "ALTER TABLE \"staff_nfc_partner_commissions\" ADD CONSTRAINT \"staff_nfc_partner_commissions_allocation_fk\" FOREIGN KEY (\"allocation_id\",\"payment_id\",\"recipient_type\") REFERENCES \"public\".\"staff_nfc_allocations\"(\"id\",\"payment_id\",\"recipient_type\") ON DELETE no action ON UPDATE no action;",
+      "result": "PASS"
+    },
+    {
+      "statement": "ALTER TABLE \"staff_nfc_payments\" ADD CONSTRAINT \"staff_nfc_payments_subscription_owner_term_fk\" FOREIGN KEY (\"subscription_id\",\"employee_id\",\"school_id\",\"academic_session_id\",\"academic_term_id\") REFERENCES \"public\".\"staff_nfc_subscriptions\"(\"id\",\"employee_id\",\"school_id\",\"academic_session_id\",\"academic_term_id\") ON DELETE no action ON UPDATE no action;",
+      "result": "PASS"
+    },
+    {
+      "statement": "ALTER TABLE \"staff_nfc_receipts\" ADD CONSTRAINT \"staff_nfc_receipts_payment_owner_fk\" FOREIGN KEY (\"payment_id\",\"subscription_id\",\"school_id\") REFERENCES \"public\".\"staff_nfc_payments\"(\"id\",\"subscription_id\",\"school_id\") ON DELETE no action ON UPDATE no action;",
+      "result": "PASS"
+    },
+    {
+      "statement": "ALTER TABLE \"staff_nfc_subscriptions\" ADD CONSTRAINT \"staff_nfc_subscriptions_rule_version_fk\" FOREIGN KEY (\"billing_rule_id\",\"billing_rule_version\") REFERENCES \"public\".\"staff_nfc_billing_rules\"(\"id\",\"version\") ON DELETE no action ON UPDATE no action;",
+      "result": "PASS"
+    },
+    {
+      "statement": "ALTER TABLE \"employee_nfc_card_history\" ADD CONSTRAINT \"employee_nfc_card_history_binding_school_fk\" FOREIGN KEY (\"binding_id\",\"school_id\") REFERENCES \"public\".\"employee_nfc_card_bindings\"(\"id\",\"school_id\") ON DELETE no action ON UPDATE no action;",
+      "result": "PASS"
+    },
+    {
+      "statement": "ALTER TABLE \"employee_nfc_discrepancy_actions\" ADD CONSTRAINT \"employee_nfc_discrepancy_actions_discrepancy_school_fk\" FOREIGN KEY (\"discrepancy_id\",\"school_id\") REFERENCES \"public\".\"employee_nfc_attendance_discrepancies\"(\"id\",\"school_id\") ON DELETE no action ON UPDATE no action;",
+      "result": "PASS"
+    },
+    {
+      "statement": "ALTER TABLE \"student_subscription_allocations\" ADD CONSTRAINT \"student_subscription_allocations_payment_owner_term_fk\" FOREIGN KEY (\"payment_id\",\"subscription_id\",\"school_id\",\"student_id\",\"academic_session_id\",\"academic_term_id\") REFERENCES \"public\".\"student_subscription_payments\"(\"id\",\"subscription_id\",\"school_id\",\"student_id\",\"academic_session_id\",\"academic_term_id\") ON DELETE no action ON UPDATE no action;",
+      "result": "PASS"
+    },
+    {
+      "statement": "ALTER TABLE \"student_subscription_allocations\" ADD CONSTRAINT \"student_subscription_allocations_attribution_partner_fk\" FOREIGN KEY (\"attribution_id\",\"recipient_id\") REFERENCES \"public\".\"school_partner_attributions\"(\"id\",\"partner_profile_id\") ON DELETE no action ON UPDATE no action;",
+      "result": "PASS"
+    },
+    {
+      "statement": "ALTER TABLE \"student_subscription_payments\" ADD CONSTRAINT \"student_subscription_payments_subscription_owner_fk\" FOREIGN KEY (\"subscription_id\",\"school_id\",\"student_id\") REFERENCES \"public\".\"subscriptions\"(\"id\",\"school_id\",\"student_id\") ON DELETE no action ON UPDATE no action;",
+      "result": "PASS"
+    },
+    {
+      "statement": "ALTER TABLE \"admission_applications\" ADD CONSTRAINT \"admission_applications_parent_school_fk\" FOREIGN KEY (\"converted_parent_id\",\"school_id\") REFERENCES \"public\".\"parents\"(\"id\",\"school_id\") ON DELETE restrict ON UPDATE no action;",
+      "result": "PASS"
+    }
+  ],
+  "biometric_truth_table": [
+    {
+      "student_id": null,
+      "employee_id": null,
+      "accepted": false,
+      "code": "23514",
+      "constraint": "biometric_enrollments_subject_check"
+    },
+    {
+      "student_id": 1,
+      "employee_id": null,
+      "accepted": true
+    },
+    {
+      "student_id": null,
+      "employee_id": 1,
+      "accepted": true
+    },
+    {
+      "student_id": 1,
+      "employee_id": 1,
+      "accepted": false,
+      "code": "23514",
+      "constraint": "biometric_enrollments_subject_check"
+    }
+  ]
+}

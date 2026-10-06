@@ -294,3 +294,31 @@ mtime_ms = 1791317328812
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/f7b779ad-3b75-4e6c-8065-8b7257591795/023ee33b-d38c-45fb-a19c-342d6b3af13d"
 storage_version_token = "1791317358763357"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "axESMd4-FI9n-T90nwILq"
+uri = "file://reports/educore-stage2b/report.html"
+type = "html"
+title = "Yemait EduCore — Stage 2B A–I audit report"
+description = "Complete report, all 17 affected FKs, all 659 dependencies and migration-provenance evidence, validation counts, integrity checks and exactly one next action."
+logical_id = "615e0ded-bed0-4c07-93f2-26c1066e4967"
+content_hash = "sha256:0740488f0fd05ebdd768a32675ff600fa311af6813bcf78ecb2f966ed31ad30d"
+size = 488863
+mtime_ms = 1791319432535
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/615e0ded-bed0-4c07-93f2-26c1066e4967/5268393e-4a47-4abf-adc3-bba322893d61"
+storage_version_token = "1791319442191050"
+content_type = "text/html"
+
+[[outputs]]
+id = "JCcKy-usF-CqT92BuzgDO"
+uri = "file://reports/educore-stage2b-evidence-2026-10-06.zip"
+type = "unspecified"
+title = "Stage 2B audit evidence — disposable only"
+description = "Labelled audit SQL, dependency graph, isolated PostgreSQL catalogs, 60-file replay results, source-integrity hashes and regression logs. Not for Production execution."
+logical_id = "b38e1abd-5dec-4ed4-889d-d62b06178d9a"
+content_hash = "sha256:1f3e0d58daed99eb9ff6fc254d95dd90bf934a28744e0aaddb2b8b53623ad041"
+size = 379001
+mtime_ms = 1791319432601
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/b38e1abd-5dec-4ed4-889d-d62b06178d9a/1784090b-0181-47bc-afec-b489a77609c5"
+storage_version_token = "1791319442850756"
+content_type = "application/octet-stream"
