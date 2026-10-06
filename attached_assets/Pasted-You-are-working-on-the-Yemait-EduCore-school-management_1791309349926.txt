@@ -1,0 +1,440 @@
+You are working on the Yemait EduCore school management system.
+
+IMPORTANT: This is STAGE 1 of a production-readiness process.
+
+Your task is ONLY to perform a READ-ONLY production/database audit.
+
+DO NOT build new features.
+DO NOT refactor application code.
+DO NOT modify the Production database.
+DO NOT run migrations against Production.
+DO NOT approve, publish, or apply any database migration.
+DO NOT DROP, ALTER, DELETE, TRUNCATE, UPDATE, INSERT, or otherwise change Production data or schema.
+DO NOT change Production secrets, DATABASE_URL, Clerk configuration, payment configuration, or deployment configuration.
+DO NOT create a new migration yet.
+DO NOT "fix" anything automatically.
+
+The purpose of this task is to determine exactly what is wrong or incomplete before we spend more development credits.
+
+Use the current GitHub repository as the source of truth for the application's intended schema and migration history.
+
+Repository:
+https://github.com/ogunlakinyemi-arch/EduCore-School-Management
+
+The repository currently contains database migrations through 0059. Inspect the actual repository rather than assuming the schema from previous conversations.
+
+==================================================
+
+1. INVENTORY THE CURRENT DATABASE SYSTEM
+   ==================================================
+
+Inspect:
+
+- lib/db/drizzle/
+- lib/db/src/schema/
+- all migration files
+- drizzle configuration
+- database connection configuration
+- package scripts related to database/migrations
+- server startup/database initialization code
+- any database reconciliation scripts
+- any production database scripts
+- any seed scripts
+- any schema validation scripts
+
+Determine:
+
+A. The exact number of migration files.
+B. The first migration.
+C. The latest migration.
+D. Whether migrations are sequential.
+E. Whether there are duplicate or conflicting migrations.
+F. Whether any migration appears to depend on something created later.
+G. Whether any migration contains:
+
+- CREATE TABLE
+- ALTER TABLE
+- ADD COLUMN
+- CREATE INDEX
+- CREATE UNIQUE INDEX
+- FOREIGN KEY
+- trigger
+- function
+- backfill
+- data update
+- destructive operation
+  H. Identify any migration that could be unsafe to run automatically in Production.
+
+Do not change anything.
+
+==================================================
+2. DETERMINE THE INTENDED CURRENT SCHEMA
+
+Using the actual migration files and schema files, determine what the database should look like after all current migrations have been applied.
+
+Produce an inventory containing:
+
+- tables
+- columns
+- data types
+- nullable/non-nullable fields
+- primary keys
+- foreign keys
+- unique constraints
+- indexes
+- check constraints
+- functions
+- triggers
+
+Pay particular attention to:
+
+- school_id / tenant isolation
+- users
+- students
+- parents
+- employees
+- classes
+- attendance
+- NFC cards
+- NFC devices
+- card history/replacement
+- subscriptions
+- subscription terms
+- finance
+- invoices
+- payments
+- payment allocations
+- refunds
+- bank transfers
+- Flutterwave-related records
+- communication
+- library
+- transport
+- payroll
+- admissions
+- curriculum
+- student care
+- promotion
+- school security
+- partner records
+- partner permissions
+- audit records
+
+Do not assume that every table in the TypeScript schema exists in Production.
+
+==================================================
+3. INSPECT ACTUAL PRODUCTION DATABASE
+
+Use only READ-ONLY database inspection.
+
+Determine the actual Production database schema.
+
+Inspect:
+
+- PostgreSQL version
+- database name where safely available
+- schemas
+- tables
+- columns
+- primary keys
+- foreign keys
+- unique constraints
+- indexes
+- check constraints
+- functions
+- triggers
+- migration tracking table, if present
+- row counts where safe and useful
+
+Do NOT modify anything.
+
+If the current environment does not provide safe read-only access to Production, STOP and clearly report that limitation instead of attempting a workaround.
+
+Never expose or print database passwords, API keys, Clerk secrets, Flutterwave secrets, or other credentials.
+
+==================================================
+4. COMPARE PRODUCTION AGAINST THE INTENDED SCHEMA
+
+Create a precise comparison between:
+
+A. GitHub/current intended schema
+B. Development database schema, if safely accessible
+C. Production database schema
+
+Classify every discrepancy as:
+
+RED = production is missing something required or data integrity/security could be affected
+
+YELLOW = difference exists but may be intentional or requires investigation
+
+GREEN = matches expected schema
+
+Specifically identify:
+
+- missing tables
+- unexpected tables
+- missing columns
+- unexpected columns
+- wrong data types
+- wrong nullable settings
+- missing primary keys
+- missing foreign keys
+- missing unique constraints
+- missing indexes
+- unexpected indexes
+- missing functions
+- missing triggers
+- migration tracking discrepancies
+- schema objects created in development but absent in Production
+
+Do not fix any discrepancy.
+
+==================================================
+5. INVESTIGATE THE PREVIOUS PRODUCTION MIGRATION PROBLEM
+
+There was previously a Production database publish/reconciliation preview showing approximately:
+
+- 408 pending statements
+- approximately 62 CREATE TABLE statements
+- approximately 236 foreign-key additions
+- no DROP/data-change statements in that preview
+
+There were also previously identified missing prerequisites involving:
+
+school_operation_categories(id, school_id, category_type)
+
+and references associated with migration issues around:
+
+#253
+#275
+#296
+
+There were also concerns that some functions, triggers, and backfills would not be included.
+
+Do NOT assume those findings are still current.
+
+Re-check the actual current state.
+
+Report:
+
+1. Which of those issues still exist.
+2. Which have been resolved.
+3. Which have changed because of newer migrations.
+4. Any new dependency/order problems introduced by migrations 0050–0059.
+5. Whether applying all current migrations in their existing order would succeed on a clean database.
+6. Whether applying them to the existing Production database would be safe.
+7. Whether a reconciliation migration is required.
+
+Again: DO NOT apply anything.
+
+==================================================
+6. TEST MIGRATION ORDER WITHOUT TOUCHING PRODUCTION
+
+If the environment permits, create/use a completely separate temporary test database.
+
+DO NOT use Production.
+
+Test whether the complete migration sequence can be applied from an empty PostgreSQL database:
+
+0000 → 0001 → 0002 → ... → latest migration
+
+Record:
+
+- first failing migration
+- exact error
+- dependency causing failure
+- whether failure is caused by migration ordering
+- whether failure is caused by duplicate objects
+- whether failure is caused by missing prerequisites
+- whether failure is caused by PostgreSQL compatibility
+- whether failure is caused by existing development assumptions
+
+If a safe isolated test database cannot be created, do not improvise. Report that the migration replay test could not be performed.
+
+==================================================
+7. CHECK FOR DATA-SAFETY RISKS
+
+Inspect migrations for any operation that could:
+
+- delete data
+- overwrite data
+- change IDs
+- change school ownership
+- break foreign keys
+- create duplicate records
+- change financial balances
+- change subscription status
+- alter NFC ownership/history
+- invalidate existing users
+- change authentication relationships
+
+Pay particular attention to migrations involving:
+
+- student NFC replacement
+- employee card replacement
+- subscriptions
+- finance
+- term enforcement
+- owner school lock
+- parent permissions
+- partner permissions
+
+Do not execute any risky operation.
+
+==================================================
+8. CHECK MIGRATION TRACKING
+
+Determine how this project tracks applied migrations.
+
+Compare:
+
+- migration files in GitHub
+- migration tracking records in Development
+- migration tracking records in Production
+
+Determine whether Production believes migrations are already applied when the corresponding schema objects are actually missing.
+
+Also identify the opposite situation:
+
+Production contains schema objects that migration tracking does not account for.
+
+This is critical.
+
+==================================================
+9. CHECK DATABASE CONFIGURATION
+
+Inspect application configuration only.
+
+Determine:
+
+- how the API obtains DATABASE_URL
+- how Development database differs from Production
+- how Production database is selected
+- whether there are multiple database connection mechanisms
+- whether any code could accidentally connect a development process to Production
+- whether migrations can accidentally target Production
+- whether migration scripts clearly distinguish Development from Production
+
+Do NOT print actual secret values.
+
+Report only variable names and configuration behavior.
+
+==================================================
+10. DO NOT MAKE THESE CHANGES
+
+Absolutely do NOT:
+
+- run db push against Production
+- run migrations against Production
+- approve Replit database changes
+- click/execute a publish operation
+- delete tables
+- drop constraints
+- delete records
+- modify financial records
+- modify student records
+- modify NFC records
+- modify users
+- modify subscriptions
+- modify Production secrets
+- modify application code
+- modify GitHub
+- create commits
+- create pull requests
+- create new migrations
+
+This stage is AUDIT ONLY.
+
+==================================================
+11. FINAL REPORT
+
+At the end, give me a concise but complete report with these sections:
+
+A. Overall Production Database Status
+
+Choose exactly one:
+
+RED — unsafe/incomplete
+YELLOW — requires reconciliation/verification
+GREEN — database appears production-ready
+
+B. Migration Status
+
+Report:
+
+- total migrations
+- latest migration
+- whether sequence is valid
+- whether clean migration replay succeeds
+- first failure, if any
+
+C. Production Schema
+
+Report:
+
+- Production table count
+- Expected table count
+- Missing tables
+- Unexpected tables
+- missing/incorrect columns
+- missing constraints
+- missing indexes
+- missing functions
+- missing triggers
+
+D. Migration Tracking
+
+Explain whether migration history agrees with the actual Production schema.
+
+E. Data Safety
+
+List every RED or YELLOW data-risk issue.
+
+F. Dependency Problems
+
+List every migration dependency/order problem.
+
+G. Production Configuration
+
+Explain whether the application is clearly and safely connected to the intended Production database.
+
+H. Required Fixes
+
+Create a numbered list of exactly what must be fixed.
+
+Separate into:
+
+1. MUST FIX BEFORE PRODUCTION
+2. SHOULD FIX BEFORE PRODUCTION
+3. OPTIONAL CLEANUP
+
+I. Recommended Migration Plan
+
+Do NOT execute it.
+
+Describe the safest order in which the identified database problems should later be fixed.
+
+J. STOP CONDITION
+
+Finish with:
+
+"NO PRODUCTION CHANGES WERE MADE."
+
+Also explicitly state whether you found any reason that the current Production database should NOT yet receive the pending migrations.
+
+==================================================
+IMPORTANT
+
+Do not give me generic recommendations.
+
+I need findings based on the actual current repository and actual accessible database state.
+
+If something cannot be verified, say:
+
+"NOT VERIFIED — REASON: ..."
+
+Do not guess.
+
+Do not mark something GREEN merely because the code appears to support it.
+
+The goal of this stage is to give me enough evidence to decide exactly what the next Replit action should be without risking the existing Production database or wasting development credits.

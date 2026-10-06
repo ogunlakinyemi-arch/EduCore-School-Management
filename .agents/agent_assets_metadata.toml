@@ -210,3 +210,31 @@ mtime_ms = 1791289548255
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/e9861ce2-d3b9-493c-9e5d-b39fd82bc6d0/5df569fb-5f63-4610-8733-2562b96609ac"
 storage_version_token = "1791289733861300"
 content_type = "text/html"
+
+[[outputs]]
+id = "L_ZFjR1XJkV0-lHPcuKjO"
+uri = "file://reports/educore-stage1-production-audit-2026-10-06.html"
+type = "html"
+title = "Stage 1 Production Database Audit"
+description = "Complete A–J report with confirmed blockers, missing-object inventories, data risks and an unexecuted reconciliation plan."
+logical_id = "ba7c11c5-8f9f-438c-905f-1d740c9d5553"
+content_hash = "sha256:058d163ed3059df33662460802a61673b29d8cc9687f67969a5d54140333125e"
+size = 619572
+mtime_ms = 1791311112158
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/ba7c11c5-8f9f-438c-905f-1d740c9d5553/feb1c3c6-418d-467b-81e4-1a46adb5cef2"
+storage_version_token = "1791311139274207"
+content_type = "text/html"
+
+[[outputs]]
+id = "fXpqHmpZWZNxGsWU3PVnr"
+uri = "file://reports/educore-stage1-audit-evidence-2026-10-06.zip"
+type = "unspecified"
+title = "Audit Evidence and Complete Inventories"
+description = "33 files: schema inventories, GREEN/YELLOW/RED comparisons, migration checksums, current publish preview and isolated replay evidence. No credentials or business records."
+logical_id = "5d89c492-2854-462c-bc73-d40ff4fe9708"
+content_hash = "sha256:795661234f2beddae75035094e7d0a264fde7613f881324023667a10ad269f55"
+size = 435910
+mtime_ms = 1791311112154
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/5d89c492-2854-462c-bc73-d40ff4fe9708/6e23d944-750b-45cb-84b5-7d0aeb7043f6"
+storage_version_token = "1791311140387410"
+content_type = "application/octet-stream"
