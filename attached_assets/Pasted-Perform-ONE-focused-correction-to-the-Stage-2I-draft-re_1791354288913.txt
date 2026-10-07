@@ -1,0 +1,282 @@
+Perform ONE focused correction to the Stage 2I draft reconciliation set.
+
+OBJECTIVE
+
+Fix the semantic blocker identified in the Stage 2I review:
+
+The existing legacy constraint:
+
+"fee_payments_method_check"
+
+incorrectly rejects "CASH".
+
+The canonical schema permits "CASH".
+
+Historical migration "0055" explicitly removes this obsolete CHECK constraint.
+
+The 105 draft migrations "0061–0165" currently preserve the obsolete constraint, causing:
+
+- structural coverage: PASS
+- canonical object coverage: PASS
+- semantic equivalence: FAIL
+
+Correct this without touching Production or Development.
+
+---
+
+SAFETY
+
+This remains SOURCE-ONLY plus DISPOSABLE VALIDATION.
+
+DO NOT:
+
+- connect to Production
+- connect to Development
+- publish
+- deploy
+- run db push
+- modify secrets
+- modify environment variables
+- modify the Drizzle journal
+- modify application code
+- execute any migration against a shared database
+- delete any Production data
+
+Production writes must remain ZERO.
+
+Development writes must remain ZERO.
+
+---
+
+REQUIRED CHANGE
+
+Inspect the generated draft migrations "0061–0165".
+
+Locate where the legacy:
+
+"fee_payments_method_check"
+
+constraint is preserved or recreated.
+
+Modify the draft reconciliation plan so that the obsolete constraint is retired/reconciled exactly as required by canonical migration "0055".
+
+The resulting migration must be:
+
+- guarded
+- idempotent
+- dependency-safe
+- non-destructive to data
+- semantically equivalent to the canonical schema
+
+Do NOT simply ignore the constraint.
+
+Do NOT rename it.
+
+Do NOT create another CHECK that still rejects CASH.
+
+Do NOT weaken the canonical schema.
+
+The final state must permit valid "CASH" payment methods exactly as the canonical schema does.
+
+---
+
+IMPORTANT
+
+Use migration "0055" and the canonical replay as the authoritative source for this behavior.
+
+Do not infer the desired behavior from the current Production-routed schema.
+
+The canonical behavior is authoritative.
+
+---
+
+CONTROLLED RETIREMENT
+
+The retirement should safely handle these cases:
+
+Case 1
+
+Constraint exists with the obsolete definition.
+
+→ Remove/reconcile it so the final schema matches canonical behavior.
+
+Case 2
+
+Constraint is already absent.
+
+→ Do nothing.
+
+Case 3
+
+Constraint exists but has an unexpected definition.
+
+→ Do NOT silently remove it.
+
+Report it as an ambiguity requiring review.
+
+Case 4
+
+The constraint exists under an equivalent but different name.
+
+→ Determine whether the actual semantic restriction is equivalent to the obsolete CASH-rejecting constraint.
+
+If yes, reconcile it safely.
+
+If uncertain, STOP and report it.
+
+---
+
+DO NOT REBUILD ALL 105 MIGRATIONS
+
+Reuse the existing Stage 2I work.
+
+Do NOT regenerate the entire schema from scratch unless absolutely necessary.
+
+Make the smallest source/build change required to correct this semantic mismatch.
+
+Preserve all previously validated migration ordering and dependency relationships.
+
+Do not modify:
+
+"0060_reconcile_student_subscription_finance.sql"
+
+0060 has already passed its 35/35 disposable rehearsal and must remain unchanged.
+
+---
+
+DISPOSABLE VALIDATION
+
+After correcting the draft migrations, perform ONE isolated disposable PostgreSQL validation.
+
+Do not use Production or Development.
+
+Test 1 — Canonical replay
+
+Confirm the existing clean:
+
+"0000–0060"
+
+replay still passes.
+
+Do not unnecessarily repeat expensive tests already proven unchanged.
+
+Test 2 — Reconciliation
+
+Apply the corrected draft migration set "0061–0165".
+
+Confirm:
+
+- no dependency errors
+- no duplicate-object errors
+- no destructive data operations
+- obsolete CASH-rejecting CHECK is absent
+- canonical CASH behavior is restored
+
+Test 3 — Semantic CASH test
+
+Create a disposable test row/fixture representing a valid CASH payment method, if the schema permits creation of such a fixture.
+
+Confirm it is accepted.
+
+Also confirm that the canonical allowed payment methods remain accepted.
+
+Do not invent unrelated business behavior.
+
+Test 4 — Idempotency
+
+Confirm the corrected retirement is safe when:
+
+- the obsolete constraint exists
+- the obsolete constraint is already absent
+
+Do not perform destructive operations merely to test idempotency.
+
+Test 5 — Final catalog comparison
+
+Compare the resulting disposable schema against the canonical schema.
+
+The previous semantic mismatch must be resolved.
+
+---
+
+DO NOT RUN PRODUCTION PREFLIGHTS YET
+
+The previously reported:
+
+"1,890 Production preflight specifications"
+
+must remain NOT RUN.
+
+Do not spend credits running them.
+
+They become relevant only after the migration draft set passes semantic validation.
+
+---
+
+REQUIRED FINAL REPORT
+
+Return only one consolidated report containing:
+
+1. Root cause
+
+Explain why:
+
+"fee_payments_method_check"
+
+was incompatible with canonical migration "0055".
+
+2. Files changed
+
+List exactly which files were modified.
+
+3. Migration behavior
+
+Explain how the obsolete CHECK is now retired safely.
+
+4. Validation
+
+Report:
+
+- canonical 0000–0060 replay
+- corrected 0061–0165 reconciliation
+- CASH semantic test
+- idempotency
+- final catalog comparison
+
+5. Finance
+
+Confirm:
+
+"0060_reconcile_student_subscription_finance.sql"
+
+was not modified.
+
+6. Production preflight
+
+Confirm the 1,890 preflights remain NOT RUN.
+
+7. Safety
+
+Confirm:
+
+Production connections: 0
+Production writes: 0
+Development writes: 0
+Shared database writes: 0
+Publish/deploy: NO
+db push: NO
+Journal changes: NO
+Secrets/env changes: NO
+Application changes: NO
+
+FINAL STATUS
+
+Use exactly one:
+
+PASS — READY FOR PRODUCTION PREFLIGHT
+
+or
+
+BLOCKED — DO NOT PROCEED
+
+If any other semantic mismatch appears, STOP and report it rather than automatically fixing it.

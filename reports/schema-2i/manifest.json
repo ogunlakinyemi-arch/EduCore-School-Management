@@ -6637,9 +6637,9 @@
         "0060_reconcile_student_subscription_finance.sql"
       ],
       "requiresPreflight": true,
-      "controlledReplacement": false,
-      "controlledAlterations": "Validation of an equivalent NOT VALID constraint when canonical requires validation",
-      "sha256": "198b23fcd671b01a1afba975212e39aa0ef39379a19559e5890d672b6cdeff75",
+      "controlledReplacement": true,
+      "controlledAlterations": "Canonical 0055: atomic guarded retirement of exact obsolete four-method CHECKs after validated canonical CASH-capable replacement; unproven definitions STOP.",
+      "sha256": "7bc77244a23f9b391833f558386094c28e6425d5d166ed6e4708a3da99a26af1",
       "ids": [
         "constraints:public.fee_categories.fee_categories_created_by_fkey.",
         "constraints:public.fee_categories.fee_categories_school_id_fkey.",
@@ -72953,8 +72953,9 @@
     "ledgerHashes": "Not inspected: Stage 2I permits no Production connections. Journal entries do not contain executed SQL hashes.",
     "procedure": "Preserve existing registrations/hash history; review older unregistered data effects/baseline adoption first. Register approved forward prerequisites in dependency order before 0060, then remaining tiers with monotonic reviewed runner timestamps. Do not bulk-stamp or infer prior execution; do not sort manifest lexically."
   },
-  "releaseStatus": "BLOCKED — DO NOT PROCEED",
-  "blockers": [
+  "releaseStatus": "PASS — READY FOR PRODUCTION PREFLIGHT",
+  "blockers": [],
+  "resolvedBlockers": [
     {
       "id": "legacy-fee-method-check",
       "table": "fee_payments",
@@ -72971,5 +72972,7 @@
       "action": "STOP. A separately reviewed, explicitly proven-safe constraint-retirement/replacement plan is required. No retirement migration or constraint DROP was added.",
       "migration0060Defect": false
     }
-  ]
+  ],
+  "correctionEvidence": "reports/schema-2i-correction/validation.json",
+  "semanticEquivalencePassed": true
 }

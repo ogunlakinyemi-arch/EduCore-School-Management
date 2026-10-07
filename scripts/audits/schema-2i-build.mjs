@@ -174,6 +174,7 @@ const objectId=(k,r)=>k+":"+[r.schema,r.table_name??"",r.name,k==="functions"?r.
 const phase=r=>graph.nodes.find(x=>x.id===objectId(r.kind,r.value))?.phase??"A";
 const add=(kind,r,ddl,stage)=>ops.push({kind,expected:r,ddl,stage,phase:phase({kind:kind==="ownership"?"sequences":kind,value:r}),id:objectId(kind,r)});
 const beforeDefault=new Set(e.columns.flatMap(c=>e.functions.filter(f=>(c.default_expression??"").includes(f.name+"(")).map(f=>f.name)));
+const cashRetirement=await fs.readFile("scripts/audits/schema-2i-cash-retirement.sql","utf8");
 for(const f of e.functions.filter(f=>beforeDefault.has(f.name)&&!financeObject("functions",f)))add("functions",f,f.definition,0);
 for(const s of e.sequences.filter(s=>!financeObject("sequences",s)))add("sequences",s,
  `CREATE SEQUENCE public.${q(s.name)} AS ${s.type} INCREMENT BY ${s.increment} MINVALUE ${s.minimum} MAXVALUE ${s.maximum} START WITH ${s.start_value} CACHE ${s.cache}${s.cycle?" CYCLE":" NO CYCLE"}`,1);
@@ -258,6 +259,7 @@ BEGIN
  FOR spec IN SELECT value FROM jsonb_array_elements($contracts$${contract}$contracts$::jsonb) LOOP
   PERFORM pg_temp.edu2i_apply(spec->>'kind',spec);
  END LOOP;
+${name==="0149_reconcile_checks_foreign_keys_f_1.sql"?cashRetirement:""}\
 END $migration$;
 `;
    const target="lib/db/drizzle/"+name;
@@ -272,6 +274,10 @@ END $migration$;
     prerequisites:[...previous],requiresPreflight:[3,5,6,8,10].includes(stage),controlledReplacement:false,
     controlledAlterations:stage===3?"Only the canonical fee_invoices/fee_payments student_id NOT NULL relaxation":stage===5?"Qualifying standalone index attachment in place, without rename/rebuild":stage===8?"Validation of an equivalent NOT VALID constraint when canonical requires validation":null,
     sha256:hash(sql),ids:chunk.map(o=>o.id)};
+    if(name==="0149_reconcile_checks_foreign_keys_f_1.sql"){
+     entry.controlledReplacement=true;
+     entry.controlledAlterations="Canonical 0055: retire only proven obsolete four-method CHECKs after validated CASH-capable replacement; unknown definitions/aliases STOP.";
+    }
    manifest.migrations.push(entry);manifest.order.push(name);stageFiles.push(name);
   }
  }

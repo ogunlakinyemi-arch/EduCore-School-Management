@@ -476,3 +476,17 @@ mtime_ms = 1791354071405
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/7bd512e2-2766-4b72-bd96-7cd41392b7b9/48610706-4e74-41df-ae0e-666adfe0944c"
 storage_version_token = "1791354115930344"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "s9xwM7sQ_fyc6C7NhJrDY"
+uri = "file://reports/schema-2i-correction/report.html"
+type = "html"
+title = "Stage 2I focused correction — consolidated report"
+description = "PASS — READY FOR PRODUCTION PREFLIGHT. One draft corrected; CASH, idempotency, ambiguity guards and final semantic comparison passed. All 1,890 Production preflights remain NOT RUN."
+logical_id = "e45aef9d-6b38-4691-9eff-619d73cd522d"
+content_hash = "sha256:77839b24889c15fe2c478a3fdc7f499239bad886e3eb44142403f9e4aaa4dd64"
+size = 11689
+mtime_ms = 1791354933809
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/e45aef9d-6b38-4691-9eff-619d73cd522d/2847146e-15b8-4d7a-bfa8-02b2f58c0fe5"
+storage_version_token = "1791354934475255"
+content_type = "text/html"

@@ -1,0 +1,606 @@
+{
+  "status": "PASS — READY FOR PRODUCTION PREFLIGHT",
+  "tests": [
+    {
+      "name": "1 unchanged canonical 0000–0060 replay evidence reused",
+      "status": "PASS",
+      "files": 61,
+      "counts": {
+        "tables": 173,
+        "columns": 2309,
+        "constraints": 1432,
+        "indexes": 674,
+        "functions": 18,
+        "triggers": 22,
+        "sequences": 158
+      },
+      "noReplayRepeated": true
+    },
+    {
+      "name": "2 corrected reconciliation: all 105 drafts plus unchanged 0060",
+      "status": "PASS",
+      "files": 106,
+      "dataPreserved": true,
+      "originalOidsAndFkBindingsPreserved": true,
+      "onlyApprovedLegacyCheckRetired": true
+    },
+    {
+      "name": "4 absent-state direct rerun is a catalog no-op",
+      "status": "PASS"
+    },
+    {
+      "name": "4 proven equivalent differently named restriction safely retired",
+      "status": "PASS"
+    },
+    {
+      "name": "4 existing obsolete definition retired idempotently without changing payment rows",
+      "status": "PASS"
+    },
+    {
+      "name": "4 unexpected definition preserved and STOP: fee_payments_method_check",
+      "status": "PASS"
+    },
+    {
+      "name": "4 unexpected definition preserved and STOP: qa_uncertain_method_check",
+      "status": "PASS"
+    },
+    {
+      "name": "3 actual payment INSERTs accept CASH and all four other canonical methods",
+      "status": "PASS",
+      "cashStatus": "VERIFIED",
+      "syntheticOnly": true,
+      "methods": [
+        "BANK_TRANSFER",
+        "REMITA",
+        "FLUTTERWAVE",
+        "PAYSTACK",
+        "CASH"
+      ]
+    },
+    {
+      "name": "3 invalid method and CASH without canonical verification evidence remain rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "5 final catalog and retained-extra semantic review",
+      "status": "PASS",
+      "counts": {
+        "tables": 173,
+        "columns": 2309,
+        "constraints": 1437,
+        "indexes": 671,
+        "functions": 18,
+        "triggers": 22,
+        "sequences": 158
+      },
+      "constraintKinds": {
+        "p": 173,
+        "u": 176,
+        "c": 429,
+        "f": 659
+      },
+      "missing": [],
+      "differences": [],
+      "equivalences": [
+        {
+          "section": "columns",
+          "table": "audit_logs",
+          "name": "actor_user_id",
+          "retainedName": "actor_user_id"
+        },
+        {
+          "section": "columns",
+          "table": "audit_logs",
+          "name": "clerk_user_id",
+          "retainedName": "clerk_user_id"
+        },
+        {
+          "section": "columns",
+          "table": "audit_logs",
+          "name": "school_id",
+          "retainedName": "school_id"
+        },
+        {
+          "section": "columns",
+          "table": "audit_logs",
+          "name": "action",
+          "retainedName": "action"
+        },
+        {
+          "section": "columns",
+          "table": "audit_logs",
+          "name": "module",
+          "retainedName": "module"
+        },
+        {
+          "section": "columns",
+          "table": "audit_logs",
+          "name": "record_id",
+          "retainedName": "record_id"
+        },
+        {
+          "section": "columns",
+          "table": "audit_logs",
+          "name": "timestamp",
+          "retainedName": "timestamp"
+        },
+        {
+          "section": "columns",
+          "table": "audit_logs",
+          "name": "severity",
+          "retainedName": "severity"
+        },
+        {
+          "section": "columns",
+          "table": "parents",
+          "name": "user_id",
+          "retainedName": "user_id"
+        },
+        {
+          "section": "columns",
+          "table": "parents",
+          "name": "name",
+          "retainedName": "name"
+        },
+        {
+          "section": "columns",
+          "table": "parents",
+          "name": "email",
+          "retainedName": "email"
+        },
+        {
+          "section": "columns",
+          "table": "parents",
+          "name": "phone",
+          "retainedName": "phone"
+        },
+        {
+          "section": "columns",
+          "table": "students",
+          "name": "user_id",
+          "retainedName": "user_id"
+        },
+        {
+          "section": "columns",
+          "table": "students",
+          "name": "admission_no",
+          "retainedName": "admission_no"
+        },
+        {
+          "section": "columns",
+          "table": "students",
+          "name": "first_name",
+          "retainedName": "first_name"
+        },
+        {
+          "section": "columns",
+          "table": "students",
+          "name": "last_name",
+          "retainedName": "last_name"
+        },
+        {
+          "section": "columns",
+          "table": "students",
+          "name": "gender",
+          "retainedName": "gender"
+        },
+        {
+          "section": "columns",
+          "table": "students",
+          "name": "class_name",
+          "retainedName": "class_name"
+        },
+        {
+          "section": "columns",
+          "table": "students",
+          "name": "section",
+          "retainedName": "section"
+        },
+        {
+          "section": "columns",
+          "table": "students",
+          "name": "parent_name",
+          "retainedName": "parent_name"
+        },
+        {
+          "section": "columns",
+          "table": "students",
+          "name": "parent_phone",
+          "retainedName": "parent_phone"
+        },
+        {
+          "section": "columns",
+          "table": "students",
+          "name": "status",
+          "retainedName": "status"
+        },
+        {
+          "section": "columns",
+          "table": "students",
+          "name": "joined_at",
+          "retainedName": "joined_at"
+        },
+        {
+          "section": "constraints",
+          "table": "platform_devices",
+          "name": "platform_devices_class_school_fk",
+          "retainedName": "platform_devices_class_school_fk"
+        },
+        {
+          "section": "constraints",
+          "table": "platform_devices",
+          "name": "platform_devices_status_check",
+          "retainedName": "platform_devices_status_supported_check"
+        },
+        {
+          "section": "indexes",
+          "table": "academic_sessions",
+          "name": "academic_sessions_id_school_unique",
+          "retainedName": "academic_sessions_id_school_tenant_key"
+        },
+        {
+          "section": "indexes",
+          "table": "academic_terms",
+          "name": "academic_terms_id_school_unique",
+          "retainedName": "academic_terms_id_school_tenant_key"
+        },
+        {
+          "section": "indexes",
+          "table": "attendance_discrepancies",
+          "name": "attendance_discrepancies_id_school_unique",
+          "retainedName": "attendance_discrepancies_id_school_tenant_key"
+        },
+        {
+          "section": "indexes",
+          "table": "attendance_events",
+          "name": "attendance_events_id_school_unique",
+          "retainedName": "attendance_events_id_school_tenant_key"
+        },
+        {
+          "section": "indexes",
+          "table": "employees",
+          "name": "employees_id_school_unique",
+          "retainedName": "employees_id_school_tenant_key"
+        },
+        {
+          "section": "indexes",
+          "table": "nfc_cards",
+          "name": "nfc_cards_id_school_unique",
+          "retainedName": "nfc_cards_id_school_tenant_key"
+        },
+        {
+          "section": "indexes",
+          "table": "school_operation_categories",
+          "name": "school_operation_categories_id_school_type_unique",
+          "retainedName": "school_operation_categories_id_school_type_key"
+        },
+        {
+          "section": "indexes",
+          "table": "subjects",
+          "name": "subjects_id_school_unique",
+          "retainedName": "subjects_id_school_tenant_key"
+        }
+      ],
+      "extraConstraints": [
+        {
+          "table": "attendance_discrepancies",
+          "name": "attendance_discrepancies_id_school_tenant_key",
+          "proof": "Redundant UNIQUE includes the existing primary key; no additional accepted-domain restriction."
+        },
+        {
+          "table": "attendance_events",
+          "name": "attendance_events_id_school_tenant_key",
+          "proof": "Redundant UNIQUE includes the existing primary key; no additional accepted-domain restriction."
+        },
+        {
+          "table": "nfc_cards",
+          "name": "nfc_cards_id_school_tenant_key",
+          "proof": "Redundant UNIQUE includes the existing primary key; no additional accepted-domain restriction."
+        },
+        {
+          "table": "school_operation_categories",
+          "name": "school_operation_categories_id_school_type_key",
+          "proof": "Redundant UNIQUE includes the existing primary key; no additional accepted-domain restriction."
+        },
+        {
+          "table": "student_class_assignments",
+          "name": "student_class_assignments_id_school_tenant_key",
+          "proof": "Redundant UNIQUE includes the existing primary key; no additional accepted-domain restriction."
+        }
+      ],
+      "semanticBlockerResolved": true
+    },
+    {
+      "name": "0060 unchanged; prior 35/35 evidence retained; all 1890 preflights still NOT RUN",
+      "status": "PASS"
+    }
+  ],
+  "failures": [],
+  "productionPreflights": {
+    "count": 1890,
+    "status": "NOT RUN"
+  },
+  "safety": {
+    "productionConnections": 0,
+    "productionWrites": 0,
+    "developmentWrites": 0,
+    "sharedDatabaseWrites": 0,
+    "publishDeploy": "NO",
+    "dbPush": "NO",
+    "journalChanges": "NO",
+    "secretsEnvChanges": "NO",
+    "applicationChanges": "NO"
+  },
+  "changedDrafts": [
+    "0149_reconcile_checks_foreign_keys_f_1.sql"
+  ],
+  "isolation": {
+    "version": "PostgreSQL 16.10 on x86_64-pc-linux-gnu, compiled by clang version 19.1.7, 64-bit",
+    "data_directory": "/tmp/educore-schema-2i-cash-C960gH/data",
+    "listeners": ""
+  },
+  "catalog": {
+    "counts": {
+      "tables": 173,
+      "columns": 2309,
+      "constraints": 1437,
+      "indexes": 671,
+      "functions": 18,
+      "triggers": 22,
+      "sequences": 158
+    },
+    "constraintKinds": {
+      "p": 173,
+      "u": 176,
+      "c": 429,
+      "f": 659
+    },
+    "missing": [],
+    "differences": [],
+    "equivalences": [
+      {
+        "section": "columns",
+        "table": "audit_logs",
+        "name": "actor_user_id",
+        "retainedName": "actor_user_id"
+      },
+      {
+        "section": "columns",
+        "table": "audit_logs",
+        "name": "clerk_user_id",
+        "retainedName": "clerk_user_id"
+      },
+      {
+        "section": "columns",
+        "table": "audit_logs",
+        "name": "school_id",
+        "retainedName": "school_id"
+      },
+      {
+        "section": "columns",
+        "table": "audit_logs",
+        "name": "action",
+        "retainedName": "action"
+      },
+      {
+        "section": "columns",
+        "table": "audit_logs",
+        "name": "module",
+        "retainedName": "module"
+      },
+      {
+        "section": "columns",
+        "table": "audit_logs",
+        "name": "record_id",
+        "retainedName": "record_id"
+      },
+      {
+        "section": "columns",
+        "table": "audit_logs",
+        "name": "timestamp",
+        "retainedName": "timestamp"
+      },
+      {
+        "section": "columns",
+        "table": "audit_logs",
+        "name": "severity",
+        "retainedName": "severity"
+      },
+      {
+        "section": "columns",
+        "table": "parents",
+        "name": "user_id",
+        "retainedName": "user_id"
+      },
+      {
+        "section": "columns",
+        "table": "parents",
+        "name": "name",
+        "retainedName": "name"
+      },
+      {
+        "section": "columns",
+        "table": "parents",
+        "name": "email",
+        "retainedName": "email"
+      },
+      {
+        "section": "columns",
+        "table": "parents",
+        "name": "phone",
+        "retainedName": "phone"
+      },
+      {
+        "section": "columns",
+        "table": "students",
+        "name": "user_id",
+        "retainedName": "user_id"
+      },
+      {
+        "section": "columns",
+        "table": "students",
+        "name": "admission_no",
+        "retainedName": "admission_no"
+      },
+      {
+        "section": "columns",
+        "table": "students",
+        "name": "first_name",
+        "retainedName": "first_name"
+      },
+      {
+        "section": "columns",
+        "table": "students",
+        "name": "last_name",
+        "retainedName": "last_name"
+      },
+      {
+        "section": "columns",
+        "table": "students",
+        "name": "gender",
+        "retainedName": "gender"
+      },
+      {
+        "section": "columns",
+        "table": "students",
+        "name": "class_name",
+        "retainedName": "class_name"
+      },
+      {
+        "section": "columns",
+        "table": "students",
+        "name": "section",
+        "retainedName": "section"
+      },
+      {
+        "section": "columns",
+        "table": "students",
+        "name": "parent_name",
+        "retainedName": "parent_name"
+      },
+      {
+        "section": "columns",
+        "table": "students",
+        "name": "parent_phone",
+        "retainedName": "parent_phone"
+      },
+      {
+        "section": "columns",
+        "table": "students",
+        "name": "status",
+        "retainedName": "status"
+      },
+      {
+        "section": "columns",
+        "table": "students",
+        "name": "joined_at",
+        "retainedName": "joined_at"
+      },
+      {
+        "section": "constraints",
+        "table": "platform_devices",
+        "name": "platform_devices_class_school_fk",
+        "retainedName": "platform_devices_class_school_fk"
+      },
+      {
+        "section": "constraints",
+        "table": "platform_devices",
+        "name": "platform_devices_status_check",
+        "retainedName": "platform_devices_status_supported_check"
+      },
+      {
+        "section": "indexes",
+        "table": "academic_sessions",
+        "name": "academic_sessions_id_school_unique",
+        "retainedName": "academic_sessions_id_school_tenant_key"
+      },
+      {
+        "section": "indexes",
+        "table": "academic_terms",
+        "name": "academic_terms_id_school_unique",
+        "retainedName": "academic_terms_id_school_tenant_key"
+      },
+      {
+        "section": "indexes",
+        "table": "attendance_discrepancies",
+        "name": "attendance_discrepancies_id_school_unique",
+        "retainedName": "attendance_discrepancies_id_school_tenant_key"
+      },
+      {
+        "section": "indexes",
+        "table": "attendance_events",
+        "name": "attendance_events_id_school_unique",
+        "retainedName": "attendance_events_id_school_tenant_key"
+      },
+      {
+        "section": "indexes",
+        "table": "employees",
+        "name": "employees_id_school_unique",
+        "retainedName": "employees_id_school_tenant_key"
+      },
+      {
+        "section": "indexes",
+        "table": "nfc_cards",
+        "name": "nfc_cards_id_school_unique",
+        "retainedName": "nfc_cards_id_school_tenant_key"
+      },
+      {
+        "section": "indexes",
+        "table": "school_operation_categories",
+        "name": "school_operation_categories_id_school_type_unique",
+        "retainedName": "school_operation_categories_id_school_type_key"
+      },
+      {
+        "section": "indexes",
+        "table": "subjects",
+        "name": "subjects_id_school_unique",
+        "retainedName": "subjects_id_school_tenant_key"
+      }
+    ],
+    "extraConstraints": [
+      {
+        "table": "attendance_discrepancies",
+        "name": "attendance_discrepancies_id_school_tenant_key",
+        "proof": "Redundant UNIQUE includes the existing primary key; no additional accepted-domain restriction."
+      },
+      {
+        "table": "attendance_events",
+        "name": "attendance_events_id_school_tenant_key",
+        "proof": "Redundant UNIQUE includes the existing primary key; no additional accepted-domain restriction."
+      },
+      {
+        "table": "nfc_cards",
+        "name": "nfc_cards_id_school_tenant_key",
+        "proof": "Redundant UNIQUE includes the existing primary key; no additional accepted-domain restriction."
+      },
+      {
+        "table": "school_operation_categories",
+        "name": "school_operation_categories_id_school_type_key",
+        "proof": "Redundant UNIQUE includes the existing primary key; no additional accepted-domain restriction."
+      },
+      {
+        "table": "student_class_assignments",
+        "name": "student_class_assignments_id_school_tenant_key",
+        "proof": "Redundant UNIQUE includes the existing primary key; no additional accepted-domain restriction."
+      }
+    ],
+    "semanticBlockerResolved": true
+  },
+  "databaseDestroyed": true,
+  "cleanup": {
+    "clusterStopped": true,
+    "clusterDirectoryRemoved": true,
+    "socketRemoved": true,
+    "sharedServicesTouched": false
+  },
+  "integrity": {
+    "onlyDraftChanged": "0149_reconcile_checks_foreign_keys_f_1.sql",
+    "otherDraftsUnchanged": 104,
+    "historicalFilesUnchanged": 61,
+    "finance0060Unchanged": true,
+    "journalUnchanged": true,
+    "preflightBytesUnchanged": true,
+    "compilerSuffixesVerified": 105,
+    "protectedApplicationAndHistoryFilesUnchanged": 3132
+  }
+}
