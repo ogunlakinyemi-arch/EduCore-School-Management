@@ -1,0 +1,62 @@
+Focused Development Verification — School Admin Absence Email
+
+Do only one focused verification. Do not rebuild or refactor anything.
+
+Resend email delivery has already been successfully verified in Development:
+
+- "yetenia.com" is verified
+- "notifications@yetenia.com" successfully sent a controlled test email
+- The email was received
+- Existing notification pipeline is already integrated
+- 183 focused tests previously passed
+- Production is untouched
+
+Task
+
+Verify the existing signed-in School Admin absence workflow using existing Development synthetic data.
+
+Do NOT create a new notification system.
+
+Do NOT modify the Resend integration unless you find a clear defect preventing this workflow from working.
+
+Steps
+
+1. Inspect the existing School Admin attendance/absence route and notification trigger.
+2. Use the existing Development test data.
+3. Verify that when a School Admin marks a student absent through the normal UI:
+   - the absence is recorded;
+   - the linked parent is resolved;
+   - the existing notification service is triggered;
+   - the existing email pipeline sends the parent email through Resend;
+   - the existing in-app notification is created.
+4. Verify that the existing deduplication prevents a duplicate notification for the same absence event.
+
+Credit-saving rules
+
+- Do NOT run the full test suite.
+- Do NOT run broad repository analysis.
+- Do NOT redesign or refactor code.
+- Do NOT create new database tables.
+- Do NOT run migrations.
+- Do NOT modify Production.
+- Do NOT send any additional standalone test email.
+- Do NOT activate Termii.
+- Do NOT change Clerk.
+- Do NOT change existing Resend configuration.
+- Do NOT modify unrelated files.
+
+If the workflow already works, make zero code changes and report that it passed.
+
+If there is a small defect directly preventing the School Admin absence notification from working, fix only that defect and run only the smallest relevant test/check.
+
+Final response
+
+Report only:
+
+- PASS or FAIL
+- Whether code was changed
+- Files changed, if any
+- The specific issue found, if any
+- The focused verification result
+
+Keep the investigation and response concise to minimize Replit credit usage.
