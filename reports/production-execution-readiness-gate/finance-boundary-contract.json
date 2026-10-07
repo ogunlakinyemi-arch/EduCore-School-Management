@@ -1,0 +1,3465 @@
+{
+  "result": "UNVERIFIABLE",
+  "blocking": true,
+  "requiredBoundary": "After Batch 2 and before Batch 3",
+  "filename": "0060_reconcile_student_subscription_finance.sql",
+  "sha256": "a827ad709347eaa22b9bf70a4c2a4012f2c2bd86c5ba3d624623710f98d41f57",
+  "sourceUnchanged": true,
+  "contractCounts": {
+    "tables": 2,
+    "columns": 43,
+    "constraints": 29,
+    "indexes": 16,
+    "functions": 2,
+    "triggers": 2,
+    "sequences": 2
+  },
+  "parentContracts": [
+    {
+      "table_name": "subscriptions",
+      "columns": [
+        "id",
+        "school_id",
+        "student_id"
+      ],
+      "name": "subscriptions_id_school_student_uq",
+      "canonicalKeyProviders": [
+        {
+          "object": "indexes:public.subscriptions.subscriptions_id_school_student_uq.",
+          "provider": {
+            "type": "forward_migration",
+            "migration": "0128_reconcile_indexes_a_3.sql",
+            "batch": 2,
+            "operationPosition": 45
+          }
+        }
+      ]
+    },
+    {
+      "table_name": "academic_sessions",
+      "columns": [
+        "id",
+        "school_id"
+      ],
+      "name": "academic_sessions_id_school_tenant_key",
+      "canonicalKeyProviders": [
+        {
+          "object": "constraints:public.academic_sessions.academic_sessions_id_school_tenant_key.",
+          "provider": {
+            "type": "forward_migration",
+            "migration": "0116_reconcile_parent_keys_a_1.sql",
+            "batch": 2,
+            "operationPosition": 15
+          }
+        },
+        {
+          "object": "indexes:public.academic_sessions.academic_sessions_id_school_tenant_key.",
+          "provider": {
+            "type": "forward_migration",
+            "migration": "0126_reconcile_indexes_a_1.sql",
+            "batch": 2,
+            "operationPosition": 21
+          }
+        },
+        {
+          "object": "indexes:public.academic_sessions.academic_sessions_id_school_unique.",
+          "provider": {
+            "type": "forward_migration",
+            "migration": "0126_reconcile_indexes_a_1.sql",
+            "batch": 2,
+            "operationPosition": 22
+          }
+        }
+      ]
+    },
+    {
+      "table_name": "academic_terms",
+      "columns": [
+        "id",
+        "school_id"
+      ],
+      "name": "academic_terms_id_school_tenant_key",
+      "canonicalKeyProviders": [
+        {
+          "object": "constraints:public.academic_terms.academic_terms_id_school_tenant_key.",
+          "provider": {
+            "type": "forward_migration",
+            "migration": "0116_reconcile_parent_keys_a_1.sql",
+            "batch": 2,
+            "operationPosition": 17
+          }
+        },
+        {
+          "object": "indexes:public.academic_terms.academic_terms_id_school_tenant_key.",
+          "provider": {
+            "type": "forward_migration",
+            "migration": "0126_reconcile_indexes_a_1.sql",
+            "batch": 2,
+            "operationPosition": 26
+          }
+        },
+        {
+          "object": "indexes:public.academic_terms.academic_terms_id_school_unique.",
+          "provider": {
+            "type": "forward_migration",
+            "migration": "0126_reconcile_indexes_a_1.sql",
+            "batch": 2,
+            "operationPosition": 27
+          }
+        }
+      ]
+    },
+    {
+      "table_name": "students",
+      "columns": [
+        "id",
+        "school_id"
+      ],
+      "name": "students_id_school_tenant_key",
+      "canonicalKeyProviders": [
+        {
+          "object": "constraints:public.students.students_id_school_tenant_key.",
+          "provider": {
+            "type": "forward_migration",
+            "migration": "0117_reconcile_parent_keys_a_2.sql",
+            "batch": 2,
+            "operationPosition": 25
+          }
+        },
+        {
+          "object": "indexes:public.students.students_id_school_tenant_key.",
+          "provider": {
+            "type": "forward_migration",
+            "migration": "0128_reconcile_indexes_a_3.sql",
+            "batch": 2,
+            "operationPosition": 39
+          }
+        },
+        {
+          "object": "indexes:public.students.students_id_school_unique.",
+          "provider": {
+            "type": "forward_migration",
+            "migration": "0128_reconcile_indexes_a_3.sql",
+            "batch": 2,
+            "operationPosition": 40
+          }
+        }
+      ]
+    },
+    {
+      "table_name": "school_partner_attributions",
+      "columns": [
+        "id",
+        "partner_profile_id"
+      ],
+      "name": "school_partner_attributions_id_partner_uq",
+      "canonicalKeyProviders": [
+        {
+          "object": "indexes:public.school_partner_attributions.school_partner_attributions_id_partner_uq.",
+          "provider": {
+            "type": "forward_migration",
+            "migration": "0129_reconcile_indexes_b_1.sql",
+            "batch": 2,
+            "operationPosition": 20
+          }
+        }
+      ]
+    }
+  ],
+  "objects": {
+    "tables": [
+      {
+        "id": "tables:public..student_subscription_allocations.",
+        "expected": {
+          "kind": "r",
+          "name": "student_subscription_allocations",
+          "schema": "public",
+          "inherited": false,
+          "persistence": "p"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "tables:public..student_subscription_payments.",
+        "expected": {
+          "kind": "r",
+          "name": "student_subscription_payments",
+          "schema": "public",
+          "inherited": false,
+          "persistence": "p"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      }
+    ],
+    "columns": [
+      {
+        "id": "columns:public.student_subscription_allocations.id.",
+        "expected": {
+          "name": "id",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 1,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_allocations",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": "nextval('student_subscription_allocations_id_seq'::regclass)"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_allocations.idempotency_key.",
+        "expected": {
+          "name": "idempotency_key",
+          "type": "text",
+          "schema": "public",
+          "ordinal": 2,
+          "identity": "",
+          "nullable": false,
+          "collation": "default",
+          "generated": "",
+          "table_name": "student_subscription_allocations",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_allocations.entry_type.",
+        "expected": {
+          "name": "entry_type",
+          "type": "text",
+          "schema": "public",
+          "ordinal": 3,
+          "identity": "",
+          "nullable": false,
+          "collation": "default",
+          "generated": "",
+          "table_name": "student_subscription_allocations",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": null,
+          "default_expression": "'CREDIT'::text"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_allocations.recipient_type.",
+        "expected": {
+          "name": "recipient_type",
+          "type": "text",
+          "schema": "public",
+          "ordinal": 4,
+          "identity": "",
+          "nullable": false,
+          "collation": "default",
+          "generated": "",
+          "table_name": "student_subscription_allocations",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_allocations.recipient_id.",
+        "expected": {
+          "name": "recipient_id",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 5,
+          "identity": "",
+          "nullable": true,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_allocations",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_allocations.school_id.",
+        "expected": {
+          "name": "school_id",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 6,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_allocations",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_allocations.student_id.",
+        "expected": {
+          "name": "student_id",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 7,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_allocations",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_allocations.payer_user_id.",
+        "expected": {
+          "name": "payer_user_id",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 8,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_allocations",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_allocations.academic_session_id.",
+        "expected": {
+          "name": "academic_session_id",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 9,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_allocations",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_allocations.academic_term_id.",
+        "expected": {
+          "name": "academic_term_id",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 10,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_allocations",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_allocations.subscription_id.",
+        "expected": {
+          "name": "subscription_id",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 11,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_allocations",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_allocations.payment_id.",
+        "expected": {
+          "name": "payment_id",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 12,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_allocations",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_allocations.attribution_id.",
+        "expected": {
+          "name": "attribution_id",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 13,
+          "identity": "",
+          "nullable": true,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_allocations",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_allocations.commission_rule_id.",
+        "expected": {
+          "name": "commission_rule_id",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 14,
+          "identity": "",
+          "nullable": true,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_allocations",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_allocations.amount_minor.",
+        "expected": {
+          "name": "amount_minor",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 15,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_allocations",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_allocations.currency.",
+        "expected": {
+          "name": "currency",
+          "type": "text",
+          "schema": "public",
+          "ordinal": 16,
+          "identity": "",
+          "nullable": false,
+          "collation": "default",
+          "generated": "",
+          "table_name": "student_subscription_allocations",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": null,
+          "default_expression": "'NGN'::text"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_allocations.created_at.",
+        "expected": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "schema": "public",
+          "ordinal": 17,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_allocations",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": 6,
+          "default_expression": "now()"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.id.",
+        "expected": {
+          "name": "id",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 1,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": "nextval('student_subscription_payments_id_seq'::regclass)"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.subscription_id.",
+        "expected": {
+          "name": "subscription_id",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 2,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.school_id.",
+        "expected": {
+          "name": "school_id",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 3,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.student_id.",
+        "expected": {
+          "name": "student_id",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 4,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.academic_session_id.",
+        "expected": {
+          "name": "academic_session_id",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 5,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.academic_term_id.",
+        "expected": {
+          "name": "academic_term_id",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 6,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.payer_user_id.",
+        "expected": {
+          "name": "payer_user_id",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 7,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.provider.",
+        "expected": {
+          "name": "provider",
+          "type": "text",
+          "schema": "public",
+          "ordinal": 8,
+          "identity": "",
+          "nullable": false,
+          "collation": "default",
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": null,
+          "default_expression": "'FLUTTERWAVE'::text"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.provider_mode.",
+        "expected": {
+          "name": "provider_mode",
+          "type": "text",
+          "schema": "public",
+          "ordinal": 9,
+          "identity": "",
+          "nullable": false,
+          "collation": "default",
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": null,
+          "default_expression": "'SANDBOX'::text"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.reference.",
+        "expected": {
+          "name": "reference",
+          "type": "text",
+          "schema": "public",
+          "ordinal": 10,
+          "identity": "",
+          "nullable": false,
+          "collation": "default",
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.idempotency_key.",
+        "expected": {
+          "name": "idempotency_key",
+          "type": "text",
+          "schema": "public",
+          "ordinal": 11,
+          "identity": "",
+          "nullable": false,
+          "collation": "default",
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.gross_amount_minor.",
+        "expected": {
+          "name": "gross_amount_minor",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 12,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": "500000"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.provider_fee_minor.",
+        "expected": {
+          "name": "provider_fee_minor",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 13,
+          "identity": "",
+          "nullable": true,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.settlement_amount_minor.",
+        "expected": {
+          "name": "settlement_amount_minor",
+          "type": "integer",
+          "schema": "public",
+          "ordinal": 14,
+          "identity": "",
+          "nullable": true,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": 0,
+          "maximum_length": null,
+          "numeric_precision": 32,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.currency.",
+        "expected": {
+          "name": "currency",
+          "type": "text",
+          "schema": "public",
+          "ordinal": 15,
+          "identity": "",
+          "nullable": false,
+          "collation": "default",
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": null,
+          "default_expression": "'NGN'::text"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.status.",
+        "expected": {
+          "name": "status",
+          "type": "text",
+          "schema": "public",
+          "ordinal": 16,
+          "identity": "",
+          "nullable": false,
+          "collation": "default",
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": null,
+          "default_expression": "'PENDING'::text"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.settlement_status.",
+        "expected": {
+          "name": "settlement_status",
+          "type": "text",
+          "schema": "public",
+          "ordinal": 17,
+          "identity": "",
+          "nullable": false,
+          "collation": "default",
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": null,
+          "default_expression": "'PENDING'::text"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.reconciliation_status.",
+        "expected": {
+          "name": "reconciliation_status",
+          "type": "text",
+          "schema": "public",
+          "ordinal": 18,
+          "identity": "",
+          "nullable": false,
+          "collation": "default",
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": null,
+          "default_expression": "'PENDING'::text"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.checkout_url.",
+        "expected": {
+          "name": "checkout_url",
+          "type": "text",
+          "schema": "public",
+          "ordinal": 19,
+          "identity": "",
+          "nullable": true,
+          "collation": "default",
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.provider_transaction_id.",
+        "expected": {
+          "name": "provider_transaction_id",
+          "type": "text",
+          "schema": "public",
+          "ordinal": 20,
+          "identity": "",
+          "nullable": true,
+          "collation": "default",
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.provider_paid_at.",
+        "expected": {
+          "name": "provider_paid_at",
+          "type": "timestamp with time zone",
+          "schema": "public",
+          "ordinal": 21,
+          "identity": "",
+          "nullable": true,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": 6,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.paid_at.",
+        "expected": {
+          "name": "paid_at",
+          "type": "timestamp with time zone",
+          "schema": "public",
+          "ordinal": 22,
+          "identity": "",
+          "nullable": true,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": 6,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.failure_code.",
+        "expected": {
+          "name": "failure_code",
+          "type": "text",
+          "schema": "public",
+          "ordinal": 23,
+          "identity": "",
+          "nullable": true,
+          "collation": "default",
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.receipt_snapshot.",
+        "expected": {
+          "name": "receipt_snapshot",
+          "type": "jsonb",
+          "schema": "public",
+          "ordinal": 24,
+          "identity": "",
+          "nullable": true,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": null,
+          "default_expression": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.created_at.",
+        "expected": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "schema": "public",
+          "ordinal": 25,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": 6,
+          "default_expression": "now()"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "columns:public.student_subscription_payments.updated_at.",
+        "expected": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "schema": "public",
+          "ordinal": 26,
+          "identity": "",
+          "nullable": false,
+          "collation": null,
+          "generated": "",
+          "table_name": "student_subscription_payments",
+          "numeric_scale": null,
+          "maximum_length": null,
+          "numeric_precision": null,
+          "datetime_precision": 6,
+          "default_expression": "now()"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      }
+    ],
+    "constraints": [
+      {
+        "id": "constraints:public.student_subscription_allocations.student_subscription_allocations_amount_ck.",
+        "expected": {
+          "kind": "c",
+          "name": "student_subscription_allocations_amount_ck",
+          "schema": "public",
+          "columns": [
+            "amount_minor",
+            "currency",
+            "entry_type",
+            "recipient_type"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "CHECK (((amount_minor > 0) AND (currency = 'NGN'::text) AND (((entry_type = 'CREDIT'::text) AND (recipient_type = ANY (ARRAY['SCHOOL'::text, 'PLATFORM'::text, 'PARTNER'::text]))) OR ((entry_type = 'REVERSAL'::text) AND (recipient_type = ANY (ARRAY['SCHOOL'::text, 'PLATFORM'::text, 'PARTNER'::text]))) OR ((entry_type = 'EXPENSE'::text) AND (recipient_type = 'PLATFORM_PROVIDER_FEE'::text)))))",
+          "match_type": " ",
+          "no_inherit": false,
+          "table_name": "student_subscription_allocations",
+          "delete_action": " ",
+          "dependent_fks": [],
+          "update_action": " ",
+          "check_expression": "((amount_minor > 0) AND (currency = 'NGN'::text) AND (((entry_type = 'CREDIT'::text) AND (recipient_type = ANY (ARRAY['SCHOOL'::text, 'PLATFORM'::text, 'PARTNER'::text]))) OR ((entry_type = 'REVERSAL'::text) AND (recipient_type = ANY (ARRAY['SCHOOL'::text, 'PLATFORM'::text, 'PARTNER'::text]))) OR ((entry_type = 'EXPENSE'::text) AND (recipient_type = 'PLATFORM_PROVIDER_FEE'::text))))",
+          "referenced_table": null,
+          "supporting_index": null,
+          "referenced_schema": null,
+          "initially_deferred": false,
+          "referenced_columns": []
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_allocations.student_subscription_allocations_attribution_id_fkey.",
+        "expected": {
+          "kind": "f",
+          "name": "student_subscription_allocations_attribution_id_fkey",
+          "schema": "public",
+          "columns": [
+            "attribution_id"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "FOREIGN KEY (attribution_id) REFERENCES school_partner_attributions(id) ON DELETE RESTRICT",
+          "match_type": "s",
+          "no_inherit": true,
+          "table_name": "student_subscription_allocations",
+          "delete_action": "r",
+          "dependent_fks": [
+            "staff_nfc_allocations.staff_nfc_allocations_attribution_id_fkey",
+            "staff_nfc_subscriptions.staff_nfc_subscriptions_attribution_id_fkey",
+            "student_subscription_allocations.student_subscription_allocations_attribution_id_fkey"
+          ],
+          "update_action": "a",
+          "check_expression": null,
+          "referenced_table": "school_partner_attributions",
+          "supporting_index": "school_partner_attributions_pkey",
+          "referenced_schema": "public",
+          "initially_deferred": false,
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_allocations.student_subscription_allocations_attribution_partner_fk.",
+        "expected": {
+          "kind": "f",
+          "name": "student_subscription_allocations_attribution_partner_fk",
+          "schema": "public",
+          "columns": [
+            "attribution_id",
+            "recipient_id"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "FOREIGN KEY (attribution_id, recipient_id) REFERENCES school_partner_attributions(id, partner_profile_id) ON DELETE RESTRICT",
+          "match_type": "s",
+          "no_inherit": true,
+          "table_name": "student_subscription_allocations",
+          "delete_action": "r",
+          "dependent_fks": [
+            "student_subscription_allocations.student_subscription_allocations_attribution_partner_fk"
+          ],
+          "update_action": "a",
+          "check_expression": null,
+          "referenced_table": "school_partner_attributions",
+          "supporting_index": "school_partner_attributions_id_partner_uq",
+          "referenced_schema": "public",
+          "initially_deferred": false,
+          "referenced_columns": [
+            "id",
+            "partner_profile_id"
+          ]
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_allocations.student_subscription_allocations_commission_rule_id_fkey.",
+        "expected": {
+          "kind": "f",
+          "name": "student_subscription_allocations_commission_rule_id_fkey",
+          "schema": "public",
+          "columns": [
+            "commission_rule_id"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "FOREIGN KEY (commission_rule_id) REFERENCES commission_rules(id) ON DELETE RESTRICT",
+          "match_type": "s",
+          "no_inherit": true,
+          "table_name": "student_subscription_allocations",
+          "delete_action": "r",
+          "dependent_fks": [
+            "commission_ledger.commission_ledger_commission_rule_id_commission_rules_id_fk",
+            "student_subscription_allocations.student_subscription_allocations_commission_rule_id_fkey"
+          ],
+          "update_action": "a",
+          "check_expression": null,
+          "referenced_table": "commission_rules",
+          "supporting_index": "commission_rules_pkey",
+          "referenced_schema": "public",
+          "initially_deferred": false,
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_allocations.student_subscription_allocations_entry_ck.",
+        "expected": {
+          "kind": "c",
+          "name": "student_subscription_allocations_entry_ck",
+          "schema": "public",
+          "columns": [
+            "entry_type"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "CHECK ((entry_type = ANY (ARRAY['CREDIT'::text, 'REVERSAL'::text, 'EXPENSE'::text])))",
+          "match_type": " ",
+          "no_inherit": false,
+          "table_name": "student_subscription_allocations",
+          "delete_action": " ",
+          "dependent_fks": [],
+          "update_action": " ",
+          "check_expression": "(entry_type = ANY (ARRAY['CREDIT'::text, 'REVERSAL'::text, 'EXPENSE'::text]))",
+          "referenced_table": null,
+          "supporting_index": null,
+          "referenced_schema": null,
+          "initially_deferred": false,
+          "referenced_columns": []
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_allocations.student_subscription_allocations_id_payment_entry_recipient_uq.",
+        "expected": {
+          "kind": "u",
+          "name": "student_subscription_allocations_id_payment_entry_recipient_uq",
+          "schema": "public",
+          "columns": [
+            "id",
+            "payment_id",
+            "entry_type",
+            "recipient_type"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "UNIQUE (id, payment_id, entry_type, recipient_type)",
+          "match_type": " ",
+          "no_inherit": true,
+          "table_name": "student_subscription_allocations",
+          "delete_action": " ",
+          "dependent_fks": [],
+          "update_action": " ",
+          "check_expression": null,
+          "referenced_table": null,
+          "supporting_index": "student_subscription_allocations_id_payment_entry_recipient_uq",
+          "referenced_schema": null,
+          "initially_deferred": false,
+          "referenced_columns": []
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_allocations.student_subscription_allocations_partner_ck.",
+        "expected": {
+          "kind": "c",
+          "name": "student_subscription_allocations_partner_ck",
+          "schema": "public",
+          "columns": [
+            "recipient_type",
+            "recipient_id",
+            "attribution_id",
+            "commission_rule_id"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "CHECK ((((recipient_type = 'PARTNER'::text) AND (recipient_id IS NOT NULL) AND (attribution_id IS NOT NULL) AND (commission_rule_id IS NOT NULL)) OR ((recipient_type <> 'PARTNER'::text) AND (recipient_id IS NULL))))",
+          "match_type": " ",
+          "no_inherit": false,
+          "table_name": "student_subscription_allocations",
+          "delete_action": " ",
+          "dependent_fks": [],
+          "update_action": " ",
+          "check_expression": "(((recipient_type = 'PARTNER'::text) AND (recipient_id IS NOT NULL) AND (attribution_id IS NOT NULL) AND (commission_rule_id IS NOT NULL)) OR ((recipient_type <> 'PARTNER'::text) AND (recipient_id IS NULL)))",
+          "referenced_table": null,
+          "supporting_index": null,
+          "referenced_schema": null,
+          "initially_deferred": false,
+          "referenced_columns": []
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_allocations.student_subscription_allocations_payer_user_id_fkey.",
+        "expected": {
+          "kind": "f",
+          "name": "student_subscription_allocations_payer_user_id_fkey",
+          "schema": "public",
+          "columns": [
+            "payer_user_id"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "FOREIGN KEY (payer_user_id) REFERENCES app_users(id) ON DELETE RESTRICT",
+          "match_type": "s",
+          "no_inherit": true,
+          "table_name": "student_subscription_allocations",
+          "delete_action": "r",
+          "dependent_fks": [
+            "academic_assessments.academic_assessments_created_by_fkey",
+            "academic_assignments.academic_assignments_created_by_fkey",
+            "academic_report_cards.academic_report_cards_published_by_fkey",
+            "academic_result_batches.academic_result_batches_created_by_fkey",
+            "academic_results.academic_results_created_by_fkey",
+            "academic_results.academic_results_published_by_fkey",
+            "academic_sessions.academic_sessions_created_by_fkey",
+            "academic_terms.academic_terms_created_by_fkey",
+            "academic_timetable_entries.academic_timetable_entries_created_by_fkey",
+            "admission_application_documents.admission_application_documents_created_by_user_id_fkey",
+            "admission_applications.admission_applications_created_by_user_id_fkey",
+            "admission_portal_settings.admission_portal_settings_updated_by_user_id_fkey",
+            "attendance_corrections.attendance_corrections_actor_user_id_fkey",
+            "attendance_discrepancies.attendance_discrepancies_resolved_by_fkey",
+            "attendance_events.attendance_events_actor_user_id_fkey",
+            "attendance_notification_events.attendance_notification_events_recipient_user_id_fkey",
+            "audit_logs.audit_logs_actor_user_id_app_users_id_fk",
+            "campus_presence.campus_presence_resolved_by_user_id_fkey",
+            "commission_ledger.commission_ledger_created_by_app_users_id_fk",
+            "communication_campaign_recipients.communication_campaign_recipients_recipient_user_id_fkey",
+            "communication_campaigns.communication_campaigns_created_by_user_id_fkey",
+            "communication_message_threads.communication_message_threads_created_by_user_id_fkey",
+            "communication_message_threads.communication_message_threads_parent_user_id_fkey",
+            "communication_messages.communication_messages_sender_user_id_fkey",
+            "communication_notifications.communication_notifications_recipient_user_id_fkey",
+            "communication_notifications.communication_notifications_sender_user_id_fkey",
+            "communication_preferences.communication_preferences_user_id_fkey",
+            "communication_push_devices.communication_push_devices_user_id_fkey",
+            "communication_templates.communication_templates_created_by_user_id_fkey",
+            "curriculum_imports.curriculum_imports_uploaded_by_fkey",
+            "curriculum_progress.curriculum_progress_updated_by_fkey",
+            "curriculum_versions.curriculum_versions_created_by_fkey",
+            "device_assignment_history.device_assignment_history_actor_user_id_fkey",
+            "employee_nfc_attendance_discrepancies.employee_nfc_attendance_discrepancies_resolved_by_user_id_fkey",
+            "employee_nfc_card_bindings.employee_nfc_card_bindings_created_by_user_id_fkey",
+            "employee_nfc_card_history.employee_nfc_card_history_actor_user_id_fkey",
+            "employee_nfc_discrepancy_actions.employee_nfc_discrepancy_actions_actor_user_id_fkey",
+            "employees.employees_user_id_app_users_id_fk",
+            "exam_question_papers.exam_question_papers_created_by_fkey",
+            "exam_question_reviews.exam_question_reviews_reviewer_user_id_fkey",
+            "exam_question_versions.exam_question_versions_created_by_fkey",
+            "fee_adjustments.fee_adjustments_approved_by_fkey",
+            "fee_adjustments.fee_adjustments_requested_by_fkey",
+            "fee_categories.fee_categories_created_by_fkey",
+            "fee_invoice_notifications.fee_invoice_notifications_recipient_user_id_fkey",
+            "fee_invoices.fee_invoices_created_by_fkey",
+            "fee_payment_notifications.fee_payment_notifications_recipient_user_id_fkey",
+            "fee_payments.fee_payments_submitted_by_fkey",
+            "fee_payments.fee_payments_verified_by_fkey",
+            "fee_refunds.fee_refunds_approved_by_fkey",
+            "fee_refunds.fee_refunds_requested_by_fkey",
+            "fee_school_settings.fee_school_settings_updated_by_fkey",
+            "fee_structures.fee_structures_created_by_fkey",
+            "fee_structures.fee_structures_published_by_fkey",
+            "lesson_note_documents.lesson_note_documents_uploaded_by_fkey",
+            "lesson_note_reviews.lesson_note_reviews_reviewer_user_id_fkey",
+            "lesson_notes.lesson_notes_created_by_fkey",
+            "library_authors.library_authors_created_by_user_id_fkey",
+            "library_book_copies.library_book_copies_created_by_user_id_fkey",
+            "library_books.library_books_created_by_user_id_fkey",
+            "library_categories.library_categories_created_by_user_id_fkey",
+            "library_copy_status_history.library_copy_status_history_changed_by_user_id_fkey",
+            "library_loans.library_loans_borrower_user_id_fkey",
+            "library_loans.library_loans_issued_by_user_id_fkey",
+            "library_loans.library_loans_returned_by_user_id_fkey",
+            "library_publishers.library_publishers_created_by_user_id_fkey",
+            "library_renewals.library_renewals_renewed_by_user_id_fkey",
+            "library_settings.library_settings_updated_by_user_id_fkey",
+            "library_staff.library_staff_assigned_by_user_id_fkey",
+            "library_staff.library_staff_user_id_fkey",
+            "maintenance_request_status_history.maintenance_request_status_history_actor_user_id_fkey",
+            "maintenance_requests.maintenance_requests_assigned_to_user_id_fkey",
+            "maintenance_requests.maintenance_requests_reported_by_user_id_fkey",
+            "nfc_card_history.nfc_card_history_actor_user_id_fkey",
+            "operational_task_status_history.operational_task_status_history_actor_user_id_fkey",
+            "operational_tasks.operational_tasks_assigned_to_user_id_fkey",
+            "operational_tasks.operational_tasks_created_by_user_id_fkey",
+            "parents.parents_user_id_app_users_id_fk",
+            "partner_attribution_conflicts.partner_attribution_conflicts_resolved_by_app_users_id_fk",
+            "partner_invitations.partner_invitations_created_by_app_users_id_fk",
+            "partner_profile_users.partner_profile_users_user_id_app_users_id_fk",
+            "partner_profiles.partner_profiles_created_by_app_users_id_fk",
+            "partner_profiles.partner_profiles_user_id_app_users_id_fk",
+            "partner_referral_links.partner_referral_links_created_by_app_users_id_fk",
+            "payroll_employee_profiles.payroll_employee_profiles_created_by_fkey",
+            "payroll_employee_profiles.payroll_employee_profiles_updated_by_fkey",
+            "payroll_periods.payroll_periods_approved_by_fkey",
+            "payroll_periods.payroll_periods_created_by_fkey",
+            "payroll_periods.payroll_periods_submitted_by_fkey",
+            "payroll_transfers.payroll_transfers_requested_by_fkey",
+            "payroll_transfers.payroll_transfers_verified_by_fkey",
+            "platform_notifications.platform_notifications_recipient_user_id_fkey",
+            "promotion_batch_students.promotion_batch_students_reviewed_by_fkey",
+            "promotion_batches.promotion_batches_finalization_actor_user_id_fkey",
+            "promotion_batches.promotion_batches_finalized_by_fkey",
+            "promotion_batches.promotion_batches_idempotency_actor_user_id_fkey",
+            "promotion_batches.promotion_batches_prepared_by_fkey",
+            "promotion_history.promotion_history_actor_user_id_fkey",
+            "school_asset_history.school_asset_history_actor_user_id_fkey",
+            "school_asset_history.school_asset_history_assigned_to_after_user_id_fkey",
+            "school_asset_history.school_asset_history_assigned_to_before_user_id_fkey",
+            "school_assets.school_assets_assigned_to_user_id_fkey",
+            "school_assets.school_assets_created_by_user_id_fkey",
+            "school_authorized_pickup_persons.school_authorized_pickup_persons_decision_by_user_id_fkey",
+            "school_branding_logos.school_branding_logos_updated_by_user_id_app_users_id_fk",
+            "school_calendar_events.school_calendar_events_created_by_user_id_app_users_id_fk",
+            "school_calendar_events.school_calendar_events_updated_by_user_id_app_users_id_fk",
+            "school_curriculum_assignments.school_curriculum_assignments_confirmed_by_fkey",
+            "school_facilities.school_facilities_created_by_user_id_fkey",
+            "school_memberships.school_memberships_user_id_app_users_id_fk",
+            "school_operation_categories.school_operation_categories_created_by_user_id_fkey",
+            "school_operations_settings.school_operations_settings_updated_by_user_id_fkey",
+            "school_partner_attributions.school_partner_attributions_created_by_app_users_id_fk",
+            "school_pickup_requests.school_pickup_requests_completed_by_user_id_fkey",
+            "school_pickup_requests.school_pickup_requests_decision_by_user_id_fkey",
+            "school_security_incident_attachments.school_security_incident_attachments_uploaded_by_user_id_fkey",
+            "school_security_incidents.school_security_incidents_assigned_staff_user_id_fkey",
+            "school_security_incidents.school_security_incidents_created_by_user_id_fkey",
+            "school_security_operation_history.school_security_operation_history_actor_user_id_fkey",
+            "school_security_visitors.school_security_visitors_security_officer_user_id_fkey",
+            "school_subscription_manual_locks.school_subscription_manual_locks_last_unlocked_by_user_id_fkey",
+            "school_subscription_manual_locks.school_subscription_manual_locks_locked_by_user_id_fkey",
+            "security_events.security_events_actor_user_id_fkey",
+            "security_locations.security_locations_created_by_user_id_fkey",
+            "security_locations.security_locations_updated_by_user_id_fkey",
+            "security_readers.security_readers_created_by_user_id_fkey",
+            "security_readers.security_readers_updated_by_user_id_fkey",
+            "security_school_settings.security_school_settings_updated_by_user_id_fkey",
+            "security_staff_grants.security_staff_grants_granted_by_user_id_fkey",
+            "security_staff_grants.security_staff_grants_revoked_by_user_id_fkey",
+            "security_staff_grants.security_staff_grants_user_id_fkey",
+            "settlement_payroll_audit_events.settlement_payroll_audit_events_actor_user_id_fkey",
+            "settlement_payroll_profiles.settlement_payroll_profiles_created_by_fkey",
+            "settlement_payroll_profiles.settlement_payroll_profiles_updated_by_fkey",
+            "settlement_payroll_profiles.settlement_payroll_profiles_verified_by_fkey",
+            "staff_nfc_billing_rules.staff_nfc_billing_rules_created_by_fkey",
+            "staff_nfc_payments.staff_nfc_payments_created_by_fkey",
+            "staff_nfc_refunds.staff_nfc_refunds_created_by_fkey",
+            "staff_nfc_subscriptions.staff_nfc_subscriptions_created_by_fkey",
+            "student_behaviour_configurations.student_behaviour_configurations_updated_by_user_id_fkey",
+            "student_behaviour_records.student_behaviour_records_reporter_user_id_fkey",
+            "student_care_grants.student_care_grants_granted_by_user_id_fkey",
+            "student_care_grants.student_care_grants_user_id_fkey",
+            "student_care_idempotency.student_care_idempotency_created_by_user_id_fkey",
+            "student_care_record_history.student_care_record_history_changed_by_user_id_fkey",
+            "student_identification_policies.student_identification_policies_created_by_fkey",
+            "student_medical_profiles.student_medical_profiles_updated_by_user_id_fkey",
+            "student_medical_visits.student_medical_visits_recorded_by_user_id_fkey",
+            "student_nfc_replacement_requests.student_nfc_replacement_requests_issued_by_fkey",
+            "student_nfc_replacement_requests.student_nfc_replacement_requests_requested_by_fkey",
+            "student_subscription_allocations.student_subscription_allocations_payer_user_id_fkey",
+            "student_subscription_payments.student_subscription_payments_payer_user_id_fkey",
+            "student_welfare_records.student_welfare_records_assigned_staff_user_id_fkey",
+            "student_welfare_records.student_welfare_records_created_by_user_id_fkey",
+            "students.students_user_id_app_users_id_fk",
+            "teacher_duty_roster.teacher_duty_roster_created_by_user_id_app_users_id_fk",
+            "teacher_duty_roster.teacher_duty_roster_updated_by_user_id_app_users_id_fk",
+            "teacher_subject_assignments.teacher_subject_assignments_created_by_user_id_app_users_id_fk",
+            "teacher_subject_assignments.teacher_subject_assignments_updated_by_user_id_app_users_id_fk",
+            "transport_buses.transport_buses_created_by_fkey",
+            "transport_fee_invoices.transport_fee_invoices_created_by_fkey",
+            "transport_fee_invoices.transport_fee_invoices_updated_by_fkey",
+            "transport_history.transport_history_actor_user_id_fkey",
+            "transport_parent_requests.transport_parent_requests_reviewed_by_fkey",
+            "transport_route_staff.transport_route_staff_assigned_by_fkey",
+            "transport_route_stops.transport_route_stops_created_by_fkey",
+            "transport_routes.transport_routes_created_by_fkey",
+            "transport_school_policies.transport_school_policies_updated_by_fkey",
+            "transport_student_assignments.transport_student_assignments_created_by_fkey"
+          ],
+          "update_action": "a",
+          "check_expression": null,
+          "referenced_table": "app_users",
+          "supporting_index": "app_users_pkey",
+          "referenced_schema": "public",
+          "initially_deferred": false,
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_allocations.student_subscription_allocations_payment_owner_term_fk.",
+        "expected": {
+          "kind": "f",
+          "name": "student_subscription_allocations_payment_owner_term_fk",
+          "schema": "public",
+          "columns": [
+            "payment_id",
+            "subscription_id",
+            "school_id",
+            "student_id",
+            "academic_session_id",
+            "academic_term_id"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "FOREIGN KEY (payment_id, subscription_id, school_id, student_id, academic_session_id, academic_term_id) REFERENCES student_subscription_payments(id, subscription_id, school_id, student_id, academic_session_id, academic_term_id) ON DELETE RESTRICT",
+          "match_type": "s",
+          "no_inherit": true,
+          "table_name": "student_subscription_allocations",
+          "delete_action": "r",
+          "dependent_fks": [
+            "student_subscription_allocations.student_subscription_allocations_payment_owner_term_fk"
+          ],
+          "update_action": "a",
+          "check_expression": null,
+          "referenced_table": "student_subscription_payments",
+          "supporting_index": "student_subscription_payments_id_owner_term_uq",
+          "referenced_schema": "public",
+          "initially_deferred": false,
+          "referenced_columns": [
+            "id",
+            "subscription_id",
+            "school_id",
+            "student_id",
+            "academic_session_id",
+            "academic_term_id"
+          ]
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_allocations.student_subscription_allocations_pkey.",
+        "expected": {
+          "kind": "p",
+          "name": "student_subscription_allocations_pkey",
+          "schema": "public",
+          "columns": [
+            "id"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "PRIMARY KEY (id)",
+          "match_type": " ",
+          "no_inherit": true,
+          "table_name": "student_subscription_allocations",
+          "delete_action": " ",
+          "dependent_fks": [],
+          "update_action": " ",
+          "check_expression": null,
+          "referenced_table": null,
+          "supporting_index": "student_subscription_allocations_pkey",
+          "referenced_schema": null,
+          "initially_deferred": false,
+          "referenced_columns": []
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_allocations.student_subscription_allocations_recipient_ck.",
+        "expected": {
+          "kind": "c",
+          "name": "student_subscription_allocations_recipient_ck",
+          "schema": "public",
+          "columns": [
+            "recipient_type"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "CHECK ((recipient_type = ANY (ARRAY['SCHOOL'::text, 'PLATFORM'::text, 'PARTNER'::text, 'PLATFORM_PROVIDER_FEE'::text])))",
+          "match_type": " ",
+          "no_inherit": false,
+          "table_name": "student_subscription_allocations",
+          "delete_action": " ",
+          "dependent_fks": [],
+          "update_action": " ",
+          "check_expression": "(recipient_type = ANY (ARRAY['SCHOOL'::text, 'PLATFORM'::text, 'PARTNER'::text, 'PLATFORM_PROVIDER_FEE'::text]))",
+          "referenced_table": null,
+          "supporting_index": null,
+          "referenced_schema": null,
+          "initially_deferred": false,
+          "referenced_columns": []
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_allocations.student_subscription_allocations_school_id_fkey.",
+        "expected": {
+          "kind": "f",
+          "name": "student_subscription_allocations_school_id_fkey",
+          "schema": "public",
+          "columns": [
+            "school_id"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE RESTRICT",
+          "match_type": "s",
+          "no_inherit": true,
+          "table_name": "student_subscription_allocations",
+          "delete_action": "r",
+          "dependent_fks": [
+            "academic_assessment_types.academic_assessment_types_school_id_fkey",
+            "academic_assessments.academic_assessments_school_id_fkey",
+            "academic_assignments.academic_assignments_school_id_fkey",
+            "academic_grading_rules.academic_grading_rules_school_id_fkey",
+            "academic_report_card_lines.academic_report_card_lines_school_id_fkey",
+            "academic_report_cards.academic_report_cards_school_id_fkey",
+            "academic_result_batches.academic_result_batches_school_id_fkey",
+            "academic_results.academic_results_school_id_fkey",
+            "academic_sessions.academic_sessions_school_id_schools_id_fk",
+            "academic_terms.academic_terms_school_id_schools_id_fk",
+            "academic_timetable_entries.academic_timetable_entries_school_id_fkey",
+            "admission_application_counters.admission_application_counters_school_id_fkey",
+            "admission_applications.admission_applications_school_id_fkey",
+            "admission_portal_settings.admission_portal_settings_school_id_fkey",
+            "attendance_corrections.attendance_corrections_school_id_fkey",
+            "attendance_discrepancies.attendance_discrepancies_school_id_fkey",
+            "attendance_events.attendance_events_school_id_fkey",
+            "attendance_notification_events.attendance_notification_events_school_id_fkey",
+            "attendance_settings.attendance_settings_school_id_fkey",
+            "audit_logs.audit_logs_school_id_schools_id_fk",
+            "biometric_enrollments.biometric_enrollments_school_id_fkey",
+            "campus_presence.campus_presence_school_id_fkey",
+            "class_subjects.class_subjects_school_id_schools_id_fk",
+            "commission_ledger.commission_ledger_school_id_schools_id_fk",
+            "communication_campaigns.communication_campaigns_school_id_fkey",
+            "communication_message_threads.communication_message_threads_school_id_fkey",
+            "communication_notifications.communication_notifications_school_id_fkey",
+            "communication_preferences.communication_preferences_school_id_fkey",
+            "communication_push_devices.communication_push_devices_school_id_fkey",
+            "communication_templates.communication_templates_school_id_fkey",
+            "curriculum_progress.curriculum_progress_school_id_fkey",
+            "device_assignment_history.device_assignment_history_new_school_id_fkey",
+            "device_assignment_history.device_assignment_history_previous_school_id_fkey",
+            "device_assignment_history.device_assignment_history_school_id_fkey",
+            "device_credentials.device_credentials_school_id_fkey",
+            "device_school_bindings.device_school_bindings_school_id_fkey",
+            "employee_nfc_attendance_discrepancies.employee_nfc_attendance_discrepancies_school_id_fkey",
+            "employee_nfc_card_bindings.employee_nfc_card_bindings_school_id_fkey",
+            "employee_nfc_card_history.employee_nfc_card_history_school_id_fkey",
+            "employee_nfc_discrepancy_actions.employee_nfc_discrepancy_actions_school_id_fkey",
+            "employees.employees_school_id_schools_id_fk",
+            "exam_question_papers.exam_question_papers_school_id_fkey",
+            "exam_question_reviews.exam_question_reviews_school_id_fkey",
+            "exam_question_versions.exam_question_versions_school_id_fkey",
+            "fee_adjustments.fee_adjustments_school_id_fkey",
+            "fee_categories.fee_categories_school_id_fkey",
+            "fee_invoice_lines.fee_invoice_lines_school_id_fkey",
+            "fee_invoice_notification_outbox.fee_invoice_notification_outbox_school_id_fkey",
+            "fee_invoice_notifications.fee_invoice_notifications_school_id_fkey",
+            "fee_invoices.fee_invoices_school_id_fkey",
+            "fee_payment_notification_outbox.fee_payment_notification_outbox_school_id_fkey",
+            "fee_payment_notifications.fee_payment_notifications_school_id_fkey",
+            "fee_payments.fee_payments_school_id_fkey",
+            "fee_provider_webhook_events.fee_provider_webhook_events_school_fk",
+            "fee_receipts.fee_receipts_school_id_fkey",
+            "fee_refunds.fee_refunds_school_id_fkey",
+            "fee_school_settings.fee_school_settings_school_id_fkey",
+            "fee_structure_lines.fee_structure_lines_school_id_fkey",
+            "fee_structures.fee_structures_school_id_fkey",
+            "lesson_note_reviews.lesson_note_reviews_school_id_fkey",
+            "lesson_notes.lesson_notes_school_id_fkey",
+            "library_authors.library_authors_school_id_fkey",
+            "library_books.library_books_school_id_fkey",
+            "library_categories.library_categories_school_id_fkey",
+            "library_publishers.library_publishers_school_id_fkey",
+            "library_settings.library_settings_school_id_fkey",
+            "library_staff.library_staff_school_id_fkey",
+            "maintenance_requests.maintenance_requests_school_id_fkey",
+            "nfc_card_history.nfc_card_history_school_id_fkey",
+            "nfc_cards.nfc_cards_school_id_schools_id_fk",
+            "operational_tasks.operational_tasks_school_id_fkey",
+            "parents.parents_school_id_schools_id_fk",
+            "partner_attribution_conflicts.partner_attribution_conflicts_school_id_schools_id_fk",
+            "payroll_employee_profiles.payroll_employee_profiles_school_id_fkey",
+            "payroll_periods.payroll_periods_school_id_fkey",
+            "platform_devices.platform_devices_school_id_fkey",
+            "promotion_batch_students.promotion_batch_students_school_id_fkey",
+            "promotion_batches.promotion_batches_school_id_fkey",
+            "promotion_history.promotion_history_school_id_fkey",
+            "school_assets.school_assets_school_id_fkey",
+            "school_authorized_pickup_persons.school_authorized_pickup_persons_school_id_fkey",
+            "school_branding_logos.school_branding_logos_school_id_schools_id_fk",
+            "school_calendar_events.school_calendar_events_school_id_schools_id_fk",
+            "school_classes.school_classes_school_id_schools_id_fk",
+            "school_curriculum_assignments.school_curriculum_assignments_school_id_fkey",
+            "school_facilities.school_facilities_school_id_fkey",
+            "school_memberships.school_memberships_school_id_schools_id_fk",
+            "school_operation_categories.school_operation_categories_school_id_fkey",
+            "school_operations_settings.school_operations_settings_school_id_fkey",
+            "school_partner_attributions.school_partner_attributions_school_id_schools_id_fk",
+            "school_pickup_requests.school_pickup_requests_school_id_fkey",
+            "school_security_incident_attachments.school_security_incident_attachments_school_id_fkey",
+            "school_security_incidents.school_security_incidents_school_id_fkey",
+            "school_security_operation_history.school_security_operation_history_school_id_fkey",
+            "school_security_visitors.school_security_visitors_school_id_fkey",
+            "school_subscription_enforcement.school_subscription_enforcement_school_id_fkey",
+            "school_subscription_manual_locks.school_subscription_manual_locks_school_id_fkey",
+            "security_events.security_events_school_id_fkey",
+            "security_locations.security_locations_school_id_fkey",
+            "security_readers.security_readers_school_id_fkey",
+            "security_school_settings.security_school_settings_school_id_fkey",
+            "security_staff_grants.security_staff_grants_school_id_fkey",
+            "settlement_payroll_audit_events.settlement_payroll_audit_events_school_id_fkey",
+            "settlement_payroll_profiles.settlement_payroll_profiles_school_id_fkey",
+            "staff_nfc_partner_commissions.staff_nfc_partner_commissions_school_id_fkey",
+            "staff_nfc_subscriptions.staff_nfc_subscriptions_school_id_fkey",
+            "student_behaviour_configurations.student_behaviour_configurations_school_id_fkey",
+            "student_behaviour_records.student_behaviour_records_school_id_fkey",
+            "student_care_grants.student_care_grants_school_id_fkey",
+            "student_care_idempotency.student_care_idempotency_school_id_fkey",
+            "student_care_record_history.student_care_record_history_school_id_fkey",
+            "student_class_assignments.student_class_assignments_school_id_schools_id_fk",
+            "student_identification_policies.student_identification_policies_school_id_fkey",
+            "student_medical_profiles.student_medical_profiles_school_id_fkey",
+            "student_medical_visits.student_medical_visits_school_id_fkey",
+            "student_nfc_replacement_requests.student_nfc_replacement_requests_school_id_fkey",
+            "student_subscription_allocations.student_subscription_allocations_school_id_fkey",
+            "student_subscription_terms.student_subscription_terms_school_id_fkey",
+            "student_welfare_records.student_welfare_records_school_id_fkey",
+            "students.students_school_id_schools_id_fk",
+            "subjects.subjects_school_id_schools_id_fk",
+            "subscriptions.subscriptions_school_id_schools_id_fk",
+            "teacher_class_assignments.teacher_class_assignments_school_id_schools_id_fk",
+            "teacher_duty_roster.teacher_duty_roster_school_id_schools_id_fk",
+            "transport_buses.transport_buses_school_id_fkey",
+            "transport_fee_invoices.transport_fee_invoices_school_id_fkey",
+            "transport_history.transport_history_school_id_fkey",
+            "transport_parent_requests.transport_parent_requests_school_id_fkey",
+            "transport_route_staff.transport_route_staff_school_id_fkey",
+            "transport_route_stops.transport_route_stops_school_id_fkey",
+            "transport_routes.transport_routes_school_id_fkey",
+            "transport_school_policies.transport_school_policies_school_id_fkey",
+            "transport_student_assignments.transport_student_assignments_school_id_fkey"
+          ],
+          "update_action": "a",
+          "check_expression": null,
+          "referenced_table": "schools",
+          "supporting_index": "schools_pkey",
+          "referenced_schema": "public",
+          "initially_deferred": false,
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_allocations.student_subscription_allocations_session_school_fk.",
+        "expected": {
+          "kind": "f",
+          "name": "student_subscription_allocations_session_school_fk",
+          "schema": "public",
+          "columns": [
+            "academic_session_id",
+            "school_id"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "FOREIGN KEY (academic_session_id, school_id) REFERENCES academic_sessions(id, school_id) ON DELETE RESTRICT",
+          "match_type": "s",
+          "no_inherit": true,
+          "table_name": "student_subscription_allocations",
+          "delete_action": "r",
+          "dependent_fks": [
+            "academic_assessments.academic_assessments_session_school_fk",
+            "academic_assignments.academic_assignments_session_school_fk",
+            "academic_report_cards.academic_report_cards_session_school_fk",
+            "academic_result_batches.academic_result_batches_session_fk",
+            "academic_results.academic_results_session_school_fk",
+            "academic_terms.academic_terms_session_school_fk",
+            "academic_timetable_entries.academic_timetable_entries_session_school_fk",
+            "admission_applications.admission_applications_session_school_fk",
+            "admission_portal_settings.admission_portal_settings_session_school_fk",
+            "attendance_events.attendance_events_session_school_fk",
+            "class_subjects.class_subjects_session_school_fk",
+            "exam_question_papers.exam_question_papers_session_fk",
+            "fee_invoices.fee_invoices_session_school_fk",
+            "fee_structures.fee_structures_session_school_fk",
+            "lesson_notes.lesson_notes_session_school_fk",
+            "promotion_batch_students.promotion_batch_students_source_session_school_fk",
+            "promotion_batches.promotion_batches_source_session_school_fk",
+            "promotion_batches.promotion_batches_target_session_school_fk",
+            "school_calendar_events.school_calendar_events_session_school_fk",
+            "school_curriculum_assignments.school_curriculum_assignments_session_school_fk",
+            "staff_nfc_subscriptions.staff_nfc_subscriptions_session_school_fk",
+            "student_class_assignments.student_class_assignments_session_school_fk",
+            "student_subscription_allocations.student_subscription_allocations_session_school_fk",
+            "student_subscription_payments.student_subscription_payments_session_school_fk",
+            "student_subscription_terms.student_subscription_terms_academic_session_id_school_id_fkey",
+            "teacher_class_assignments.teacher_class_assignments_session_school_fk",
+            "teacher_subject_assignments.teacher_subject_assignments_session_school_fk",
+            "transport_fee_invoices.transport_fee_invoices_session_school_fk"
+          ],
+          "update_action": "a",
+          "check_expression": null,
+          "referenced_table": "academic_sessions",
+          "supporting_index": "academic_sessions_id_school_unique",
+          "referenced_schema": "public",
+          "initially_deferred": false,
+          "referenced_columns": [
+            "id",
+            "school_id"
+          ]
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_allocations.student_subscription_allocations_student_id_fkey.",
+        "expected": {
+          "kind": "f",
+          "name": "student_subscription_allocations_student_id_fkey",
+          "schema": "public",
+          "columns": [
+            "student_id"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT",
+          "match_type": "s",
+          "no_inherit": true,
+          "table_name": "student_subscription_allocations",
+          "delete_action": "r",
+          "dependent_fks": [
+            "attendance_discrepancies.attendance_discrepancies_student_id_fkey",
+            "attendance_events.attendance_events_student_id_fkey",
+            "biometric_enrollments.biometric_enrollments_student_id_fkey",
+            "commission_ledger.commission_ledger_student_id_students_id_fk",
+            "nfc_card_history.nfc_card_history_student_id_fkey",
+            "nfc_cards.nfc_cards_student_id_students_id_fk",
+            "parent_student_relationships.parent_student_relationships_student_id_students_id_fk",
+            "student_class_assignments.student_class_assignments_student_id_students_id_fk",
+            "student_identification_policies.student_identification_policies_student_id_fkey",
+            "student_subscription_allocations.student_subscription_allocations_student_id_fkey",
+            "subscriptions.subscriptions_student_id_students_id_fk"
+          ],
+          "update_action": "a",
+          "check_expression": null,
+          "referenced_table": "students",
+          "supporting_index": "students_pkey",
+          "referenced_schema": "public",
+          "initially_deferred": false,
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_allocations.student_subscription_allocations_student_school_fk.",
+        "expected": {
+          "kind": "f",
+          "name": "student_subscription_allocations_student_school_fk",
+          "schema": "public",
+          "columns": [
+            "student_id",
+            "school_id"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "FOREIGN KEY (student_id, school_id) REFERENCES students(id, school_id) ON DELETE RESTRICT",
+          "match_type": "s",
+          "no_inherit": true,
+          "table_name": "student_subscription_allocations",
+          "delete_action": "r",
+          "dependent_fks": [
+            "academic_report_cards.academic_report_cards_student_school_fk",
+            "academic_results.academic_results_student_school_fk",
+            "admission_applications.admission_applications_student_school_fk",
+            "attendance_discrepancies.attendance_discrepancies_student_school_fk",
+            "attendance_events.attendance_events_student_school_fk",
+            "biometric_enrollments.biometric_enrollments_student_school_fk",
+            "campus_presence.campus_presence_student_school_fk",
+            "communication_message_threads.communication_message_threads_student_school_fk",
+            "communication_notifications.communication_notifications_subject_student_school_fk",
+            "fee_invoices.fee_invoices_student_school_fk",
+            "fee_payments.fee_payments_student_school_fk",
+            "library_loans.library_loans_student_school_fk",
+            "nfc_card_history.nfc_card_history_student_school_fk",
+            "nfc_cards.nfc_cards_student_school_fk",
+            "promotion_batch_students.promotion_batch_students_student_school_fk",
+            "promotion_history.promotion_history_student_school_fk",
+            "school_authorized_pickup_persons.school_pickup_person_student_school_fk",
+            "school_pickup_requests.school_pickup_requests_student_school_fk",
+            "school_security_incidents.school_security_incidents_student_school_fk",
+            "school_security_operation_history.school_security_operation_history_student_school_fk",
+            "school_security_visitors.school_security_visitors_host_student_school_fk",
+            "security_events.security_events_student_school_fk",
+            "student_behaviour_records.student_behaviour_records_student_school_fk",
+            "student_care_idempotency.student_care_idempotency_student_school_fk",
+            "student_care_record_history.student_care_history_student_school_fk",
+            "student_class_assignments.student_class_assignments_student_school_fk",
+            "student_identification_policies.student_identification_policies_student_school_fk",
+            "student_medical_profiles.student_medical_profiles_student_school_fk",
+            "student_medical_visits.student_medical_visits_student_school_fk",
+            "student_nfc_replacement_requests.student_nfc_replacement_requests_student_id_school_id_fkey",
+            "student_subscription_allocations.student_subscription_allocations_student_school_fk",
+            "student_subscription_terms.student_subscription_terms_student_id_school_id_fkey",
+            "student_welfare_records.student_welfare_records_student_school_fk",
+            "transport_history.transport_history_student_school_fk",
+            "transport_parent_requests.transport_parent_requests_student_school_fk",
+            "transport_student_assignments.transport_student_assignments_student_school_fk"
+          ],
+          "update_action": "a",
+          "check_expression": null,
+          "referenced_table": "students",
+          "supporting_index": "students_id_school_unique",
+          "referenced_schema": "public",
+          "initially_deferred": false,
+          "referenced_columns": [
+            "id",
+            "school_id"
+          ]
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_allocations.student_subscription_allocations_term_school_fk.",
+        "expected": {
+          "kind": "f",
+          "name": "student_subscription_allocations_term_school_fk",
+          "schema": "public",
+          "columns": [
+            "academic_term_id",
+            "school_id"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "FOREIGN KEY (academic_term_id, school_id) REFERENCES academic_terms(id, school_id) ON DELETE RESTRICT",
+          "match_type": "s",
+          "no_inherit": true,
+          "table_name": "student_subscription_allocations",
+          "delete_action": "r",
+          "dependent_fks": [
+            "academic_assessments.academic_assessments_term_school_fk",
+            "academic_assignments.academic_assignments_term_school_fk",
+            "academic_report_cards.academic_report_cards_term_school_fk",
+            "academic_result_batches.academic_result_batches_term_fk",
+            "academic_results.academic_results_term_school_fk",
+            "academic_timetable_entries.academic_timetable_entries_term_school_fk",
+            "admission_applications.admission_applications_term_school_fk",
+            "admission_portal_settings.admission_portal_settings_term_school_fk",
+            "attendance_events.attendance_events_term_school_fk",
+            "class_subjects.class_subjects_term_school_fk",
+            "exam_question_papers.exam_question_papers_term_fk",
+            "fee_invoices.fee_invoices_term_school_fk",
+            "fee_structures.fee_structures_term_school_fk",
+            "lesson_notes.lesson_notes_term_school_fk",
+            "promotion_batch_students.promotion_batch_students_source_term_school_fk",
+            "promotion_batch_students.promotion_batch_students_target_term_school_fk",
+            "school_calendar_events.school_calendar_events_term_school_fk",
+            "school_curriculum_assignments.school_curriculum_assignments_term_school_fk",
+            "school_subscription_enforcement.subscription_enforcement_term_school_fk",
+            "staff_nfc_subscriptions.staff_nfc_subscriptions_term_school_fk",
+            "student_class_assignments.student_class_assignments_term_school_fk",
+            "student_subscription_allocations.student_subscription_allocations_term_school_fk",
+            "student_subscription_payments.student_subscription_payments_term_school_fk",
+            "transport_fee_invoices.transport_fee_invoices_term_school_fk"
+          ],
+          "update_action": "a",
+          "check_expression": null,
+          "referenced_table": "academic_terms",
+          "supporting_index": "academic_terms_id_school_unique",
+          "referenced_schema": "public",
+          "initially_deferred": false,
+          "referenced_columns": [
+            "id",
+            "school_id"
+          ]
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_payments.student_subscription_payments_gross_ck.",
+        "expected": {
+          "kind": "c",
+          "name": "student_subscription_payments_gross_ck",
+          "schema": "public",
+          "columns": [
+            "gross_amount_minor",
+            "currency",
+            "provider_fee_minor",
+            "settlement_amount_minor"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "CHECK (((gross_amount_minor = 500000) AND (currency = 'NGN'::text) AND ((provider_fee_minor IS NULL) OR (provider_fee_minor >= 0)) AND ((settlement_amount_minor IS NULL) OR ((settlement_amount_minor >= 0) AND (settlement_amount_minor <= gross_amount_minor)))))",
+          "match_type": " ",
+          "no_inherit": false,
+          "table_name": "student_subscription_payments",
+          "delete_action": " ",
+          "dependent_fks": [],
+          "update_action": " ",
+          "check_expression": "((gross_amount_minor = 500000) AND (currency = 'NGN'::text) AND ((provider_fee_minor IS NULL) OR (provider_fee_minor >= 0)) AND ((settlement_amount_minor IS NULL) OR ((settlement_amount_minor >= 0) AND (settlement_amount_minor <= gross_amount_minor))))",
+          "referenced_table": null,
+          "supporting_index": null,
+          "referenced_schema": null,
+          "initially_deferred": false,
+          "referenced_columns": []
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_payments.student_subscription_payments_id_owner_term_uq.",
+        "expected": {
+          "kind": "u",
+          "name": "student_subscription_payments_id_owner_term_uq",
+          "schema": "public",
+          "columns": [
+            "id",
+            "subscription_id",
+            "school_id",
+            "student_id",
+            "academic_session_id",
+            "academic_term_id"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "UNIQUE (id, subscription_id, school_id, student_id, academic_session_id, academic_term_id)",
+          "match_type": " ",
+          "no_inherit": true,
+          "table_name": "student_subscription_payments",
+          "delete_action": " ",
+          "dependent_fks": [
+            "student_subscription_allocations.student_subscription_allocations_payment_owner_term_fk"
+          ],
+          "update_action": " ",
+          "check_expression": null,
+          "referenced_table": null,
+          "supporting_index": "student_subscription_payments_id_owner_term_uq",
+          "referenced_schema": null,
+          "initially_deferred": false,
+          "referenced_columns": []
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_payments.student_subscription_payments_payer_user_id_fkey.",
+        "expected": {
+          "kind": "f",
+          "name": "student_subscription_payments_payer_user_id_fkey",
+          "schema": "public",
+          "columns": [
+            "payer_user_id"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "FOREIGN KEY (payer_user_id) REFERENCES app_users(id) ON DELETE RESTRICT",
+          "match_type": "s",
+          "no_inherit": true,
+          "table_name": "student_subscription_payments",
+          "delete_action": "r",
+          "dependent_fks": [
+            "academic_assessments.academic_assessments_created_by_fkey",
+            "academic_assignments.academic_assignments_created_by_fkey",
+            "academic_report_cards.academic_report_cards_published_by_fkey",
+            "academic_result_batches.academic_result_batches_created_by_fkey",
+            "academic_results.academic_results_created_by_fkey",
+            "academic_results.academic_results_published_by_fkey",
+            "academic_sessions.academic_sessions_created_by_fkey",
+            "academic_terms.academic_terms_created_by_fkey",
+            "academic_timetable_entries.academic_timetable_entries_created_by_fkey",
+            "admission_application_documents.admission_application_documents_created_by_user_id_fkey",
+            "admission_applications.admission_applications_created_by_user_id_fkey",
+            "admission_portal_settings.admission_portal_settings_updated_by_user_id_fkey",
+            "attendance_corrections.attendance_corrections_actor_user_id_fkey",
+            "attendance_discrepancies.attendance_discrepancies_resolved_by_fkey",
+            "attendance_events.attendance_events_actor_user_id_fkey",
+            "attendance_notification_events.attendance_notification_events_recipient_user_id_fkey",
+            "audit_logs.audit_logs_actor_user_id_app_users_id_fk",
+            "campus_presence.campus_presence_resolved_by_user_id_fkey",
+            "commission_ledger.commission_ledger_created_by_app_users_id_fk",
+            "communication_campaign_recipients.communication_campaign_recipients_recipient_user_id_fkey",
+            "communication_campaigns.communication_campaigns_created_by_user_id_fkey",
+            "communication_message_threads.communication_message_threads_created_by_user_id_fkey",
+            "communication_message_threads.communication_message_threads_parent_user_id_fkey",
+            "communication_messages.communication_messages_sender_user_id_fkey",
+            "communication_notifications.communication_notifications_recipient_user_id_fkey",
+            "communication_notifications.communication_notifications_sender_user_id_fkey",
+            "communication_preferences.communication_preferences_user_id_fkey",
+            "communication_push_devices.communication_push_devices_user_id_fkey",
+            "communication_templates.communication_templates_created_by_user_id_fkey",
+            "curriculum_imports.curriculum_imports_uploaded_by_fkey",
+            "curriculum_progress.curriculum_progress_updated_by_fkey",
+            "curriculum_versions.curriculum_versions_created_by_fkey",
+            "device_assignment_history.device_assignment_history_actor_user_id_fkey",
+            "employee_nfc_attendance_discrepancies.employee_nfc_attendance_discrepancies_resolved_by_user_id_fkey",
+            "employee_nfc_card_bindings.employee_nfc_card_bindings_created_by_user_id_fkey",
+            "employee_nfc_card_history.employee_nfc_card_history_actor_user_id_fkey",
+            "employee_nfc_discrepancy_actions.employee_nfc_discrepancy_actions_actor_user_id_fkey",
+            "employees.employees_user_id_app_users_id_fk",
+            "exam_question_papers.exam_question_papers_created_by_fkey",
+            "exam_question_reviews.exam_question_reviews_reviewer_user_id_fkey",
+            "exam_question_versions.exam_question_versions_created_by_fkey",
+            "fee_adjustments.fee_adjustments_approved_by_fkey",
+            "fee_adjustments.fee_adjustments_requested_by_fkey",
+            "fee_categories.fee_categories_created_by_fkey",
+            "fee_invoice_notifications.fee_invoice_notifications_recipient_user_id_fkey",
+            "fee_invoices.fee_invoices_created_by_fkey",
+            "fee_payment_notifications.fee_payment_notifications_recipient_user_id_fkey",
+            "fee_payments.fee_payments_submitted_by_fkey",
+            "fee_payments.fee_payments_verified_by_fkey",
+            "fee_refunds.fee_refunds_approved_by_fkey",
+            "fee_refunds.fee_refunds_requested_by_fkey",
+            "fee_school_settings.fee_school_settings_updated_by_fkey",
+            "fee_structures.fee_structures_created_by_fkey",
+            "fee_structures.fee_structures_published_by_fkey",
+            "lesson_note_documents.lesson_note_documents_uploaded_by_fkey",
+            "lesson_note_reviews.lesson_note_reviews_reviewer_user_id_fkey",
+            "lesson_notes.lesson_notes_created_by_fkey",
+            "library_authors.library_authors_created_by_user_id_fkey",
+            "library_book_copies.library_book_copies_created_by_user_id_fkey",
+            "library_books.library_books_created_by_user_id_fkey",
+            "library_categories.library_categories_created_by_user_id_fkey",
+            "library_copy_status_history.library_copy_status_history_changed_by_user_id_fkey",
+            "library_loans.library_loans_borrower_user_id_fkey",
+            "library_loans.library_loans_issued_by_user_id_fkey",
+            "library_loans.library_loans_returned_by_user_id_fkey",
+            "library_publishers.library_publishers_created_by_user_id_fkey",
+            "library_renewals.library_renewals_renewed_by_user_id_fkey",
+            "library_settings.library_settings_updated_by_user_id_fkey",
+            "library_staff.library_staff_assigned_by_user_id_fkey",
+            "library_staff.library_staff_user_id_fkey",
+            "maintenance_request_status_history.maintenance_request_status_history_actor_user_id_fkey",
+            "maintenance_requests.maintenance_requests_assigned_to_user_id_fkey",
+            "maintenance_requests.maintenance_requests_reported_by_user_id_fkey",
+            "nfc_card_history.nfc_card_history_actor_user_id_fkey",
+            "operational_task_status_history.operational_task_status_history_actor_user_id_fkey",
+            "operational_tasks.operational_tasks_assigned_to_user_id_fkey",
+            "operational_tasks.operational_tasks_created_by_user_id_fkey",
+            "parents.parents_user_id_app_users_id_fk",
+            "partner_attribution_conflicts.partner_attribution_conflicts_resolved_by_app_users_id_fk",
+            "partner_invitations.partner_invitations_created_by_app_users_id_fk",
+            "partner_profile_users.partner_profile_users_user_id_app_users_id_fk",
+            "partner_profiles.partner_profiles_created_by_app_users_id_fk",
+            "partner_profiles.partner_profiles_user_id_app_users_id_fk",
+            "partner_referral_links.partner_referral_links_created_by_app_users_id_fk",
+            "payroll_employee_profiles.payroll_employee_profiles_created_by_fkey",
+            "payroll_employee_profiles.payroll_employee_profiles_updated_by_fkey",
+            "payroll_periods.payroll_periods_approved_by_fkey",
+            "payroll_periods.payroll_periods_created_by_fkey",
+            "payroll_periods.payroll_periods_submitted_by_fkey",
+            "payroll_transfers.payroll_transfers_requested_by_fkey",
+            "payroll_transfers.payroll_transfers_verified_by_fkey",
+            "platform_notifications.platform_notifications_recipient_user_id_fkey",
+            "promotion_batch_students.promotion_batch_students_reviewed_by_fkey",
+            "promotion_batches.promotion_batches_finalization_actor_user_id_fkey",
+            "promotion_batches.promotion_batches_finalized_by_fkey",
+            "promotion_batches.promotion_batches_idempotency_actor_user_id_fkey",
+            "promotion_batches.promotion_batches_prepared_by_fkey",
+            "promotion_history.promotion_history_actor_user_id_fkey",
+            "school_asset_history.school_asset_history_actor_user_id_fkey",
+            "school_asset_history.school_asset_history_assigned_to_after_user_id_fkey",
+            "school_asset_history.school_asset_history_assigned_to_before_user_id_fkey",
+            "school_assets.school_assets_assigned_to_user_id_fkey",
+            "school_assets.school_assets_created_by_user_id_fkey",
+            "school_authorized_pickup_persons.school_authorized_pickup_persons_decision_by_user_id_fkey",
+            "school_branding_logos.school_branding_logos_updated_by_user_id_app_users_id_fk",
+            "school_calendar_events.school_calendar_events_created_by_user_id_app_users_id_fk",
+            "school_calendar_events.school_calendar_events_updated_by_user_id_app_users_id_fk",
+            "school_curriculum_assignments.school_curriculum_assignments_confirmed_by_fkey",
+            "school_facilities.school_facilities_created_by_user_id_fkey",
+            "school_memberships.school_memberships_user_id_app_users_id_fk",
+            "school_operation_categories.school_operation_categories_created_by_user_id_fkey",
+            "school_operations_settings.school_operations_settings_updated_by_user_id_fkey",
+            "school_partner_attributions.school_partner_attributions_created_by_app_users_id_fk",
+            "school_pickup_requests.school_pickup_requests_completed_by_user_id_fkey",
+            "school_pickup_requests.school_pickup_requests_decision_by_user_id_fkey",
+            "school_security_incident_attachments.school_security_incident_attachments_uploaded_by_user_id_fkey",
+            "school_security_incidents.school_security_incidents_assigned_staff_user_id_fkey",
+            "school_security_incidents.school_security_incidents_created_by_user_id_fkey",
+            "school_security_operation_history.school_security_operation_history_actor_user_id_fkey",
+            "school_security_visitors.school_security_visitors_security_officer_user_id_fkey",
+            "school_subscription_manual_locks.school_subscription_manual_locks_last_unlocked_by_user_id_fkey",
+            "school_subscription_manual_locks.school_subscription_manual_locks_locked_by_user_id_fkey",
+            "security_events.security_events_actor_user_id_fkey",
+            "security_locations.security_locations_created_by_user_id_fkey",
+            "security_locations.security_locations_updated_by_user_id_fkey",
+            "security_readers.security_readers_created_by_user_id_fkey",
+            "security_readers.security_readers_updated_by_user_id_fkey",
+            "security_school_settings.security_school_settings_updated_by_user_id_fkey",
+            "security_staff_grants.security_staff_grants_granted_by_user_id_fkey",
+            "security_staff_grants.security_staff_grants_revoked_by_user_id_fkey",
+            "security_staff_grants.security_staff_grants_user_id_fkey",
+            "settlement_payroll_audit_events.settlement_payroll_audit_events_actor_user_id_fkey",
+            "settlement_payroll_profiles.settlement_payroll_profiles_created_by_fkey",
+            "settlement_payroll_profiles.settlement_payroll_profiles_updated_by_fkey",
+            "settlement_payroll_profiles.settlement_payroll_profiles_verified_by_fkey",
+            "staff_nfc_billing_rules.staff_nfc_billing_rules_created_by_fkey",
+            "staff_nfc_payments.staff_nfc_payments_created_by_fkey",
+            "staff_nfc_refunds.staff_nfc_refunds_created_by_fkey",
+            "staff_nfc_subscriptions.staff_nfc_subscriptions_created_by_fkey",
+            "student_behaviour_configurations.student_behaviour_configurations_updated_by_user_id_fkey",
+            "student_behaviour_records.student_behaviour_records_reporter_user_id_fkey",
+            "student_care_grants.student_care_grants_granted_by_user_id_fkey",
+            "student_care_grants.student_care_grants_user_id_fkey",
+            "student_care_idempotency.student_care_idempotency_created_by_user_id_fkey",
+            "student_care_record_history.student_care_record_history_changed_by_user_id_fkey",
+            "student_identification_policies.student_identification_policies_created_by_fkey",
+            "student_medical_profiles.student_medical_profiles_updated_by_user_id_fkey",
+            "student_medical_visits.student_medical_visits_recorded_by_user_id_fkey",
+            "student_nfc_replacement_requests.student_nfc_replacement_requests_issued_by_fkey",
+            "student_nfc_replacement_requests.student_nfc_replacement_requests_requested_by_fkey",
+            "student_subscription_allocations.student_subscription_allocations_payer_user_id_fkey",
+            "student_subscription_payments.student_subscription_payments_payer_user_id_fkey",
+            "student_welfare_records.student_welfare_records_assigned_staff_user_id_fkey",
+            "student_welfare_records.student_welfare_records_created_by_user_id_fkey",
+            "students.students_user_id_app_users_id_fk",
+            "teacher_duty_roster.teacher_duty_roster_created_by_user_id_app_users_id_fk",
+            "teacher_duty_roster.teacher_duty_roster_updated_by_user_id_app_users_id_fk",
+            "teacher_subject_assignments.teacher_subject_assignments_created_by_user_id_app_users_id_fk",
+            "teacher_subject_assignments.teacher_subject_assignments_updated_by_user_id_app_users_id_fk",
+            "transport_buses.transport_buses_created_by_fkey",
+            "transport_fee_invoices.transport_fee_invoices_created_by_fkey",
+            "transport_fee_invoices.transport_fee_invoices_updated_by_fkey",
+            "transport_history.transport_history_actor_user_id_fkey",
+            "transport_parent_requests.transport_parent_requests_reviewed_by_fkey",
+            "transport_route_staff.transport_route_staff_assigned_by_fkey",
+            "transport_route_stops.transport_route_stops_created_by_fkey",
+            "transport_routes.transport_routes_created_by_fkey",
+            "transport_school_policies.transport_school_policies_updated_by_fkey",
+            "transport_student_assignments.transport_student_assignments_created_by_fkey"
+          ],
+          "update_action": "a",
+          "check_expression": null,
+          "referenced_table": "app_users",
+          "supporting_index": "app_users_pkey",
+          "referenced_schema": "public",
+          "initially_deferred": false,
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_payments.student_subscription_payments_pkey.",
+        "expected": {
+          "kind": "p",
+          "name": "student_subscription_payments_pkey",
+          "schema": "public",
+          "columns": [
+            "id"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "PRIMARY KEY (id)",
+          "match_type": " ",
+          "no_inherit": true,
+          "table_name": "student_subscription_payments",
+          "delete_action": " ",
+          "dependent_fks": [],
+          "update_action": " ",
+          "check_expression": null,
+          "referenced_table": null,
+          "supporting_index": "student_subscription_payments_pkey",
+          "referenced_schema": null,
+          "initially_deferred": false,
+          "referenced_columns": []
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_payments.student_subscription_payments_provider_ck.",
+        "expected": {
+          "kind": "c",
+          "name": "student_subscription_payments_provider_ck",
+          "schema": "public",
+          "columns": [
+            "provider"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "CHECK ((provider = 'FLUTTERWAVE'::text))",
+          "match_type": " ",
+          "no_inherit": false,
+          "table_name": "student_subscription_payments",
+          "delete_action": " ",
+          "dependent_fks": [],
+          "update_action": " ",
+          "check_expression": "(provider = 'FLUTTERWAVE'::text)",
+          "referenced_table": null,
+          "supporting_index": null,
+          "referenced_schema": null,
+          "initially_deferred": false,
+          "referenced_columns": []
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_payments.student_subscription_payments_provider_mode_ck.",
+        "expected": {
+          "kind": "c",
+          "name": "student_subscription_payments_provider_mode_ck",
+          "schema": "public",
+          "columns": [
+            "provider_mode"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "CHECK ((provider_mode = 'SANDBOX'::text))",
+          "match_type": " ",
+          "no_inherit": false,
+          "table_name": "student_subscription_payments",
+          "delete_action": " ",
+          "dependent_fks": [],
+          "update_action": " ",
+          "check_expression": "(provider_mode = 'SANDBOX'::text)",
+          "referenced_table": null,
+          "supporting_index": null,
+          "referenced_schema": null,
+          "initially_deferred": false,
+          "referenced_columns": []
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_payments.student_subscription_payments_reconciliation_ck.",
+        "expected": {
+          "kind": "c",
+          "name": "student_subscription_payments_reconciliation_ck",
+          "schema": "public",
+          "columns": [
+            "reconciliation_status"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "CHECK ((reconciliation_status = ANY (ARRAY['PENDING'::text, 'RECONCILED'::text, 'RECONCILIATION_REQUIRED'::text, 'NOT_APPLICABLE'::text])))",
+          "match_type": " ",
+          "no_inherit": false,
+          "table_name": "student_subscription_payments",
+          "delete_action": " ",
+          "dependent_fks": [],
+          "update_action": " ",
+          "check_expression": "(reconciliation_status = ANY (ARRAY['PENDING'::text, 'RECONCILED'::text, 'RECONCILIATION_REQUIRED'::text, 'NOT_APPLICABLE'::text]))",
+          "referenced_table": null,
+          "supporting_index": null,
+          "referenced_schema": null,
+          "initially_deferred": false,
+          "referenced_columns": []
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_payments.student_subscription_payments_reference_ck.",
+        "expected": {
+          "kind": "c",
+          "name": "student_subscription_payments_reference_ck",
+          "schema": "public",
+          "columns": [
+            "reference"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "CHECK ((reference ~ '^[A-Za-z0-9_-]{8,100}$'::text))",
+          "match_type": " ",
+          "no_inherit": false,
+          "table_name": "student_subscription_payments",
+          "delete_action": " ",
+          "dependent_fks": [],
+          "update_action": " ",
+          "check_expression": "(reference ~ '^[A-Za-z0-9_-]{8,100}$'::text)",
+          "referenced_table": null,
+          "supporting_index": null,
+          "referenced_schema": null,
+          "initially_deferred": false,
+          "referenced_columns": []
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_payments.student_subscription_payments_session_school_fk.",
+        "expected": {
+          "kind": "f",
+          "name": "student_subscription_payments_session_school_fk",
+          "schema": "public",
+          "columns": [
+            "academic_session_id",
+            "school_id"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "FOREIGN KEY (academic_session_id, school_id) REFERENCES academic_sessions(id, school_id) ON DELETE RESTRICT",
+          "match_type": "s",
+          "no_inherit": true,
+          "table_name": "student_subscription_payments",
+          "delete_action": "r",
+          "dependent_fks": [
+            "academic_assessments.academic_assessments_session_school_fk",
+            "academic_assignments.academic_assignments_session_school_fk",
+            "academic_report_cards.academic_report_cards_session_school_fk",
+            "academic_result_batches.academic_result_batches_session_fk",
+            "academic_results.academic_results_session_school_fk",
+            "academic_terms.academic_terms_session_school_fk",
+            "academic_timetable_entries.academic_timetable_entries_session_school_fk",
+            "admission_applications.admission_applications_session_school_fk",
+            "admission_portal_settings.admission_portal_settings_session_school_fk",
+            "attendance_events.attendance_events_session_school_fk",
+            "class_subjects.class_subjects_session_school_fk",
+            "exam_question_papers.exam_question_papers_session_fk",
+            "fee_invoices.fee_invoices_session_school_fk",
+            "fee_structures.fee_structures_session_school_fk",
+            "lesson_notes.lesson_notes_session_school_fk",
+            "promotion_batch_students.promotion_batch_students_source_session_school_fk",
+            "promotion_batches.promotion_batches_source_session_school_fk",
+            "promotion_batches.promotion_batches_target_session_school_fk",
+            "school_calendar_events.school_calendar_events_session_school_fk",
+            "school_curriculum_assignments.school_curriculum_assignments_session_school_fk",
+            "staff_nfc_subscriptions.staff_nfc_subscriptions_session_school_fk",
+            "student_class_assignments.student_class_assignments_session_school_fk",
+            "student_subscription_allocations.student_subscription_allocations_session_school_fk",
+            "student_subscription_payments.student_subscription_payments_session_school_fk",
+            "student_subscription_terms.student_subscription_terms_academic_session_id_school_id_fkey",
+            "teacher_class_assignments.teacher_class_assignments_session_school_fk",
+            "teacher_subject_assignments.teacher_subject_assignments_session_school_fk",
+            "transport_fee_invoices.transport_fee_invoices_session_school_fk"
+          ],
+          "update_action": "a",
+          "check_expression": null,
+          "referenced_table": "academic_sessions",
+          "supporting_index": "academic_sessions_id_school_unique",
+          "referenced_schema": "public",
+          "initially_deferred": false,
+          "referenced_columns": [
+            "id",
+            "school_id"
+          ]
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_payments.student_subscription_payments_settlement_ck.",
+        "expected": {
+          "kind": "c",
+          "name": "student_subscription_payments_settlement_ck",
+          "schema": "public",
+          "columns": [
+            "settlement_status"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "CHECK ((settlement_status = ANY (ARRAY['PENDING'::text, 'RECONCILED'::text, 'RECONCILIATION_REQUIRED'::text, 'NOT_APPLICABLE'::text])))",
+          "match_type": " ",
+          "no_inherit": false,
+          "table_name": "student_subscription_payments",
+          "delete_action": " ",
+          "dependent_fks": [],
+          "update_action": " ",
+          "check_expression": "(settlement_status = ANY (ARRAY['PENDING'::text, 'RECONCILED'::text, 'RECONCILIATION_REQUIRED'::text, 'NOT_APPLICABLE'::text]))",
+          "referenced_table": null,
+          "supporting_index": null,
+          "referenced_schema": null,
+          "initially_deferred": false,
+          "referenced_columns": []
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_payments.student_subscription_payments_status_ck.",
+        "expected": {
+          "kind": "c",
+          "name": "student_subscription_payments_status_ck",
+          "schema": "public",
+          "columns": [
+            "status"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "CHECK ((status = ANY (ARRAY['PENDING'::text, 'PAID'::text, 'FAILED'::text, 'RECONCILIATION_REQUIRED'::text])))",
+          "match_type": " ",
+          "no_inherit": false,
+          "table_name": "student_subscription_payments",
+          "delete_action": " ",
+          "dependent_fks": [],
+          "update_action": " ",
+          "check_expression": "(status = ANY (ARRAY['PENDING'::text, 'PAID'::text, 'FAILED'::text, 'RECONCILIATION_REQUIRED'::text]))",
+          "referenced_table": null,
+          "supporting_index": null,
+          "referenced_schema": null,
+          "initially_deferred": false,
+          "referenced_columns": []
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_payments.student_subscription_payments_subscription_owner_fk.",
+        "expected": {
+          "kind": "f",
+          "name": "student_subscription_payments_subscription_owner_fk",
+          "schema": "public",
+          "columns": [
+            "subscription_id",
+            "school_id",
+            "student_id"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "FOREIGN KEY (subscription_id, school_id, student_id) REFERENCES subscriptions(id, school_id, student_id) ON DELETE RESTRICT",
+          "match_type": "s",
+          "no_inherit": true,
+          "table_name": "student_subscription_payments",
+          "delete_action": "r",
+          "dependent_fks": [
+            "student_subscription_payments.student_subscription_payments_subscription_owner_fk",
+            "student_subscription_terms.student_subscription_terms_subscription_id_school_id_stude_fkey"
+          ],
+          "update_action": "a",
+          "check_expression": null,
+          "referenced_table": "subscriptions",
+          "supporting_index": "subscriptions_id_school_student_uq",
+          "referenced_schema": "public",
+          "initially_deferred": false,
+          "referenced_columns": [
+            "id",
+            "school_id",
+            "student_id"
+          ]
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "constraints:public.student_subscription_payments.student_subscription_payments_term_school_fk.",
+        "expected": {
+          "kind": "f",
+          "name": "student_subscription_payments_term_school_fk",
+          "schema": "public",
+          "columns": [
+            "academic_term_id",
+            "school_id"
+          ],
+          "validated": true,
+          "deferrable": false,
+          "definition": "FOREIGN KEY (academic_term_id, school_id) REFERENCES academic_terms(id, school_id) ON DELETE RESTRICT",
+          "match_type": "s",
+          "no_inherit": true,
+          "table_name": "student_subscription_payments",
+          "delete_action": "r",
+          "dependent_fks": [
+            "academic_assessments.academic_assessments_term_school_fk",
+            "academic_assignments.academic_assignments_term_school_fk",
+            "academic_report_cards.academic_report_cards_term_school_fk",
+            "academic_result_batches.academic_result_batches_term_fk",
+            "academic_results.academic_results_term_school_fk",
+            "academic_timetable_entries.academic_timetable_entries_term_school_fk",
+            "admission_applications.admission_applications_term_school_fk",
+            "admission_portal_settings.admission_portal_settings_term_school_fk",
+            "attendance_events.attendance_events_term_school_fk",
+            "class_subjects.class_subjects_term_school_fk",
+            "exam_question_papers.exam_question_papers_term_fk",
+            "fee_invoices.fee_invoices_term_school_fk",
+            "fee_structures.fee_structures_term_school_fk",
+            "lesson_notes.lesson_notes_term_school_fk",
+            "promotion_batch_students.promotion_batch_students_source_term_school_fk",
+            "promotion_batch_students.promotion_batch_students_target_term_school_fk",
+            "school_calendar_events.school_calendar_events_term_school_fk",
+            "school_curriculum_assignments.school_curriculum_assignments_term_school_fk",
+            "school_subscription_enforcement.subscription_enforcement_term_school_fk",
+            "staff_nfc_subscriptions.staff_nfc_subscriptions_term_school_fk",
+            "student_class_assignments.student_class_assignments_term_school_fk",
+            "student_subscription_allocations.student_subscription_allocations_term_school_fk",
+            "student_subscription_payments.student_subscription_payments_term_school_fk",
+            "transport_fee_invoices.transport_fee_invoices_term_school_fk"
+          ],
+          "update_action": "a",
+          "check_expression": null,
+          "referenced_table": "academic_terms",
+          "supporting_index": "academic_terms_id_school_unique",
+          "referenced_schema": "public",
+          "initially_deferred": false,
+          "referenced_columns": [
+            "id",
+            "school_id"
+          ]
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      }
+    ],
+    "indexes": [
+      {
+        "id": "indexes:public.student_subscription_allocations.student_subscription_allocations_id_payment_entry_recipient_uq.",
+        "expected": {
+          "keys": [
+            "id",
+            "payment_id",
+            "entry_type",
+            "recipient_type"
+          ],
+          "name": "student_subscription_allocations_id_payment_entry_recipient_uq",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "schema": "public",
+          "included": [],
+          "immediate": true,
+          "predicate": null,
+          "collations": [
+            null,
+            null,
+            "default",
+            "default"
+          ],
+          "definition": "CREATE UNIQUE INDEX student_subscription_allocations_id_payment_entry_recipient_uq ON public.student_subscription_allocations USING btree (id, payment_id, entry_type, recipient_type)",
+          "table_name": "student_subscription_allocations",
+          "expressions": null,
+          "unique_index": true,
+          "dependent_fks": [],
+          "primary_index": false,
+          "operator_classes": [
+            "int4_ops",
+            "int4_ops",
+            "text_ops",
+            "text_ops"
+          ],
+          "ordering_options": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "owner_constraint": "student_subscription_allocations_id_payment_entry_recipient_uq"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "indexes:public.student_subscription_allocations.student_subscription_allocations_idempotency_uq.",
+        "expected": {
+          "keys": [
+            "idempotency_key"
+          ],
+          "name": "student_subscription_allocations_idempotency_uq",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "schema": "public",
+          "included": [],
+          "immediate": true,
+          "predicate": null,
+          "collations": [
+            "default"
+          ],
+          "definition": "CREATE UNIQUE INDEX student_subscription_allocations_idempotency_uq ON public.student_subscription_allocations USING btree (idempotency_key)",
+          "table_name": "student_subscription_allocations",
+          "expressions": null,
+          "unique_index": true,
+          "dependent_fks": [],
+          "primary_index": false,
+          "operator_classes": [
+            "text_ops"
+          ],
+          "ordering_options": [
+            0
+          ],
+          "owner_constraint": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "indexes:public.student_subscription_allocations.student_subscription_allocations_partner_idx.",
+        "expected": {
+          "keys": [
+            "recipient_id",
+            "created_at"
+          ],
+          "name": "student_subscription_allocations_partner_idx",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "schema": "public",
+          "included": [],
+          "immediate": true,
+          "predicate": "(recipient_type = 'PARTNER'::text)",
+          "collations": [
+            null,
+            null
+          ],
+          "definition": "CREATE INDEX student_subscription_allocations_partner_idx ON public.student_subscription_allocations USING btree (recipient_id, created_at DESC) WHERE (recipient_type = 'PARTNER'::text)",
+          "table_name": "student_subscription_allocations",
+          "expressions": null,
+          "unique_index": false,
+          "dependent_fks": [],
+          "primary_index": false,
+          "operator_classes": [
+            "int4_ops",
+            "timestamptz_ops"
+          ],
+          "ordering_options": [
+            0,
+            3
+          ],
+          "owner_constraint": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "indexes:public.student_subscription_allocations.student_subscription_allocations_payment_credit_recipient_uq.",
+        "expected": {
+          "keys": [
+            "payment_id",
+            "recipient_type"
+          ],
+          "name": "student_subscription_allocations_payment_credit_recipient_uq",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "schema": "public",
+          "included": [],
+          "immediate": true,
+          "predicate": "(entry_type = 'CREDIT'::text)",
+          "collations": [
+            null,
+            "default"
+          ],
+          "definition": "CREATE UNIQUE INDEX student_subscription_allocations_payment_credit_recipient_uq ON public.student_subscription_allocations USING btree (payment_id, recipient_type) WHERE (entry_type = 'CREDIT'::text)",
+          "table_name": "student_subscription_allocations",
+          "expressions": null,
+          "unique_index": true,
+          "dependent_fks": [],
+          "primary_index": false,
+          "operator_classes": [
+            "int4_ops",
+            "text_ops"
+          ],
+          "ordering_options": [
+            0,
+            0
+          ],
+          "owner_constraint": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "indexes:public.student_subscription_allocations.student_subscription_allocations_payment_fee_expense_uq.",
+        "expected": {
+          "keys": [
+            "payment_id"
+          ],
+          "name": "student_subscription_allocations_payment_fee_expense_uq",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "schema": "public",
+          "included": [],
+          "immediate": true,
+          "predicate": "((entry_type = 'EXPENSE'::text) AND (recipient_type = 'PLATFORM_PROVIDER_FEE'::text))",
+          "collations": [
+            null
+          ],
+          "definition": "CREATE UNIQUE INDEX student_subscription_allocations_payment_fee_expense_uq ON public.student_subscription_allocations USING btree (payment_id) WHERE ((entry_type = 'EXPENSE'::text) AND (recipient_type = 'PLATFORM_PROVIDER_FEE'::text))",
+          "table_name": "student_subscription_allocations",
+          "expressions": null,
+          "unique_index": true,
+          "dependent_fks": [],
+          "primary_index": false,
+          "operator_classes": [
+            "int4_ops"
+          ],
+          "ordering_options": [
+            0
+          ],
+          "owner_constraint": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "indexes:public.student_subscription_allocations.student_subscription_allocations_pkey.",
+        "expected": {
+          "keys": [
+            "id"
+          ],
+          "name": "student_subscription_allocations_pkey",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "schema": "public",
+          "included": [],
+          "immediate": true,
+          "predicate": null,
+          "collations": [
+            null
+          ],
+          "definition": "CREATE UNIQUE INDEX student_subscription_allocations_pkey ON public.student_subscription_allocations USING btree (id)",
+          "table_name": "student_subscription_allocations",
+          "expressions": null,
+          "unique_index": true,
+          "dependent_fks": [],
+          "primary_index": true,
+          "operator_classes": [
+            "int4_ops"
+          ],
+          "ordering_options": [
+            0
+          ],
+          "owner_constraint": "student_subscription_allocations_pkey"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "indexes:public.student_subscription_allocations.student_subscription_allocations_school_term_idx.",
+        "expected": {
+          "keys": [
+            "school_id",
+            "academic_session_id",
+            "academic_term_id",
+            "created_at"
+          ],
+          "name": "student_subscription_allocations_school_term_idx",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "schema": "public",
+          "included": [],
+          "immediate": true,
+          "predicate": null,
+          "collations": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "definition": "CREATE INDEX student_subscription_allocations_school_term_idx ON public.student_subscription_allocations USING btree (school_id, academic_session_id, academic_term_id, created_at DESC)",
+          "table_name": "student_subscription_allocations",
+          "expressions": null,
+          "unique_index": false,
+          "dependent_fks": [],
+          "primary_index": false,
+          "operator_classes": [
+            "int4_ops",
+            "int4_ops",
+            "int4_ops",
+            "timestamptz_ops"
+          ],
+          "ordering_options": [
+            0,
+            0,
+            0,
+            3
+          ],
+          "owner_constraint": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "indexes:public.student_subscription_payments.student_subscription_payments_id_owner_term_uq.",
+        "expected": {
+          "keys": [
+            "id",
+            "subscription_id",
+            "school_id",
+            "student_id",
+            "academic_session_id",
+            "academic_term_id"
+          ],
+          "name": "student_subscription_payments_id_owner_term_uq",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "schema": "public",
+          "included": [],
+          "immediate": true,
+          "predicate": null,
+          "collations": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "definition": "CREATE UNIQUE INDEX student_subscription_payments_id_owner_term_uq ON public.student_subscription_payments USING btree (id, subscription_id, school_id, student_id, academic_session_id, academic_term_id)",
+          "table_name": "student_subscription_payments",
+          "expressions": null,
+          "unique_index": true,
+          "dependent_fks": [
+            "student_subscription_allocations.student_subscription_allocations_payment_owner_term_fk"
+          ],
+          "primary_index": false,
+          "operator_classes": [
+            "int4_ops",
+            "int4_ops",
+            "int4_ops",
+            "int4_ops",
+            "int4_ops",
+            "int4_ops"
+          ],
+          "ordering_options": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "owner_constraint": "student_subscription_payments_id_owner_term_uq"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "indexes:public.student_subscription_payments.student_subscription_payments_one_business_term_uq.",
+        "expected": {
+          "keys": [
+            "school_id",
+            "student_id",
+            "academic_session_id",
+            "academic_term_id"
+          ],
+          "name": "student_subscription_payments_one_business_term_uq",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "schema": "public",
+          "included": [],
+          "immediate": true,
+          "predicate": "((status = ANY (ARRAY['PENDING'::text, 'RECONCILIATION_REQUIRED'::text, 'PAID'::text])) OR (reconciliation_status = 'RECONCILIATION_REQUIRED'::text))",
+          "collations": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "definition": "CREATE UNIQUE INDEX student_subscription_payments_one_business_term_uq ON public.student_subscription_payments USING btree (school_id, student_id, academic_session_id, academic_term_id) WHERE ((status = ANY (ARRAY['PENDING'::text, 'RECONCILIATION_REQUIRED'::text, 'PAID'::text])) OR (reconciliation_status = 'RECONCILIATION_REQUIRED'::text))",
+          "table_name": "student_subscription_payments",
+          "expressions": null,
+          "unique_index": true,
+          "dependent_fks": [],
+          "primary_index": false,
+          "operator_classes": [
+            "int4_ops",
+            "int4_ops",
+            "int4_ops",
+            "int4_ops"
+          ],
+          "ordering_options": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "owner_constraint": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "indexes:public.student_subscription_payments.student_subscription_payments_one_open_attempt_uq.",
+        "expected": {
+          "keys": [
+            "subscription_id"
+          ],
+          "name": "student_subscription_payments_one_open_attempt_uq",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "schema": "public",
+          "included": [],
+          "immediate": true,
+          "predicate": "(status = ANY (ARRAY['PENDING'::text, 'RECONCILIATION_REQUIRED'::text]))",
+          "collations": [
+            null
+          ],
+          "definition": "CREATE UNIQUE INDEX student_subscription_payments_one_open_attempt_uq ON public.student_subscription_payments USING btree (subscription_id) WHERE (status = ANY (ARRAY['PENDING'::text, 'RECONCILIATION_REQUIRED'::text]))",
+          "table_name": "student_subscription_payments",
+          "expressions": null,
+          "unique_index": true,
+          "dependent_fks": [],
+          "primary_index": false,
+          "operator_classes": [
+            "int4_ops"
+          ],
+          "ordering_options": [
+            0
+          ],
+          "owner_constraint": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "indexes:public.student_subscription_payments.student_subscription_payments_pkey.",
+        "expected": {
+          "keys": [
+            "id"
+          ],
+          "name": "student_subscription_payments_pkey",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "schema": "public",
+          "included": [],
+          "immediate": true,
+          "predicate": null,
+          "collations": [
+            null
+          ],
+          "definition": "CREATE UNIQUE INDEX student_subscription_payments_pkey ON public.student_subscription_payments USING btree (id)",
+          "table_name": "student_subscription_payments",
+          "expressions": null,
+          "unique_index": true,
+          "dependent_fks": [],
+          "primary_index": true,
+          "operator_classes": [
+            "int4_ops"
+          ],
+          "ordering_options": [
+            0
+          ],
+          "owner_constraint": "student_subscription_payments_pkey"
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "indexes:public.student_subscription_payments.student_subscription_payments_provider_transaction_uq.",
+        "expected": {
+          "keys": [
+            "provider",
+            "provider_transaction_id"
+          ],
+          "name": "student_subscription_payments_provider_transaction_uq",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "schema": "public",
+          "included": [],
+          "immediate": true,
+          "predicate": "(provider_transaction_id IS NOT NULL)",
+          "collations": [
+            "default",
+            "default"
+          ],
+          "definition": "CREATE UNIQUE INDEX student_subscription_payments_provider_transaction_uq ON public.student_subscription_payments USING btree (provider, provider_transaction_id) WHERE (provider_transaction_id IS NOT NULL)",
+          "table_name": "student_subscription_payments",
+          "expressions": null,
+          "unique_index": true,
+          "dependent_fks": [],
+          "primary_index": false,
+          "operator_classes": [
+            "text_ops",
+            "text_ops"
+          ],
+          "ordering_options": [
+            0,
+            0
+          ],
+          "owner_constraint": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "indexes:public.student_subscription_payments.student_subscription_payments_reference_uq.",
+        "expected": {
+          "keys": [
+            "reference"
+          ],
+          "name": "student_subscription_payments_reference_uq",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "schema": "public",
+          "included": [],
+          "immediate": true,
+          "predicate": null,
+          "collations": [
+            "default"
+          ],
+          "definition": "CREATE UNIQUE INDEX student_subscription_payments_reference_uq ON public.student_subscription_payments USING btree (reference)",
+          "table_name": "student_subscription_payments",
+          "expressions": null,
+          "unique_index": true,
+          "dependent_fks": [],
+          "primary_index": false,
+          "operator_classes": [
+            "text_ops"
+          ],
+          "ordering_options": [
+            0
+          ],
+          "owner_constraint": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "indexes:public.student_subscription_payments.student_subscription_payments_school_status_idx.",
+        "expected": {
+          "keys": [
+            "school_id",
+            "status",
+            "created_at"
+          ],
+          "name": "student_subscription_payments_school_status_idx",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "schema": "public",
+          "included": [],
+          "immediate": true,
+          "predicate": null,
+          "collations": [
+            null,
+            "default",
+            null
+          ],
+          "definition": "CREATE INDEX student_subscription_payments_school_status_idx ON public.student_subscription_payments USING btree (school_id, status, created_at DESC)",
+          "table_name": "student_subscription_payments",
+          "expressions": null,
+          "unique_index": false,
+          "dependent_fks": [],
+          "primary_index": false,
+          "operator_classes": [
+            "int4_ops",
+            "text_ops",
+            "timestamptz_ops"
+          ],
+          "ordering_options": [
+            0,
+            0,
+            3
+          ],
+          "owner_constraint": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "indexes:public.student_subscription_payments.student_subscription_payments_subscription_idempotency_uq.",
+        "expected": {
+          "keys": [
+            "subscription_id",
+            "idempotency_key"
+          ],
+          "name": "student_subscription_payments_subscription_idempotency_uq",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "schema": "public",
+          "included": [],
+          "immediate": true,
+          "predicate": null,
+          "collations": [
+            null,
+            "default"
+          ],
+          "definition": "CREATE UNIQUE INDEX student_subscription_payments_subscription_idempotency_uq ON public.student_subscription_payments USING btree (subscription_id, idempotency_key)",
+          "table_name": "student_subscription_payments",
+          "expressions": null,
+          "unique_index": true,
+          "dependent_fks": [],
+          "primary_index": false,
+          "operator_classes": [
+            "int4_ops",
+            "text_ops"
+          ],
+          "ordering_options": [
+            0,
+            0
+          ],
+          "owner_constraint": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "indexes:public.student_subscription_payments.student_subscription_payments_term_idx.",
+        "expected": {
+          "keys": [
+            "school_id",
+            "academic_session_id",
+            "academic_term_id"
+          ],
+          "name": "student_subscription_payments_term_idx",
+          "ready": true,
+          "valid": true,
+          "method": "btree",
+          "schema": "public",
+          "included": [],
+          "immediate": true,
+          "predicate": null,
+          "collations": [
+            null,
+            null,
+            null
+          ],
+          "definition": "CREATE INDEX student_subscription_payments_term_idx ON public.student_subscription_payments USING btree (school_id, academic_session_id, academic_term_id)",
+          "table_name": "student_subscription_payments",
+          "expressions": null,
+          "unique_index": false,
+          "dependent_fks": [],
+          "primary_index": false,
+          "operator_classes": [
+            "int4_ops",
+            "int4_ops",
+            "int4_ops"
+          ],
+          "ordering_options": [
+            0,
+            0,
+            0
+          ],
+          "owner_constraint": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      }
+    ],
+    "functions": [
+      {
+        "id": "functions:public..protect_student_subscription_allocations.",
+        "expected": {
+          "body": "\nBEGIN\n  RAISE EXCEPTION 'Student subscription allocations are immutable';\nEND;\n",
+          "name": "protect_student_subscription_allocations",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arguments": "",
+          "definition": "CREATE OR REPLACE FUNCTION public.protect_student_subscription_allocations()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n  RAISE EXCEPTION 'Student subscription allocations are immutable';\nEND;\n$function$\n",
+          "volatility": "v",
+          "return_type": "trigger",
+          "configuration": null,
+          "extension_owned": false,
+          "security_definer": false,
+          "identity_arguments": ""
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "functions:public..protect_student_subscription_receipt_snapshot.",
+        "expected": {
+          "body": "\nBEGIN\n  IF OLD.receipt_snapshot IS NOT NULL\n     AND NEW.receipt_snapshot IS DISTINCT FROM OLD.receipt_snapshot THEN\n    RAISE EXCEPTION 'Student subscription receipt snapshots are immutable';\n  END IF;\n  RETURN NEW;\nEND;\n",
+          "name": "protect_student_subscription_receipt_snapshot",
+          "schema": "public",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "arguments": "",
+          "definition": "CREATE OR REPLACE FUNCTION public.protect_student_subscription_receipt_snapshot()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n  IF OLD.receipt_snapshot IS NOT NULL\n     AND NEW.receipt_snapshot IS DISTINCT FROM OLD.receipt_snapshot THEN\n    RAISE EXCEPTION 'Student subscription receipt snapshots are immutable';\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n",
+          "volatility": "v",
+          "return_type": "trigger",
+          "configuration": null,
+          "extension_owned": false,
+          "security_definer": false,
+          "identity_arguments": ""
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      }
+    ],
+    "triggers": [
+      {
+        "id": "triggers:public.student_subscription_allocations.student_subscription_allocations_immutable.",
+        "expected": {
+          "name": "student_subscription_allocations_immutable",
+          "level": "ROW",
+          "events": [
+            "DELETE",
+            "UPDATE"
+          ],
+          "schema": "public",
+          "timing": "BEFORE",
+          "enabled": "O",
+          "condition": null,
+          "deferrable": false,
+          "definition": "CREATE TRIGGER student_subscription_allocations_immutable BEFORE DELETE OR UPDATE ON public.student_subscription_allocations FOR EACH ROW EXECUTE FUNCTION protect_student_subscription_allocations()",
+          "table_name": "student_subscription_allocations",
+          "function_name": "protect_student_subscription_allocations",
+          "function_schema": "public",
+          "function_arguments": "",
+          "initially_deferred": false
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "triggers:public.student_subscription_payments.student_subscription_payment_receipt_immutable.",
+        "expected": {
+          "name": "student_subscription_payment_receipt_immutable",
+          "level": "ROW",
+          "events": [
+            "UPDATE"
+          ],
+          "schema": "public",
+          "timing": "BEFORE",
+          "enabled": "O",
+          "condition": null,
+          "deferrable": false,
+          "definition": "CREATE TRIGGER student_subscription_payment_receipt_immutable BEFORE UPDATE ON public.student_subscription_payments FOR EACH ROW EXECUTE FUNCTION protect_student_subscription_receipt_snapshot()",
+          "table_name": "student_subscription_payments",
+          "function_name": "protect_student_subscription_receipt_snapshot",
+          "function_schema": "public",
+          "function_arguments": "",
+          "initially_deferred": false
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      }
+    ],
+    "sequences": [
+      {
+        "id": "sequences:public.student_subscription_allocations.student_subscription_allocations_id_seq.",
+        "expected": {
+          "name": "student_subscription_allocations_id_seq",
+          "type": "integer",
+          "cache": "1",
+          "cycle": false,
+          "schema": "public",
+          "maximum": "2147483647",
+          "minimum": "1",
+          "increment": "1",
+          "ownership": "a",
+          "table_name": "student_subscription_allocations",
+          "column_name": "id",
+          "start_value": "1",
+          "table_schema": "public",
+          "observed_last_value": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      },
+      {
+        "id": "sequences:public.student_subscription_payments.student_subscription_payments_id_seq.",
+        "expected": {
+          "name": "student_subscription_payments_id_seq",
+          "type": "integer",
+          "cache": "1",
+          "cycle": false,
+          "schema": "public",
+          "maximum": "2147483647",
+          "minimum": "1",
+          "increment": "1",
+          "ownership": "a",
+          "table_name": "student_subscription_payments",
+          "column_name": "id",
+          "start_value": "1",
+          "table_schema": "public",
+          "observed_last_value": null
+        },
+        "observedNameOnCachedReplica": false,
+        "authoritativePrimaryStatus": "UNVERIFIABLE"
+      }
+    ]
+  },
+  "paymentFields": [
+    "id",
+    "subscription_id",
+    "school_id",
+    "student_id",
+    "academic_session_id",
+    "academic_term_id",
+    "payer_user_id",
+    "provider",
+    "provider_mode",
+    "reference",
+    "idempotency_key",
+    "gross_amount_minor",
+    "provider_fee_minor",
+    "settlement_amount_minor",
+    "currency",
+    "status",
+    "settlement_status",
+    "reconciliation_status",
+    "checkout_url",
+    "provider_transaction_id",
+    "provider_paid_at",
+    "paid_at",
+    "failure_code",
+    "receipt_snapshot",
+    "created_at",
+    "updated_at"
+  ],
+  "allocationFields": [
+    "id",
+    "idempotency_key",
+    "entry_type",
+    "recipient_type",
+    "recipient_id",
+    "school_id",
+    "student_id",
+    "payer_user_id",
+    "academic_session_id",
+    "academic_term_id",
+    "subscription_id",
+    "payment_id",
+    "attribution_id",
+    "commission_rule_id",
+    "amount_minor",
+    "currency",
+    "created_at"
+  ],
+  "preservation": "Original school/student/payer/session/term/subscription/payment/Partner ownership and immutable receipt/allocation evidence must remain intact. No financial data backfill/reparenting authorized.",
+  "cachedReplica": {
+    "result": "NOT SATISFIED on cached replica ONLY",
+    "missingTables": [
+      "student_subscription_payments",
+      "student_subscription_allocations"
+    ],
+    "certifiesPrimary": false
+  },
+  "sequencePolicy": "Two Finance id sequences must have exact types, increment/min/max/cache/cycle and correct id-column ownership/defaults; compare authoritative current last_value/is_called/cache evidence with actual key maxima, not canonical start=1. No reset/reseed/nextval/setval.",
+  "next": "STOP until authoritative primary evidence certifies the complete 96-object contract. If absent on that target, stop at the boundary for separate approved supported handling; never replay or execute 0060 automatically."
+}

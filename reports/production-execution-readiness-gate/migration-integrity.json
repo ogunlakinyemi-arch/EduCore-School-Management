@@ -1,0 +1,811 @@
+{
+  "result": "PASS",
+  "total": 105,
+  "matched": 105,
+  "missing": [],
+  "mismatches": [],
+  "files": [
+    {
+      "filename": "0061_reconcile_sequences_a_1.sql",
+      "exists": true,
+      "expectedSha256": "139dbbf347107caa7761c2652cbd1bd3c33c86c4833047bcd0664c1fc95b3644",
+      "actualSha256": "139dbbf347107caa7761c2652cbd1bd3c33c86c4833047bcd0664c1fc95b3644",
+      "matches": true
+    },
+    {
+      "filename": "0062_reconcile_sequences_b_1.sql",
+      "exists": true,
+      "expectedSha256": "432f1f5aaea9a9d1b42af6d7e82808736e43ff43a0311ca3016d464f0fb7743c",
+      "actualSha256": "432f1f5aaea9a9d1b42af6d7e82808736e43ff43a0311ca3016d464f0fb7743c",
+      "matches": true
+    },
+    {
+      "filename": "0063_reconcile_sequences_c_1.sql",
+      "exists": true,
+      "expectedSha256": "cf4c0c0de415b65c10cb60143ffeb5ae51d4b6c1f647768cd14c75dd9212b440",
+      "actualSha256": "cf4c0c0de415b65c10cb60143ffeb5ae51d4b6c1f647768cd14c75dd9212b440",
+      "matches": true
+    },
+    {
+      "filename": "0064_reconcile_sequences_d_1.sql",
+      "exists": true,
+      "expectedSha256": "e508239c12a37fbb88b520d6b665404660655fd5b4ae11a1ab84194f0f466b01",
+      "actualSha256": "e508239c12a37fbb88b520d6b665404660655fd5b4ae11a1ab84194f0f466b01",
+      "matches": true
+    },
+    {
+      "filename": "0065_reconcile_sequences_e_1.sql",
+      "exists": true,
+      "expectedSha256": "c012082477382af76235f78a4029baac70b24662821d5a11e15f91161767328e",
+      "actualSha256": "c012082477382af76235f78a4029baac70b24662821d5a11e15f91161767328e",
+      "matches": true
+    },
+    {
+      "filename": "0066_reconcile_sequences_f_1.sql",
+      "exists": true,
+      "expectedSha256": "28bbf763cb1163425731fe2a7d7d8f1d6af7bb41a4813b9cf369b54a9cbe7349",
+      "actualSha256": "28bbf763cb1163425731fe2a7d7d8f1d6af7bb41a4813b9cf369b54a9cbe7349",
+      "matches": true
+    },
+    {
+      "filename": "0067_reconcile_sequences_g_1.sql",
+      "exists": true,
+      "expectedSha256": "a2271f414a4e12e93d5d0d4cbf9a8848aae8f57150839a1601e2fa063393941e",
+      "actualSha256": "a2271f414a4e12e93d5d0d4cbf9a8848aae8f57150839a1601e2fa063393941e",
+      "matches": true
+    },
+    {
+      "filename": "0068_reconcile_sequences_h_1.sql",
+      "exists": true,
+      "expectedSha256": "41d14c77f9ab96cdddbe6f27264dc16f3b7d47ecb3ba030a094c3004bea71279",
+      "actualSha256": "41d14c77f9ab96cdddbe6f27264dc16f3b7d47ecb3ba030a094c3004bea71279",
+      "matches": true
+    },
+    {
+      "filename": "0069_reconcile_table_shells_a_1.sql",
+      "exists": true,
+      "expectedSha256": "4923ae0629d962624bb5adbebfeaa09ad17c48ec9d275d4d702ccb8318db85f0",
+      "actualSha256": "4923ae0629d962624bb5adbebfeaa09ad17c48ec9d275d4d702ccb8318db85f0",
+      "matches": true
+    },
+    {
+      "filename": "0070_reconcile_table_shells_b_1.sql",
+      "exists": true,
+      "expectedSha256": "c1f7a06430e7091fae24fee37a8793822399adad1e14cb05f0d2b0b29b255e78",
+      "actualSha256": "c1f7a06430e7091fae24fee37a8793822399adad1e14cb05f0d2b0b29b255e78",
+      "matches": true
+    },
+    {
+      "filename": "0071_reconcile_table_shells_c_1.sql",
+      "exists": true,
+      "expectedSha256": "fef705ade1c2fee580d807834cb64366ed7b9e50f08c53e9409bf9f930f97b18",
+      "actualSha256": "fef705ade1c2fee580d807834cb64366ed7b9e50f08c53e9409bf9f930f97b18",
+      "matches": true
+    },
+    {
+      "filename": "0072_reconcile_table_shells_d_1.sql",
+      "exists": true,
+      "expectedSha256": "35d525bb67da365c3165039ef7c83980297a43f4b9b29ea527046802353b69c2",
+      "actualSha256": "35d525bb67da365c3165039ef7c83980297a43f4b9b29ea527046802353b69c2",
+      "matches": true
+    },
+    {
+      "filename": "0073_reconcile_table_shells_e_1.sql",
+      "exists": true,
+      "expectedSha256": "d6cee7fffc9c6637211cbb1b039905df42039359f6b7d4ce6e4cc6ee2ae86f2a",
+      "actualSha256": "d6cee7fffc9c6637211cbb1b039905df42039359f6b7d4ce6e4cc6ee2ae86f2a",
+      "matches": true
+    },
+    {
+      "filename": "0074_reconcile_table_shells_f_1.sql",
+      "exists": true,
+      "expectedSha256": "e7e9e8f96a1e0d739e94781c058ff1f5108107db2036527f9b2148dce405f2dc",
+      "actualSha256": "e7e9e8f96a1e0d739e94781c058ff1f5108107db2036527f9b2148dce405f2dc",
+      "matches": true
+    },
+    {
+      "filename": "0075_reconcile_table_shells_g_1.sql",
+      "exists": true,
+      "expectedSha256": "296e0c051a5f7b2ebf1c7e722570800ddbe308acb27e012ec88c0754dea50b50",
+      "actualSha256": "296e0c051a5f7b2ebf1c7e722570800ddbe308acb27e012ec88c0754dea50b50",
+      "matches": true
+    },
+    {
+      "filename": "0076_reconcile_table_shells_h_1.sql",
+      "exists": true,
+      "expectedSha256": "6a6d3f8411772c6c8bc25606abcb6a754abaab947484d3ea03deb4536488e3ef",
+      "actualSha256": "6a6d3f8411772c6c8bc25606abcb6a754abaab947484d3ea03deb4536488e3ef",
+      "matches": true
+    },
+    {
+      "filename": "0077_reconcile_table_shells_i_1.sql",
+      "exists": true,
+      "expectedSha256": "9a8ac0b946c6b8b3f097d29b6a96cde6b29f4d970b0fafdadbe10a98b593931b",
+      "actualSha256": "9a8ac0b946c6b8b3f097d29b6a96cde6b29f4d970b0fafdadbe10a98b593931b",
+      "matches": true
+    },
+    {
+      "filename": "0078_reconcile_columns_a_1.sql",
+      "exists": true,
+      "expectedSha256": "99b7ae3018248823d9e3ee70d0937a131df0badbe5dea4b1bcffcc9527808852",
+      "actualSha256": "99b7ae3018248823d9e3ee70d0937a131df0badbe5dea4b1bcffcc9527808852",
+      "matches": true
+    },
+    {
+      "filename": "0079_reconcile_columns_a_2.sql",
+      "exists": true,
+      "expectedSha256": "9d48515f92845e42e7846ed66cab41bf2ada49cb6c5d334d25c69c0af9453ff9",
+      "actualSha256": "9d48515f92845e42e7846ed66cab41bf2ada49cb6c5d334d25c69c0af9453ff9",
+      "matches": true
+    },
+    {
+      "filename": "0080_reconcile_columns_a_3.sql",
+      "exists": true,
+      "expectedSha256": "d3bf86220897045cb542227c18b486066247b019141244c74ce59b438a2ab087",
+      "actualSha256": "d3bf86220897045cb542227c18b486066247b019141244c74ce59b438a2ab087",
+      "matches": true
+    },
+    {
+      "filename": "0081_reconcile_columns_a_4.sql",
+      "exists": true,
+      "expectedSha256": "6f37a5bc240d68cc8a7c3b98988f2969e72fcad85b72d8ce45060ecf4d2a84c1",
+      "actualSha256": "6f37a5bc240d68cc8a7c3b98988f2969e72fcad85b72d8ce45060ecf4d2a84c1",
+      "matches": true
+    },
+    {
+      "filename": "0082_reconcile_columns_a_5.sql",
+      "exists": true,
+      "expectedSha256": "23f34c48d328183a14732aca53ae17d776a136d899a6d078d024964008835448",
+      "actualSha256": "23f34c48d328183a14732aca53ae17d776a136d899a6d078d024964008835448",
+      "matches": true
+    },
+    {
+      "filename": "0083_reconcile_columns_a_6.sql",
+      "exists": true,
+      "expectedSha256": "482f6f051a14bdd9cc9a7cae8512e5b62e442922632e51bf13a33937df66bb1b",
+      "actualSha256": "482f6f051a14bdd9cc9a7cae8512e5b62e442922632e51bf13a33937df66bb1b",
+      "matches": true
+    },
+    {
+      "filename": "0084_reconcile_columns_a_7.sql",
+      "exists": true,
+      "expectedSha256": "15f5662e4de3b5b2680c8e9c48ca029e7976b5b2de50514ab86d8d25aaa537db",
+      "actualSha256": "15f5662e4de3b5b2680c8e9c48ca029e7976b5b2de50514ab86d8d25aaa537db",
+      "matches": true
+    },
+    {
+      "filename": "0085_reconcile_columns_a_8.sql",
+      "exists": true,
+      "expectedSha256": "f2bee2303dda8a17a260612ea36b26f45d575dbdf22a327168bf86ad6557ecca",
+      "actualSha256": "f2bee2303dda8a17a260612ea36b26f45d575dbdf22a327168bf86ad6557ecca",
+      "matches": true
+    },
+    {
+      "filename": "0086_reconcile_columns_a_9.sql",
+      "exists": true,
+      "expectedSha256": "52dda91b433c3fbe82c8120415ec47b7daf30a6171a4052257bf0595648a48f7",
+      "actualSha256": "52dda91b433c3fbe82c8120415ec47b7daf30a6171a4052257bf0595648a48f7",
+      "matches": true
+    },
+    {
+      "filename": "0087_reconcile_columns_b_1.sql",
+      "exists": true,
+      "expectedSha256": "3f6276caaca6004ebcd8c948196b482c01b806d46684da8fcb4d548139253fc2",
+      "actualSha256": "3f6276caaca6004ebcd8c948196b482c01b806d46684da8fcb4d548139253fc2",
+      "matches": true
+    },
+    {
+      "filename": "0088_reconcile_columns_c_1.sql",
+      "exists": true,
+      "expectedSha256": "2f504a248a2bbde968b95da82153dad82fb3d2d4cc60d6892f7314d50bb8c46b",
+      "actualSha256": "2f504a248a2bbde968b95da82153dad82fb3d2d4cc60d6892f7314d50bb8c46b",
+      "matches": true
+    },
+    {
+      "filename": "0089_reconcile_columns_c_2.sql",
+      "exists": true,
+      "expectedSha256": "c09d5d2c4280762299799706ebb316fb425273afb978d6fda8bd8a8c360b2cec",
+      "actualSha256": "c09d5d2c4280762299799706ebb316fb425273afb978d6fda8bd8a8c360b2cec",
+      "matches": true
+    },
+    {
+      "filename": "0090_reconcile_columns_c_3.sql",
+      "exists": true,
+      "expectedSha256": "aad21db9c4d66aeb219d0866d784cbce45a601ca0db88d7c47c17909419d5660",
+      "actualSha256": "aad21db9c4d66aeb219d0866d784cbce45a601ca0db88d7c47c17909419d5660",
+      "matches": true
+    },
+    {
+      "filename": "0091_reconcile_columns_d_1.sql",
+      "exists": true,
+      "expectedSha256": "dea67688bc7796172b8379be10fa77f4fb9259cab2ed1434cb098f298b90a2fa",
+      "actualSha256": "dea67688bc7796172b8379be10fa77f4fb9259cab2ed1434cb098f298b90a2fa",
+      "matches": true
+    },
+    {
+      "filename": "0092_reconcile_columns_e_1.sql",
+      "exists": true,
+      "expectedSha256": "f9b7ff767667e3b413ba98bacbeb2a72af3d527f314bdf30711f9e90c8aa4fc8",
+      "actualSha256": "f9b7ff767667e3b413ba98bacbeb2a72af3d527f314bdf30711f9e90c8aa4fc8",
+      "matches": true
+    },
+    {
+      "filename": "0093_reconcile_columns_e_2.sql",
+      "exists": true,
+      "expectedSha256": "2a78e89674f8467a1084c083c9297ed73bd4268aea83a2ae74e438f73b1da360",
+      "actualSha256": "2a78e89674f8467a1084c083c9297ed73bd4268aea83a2ae74e438f73b1da360",
+      "matches": true
+    },
+    {
+      "filename": "0094_reconcile_columns_e_3.sql",
+      "exists": true,
+      "expectedSha256": "443be36c2b3b586a77a862e3f75f7b2b31ff3918f5b728194ef526911892d44a",
+      "actualSha256": "443be36c2b3b586a77a862e3f75f7b2b31ff3918f5b728194ef526911892d44a",
+      "matches": true
+    },
+    {
+      "filename": "0095_reconcile_columns_f_1.sql",
+      "exists": true,
+      "expectedSha256": "bbbcadb1bc353bdfd7bda4218785a456785847d95d9897116dc47c92beabc02d",
+      "actualSha256": "bbbcadb1bc353bdfd7bda4218785a456785847d95d9897116dc47c92beabc02d",
+      "matches": true
+    },
+    {
+      "filename": "0096_reconcile_columns_f_2.sql",
+      "exists": true,
+      "expectedSha256": "4726d7fe7b7e709ebeac506cc09cf5bddcbbcf8f3975a9dfb3ffed44640eae91",
+      "actualSha256": "4726d7fe7b7e709ebeac506cc09cf5bddcbbcf8f3975a9dfb3ffed44640eae91",
+      "matches": true
+    },
+    {
+      "filename": "0097_reconcile_columns_f_3.sql",
+      "exists": true,
+      "expectedSha256": "fc77e687511595eeee66b961bb41052c3097e0a5b8fbb70d2e939eb5a3850a84",
+      "actualSha256": "fc77e687511595eeee66b961bb41052c3097e0a5b8fbb70d2e939eb5a3850a84",
+      "matches": true
+    },
+    {
+      "filename": "0098_reconcile_columns_f_4.sql",
+      "exists": true,
+      "expectedSha256": "95dfa02c66f0b989ffbecce657a6e6d624725ca9336836e8087f1f9f859c9f9d",
+      "actualSha256": "95dfa02c66f0b989ffbecce657a6e6d624725ca9336836e8087f1f9f859c9f9d",
+      "matches": true
+    },
+    {
+      "filename": "0099_reconcile_columns_f_5.sql",
+      "exists": true,
+      "expectedSha256": "d833a02ea0fb895066047c128ddec93df8d47a43aac7b18f398d3cead56c7181",
+      "actualSha256": "d833a02ea0fb895066047c128ddec93df8d47a43aac7b18f398d3cead56c7181",
+      "matches": true
+    },
+    {
+      "filename": "0100_reconcile_columns_g_1.sql",
+      "exists": true,
+      "expectedSha256": "cc85cf9585824285d4d411563fec4cf034dc9a935cbc3f0737fbe1ca753a9ee8",
+      "actualSha256": "cc85cf9585824285d4d411563fec4cf034dc9a935cbc3f0737fbe1ca753a9ee8",
+      "matches": true
+    },
+    {
+      "filename": "0101_reconcile_columns_g_2.sql",
+      "exists": true,
+      "expectedSha256": "d378169d4926bcf8ff2771329a9113103574e5e2cffad8fc87dfa1653d282783",
+      "actualSha256": "d378169d4926bcf8ff2771329a9113103574e5e2cffad8fc87dfa1653d282783",
+      "matches": true
+    },
+    {
+      "filename": "0102_reconcile_columns_g_3.sql",
+      "exists": true,
+      "expectedSha256": "3e0e9e385de5f7c7ad61024249099716235ae7f1c87450a296903b7e96abfc9c",
+      "actualSha256": "3e0e9e385de5f7c7ad61024249099716235ae7f1c87450a296903b7e96abfc9c",
+      "matches": true
+    },
+    {
+      "filename": "0103_reconcile_columns_g_4.sql",
+      "exists": true,
+      "expectedSha256": "0a5f120039c8a6c9587eb4210094bf3f765b110cbf50c6bba82ffa8d42c339b4",
+      "actualSha256": "0a5f120039c8a6c9587eb4210094bf3f765b110cbf50c6bba82ffa8d42c339b4",
+      "matches": true
+    },
+    {
+      "filename": "0104_reconcile_columns_g_5.sql",
+      "exists": true,
+      "expectedSha256": "b4bb165458605c9b45ef979317dd3d7582d2f34fdf29d9e2be7a6514e9a3cc9f",
+      "actualSha256": "b4bb165458605c9b45ef979317dd3d7582d2f34fdf29d9e2be7a6514e9a3cc9f",
+      "matches": true
+    },
+    {
+      "filename": "0105_reconcile_columns_h_1.sql",
+      "exists": true,
+      "expectedSha256": "0d91b5690a44c6ed277375ca54f31a6afefd383bfbe072adb21015f7e5676ec4",
+      "actualSha256": "0d91b5690a44c6ed277375ca54f31a6afefd383bfbe072adb21015f7e5676ec4",
+      "matches": true
+    },
+    {
+      "filename": "0106_reconcile_columns_h_2.sql",
+      "exists": true,
+      "expectedSha256": "a5dd799c7d2bef4d81f4098c913141acc3f25f41094e76d85dbdb2cf6cd9ad0a",
+      "actualSha256": "a5dd799c7d2bef4d81f4098c913141acc3f25f41094e76d85dbdb2cf6cd9ad0a",
+      "matches": true
+    },
+    {
+      "filename": "0107_reconcile_columns_i_1.sql",
+      "exists": true,
+      "expectedSha256": "43bf2fa8fb8fb57ae520bfbdb603755ee1899cbc244e0d4817eaddac6d9b8928",
+      "actualSha256": "43bf2fa8fb8fb57ae520bfbdb603755ee1899cbc244e0d4817eaddac6d9b8928",
+      "matches": true
+    },
+    {
+      "filename": "0108_reconcile_sequence_ownership_a_1.sql",
+      "exists": true,
+      "expectedSha256": "48311cbc2df0936c97a9f086eb10c18a26351f9d29b76a824248382a398bcb19",
+      "actualSha256": "48311cbc2df0936c97a9f086eb10c18a26351f9d29b76a824248382a398bcb19",
+      "matches": true
+    },
+    {
+      "filename": "0109_reconcile_sequence_ownership_b_1.sql",
+      "exists": true,
+      "expectedSha256": "3128c6812801e8a3eed18bb1ab0f7b591ac048463b1463b0bb9853ded8644141",
+      "actualSha256": "3128c6812801e8a3eed18bb1ab0f7b591ac048463b1463b0bb9853ded8644141",
+      "matches": true
+    },
+    {
+      "filename": "0110_reconcile_sequence_ownership_c_1.sql",
+      "exists": true,
+      "expectedSha256": "99a18916d0195138b9a9e9e653a29acd8b673b6d57a3c1f9b0c5951d8ce3c0ba",
+      "actualSha256": "99a18916d0195138b9a9e9e653a29acd8b673b6d57a3c1f9b0c5951d8ce3c0ba",
+      "matches": true
+    },
+    {
+      "filename": "0111_reconcile_sequence_ownership_d_1.sql",
+      "exists": true,
+      "expectedSha256": "2b553e1dbdadf8dfdfac0e4f9ae809009cf2ad9c016a5e78420e780fd882d044",
+      "actualSha256": "2b553e1dbdadf8dfdfac0e4f9ae809009cf2ad9c016a5e78420e780fd882d044",
+      "matches": true
+    },
+    {
+      "filename": "0112_reconcile_sequence_ownership_e_1.sql",
+      "exists": true,
+      "expectedSha256": "ec6725b3886a6b688df2a779bda8407f0f98a58e8a0436aa437dc402b71739c1",
+      "actualSha256": "ec6725b3886a6b688df2a779bda8407f0f98a58e8a0436aa437dc402b71739c1",
+      "matches": true
+    },
+    {
+      "filename": "0113_reconcile_sequence_ownership_f_1.sql",
+      "exists": true,
+      "expectedSha256": "fc11f561685afb4456d4a7561c341a5c6db4b960c2d16875a7ae332662a06a2a",
+      "actualSha256": "fc11f561685afb4456d4a7561c341a5c6db4b960c2d16875a7ae332662a06a2a",
+      "matches": true
+    },
+    {
+      "filename": "0114_reconcile_sequence_ownership_g_1.sql",
+      "exists": true,
+      "expectedSha256": "e6d938d8747ab0882c30b04fac05e0313322fdd4bc9005ebc6692471ef9646a7",
+      "actualSha256": "e6d938d8747ab0882c30b04fac05e0313322fdd4bc9005ebc6692471ef9646a7",
+      "matches": true
+    },
+    {
+      "filename": "0115_reconcile_sequence_ownership_h_1.sql",
+      "exists": true,
+      "expectedSha256": "fa4a5bcb52518db385fe9580f55109a5749b0f8eb4b543bba449d7b6d242d3c7",
+      "actualSha256": "fa4a5bcb52518db385fe9580f55109a5749b0f8eb4b543bba449d7b6d242d3c7",
+      "matches": true
+    },
+    {
+      "filename": "0116_reconcile_parent_keys_a_1.sql",
+      "exists": true,
+      "expectedSha256": "8f0172685f984df316ae18b2280baf78022d8cae437c10dbb2a9370b2816bbc3",
+      "actualSha256": "8f0172685f984df316ae18b2280baf78022d8cae437c10dbb2a9370b2816bbc3",
+      "matches": true
+    },
+    {
+      "filename": "0117_reconcile_parent_keys_a_2.sql",
+      "exists": true,
+      "expectedSha256": "418545a0d834a3122c9f6778433e98e5cf348007dfffc4b6e0c9d224da6f5ab9",
+      "actualSha256": "418545a0d834a3122c9f6778433e98e5cf348007dfffc4b6e0c9d224da6f5ab9",
+      "matches": true
+    },
+    {
+      "filename": "0118_reconcile_parent_keys_b_1.sql",
+      "exists": true,
+      "expectedSha256": "63f60e4ed0ba482cca98e71129e4cbf21a673c13caa63c34a57723d22ea84409",
+      "actualSha256": "63f60e4ed0ba482cca98e71129e4cbf21a673c13caa63c34a57723d22ea84409",
+      "matches": true
+    },
+    {
+      "filename": "0119_reconcile_parent_keys_c_1.sql",
+      "exists": true,
+      "expectedSha256": "f8943a146999c3695604284f8ba0a15836068a9b7bd12d5a36b5d14229e9dbe6",
+      "actualSha256": "f8943a146999c3695604284f8ba0a15836068a9b7bd12d5a36b5d14229e9dbe6",
+      "matches": true
+    },
+    {
+      "filename": "0120_reconcile_parent_keys_d_1.sql",
+      "exists": true,
+      "expectedSha256": "0f4d26046febcafcb1f5fce1eba082e8dc0b87b1e5a5d71d776e457394292e13",
+      "actualSha256": "0f4d26046febcafcb1f5fce1eba082e8dc0b87b1e5a5d71d776e457394292e13",
+      "matches": true
+    },
+    {
+      "filename": "0121_reconcile_parent_keys_e_1.sql",
+      "exists": true,
+      "expectedSha256": "4d023d40d2cab08ee210ae72a8e9c140b50179f44e82f9d8bdac92cdfc0da599",
+      "actualSha256": "4d023d40d2cab08ee210ae72a8e9c140b50179f44e82f9d8bdac92cdfc0da599",
+      "matches": true
+    },
+    {
+      "filename": "0122_reconcile_parent_keys_f_1.sql",
+      "exists": true,
+      "expectedSha256": "54aca37b9750b7f0235bda91f8be03761610c8803ed196d1e2d22bbadd9bd6c8",
+      "actualSha256": "54aca37b9750b7f0235bda91f8be03761610c8803ed196d1e2d22bbadd9bd6c8",
+      "matches": true
+    },
+    {
+      "filename": "0123_reconcile_parent_keys_g_1.sql",
+      "exists": true,
+      "expectedSha256": "4d8d85b4562e3972463e8c5ac8b4c9d42185cb34b89edc4c06aa3d1065f0125c",
+      "actualSha256": "4d8d85b4562e3972463e8c5ac8b4c9d42185cb34b89edc4c06aa3d1065f0125c",
+      "matches": true
+    },
+    {
+      "filename": "0124_reconcile_parent_keys_h_1.sql",
+      "exists": true,
+      "expectedSha256": "1c9cd727919be8c15cbbc7d3dfbb684c23eab7301759b0225401149cde10de67",
+      "actualSha256": "1c9cd727919be8c15cbbc7d3dfbb684c23eab7301759b0225401149cde10de67",
+      "matches": true
+    },
+    {
+      "filename": "0125_reconcile_parent_keys_i_1.sql",
+      "exists": true,
+      "expectedSha256": "fa3c6a1f156d54736e103000aa9594889783b3b890c95f06e02d150b28db9392",
+      "actualSha256": "fa3c6a1f156d54736e103000aa9594889783b3b890c95f06e02d150b28db9392",
+      "matches": true
+    },
+    {
+      "filename": "0126_reconcile_indexes_a_1.sql",
+      "exists": true,
+      "expectedSha256": "41049568cae61e712f0dce805681aa0722f8605374da498efb489516a9784b9a",
+      "actualSha256": "41049568cae61e712f0dce805681aa0722f8605374da498efb489516a9784b9a",
+      "matches": true
+    },
+    {
+      "filename": "0127_reconcile_indexes_a_2.sql",
+      "exists": true,
+      "expectedSha256": "ce9a33e6c0dfbb074aad776510a029fca015fe1aced1012b9b6572a9f6533ec0",
+      "actualSha256": "ce9a33e6c0dfbb074aad776510a029fca015fe1aced1012b9b6572a9f6533ec0",
+      "matches": true
+    },
+    {
+      "filename": "0128_reconcile_indexes_a_3.sql",
+      "exists": true,
+      "expectedSha256": "aeb0f5350d4e5e03a33009ad0722cfa53e9afaafbe6703af49a85c178120dee6",
+      "actualSha256": "aeb0f5350d4e5e03a33009ad0722cfa53e9afaafbe6703af49a85c178120dee6",
+      "matches": true
+    },
+    {
+      "filename": "0129_reconcile_indexes_b_1.sql",
+      "exists": true,
+      "expectedSha256": "f364aff90b9a584d42d2836e66d8e7d7d8e0ba91c4c29c457c39a58deba22ad8",
+      "actualSha256": "f364aff90b9a584d42d2836e66d8e7d7d8e0ba91c4c29c457c39a58deba22ad8",
+      "matches": true
+    },
+    {
+      "filename": "0130_reconcile_indexes_c_1.sql",
+      "exists": true,
+      "expectedSha256": "44a29e5ac874359a7c46b65fcf0b23faa69eb50804aa5b2e98079220949b7211",
+      "actualSha256": "44a29e5ac874359a7c46b65fcf0b23faa69eb50804aa5b2e98079220949b7211",
+      "matches": true
+    },
+    {
+      "filename": "0131_reconcile_indexes_d_1.sql",
+      "exists": true,
+      "expectedSha256": "fdbfd0f5e0eb1b60cf1e10168019e1453693d7f3cda412a062d2532a41ef81eb",
+      "actualSha256": "fdbfd0f5e0eb1b60cf1e10168019e1453693d7f3cda412a062d2532a41ef81eb",
+      "matches": true
+    },
+    {
+      "filename": "0132_reconcile_indexes_e_1.sql",
+      "exists": true,
+      "expectedSha256": "60470b22458075a0401706d35258c0a8235c4a95ed30aacc0400fd70917e308f",
+      "actualSha256": "60470b22458075a0401706d35258c0a8235c4a95ed30aacc0400fd70917e308f",
+      "matches": true
+    },
+    {
+      "filename": "0133_reconcile_indexes_f_1.sql",
+      "exists": true,
+      "expectedSha256": "dee33accb91603b396b0f92bb438ccc6924551ea8653c7a87f271d1a79de05f7",
+      "actualSha256": "dee33accb91603b396b0f92bb438ccc6924551ea8653c7a87f271d1a79de05f7",
+      "matches": true
+    },
+    {
+      "filename": "0134_reconcile_indexes_f_2.sql",
+      "exists": true,
+      "expectedSha256": "c40f7b1f6e1e87e45dd24d8295d1972ae82f8b8145f391f1f0ecde05fb90702f",
+      "actualSha256": "c40f7b1f6e1e87e45dd24d8295d1972ae82f8b8145f391f1f0ecde05fb90702f",
+      "matches": true
+    },
+    {
+      "filename": "0135_reconcile_indexes_g_1.sql",
+      "exists": true,
+      "expectedSha256": "021d73e5fa6ad8f72df6bb90ec759e768b40955407494810082e57304ef85183",
+      "actualSha256": "021d73e5fa6ad8f72df6bb90ec759e768b40955407494810082e57304ef85183",
+      "matches": true
+    },
+    {
+      "filename": "0136_reconcile_indexes_g_2.sql",
+      "exists": true,
+      "expectedSha256": "2e17beed247aa48fff408c9b388321bc29b7e7ce3ed63eabe8c624435eafdbf7",
+      "actualSha256": "2e17beed247aa48fff408c9b388321bc29b7e7ce3ed63eabe8c624435eafdbf7",
+      "matches": true
+    },
+    {
+      "filename": "0137_reconcile_indexes_h_1.sql",
+      "exists": true,
+      "expectedSha256": "9f7e3df1146ad2c3176e89d790024eaf7a8105339aa848a4f3258a4c2837e4ef",
+      "actualSha256": "9f7e3df1146ad2c3176e89d790024eaf7a8105339aa848a4f3258a4c2837e4ef",
+      "matches": true
+    },
+    {
+      "filename": "0138_reconcile_indexes_i_1.sql",
+      "exists": true,
+      "expectedSha256": "07829255680bbb47b2cfadec2b02b9cfcdc602c8897f85557ccf091f34b8d0aa",
+      "actualSha256": "07829255680bbb47b2cfadec2b02b9cfcdc602c8897f85557ccf091f34b8d0aa",
+      "matches": true
+    },
+    {
+      "filename": "0139_reconcile_checks_foreign_keys_a_1.sql",
+      "exists": true,
+      "expectedSha256": "d9440b1e5d0505ec260b6cf2a072e58787f8c33c8ff3cb0d16ec3d7a24c66dc4",
+      "actualSha256": "d9440b1e5d0505ec260b6cf2a072e58787f8c33c8ff3cb0d16ec3d7a24c66dc4",
+      "matches": true
+    },
+    {
+      "filename": "0140_reconcile_checks_foreign_keys_a_2.sql",
+      "exists": true,
+      "expectedSha256": "7bc8b8bbad8f408aeadcd31fa11bc9e427e5860f05d542e4de71d6862f597bed",
+      "actualSha256": "7bc8b8bbad8f408aeadcd31fa11bc9e427e5860f05d542e4de71d6862f597bed",
+      "matches": true
+    },
+    {
+      "filename": "0141_reconcile_checks_foreign_keys_a_3.sql",
+      "exists": true,
+      "expectedSha256": "744623c85e0b04eb3f749830e70fd2dfc288e331afd1b1f902300869951e7081",
+      "actualSha256": "744623c85e0b04eb3f749830e70fd2dfc288e331afd1b1f902300869951e7081",
+      "matches": true
+    },
+    {
+      "filename": "0142_reconcile_checks_foreign_keys_a_4.sql",
+      "exists": true,
+      "expectedSha256": "41c6170226e2bbda78f584b2209dfb791e306227377ccd84c5d424f5afe341ae",
+      "actualSha256": "41c6170226e2bbda78f584b2209dfb791e306227377ccd84c5d424f5afe341ae",
+      "matches": true
+    },
+    {
+      "filename": "0143_reconcile_checks_foreign_keys_b_1.sql",
+      "exists": true,
+      "expectedSha256": "4b527e200864c16b968c9927e0c63c537484fee7f65f0923e467d168c2e5bffb",
+      "actualSha256": "4b527e200864c16b968c9927e0c63c537484fee7f65f0923e467d168c2e5bffb",
+      "matches": true
+    },
+    {
+      "filename": "0144_reconcile_checks_foreign_keys_c_1.sql",
+      "exists": true,
+      "expectedSha256": "2fa95b38c22cfd206196e31961c87f09579a92ec7e78507fa6c6805097f447e4",
+      "actualSha256": "2fa95b38c22cfd206196e31961c87f09579a92ec7e78507fa6c6805097f447e4",
+      "matches": true
+    },
+    {
+      "filename": "0145_reconcile_checks_foreign_keys_c_2.sql",
+      "exists": true,
+      "expectedSha256": "52eda9a6df9934044c489f61496850f5dc3f68d1a91bf1783193f7c01298d7e4",
+      "actualSha256": "52eda9a6df9934044c489f61496850f5dc3f68d1a91bf1783193f7c01298d7e4",
+      "matches": true
+    },
+    {
+      "filename": "0146_reconcile_checks_foreign_keys_d_1.sql",
+      "exists": true,
+      "expectedSha256": "8d2ed42acd7f9a6ccdf5dd90d40a292d2ec25d604551ac15a02b0b4215fb22db",
+      "actualSha256": "8d2ed42acd7f9a6ccdf5dd90d40a292d2ec25d604551ac15a02b0b4215fb22db",
+      "matches": true
+    },
+    {
+      "filename": "0147_reconcile_checks_foreign_keys_e_1.sql",
+      "exists": true,
+      "expectedSha256": "db72e58bc01c4cc1b8f928792ab58bf6c93913d846e9cec80a4f34b18e84e2a9",
+      "actualSha256": "db72e58bc01c4cc1b8f928792ab58bf6c93913d846e9cec80a4f34b18e84e2a9",
+      "matches": true
+    },
+    {
+      "filename": "0148_reconcile_checks_foreign_keys_e_2.sql",
+      "exists": true,
+      "expectedSha256": "a66efe0156464151677538d86f677e0f2c5442cd3e62032bb5b338dfd6c0f7e3",
+      "actualSha256": "a66efe0156464151677538d86f677e0f2c5442cd3e62032bb5b338dfd6c0f7e3",
+      "matches": true
+    },
+    {
+      "filename": "0149_reconcile_checks_foreign_keys_f_1.sql",
+      "exists": true,
+      "expectedSha256": "7bc77244a23f9b391833f558386094c28e6425d5d166ed6e4708a3da99a26af1",
+      "actualSha256": "7bc77244a23f9b391833f558386094c28e6425d5d166ed6e4708a3da99a26af1",
+      "matches": true
+    },
+    {
+      "filename": "0150_reconcile_checks_foreign_keys_f_2.sql",
+      "exists": true,
+      "expectedSha256": "8a660d8fe82f935e39f0b4591ee46610b47d116a711fa6f0040639388e7f53c1",
+      "actualSha256": "8a660d8fe82f935e39f0b4591ee46610b47d116a711fa6f0040639388e7f53c1",
+      "matches": true
+    },
+    {
+      "filename": "0151_reconcile_checks_foreign_keys_g_1.sql",
+      "exists": true,
+      "expectedSha256": "9e9ee08cbc0b12ec55b45f0ee3e62471e44562855669773556029707bbfe6966",
+      "actualSha256": "9e9ee08cbc0b12ec55b45f0ee3e62471e44562855669773556029707bbfe6966",
+      "matches": true
+    },
+    {
+      "filename": "0152_reconcile_checks_foreign_keys_g_2.sql",
+      "exists": true,
+      "expectedSha256": "77d423c0f99fbf2253e16bab14cf02dc374fe08b8e126e49b78dbf2ff1b70206",
+      "actualSha256": "77d423c0f99fbf2253e16bab14cf02dc374fe08b8e126e49b78dbf2ff1b70206",
+      "matches": true
+    },
+    {
+      "filename": "0153_reconcile_checks_foreign_keys_g_3.sql",
+      "exists": true,
+      "expectedSha256": "caa2a2f7d6add4c4fb11ac9ad87787015b0b4e1eb99237741e6f95582c1dd6a8",
+      "actualSha256": "caa2a2f7d6add4c4fb11ac9ad87787015b0b4e1eb99237741e6f95582c1dd6a8",
+      "matches": true
+    },
+    {
+      "filename": "0154_reconcile_checks_foreign_keys_h_1.sql",
+      "exists": true,
+      "expectedSha256": "32fd21f246095c3d8dccf89d119b695e71765620338d387ac5279e684debfb26",
+      "actualSha256": "32fd21f246095c3d8dccf89d119b695e71765620338d387ac5279e684debfb26",
+      "matches": true
+    },
+    {
+      "filename": "0155_reconcile_checks_foreign_keys_i_1.sql",
+      "exists": true,
+      "expectedSha256": "402c6e1d42c70348915638b387b4647eb2fe9911ad241b298e180bea9a3df088",
+      "actualSha256": "402c6e1d42c70348915638b387b4647eb2fe9911ad241b298e180bea9a3df088",
+      "matches": true
+    },
+    {
+      "filename": "0156_reconcile_functions_a_1.sql",
+      "exists": true,
+      "expectedSha256": "ab88cb79d546557207604e462281e524b6b8157bd025589b8d251571db2ddaac",
+      "actualSha256": "ab88cb79d546557207604e462281e524b6b8157bd025589b8d251571db2ddaac",
+      "matches": true
+    },
+    {
+      "filename": "0157_reconcile_functions_e_1.sql",
+      "exists": true,
+      "expectedSha256": "4f321017e7628079fb4f51b5f6d9d9c6270fc05fe6d02b67d33310b84f30ee7d",
+      "actualSha256": "4f321017e7628079fb4f51b5f6d9d9c6270fc05fe6d02b67d33310b84f30ee7d",
+      "matches": true
+    },
+    {
+      "filename": "0158_reconcile_functions_f_1.sql",
+      "exists": true,
+      "expectedSha256": "b12252835603ce3d4bf842d3f360c2600369821afe199720019c0bf0b8c24d0b",
+      "actualSha256": "b12252835603ce3d4bf842d3f360c2600369821afe199720019c0bf0b8c24d0b",
+      "matches": true
+    },
+    {
+      "filename": "0159_reconcile_functions_g_1.sql",
+      "exists": true,
+      "expectedSha256": "53eb25dcbe597e253ac69cc6643c3f5986898e386a764fb5daf062bc76acb621",
+      "actualSha256": "53eb25dcbe597e253ac69cc6643c3f5986898e386a764fb5daf062bc76acb621",
+      "matches": true
+    },
+    {
+      "filename": "0160_reconcile_functions_i_1.sql",
+      "exists": true,
+      "expectedSha256": "04168038c0d4aa10821f5faabc2bb8c07f346da6ba4bb7f77f1767ef6132ba81",
+      "actualSha256": "04168038c0d4aa10821f5faabc2bb8c07f346da6ba4bb7f77f1767ef6132ba81",
+      "matches": true
+    },
+    {
+      "filename": "0161_reconcile_triggers_a_1.sql",
+      "exists": true,
+      "expectedSha256": "ba62c425474d961d05a6ce72d3a7e0f3a1d2665246a0a7239bffc67dbe3dfcb4",
+      "actualSha256": "ba62c425474d961d05a6ce72d3a7e0f3a1d2665246a0a7239bffc67dbe3dfcb4",
+      "matches": true
+    },
+    {
+      "filename": "0162_reconcile_triggers_e_1.sql",
+      "exists": true,
+      "expectedSha256": "5ba04bf91b52b6c85c0cccb6ce1a39761760416d4ee82d6e0b202f5710191f28",
+      "actualSha256": "5ba04bf91b52b6c85c0cccb6ce1a39761760416d4ee82d6e0b202f5710191f28",
+      "matches": true
+    },
+    {
+      "filename": "0163_reconcile_triggers_f_1.sql",
+      "exists": true,
+      "expectedSha256": "03054e90d656a4965e7f0d2c3ba06f1188bc75a735f81fd3c9c5e1ebe617f77e",
+      "actualSha256": "03054e90d656a4965e7f0d2c3ba06f1188bc75a735f81fd3c9c5e1ebe617f77e",
+      "matches": true
+    },
+    {
+      "filename": "0164_reconcile_triggers_g_1.sql",
+      "exists": true,
+      "expectedSha256": "08f4f104f66d7b64b2fd14c5cd19785f985b35df8e2537ad2d98612ef3d046e8",
+      "actualSha256": "08f4f104f66d7b64b2fd14c5cd19785f985b35df8e2537ad2d98612ef3d046e8",
+      "matches": true
+    },
+    {
+      "filename": "0165_reconcile_triggers_i_1.sql",
+      "exists": true,
+      "expectedSha256": "58d248e4778aa9b6860f90e946ccc5c5ece102703833019c697e4e6ade41c8d7",
+      "actualSha256": "58d248e4778aa9b6860f90e946ccc5c5ece102703833019c697e4e6ade41c8d7",
+      "matches": true
+    }
+  ],
+  "finance0060": {
+    "filename": "0060_reconcile_student_subscription_finance.sql",
+    "expectedSha256": "a827ad709347eaa22b9bf70a4c2a4012f2c2bd86c5ba3d624623710f98d41f57",
+    "actualSha256": "a827ad709347eaa22b9bf70a4c2a4012f2c2bd86c5ba3d624623710f98d41f57",
+    "matches": true
+  },
+  "cash0149": {
+    "filename": "0149_reconcile_checks_foreign_keys_f_1.sql",
+    "expectedSha256": "7bc77244a23f9b391833f558386094c28e6425d5d166ed6e4708a3da99a26af1",
+    "actualSha256": "7bc77244a23f9b391833f558386094c28e6425d5d166ed6e4708a3da99a26af1",
+    "matches": true,
+    "guardedRetirementUnchanged": true
+  },
+  "fiveDefaults": [
+    {
+      "filename": "0086_reconcile_columns_a_9.sql",
+      "table": "schools",
+      "column": "communication_defaults",
+      "expectedDefinition": "jsonb NOT NULL DEFAULT '{}'::jsonb",
+      "expectedMetadataPresent": true,
+      "inlineDdlPresent": true,
+      "ddl": "ALTER TABLE public.\"schools\" ADD COLUMN \"communication_defaults\" jsonb NOT NULL DEFAULT '{}'::jsonb",
+      "validation": "Presence and unchanged hash only; initialization/guard tests reused, not repeated"
+    },
+    {
+      "filename": "0087_reconcile_columns_b_1.sql",
+      "table": "partner_profile_users",
+      "column": "nfc_activation_enabled",
+      "expectedDefinition": "boolean NOT NULL DEFAULT false",
+      "expectedMetadataPresent": true,
+      "inlineDdlPresent": true,
+      "ddl": "ALTER TABLE public.\"partner_profile_users\" ADD COLUMN \"nfc_activation_enabled\" boolean NOT NULL DEFAULT false",
+      "validation": "Presence and unchanged hash only; initialization/guard tests reused, not repeated"
+    },
+    {
+      "filename": "0087_reconcile_columns_b_1.sql",
+      "table": "partner_profiles",
+      "column": "nfc_activation_enabled",
+      "expectedDefinition": "boolean NOT NULL DEFAULT false",
+      "expectedMetadataPresent": true,
+      "inlineDdlPresent": true,
+      "ddl": "ALTER TABLE public.\"partner_profiles\" ADD COLUMN \"nfc_activation_enabled\" boolean NOT NULL DEFAULT false",
+      "validation": "Presence and unchanged hash only; initialization/guard tests reused, not repeated"
+    },
+    {
+      "filename": "0105_reconcile_columns_h_1.sql",
+      "table": "communication_deliveries",
+      "column": "push_attempts",
+      "expectedDefinition": "jsonb NOT NULL DEFAULT '{}'::jsonb",
+      "expectedMetadataPresent": true,
+      "inlineDdlPresent": true,
+      "ddl": "ALTER TABLE public.\"communication_deliveries\" ADD COLUMN \"push_attempts\" jsonb NOT NULL DEFAULT '{}'::jsonb",
+      "validation": "Presence and unchanged hash only; initialization/guard tests reused, not repeated"
+    },
+    {
+      "filename": "0105_reconcile_columns_h_1.sql",
+      "table": "communication_deliveries",
+      "column": "receipt_ids",
+      "expectedDefinition": "jsonb NOT NULL DEFAULT '[]'::jsonb",
+      "expectedMetadataPresent": true,
+      "inlineDdlPresent": true,
+      "ddl": "ALTER TABLE public.\"communication_deliveries\" ADD COLUMN \"receipt_ids\" jsonb NOT NULL DEFAULT '[]'::jsonb",
+      "validation": "Presence and unchanged hash only; initialization/guard tests reused, not repeated"
+    }
+  ],
+  "all166MatchPriorFocusedHashes": true,
+  "journalHashUnchanged": true
+}

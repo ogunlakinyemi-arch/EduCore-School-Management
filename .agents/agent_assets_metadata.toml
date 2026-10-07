@@ -532,3 +532,31 @@ mtime_ms = 1791359830720
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/f683b76b-719f-4a23-a55a-3d710cf59923/a52beb97-b4e5-4778-a25e-e8a34925a5c6"
 storage_version_token = "1791359869311093"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "olVBo-EnmiB4U_OQp7ozR"
+uri = "file://reports/production-execution-readiness-gate/final-execution-gate.md"
+type = "text"
+title = "Final Production execution gate"
+description = "Gate results, confirmed blockers, remaining evidence requirements and read-only safety record."
+logical_id = "9245ffb3-a3db-41e9-b8b2-1fc2324bf6ee"
+content_hash = "sha256:24ad4c3bd6d3ab6cfc88f1aecff9efd91f1f8788c81417588fc31d2b4275ee54"
+size = 8993
+mtime_ms = 1791360349817
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/9245ffb3-a3db-41e9-b8b2-1fc2324bf6ee/7332e598-31d2-4fd5-92e1-b60416dfea42"
+storage_version_token = "1791360434436145"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "Uwx0yJrAIv1FB55aD0WKH"
+uri = "file://reports/production-execution-readiness-gate/batch-1-checklist.md"
+type = "text"
+title = "Exact Batch 1 checklist"
+description = "All 55 migrations with pinned hashes, prerequisites, affected objects, impacts, validation requirements and STOP conditions. Nothing executed."
+logical_id = "445899bf-030e-4e39-8bce-df96c88d39e8"
+content_hash = "sha256:78d8a98ef9ea9c17302a46888d2ff83ae471ad1d005e7a62d1d1f265c01cd960"
+size = 927233
+mtime_ms = 1791360349825
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/445899bf-030e-4e39-8bce-df96c88d39e8/a3ab6ba5-a662-46ca-a23a-b91231e900e3"
+storage_version_token = "1791360434969570"
+content_type = "text/markdown"
