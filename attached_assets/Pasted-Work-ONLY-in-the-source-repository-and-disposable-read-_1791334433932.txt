@@ -1,0 +1,200 @@
+Work ONLY in the source repository and disposable/read-only analysis.
+
+This is Stage 2F-1 of the Yemait EduCore Production schema reconciliation.
+
+IMPORTANT:
+
+- Do NOT connect to or modify Production.
+- Do NOT connect to or modify Development.
+- Do NOT run "drizzle-kit push".
+- Do NOT run migrations against any persistent database.
+- Do NOT create migration 0060 yet.
+- Do NOT create, alter, drop, rename, backfill, or truncate any database object.
+- Do NOT modify application behavior.
+- Do NOT modify existing migration files.
+- Do NOT modify the Drizzle migration journal.
+- Do NOT expose DATABASE_URL, secrets, tokens, or PII.
+- This is a SOURCE-ONLY forensic/reconciliation task.
+
+Known evidence:
+
+Migration:
+"lib/db/drizzle/0036_student_subscription_allocations.sql"
+
+Current schema:
+"lib/db/src/schema/student-subscription-billing.ts"
+
+Historical migration 0036 creates:
+
+1. "student_subscription_payments"
+2. "student_subscription_allocations"
+
+Migration 0036 also creates supporting unique keys:
+
+- "subscriptions(id, school_id, student_id)"
+- "school_partner_attributions(id, partner_profile_id)"
+
+Historical allocation relationships include:
+
+- "(student_id, school_id) -> students(id, school_id)"
+- "(academic_session_id, school_id) -> academic_sessions(id, school_id)"
+- "(academic_term_id, school_id) -> academic_terms(id, school_id)"
+- "(attribution_id, recipient_id) -> school_partner_attributions(id, partner_profile_id)"
+- payment ownership through the six-column payment composite key
+
+The current source schema has evolved and currently contains standalone references in some of these areas.
+
+Production-routed read-only audit previously established:
+
+- "student_subscription_allocations" is absent.
+- "school_partner_attributions" exists.
+- "school_partner_attributions(id, partner_profile_id)" does NOT currently exist in the audited Production-routed database.
+- "students(id, school_id)" exists.
+- "academic_sessions(id, school_id)" exists.
+- "academic_terms(id, school_id)" exists.
+- Production contains only test data and no real customer schools.
+
+TASK:
+
+A. Compare migration 0036 with the CURRENT source schema.
+
+Inspect:
+
+- "studentSubscriptionPayments"
+- "studentSubscriptionAllocations"
+- all referenced tables
+- all unique keys
+- all foreign keys
+- all CHECK constraints
+- all indexes
+- all functions
+- all triggers
+
+B. Produce an exact dependency graph for the intended current implementation.
+
+For "student_subscription_payments", identify:
+
+- every parent table
+- every required composite key
+- every FK
+- every unique key
+- every immutable/reconciliation rule
+
+For "student_subscription_allocations", identify:
+
+- every parent table
+- every required composite key
+- every FK
+- every unique key
+- every CHECK constraint
+- every immutable trigger
+- every financial/accounting invariant
+
+C. Identify every difference between:
+
+1. migration 0036,
+2. current Drizzle source,
+3. the intended current Finance architecture.
+
+Classify every difference as:
+
+- KEEP CURRENT
+- RESTORE HISTORICAL PROTECTION
+- REPLACE WITH FORWARD DESIGN
+- OBSOLETE
+- NEEDS BUSINESS DECISION
+
+Do not make assumptions where evidence is incomplete.
+
+D. Pay special attention to these three relationships:
+
+1. Student:
+   "student_subscription_allocations(student_id, school_id)"
+   → "students(id, school_id)"
+
+2. Attribution:
+   "student_subscription_allocations(attribution_id, recipient_id)"
+   → "school_partner_attributions(id, partner_profile_id)"
+
+3. Payment ownership:
+   "student_subscription_allocations( payment_id, subscription_id, school_id, student_id, academic_session_id, academic_term_id )"
+   → matching six-column key on "student_subscription_payments"
+
+Determine exactly which supporting UNIQUE constraints are required for PostgreSQL to legally create these FKs.
+
+E. Determine whether the current source schema can safely represent the historical Finance architecture WITHOUT replaying migration 0036.
+
+The desired result is a future-forward migration design, not historical migration replay.
+
+F. Check application usage.
+
+Search the source repository for:
+
+- studentSubscriptionPayments
+- studentSubscriptionAllocations
+- student_subscription_payments
+- student_subscription_allocations
+- allocation recipient logic
+- partner attribution allocation
+- Flutterwave subscription payment allocation
+- subscription payment reconciliation
+- subscription settlement
+- immutable allocation logic
+
+Report which application routes/services currently expect these tables.
+
+G. Produce a proposed future migration structure.
+
+Do NOT create the migration.
+
+Describe what a future migration would need to do, in dependency order, for example:
+
+1. supporting parent unique keys
+2. payment table
+3. payment indexes/constraints
+4. allocation table
+5. allocation foreign keys
+6. allocation indexes
+7. immutable function
+8. immutable trigger
+9. any required reconciliation safeguards
+
+But do not assume this exact order is correct; derive the actual dependency order from the source.
+
+H. Financial safety requirements
+
+The future design MUST preserve:
+
+- verified payment before financial allocation
+- immutable allocation records
+- idempotency
+- no duplicate subscription charge for the same student/session/term
+- school/platform/partner accounting separation
+- partner attribution integrity
+- provider-fee accounting
+- reversal support
+- reconciliation status
+- no fabrication of a payment merely because a school fee invoice exists
+
+Do not redesign the business model.
+
+FINAL OUTPUT:
+
+Return a concise Stage 2F-1 report containing:
+
+1. Current source status
+2. Historical 0036 status
+3. Exact differences
+4. Required parent keys
+5. Required FK dependency graph
+6. Application dependencies
+7. Financial safety assessment
+8. Proposed future migration order
+9. Risks
+10. Final recommendation
+
+The final recommendation must explicitly answer:
+
+"Can we safely create the missing Finance tables through a new forward migration after the source reconciliation is complete?"
+
+Do not perform any database or source-code changes during this task.
