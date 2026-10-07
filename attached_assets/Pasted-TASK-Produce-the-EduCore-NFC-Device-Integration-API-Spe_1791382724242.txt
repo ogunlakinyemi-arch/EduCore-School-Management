@@ -1,0 +1,358 @@
+TASK: Produce the EduCore NFC Device Integration API Specification
+
+Environment: Development only.
+
+Do NOT modify Production.
+
+Do NOT redesign, rebuild, or replace the existing NFC/device/card system. Do NOT create a new payment system, authentication system, or parallel NFC architecture.
+
+The purpose of this task is to inspect the existing Yemait EduCore codebase and produce a complete, accurate NFC Hardware Device Integration API Specification that I can give to an external hardware/firmware developer building the NFC attendance/security terminal.
+
+1. Inspect the existing implementation first
+
+Inspect the actual current Development codebase, including:
+
+- NFC device models/tables
+- NFC device registration
+- Device-to-school linking
+- NFC card models/tables
+- Card-to-student assignment
+- Student/school relationships
+- Device authentication
+- NFC scan/attendance endpoints
+- Security/authorization middleware
+- Existing API routes
+- OpenAPI documentation
+- Zod schemas/shared types
+- Request/response types
+- Audit logging
+- Duplicate-scan protection
+- Offline/sync-related functionality
+- Any existing API documentation or device integration code
+
+Do NOT assume an endpoint exists merely because it would be useful.
+
+Use the actual implemented endpoints and schemas.
+
+2. Identify the exact hardware integration API
+
+Determine whether the current system already has an endpoint suitable for an external NFC terminal.
+
+If one exists, document it exactly.
+
+If no suitable endpoint exists, report that clearly instead of silently creating one.
+
+For the API actually intended for the hardware, document:
+
+- HTTP method
+- Full Development URL/path
+- Authentication mechanism
+- Required headers
+- Required request fields
+- Field types
+- Required/optional fields
+- Example request
+- Successful response
+- Denied response
+- Invalid-device response
+- Invalid-card response
+- Cross-school rejection
+- Duplicate-scan response
+- Authentication failure
+- Server/error response
+- HTTP status codes
+- Timeout expectations
+- Idempotency behavior
+- Timestamp requirements
+
+3. Device authentication
+
+Determine exactly how an external NFC device is authenticated.
+
+The preferred architecture is:
+
+NFC Device → authenticated API request → EduCore authorization → decision
+
+The device must NOT receive or store:
+
+- Clerk secret keys
+- Database credentials
+- Replit account credentials
+- Production API secrets
+- Platform Owner credentials
+- School Admin credentials
+- Student/parent passwords
+
+If the current implementation already has a device credential/token mechanism, document it exactly.
+
+If it does not, clearly state:
+
+"A dedicated device authentication credential is not currently implemented."
+
+Do NOT invent a credential system or modify the application during this task.
+
+4. Device authorization model
+
+Document how EduCore determines whether a device is allowed to process a card.
+
+The intended relationship is:
+
+NFC Device → School → NFC Card → Student
+
+The device should be linked to a school by an authorized Platform Owner.
+
+A card assigned to a student belongs to that student's school.
+
+A scan should therefore be authorized using the existing backend relationships.
+
+The hardware should NOT independently determine school/student authorization.
+
+5. Scan flow
+
+Document the exact expected flow.
+
+The intended conceptual flow is:
+
+1. NFC card is scanned
+
+→ device reads NFC UID
+
+2. Device sends authenticated request
+
+→ device identity + card UID + required scan information
+
+3. EduCore authenticates the device
+
+→ confirms the device is valid/active
+
+4. EduCore verifies the device's school
+
+→ determines the school associated with the device
+
+5. EduCore verifies the NFC card
+
+→ confirms the card is active and belongs to the same school
+
+6. EduCore resolves the student/person
+
+→ confirms the card is assigned to the appropriate student/person
+
+7. EduCore returns an authorization/result response
+
+→ ALLOW or DENY
+
+8. Device displays the result
+
+ALLOW:
+
+- Green LED
+- Success beep
+
+DENY:
+
+- Red LED
+- Error/denial beep
+
+Do not implement this flow if the current application differs. Instead document the actual implemented behavior and clearly identify any missing piece.
+
+6. Multiple devices
+
+Confirm how the existing implementation handles multiple NFC devices belonging to the same school.
+
+Expected behavior:
+
+School A
+
+- Device A1
+- Device A2
+
+Student card assigned to School A
+
+The card should be usable on both active devices because the card is school-bound, not individually device-bound.
+
+The hardware developer should therefore NOT need to choose a specific device when assigning a student card.
+
+Document whether the current backend already behaves this way.
+
+7. Offline operation
+
+Inspect whether the current EduCore API supports offline attendance/scanning synchronization.
+
+Document:
+
+- Whether the terminal can store scans offline
+- What data should be stored locally
+- Maximum recommended offline queue
+- How synchronization should occur
+- Duplicate protection
+- Retry behavior
+- Timestamp handling
+- What happens if the card cannot be verified while offline
+- Whether an offline scan may be accepted or must remain pending
+
+Do not invent unsupported behavior.
+
+If offline synchronization is not currently implemented in the API, explicitly state that.
+
+8. API examples
+
+Produce realistic Development examples using placeholder credentials only.
+
+Never expose a real secret.
+
+Example format:
+
+POST <development-api-endpoint>
+
+Authorization: <placeholder-device-credential>
+
+Content-Type: application/json
+
+{
+  "device_id": "<development-device-id>",
+  "card_uid": "<nfc-card-uid>",
+  "timestamp": "<ISO-8601 timestamp>"
+}
+
+Then provide example responses based on the actual implementation.
+
+Do not fabricate fields. Every documented field must correspond to the real implementation.
+
+9. NFC UID requirements
+
+Document:
+
+- Expected UID format
+- Whether UID is hexadecimal
+- Upper/lowercase normalization
+- Maximum length
+- Whether UID should be sent as a string
+- Whether the backend already normalizes UID values
+- MIFARE/ISO14443-A compatibility expectations if represented in the application
+
+Do not assume the RC522's raw output format is already accepted by the API. State exactly what conversion the hardware firmware should perform.
+
+10. Security requirements
+
+The external hardware developer must receive only the minimum information required to integrate the terminal.
+
+The final specification must clearly state:
+
+Never provide:
+
+- Production database credentials
+- DATABASE_URL
+- Clerk secret keys
+- Replit account credentials
+- Platform Owner credentials
+- School Admin credentials
+- Parent/student passwords
+- Payment provider secrets
+- Production API secrets
+
+Use Development-only credentials and test data.
+
+11. Test environment
+
+Identify the correct current Development API base URL from the project configuration.
+
+Do not assume the URL from previous conversation context is still correct.
+
+Report:
+
+- Current Development application URL
+- Current API base URL
+- Whether the API is externally reachable
+- Whether HTTPS is enabled
+- Whether authentication is required
+- Any restrictions that could prevent an external hardware developer from testing
+
+Do NOT make Production changes.
+
+12. Hardware developer handover document
+
+At the end, generate a concise but complete document titled:
+
+Yemait EduCore — NFC Terminal Development API Integration Guide
+
+It must contain:
+
+1. Purpose
+2. Development environment
+3. API base URL
+4. Authentication
+5. Device registration/identity
+6. NFC scan endpoint
+7. Request format
+8. Response format
+9. Error codes
+10. Authorization logic
+11. Device-school relationship
+12. Card-school relationship
+13. Multiple-device behavior
+14. Offline behavior
+15. Retry/idempotency behavior
+16. NFC UID requirements
+17. LED/buzzer interpretation
+18. Security requirements
+19. Development test procedure
+20. Known limitations or missing capabilities
+
+13. Hardware test procedure
+
+Create a simple test sequence the hardware engineer can follow:
+
+Test 1 — Valid device + valid card
+Expected: ALLOW
+
+Test 2 — Valid device + inactive card
+Expected: DENY
+
+Test 3 — Device from School A + card from School B
+Expected: DENY
+
+Test 4 — Unknown/unregistered device
+Expected: DENY
+
+Test 5 — Duplicate scan
+Expected: behavior documented from actual implementation
+
+Test 6 — Network unavailable
+Expected: behavior documented from actual implementation
+
+Test 7 — Network restored
+Expected: synchronization behavior documented from actual implementation
+
+Do not claim these tests passed unless they were actually executed.
+
+14. Important output rules
+
+This is an inspection and documentation task.
+
+Do not:
+
+- Modify Production
+- Modify the database
+- Add migrations
+- Change payment logic
+- Change school fees
+- Change Partner permissions
+- Change Platform Owner permissions
+- Change card assignment
+- Change UI
+- Rebuild the NFC system
+- Create a second NFC architecture
+- Invent API endpoints
+- Invent authentication mechanisms
+
+If a required capability is missing, report it clearly under:
+
+"Integration Gaps — Requires Separate Development Work"
+
+If everything required already exists, state that clearly.
+
+At the end, provide a short section:
+
+"What I can safely give the hardware developer now"
+
+This should list only the information that is safe and necessary for the external hardware developer to begin integration.

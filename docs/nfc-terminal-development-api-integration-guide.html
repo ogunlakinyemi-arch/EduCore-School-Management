@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Yemait EduCore — NFC Terminal Development API Integration Guide</title>
+<style>
+body{font:16px/1.6 system-ui,sans-serif;color:#182635;background:#f4f6f8;margin:0}main{max-width:1040px;margin:32px auto;background:white;padding:40px;border:1px solid #dce3e9;border-radius:12px}h1{font-size:30px;line-height:1.25}h2{font-size:23px;margin-top:36px;border-top:1px solid #dce3e9;padding-top:22px}h3{font-size:18px}a{color:#175885}code,pre{font-family:ui-monospace,monospace;font-size:13px}code{overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f0f3f7;padding:16px;border-radius:6px}table{border-collapse:collapse;width:100%;font-size:14px;margin:18px 0}th,td{border:1px solid #dce3e9;padding:10px;text-align:left;vertical-align:top}th{background:#edf3f8}.notice{background:#fff6df;border-left:4px solid #b78313;padding:14px 18px}.success{background:#eaf5ef;border-left:4px solid #298052;padding:14px 18px}.muted{color:#536575}li{margin:5px 0}@media(max-width:700px){main{margin:0;padding:20px;border:0;border-radius:0}table{font-size:12px}th,td{padding:6px}}@media print{body{background:white}main{margin:0;border:0;padding:0}pre,table{break-inside:avoid}h2,h3{break-after:avoid}a{color:inherit}}
+</style>
+</head>
+<body><main>
+<h1>Yemait EduCore — NFC Terminal Development API Integration Guide</h1>
+<p class="muted">Development only · Code inspection: 7 October 2026 · Evidence: current workspace implementation and two unauthenticated HTTPS checks.</p>
+<div class="notice"><strong>Scope:</strong> This is a description of existing behavior, not a new API design. No application code, database, credentials, permissions, payments, card assignments, UI, or Production settings were changed. Example identities and credentials are placeholders. Authenticated hardware tests were not executed.</div>
+
+<section id="purpose"><h2>1. Purpose</h2>
+<p>Integrate an external NFC attendance terminal with the existing backend. A suitable student ingestion endpoint and dedicated device credentials already exist. Device identity and school are derived by EduCore, not chosen by firmware.</p>
+<p><strong>Important security distinction:</strong> the API records attendance and, for school entry/exit NFC events, integrates with campus security identity checks. It does not return a literal <code>ALLOW</code>/<code>DENY</code> property, gate-open command, pickup authorization, or physical actuator instruction. A successful receipt confirms an accepted event; it must not be treated as blanket authority to release a child or open a physical gate.</p>
+</section>
+
+<section id="environment"><h2>2. Development environment</h2>
+<table><tr><th>Item</th><th>Current value / observation</th></tr>
+<tr><td>Application URL</td><td><code>https://f8ad4f13-ad39-4544-9de2-99a39f6d556c-00-1pkz80o0gbypm.riker.replit.dev/</code></td></tr>
+<tr><td>API routing</td><td>API artifact preview path and service path are <code>/api</code>; Express mounts its router at <code>/api</code>. API service local port is 8080. Firmware must use the HTTPS proxy URL, not localhost or port 8080.</td></tr>
+<tr><td>HTTPS / reachability</td><td><code>GET /api/healthz</code> returned HTTP 200 with <code>{"status":"ok"}</code>; TLS certificate verification succeeded. This proves reachability from the inspection environment, not from every external hardware network.</td></tr>
+<tr><td>Authentication check</td><td>An unauthenticated empty JSON POST to the student scan endpoint returned HTTP 401 with the exact error shown below. It failed before database access.</td></tr>
+<tr><td>Availability</td><td>The Development API workflow must remain running. This Development host is not a permanent Production integration address. Confirm it again before a later handover or test session.</td></tr>
+<tr><td>External restrictions</td><td>Device networking must allow DNS and outbound HTTPS/443 with certificate verification. Workspace/proxy access restrictions, workflow availability, host changes, and local network firewalls may prevent testing. No authenticated external terminal session was tested.</td></tr>
+<tr><td>CORS</td><td>The Development server permits requests with browser origins. A native firmware HTTP client is not governed by browser CORS. Device authentication is still required.</td></tr>
+</table>
+</section>
+
+<section id="base"><h2>3. API base URL</h2>
+<pre>https://f8ad4f13-ad39-4544-9de2-99a39f6d556c-00-1pkz80o0gbypm.riker.replit.dev/api</pre>
+<p>All paths in this document are relative to that base. Do not accidentally use <code>/api/api/...</code>. The hardware does not need any application-login URL.</p>
+</section>
+
+<section id="authentication"><h2>4. Authentication</h2>
+<p>A dedicated device authentication credential <strong>is implemented</strong>. Send the complete issued value in this header on every scan:</p>
+<pre>X-Device-Credential: &lt;development-credential-identifier&gt;.&lt;development-device-secret&gt;
+Content-Type: application/json</pre>
+<p>The issuing endpoint generates an identifier of the form <code>dev_</code> plus 24 hexadecimal characters and a 32-byte random secret encoded as base64url. Firmware should treat the complete credential as an opaque secret, not construct it itself. The raw secret is returned at issuance; only its SHA-256 digest is stored by the backend. Validation compares the digest with a timing-safe comparison.</p>
+<ul>
+<li><code>Authorization: Bearer ...</code> is <strong>not</strong> the device authentication mechanism. Human Clerk credentials must not be substituted.</li>
+<li>The credential must be ACTIVE, unexpired if an expiry is set, and bound to the device's current school.</li>
+<li>The device must have status <code>ACTIVE</code>, a non-null school, and <code>configuration_status = CONFIGURED</code>. Student NFC ingestion also rechecks NFC/HYBRID device type inside the transaction.</li>
+<li>Authentication updates credential <code>last_used_at</code> and device <code>last_seen_at</code>. These are ordinary runtime writes; no authenticated calls were made during this documentation task.</li>
+<li>Rotation revokes the previous active credential. Moving a device to another school revokes its existing credentials; suspension also revokes active credentials. Owner-controlled status/configuration changes may require reprovisioning.</li>
+<li>No HMAC signature, mTLS, challenge/response, or device refresh-token protocol was found in the inspected ingestion implementation.</li>
+</ul>
+</section>
+
+<section id="registration"><h2>5. Device registration / identity</h2>
+<p>Provisioning is performed by an authorized Platform Owner using their own authenticated application session. The external engineer receives only the resulting Development device credential and permitted test information. The terminal must not call the Owner management routes.</p>
+<table><tr><th>Existing Owner-only route</th><th>Purpose / relevant input</th></tr>
+<tr><td><code>POST /platform/devices</code></td><td>Register device. Requires <code>serialNumber</code>, <code>name</code>, <code>deviceType</code> (NFC, BIOMETRIC, HYBRID); optional <code>schoolId</code>. Serial number is trimmed and uppercased.</td></tr>
+<tr><td><code>POST /platform/devices/{deviceId}/assign</code></td><td>Link/configure the device for <code>schoolId</code>; optional <code>location</code>, <code>classId</code>, <code>reason</code>. A class must belong to that school. Persists school-binding/assignment history.</td></tr>
+<tr><td><code>POST /platform/devices/{deviceId}/credentials</code></td><td>Issue/reissue credential for an assigned device; revokes earlier active credentials for that device/school. HTTP 201: <code>{"credential":"&lt;identifier.secret&gt;","credentialIdentifier":"&lt;identifier&gt;"}</code>.</td></tr>
+<tr><td><code>POST /platform/devices/{deviceId}/credential</code></td><td>Existing rotation route. HTTP 200: <code>{"deviceId":101,"credential":"&lt;identifier.secret&gt;"}</code>.</td></tr>
+</table>
+<p>The integer database device ID is not its serial number or credential identifier. Neither a supplied ID nor a serial number authenticates the terminal. Owner provisioning and rotation are audited. None of these routes was invoked for this guide.</p>
+</section>
+
+<section id="endpoint"><h2>6. NFC scan endpoint</h2>
+<pre>POST https://f8ad4f13-ad39-4544-9de2-99a39f6d556c-00-1pkz80o0gbypm.riker.replit.dev/api/device/attendance/events</pre>
+<p>This is the existing <strong>student</strong> NFC attendance endpoint. It accepts one event per request. There is no inspected batch upload, offline-sync route, device-readable policy-download route, or device-authenticated event-status lookup associated with this endpoint.</p>
+<h3>Separate existing employee endpoint</h3>
+<p>Teacher/staff cards use <code>POST /devices/employee-nfc/attendance/events</code> with the same credential header, but a different request: <code>employeeId</code> (positive integer), <code>personType</code> (TEACHER or STAFF), <code>nfcUid</code> (nonempty string, runtime maximum 160), <code>eventType</code> (SCHOOL_ENTRY or SCHOOL_EXIT), and <code>occurredAt</code>. It checks active employee/card binding and applicable term NFC eligibility. This is not automatic UID-based student/employee routing. A terminal intended to accept both populations needs an approved way to choose the correct existing route; do not download a school-wide roster or invent a lookup endpoint.</p>
+<p>Employee exact-timestamp replay can return HTTP 200 with the existing event, <code>personType</code>, and <code>discrepancy</code>. Other suppressed employee scans return HTTP 409, <code>{"error":"Duplicate employee NFC attendance event","code":"ACCESS_DENIED"}</code>. New employee events return 201 with event fields, <code>personType</code>, and <code>discrepancy</code>. These behaviors must not be applied to the student route, which has different duplicate handling.</p>
+</section>
+
+<section id="request"><h2>7. Request format</h2>
+<p>Use camelCase field names. The user's conceptual <code>device_id</code>, <code>card_uid</code>, and <code>timestamp</code> names are not this endpoint's wire format.</p>
+<table><tr><th>Field</th><th>Wire type</th><th>Requirement / runtime behavior</th></tr>
+<tr><td><code>eventType</code></td><td>string</td><td>Required: SCHOOL_ENTRY, SCHOOL_EXIT, or CLASSROOM_ENTRY. Runtime uppercases the value.</td></tr>
+<tr><td><code>identificationMethod</code></td><td>string</td><td>Send NFC. OpenAPI requires this field; runtime defaults it to NFC and uppercases it. FINGERPRINT is a separate provider-evidence flow, not raw NFC.</td></tr>
+<tr><td><code>nfcUid</code></td><td>string</td><td>Required in practice for NFC resolution. Must match the stored UID after outer whitespace trimming. OpenAPI declares 4–128 characters; runtime student ingestion does not enforce those length bounds. See section 16.</td></tr>
+<tr><td><code>occurredAt</code></td><td>ISO-8601 date-time string</td><td>Required. Send actual scan time with explicit UTC Z or timezone offset. Valid between server now minus 24 hours and server now plus 5 minutes. Runtime uses JavaScript Date parsing rather than strict ISO string validation.</td></tr>
+<tr><td><code>studentId</code></td><td>positive safe integer</td><td>Optional for NFC. If supplied, must equal the student resolved from the card. Omit it for UID-based student integration.</td></tr>
+<tr><td><code>deviceId</code>, <code>schoolId</code></td><td>integer</td><td>Not needed and not declared in this OpenAPI input. Runtime recognizes these optional assertions and rejects mismatches with the authenticated device. Prefer omitting both.</td></tr>
+<tr><td><code>idempotencyKey</code></td><td>string</td><td>Declared in OpenAPI/shared types, but ignored by the student handler. It provides no idempotency guarantee. Omit it rather than relying on it.</td></tr>
+</table>
+<p>Fingerprint fields in the shared input (<code>provider</code>, <code>providerReference</code>, <code>matchResult</code>, <code>confidence</code>) are not needed for NFC. Do not send card memory contents, biometrics, passwords, payment details, or invented UID/student mappings.</p>
+<pre>POST /api/device/attendance/events
+X-Device-Credential: &lt;development-credential-identifier&gt;.&lt;development-device-secret&gt;
+Content-Type: application/json
+
+{
+  "eventType": "SCHOOL_ENTRY",
+  "identificationMethod": "NFC",
+  "nfcUid": "04A1B2C3D4E5F6",
+  "occurredAt": "2026-10-07T10:00:00.000Z"
+}</pre>
+<p>The UID, timestamp, and all IDs below are illustrative. Use the assigned test card's exact UID and the actual current scan time during testing.</p>
+<pre>curl --request POST \
+  'https://f8ad4f13-ad39-4544-9de2-99a39f6d556c-00-1pkz80o0gbypm.riker.replit.dev/api/device/attendance/events' \
+  --header 'X-Device-Credential: &lt;development-credential-identifier&gt;.&lt;development-device-secret&gt;' \
+  --header 'Content-Type: application/json' \
+  --data '{"eventType":"SCHOOL_ENTRY","identificationMethod":"NFC","nfcUid":"04A1B2C3D4E5F6","occurredAt":"2026-10-07T10:00:00.000Z"}'</pre>
+<p>This request is documentation only; it was not executed. Handle real credentials outside shell history and shared logs.</p>
+</section>
+
+<section id="response"><h2>8. Response format</h2>
+<p>HTTP 201 means a new accepted student attendance event committed. Exact field names come from the runtime SQL projection and current-student lookup:</p>
+<pre>{
+  "id": 501,
+  "schoolId": 10,
+  "studentId": 200,
+  "schoolClassId": null,
+  "deviceId": 101,
+  "eventType": "SCHOOL_ENTRY",
+  "identificationMethod": "NFC",
+  "status": "PRESENT",
+  "result": "ACCEPTED",
+  "failureReason": null,
+  "occurredAt": "2026-10-07T10:00:00.000Z",
+  "createdAt": "2026-10-07T10:00:00.150Z",
+  "studentName": "Development Test Student",
+  "className": "Development Test Class",
+  "section": "Development Test Section",
+  "academicSession": "Development Test Session",
+  "term": "Development Test Term"
+}</pre>
+<p>This is a representative, fabricated-data example of the <em>implemented shape</em>, not a captured successful scan. IDs are integers; <code>schoolClassId</code> is nullable and is populated for classroom entry. Names/session/term/section are strings or nullable as appropriate; <code>studentName</code> is a string. The student route inserts <code>status = PRESENT</code> and <code>result = ACCEPTED</code>. Timestamps are JSON date-time strings. Class/session information reflects the current lookup, not necessarily the historical placement at an offline event's time.</p>
+<p>The runtime returns <code>schoolClassId</code>, not the OpenAPI base response's <code>classId</code>. It does not return card UID, credential, credential hash, or an <code>allow</code>/<code>decision</code> field. Parse known fields defensively and do not assume every property in the broader OpenAPI AttendanceEvent schema is emitted.</p>
+<h3>Denied card / cross-school card</h3>
+<pre>HTTP 403
+{"error":"NFC card is invalid for this student or school","code":"ACCESS_DENIED"}</pre>
+<h3>Missing credential — observed directly</h3>
+<pre>HTTP 401
+{"error":"Device credential required","code":"ACCESS_DENIED"}</pre>
+<h3>Invalid / inactive / unregistered device credential</h3>
+<pre>HTTP 401
+{"error":"Invalid or inactive device credential","code":"ACCESS_DENIED"}</pre>
+<h3>Duplicate student event</h3>
+<pre>HTTP 409
+{"error":"Duplicate event"}</pre>
+<h3>Unhandled server error</h3>
+<pre>HTTP 500
+{"error":"Internal server error"}</pre>
+<p>Except for the missing-credential response, these examples were derived from code, not executed in this task. Errors are not successful attendance receipts. The duplicate and generic server error responses do not include a <code>code</code> field.</p>
+</section>
+
+<section id="errors"><h2>9. Error codes</h2>
+<table><tr><th>HTTP</th><th>Exact error or category</th><th>Firmware interpretation</th></tr>
+<tr><td>400</td><td><code>A valid studentId (required for fingerprint), eventType, and identificationMethod are required</code></td><td>Invalid event/method or supplied student ID. Fix request; do not retry unchanged.</td></tr>
+<tr><td>400</td><td><code>occurredAt is required</code> / <code>occurredAt is outside the allowed time window</code></td><td>Missing, invalid, too old, or too far in future. Preserve real event time; do not falsify it.</td></tr>
+<tr><td>400 / 413</td><td><code>Invalid request body</code> / <code>Request body too large</code></td><td>Parser error; no <code>code</code> field. Global JSON parser defaults to approximately 100 KB; send a small single event, not a batch.</td></tr>
+<tr><td>401</td><td><code>Device credential required</code> / <code>Invalid device credential</code> / <code>Invalid or inactive device credential</code></td><td>Missing, malformed, expired, revoked, mismatched, inactive, unsupported-device-type at transaction check, or unconfigured device. Code ACCESS_DENIED. Stop authorization; request operator intervention.</td></tr>
+<tr><td>403</td><td><code>School and Device IDs must match the authenticated scanning device</code></td><td>Supplied identity assertions conflict. Code ACCESS_DENIED. Do not switch school IDs to bypass rejection.</td></tr>
+<tr><td>403</td><td><code>NFC card is invalid for this student or school</code></td><td>Unknown, inactive, unassigned, wrong-school card, inactive/moved student, or supplied student mismatch. Intentionally not differentiated. Code ACCESS_DENIED.</td></tr>
+<tr><td>403</td><td><code>Identification policy {policy} does not allow NFC</code></td><td>Student identification policy disallows NFC. Code ACCESS_DENIED.</td></tr>
+<tr><td>403</td><td><code>Device is not assigned to the student's current class</code></td><td>CLASSROOM_ENTRY reader/class mismatch. Code ACCESS_DENIED.</td></tr>
+<tr><td>403</td><td><code>NFC security identity validation rejected this tap</code></td><td>Entry/exit security identity validation rejected the event. Code ACCESS_DENIED. Detailed internal reason is not returned to the device.</td></tr>
+<tr><td>403</td><td>Existing subscription/manual-school-lock denial</td><td>A valid device/card alone is insufficient. Student subscription restrictions can return SUBSCRIPTION_REQUIRED; manual lock handling can return SCHOOL_SUBSCRIPTION_LOCKED. Do not implement payment bypass in firmware.</td></tr>
+<tr><td>404</td><td><code>Student not found</code> / <code>Student not found for this NFC device</code></td><td>Student resolution/current record failed after initial validation. Code ACCESS_DENIED.</td></tr>
+<tr><td>409</td><td><code>Duplicate event</code></td><td>No new student event recorded. Not an independent gate authorization or an exactly-once receipt. No <code>code</code> field.</td></tr>
+<tr><td>500</td><td><code>Internal server error</code></td><td>Do not indicate acceptance. Outcome may be uncertain after a connection/response failure; follow section 15.</td></tr>
+<tr><td>503</td><td><code>Subscription access is temporarily unavailable. Please try again.</code></td><td>Backend cannot determine the manual school restriction. Code SUBSCRIPTION_STATUS_UNAVAILABLE. Keep unverified/pending; do not bypass eligibility checks.</td></tr>
+<tr><td>No API response / proxy response</td><td>Timeout, TLS/DNS failure, unavailable workflow, proxy/network failure</td><td>Not an EduCore authorization decision. Retain pending status; never infer ALLOW from network failure or HTML.</td></tr>
+</table>
+<p>There is no dedicated numeric device/card reason-code catalog on this route. Most application validation errors use the shared <code>ACCESS_DENIED</code> code even for HTTP 400 or 401. OpenAPI currently lists only 201, 400, 401, and 409 for this operation; actual runtime also has the 403, 404, 413, 500, and 503 paths described here.</p>
+</section>
+
+<section id="authorization"><h2>10. Authorization logic</h2>
+<ol>
+<li>Read UID locally, then send an authenticated single-event request.</li>
+<li>Backend derives credential/device/school identity; checks credential validity, current school binding, active device, and configuration.</li>
+<li>Backend resolves the UID in that school through <code>nfc_cards</code> joined to <code>students</code>. Both card and student must be ACTIVE and belong to that school. An optional supplied student ID must match.</li>
+<li>Existing manual school locks, student subscription access, and identification policy are checked. NFC_AND_BIOMETRIC currently permits either NFC or fingerprint in this handler; it does not implement a paired two-factor scan.</li>
+<li>Validate event/time; classroom entry requires a current student class matching the device class.</li>
+<li>Inside a transaction, revalidate/lock the device and credential against concurrent moves/rotation, require NFC/HYBRID device type, acquire a per-device/person/type suppression lock, and check duplicates.</li>
+<li>Insert the attendance event, resolve current student display details, reconcile attendance anomalies, and perform entry/exit NFC security integration. Security checks may reject inactive readers/locations, missing reader ENTRY/EXIT permissions, expired cards, missing current academic placement, and related identity/eligibility failures. A configured legacy reader without a security-reader mapping can remain usable with unknown security location.</li>
+<li>On rejection the attendance transaction rolls back. On success it commits and returns 201. Notifications are queued, not proof of physical delivery. Notifications failing in the best-effort communication portion need not invalidate attendance.</li>
+</ol>
+<p>Authenticated NFC entry/exit 403/404 denials with usable UID/time can persist a separate rejected security tap after rollback. Audit persistence failures do not turn denial into acceptance. Device provisioning/assignment/credential changes are audited, attendance is persisted, and security events/presence are maintained. Duplicate 409 is returned directly, not handled as the same denial-audit path. Firmware has no direct audit-write requirement.</p>
+</section>
+
+<section id="device-school"><h2>11. Device-school relationship</h2>
+<p><code>platform_devices.school_id</code> is the current school. <code>device_credentials</code> binds issued credentials to device and school; <code>device_school_bindings</code> and assignment history preserve past bindings. Ingestion trusts the credential/current school relationship, not a client-selected tenant. A device move must not rewrite historical attendance. Platform Owner performs linking; the terminal cannot self-authorize a school.</p>
+</section>
+
+<section id="card-school"><h2>12. Card-school relationship</h2>
+<p><code>nfc_cards</code> stores UID, school ID, nullable student ID, status, and lifecycle/history data. An active student card must resolve to a student in the same school. Owner-controlled provisioning/activation and the existing authorized assignment workflow remain unchanged. New student assignment/activation requires an active configured NFC-capable reader linked to the school. A prepared assignment is not automatically an active/unlocked card.</p>
+<p>School membership, active status, and assignment are backend facts. Firmware must not assume ownership from UID prefixes or an independently maintained roster. An old card must not authorize a student after school-transfer or replacement relationships invalidate it.</p>
+</section>
+
+<section id="multiple"><h2>13. Multiple-device behavior</h2>
+<p><strong>Yes:</strong> an active School A student card can be resolved on both active/configured NFC devices A1 and A2 with valid School A credentials. Student lookup is school-bound, not individually device-bound. Assignment rejects manually supplied device IDs; readers are inherited through the school, including subsequently linked readers.</p>
+<p>This does not bypass classroom-reader class matching, identification policies, subscription/manual locks, reader location/permissions, or other security checks. Duplicate suppression includes device ID, so the same card/time/type submitted through two different devices is not globally deduplicated by the student route.</p>
+</section>
+
+<section id="offline"><h2>14. Offline behavior</h2>
+<p><strong>A full offline synchronization protocol is not currently implemented.</strong> The online endpoint can accept individually replayed timestamped events within its 24-hour lookback; that is limited replay capability, not offline authorization, batch synchronization, cursor-based reconciliation, or a guaranteed exactly-once queue.</p>
+<ul>
+<li>Terminal-local buffering is possible firmware work, not a backend feature verified here. If agreed separately, keep the actual UID, eventType, identificationMethod, original occurredAt, and a local queue identifier/state. The local identifier is not an API idempotency key. Keep credentials separately in secure storage.</li>
+<li>Maximum supported/recommended queue count: <strong>not specified by the API</strong>. No numeric capacity, batch size, flush rate, or retention SLA is established. Do not claim unlimited storage or a supported queue limit.</li>
+<li>While offline the backend cannot verify current device/card/student status. Keep the event <strong>pending/unverified</strong>; do not show server-confirmed success or claim permission to open a gate.</li>
+<li>After restoration, submit one event per request with its original timestamp through the same endpoint. Conservative sequential replay is an integration recommendation, not a built-in protocol guarantee.</li>
+<li>Authorization uses current device/card/student eligibility at replay time, not an offline snapshot. A later school move, revocation, rotation, class change, or expired card can cause rejection.</li>
+<li>Events older than 24 hours are rejected. Do not rewrite old timestamps to now. Preserve them for authorized operator review; there is no device-authenticated historical import endpoint documented here.</li>
+<li>A duplicate 409 must be handled separately from a confirmed new 201 receipt; see retry limitations below.</li>
+</ul>
+</section>
+
+<section id="retry"><h2>15. Retry / idempotency / timeout behavior</h2>
+<p>Student suppression is a rolling <strong>± configured seconds around occurredAt</strong>, with a default of 30 seconds and a minimum of zero. The match uses school + student + device + eventType, not supplied idempotency key. A PostgreSQL transaction advisory lock serializes that tuple. The handler generates a new random dedupe key for each attempted insertion and does not read the input <code>idempotencyKey</code>.</p>
+<ul>
+<li>Retry using the same original timestamp/body. Changing occurredAt can create another record outside the suppression window.</li>
+<li>HTTP 201 is a confirmed new accepted receipt. A lost response followed by 409 could mean the earlier attempt committed or another nearby matching event exists; 409 does not identify which event or return the earlier receipt.</li>
+<li>Do not automatically interpret 409 as authorization to repeat physical gate actuation. A new local tap inside the suppression window can also produce 409.</li>
+<li>Stop unchanged retries for 400/401/403/404. Separate expired/revoked credentials from transient network problems and involve the authorized operator.</li>
+<li>For transport/5xx failure, bounded retry with backoff and jitter is firmware guidance, not an API-specified retry schedule. Keep uncertain events pending; avoid tight loops. Do not retry after the timestamp window expires.</li>
+<li>No endpoint-specific timeout, terminal response deadline, latency SLA, or retry-after contract is configured in the inspected attendance handler/server entrypoint. Agree the device timeout before deployment; no particular timeout is guaranteed here.</li>
+<li>Attendance event_date is derived from the UTC ISO date slice. Other school-window/security logic can use Africa/Lagos. Preserve an explicit timezone and test around local midnight; do not assume every report uses the same date boundary.</li>
+</ul>
+</section>
+
+<section id="uid"><h2>16. NFC UID requirements</h2>
+<ul>
+<li>Send <code>nfcUid</code> as a JSON string, never a decimal integer, byte-array JSON, or raw binary body. Preserve leading zero bytes.</li>
+<li>The database stores UID as text. No universal hexadecimal-only format, separator convention, byte order, or MIFARE/ISO14443-A/RC522 model certification is declared in the inspected integration. There is no card-memory read or MIFARE-sector authentication protocol in the HTTP API.</li>
+<li>Student ingestion applies <code>String(value).trim()</code>, then compares <code>nc.uid = suppliedUid</code> exactly. It does <strong>not</strong> uppercase, lowercase, remove colons/spaces within the UID, reverse bytes, or decode hex.</li>
+<li>Card provisioning/assignment detects existing UIDs case-insensitively but does not establish universal uppercase storage. Employee ingestion uses a case-insensitive UID lookup. Do not assume the employee behavior applies to students.</li>
+<li>OpenAPI/shared input declares min 4, max 128 characters. Student scan runtime does not enforce a UID-specific min/max; text storage has no declared UID column length. Rejected-security-tap auditing accepts only nonempty UIDs up to 160 characters. Use the documented 4–128 envelope for new integrations, without claiming it is runtime enforcement or changing existing records.</li>
+<li>For an RC522, firmware must serialize the UID bytes into the <strong>exact representation used when that physical test card was provisioned</strong>. If provisioning confirms a zero-padded uppercase hex string in reader byte order, bytes <code>04 A1 B2 C3 D4 E5 F6</code> become <code>"04A1B2C3D4E5F6"</code>. That is conditional guidance, not a universal backend conversion rule.</li>
+<li>Confirm one real Development test-card read against its stored UID before broader firmware work. Do not guess byte reversal, padding, separators, or casing. A mismatch must be resolved by authorized provisioning/firmware configuration, not an invented backend normalization change.</li>
+</ul>
+</section>
+
+<section id="indicators"><h2>17. LED / buzzer interpretation</h2>
+<table><tr><th>Observed result</th><th>Suggested terminal indication</th></tr>
+<tr><td>201 JSON with <code>result: ACCEPTED</code></td><td>Green LED + success beep for <em>attendance accepted</em>. This is a firmware mapping, not a server-supplied ALLOW or gate command.</td></tr>
+<tr><td>Explicit rejection: 400/401/403/404</td><td>Red LED + denial/error beep. Display a generic appropriate message; do not disclose another school's card/student information.</td></tr>
+<tr><td>409 duplicate</td><td>Distinct “already scanned / suppressed” indication. No new acceptance or physical action. Do not assume this is an invalid card.</td></tr>
+<tr><td>No response / 5xx / offline / uncertain replay</td><td>Network or pending indication. No green “server authorized” signal. If hardware only has red/green, use red/error rather than falsely asserting authorization.</td></tr>
+</table>
+<p>No LED/buzzer settings, actuator timings, remote unlock, emergency override, or physical gate protocol are returned by the current API.</p>
+</section>
+
+<section id="security"><h2>18. Security requirements</h2>
+<p>Provide only a dedicated <strong>Development device credential</strong> for the authorized test device. Store it securely, never display it, and keep it out of serial-console logs, analytics, repository files, HTTP URLs, shared screenshots, and support attachments. Use verified HTTPS; do not disable certificate validation. UID-only cards can be copied and are not cryptographic proof of a person's identity.</p>
+<p><strong>Never provide or store on the terminal:</strong> Production database credentials; <code>DATABASE_URL</code>; Clerk secret keys; Replit account credentials; Platform Owner credentials; School Admin credentials; parent/student passwords; payment provider secrets; or Production API secrets. Human provisioning stays with the authorized operator. No real secret appears in this guide.</p>
+<p>Use synthetic/minimal Development test data. Successful receipts include student names and class/session information; minimize local retention and erase them when no longer needed. An offline queue contains personal-access information and must be protected. Do not expose full rosters or extra internal administration APIs merely to support firmware convenience.</p>
+</section>
+
+<section id="tests"><h2>19. Development test procedure</h2>
+<div class="notice"><strong>Not executed:</strong> Tests 1–7 below are the hardware engineer's checklist. This task did not issue credentials, configure devices, assign/activate/deactivate cards, create fixtures, write attendance, or query/change Production. Before running these tests, the authorized operator must explicitly arrange approved Development fixtures; the resulting scan calls write Development attendance/authentication telemetry.</div>
+<p>Prerequisites: a running API; correct host; synchronized terminal clock; authorized ACTIVE/CONFIGURED NFC/HYBRID device for School A; valid Development credential; test student/card eligibility, current placement for entry/exit security checks, applicable reader permissions; a separately prepared inactive card; and a School B test card. For multiple-device testing, arrange a second School A device with its own credential. Do not use real student or Production data.</p>
+<table><tr><th>Test</th><th>Procedure</th><th>Expected from implementation</th></tr>
+<tr><td>1 — Valid device + valid card</td><td>Submit SCHOOL_ENTRY with a current occurredAt and exact assigned active UID. All policies, placements, and eligibility must permit the event.</td><td>201 + ACCEPTED/PRESENT receipt. Green attendance-success signal. A valid credential/card alone does not override other policy denials.</td></tr>
+<tr><td>2 — Valid device + inactive card</td><td>Use the approved inactive Development fixture.</td><td>403 invalid-card error, ACCESS_DENIED. No accepted attendance; red denial signal.</td></tr>
+<tr><td>3 — School A device + School B card</td><td>Use A credential with B UID; do not spoof body school ID.</td><td>403 invalid-card error, ACCESS_DENIED. Backend resolves within A only.</td></tr>
+<tr><td>4 — Unknown / unregistered device</td><td>Send an unissued placeholder identifier.secret, never a real unrelated credential.</td><td>401 invalid/inactive credential. An arbitrary deviceId alone never authenticates. Missing credential also returns 401.</td></tr>
+<tr><td>5 — Duplicate scan</td><td>Repeat test 1 on the same device, same eventType, same timestamp, while suppression applies.</td><td>409 {"error":"Duplicate event"}. No second accepted student event. Repeat on another eligible school device is not globally suppressed.</td></tr>
+<tr><td>6 — Network unavailable</td><td>Disconnect terminal networking before sending.</td><td>No server decision; do not report ALLOW. Any approved firmware buffer remains pending, not authorized.</td></tr>
+<tr><td>7 — Network restored</td><td>Reconnect and send approved buffered events individually with original times, each within the allowed window.</td><td>201 if still eligible and not suppressed; 409 for duplicate; explicit denial if eligibility changed; 400 if too old. No dedicated synchronization acknowledgement/cursor.</td></tr>
+</table>
+<p>Additional recommended checks, also not executed: A1/A2 same-school access, classroom reader mismatch, mismatched optional device/school IDs, UID casing/leading zeros, card expiration, credential rotation, clock outside window, lost response followed by replay, and local-midnight reporting.</p>
+<h3>Checks actually executed during this task</h3>
+<ul><li>HTTPS GET <code>/api/healthz</code>: 200, {"status":"ok"}, TLS verification successful.</li><li>HTTPS POST <code>/api/device/attendance/events</code> with {} and no credential: 401, {"error":"Device credential required","code":"ACCESS_DENIED"}. No database operation is reached on this path.</li></ul>
+</section>
+
+<section id="gaps"><h2>20. Known limitations — Integration Gaps — Requires Separate Development Work</h2>
+<ul>
+<li>No literal ALLOW/DENY decision contract, physical gate-control command, pickup authorization, or actuator integration. Existing attendance/security identity validation is not a complete physical-security terminal protocol.</li>
+<li>No full offline synchronization, batch API, queue-size contract, device-side authorization cache, or historical device import beyond the timestamp window.</li>
+<li>Student <code>idempotencyKey</code> is advertised but ignored; exact replay does not return an earlier receipt. No device-authenticated reconciliation lookup was found. Cross-device duplicate protection is not global.</li>
+<li>No universal UID encoding/normalization or hardware-family compatibility promise. Student and employee UID matching behavior differs.</li>
+<li>No unified student/teacher/staff UID-only dispatch endpoint; employee scans require employee ID/person type.</li>
+<li>OpenAPI/runtime mismatches: UID requirement/length enforcement, default NFC method, ignored idempotencyKey, runtime schoolClassId vs documented classId, and incomplete error-status documentation. Generated shared types are not proof of handler validation.</li>
+<li>No configured terminal latency/timeout SLA or retry schedule. No physical hardware or authenticated scan acceptance was verified in this task.</li>
+</ul>
+<p>These gaps are reported only. No implementation, migration, permission change, payment change, or parallel NFC architecture was introduced.</p>
+</section>
+
+<h2>What I can safely give the hardware developer now</h2>
+<ul>
+<li>This guide, the current HTTPS Development base URL, and the exact student event path/header/body/error contract.</li>
+<li>A dedicated Development-only device credential issued separately by the authorized operator and delivered through an approved secure channel; none was issued or included here.</li>
+<li>Only approved synthetic test-card UIDs, device IDs when useful, and required test-person references for the selected route. Do not share real school rosters.</li>
+<li>The timestamp window, school-bound reader behavior, UID representation caveat, duplicate/offline limits, and the unexecuted Development checklist.</li>
+<li>The explicit restriction that attendance acceptance is not physical gate/pickup authorization.</li>
+</ul>
+<h3>Source basis for this guide</h3>
+<p class="muted">Inspected: API artifact routing; Express mount/error/CORS handling; <code>routes/attendance.ts</code>; <code>routes/platform.ts</code>; <code>lib/nfc-device-first.ts</code>; device activation/card assignment paths; <code>routes/employee-nfc.ts</code>; security attendance integration/core; subscription enforcement; <code>lib/db/src/schema/edupulse.ts</code> device/card/credential models; <code>lib/api-spec/openapi.yaml</code> DeviceCredential, DeviceAttendanceEventInput, DeviceAttendanceReceipt; generated API/shared input types. Runtime handler behavior takes precedence where generated schemas differ. This document describes the inspected Development source, not a certification of installed firmware or Production deployment.</p>
+</main></body></html>

@@ -602,3 +602,17 @@ mtime_ms = 1791362883953
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/14deccd6-644f-4601-9d5b-a0413f48dceb/d9d90b4c-0b5d-44ba-a472-4d38001bdf18"
 storage_version_token = "1791362905324506"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "MyMtD32VDIoFxITTfMQmx"
+uri = "file://docs/nfc-terminal-development-api-integration-guide.html"
+type = "html"
+title = "Yemait EduCore — NFC Terminal Development API Integration Guide"
+description = "Development-only hardware handover covering the implemented device credential, scan API, exact response/error formats, school authorization, UID handling, offline/retry limits, and seven unexecuted hardware tests. Self-contained HTML, printable from a browser."
+logical_id = "233fa6f9-a84a-42e3-8822-5a1152395d6f"
+content_hash = "sha256:2611b09e6e604ba6f4a613aadf753404db4d686ad703cf8a10169fd2d37cfd2f"
+size = 39352
+mtime_ms = 1791383090131
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/233fa6f9-a84a-42e3-8822-5a1152395d6f/32542de4-f0e7-4738-9150-d57695a1393b"
+storage_version_token = "1791383096537879"
+content_type = "text/html"
