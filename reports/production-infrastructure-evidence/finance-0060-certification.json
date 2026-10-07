@@ -1,0 +1,60 @@
+{
+  "status": "UNVERIFIABLE — REPLICA IS NOT AUTHORITATIVE PRIMARY CERTIFICATION",
+  "classification": "UNVERIFIABLE",
+  "resolved": false,
+  "observedAt": "2026-10-07T08:13:48.339Z",
+  "expectedContractReference": "reports/production-execution-readiness-gate/finance-boundary-contract.json",
+  "validationReference": "reports/production-execution-plan/migration-manifest.json external milestone F0060",
+  "expectedObjectCount": 96,
+  "expectedObjectCounts": {
+    "tables": 2,
+    "columns": 43,
+    "constraints": 29,
+    "indexes": 16,
+    "functions": 2,
+    "triggers": 2,
+    "sequences": 2
+  },
+  "expectedPrerequisiteParentContracts": 5,
+  "requiredExecutionBoundary": "After Batch 2 and before Batch 3; 0060 is not one of 105 forward migrations.",
+  "authoritativePrimaryAvailable": false,
+  "authoritativeChecksPerformed": 0,
+  "cachedReplicaObservation": {
+    "reusedOnly": true,
+    "missingTables": [
+      "student_subscription_payments",
+      "student_subscription_allocations"
+    ],
+    "result": "Cached replica NOT SATISFIED; cannot certify primary state."
+  },
+  "dimensionsAwaitingPrimaryCertification": [
+    "Payment/allocation tables and 43 typed/default/nullability columns",
+    "Primary and unique ownership keys, FKs and CHECKs (29 constraints)",
+    "16 index definitions/eligibility/ownership/bindings",
+    "2 exact function bodies/signatures and 2 trigger definitions/enabled states",
+    "2 sequences: exact metadata and owner/default links plus authoritative positions/cache versus key maxima"
+  ],
+  "requiredEvidence": "Complete read-only 96-object semantic contract certification against conclusively identified authoritative Production primary/resource through a supported route. No financial data reconciliation/replay required by this evidence operation.",
+  "stopCondition": "No 0060 execution/replay/stamping or Finance writes; replica absence/presence is not authoritative certification.",
+  "safety": {
+    "productionWrites": 0,
+    "developmentWrites": 0,
+    "sharedDatabaseWrites": 0,
+    "databaseConnectionsOpened": 0,
+    "sqlQueriesExecuted": 0,
+    "migrationsExecuted": 0,
+    "journalChanges": 0,
+    "deploymentsPerformed": 0,
+    "secretsReadAsValues": 0,
+    "secretsChanges": 0,
+    "databaseSettingsChanges": 0,
+    "sequenceChanges": 0,
+    "backfills": 0,
+    "rolloutApproved": false,
+    "batch1Approved": false,
+    "priorAuditsReplayed": false,
+    "preflightRegenerated": false,
+    "dependencyMapRegenerated": false,
+    "batch1PlanningRepeated": false
+  }
+}

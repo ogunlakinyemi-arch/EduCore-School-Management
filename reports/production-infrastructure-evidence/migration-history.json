@@ -1,0 +1,1414 @@
+{
+  "status": "UNRESOLVED — AUTHORITATIVE PRODUCTION MIGRATION HISTORY UNAVAILABLE",
+  "resolved": false,
+  "observedAt": "2026-10-07T08:13:48.339Z",
+  "scope": "0000–0165 repository registration comparison; exactly one required classification for every 0061–0165.",
+  "repositoryFiles": [
+    "0000_brainy_moon_knight.sql",
+    "0001_phase3_meta.sql",
+    "0002_overjoyed_sue_storm.sql",
+    "0003_phase4_integrity.sql",
+    "0004_platform_operations.sql",
+    "0005_tenant_reference_keys.sql",
+    "0006_prepare_tenant_keys_publish.sql",
+    "0007_restore_tenant_foreign_keys.sql",
+    "0008_align_tenant_fk_dependencies.sql",
+    "0009_phase5_attendance.sql",
+    "0010_historical_device_school_bindings.sql",
+    "0011_historical_device_references.sql",
+    "0012_phase6_academic_operations.sql",
+    "0013_phase7_finance.sql",
+    "0014_finance_payment_integrity.sql",
+    "0015_school_bank_transfer_settings.sql",
+    "0016_finance_refunds.sql",
+    "0017_fee_provider_payments.sql",
+    "0018_fee_payment_notifications.sql",
+    "0019_phase7_finance_ledger_gaps.sql",
+    "0020_finance_payment_notification_events.sql",
+    "0021_fee_payment_notification_outbox.sql",
+    "0022_payment_bound_notification_events.sql",
+    "0023_invoice_generated_notifications.sql",
+    "0024_platform_company_employees.sql",
+    "0025_communication.sql",
+    "0026_communication_entitlements.sql",
+    "0027_library.sql",
+    "0028_school_operations.sql",
+    "0029_operations_history.sql",
+    "0030_library_loan_copy_integrity.sql",
+    "0031_staff_nfc_billing.sql",
+    "0032_employee_nfc.sql",
+    "0033_school_workflows.sql",
+    "0034_school_transport.sql",
+    "0035_settlement_payroll.sql",
+    "0036_student_subscription_allocations.sql",
+    "0037_parent_relationship_unique_constraint.sql",
+    "0038_staff_nfc_payment_school_constraint.sql",
+    "0039_curriculum_learning.sql",
+    "0040_existing_school_workflow_review.sql",
+    "0041_permanent_school_registration_numbers.sql",
+    "0042_admissions_expansion.sql",
+    "0043_student_care_expansion.sql",
+    "0044_promotion_expansion.sql",
+    "0045_school_security_core.sql",
+    "0046_school_security_operations.sql",
+    "0047_parent_communication_extensions.sql",
+    "0048_communication_external_channels.sql",
+    "0049_term_subscription_enforcement.sql",
+    "0050_independent_owner_school_lock.sql",
+    "0051_parent_profile_preferences.sql",
+    "0052_student_nfc_replacement_requests.sql",
+    "0053_class_transport_fee_applicability.sql",
+    "0054_employee_card_replacement_finance.sql",
+    "0055_academic_calendar_fee_lines_cash.sql",
+    "0056_exam_record_workflows.sql",
+    "0057_lesson_note_documents.sql",
+    "0058_student_subscription_terms.sql",
+    "0059_partner_nfc_permission.sql",
+    "0060_reconcile_student_subscription_finance.sql",
+    "0061_reconcile_sequences_a_1.sql",
+    "0062_reconcile_sequences_b_1.sql",
+    "0063_reconcile_sequences_c_1.sql",
+    "0064_reconcile_sequences_d_1.sql",
+    "0065_reconcile_sequences_e_1.sql",
+    "0066_reconcile_sequences_f_1.sql",
+    "0067_reconcile_sequences_g_1.sql",
+    "0068_reconcile_sequences_h_1.sql",
+    "0069_reconcile_table_shells_a_1.sql",
+    "0070_reconcile_table_shells_b_1.sql",
+    "0071_reconcile_table_shells_c_1.sql",
+    "0072_reconcile_table_shells_d_1.sql",
+    "0073_reconcile_table_shells_e_1.sql",
+    "0074_reconcile_table_shells_f_1.sql",
+    "0075_reconcile_table_shells_g_1.sql",
+    "0076_reconcile_table_shells_h_1.sql",
+    "0077_reconcile_table_shells_i_1.sql",
+    "0078_reconcile_columns_a_1.sql",
+    "0079_reconcile_columns_a_2.sql",
+    "0080_reconcile_columns_a_3.sql",
+    "0081_reconcile_columns_a_4.sql",
+    "0082_reconcile_columns_a_5.sql",
+    "0083_reconcile_columns_a_6.sql",
+    "0084_reconcile_columns_a_7.sql",
+    "0085_reconcile_columns_a_8.sql",
+    "0086_reconcile_columns_a_9.sql",
+    "0087_reconcile_columns_b_1.sql",
+    "0088_reconcile_columns_c_1.sql",
+    "0089_reconcile_columns_c_2.sql",
+    "0090_reconcile_columns_c_3.sql",
+    "0091_reconcile_columns_d_1.sql",
+    "0092_reconcile_columns_e_1.sql",
+    "0093_reconcile_columns_e_2.sql",
+    "0094_reconcile_columns_e_3.sql",
+    "0095_reconcile_columns_f_1.sql",
+    "0096_reconcile_columns_f_2.sql",
+    "0097_reconcile_columns_f_3.sql",
+    "0098_reconcile_columns_f_4.sql",
+    "0099_reconcile_columns_f_5.sql",
+    "0100_reconcile_columns_g_1.sql",
+    "0101_reconcile_columns_g_2.sql",
+    "0102_reconcile_columns_g_3.sql",
+    "0103_reconcile_columns_g_4.sql",
+    "0104_reconcile_columns_g_5.sql",
+    "0105_reconcile_columns_h_1.sql",
+    "0106_reconcile_columns_h_2.sql",
+    "0107_reconcile_columns_i_1.sql",
+    "0108_reconcile_sequence_ownership_a_1.sql",
+    "0109_reconcile_sequence_ownership_b_1.sql",
+    "0110_reconcile_sequence_ownership_c_1.sql",
+    "0111_reconcile_sequence_ownership_d_1.sql",
+    "0112_reconcile_sequence_ownership_e_1.sql",
+    "0113_reconcile_sequence_ownership_f_1.sql",
+    "0114_reconcile_sequence_ownership_g_1.sql",
+    "0115_reconcile_sequence_ownership_h_1.sql",
+    "0116_reconcile_parent_keys_a_1.sql",
+    "0117_reconcile_parent_keys_a_2.sql",
+    "0118_reconcile_parent_keys_b_1.sql",
+    "0119_reconcile_parent_keys_c_1.sql",
+    "0120_reconcile_parent_keys_d_1.sql",
+    "0121_reconcile_parent_keys_e_1.sql",
+    "0122_reconcile_parent_keys_f_1.sql",
+    "0123_reconcile_parent_keys_g_1.sql",
+    "0124_reconcile_parent_keys_h_1.sql",
+    "0125_reconcile_parent_keys_i_1.sql",
+    "0126_reconcile_indexes_a_1.sql",
+    "0127_reconcile_indexes_a_2.sql",
+    "0128_reconcile_indexes_a_3.sql",
+    "0129_reconcile_indexes_b_1.sql",
+    "0130_reconcile_indexes_c_1.sql",
+    "0131_reconcile_indexes_d_1.sql",
+    "0132_reconcile_indexes_e_1.sql",
+    "0133_reconcile_indexes_f_1.sql",
+    "0134_reconcile_indexes_f_2.sql",
+    "0135_reconcile_indexes_g_1.sql",
+    "0136_reconcile_indexes_g_2.sql",
+    "0137_reconcile_indexes_h_1.sql",
+    "0138_reconcile_indexes_i_1.sql",
+    "0139_reconcile_checks_foreign_keys_a_1.sql",
+    "0140_reconcile_checks_foreign_keys_a_2.sql",
+    "0141_reconcile_checks_foreign_keys_a_3.sql",
+    "0142_reconcile_checks_foreign_keys_a_4.sql",
+    "0143_reconcile_checks_foreign_keys_b_1.sql",
+    "0144_reconcile_checks_foreign_keys_c_1.sql",
+    "0145_reconcile_checks_foreign_keys_c_2.sql",
+    "0146_reconcile_checks_foreign_keys_d_1.sql",
+    "0147_reconcile_checks_foreign_keys_e_1.sql",
+    "0148_reconcile_checks_foreign_keys_e_2.sql",
+    "0149_reconcile_checks_foreign_keys_f_1.sql",
+    "0150_reconcile_checks_foreign_keys_f_2.sql",
+    "0151_reconcile_checks_foreign_keys_g_1.sql",
+    "0152_reconcile_checks_foreign_keys_g_2.sql",
+    "0153_reconcile_checks_foreign_keys_g_3.sql",
+    "0154_reconcile_checks_foreign_keys_h_1.sql",
+    "0155_reconcile_checks_foreign_keys_i_1.sql",
+    "0156_reconcile_functions_a_1.sql",
+    "0157_reconcile_functions_e_1.sql",
+    "0158_reconcile_functions_f_1.sql",
+    "0159_reconcile_functions_g_1.sql",
+    "0160_reconcile_functions_i_1.sql",
+    "0161_reconcile_triggers_a_1.sql",
+    "0162_reconcile_triggers_e_1.sql",
+    "0163_reconcile_triggers_f_1.sql",
+    "0164_reconcile_triggers_g_1.sql",
+    "0165_reconcile_triggers_i_1.sql"
+  ],
+  "repositoryFileCount": 166,
+  "journalRegistrations": [
+    {
+      "index": 0,
+      "tag": "0000_brainy_moon_knight",
+      "timestamp": 1790124624275
+    },
+    {
+      "index": 1,
+      "tag": "0001_phase3_meta",
+      "timestamp": 1790129202026
+    },
+    {
+      "index": 2,
+      "tag": "0002_overjoyed_sue_storm",
+      "timestamp": 1790145697311
+    },
+    {
+      "index": 3,
+      "tag": "0003_phase4_integrity",
+      "timestamp": 1790157200000
+    },
+    {
+      "index": 4,
+      "tag": "0004_platform_operations",
+      "timestamp": 1790161200000
+    },
+    {
+      "index": 5,
+      "tag": "0005_tenant_reference_keys",
+      "timestamp": 1790164000000
+    },
+    {
+      "index": 6,
+      "tag": "0006_prepare_tenant_keys_publish",
+      "timestamp": 1790164600000
+    },
+    {
+      "index": 7,
+      "tag": "0007_restore_tenant_foreign_keys",
+      "timestamp": 1790165200000
+    },
+    {
+      "index": 8,
+      "tag": "0008_align_tenant_fk_dependencies",
+      "timestamp": 1790166000000
+    },
+    {
+      "index": 9,
+      "tag": "0009_phase5_attendance",
+      "timestamp": 1790192000000
+    },
+    {
+      "index": 10,
+      "tag": "0010_historical_device_school_bindings",
+      "timestamp": 1790193000000
+    },
+    {
+      "index": 11,
+      "tag": "0011_historical_device_references",
+      "timestamp": 1790194000000
+    },
+    {
+      "index": 12,
+      "tag": "0012_phase6_academic_operations",
+      "timestamp": 1790195000000
+    },
+    {
+      "index": 13,
+      "tag": "0013_phase7_finance",
+      "timestamp": 1790632156536
+    },
+    {
+      "index": 14,
+      "tag": "0014_finance_payment_integrity",
+      "timestamp": 1790632157536
+    },
+    {
+      "index": 15,
+      "tag": "0015_school_bank_transfer_settings",
+      "timestamp": 1790632158536
+    },
+    {
+      "index": 16,
+      "tag": "0016_finance_refunds",
+      "timestamp": 1790632159536
+    },
+    {
+      "index": 17,
+      "tag": "0017_fee_provider_payments",
+      "timestamp": 1790632160536
+    },
+    {
+      "index": 18,
+      "tag": "0018_fee_payment_notifications",
+      "timestamp": 1790632161536
+    },
+    {
+      "index": 19,
+      "tag": "0019_phase7_finance_ledger_gaps",
+      "timestamp": 1790632162536
+    },
+    {
+      "index": 20,
+      "tag": "0020_finance_payment_notification_events",
+      "timestamp": 1790632163536
+    },
+    {
+      "index": 21,
+      "tag": "0021_fee_payment_notification_outbox",
+      "timestamp": 1790632164536
+    },
+    {
+      "index": 22,
+      "tag": "0022_payment_bound_notification_events",
+      "timestamp": 1790632165536
+    },
+    {
+      "index": 23,
+      "tag": "0023_invoice_generated_notifications",
+      "timestamp": 1790632166536
+    },
+    {
+      "index": 24,
+      "tag": "0024_platform_company_employees",
+      "timestamp": 1790632167536
+    },
+    {
+      "index": 25,
+      "tag": "0025_communication",
+      "timestamp": 1790632168536
+    },
+    {
+      "index": 26,
+      "tag": "0026_communication_entitlements",
+      "timestamp": 1790632169536
+    },
+    {
+      "index": 27,
+      "tag": "0027_library",
+      "timestamp": 1790632170536
+    },
+    {
+      "index": 28,
+      "tag": "0028_school_operations",
+      "timestamp": 1790632171536
+    },
+    {
+      "index": 29,
+      "tag": "0029_operations_history",
+      "timestamp": 1790632172536
+    },
+    {
+      "index": 30,
+      "tag": "0030_library_loan_copy_integrity",
+      "timestamp": 1790632173536
+    },
+    {
+      "index": 31,
+      "tag": "0031_staff_nfc_billing",
+      "timestamp": 1790856000000
+    },
+    {
+      "index": 32,
+      "tag": "0032_employee_nfc",
+      "timestamp": 1790856001000
+    },
+    {
+      "index": 33,
+      "tag": "0033_school_workflows",
+      "timestamp": 1790856002000
+    },
+    {
+      "index": 34,
+      "tag": "0034_school_transport",
+      "timestamp": 1790856003000
+    },
+    {
+      "index": 35,
+      "tag": "0035_settlement_payroll",
+      "timestamp": 1790856004000
+    },
+    {
+      "index": 36,
+      "tag": "0036_student_subscription_allocations",
+      "timestamp": 1790856005000
+    },
+    {
+      "index": 37,
+      "tag": "0042_admissions_expansion",
+      "timestamp": 1790959800000
+    },
+    {
+      "index": 38,
+      "tag": "0043_student_care_expansion",
+      "timestamp": 1790959801000
+    },
+    {
+      "index": 39,
+      "tag": "0044_promotion_expansion",
+      "timestamp": 1790959802000
+    },
+    {
+      "index": 40,
+      "tag": "0045_school_security_core",
+      "timestamp": 1790959803000
+    },
+    {
+      "index": 41,
+      "tag": "0046_school_security_operations",
+      "timestamp": 1790959804000
+    },
+    {
+      "index": 42,
+      "tag": "0047_parent_communication_extensions",
+      "timestamp": 1790959805000
+    },
+    {
+      "index": 43,
+      "tag": "0048_communication_external_channels",
+      "timestamp": 1790977200000
+    },
+    {
+      "index": 44,
+      "tag": "0049_term_subscription_enforcement",
+      "timestamp": 1790985600000
+    },
+    {
+      "index": 45,
+      "tag": "0050_independent_owner_school_lock",
+      "timestamp": 1791000000000
+    },
+    {
+      "index": 46,
+      "tag": "0051_parent_profile_preferences",
+      "timestamp": 1791072000000
+    },
+    {
+      "index": 47,
+      "tag": "0052_student_nfc_replacement_requests",
+      "timestamp": 1791097200000
+    },
+    {
+      "index": 48,
+      "tag": "0053_class_transport_fee_applicability",
+      "timestamp": 1791104400000
+    },
+    {
+      "index": 49,
+      "tag": "0054_employee_card_replacement_finance",
+      "timestamp": 1791104401000
+    },
+    {
+      "index": 50,
+      "tag": "0055_academic_calendar_fee_lines_cash",
+      "timestamp": 1791111600000
+    },
+    {
+      "index": 51,
+      "tag": "0056_exam_record_workflows",
+      "timestamp": 1791193200000
+    },
+    {
+      "index": 52,
+      "tag": "0058_student_subscription_terms",
+      "timestamp": 1791284400000
+    },
+    {
+      "index": 53,
+      "tag": "0059_partner_nfc_permission",
+      "timestamp": 1791288000000
+    }
+  ],
+  "registeredFiles": [
+    "0000_brainy_moon_knight.sql",
+    "0001_phase3_meta.sql",
+    "0002_overjoyed_sue_storm.sql",
+    "0003_phase4_integrity.sql",
+    "0004_platform_operations.sql",
+    "0005_tenant_reference_keys.sql",
+    "0006_prepare_tenant_keys_publish.sql",
+    "0007_restore_tenant_foreign_keys.sql",
+    "0008_align_tenant_fk_dependencies.sql",
+    "0009_phase5_attendance.sql",
+    "0010_historical_device_school_bindings.sql",
+    "0011_historical_device_references.sql",
+    "0012_phase6_academic_operations.sql",
+    "0013_phase7_finance.sql",
+    "0014_finance_payment_integrity.sql",
+    "0015_school_bank_transfer_settings.sql",
+    "0016_finance_refunds.sql",
+    "0017_fee_provider_payments.sql",
+    "0018_fee_payment_notifications.sql",
+    "0019_phase7_finance_ledger_gaps.sql",
+    "0020_finance_payment_notification_events.sql",
+    "0021_fee_payment_notification_outbox.sql",
+    "0022_payment_bound_notification_events.sql",
+    "0023_invoice_generated_notifications.sql",
+    "0024_platform_company_employees.sql",
+    "0025_communication.sql",
+    "0026_communication_entitlements.sql",
+    "0027_library.sql",
+    "0028_school_operations.sql",
+    "0029_operations_history.sql",
+    "0030_library_loan_copy_integrity.sql",
+    "0031_staff_nfc_billing.sql",
+    "0032_employee_nfc.sql",
+    "0033_school_workflows.sql",
+    "0034_school_transport.sql",
+    "0035_settlement_payroll.sql",
+    "0036_student_subscription_allocations.sql",
+    "0042_admissions_expansion.sql",
+    "0043_student_care_expansion.sql",
+    "0044_promotion_expansion.sql",
+    "0045_school_security_core.sql",
+    "0046_school_security_operations.sql",
+    "0047_parent_communication_extensions.sql",
+    "0048_communication_external_channels.sql",
+    "0049_term_subscription_enforcement.sql",
+    "0050_independent_owner_school_lock.sql",
+    "0051_parent_profile_preferences.sql",
+    "0052_student_nfc_replacement_requests.sql",
+    "0053_class_transport_fee_applicability.sql",
+    "0054_employee_card_replacement_finance.sql",
+    "0055_academic_calendar_fee_lines_cash.sql",
+    "0056_exam_record_workflows.sql",
+    "0058_student_subscription_terms.sql",
+    "0059_partner_nfc_permission.sql"
+  ],
+  "unregisteredFiles": [
+    "0037_parent_relationship_unique_constraint.sql",
+    "0038_staff_nfc_payment_school_constraint.sql",
+    "0039_curriculum_learning.sql",
+    "0040_existing_school_workflow_review.sql",
+    "0041_permanent_school_registration_numbers.sql",
+    "0057_lesson_note_documents.sql",
+    "0060_reconcile_student_subscription_finance.sql",
+    "0061_reconcile_sequences_a_1.sql",
+    "0062_reconcile_sequences_b_1.sql",
+    "0063_reconcile_sequences_c_1.sql",
+    "0064_reconcile_sequences_d_1.sql",
+    "0065_reconcile_sequences_e_1.sql",
+    "0066_reconcile_sequences_f_1.sql",
+    "0067_reconcile_sequences_g_1.sql",
+    "0068_reconcile_sequences_h_1.sql",
+    "0069_reconcile_table_shells_a_1.sql",
+    "0070_reconcile_table_shells_b_1.sql",
+    "0071_reconcile_table_shells_c_1.sql",
+    "0072_reconcile_table_shells_d_1.sql",
+    "0073_reconcile_table_shells_e_1.sql",
+    "0074_reconcile_table_shells_f_1.sql",
+    "0075_reconcile_table_shells_g_1.sql",
+    "0076_reconcile_table_shells_h_1.sql",
+    "0077_reconcile_table_shells_i_1.sql",
+    "0078_reconcile_columns_a_1.sql",
+    "0079_reconcile_columns_a_2.sql",
+    "0080_reconcile_columns_a_3.sql",
+    "0081_reconcile_columns_a_4.sql",
+    "0082_reconcile_columns_a_5.sql",
+    "0083_reconcile_columns_a_6.sql",
+    "0084_reconcile_columns_a_7.sql",
+    "0085_reconcile_columns_a_8.sql",
+    "0086_reconcile_columns_a_9.sql",
+    "0087_reconcile_columns_b_1.sql",
+    "0088_reconcile_columns_c_1.sql",
+    "0089_reconcile_columns_c_2.sql",
+    "0090_reconcile_columns_c_3.sql",
+    "0091_reconcile_columns_d_1.sql",
+    "0092_reconcile_columns_e_1.sql",
+    "0093_reconcile_columns_e_2.sql",
+    "0094_reconcile_columns_e_3.sql",
+    "0095_reconcile_columns_f_1.sql",
+    "0096_reconcile_columns_f_2.sql",
+    "0097_reconcile_columns_f_3.sql",
+    "0098_reconcile_columns_f_4.sql",
+    "0099_reconcile_columns_f_5.sql",
+    "0100_reconcile_columns_g_1.sql",
+    "0101_reconcile_columns_g_2.sql",
+    "0102_reconcile_columns_g_3.sql",
+    "0103_reconcile_columns_g_4.sql",
+    "0104_reconcile_columns_g_5.sql",
+    "0105_reconcile_columns_h_1.sql",
+    "0106_reconcile_columns_h_2.sql",
+    "0107_reconcile_columns_i_1.sql",
+    "0108_reconcile_sequence_ownership_a_1.sql",
+    "0109_reconcile_sequence_ownership_b_1.sql",
+    "0110_reconcile_sequence_ownership_c_1.sql",
+    "0111_reconcile_sequence_ownership_d_1.sql",
+    "0112_reconcile_sequence_ownership_e_1.sql",
+    "0113_reconcile_sequence_ownership_f_1.sql",
+    "0114_reconcile_sequence_ownership_g_1.sql",
+    "0115_reconcile_sequence_ownership_h_1.sql",
+    "0116_reconcile_parent_keys_a_1.sql",
+    "0117_reconcile_parent_keys_a_2.sql",
+    "0118_reconcile_parent_keys_b_1.sql",
+    "0119_reconcile_parent_keys_c_1.sql",
+    "0120_reconcile_parent_keys_d_1.sql",
+    "0121_reconcile_parent_keys_e_1.sql",
+    "0122_reconcile_parent_keys_f_1.sql",
+    "0123_reconcile_parent_keys_g_1.sql",
+    "0124_reconcile_parent_keys_h_1.sql",
+    "0125_reconcile_parent_keys_i_1.sql",
+    "0126_reconcile_indexes_a_1.sql",
+    "0127_reconcile_indexes_a_2.sql",
+    "0128_reconcile_indexes_a_3.sql",
+    "0129_reconcile_indexes_b_1.sql",
+    "0130_reconcile_indexes_c_1.sql",
+    "0131_reconcile_indexes_d_1.sql",
+    "0132_reconcile_indexes_e_1.sql",
+    "0133_reconcile_indexes_f_1.sql",
+    "0134_reconcile_indexes_f_2.sql",
+    "0135_reconcile_indexes_g_1.sql",
+    "0136_reconcile_indexes_g_2.sql",
+    "0137_reconcile_indexes_h_1.sql",
+    "0138_reconcile_indexes_i_1.sql",
+    "0139_reconcile_checks_foreign_keys_a_1.sql",
+    "0140_reconcile_checks_foreign_keys_a_2.sql",
+    "0141_reconcile_checks_foreign_keys_a_3.sql",
+    "0142_reconcile_checks_foreign_keys_a_4.sql",
+    "0143_reconcile_checks_foreign_keys_b_1.sql",
+    "0144_reconcile_checks_foreign_keys_c_1.sql",
+    "0145_reconcile_checks_foreign_keys_c_2.sql",
+    "0146_reconcile_checks_foreign_keys_d_1.sql",
+    "0147_reconcile_checks_foreign_keys_e_1.sql",
+    "0148_reconcile_checks_foreign_keys_e_2.sql",
+    "0149_reconcile_checks_foreign_keys_f_1.sql",
+    "0150_reconcile_checks_foreign_keys_f_2.sql",
+    "0151_reconcile_checks_foreign_keys_g_1.sql",
+    "0152_reconcile_checks_foreign_keys_g_2.sql",
+    "0153_reconcile_checks_foreign_keys_g_3.sql",
+    "0154_reconcile_checks_foreign_keys_h_1.sql",
+    "0155_reconcile_checks_foreign_keys_i_1.sql",
+    "0156_reconcile_functions_a_1.sql",
+    "0157_reconcile_functions_e_1.sql",
+    "0158_reconcile_functions_f_1.sql",
+    "0159_reconcile_functions_g_1.sql",
+    "0160_reconcile_functions_i_1.sql",
+    "0161_reconcile_triggers_a_1.sql",
+    "0162_reconcile_triggers_e_1.sql",
+    "0163_reconcile_triggers_f_1.sql",
+    "0164_reconcile_triggers_g_1.sql",
+    "0165_reconcile_triggers_i_1.sql"
+  ],
+  "registeredCount": 54,
+  "unregisteredCount": 112,
+  "unregisteredEarlier": [
+    "0037_parent_relationship_unique_constraint.sql",
+    "0038_staff_nfc_payment_school_constraint.sql",
+    "0039_curriculum_learning.sql",
+    "0040_existing_school_workflow_review.sql",
+    "0041_permanent_school_registration_numbers.sql",
+    "0057_lesson_note_documents.sql"
+  ],
+  "unregistered0060": "0060_reconcile_student_subscription_finance.sql",
+  "authoritativePlatformHistory": {
+    "currentDeploymentMetadata": {
+      "additionalUrls": [],
+      "deploymentType": "autoscale",
+      "hasSuccessfulBuild": true,
+      "isDeployed": true,
+      "primaryUrl": "https://edu-pulse-school-management--ogunlakinyemi.replit.app",
+      "success": true,
+      "visibility": "public"
+    },
+    "available": "Current public Autoscale build/deployment state only.",
+    "unavailable": "Deployment identifier, historical migration commit records, Production execution hashes/timestamps, journal ledger, resource-bound schema/history snapshots.",
+    "adminApi": "Documented read API requires existing authorized account key; no key available, no requests made.",
+    "logs": "Application/build logs are not, by themselves, authoritative per-migration execution/commit history. No fresh logs used as a substitute."
+  },
+  "previousEvidenceReused": {
+    "historyReport": "reports/production-execution-readiness-gate/migration-history.json",
+    "integrityReport": "reports/production-execution-readiness-gate/migration-integrity.json",
+    "schemaPreflight": "reports/schema-focused-readiness/result.json",
+    "note": "No 0000–0060 replay, schema audit, hash validation or preflight repeated. Development ledger/history evidence remains Development-only."
+  },
+  "classificationCounts": {
+    "CONFIRMED_APPLIED": 0,
+    "CONFIRMED_NOT_APPLIED": 0,
+    "AMBIGUOUS": 105
+  },
+  "migrations": [
+    {
+      "filename": "0061_reconcile_sequences_a_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0062_reconcile_sequences_b_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0063_reconcile_sequences_c_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0064_reconcile_sequences_d_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0065_reconcile_sequences_e_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0066_reconcile_sequences_f_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0067_reconcile_sequences_g_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0068_reconcile_sequences_h_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0069_reconcile_table_shells_a_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0070_reconcile_table_shells_b_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0071_reconcile_table_shells_c_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0072_reconcile_table_shells_d_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0073_reconcile_table_shells_e_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0074_reconcile_table_shells_f_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0075_reconcile_table_shells_g_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0076_reconcile_table_shells_h_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0077_reconcile_table_shells_i_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0078_reconcile_columns_a_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0079_reconcile_columns_a_2.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0080_reconcile_columns_a_3.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0081_reconcile_columns_a_4.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0082_reconcile_columns_a_5.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0083_reconcile_columns_a_6.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0084_reconcile_columns_a_7.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0085_reconcile_columns_a_8.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0086_reconcile_columns_a_9.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0087_reconcile_columns_b_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0088_reconcile_columns_c_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0089_reconcile_columns_c_2.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0090_reconcile_columns_c_3.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0091_reconcile_columns_d_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0092_reconcile_columns_e_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0093_reconcile_columns_e_2.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0094_reconcile_columns_e_3.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0095_reconcile_columns_f_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0096_reconcile_columns_f_2.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0097_reconcile_columns_f_3.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0098_reconcile_columns_f_4.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0099_reconcile_columns_f_5.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0100_reconcile_columns_g_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0101_reconcile_columns_g_2.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0102_reconcile_columns_g_3.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0103_reconcile_columns_g_4.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0104_reconcile_columns_g_5.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0105_reconcile_columns_h_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0106_reconcile_columns_h_2.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0107_reconcile_columns_i_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0108_reconcile_sequence_ownership_a_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0109_reconcile_sequence_ownership_b_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0110_reconcile_sequence_ownership_c_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0111_reconcile_sequence_ownership_d_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0112_reconcile_sequence_ownership_e_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0113_reconcile_sequence_ownership_f_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0114_reconcile_sequence_ownership_g_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0115_reconcile_sequence_ownership_h_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0116_reconcile_parent_keys_a_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0117_reconcile_parent_keys_a_2.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0118_reconcile_parent_keys_b_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0119_reconcile_parent_keys_c_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0120_reconcile_parent_keys_d_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0121_reconcile_parent_keys_e_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0122_reconcile_parent_keys_f_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0123_reconcile_parent_keys_g_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0124_reconcile_parent_keys_h_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0125_reconcile_parent_keys_i_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0126_reconcile_indexes_a_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0127_reconcile_indexes_a_2.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0128_reconcile_indexes_a_3.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0129_reconcile_indexes_b_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0130_reconcile_indexes_c_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0131_reconcile_indexes_d_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0132_reconcile_indexes_e_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0133_reconcile_indexes_f_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0134_reconcile_indexes_f_2.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0135_reconcile_indexes_g_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0136_reconcile_indexes_g_2.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0137_reconcile_indexes_h_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0138_reconcile_indexes_i_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0139_reconcile_checks_foreign_keys_a_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0140_reconcile_checks_foreign_keys_a_2.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0141_reconcile_checks_foreign_keys_a_3.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0142_reconcile_checks_foreign_keys_a_4.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0143_reconcile_checks_foreign_keys_b_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0144_reconcile_checks_foreign_keys_c_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0145_reconcile_checks_foreign_keys_c_2.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0146_reconcile_checks_foreign_keys_d_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0147_reconcile_checks_foreign_keys_e_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0148_reconcile_checks_foreign_keys_e_2.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0149_reconcile_checks_foreign_keys_f_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0150_reconcile_checks_foreign_keys_f_2.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0151_reconcile_checks_foreign_keys_g_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0152_reconcile_checks_foreign_keys_g_2.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0153_reconcile_checks_foreign_keys_g_3.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0154_reconcile_checks_foreign_keys_h_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0155_reconcile_checks_foreign_keys_i_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0156_reconcile_functions_a_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0157_reconcile_functions_e_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0158_reconcile_functions_f_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0159_reconcile_functions_g_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0160_reconcile_functions_i_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0161_reconcile_triggers_a_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0162_reconcile_triggers_e_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0163_reconcile_triggers_f_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0164_reconcile_triggers_g_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    },
+    {
+      "filename": "0165_reconcile_triggers_i_1.sql",
+      "classification": "AMBIGUOUS",
+      "sourceJournalRegistered": false,
+      "authoritativeProductionExecutionEvidenceAvailable": false,
+      "reason": "No authoritative primary executed-hash/ledger/deployment-to-migration evidence available. Absent registration and cached replica effects are not CONFIRMED_NOT_APPLIED or CONFIRMED_APPLIED."
+    }
+  ],
+  "stopCondition": "Do not replay, bulk-stamp, insert/delete journal entries or infer execution from current shape/absent registration. Legitimate primary execution provenance is still required.",
+  "requiredEvidence": "Read-only authoritative Production execution ledger and platform deployment/migration records bound to resource/revision, including actual applied SQL hashes/timestamps and already-present operation provenance.",
+  "safety": {
+    "productionWrites": 0,
+    "developmentWrites": 0,
+    "sharedDatabaseWrites": 0,
+    "databaseConnectionsOpened": 0,
+    "sqlQueriesExecuted": 0,
+    "migrationsExecuted": 0,
+    "journalChanges": 0,
+    "deploymentsPerformed": 0,
+    "secretsReadAsValues": 0,
+    "secretsChanges": 0,
+    "databaseSettingsChanges": 0,
+    "sequenceChanges": 0,
+    "backfills": 0,
+    "rolloutApproved": false,
+    "batch1Approved": false,
+    "priorAuditsReplayed": false,
+    "preflightRegenerated": false,
+    "dependencyMapRegenerated": false,
+    "batch1PlanningRepeated": false
+  }
+}

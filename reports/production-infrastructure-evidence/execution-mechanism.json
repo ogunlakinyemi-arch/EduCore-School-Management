@@ -1,0 +1,71 @@
+{
+  "status": "UNRESOLVED — SUPPORTED STAGED PRODUCTION EXECUTION MECHANISM NOT ESTABLISHED",
+  "resolved": false,
+  "observedAt": "2026-10-07T08:13:48.339Z",
+  "conditionalSupportedPlatformRoute": "For Replit-managed Production, Publish synchronizes development/production schema differences. Publish not invoked. The actual target/provider and exact equivalence to this staged package remain unverified.",
+  "configurationEvidence": {
+    "deploymentType": "autoscale",
+    "postBuild": "pnpm store prune only; no migration execution declared.",
+    "dbPackageScripts": "push / push-force are drizzle-kit schema synchronization commands, not an approved Production staged SQL-file runner.",
+    "drizzleConfig": "Uses symbolic DATABASE_URL; no credentials inspected.",
+    "postMerge": "Development merge setup invokes schema push; not Production authorization.",
+    "configuredStagedProductionRunner": "Not established by existing configuration or supported tooling."
+  },
+  "capabilities": {
+    "targetAuthoritativeProduction": {
+      "result": "UNVERIFIED",
+      "reason": "Publish has a documented managed Production route, but this deployment’s exact primary binding is absent."
+    },
+    "dependencyOrderedExactFiles": {
+      "result": "UNVERIFIED",
+      "reason": "Schema-diff application is not certification that exact 0061–0165 and external 0060 execute in the reviewed schedule."
+    },
+    "stopBetweenFiveBatches": {
+      "result": "UNVERIFIED",
+      "reason": "No supported package-specific pause/resume mechanism demonstrated."
+    },
+    "transactionBoundaries": {
+      "result": "UNVERIFIED for intended executor",
+      "reason": "Atomic DO source statements do not prove Publish/executor-wide commit, rollback and continuation semantics."
+    },
+    "committedFailedResults": {
+      "result": "UNVERIFIED per migration",
+      "reason": "Successful published build is not a durable committed-migration receipt."
+    },
+    "durableMigrationHistory": {
+      "result": "UNVERIFIED",
+      "reason": "No authoritative executed hash/timestamp/ledger mapping exposed."
+    },
+    "abortSafelyOnError": {
+      "result": "UNVERIFIED",
+      "reason": "Need committed/pending state and safe error/abort semantics for the approved route."
+    }
+  },
+  "policy": "No custom Production runner, deploy-build migration hook, startup DDL or direct primary SQL execution invented. Source database-migrations-on-publish reference and directly fetched official development/production page govern the supported managed route.",
+  "requiredEvidence": "Supported executor documentation and authorization identifying the primary, exact dependency order, five batch stops, transaction/commit behavior, durable per-migration history/results and safe abort behavior; a generic schema Publish capability alone is insufficient.",
+  "documentation": [
+    "https://docs.replit.com/features/data-and-storage/development-and-production",
+    ".local/skills/database/references/database-migrations-on-publish.md"
+  ],
+  "safety": {
+    "productionWrites": 0,
+    "developmentWrites": 0,
+    "sharedDatabaseWrites": 0,
+    "databaseConnectionsOpened": 0,
+    "sqlQueriesExecuted": 0,
+    "migrationsExecuted": 0,
+    "journalChanges": 0,
+    "deploymentsPerformed": 0,
+    "secretsReadAsValues": 0,
+    "secretsChanges": 0,
+    "databaseSettingsChanges": 0,
+    "sequenceChanges": 0,
+    "backfills": 0,
+    "rolloutApproved": false,
+    "batch1Approved": false,
+    "priorAuditsReplayed": false,
+    "preflightRegenerated": false,
+    "dependencyMapRegenerated": false,
+    "batch1PlanningRepeated": false
+  }
+}

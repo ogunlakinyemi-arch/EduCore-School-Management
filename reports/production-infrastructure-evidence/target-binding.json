@@ -1,0 +1,69 @@
+{
+  "status": "UNRESOLVED — REPLIT DOES NOT EXPOSE AUTHORITATIVE PRIMARY BINDING THROUGH AVAILABLE READ-ONLY EVIDENCE",
+  "resolved": false,
+  "observedAt": "2026-10-07T08:13:48.339Z",
+  "officialDeploymentMetadata": {
+    "additionalUrls": [],
+    "deploymentType": "autoscale",
+    "hasSuccessfulBuild": true,
+    "isDeployed": true,
+    "primaryUrl": "https://edu-pulse-school-management--ogunlakinyemi.replit.app",
+    "success": true,
+    "visibility": "public"
+  },
+  "productionDeploymentIdentifier": null,
+  "productionDeploymentIdentifierAvailability": "Not returned by getDeploymentInfo; a public URL/build status is not a deployment-resource identifier.",
+  "productionDatabaseResourceIdentifier": null,
+  "databaseResourceIdentifierAvailability": "Not returned by the available supported authenticated metadata interfaces.",
+  "existenceOnlyMetadata": {
+    "runtimeManaged": [
+      "DATABASE_URL"
+    ],
+    "secrets": {
+      "DATABASE_URL": true,
+      "EXTERNAL_DATABASE_URL": false,
+      "REPLIT_API_KEY": false
+    }
+  },
+  "databaseUrlRuntimeManaged": true,
+  "databaseUrlPresent": true,
+  "runtimeResourceBindingConfirmed": false,
+  "runtimeResourceBinding": "Runtime-managed key and Production secret existence confirmed. Exact database/provider/resource/primary actually used by the published app is not exposed or certified by those facts.",
+  "accessibleDatabaseRoutes": {
+    "workspace": "Documented Project Editor database is Development; no connection opened or credential read in this review.",
+    "productionAgent": "Database skill explicitly documents executeSql(environment=production) as READ-ONLY against a replica. Previous observations were through that route; no query repeated.",
+    "authoritativePrimary": "No identified/certified primary connection accessible through the authenticated read-only metadata used here."
+  },
+  "supportedPrimaryConnectionMechanism": {
+    "documentedOperatorSurface": "Database tool → Production → Settings connection details. No credentials accessed, copied, regenerated or requested.",
+    "agentCertification": "No resource-bound primary connection certification exposed by the available read-only callbacks.",
+    "doNotInfer": "Settings documentation and runtimeManaged status do not identify this deployment’s exact primary."
+  },
+  "adminApiAvailability": {
+    "documented": "Enterprise account-scoped read APIs can return project/deployment metadata when authorized; database/PITR inventory is not established by the provided endpoint list.",
+    "existingKeyPresent": false,
+    "action": "No Admin API requests: existing key not present. No new credential/integration requested and no private endpoints used."
+  },
+  "requiredEvidence": "Non-secret operator/resource metadata connecting the deployed application to the exact Production resource/provider/primary and identifying the supported authorized read-only access path.",
+  "safety": {
+    "productionWrites": 0,
+    "developmentWrites": 0,
+    "sharedDatabaseWrites": 0,
+    "databaseConnectionsOpened": 0,
+    "sqlQueriesExecuted": 0,
+    "migrationsExecuted": 0,
+    "journalChanges": 0,
+    "deploymentsPerformed": 0,
+    "secretsReadAsValues": 0,
+    "secretsChanges": 0,
+    "databaseSettingsChanges": 0,
+    "sequenceChanges": 0,
+    "backfills": 0,
+    "rolloutApproved": false,
+    "batch1Approved": false,
+    "priorAuditsReplayed": false,
+    "preflightRegenerated": false,
+    "dependencyMapRegenerated": false,
+    "batch1PlanningRepeated": false
+  }
+}

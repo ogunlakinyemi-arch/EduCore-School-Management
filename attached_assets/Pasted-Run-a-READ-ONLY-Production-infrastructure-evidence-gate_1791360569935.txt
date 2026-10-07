@@ -1,0 +1,198 @@
+Run a READ-ONLY Production infrastructure evidence gate.
+
+ABSOLUTE RULE
+
+Do NOT:
+
+- execute any migration;
+- modify Production or Development;
+- modify the migration journal;
+- publish or deploy;
+- change secrets;
+- change database settings;
+- create/drop/alter database objects;
+- reset sequences;
+- backfill data;
+- replay migration "0060";
+- stamp migrations as applied;
+- approve Batch 1.
+
+Production writes MUST remain 0.
+
+Do not repeat the completed schema audits, migration replay, 1,890-check preflight, default correction, dependency mapping, or Batch 1 planning.
+
+The purpose is only to determine whether the five infrastructure blockers can be resolved using information/configuration already available through the supported Replit environment.
+
+1. AUTHORITATIVE PRODUCTION TARGET
+
+Inspect only officially available project/deployment/resource metadata.
+
+Determine:
+
+- Production deployment identifier, if available;
+- Production database/resource identifier, if available;
+- whether the application runtime's "DATABASE_URL" or equivalent is resource-bound;
+- whether the currently accessible database is Development, Production replica, or Production primary;
+- whether Replit exposes an authoritative primary connection through a supported mechanism.
+
+Do NOT print or expose credentials/secrets.
+
+If the authoritative primary cannot be identified, report:
+
+"UNRESOLVED — REPLIT DOES NOT EXPOSE AUTHORITATIVE PRIMARY BINDING THROUGH AVAILABLE READ-ONLY EVIDENCE"
+
+Do not infer the primary from a replica.
+
+2. PITR / RECOVERY EVIDENCE
+
+Using only supported read-only Replit resource metadata, determine:
+
+- PITR enabled/disabled;
+- earliest recoverable timestamp;
+- latest recoverable timestamp;
+- retention period/window;
+- latest successful backup/recovery evidence;
+- scheduled backup status, if exposed;
+- whether the protection is adequate for a 105-migration schema reconciliation.
+
+Do NOT enable, disable, configure, or trigger backups.
+
+If these values are not exposed, clearly state which specific values are unavailable.
+
+Do not infer adequacy from the previously observed 7-day recovery window.
+
+3. SUPPORTED MIGRATION EXECUTION MECHANISM
+
+Inspect existing project configuration and supported Replit database tooling/documentation available in the environment.
+
+Determine whether there is a supported mechanism capable of:
+
+- targeting the authoritative Production database;
+- executing migrations in dependency order;
+- stopping between batches;
+- providing transaction boundaries;
+- returning committed/failed results;
+- preserving durable migration history;
+- safely aborting on an error.
+
+Do not execute the mechanism.
+
+Do not invent a custom production migration runner.
+
+If no supported mechanism can be established, report:
+
+"UNRESOLVED — SUPPORTED STAGED PRODUCTION EXECUTION MECHANISM NOT ESTABLISHED"
+
+4. AUTHORITATIVE MIGRATION HISTORY
+
+Perform read-only inspection of all available authoritative migration/deployment history.
+
+Compare:
+
+- "0000–0165" migration files;
+- Drizzle journal;
+- platform migration/deployment records;
+- any authoritative Production schema/deployment metadata available.
+
+For every migration from "0061–0165", classify it as exactly one of:
+
+- "CONFIRMED_APPLIED"
+- "CONFIRMED_NOT_APPLIED"
+- "AMBIGUOUS"
+
+Do NOT classify an absent journal entry as "CONFIRMED_NOT_APPLIED".
+
+Do NOT modify the journal.
+
+Do NOT execute or replay anything.
+
+If authoritative history is unavailable, report that explicitly.
+
+5. AUTHORITATIVE 0060 FINANCE CONTRACT
+
+Using only an authoritative Production primary/resource, if supported read-only access exists, verify the complete 0060 Finance contract.
+
+Check all 96 expected objects/definitions documented by the existing 0060 validation package, including:
+
+- tables;
+- columns;
+- primary keys;
+- unique constraints;
+- foreign keys;
+- CHECK constraints;
+- indexes;
+- functions;
+- triggers;
+- sequences and related ownership/default requirements.
+
+Classify:
+
+- "SATISFIED"
+- "NOT SATISFIED"
+- "UNVERIFIABLE"
+
+Do not execute migration 0060.
+
+Do not modify anything.
+
+If only the read replica is accessible, report:
+
+"UNVERIFIABLE — REPLICA IS NOT AUTHORITATIVE PRIMARY CERTIFICATION"
+
+6. DO NOT REPEAT KNOWN WORK
+
+Reuse these existing reports:
+
+- "reports/production-execution-plan/"
+- "reports/production-execution-readiness-gate/"
+- previous schema reconciliation reports;
+- previous preflight reports.
+
+Do not regenerate the 1,890 checks.
+
+Do not rerun the 0000–0060 replay.
+
+Do not regenerate the five-default validation.
+
+7. WRITE ONLY AN EVIDENCE REPORT
+
+Create:
+
+"reports/production-infrastructure-evidence/"
+
+with:
+
+1. "evidence-gate.md"
+2. "target-binding.json"
+3. "recovery-evidence.json"
+4. "execution-mechanism.json"
+5. "migration-history.json"
+6. "finance-0060-certification.json"
+
+No database or application changes.
+
+8. FINAL RESULT
+
+Return this table:
+
+Blocker| Result| Resolved?
+Authoritative Production target| ...| YES/NO
+PITR/recovery evidence| ...| YES/NO
+Supported execution mechanism| ...| YES/NO
+Authoritative migration history| ...| YES/NO
+0060 Finance certification| ...| YES/NO
+Production writes| 0| PASS
+
+Then give the exact remaining blockers.
+
+Use exactly one status:
+
+INFRASTRUCTURE GATES CLEARED — READY FOR FINAL EXECUTION REVIEW
+
+only if all five blockers are conclusively resolved.
+
+Otherwise:
+
+INFRASTRUCTURE GATES STILL BLOCKED
+
+Do not execute Batch 1 under any circumstances during this operation.

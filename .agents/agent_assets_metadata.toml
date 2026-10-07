@@ -560,3 +560,17 @@ mtime_ms = 1791360349825
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/445899bf-030e-4e39-8bce-df96c88d39e8/a3ab6ba5-a662-46ca-a23a-b91231e900e3"
 storage_version_token = "1791360434969570"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "bjxwFzCq-bZzuxoGnqIcO"
+uri = "file://reports/production-infrastructure-evidence/evidence-gate.md"
+type = "text"
+title = "Production infrastructure evidence gate"
+description = "Supported metadata findings, five unresolved infrastructure gates, exact remaining evidence and zero Production writes."
+logical_id = "aed11f48-d9b7-42ec-92b4-46e1431055ee"
+content_hash = "sha256:053481c9acde30195c83f5926ef2e4c1ea55ebf1d3d07b539cf68d7d3f97d6db"
+size = 6591
+mtime_ms = 1791360829496
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/aed11f48-d9b7-42ec-92b4-46e1431055ee/00114cc1-9937-4542-a5bf-9f56a0398369"
+storage_version_token = "1791360863099915"
+content_type = "text/markdown"
