@@ -1,0 +1,77 @@
+Integrate Resend into Yemait EduCore for transactional parent and system email notifications.
+
+IMPORTANT:
+
+- The Resend API key is already stored in Replit Secrets as "RESEND_API_KEY".
+- Never expose, print, log, hard-code, or commit the API key.
+- Do not ask me to paste the API key into the code.
+- Do not modify Production settings.
+- Work in Development first.
+- Inspect the existing notification/email architecture before making changes. Do not create a second competing notification system.
+
+Requirements:
+
+1. Resend configuration
+
+- Read "RESEND_API_KEY" only from the server-side environment.
+- Create a reusable server-side email service/provider abstraction.
+- Keep the email provider replaceable in the future.
+- Use a configurable sender address, preferably:
+  "Yemait EduCore <notifications@yetenia.com>"
+- Do not expose the API key to the browser/client.
+
+2. Parent email notifications
+   Integrate email delivery with the existing notification system for appropriate parent notifications, including:
+
+- Student attendance/absence notifications
+- Examination/result publication notifications
+- School-fee notifications
+- Payment receipts
+- Fee reminders
+- School announcements
+- Report-card publication
+- Important student/security notifications
+- Parent invitations/account-related emails
+
+Do not invent new notification rules where equivalent existing rules already exist. Reuse the current EduCore notification architecture.
+
+3. Reliability
+
+- Email delivery failure must not break the underlying EduCore transaction.
+- Record failed email delivery attempts using the existing logging/notification mechanism where available.
+- Avoid duplicate emails when the same notification is retried.
+- Handle Resend API errors safely.
+- Do not expose sensitive provider responses to parents or users.
+
+4. Development testing
+   Create focused tests for:
+
+- Successful email dispatch
+- Missing "RESEND_API_KEY"
+- Resend API failure
+- Duplicate/idempotent notification handling
+- Correct recipient selection
+- Correct sender configuration
+- No API key exposure in client code or logs
+
+5. Development verification
+   After implementation:
+
+- Verify the application starts successfully.
+- Verify TypeScript/type checks for the files changed.
+- Run the relevant tests.
+- Send a Development test email to a controlled test recipient if the existing system allows this.
+- Report exactly what was changed and what was successfully tested.
+
+Do not modify the database schema unless absolutely necessary. If a schema change is required, stop and explain why before applying it.
+
+Do not publish to Production.
+
+At the end, provide:
+
+- Files changed
+- Environment variables used
+- Email notification types connected
+- Tests passed/failed
+- Any remaining configuration needed for "yetenia.com"
+- Whether a real Development email was successfully delivered

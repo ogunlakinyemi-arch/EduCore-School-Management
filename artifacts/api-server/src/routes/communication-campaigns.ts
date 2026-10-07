@@ -29,6 +29,7 @@ import {
   type Role,
 } from "../middlewares/auth";
 import { logger } from "../lib/logger";
+import { createDevelopmentCommunicationProviders } from "../services/communication-providers";
 import {
   dispatchCommunicationDeliveries,
   queueCommunicationNotification,
@@ -815,7 +816,10 @@ router.post("/communication/announcements", asyncRoute(async (req, res) => {
   }
 
   if (wasCreated) {
-    void dispatchCommunicationDeliveries(pool, Math.min(500, recipients.length * body.channels.length))
+    void dispatchCommunicationDeliveries(pool, Math.min(500, recipients.length * body.channels.length), {
+      allowConfiguredProviders: process.env.NODE_ENV === "production",
+      providers: process.env.NODE_ENV === "production" ? undefined : createDevelopmentCommunicationProviders(),
+    })
       .catch(error => logger.error(
         { campaignId: campaign?.id, errorName: error instanceof Error ? error.name : "unknown" },
         "Communication campaign delivery dispatch failed",
@@ -1040,7 +1044,10 @@ router.post("/communication/deliveries/:deliveryId/retry", asyncRoute(async (req
   } finally {
     client.release();
   }
-  void dispatchCommunicationDeliveries(pool, 1)
+  void dispatchCommunicationDeliveries(pool, 1, {
+    allowConfiguredProviders: process.env.NODE_ENV === "production",
+    providers: process.env.NODE_ENV === "production" ? undefined : createDevelopmentCommunicationProviders(),
+  })
     .catch(error => logger.error(
       { deliveryId: params.deliveryId, errorName: error instanceof Error ? error.name : "unknown" },
       "Communication delivery retry dispatch failed",

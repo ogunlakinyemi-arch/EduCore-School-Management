@@ -480,7 +480,13 @@ export function createEmailProvider(
   }
   if (selected === "resend") {
     if (!env.RESEND_API_KEY || !env.EMAIL_FROM) throw new CommunicationProviderConfigurationError("email", selected);
-    return new ResendEmailProvider({ apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM }, options);
+    return new ResendEmailProvider({
+      apiKey: env.RESEND_API_KEY,
+      from: env.EMAIL_FROM,
+      // Development never contacts real parents merely because a key exists.
+      allowedRecipients: env.NODE_ENV === "production" ? undefined :
+        (env.RESEND_DEVELOPMENT_RECIPIENTS ?? "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean),
+    }, options);
   }
   if (selected !== "http") {
     throw new CommunicationProviderConfigurationError("email", selected);
@@ -498,12 +504,16 @@ export function createEmailProvider(
 export class ResendEmailProvider implements EmailProvider {
   readonly provider = "resend";
   readonly channel = "email" as const;
-  constructor(private readonly config: { apiKey: string; from: string }, private readonly options: CommunicationProviderOptions = {}) {
+  constructor(private readonly config: { apiKey: string; from: string; allowedRecipients?: readonly string[] }, private readonly options: CommunicationProviderOptions = {}) {
     if (!config.apiKey.trim() || !validEmail(config.from.replace(/^.*<([^>]+)>$/, "$1"))) {
       throw new CommunicationProviderConfigurationError("email", "resend");
     }
   }
   async send(message: EmailMessage): Promise<ProviderSendResult> {
+    if (this.config.allowedRecipients !== undefined &&
+        !this.config.allowedRecipients.includes(message.to.trim().toLowerCase())) {
+      return failedResult(this.provider, this.channel, "CONFIGURATION", false, this.options.onFailure);
+    }
     if (!validEmail(message.to) || !message.subject.trim() || !message.body.trim()) {
       return failedResult(this.provider, this.channel, "INVALID_REQUEST", false, this.options.onFailure);
     }
@@ -516,8 +526,13 @@ export class ResendEmailProvider implements EmailProvider {
         body: JSON.stringify({ from: this.config.from, to: [message.to], subject: message.subject,
           text: message.body, ...(message.html ? { html: message.html } : {}) }),
       });
+      // A 5xx may follow provider acceptance. Hold for reconciliation rather
+      // than retrying after Resend's finite idempotency retention window.
+      if (response.status >= 500) return failedResult(this.provider, this.channel, "UNKNOWN", false, this.options.onFailure);
       if (!response.ok) return responseFailure(this.provider, this.channel, response.status, this.options.onFailure);
-      return acceptedResult(this.provider, this.channel, readProviderMessageId(await response.json()));
+      const messageId = readProviderMessageId(await response.json());
+      if (!messageId) return failedResult(this.provider, this.channel, "UNKNOWN", false, this.options.onFailure);
+      return acceptedResult(this.provider, this.channel, messageId);
     } catch (error) {
       return transportFailure(this.provider, this.channel, error, this.options.onFailure);
     } finally { timeout.clear(); }
@@ -554,4 +569,18 @@ export function createCommunicationProviders(
   return {
     sms, email,
   };
+}
+
+/** Development can opt in to email for controlled recipients, never live SMS/push. */
+export function createDevelopmentCommunicationProviders(
+  env: NodeJS.ProcessEnv = process.env,
+  options: CommunicationProviderOptions = {},
+): CommunicationProviderAdapters {
+  const simulated = createCommunicationProviders({}, options);
+  if (configuredProviderName(env.COMMUNICATION_EMAIL_PROVIDER) !== "resend" ||
+      !(env.RESEND_DEVELOPMENT_RECIPIENTS ?? "").trim()) return simulated;
+  const configured = createCommunicationProviders({
+    ...env, NODE_ENV: "development", COMMUNICATION_SMS_PROVIDER: "development",
+  }, options);
+  return { ...simulated, email: configured.email };
 }

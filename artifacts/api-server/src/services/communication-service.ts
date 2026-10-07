@@ -226,7 +226,16 @@ function validateNotificationInput(input: QueueCommunicationNotificationInput): 
 }
 
 const activeSchoolRecipientSql = `
-  SELECT u.id
+  SELECT u.id, EXISTS (
+    SELECT 1 FROM parents email_parent
+    JOIN parent_student_relationships email_link
+      ON email_link.parent_id=email_parent.id AND UPPER(email_link.status)='ACTIVE'
+    JOIN students email_child
+      ON email_child.id=email_link.student_id AND UPPER(email_child.status)='ACTIVE'
+    WHERE email_parent.user_id=u.id AND UPPER(email_parent.status)='ACTIVE'
+      AND ($2::integer IS NULL OR email_child.school_id=$2)
+      AND ${familyChildSchoolScope("email_parent", "email_child")}
+  ) AS "isParent"
   FROM app_users u
   WHERE u.id = $1
     AND UPPER(u.status) = 'ACTIVE'
@@ -313,7 +322,7 @@ export async function queueCommunicationNotification(
 ): Promise<number | null> {
   validateNotificationInput(input);
 
-  const recipient = await client.query<{ id: number | string }>(
+  const recipient = await client.query<{ id: number | string; isParent?: boolean }>(
     activeSchoolRecipientSql,
     [input.recipientUserId, input.schoolId],
   );
@@ -408,6 +417,15 @@ export async function queueCommunicationNotification(
   if (notificationId === undefined) return null;
 
   let requestedChannels = [...new Set(input.channels)];
+  // Add a delivery channel to existing events, not a new notification rule.
+  // Explicit campaign channel selections remain authoritative; preferences
+  // below still apply to nonmandatory categories.
+  if (requestedChannels.length > 0 && input.useSchoolDefaults !== false && input.eventKey !== null &&
+      (["ACCOUNT", "SYSTEM"].includes(input.category) ||
+       (recipient.rows[0]?.isParent === true &&
+        ["ATTENDANCE", "ACADEMIC", "FINANCE", "PAYMENT", "ANNOUNCEMENT", "SECURITY"].includes(input.category)))) {
+    requestedChannels = [...new Set([...requestedChannels, "EMAIL" as const])];
+  }
   if (input.schoolId !== null && input.useSchoolDefaults !== false) {
     const settings = await client.query<{ defaults: Record<string, CommunicationDeliveryChannel[]> }>(
       `SELECT communication_defaults AS defaults FROM schools WHERE id=$1`, [input.schoolId]);

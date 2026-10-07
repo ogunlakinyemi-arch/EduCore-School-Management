@@ -32,6 +32,7 @@ function notificationInput(
 
 function queueClient(options: {
   recipient?: boolean;
+  isParent?: boolean;
   insertedId?: number | null;
   duplicateId?: number;
   duplicateSubjectStudentId?: number | null;
@@ -49,7 +50,7 @@ function queueClient(options: {
         return { rows: (options.parents ?? []) as Row[] };
       }
       if (sql.includes("SELECT u.id") && sql.includes("FROM app_users u")) {
-        return { rows: (options.recipient === false ? [] : [{ id: 17 }]) as Row[] };
+        return { rows: (options.recipient === false ? [] : [{ id: 17, isParent: options.isParent ?? false }]) as Row[] };
       }
       if (sql.includes("FROM students subject")) {
         return { rows: (options.subjectAuthorized === false ? [] : [{ id: 321 }]) as Row[] };
@@ -145,6 +146,55 @@ function testProviders(
 }
 
 describe("communication queue", () => {
+  it.each(["ATTENDANCE", "ACADEMIC", "FINANCE", "PAYMENT", "ANNOUNCEMENT", "SECURITY"] as const)(
+    "adds one email delivery to the existing %s parent event", async category => {
+      const { client, calls } = queueClient({ isParent: true });
+      expect(await queueCommunicationNotification(client, notificationInput({ category, channels: ["IN_APP"] }))).toBe(51);
+      const emails = calls.filter(call => call.sql.includes("INSERT INTO communication_deliveries") && call.values?.[1] === "EMAIL");
+      expect(emails).toHaveLength(1);
+      expect(emails[0].sql).toContain("ON CONFLICT (notification_id, channel) DO NOTHING");
+      expect(calls[0].sql).toContain('AS "isParent"');
+      expect(calls[0].sql).toContain("email_child.school_id=$2");
+    },
+  );
+
+  it.each(["ACCOUNT", "SYSTEM"] as const)("adds email to existing %s events", async category => {
+    const { client, calls } = queueClient();
+    await queueCommunicationNotification(client, notificationInput({ category, channels: ["IN_APP"] }));
+    expect(calls.some(call => call.values?.[1] === "EMAIL")).toBe(true);
+  });
+
+  it.each([
+    { recipient: false }, { isParent: false }, { isParent: true, subjectAuthorized: false },
+  ])("does not email an unauthorized or non-parent academic recipient (%j)", async options => {
+    const { client, calls } = queueClient(options);
+    await queueCommunicationNotification(client, notificationInput({
+      category: "ACADEMIC", channels: ["IN_APP"], subjectStudentId: 321,
+    }));
+    expect(calls.some(call => call.sql.includes("INSERT INTO communication_deliveries") && call.values?.[1] === "EMAIL")).toBe(false);
+  });
+
+  it("preserves a parent's email opt-out and explicit campaign channel selection", async () => {
+    for (const override of [{}, { useSchoolDefaults: false }]) {
+      const { client, calls } = queueClient({
+        isParent: true, preferences: [{ channel: "EMAIL", enabled: false }],
+      });
+      await queueCommunicationNotification(client, notificationInput({ channels: ["IN_APP"], ...override }));
+      expect(calls.some(call => call.sql.includes("INSERT INTO communication_deliveries") && call.values?.[1] === "EMAIL")).toBe(false);
+    }
+    const { client, calls } = queueClient({ isParent: true });
+    await queueCommunicationNotification(client, notificationInput({ channels: ["IN_APP"], useSchoolDefaults: false }));
+    expect(calls.some(call => call.values?.[1] === "EMAIL")).toBe(false);
+  });
+
+  it("reuses the original notification ID and unique email intent on event retry", async () => {
+    const { client, calls } = queueClient({ isParent: true, insertedId: null, duplicateId: 51 });
+    expect(await queueCommunicationNotification(client, notificationInput({ channels: ["IN_APP"] }))).toBe(51);
+    const email = calls.find(call => call.sql.includes("INSERT INTO communication_deliveries") && call.values?.[1] === "EMAIL");
+    expect(email?.values).toEqual([51, "EMAIL"]);
+    expect(email?.sql).toContain("ON CONFLICT (notification_id, channel) DO NOTHING");
+  });
+
   it("validates active tenant membership, uses idempotent parameterized SQL, and queues only enabled channels", async () => {
     const { client, calls } = queueClient({
       preferences: [{ channel: "SMS", enabled: false }],

@@ -2,6 +2,7 @@ import app from "./app";
 import { pool } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { dispatchCommunicationDeliveries } from "./services/communication-service";
+import { createDevelopmentCommunicationProviders } from "./services/communication-providers";
 import { reconcileFinanceCommunicationIntents } from "./routes/finance-communication-service";
 import { evaluateSubscriptionSchools } from "./services/subscription-enforcement";
 
@@ -44,6 +45,8 @@ app.listen(port, (err) => {
       await reconcileFinanceCommunicationIntents(pool, 50);
       await dispatchCommunicationDeliveries(pool, 50, {
         allowConfiguredProviders: process.env.NODE_ENV === "production",
+        providers: process.env.NODE_ENV === "production" ? undefined :
+          createDevelopmentCommunicationProviders(process.env),
       });
     } catch (error) {
       logger.error({ error }, "Communication delivery worker failed");
