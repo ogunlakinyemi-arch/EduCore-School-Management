@@ -1,0 +1,532 @@
+STAGE 2F-2 — BUSINESS-RULE DECISIONS AND FORWARD FINANCE SCHEMA SPECIFICATION
+
+Project: Yemait EduCore
+Purpose: Complete the Finance source/design reconciliation before any database migration or Production rollout.
+
+IMPORTANT SAFETY RULES
+
+This stage is DESIGN/SOURCE-ONLY.
+
+DO NOT:
+
+- connect to Production
+- connect to Development
+- execute SQL against any database
+- run db push
+- run migrations against any database
+- create migration 0060
+- modify the Drizzle migration journal
+- publish/deploy
+- modify environment variables or secrets
+- modify payment behavior
+- fabricate, backfill, reconstruct, or alter financial records
+- make any database schema changes
+
+The objective is to produce an exact, reviewable specification for a future forward Finance migration.
+
+==================================================
+
+1. STUDENT OWNERSHIP DECISION
+   ==================================================
+
+Review the historical Finance relationship:
+
+student_subscription_allocations
+(student_id, school_id)
+->
+students
+(id, school_id)
+
+Historical behavior:
+
+- composite FK
+- ON DELETE RESTRICT
+
+Current source:
+
+- standalone student_id -> students.id
+- ON DELETE RESTRICT
+
+Do NOT silently choose one.
+
+Evaluate both options:
+
+OPTION A:
+Restore the historical composite relationship:
+(student_id, school_id) -> students(id, school_id)
+ON DELETE RESTRICT
+
+OPTION B:
+Keep only:
+student_id -> students(id)
+ON DELETE RESTRICT
+
+Document:
+
+- what historical protection each option provides
+- whether either option can permit a Finance allocation to remain associated with a student whose school_id changes
+- whether school_id is intended to be immutable for historical Finance records
+- which option is safest for EduCore's multi-tenant accounting model
+- impact on legitimate student transfers between schools
+- whether historical allocations should remain tied to the original school
+
+Do not implement either option yet.
+
+Give a clear recommendation.
+
+==================================================
+2. DELETION PROTECTION
+
+Identify every historical Finance composite FK that explicitly used:
+
+ON DELETE RESTRICT
+
+Compare it with the current source where the clause is omitted and PostgreSQL therefore uses NO ACTION.
+
+List every affected FK individually.
+
+Recommendation should explicitly state whether the future migration must restore:
+
+ON DELETE RESTRICT
+
+Do not assume NO ACTION is equivalent for this project.
+
+==================================================
+3. FINANCE CONSTRAINT OWNERSHIP
+
+Identify the historical UNIQUE constraints that are currently represented only as standalone unique indexes.
+
+Specifically review:
+
+A. student_subscription_payments
+(id,
+subscription_id,
+school_id,
+student_id,
+academic_session_id,
+academic_term_id)
+
+B. student_subscription_allocations
+(id,
+payment_id,
+entry_type,
+recipient_type)
+
+Determine whether the future canonical table definition should restore these as named UNIQUE constraints.
+
+Document why this matters for:
+
+- composite foreign keys
+- schema clarity
+- migration reproducibility
+- PostgreSQL dependency management
+- future schema exports
+
+Do not change anything yet.
+
+==================================================
+4. SQL FUNCTIONS AND TRIGGERS
+
+The historical Finance migration contains two important protections.
+
+A. Receipt snapshot protection:
+
+protect_student_subscription_receipt_snapshot()
+
+Trigger:
+student_subscription_payment_receipt_immutable
+
+Required behavior:
+
+- first assignment of receipt snapshot is allowed
+- later replacement is rejected
+- clearing an existing receipt snapshot is rejected
+- the entire payment row is NOT made immutable
+
+B. Allocation immutability:
+
+protect_student_subscription_allocations()
+
+Trigger:
+student_subscription_allocations_immutable
+
+Required behavior:
+
+- UPDATE rejected
+- DELETE rejected
+
+Inspect the historical SQL carefully.
+
+Produce an exact specification for:
+
+- function names
+- trigger names
+- timing
+- event
+- affected tables
+- intended protected columns/rows
+- error behavior
+- whether INSERT remains allowed
+
+These protections must be included in the future forward migration.
+
+Do not create the functions or triggers now.
+
+==================================================
+5. PAYMENT RULES
+
+Document the exact rules that must remain unchanged.
+
+Verify the source and historical migration for:
+
+- Flutterwave provider
+- SANDBOX mode requirements
+- payment reference format
+- fixed NGN 5,000 student subscription gross amount
+- monetary snapshot fields
+- payment status rules
+- settlement status rules
+- reconciliation status rules
+- provider transaction uniqueness
+- checkout idempotency
+- one-open-attempt protection
+- one-business-term protection
+
+For each rule state:
+
+- database CHECK/UNIQUE/index protection
+- application-level protection
+- whether both are required
+
+Do not modify application logic.
+
+==================================================
+6. ALLOCATION / ACCOUNTING RULES
+
+Document the canonical allocation model.
+
+Base subscription:
+
+Student pays:
+NGN 5,000
+
+No eligible Partner:
+
+School:
+NGN 2,000
+
+Platform:
+NGN 3,000
+
+Eligible Partner:
+
+School:
+NGN 2,000
+
+Platform:
+NGN 2,900
+
+Partner:
+NGN 100
+
+Provider transaction fees must remain separate EXPENSE entries.
+
+They must NOT reduce the School/Platform/Partner revenue allocation.
+
+Document the required database protections for:
+
+- recipient_type
+- entry_type
+- amount
+- Partner identity fields
+- CREDIT uniqueness
+- provider-fee EXPENSE uniqueness
+- allocation idempotency
+
+Do not change the accounting amounts.
+
+==================================================
+7. REVERSAL DESIGN
+
+The current schema supports REVERSAL entries, but the review did not identify a complete student-subscription reversal/refund writer.
+
+Do NOT invent an implementation.
+
+Produce a forward-design specification answering:
+
+- What event creates a REVERSAL?
+- Who is authorized to create it?
+- Must it reference the original allocation?
+- Should a reversal be one-to-one with the original allocation?
+- How is duplicate reversal prevented?
+- Can a payment be reversed more than once?
+- How does a reversal affect the student's net subscription credit?
+- How should School/Platform/Partner allocations be reversed?
+- How should provider fees be handled?
+- What happens if only part of a payment is reversed?
+- What happens to the payment status?
+- What happens to settlement/reconciliation status?
+- How should the reversal appear in reports?
+
+If a decision cannot safely be made from the existing application, mark it:
+
+NEEDS BUSINESS DECISION
+
+Do not implement reversal functionality.
+
+==================================================
+8. SETTLEMENT / RECONCILIATION
+
+The schema contains settlement/reconciliation fields, but a dedicated bank/provider settlement processor was not identified.
+
+Specify the required future workflow conceptually:
+
+Flutterwave verification
+→ persisted verified transaction
+→ payment completion
+→ settlement/reconciliation state
+→ exception handling
+
+Clearly distinguish:
+
+- provider verification
+- payment completion
+- settlement confirmation
+- reconciliation
+
+Do not claim that provider verification means bank settlement.
+
+Identify:
+
+- what state transitions are allowed
+- who/system component performs them
+- what happens when provider status is uncertain
+- what happens when settlement does not match
+- whether manual Owner reconciliation is required
+
+Do not implement the workflow.
+
+==================================================
+9. ATTRIBUTION / PARTNER OWNERSHIP
+
+Review:
+
+school_partner_attributions(id, partner_profile_id)
+
+and the Finance composite relationship:
+
+allocations(attribution_id, recipient_id)
+->
+school_partner_attributions(id, partner_profile_id)
+
+Determine whether the future design should also enforce:
+
+(attribution_id, school_id)
+->
+school_partner_attributions(id, school_id)
+
+Do NOT add this automatically.
+
+Explain:
+
+- what the historical relationship guarantees
+- what it does not guarantee
+- whether attribution-school mismatch is possible
+- whether application validation currently prevents it
+- whether adding the school composite relationship could affect existing valid data
+- whether it should be a separate future business decision
+
+==================================================
+10. SESSION / TERM OWNERSHIP
+
+Review the Finance relationships:
+
+(academic_session_id, school_id)
+->
+academic_sessions(id, school_id)
+
+(academic_term_id, school_id)
+->
+academic_terms(id, school_id)
+
+Determine whether the schema should additionally enforce:
+
+academic_term.school_id = payment.school_id
+AND
+academic_term.session_id = payment.academic_session_id
+
+Review the existing:
+
+student_subscription_terms
+
+relationship and application logic.
+
+Do not invent an additional constraint.
+
+Classify the current state as:
+
+- adequately enforced
+- application-enforced
+- partially enforced
+- needs future business decision
+
+==================================================
+11. REQUIRED FUTURE PARENT KEYS
+
+Produce a definitive dependency list for the future Finance migration.
+
+Verify the required parent keys:
+
+subscriptions(id, school_id, student_id)
+
+academic_sessions(id, school_id)
+
+academic_terms(id, school_id)
+
+students(id, school_id)
+
+school_partner_attributions(id, partner_profile_id)
+
+Also identify any additional key required by the selected student-ownership decision.
+
+For each key specify:
+
+- table
+- columns
+- UNIQUE constraint/index requirement
+- whether it currently exists in source
+- whether it is historical or newly required
+
+Do not create any key.
+
+==================================================
+12. FUTURE MIGRATION ORDER
+
+Produce the final proposed forward migration order.
+
+It should follow dependency order:
+
+1. parent-key reconciliation
+2. Finance payment table
+3. payment CHECK constraints
+4. payment UNIQUE constraints
+5. payment standalone FKs
+6. payment composite FKs
+7. payment indexes
+8. allocation table
+9. allocation CHECK constraints
+10. allocation UNIQUE constraints
+11. allocation FKs
+12. allocation reporting indexes
+13. receipt protection function
+14. receipt protection trigger
+15. allocation immutability function
+16. allocation immutability trigger
+17. any required supporting Finance dependencies
+
+Do not create migration 0060.
+
+==================================================
+13. APPLICATION COMPATIBILITY
+
+Review the existing payment finalizer and webhook path.
+
+Verify that the future schema will support this transaction order:
+
+1. payment begins in an appropriate pending/uncertain state
+2. provider result is validated
+3. allocation rows are inserted
+4. receipt snapshot is created
+5. payment becomes PAID
+6. subscription/term activation is completed
+
+Do NOT introduce a trigger that requires payment to already be PAID before its allocations can be inserted.
+
+Confirm that all immediate FKs and triggers will be compatible with this transaction sequence.
+
+==================================================
+14. FINANCIAL SAFETY
+
+Produce a final checklist confirming preservation of:
+
+- ₦5,000 gross student subscription
+- ₦2,000 School allocation
+- ₦3,000 Platform allocation
+- ₦100 Partner deduction where eligible
+- separate provider-fee EXPENSE
+- payment idempotency
+- term uniqueness
+- provider transaction uniqueness
+- verified payment requirements
+- uncertain/reconciliation states
+- immutable allocation history
+- protected receipt snapshots
+- no fabricated financial records
+- no inferred payment backfills
+
+==================================================
+15. FINAL DECISION TABLE
+
+End with a table containing:
+
+Decision
+Current State
+Historical State
+Recommended Future State
+Reason
+Implementation Status
+
+At minimum include:
+
+1. Student-school ownership
+2. ON DELETE RESTRICT
+3. Payment ownership UNIQUE constraint
+4. Allocation identity UNIQUE constraint
+5. Receipt snapshot trigger
+6. Allocation immutability trigger
+7. Attribution-school enforcement
+8. Session-term consistency
+9. REVERSAL workflow
+10. Settlement reconciliation workflow
+
+Use these statuses only:
+
+KEEP
+RESTORE
+REPLACE WITH FORWARD DESIGN
+NEEDS BUSINESS DECISION
+NOT IMPLEMENTED
+
+==================================================
+16. FINAL SAFETY REPORT
+
+Explicitly report:
+
+Production DB connections: 0
+Development DB connections: 0
+Database writes: 0
+Database schema changes: 0
+Migration 0060 created: NO
+Migration journal changed: NO
+Production publish: NO
+Environment/secrets changed: NO
+Financial records modified: NO
+Financial records fabricated/backfilled: NO
+
+Do not perform any action that changes those values.
+
+FINAL OUTPUT:
+
+Provide:
+
+A. Executive recommendation
+B. Student ownership recommendation
+C. Complete Finance protection specification
+D. Reversal and settlement design decisions
+E. Parent-key dependency list
+F. Future migration order
+G. Application compatibility assessment
+H. Final decision table
+I. Safety report
+
+This is a DESIGN REVIEW ONLY. Do not implement the migration.
