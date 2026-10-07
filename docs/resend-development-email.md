@@ -86,8 +86,9 @@ Do not contact real parents or change Production to complete the test.
 
 On 2026-10-07, one explicitly approved email was accepted by Resend with HTTP
 200 from `Yemait EduCore <notifications@yetenia.com>`. The provider message ID
-was `01a1177f-e4f3-72ef-af04-a4daaa7a4527`. Acceptance is not confirmed inbox
-delivery; this sending key also cannot read provider delivery status.
+was `01a1177f-e4f3-72ef-af04-a4daaa7a4527`. On 2026-10-07 the user confirmed
+receipt in the approved inbox. This is recipient-confirmed delivery, not a
+provider delivery receipt: the sending key cannot read provider delivery status.
 
 The test used a schema-only isolated local PostgreSQL clone, a synthetic absent
 student and linked parent, and the existing attendance communication bridge,
