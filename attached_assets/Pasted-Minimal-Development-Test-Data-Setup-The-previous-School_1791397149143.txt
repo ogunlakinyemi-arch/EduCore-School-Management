@@ -1,0 +1,74 @@
+Minimal Development Test-Data Setup
+
+The previous School Admin absence verification was blocked because:
+
+- The approved test inbox has no linked Parent profile in Development.
+- The existing E2E schools have no active School Admin.
+- No code changes are required.
+- Resend and Production must remain untouched.
+
+I have very limited Replit credit, so perform only the minimum setup necessary for one manual verification.
+
+Rules
+
+- Do NOT audit the whole repository.
+- Do NOT rebuild anything.
+- Do NOT refactor code.
+- Do NOT change the Resend integration.
+- Do NOT send any email.
+- Do NOT modify Production.
+- Do NOT run the full test suite.
+- Do NOT create unnecessary records.
+- Do NOT create new database tables.
+- Do NOT run migrations.
+
+Task
+
+Inspect the existing Development database/schema and existing seed/test utilities only enough to determine whether the required relationships can be created safely.
+
+We need exactly one minimal synthetic test chain:
+
+School
+  ↓
+Active School Admin
+  ↓
+Student
+  ↓
+Parent
+  ↓
+Parent ↔ Student relationship
+
+The Parent should use the already-approved Development test inbox.
+
+Prefer an existing Development school and existing seed/test utilities.
+
+If an appropriate existing school/student/parent exists, reuse it instead of creating new records.
+
+Create only the missing minimum records needed for the School Admin to sign in and mark the student absent.
+
+Do not change application code unless absolutely necessary. Prefer database/test-data setup.
+
+Stop condition
+
+If the existing Development environment cannot safely support this setup without migrations, broad seeding, or significant code changes:
+
+STOP immediately and report what is missing.
+
+Do not attempt a workaround.
+
+Final response
+
+Report only:
+
+- Whether minimal test data was prepared
+- School used
+- School Admin created/reused
+- Student used
+- Parent created/reused
+- Whether the approved inbox was linked
+- Whether any code was changed
+- Whether any email was sent
+
+Do not send the email yet.
+
+The next step will be the manual School Admin absence verification after the test data is confirmed ready.
