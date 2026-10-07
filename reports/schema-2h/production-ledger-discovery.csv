@@ -1,0 +1,6 @@
+schema_name,table_name,column_name,column_type
+_system,replit_database_migrations_v1,id,bigint
+_system,replit_database_migrations_v1,build_id,text
+_system,replit_database_migrations_v1,deployment_id,text
+_system,replit_database_migrations_v1,statement_count,bigint
+_system,replit_database_migrations_v1,applied_at,timestamp with time zone

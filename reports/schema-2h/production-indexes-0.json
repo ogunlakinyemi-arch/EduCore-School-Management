@@ -1,0 +1,1236 @@
+[
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_assessment_types_id_school_unique ON public.academic_assessment_types USING btree (id, school_id)",
+    "dependent_fks": [
+      "academic_assessments.academic_assessments_type_school_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "academic_assessment_types_id_school_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "academic_assessment_types_id_school_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_assessment_types",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_assessment_types_pkey ON public.academic_assessment_types USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "academic_assessment_types_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "academic_assessment_types_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_assessment_types",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_assessment_types_school_code_unique ON public.academic_assessment_types USING btree (school_id, code)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "code"
+    ],
+    "method": "btree",
+    "name": "academic_assessment_types_school_code_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "academic_assessment_types_school_code_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_assessment_types",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE INDEX academic_assessment_types_school_status_idx ON public.academic_assessment_types USING btree (school_id, status)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "status"
+    ],
+    "method": "btree",
+    "name": "academic_assessment_types_school_status_idx",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_assessment_types",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_assessments_id_school_unique ON public.academic_assessments USING btree (id, school_id)",
+    "dependent_fks": [
+      "academic_results.academic_results_assessment_school_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "academic_assessments_id_school_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "academic_assessments_id_school_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_assessments",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_assessments_pkey ON public.academic_assessments USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "academic_assessments_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "academic_assessments_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_assessments",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null,
+      null,
+      null
+    ],
+    "definition": "CREATE INDEX academic_assessments_school_context_idx ON public.academic_assessments USING btree (school_id, academic_session_id, academic_term_id, school_class_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "academic_session_id",
+      "academic_term_id",
+      "school_class_id"
+    ],
+    "method": "btree",
+    "name": "academic_assessments_school_context_idx",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops",
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_assessments",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_assignments_id_school_unique ON public.academic_assignments USING btree (id, school_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "academic_assignments_id_school_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "academic_assignments_id_school_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_assignments",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_assignments_pkey ON public.academic_assignments USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "academic_assignments_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "academic_assignments_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_assignments",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null,
+      null,
+      null
+    ],
+    "definition": "CREATE INDEX academic_assignments_school_context_idx ON public.academic_assignments USING btree (school_id, academic_session_id, academic_term_id, school_class_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "academic_session_id",
+      "academic_term_id",
+      "school_class_id"
+    ],
+    "method": "btree",
+    "name": "academic_assignments_school_context_idx",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops",
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_assignments",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_grading_rules_id_school_unique ON public.academic_grading_rules USING btree (id, school_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "academic_grading_rules_id_school_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "academic_grading_rules_id_school_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_grading_rules",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_grading_rules_pkey ON public.academic_grading_rules USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "academic_grading_rules_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "academic_grading_rules_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_grading_rules",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE INDEX academic_grading_rules_school_status_idx ON public.academic_grading_rules USING btree (school_id, status)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "status"
+    ],
+    "method": "btree",
+    "name": "academic_grading_rules_school_status_idx",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_grading_rules",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_report_card_lines_id_school_unique ON public.academic_report_card_lines USING btree (id, school_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "academic_report_card_lines_id_school_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "academic_report_card_lines_id_school_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_report_card_lines",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_report_card_lines_pkey ON public.academic_report_card_lines USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "academic_report_card_lines_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "academic_report_card_lines_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_report_card_lines",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE INDEX academic_report_card_lines_report_card_idx ON public.academic_report_card_lines USING btree (school_id, report_card_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "report_card_id"
+    ],
+    "method": "btree",
+    "name": "academic_report_card_lines_report_card_idx",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_report_card_lines",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_report_card_lines_report_card_result_unique ON public.academic_report_card_lines USING btree (report_card_id, result_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "report_card_id",
+      "result_id"
+    ],
+    "method": "btree",
+    "name": "academic_report_card_lines_report_card_result_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "academic_report_card_lines_report_card_result_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_report_card_lines",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_report_cards_id_school_unique ON public.academic_report_cards USING btree (id, school_id)",
+    "dependent_fks": [
+      "academic_report_card_lines.academic_report_card_lines_report_card_school_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "academic_report_cards_id_school_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "academic_report_cards_id_school_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_report_cards",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_report_cards_pkey ON public.academic_report_cards USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "academic_report_cards_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "academic_report_cards_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_report_cards",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null,
+      null,
+      null
+    ],
+    "definition": "CREATE INDEX academic_report_cards_school_student_idx ON public.academic_report_cards USING btree (school_id, student_id, academic_session_id, academic_term_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "student_id",
+      "academic_session_id",
+      "academic_term_id"
+    ],
+    "method": "btree",
+    "name": "academic_report_cards_school_student_idx",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops",
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_report_cards",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_report_cards_student_session_term_unique ON public.academic_report_cards USING btree (student_id, academic_session_id, academic_term_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "student_id",
+      "academic_session_id",
+      "academic_term_id"
+    ],
+    "method": "btree",
+    "name": "academic_report_cards_student_session_term_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": "academic_report_cards_student_session_term_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_report_cards",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_results_assessment_student_unique ON public.academic_results USING btree (assessment_id, student_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "assessment_id",
+      "student_id"
+    ],
+    "method": "btree",
+    "name": "academic_results_assessment_student_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "academic_results_assessment_student_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_results",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_results_id_school_unique ON public.academic_results USING btree (id, school_id)",
+    "dependent_fks": [
+      "academic_report_card_lines.academic_report_card_lines_result_school_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "academic_results_id_school_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "academic_results_id_school_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_results",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_results_pkey ON public.academic_results USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "academic_results_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "academic_results_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_results",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null,
+      null,
+      null
+    ],
+    "definition": "CREATE INDEX academic_results_school_context_idx ON public.academic_results USING btree (school_id, academic_session_id, academic_term_id, student_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "academic_session_id",
+      "academic_term_id",
+      "student_id"
+    ],
+    "method": "btree",
+    "name": "academic_results_school_context_idx",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops",
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_results",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_sessions_id_school_tenant_key ON public.academic_sessions USING btree (id, school_id)",
+    "dependent_fks": [
+      "academic_assessments.academic_assessments_session_school_fk",
+      "academic_assignments.academic_assignments_session_school_fk",
+      "academic_report_cards.academic_report_cards_session_school_fk",
+      "academic_results.academic_results_session_school_fk",
+      "academic_terms.academic_terms_session_school_fk",
+      "academic_timetable_entries.academic_timetable_entries_session_school_fk",
+      "attendance_events.attendance_events_session_school_fk",
+      "class_subjects.class_subjects_session_school_fk",
+      "fee_invoices.fee_invoices_session_school_fk",
+      "fee_structures.fee_structures_session_school_fk",
+      "student_class_assignments.student_class_assignments_session_school_fk",
+      "teacher_class_assignments.teacher_class_assignments_session_school_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "academic_sessions_id_school_tenant_key",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "academic_sessions_id_school_tenant_key",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_sessions",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_sessions_pkey ON public.academic_sessions USING btree (id)",
+    "dependent_fks": [
+      "attendance_events.attendance_events_academic_session_id_fkey",
+      "commission_ledger.commission_ledger_academic_session_id_academic_sessions_id_fk",
+      "partner_payouts.partner_payouts_academic_session_id_academic_sessions_id_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "academic_sessions_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "academic_sessions_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_sessions",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_sessions_school_name_unique ON public.academic_sessions USING btree (school_id, name)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "name"
+    ],
+    "method": "btree",
+    "name": "academic_sessions_school_name_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_sessions",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE INDEX academic_sessions_school_status_idx ON public.academic_sessions USING btree (school_id, status)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "status"
+    ],
+    "method": "btree",
+    "name": "academic_sessions_school_status_idx",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_sessions",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_terms_id_school_tenant_key ON public.academic_terms USING btree (id, school_id)",
+    "dependent_fks": [
+      "academic_assessments.academic_assessments_term_school_fk",
+      "academic_assignments.academic_assignments_term_school_fk",
+      "academic_report_cards.academic_report_cards_term_school_fk",
+      "academic_results.academic_results_term_school_fk",
+      "academic_timetable_entries.academic_timetable_entries_term_school_fk",
+      "attendance_events.attendance_events_term_school_fk",
+      "class_subjects.class_subjects_term_school_fk",
+      "fee_invoices.fee_invoices_term_school_fk",
+      "fee_structures.fee_structures_term_school_fk",
+      "student_class_assignments.student_class_assignments_term_school_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "academic_terms_id_school_tenant_key",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "academic_terms_id_school_tenant_key",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_terms",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_terms_pkey ON public.academic_terms USING btree (id)",
+    "dependent_fks": [
+      "attendance_events.attendance_events_academic_term_id_fkey"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "academic_terms_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "academic_terms_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_terms",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE INDEX academic_terms_school_status_idx ON public.academic_terms USING btree (school_id, status)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "status"
+    ],
+    "method": "btree",
+    "name": "academic_terms_school_status_idx",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_terms",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_terms_session_name_unique ON public.academic_terms USING btree (academic_session_id, name)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "academic_session_id",
+      "name"
+    ],
+    "method": "btree",
+    "name": "academic_terms_session_name_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_terms",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_timetable_entries_id_school_unique ON public.academic_timetable_entries USING btree (id, school_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "academic_timetable_entries_id_school_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "academic_timetable_entries_id_school_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_timetable_entries",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX academic_timetable_entries_pkey ON public.academic_timetable_entries USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "academic_timetable_entries_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "academic_timetable_entries_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_timetable_entries",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null,
+      null,
+      null,
+      "default"
+    ],
+    "definition": "CREATE INDEX academic_timetable_entries_school_context_idx ON public.academic_timetable_entries USING btree (school_id, academic_session_id, academic_term_id, school_class_id, section)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "academic_session_id",
+      "academic_term_id",
+      "school_class_id",
+      "section"
+    ],
+    "method": "btree",
+    "name": "academic_timetable_entries_school_context_idx",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops",
+      "int4_ops",
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "academic_timetable_entries",
+    "unique_index": false,
+    "valid": true
+  }
+]

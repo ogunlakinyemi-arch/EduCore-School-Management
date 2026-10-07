@@ -1,0 +1,1051 @@
+[
+  {
+    "collations": [
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX app_users_clerk_user_id_unique ON public.app_users USING btree (clerk_user_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "clerk_user_id"
+    ],
+    "method": "btree",
+    "name": "app_users_clerk_user_id_unique",
+    "operator_classes": [
+      "text_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "app_users",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      "default"
+    ],
+    "definition": "CREATE INDEX app_users_email_idx ON public.app_users USING btree (email)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "email"
+    ],
+    "method": "btree",
+    "name": "app_users_email_idx",
+    "operator_classes": [
+      "text_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "app_users",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX app_users_pkey ON public.app_users USING btree (id)",
+    "dependent_fks": [
+      "academic_assessments.academic_assessments_created_by_fkey",
+      "academic_assignments.academic_assignments_created_by_fkey",
+      "academic_report_cards.academic_report_cards_published_by_fkey",
+      "academic_results.academic_results_created_by_fkey",
+      "academic_results.academic_results_published_by_fkey",
+      "academic_timetable_entries.academic_timetable_entries_created_by_fkey",
+      "attendance_corrections.attendance_corrections_actor_user_id_fkey",
+      "attendance_discrepancies.attendance_discrepancies_resolved_by_fkey",
+      "attendance_events.attendance_events_actor_user_id_fkey",
+      "attendance_notification_events.attendance_notification_events_recipient_user_id_fkey",
+      "audit_logs.audit_logs_actor_user_id_app_users_id_fk",
+      "commission_ledger.commission_ledger_created_by_app_users_id_fk",
+      "communication_campaign_recipients.communication_campaign_recipients_recipient_user_id_fkey",
+      "communication_campaigns.communication_campaigns_created_by_user_id_fkey",
+      "communication_notifications.communication_notifications_recipient_user_id_fkey",
+      "communication_notifications.communication_notifications_sender_user_id_fkey",
+      "communication_preferences.communication_preferences_user_id_fkey",
+      "communication_push_devices.communication_push_devices_user_id_fkey",
+      "communication_templates.communication_templates_created_by_user_id_fkey",
+      "device_assignment_history.device_assignment_history_actor_user_id_fkey",
+      "employees.employees_user_id_app_users_id_fk",
+      "fee_adjustments.fee_adjustments_approved_by_fkey",
+      "fee_adjustments.fee_adjustments_requested_by_fkey",
+      "fee_categories.fee_categories_created_by_fkey",
+      "fee_invoice_notifications.fee_invoice_notifications_recipient_user_id_fkey",
+      "fee_invoices.fee_invoices_created_by_fkey",
+      "fee_payment_notifications.fee_payment_notifications_recipient_user_id_fkey",
+      "fee_payments.fee_payments_submitted_by_fkey",
+      "fee_payments.fee_payments_verified_by_fkey",
+      "fee_refunds.fee_refunds_approved_by_fkey",
+      "fee_refunds.fee_refunds_requested_by_fkey",
+      "fee_school_settings.fee_school_settings_updated_by_fkey",
+      "fee_structures.fee_structures_created_by_fkey",
+      "fee_structures.fee_structures_published_by_fkey",
+      "library_authors.library_authors_created_by_user_id_fkey",
+      "library_book_copies.library_book_copies_created_by_user_id_fkey",
+      "library_books.library_books_created_by_user_id_fkey",
+      "library_categories.library_categories_created_by_user_id_fkey",
+      "library_copy_status_history.library_copy_status_history_changed_by_user_id_fkey",
+      "library_loans.library_loans_borrower_user_id_fkey",
+      "library_loans.library_loans_issued_by_user_id_fkey",
+      "library_loans.library_loans_returned_by_user_id_fkey",
+      "library_publishers.library_publishers_created_by_user_id_fkey",
+      "library_renewals.library_renewals_renewed_by_user_id_fkey",
+      "library_settings.library_settings_updated_by_user_id_fkey",
+      "library_staff.library_staff_assigned_by_user_id_fkey",
+      "library_staff.library_staff_user_id_fkey",
+      "maintenance_request_status_history.maintenance_request_status_history_actor_user_id_fkey",
+      "maintenance_requests.maintenance_requests_assigned_to_user_id_fkey",
+      "maintenance_requests.maintenance_requests_reported_by_user_id_fkey",
+      "nfc_card_history.nfc_card_history_actor_user_id_fkey",
+      "operational_task_status_history.operational_task_status_history_actor_user_id_fkey",
+      "operational_tasks.operational_tasks_assigned_to_user_id_fkey",
+      "operational_tasks.operational_tasks_created_by_user_id_fkey",
+      "parents.parents_user_id_app_users_id_fk",
+      "partner_attribution_conflicts.partner_attribution_conflicts_resolved_by_app_users_id_fk",
+      "partner_invitations.partner_invitations_created_by_app_users_id_fk",
+      "partner_profile_users.partner_profile_users_user_id_app_users_id_fk",
+      "partner_profiles.partner_profiles_created_by_app_users_id_fk",
+      "partner_profiles.partner_profiles_user_id_app_users_id_fk",
+      "partner_referral_links.partner_referral_links_created_by_app_users_id_fk",
+      "platform_notifications.platform_notifications_recipient_user_id_fkey",
+      "school_asset_history.school_asset_history_actor_user_id_fkey",
+      "school_asset_history.school_asset_history_assigned_to_after_user_id_fkey",
+      "school_asset_history.school_asset_history_assigned_to_before_user_id_fkey",
+      "school_assets.school_assets_assigned_to_user_id_fkey",
+      "school_assets.school_assets_created_by_user_id_fkey",
+      "school_facilities.school_facilities_created_by_user_id_fkey",
+      "school_memberships.school_memberships_user_id_app_users_id_fk",
+      "school_operation_categories.school_operation_categories_created_by_user_id_fkey",
+      "school_operations_settings.school_operations_settings_updated_by_user_id_fkey",
+      "school_partner_attributions.school_partner_attributions_created_by_app_users_id_fk",
+      "student_identification_policies.student_identification_policies_created_by_fkey",
+      "students.students_user_id_app_users_id_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "app_users_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "app_users_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "app_users",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX attendance_corrections_pkey ON public.attendance_corrections USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "attendance_corrections_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "attendance_corrections_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "attendance_corrections",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE INDEX attendance_corrections_school_idx ON public.attendance_corrections USING btree (school_id, created_at)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "created_at"
+    ],
+    "method": "btree",
+    "name": "attendance_corrections_school_idx",
+    "operator_classes": [
+      "int4_ops",
+      "timestamptz_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "attendance_corrections",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX attendance_discrepancies_event_kind_unique ON public.attendance_discrepancies USING btree (attendance_event_id, discrepancy_type)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "attendance_event_id",
+      "discrepancy_type"
+    ],
+    "method": "btree",
+    "name": "attendance_discrepancies_event_kind_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "attendance_discrepancies",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX attendance_discrepancies_id_school_tenant_key ON public.attendance_discrepancies USING btree (id, school_id)",
+    "dependent_fks": [
+      "attendance_notification_events.attendance_notification_events_discrepancy_school_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "attendance_discrepancies_id_school_tenant_key",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "attendance_discrepancies_id_school_tenant_key",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "attendance_discrepancies",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX attendance_discrepancies_pkey ON public.attendance_discrepancies USING btree (id)",
+    "dependent_fks": [
+      "attendance_notification_events.attendance_notification_events_discrepancy_id_fkey"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "attendance_discrepancies_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "attendance_discrepancies_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "attendance_discrepancies",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default",
+      null
+    ],
+    "definition": "CREATE INDEX attendance_discrepancies_school_status_idx ON public.attendance_discrepancies USING btree (school_id, status, created_at)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "status",
+      "created_at"
+    ],
+    "method": "btree",
+    "name": "attendance_discrepancies_school_status_idx",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops",
+      "timestamptz_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "attendance_discrepancies",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE INDEX attendance_events_employee_idx ON public.attendance_events USING btree (employee_id, occurred_at)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "employee_id",
+      "occurred_at"
+    ],
+    "method": "btree",
+    "name": "attendance_events_employee_idx",
+    "operator_classes": [
+      "int4_ops",
+      "timestamptz_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "attendance_events",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX attendance_events_id_school_tenant_key ON public.attendance_events USING btree (id, school_id)",
+    "dependent_fks": [
+      "attendance_corrections.attendance_corrections_event_school_fk",
+      "attendance_discrepancies.attendance_discrepancies_event_school_fk",
+      "attendance_notification_events.attendance_notification_events_event_school_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "attendance_events_id_school_tenant_key",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "attendance_events_id_school_tenant_key",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "attendance_events",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX attendance_events_pkey ON public.attendance_events USING btree (id)",
+    "dependent_fks": [
+      "attendance_corrections.attendance_corrections_attendance_event_id_fkey",
+      "attendance_discrepancies.attendance_discrepancies_attendance_event_id_fkey",
+      "attendance_notification_events.attendance_notification_events_attendance_event_id_fkey"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "attendance_events_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "attendance_events_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "attendance_events",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null,
+      null
+    ],
+    "definition": "CREATE INDEX attendance_events_school_date_idx ON public.attendance_events USING btree (school_id, event_date, occurred_at)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "event_date",
+      "occurred_at"
+    ],
+    "method": "btree",
+    "name": "attendance_events_school_date_idx",
+    "operator_classes": [
+      "int4_ops",
+      "date_ops",
+      "timestamptz_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "attendance_events",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX attendance_events_school_dedupe_unique ON public.attendance_events USING btree (school_id, dedupe_key)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "dedupe_key"
+    ],
+    "method": "btree",
+    "name": "attendance_events_school_dedupe_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "attendance_events",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE INDEX attendance_events_student_idx ON public.attendance_events USING btree (student_id, occurred_at)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "student_id",
+      "occurred_at"
+    ],
+    "method": "btree",
+    "name": "attendance_events_student_idx",
+    "operator_classes": [
+      "int4_ops",
+      "timestamptz_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "attendance_events",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX attendance_notification_events_pkey ON public.attendance_notification_events USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "attendance_notification_events_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "attendance_notification_events_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "attendance_notification_events",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default",
+      null
+    ],
+    "definition": "CREATE INDEX attendance_notification_events_queue_idx ON public.attendance_notification_events USING btree (school_id, status, created_at)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "status",
+      "created_at"
+    ],
+    "method": "btree",
+    "name": "attendance_notification_events_queue_idx",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops",
+      "timestamptz_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "attendance_notification_events",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX attendance_settings_pkey ON public.attendance_settings USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "attendance_settings_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "attendance_settings_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "attendance_settings",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX attendance_settings_school_id_key ON public.attendance_settings USING btree (school_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "attendance_settings_school_id_key",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "attendance_settings_school_id_key",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "attendance_settings",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX audit_logs_pkey ON public.audit_logs USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "audit_logs_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "audit_logs_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "audit_logs",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE INDEX audit_logs_school_idx ON public.audit_logs USING btree (school_id, \"timestamp\")",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "\"timestamp\""
+    ],
+    "method": "btree",
+    "name": "audit_logs_school_idx",
+    "operator_classes": [
+      "int4_ops",
+      "timestamptz_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "audit_logs",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX biometric_enrollments_pkey ON public.biometric_enrollments USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "biometric_enrollments_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "biometric_enrollments_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "biometric_enrollments",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      "default",
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX biometric_enrollments_provider_reference_unique ON public.biometric_enrollments USING btree (provider, provider_reference)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "provider",
+      "provider_reference"
+    ],
+    "method": "btree",
+    "name": "biometric_enrollments_provider_reference_unique",
+    "operator_classes": [
+      "text_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "biometric_enrollments",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE INDEX biometric_enrollments_school_status_idx ON public.biometric_enrollments USING btree (school_id, status)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "status"
+    ],
+    "method": "btree",
+    "name": "biometric_enrollments_school_status_idx",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "biometric_enrollments",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX class_subjects_pkey ON public.class_subjects USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "class_subjects_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "class_subjects_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "class_subjects",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE INDEX class_subjects_school_status_idx ON public.class_subjects USING btree (school_id, status)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "status"
+    ],
+    "method": "btree",
+    "name": "class_subjects_school_status_idx",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "class_subjects",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null,
+      null,
+      null,
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX class_subjects_unique ON public.class_subjects USING btree (school_class_id, subject_id, academic_session_id, COALESCE(academic_term_id, 0), COALESCE(section, ''::text)) WHERE (status = 'ACTIVE'::text)",
+    "dependent_fks": [],
+    "expressions": "COALESCE(academic_term_id, 0), COALESCE(section, ''::text)",
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_class_id",
+      "subject_id",
+      "academic_session_id",
+      "COALESCE(academic_term_id, 0)",
+      "COALESCE(section, ''::text)"
+    ],
+    "method": "btree",
+    "name": "class_subjects_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops",
+      "int4_ops",
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": "(status = 'ACTIVE'::text)",
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "class_subjects",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE INDEX commission_ledger_partner_status_idx ON public.commission_ledger USING btree (partner_profile_id, status)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "partner_profile_id",
+      "status"
+    ],
+    "method": "btree",
+    "name": "commission_ledger_partner_status_idx",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "commission_ledger",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX commission_ledger_pkey ON public.commission_ledger USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "commission_ledger_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "commission_ledger_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "commission_ledger",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX commission_ledger_subscription_period_unique ON public.commission_ledger USING btree (subscription_id, term)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "subscription_id",
+      "term"
+    ],
+    "method": "btree",
+    "name": "commission_ledger_subscription_period_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "commission_ledger",
+    "unique_index": true,
+    "valid": true
+  }
+]

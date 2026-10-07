@@ -1,0 +1,113 @@
+[
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX teacher_class_assignments_pkey ON public.teacher_class_assignments USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "teacher_class_assignments_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "teacher_class_assignments_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "teacher_class_assignments",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE INDEX teacher_class_assignments_school_status_idx ON public.teacher_class_assignments USING btree (school_id, status)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "status"
+    ],
+    "method": "btree",
+    "name": "teacher_class_assignments_school_status_idx",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "teacher_class_assignments",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null,
+      null,
+      "default",
+      "default",
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX teacher_class_assignments_unique ON public.teacher_class_assignments USING btree (employee_id, academic_session_id, school_class_id, section, assignment_type, COALESCE(subject_id, 0)) WHERE (status = 'ACTIVE'::text)",
+    "dependent_fks": [],
+    "expressions": "COALESCE(subject_id, 0)",
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "employee_id",
+      "academic_session_id",
+      "school_class_id",
+      "section",
+      "assignment_type",
+      "COALESCE(subject_id, 0)"
+    ],
+    "method": "btree",
+    "name": "teacher_class_assignments_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops",
+      "int4_ops",
+      "text_ops",
+      "text_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": "(status = 'ACTIVE'::text)",
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "teacher_class_assignments",
+    "unique_index": true,
+    "valid": true
+  }
+]

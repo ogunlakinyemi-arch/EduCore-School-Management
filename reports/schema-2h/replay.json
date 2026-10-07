@@ -1,0 +1,3780 @@
+{
+  "authorization": "User explicitly authorized disposable 0000–0060 replay only",
+  "migrations": [
+    {
+      "name": "0000_brainy_moon_knight.sql",
+      "sha256": "fc460c22d41c952c0578c17cbba1cfe8dc838a0896c322fa03eae41066072ddd",
+      "status": "PASS",
+      "milliseconds": 361,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "INSERT",
+          "rowCount": 0
+        }
+      ]
+    },
+    {
+      "name": "0001_phase3_meta.sql",
+      "sha256": "0a329af11216e5f86f7569dad85008a115c497d4e827a2e2adfc5316f62b9244",
+      "status": "PASS",
+      "milliseconds": 137,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "INSERT",
+          "rowCount": 0
+        },
+        {
+          "command": "INSERT",
+          "rowCount": 0
+        }
+      ]
+    },
+    {
+      "name": "0002_overjoyed_sue_storm.sql",
+      "sha256": "8a3a486f871f991ab59ac982ae6be92934a8f6d4b861c8222be43eea5878c736",
+      "status": "PASS",
+      "milliseconds": 152,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0003_phase4_integrity.sql",
+      "sha256": "9223f5d27a334bd967dfe37dcff518b3800eff1a68523f81defc8ca52ae7c575",
+      "status": "PASS",
+      "milliseconds": 9,
+      "operations": [
+        {
+          "command": "INSERT",
+          "rowCount": 1
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0004_platform_operations.sql",
+      "sha256": "02d011d931579f8177b2a71794a39bea78f23214da41c3606a3375ab1e3505ca",
+      "status": "PASS",
+      "milliseconds": 27,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "DO",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0005_tenant_reference_keys.sql",
+      "sha256": "2c39b162401de93ce6cfe26fe5a558966080124575876e4097e9bf5044b1c519",
+      "status": "PASS",
+      "milliseconds": 17,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0006_prepare_tenant_keys_publish.sql",
+      "sha256": "01239ad0d094f235d29a8a91d6e48a31fc5978f065d9e0fee0a466540f2f81ef",
+      "status": "PASS",
+      "milliseconds": 4,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0007_restore_tenant_foreign_keys.sql",
+      "sha256": "be779627cfc9593c61f5f2e9f53813999905e134a10f9b4a54885ef70301ade7",
+      "status": "PASS",
+      "milliseconds": 11,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0008_align_tenant_fk_dependencies.sql",
+      "sha256": "83132c038eb08c2a45ca0a9805750217237e879469b62ca967a160b55a88694a",
+      "status": "PASS",
+      "milliseconds": 13,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0009_phase5_attendance.sql",
+      "sha256": "d306734f09b1f51a56c4ae88113d2c2b3de89e3eff8f6bb20bbedaac6715fc1e",
+      "status": "PASS",
+      "milliseconds": 148,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0010_historical_device_school_bindings.sql",
+      "sha256": "b694b7b224ca23979c9f156288c95908303044a264f13b5d687b4b279f0a05fe",
+      "status": "PASS",
+      "milliseconds": 13,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "INSERT",
+          "rowCount": 0
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "DROP",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "DROP",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "DO",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0011_historical_device_references.sql",
+      "sha256": "8b961ad5af8609c8247942174f178cb8af2a3ab9b9b31c9b881a7bb4282118c9",
+      "status": "PASS",
+      "milliseconds": 5,
+      "operations": [
+        {
+          "command": "INSERT",
+          "rowCount": 0
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0012_phase6_academic_operations.sql",
+      "sha256": "2e9c588ca170fbd3a24c8b03bb5466cc603bc4fae140659d15bb8824587f7c46",
+      "status": "PASS",
+      "milliseconds": 133,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0013_phase7_finance.sql",
+      "sha256": "d686ff04220a346caf6a611e0fe0652a87eaa8db3fbb91595cdc7dbc09105074",
+      "status": "PASS",
+      "milliseconds": 132,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0014_finance_payment_integrity.sql",
+      "sha256": "a22416cbd66528978d57e9842a9836d17a263c6bccca0f4db4b7806f765a3360",
+      "status": "PASS",
+      "milliseconds": 14,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "UPDATE",
+          "rowCount": 0
+        },
+        {
+          "command": "UPDATE",
+          "rowCount": 0
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0015_school_bank_transfer_settings.sql",
+      "sha256": "261a4df3195bd36ecaf7597427ff883ebec7198374b7fa299a5f2a6050402182",
+      "status": "PASS",
+      "milliseconds": 6,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0016_finance_refunds.sql",
+      "sha256": "e4312cda8c57e7fc489562cf64c5f7005e0ce09d2e1efa7e561aa674a67c4b8f",
+      "status": "PASS",
+      "milliseconds": 25,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0017_fee_provider_payments.sql",
+      "sha256": "ca8a921ecc355f9fd748649dadbfe775dbd898195564c76138b3035ad53f6f0a",
+      "status": "PASS",
+      "milliseconds": 40,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0018_fee_payment_notifications.sql",
+      "sha256": "e9bffbf45dbd225d96935cc8b52185d181e8efe74d11c33fd44f46bbfbc8be70",
+      "status": "PASS",
+      "milliseconds": 162,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0019_phase7_finance_ledger_gaps.sql",
+      "sha256": "84886bbea635b7d96acdfc5ae6f62542b3e7355d3106ad93af2738c05bb147d5",
+      "status": "PASS",
+      "milliseconds": 4,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0020_finance_payment_notification_events.sql",
+      "sha256": "c1f8c7067ac3544e4d2c34e504519e351992aefe339b94d8da64d0c6a76a11da",
+      "status": "PASS",
+      "milliseconds": 8,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0021_fee_payment_notification_outbox.sql",
+      "sha256": "73cb3dd56096c6296e78bcd503eade9635bebfc20e8403d42bfb126b4cfae782",
+      "status": "PASS",
+      "milliseconds": 19,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0022_payment_bound_notification_events.sql",
+      "sha256": "3d5c3805a2f79e7caf569f312bbfcf8fef3a91528d06f5fc70c0db36de0e9929",
+      "status": "PASS",
+      "milliseconds": 4,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0023_invoice_generated_notifications.sql",
+      "sha256": "80ca309338cdf5d0c3432d2f97373588b9b5898ffdb4adfc1926400bc946fc68",
+      "status": "PASS",
+      "milliseconds": 43,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0024_platform_company_employees.sql",
+      "sha256": "f109415673a0674545ed975b50e7fc8337d3a9939ae99eecb81c4b262e986112",
+      "status": "PASS",
+      "milliseconds": 14,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0025_communication.sql",
+      "sha256": "e36a4208543a4c2b3e4739cac1449d5b15f1bb8ac53a4d569cc26a50eb815f3a",
+      "status": "PASS",
+      "milliseconds": 121,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0026_communication_entitlements.sql",
+      "sha256": "3a849acf174da8dc8e6f9b6203b6bbeec6a56dc0cdc12367fb7aeed6dd103ab2",
+      "status": "PASS",
+      "milliseconds": 11,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0027_library.sql",
+      "sha256": "a8a0f53180682650cbec0858eaaa7c964194527975dc87ed6df60261623a455a",
+      "status": "PASS",
+      "milliseconds": 273,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0028_school_operations.sql",
+      "sha256": "e705cc814866afd041f7e92264b3eb6c35dd931359d455cb485b3c1560916190",
+      "status": "PASS",
+      "milliseconds": 102,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0029_operations_history.sql",
+      "sha256": "3a0a63d2807a67ea514502083cb7f26f6c8d7a2fc0c2da6739e6b375a587ac87",
+      "status": "PASS",
+      "milliseconds": 36,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0030_library_loan_copy_integrity.sql",
+      "sha256": "eea163be06c078cfbf057e0ccc3669397e14562d42329bb93056c5e1a04da9d2",
+      "status": "PASS",
+      "milliseconds": 8,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0031_staff_nfc_billing.sql",
+      "sha256": "e3f0645715c4cfadf8554649b7c11d7ca7cdbfd2be5c57782b1af5e5e2423b7d",
+      "status": "PASS",
+      "milliseconds": 181,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "INSERT",
+          "rowCount": 1
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0032_employee_nfc.sql",
+      "sha256": "ba6e6132a43485e9e04e89885e2d118804723ee7039d009f4d8ef3fc3b7ff745",
+      "status": "PASS",
+      "milliseconds": 71,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0033_school_workflows.sql",
+      "sha256": "ea294fea7b6e27013c7140215f7e3432e0f5f90566e474a61114494c94154056",
+      "status": "PASS",
+      "milliseconds": 258,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0034_school_transport.sql",
+      "sha256": "2660bf9d675ec825c321f16fb0616511a71a031de29a5d83d4026887e991b2a8",
+      "status": "PASS",
+      "milliseconds": 159,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0035_settlement_payroll.sql",
+      "sha256": "5e9cd1be6827df50f7cf551cca61df758e7775bc354a1ba9b74ec4d384b70557",
+      "status": "PASS",
+      "milliseconds": 367,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0036_student_subscription_allocations.sql",
+      "sha256": "db161286afabfc50b97642f47ac1c2a7329b9b0faf7f9d5113c47891acd27705",
+      "status": "PASS",
+      "milliseconds": 81,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0037_parent_relationship_unique_constraint.sql",
+      "sha256": "dbd8d8baee11ab1f8621da0489db25f0de6052d6e35da3b680c663cde000ae47",
+      "status": "PASS",
+      "milliseconds": 7,
+      "operations": [
+        {
+          "command": "DO",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0038_staff_nfc_payment_school_constraint.sql",
+      "sha256": "c4a8445835f8243da341f95cd3ab0f75e5ac081cd64b71512df0f3c269a7582b",
+      "status": "PASS",
+      "milliseconds": 7,
+      "operations": [
+        {
+          "command": "DO",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0039_curriculum_learning.sql",
+      "sha256": "6c278cf1c268e78c13f4844363f171fe75b3e44fd9f13914376feb966cbc4269",
+      "status": "PASS",
+      "milliseconds": 127,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0040_existing_school_workflow_review.sql",
+      "sha256": "38211f069fb17b3e14e4613bbf48be8aed5ded9bc7f33927bde3946249f341ea",
+      "status": "PASS",
+      "milliseconds": 4,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0041_permanent_school_registration_numbers.sql",
+      "sha256": "b20e53b9dc04aa6a3d2d54fdc932d5ce11b4f65dce9c5dce8ac0088a92359fba",
+      "status": "PASS",
+      "milliseconds": 7,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0042_admissions_expansion.sql",
+      "sha256": "42bc64ed9c77c65d6cd03c30aaf1b9bb12b5e8c5f89d4f44efc848af2ea2d370",
+      "status": "PASS",
+      "milliseconds": 90,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "INSERT",
+          "rowCount": 0
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "INSERT",
+          "rowCount": 0
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0043_student_care_expansion.sql",
+      "sha256": "40aaa666331f3d31a7b53a60df41388ba1646bcf0e0c06e9f3cbcd032661f9c0",
+      "status": "PASS",
+      "milliseconds": 148,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0044_promotion_expansion.sql",
+      "sha256": "4c7d000a0f70c32f1eb25b9499ab7372c3f0a701946f2d538ccdee96183096c4",
+      "status": "PASS",
+      "milliseconds": 151,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "DROP",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0045_school_security_core.sql",
+      "sha256": "58a6a3a7997cb76adbe02b28dcf35071b158dfc5e35b45941193c9d3d501d81d",
+      "status": "PASS",
+      "milliseconds": 114,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "DROP",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0046_school_security_operations.sql",
+      "sha256": "cc1365be6dc6bb8c90a3991f373b71f6cb59b0818f09622a78bf7554bfceb83d",
+      "status": "PASS",
+      "milliseconds": 116,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "DROP",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0047_parent_communication_extensions.sql",
+      "sha256": "2429fcfadeba4831df73aff601af6175de55fe3239df0f90f750f27f35f32eef",
+      "status": "PASS",
+      "milliseconds": 44,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0048_communication_external_channels.sql",
+      "sha256": "ca4379747e5858d1d26b6f439301476345e1496a5b521cd3ca933bc7fdd010df",
+      "status": "PASS",
+      "milliseconds": 9,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0049_term_subscription_enforcement.sql",
+      "sha256": "43755d774c2d962dcef23189cfe41c87942bc8277a653db6d96f3503284824f7",
+      "status": "PASS",
+      "milliseconds": 11,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0050_independent_owner_school_lock.sql",
+      "sha256": "35f1079d3027f2a254958e8ea25e95cf1ba278181a9ab289c5eae27c6a585625",
+      "status": "PASS",
+      "milliseconds": 11,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0051_parent_profile_preferences.sql",
+      "sha256": "868ae9d0bfb1d719fc5ae6cdfa6c1edc6172ee4fdd1e344e9f2e936be65c2e8e",
+      "status": "PASS",
+      "milliseconds": 4,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0052_student_nfc_replacement_requests.sql",
+      "sha256": "26313e17d636d877800901179a9ed9ba6040bcef301c42bca01359c578dac327",
+      "status": "PASS",
+      "milliseconds": 24,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0053_class_transport_fee_applicability.sql",
+      "sha256": "5fce74a44bc89b30aea98549a84791b91b0198c29d9fc7dcbfbb125b105087b9",
+      "status": "PASS",
+      "milliseconds": 3,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0054_employee_card_replacement_finance.sql",
+      "sha256": "e25eb3a38ddc495ff71486fc87c0ff560f59d1a1aeb7fd7b7b261ce55f339302",
+      "status": "PASS",
+      "milliseconds": 8,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "DO",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "DROP",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "DROP",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "DROP",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0055_academic_calendar_fee_lines_cash.sql",
+      "sha256": "11584c9bf1cd346e67ff07a07ce2c47de87cece48facd94b69ceb0e072d395e4",
+      "status": "PASS",
+      "milliseconds": 16,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "DO",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "DO",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "DROP",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0056_exam_record_workflows.sql",
+      "sha256": "9a38f9925ef8be3bf3840481fe93029245b0efb323950d8caa442f3bf8e6ca04",
+      "status": "PASS",
+      "milliseconds": 69,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0057_lesson_note_documents.sql",
+      "sha256": "381d4e4f84d8c73f93e1cc96328345ff9612778575c3f468ff09f9007f7e09b9",
+      "status": "PASS",
+      "milliseconds": 18,
+      "operations": [
+        {
+          "command": "CREATE",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0058_student_subscription_terms.sql",
+      "sha256": "fde8d0d9844625cca527f225d18b3f8311fafecc4dd7b4bfc5316ab7b8c9870c",
+      "status": "PASS",
+      "milliseconds": 15,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "CREATE",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0059_partner_nfc_permission.sql",
+      "sha256": "8d3193b772bcd0f9a4c404ca4402a6d7be30913687b6382dbfb3bfe90c26aa7e",
+      "status": "PASS",
+      "milliseconds": 4,
+      "operations": [
+        {
+          "command": "ALTER",
+          "rowCount": null
+        },
+        {
+          "command": "ALTER",
+          "rowCount": null
+        }
+      ]
+    },
+    {
+      "name": "0060_reconcile_student_subscription_finance.sql",
+      "sha256": "a827ad709347eaa22b9bf70a4c2a4012f2c2bd86c5ba3d624623710f98d41f57",
+      "status": "PASS",
+      "milliseconds": 45,
+      "operations": [
+        {
+          "command": "DO",
+          "rowCount": null
+        }
+      ]
+    }
+  ],
+  "failures": [],
+  "environment": {
+    "version": "PostgreSQL 16.10 on x86_64-pc-linux-gnu, compiled by clang version 19.1.7, 64-bit",
+    "data_directory": "/tmp/educore-schema-2h-uk4L8n/data",
+    "listeners": "",
+    "port": "55487",
+    "architecture": "x64",
+    "privateSocket": "/tmp/educore-schema-2h-uk4L8n/socket",
+    "disposable": true,
+    "database": "schema_2h_full_replay"
+  },
+  "counts": {
+    "tables": 173,
+    "columns": 2309,
+    "constraints": 1432,
+    "indexes": 674,
+    "functions": 18,
+    "triggers": 22,
+    "sequences": 158
+  },
+  "successful": 61,
+  "status": "PASS",
+  "databaseDestroyed": true
+}

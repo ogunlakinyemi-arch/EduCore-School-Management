@@ -1,0 +1,639 @@
+[
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "academic_assessment_types",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "academic_assessments",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "academic_assignments",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "academic_grading_rules",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "academic_report_card_lines",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "academic_report_cards",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "academic_results",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "academic_sessions",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "academic_terms",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "academic_timetable_entries",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "app_users",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "attendance_corrections",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "attendance_discrepancies",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "attendance_events",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "attendance_notification_events",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "attendance_settings",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "audit_logs",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "biometric_enrollments",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "class_subjects",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "commission_ledger",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "commission_rules",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "communication_campaign_recipients",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "communication_campaigns",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "communication_deliveries",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "communication_notifications",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "communication_preferences",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "communication_push_devices",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "communication_templates",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "device_assignment_history",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "device_credentials",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "device_school_bindings",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "employees",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "fee_adjustments",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "fee_categories",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "fee_invoice_lines",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "fee_invoice_notification_outbox",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "fee_invoice_notifications",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "fee_invoices",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "fee_payment_notification_outbox",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "fee_payment_notifications",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "fee_payments",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "fee_provider_checkout_sessions",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "fee_provider_webhook_events",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "fee_receipts",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "fee_refunds",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "fee_school_settings",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "fee_structure_lines",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "fee_structures",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "library_authors",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "library_book_copies",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "library_books",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "library_categories",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "library_copy_status_history",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "library_loans",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "library_publishers",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "library_renewals",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "library_settings",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "library_staff",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "maintenance_request_status_history",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "maintenance_requests",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "nfc_card_history",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "nfc_cards",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "operational_task_status_history",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "operational_tasks",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "parent_student_relationships",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "parents",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "partner_attribution_conflicts",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "partner_invitations",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "partner_payout_information",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "partner_payouts",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "partner_profile_users",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "partner_profiles",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "partner_referral_links",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "platform_company_employees",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "platform_devices",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "platform_notifications",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "school_asset_history",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "school_assets",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "school_classes",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "school_facilities",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "school_memberships",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "school_operation_categories",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "school_operations_settings",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "school_partner_attributions",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "schools",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "student_class_assignments",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "student_identification_policies",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "students",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "subjects",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "subscriptions",
+    "persistence": "p",
+    "schema": "public"
+  },
+  {
+    "inherited": false,
+    "kind": "r",
+    "name": "teacher_class_assignments",
+    "persistence": "p",
+    "schema": "public"
+  }
+]

@@ -1,0 +1,366 @@
+[
+  {
+    "row_count": "0",
+    "table_name": "academic_assessment_types"
+  },
+  {
+    "row_count": "0",
+    "table_name": "academic_assessments"
+  },
+  {
+    "row_count": "0",
+    "table_name": "academic_assignments"
+  },
+  {
+    "row_count": "0",
+    "table_name": "academic_grading_rules"
+  },
+  {
+    "row_count": "0",
+    "table_name": "academic_report_card_lines"
+  },
+  {
+    "row_count": "0",
+    "table_name": "academic_report_cards"
+  },
+  {
+    "row_count": "0",
+    "table_name": "academic_results"
+  },
+  {
+    "row_count": "1",
+    "table_name": "academic_sessions"
+  },
+  {
+    "row_count": "1",
+    "table_name": "academic_terms"
+  },
+  {
+    "row_count": "0",
+    "table_name": "academic_timetable_entries"
+  },
+  {
+    "row_count": "7",
+    "table_name": "app_users"
+  },
+  {
+    "row_count": "0",
+    "table_name": "attendance_corrections"
+  },
+  {
+    "row_count": "0",
+    "table_name": "attendance_discrepancies"
+  },
+  {
+    "row_count": "0",
+    "table_name": "attendance_events"
+  },
+  {
+    "row_count": "0",
+    "table_name": "attendance_notification_events"
+  },
+  {
+    "row_count": "0",
+    "table_name": "attendance_settings"
+  },
+  {
+    "row_count": "65",
+    "table_name": "audit_logs"
+  },
+  {
+    "row_count": "0",
+    "table_name": "biometric_enrollments"
+  },
+  {
+    "row_count": "0",
+    "table_name": "class_subjects"
+  },
+  {
+    "row_count": "0",
+    "table_name": "commission_ledger"
+  },
+  {
+    "row_count": "0",
+    "table_name": "commission_rules"
+  },
+  {
+    "row_count": "0",
+    "table_name": "communication_campaign_recipients"
+  },
+  {
+    "row_count": "0",
+    "table_name": "communication_campaigns"
+  },
+  {
+    "row_count": "4",
+    "table_name": "communication_deliveries"
+  },
+  {
+    "row_count": "4",
+    "table_name": "communication_notifications"
+  },
+  {
+    "row_count": "0",
+    "table_name": "communication_preferences"
+  },
+  {
+    "row_count": "0",
+    "table_name": "communication_push_devices"
+  },
+  {
+    "row_count": "0",
+    "table_name": "communication_templates"
+  },
+  {
+    "row_count": "0",
+    "table_name": "device_assignment_history"
+  },
+  {
+    "row_count": "0",
+    "table_name": "device_credentials"
+  },
+  {
+    "row_count": "0",
+    "table_name": "device_school_bindings"
+  },
+  {
+    "row_count": "2",
+    "table_name": "employees"
+  },
+  {
+    "row_count": "0",
+    "table_name": "fee_adjustments"
+  },
+  {
+    "row_count": "0",
+    "table_name": "fee_categories"
+  },
+  {
+    "row_count": "0",
+    "table_name": "fee_invoice_lines"
+  },
+  {
+    "row_count": "0",
+    "table_name": "fee_invoice_notification_outbox"
+  },
+  {
+    "row_count": "0",
+    "table_name": "fee_invoice_notifications"
+  },
+  {
+    "row_count": "0",
+    "table_name": "fee_invoices"
+  },
+  {
+    "row_count": "0",
+    "table_name": "fee_payment_notification_outbox"
+  },
+  {
+    "row_count": "0",
+    "table_name": "fee_payment_notifications"
+  },
+  {
+    "row_count": "0",
+    "table_name": "fee_payments"
+  },
+  {
+    "row_count": "0",
+    "table_name": "fee_provider_checkout_sessions"
+  },
+  {
+    "row_count": "0",
+    "table_name": "fee_provider_webhook_events"
+  },
+  {
+    "row_count": "0",
+    "table_name": "fee_receipts"
+  },
+  {
+    "row_count": "0",
+    "table_name": "fee_refunds"
+  },
+  {
+    "row_count": "0",
+    "table_name": "fee_school_settings"
+  },
+  {
+    "row_count": "0",
+    "table_name": "fee_structure_lines"
+  },
+  {
+    "row_count": "0",
+    "table_name": "fee_structures"
+  },
+  {
+    "row_count": "0",
+    "table_name": "library_authors"
+  },
+  {
+    "row_count": "0",
+    "table_name": "library_book_copies"
+  },
+  {
+    "row_count": "0",
+    "table_name": "library_books"
+  },
+  {
+    "row_count": "0",
+    "table_name": "library_categories"
+  },
+  {
+    "row_count": "0",
+    "table_name": "library_copy_status_history"
+  },
+  {
+    "row_count": "0",
+    "table_name": "library_loans"
+  },
+  {
+    "row_count": "0",
+    "table_name": "library_publishers"
+  },
+  {
+    "row_count": "0",
+    "table_name": "library_renewals"
+  },
+  {
+    "row_count": "0",
+    "table_name": "library_settings"
+  },
+  {
+    "row_count": "0",
+    "table_name": "library_staff"
+  },
+  {
+    "row_count": "0",
+    "table_name": "maintenance_request_status_history"
+  },
+  {
+    "row_count": "0",
+    "table_name": "maintenance_requests"
+  },
+  {
+    "row_count": "0",
+    "table_name": "nfc_card_history"
+  },
+  {
+    "row_count": "3",
+    "table_name": "nfc_cards"
+  },
+  {
+    "row_count": "0",
+    "table_name": "operational_task_status_history"
+  },
+  {
+    "row_count": "0",
+    "table_name": "operational_tasks"
+  },
+  {
+    "row_count": "0",
+    "table_name": "parent_student_relationships"
+  },
+  {
+    "row_count": "8",
+    "table_name": "parents"
+  },
+  {
+    "row_count": "0",
+    "table_name": "partner_attribution_conflicts"
+  },
+  {
+    "row_count": "1",
+    "table_name": "partner_invitations"
+  },
+  {
+    "row_count": "1",
+    "table_name": "partner_payout_information"
+  },
+  {
+    "row_count": "0",
+    "table_name": "partner_payouts"
+  },
+  {
+    "row_count": "1",
+    "table_name": "partner_profile_users"
+  },
+  {
+    "row_count": "1",
+    "table_name": "partner_profiles"
+  },
+  {
+    "row_count": "1",
+    "table_name": "partner_referral_links"
+  },
+  {
+    "row_count": "0",
+    "table_name": "platform_company_employees"
+  },
+  {
+    "row_count": "0",
+    "table_name": "platform_devices"
+  },
+  {
+    "row_count": "0",
+    "table_name": "platform_notifications"
+  },
+  {
+    "row_count": "0",
+    "table_name": "school_asset_history"
+  },
+  {
+    "row_count": "0",
+    "table_name": "school_assets"
+  },
+  {
+    "row_count": "4",
+    "table_name": "school_classes"
+  },
+  {
+    "row_count": "0",
+    "table_name": "school_facilities"
+  },
+  {
+    "row_count": "7",
+    "table_name": "school_memberships"
+  },
+  {
+    "row_count": "0",
+    "table_name": "school_operation_categories"
+  },
+  {
+    "row_count": "0",
+    "table_name": "school_operations_settings"
+  },
+  {
+    "row_count": "0",
+    "table_name": "school_partner_attributions"
+  },
+  {
+    "row_count": "6",
+    "table_name": "schools"
+  },
+  {
+    "row_count": "0",
+    "table_name": "student_class_assignments"
+  },
+  {
+    "row_count": "0",
+    "table_name": "student_identification_policies"
+  },
+  {
+    "row_count": "7",
+    "table_name": "students"
+  },
+  {
+    "row_count": "1",
+    "table_name": "subjects"
+  },
+  {
+    "row_count": "3",
+    "table_name": "subscriptions"
+  },
+  {
+    "row_count": "0",
+    "table_name": "teacher_class_assignments"
+  }
+]

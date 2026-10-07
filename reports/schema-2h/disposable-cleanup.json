@@ -1,0 +1,7 @@
+{
+  "disposableDatabaseDestroyed": true,
+  "disposableClusterStopped": true,
+  "privateClusterDirectoryRemoved": true,
+  "activePointerRemoved": true,
+  "sharedDatabasesTouched": false
+}

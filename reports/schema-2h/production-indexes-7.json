@@ -1,0 +1,1147 @@
+[
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE INDEX partner_profile_users_partner_idx ON public.partner_profile_users USING btree (partner_profile_id, status)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "partner_profile_id",
+      "status"
+    ],
+    "method": "btree",
+    "name": "partner_profile_users_partner_idx",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "partner_profile_users",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX partner_profile_users_pkey ON public.partner_profile_users USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "partner_profile_users_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "partner_profile_users_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "partner_profile_users",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX partner_profile_users_unique ON public.partner_profile_users USING btree (partner_profile_id, user_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "partner_profile_id",
+      "user_id"
+    ],
+    "method": "btree",
+    "name": "partner_profile_users_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "partner_profile_users",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX partner_profile_users_user_role_unique ON public.partner_profile_users USING btree (user_id, role)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "user_id",
+      "role"
+    ],
+    "method": "btree",
+    "name": "partner_profile_users_user_role_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "partner_profile_users",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX partner_profiles_code_unique ON public.partner_profiles USING btree (partner_code)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "partner_code"
+    ],
+    "method": "btree",
+    "name": "partner_profiles_code_unique",
+    "operator_classes": [
+      "text_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "partner_profiles",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      "default"
+    ],
+    "definition": "CREATE INDEX partner_profiles_email_idx ON public.partner_profiles USING btree (email)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "email"
+    ],
+    "method": "btree",
+    "name": "partner_profiles_email_idx",
+    "operator_classes": [
+      "text_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "partner_profiles",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX partner_profiles_pkey ON public.partner_profiles USING btree (id)",
+    "dependent_fks": [
+      "commission_ledger.commission_ledger_partner_profile_id_partner_profiles_id_fk",
+      "partner_attribution_conflicts.partner_attribution_conflicts_attempted_partner_profile_id_part",
+      "partner_attribution_conflicts.partner_attribution_conflicts_existing_partner_profile_id_partn",
+      "partner_invitations.partner_invitations_partner_profile_id_partner_profiles_id_fk",
+      "partner_payout_information.partner_payout_information_partner_profile_id_partner_profiles_",
+      "partner_payouts.partner_payouts_partner_profile_id_partner_profiles_id_fk",
+      "partner_profile_users.partner_profile_users_partner_profile_id_partner_profiles_id_fk",
+      "partner_referral_links.partner_referral_links_partner_profile_id_partner_profiles_id_f",
+      "school_partner_attributions.school_partner_attributions_partner_profile_id_partner_profiles",
+      "subscriptions.subscriptions_partner_profile_id_partner_profiles_id_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "partner_profiles_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "partner_profiles_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "partner_profiles",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      "default"
+    ],
+    "definition": "CREATE INDEX partner_profiles_status_idx ON public.partner_profiles USING btree (status)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "status"
+    ],
+    "method": "btree",
+    "name": "partner_profiles_status_idx",
+    "operator_classes": [
+      "text_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "partner_profiles",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX partner_profiles_user_unique ON public.partner_profiles USING btree (user_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "user_id"
+    ],
+    "method": "btree",
+    "name": "partner_profiles_user_unique",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "partner_profiles",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX partner_referral_links_hash_unique ON public.partner_referral_links USING btree (token_hash)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "token_hash"
+    ],
+    "method": "btree",
+    "name": "partner_referral_links_hash_unique",
+    "operator_classes": [
+      "text_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "partner_referral_links",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE INDEX partner_referral_links_partner_status_idx ON public.partner_referral_links USING btree (partner_profile_id, status)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "partner_profile_id",
+      "status"
+    ],
+    "method": "btree",
+    "name": "partner_referral_links_partner_status_idx",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "partner_referral_links",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX partner_referral_links_pkey ON public.partner_referral_links USING btree (id)",
+    "dependent_fks": [
+      "partner_attribution_conflicts.partner_attribution_conflicts_referral_link_id_partner_referral",
+      "school_partner_attributions.school_partner_attributions_referral_link_id_partner_referral_l"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "partner_referral_links_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "partner_referral_links_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "partner_referral_links",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX platform_company_employees_email_unique ON public.platform_company_employees USING btree (lower(email))",
+    "dependent_fks": [],
+    "expressions": "lower(email)",
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "lower(email)"
+    ],
+    "method": "btree",
+    "name": "platform_company_employees_email_unique",
+    "operator_classes": [
+      "text_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "platform_company_employees",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX platform_company_employees_pkey ON public.platform_company_employees USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "platform_company_employees_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "platform_company_employees_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "platform_company_employees",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      "default"
+    ],
+    "definition": "CREATE INDEX platform_company_employees_status_idx ON public.platform_company_employees USING btree (status)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "status"
+    ],
+    "method": "btree",
+    "name": "platform_company_employees_status_idx",
+    "operator_classes": [
+      "text_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "platform_company_employees",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX platform_devices_id_school_unique ON public.platform_devices USING btree (id, school_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "platform_devices_id_school_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "platform_devices",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX platform_devices_pkey ON public.platform_devices USING btree (id)",
+    "dependent_fks": [
+      "attendance_events.attendance_events_device_id_fkey",
+      "biometric_enrollments.biometric_enrollments_device_id_fkey",
+      "device_assignment_history.device_assignment_history_device_id_fkey",
+      "device_credentials.device_credentials_device_id_fkey",
+      "device_school_bindings.device_school_bindings_device_id_fkey"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "platform_devices_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "platform_devices_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "platform_devices",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE INDEX platform_devices_school_idx ON public.platform_devices USING btree (school_id, status)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "status"
+    ],
+    "method": "btree",
+    "name": "platform_devices_school_idx",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "platform_devices",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX platform_devices_serial_number_key ON public.platform_devices USING btree (serial_number)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "serial_number"
+    ],
+    "method": "btree",
+    "name": "platform_devices_serial_number_key",
+    "operator_classes": [
+      "text_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "platform_devices_serial_number_key",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "platform_devices",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX platform_notifications_pkey ON public.platform_notifications USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "platform_notifications_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "platform_notifications_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "platform_notifications",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null,
+      null
+    ],
+    "definition": "CREATE INDEX platform_notifications_recipient_idx ON public.platform_notifications USING btree (recipient_user_id, is_read, created_at)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "recipient_user_id",
+      "is_read",
+      "created_at"
+    ],
+    "method": "btree",
+    "name": "platform_notifications_recipient_idx",
+    "operator_classes": [
+      "int4_ops",
+      "bool_ops",
+      "timestamptz_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "platform_notifications",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null,
+      null,
+      null
+    ],
+    "definition": "CREATE INDEX school_asset_history_asset_timeline_idx ON public.school_asset_history USING btree (school_id, asset_id, event_at, id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "asset_id",
+      "event_at",
+      "id"
+    ],
+    "method": "btree",
+    "name": "school_asset_history_asset_timeline_idx",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops",
+      "timestamptz_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "school_asset_history",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX school_asset_history_pkey ON public.school_asset_history USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "school_asset_history_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "school_asset_history_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "school_asset_history",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX school_assets_id_school_unique ON public.school_assets USING btree (id, school_id)",
+    "dependent_fks": [
+      "maintenance_requests.maintenance_requests_asset_school_fk",
+      "school_asset_history.school_asset_history_asset_school_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "school_assets_id_school_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "school_assets_id_school_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "school_assets",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX school_assets_pkey ON public.school_assets USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "school_assets_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "school_assets_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "school_assets",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX school_assets_school_code_unique ON public.school_assets USING btree (school_id, lower(asset_code)) WHERE (asset_code IS NOT NULL)",
+    "dependent_fks": [],
+    "expressions": "lower(asset_code)",
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "lower(asset_code)"
+    ],
+    "method": "btree",
+    "name": "school_assets_school_code_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": "(asset_code IS NOT NULL)",
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "school_assets",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default",
+      "default"
+    ],
+    "definition": "CREATE INDEX school_assets_school_status_idx ON public.school_assets USING btree (school_id, status, name)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "status",
+      "name"
+    ],
+    "method": "btree",
+    "name": "school_assets_school_status_idx",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "school_assets",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX school_classes_id_school_tenant_key ON public.school_classes USING btree (id, school_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "school_classes_id_school_tenant_key",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "school_classes_id_school_tenant_key",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "school_classes",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX school_classes_id_school_unique ON public.school_classes USING btree (id, school_id)",
+    "dependent_fks": [
+      "academic_assessments.academic_assessments_class_school_fk",
+      "academic_assignments.academic_assignments_class_school_fk",
+      "academic_report_cards.academic_report_cards_class_school_fk",
+      "academic_results.academic_results_class_school_fk",
+      "academic_timetable_entries.academic_timetable_entries_class_school_fk",
+      "attendance_events.attendance_events_class_school_fk",
+      "class_subjects.class_subjects_class_school_fk",
+      "communication_notifications.communication_notifications_subject_class_school_fk",
+      "fee_structures.fee_structures_class_school_fk",
+      "platform_devices.platform_devices_class_school_fk",
+      "student_class_assignments.student_class_assignments_class_school_fk",
+      "teacher_class_assignments.teacher_class_assignments_class_school_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "school_classes_id_school_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "school_classes",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX school_classes_pkey ON public.school_classes USING btree (id)",
+    "dependent_fks": [
+      "attendance_events.attendance_events_school_class_id_fkey"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "school_classes_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "school_classes_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "school_classes",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default",
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX school_classes_unique ON public.school_classes USING btree (school_id, name, section)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "name",
+      "section"
+    ],
+    "method": "btree",
+    "name": "school_classes_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "school_classes",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX school_facilities_id_school_unique ON public.school_facilities USING btree (id, school_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "school_facilities_id_school_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "school_facilities_id_school_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "school_facilities",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX school_facilities_pkey ON public.school_facilities USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "school_facilities_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "school_facilities_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "school_facilities",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX school_facilities_school_name_unique ON public.school_facilities USING btree (school_id, lower(name))",
+    "dependent_fks": [],
+    "expressions": "lower(name)",
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "lower(name)"
+    ],
+    "method": "btree",
+    "name": "school_facilities_school_name_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "school_facilities",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default",
+      "default"
+    ],
+    "definition": "CREATE INDEX school_facilities_school_status_idx ON public.school_facilities USING btree (school_id, status, name)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "status",
+      "name"
+    ],
+    "method": "btree",
+    "name": "school_facilities_school_status_idx",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "school_facilities",
+    "unique_index": false,
+    "valid": true
+  }
+]

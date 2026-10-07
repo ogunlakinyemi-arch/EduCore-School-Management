@@ -1,0 +1,6 @@
+{
+  "label": "Production-routed test database/read replica — published runtime binding NOT established",
+  "identity": "database_name,version,read_replica,transaction_read_only,public_tables\nneondb,\"PostgreSQL 16.15 (9e87aff) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit\",t,on,91\n",
+  "success": true,
+  "metadataFailures": []
+}

@@ -23,3 +23,9 @@ Large responses can also exceed the durable callback entry limit, even when the 
 **Why:** A full catalog response exceeded the approximately 1 MiB per-entry limit. Retrying the same full response cannot resolve a transport-size failure.
 
 **How to apply:** Return server-side metadata digests, small projections or bounded catalog slices. Retain the original catalog's exact field set and ordering for like-for-like comparisons. Never infer database changes from a failed response serialization.
+
+Do not retain multiple large catalog responses in one durable notebook execution.
+
+**Why:** A parallel full-catalog acquisition exceeded durable entry/state limits even though individual catalog queries were read-only. Large constraint queries also terminated without SQL diagnostics.
+
+**How to apply:** Acquire bounded table slices sequentially, persist each result promptly, and assemble catalogs with local offline tools. Report query failures separately from schema differences; chunked observations are not one transaction snapshot.

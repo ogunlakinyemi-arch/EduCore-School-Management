@@ -420,3 +420,31 @@ mtime_ms = 1791339224634
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/cc77e287-5c07-4289-beb8-653374ad00c7/d71f8431-7c67-4ac2-9d18-0e04a686397d"
 storage_version_token = "1791339240925103"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "EE6Xcb6m3B20LQLaWiA1G"
+uri = "file://reports/schema-2h/report.html"
+type = "html"
+title = "Stage 2H — Full Schema Reconciliation Audit"
+description = "Complete inventories, structural differences, compatibility results, dependency phases, preservation strategy, journal review and final decision."
+logical_id = "e3e323eb-442a-48cf-929e-c87829d2e72a"
+content_hash = "sha256:34456bd5621800c5de0291b9bf29094da1ac0e463af84dc573aecebbbca179a9"
+size = 8319015
+mtime_ms = 1791341635654
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/e3e323eb-442a-48cf-929e-c87829d2e72a/b0f9e3e1-752d-4f9e-97f7-f3d6299a6714"
+storage_version_token = "1791341708394345"
+content_type = "text/html"
+
+[[outputs]]
+id = "HVrL1O71KjhpU8nT254Zn"
+uri = "file://reports/schema-2h/stage-2h-full-schema-audit-evidence.zip"
+type = "unspecified"
+title = "Stage 2H — Complete Audit Evidence"
+description = "Canonical and replica catalogs, complete CSV inventory, dependency graph, aggregate checks, source comparison, replay evidence, preservation hashes and cleanup proof."
+logical_id = "0860b379-d70e-4db0-b80e-5eb62641b903"
+content_hash = "sha256:e68bba07edae82654a5ab5d9b7a7882094a88943123d25cd347b28d54d777e6c"
+size = 2653465
+mtime_ms = 1791341686798
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/0860b379-d70e-4db0-b80e-5eb62641b903/0598ec37-d0f7-46ba-b27e-561bfa49106d"
+storage_version_token = "1791341708942296"
+content_type = "application/octet-stream"

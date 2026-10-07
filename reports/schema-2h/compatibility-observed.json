@@ -1,0 +1,398 @@
+[
+  {
+    "id": "check-1282",
+    "object": "constraints:public.academic_terms.academic_terms_academic_session_id_academic_sessions_id_fk.",
+    "kind": "foreign-key orphans / tenant ownership",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM \"public\".\"academic_terms\" c WHERE c.\"academic_session_id\" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM \"public\".\"academic_sessions\" p WHERE p.\"id\"=c.\"academic_session_id\")",
+    "violations": "0"
+  },
+  {
+    "id": "check-1285",
+    "object": "constraints:public.academic_terms.academic_terms_nfc_session_key.",
+    "kind": "duplicate groups",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM (SELECT \"id\",\"school_id\",\"academic_session_id\" FROM \"public\".\"academic_terms\" WHERE \"id\" IS NOT NULL AND \"school_id\" IS NOT NULL AND \"academic_session_id\" IS NOT NULL GROUP BY \"id\",\"school_id\",\"academic_session_id\" HAVING count(*)>1) d",
+    "violations": "0"
+  },
+  {
+    "id": "check-1341",
+    "object": "constraints:public.class_subjects.class_subjects_academic_session_id_academic_sessions_id_fk.",
+    "kind": "foreign-key orphans / tenant ownership",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM \"public\".\"class_subjects\" c WHERE c.\"academic_session_id\" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM \"public\".\"academic_sessions\" p WHERE p.\"id\"=c.\"academic_session_id\")",
+    "violations": "0"
+  },
+  {
+    "id": "check-1343",
+    "object": "constraints:public.class_subjects.class_subjects_academic_term_id_academic_terms_id_fk.",
+    "kind": "foreign-key orphans / tenant ownership",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM \"public\".\"class_subjects\" c WHERE c.\"academic_term_id\" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM \"public\".\"academic_terms\" p WHERE p.\"id\"=c.\"academic_term_id\")",
+    "violations": "0"
+  },
+  {
+    "id": "check-1345",
+    "object": "constraints:public.class_subjects.class_subjects_employee_id_employees_id_fk.",
+    "kind": "foreign-key orphans / tenant ownership",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM \"public\".\"class_subjects\" c WHERE c.\"employee_id\" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM \"public\".\"employees\" p WHERE p.\"id\"=c.\"employee_id\")",
+    "violations": "0"
+  },
+  {
+    "id": "check-1347",
+    "object": "constraints:public.class_subjects.class_subjects_school_class_id_school_classes_id_fk.",
+    "kind": "foreign-key orphans / tenant ownership",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM \"public\".\"class_subjects\" c WHERE c.\"school_class_id\" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM \"public\".\"school_classes\" p WHERE p.\"id\"=c.\"school_class_id\")",
+    "violations": "0"
+  },
+  {
+    "id": "check-1349",
+    "object": "constraints:public.class_subjects.class_subjects_subject_id_subjects_id_fk.",
+    "kind": "foreign-key orphans / tenant ownership",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM \"public\".\"class_subjects\" c WHERE c.\"subject_id\" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM \"public\".\"subjects\" p WHERE p.\"id\"=c.\"subject_id\")",
+    "violations": "0"
+  },
+  {
+    "id": "check-1453",
+    "object": "constraints:public.fee_payments.fee_payments_cash_evidence_check.",
+    "kind": "CHECK violations",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM \"public\".\"fee_payments\" WHERE NOT (((method <> 'CASH'::text) OR ((verified_by IS NOT NULL) AND (verified_at IS NOT NULL) AND (length(btrim(verification_evidence_ref)) >= 3) AND (length(btrim(reviewer_notes)) >= 3) AND (verification_metadata IS NOT NULL))))",
+    "violations": "0"
+  },
+  {
+    "id": "check-1455",
+    "object": "constraints:public.fee_payments.fee_payments_method_with_cash_check.",
+    "kind": "CHECK violations",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM \"public\".\"fee_payments\" WHERE NOT ((method = ANY (ARRAY['BANK_TRANSFER'::text, 'REMITA'::text, 'FLUTTERWAVE'::text, 'PAYSTACK'::text, 'CASH'::text])))",
+    "violations": "0"
+  },
+  {
+    "id": "check-1541",
+    "object": "constraints:public.platform_devices.platform_devices_class_school_fk.",
+    "kind": "foreign-key orphans / tenant ownership",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM \"public\".\"platform_devices\" c WHERE c.\"school_class_id\" IS NOT NULL AND c.\"school_id\" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM \"public\".\"school_classes\" p WHERE p.\"id\"=c.\"school_class_id\" AND p.\"school_id\"=c.\"school_id\")",
+    "violations": "0"
+  },
+  {
+    "id": "check-1893",
+    "object": "constraints:public.student_class_assignments.student_class_assignments_academic_session_id_academic_sessions.",
+    "kind": "foreign-key orphans / tenant ownership",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM \"public\".\"student_class_assignments\" c WHERE c.\"academic_session_id\" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM \"public\".\"academic_sessions\" p WHERE p.\"id\"=c.\"academic_session_id\")",
+    "violations": "0"
+  },
+  {
+    "id": "check-1895",
+    "object": "constraints:public.student_class_assignments.student_class_assignments_academic_term_id_academic_terms_id_fk.",
+    "kind": "foreign-key orphans / tenant ownership",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM \"public\".\"student_class_assignments\" c WHERE c.\"academic_term_id\" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM \"public\".\"academic_terms\" p WHERE p.\"id\"=c.\"academic_term_id\")",
+    "violations": "0"
+  },
+  {
+    "id": "check-1897",
+    "object": "constraints:public.student_class_assignments.student_class_assignments_school_class_id_school_classes_id_fk.",
+    "kind": "foreign-key orphans / tenant ownership",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM \"public\".\"student_class_assignments\" c WHERE c.\"school_class_id\" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM \"public\".\"school_classes\" p WHERE p.\"id\"=c.\"school_class_id\")",
+    "violations": "0"
+  },
+  {
+    "id": "check-1899",
+    "object": "constraints:public.student_class_assignments.student_class_assignments_student_id_students_id_fk.",
+    "kind": "foreign-key orphans / tenant ownership",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM \"public\".\"student_class_assignments\" c WHERE c.\"student_id\" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM \"public\".\"students\" p WHERE p.\"id\"=c.\"student_id\")",
+    "violations": "0"
+  },
+  {
+    "id": "check-1987",
+    "object": "constraints:public.teacher_class_assignments.teacher_class_assignments_academic_session_id_academic_sessions.",
+    "kind": "foreign-key orphans / tenant ownership",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM \"public\".\"teacher_class_assignments\" c WHERE c.\"academic_session_id\" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM \"public\".\"academic_sessions\" p WHERE p.\"id\"=c.\"academic_session_id\")",
+    "violations": "0"
+  },
+  {
+    "id": "check-1989",
+    "object": "constraints:public.teacher_class_assignments.teacher_class_assignments_employee_id_employees_id_fk.",
+    "kind": "foreign-key orphans / tenant ownership",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM \"public\".\"teacher_class_assignments\" c WHERE c.\"employee_id\" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM \"public\".\"employees\" p WHERE p.\"id\"=c.\"employee_id\")",
+    "violations": "0"
+  },
+  {
+    "id": "check-1991",
+    "object": "constraints:public.teacher_class_assignments.teacher_class_assignments_school_class_id_school_classes_id_fk.",
+    "kind": "foreign-key orphans / tenant ownership",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM \"public\".\"teacher_class_assignments\" c WHERE c.\"school_class_id\" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM \"public\".\"school_classes\" p WHERE p.\"id\"=c.\"school_class_id\")",
+    "violations": "0"
+  },
+  {
+    "id": "check-1993",
+    "object": "constraints:public.teacher_class_assignments.teacher_class_assignments_subject_id_subjects_id_fk.",
+    "kind": "foreign-key orphans / tenant ownership",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM \"public\".\"teacher_class_assignments\" c WHERE c.\"subject_id\" IS NOT NULL AND NOT EXISTS(SELECT 1 FROM \"public\".\"subjects\" p WHERE p.\"id\"=c.\"subject_id\")",
+    "violations": "0"
+  },
+  {
+    "id": "check-2111",
+    "object": "indexes:public.academic_sessions.academic_sessions_id_school_unique.",
+    "kind": "unique index duplicate groups",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM (SELECT \"id\",\"school_id\" FROM \"public\".\"academic_sessions\" WHERE \"id\" IS NOT NULL AND \"school_id\" IS NOT NULL GROUP BY \"id\",\"school_id\" HAVING count(*)>1) d",
+    "violations": "0"
+  },
+  {
+    "id": "check-2112",
+    "object": "indexes:public.academic_terms.academic_terms_id_school_unique.",
+    "kind": "unique index duplicate groups",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM (SELECT \"id\",\"school_id\" FROM \"public\".\"academic_terms\" WHERE \"id\" IS NOT NULL AND \"school_id\" IS NOT NULL GROUP BY \"id\",\"school_id\" HAVING count(*)>1) d",
+    "violations": "0"
+  },
+  {
+    "id": "check-2113",
+    "object": "indexes:public.academic_terms.academic_terms_nfc_session_key.",
+    "kind": "unique index duplicate groups",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM (SELECT \"id\",\"school_id\",\"academic_session_id\" FROM \"public\".\"academic_terms\" WHERE \"id\" IS NOT NULL AND \"school_id\" IS NOT NULL AND \"academic_session_id\" IS NOT NULL GROUP BY \"id\",\"school_id\",\"academic_session_id\" HAVING count(*)>1) d",
+    "violations": "0"
+  },
+  {
+    "id": "check-2174",
+    "object": "indexes:public.employees.employees_id_school_unique.",
+    "kind": "unique index duplicate groups",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM (SELECT \"id\",\"school_id\" FROM \"public\".\"employees\" WHERE \"id\" IS NOT NULL AND \"school_id\" IS NOT NULL GROUP BY \"id\",\"school_id\" HAVING count(*)>1) d",
+    "violations": "0"
+  },
+  {
+    "id": "check-2196",
+    "object": "indexes:public.parents.parents_id_school_unique.",
+    "kind": "unique index duplicate groups",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM (SELECT \"id\",\"school_id\" FROM \"public\".\"parents\" WHERE \"id\" IS NOT NULL AND \"school_id\" IS NOT NULL GROUP BY \"id\",\"school_id\" HAVING count(*)>1) d",
+    "violations": "0"
+  },
+  {
+    "id": "check-2255",
+    "object": "indexes:public.school_partner_attributions.school_partner_attributions_id_partner_uq.",
+    "kind": "unique index duplicate groups",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM (SELECT \"id\",\"partner_profile_id\" FROM \"public\".\"school_partner_attributions\" WHERE \"id\" IS NOT NULL AND \"partner_profile_id\" IS NOT NULL GROUP BY \"id\",\"partner_profile_id\" HAVING count(*)>1) d",
+    "violations": "0"
+  },
+  {
+    "id": "check-2279",
+    "object": "indexes:public.schools.schools_registration_number_unique.",
+    "kind": "unique index duplicate groups",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM (SELECT \"registration_number\" FROM \"public\".\"schools\" WHERE \"registration_number\" IS NOT NULL GROUP BY \"registration_number\" HAVING count(*)>1) d",
+    "violations": "0"
+  },
+  {
+    "id": "check-2403",
+    "object": "indexes:public.subjects.subjects_id_school_unique.",
+    "kind": "unique index duplicate groups",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM (SELECT \"id\",\"school_id\" FROM \"public\".\"subjects\" WHERE \"id\" IS NOT NULL AND \"school_id\" IS NOT NULL GROUP BY \"id\",\"school_id\" HAVING count(*)>1) d",
+    "violations": "0"
+  },
+  {
+    "id": "check-2404",
+    "object": "indexes:public.subscriptions.subscriptions_id_school_student_uq.",
+    "kind": "unique index duplicate groups",
+    "status": "PENDING",
+    "sql": "SELECT count(*)::text AS violations FROM (SELECT \"id\",\"school_id\",\"student_id\" FROM \"public\".\"subscriptions\" WHERE \"id\" IS NOT NULL AND \"school_id\" IS NOT NULL AND \"student_id\" IS NOT NULL GROUP BY \"id\",\"school_id\",\"student_id\" HAVING count(*)>1) d",
+    "violations": "0"
+  },
+  {
+    "id": "check-2598",
+    "object": "sequences:public.academic_sessions.academic_sessions_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>1::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"academic_sessions\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2599",
+    "object": "sequences:public.academic_terms.academic_terms_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>1::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"academic_terms\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2601",
+    "object": "sequences:public.app_users.app_users_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>7::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"app_users\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2607",
+    "object": "sequences:public.audit_logs.audit_logs_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>94::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"audit_logs\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2614",
+    "object": "sequences:public.communication_deliveries.communication_deliveries_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>4::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"communication_deliveries\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2615",
+    "object": "sequences:public.communication_notifications.communication_notifications_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>4::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"communication_notifications\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2621",
+    "object": "sequences:public.employees.employees_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>2::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"employees\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2648",
+    "object": "sequences:public.nfc_cards.nfc_cards_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>3::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"nfc_cards\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2652",
+    "object": "sequences:public.parents.parents_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>8::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"parents\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2654",
+    "object": "sequences:public.partner_invitations.partner_invitations_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>3::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"partner_invitations\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2655",
+    "object": "sequences:public.partner_payout_information.partner_payout_information_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>1::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"partner_payout_information\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2657",
+    "object": "sequences:public.partner_profile_users.partner_profile_users_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>1::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"partner_profile_users\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2658",
+    "object": "sequences:public.partner_profiles.partner_profiles_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>3::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"partner_profiles\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2659",
+    "object": "sequences:public.partner_referral_links.partner_referral_links_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>1::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"partner_referral_links\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2665",
+    "object": "sequences:public.school_classes.school_classes_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>4::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"school_classes\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2667",
+    "object": "sequences:public.school_memberships.school_memberships_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>7::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"school_memberships\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2670",
+    "object": "sequences:public.schools.schools_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>6::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"schools\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2673",
+    "object": "sequences:public.students.students_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>7::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"students\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2674",
+    "object": "sequences:public.subjects.subjects_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>1::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"subjects\"",
+    "violations": "0"
+  },
+  {
+    "id": "check-2675",
+    "object": "sequences:public.subscriptions.subscriptions_id_seq.",
+    "kind": "sequence conflict",
+    "status": "PENDING",
+    "reason": "Aggregate only; a replica-visible last value is not a recovery/cached-primary guarantee.",
+    "sql": "SELECT CASE WHEN count(*)=0 THEN '0' WHEN max(\"id\")::numeric>3::numeric THEN '1' ELSE '0' END AS violations FROM \"public\".\"subscriptions\"",
+    "violations": "0"
+  }
+]

@@ -1,0 +1,1443 @@
+[
+  {
+    "collations": [
+      null,
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_payments_id_invoice_school_unique ON public.fee_payments USING btree (id, invoice_id, school_id)",
+    "dependent_fks": [
+      "fee_payment_notification_outbox.fee_payment_notification_outbox_payment_invoice_school_fk",
+      "fee_payment_notifications.fee_payment_notifications_payment_invoice_school_fk",
+      "fee_receipts.fee_receipts_payment_invoice_school_fk",
+      "fee_refunds.fee_refunds_payment_invoice_school_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "invoice_id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "fee_payments_id_invoice_school_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": "fee_payments_id_invoice_school_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_payments",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_payments_id_school_unique ON public.fee_payments USING btree (id, school_id)",
+    "dependent_fks": [
+      "fee_provider_checkout_sessions.fee_provider_checkout_sessions_payment_school_fk",
+      "fee_provider_webhook_events.fee_provider_webhook_events_payment_school_fk",
+      "fee_receipts.fee_receipts_payment_school_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "fee_payments_id_school_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "fee_payments_id_school_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_payments",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_payments_pkey ON public.fee_payments USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "fee_payments_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "fee_payments_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_payments",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      "default",
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_payments_provider_tx_unique ON public.fee_payments USING btree (provider, provider_transaction_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "provider",
+      "provider_transaction_id"
+    ],
+    "method": "btree",
+    "name": "fee_payments_provider_tx_unique",
+    "operator_classes": [
+      "text_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "fee_payments_provider_tx_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_payments",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_payments_reference_key ON public.fee_payments USING btree (reference)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "reference"
+    ],
+    "method": "btree",
+    "name": "fee_payments_reference_key",
+    "operator_classes": [
+      "text_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "fee_payments_reference_key",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_payments",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default",
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_payments_school_bank_transfer_ref_unique ON public.fee_payments USING btree (school_id, lower(btrim(transfer_bank)), lower(btrim(transfer_reference))) WHERE ((method = 'BANK_TRANSFER'::text) AND (NULLIF(btrim(transfer_bank), ''::text) IS NOT NULL) AND (NULLIF(btrim(transfer_reference), ''::text) IS NOT NULL))",
+    "dependent_fks": [],
+    "expressions": "lower(btrim(transfer_bank)), lower(btrim(transfer_reference))",
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "lower(btrim(transfer_bank))",
+      "lower(btrim(transfer_reference))"
+    ],
+    "method": "btree",
+    "name": "fee_payments_school_bank_transfer_ref_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": "((method = 'BANK_TRANSFER'::text) AND (NULLIF(btrim(transfer_bank), ''::text) IS NOT NULL) AND (NULLIF(btrim(transfer_reference), ''::text) IS NOT NULL))",
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_payments",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_payments_school_idempotency_unique ON public.fee_payments USING btree (school_id, idempotency_key)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "idempotency_key"
+    ],
+    "method": "btree",
+    "name": "fee_payments_school_idempotency_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "fee_payments_school_idempotency_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_payments",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default",
+      null
+    ],
+    "definition": "CREATE INDEX fee_payments_school_status_idx ON public.fee_payments USING btree (school_id, status, created_at)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "status",
+      "created_at"
+    ],
+    "method": "btree",
+    "name": "fee_payments_school_status_idx",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops",
+      "timestamptz_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_payments",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_payments_school_verified_evidence_ref_unique ON public.fee_payments USING btree (school_id, lower(btrim(verification_evidence_ref))) WHERE ((method = 'BANK_TRANSFER'::text) AND (status = 'VERIFIED'::text) AND (NULLIF(btrim(verification_evidence_ref), ''::text) IS NOT NULL))",
+    "dependent_fks": [],
+    "expressions": "lower(btrim(verification_evidence_ref))",
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "lower(btrim(verification_evidence_ref))"
+    ],
+    "method": "btree",
+    "name": "fee_payments_school_verified_evidence_ref_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": "((method = 'BANK_TRANSFER'::text) AND (status = 'VERIFIED'::text) AND (NULLIF(btrim(verification_evidence_ref), ''::text) IS NOT NULL))",
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_payments",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_provider_checkout_sessions_one_open_invoice_unique ON public.fee_provider_checkout_sessions USING btree (school_id, invoice_id) WHERE (state = ANY (ARRAY['INITIALIZING'::text, 'READY'::text, 'FAILED'::text]))",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "invoice_id"
+    ],
+    "method": "btree",
+    "name": "fee_provider_checkout_sessions_one_open_invoice_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": "(state = ANY (ARRAY['INITIALIZING'::text, 'READY'::text, 'FAILED'::text]))",
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_provider_checkout_sessions",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_provider_checkout_sessions_pkey ON public.fee_provider_checkout_sessions USING btree (payment_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "payment_id"
+    ],
+    "method": "btree",
+    "name": "fee_provider_checkout_sessions_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "fee_provider_checkout_sessions_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_provider_checkout_sessions",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_provider_checkout_sessions_reference_key ON public.fee_provider_checkout_sessions USING btree (reference)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "reference"
+    ],
+    "method": "btree",
+    "name": "fee_provider_checkout_sessions_reference_key",
+    "operator_classes": [
+      "text_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "fee_provider_checkout_sessions_reference_key",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_provider_checkout_sessions",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default",
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_provider_checkout_sessions_school_provider_idem_unique ON public.fee_provider_checkout_sessions USING btree (school_id, provider, idempotency_key)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "provider",
+      "idempotency_key"
+    ],
+    "method": "btree",
+    "name": "fee_provider_checkout_sessions_school_provider_idem_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": "fee_provider_checkout_sessions_school_provider_idem_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_provider_checkout_sessions",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_provider_webhook_events_pkey ON public.fee_provider_webhook_events USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "fee_provider_webhook_events_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "fee_provider_webhook_events_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_provider_webhook_events",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      "default",
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_provider_webhook_events_provider_event_unique ON public.fee_provider_webhook_events USING btree (provider, event_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "provider",
+      "event_id"
+    ],
+    "method": "btree",
+    "name": "fee_provider_webhook_events_provider_event_unique",
+    "operator_classes": [
+      "text_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "fee_provider_webhook_events_provider_event_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_provider_webhook_events",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      "default",
+      "default",
+      null
+    ],
+    "definition": "CREATE INDEX fee_provider_webhook_events_reference_idx ON public.fee_provider_webhook_events USING btree (provider, provider_reference, received_at DESC)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "provider",
+      "provider_reference",
+      "received_at"
+    ],
+    "method": "btree",
+    "name": "fee_provider_webhook_events_reference_idx",
+    "operator_classes": [
+      "text_ops",
+      "text_ops",
+      "timestamptz_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      3
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_provider_webhook_events",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default",
+      null
+    ],
+    "definition": "CREATE INDEX fee_provider_webhook_events_school_status_idx ON public.fee_provider_webhook_events USING btree (school_id, status, received_at DESC)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "status",
+      "received_at"
+    ],
+    "method": "btree",
+    "name": "fee_provider_webhook_events_school_status_idx",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops",
+      "timestamptz_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      3
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_provider_webhook_events",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_receipts_payment_unique ON public.fee_receipts USING btree (payment_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "payment_id"
+    ],
+    "method": "btree",
+    "name": "fee_receipts_payment_unique",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "fee_receipts_payment_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_receipts",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_receipts_pkey ON public.fee_receipts USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "fee_receipts_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "fee_receipts_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_receipts",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_receipts_school_number_unique ON public.fee_receipts USING btree (school_id, receipt_number)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "receipt_number"
+    ],
+    "method": "btree",
+    "name": "fee_receipts_school_number_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "fee_receipts_school_number_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_receipts",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_refunds_id_school_unique ON public.fee_refunds USING btree (id, school_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "fee_refunds_id_school_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "fee_refunds_id_school_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_refunds",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_refunds_pkey ON public.fee_refunds USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "fee_refunds_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "fee_refunds_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_refunds",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_refunds_reference_unique ON public.fee_refunds USING btree (reference)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "reference"
+    ],
+    "method": "btree",
+    "name": "fee_refunds_reference_unique",
+    "operator_classes": [
+      "text_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "fee_refunds_reference_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_refunds",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_refunds_school_evidence_unique ON public.fee_refunds USING btree (school_id, lower(btrim(evidence_reference))) WHERE ((status = 'APPROVED'::text) AND (NULLIF(btrim(evidence_reference), ''::text) IS NOT NULL))",
+    "dependent_fks": [],
+    "expressions": "lower(btrim(evidence_reference))",
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "lower(btrim(evidence_reference))"
+    ],
+    "method": "btree",
+    "name": "fee_refunds_school_evidence_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": "((status = 'APPROVED'::text) AND (NULLIF(btrim(evidence_reference), ''::text) IS NOT NULL))",
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_refunds",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_refunds_school_idempotency_unique ON public.fee_refunds USING btree (school_id, idempotency_key)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "idempotency_key"
+    ],
+    "method": "btree",
+    "name": "fee_refunds_school_idempotency_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "fee_refunds_school_idempotency_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_refunds",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default",
+      null
+    ],
+    "definition": "CREATE INDEX fee_refunds_school_status_idx ON public.fee_refunds USING btree (school_id, status, created_at)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "status",
+      "created_at"
+    ],
+    "method": "btree",
+    "name": "fee_refunds_school_status_idx",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops",
+      "timestamptz_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_refunds",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_school_settings_pkey ON public.fee_school_settings USING btree (school_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "fee_school_settings_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "fee_school_settings_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_school_settings",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_structure_lines_id_school_unique ON public.fee_structure_lines USING btree (id, school_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "fee_structure_lines_id_school_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "fee_structure_lines_id_school_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_structure_lines",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_structure_lines_pkey ON public.fee_structure_lines USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "fee_structure_lines_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "fee_structure_lines_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_structure_lines",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_structure_lines_structure_category_unique ON public.fee_structure_lines USING btree (structure_id, category_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "structure_id",
+      "category_id"
+    ],
+    "method": "btree",
+    "name": "fee_structure_lines_structure_category_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "fee_structure_lines_structure_category_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_structure_lines",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_structures_id_school_unique ON public.fee_structures USING btree (id, school_id)",
+    "dependent_fks": [
+      "fee_invoices.fee_invoices_structure_school_fk",
+      "fee_structure_lines.fee_structure_lines_structure_school_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id",
+      "school_id"
+    ],
+    "method": "btree",
+    "name": "fee_structures_id_school_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "fee_structures_id_school_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_structures",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_structures_pkey ON public.fee_structures USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "fee_structures_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "fee_structures_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_structures",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null,
+      null,
+      null
+    ],
+    "definition": "CREATE INDEX fee_structures_school_context_idx ON public.fee_structures USING btree (school_id, academic_session_id, academic_term_id, school_class_id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "academic_session_id",
+      "academic_term_id",
+      "school_class_id"
+    ],
+    "method": "btree",
+    "name": "fee_structures_school_context_idx",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops",
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_structures",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null,
+      null,
+      null,
+      "default",
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX fee_structures_version_context_unique ON public.fee_structures USING btree (school_id, academic_session_id, academic_term_id, school_class_id, COALESCE(section, ''::text), version)",
+    "dependent_fks": [],
+    "expressions": "COALESCE(section, ''::text)",
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "academic_session_id",
+      "academic_term_id",
+      "school_class_id",
+      "COALESCE(section, ''::text)",
+      "version"
+    ],
+    "method": "btree",
+    "name": "fee_structures_version_context_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops",
+      "int4_ops",
+      "int4_ops",
+      "text_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "fee_structures",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX library_authors_pkey ON public.library_authors USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "library_authors_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "library_authors_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "library_authors",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX library_authors_school_id_unique ON public.library_authors USING btree (school_id, id)",
+    "dependent_fks": [
+      "library_books.library_books_author_school_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "id"
+    ],
+    "method": "btree",
+    "name": "library_authors_school_id_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "library_authors_school_id_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "library_authors",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX library_authors_school_name_unique ON public.library_authors USING btree (school_id, lower(name))",
+    "dependent_fks": [],
+    "expressions": "lower(name)",
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "lower(name)"
+    ],
+    "method": "btree",
+    "name": "library_authors_school_name_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "library_authors",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null,
+      "default"
+    ],
+    "definition": "CREATE INDEX library_book_copies_available_idx ON public.library_book_copies USING btree (school_id, book_id, status)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "book_id",
+      "status"
+    ],
+    "method": "btree",
+    "name": "library_book_copies_available_idx",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "library_book_copies",
+    "unique_index": false,
+    "valid": true
+  },
+  {
+    "collations": [
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX library_book_copies_pkey ON public.library_book_copies USING btree (id)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "id"
+    ],
+    "method": "btree",
+    "name": "library_book_copies_pkey",
+    "operator_classes": [
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0
+    ],
+    "owner_constraint": "library_book_copies_pkey",
+    "predicate": null,
+    "primary_index": true,
+    "ready": true,
+    "schema": "public",
+    "table_name": "library_book_copies",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX library_book_copies_school_barcode_unique ON public.library_book_copies USING btree (school_id, barcode) WHERE (barcode IS NOT NULL)",
+    "dependent_fks": [],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "barcode"
+    ],
+    "method": "btree",
+    "name": "library_book_copies_school_barcode_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": "(barcode IS NOT NULL)",
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "library_book_copies",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX library_book_copies_school_book_id_unique ON public.library_book_copies USING btree (school_id, book_id, id)",
+    "dependent_fks": [
+      "library_loans.library_loans_copy_book_school_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "book_id",
+      "id"
+    ],
+    "method": "btree",
+    "name": "library_book_copies_school_book_id_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0,
+      0
+    ],
+    "owner_constraint": "library_book_copies_school_book_id_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "library_book_copies",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      "default"
+    ],
+    "definition": "CREATE UNIQUE INDEX library_book_copies_school_code_unique ON public.library_book_copies USING btree (school_id, lower(copy_code))",
+    "dependent_fks": [],
+    "expressions": "lower(copy_code)",
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "lower(copy_code)"
+    ],
+    "method": "btree",
+    "name": "library_book_copies_school_code_unique",
+    "operator_classes": [
+      "int4_ops",
+      "text_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": null,
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "library_book_copies",
+    "unique_index": true,
+    "valid": true
+  },
+  {
+    "collations": [
+      null,
+      null
+    ],
+    "definition": "CREATE UNIQUE INDEX library_book_copies_school_id_unique ON public.library_book_copies USING btree (school_id, id)",
+    "dependent_fks": [
+      "library_copy_status_history.library_copy_status_history_copy_school_fk"
+    ],
+    "expressions": null,
+    "immediate": true,
+    "included": [],
+    "keys": [
+      "school_id",
+      "id"
+    ],
+    "method": "btree",
+    "name": "library_book_copies_school_id_unique",
+    "operator_classes": [
+      "int4_ops",
+      "int4_ops"
+    ],
+    "ordering_options": [
+      0,
+      0
+    ],
+    "owner_constraint": "library_book_copies_school_id_unique",
+    "predicate": null,
+    "primary_index": false,
+    "ready": true,
+    "schema": "public",
+    "table_name": "library_book_copies",
+    "unique_index": true,
+    "valid": true
+  }
+]
