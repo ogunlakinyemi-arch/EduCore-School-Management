@@ -14,6 +14,12 @@ School-bound card access does not imply a shared reader replay namespace. Attend
 
 **How to apply:** Preserve independent valid scans across readers and the existing rapid-scan suppression policy. Matching retries return the original attendance event without repeating notifications/presence writes, while revoked or otherwise ineligible identities remain denied.
 
+External hardware prototype handovers must use dedicated Development test schools and synthetic test students/cards, never a real student's card. A registered UID does not establish the UID detected from a physical card.
+
+**Why:** The user explicitly requires dedicated Development-only prototype data and excludes real student cards and all unrelated or Production secrets from the handover.
+
+**How to apply:** Verify fixture ownership before disclosing a card UID. Obtain the actual physical reader output before registering its exact representation; do not invent physical UIDs or present disposable-test IDs as application records. For a handover-only request, report missing provisioning without creating credentials, changing assignments, or writing attendance.
+
 Preserve legacy assignments even when their school lacks eligible readers. Identify current versus historical rows separately and direct the Owner to the existing device-linking workflow; never delete or recreate cards, assignments, or attendance to satisfy the new prerequisite.
 
 **Why:** The user explicitly requires preservation of existing IDs and history and applies the prerequisite to new assignments and future activation, not destructive retroactive cleanup.
