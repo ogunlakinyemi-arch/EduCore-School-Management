@@ -1,0 +1,38 @@
+{
+  "status": "BLOCKED — CORRECTION FAILED",
+  "tests": [
+    {
+      "name": "Exactly five inline DDL edits and three exact-definition guard exceptions; all other SQL unchanged",
+      "status": "PASS"
+    }
+  ],
+  "failures": [
+    {
+      "code": "42703",
+      "message": "column \"id\" does not exist"
+    }
+  ],
+  "filesModified": [
+    "lib/db/drizzle/0086_reconcile_columns_a_9.sql",
+    "lib/db/drizzle/0087_reconcile_columns_b_1.sql",
+    "lib/db/drizzle/0105_reconcile_columns_h_1.sql"
+  ],
+  "safety": {
+    "productionConnections": 0,
+    "productionChanges": 0,
+    "developmentConnections": 0,
+    "sharedWrites": 0,
+    "manualBackfillIntroduced": false,
+    "destructiveOperationsIntroduced": false,
+    "journalChanges": false,
+    "applicationChanges": false,
+    "publishDeploy": false,
+    "secretsEnvironmentChanges": false
+  },
+  "isolation": {
+    "version": "PostgreSQL 16.10 on x86_64-pc-linux-gnu, compiled by clang version 19.1.7, 64-bit",
+    "data_directory": "/tmp/educore-defaults-correction-ssVbY2/data",
+    "listeners": ""
+  },
+  "disposableDatabaseDestroyed": true
+}

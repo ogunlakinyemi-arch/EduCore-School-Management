@@ -1,0 +1,47 @@
+[
+  {
+    "migration": "0105_reconcile_columns_h_1.sql",
+    "table": "communication_deliveries",
+    "column": "push_attempts",
+    "type": "jsonb",
+    "default": "'{}'::jsonb",
+    "oldDdl": "ALTER TABLE public.\"communication_deliveries\" ADD COLUMN \"push_attempts\" jsonb NOT NULL",
+    "newDdl": "ALTER TABLE public.\"communication_deliveries\" ADD COLUMN \"push_attempts\" jsonb NOT NULL DEFAULT '{}'::jsonb"
+  },
+  {
+    "migration": "0105_reconcile_columns_h_1.sql",
+    "table": "communication_deliveries",
+    "column": "receipt_ids",
+    "type": "jsonb",
+    "default": "'[]'::jsonb",
+    "oldDdl": "ALTER TABLE public.\"communication_deliveries\" ADD COLUMN \"receipt_ids\" jsonb NOT NULL",
+    "newDdl": "ALTER TABLE public.\"communication_deliveries\" ADD COLUMN \"receipt_ids\" jsonb NOT NULL DEFAULT '[]'::jsonb"
+  },
+  {
+    "migration": "0087_reconcile_columns_b_1.sql",
+    "table": "partner_profile_users",
+    "column": "nfc_activation_enabled",
+    "type": "boolean",
+    "default": "false",
+    "oldDdl": "ALTER TABLE public.\"partner_profile_users\" ADD COLUMN \"nfc_activation_enabled\" boolean NOT NULL",
+    "newDdl": "ALTER TABLE public.\"partner_profile_users\" ADD COLUMN \"nfc_activation_enabled\" boolean NOT NULL DEFAULT false"
+  },
+  {
+    "migration": "0087_reconcile_columns_b_1.sql",
+    "table": "partner_profiles",
+    "column": "nfc_activation_enabled",
+    "type": "boolean",
+    "default": "false",
+    "oldDdl": "ALTER TABLE public.\"partner_profiles\" ADD COLUMN \"nfc_activation_enabled\" boolean NOT NULL",
+    "newDdl": "ALTER TABLE public.\"partner_profiles\" ADD COLUMN \"nfc_activation_enabled\" boolean NOT NULL DEFAULT false"
+  },
+  {
+    "migration": "0086_reconcile_columns_a_9.sql",
+    "table": "schools",
+    "column": "communication_defaults",
+    "type": "jsonb",
+    "default": "'{}'::jsonb",
+    "oldDdl": "ALTER TABLE public.\"schools\" ADD COLUMN \"communication_defaults\" jsonb NOT NULL",
+    "newDdl": "ALTER TABLE public.\"schools\" ADD COLUMN \"communication_defaults\" jsonb NOT NULL DEFAULT '{}'::jsonb"
+  }
+]

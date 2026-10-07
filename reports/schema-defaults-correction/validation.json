@@ -1,0 +1,220 @@
+{
+  "status": "PASS — FIVE DEFAULTS CORRECTED AND DISPOSABLE VALIDATION PASSED",
+  "tests": [
+    {
+      "name": "Exactly five inline DDL edits and three exact-definition guard exceptions; all other SQL unchanged",
+      "status": "PASS"
+    },
+    {
+      "name": "Guard rejects approved name with missing inline DEFAULT",
+      "status": "PASS"
+    },
+    {
+      "name": "Guard rejects NULL default metadata",
+      "status": "PASS"
+    },
+    {
+      "name": "Guard rejects wrong canonical default metadata",
+      "status": "PASS"
+    },
+    {
+      "name": "Guard rejects wrong canonical type metadata",
+      "status": "PASS"
+    },
+    {
+      "name": "Guard rejects unreviewed table despite an inline default",
+      "status": "PASS"
+    },
+    {
+      "name": "Full populated-fixture migration parses and applies: 0086_reconcile_columns_a_9.sql",
+      "status": "PASS"
+    },
+    {
+      "name": "Full populated-fixture migration parses and applies: 0087_reconcile_columns_b_1.sql",
+      "status": "PASS"
+    },
+    {
+      "name": "Full populated-fixture migration parses and applies: 0105_reconcile_columns_h_1.sql",
+      "status": "PASS"
+    },
+    {
+      "name": "5/5 exact canonical columns and populated-row initialization; old values and sequence positions preserved",
+      "status": "PASS",
+      "columns": [
+        {
+          "table": "communication_deliveries",
+          "column": "push_attempts",
+          "migration": "0105_reconcile_columns_h_1.sql",
+          "type": "jsonb",
+          "not_null": true,
+          "default_expression": "'{}'::jsonb",
+          "rows": 4,
+          "nulls": 0,
+          "wrong_values": 0
+        },
+        {
+          "table": "communication_deliveries",
+          "column": "receipt_ids",
+          "migration": "0105_reconcile_columns_h_1.sql",
+          "type": "jsonb",
+          "not_null": true,
+          "default_expression": "'[]'::jsonb",
+          "rows": 4,
+          "nulls": 0,
+          "wrong_values": 0
+        },
+        {
+          "table": "partner_profile_users",
+          "column": "nfc_activation_enabled",
+          "migration": "0087_reconcile_columns_b_1.sql",
+          "type": "boolean",
+          "not_null": true,
+          "default_expression": "false",
+          "rows": 1,
+          "nulls": 0,
+          "wrong_values": 0
+        },
+        {
+          "table": "partner_profiles",
+          "column": "nfc_activation_enabled",
+          "migration": "0087_reconcile_columns_b_1.sql",
+          "type": "boolean",
+          "not_null": true,
+          "default_expression": "false",
+          "rows": 1,
+          "nulls": 0,
+          "wrong_values": 0
+        },
+        {
+          "table": "schools",
+          "column": "communication_defaults",
+          "migration": "0086_reconcile_columns_a_9.sql",
+          "type": "jsonb",
+          "not_null": true,
+          "default_expression": "'{}'::jsonb",
+          "rows": 6,
+          "nulls": 0,
+          "wrong_values": 0
+        }
+      ]
+    },
+    {
+      "name": "Direct rerun is a no-op for existing columns and old row values",
+      "status": "PASS"
+    },
+    {
+      "name": "0060, 0149, other 163 migration files, ordering, journal, application, manifest and compiler unchanged",
+      "status": "PASS"
+    }
+  ],
+  "failures": [],
+  "filesModified": [
+    "lib/db/drizzle/0086_reconcile_columns_a_9.sql",
+    "lib/db/drizzle/0087_reconcile_columns_b_1.sql",
+    "lib/db/drizzle/0105_reconcile_columns_h_1.sql"
+  ],
+  "safety": {
+    "productionConnections": 0,
+    "productionChanges": 0,
+    "developmentConnections": 0,
+    "sharedWrites": 0,
+    "manualBackfillIntroduced": false,
+    "destructiveOperationsIntroduced": false,
+    "journalChanges": false,
+    "applicationChanges": false,
+    "publishDeploy": false,
+    "secretsEnvironmentChanges": false
+  },
+  "isolation": {
+    "version": "PostgreSQL 16.10 on x86_64-pc-linux-gnu, compiled by clang version 19.1.7, 64-bit",
+    "data_directory": "/tmp/educore-defaults-correction-ssVbY2/data",
+    "listeners": ""
+  },
+  "columns": [
+    {
+      "table": "communication_deliveries",
+      "column": "push_attempts",
+      "migration": "0105_reconcile_columns_h_1.sql",
+      "type": "jsonb",
+      "not_null": true,
+      "default_expression": "'{}'::jsonb",
+      "rows": 4,
+      "nulls": 0,
+      "wrong_values": 0
+    },
+    {
+      "table": "communication_deliveries",
+      "column": "receipt_ids",
+      "migration": "0105_reconcile_columns_h_1.sql",
+      "type": "jsonb",
+      "not_null": true,
+      "default_expression": "'[]'::jsonb",
+      "rows": 4,
+      "nulls": 0,
+      "wrong_values": 0
+    },
+    {
+      "table": "partner_profile_users",
+      "column": "nfc_activation_enabled",
+      "migration": "0087_reconcile_columns_b_1.sql",
+      "type": "boolean",
+      "not_null": true,
+      "default_expression": "false",
+      "rows": 1,
+      "nulls": 0,
+      "wrong_values": 0
+    },
+    {
+      "table": "partner_profiles",
+      "column": "nfc_activation_enabled",
+      "migration": "0087_reconcile_columns_b_1.sql",
+      "type": "boolean",
+      "not_null": true,
+      "default_expression": "false",
+      "rows": 1,
+      "nulls": 0,
+      "wrong_values": 0
+    },
+    {
+      "table": "schools",
+      "column": "communication_defaults",
+      "migration": "0086_reconcile_columns_a_9.sql",
+      "type": "jsonb",
+      "not_null": true,
+      "default_expression": "'{}'::jsonb",
+      "rows": 6,
+      "nulls": 0,
+      "wrong_values": 0
+    }
+  ],
+  "sourceIntegrity": {
+    "changedMigrationFiles": [
+      "0086_reconcile_columns_a_9.sql",
+      "0087_reconcile_columns_b_1.sql",
+      "0105_reconcile_columns_h_1.sql"
+    ],
+    "otherMigrationFilesUnchanged": 163,
+    "migration0060Unchanged": true,
+    "migration0149Unchanged": true,
+    "orderingUnchanged": true,
+    "journalUnchanged": true,
+    "applicationUnchanged": true,
+    "manifestUnchanged": true,
+    "builderUnchanged": true,
+    "hashes": {
+      "0086_reconcile_columns_a_9.sql": "52dda91b433c3fbe82c8120415ec47b7daf30a6171a4052257bf0595648a48f7",
+      "0087_reconcile_columns_b_1.sql": "3f6276caaca6004ebcd8c948196b482c01b806d46684da8fcb4d548139253fc2",
+      "0105_reconcile_columns_h_1.sql": "0d91b5690a44c6ed277375ca54f31a6afefd383bfbe072adb21015f7e5676ec4"
+    }
+  },
+  "metadataNotice": "Historical Stage 2I manifest hashes/compiler remain untouched as requested. They describe the pre-correction bytes for these three files; this evidence supplies corrected hashes. Synchronize source-generation/release metadata in a separately authorized step before any rebuild or Production authorization.",
+  "disposableDatabaseDestroyed": true,
+  "disposableClusterDestroyed": true,
+  "validationExecution": {
+    "privateClusterInstances": 1,
+    "fixtureSetupAttempts": 2,
+    "completeMigrationValidationPasses": 1,
+    "setupErrorRetained": "reports/schema-defaults-correction/fixture-setup-error.json",
+    "sharedDatabaseConnections": 0
+  }
+}
