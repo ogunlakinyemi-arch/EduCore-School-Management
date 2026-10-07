@@ -1,0 +1,121 @@
+Run the focused final Production-readiness preflight for the schema reconciliation work.
+
+Important: READ-ONLY ONLY. Do NOT modify Production, Development, the shared database, migration journal, secrets, deployment configuration, or application code. Do not execute any migration against Production.
+
+Use the existing validated work and reports. Do NOT repeat broad schema discovery, full migration replay, Finance reconciliation, or runtime-binding investigation.
+
+1. Re-check the five corrected canonical defaults
+
+Verify the current draft migrations contain these exact canonical definitions:
+
+- "0086_reconcile_columns_a_9.sql"
+  
+  - "schools.communication_defaults"
+  - "jsonb NOT NULL DEFAULT '{}'::jsonb"
+
+- "0087_reconcile_columns_b_1.sql"
+  
+  - "partner_profile_users.nfc_activation_enabled"
+  - "boolean NOT NULL DEFAULT false"
+  - "partner_profiles.nfc_activation_enabled"
+  - "boolean NOT NULL DEFAULT false"
+
+- "0105_reconcile_columns_h_1.sql"
+  
+  - "communication_deliveries.push_attempts"
+  - "jsonb NOT NULL DEFAULT '{}'::jsonb"
+  - "communication_deliveries.receipt_ids"
+  - "jsonb NOT NULL DEFAULT '[]'::jsonb"
+
+Confirm that:
+
+- existing-row initialization passes;
+- no manual UPDATE/backfill was introduced;
+- the narrow populated-table guard exception applies ONLY to these five canonical-default columns;
+- the general populated-table NOT NULL safety guard remains strict.
+
+2. Re-run the previously blocked preflight gates
+
+Using the existing 1,890 Production preflight specifications, re-evaluate the five previously blocking gates:
+
+1. "communication_deliveries.push_attempts"
+2. "communication_deliveries.receipt_ids"
+3. "partner_profile_users.nfc_activation_enabled"
+4. "partner_profiles.nfc_activation_enabled"
+5. "schools.communication_defaults"
+
+They should now be classified as safe because their canonical defaults deterministically initialize existing rows.
+
+Do not perform any data writes.
+
+3. Re-check the 86 sequence observations
+
+Do not reset, reseed, or alter any sequence.
+
+For each sequence observation:
+
+- confirm the previously observed zero-violation result;
+- confirm the associated primary-key position where required;
+- distinguish expected data-driven sequence positions from actual violations;
+- report any unexpected sequence mismatch as a blocker.
+
+4. Re-check the CASH constraint correction
+
+Confirm that Production still contains the legacy CASH-rejecting CHECK, but that migration "0149" contains the already-approved guarded retirement of that obsolete constraint.
+
+Do NOT execute "0149".
+
+Confirm that no additional unexpected CASH-related constraint exists.
+
+5. Re-check migration safety
+
+Confirm:
+
+- migrations "0061–0165" remain additive/dependency ordered;
+- no DROP TABLE;
+- no DROP COLUMN;
+- no destructive DELETE/TRUNCATE;
+- no sequence resets;
+- no manual data backfills;
+- no changes to migration "0060";
+- no changes to the existing "0149" correction;
+- no duplicate/conflicting migration definitions introduced.
+
+6. Do not investigate runtime binding again
+
+The published runtime database binding remains documented as UNVERIFIED.
+
+Do not spend additional work attempting to discover hidden Replit runtime metadata.
+
+Keep this as a clearly reported deployment prerequisite rather than a reason to repeat the investigation.
+
+7. Produce one concise final report
+
+Report:
+
+- Total preflight specifications
+- Passed
+- Warnings
+- Failed
+- Blocked by prerequisites
+- Not applicable
+- Number of previously blocking gates now cleared
+- Sequence result
+- CASH-check result
+- Migration safety result
+- Production writes performed: MUST be 0
+- Final status
+
+Use one of these final statuses:
+
+READY FOR PRODUCTION APPROVAL
+if all executable safety checks pass and there are no unresolved migration/data blockers.
+
+OR
+
+BLOCKED
+if any actual safety/data/schema blocker remains.
+
+If the only remaining issue is the already-known unverified published-runtime database binding, report it separately as a deployment prerequisite and do not invent or investigate around it.
+
+Do not approve, publish, deploy, or execute any Production migration.

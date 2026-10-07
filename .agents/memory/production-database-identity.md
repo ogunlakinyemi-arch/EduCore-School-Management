@@ -33,3 +33,9 @@ Replica observations and cached sequence positions do not establish that.
 **How to apply:** Preserve the read-only result as an observation; require
 separate primary identity and cache/recovery review before certifying sequence
 safety for migration authorization. Never call nextval/setval to test access.
+
+The user does not authorize repeating hidden runtime-binding investigation during focused reconciliation-readiness reviews.
+
+**Why:** They repeatedly constrained these reviews to existing binding evidence and targeted read-only checks, with binding uncertainty reported separately as an operator deployment prerequisite.
+
+**How to apply:** Do not repeat broad runtime/deployment discovery to resolve known uncertainty. Keep replica sequence observations distinct from primary certification; a focused readiness conclusion is neither binding proof nor authorization to execute migrations.

@@ -1,0 +1,2158 @@
+{
+  "scope": {
+    "gates": [
+      {
+        "id": 2,
+        "original_population_count": 4
+      },
+      {
+        "id": 3,
+        "original_population_count": 4
+      },
+      {
+        "id": 5,
+        "original_population_count": 1
+      },
+      {
+        "id": 6,
+        "original_population_count": 1
+      },
+      {
+        "id": 7,
+        "original_population_count": 6
+      }
+    ],
+    "columns": [
+      {
+        "type": null,
+        "table": "communication_deliveries",
+        "column": "push_attempts",
+        "exists": false,
+        "default": null,
+        "not_null": null
+      },
+      {
+        "type": null,
+        "table": "communication_deliveries",
+        "column": "receipt_ids",
+        "exists": false,
+        "default": null,
+        "not_null": null
+      },
+      {
+        "type": null,
+        "table": "partner_profile_users",
+        "column": "nfc_activation_enabled",
+        "exists": false,
+        "default": null,
+        "not_null": null
+      },
+      {
+        "type": null,
+        "table": "partner_profiles",
+        "column": "nfc_activation_enabled",
+        "exists": false,
+        "default": null,
+        "not_null": null
+      },
+      {
+        "type": null,
+        "table": "schools",
+        "column": "communication_defaults",
+        "exists": false,
+        "default": null,
+        "not_null": null
+      }
+    ],
+    "checked_at": "2026-10-07T07:34:40.499538+00:00",
+    "cash_checks": [
+      {
+        "name": "fee_payments_amount_currency_check",
+        "columns": [
+          "amount_minor",
+          "currency"
+        ],
+        "validated": true,
+        "definition": "CHECK (((amount_minor > 0) AND (currency ~ '^[A-Z]{3}$'::text)))"
+      },
+      {
+        "name": "fee_payments_bank_transfer_details_check",
+        "columns": [
+          "method",
+          "transfer_bank",
+          "transfer_reference",
+          "transfer_date"
+        ],
+        "validated": true,
+        "definition": "CHECK (((method <> 'BANK_TRANSFER'::text) OR ((COALESCE(length(btrim(transfer_bank)), 0) >= 2) AND (COALESCE(length(btrim(transfer_reference)), 0) >= 2) AND (transfer_date IS NOT NULL))))"
+      },
+      {
+        "name": "fee_payments_method_check",
+        "columns": [
+          "method"
+        ],
+        "validated": true,
+        "definition": "CHECK ((method = ANY (ARRAY['BANK_TRANSFER'::text, 'REMITA'::text, 'FLUTTERWAVE'::text, 'PAYSTACK'::text])))"
+      },
+      {
+        "name": "fee_payments_rejection_reason_check",
+        "columns": [
+          "status",
+          "rejection_reason"
+        ],
+        "validated": true,
+        "definition": "CHECK (((status <> 'REJECTED'::text) OR (NULLIF(btrim(rejection_reason), ''::text) IS NOT NULL)))"
+      },
+      {
+        "name": "fee_payments_status_check",
+        "columns": [
+          "status"
+        ],
+        "validated": true,
+        "definition": "CHECK ((status = ANY (ARRAY['PENDING'::text, 'PROCESSING'::text, 'VERIFIED'::text, 'FAILED'::text, 'REJECTED'::text, 'CANCELLED'::text, 'REVERSED'::text, 'REFUNDED'::text])))"
+      },
+      {
+        "name": "fee_payments_verification_evidence_length_check",
+        "columns": [
+          "method",
+          "status",
+          "verification_evidence_ref",
+          "reviewer_notes"
+        ],
+        "validated": true,
+        "definition": "CHECK (((method <> 'BANK_TRANSFER'::text) OR (status <> 'VERIFIED'::text) OR ((length(btrim(verification_evidence_ref)) >= 3) AND (length(btrim(reviewer_notes)) >= 3))))"
+      },
+      {
+        "name": "fee_payments_verified_evidence_check",
+        "columns": [
+          "method",
+          "status",
+          "verified_by",
+          "verified_at",
+          "verification_evidence_ref",
+          "reviewer_notes",
+          "verification_metadata"
+        ],
+        "validated": true,
+        "definition": "CHECK (((method <> 'BANK_TRANSFER'::text) OR (status <> 'VERIFIED'::text) OR ((verified_by IS NOT NULL) AND (verified_at IS NOT NULL) AND (NULLIF(btrim(verification_evidence_ref), ''::text) IS NOT NULL) AND (NULLIF(btrim(reviewer_notes), ''::text) IS NOT NULL) AND (verification_metadata IS NOT NULL))))"
+      }
+    ],
+    "replica_recovery": true,
+    "transaction_read_only": "on"
+  },
+  "sequenceSnapshots": [
+    {
+      "checked_at": "2026-10-07T07:34:44.284815+00:00",
+      "observations": [
+        {
+          "id": 1732,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "academic_assessment_types",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1733,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "academic_assessments",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1734,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "academic_assignments",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1735,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "academic_grading_rules",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1736,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "academic_report_card_lines",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1737,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "academic_report_cards",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1739,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "academic_results",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1740,
+          "observation": {
+            "max_key": "1",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "academic_sessions",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1741,
+          "observation": {
+            "max_key": "1",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "academic_terms",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1742,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "academic_timetable_entries",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1745,
+          "observation": {
+            "max_key": "7",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "app_users",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "7",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1746,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "attendance_corrections",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1747,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "attendance_discrepancies",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1748,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "attendance_events",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1749,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "attendance_notification_events",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1750,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "attendance_settings",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1751,
+          "observation": {
+            "max_key": "94",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "audit_logs",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "94",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1752,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "biometric_enrollments",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1754,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "class_subjects",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1755,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "commission_ledger",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        }
+      ],
+      "replica_recovery": true,
+      "transaction_read_only": "on"
+    },
+    {
+      "checked_at": "2026-10-07T07:34:48.069271+00:00",
+      "observations": [
+        {
+          "id": 1756,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "commission_rules",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1757,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "communication_campaign_recipients",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1758,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "communication_campaigns",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1759,
+          "observation": {
+            "max_key": "4",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "communication_deliveries",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "4",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1762,
+          "observation": {
+            "max_key": "4",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "communication_notifications",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "4",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1763,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "communication_preferences",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1764,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "communication_push_devices",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1765,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "communication_templates",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1770,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "device_assignment_history",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1771,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "device_credentials",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1776,
+          "observation": {
+            "max_key": "2",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "employees",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "2",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1780,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "fee_adjustments",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1781,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "fee_categories",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1782,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "fee_invoice_lines",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1783,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "fee_invoice_notification_outbox",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1784,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "fee_invoice_notifications",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1785,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "fee_invoices",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1787,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "fee_payment_notification_outbox",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1788,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "fee_payment_notifications",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1789,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "fee_payments",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        }
+      ],
+      "replica_recovery": true,
+      "transaction_read_only": "on"
+    },
+    {
+      "checked_at": "2026-10-07T07:34:52.68274+00:00",
+      "observations": [
+        {
+          "id": 1790,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "fee_provider_webhook_events",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1791,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "fee_receipts",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1792,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "fee_refunds",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1793,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "fee_structure_lines",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1794,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "fee_structures",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1798,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "library_authors",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1799,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "library_book_copies",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1800,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "library_books",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1801,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "library_categories",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1802,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "library_copy_status_history",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1803,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "library_loans",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1804,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "library_publishers",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1805,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "library_renewals",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1806,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "library_staff",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1807,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "maintenance_request_status_history",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1808,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "maintenance_requests",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1809,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "nfc_card_history",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1810,
+          "observation": {
+            "max_key": "3",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "nfc_cards",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "3",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1811,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "operational_task_status_history",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1812,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "operational_tasks",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        }
+      ],
+      "replica_recovery": true,
+      "transaction_read_only": "on"
+    },
+    {
+      "checked_at": "2026-10-07T07:34:56.363116+00:00",
+      "observations": [
+        {
+          "id": 1813,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "parent_student_relationships",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1814,
+          "observation": {
+            "max_key": "8",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "parents",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "8",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1815,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "partner_attribution_conflicts",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1816,
+          "observation": {
+            "max_key": "3",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "partner_invitations",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "3",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1817,
+          "observation": {
+            "max_key": "1",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "partner_payout_information",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1818,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "partner_payouts",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1819,
+          "observation": {
+            "max_key": "1",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "partner_profile_users",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1820,
+          "observation": {
+            "max_key": "3",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "partner_profiles",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "3",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1821,
+          "observation": {
+            "max_key": "1",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "partner_referral_links",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1827,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "platform_company_employees",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1828,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "platform_devices",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1829,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "platform_notifications",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1833,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "school_asset_history",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1834,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "school_assets",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1838,
+          "observation": {
+            "max_key": "4",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "school_classes",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "4",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1840,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "school_facilities",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1841,
+          "observation": {
+            "max_key": "7",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "school_memberships",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "7",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1842,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "school_operation_categories",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1843,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "school_partner_attributions",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1849,
+          "observation": {
+            "max_key": "6",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "schools",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "6",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        }
+      ],
+      "replica_recovery": true,
+      "transaction_read_only": "on"
+    },
+    {
+      "checked_at": "2026-10-07T07:34:59.919123+00:00",
+      "observations": [
+        {
+          "id": 1868,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "student_class_assignments",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1869,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "student_identification_policies",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1876,
+          "observation": {
+            "max_key": "7",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "students",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "7",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1877,
+          "observation": {
+            "max_key": "1",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "subjects",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1878,
+          "observation": {
+            "max_key": "3",
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "subscriptions",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": true,
+            "last_value": "3",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        },
+        {
+          "id": 1879,
+          "observation": {
+            "max_key": null,
+            "metadata": {
+              "type": "integer",
+              "cache": "1",
+              "cycle": false,
+              "maximum": "2147483647",
+              "minimum": "1",
+              "increment": "1",
+              "ownership": "a",
+              "table_name": "teacher_class_assignments",
+              "column_name": "id",
+              "start_value": "1",
+              "table_schema": "public"
+            },
+            "is_called": false,
+            "last_value": "1",
+            "primary_key_column": true,
+            "original_violations": 0
+          }
+        }
+      ],
+      "replica_recovery": true,
+      "transaction_read_only": "on"
+    }
+  ]
+}

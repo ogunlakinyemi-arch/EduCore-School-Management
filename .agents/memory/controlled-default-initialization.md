@@ -9,6 +9,12 @@ The user approved inline PostgreSQL defaults for newly added delivery-attempt tr
 
 **How to apply:** Limit exceptions to the reviewed table, column, type, default and exact ADD COLUMN statement. Unknown/NULL metadata and unrelated required columns must still fail closed. Do not interpret empty tracking as permission to resend or false as historical permission evidence. This approval does not authorize shared-database changes.
 
+Count-only missing-column preflights retain their actual populated-row counts. For these approved fields, clear the conditional gate through the reviewed deterministic mapping, not by claiming that the count query returned zero.
+
+**Why:** The original gate permits zero rows OR a separately approved mapping. Approval and validated inline initialization satisfy the latter without making existing Production rows disappear or adding columns during a read-only review.
+
+**How to apply:** Preserve original queries and raw counts, identify the mapping-based decision explicitly, distinguish refreshed checks from reused results, and retain prerequisite-dependent checks as unassessed rather than passing.
+
 Keep separately reviewed source corrections distinct from historical generation manifests and validation reports.
 
 **Why:** The targeted correction deliberately left the compiler and its historical manifest unchanged. The compiler's ownership check refuses to overwrite changed forward migrations; stale manifest hashes must not be treated as evidence for corrected bytes.
