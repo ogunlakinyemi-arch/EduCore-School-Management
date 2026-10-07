@@ -504,3 +504,31 @@ mtime_ms = 1791356452356
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/84292402-de89-48de-80c9-61db22c1e3ff/ab63ebc3-7429-4589-89ca-1d81e229eb0c"
 storage_version_token = "1791356453102040"
 content_type = "text/html"
+
+[[outputs]]
+id = "_qAxCCMjTuN8MwHRPTtCN"
+uri = "file://reports/production-execution-plan/execution-plan.md"
+type = "text"
+title = "Production execution plan"
+description = "Read-only dependency-ordered plan for 105 forward migrations, including grouped preflight unlocks and the separately gated 0060 Finance milestone."
+logical_id = "8443b609-a2fd-4dd1-9e31-22d3821555ed"
+content_hash = "sha256:284f878435e15c1717b56b96a897df96ddd8aed862caa914ac99a9f111e62e4f"
+size = 21579
+mtime_ms = 1791359830720
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/8443b609-a2fd-4dd1-9e31-22d3821555ed/20ba791d-e6c1-44da-b0fb-13f6743e0089"
+storage_version_token = "1791359868773456"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "rPSUqB97_6kMld13MKa9m"
+uri = "file://reports/production-execution-plan/execution-checkpoints.md"
+type = "text"
+title = "Execution checkpoints"
+description = "Eight mandatory read-only checkpoints, acceptance criteria and explicit STOP conditions. No rollout approval or execution commands."
+logical_id = "f683b76b-719f-4a23-a55a-3d710cf59923"
+content_hash = "sha256:e0f71cbacebf4939f3ad74e818b272c07296eaa7286df860f8ff26eebb1b03c0"
+size = 8507
+mtime_ms = 1791359830720
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/f683b76b-719f-4a23-a55a-3d710cf59923/a52beb97-b4e5-4778-a25e-e8a34925a5c6"
+storage_version_token = "1791359869311093"
+content_type = "text/markdown"

@@ -1,0 +1,1638 @@
+{
+  "planningOnly": true,
+  "conservativeRiskPolicy": "HIGH means touches at least one requested risk category, not a new defect. Five approved constant/default-deny initializations remain SAFE and unchanged.",
+  "migrationRisks": [
+    {
+      "filename": "0061_reconcile_sequences_a_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "sequence definition and position safety",
+        "existing populated tables",
+        "historical Finance/payment",
+        "communication data",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "academic_sessions",
+        "academic_terms",
+        "app_users",
+        "audit_logs",
+        "nfc_cards",
+        "parents",
+        "partner_invitations",
+        "partner_payout_information",
+        "partner_referral_links",
+        "school_classes",
+        "school_memberships",
+        "schools",
+        "students",
+        "subscriptions"
+      ]
+    },
+    {
+      "filename": "0062_reconcile_sequences_b_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "sequence definition and position safety",
+        "existing populated tables",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "partner_profile_users",
+        "partner_profiles"
+      ]
+    },
+    {
+      "filename": "0063_reconcile_sequences_c_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "sequence definition and position safety",
+        "existing populated tables"
+      ],
+      "populatedTables": [
+        "employees",
+        "subjects"
+      ]
+    },
+    {
+      "filename": "0064_reconcile_sequences_d_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "sequence definition and position safety"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0065_reconcile_sequences_e_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "sequence definition and position safety"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0066_reconcile_sequences_f_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "sequence definition and position safety",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0067_reconcile_sequences_g_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "sequence definition and position safety",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0068_reconcile_sequences_h_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "sequence definition and position safety",
+        "existing populated tables",
+        "communication data",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "communication_deliveries",
+        "communication_notifications"
+      ]
+    },
+    {
+      "filename": "0069_reconcile_table_shells_a_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "typed table shells with defaults and NOT NULL",
+        "existing populated tables",
+        "historical Finance/payment",
+        "communication data",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "academic_sessions",
+        "academic_terms",
+        "app_users",
+        "audit_logs",
+        "nfc_cards",
+        "parents",
+        "partner_invitations",
+        "partner_payout_information",
+        "partner_referral_links",
+        "school_classes",
+        "school_memberships",
+        "schools",
+        "students",
+        "subscriptions"
+      ]
+    },
+    {
+      "filename": "0070_reconcile_table_shells_b_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "typed table shells with defaults and NOT NULL",
+        "existing populated tables",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "partner_profile_users",
+        "partner_profiles"
+      ]
+    },
+    {
+      "filename": "0071_reconcile_table_shells_c_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "typed table shells with defaults and NOT NULL",
+        "existing populated tables"
+      ],
+      "populatedTables": [
+        "employees",
+        "subjects"
+      ]
+    },
+    {
+      "filename": "0072_reconcile_table_shells_d_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "typed table shells with defaults and NOT NULL"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0073_reconcile_table_shells_e_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "typed table shells with defaults and NOT NULL"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0074_reconcile_table_shells_f_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "typed table shells with defaults and NOT NULL",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0075_reconcile_table_shells_g_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "typed table shells with defaults and NOT NULL",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0076_reconcile_table_shells_h_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "typed table shells with defaults and NOT NULL",
+        "existing populated tables",
+        "communication data",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "communication_deliveries",
+        "communication_notifications"
+      ]
+    },
+    {
+      "filename": "0077_reconcile_table_shells_i_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "typed table shells with defaults and NOT NULL",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0078_reconcile_columns_a_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "existing populated tables",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "academic_sessions",
+        "academic_terms"
+      ]
+    },
+    {
+      "filename": "0079_reconcile_columns_a_2.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "existing populated tables"
+      ],
+      "populatedTables": [
+        "academic_terms",
+        "app_users",
+        "audit_logs"
+      ]
+    },
+    {
+      "filename": "0080_reconcile_columns_a_3.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "historical Finance/payment",
+        "communication data",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0081_reconcile_columns_a_4.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "historical Finance/payment"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0082_reconcile_columns_a_5.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "historical Finance/payment"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0083_reconcile_columns_a_6.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0084_reconcile_columns_a_7.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "existing populated tables",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "nfc_cards",
+        "parents",
+        "partner_invitations",
+        "partner_payout_information"
+      ]
+    },
+    {
+      "filename": "0085_reconcile_columns_a_8.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "existing populated tables",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "partner_payout_information",
+        "partner_referral_links",
+        "school_classes",
+        "school_memberships"
+      ]
+    },
+    {
+      "filename": "0086_reconcile_columns_a_9.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "existing populated tables",
+        "historical Finance/payment"
+      ],
+      "populatedTables": [
+        "school_memberships",
+        "schools",
+        "students",
+        "subscriptions"
+      ]
+    },
+    {
+      "filename": "0087_reconcile_columns_b_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "existing populated tables",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "partner_profile_users",
+        "partner_profiles"
+      ]
+    },
+    {
+      "filename": "0088_reconcile_columns_c_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "existing populated tables"
+      ],
+      "populatedTables": [
+        "employees"
+      ]
+    },
+    {
+      "filename": "0089_reconcile_columns_c_2.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "existing populated tables"
+      ],
+      "populatedTables": [
+        "employees"
+      ]
+    },
+    {
+      "filename": "0090_reconcile_columns_c_3.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "existing populated tables"
+      ],
+      "populatedTables": [
+        "subjects"
+      ]
+    },
+    {
+      "filename": "0091_reconcile_columns_d_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0092_reconcile_columns_e_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0093_reconcile_columns_e_2.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0094_reconcile_columns_e_3.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0095_reconcile_columns_f_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "historical Finance/payment"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0096_reconcile_columns_f_2.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "historical Finance/payment"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0097_reconcile_columns_f_3.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0098_reconcile_columns_f_4.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0099_reconcile_columns_f_5.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0100_reconcile_columns_g_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0101_reconcile_columns_g_2.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0102_reconcile_columns_g_3.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0103_reconcile_columns_g_4.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "historical Finance/payment"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0104_reconcile_columns_g_5.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0105_reconcile_columns_h_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "existing populated tables",
+        "communication data",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "communication_deliveries",
+        "communication_notifications"
+      ]
+    },
+    {
+      "filename": "0106_reconcile_columns_h_2.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "communication data"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0107_reconcile_columns_i_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "column/default/NOT NULL contracts",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0108_reconcile_sequence_ownership_a_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "sequence ownership",
+        "existing populated tables",
+        "historical Finance/payment",
+        "communication data",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "academic_sessions",
+        "academic_terms",
+        "app_users",
+        "audit_logs",
+        "nfc_cards",
+        "parents",
+        "partner_invitations",
+        "partner_payout_information",
+        "partner_referral_links",
+        "school_classes",
+        "school_memberships",
+        "schools",
+        "students",
+        "subscriptions"
+      ]
+    },
+    {
+      "filename": "0109_reconcile_sequence_ownership_b_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "sequence ownership",
+        "existing populated tables",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "partner_profile_users",
+        "partner_profiles"
+      ]
+    },
+    {
+      "filename": "0110_reconcile_sequence_ownership_c_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "sequence ownership",
+        "existing populated tables"
+      ],
+      "populatedTables": [
+        "employees",
+        "subjects"
+      ]
+    },
+    {
+      "filename": "0111_reconcile_sequence_ownership_d_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "sequence ownership"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0112_reconcile_sequence_ownership_e_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "sequence ownership"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0113_reconcile_sequence_ownership_f_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "sequence ownership",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0114_reconcile_sequence_ownership_g_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "sequence ownership",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0115_reconcile_sequence_ownership_h_1.sql",
+      "batch": 1,
+      "level": "HIGH",
+      "flags": [
+        "sequence ownership",
+        "existing populated tables",
+        "communication data",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "communication_deliveries",
+        "communication_notifications"
+      ]
+    },
+    {
+      "filename": "0116_reconcile_parent_keys_a_1.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "unique constraint",
+        "primary uniqueness",
+        "existing populated tables",
+        "historical Finance/payment",
+        "communication data",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "academic_sessions",
+        "academic_terms",
+        "app_users",
+        "audit_logs"
+      ]
+    },
+    {
+      "filename": "0117_reconcile_parent_keys_a_2.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "primary uniqueness",
+        "unique constraint",
+        "existing populated tables",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "nfc_cards",
+        "parents",
+        "partner_invitations",
+        "partner_payout_information",
+        "partner_referral_links",
+        "school_classes",
+        "school_memberships",
+        "schools",
+        "students",
+        "subscriptions"
+      ]
+    },
+    {
+      "filename": "0118_reconcile_parent_keys_b_1.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "primary uniqueness",
+        "unique constraint",
+        "existing populated tables",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "partner_profile_users",
+        "partner_profiles"
+      ]
+    },
+    {
+      "filename": "0119_reconcile_parent_keys_c_1.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "primary uniqueness",
+        "unique constraint",
+        "existing populated tables"
+      ],
+      "populatedTables": [
+        "employees",
+        "subjects"
+      ]
+    },
+    {
+      "filename": "0120_reconcile_parent_keys_d_1.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "primary uniqueness"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0121_reconcile_parent_keys_e_1.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "unique constraint",
+        "primary uniqueness"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0122_reconcile_parent_keys_f_1.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "unique constraint",
+        "primary uniqueness",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0123_reconcile_parent_keys_g_1.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "unique constraint",
+        "primary uniqueness",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0124_reconcile_parent_keys_h_1.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "unique constraint",
+        "primary uniqueness",
+        "existing populated tables",
+        "communication data",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "communication_deliveries",
+        "communication_notifications"
+      ]
+    },
+    {
+      "filename": "0125_reconcile_parent_keys_i_1.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "primary uniqueness",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0126_reconcile_indexes_a_1.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "index and uniqueness/support ownership",
+        "existing populated tables",
+        "historical Finance/payment",
+        "communication data",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "academic_sessions",
+        "academic_terms",
+        "app_users",
+        "audit_logs"
+      ]
+    },
+    {
+      "filename": "0127_reconcile_indexes_a_2.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "index and uniqueness/support ownership",
+        "existing populated tables",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "nfc_cards",
+        "parents",
+        "partner_invitations"
+      ]
+    },
+    {
+      "filename": "0128_reconcile_indexes_a_3.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "index and uniqueness/support ownership",
+        "existing populated tables",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "partner_invitations",
+        "partner_payout_information",
+        "partner_referral_links",
+        "school_classes",
+        "school_memberships",
+        "schools",
+        "students",
+        "subscriptions"
+      ]
+    },
+    {
+      "filename": "0129_reconcile_indexes_b_1.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "index and uniqueness/support ownership",
+        "existing populated tables",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "partner_profile_users",
+        "partner_profiles"
+      ]
+    },
+    {
+      "filename": "0130_reconcile_indexes_c_1.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "index and uniqueness/support ownership",
+        "existing populated tables"
+      ],
+      "populatedTables": [
+        "employees",
+        "subjects"
+      ]
+    },
+    {
+      "filename": "0131_reconcile_indexes_d_1.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "index and uniqueness/support ownership"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0132_reconcile_indexes_e_1.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "index and uniqueness/support ownership"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0133_reconcile_indexes_f_1.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "index and uniqueness/support ownership",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0134_reconcile_indexes_f_2.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "index and uniqueness/support ownership",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0135_reconcile_indexes_g_1.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "index and uniqueness/support ownership",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0136_reconcile_indexes_g_2.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "index and uniqueness/support ownership"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0137_reconcile_indexes_h_1.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "index and uniqueness/support ownership",
+        "existing populated tables",
+        "communication data",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "communication_deliveries",
+        "communication_notifications"
+      ]
+    },
+    {
+      "filename": "0138_reconcile_indexes_i_1.sql",
+      "batch": 2,
+      "level": "HIGH",
+      "flags": [
+        "index and uniqueness/support ownership",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0139_reconcile_checks_foreign_keys_a_1.sql",
+      "batch": 3,
+      "level": "HIGH",
+      "flags": [
+        "foreign keys and tenant ownership",
+        "CHECK enforcement",
+        "existing populated tables",
+        "historical Finance/payment",
+        "communication data",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "academic_sessions",
+        "academic_terms",
+        "audit_logs"
+      ]
+    },
+    {
+      "filename": "0140_reconcile_checks_foreign_keys_a_2.sql",
+      "batch": 3,
+      "level": "HIGH",
+      "flags": [
+        "CHECK enforcement",
+        "foreign keys and tenant ownership",
+        "historical Finance/payment",
+        "communication data",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0141_reconcile_checks_foreign_keys_a_3.sql",
+      "batch": 3,
+      "level": "HIGH",
+      "flags": [
+        "CHECK enforcement",
+        "foreign keys and tenant ownership",
+        "existing populated tables",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "nfc_cards",
+        "parents",
+        "partner_invitations",
+        "partner_payout_information"
+      ]
+    },
+    {
+      "filename": "0142_reconcile_checks_foreign_keys_a_4.sql",
+      "batch": 3,
+      "level": "HIGH",
+      "flags": [
+        "foreign keys and tenant ownership",
+        "CHECK enforcement",
+        "existing populated tables",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "partner_referral_links",
+        "school_classes",
+        "school_memberships",
+        "students",
+        "subscriptions"
+      ]
+    },
+    {
+      "filename": "0143_reconcile_checks_foreign_keys_b_1.sql",
+      "batch": 3,
+      "level": "HIGH",
+      "flags": [
+        "foreign keys and tenant ownership",
+        "CHECK enforcement",
+        "existing populated tables",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "partner_profile_users",
+        "partner_profiles"
+      ]
+    },
+    {
+      "filename": "0144_reconcile_checks_foreign_keys_c_1.sql",
+      "batch": 3,
+      "level": "HIGH",
+      "flags": [
+        "CHECK enforcement",
+        "foreign keys and tenant ownership",
+        "existing populated tables"
+      ],
+      "populatedTables": [
+        "employees"
+      ]
+    },
+    {
+      "filename": "0145_reconcile_checks_foreign_keys_c_2.sql",
+      "batch": 3,
+      "level": "HIGH",
+      "flags": [
+        "foreign keys and tenant ownership",
+        "CHECK enforcement",
+        "existing populated tables"
+      ],
+      "populatedTables": [
+        "subjects"
+      ]
+    },
+    {
+      "filename": "0146_reconcile_checks_foreign_keys_d_1.sql",
+      "batch": 3,
+      "level": "HIGH",
+      "flags": [
+        "foreign keys and tenant ownership",
+        "CHECK enforcement"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0147_reconcile_checks_foreign_keys_e_1.sql",
+      "batch": 3,
+      "level": "HIGH",
+      "flags": [
+        "foreign keys and tenant ownership",
+        "CHECK enforcement"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0148_reconcile_checks_foreign_keys_e_2.sql",
+      "batch": 3,
+      "level": "HIGH",
+      "flags": [
+        "foreign keys and tenant ownership",
+        "CHECK enforcement"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0149_reconcile_checks_foreign_keys_f_1.sql",
+      "batch": 3,
+      "level": "HIGH",
+      "flags": [
+        "foreign keys and tenant ownership",
+        "CHECK enforcement",
+        "historical Finance/payment"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0150_reconcile_checks_foreign_keys_f_2.sql",
+      "batch": 3,
+      "level": "HIGH",
+      "flags": [
+        "CHECK enforcement",
+        "foreign keys and tenant ownership",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0151_reconcile_checks_foreign_keys_g_1.sql",
+      "batch": 3,
+      "level": "HIGH",
+      "flags": [
+        "foreign keys and tenant ownership",
+        "CHECK enforcement",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0152_reconcile_checks_foreign_keys_g_2.sql",
+      "batch": 3,
+      "level": "HIGH",
+      "flags": [
+        "CHECK enforcement",
+        "foreign keys and tenant ownership",
+        "historical Finance/payment"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0153_reconcile_checks_foreign_keys_g_3.sql",
+      "batch": 3,
+      "level": "HIGH",
+      "flags": [
+        "foreign keys and tenant ownership",
+        "CHECK enforcement"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0154_reconcile_checks_foreign_keys_h_1.sql",
+      "batch": 3,
+      "level": "HIGH",
+      "flags": [
+        "CHECK enforcement",
+        "foreign keys and tenant ownership",
+        "existing populated tables",
+        "communication data",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "communication_deliveries",
+        "communication_notifications"
+      ]
+    },
+    {
+      "filename": "0155_reconcile_checks_foreign_keys_i_1.sql",
+      "batch": 3,
+      "level": "HIGH",
+      "flags": [
+        "foreign keys and tenant ownership",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0156_reconcile_functions_a_1.sql",
+      "batch": 4,
+      "level": "HIGH",
+      "flags": [
+        "canonical function behavior"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0157_reconcile_functions_e_1.sql",
+      "batch": 4,
+      "level": "HIGH",
+      "flags": [
+        "canonical function behavior"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0158_reconcile_functions_f_1.sql",
+      "batch": 4,
+      "level": "HIGH",
+      "flags": [
+        "canonical function behavior"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0159_reconcile_functions_g_1.sql",
+      "batch": 4,
+      "level": "HIGH",
+      "flags": [
+        "canonical function behavior"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0160_reconcile_functions_i_1.sql",
+      "batch": 4,
+      "level": "HIGH",
+      "flags": [
+        "canonical function behavior"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0161_reconcile_triggers_a_1.sql",
+      "batch": 5,
+      "level": "HIGH",
+      "flags": [
+        "trigger activation and historical immutability",
+        "existing populated tables",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": [
+        "nfc_cards",
+        "schools"
+      ]
+    },
+    {
+      "filename": "0162_reconcile_triggers_e_1.sql",
+      "batch": 5,
+      "level": "HIGH",
+      "flags": [
+        "trigger activation and historical immutability"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0163_reconcile_triggers_f_1.sql",
+      "batch": 5,
+      "level": "HIGH",
+      "flags": [
+        "trigger activation and historical immutability",
+        "historical Finance/payment",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0164_reconcile_triggers_g_1.sql",
+      "batch": 5,
+      "level": "HIGH",
+      "flags": [
+        "trigger activation and historical immutability",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    },
+    {
+      "filename": "0165_reconcile_triggers_i_1.sql",
+      "batch": 5,
+      "level": "HIGH",
+      "flags": [
+        "trigger activation and historical immutability",
+        "Partner/NFC/device"
+      ],
+      "populatedTables": []
+    }
+  ],
+  "specialHandling": [
+    {
+      "id": "F0060",
+      "migration": "0060_reconcile_student_subscription_finance.sql",
+      "sha256": "a827ad709347eaa22b9bf70a4c2a4012f2c2bd86c5ba3d624623710f98d41f57",
+      "countedIn105": false,
+      "afterBatch": 2,
+      "beforeBatch": 3,
+      "status": "Required external prerequisite, known and scheduled; not applied/approved by this plan",
+      "objects": [
+        "tables:public..student_subscription_allocations.",
+        "tables:public..student_subscription_payments.",
+        "columns:public.student_subscription_allocations.id.",
+        "columns:public.student_subscription_allocations.idempotency_key.",
+        "columns:public.student_subscription_allocations.entry_type.",
+        "columns:public.student_subscription_allocations.recipient_type.",
+        "columns:public.student_subscription_allocations.recipient_id.",
+        "columns:public.student_subscription_allocations.school_id.",
+        "columns:public.student_subscription_allocations.student_id.",
+        "columns:public.student_subscription_allocations.payer_user_id.",
+        "columns:public.student_subscription_allocations.academic_session_id.",
+        "columns:public.student_subscription_allocations.academic_term_id.",
+        "columns:public.student_subscription_allocations.subscription_id.",
+        "columns:public.student_subscription_allocations.payment_id.",
+        "columns:public.student_subscription_allocations.attribution_id.",
+        "columns:public.student_subscription_allocations.commission_rule_id.",
+        "columns:public.student_subscription_allocations.amount_minor.",
+        "columns:public.student_subscription_allocations.currency.",
+        "columns:public.student_subscription_allocations.created_at.",
+        "columns:public.student_subscription_payments.id.",
+        "columns:public.student_subscription_payments.subscription_id.",
+        "columns:public.student_subscription_payments.school_id.",
+        "columns:public.student_subscription_payments.student_id.",
+        "columns:public.student_subscription_payments.academic_session_id.",
+        "columns:public.student_subscription_payments.academic_term_id.",
+        "columns:public.student_subscription_payments.payer_user_id.",
+        "columns:public.student_subscription_payments.provider.",
+        "columns:public.student_subscription_payments.provider_mode.",
+        "columns:public.student_subscription_payments.reference.",
+        "columns:public.student_subscription_payments.idempotency_key.",
+        "columns:public.student_subscription_payments.gross_amount_minor.",
+        "columns:public.student_subscription_payments.provider_fee_minor.",
+        "columns:public.student_subscription_payments.settlement_amount_minor.",
+        "columns:public.student_subscription_payments.currency.",
+        "columns:public.student_subscription_payments.status.",
+        "columns:public.student_subscription_payments.settlement_status.",
+        "columns:public.student_subscription_payments.reconciliation_status.",
+        "columns:public.student_subscription_payments.checkout_url.",
+        "columns:public.student_subscription_payments.provider_transaction_id.",
+        "columns:public.student_subscription_payments.provider_paid_at.",
+        "columns:public.student_subscription_payments.paid_at.",
+        "columns:public.student_subscription_payments.failure_code.",
+        "columns:public.student_subscription_payments.receipt_snapshot.",
+        "columns:public.student_subscription_payments.created_at.",
+        "columns:public.student_subscription_payments.updated_at.",
+        "constraints:public.student_subscription_allocations.student_subscription_allocations_amount_ck.",
+        "constraints:public.student_subscription_allocations.student_subscription_allocations_attribution_id_fkey.",
+        "constraints:public.student_subscription_allocations.student_subscription_allocations_attribution_partner_fk.",
+        "constraints:public.student_subscription_allocations.student_subscription_allocations_commission_rule_id_fkey.",
+        "constraints:public.student_subscription_allocations.student_subscription_allocations_entry_ck.",
+        "constraints:public.student_subscription_allocations.student_subscription_allocations_id_payment_entry_recipient_uq.",
+        "constraints:public.student_subscription_allocations.student_subscription_allocations_partner_ck.",
+        "constraints:public.student_subscription_allocations.student_subscription_allocations_payer_user_id_fkey.",
+        "constraints:public.student_subscription_allocations.student_subscription_allocations_payment_owner_term_fk.",
+        "constraints:public.student_subscription_allocations.student_subscription_allocations_pkey.",
+        "constraints:public.student_subscription_allocations.student_subscription_allocations_recipient_ck.",
+        "constraints:public.student_subscription_allocations.student_subscription_allocations_school_id_fkey.",
+        "constraints:public.student_subscription_allocations.student_subscription_allocations_session_school_fk.",
+        "constraints:public.student_subscription_allocations.student_subscription_allocations_student_id_fkey.",
+        "constraints:public.student_subscription_allocations.student_subscription_allocations_student_school_fk.",
+        "constraints:public.student_subscription_allocations.student_subscription_allocations_term_school_fk.",
+        "constraints:public.student_subscription_payments.student_subscription_payments_gross_ck.",
+        "constraints:public.student_subscription_payments.student_subscription_payments_id_owner_term_uq.",
+        "constraints:public.student_subscription_payments.student_subscription_payments_payer_user_id_fkey.",
+        "constraints:public.student_subscription_payments.student_subscription_payments_pkey.",
+        "constraints:public.student_subscription_payments.student_subscription_payments_provider_ck.",
+        "constraints:public.student_subscription_payments.student_subscription_payments_provider_mode_ck.",
+        "constraints:public.student_subscription_payments.student_subscription_payments_reconciliation_ck.",
+        "constraints:public.student_subscription_payments.student_subscription_payments_reference_ck.",
+        "constraints:public.student_subscription_payments.student_subscription_payments_session_school_fk.",
+        "constraints:public.student_subscription_payments.student_subscription_payments_settlement_ck.",
+        "constraints:public.student_subscription_payments.student_subscription_payments_status_ck.",
+        "constraints:public.student_subscription_payments.student_subscription_payments_subscription_owner_fk.",
+        "constraints:public.student_subscription_payments.student_subscription_payments_term_school_fk.",
+        "indexes:public.student_subscription_allocations.student_subscription_allocations_id_payment_entry_recipient_uq.",
+        "indexes:public.student_subscription_allocations.student_subscription_allocations_idempotency_uq.",
+        "indexes:public.student_subscription_allocations.student_subscription_allocations_partner_idx.",
+        "indexes:public.student_subscription_allocations.student_subscription_allocations_payment_credit_recipient_uq.",
+        "indexes:public.student_subscription_allocations.student_subscription_allocations_payment_fee_expense_uq.",
+        "indexes:public.student_subscription_allocations.student_subscription_allocations_pkey.",
+        "indexes:public.student_subscription_allocations.student_subscription_allocations_school_term_idx.",
+        "indexes:public.student_subscription_payments.student_subscription_payments_id_owner_term_uq.",
+        "indexes:public.student_subscription_payments.student_subscription_payments_one_business_term_uq.",
+        "indexes:public.student_subscription_payments.student_subscription_payments_one_open_attempt_uq.",
+        "indexes:public.student_subscription_payments.student_subscription_payments_pkey.",
+        "indexes:public.student_subscription_payments.student_subscription_payments_provider_transaction_uq.",
+        "indexes:public.student_subscription_payments.student_subscription_payments_reference_uq.",
+        "indexes:public.student_subscription_payments.student_subscription_payments_school_status_idx.",
+        "indexes:public.student_subscription_payments.student_subscription_payments_subscription_idempotency_uq.",
+        "indexes:public.student_subscription_payments.student_subscription_payments_term_idx.",
+        "functions:public..protect_student_subscription_allocations.",
+        "functions:public..protect_student_subscription_receipt_snapshot.",
+        "triggers:public.student_subscription_allocations.student_subscription_allocations_immutable.",
+        "triggers:public.student_subscription_payments.student_subscription_payment_receipt_immutable.",
+        "sequences:public.student_subscription_allocations.student_subscription_allocations_id_seq.",
+        "sequences:public.student_subscription_payments.student_subscription_payments_id_seq."
+      ],
+      "parents": [
+        {
+          "table_name": "subscriptions",
+          "columns": [
+            "id",
+            "school_id",
+            "student_id"
+          ],
+          "name": "subscriptions_id_school_student_uq",
+          "canonicalKeyProviders": [
+            {
+              "object": "indexes:public.subscriptions.subscriptions_id_school_student_uq.",
+              "provider": {
+                "type": "forward_migration",
+                "migration": "0128_reconcile_indexes_a_3.sql",
+                "batch": 2,
+                "operationPosition": 45
+              }
+            }
+          ]
+        },
+        {
+          "table_name": "academic_sessions",
+          "columns": [
+            "id",
+            "school_id"
+          ],
+          "name": "academic_sessions_id_school_tenant_key",
+          "canonicalKeyProviders": [
+            {
+              "object": "constraints:public.academic_sessions.academic_sessions_id_school_tenant_key.",
+              "provider": {
+                "type": "forward_migration",
+                "migration": "0116_reconcile_parent_keys_a_1.sql",
+                "batch": 2,
+                "operationPosition": 15
+              }
+            },
+            {
+              "object": "indexes:public.academic_sessions.academic_sessions_id_school_tenant_key.",
+              "provider": {
+                "type": "forward_migration",
+                "migration": "0126_reconcile_indexes_a_1.sql",
+                "batch": 2,
+                "operationPosition": 21
+              }
+            },
+            {
+              "object": "indexes:public.academic_sessions.academic_sessions_id_school_unique.",
+              "provider": {
+                "type": "forward_migration",
+                "migration": "0126_reconcile_indexes_a_1.sql",
+                "batch": 2,
+                "operationPosition": 22
+              }
+            }
+          ]
+        },
+        {
+          "table_name": "academic_terms",
+          "columns": [
+            "id",
+            "school_id"
+          ],
+          "name": "academic_terms_id_school_tenant_key",
+          "canonicalKeyProviders": [
+            {
+              "object": "constraints:public.academic_terms.academic_terms_id_school_tenant_key.",
+              "provider": {
+                "type": "forward_migration",
+                "migration": "0116_reconcile_parent_keys_a_1.sql",
+                "batch": 2,
+                "operationPosition": 17
+              }
+            },
+            {
+              "object": "indexes:public.academic_terms.academic_terms_id_school_tenant_key.",
+              "provider": {
+                "type": "forward_migration",
+                "migration": "0126_reconcile_indexes_a_1.sql",
+                "batch": 2,
+                "operationPosition": 26
+              }
+            },
+            {
+              "object": "indexes:public.academic_terms.academic_terms_id_school_unique.",
+              "provider": {
+                "type": "forward_migration",
+                "migration": "0126_reconcile_indexes_a_1.sql",
+                "batch": 2,
+                "operationPosition": 27
+              }
+            }
+          ]
+        },
+        {
+          "table_name": "students",
+          "columns": [
+            "id",
+            "school_id"
+          ],
+          "name": "students_id_school_tenant_key",
+          "canonicalKeyProviders": [
+            {
+              "object": "constraints:public.students.students_id_school_tenant_key.",
+              "provider": {
+                "type": "forward_migration",
+                "migration": "0117_reconcile_parent_keys_a_2.sql",
+                "batch": 2,
+                "operationPosition": 25
+              }
+            },
+            {
+              "object": "indexes:public.students.students_id_school_tenant_key.",
+              "provider": {
+                "type": "forward_migration",
+                "migration": "0128_reconcile_indexes_a_3.sql",
+                "batch": 2,
+                "operationPosition": 39
+              }
+            },
+            {
+              "object": "indexes:public.students.students_id_school_unique.",
+              "provider": {
+                "type": "forward_migration",
+                "migration": "0128_reconcile_indexes_a_3.sql",
+                "batch": 2,
+                "operationPosition": 40
+              }
+            }
+          ]
+        },
+        {
+          "table_name": "school_partner_attributions",
+          "columns": [
+            "id",
+            "partner_profile_id"
+          ],
+          "name": "school_partner_attributions_id_partner_uq",
+          "canonicalKeyProviders": [
+            {
+              "object": "indexes:public.school_partner_attributions.school_partner_attributions_id_partner_uq.",
+              "provider": {
+                "type": "forward_migration",
+                "migration": "0129_reconcile_indexes_b_1.sql",
+                "batch": 2,
+                "operationPosition": 20
+              }
+            }
+          ]
+        }
+      ],
+      "handling": "READ-ONLY verify complete equivalent Finance contract and ledger first. If absent, STOP: a separate authorization and supported mechanism must supply unchanged 0060 at this boundary. Never blindly replay historical 0000–0059 or stamp 0060 as applied. It is not a newly created migration.",
+      "checkpoint": "F"
+    },
+    {
+      "id": "CASH0149",
+      "migration": "0149_reconcile_checks_foreign_keys_f_1.sql",
+      "batch": 3,
+      "handling": "Preserve exact approved guarded DROP CONSTRAINT only after validated canonical CASH-allowing replacement. No broad deletion of other method CHECKs; no rollback SQL approved."
+    },
+    {
+      "id": "FIVE_DEFAULTS",
+      "status": "SAFE — existing reviewed initialization; not redesigned",
+      "files": [
+        "0086_reconcile_columns_a_9.sql",
+        "0087_reconcile_columns_b_1.sql",
+        "0105_reconcile_columns_h_1.sql"
+      ],
+      "evidence": "reports/schema-defaults-correction/validation.json",
+      "handling": "Only exact five tuple/DDL defaults may initialize existing rows. Other NOT NULL populated-table gates stay strict; preserve old delivery/receipt/permission evidence."
+    },
+    {
+      "id": "CANONICAL_NULLABILITY_RELAXATION",
+      "tables": [
+        "fee_invoices",
+        "fee_payments"
+      ],
+      "column": "student_id",
+      "handling": "Previously reviewed NOT NULL relaxation only; no value/ownership rewrite. Validate person CHECK and employee/student FKs before enforcement."
+    },
+    {
+      "id": "TRIGGER_ACTIVATION",
+      "batch": 5,
+      "handling": "Functions in B4 must be verified before triggers. No application writes invoking incomplete canonical functions; immutable historical records remain preserved."
+    },
+    {
+      "id": "JOURNAL_ADOPTION",
+      "handling": "105 forward migrations plus 0060 are journal-unregistered; six other historical files also require legitimate history review. No journal change now, no filename sorting/bulk stamp/replay"
+    },
+    {
+      "id": "METADATA_ALIGNMENT",
+      "handling": "Historical compiler/manifest retains pre-correction hashes for three files; this planning manifest pins their validated corrected hashes. Do not run regeneration/adoption without separate review"
+    }
+  ],
+  "operationalPreconditions": [
+    "Authoritative runtime/primary binding UNVERIFIED; operator evidence at A, no hidden discovery",
+    "Backup/PITR availability and recovery point UNKNOWN until operator evidence at A",
+    "Current primary fingerprint unknown; cached replica layout is planning baseline only",
+    "Execution route must be confirmed: managed Replit Production uses supported Publish diff flow, not a custom production SQL runner/startup hook; exact staged effect/order must be demonstrated or STOP. External target requires separately approved documented process",
+    "105 forward migrations plus 0060 are journal-unregistered; six other historical files also require legitimate history review. No journal change now, no filename sorting/bulk stamp/replay",
+    "Historical compiler/manifest retains pre-correction hashes for three files; this planning manifest pins their validated corrected hashes. Do not run regeneration/adoption without separate review",
+    "Writer quiescence/maintenance window and recovery ownership require explicit operational authorization; keep affected writes paused through FINAL"
+  ],
+  "stopConditions": [
+    "Intended Production authoritative primary not conclusively established",
+    "Confirmed backup/PITR recovery evidence unavailable",
+    "Current file/hash differs from corrected validated manifest",
+    "Unexpected schema object beyond reviewed baseline/retained-equivalence allowlist",
+    "Expected prerequisite missing or semantically different",
+    "Unexpected affected row-count/stable-data digest change",
+    "Uniqueness, primary-null, CHECK or foreign-key data gate fails",
+    "Sequence ownership/metadata/authoritative position differs unexpectedly",
+    "Any migration error, including guarded preflight or lock timeout",
+    "Any newly executable preflight fails",
+    "Any destructive table/column/data/reset operation discovered",
+    "Any unapproved data transformation",
+    "Supported schema-application route cannot preserve reviewed dependency order/guards",
+    "Journal/history reconciliation cannot prove legitimate execution without replay/bulk-stamping"
+  ]
+}

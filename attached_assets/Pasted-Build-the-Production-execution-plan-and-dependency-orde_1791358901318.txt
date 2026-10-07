@@ -1,0 +1,225 @@
+Build the Production execution plan and dependency-ordered batch map for migrations "0061–0165".
+
+STRICT SAFETY RULE
+
+This operation is READ-ONLY planning only.
+
+Do NOT:
+
+- execute any migration;
+- modify Production, Development, or any shared database;
+- modify the migration journal;
+- modify application code;
+- modify secrets;
+- publish/deploy;
+- create/drop/alter database objects;
+- reset or reseed sequences;
+- perform data backfills;
+- approve the Production rollout.
+
+The only permitted changes are planning/report files if needed.
+
+Use existing validated evidence
+
+Reuse the existing validated artifacts and reports. Do NOT repeat:
+
+- the full 0000–0060 migration replay;
+- the broad schema audit;
+- Finance reconciliation;
+- the five-default correction validation;
+- the 1,890-check preflight from scratch;
+- the hidden Replit runtime-binding investigation.
+
+Relevant established facts:
+
+- migrations "0000–0060" replay successfully;
+- migrations "0061–0165" are the consolidated forward-reconciliation package;
+- 0060 is unchanged;
+- 0149 contains the guarded CASH-check retirement and is unchanged;
+- five canonical-default corrections are validated;
+- current preflight: 1,890 specifications, 798 passed, 86 warnings, 0 failed, 1,006 prerequisite-blocked;
+- all five previous data gates are cleared;
+- 86 sequence observations have zero violations;
+- Production writes remain 0;
+- target/runtime binding remains UNVERIFIED.
+
+1. Build the dependency graph
+
+Analyze migrations "0061–0165" and determine the exact dependency order based on:
+
+- tables;
+- columns;
+- primary keys;
+- unique constraints;
+- CHECK constraints;
+- foreign keys;
+- indexes;
+- functions;
+- triggers;
+- sequences;
+- prerequisite objects referenced by later migrations.
+
+Do not rely solely on migration filename numbering. Confirm actual object dependencies.
+
+2. Create execution batches
+
+Group the 105 migrations into the smallest practical number of safe batches.
+
+Each batch must contain migrations that can safely execute in dependency order.
+
+For every batch provide:
+
+- batch number;
+- migration range/files;
+- objects created or reconciled;
+- prerequisite objects required;
+- important foreign-key/unique-key dependencies;
+- whether the batch unlocks any of the currently blocked 1,006 preflight checks;
+- checks that should be run immediately after the batch;
+- rollback/safety considerations;
+- whether the batch should be treated as a mandatory checkpoint.
+
+Do not invent rollback SQL. If a migration is not safely reversible, explicitly mark it as such.
+
+3. Map the 1,006 blocked checks
+
+Using the existing preflight results, determine which prerequisite object(s) block each group of checks.
+
+Produce a mapping such as:
+
+"Batch → prerequisite objects created → previously blocked checks unlocked"
+
+Group related checks rather than listing 1,006 individual rows if they share the same prerequisite.
+
+The objective is to know exactly when the remaining preflight checks become executable.
+
+4. Identify high-risk batches
+
+Flag any batch involving:
+
+- existing populated tables;
+- NOT NULL additions;
+- defaults;
+- unique constraints;
+- foreign keys;
+- CHECK constraints;
+- functions/triggers;
+- sequence ownership/defaults;
+- historical Finance/payment data;
+- communication data;
+- partner/NFC data;
+- cross-tenant ownership relationships.
+
+The five already-approved canonical defaults must remain marked as safe and must NOT be redesigned.
+
+5. Define checkpoints
+
+For each checkpoint specify only READ-ONLY validation.
+
+At minimum include:
+
+Checkpoint A
+
+Before first Production migration:
+
+- confirm intended Production primary/authoritative target;
+- confirm backup/PITR availability;
+- confirm current schema fingerprint;
+- confirm migration files/hashes;
+- confirm Production writes = 0.
+
+Do not attempt another hidden runtime-binding investigation.
+
+Checkpoint B
+
+After each dependency batch:
+
+- verify expected objects;
+- verify no unexpected objects;
+- verify row counts for affected existing tables;
+- verify constraints/indexes;
+- verify sequence ownership/positions where relevant;
+- run newly-unblocked preflight checks;
+- confirm no unexpected data changes.
+
+Final checkpoint
+
+After all planned migrations:
+
+- rerun the complete 1,890 preflight suite;
+- target Failed = 0;
+- prerequisite-blocked = 0;
+- verify canonical schema counts;
+- verify key Finance protections;
+- verify CASH-check retirement;
+- verify sequences;
+- verify migration journal;
+- verify application connectivity;
+- confirm no unexpected data loss or changes.
+
+6. Identify explicit STOP conditions
+
+The execution plan must stop if any of the following occurs:
+
+- target database is not conclusively the intended Production primary;
+- backup/PITR protection cannot be confirmed;
+- migration hash/content differs from the validated package;
+- unexpected schema object exists;
+- expected prerequisite is missing;
+- unexpected row-count/data change occurs;
+- unique constraint would fail;
+- CHECK constraint would fail;
+- foreign key would fail;
+- sequence ownership/position differs unexpectedly;
+- any migration reports an error;
+- any newly executable preflight check fails;
+- any destructive operation is discovered;
+- any migration attempts an unapproved data transformation.
+
+7. Produce these planning artifacts
+
+Create/update only planning/report files, preferably under:
+
+"reports/production-execution-plan/"
+
+Include:
+
+1. "execution-plan.md"
+2. "batch-map.json"
+3. "dependency-graph.json"
+4. "preflight-unlock-map.json"
+5. "risk-register.json"
+6. "execution-checkpoints.md"
+7. "migration-manifest.json"
+
+The manifest must include each migration "0061–0165" with:
+
+- filename;
+- SHA256/hash;
+- dependency batch;
+- direct object categories affected;
+- risk level;
+- whether it unlocks blocked preflight checks.
+
+8. Final report
+
+Return a concise summary containing:
+
+- total migrations mapped;
+- number of execution batches;
+- number of mandatory checkpoints;
+- number of currently blocked checks mapped;
+- number of high-risk migrations;
+- any unresolved dependency;
+- any migration that requires special handling;
+- whether the plan is complete.
+
+Use exactly one final status:
+
+READY FOR CONTROLLED PRODUCTION EXECUTION PLAN
+
+or
+
+BLOCKED — EXECUTION PLAN INCOMPLETE
+
+Again: planning only. Production writes must remain 0.
