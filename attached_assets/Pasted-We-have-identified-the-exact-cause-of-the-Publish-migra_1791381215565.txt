@@ -1,0 +1,64 @@
+We have identified the exact cause of the Publish migration failure.
+
+Do NOT modify Production directly, do NOT execute manual DDL against Production, and do NOT modify or weaken the working Development database.
+
+The current Publish diff is incorrectly creating five foreign keys before their required parent unique keys exist.
+
+The four required parent keys are:
+
+1. "school_partner_attributions (id, partner_profile_id)"
+2. "subscriptions (id, school_id, student_id)"
+3. "parents (id, school_id)"
+4. "academic_terms (id, school_id, academic_session_id)"
+
+The read-only comparison confirmed that the relevant columns already exist and are non-null, and that these keys correspond to the existing Drizzle schema rather than introducing new relationships.
+
+The required dependent foreign keys include:
+
+- "student_subscription_payments_subscription_owner_fk"
+- "admission_applications_parent_school_fk"
+- "student_subscription_allocations_attribution_partner_fk"
+- "student_subscription_terms_academic_term_id_school_id_acad_fkey"
+- "student_subscription_terms_subscription_id_school_id_stude_fkey"
+
+The current Publish diff omits the first three prerequisite keys and schedules the "academic_terms" key after its dependent foreign key.
+
+I need you to fix this at the APPLICATION/DRIZZLE SCHEMA AND MIGRATION level so that Replit Publish can generate the correct dependency order naturally.
+
+Requirements:
+
+1. Inspect the existing Drizzle schema definitions for all five relationships.
+2. Confirm whether the four prerequisite unique indexes/constraints are already declared in the authoritative Development schema.
+3. If any are missing from the schema definition, add only the exact missing declarations required by the existing relationships.
+4. Do not invent new relationships.
+5. Do not change table structures unnecessarily.
+6. Do not remove any existing foreign keys.
+7. Do not temporarily disable relationship checks.
+8. Do not truncate "academic_terms" or any other table.
+9. Do not reset or recreate the Production database.
+10. Do not execute manual SQL against Production.
+11. Do not modify Production data.
+12. Preserve the existing Development behavior and data.
+13. Generate/update the normal migration/schema representation so that the parent unique keys are created BEFORE their dependent foreign keys during Publish.
+14. Pay particular attention to migration dependency ordering.
+15. The "subscriptions (id, school_id, student_id)" key must exist before "student_subscription_payments_subscription_owner_fk" and the corresponding "student_subscription_terms" foreign key.
+16. The "academic_terms (id, school_id, academic_session_id)" key must exist before its dependent "student_subscription_terms" foreign key.
+17. The "parents (id, school_id)" key must exist before "admission_applications_parent_school_fk".
+18. The "school_partner_attributions (id, partner_profile_id)" key must exist before "student_subscription_allocations_attribution_partner_fk".
+
+Before making any change, show me:
+
+- which schema files you will modify;
+- the exact schema changes;
+- why each change is required;
+- whether the change affects Development data or only schema metadata.
+
+After preparing the change, generate a fresh Publish diff.
+
+Do NOT publish it yet.
+
+Do NOT accept any truncation proposal.
+
+Do NOT use the previous workaround that removes five Development foreign keys.
+
+The final goal is for the normal Replit Publish process to produce a non-destructive migration where all four parent keys are created before the five dependent foreign keys.
