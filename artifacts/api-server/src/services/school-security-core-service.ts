@@ -1070,6 +1070,7 @@ export type RejectedTapInput = {
 export async function recordSecurityEventFromAttendance(
   client: SecurityDb,
   attendanceEventId: number,
+  validateOnly = false,
 ) {
   const found = await client.query<any>(
     `SELECT a.id,a.school_id AS "schoolId",a.student_id AS "studentId",a.employee_id AS "employeeId",
@@ -1205,6 +1206,9 @@ export async function recordSecurityEventFromAttendance(
 
   const cardHash = uid ? createHash("sha256").update(uid.toUpperCase()).digest("hex") : null;
   const identityResult = reasonCode ? "REJECTED" : "CONFIRMED";
+  // A receipt replay must enforce current security rules without creating
+  // security events, presence changes, or notifications (even if settings changed).
+  if (validateOnly) return { securityEventId: null, identityResult, reasonCode };
   const inserted = await client.query(
     `INSERT INTO security_events
        (school_id,reader_id,location_id,device_id,attendance_event_id,nfc_card_id,student_id,employee_id,

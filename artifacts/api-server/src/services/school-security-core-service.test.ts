@@ -266,6 +266,29 @@ describe("attendance-to-security transaction hook", () => {
     vi.mocked(emitDomainParentEvent).mockClear();
   });
 
+  it.each([
+    { status: "active", expected: "CONFIRMED", reason: null },
+    { status: "lost", expected: "REJECTED", reason: "LOST_CARD" },
+  ])("validates $status cards on receipt replay without any security side effects", async ({ status, expected, reason }) => {
+    const client = {
+      query: vi.fn(async (sql: string) => {
+        if (sql.includes("FROM attendance_events a")) return { rows: [{ ...attendanceRow, cardStatus: status }] };
+        if (sql.includes("FROM students s")) {
+          return { rows: [{ className: "Primary 2", section: "Blue", personName: "Mina Example", admissionNumber: "A-44" }] };
+        }
+        if (sql.includes("FROM security_school_settings")) {
+          return { rows: [{ enabled: true, entryAlerts: true, exitAlerts: true }] };
+        }
+        throw new Error(`Replay attempted an unexpected query: ${sql}`);
+      }),
+    };
+    await expect(recordSecurityEventFromAttendance(client as any, 51, true)).resolves.toEqual({
+      securityEventId: null, identityResult: expected, reasonCode: reason,
+    });
+    expect(emitDomainParentEvent).not.toHaveBeenCalled();
+    expect(client.query.mock.calls.every(([sql]) => !/INSERT|UPDATE|DELETE/.test(sql))).toBe(true);
+  });
+
   it("records the original accepted timestamp, updates presence, and emits an idempotent parent event in the caller transaction", async () => {
     const calls: Array<{ sql: string; values?: unknown[] }> = [];
     const client = {

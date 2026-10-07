@@ -347,6 +347,11 @@ const processDeviceAttendance = run(async (req, res) => {
   const device = await deviceAuth(req);
   try {
   const body = req.body ?? {};
+  const idempotencyKey = body.idempotencyKey;
+  if (idempotencyKey !== undefined &&
+      (typeof idempotencyKey !== "string" || idempotencyKey.length < 8 || idempotencyKey.length > 128)) {
+    throw new AuthError(400, "idempotencyKey must be a string between 8 and 128 characters");
+  }
   const eventType = String(body.eventType ?? "").toUpperCase();
   const method = String(body.identificationMethod ?? "NFC").toUpperCase();
   if((body.schoolId!==undefined && Number(body.schoolId)!==device.schoolId) ||
@@ -422,7 +427,11 @@ const processDeviceAttendance = run(async (req, res) => {
   // The lock and time-range check make suppression a true rolling window rather
   // than the old wall-clock bucket (which allowed events at every boundary).
   const lockKey = `${device.schoolId}:${studentId}:${device.deviceId}:${eventType}`;
-  const dedupeKey = randomUUID();
+  // Keep the existing school/dedupe uniqueness, without persisting raw keys.
+  // A key belongs to a device, not to its current credential (rotation is safe).
+  const dedupeKey = idempotencyKey === undefined ? randomUUID() :
+    `device-idempotency:v1:${createHash("sha256")
+      .update(JSON.stringify([device.schoolId, device.deviceId, idempotencyKey])).digest("hex")}`;
   const client = await pool.connect();
   let result: { rows: any[] };
   let currentStudent: { rows: any[] };
@@ -441,6 +450,42 @@ const processDeviceAttendance = run(async (req, res) => {
      [device.deviceId, device.schoolId, device.credentialId,method],
    );
    if (!current.rows[0]) throw new AuthError(401, "Invalid or inactive device credential");
+   if (idempotencyKey !== undefined) {
+     await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, [dedupeKey]);
+     const previous = await client.query(
+       `SELECT id,school_id AS "schoolId",student_id AS "studentId",
+               school_class_id AS "schoolClassId",device_id AS "deviceId",
+               nfc_card_id AS "nfcCardId",event_type AS "eventType",
+               identification_method AS "identificationMethod",
+               attendance_status AS status,result,failure_reason AS "failureReason",
+               occurred_at AS "occurredAt",created_at AS "createdAt"
+          FROM attendance_events
+         WHERE school_id=$1 AND device_id=$2 AND dedupe_key=$3`,
+       [device.schoolId, device.deviceId, dedupeKey],
+     );
+     const prior = previous.rows[0];
+     if (prior) {
+       // Compare the normalized attendance action, not optional client assertions.
+       // Every normal card/device/student/policy/time check above still applies.
+       if (prior.studentId !== studentId || prior.nfcCardId !== cardId ||
+           prior.schoolClassId !== schoolClassId || prior.eventType !== eventType ||
+           prior.identificationMethod !== method || prior.result !== "ACCEPTED" ||
+           new Date(prior.occurredAt).getTime() !== occurredAt.getTime()) {
+         throw new AuthError(409, "idempotencyKey was already used for a different attendance event",
+           "ATTENDANCE_IDEMPOTENCY_CONFLICT");
+       }
+       const studentRecord = await client.query(currentNfcStudentRecordQuery, [device.schoolId, studentId]);
+       if (!studentRecord.rows[0]) throw new AuthError(404, "Student not found for this NFC device");
+       // Recheck existing reader/card/placement rules in validation-only mode.
+       if (method === "NFC" && ["SCHOOL_ENTRY", "SCHOOL_EXIT"].includes(eventType)) {
+         await joinSecurityAttendance(client, Number(prior.id), true);
+       }
+       await client.query("COMMIT");
+       const { nfcCardId: _cardId, ...receipt } = prior;
+       res.status(200).json({ ...receipt, ...studentRecord.rows[0] });
+       return;
+     }
+   }
    await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, [lockKey]);
    const recent = await client.query(
      `SELECT id FROM attendance_events WHERE school_id=$1 AND student_id=$2 AND device_id=$3 AND event_type=$4

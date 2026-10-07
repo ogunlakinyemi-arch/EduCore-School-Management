@@ -9186,7 +9186,7 @@ export const IngestDeviceAttendanceEventBody = zod.object({
   "provider": zod.string().max(ingestDeviceAttendanceEventBodyProviderMax).optional(),
   "matchResult": zod.enum(['MATCH', 'NO_MATCH']).optional(),
   "confidence": zod.number().min(ingestDeviceAttendanceEventBodyConfidenceMin).max(ingestDeviceAttendanceEventBodyConfidenceMax).optional(),
-  "idempotencyKey": zod.string().min(ingestDeviceAttendanceEventBodyIdempotencyKeyMin).max(ingestDeviceAttendanceEventBodyIdempotencyKeyMax).optional()
+  "idempotencyKey": zod.string().min(ingestDeviceAttendanceEventBodyIdempotencyKeyMin).max(ingestDeviceAttendanceEventBodyIdempotencyKeyMax).optional().describe('Optional opaque key scoped to the authenticated school and device. Matching normalized student/card/class/method/type/occurredAt retries return the existing event (200); conflicting reuse returns 409. Different keys retain normal duplicate suppression. Current authorization and the timestamp window apply to retries.')
 }).describe('NFC resolves the current student from the UID in the authenticated device\'s school. Fingerprint events require studentId and matched provider evidence.')
 
 export const IngestDeviceAttendanceEventResponse = zod.object({

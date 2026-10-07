@@ -18,8 +18,8 @@ export class SecurityIdentityRejection extends AuthError {
 }
 
 /** A security notification replaces, rather than duplicates, the legacy gate notification. */
-export async function joinSecurityAttendance(client: QueryClient, attendanceEventId: number) {
-  const event = await recordSecurityEventFromAttendance(client, attendanceEventId);
+export async function joinSecurityAttendance(client: QueryClient, attendanceEventId: number, validateOnly = false) {
+  const event = await recordSecurityEventFromAttendance(client, attendanceEventId, validateOnly);
   if (event?.identityResult === "REJECTED") {
     throw new SecurityIdentityRejection(event.reasonCode ?? "OTHER");
   }

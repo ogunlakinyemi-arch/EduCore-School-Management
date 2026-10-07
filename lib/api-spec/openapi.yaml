@@ -2481,6 +2481,11 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/DeviceAttendanceEventInput" }
       responses:
+        "200":
+          description: Matching idempotencyKey replay; existing persisted event with current student display information. Current authorization and timestamp checks still apply.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeviceAttendanceReceipt" }
         "201":
           description: Attendance event accepted
           content:
@@ -2488,7 +2493,11 @@ paths:
               schema: { $ref: "#/components/schemas/DeviceAttendanceReceipt" }
         "400": { $ref: "#/components/responses/ApiBadRequest" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
-        "409": { description: Duplicate or rejected event, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+        "409":
+          description: Duplicate event suppressed or idempotencyKey reused for a different normalized attendance action (code ATTENDANCE_IDEMPOTENCY_CONFLICT). Different keys do not bypass scan suppression.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
   /students/{studentId}/identification-methods:
     get:
       operationId: listStudentIdentificationMethods
@@ -8166,7 +8175,11 @@ components:
         provider: { type: string, maxLength: 120 }
         matchResult: { type: string, enum: [MATCH, NO_MATCH] }
         confidence: { type: number, minimum: 0, maximum: 1 }
-        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+        idempotencyKey:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: Optional opaque key scoped to the authenticated school and device. Matching normalized student/card/class/method/type/occurredAt retries return the existing event (200); conflicting reuse returns 409. Different keys retain normal duplicate suppression. Current authorization and the timestamp window apply to retries.
     StudentIdentificationPolicy:
       type: object
       required: [studentId, schoolId, policy, biometricEnrollments]

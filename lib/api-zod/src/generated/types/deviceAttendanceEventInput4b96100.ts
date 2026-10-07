@@ -37,6 +37,7 @@ export interface DeviceAttendanceEventInput4b96100 {
      */
   confidence?: number;
   /**
+     * Optional opaque key scoped to the authenticated school and device. Matching normalized student/card/class/method/type/occurredAt retries return the existing event (200); conflicting reuse returns 409. Different keys retain normal duplicate suppression. Current authorization and the timestamp window apply to retries.
      * @minLength 8
      * @maxLength 128
      */
