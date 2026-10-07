@@ -1,0 +1,584 @@
+STAGE 2E-3 — READ-ONLY AUDIT OF PRODUCTION-ROUTED TEST DATABASE
+
+We are continuing the Yemait EduCore production-readiness investigation.
+
+IMPORTANT CONTEXT:
+
+Previous stages attempted to establish the exact database-resource binding used by the published Production runtime. Replit does not expose enough safe metadata to prove that binding.
+
+STOP SPENDING CREDITS TRYING TO DISCOVER THE HIDDEN PUBLISHED-RUNTIME DATABASE RESOURCE.
+
+For this stage, use the already available Production-routed read-only PostgreSQL connection that previously returned:
+
+- database: "neondb"
+- PostgreSQL: 16.15
+- ARM64
+- read replica: YES
+- transaction_read_only: on
+- public tables: 91
+
+We are NOT claiming that this proves the published application's runtime database.
+
+For this stage, call it:
+
+PRODUCTION-ROUTED TEST DATABASE / READ REPLICA
+
+The database contains only test schools/test data created by me. There are no real customer schools.
+
+The objective is to audit the actual TEST DATA and relevant schema state before deciding whether the three unresolved relationships can safely be reconciled later.
+
+==================================================
+
+1. ABSOLUTE SAFETY RULES
+   ==================================================
+
+THIS STAGE IS STRICTLY READ-ONLY.
+
+DO NOT:
+
+- INSERT
+- UPDATE
+- DELETE
+- TRUNCATE
+- ALTER TABLE
+- CREATE TABLE
+- DROP TABLE
+- CREATE INDEX
+- DROP INDEX
+- ADD CONSTRAINT
+- DROP CONSTRAINT
+- VALIDATE CONSTRAINT
+- change constraint validation
+- run db push
+- run drizzle migrations
+- run SQL migrations
+- create migration 0060
+- modify migration history
+- modify Drizzle journal
+- modify application source
+- modify GitHub
+- publish
+- redeploy
+- restart Production
+- change environment variables
+- change secrets
+
+Do not repair any data discovered during this audit.
+
+Do not attempt to create the missing "student_subscription_allocations" table.
+
+Do not attempt to make the 91-table database match the 173-table Development schema.
+
+==================================================
+2. VERIFY THE PRODUCTION-ROUTED TARGET
+
+Use the existing Production-routed read-only database connection.
+
+Run metadata-only queries first.
+
+Confirm:
+
+- current_database()
+- PostgreSQL version
+- server architecture if available
+- server start time
+- transaction_read_only
+- public table count
+
+Expected reference from previous Stage 2E:
+
+database = "neondb"
+PostgreSQL = 16.15
+read replica = YES
+public tables = 91
+
+If these differ, report the difference.
+
+Do NOT automatically assume the target is wrong.
+
+The purpose is simply to establish the database identity being audited.
+
+Do not query application records until this metadata check completes.
+
+==================================================
+3. READ-ONLY TRANSACTION
+
+Use a read-only transaction if supported:
+
+SET TRANSACTION READ ONLY;
+
+Use a reasonable statement timeout, preferably 10 seconds.
+
+If the connection is already read-only, preserve that state.
+
+No write operation is permitted.
+
+At the end of the transaction, roll it back or allow the read-only transaction to close without any modification.
+
+==================================================
+4. REQUIRED TABLE EXISTENCE CHECK
+
+Check PostgreSQL catalogs for these exact tables:
+
+- platform_devices
+- school_classes
+- students
+- school_partner_attributions
+- student_subscription_allocations
+
+Also check whether:
+
+"student_subscription_allocations"
+
+exists in ANY schema, not only "public".
+
+This is a read-only catalog query.
+
+If it exists under another schema, report the schema name.
+
+Also check for possible alternate names only if they can be identified safely from catalog metadata.
+
+Do NOT assume an alternate object is equivalent.
+
+==================================================
+5. CRITICAL HANDLING OF MISSING student_subscription_allocations
+
+If "student_subscription_allocations" is genuinely absent from every relevant schema:
+
+DO NOT treat that as zero rows.
+
+Report:
+
+"student_subscription_allocations is absent from the audited Production-routed database; allocation data compatibility cannot be assessed in this database."
+
+Then:
+
+- still perform the Device → Class audit
+- still inspect relevant Attribution table metadata
+- inspect whether other related subscription tables exist
+- do NOT fabricate allocation results
+
+This finding is important because the expected source schema contains this table.
+
+==================================================
+6. TEST-DATA FINGERPRINT
+
+Because this is a TEST database, collect only aggregate counts.
+
+Do not output names, email addresses, phone numbers, student IDs, parent IDs or other personal information.
+
+Where tables exist, collect counts for:
+
+- schools
+- students
+- school_classes
+- platform_devices
+- subscriptions
+- parents
+- NFC cards
+- school_partner_attributions
+
+Do not invent expected values.
+
+The purpose is simply to understand the size of the test dataset.
+
+==================================================
+7. RELATIONSHIP #1 — PLATFORM DEVICES → SCHOOL CLASSES
+
+Audit:
+
+platform_devices.school_id
+platform_devices.school_class_id
+
+Historical design:
+
+(platform_devices.school_class_id, platform_devices.school_id)
+→
+(school_classes.id, school_classes.school_id)
+
+The historical relationship was created in migration 0009 and was NOT VALID.
+
+Current source also contains a standalone:
+
+platform_devices.school_class_id
+→
+school_classes.id
+
+Read-only audit:
+
+A. Total platform_devices rows.
+
+B. Count rows where:
+
+- school_id IS NULL
+- school_class_id IS NULL
+- both are populated
+
+C. Orphan class references:
+platform_devices.school_class_id has no matching school_classes.id.
+
+D. Cross-school mismatches:
+
+platform_devices.school_id
+<>
+school_classes.school_id
+
+when both are non-NULL.
+
+E. Calculate historical composite compatibility:
+
+For each row, determine whether:
+
+(school_class_id, school_id)
+matches
+(school_classes.id, school_classes.school_id)
+
+Remember PostgreSQL MATCH SIMPLE behavior:
+
+If either referencing column is NULL, the composite FK does not require a parent match.
+
+Therefore report separately:
+
+- valid composite-reference rows
+- rows skipped because of NULL
+- rows that would violate the historical composite rule
+
+DO NOT validate the actual constraint.
+
+==================================================
+8. RELATIONSHIP #2 — ALLOCATION → STUDENT
+
+ONLY perform this section if:
+
+"student_subscription_allocations"
+
+exists.
+
+Audit:
+
+student_subscription_allocations.student_id
+student_subscription_allocations.school_id
+
+Historical design:
+
+(student_id, school_id)
+→
+students(id, school_id)
+
+ON DELETE RESTRICT
+
+Read-only audit:
+
+A. Total allocation rows.
+
+B. student_id NULL count.
+
+C. school_id NULL count.
+
+D. Missing student references.
+
+E. Cross-school mismatches:
+
+allocation.school_id
+<>
+students.school_id
+
+F. Count rows satisfying the historical composite relationship.
+
+G. Count rows violating it.
+
+H. Check whether any student's CURRENT school differs from the allocation school.
+
+Do not modify anything.
+
+If the table is absent, explicitly report:
+
+NOT ASSESSED — REQUIRED TABLE ABSENT.
+
+==================================================
+9. RELATIONSHIP #3 — ALLOCATION → PARTNER ATTRIBUTION
+
+ONLY perform this section if:
+
+"student_subscription_allocations"
+
+exists.
+
+First inspect the columns of:
+
+"school_partner_attributions"
+
+using PostgreSQL catalog metadata.
+
+Determine whether it contains:
+
+- id
+- school_id
+- partner_profile_id
+- status
+- end/ended field
+- other ownership fields
+
+Do not assume columns exist.
+
+Then audit:
+
+allocation.attribution_id
+allocation.recipient_id
+allocation.school_id
+
+against:
+
+school_partner_attributions.id
+school_partner_attributions.partner_profile_id
+
+Calculate:
+
+A. Total allocation rows.
+
+B. attribution_id NULL count.
+
+C. attribution_id NOT NULL count.
+
+D. recipient_id NULL count.
+
+E. recipient_id NOT NULL count.
+
+F. Missing attribution references.
+
+G. attribution/recipient mismatches where recipient_id IS NOT NULL.
+
+H. NULL-recipient rows separately.
+
+IMPORTANT:
+
+NULL recipient is NOT automatically an error.
+
+Stage 2D identified legitimate non-Partner/platform/provider-fee cases where recipient_id can be NULL.
+
+I. If "school_partner_attributions.school_id" exists:
+
+compare:
+
+allocation.school_id
+<>
+attribution.school_id
+
+Report mismatches separately.
+
+J. Inspect whether this supporting key exists:
+
+UNIQUE(id, school_id)
+
+Do NOT create it.
+
+==================================================
+10. CURRENT PRODUCTION CONSTRAINT METADATA
+
+Inspect ONLY relevant PostgreSQL metadata for:
+
+platform_devices
+school_classes
+students
+school_partner_attributions
+student_subscription_allocations, if present
+
+Report:
+
+- primary keys
+- relevant UNIQUE constraints
+- relevant indexes
+- foreign keys
+- referenced columns
+- ON DELETE actions
+- FK validation state
+- whether composite supporting keys exist
+
+Pay particular attention to:
+
+platform_devices(school_class_id, school_id)
+
+school_classes(id, school_id)
+
+students(id, school_id)
+
+school_partner_attributions(id, partner_profile_id)
+
+school_partner_attributions(id, school_id)
+
+student_subscription_allocations(student_id, school_id)
+
+student_subscription_allocations(attribution_id, recipient_id)
+
+Do not alter anything.
+
+==================================================
+11. COMPARE ONLY THE THREE RELATIONSHIPS
+
+Do NOT perform a full Production schema reconciliation in this stage.
+
+Compare only:
+
+1. Device → Class
+2. Allocation → Student
+3. Allocation → Attribution
+
+For each, report:
+
+A. Historical design
+B. Current Production-routed state
+C. Test-data compatibility
+D. Supporting-key compatibility
+E. Important semantic differences
+F. Whether future reconciliation appears safe
+
+==================================================
+12. REQUIRED DECISION LOGIC
+
+For each relationship use:
+
+SAFE TO RECONCILE
+
+only when:
+
+- relevant test data contains no violation
+- supporting keys required for the historical relationship exist or can be safely established later
+- no unresolved semantic issue remains
+
+NOT SAFE TO RECONCILE YET
+
+when:
+
+- test data contains a violation
+- required supporting key is missing
+- or applying the historical relationship could reject existing test data
+
+NEEDS REVIEW
+
+when:
+
+- the data passes but an ownership/semantic/historical issue remains unresolved
+- or the required table/object is absent
+
+IMPORTANT:
+
+These labels do NOT authorize any database changes.
+
+They only describe the audit result.
+
+==================================================
+13. REQUIRED DECISION MATRIX
+
+Produce:
+
+Relationship| Production Test Rows| Violations| Supporting Key| Historical Rule| Decision
+Device → Class| ...| ...| ...| PASS/FAIL/UNASSESSED| ...
+Allocation → Student| ...| ...| ...| PASS/FAIL/UNASSESSED| ...
+Allocation → Attribution| ...| ...| ...| PASS/FAIL/UNASSESSED| ...
+
+Use "UNASSESSED" where the required table is absent.
+
+==================================================
+14. DATA VS SCHEMA
+
+Keep these separate.
+
+DATA COMPATIBILITY:
+Does the existing Production TEST DATA satisfy the historical relationship?
+
+SCHEMA COMPATIBILITY:
+Does the audited database currently contain the keys/constraints needed to support the relationship?
+
+Do not say:
+
+"Everything is fine because there are no violations."
+
+A missing table or missing supporting key is a separate issue.
+
+==================================================
+15. PRODUCTION SAFETY
+
+At the end explicitly confirm:
+
+- Production-routed connection used: YES/NO
+- Read-only: YES/NO
+- Writes executed: 0
+- Schema changes: 0
+- Migrations: 0
+- db push: 0
+- Publish/deployment changes: 0
+- Environment changes: 0
+- Secrets exposed: 0
+- Source changes: 0
+- Migration history changes: 0
+- Application/test data modified: 0
+
+==================================================
+16. SOURCE INTEGRITY
+
+Confirm that this audit did NOT modify:
+
+- migration files 0000–0059
+- Drizzle journal
+- schema source
+- Stage 2B exporter
+- application source
+- migration 0060
+
+Do not rewrite any historical files.
+
+==================================================
+17. FINAL REPORT FORMAT
+
+Return:
+
+A. PRODUCTION-ROUTED DATABASE IDENTITY
+
+B. TEST-DATA FINGERPRINT
+
+C. TABLE EXISTENCE
+
+D. DEVICE → CLASS AUDIT
+
+E. ALLOCATION → STUDENT AUDIT
+
+F. ALLOCATION → ATTRIBUTION AUDIT
+
+G. CURRENT CONSTRAINT / INDEX STATE
+
+H. THREE-RELATIONSHIP DECISION MATRIX
+
+I. DATA COMPATIBILITY SUMMARY
+
+J. SCHEMA COMPATIBILITY SUMMARY
+
+K. REMAINING BLOCKERS
+
+L. SAFETY CONFIRMATION
+
+M. RECOMMENDED NEXT STEP
+
+The recommendation must be based ONLY on the actual results.
+
+Do not automatically perform the recommendation.
+
+==================================================
+18. CRITICAL STOP CONDITIONS
+
+If the Production-routed connection cannot be established as read-only:
+
+STOP.
+
+If a write is unexpectedly attempted:
+
+STOP immediately.
+
+If a schema-changing command is required:
+
+STOP.
+
+Do not work around a safety restriction by changing the database.
+
+If the audit completes successfully, end exactly with:
+
+STAGE 2E-3 COMPLETE — PRODUCTION-ROUTED TEST DATABASE AUDITED READ-ONLY; NO PRODUCTION OR SHARED-DATABASE CHANGES WERE MADE.
