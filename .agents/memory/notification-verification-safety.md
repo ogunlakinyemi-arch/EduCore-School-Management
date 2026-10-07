@@ -20,3 +20,9 @@ Resend's idempotency retention is finite (24 hours), so ambiguous sends must rem
 **Why:** Provider-side deduplication expires. A later retry can create a duplicate even when the key is unchanged.
 
 **How to apply:** Retain durable local event/delivery identities and uncertain-outcome handling; acceptance, a mocked delivery event and a read-only domain check are not physical inbox-delivery evidence.
+
+An HTTP 401 from Resend domain listing does not alone establish an invalid sending key.
+
+**Why:** The configured key returned `restricted_api_key` on domain listing. A restricted sending key can lack management access; replacing it or requiring broader privileges on this evidence alone is unjustified.
+
+**How to apply:** Inspect the sanitized provider error category, not just the HTTP status. Keep domain verification and sending verification separate; use an explicitly approved controlled-recipient send to establish sending access.

@@ -74,8 +74,10 @@ specified), and wait for verification. Do not guess DNS values, overwrite
 unrelated mail records or add a second SPF policy at the same name. DMARC is
 recommended. The API key must be valid and permitted to send using this domain.
 
-A read-only domain check during implementation returned HTTP 401. The sender
-domain could not be verified and no real email was sent. Resolve authentication
-through the secure Secrets flow, approve a controlled recipient, then perform
-a Development test through the existing delivery service. Do not contact real
-parents or change Production to complete that verification.
+A read-only domain check returned HTTP 401 with `restricted_api_key`. This
+does not establish an invalid sending credential: the key cannot list domains.
+The user reports that yetenia.com is verified; this key cannot independently
+confirm that status. Do not replace the key solely because domain listing fails.
+Approve a controlled recipient, then verify sending through the existing
+Development delivery service. No real email has been sent by this verification.
+Do not contact real parents or change Production to complete the test.

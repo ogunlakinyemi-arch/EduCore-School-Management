@@ -1,0 +1,436 @@
+Task: Connect Verified Resend Domain to Existing EduCore Email Notifications
+
+You are working on the existing Yemait EduCore school management platform.
+
+The Resend domain yetenia.com is now verified in Resend.
+
+I want you to connect Resend to the existing notification/email infrastructure already implemented in this project.
+
+CRITICAL CONSTRAINT
+
+Do NOT rebuild, redesign, replace, or duplicate the existing notification system.
+
+First inspect the existing implementation and integrate Resend into the current provider/service/queue architecture.
+
+Preserve all existing functionality, notification preferences, recipient checks, deduplication, retries, audit records, templates, and database behavior.
+
+Do not create a second independent email notification system.
+
+---
+
+1. Inspect the Existing Implementation First
+
+Before changing anything, inspect the existing:
+
+- notification service
+- communication service
+- email provider abstraction
+- communication providers
+- notification queue/worker
+- campaign/retry logic
+- email templates
+- notification preferences
+- parent/student/teacher/admin notification flows
+- environment-variable configuration
+- existing Resend integration, if present
+
+In particular, check files/components related to:
+
+- "communication-providers"
+- "communication-service"
+- "communication-campaigns"
+- notification workers
+- email templates
+- attendance notifications
+- finance/payment notifications
+- academic/result notifications
+- announcement notifications
+- security notifications
+
+Reuse the existing architecture.
+
+---
+
+2. Resend Configuration
+
+Configure the existing email provider to use Resend in Development.
+
+Use these environment variables:
+
+COMMUNICATION_EMAIL_PROVIDER=resend
+EMAIL_FROM=Yemait EduCore <notifications@yetenia.com>
+
+The Resend API key must come from the Replit Secret:
+
+RESEND_API_KEY
+
+IMPORTANT
+
+Never hard-code the API key.
+
+Never print the API key in logs.
+
+Never expose the API key to the frontend.
+
+Never commit the API key to Git.
+
+Never include the API key in API responses.
+
+Do not ask me to paste the API key into source code.
+
+Use the existing server-side secret configuration.
+
+---
+
+3. Use the Verified Domain
+
+All EduCore business/transactional emails should be capable of being sent from:
+
+Yemait EduCore <notifications@yetenia.com>
+
+Do not create another sender address unless the existing architecture requires one.
+
+Do not change the sender to a Gmail, Replit, Clerk, or personal email address.
+
+---
+
+4. Preserve Clerk Authentication Emails
+
+Do NOT replace Clerk's authentication email system.
+
+Clerk must continue handling:
+
+- account verification
+- signup/authentication emails
+- password reset
+- invitation/authentication flows
+- security/authentication emails managed by Clerk
+
+Resend should handle EduCore business/transactional notifications, not Clerk authentication emails.
+
+Do not duplicate Clerk emails through Resend.
+
+---
+
+5. Existing EduCore Email Notification Categories
+
+Keep the existing notification architecture and route appropriate business notifications through Resend.
+
+Examples include:
+
+Parent notifications
+
+- student absence
+- academic results
+- report cards
+- fee/payment notifications
+- receipts
+- announcements
+- routine attendance information
+- important school notices
+
+School/admin notifications
+
+- finance notifications
+- subscription notifications
+- operational notifications
+- important announcements
+- security-related business notifications
+
+Other existing transactional notifications
+
+Use whatever categories already exist in the current implementation.
+
+Do not invent a parallel notification architecture.
+
+---
+
+6. Critical SMS Policy
+
+Do NOT implement daily SMS notifications.
+
+The intended communication policy is:
+
+SMS
+
+SMS should be reserved for critical/urgent situations such as:
+
+- student absence
+- emergency/security alerts
+- school closure or urgent schedule changes
+- critical welfare/safeguarding notifications
+- other explicitly urgent notifications
+
+Routine messages should NOT automatically generate SMS.
+
+Email
+
+Email should handle routine business notifications such as:
+
+- results
+- report cards
+- fee notifications
+- receipts
+- announcements
+- routine attendance summaries
+- other normal EduCore transactional notifications
+
+Push/In-App
+
+Continue using the existing push and in-app notification system for routine real-time notifications.
+
+Do not replace push/in-app notifications with email.
+
+---
+
+7. Student Absence Workflow
+
+Preserve the existing attendance workflow.
+
+When a student is legitimately marked absent, the existing notification system should be able to send:
+
+SMS + Email + In-App/Push
+
+to the appropriate parent/guardian, according to existing recipient and preference rules.
+
+However:
+
+- do not send duplicate notifications for the same absence event
+- respect existing notification preferences
+- use the existing queue/deduplication/idempotency mechanism
+- do not create a new attendance notification subsystem
+
+If an absence is corrected immediately, do not automatically generate another SMS unless the existing product logic explicitly requires it.
+
+---
+
+8. Do Not Integrate Termii Yet
+
+Do NOT require or activate a Termii API key during this task.
+
+SMS can remain simulated/disabled according to the existing architecture.
+
+This task is primarily about making Resend email delivery work using the verified "yetenia.com" domain.
+
+Do not break the existing SMS provider abstraction.
+
+---
+
+9. Development Safety
+
+Make the changes in Development only.
+
+Do not modify Production database schema.
+
+Do not run destructive migrations.
+
+Do not reset the database.
+
+Do not delete existing test data.
+
+Do not modify Production notification behavior.
+
+Do not disable existing notification safeguards.
+
+---
+
+10. Add a Controlled Development Email Test
+
+After integration, create or use the existing safe Development email-test mechanism.
+
+The test must send only to an explicitly configured test recipient.
+
+Use:
+
+RESEND_DEVELOPMENT_RECIPIENTS
+
+if that variable already exists in the project.
+
+If it does not exist, add support for it through the existing configuration architecture rather than creating a separate email system.
+
+Do not send test emails to all parents, students, teachers, or schools.
+
+Do not perform a mass send.
+
+---
+
+11. Test a Real EduCore Notification
+
+After the basic Resend connection works, test one existing business notification through the existing pipeline.
+
+Preferably test:
+
+Student absence → Parent email
+
+using Development test data.
+
+The test must verify:
+
+1. Existing notification event is generated.
+2. Existing recipient resolution works.
+3. Existing preference checks work.
+4. Existing queue/worker processes the notification.
+5. Resend sends the email.
+6. Sender is:
+
+Yemait EduCore <notifications@yetenia.com>
+
+7. The email reaches the configured Development test recipient.
+8. Existing notification/audit records remain intact.
+9. No duplicate notification is created.
+
+---
+
+12. Error Handling
+
+Use the existing error handling and retry architecture.
+
+Resend failures must:
+
+- not crash the application
+- not silently disappear
+- be recorded using the existing notification/communication logging
+- follow the existing retry mechanism
+- preserve idempotency/deduplication
+
+Do not create a second retry system.
+
+---
+
+13. Logging and Security
+
+Logs may contain:
+
+- provider name
+- message/notification ID
+- recipient status
+- delivery result
+- Resend message ID where appropriate
+- error category
+
+Logs must NOT contain:
+
+- "RESEND_API_KEY"
+- device credentials
+- Clerk secrets
+- passwords
+- payment secrets
+- other sensitive credentials
+
+---
+
+14. Testing Requirements
+
+Run focused tests covering:
+
+Provider
+
+- Resend provider configuration
+- missing API key
+- invalid configuration
+- successful send
+- provider failure
+
+Notification pipeline
+
+- existing notification → Resend
+- recipient resolution
+- preference checks
+- deduplication/idempotency
+- retry behavior
+
+Attendance
+
+- student absence notification
+- duplicate absence event prevention
+- parent recipient resolution
+
+Safety
+
+- no API key exposed
+- no frontend exposure
+- no mass email
+- Clerk authentication emails remain untouched
+
+Do not rewrite unrelated tests.
+
+---
+
+15. Preserve Existing Functionality
+
+Before finishing, verify that these continue working:
+
+- in-app notifications
+- push notifications
+- existing email notification pipeline
+- SMS simulation/provider abstraction
+- notification preferences
+- notification history/audit
+- attendance notifications
+- academic notifications
+- finance notifications
+- announcements
+- security notifications
+- Clerk authentication/invitation emails
+- existing communication queue
+- existing retry logic
+- existing deduplication
+
+Do not remove existing functionality simply because Resend is now available.
+
+---
+
+16. Final Verification Report
+
+When finished, report:
+
+Files changed
+
+List only the files actually modified.
+
+Configuration
+
+Confirm:
+
+COMMUNICATION_EMAIL_PROVIDER=resend
+EMAIL_FROM=Yemait EduCore <notifications@yetenia.com>
+
+Confirm that "RESEND_API_KEY" is read from Replit Secrets and is not hard-coded.
+
+Tests
+
+Report:
+
+- number of focused tests passed
+- number failed
+- exact failures if any
+
+Email test
+
+Report:
+
+- whether the Resend API call succeeded
+- whether a real Development email was sent
+- Resend message ID if safe to display
+- whether the sender was "notifications@yetenia.com"
+
+Production safety
+
+Explicitly confirm:
+
+- no Production database changes
+- no destructive migration
+- no mass email
+- Clerk authentication emails remain with Clerk
+- existing notification system was preserved
+
+Important
+
+If the Resend secret is missing, do not invent one and do not ask me to put it in source code.
+
+Instead, stop the live-send portion and clearly tell me:
+
+RESEND_API_KEY is missing from Replit Secrets.
+Add it as a Replit Secret named RESEND_API_KEY, then rerun the controlled Development email test.
+
+Do not make unrelated changes while waiting for the secret.
