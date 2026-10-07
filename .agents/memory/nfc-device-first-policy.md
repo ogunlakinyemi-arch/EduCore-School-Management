@@ -20,6 +20,12 @@ External hardware prototype handovers must use dedicated Development test school
 
 **How to apply:** Verify fixture ownership before disclosing a card UID. Obtain the actual physical reader output before registering its exact representation; do not invent physical UIDs or present disposable-test IDs as application records. For a handover-only request, report missing provisioning without creating credentials, changing assignments, or writing attendance.
 
+Prototype device credentials must not appear in chat or public handover documents.
+
+**Why:** The user explicitly requires secure credential transfer to the hardware developer, with only a credential-status label in the public handover.
+
+**How to apply:** Keep the generated credential out of tool logs, screenshots, and public assets. Only after generation, report “DEDICATED DEVELOPMENT PROTOTYPE CREDENTIAL — SUPPLY SECURELY TO HARDWARE DEVELOPER.” Do not treat a synthetic UID or an API-only fixture test as evidence that a physical NFC card was read.
+
 Preserve legacy assignments even when their school lacks eligible readers. Identify current versus historical rows separately and direct the Owner to the existing device-linking workflow; never delete or recreate cards, assignments, or attendance to satisfy the new prerequisite.
 
 **Why:** The user explicitly requires preservation of existing IDs and history and applies the prerequisite to new assignments and future activation, not destructive retroactive cleanup.

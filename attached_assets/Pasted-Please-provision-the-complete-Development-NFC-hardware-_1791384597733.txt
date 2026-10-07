@@ -1,0 +1,116 @@
+Please provision the complete Development NFC hardware test environment so the prototype hardware developer can perform a real end-to-end test.
+
+Important: Development only. Do not modify Production.
+
+1. Dedicated test school
+
+Use Mercyland school (school ID 1393) only if you can safely establish it as a dedicated Development test school.
+
+If Mercyland contains real operational/student data or cannot safely be used for hardware testing, create or designate a separate Development test school instead.
+
+Return:
+
+- Test school name
+- Test school ID
+
+2. Synthetic test student
+
+Create or designate one synthetic/test student in the test school.
+
+The student must have:
+
+- Active current academic placement
+- All required attendance/identification prerequisites
+- No dependency on a real student's data
+
+Return:
+
+- Test student ID
+- Test student name/label
+
+3. Physical NFC test card
+
+Use a dedicated physical NFC/MIFARE test card.
+
+Read the physical card UID using an appropriate NFC reader and return:
+
+- NFC card database ID
+- Exact physical NFC UID
+- Exact representation expected in "nfcUid"
+
+Register/assign the card to the synthetic test student using the existing card-assignment/activation workflow.
+
+Confirm:
+
+- Card is active
+- Card belongs to the test school
+- Card is assigned to the synthetic test student
+
+Do not use or disclose the UID of an existing real student's card.
+
+4. Prototype Development device
+
+Provision one dedicated Development NFC device for the prototype.
+
+Link it to the test school through the existing Platform Owner device-management workflow.
+
+Return:
+
+- Development device ID
+- Device status
+- Linked school ID
+
+5. Device credential
+
+Generate a dedicated Development credential for this prototype device using the existing device-management workflow.
+
+Do not provide the credential in this ChatGPT response or place it in the public handover document.
+
+Instead confirm that the credential has been generated and state:
+
+"DEDICATED DEVELOPMENT PROTOTYPE CREDENTIAL — SUPPLY SECURELY TO HARDWARE DEVELOPER"
+
+Do not expose Production credentials, database credentials, Clerk credentials, or other application secrets.
+
+6. Live API test
+
+Using the provisioned test school, synthetic student, physical NFC card and Development device:
+
+Perform one real Development API scan against:
+
+"POST /api/device/attendance/events"
+
+Verify:
+
+1. First submission returns "201".
+2. The response contains the generated event ID.
+3. Repeat the exact same request with the same "idempotencyKey".
+4. Verify the retry returns "200".
+5. Verify it returns the same event ID.
+6. Verify no duplicate attendance/presence/notification records are created.
+7. Reuse the same idempotency key with a conflicting payload and verify "409 ATTENDANCE_IDEMPOTENCY_CONFLICT".
+
+7. Final hardware handover information
+
+Return a concise verified table containing:
+
+- Development API base URL
+- Endpoint
+- HTTP method
+- Authentication header name
+- Development test school name/ID
+- Synthetic test student ID
+- NFC card database ID
+- Physical NFC UID
+- Development prototype device ID
+- Whether the card is active
+- Whether the card is assigned to the synthetic test student
+- Whether the device is linked to the test school
+- Whether a live API scan succeeded
+- First scan HTTP status
+- Matching retry HTTP status
+- Conflicting-key HTTP status
+
+Do not make any Production changes.
+
+Do not alter the existing API contract or database schema unless absolutely required for the provisioning itself. If anything prevents live testing, report the exact blocker instead of creating a workaround.
