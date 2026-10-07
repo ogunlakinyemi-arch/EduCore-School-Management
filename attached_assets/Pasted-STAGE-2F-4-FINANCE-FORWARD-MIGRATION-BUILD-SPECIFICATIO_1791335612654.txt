@@ -1,0 +1,633 @@
+STAGE 2F-4 — FINANCE FORWARD MIGRATION BUILD SPECIFICATION
+
+Project: Yemait EduCore
+
+PURPOSE
+
+Convert the completed Finance decisions from Stages 2F-1 through 2F-3 into an exact, implementation-ready specification for a future forward migration.
+
+This is still a DESIGN/SOURCE-ONLY stage.
+
+==================================================
+ABSOLUTE SAFETY RULES
+
+DO NOT:
+
+- connect to Production
+- connect to Development
+- execute SQL against any database
+- create migration 0060
+- modify migration files
+- modify the Drizzle migration journal
+- run db push
+- run database migrations
+- publish/deploy
+- modify environment variables or secrets
+- modify application behavior
+- modify financial records
+- modify student records
+- create new database tables
+- alter existing database tables
+
+You MAY inspect source files, existing migrations and application code.
+
+The output must be a complete build specification that another stage can implement later.
+
+==================================================
+
+1. SOURCE INVENTORY
+   ==================================================
+
+Inspect the current repository and identify the exact source files defining:
+
+- student_subscription_payments
+- student_subscription_allocations
+- subscriptions
+- students
+- schools
+- academic_sessions
+- academic_terms
+- school_partner_attributions
+- partner_profiles
+- commission_rules
+- app_users
+- student_subscription_terms
+- commission_ledger
+- NFC subscription/obligation dependencies
+
+Also identify:
+
+- the historical migration 0036
+- migrations introducing required parent composite keys
+- later migrations modifying Finance dependencies
+- current Drizzle Finance schema
+- payment finalizer
+- Flutterwave verification
+- webhook finalizer
+- receipt handling
+- allocation reporting
+- subscription enforcement
+
+Return exact file paths and relevant exported schema/function names.
+
+Do not modify anything.
+
+==================================================
+2. CANONICAL PAYMENT TABLE SPECIFICATION
+
+Using historical migration 0036 plus the current source, produce the exact canonical definition for:
+
+student_subscription_payments
+
+For EVERY column provide:
+
+- column name
+- PostgreSQL type
+- nullable/not-null
+- default
+- historical definition
+- current definition
+- recommended future definition
+- reason for any difference
+
+Do not invent columns.
+
+Explicitly identify:
+
+- primary key
+- payment reference
+- provider
+- provider transaction ID
+- provider mode
+- currency
+- gross amount
+- provider fee
+- settlement amount
+- payer
+- subscription
+- school
+- student
+- academic session
+- academic term
+- idempotency key
+- payment status
+- settlement status
+- reconciliation status
+- receipt snapshot fields
+- timestamps
+- any other existing Finance columns
+
+==================================================
+3. PAYMENT CONSTRAINT SPECIFICATION
+
+Produce an exact list of every required constraint.
+
+Separate them into:
+
+A. PRIMARY KEY
+B. UNIQUE CONSTRAINTS
+C. FOREIGN KEYS
+D. CHECK CONSTRAINTS
+
+For each include:
+
+- exact recommended name
+- exact columns
+- referenced table/columns where applicable
+- ON DELETE action
+- ON UPDATE action
+- MATCH behavior where relevant
+- whether it existed historically
+- whether it exists in current source
+- recommended future status
+
+The recommended baseline must include:
+
+- payment ownership composite key
+- subscription ownership FK
+- session/school FK
+- term/school FK
+- payer FK
+- provider transaction uniqueness
+- checkout idempotency
+- all historical payment CHECK protections
+
+Do not create any objects.
+
+==================================================
+4. PAYMENT INDEX SPECIFICATION
+
+Produce the exact required indexes for:
+
+- provider transaction lookup
+- school/status/time reporting
+- school/session/term reporting
+- open payment attempt
+- business-term uniqueness
+- checkout idempotency
+- any other existing Finance lookup
+
+For each provide:
+
+- exact name
+- columns
+- ordering
+- WHERE predicate, if partial
+- UNIQUE/non-UNIQUE
+- whether it is a constraint-backed index or standalone index
+- reason it exists
+
+Do not duplicate an index merely because two source declarations appear similar.
+
+==================================================
+5. CANONICAL ALLOCATION TABLE SPECIFICATION
+
+Produce the exact canonical definition for:
+
+student_subscription_allocations
+
+For every column provide:
+
+- name
+- PostgreSQL type
+- nullable/not-null
+- default
+- historical definition
+- current definition
+- recommended future definition
+- reason for any difference
+
+Explicitly cover:
+
+- allocation ID
+- payment ID
+- subscription ID
+- school ID
+- student ID
+- academic session
+- academic term
+- recipient type
+- recipient ID
+- attribution ID
+- commission rule ID
+- entry type
+- amount
+- currency
+- provider fee identity/details
+- idempotency key
+- timestamps
+- any other existing Finance columns
+
+Do not invent fields.
+
+==================================================
+6. ALLOCATION CONSTRAINT SPECIFICATION
+
+Produce exact definitions for:
+
+A. PRIMARY KEY
+
+B. UNIQUE CONSTRAINTS
+
+Restore the historical named constraint for:
+
+(id, payment_id, entry_type, recipient_type)
+
+Also preserve:
+
+- allocation idempotency
+- one CREDIT per payment/recipient
+- one provider-fee EXPENSE per payment
+
+C. FOREIGN KEYS
+
+Include:
+
+- payment six-column ownership FK
+- student/school composite FK
+- session/school FK
+- term/school FK
+- school FK
+- student standalone FK if currently required
+- payer FK
+- attribution/Partner composite FK
+- attribution standalone FK
+- commission rule FK
+
+For every FK specify:
+
+- exact name
+- source columns
+- target columns
+- ON DELETE
+- ON UPDATE
+- MATCH
+
+D. CHECK CONSTRAINTS
+
+Include all existing historical/current Finance CHECK rules.
+
+Do not weaken any financial CHECK merely to simplify migration.
+
+==================================================
+7. PARENT KEY SPECIFICATION
+
+List every parent key required BEFORE Finance FKs can be created.
+
+At minimum inspect:
+
+subscriptions(id, school_id, student_id)
+
+academic_sessions(id, school_id)
+
+academic_terms(id, school_id)
+
+students(id, school_id)
+
+school_partner_attributions(id, partner_profile_id)
+
+For each:
+
+- exact constraint/index name
+- exact columns
+- UNIQUE constraint or index
+- current source status
+- historical status
+- whether Finance depends on it
+- migration dependency order
+
+Also identify any parent key that is missing from current source but required by the approved Finance design.
+
+Do not create any key.
+
+==================================================
+8. IMMUTABILITY FUNCTIONS AND TRIGGERS
+
+Specify the exact SQL required later for:
+
+protect_student_subscription_receipt_snapshot()
+
+student_subscription_payment_receipt_immutable
+
+protect_student_subscription_allocations()
+
+student_subscription_allocations_immutable
+
+For each document:
+
+- CREATE FUNCTION characteristics
+- PL/pgSQL behavior
+- BEFORE/AFTER
+- INSERT/UPDATE/DELETE events
+- FOR EACH ROW/STATEMENT
+- exact protected behavior
+- exact exception message
+- whether INSERT is permitted
+- whether payment updates other than receipt snapshot remain permitted
+
+Compare directly with migration 0036.
+
+Do not rewrite the historical SQL in the report unless necessary; describe exact behavior and identify the source location.
+
+==================================================
+9. FINANCE ACCOUNTING INVARIANTS
+
+Document the invariants the future schema/application must preserve.
+
+Base payment:
+
+₦5,000 gross
+
+No Partner:
+
+School = ₦2,000
+Platform = ₦3,000
+
+Eligible Partner:
+
+School = ₦2,000
+Platform = ₦2,900
+Partner = ₦100
+
+Provider fee:
+
+Separate PLATFORM_PROVIDER_FEE EXPENSE.
+
+Explicitly distinguish:
+
+DATABASE-ENFORCED
+
+versus
+
+APPLICATION-ENFORCED
+
+Do not claim the database alone enforces revenue-total equality unless an actual CHECK/trigger proves it.
+
+==================================================
+10. APPLICATION TRANSACTION COMPATIBILITY
+
+Trace the actual current finalizer order from source.
+
+Document the exact sequence for:
+
+- payment locking
+- provider verification
+- subscription validation
+- term conflict checking
+- attribution selection
+- commission-rule selection
+- subscription activation
+- allocation insertion
+- commission ledger insertion
+- NFC activation
+- payment status update
+- receipt creation
+- commit
+
+Then determine whether every proposed:
+
+- FK
+- CHECK
+- UNIQUE constraint
+- trigger
+
+is compatible with this sequence.
+
+IMPORTANT:
+
+Do NOT create any trigger requiring the payment to already be PAID before allocation INSERT.
+
+Do NOT change the current writer.
+
+==================================================
+11. REVERSAL BOUNDARY
+
+Do not add a reversal workflow to the migration specification unless an existing table/column already supports it.
+
+The baseline migration must only preserve the existing ability to represent REVERSAL entries.
+
+Clearly identify which reversal capabilities remain FUTURE DESIGN.
+
+Do not invent:
+
+- refund tables
+- reversal IDs
+- refund columns
+- reversal triggers
+- refund APIs
+
+==================================================
+12. SETTLEMENT BOUNDARY
+
+Do not add a settlement processor or settlement tables.
+
+Preserve the existing settlement/reconciliation fields and constraints.
+
+Document what remains future work:
+
+- provider settlement ingestion
+- settlement matching
+- exception reconciliation
+- Owner review
+- settlement event idempotency
+
+==================================================
+13. ATTRIBUTION-SCHOOL BOUNDARY
+
+Do NOT add:
+
+(attribution_id, school_id)
+→
+school_partner_attributions(id, school_id)
+
+unless that exact relationship already exists in the current approved schema.
+
+The Stage 2F-2 decision was:
+
+ADDITIONAL ATTRIBUTION-SCHOOL ENFORCEMENT = NEEDS BUSINESS DECISION.
+
+Document this boundary clearly.
+
+==================================================
+14. SESSION/TERM BOUNDARY
+
+Do NOT invent a Finance triple FK unless it already exists as an approved current relationship.
+
+Preserve:
+
+(session_id, school_id)
+→
+academic_sessions(id, school_id)
+
+(term_id, school_id)
+→
+academic_terms(id, school_id)
+
+Document that term/session consistency is currently only partially enforced.
+
+==================================================
+15. EXACT DEPENDENCY GRAPH
+
+Produce a dependency graph showing:
+
+Parent tables
+↓
+Parent UNIQUE keys
+↓
+Payment table
+↓
+Payment constraints/indexes
+↓
+Allocation table
+↓
+Allocation constraints/indexes
+↓
+Functions
+↓
+Triggers
+
+For every FK identify the exact prerequisite object.
+
+The dependency graph must be sufficient for a future migration writer to avoid:
+
+- FK-before-key errors
+- duplicate indexes
+- invalid composite references
+- trigger-before-function errors
+
+==================================================
+16. FUTURE MIGRATION STRUCTURE
+
+Do not create migration 0060.
+
+Instead provide pseudocode-level structure showing the intended order:
+
+SECTION 1 — Parent key prerequisites
+
+SECTION 2 — Payment table
+
+SECTION 3 — Payment primary/unique constraints
+
+SECTION 4 — Payment CHECK constraints
+
+SECTION 5 — Payment FKs
+
+SECTION 6 — Payment indexes
+
+SECTION 7 — Allocation table
+
+SECTION 8 — Allocation primary/unique constraints
+
+SECTION 9 — Allocation CHECK constraints
+
+SECTION 10 — Allocation FKs
+
+SECTION 11 — Allocation indexes
+
+SECTION 12 — Receipt function
+
+SECTION 13 — Receipt trigger
+
+SECTION 14 — Allocation immutability function
+
+SECTION 15 — Allocation immutability trigger
+
+SECTION 16 — Verification/validation
+
+No executable migration file should be produced.
+
+==================================================
+17. REHEARSAL REQUIREMENTS
+
+Define exactly what the next disposable-database rehearsal must test.
+
+At minimum:
+
+- complete migration from empty database
+- all parent keys
+- payment creation
+- successful payment finalization
+- allocation insertion before payment becomes PAID
+- receipt first assignment
+- receipt replacement rejection
+- receipt clearing rejection
+- allocation UPDATE rejection
+- allocation DELETE rejection
+- duplicate provider transaction rejection
+- duplicate checkout idempotency rejection
+- duplicate business-term payment rejection
+- duplicate allocation rejection
+- Partner allocation
+- non-Partner allocation
+- provider-fee expense
+- uncertain/reconciliation state
+- student/school FK protection
+- session/school FK
+- term/school FK
+- deletion RESTRICT behavior
+- migration replay/idempotency
+- application writer compatibility
+
+The rehearsal must use disposable data only.
+
+Do not run it in this stage.
+
+==================================================
+18. FINAL BUILD READINESS ASSESSMENT
+
+Give exactly one of:
+
+READY FOR DISPOSABLE REHEARSAL
+
+or
+
+NOT READY FOR DISPOSABLE REHEARSAL
+
+Use NOT READY if any unresolved source ambiguity would make a safe rehearsal impossible.
+
+Do not use “READY FOR PRODUCTION”.
+
+Production is NOT part of this stage.
+
+==================================================
+19. FINAL OUTPUT
+
+Return:
+
+A. Source inventory
+B. Canonical payment schema
+C. Payment constraints
+D. Payment indexes
+E. Canonical allocation schema
+F. Allocation constraints
+G. Parent-key prerequisites
+H. Trigger/function specification
+I. Accounting invariants
+J. Application compatibility
+K. Reversal boundary
+L. Settlement boundary
+M. Attribution boundary
+N. Session/term boundary
+O. Dependency graph
+P. Future migration structure
+Q. Disposable rehearsal requirements
+R. Final build-readiness decision
+S. Safety report
+
+SAFETY REPORT MUST STATE:
+
+Production DB connections: 0
+Development DB connections: 0
+Database writes: 0
+Database schema changes: 0
+Migration 0060 created: NO
+Migration journal changed: NO
+Production publish: NO
+Application behavior changed: NO
+Environment/secrets changed: NO
+Student records changed: NO
+Finance records changed: NO
+Financial backfill performed: NO
+Secrets/PII exposed: NO
+
+STAGE 2F-4 MUST REMAIN SOURCE/DESIGN-ONLY.
