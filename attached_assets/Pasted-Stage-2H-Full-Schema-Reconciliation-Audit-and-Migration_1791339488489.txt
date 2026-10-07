@@ -1,0 +1,525 @@
+Stage 2H — Full Schema Reconciliation Audit and Migration Plan
+
+Stage 2G and Stage 2G-1 have both passed.
+
+Current confirmed state:
+
+- Migration 0060 exists:
+  "lib/db/drizzle/0060_reconcile_student_subscription_finance.sql"
+- Actual 0060 disposable rehearsal: PASS
+- 35/35 checks passed
+- 0 unexpected failures
+- Historical Finance rows preserved
+- Current Finance rows preserved
+- Direct SQL rerun: PASS
+- Migration-runner replay: PASS
+- Production writes: 0
+- Development writes: 0
+- Publish: NOT performed
+
+We now need to reconcile the entire intended application schema, not just Finance.
+
+PRIMARY OBJECTIVE
+
+Perform a comprehensive, READ-ONLY comparison between:
+
+1. The complete schema represented by migrations "0000–0060"
+2. The checked-in application schema/source
+3. The current Production-routed database schema previously audited
+
+Produce a precise dependency-ordered reconciliation plan for everything still missing or different.
+
+ABSOLUTE SAFETY RULES
+
+This stage is AUDIT/PLAN ONLY.
+
+DO NOT:
+
+- modify Production
+- modify Development
+- execute migration 0060
+- create another migration
+- modify migrations 0000–0060
+- modify the Drizzle journal
+- modify application source
+- run "db push"
+- publish/deploy
+- alter environment variables
+- alter secrets
+- repair data
+- backfill data
+- delete data
+- create schema objects in a shared database
+
+No database writes are authorized.
+
+If a required comparison cannot safely be performed, report the limitation rather than guessing.
+
+IMPORTANT DATABASE IDENTITY RULE
+
+The previously audited database was:
+
+- "neondb"
+- PostgreSQL 16.15
+- read replica
+- 91 public tables
+
+It was explicitly identified as the Production-routed test database/read replica, NOT proven to be the published runtime database.
+
+Do not claim it is the published runtime database.
+
+If accessing it for this read-only audit, clearly label it:
+
+Production-routed test database/read replica
+
+Do not spend credits attempting speculative hidden runtime binding discovery.
+
+SOURCE OF TRUTH
+
+Use the repository's actual migrations:
+
+"0000–0060"
+
+Use the checked-in schema/source as a secondary structural reference.
+
+Do not assume that the source file alone represents the complete intended migration state.
+
+Migration history and canonical migration semantics are authoritative.
+
+STEP 1 — COMPLETE MIGRATION REPLAY
+
+Using a NEW disposable PostgreSQL 16 database:
+
+- replay migrations "0000–0060"
+- verify all migrations execute in order
+- confirm migration 0060 executes successfully
+- record final catalog counts
+
+Expected approximate baseline from previous audits:
+
+- 173 public tables
+- approximately 2,309 public columns
+- 18 application functions
+- 22 application triggers
+
+Do not assume these numbers are correct if the actual replay differs.
+
+Report exact counts.
+
+Destroy the disposable database after the audit.
+
+STEP 2 — BUILD COMPLETE EXPECTED CATALOG
+
+From the successful disposable replay, extract a canonical catalog containing:
+
+Tables
+
+- schema
+- table name
+
+Columns
+
+- table
+- column
+- ordinal position
+- type
+- length/precision where applicable
+- nullable
+- default
+
+Constraints
+
+- primary keys
+- UNIQUE constraints
+- CHECK constraints
+- foreign keys
+- FK columns
+- referenced table/columns
+- ON DELETE
+- ON UPDATE
+- MATCH type
+- deferrability
+- initially deferred/immediate
+
+Indexes
+
+Capture:
+
+- index name
+- table
+- uniqueness
+- index method
+- key columns
+- ordering
+- predicates
+- included columns if any
+- expression indexes
+
+Functions
+
+Capture:
+
+- schema
+- name
+- arguments/signature
+- return type
+- language
+- function body/semantic definition
+
+Triggers
+
+Capture:
+
+- schema
+- name
+- table
+- timing
+- event
+- level
+- function
+- enabled state
+
+Sequences
+
+Capture:
+
+- name
+- ownership
+- associated table/column
+
+STEP 3 — COMPARE PRODUCTION-ROUTED DATABASE
+
+Use READ-ONLY catalog queries against the previously identified Production-routed test database/read replica.
+
+Do not query or expose PII.
+
+Compare the actual Production-routed catalog against the disposable "0000–0060" canonical catalog.
+
+Categorize every difference.
+
+Category A — Missing objects
+
+Examples:
+
+- missing tables
+- missing columns
+- missing constraints
+- missing indexes
+- missing functions
+- missing triggers
+- missing sequences
+
+Category B — Existing but different
+
+Examples:
+
+- different nullability
+- different default
+- different data type
+- different CHECK expression
+- different FK target
+- different ON DELETE action
+- different ON UPDATE action
+- different index predicate
+- different uniqueness
+- different function body
+- different trigger definition
+
+Category C — Equivalent existing objects
+
+Where names differ but semantics are equivalent:
+
+- identify the existing object
+- explain equivalence
+- do NOT recommend unnecessary recreation
+
+Category D — Potentially dangerous differences
+
+Identify:
+
+- constraints that would reject existing data
+- FKs whose supporting parent keys are absent
+- unique constraints potentially violated by existing data
+- CHECK constraints potentially violated
+- NOT NULL changes potentially violated
+- indexes with dependencies
+- functions/triggers whose creation order matters
+
+STEP 4 — DATA COMPATIBILITY AUDIT
+
+For every schema change that could reject existing Production-routed test data, perform a READ-ONLY compatibility check.
+
+Check:
+
+- orphan foreign keys
+- duplicate values for new unique constraints
+- NULL values for proposed NOT NULL columns
+- CHECK violations
+- cross-school ownership mismatches
+- sequence conflicts
+- trigger compatibility
+
+Do not modify any rows.
+
+Report:
+
+- PASS
+- FAIL
+- NOT ASSESSABLE
+
+Do not call missing tables "empty" if they do not exist.
+
+STEP 5 — DEPENDENCY GRAPH
+
+Build a dependency graph for all missing/different objects.
+
+Group into phases such as:
+
+Phase A
+
+Parent tables and foundational objects.
+
+Phase B
+
+Tenant/RBAC/application identity structures.
+
+Phase C
+
+Academic/session/class/people structures.
+
+Phase D
+
+Attendance.
+
+Phase E
+
+Academic/results/reporting.
+
+Phase F
+
+Finance — including migration 0060.
+
+Phase G
+
+NFC/devices/operations.
+
+Phase H
+
+Communication/notifications.
+
+Phase I
+
+Remaining reporting/integration/application functions/triggers.
+
+Use actual migration dependencies, not assumptions.
+
+For every object that depends on another missing object, identify the prerequisite.
+
+STEP 6 — MIGRATION STRATEGY
+
+Determine the safest way to reconcile Production.
+
+Do NOT automatically create one enormous migration.
+
+Determine whether the remaining changes should be:
+
+- one forward migration
+- multiple dependency-ordered migrations
+- existing migration replay followed by forward reconciliation
+- another safer strategy
+
+Do not build the migration yet.
+
+Explain why the selected strategy is safest.
+
+STEP 7 — PRESERVATION REQUIREMENT
+
+The existing Production-routed database contains test data.
+
+The eventual reconciliation must preserve it.
+
+Do not recommend destructive replacement unless explicitly justified and approved.
+
+No:
+
+- DROP TABLE
+- DROP COLUMN
+- DELETE
+- TRUNCATE
+- fabricated data
+
+in this stage.
+
+STEP 8 — DRIZZLE LEDGER
+
+Inspect the current Drizzle migration journal state.
+
+Previously identified:
+
+- 60 migrations replay successfully
+- Drizzle journal was incomplete
+- historical/current ledger mismatches existed
+
+Determine:
+
+- exact journal state
+- whether 0060 should eventually be registered
+- whether any previous migration registration remains missing
+- what must happen before Production deployment
+
+Do NOT modify the journal.
+
+STEP 9 — APPLICATION COMPATIBILITY
+
+Read-only inspection only.
+
+Identify application modules that depend on missing Production schema objects.
+
+Prioritize:
+
+- Finance
+- Attendance
+- Academics
+- NFC
+- Communication
+- subscriptions
+- reporting
+- authentication/RBAC
+- Partner functionality
+
+Do not change application code.
+
+STEP 10 — PRODUCTION READINESS GAP
+
+Produce a clear list:
+
+Already reconciled / verified
+
+Still missing
+
+Present but structurally different
+
+Data compatibility risks
+
+Migration dependencies
+
+Items requiring business decision
+
+Items requiring technical implementation
+
+Items that can safely be migrated automatically
+
+REQUIRED FINAL REPORT
+
+Return the following:
+
+1. Canonical replay
+
+- PostgreSQL version
+- migration count
+- exact successful migration count
+- exact table count
+- exact column count
+- exact constraint count
+- exact index count
+- exact function count
+- exact trigger count
+- exact sequence count
+
+2. Production-routed catalog
+
+Exact current counts.
+
+3. Difference summary
+
+Provide a table:
+
+Object type| Expected| Production| Missing| Different| Equivalent
+
+For:
+
+- tables
+- columns
+- PKs
+- UNIQUE constraints
+- CHECK constraints
+- FKs
+- indexes
+- functions
+- triggers
+- sequences
+
+4. Complete missing-object inventory
+
+List every missing object grouped by dependency/phase.
+
+Do not merely provide counts.
+
+5. Structural-difference inventory
+
+List every materially different object.
+
+6. Data compatibility
+
+For each proposed change:
+
+- PASS
+- FAIL
+- NOT ASSESSABLE
+
+Explain failures precisely.
+
+7. Dependency plan
+
+Provide the recommended migration order.
+
+8. Finance
+
+Explicitly state:
+
+- 0060 status
+- Finance disposable rehearsal status
+- whether Finance is ready for eventual deployment
+- any remaining Finance dependency
+
+9. Drizzle journal
+
+Report exact current state without modifying it.
+
+10. Application compatibility
+
+Identify application modules affected by remaining Production gaps.
+
+11. Production-readiness percentage
+
+Do NOT invent a percentage.
+
+If a meaningful percentage cannot be calculated objectively, state:
+
+Not calculated — schema readiness requires completion of all critical dependencies.
+
+12. Safety report
+
+Explicitly confirm:
+
+- Production writes: 0
+- Development writes: 0
+- Shared DB writes: 0
+- Migration files changed: NO
+- Journal changed: NO
+- Application source changed: NO
+- Secrets changed: NO
+- Publish performed: NO
+- Data repaired: NO
+
+13. Final decision
+
+If the complete comparison and dependency plan are successfully produced:
+
+PASS — FULL SCHEMA RECONCILIATION PLAN COMPLETE — READY FOR MIGRATION BUILD
+
+If critical information cannot be established:
+
+FAIL — FULL RECONCILIATION NOT YET COMPLETE
+
+Do not create or execute any new migration during Stage 2H.
