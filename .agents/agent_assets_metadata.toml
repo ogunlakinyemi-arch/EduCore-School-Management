@@ -406,3 +406,17 @@ mtime_ms = 1791336648811
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/97f624e4-1f6f-4359-9b5f-6ec68e10e5bd/29705566-342d-4eff-8e9b-37b1e2f0bfa2"
 storage_version_token = "1791336659755375"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "8hbsJA3rwmPNEMWH6RBv0"
+uri = "file://reports/finance-2g1/report.json"
+type = "unspecified"
+title = "Stage 2G-1 — Actual Migration 0060 Rehearsal"
+description = "35 passing checks, exact-file SHA-256, catalog comparisons, preservation fingerprints, SQLSTATE evidence, concurrency results and isolated-cluster destruction confirmation."
+logical_id = "cc77e287-5c07-4289-beb8-653374ad00c7"
+content_hash = "sha256:c6bebb863d690cd828d7c00db56f73c55128fe3650c0449fd12a78204f0ff468"
+size = 533264
+mtime_ms = 1791339224634
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/cc77e287-5c07-4289-beb8-653374ad00c7/d71f8431-7c67-4ac2-9d18-0e04a686397d"
+storage_version_token = "1791339240925103"
+content_type = "application/octet-stream"

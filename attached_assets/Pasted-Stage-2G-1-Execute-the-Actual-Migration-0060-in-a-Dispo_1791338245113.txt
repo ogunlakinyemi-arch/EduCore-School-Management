@@ -1,0 +1,518 @@
+Stage 2G-1 — Execute the Actual Migration 0060 in a Disposable Database
+
+Stage 2G has passed.
+
+Actual migration created:
+
+"lib/db/drizzle/0060_reconcile_student_subscription_finance.sql"
+
+Stage 2G final decision:
+
+PASS — MIGRATION 0060 BUILT AND READY FOR ACTUAL-MIGRATION DISPOSABLE REHEARSAL
+
+Now perform the final disposable execution rehearsal of the ACTUAL migration file.
+
+ABSOLUTE SAFETY RULES
+
+This stage is disposable-database execution only.
+
+NEVER CONNECT TO:
+
+- Production
+- Development
+- Published application database
+- Production read replica
+- Any shared database
+- Any database referenced by an existing application DATABASE_URL
+
+NEVER:
+
+- run "0060" against Development
+- run "0060" against Production
+- run "db push"
+- publish/deploy
+- change secrets
+- change environment variables
+- change the migration journal
+- modify migrations 0000–0059
+- modify application source
+- modify the finalizer
+- perform data repair
+- perform backfills
+- fabricate financial records
+- delete or alter shared-database data
+
+If there is any possibility that the selected database is shared, STOP.
+
+DISPOSABLE DATABASE
+
+Create a completely new isolated PostgreSQL 16 disposable database/cluster.
+
+Use:
+
+- private Unix socket where practical
+- no TCP requirement
+- synthetic fixtures only
+
+Give the disposable database an unmistakable temporary name, for example:
+
+"finance_2g1_actual_0060"
+
+Record:
+
+- PostgreSQL version
+- architecture
+- database name
+- socket/connection isolation
+- confirmation that it is disposable
+
+Destroy the database/cluster after testing.
+
+OBJECTIVE
+
+Execute the ACTUAL checked-in:
+
+"lib/db/drizzle/0060_reconcile_student_subscription_finance.sql"
+
+Do not reconstruct or copy the migration into another script.
+
+The test must prove that the exact migration file executes successfully.
+
+TEST STARTING SHAPES
+
+Rehearse the actual migration against at least these three disposable starting conditions.
+
+Test A — Empty Finance shape
+
+Create only the minimum synthetic application prerequisites needed by migration 0060.
+
+Then execute the actual 0060 file.
+
+Verify:
+
+- migration succeeds
+- all required parent keys exist
+- payment table exists
+- allocation table exists
+- all 26 payment columns exist
+- all 17 allocation columns exist
+- all required constraints exist
+- all required indexes exist
+- both functions exist
+- both triggers exist
+- sequences/ownership exist
+- no unexpected objects are created
+
+Test B — Historical 0036 shape
+
+Build the historical Finance shape represented by:
+
+"0036_student_subscription_allocations.sql"
+
+Use synthetic rows only.
+
+Include representative valid Finance records sufficient to test preservation.
+
+Record before-state fingerprints.
+
+Execute the ACTUAL 0060.
+
+Verify:
+
+- migration succeeds
+- existing Finance rows are preserved exactly
+- row counts are unchanged
+- row fingerprints are unchanged
+- required historical protections are restored
+- current canonical structure is achieved
+- no financial data is rewritten
+- no rows are deleted
+- no unintended columns/constraints/indexes appear
+
+Test C — Current checked-in Finance shape
+
+Build the current checked-in Finance schema using the repository's current definitions/prerequisites.
+
+Insert synthetic valid Finance records where required.
+
+Record before-state fingerprints.
+
+Execute the ACTUAL 0060.
+
+Verify:
+
+- migration succeeds
+- Finance rows remain unchanged
+- canonical schema is achieved
+- equivalent existing indexes/keys are reused
+- required FK actions are correct
+- no destructive replacement occurs
+- no unintended schema changes occur
+
+IDEMPOTENCY / RERUN TEST
+
+After successful execution:
+
+Run the ACTUAL "0060" file again against the same disposable database.
+
+Verify:
+
+- second execution succeeds OR safely performs no-op guarded work
+- no duplicate constraints
+- no duplicate indexes
+- no duplicate functions
+- no duplicate triggers
+- no data changes
+- no schema drift
+
+Clearly distinguish:
+
+1. migration-runner idempotency
+2. direct SQL file rerun safety
+
+Test both where feasible.
+
+STRUCTURAL VERIFICATION
+
+After execution, compare the resulting catalog against the canonical Stage 2F-4 specification.
+
+Verify exactly:
+
+Payment
+
+- 26 columns
+- correct names/order
+- correct types
+- correct nullability
+- correct defaults
+- serial sequence ownership
+- PK
+- named ownership UNIQUE
+- 4 FKs
+- 7 CHECKs
+- 7 required index behaviors
+
+Allocation
+
+- 17 columns
+- correct names/order
+- correct types
+- correct nullability
+- correct defaults
+- serial sequence ownership
+- PK
+- named ownership UNIQUE
+- 10 FKs
+- 4 CHECKs
+- 5 required index behaviors
+
+Foreign keys
+
+Verify:
+
+- MATCH SIMPLE
+- NOT DEFERRABLE
+- initially immediate
+- ON UPDATE NO ACTION
+- ON DELETE RESTRICT where specified
+
+Verify the Finance ownership relationships, especially:
+
+"(student_id,school_id) → students(id,school_id)"
+
+and:
+
+"(attribution_id,recipient_id) → school_partner_attributions(id,partner_profile_id)"
+
+Do NOT add an attribution-to-school FK.
+
+Do NOT add a recipient-to-partner direct FK.
+
+Do NOT add an allocation-to-subscription direct FK.
+
+FUNCTION/TRIGGER TESTS
+
+Actually execute the trigger behavior.
+
+Receipt
+
+Verify:
+
+- NULL → first snapshot succeeds
+- same snapshot succeeds
+- unrelated update succeeds
+- replacing existing snapshot fails
+- clearing existing snapshot fails
+
+Expected error:
+
+"P0001: Student subscription receipt snapshots are immutable"
+
+Allocation
+
+Verify:
+
+- allocation INSERT succeeds
+- allocation UPDATE fails
+- allocation no-op UPDATE fails
+- allocation DELETE fails
+
+Expected error:
+
+"P0001: Student subscription allocations are immutable"
+
+ACCOUNTING WRITER TESTS
+
+Use the existing unchanged:
+
+"finalizeVerifiedStudentSubscriptionPayment"
+
+against the disposable application schema.
+
+Verify:
+
+Non-Partner
+
+Exactly:
+
+- School: 200000
+- Platform: 300000
+
+Partner
+
+Exactly:
+
+- School: 200000
+- Platform: 290000
+- Partner: 10000
+
+Provider fee
+
+Positive provider fee:
+
+- separate EXPENSE
+- does not reduce School/Platform revenue
+
+Zero/unknown provider fee:
+
+- no invented expense
+
+PAYMENT LIFECYCLE
+
+Verify:
+
+- payment can exist while PENDING
+- allocations can be inserted before PAID
+- successful finalization reaches PAID
+- settlement remains PENDING where specified
+- reconciliation becomes RECONCILED
+- receipt snapshot is stored
+- immutable protections remain active
+
+Do NOT add a PAID-before-allocation trigger.
+
+NEGATIVE TESTS
+
+Verify expected rejection for:
+
+- duplicate payment reference
+- duplicate provider transaction identity
+- duplicate checkout/idempotency attempt
+- duplicate active business term
+- invalid student ownership
+- invalid school ownership
+- invalid attribution ownership
+- invalid Partner recipient combination
+- invalid amount
+- invalid currency
+- invalid provider/provider mode
+- invalid settlement amount
+- prohibited parent deletion/update
+
+Record SQLSTATE and confirm they are expected.
+
+ATOMICITY
+
+Repeat the controlled failure points used in Stage 2F-5.
+
+For each failure:
+
+1. start transaction
+2. execute the finalizer
+3. intentionally fail at the controlled point
+4. rollback
+5. verify no partial:
+   - payment
+   - allocation
+   - commission
+   - NFC activation
+   - receipt
+   - subscription state
+
+remains.
+
+CONCURRENCY
+
+Repeat the disposable concurrency test.
+
+Verify:
+
+- concurrent finalization does not create duplicate financial allocations
+- only one commission insertion occurs
+- only one NFC activation occurs
+- no deadlock
+- transaction lock waits are acceptable
+- final state is consistent
+
+DATA PRESERVATION
+
+For historical and current-shape tests calculate:
+
+- row counts
+- primary-key sets
+- full-row fingerprints
+
+BEFORE and AFTER.
+
+Expected:
+
+0 Finance row differences
+
+If any difference exists:
+
+STOP and report FAIL.
+
+Do not repair the data to make the test pass.
+
+CATALOG DIFF
+
+Generate a catalog comparison showing:
+
+- tables
+- columns
+- PKs
+- UNIQUE constraints
+- CHECK constraints
+- FKs
+- indexes
+- functions
+- triggers
+- sequences
+
+Compare against the canonical Stage 2F-4 specification.
+
+Classify every difference as:
+
+- expected
+- equivalent existing object
+- unexpected
+
+Unexpected differences are failures.
+
+MIGRATION FILE INTEGRITY
+
+Confirm:
+
+- 0060 file was the exact checked-in file executed
+- migrations 0000–0059 unchanged
+- migration journal unchanged
+- application source unchanged
+- finalizer unchanged
+
+REQUIRED SAFETY REPORT
+
+Explicitly report:
+
+Item| Result
+Production connections| 0
+Production writes| 0
+Development connections| 0
+Development writes| 0
+Shared database connections| 0
+Shared database writes| 0
+Migration 0000–0059 changed| NO
+Migration journal changed| NO
+Application source changed| NO
+Environment/secrets changed| NO
+Publish performed| NO
+Real financial data changed| NO
+Synthetic data only| YES
+
+REQUIRED FINAL REPORT
+
+Return:
+
+1. Environment
+
+- PostgreSQL version
+- architecture
+- disposable DB names
+- isolation method
+- destruction confirmation
+
+2. Actual migration execution
+
+For each starting shape:
+
+- Empty
+- Historical 0036
+- Current checked-in
+
+Report:
+
+- execution result
+- statement/operation result
+- data preservation result
+- schema result
+
+3. Idempotency
+
+Report:
+
+- migration-runner replay
+- direct SQL rerun
+
+4. Structural verification
+
+Report exact counts:
+
+- payment columns
+- allocation columns
+- payment constraints
+- allocation constraints
+- payment indexes
+- allocation indexes
+- functions
+- triggers
+- parent keys
+
+5. Writer verification
+
+Report every test group and result.
+
+6. Failures
+
+Separate:
+
+- expected negative-test failures
+- unexpected failures
+
+If there are ANY unexpected failures, identify them exactly.
+
+7. Safety
+
+Provide the complete safety table above.
+
+8. Final decision
+
+Only if the ACTUAL 0060 file executes successfully on all required disposable starting shapes, preserves all Finance rows, passes structural verification, passes idempotency/rerun checks, and passes the critical writer/trigger/ownership/atomicity/concurrency tests:
+
+PASS — ACTUAL MIGRATION 0060 REHEARSAL SUCCESSFUL — READY FOR FULL SCHEMA RECONCILIATION
+
+If any critical test fails:
+
+FAIL — DO NOT APPLY MIGRATION 0060 OR PROCEED TO PRODUCTION
+
+Do not apply 0060 to Production.
+Do not apply 0060 to Development.
+Do not publish.
