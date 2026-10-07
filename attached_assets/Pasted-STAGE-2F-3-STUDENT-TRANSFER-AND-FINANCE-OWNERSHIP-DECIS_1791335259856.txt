@@ -1,0 +1,306 @@
+STAGE 2F-3 — STUDENT TRANSFER AND FINANCE OWNERSHIP DECISION
+
+Project: Yemait EduCore
+
+PURPOSE
+
+Resolve the remaining business-rule question around student school transfers and historical Finance ownership before any Finance migration is created.
+
+THIS IS A READ-ONLY DESIGN REVIEW.
+
+DO NOT:
+
+- connect to Production
+- connect to Development
+- execute SQL against any database
+- create migration 0060
+- modify migration files
+- modify the Drizzle journal
+- run db push
+- publish/deploy
+- modify environment variables or secrets
+- change application behavior
+- change student records
+- change Finance records
+- create or modify database constraints
+
+==================================================
+
+1. REVIEW THE CURRENT STUDENT MODEL
+   ==================================================
+
+Inspect the current source definitions and application logic for:
+
+- students
+- school enrollment/ownership
+- school_id
+- student_subscription_terms
+- student_subscription_payments
+- student_subscription_allocations
+- subscriptions
+- academic_sessions
+- academic_terms
+
+Determine how the application currently represents a student belonging to a school.
+
+Determine whether there is already any concept of:
+
+- student transfer
+- school transfer
+- enrollment history
+- previous school
+- admission/re-enrollment
+- student movement between schools
+- historical school ownership
+
+Do not invent a feature if none exists.
+
+==================================================
+2. REVIEW THE FINANCE REQUIREMENT
+
+The recommended Finance relationship is:
+
+student_subscription_allocations
+(student_id, school_id)
+->
+students
+(id, school_id)
+
+ON DELETE RESTRICT
+ON UPDATE NO ACTION
+
+The purpose is to ensure that a Finance allocation cannot silently become associated with a different school.
+
+Explain in plain English what this means for:
+
+Example:
+
+Student A belongs to School A.
+
+Student A pays ₦5,000 for Term 1.
+
+The payment generates:
+
+School A: ₦2,000
+Platform: ₦3,000
+
+Later Student A transfers to School B.
+
+Determine what should happen to the historical Term 1 Finance records.
+
+The expected accounting principle is:
+
+THE ORIGINAL PAYMENT AND ALLOCATION MUST REMAIN WITH SCHOOL A.
+
+Do not move or rewrite the historical financial record.
+
+==================================================
+3. DETERMINE HOW A LEGITIMATE TRANSFER SHOULD WORK
+
+Investigate whether the current application can safely support:
+
+Student A:
+School A → School B
+
+without rewriting historical Finance ownership.
+
+Consider these possible designs:
+
+OPTION 1 — Student school_id remains immutable after Finance history exists.
+
+OPTION 2 — Student transfers create a new student/enrollment identity for the new school while preserving historical identity.
+
+OPTION 3 — Introduce a separate enrollment/history model in a future phase.
+
+OPTION 4 — Allow school_id changes but use a separate immutable historical enrollment/ownership model.
+
+Do not implement any option.
+
+For each option explain:
+
+- accounting safety
+- impact on existing application
+- impact on student login
+- impact on parents
+- impact on subscriptions
+- impact on attendance
+- impact on academic records
+- impact on NFC cards
+- impact on Finance
+- migration complexity
+- risk of cross-school data leakage
+
+==================================================
+4. CHECK CURRENT student_subscription_terms
+
+The previous review found that:
+
+student_subscription_terms
+
+already uses student/school ownership relationships.
+
+Inspect the exact current source definitions.
+
+Determine whether the proposed Finance composite relationship could create transfer restrictions indirectly through:
+
+student_subscription_terms
+
+or other existing foreign keys.
+
+Document:
+
+- which existing relationships could block changing students.school_id
+- which relationships would remain unaffected
+- whether the current system already treats school ownership as effectively immutable
+
+Do not change anything.
+
+==================================================
+5. CHECK APPLICATION TRANSFER BEHAVIOR
+
+Search the application source for any code that changes:
+
+students.school_id
+
+or otherwise moves a student between schools.
+
+Search for terms/functions/routes such as:
+
+- transfer
+- move student
+- change school
+- school_id update
+- enrollment
+- re-enrollment
+- admission
+- student migration
+
+Report whether a supported transfer workflow currently exists.
+
+If none exists, clearly state:
+
+NO CURRENT STUDENT TRANSFER WORKFLOW FOUND
+
+Do not create one.
+
+==================================================
+6. ACCOUNTING PRINCIPLE
+
+Use this principle as the baseline:
+
+A completed financial transaction belongs to the school and accounting period under which it was originally created.
+
+A later student transfer must not:
+
+- move the payment
+- move allocations
+- change the original school
+- change the original Partner attribution
+- change the original commission allocation
+- rewrite the receipt
+- rewrite historical subscription ownership
+
+Document whether this principle is compatible with the existing schema.
+
+==================================================
+7. RECOMMENDATION
+
+Provide a clear recommendation for EduCore.
+
+The recommendation must answer:
+
+A. Should Finance restore the historical composite:
+
+(student_id, school_id)
+→
+students(id, school_id)
+
+?
+
+B. Should students.school_id be allowed to change after historical Finance exists?
+
+C. If a student transfers to another school, should the system create a new enrollment/ownership record rather than rewriting the historical one?
+
+D. Should a future Student Transfer feature be designed separately from the Finance migration?
+
+E. Should Finance migration 0060 wait for a complete transfer system?
+
+Do not automatically delay the Finance migration if the existing design can safely protect historical records.
+
+==================================================
+8. PRODUCE A FINAL BUSINESS RULE
+
+Write one concise canonical rule that can later be placed into the project's architecture documentation.
+
+It should describe:
+
+- student ownership
+- historical Finance ownership
+- school transfers
+- payment history
+- allocation immutability
+
+Example structure:
+
+"Student Finance records are permanently associated with the school ownership under which the transaction was created. A later student transfer must not rewrite historical Finance records..."
+
+Use the actual findings to produce the final wording.
+
+==================================================
+9. DECISION TABLE
+
+End with:
+
+| Question | Finding | Recommendation | Status |
+
+Include:
+
+1. Historical Finance school ownership
+2. Student-school composite FK
+3. Student school_id mutability
+4. Student transfer workflow
+5. student_subscription_terms interaction
+6. Historical payment ownership
+7. Historical allocation ownership
+8. Future enrollment/history model
+9. Finance migration dependency
+
+Use only:
+
+KEEP
+RESTORE
+NEEDS BUSINESS DECISION
+FUTURE DESIGN
+NOT IMPLEMENTED
+
+==================================================
+10. SAFETY REPORT
+
+Explicitly report:
+
+Production DB connections: 0
+Development DB connections: 0
+Database writes: 0
+Database schema changes: 0
+Migration 0060 created: NO
+Migration journal changed: NO
+Application behavior changed: NO
+Production publish: NO
+Environment/secrets changed: NO
+Student records changed: NO
+Finance records changed: NO
+
+FINAL OUTPUT:
+
+A. Current student ownership model
+B. Current transfer capability
+C. Impact of historical Finance ownership
+D. Options considered
+E. Recommended transfer model
+F. Final canonical business rule
+G. Decision table
+H. Safety report
+
+THIS STAGE MUST REMAIN READ-ONLY.
+
+DO NOT IMPLEMENT ANYTHING.

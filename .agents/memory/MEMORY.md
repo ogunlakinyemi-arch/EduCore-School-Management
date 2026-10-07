@@ -54,3 +54,4 @@
 - [Asynchronous denial audits](asynchronous-denial-audit-evidence.md) — drain delayed audit writes before fixture resets; bind evidence to the actual request.
 - [Wouter path wildcards](wouter-path-wildcards.md) — appended stars are not subtree matchers; test exact roots, slash-star descendants and neighboring portals.
 - [Schema export ordering](schema-export-dependency-ordering.md) — distinguish missing keys from premature FK emission; preserve index ownership and report raw versus reordered validation separately.
+- [Student Finance ownership](student-finance-ownership.md) — school transfers never move original-school payments, allocations, attribution, receipts or subscription history.
