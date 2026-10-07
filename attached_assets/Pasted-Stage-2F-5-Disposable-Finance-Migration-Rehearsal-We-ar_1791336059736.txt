@@ -1,0 +1,830 @@
+Stage 2F-5 — Disposable Finance Migration Rehearsal
+
+We are now moving from Finance source/design review to a DISPOSABLE DATABASE REHEARSAL ONLY.
+
+NON-NEGOTIABLE SAFETY RULES
+
+This stage must NOT:
+
+- connect to Production
+- connect to Development
+- modify Production
+- modify Development
+- run "db push" against any shared database
+- publish the application
+- modify environment variables or secrets
+- create migration "0060"
+- modify the Drizzle migration journal
+- modify application behavior
+- modify existing production/test records
+- request or expose database credentials
+- fabricate financial records in any shared database
+
+Use only a newly created, disposable PostgreSQL database/container/database instance that can be destroyed after the rehearsal.
+
+If a disposable PostgreSQL environment cannot be created safely, STOP and report that blocker. Do not fall back to Development or Production.
+
+---
+
+AUTHORITATIVE DESIGN
+
+Use the completed Stage 2F-4 specification as the authoritative Finance design.
+
+Historical baseline:
+
+"lib/db/drizzle/0036_student_subscription_allocations.sql"
+
+Current source:
+
+"lib/db/src/schema/student-subscription-billing.ts"
+
+Do not silently redesign the Finance model.
+
+The future Finance model must contain:
+
+Payment table
+
+Exactly 26 columns:
+
+- id
+- subscription_id
+- school_id
+- student_id
+- academic_session_id
+- academic_term_id
+- payer_user_id
+- provider
+- provider_mode
+- reference
+- idempotency_key
+- gross_amount_minor
+- provider_fee_minor
+- settlement_amount_minor
+- currency
+- status
+- settlement_status
+- reconciliation_status
+- checkout_url
+- provider_transaction_id
+- provider_paid_at
+- paid_at
+- failure_code
+- receipt_snapshot
+- created_at
+- updated_at
+
+Preserve the exact historical/current types, nullability and defaults.
+
+Do not convert serial columns to identity.
+
+Allocation table
+
+Exactly 17 columns:
+
+- id
+- idempotency_key
+- entry_type
+- recipient_type
+- recipient_id
+- school_id
+- student_id
+- payer_user_id
+- academic_session_id
+- academic_term_id
+- subscription_id
+- payment_id
+- attribution_id
+- commission_rule_id
+- amount_minor
+- currency
+- created_at
+
+Preserve the exact historical/current types, nullability and defaults.
+
+Do not add refund IDs, reversal IDs, settlement IDs, original-entry references or other fields.
+
+---
+
+REQUIRED STRUCTURAL PROTECTIONS
+
+Implement/rehearse the exact Stage 2F-4 specification.
+
+Payment
+
+Primary key:
+
+"student_subscription_payments_pkey"
+
+Named ownership UNIQUE constraint:
+
+"student_subscription_payments_id_owner_term_uq"
+
+on:
+
+"(id, subscription_id, school_id, student_id, academic_session_id, academic_term_id)"
+
+Foreign keys:
+
+1. "payer_user_id → app_users(id)" RESTRICT
+2. "(subscription_id, school_id, student_id) → subscriptions(id, school_id, student_id)" RESTRICT
+3. "(academic_session_id, school_id) → academic_sessions(id, school_id)" RESTRICT
+4. "(academic_term_id, school_id) → academic_terms(id, school_id)" RESTRICT
+
+All:
+
+- MATCH SIMPLE
+- NOT DEFERRABLE
+- initially immediate
+- ON UPDATE NO ACTION
+- ON DELETE RESTRICT
+
+Seven CHECK constraints:
+
+- "student_subscription_payments_provider_ck"
+- "student_subscription_payments_provider_mode_ck"
+- "student_subscription_payments_reference_ck"
+- "student_subscription_payments_gross_ck"
+- "student_subscription_payments_status_ck"
+- "student_subscription_payments_settlement_ck"
+- "student_subscription_payments_reconciliation_ck"
+
+Payment standalone indexes:
+
+- "student_subscription_payments_reference_uq"
+- "student_subscription_payments_provider_transaction_uq"
+- "student_subscription_payments_subscription_idempotency_uq"
+- "student_subscription_payments_one_open_attempt_uq"
+- "student_subscription_payments_one_business_term_uq"
+- "student_subscription_payments_school_status_idx"
+- "student_subscription_payments_term_idx"
+
+Use the exact predicates from Stage 2F-4.
+
+Do not create duplicate provider-transaction or idempotency indexes.
+
+---
+
+ALLOCATION
+
+Primary key:
+
+"student_subscription_allocations_pkey"
+
+Named ownership UNIQUE:
+
+"student_subscription_allocations_id_payment_entry_recipient_uq"
+
+on:
+
+"(id, payment_id, entry_type, recipient_type)"
+
+Standalone indexes:
+
+- "student_subscription_allocations_idempotency_uq"
+- "student_subscription_allocations_payment_credit_recipient_uq"
+- "student_subscription_allocations_payment_fee_expense_uq"
+- "student_subscription_allocations_school_term_idx"
+- "student_subscription_allocations_partner_idx"
+
+Four CHECK constraints:
+
+- "student_subscription_allocations_recipient_ck"
+- "student_subscription_allocations_entry_ck"
+- "student_subscription_allocations_amount_ck"
+- "student_subscription_allocations_partner_ck"
+
+Foreign keys:
+
+1. "school_id → schools(id)" RESTRICT
+2. "student_id → students(id)" RESTRICT
+3. "payer_user_id → app_users(id)" RESTRICT
+4. "attribution_id → school_partner_attributions(id)" RESTRICT
+5. "commission_rule_id → commission_rules(id)" RESTRICT
+6. payment six-column ownership FK → payment six-column ownership UNIQUE RESTRICT
+7. "(student_id, school_id) → students(id, school_id)" RESTRICT
+8. "(academic_session_id, school_id) → academic_sessions(id, school_id)" RESTRICT
+9. "(academic_term_id, school_id) → academic_terms(id, school_id)" RESTRICT
+10. "(attribution_id, recipient_id) → school_partner_attributions(id, partner_profile_id)" RESTRICT
+
+All:
+
+- MATCH SIMPLE
+- NOT DEFERRABLE
+- initially immediate
+- ON UPDATE NO ACTION
+- ON DELETE RESTRICT
+
+Do not add:
+
+- recipient → partner profile direct FK
+- allocation → subscription direct FK
+- attribution → school composite FK
+- Finance session/term triple FK
+
+---
+
+TRIGGERS AND FUNCTIONS
+
+Reproduce the historical "0036" behavior semantically.
+
+Receipt protection
+
+Function:
+
+"protect_student_subscription_receipt_snapshot()"
+
+Trigger:
+
+"student_subscription_payment_receipt_immutable"
+
+Properties:
+
+- BEFORE UPDATE
+- FOR EACH ROW
+- existing non-NULL receipt snapshot cannot be replaced or cleared
+- NULL → first snapshot is allowed
+- same snapshot is allowed
+- unrelated payment updates remain allowed
+- exact exception message:
+
+"Student subscription receipt snapshots are immutable"
+
+Allocation protection
+
+Function:
+
+"protect_student_subscription_allocations()"
+
+Trigger:
+
+"student_subscription_allocations_immutable"
+
+Properties:
+
+- BEFORE UPDATE OR DELETE
+- FOR EACH ROW
+- any UPDATE fails
+- no-op UPDATE also fails
+- DELETE fails
+- INSERT remains allowed
+
+Exact message:
+
+"Student subscription allocations are immutable"
+
+Do not add additional triggers.
+
+---
+
+REHEARSAL DATA
+
+Create synthetic fixtures only.
+
+Use a small dataset:
+
+- 2 schools
+- 2 students, one per school
+- 2 academic sessions
+- 2 academic terms
+- 2 subscriptions
+- 2 app users
+- at least one Partner profile
+- at least one active Partner attribution
+- at least one eligible commission rule
+- required NFC/branding/application prerequisite rows
+
+Use fictional IDs/data.
+
+Do not use real customer data.
+
+---
+
+TEST GROUP 1 — EMPTY DATABASE
+
+Start with an empty disposable database containing only the prerequisite application schema required for Finance.
+
+Apply the forward Finance build in dependency order.
+
+Verify:
+
+- payment table exists
+- allocation table exists
+- exact column count
+- exact column names
+- exact types
+- exact nullability
+- exact defaults
+- serial sequences and ownership
+- PKs
+- UNIQUE constraints
+- CHECK constraints
+- FKs
+- FK actions
+- FK match type
+- deferrability
+- indexes
+- index predicates
+- functions
+- trigger definitions
+- trigger enabled state
+
+Report any mismatch.
+
+---
+
+TEST GROUP 2 — HISTORICAL 0036 REHEARSAL
+
+Create a disposable database containing the historical Finance objects from "0036".
+
+Insert only synthetic valid fixtures.
+
+Then apply the proposed forward reconciliation logic.
+
+Verify that:
+
+- existing rows survive unchanged
+- no financial row is duplicated
+- historical equivalent objects are recognized
+- missing RESTRICT actions are reconciled
+- missing student/school FK is restored
+- UNIQUE constraint ownership is restored where required
+- duplicate supporting indexes are not created
+- trigger/function protections are present
+- no unexpected DROP or destructive operation occurs
+
+Capture before/after row fingerprints.
+
+Expected result:
+
+0 row differences.
+
+---
+
+TEST GROUP 3 — CURRENT-SHAPE REHEARSAL
+
+Create a disposable database representing the current checked-in Finance shape:
+
+- current payment/allocation tables
+- current standalone UNIQUE indexes
+- current omitted FK actions
+- current standalone student FK
+- current standalone attribution FK
+- missing student/school composite allocation FK
+- missing Finance trigger/function protections
+
+Apply the proposed reconciliation.
+
+Verify that the result exactly matches the canonical Stage 2F-4 design.
+
+---
+
+TEST GROUP 4 — PARENT KEY VALIDATION
+
+Verify all composite FK targets are:
+
+- UNIQUE
+- immediate
+- non-partial
+- usable by PostgreSQL FK enforcement
+
+Required:
+
+"subscriptions(id, school_id, student_id)"
+
+"academic_sessions(id, school_id)"
+
+"academic_terms(id, school_id)"
+
+"students(id, school_id)"
+
+"school_partner_attributions(id, partner_profile_id)"
+
+Payment ownership tuple:
+
+"student_subscription_payments(id, subscription_id, school_id, student_id, academic_session_id, academic_term_id)"
+
+Do not create duplicate parent keys when an existing qualifying key already exists.
+
+---
+
+TEST GROUP 5 — PAYMENT WRITER REHEARSAL
+
+Use the actual unchanged:
+
+"finalizeVerifiedStudentSubscriptionPayment"
+
+with a mocked independently verified Flutterwave result.
+
+Do not modify the finalizer.
+
+Verify:
+
+1. valid verified payment succeeds
+2. payment starts PENDING
+3. allocations are inserted before payment becomes PAID
+4. final payment becomes PAID
+5. settlement remains PENDING
+6. reconciliation becomes RECONCILED
+7. receipt snapshot is assigned once
+8. subscription activation occurs
+9. NFC activation behavior remains compatible
+10. commission ledger is created once where applicable
+
+---
+
+TEST GROUP 6 — NON-PARTNER ACCOUNTING
+
+Verify exact allocations:
+
+School:
+
+"200000"
+
+Platform:
+
+"300000"
+
+No Partner allocation.
+
+Total revenue credits:
+
+"500000"
+
+Do not treat provider fee as a revenue credit.
+
+---
+
+TEST GROUP 7 — PARTNER ACCOUNTING
+
+With an eligible active attribution and commission rule:
+
+School:
+
+"200000"
+
+Platform:
+
+"290000"
+
+Partner:
+
+"10000"
+
+Total revenue credits:
+
+"500000"
+
+Verify exactly one Partner commission ledger entry.
+
+Repeat the same finalization and verify no duplicate allocations or commission ledger entry.
+
+---
+
+TEST GROUP 8 — PROVIDER FEE
+
+Test:
+
+1. provider fee known and positive
+2. provider fee zero
+3. provider fee unknown/null
+
+Verify:
+
+- known positive fee creates exactly one PLATFORM_PROVIDER_FEE EXPENSE
+- fee does not reduce School/Platform/Partner revenue credits
+- unknown fee remains NULL on payment
+- unknown fee does not cause an invented EXPENSE
+
+---
+
+TEST GROUP 9 — RECEIPT IMMUTABILITY
+
+Test:
+
+1. NULL → snapshot: succeeds
+2. same snapshot → same snapshot: succeeds
+3. existing snapshot → different snapshot: fails
+4. existing snapshot → NULL: fails
+5. unrelated payment update while snapshot unchanged: succeeds
+
+Verify exact error message and SQLSTATE.
+
+---
+
+TEST GROUP 10 — ALLOCATION IMMUTABILITY
+
+Test:
+
+- UPDATE allocation
+- no-op UPDATE allocation
+- DELETE allocation
+
+All must fail with:
+
+"Student subscription allocations are immutable"
+
+Verify exact SQLSTATE.
+
+INSERT must succeed.
+
+---
+
+TEST GROUP 11 — IDEMPOTENCY
+
+Test duplicate:
+
+- payment reference
+- provider transaction ID
+- subscription/idempotency key
+- unresolved payment attempt
+- business term
+- allocation idempotency key
+- CREDIT recipient/payment
+- provider-fee EXPENSE/payment
+
+Verify uniqueness behavior and the actual writer's intended conflict handling.
+
+---
+
+TEST GROUP 12 — UNCERTAIN PROVIDER RESULT
+
+Exercise the writer's uncertain/reconciliation path.
+
+Verify:
+
+- no allocations
+- no subscription activation
+- no NFC activation
+- reconciliation hold remains
+- duplicate unresolved attempt is prevented
+- retry remains safe
+
+---
+
+TEST GROUP 13 — OWNERSHIP NEGATIVES
+
+Attempt invalid combinations:
+
+- payment subscription from another school
+- payment student from another school
+- payment session from another school
+- payment term from another school
+- allocation student from another school
+- allocation session from another school
+- allocation term from another school
+- allocation payment-owner tuple from another payment
+- invalid attribution/Partner pair
+
+Every invalid combination must be rejected.
+
+---
+
+TEST GROUP 14 — STUDENT TRANSFER PROTECTION
+
+Synthetic scenario:
+
+1. Student belongs to School A.
+2. Create a valid School A Finance payment/allocation.
+3. Attempt to change "students.school_id" from School A to School B.
+4. Verify the change is rejected because historical Finance depends on "(student_id, school_id)".
+
+Then verify:
+
+- original payment remains School A
+- allocation remains School A
+- receipt remains unchanged
+- no Finance record is moved
+- no destination-school Finance record is fabricated
+
+Do not implement a transfer workflow.
+
+---
+
+TEST GROUP 15 — DELETION PROTECTION
+
+Attempt deletion of referenced:
+
+- student
+- school
+- academic session
+- academic term
+- subscription
+- app user
+- attribution
+- commission rule
+
+Verify the expected RESTRICT behavior for Finance references.
+
+Do not delete fixtures permanently if needed for later tests; recreate them in isolated test transactions/databases.
+
+---
+
+TEST GROUP 16 — ATOMICITY
+
+Inject a controlled failure after:
+
+- allocations are inserted
+- subscription activation occurs
+- commission ledger insertion occurs
+- NFC activation occurs
+
+Verify the transaction rolls back completely.
+
+Expected:
+
+- no partial allocations
+- no partial subscription activation
+- no partial commission ledger
+- no partial payment completion
+- no partial NFC activation
+
+Do not alter the production writer. Use a disposable test hook or transaction-level failure mechanism that exists only inside the rehearsal environment.
+
+---
+
+TEST GROUP 17 — CONCURRENCY
+
+Use disposable PostgreSQL sessions.
+
+Exercise:
+
+- two simultaneous finalizations of the same payment
+- verification + webhook completion overlap
+- two checkout attempts for the same subscription/idempotency key
+- two attempts for the same business term
+
+Verify:
+
+- no duplicate allocations
+- no duplicate commission ledger
+- no double activation
+- no inconsistent payment status
+- no deadlock caused by the new FK/UNIQUE/trigger protections
+
+Document any PostgreSQL lock waits/deadlocks.
+
+---
+
+TEST GROUP 18 — MIGRATION IDEMPOTENCY
+
+Test separately:
+
+Migration-runner idempotency
+
+Apply the migration through the project's migration mechanism twice.
+
+Expected:
+
+Second execution performs no duplicate schema changes and produces no drift.
+
+Direct SQL rerun safety
+
+Run the generated reconciliation SQL again against the already reconciled disposable schema.
+
+Expected:
+
+No duplicate objects, no unexpected drops, no schema drift.
+
+Do not assume "IF NOT EXISTS" is sufficient. Compare catalogs before and after.
+
+---
+
+TEST GROUP 19 — CATALOG EXACTNESS
+
+Produce a final machine-readable catalog report covering:
+
+Tables
+
+2 Finance tables.
+
+Columns
+
+26 payment + 17 allocation.
+
+Constraints
+
+- 2 payment core constraints
+- 4 payment FKs
+- 7 payment CHECKs
+- 2 allocation core constraints
+- 10 allocation FKs
+- 4 allocation CHECKs
+
+Standalone indexes
+
+7 payment indexes + 5 allocation indexes.
+
+Functions
+
+2 Finance protection functions.
+
+Triggers
+
+2 Finance protection triggers.
+
+Verify no unexpected Finance-specific:
+
+- tables
+- columns
+- constraints
+- indexes
+- functions
+- triggers
+
+---
+
+TEST GROUP 20 — BOUNDARY CHECK
+
+Confirm the rehearsal does NOT introduce:
+
+- refund tables
+- settlement tables
+- attribution-school composite key
+- Finance session/term triple FK
+- recipient-to-Partner direct FK
+- allocation-to-subscription direct FK
+- new reversal identifiers
+- new settlement processors
+
+A deliberate valid REVERSAL allocation may be inserted only to prove the existing CHECK allows it.
+
+Do not interpret this as implementing refund functionality.
+
+---
+
+OUTPUT REQUIRED
+
+At the end produce a concise Stage 2F-5 report with:
+
+1. Environment
+
+- disposable database identity
+- PostgreSQL version
+- confirmation it is not Production
+- confirmation it is not Development
+
+2. Migration rehearsal
+
+- empty database result
+- historical 0036 result
+- current-shape result
+
+3. Structural verification
+
+- tables
+- columns
+- constraints
+- indexes
+- FKs
+- functions
+- triggers
+
+4. Writer verification
+
+- non-Partner
+- Partner
+- provider fee
+- receipt
+- idempotency
+- uncertainty
+- ownership
+- atomicity
+- concurrency
+
+5. Exact failures
+
+For every failure provide:
+
+- test name
+- expected result
+- actual result
+- likely cause
+- whether source-only correction is possible
+
+6. Safety report
+
+Explicitly state:
+
+- Production connections: 0
+- Development connections: 0
+- Production writes: 0
+- Development writes: 0
+- migration 0060 created: NO
+- migration journal changed: NO
+- application behavior changed: NO
+- publish performed: NO
+- secrets changed: NO
+- real financial records changed: NO
+
+7. Final decision
+
+Choose exactly one:
+
+PASS — READY FOR REAL MIGRATION BUILD
+
+or
+
+FAIL — DO NOT BUILD MIGRATION 0060 YET
+
+Do not create migration 0060 unless every critical test passes.
+Do not make Production or Development changes under this stage.

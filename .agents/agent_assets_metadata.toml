@@ -392,3 +392,17 @@ mtime_ms = 1791322633481
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/a9e3347a-378c-4cbc-a979-0a4434e73e2f/598fcd85-8c38-4efe-84de-3b4a4caf0f73"
 storage_version_token = "1791323161101082"
 content_type = "text/csv"
+
+[[outputs]]
+id = "rw1QT2ohnFQe0JXVOhaGL"
+uri = "file://reports/finance-2f5/report.json"
+type = "unspecified"
+title = "Stage 2F-5 rehearsal and catalog report"
+description = "Machine-readable results for all 20 test groups: 32 passing checks, exact catalogs, row fingerprints, lock observations, safety and scope limitations."
+logical_id = "97f624e4-1f6f-4359-9b5f-6ec68e10e5bd"
+content_hash = "sha256:e01fa2b3db7088dd3fccea5480f34949a644308df0acc1ddb99dba1c9a3ef381"
+size = 253520
+mtime_ms = 1791336648811
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:f8ad4f13-ad39-4544-9de2-99a39f6d556c/97f624e4-1f6f-4359-9b5f-6ec68e10e5bd/29705566-342d-4eff-8e9b-37b1e2f0bfa2"
+storage_version_token = "1791336659755375"
+content_type = "application/octet-stream"
