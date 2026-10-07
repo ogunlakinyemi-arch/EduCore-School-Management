@@ -1,0 +1,80 @@
+Perform a READ-ONLY verification of the Production database binding.
+
+Do NOT:
+
+- run any migration;
+- execute migration 0060;
+- modify any database;
+- modify the migration journal;
+- publish/deploy;
+- change secrets;
+- alter schema/data/sequences;
+- perform backfills.
+
+Production writes MUST remain 0.
+
+Production resource to verify
+
+The Production resource information currently reported by the Replit interface is:
+
+- Database/resource: "neondb"
+- Resource ID: "ep-proud-sound-b4nsr0y3"
+- Provider: PostgreSQL/Neon
+- Environment: Production
+- Deployment: Production Database (Active)
+- Designation: Primary
+
+Do NOT print or expose "DATABASE_URL", passwords, tokens, or other secrets.
+
+Verify these four things
+
+1. Confirm that resource "ep-proud-sound-b4nsr0y3" exists and is the PostgreSQL resource designated for the active Production environment.
+
+2. Confirm that the active Production deployment is configured to use this resource.
+
+3. Determine whether the resource is:
+   
+   - authoritative primary;
+   - read replica;
+   - pooled/proxy endpoint;
+   - or another connection type.
+
+4. Reconcile this with the earlier evidence that identified "neondb" / the same host as a read-only Production-routed replica.
+
+If the earlier connection was actually a read-only endpoint/proxy to the same underlying primary, explain that distinction.
+
+If the current Replit metadata explicitly identifies "ep-proud-sound-b4nsr0y3" as the authoritative primary, record that as authoritative evidence.
+
+Important
+
+Do not attempt to prove primary status by making a test write.
+
+Use only:
+
+- Replit resource metadata;
+- deployment metadata;
+- safe read-only database metadata;
+- existing project configuration.
+
+Final result
+
+Return:
+
+Item| Result
+Production resource| ...
+Resource ID| ...
+Active Production deployment bound to resource| YES/NO
+Primary designation| ...
+Earlier replica evidence reconciled| YES/NO
+Authoritative Production target verified| YES/NO
+Production writes| MUST BE 0
+
+Then give one final status:
+
+PRODUCTION TARGET VERIFIED
+
+or
+
+PRODUCTION TARGET STILL UNVERIFIED
+
+Do not proceed to migration execution regardless of the result.
