@@ -1,0 +1,513 @@
+Stage 2G — Build the Real Finance Migration 0060
+
+We have completed Stage 2F-5.
+
+Final Stage 2F-5 decision:
+
+PASS — READY FOR REAL MIGRATION BUILD
+
+The disposable Finance rehearsal passed:
+
+- 32/32 writer checks
+- 20/20 test groups
+- 0 unexpected failures
+- Historical 0036 reconciliation: PASS, 0 Finance row differences
+- Current checked-in Finance shape reconciliation: PASS, 0 Finance row differences
+- Canonical Finance structure: PASS
+- Receipt/allocation immutability: PASS
+- Payment/allocation ownership protections: PASS
+- Partner accounting split: PASS
+- Provider-fee handling: PASS
+- Idempotency: PASS
+- Atomic rollback: PASS
+- Concurrency: PASS
+- No deadlocks
+- No Production or Development database access
+- No application behavior changes
+
+OBJECTIVE
+
+Now build the real migration 0060 for the checked-in repository.
+
+This stage is SOURCE/MIGRATION BUILD ONLY.
+
+ABSOLUTE SAFETY RULES
+
+1. Create migration "0060" only.
+2. Do NOT execute migration 0060.
+3. Do NOT connect to Production.
+4. Do NOT connect to Development.
+5. Do NOT run "db push".
+6. Do NOT publish/deploy.
+7. Do NOT modify Production or Development databases.
+8. Do NOT modify existing migrations 0000–0059.
+9. Do NOT modify the Drizzle migration journal.
+10. Do NOT modify application behavior.
+11. Do NOT change environment variables or secrets.
+12. Do NOT perform data repair or backfill.
+13. Do NOT invent financial records.
+14. Do NOT add unrelated schema changes.
+15. Do NOT add refund, settlement, or future-transfer functionality.
+16. Do NOT weaken any historical Finance ownership protection.
+17. If an ambiguity is discovered, STOP and report it rather than guessing.
+
+SOURCE OF TRUTH
+
+Use:
+
+- Historical Finance definition: "0036_student_subscription_allocations.sql"
+- Current checked-in Finance schema
+- Stage 2F-4 canonical Finance specification
+- Stage 2F-5 disposable rehearsal results
+
+The canonical Finance specification from Stage 2F-4 is authoritative for the intended final structure.
+
+MIGRATION 0060 MUST IMPLEMENT
+
+1. Parent-key prerequisites
+
+Ensure the qualifying immediate UNIQUE keys required by the Finance foreign keys exist:
+
+- "subscriptions(id, school_id, student_id)"
+- "academic_sessions(id, school_id)"
+- "academic_terms(id, school_id)"
+- "students(id, school_id)"
+- "school_partner_attributions(id, partner_profile_id)"
+
+Do not create duplicate equivalent indexes.
+
+Do not drop existing indexes merely because their names differ.
+
+Compare semantic equivalence before creating anything.
+
+2. Payment table
+
+Canonical table:
+
+"student_subscription_payments"
+
+Exactly these 26 columns:
+
+- id
+- subscription_id
+- school_id
+- student_id
+- academic_session_id
+- academic_term_id
+- payer_user_id
+- provider
+- provider_mode
+- reference
+- idempotency_key
+- gross_amount_minor
+- provider_fee_minor
+- settlement_amount_minor
+- currency
+- status
+- settlement_status
+- reconciliation_status
+- checkout_url
+- provider_transaction_id
+- provider_paid_at
+- paid_at
+- failure_code
+- receipt_snapshot
+- created_at
+- updated_at
+
+Preserve:
+
+- serial ID/sequence ownership
+- existing types
+- nullability
+- defaults
+
+Canonical defaults include:
+
+- provider = "FLUTTERWAVE"
+- provider_mode = "SANDBOX"
+- gross_amount_minor = "500000"
+- currency = "NGN"
+- status = "PENDING"
+- settlement_status = "PENDING"
+- reconciliation_status = "PENDING"
+- created_at/updated_at = current timestamp
+
+3. Payment constraints
+
+Primary key:
+
+"student_subscription_payments_pkey"
+
+Named ownership UNIQUE:
+
+"student_subscription_payments_id_owner_term_uq"
+
+on:
+
+"(id, subscription_id, school_id, student_id, academic_session_id, academic_term_id)"
+
+Payment foreign keys:
+
+- payer_user_id → app_users(id), ON DELETE RESTRICT
+- "(subscription_id,school_id,student_id)" → subscriptions(id,school_id,student_id), ON DELETE RESTRICT
+- "(academic_session_id,school_id)" → academic_sessions(id,school_id), ON DELETE RESTRICT
+- "(academic_term_id,school_id)" → academic_terms(id,school_id), ON DELETE RESTRICT
+
+MATCH SIMPLE, NOT DEFERRABLE, initially immediate, ON UPDATE NO ACTION.
+
+Payment CHECKs:
+
+1. provider must be FLUTTERWAVE
+2. provider_mode must be SANDBOX
+3. reference must match "^[A-Za-z0-9_-]{8,100}$"
+4. gross amount must equal 500000
+5. currency must be NGN
+6. provider fee must be non-negative when known
+7. settlement amount must be between 0 and gross amount when known
+
+4. Payment indexes
+
+Preserve/create semantic equivalents of:
+
+- unique reference
+- unique "(provider, provider_transaction_id)" where transaction ID is non-null
+- unique "(subscription_id, idempotency_key)"
+- one open attempt per subscription for PENDING/RECONCILIATION_REQUIRED
+- one business-term uniqueness guard for active/reconciliation states
+- school/status/time reporting
+- school/session/term reporting
+
+Do not duplicate indexes already supplied by UNIQUE constraints.
+
+5. Allocation table
+
+Canonical table:
+
+"student_subscription_allocations"
+
+Exactly these 17 columns:
+
+- id
+- idempotency_key
+- entry_type
+- recipient_type
+- recipient_id
+- school_id
+- student_id
+- payer_user_id
+- academic_session_id
+- academic_term_id
+- subscription_id
+- payment_id
+- attribution_id
+- commission_rule_id
+- amount_minor
+- currency
+- created_at
+
+Preserve:
+
+- serial ID/sequence ownership
+- NGN default
+- CREDIT default
+- positive amount requirement
+- no updated_at
+
+6. Allocation constraints
+
+Primary key:
+
+"student_subscription_allocations_pkey"
+
+Named ownership UNIQUE:
+
+"student_subscription_allocations_id_payment_entry_recipient_uq"
+
+on:
+
+"(id,payment_id,entry_type,recipient_type)"
+
+Foreign keys:
+
+1. school_id → schools(id), RESTRICT
+2. student_id → students(id), RESTRICT
+3. payer_user_id → app_users(id), RESTRICT
+4. attribution_id → school_partner_attributions(id), RESTRICT
+5. commission_rule_id → commission_rules(id), RESTRICT
+6. "(payment_id,subscription_id,school_id,student_id,academic_session_id,academic_term_id)" → payment ownership UNIQUE, RESTRICT
+7. "(student_id,school_id)" → students(id,school_id), RESTRICT
+8. "(academic_session_id,school_id)" → academic_sessions(id,school_id), RESTRICT
+9. "(academic_term_id,school_id)" → academic_terms(id,school_id), RESTRICT
+10. "(attribution_id,recipient_id)" → school_partner_attributions(id,partner_profile_id), RESTRICT
+
+All must be:
+
+- MATCH SIMPLE
+- NOT DEFERRABLE
+- initially immediate
+- ON UPDATE NO ACTION
+- ON DELETE RESTRICT
+
+Do NOT add an attribution-to-school composite FK.
+
+Do NOT add a recipient-to-partner direct FK.
+
+Do NOT add a direct allocation-to-subscription FK.
+
+7. Allocation CHECKs
+
+Enforce:
+
+- recipient types:
+  
+  - SCHOOL
+  - PLATFORM
+  - PARTNER
+  - PLATFORM_PROVIDER_FEE
+
+- entry types:
+  
+  - CREDIT
+  - REVERSAL
+  - EXPENSE
+
+- amount must be positive
+
+- currency must be NGN
+
+- valid entry/recipient combinations
+
+- PARTNER requires:
+  
+  - recipient_id
+  - attribution_id
+  - commission_rule_id
+
+- non-PARTNER requires recipient_id NULL
+
+- attribution_id/commission_rule_id may remain populated for non-PARTNER where permitted by the canonical specification
+
+Do not introduce refund semantics.
+
+8. Allocation indexes
+
+Preserve/create semantic equivalents of:
+
+- idempotency unique
+- "(payment_id,recipient_type)" unique where CREDIT
+- "(payment_id)" unique where EXPENSE + PLATFORM_PROVIDER_FEE
+- school/session/term/time reporting
+- Partner recipient/time reporting
+
+9. Receipt protection
+
+Create:
+
+"protect_student_subscription_receipt_snapshot()"
+
+Create trigger:
+
+"student_subscription_payment_receipt_immutable"
+
+Behavior:
+
+- BEFORE UPDATE
+- FOR EACH ROW
+- existing non-null receipt snapshot cannot be replaced
+- existing non-null snapshot cannot be cleared
+- NULL → first snapshot is allowed
+- same snapshot is allowed
+- unrelated updates remain allowed
+
+Exact error:
+
+"Student subscription receipt snapshots are immutable"
+
+Use normal P0001 exception behavior.
+
+SQL JSON null counts as non-null.
+
+10. Allocation protection
+
+Create:
+
+"protect_student_subscription_allocations()"
+
+Create trigger:
+
+"student_subscription_allocations_immutable"
+
+Behavior:
+
+- BEFORE UPDATE OR DELETE
+- FOR EACH ROW
+- every update/no-op update is rejected
+- every delete is rejected
+
+Exact error:
+
+"Student subscription allocations are immutable"
+
+Do not add TRUNCATE protection.
+
+Do not create constraint triggers.
+
+11. Preserve finalizer compatibility
+
+The existing:
+
+"finalizeVerifiedStudentSubscriptionPayment"
+
+must remain unchanged.
+
+Do NOT add a trigger requiring payment status PAID before allocation insertion.
+
+The finalizer intentionally inserts allocations before payment becomes PAID.
+
+Do not change the application source.
+
+12. Accounting behavior that the migration must support
+
+Non-Partner:
+
+- School = 200000
+- Platform = 300000
+
+Partner:
+
+- School = 200000
+- Platform = 290000
+- Partner = 10000
+
+Provider fee:
+
+- separate EXPENSE
+- never reduce the revenue split
+- positive fee creates an expense
+- zero/unknown fee does not create an invented expense
+
+13. Ownership protection
+
+Finance must preserve original school ownership.
+
+Restore:
+
+"(student_id,school_id) → students(id,school_id) ON DELETE RESTRICT"
+
+Historical Finance must prevent rewriting the student's original school identity.
+
+Do not implement the future transfer workflow in 0060.
+
+14. Existing-object reconciliation
+
+If an object already exists:
+
+- compare its actual semantic definition
+- reuse it if equivalent
+- do not rely only on object names
+- do not create duplicate equivalent indexes
+- do not destructively drop indexes before checking dependent FKs
+
+Migration must be safe against the intended checked-in current schema.
+
+15. No data manipulation
+
+Migration 0060 must not:
+
+- backfill financial rows
+- fabricate payment rows
+- fabricate allocations
+- repair student ownership
+- alter existing financial transactions
+- delete Finance data
+
+16. Verification before reporting completion
+
+After writing 0060, perform SOURCE-ONLY validation.
+
+Verify:
+
+- SQL syntax
+- statement ordering
+- dependency ordering
+- every required parent key
+- every required payment constraint
+- every required allocation constraint
+- all 26 payment columns
+- all 17 allocation columns
+- all indexes
+- all predicates
+- all FK actions
+- all CHECK expressions
+- both functions
+- both triggers
+- no prohibited extensions
+- no destructive statements
+- no changes to 0000–0059
+- no journal changes
+- no application changes
+
+If repository tooling permits static migration parsing, run it.
+
+Do NOT execute 0060 against Development or Production.
+
+If you need database execution to verify the migration, create/use a NEW disposable database only.
+
+REQUIRED FINAL REPORT
+
+Return:
+
+Migration file
+
+- exact path
+- exact migration number
+- statement count
+
+Structural coverage
+
+- payment columns
+- allocation columns
+- payment constraints
+- allocation constraints
+- indexes
+- functions
+- triggers
+- parent keys
+
+Safety
+
+Explicitly confirm:
+
+- Production connections = 0
+- Production writes = 0
+- Development connections = 0
+- Development writes = 0
+- Migration 0000–0059 changed = NO
+- Migration journal changed = NO
+- Application source changed = NO
+- Secrets changed = NO
+- Publish performed = NO
+- Financial data changed = NO
+
+Validation
+
+Report every validation performed and its result.
+
+Failures
+
+List every failure, if any.
+
+Final decision
+
+If every required build/validation check passes:
+
+PASS — MIGRATION 0060 BUILT AND READY FOR ACTUAL-MIGRATION DISPOSABLE REHEARSAL
+
+If anything critical fails:
+
+FAIL — DO NOT REHEARSE OR DEPLOY MIGRATION 0060 YET
+
+Do not execute the migration against any shared database.
+Do not publish.
+Do not modify anything outside the explicitly authorized migration-build scope.
