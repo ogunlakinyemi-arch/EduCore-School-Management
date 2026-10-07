@@ -1,0 +1,44 @@
+My EduCore application works correctly in Development, but Publish consistently fails during the generated database migration.
+
+The exact PostgreSQL error is:
+
+"there is no unique constraint matching given keys for referenced table "subscriptions""
+
+The failing statement is:
+
+"ALTER TABLE "student_subscription_payments" ADD CONSTRAINT "student_subscription_payments_subscription_owner_fk" FOREIGN KEY ("subscription_id","school_id","student_id") REFERENCES "public"."subscriptions"("id","school_id","student_id")"
+
+Replit Agent performed a read-only comparison and confirmed that the required parent-key declarations already exist in the Drizzle schema and the checked-in migration SQL.
+
+The four required parent keys are:
+
+1. "school_partner_attributions (id, partner_profile_id)"
+2. "subscriptions (id, school_id, student_id)"
+3. "parents (id, school_id)"
+4. "academic_terms (id, school_id, academic_session_id)"
+
+The five dependent foreign keys are:
+
+- "student_subscription_payments_subscription_owner_fk"
+- "admission_applications_parent_school_fk"
+- "student_subscription_allocations_attribution_partner_fk"
+- "student_subscription_terms_academic_term_id_school_id_acad_fkey"
+- "student_subscription_terms_subscription_id_school_id_stude_fkey"
+
+The current Publish diff contains 611 statements. It omits the first three existing parent unique indexes and schedules the "academic_terms" unique constraint after its dependent foreign key.
+
+Therefore the Publish-generated migration has an incorrect dependency/order problem even though the Development schema and migration definitions are correct.
+
+I do NOT want to:
+
+- truncate "academic_terms";
+- remove or disable the five foreign keys;
+- reset or recreate the Production database;
+- modify Production data;
+- change the working Development schema merely as a workaround.
+
+Please provide or apply a supported fix to the Publish migration/diff generation so that the existing parent keys are included and created before their dependent foreign keys.
+
+I am happy to provide the current 611-statement Publish diff or additional diagnostic information if required.
+
+Please do not ask me to retry the same Publish diff, as it is confirmed to fail with the same dependency-order problem.
