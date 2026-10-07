@@ -1,0 +1,112 @@
+Perform ONLY a targeted, READ-ONLY review of the existing Stage 2J evidence.
+
+Do NOT:
+
+- build migrations
+- modify migrations
+- connect to Production
+- connect to Development
+- modify any database
+- run migrations
+- run db push
+- publish/deploy
+- modify the journal
+- modify source code
+- modify secrets/environment variables
+
+Use the existing Stage 2I/2J reports and evidence already generated. Do not rerun the 1,890 preflights.
+
+REVIEW ONLY THESE ITEMS
+
+1. Missing populated columns
+
+For each:
+
+- "communication_deliveries.push_attempts" — 4 rows
+- "communication_deliveries.receipt_ids" — 4 rows
+- "partner_profile_users.nfc_activation_enabled" — 1 row
+- "partner_profiles.nfc_activation_enabled" — 1 row
+- "schools.communication_defaults" — 6 rows
+
+Determine from the existing canonical migration/source definitions and available evidence:
+
+- canonical data type
+- canonical default, if any
+- whether NULL is allowed
+- whether an existing row can safely receive the canonical default
+- whether a deterministic existing-row mapping is already established
+- whether a business decision is actually required
+
+Do NOT invent values.
+
+Classify each:
+
+SAFE — migration can add it with the canonical default
+
+or
+
+NEEDS DECISION — existing rows require an explicit mapping
+
+or
+
+BLOCKER — no safe deterministic migration is possible
+
+2. Sequence observations
+
+Review the existing 86 sequence observations.
+
+Determine whether they are:
+
+- genuine migration blockers,
+- expected differences caused by existing Production data,
+- or require a simple preflight before migration.
+
+Do NOT alter sequence values.
+
+Do NOT run sequence repairs.
+
+Only use the existing evidence where possible.
+
+3. CASH CHECK
+
+Do not investigate again.
+
+Record simply:
+
+"fee_payments_method_check" is an obsolete Production constraint and migration 0149 already contains the reviewed guarded retirement.
+
+No action should be performed now.
+
+4. Runtime binding
+
+Do not investigate Replit runtime binding again.
+
+Record:
+
+"TARGET BINDING UNVERIFIED"
+
+unless the existing evidence already proves otherwise.
+
+FINAL OUTPUT
+
+Return a very short table:
+
+Item| Status| Reason / Required decision
+
+Then give:
+
+Safe to proceed: X/5 columns
+
+Needs decision: X/5 columns
+
+Sequence blockers: X
+
+Production changes: 0
+
+Final status:
+
+- READY FOR NEXT STEP
+  or
+- BLOCKED — DECISION REQUIRED
+
+Do not perform any fixes.
