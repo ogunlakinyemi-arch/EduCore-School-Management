@@ -79,5 +79,33 @@ does not establish an invalid sending credential: the key cannot list domains.
 The user reports that yetenia.com is verified; this key cannot independently
 confirm that status. Do not replace the key solely because domain listing fails.
 Approve a controlled recipient, then verify sending through the existing
-Development delivery service. No real email has been sent by this verification.
+Development delivery service.
 Do not contact real parents or change Production to complete the test.
+
+## Controlled Development verification
+
+On 2026-10-07, one explicitly approved email was accepted by Resend with HTTP
+200 from `Yemait EduCore <notifications@yetenia.com>`. The provider message ID
+was `01a1177f-e4f3-72ef-af04-a4daaa7a4527`. Acceptance is not confirmed inbox
+delivery; this sending key also cannot read provider delivery status.
+
+The test used a schema-only isolated local PostgreSQL clone, a synthetic absent
+student and linked parent, and the existing attendance communication bridge,
+preferences, queue and dispatcher. No real school data was copied or changed.
+Email opt-out suppressed the email intent; enabling it and replaying the event
+created only one email intent. Worker replay made no second provider call.
+SMS remained simulated and audit/in-app records were retained.
+
+New manual student absences now call the existing linked-recipient bridge
+through the attendance transaction's notification savepoint. Normal entry/exit
+and correction behavior is preserved; no daily SMS scheduler was added.
+The absence-specific bridge was additionally verified against native PostgreSQL
+without another send. This does not claim signed-in attendance UI verification.
+
+The guarded operator utility lives in
+`artifacts/api-server/src/services/resend-controlled-development-verification.ts`.
+It refuses application databases, populated live-send fixtures and multiple
+recipients. Use `--send-once` only with fresh, independently owned schema-only
+fixtures and explicit recipient approval; use `--verify-absence-only` for a
+no-network, rolled-back check of the absence bridge. Never print connection
+strings or sending credentials while preparing its environment.

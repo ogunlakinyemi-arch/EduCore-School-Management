@@ -34,6 +34,7 @@ vi.mock("../services/communication-service", () => ({
 import {
   queueAttendanceCommunicationBestEffort,
   queueSchoolEntryExitCommunication,
+  queueStudentAbsenceCommunication,
   queueStudentAttendanceCommunication,
 } from "./attendance";
 
@@ -136,6 +137,40 @@ describe("attendance communication queueing", () => {
 
     expect(state.queries).toHaveLength(0);
     expect(state.queued).toHaveLength(0);
+  });
+
+  it("queues a genuine student absence through the existing linked-recipient bridge", async () => {
+    await queueStudentAbsenceCommunication(transactionClient(), {
+      id: 305, schoolId: 1, studentId: 11, schoolClassId: 31, status: "ABSENT",
+    });
+    expect(state.queued.map(item => item.recipientUserId).sort((a, b) => a - b)).toEqual([101, 102, 111]);
+    expect(state.queued.every(item => item.category === "ATTENDANCE"
+      && item.eventKey === "attendance:1:305:ABSENT"
+      && item.subject === "Student absence recorded")).toBe(true);
+    expect(state.queued.find(item => item.recipientUserId === 101)?.channels).toEqual(["IN_APP", "SMS"]);
+  });
+
+  it("does not add absence SMS for ordinary attendance or employee events", async () => {
+    for (const status of ["PRESENT", "LATE", "EXCUSED", "UNKNOWN"]) {
+      await queueStudentAbsenceCommunication(transactionClient(), {
+        id: 306, schoolId: 1, studentId: 11, status,
+      });
+    }
+    await queueStudentAbsenceCommunication(transactionClient(), {
+      id: 307, schoolId: 1, studentId: null, status: "ABSENT",
+    });
+    expect(state.queries).toHaveLength(0);
+    expect(state.queued).toHaveLength(0);
+  });
+
+  it("reuses the same absence key without changing the existing correction policy", async () => {
+    const client = transactionClient();
+    const absence = { id: 308, schoolId: 1, studentId: 11, status: "ABSENT" };
+    await queueStudentAbsenceCommunication(client, absence);
+    const keys = state.queued.map(item => item.eventKey);
+    await queueStudentAbsenceCommunication(client, absence);
+    expect(state.queued.map(item => item.eventKey)).toEqual([...keys, ...keys]);
+    expect(new Set(keys)).toEqual(new Set(["attendance:1:308:ABSENT"]));
   });
 
   it("rolls back only the notification savepoint and logs a recipient lookup failure", async () => {

@@ -26,3 +26,9 @@ An HTTP 401 from Resend domain listing does not alone establish an invalid sendi
 **Why:** The configured key returned `restricted_api_key` on domain listing. A restricted sending key can lack management access; replacing it or requiring broader privileges on this evidence alone is unjustified.
 
 **How to apply:** Inspect the sanitized provider error category, not just the HTTP status. Keep domain verification and sending verification separate; use an explicitly approved controlled-recipient send to establish sending access.
+
+The intended communication policy reserves SMS for critical or explicitly urgent events, including genuine student absences. Routine results, fees, receipts, announcements and attendance summaries use email alongside existing in-app/push.
+
+**Why:** The user explicitly stated this channel policy and prohibited introducing daily SMS while integrating Resend.
+
+**How to apply:** Do not add automatic routine/daily SMS jobs when enabling email. Preserve recipient checks, preferences and stable event deduplication for absence alerts; review legacy channel behavior explicitly rather than replacing the communication architecture.

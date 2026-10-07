@@ -213,6 +213,31 @@ export async function queueStudentAttendanceCommunication(
   }
 }
 
+export async function queueStudentAbsenceCommunication(
+  client: CommunicationQueryClient,
+  event: {
+    id: number | string;
+    schoolId: number | string;
+    studentId: number | string | null;
+    schoolClassId?: number | string | null;
+    status: string;
+  },
+): Promise<void> {
+  if (event.studentId == null || String(event.status).toUpperCase() !== "ABSENT") return;
+  const eventId = Number(event.id);
+  if (!Number.isSafeInteger(eventId) || eventId < 1) return;
+  const schoolId = Number(event.schoolId);
+  await queueStudentAttendanceCommunication(client, {
+    schoolId,
+    studentId: Number(event.studentId),
+    subjectClassId: event.schoolClassId == null ? null : Number(event.schoolClassId),
+    eventKey: `attendance:${schoolId}:${eventId}:ABSENT`,
+    subject: "Student absence recorded",
+    body: "An absence has been recorded for your child. Please review the attendance record or contact the school.",
+    link: "/attendance",
+  });
+}
+
 export async function queueSchoolEntryExitCommunication(
   client: CommunicationQueryClient,
   event: {
@@ -720,7 +745,14 @@ router.post("/school/attendance/manual", requireAuthentication(), run(async (req
       [schoolId, studentId, employeeId, eventType, attendanceStatus, occurred.toISOString().slice(0, 10),
         occurred.toISOString(), reason, context.user.id, `manual:${randomUUID()}`],
     );
-     if (studentId !== null && ["SCHOOL_ENTRY", "SCHOOL_EXIT"].includes(eventType)) {
+     if (studentId !== null && attendanceStatus === "ABSENT") {
+       await queueAttendanceCommunicationBestEffort(
+         client,
+         req,
+         () => queueStudentAbsenceCommunication(client, result.rows[0]),
+         { schoolId, eventType: "STUDENT_ABSENCE" },
+       );
+     } else if (studentId !== null && ["SCHOOL_ENTRY", "SCHOOL_EXIT"].includes(eventType)) {
        await queueAttendanceCommunicationBestEffort(
          client,
          req,
