@@ -22,9 +22,9 @@ External hardware prototype handovers must use dedicated Development test school
 
 Prototype device credentials must not appear in chat or public handover documents.
 
-**Why:** The user explicitly requires secure credential transfer to the hardware developer, with only a credential-status label in the public handover.
+**Why:** The user explicitly requires secure credential transfer to the hardware developer, with only a credential-status label in the public handover. On 2026-10-07, they approved personally retrieving the credential through the existing Owner-only, one-time screen.
 
-**How to apply:** Keep the generated credential out of tool logs, screenshots, and public assets. Only after generation, report “DEDICATED DEVELOPMENT PROTOTYPE CREDENTIAL — SUPPLY SECURELY TO HARDWARE DEVELOPER.” Do not treat a synthetic UID or an API-only fixture test as evidence that a physical NFC card was read.
+**How to apply:** Keep the generated credential out of tool logs, screenshots, and public assets. Have the authenticated Owner perform one-time issuance and private transfer; ask the Owner to return only the non-secret device ID for verification, never the credential. Do not bypass Owner authorization with raw fixture writes. Only after generation, report “DEDICATED DEVELOPMENT PROTOTYPE CREDENTIAL — SUPPLY SECURELY TO HARDWARE DEVELOPER.” Do not treat a synthetic UID or an API-only fixture test as evidence that a physical NFC card was read.
 
 Preserve legacy assignments even when their school lacks eligible readers. Identify current versus historical rows separately and direct the Owner to the existing device-linking workflow; never delete or recreate cards, assignments, or attendance to satisfy the new prerequisite.
 
